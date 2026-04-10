@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
+from app.core.realtime_hub import notify_topics
 from app.models.user import User
 from app.models.wallet_ledger import WalletLedgerEntry
 from app.schemas.wallet import (
@@ -142,4 +143,5 @@ async def wallet_create_adjustment(
         if replay is None:
             raise
         entry = replay
+    await notify_topics("wallet", "leads")
     return WalletLedgerEntryPublic.model_validate(entry)

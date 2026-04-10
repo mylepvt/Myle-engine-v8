@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import Depends, HTTPException, Request, status
 
@@ -12,7 +12,7 @@ from app.core.config import settings
 from app.core.jwt_tokens import decode_access_token
 from app.db.session import get_db
 
-__all__ = ["get_db", "AuthUser", "require_auth_user"]
+__all__ = ["get_db", "AuthUser", "require_auth_user", "optional_auth_user_from_token"]
 
 
 @dataclass(frozen=True)
@@ -24,35 +24,33 @@ class AuthUser:
     email: str
 
 
-def require_auth_user(request: Request) -> AuthUser:
-    token = request.cookies.get(MYLE_ACCESS_COOKIE)
+def optional_auth_user_from_token(token: Optional[str]) -> Optional[AuthUser]:
+    """Parse access JWT (same rules as HTTP cookie auth). Used by WebSocket + tests."""
     if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required",
-        )
+        return None
     payload = decode_access_token(token, settings.secret_key)
     if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired session",
-        )
+        return None
     role = payload.get("role")
     if not isinstance(role, str):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid session",
-        )
+        return None
     sub = payload.get("sub")
     if not isinstance(sub, str) or not sub.isdigit():
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid session",
-        )
+        return None
     user_id = int(sub)
     email_raw = payload.get("email")
     email = email_raw if isinstance(email_raw, str) else ""
     return AuthUser(user_id=user_id, role=role, email=email)
+
+
+def require_auth_user(request: Request) -> AuthUser:
+    user = optional_auth_user_from_token(request.cookies.get(MYLE_ACCESS_COOKIE))
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+    return user
 
 
 CurrentUser = Annotated[AuthUser, Depends(require_auth_user)]

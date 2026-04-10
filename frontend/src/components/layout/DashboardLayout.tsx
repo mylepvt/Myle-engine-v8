@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { DashboardOutletErrorBoundary } from '@/components/routing/DashboardOutletErrorBoundary'
 import { filterDashboardNav, resolveItemLabel } from '@/config/dashboard-nav'
 import { useMetaQuery } from '@/hooks/use-meta-query'
+import { useRealtimeInvalidation } from '@/hooks/use-realtime-invalidation'
 import { useSyncRoleFromMe } from '@/hooks/use-sync-role-from-me'
 import { cn } from '@/lib/utils'
 import { authLogout } from '@/lib/auth-api'
@@ -15,6 +16,7 @@ import { ROLES, type Role } from '@/types/role'
 
 export function DashboardLayout() {
   useSyncRoleFromMe()
+  useRealtimeInvalidation(true)
   const { data: meta } = useMetaQuery()
   const navigate = useNavigate()
   const { sidebarOpen, toggleSidebar } = useShellStore()

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.core.lead_status import LEAD_STATUS_SET
+from app.core.realtime_hub import notify_topics
 from app.models.lead import Lead
 from app.schemas.leads import LeadCreate, LeadListResponse, LeadPublic, LeadUpdate
 from app.services.lead_scope import lead_visibility_where
@@ -127,6 +128,7 @@ async def create_lead(
     session.add(lead)
     await session.commit()
     await session.refresh(lead)
+    await notify_topics("leads")
     return lead
 
 
@@ -160,6 +162,7 @@ async def claim_lead(
     lead.in_pool = False
     await session.commit()
     await session.refresh(lead)
+    await notify_topics("leads")
     return lead
 
 
@@ -189,6 +192,7 @@ async def update_lead(
         lead.deleted_at = None
         await session.commit()
         await session.refresh(lead)
+        await notify_topics("leads")
         return lead
 
     if not _can_mutate_lead(user, lead):
@@ -222,6 +226,7 @@ async def update_lead(
 
     await session.commit()
     await session.refresh(lead)
+    await notify_topics("leads")
     return lead
 
 
@@ -239,3 +244,4 @@ async def delete_lead(
     lead.deleted_at = datetime.now(timezone.utc)
     lead.in_pool = False
     await session.commit()
+    await notify_topics("leads")

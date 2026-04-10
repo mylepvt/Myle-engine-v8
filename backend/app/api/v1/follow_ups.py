@@ -6,6 +6,7 @@ from sqlalchemy import asc, func, nulls_last, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthUser, get_db, require_auth_user
+from app.core.realtime_hub import notify_topics
 from app.models.follow_up import FollowUp
 from app.models.lead import Lead
 from app.schemas.follow_ups import (
@@ -91,6 +92,7 @@ async def create_follow_up(
     session.add(fu)
     await session.commit()
     await session.refresh(fu)
+    await notify_topics("follow_ups", "leads")
     return _to_public(fu, lead.name)
 
 
@@ -131,6 +133,7 @@ async def update_follow_up(
             fu.completed_at = None
     await session.commit()
     await session.refresh(fu)
+    await notify_topics("follow_ups", "leads")
     return _to_public(fu, lead.name)
 
 
@@ -143,3 +146,4 @@ async def delete_follow_up(
     fu, _lead = await _get_follow_up_for_user(session, user, follow_up_id)
     await session.delete(fu)
     await session.commit()
+    await notify_topics("follow_ups", "leads")

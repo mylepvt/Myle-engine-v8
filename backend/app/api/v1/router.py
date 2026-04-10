@@ -15,6 +15,7 @@ from app.api.v1 import (
     leads,
     meta,
     other_pages,
+    realtime_ws,
     retarget,
     settings_pages,
     system,
@@ -40,3 +41,4 @@ api_router.include_router(lead_pool.router, prefix="/lead-pool", tags=["lead-poo
 api_router.include_router(retarget.router, prefix="/retarget", tags=["retarget"])
 api_router.include_router(follow_ups.router, prefix="/follow-ups", tags=["follow-ups"])
 api_router.include_router(workboard.router, prefix="/workboard", tags=["workboard"])
+api_router.include_router(realtime_ws.router, tags=["realtime"])
