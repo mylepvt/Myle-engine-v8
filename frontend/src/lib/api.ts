@@ -1,5 +1,16 @@
-export const apiBase =
-  import.meta.env.VITE_API_URL?.replace(/\/$/, '') ?? 'http://localhost:8000'
+/**
+ * - `VITE_API_URL` unset → local dev default (`localhost:8000`).
+ * - `VITE_API_URL=""` → same origin as the page (unified API + static deploy).
+ * - Otherwise → absolute API base (split static site + API).
+ */
+function resolveApiBase(): string {
+  const v = import.meta.env.VITE_API_URL as string | undefined
+  if (v === '') return ''
+  if (v === undefined) return 'http://localhost:8000'
+  return v.replace(/\/$/, '')
+}
+
+export const apiBase = resolveApiBase()
 
 export function apiUrl(path: string): string {
   const base = apiBase.replace(/\/$/, '')

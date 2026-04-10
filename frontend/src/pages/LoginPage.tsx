@@ -26,6 +26,10 @@ export function LoginPage() {
 
   async function handlePasswordLogin() {
     setError(null)
+    if (!password.trim()) {
+      setError(`Password required — dev seed: ${DEV_SEED_PASSWORD}`)
+      return
+    }
     setPwPending(true)
     try {
       await authPasswordLogin(email, password)
@@ -123,7 +127,7 @@ export function LoginPage() {
             type="button"
             variant="secondary"
             className="w-full"
-            disabled={pwPending || !password.trim()}
+            disabled={pwPending}
             onClick={() => void handlePasswordLogin()}
           >
             {pwPending ? '…' : 'Sign in'}

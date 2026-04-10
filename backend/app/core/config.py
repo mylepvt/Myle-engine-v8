@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -69,6 +69,11 @@ class Settings(BaseSettings):
         default=True,
         validation_alias=AliasChoices("FEATURE_INTELLIGENCE", "FEATURE_AI_INTELLIGENCE"),
         description="Gates Work → Intelligence nav via GET /meta. No bundled third-party AI (e.g. Maya); product-only.",
+    )
+    frontend_dist: Optional[str] = Field(
+        default=None,
+        validation_alias="FRONTEND_DIST",
+        description="If set to a directory containing index.html, serve the Vite SPA from the API (same-origin auth).",
     )
 
     @field_validator("database_url", mode="before")

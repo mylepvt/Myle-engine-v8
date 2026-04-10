@@ -1,3 +1,5 @@
+# API-only image (Render ``Root Directory = backend``). For API + built SPA on one origin, build from repo root:
+#   docker build -f Dockerfile .
 FROM python:3.12-slim
 
 WORKDIR /app

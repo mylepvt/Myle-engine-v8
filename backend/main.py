@@ -1,8 +1,10 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -50,3 +52,25 @@ async def health() -> dict[str, str]:
 async def health_db(session: Annotated[AsyncSession, Depends(get_db)]) -> dict[str, str]:
     await session.execute(text("SELECT 1"))
     return {"db": "ok"}
+
+
+_spa_dir = Path(settings.frontend_dist).resolve() if settings.frontend_dist else None
+_index = _spa_dir / "index.html" if _spa_dir is not None else None
+
+
+@app.get("/{full_path:path}", include_in_schema=False)
+async def spa_fallback(full_path: str) -> FileResponse:
+    """Serve Vite assets from disk; unknown paths → ``index.html`` (client router). Registered last."""
+    if _spa_dir is None or _index is None or not _index.is_file():
+        raise HTTPException(status_code=404, detail="Not found")
+    root = _spa_dir
+    if full_path.startswith("api"):
+        raise HTTPException(status_code=404, detail="Not found")
+    safe = (root / full_path).resolve()
+    try:
+        safe.relative_to(root)
+    except ValueError:
+        return FileResponse(_index)
+    if safe.is_file():
+        return FileResponse(safe)
+    return FileResponse(_index)
