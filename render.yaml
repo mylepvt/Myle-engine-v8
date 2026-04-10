@@ -1,9 +1,10 @@
-# Render Blueprint — Postgres + FastAPI (Docker) + static Vite frontend.
+# Render Blueprint — Postgres + single Web Service (root Dockerfile: API + Vite SPA same origin).
 # Docs: https://render.com/docs/blueprint-spec
 #
-# After first deploy: copy the API service URL into VITE_API_URL on the static service,
-# set BACKEND_CORS_ORIGINS to your static site URL (exact origin, no trailing slash),
-# then clear build cache / redeploy the static site so Vite bakes the API URL in.
+# Apply: Dashboard → New → Blueprint → connect this repo → apply.
+# After first deploy: set BACKEND_CORS_ORIGINS to your service URL exactly, e.g.
+#   https://myle-vl2-api.onrender.com
+# (same URL users open in the browser; no trailing slash.)
 
 databases:
   - name: myle-vl2-db
@@ -17,8 +18,8 @@ services:
     runtime: docker
     plan: free
     region: oregon
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
@@ -34,19 +35,8 @@ services:
       - key: SESSION_COOKIE_SECURE
         value: "true"
       - key: AUTH_COOKIE_SAMESITE
-        value: none
+        value: lax
       - key: BACKEND_CORS_ORIGINS
         sync: false
       - key: FEATURE_INTELLIGENCE
         value: "false"
-
-  - type: web
-    name: myle-vl2-web
-    runtime: static
-    plan: free
-    region: oregon
-    buildCommand: cd frontend && npm ci && npm run build
-    staticPublishPath: frontend/dist
-    envVars:
-      - key: VITE_API_URL
-        sync: false
