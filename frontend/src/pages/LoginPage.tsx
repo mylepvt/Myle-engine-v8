@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import { authDevLogin, authPasswordLogin, DEV_SEED_PASSWORD } from '@/lib/auth-api'
+import { fetchAuthMe } from '@/hooks/use-auth-me-query'
 import { useAuthStore } from '@/stores/auth-store'
 import { useRoleStore } from '@/stores/role-store'
 import { ROLES, type Role } from '@/types/role'
@@ -33,8 +34,23 @@ export function LoginPage() {
     setPwPending(true)
     try {
       await authPasswordLogin(email, password)
+      await queryClient.resetQueries({ queryKey: ['auth', 'me'] })
+      let me = await queryClient.fetchQuery({
+        queryKey: ['auth', 'me'],
+        queryFn: fetchAuthMe,
+      })
+      if (!me.authenticated) {
+        await new Promise((r) => setTimeout(r, 200))
+        me = await queryClient.fetchQuery({
+          queryKey: ['auth', 'me'],
+          queryFn: fetchAuthMe,
+        })
+      }
+      if (!me.authenticated) {
+        window.location.assign(from)
+        return
+      }
       login()
-      await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
       navigate(from, { replace: true })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sign-in failed')
@@ -48,8 +64,23 @@ export function LoginPage() {
     setPending(true)
     try {
       await authDevLogin(role)
+      await queryClient.resetQueries({ queryKey: ['auth', 'me'] })
+      let me = await queryClient.fetchQuery({
+        queryKey: ['auth', 'me'],
+        queryFn: fetchAuthMe,
+      })
+      if (!me.authenticated) {
+        await new Promise((r) => setTimeout(r, 200))
+        me = await queryClient.fetchQuery({
+          queryKey: ['auth', 'me'],
+          queryFn: fetchAuthMe,
+        })
+      }
+      if (!me.authenticated) {
+        window.location.assign(from)
+        return
+      }
       login()
-      await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
       navigate(from, { replace: true })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sign-in failed')

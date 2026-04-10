@@ -9,7 +9,7 @@ export type MeResponse = {
   email: string | null
 }
 
-async function fetchMe(): Promise<MeResponse> {
+export async function fetchAuthMe(): Promise<MeResponse> {
   const res = await apiFetch('/api/v1/auth/me')
   if (!res.ok) {
     throw new Error(`HTTP ${res.status}`)
@@ -32,7 +32,7 @@ export type UseAuthMeQueryOptions = {
 export function useAuthMeQuery(options?: UseAuthMeQueryOptions) {
   return useQuery({
     queryKey: ['auth', 'me'],
-    queryFn: fetchMe,
+    queryFn: fetchAuthMe,
     staleTime: options?.staleTime ?? 30_000,
     refetchOnMount: options?.refetchOnMount ?? true,
   })
