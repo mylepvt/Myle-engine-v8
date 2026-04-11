@@ -49,7 +49,7 @@ export function RecycleBinWorkPage({ title }: Props) {
         </div>
       ) : null}
       {data ? (
-        <div className="rounded-lg border border-white/10 bg-card/40 p-4 text-sm text-muted-foreground">
+        <div className="surface-elevated p-4 text-sm text-muted-foreground">
           <p className="mb-3 font-medium text-foreground">Deleted: {data.total}</p>
           {data.items.length === 0 ? (
             <p>Recycle bin is empty.</p>
@@ -58,7 +58,7 @@ export function RecycleBinWorkPage({ title }: Props) {
               {data.items.map((l) => (
                 <li
                   key={l.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-white/5 bg-background/30 px-3 py-2"
+                  className="surface-inset flex flex-wrap items-center justify-between gap-2 px-3 py-2"
                 >
                   <div className="min-w-0 flex-1">
                     <span className="font-medium text-foreground">{l.name}</span>

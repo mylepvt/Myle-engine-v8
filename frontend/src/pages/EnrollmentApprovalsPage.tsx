@@ -28,7 +28,7 @@ export function EnrollmentApprovalsPage({ title }: Props) {
         </div>
       ) : null}
       {data ? (
-        <div className="rounded-lg border border-white/10 bg-card/40 p-4 text-sm text-muted-foreground">
+        <div className="surface-elevated p-4 text-sm text-muted-foreground">
           <p className="mb-2 font-medium text-foreground">Pending: {data.total}</p>
           {data.total === 0 ? (
             <p>No enrollment requests in the queue.</p>

@@ -63,7 +63,7 @@ export function FollowUpsWorkPage({ title }: Props) {
         Open only (hide completed)
       </label>
 
-      <form onSubmit={(e) => void handleCreate(e)} className="space-y-3 rounded-lg border border-white/10 bg-card/30 p-4">
+      <form onSubmit={(e) => void handleCreate(e)} className="surface-elevated space-y-3 p-4">
         <p className="text-xs font-medium text-muted-foreground">New follow-up</p>
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           <div className="min-w-[10rem] flex-1">
@@ -75,7 +75,7 @@ export function FollowUpsWorkPage({ title }: Props) {
               value={leadId}
               onChange={(e) => setLeadId(e.target.value)}
               disabled={leadsQ.isPending || createMut.isPending}
-              className="w-full rounded-md border border-white/10 bg-card/80 px-3 py-2 text-sm text-foreground"
+              className="w-full rounded-md border border-white/10 bg-card/80 px-3 py-2 text-sm text-foreground shadow-[inset_0_1px_3px_hsl(var(--velvet-deep)/0.6)] focus:outline-none focus:ring-2 focus:ring-primary/35"
             >
               <option value="">Select lead…</option>
               {(leadsQ.data?.items ?? []).map((l) => (
@@ -94,7 +94,7 @@ export function FollowUpsWorkPage({ title }: Props) {
               type="datetime-local"
               value={dueLocal}
               onChange={(e) => setDueLocal(e.target.value)}
-              className="w-full rounded-md border border-white/10 bg-card/80 px-3 py-2 text-sm text-foreground"
+              className="w-full rounded-md border border-white/10 bg-card/80 px-3 py-2 text-sm text-foreground shadow-[inset_0_1px_3px_hsl(var(--velvet-deep)/0.6)] focus:outline-none focus:ring-2 focus:ring-primary/35"
             />
           </div>
         </div>
@@ -108,7 +108,7 @@ export function FollowUpsWorkPage({ title }: Props) {
             onChange={(e) => setNote(e.target.value)}
             rows={2}
             placeholder="What to do next…"
-            className="w-full rounded-md border border-white/10 bg-card/80 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
+            className="w-full rounded-md border border-white/10 bg-card/80 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground shadow-[inset_0_1px_3px_hsl(var(--velvet-deep)/0.6)] focus:outline-none focus:ring-2 focus:ring-primary/35"
           />
         </div>
         <Button type="submit" disabled={createMut.isPending || !leadId || !note.trim()}>
@@ -134,7 +134,7 @@ export function FollowUpsWorkPage({ title }: Props) {
       ) : null}
 
       {fuQ.data ? (
-        <div className="rounded-lg border border-white/10 bg-card/40 p-4 text-sm">
+        <div className="surface-elevated p-4 text-sm">
           <p className="mb-3 font-medium text-foreground">
             Total: {fuQ.data.total}
             {fuQ.data.total > fuQ.data.items.length ? (
@@ -150,7 +150,7 @@ export function FollowUpsWorkPage({ title }: Props) {
               {fuQ.data.items.map((f) => (
                 <li
                   key={f.id}
-                  className="rounded-md border border-white/5 bg-background/30 px-3 py-2 text-muted-foreground"
+                  className="surface-inset px-3 py-2 text-muted-foreground"
                 >
                   <p className="font-medium text-foreground">{f.note}</p>
                   <p className="mt-1 text-xs">

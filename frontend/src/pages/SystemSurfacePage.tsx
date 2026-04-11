@@ -30,7 +30,7 @@ export function SystemSurfacePage({ title, surface }: Props) {
         </div>
       ) : null}
       {data ? (
-        <div className="space-y-3 rounded-lg border border-white/10 bg-card/40 p-4 text-sm text-muted-foreground">
+        <div className="surface-elevated space-y-3 p-4 text-sm text-muted-foreground">
           {data.note ? <p className="text-foreground/90">{data.note}</p> : null}
           <p>
             Items: <span className="font-medium text-foreground">{data.total}</span>

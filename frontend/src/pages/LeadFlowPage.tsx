@@ -32,7 +32,7 @@ export function LeadFlowPage({ title }: Props) {
         .
       </p>
 
-      <div className="rounded-lg border border-white/10 bg-card/40 p-4">
+      <div className="surface-elevated p-4">
         <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Pipeline</p>
         <div className="flex flex-wrap items-center gap-2 text-sm">
           {mainline.map((s, i) => (

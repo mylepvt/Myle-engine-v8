@@ -48,7 +48,7 @@ export function RetargetWorkPage({ title }: Props) {
       ) : null}
 
       {data ? (
-        <div className="rounded-lg border border-white/10 bg-card/40 p-4 text-sm">
+        <div className="surface-elevated p-4 text-sm">
           <p className="mb-3 font-medium text-foreground">Total: {data.total}</p>
           {data.items.length === 0 ? (
             <p className="text-muted-foreground">No retarget candidates — move a lead to Lost or Contacted first.</p>
@@ -57,7 +57,7 @@ export function RetargetWorkPage({ title }: Props) {
               {data.items.map((l) => (
                 <li
                   key={l.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-white/5 bg-background/30 px-3 py-2"
+                  className="surface-inset flex flex-wrap items-center justify-between gap-2 px-3 py-2"
                 >
                   <div>
                     <span className="font-medium text-foreground">{l.name}</span>
@@ -76,7 +76,7 @@ export function RetargetWorkPage({ title }: Props) {
                           body: { status: e.target.value as LeadStatus },
                         })
                       }}
-                      className="rounded-md border border-white/10 bg-card/80 px-2 py-1.5 text-xs"
+                      className="rounded-md border border-white/10 bg-card/80 px-2 py-1.5 text-xs text-foreground shadow-[inset_0_1px_3px_hsl(var(--velvet-deep)/0.6)] focus:outline-none focus:ring-2 focus:ring-primary/35"
                     >
                       {LEAD_STATUS_OPTIONS.map((o) => (
                         <option key={o.value} value={o.value}>

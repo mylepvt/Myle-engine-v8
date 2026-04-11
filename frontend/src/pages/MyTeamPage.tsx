@@ -38,12 +38,12 @@ export function MyTeamPage({ title }: Props) {
         </div>
       ) : null}
       {data ? (
-        <div className="rounded-lg border border-white/10 bg-card/40 p-4 text-sm">
+        <div className="surface-elevated p-4 text-sm">
           <ul className="space-y-2">
             {data.items.map((m) => (
               <li
                 key={m.id}
-                className="rounded-md border border-white/5 bg-background/30 px-3 py-2 text-muted-foreground"
+                className="surface-inset px-3 py-2 text-muted-foreground"
               >
                 <span className="font-medium text-foreground">{m.email}</span>
                 <span className="mt-0.5 block text-xs">

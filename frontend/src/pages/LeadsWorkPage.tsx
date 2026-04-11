@@ -86,7 +86,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
         </p>
       ) : null}
 
-      <div className="flex flex-col gap-3 rounded-lg border border-white/10 bg-card/30 p-4 sm:flex-row sm:flex-wrap sm:items-end">
+      <div className="surface-elevated flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-end">
         <div className="min-w-0 flex-1 sm:min-w-[12rem]">
           <label htmlFor="lead-filter-q" className="mb-1 block text-xs font-medium text-muted-foreground">
             Search name
@@ -96,7 +96,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
             value={qInput}
             onChange={(e) => setQInput(e.target.value)}
             placeholder="Substring match…"
-            className="w-full rounded-md border border-white/10 bg-card/80 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            className="w-full rounded-md border border-white/10 bg-card/80 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground shadow-[inset_0_1px_3px_hsl(var(--velvet-deep)/0.6)] focus:outline-none focus:ring-2 focus:ring-primary/35"
           />
         </div>
         <div className="min-w-[10rem]">
@@ -112,7 +112,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                 status: e.target.value === '' ? '' : (e.target.value as LeadStatus),
               }))
             }
-            className="w-full rounded-md border border-white/10 bg-card/80 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            className="w-full rounded-md border border-white/10 bg-card/80 px-3 py-2 text-sm text-foreground shadow-[inset_0_1px_3px_hsl(var(--velvet-deep)/0.6)] focus:outline-none focus:ring-2 focus:ring-primary/35"
           >
             <option value="">All</option>
             {LEAD_STATUS_OPTIONS.map((o) => (
@@ -140,7 +140,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Acme Corp"
                 disabled={createMut.isPending}
-                className="w-full rounded-md border border-white/10 bg-card/80 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className="w-full rounded-md border border-white/10 bg-card/80 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground shadow-[inset_0_1px_3px_hsl(var(--velvet-deep)/0.6)] focus:outline-none focus:ring-2 focus:ring-primary/35"
               />
             </div>
             <div className="min-w-[10rem]">
@@ -152,7 +152,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                 value={newStatus}
                 onChange={(e) => setNewStatus(e.target.value as LeadStatus)}
                 disabled={createMut.isPending}
-                className="w-full rounded-md border border-white/10 bg-card/80 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className="w-full rounded-md border border-white/10 bg-card/80 px-3 py-2 text-sm text-foreground shadow-[inset_0_1px_3px_hsl(var(--velvet-deep)/0.6)] focus:outline-none focus:ring-2 focus:ring-primary/35"
               >
                 {LEAD_STATUS_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -194,7 +194,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
         </div>
       ) : null}
       {data ? (
-        <div className="rounded-lg border border-white/10 bg-card/40 p-4 text-sm text-muted-foreground">
+        <div className="surface-elevated p-4 text-sm text-muted-foreground">
           <p className="mb-3 font-medium text-foreground">
             Total: {data.total}
             {data.total > data.items.length ? (
@@ -214,7 +214,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
               {data.items.map((l) => (
                 <li
                   key={l.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-white/5 bg-background/30 px-3 py-2"
+                  className="surface-inset flex flex-wrap items-center justify-between gap-2 px-3 py-2"
                 >
                   <div className="min-w-0 flex-1">
                     <span className="font-medium text-foreground">{l.name}</span>
@@ -249,7 +249,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                           const v = e.target.value as LeadStatus
                           void patchMut.mutateAsync({ id: l.id, body: { status: v } })
                         }}
-                        className="rounded-md border border-white/10 bg-card/80 px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                        className="rounded-md border border-white/10 bg-card/80 px-2 py-1.5 text-xs text-foreground shadow-[inset_0_1px_3px_hsl(var(--velvet-deep)/0.6)] focus:outline-none focus:ring-2 focus:ring-primary/35"
                       >
                         {LEAD_STATUS_OPTIONS.map((o) => (
                           <option key={o.value} value={o.value}>

@@ -45,12 +45,12 @@ export function FinanceRechargesPage({ title }: Props) {
 
       {stub.isPending ? <Skeleton className="h-12 w-full" /> : null}
       {stub.data?.note ? (
-        <p className="rounded-lg border border-white/10 bg-card/40 p-3 text-sm text-muted-foreground">
+        <p className="surface-elevated p-3 text-sm text-muted-foreground">
           {stub.data.note}
         </p>
       ) : null}
 
-      <form onSubmit={(e) => void onSubmit(e)} className="space-y-4 rounded-lg border border-white/10 bg-card/30 p-4">
+      <form onSubmit={(e) => void onSubmit(e)} className="surface-elevated space-y-4 p-4">
         <p className="text-sm font-medium text-foreground">Credit / debit user wallet</p>
         <p className="text-xs text-muted-foreground">
           Amount in <strong>minor units (paise / cents)</strong> (e.g. 10000 = INR 100.00 credit). Negative values debit.
@@ -66,7 +66,7 @@ export function FinanceRechargesPage({ title }: Props) {
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
               required
-              className="w-full rounded-md border border-white/10 bg-card/80 px-3 py-2 text-sm text-foreground"
+              className="w-full rounded-md border border-white/10 bg-card/80 px-3 py-2 text-sm text-foreground shadow-[inset_0_1px_3px_hsl(var(--velvet-deep)/0.6)] focus:outline-none focus:ring-2 focus:ring-primary/35"
             >
               <option value="">Select…</option>
               {members.data.items.map((m) => (

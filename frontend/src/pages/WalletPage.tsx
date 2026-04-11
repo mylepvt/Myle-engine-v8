@@ -25,7 +25,7 @@ export function WalletPage({ title }: Props) {
         <p className="text-sm text-destructive">{me.error instanceof Error ? me.error.message : 'Error'}</p>
       ) : null}
       {me.data ? (
-        <div className="rounded-lg border border-white/10 bg-card/40 p-4">
+        <div className="surface-elevated p-4">
           <p className="text-xs font-medium text-muted-foreground">Balance</p>
           <p className="text-2xl font-semibold tracking-tight text-foreground">
             {formatMoney(me.data.balance_cents, me.data.currency)}
@@ -44,7 +44,7 @@ export function WalletPage({ title }: Props) {
             {me.data.recent_entries.map((e) => (
               <li
                 key={e.id}
-                className="rounded-md border border-white/5 bg-background/30 px-3 py-2 text-muted-foreground"
+                className="surface-inset px-3 py-2 text-muted-foreground"
               >
                 <span className={e.amount_cents >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
                   {e.amount_cents >= 0 ? '+' : ''}
