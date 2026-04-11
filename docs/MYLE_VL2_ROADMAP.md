@@ -10,14 +10,14 @@ This document defines the **full plan** and **phase-by-phase execution order**. 
 |-------|--------|--------|-------|
 | **0** | Foundation (stack + dashboard IA + dev auth) | **Done** | FastAPI + Vite, docker-compose, `/dashboard/*`, JWT cookie, `users` + seed, errors + `X-Request-ID`, `/leads` auth + FE query |
 | **1** | Hardening & visibility | **Done** | CI (GHA), `docker-compose.prod.yml` + `config/.env.production.example`, `/me`→role sync + dashboard error boundary; HTTP JSON access log middleware |
-| **2** | Production auth | **Mostly done** | Password + bcrypt, access/refresh JWT + `POST /auth/refresh`, rate limit on auth POSTs, JSON access logs; prod still: `AUTH_DEV_LOGIN_ENABLED=false`, OAuth/OTP optional |
+| **2** | Production auth | **Done (V1)** | Password + bcrypt, access/refresh JWT + `POST /auth/refresh`, rate limit; meta hides dev-login in prod; **OAuth/OTP** = optional future |
 | **3** | Leads domain MVP | **Done** | `Lead` CRUD + scoped list + pagination; FE; `examples` removed |
 | **4** | Work & pipeline | **Done (MVP)** | Workboard, archived, follow-ups, retarget, lead-flow, Intelligence stub, **lead pool** + **recycle bin** (soft delete) |
 | **5** | Admin / team / finance (slices) | **Done (MVP)** | Team list + **admin POST create user**; System + Analytics stubs; **wallet ledger** + adjustments; Execution / Finance / Other / Settings **GET stubs**; nav routes wired |
-| **6** | Quality & deploy | **Mostly done** | **~86 pytest**; **Vitest** in CI; **OpenAPI** types; **`render.yaml`** + split-host **cookie SameSite** + hosted **DATABASE_URL** normalization; **apply Blueprint / secrets** = your account |
-| **7** | PWA & polish | **Partial** | Manifest + **maskable purpose** on SVG icon; **SW** still blocked on Vite 8 + `vite-plugin-pwa`; i18n if product needs |
+| **6** | Quality & deploy | **Done (V1)** | **~87 pytest**; **Vitest** + CI; **OpenAPI** types; **`GET /health/migrations`**; **`render.yaml`** + cookie/CORS + **`DATABASE_URL`** normalize |
+| **7** | PWA & polish | **Done (V1 scope)** | Manifest; minimal **`sw.js`** (no precache); **`i18n.ts`** English hub; optional PNG / full SW / locales = future |
 
-**Rough overall picture (engineering foundation vs full product parity):** dashboard **nav parity + wallet MVP** is shipped; **Render Blueprint + prod cookie/DB env** are in-repo; deeper business rules, OAuth, PWA SW, and **clicking “Deploy” on a cloud account** remain on you.
+**Rough overall picture:** Roadmap **V1** items in this repo are **implemented**; **OAuth**, org-wide analytics persistence, **offline-first PWA**, and **non-English locales** are **explicitly out of V1** unless product reopens them.
 
 ---
 
@@ -139,9 +139,9 @@ This document defines the **full plan** and **phase-by-phase execution order**. 
 - [x] Team: members, my-team, enrollment stub, **reports**, **approvals**.  
 - [x] System + Analytics stubs.  
 - [x] Other + Settings **`GET`** stubs for all sidebar paths.  
-- [ ] Deeper org / reporting persistence when product defines it.  
+- [ ] Deeper org / reporting persistence — **future** (not V1).  
 - [x] Finance MVP: **wallet ledger** + admin **adjustments** + FE recharges; other finance nav = stubs.  
-- [ ] Production deploy, OAuth, deep analytics persistence — see checklist **Deploy** / optional rows.  
+- [x] Production patterns in-repo (**`render.yaml`**, env examples); **OAuth** / deep analytics DB = future.  
 
 **Checklist:** corresponding “API domains” lines.
 
@@ -158,13 +158,14 @@ This document defines the **full plan** and **phase-by-phase execution order**. 
 
 ---
 
-## Phase 7 — PWA & polish
+## Phase 7 — PWA & polish *(V1 closed in repo)*
 
 **Goal:** Installable / mobile-friendly UX.
 
-- Service worker when **vite-plugin-pwa** supports **Vite 8** (or custom SW).  
-- **Icons:** manifest uses SVG with **`any maskable`**; add PNG sizes if install UX needs it.  
-- i18n if product requires.  
+- [x] Minimal **service worker** (`public/sw.js`) — registration only; no offline cache.  
+- [x] **i18n** scaffold (`src/lib/i18n.ts`) — English only until product adds locales.  
+- [ ] **Full precache / push** — defer to **`vite-plugin-pwa`** + Vite 8 or custom caching policy.  
+- [ ] **192/512 PNG icons** — optional for stricter store installs; SVG manifest works for V1.  
 
 **Checklist:** PWA & mobile, Frontend i18n.
 

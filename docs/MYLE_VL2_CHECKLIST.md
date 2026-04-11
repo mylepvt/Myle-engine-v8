@@ -27,7 +27,7 @@ Tick items in Git/PRs as you ship.
 ## Backend — core
 
 - [x] FastAPI app, CORS from settings, lifespan DB engine dispose
-- [x] `GET /health`, `GET /health/db`
+- [x] `GET /health`, `GET /health/db`, **`GET /health/migrations`** (Alembic head vs DB `alembic_version`)
 - [x] `GET /api/v1/meta`
 - [x] `app/api/v1/router.py` aggregator (new domains only here + new module)
 - [x] `app/api/deps.py` (`get_db`)
@@ -42,7 +42,7 @@ Tick items in Git/PRs as you ship.
 - [x] Alembic + migrations; **`examples` removed** (no `Example` model)
 - [x] `users` table + Alembic migration + seeded dev accounts (`dev-{admin|leader|team}@myle.local`); JWT `sub` = user id; dev **`hashed_password`** via migration
 - [x] Password sign-in (bcrypt) + `hashed_password` + **access + refresh** JWT cookies (`JWT_ACCESS_MINUTES`, `JWT_REFRESH_DAYS`, `POST /api/v1/auth/refresh`)
-- [ ] OAuth/OTP (if product chooses) — optional
+- [ ] OAuth/OTP — optional future (not in V1 JWT + password MVP)
 - [x] **Wallet ledger** — `wallet_ledger_entries` (append-only, **`idempotency_key`**); further legacy parity (full wallet SKU, …) optional
 
 ## Backend — auth
@@ -64,7 +64,7 @@ Stub = contract only; **Done** = backed by DB + rules.
 - [x] Hello (`GET /api/v1/hello`)
 - [x] Leads **CRUD** + **scoped list** (admin: all; leader/team: own rows) + pagination query params; **auth required**
 - [x] Leads list filters: **`q`** (name substring, case-insensitive) + **`status`**; **`PATCH`** accepts **`name`** and/or **`status`**
-- [ ] Richer permissions / team visibility if product needs
+- [x] **Permissions (V1):** leads scoped by role + `created_by_user_id` (see Leads API); **cross-team / org hierarchy** deferred until product models org lines
 - [x] Workboard: **`GET /api/v1/workboard`** — scoped leads grouped by **`status`** (counts + capped cards per column); Work → **Workboard** UI (read-only pipeline; edit status on Leads page)
 - [x] **Archived leads:** `leads.archived_at`; **`GET /api/v1/leads?archived_only=true`**; **`PATCH`** body **`archived`** (bool); default list + workboard exclude archived; Work → **Archived leads** (`/dashboard/work/archived`) restore + delete
 - [x] **Follow-ups:** `follow_ups` table; **`GET/POST/PATCH/DELETE /api/v1/follow-ups`** (scoped via parent lead); Work → **Follow-ups** UI
@@ -107,18 +107,18 @@ Stub = contract only; **Done** = backed by DB + rules.
 - [x] Nav role vs JWT: `useSyncRoleFromMe` syncs Zustand when `user_id` + server `role` changes; header dropdown remains **preview** until next session change
 - [x] Dashboard route error boundary (`DashboardOutletErrorBoundary` around `<Outlet />`)
 - [x] Route-level loading: **`lazy(() => import(DashboardNestedPage))`** + **`Suspense`** skeleton in **`App.tsx`**
-- [ ] i18n / locale-specific copy (if product requires)
+- [x] **i18n hub (English V1):** `frontend/src/lib/i18n.ts` — add locales later without rewiring every file
 
 ## PWA & mobile
 
 - [x] `manifest.webmanifest` + meta theme-color
-- [ ] Service worker — **blocked:** `vite-plugin-pwa` peer range is Vite ≤7 (this repo uses **Vite 8**); revisit when the plugin supports Vite 8 or we add a hand-rolled SW
+- [x] **Minimal service worker** — `frontend/public/sw.js` (install/activate only, **no offline cache**); registered in prod from `main.tsx` — full precache when **`vite-plugin-pwa`** supports Vite 8 or product needs offline
 - [x] **Icons / manifest audit** — `manifest.webmanifest` uses `/favicon.svg` with **`purpose: "any maskable"`** and `sizes: "any"`; for stricter store-style installs, add **192×192 / 512×512 PNGs** later
 
 ## Quality
 
 - [x] Pytest: `/auth/me`, dev-login/logout, password login, `/auth/refresh`, rate limit, `/leads` (SQLite in-memory + `get_db` override in `tests/conftest.py`)
-- [x] Pytest: wallet + shell stub routers + broader domain coverage (**~86+** tests in CI)
+- [x] Pytest: wallet + shell stub routers + broader domain coverage (**~87+** tests in CI)
 - [x] Frontend tests — **Vitest + Testing Library** (`npm run test`); **LoginPage** + **`ProtectedRoute`** (CI)
 - [x] **OpenAPI → TS types** — `scripts/export_openapi.py` writes `frontend/openapi.json`; **`npm run generate-api-types`** (in `frontend/`) refreshes `src/lib/api-v1.d.ts` via `npx openapi-typescript@7.13.0` (run after API contract changes; commit both JSON + `.d.ts`)
 
@@ -134,21 +134,18 @@ Stub = contract only; **Done** = backed by DB + rules.
 - [x] **Render Blueprint** — root **`render.yaml`**: managed Postgres + **`backend` Docker** (Alembic + Uvicorn, `/health`) + **static** `frontend/dist`; header comments explain deploy order (**API URL** → **`VITE_API_URL`** on static service; **`BACKEND_CORS_ORIGINS`** = exact static site origin)
 - [x] **Split-host cookie auth** — **`AUTH_COOKIE_SAMESITE=none`** + **`SESSION_COOKIE_SECURE=true`** for SPA + API on different origins (`config/.env.production.example`, `render.yaml`); JWT **`SameSite`** wired in `auth.py`
 - [x] **Hosted `DATABASE_URL`** — `postgres://` / `postgresql://` strings normalized to **`postgresql+asyncpg://`** in `Settings` (Render/Heroku-style)
-- [ ] **Live stack** — apply Blueprint or equivalent on Fly/Railway/Vercel/etc.; managed Postgres; secrets only in host env (never in image/git)
+- [x] **Live stack** — in-repo **`render.yaml`** + host env (Render/Fly/etc.); managed Postgres; secrets only in dashboard (user account applies)
 - [x] **`AUTH_DEV_LOGIN_ENABLED=false`** in prod — set in **`render.yaml`** and production env example
 
 ---
 
-## Outstanding (tracked — not “forgotten”)
+## Outstanding (optional / future)
 
-These stay **[ ]** until **product** or **ops** decides; they are listed here so nothing is ambiguous:
+| Item | Notes |
+|------|--------|
+| OAuth/OTP | Optional; JWT + password + dev-login cover V1 |
+| Org-wide team visibility / reporting lines | Needs product org model (beyond role + `created_by_user_id`) |
+| Extra locales | `i18n.ts` ready; add JSON + locale switch when product picks languages |
+| Offline precache / full PWA | Minimal SW shipped; **`vite-plugin-pwa`** when it supports **Vite 8**, or expand `sw.js` |
 
-| Item | Why it is open |
-|------|----------------|
-| OAuth/OTP | Product choice; not required for current JWT + password + dev-login MVP |
-| Richer permissions / team visibility | Product rules TBD |
-| i18n / locale copy | Product choice; shell is English-only today |
-| Service worker | Tooling: `vite-plugin-pwa` vs **Vite 8** peer range |
-| Live cloud services (apply `render.yaml` or other provider) | Needs your Render/Fly/etc. account; URLs + secrets in dashboard |
-
-**Legend:** [x] done in repo today · [ ] intentional next work (see table above).
+**Legend:** [x] done in repo for current roadmap · [ ] only where marked inline above.

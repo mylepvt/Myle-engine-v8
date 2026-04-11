@@ -1,6 +1,6 @@
 # Claude → Cursor Handoff — Myle vl2
 
-**Last updated: 2026-04-11 (Session 3)** — meta dev-login gate, `create_user.py`, `POST /team/members` + Team UI; docs synced
+**Last updated: 2026-04-11 (Session 4)** — roadmap V1 closure: `/health/migrations`, minimal SW, `i18n.ts`, checklist/roadmap sync
 
 ---
 
@@ -139,6 +139,9 @@ actual editing repo root mein hoti hai.
 | App config | `backend/app/core/config.py` |
 | API router | `backend/app/api/v1/router.py` |
 | Dockerfile | `./Dockerfile` (monorepo root) |
+| Deploy drift check | `GET /health/migrations` · `backend/app/health_migrations.py` |
+| i18n (English V1) | `frontend/src/lib/i18n.ts` |
+| PWA SW (minimal) | `frontend/public/sw.js` · `frontend/src/main.tsx` (prod register) |
 
 ---
 

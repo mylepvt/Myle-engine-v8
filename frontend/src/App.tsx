@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy, useEffect } from 'react'
 import { Route, Routes } from 'react-router-dom'
 
 import { ProtectedRoute } from '@/components/routing/ProtectedRoute'
@@ -8,6 +8,7 @@ import { DashboardHomePage } from '@/pages/DashboardHomePage'
 import { HomePage } from '@/pages/HomePage'
 import { LoginPage } from '@/pages/LoginPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
+import { t } from '@/lib/i18n'
 
 const DashboardNestedPage = lazy(async () => {
   const m = await import('@/pages/DashboardNestedPage')
@@ -24,6 +25,10 @@ function DashboardRouteFallback() {
 }
 
 export function App() {
+  useEffect(() => {
+    document.title = t('appTitle')
+  }, [])
+
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />

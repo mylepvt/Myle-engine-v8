@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_db
 from app.api.v1 import api_router
 from app.core.config import settings
+from app.health_migrations import alembic_head_revisions, db_alembic_revision
 from app.core.errors import register_exception_handlers
 from app.db.session import engine
 from app.middleware.access_log import AccessLogMiddleware
@@ -52,6 +55,23 @@ async def health() -> dict[str, str]:
 async def health_db(session: Annotated[AsyncSession, Depends(get_db)]) -> dict[str, str]:
     await session.execute(text("SELECT 1"))
     return {"db": "ok"}
+
+
+@app.get("/health/migrations")
+async def health_migrations(
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict[str, Any]:
+    """Compare DB ``alembic_version`` to script heads (deploy / drift checks)."""
+    heads = alembic_head_revisions()
+    current = await db_alembic_revision(session)
+    at_head: bool | None = None
+    if len(heads) == 1 and current is not None:
+        at_head = current == heads[0]
+    return {
+        "alembic_heads": heads,
+        "current_revision": current,
+        "at_head": at_head,
+    }
 
 
 _spa_dir = Path(settings.frontend_dist).resolve() if settings.frontend_dist else None
