@@ -152,6 +152,28 @@
         }
       }
     },
+    "/api/v1/auth/sync-identity": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Sync Identity",
+        "description": "Reload the signed-in user from the database and re-issue JWT cookies.\n\nUse after profile changes or admin edits so ``fbo_id``, ``username``, ``role``, and\n``email`` claims match ``users`` without waiting for access-token expiry.",
+        "operationId": "sync_identity_api_v1_auth_sync_identity_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevLoginResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/logout": {
       "post": {
         "tags": [
@@ -3410,6 +3432,30 @@
             ],
             "title": "Email",
             "description": "User email from JWT when present"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name",
+            "description": "Display label (legacy session display_name / users.name); derived from username or email local-part"
+          },
+          "auth_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auth Version",
+            "description": "JWT claim ver \u2014 same idea as legacy AUTH_SESSION_VERSION"
           }
         },
         "type": "object",

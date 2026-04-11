@@ -24,6 +24,8 @@ class AuthUser:
     email: str
     fbo_id: str = ""
     username: str = ""
+    display_name: str = ""
+    auth_version: int | None = None
 
 
 def optional_auth_user_from_token(token: Optional[str]) -> Optional[AuthUser]:
@@ -46,12 +48,22 @@ def optional_auth_user_from_token(token: Optional[str]) -> Optional[AuthUser]:
     fbo_id = fbo_raw if isinstance(fbo_raw, str) else ""
     un_raw = payload.get("username")
     username = un_raw if isinstance(un_raw, str) else ""
+    dn_raw = payload.get("display_name")
+    display_name = dn_raw if isinstance(dn_raw, str) else ""
+    ver_raw = payload.get("ver")
+    auth_version: int | None = None
+    if isinstance(ver_raw, int):
+        auth_version = ver_raw
+    elif isinstance(ver_raw, float) and ver_raw == int(ver_raw):
+        auth_version = int(ver_raw)
     return AuthUser(
         user_id=user_id,
         role=role,
         email=email,
         fbo_id=fbo_id,
         username=username,
+        display_name=display_name,
+        auth_version=auth_version,
     )
 
 

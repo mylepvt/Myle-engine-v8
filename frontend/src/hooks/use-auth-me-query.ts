@@ -10,6 +10,10 @@ export type MeResponse = {
   fbo_id: string | null
   username: string | null
   email: string | null
+  /** Legacy session display_name / derived label (username or email local-part). */
+  display_name: string | null
+  /** JWT `ver` claim (legacy AUTH_SESSION_VERSION parity). */
+  auth_version: number | null
 }
 
 export async function fetchAuthMe(): Promise<MeResponse> {
@@ -25,6 +29,9 @@ export async function fetchAuthMe(): Promise<MeResponse> {
     fbo_id: raw.fbo_id ?? null,
     username: raw.username ?? null,
     email: raw.email ?? null,
+    display_name: raw.display_name ?? null,
+    auth_version:
+      typeof raw.auth_version === 'number' ? raw.auth_version : null,
   }
 }
 

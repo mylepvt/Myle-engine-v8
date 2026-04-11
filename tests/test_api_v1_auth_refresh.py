@@ -18,6 +18,7 @@ def test_refresh_reissues_session(
     )
     monkeypatch.setattr(auth_mod, "settings", patched)
     monkeypatch.setattr(deps_mod, "settings", patched)
+    monkeypatch.setattr("app.core.auth_cookies.settings", patched)
 
     client = TestClient(app)
     login = client.post(

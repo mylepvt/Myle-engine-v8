@@ -25,16 +25,14 @@ def test_dev_login_sets_cookie_and_me_matches(
     import app.api.v1.auth as auth_mod
     from app.core.config import settings
 
-    monkeypatch.setattr(
-        auth_mod,
-        "settings",
-        settings.model_copy(
-            update={
-                "auth_dev_login_enabled": True,
-                "secret_key": "unit-test-jwt-secret-at-least-32-chars!!",
-            },
-        ),
+    patched = settings.model_copy(
+        update={
+            "auth_dev_login_enabled": True,
+            "secret_key": "unit-test-jwt-secret-at-least-32-chars!!",
+        },
     )
+    monkeypatch.setattr(auth_mod, "settings", patched)
+    monkeypatch.setattr("app.core.auth_cookies.settings", patched)
 
     res = client.post("/api/v1/auth/dev-login", json={"role": "leader"})
     assert res.status_code == 200
@@ -57,16 +55,14 @@ def test_logout_clears_session(
     import app.api.v1.auth as auth_mod
     from app.core.config import settings
 
-    monkeypatch.setattr(
-        auth_mod,
-        "settings",
-        settings.model_copy(
-            update={
-                "auth_dev_login_enabled": True,
-                "secret_key": "unit-test-jwt-secret-at-least-32-chars!!",
-            },
-        ),
+    patched = settings.model_copy(
+        update={
+            "auth_dev_login_enabled": True,
+            "secret_key": "unit-test-jwt-secret-at-least-32-chars!!",
+        },
     )
+    monkeypatch.setattr(auth_mod, "settings", patched)
+    monkeypatch.setattr("app.core.auth_cookies.settings", patched)
 
     client.post("/api/v1/auth/dev-login", json={"role": "team"})
     assert client.get("/api/v1/auth/me").json()["authenticated"] is True

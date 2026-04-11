@@ -4,15 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db
+from app.api.deps import CurrentUser, get_db
+from app.core.auth_context import refresh_session_identity
+from app.core.auth_cookies import clear_session_cookies, issue_session_cookies
 from app.core.auth_cookie import MYLE_ACCESS_COOKIE, MYLE_REFRESH_COOKIE
 from app.core.config import settings
-from app.core.jwt_tokens import (
-    create_access_token,
-    create_refresh_token,
-    decode_access_token,
-    decode_refresh_token,
-)
+from app.core.jwt_tokens import decode_access_token, decode_refresh_token
 from app.core.fbo_id import normalize_fbo_id
 from app.core.passwords import verify_password
 from app.models.user import User
@@ -20,51 +17,6 @@ from app.schemas.auth import DevLoginRequest, DevLoginResponse, LoginRequest, Me
 from app.services.dev_users import dev_email_for_role
 
 router = APIRouter()
-
-
-def _cookie_kwargs() -> dict:
-    return {
-        "httponly": True,
-        "samesite": settings.auth_cookie_samesite,
-        "path": "/",
-        "secure": settings.session_cookie_secure,
-    }
-
-
-def _set_session_cookies(response: Response, user: User) -> None:
-    access = create_access_token(
-        sub=str(user.id),
-        role=user.role,
-        secret=settings.secret_key,
-        email=user.email,
-        fbo_id=user.fbo_id,
-        username=user.username,
-        minutes=settings.jwt_access_minutes,
-    )
-    refresh = create_refresh_token(
-        sub=str(user.id),
-        secret=settings.secret_key,
-        days=settings.jwt_refresh_days,
-    )
-    kw = _cookie_kwargs()
-    response.set_cookie(
-        key=MYLE_ACCESS_COOKIE,
-        value=access,
-        max_age=settings.jwt_access_minutes * 60,
-        **kw,
-    )
-    response.set_cookie(
-        key=MYLE_REFRESH_COOKIE,
-        value=refresh,
-        max_age=settings.jwt_refresh_days * 24 * 3600,
-        **kw,
-    )
-
-
-def _clear_session_cookies(response: Response) -> None:
-    kw = _cookie_kwargs()
-    response.delete_cookie(key=MYLE_ACCESS_COOKIE, **kw)
-    response.delete_cookie(key=MYLE_REFRESH_COOKIE, **kw)
 
 
 @router.get("/me", response_model=MeResponse)
@@ -88,6 +40,14 @@ async def read_me(request: Request) -> MeResponse:
     fbo_s = fbo_raw if isinstance(fbo_raw, str) else None
     un_raw = payload.get("username")
     un_s = un_raw if isinstance(un_raw, str) else None
+    dn_raw = payload.get("display_name")
+    dn_s = dn_raw if isinstance(dn_raw, str) else None
+    ver_raw = payload.get("ver")
+    ver_s: int | None = None
+    if isinstance(ver_raw, int):
+        ver_s = ver_raw
+    elif isinstance(ver_raw, float) and ver_raw == int(ver_raw):
+        ver_s = int(ver_raw)
     return MeResponse(
         authenticated=True,
         role=role,
@@ -95,6 +55,8 @@ async def read_me(request: Request) -> MeResponse:
         fbo_id=fbo_s,
         username=un_s,
         email=email_s,
+        display_name=dn_s,
+        auth_version=ver_s,
     )
 
 
@@ -114,7 +76,7 @@ async def dev_login(
             status_code=500,
             detail="Dev user missing; run database migrations",
         )
-    _set_session_cookies(response, user)
+    issue_session_cookies(response, user)
     return DevLoginResponse()
 
 
@@ -138,7 +100,7 @@ async def login_with_password(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid FBO ID or password",
         )
-    _set_session_cookies(response, user)
+    issue_session_cookies(response, user)
     return DevLoginResponse()
 
 
@@ -174,11 +136,31 @@ async def refresh_session(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
         )
-    _set_session_cookies(response, user)
+    issue_session_cookies(response, user)
+    return DevLoginResponse()
+
+
+@router.post("/sync-identity", response_model=DevLoginResponse)
+async def sync_identity(
+    response: Response,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    auth: CurrentUser,
+) -> DevLoginResponse:
+    """Reload the signed-in user from the database and re-issue JWT cookies.
+
+    Use after profile changes or admin edits so ``fbo_id``, ``username``, ``role``, and
+    ``email`` claims match ``users`` without waiting for access-token expiry.
+    """
+    ok = await refresh_session_identity(session, user_id=auth.user_id, response=response)
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
     return DevLoginResponse()
 
 
 @router.post("/logout", response_model=DevLoginResponse)
 async def logout(response: Response) -> DevLoginResponse:
-    _clear_session_cookies(response)
+    clear_session_cookies(response)
     return DevLoginResponse()

@@ -95,6 +95,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/sync-identity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sync Identity
+         * @description Reload the signed-in user from the database and re-issue JWT cookies.
+         *
+         *     Use after profile changes or admin edits so ``fbo_id``, ``username``, ``role``, and
+         *     ``email`` claims match ``users`` without waiting for access-token expiry.
+         */
+        post: operations["sync_identity_api_v1_auth_sync_identity_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/logout": {
         parameters: {
             query?: never;
@@ -1385,6 +1408,16 @@ export interface components {
              * @description User email from JWT when present
              */
             email?: string | null;
+            /**
+             * Display Name
+             * @description Display label (legacy session display_name / users.name); derived from username or email local-part
+             */
+            display_name?: string | null;
+            /**
+             * Auth Version
+             * @description JWT claim ver — same idea as legacy AUTH_SESSION_VERSION
+             */
+            auth_version?: number | null;
         };
         /** MetaResponse */
         MetaResponse: {
@@ -1764,6 +1797,26 @@ export interface operations {
         };
     };
     refresh_session_api_v1_auth_refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DevLoginResponse"];
+                };
+            };
+        };
+    };
+    sync_identity_api_v1_auth_sync_identity_post: {
         parameters: {
             query?: never;
             header?: never;

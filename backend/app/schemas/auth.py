@@ -20,6 +20,14 @@ class MeResponse(BaseModel):
     )
     username: Optional[str] = Field(default=None, description="Optional display handle when present")
     email: Optional[str] = Field(default=None, description="User email from JWT when present")
+    display_name: Optional[str] = Field(
+        default=None,
+        description="Display label (legacy session display_name / users.name); derived from username or email local-part",
+    )
+    auth_version: Optional[int] = Field(
+        default=None,
+        description="JWT claim ver — same idea as legacy AUTH_SESSION_VERSION",
+    )
 
 
 class DevLoginRequest(BaseModel):

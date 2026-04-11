@@ -20,6 +20,8 @@ def test_password_login_success(
     )
     monkeypatch.setattr(auth_mod, "settings", patched)
     monkeypatch.setattr(deps_mod, "settings", patched)
+    # Cookies are issued in app.core.auth_cookies (separate `settings` binding).
+    monkeypatch.setattr("app.core.auth_cookies.settings", patched)
 
     res = client.post(
         "/api/v1/auth/login",
