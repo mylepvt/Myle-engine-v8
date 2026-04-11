@@ -30,7 +30,8 @@ class Settings(BaseSettings):
     )
     secret_key: str = Field(
         default="myle-vl2-dev-secret-change-with-SECRET_KEY-env",
-        description="JWT signing + future session crypto",
+        validation_alias=AliasChoices("SECRET_KEY", "NEW_SECRET"),
+        description="JWT signing + future session crypto (Render: prefer SECRET_KEY; NEW_SECRET accepted)",
     )
     auth_dev_login_enabled: bool = Field(
         default=False,

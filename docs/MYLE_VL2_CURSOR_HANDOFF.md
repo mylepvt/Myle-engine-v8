@@ -45,8 +45,8 @@ git push origin main
 
 ## Render checklist (production hygiene)
 
-1. **`SECRET_KEY`**
-   - Env name: **`SECRET_KEY`** (32+ random chars). Default dev string production mein unsafe.
+1. **`SECRET_KEY`** (or **`NEW_SECRET`** on Render — app accepts both since config alias)
+   - 32+ random chars. Default dev string production mein unsafe.
 2. **`AUTH_DEV_LOGIN_ENABLED`**
    - Production: **`false`**. `POST /api/v1/auth/dev-login` → 404.
    - UI: “Continue (dev role)” button **ab bhi dikh sakta hai**; dabane par error aayega — optional follow-up: env se button hide karna.
