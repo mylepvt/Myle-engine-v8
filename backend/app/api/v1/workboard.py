@@ -5,7 +5,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthUser, get_db, require_auth_user
-from app.core.lead_status import LEAD_STATUS_SEQUENCE
+from app.core.lead_status import WORKBOARD_COLUMNS
 from app.models.lead import Lead
 from app.schemas.leads import LeadPublic
 from app.schemas.workboard import WorkboardColumnOut, WorkboardResponse
@@ -53,7 +53,7 @@ async def get_workboard(
         list_stmt = list_stmt.where(vis)
     rows = (await session.execute(list_stmt)).scalars().all()
 
-    buckets: dict[str, list[LeadPublic]] = {s: [] for s in LEAD_STATUS_SEQUENCE}
+    buckets: dict[str, list[LeadPublic]] = {s: [] for s in WORKBOARD_COLUMNS}
     for lead in rows:
         st = lead.status
         if st not in buckets:
@@ -64,6 +64,6 @@ async def get_workboard(
 
     columns = [
         WorkboardColumnOut(status=s, total=totals.get(s, 0), items=buckets[s])
-        for s in LEAD_STATUS_SEQUENCE
+        for s in WORKBOARD_COLUMNS
     ]
     return WorkboardResponse(columns=columns, max_rows_fetched=max_rows)

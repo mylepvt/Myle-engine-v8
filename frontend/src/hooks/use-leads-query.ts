@@ -2,15 +2,60 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
 
-export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'won' | 'lost'
+export type LeadStatus =
+  | 'new_lead'
+  | 'contacted'
+  | 'invited'
+  | 'video_sent'
+  | 'video_watched'
+  | 'paid'
+  | 'day1'
+  | 'day2'
+  | 'interview'
+  | 'track_selected'
+  | 'seat_hold'
+  | 'converted'
+  | 'lost'
+  | 'retarget'
+  | 'inactive'
+  | 'training'
+  | 'plan_2cc'
+  | 'level_up'
+  | 'pending'
+  | 'new'
 
 export const LEAD_STATUS_OPTIONS: { value: LeadStatus; label: string }[] = [
-  { value: 'new', label: 'New' },
-  { value: 'contacted', label: 'Contacted' },
-  { value: 'qualified', label: 'Qualified' },
-  { value: 'won', label: 'Won' },
-  { value: 'lost', label: 'Lost' },
+  { value: 'new_lead',       label: 'New Lead' },
+  { value: 'contacted',      label: 'Contacted' },
+  { value: 'invited',        label: 'Invited' },
+  { value: 'video_sent',     label: 'Video Sent' },
+  { value: 'video_watched',  label: 'Video Watched' },
+  { value: 'paid',           label: 'Paid ₹196' },
+  { value: 'day1',           label: 'Day 1' },
+  { value: 'day2',           label: 'Day 2' },
+  { value: 'interview',      label: 'Interview' },
+  { value: 'track_selected', label: 'Track Selected' },
+  { value: 'seat_hold',      label: 'Seat Hold' },
+  { value: 'converted',      label: 'Converted' },
+  { value: 'lost',           label: 'Lost' },
+  { value: 'retarget',       label: 'Retarget' },
+  { value: 'inactive',       label: 'Inactive' },
+  { value: 'training',       label: 'Training' },
+  { value: 'plan_2cc',       label: '2CC Plan' },
+  { value: 'level_up',       label: 'Level Up' },
+  { value: 'pending',        label: 'Pending' },
+  { value: 'new',            label: 'New (Legacy)' },
 ]
+
+/** Statuses that count as "active pipeline" — shown in workboard kanban */
+export const PIPELINE_STATUS_OPTIONS = LEAD_STATUS_OPTIONS.filter((o) =>
+  ['new_lead','contacted','invited','video_sent','video_watched','paid',
+   'day1','day2','interview','track_selected','seat_hold','converted','lost'].includes(o.value)
+)
+
+/** Won/closed statuses for metrics */
+export const CLOSED_WON_STATUSES: LeadStatus[] = ['converted', 'seat_hold']
+export const CLOSED_LOST_STATUSES: LeadStatus[] = ['lost', 'inactive']
 
 export type LeadPublic = {
   id: number
@@ -34,6 +79,15 @@ export type LeadListFilters = {
   q: string
   status: '' | LeadStatus
 }
+
+/** Group statuses by phase for filter dropdowns */
+export const LEAD_STATUS_GROUPS: { label: string; statuses: LeadStatus[] }[] = [
+  { label: 'Pre-Enrollment', statuses: ['new_lead', 'contacted', 'invited', 'video_sent', 'video_watched'] },
+  { label: 'Enrolled', statuses: ['paid', 'day1', 'day2', 'interview'] },
+  { label: 'Closing', statuses: ['track_selected', 'seat_hold', 'converted'] },
+  { label: 'Re-engage', statuses: ['lost', 'retarget', 'inactive'] },
+  { label: 'Other', statuses: ['training', 'plan_2cc', 'level_up', 'pending', 'new'] },
+]
 
 async function parseError(res: Response): Promise<never> {
   const err = await res.json().catch(() => ({}))

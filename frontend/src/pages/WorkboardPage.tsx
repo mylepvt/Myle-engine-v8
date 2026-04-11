@@ -28,13 +28,28 @@ function columnTitle(status: string): string {
   return LEAD_STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status
 }
 
-/** Left accent per pipeline stage — matches Lead flow / theme. */
+/** Left accent per pipeline stage — matches full Myle pipeline. */
 const COLUMN_ACCENT: Record<string, string> = {
-  new: 'border-l-primary',
-  contacted: 'border-l-sky-400/90',
-  qualified: 'border-l-emerald-400/90',
-  won: 'border-l-[hsl(142_71%_45%)]',
-  lost: 'border-l-destructive/75',
+  new_lead:       'border-l-primary',
+  contacted:      'border-l-sky-400/90',
+  invited:        'border-l-violet-400/90',
+  video_sent:     'border-l-indigo-400/90',
+  video_watched:  'border-l-blue-400/90',
+  paid:           'border-l-amber-400/90',
+  day1:           'border-l-orange-400/90',
+  day2:           'border-l-yellow-400/90',
+  interview:      'border-l-lime-400/90',
+  track_selected: 'border-l-emerald-400/90',
+  seat_hold:      'border-l-teal-400/90',
+  converted:      'border-l-[hsl(142_71%_45%)]',
+  lost:           'border-l-destructive/75',
+  retarget:       'border-l-rose-400/90',
+  inactive:       'border-l-muted-foreground/40',
+  training:       'border-l-cyan-400/90',
+  plan_2cc:       'border-l-purple-400/90',
+  level_up:       'border-l-fuchsia-400/90',
+  pending:        'border-l-zinc-400/90',
+  new:            'border-l-primary/50',
 }
 
 function workboardScopeLine(role: string | null): string {
@@ -113,9 +128,9 @@ export function WorkboardPage({ title }: Props) {
     if (!data) return null
     const byStatus = Object.fromEntries(data.columns.map((c) => [c.status, c.total]))
     const sum = (keys: string[]) => keys.reduce((acc, k) => acc + (byStatus[k] ?? 0), 0)
-    const pipelineOpen = sum(['new', 'contacted', 'qualified'])
-    const won = byStatus.won ?? 0
-    const lost = byStatus.lost ?? 0
+    const pipelineOpen = sum(['new_lead','contacted','invited','video_sent','video_watched','paid','day1','day2','interview'])
+    const won = sum(['converted', 'seat_hold', 'track_selected'])
+    const lost = sum(['lost', 'inactive'])
     const grand = data.columns.reduce((acc, c) => acc + c.total, 0)
     return { pipelineOpen, won, lost, grand }
   }, [data])
