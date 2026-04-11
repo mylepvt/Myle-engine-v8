@@ -1,3 +1,4 @@
+import { InsightList } from '@/components/dashboard/InsightList'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   useSystemSurfaceQuery,
@@ -30,18 +31,12 @@ export function SystemSurfacePage({ title, surface }: Props) {
         </div>
       ) : null}
       {data ? (
-        <div className="surface-elevated space-y-3 p-4 text-sm text-muted-foreground">
+        <div className="surface-elevated space-y-4 p-4 text-sm text-muted-foreground">
           {data.note ? <p className="text-foreground/90">{data.note}</p> : null}
-          <p>
-            Items: <span className="font-medium text-foreground">{data.total}</span>
-            {data.items.length > 0 ? (
-              <ul className="mt-2 space-y-1 text-xs">
-                {data.items.map((row, i) => (
-                  <li key={i}>{JSON.stringify(row)}</li>
-                ))}
-              </ul>
-            ) : null}
+          <p className="text-ds-caption">
+            Signals: <span className="font-medium text-foreground">{data.total}</span>
           </p>
+          <InsightList items={data.items} />
         </div>
       ) : null}
     </div>

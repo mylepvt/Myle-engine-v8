@@ -8,7 +8,7 @@ import {
   usePatchLeadMutation,
 } from '@/hooks/use-leads-query'
 import { useLeadPoolQuery } from '@/hooks/use-lead-pool-query'
-import { useRoleStore } from '@/stores/role-store'
+import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 
 type Props = {
   title: string
@@ -19,7 +19,7 @@ function statusLabel(value: string): string {
 }
 
 export function LeadPoolWorkPage({ title }: Props) {
-  const role = useRoleStore((s) => s.role)
+  const { role } = useDashboardShellRole()
   const { data, isPending, isError, error, refetch } = useLeadPoolQuery()
   const claimMut = useClaimLeadMutation()
   const patchMut = usePatchLeadMutation()

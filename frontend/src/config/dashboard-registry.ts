@@ -491,6 +491,15 @@ export function itemVisible(
   return true
 }
 
+/** Same rules as sidebar — use with **server** role from `GET /api/v1/auth/me` for route gates. */
+export function routeDefAccessible(
+  def: DashboardRouteDef,
+  role: Role,
+  flags: ClientNavFlags,
+): boolean {
+  return itemVisible(defToNavItem(def), role, flags)
+}
+
 export function filterDashboardNav(
   role: Role,
   flags: ClientNavFlags,

@@ -1,14 +1,19 @@
-"""Analytics surfaces — V1 stubs until events and reports are persisted."""
+"""Analytics — activity from live leads; funnel report by status."""
 
 from __future__ import annotations
 
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
-from app.api.deps import AuthUser, require_auth_user
+from app.api.deps import AuthUser, get_db, require_auth_user
 from app.schemas.system_surface import SystemStubResponse
+from app.services.shell_insights import (
+    build_activity_log_snapshot,
+    build_status_funnel_report,
+)
 
 router = APIRouter()
 
@@ -21,20 +26,18 @@ def _require_admin(user: AuthUser) -> None:
 @router.get("/activity-log", response_model=SystemStubResponse)
 async def analytics_activity_log(
     user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
 ) -> SystemStubResponse:
-    """Admin activity feed placeholder (HTTP access logs are not queryable here yet)."""
+    """Admin — recent lead creations (scoped); replace with audit store when added."""
     _require_admin(user)
-    return SystemStubResponse(
-        note="Structured activity will be stored and listed here; V1 does not expose access-log rows via API.",
-    )
+    return await build_activity_log_snapshot(session, user)
 
 
 @router.get("/day-2-report", response_model=SystemStubResponse)
 async def analytics_day_2_report(
     user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
 ) -> SystemStubResponse:
-    """Admin Day 2 test report placeholder."""
+    """Admin — funnel by lead status (scoped); extend when Day 2 test entities exist."""
     _require_admin(user)
-    return SystemStubResponse(
-        note="Day 2 metrics will be computed server-side when definitions and data sources exist.",
-    )
+    return await build_status_funnel_report(session, user)

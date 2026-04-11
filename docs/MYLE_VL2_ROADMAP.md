@@ -32,6 +32,8 @@ This document defines the **full plan** and **phase-by-phase execution order**. 
 
 ## Architecture & smart UX (beyond the legacy app)
 
+**Legacy parity (no guesswork):** Do not claim “same as old app” without filling **`docs/LEGACY_PARITY_MAPPING.md`** — that file holds the **verified** new-app inventory (routes, stubs, code pointers) and a **parity matrix** whose legacy side must include **evidence** (legacy path/repo/spec/sign-off).
+
 **Goal:** Avoid the “feel” of the old stack — **hardcoded toggles**, **different rules** on UI vs server, and **magic state**.
 
 1. **Server-first authority** — permissions, scoping, counts, feature flags come from the **API**; JWT + `/auth/me` is the source of identity; the client only **previews** (e.g. role dropdown) until the server confirms.

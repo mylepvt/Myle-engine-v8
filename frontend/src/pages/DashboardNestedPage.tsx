@@ -4,8 +4,12 @@ import {
   dashboardChildPathSet,
   getDashboardChildRoute,
   resolveTitleForPath,
+  routeDefAccessible,
   type FullUiSurface,
 } from '@/config/dashboard-registry'
+import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
+import { DEFAULT_META, useMetaQuery } from '@/hooks/use-meta-query'
+import { Skeleton } from '@/components/ui/skeleton'
 import { DashboardPlaceholderPage } from '@/pages/DashboardPlaceholderPage'
 import { LeadsWorkPage } from '@/pages/LeadsWorkPage'
 import { FollowUpsWorkPage } from '@/pages/FollowUpsWorkPage'
@@ -23,7 +27,6 @@ import { WorkboardPage } from '@/pages/WorkboardPage'
 import { ShellStubPage } from '@/pages/ShellStubPage'
 import { WalletPage } from '@/pages/WalletPage'
 import { FinanceRechargesPage } from '@/pages/FinanceRechargesPage'
-import { useRoleStore } from '@/stores/role-store'
 
 function renderFullUi(ui: FullUiSurface, title: string) {
   switch (ui.kind) {
@@ -70,18 +73,36 @@ function renderFullUi(ui: FullUiSurface, title: string) {
 export function DashboardNestedPage() {
   const { '*': splat } = useParams()
   const path = (splat ?? '').replace(/^\/+|\/+$/g, '')
-  const role = useRoleStore((s) => s.role)
+  const { role: serverRole, isPending: rolePending } = useDashboardShellRole()
+  const { data: meta } = useMetaQuery()
+  const navFlags = {
+    intelligence: meta?.features.intelligence ?? DEFAULT_META.features.intelligence,
+  }
 
   if (!path || !dashboardChildPathSet.has(path)) {
     return <Navigate to="/dashboard" replace />
   }
 
   const def = getDashboardChildRoute(path)
-  const title = resolveTitleForPath(path, role) ?? path
 
   if (!def) {
     return <Navigate to="/dashboard" replace />
   }
+
+  if (rolePending) {
+    return (
+      <div className="space-y-3 p-4" aria-busy="true" aria-label="Loading">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-24 w-full max-w-2xl" />
+      </div>
+    )
+  }
+
+  if (!serverRole || !routeDefAccessible(def, serverRole, navFlags)) {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  const title = resolveTitleForPath(path, serverRole) ?? path
 
   switch (def.surface) {
     case 'stub':

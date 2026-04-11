@@ -12,7 +12,7 @@ import {
   useLeadsQuery,
   usePatchLeadMutation,
 } from '@/hooks/use-leads-query'
-import { useRoleStore } from '@/stores/role-store'
+import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 
 type Props = {
   title: string
@@ -29,7 +29,7 @@ function statusLabel(value: string): string {
 export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const archivedOnly = listMode === 'archived'
   const leadsListMode = listMode === 'archived' ? 'archived' : 'active'
-  const role = useRoleStore((s) => s.role)
+  const { role } = useDashboardShellRole()
   const [qInput, setQInput] = useState('')
   const [filters, setFilters] = useState<LeadListFilters>(emptyFilters)
   const [newStatus, setNewStatus] = useState<LeadStatus>('new')

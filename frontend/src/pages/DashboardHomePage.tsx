@@ -1,14 +1,8 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  ArrowRight,
-  Kanban,
-  ListTodo,
-  Sparkles,
-  TrendingUp,
-  Users,
-} from 'lucide-react'
+import { ArrowRight, TrendingUp } from 'lucide-react'
 
+import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,21 +16,18 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  DASHBOARD_HOME_OVERVIEW_TITLE,
+  getHomeQuickActions,
+} from '@/config/dashboard-home-actions'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
+import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { useFollowUpsQuery } from '@/hooks/use-follow-ups-query'
 import { useLeadPoolQuery } from '@/hooks/use-lead-pool-query'
 import { LEAD_STATUS_OPTIONS, type LeadPublic } from '@/hooks/use-leads-query'
-import { useMetaQuery } from '@/hooks/use-meta-query'
+import { DEFAULT_META, useMetaQuery } from '@/hooks/use-meta-query'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
 import { t } from '@/lib/i18n'
-import { useRoleStore } from '@/stores/role-store'
-import type { Role } from '@/types/role'
-
-const titles: Record<Role, string> = {
-  admin: 'Admin overview',
-  leader: 'Leader overview',
-  team: 'Your workspace',
-}
 
 function statusLabel(status: string): string {
   return LEAD_STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status
@@ -63,9 +54,16 @@ function recentFromWorkboard(columns: { items: LeadPublic[] }[] | undefined): Le
 }
 
 export function DashboardHomePage() {
-  const role = useRoleStore((s) => s.role)
+  const { role, isPending: rolePending } = useDashboardShellRole()
   const { data: me, isPending: mePending } = useAuthMeQuery()
   const { data: meta } = useMetaQuery()
+  const navFlags = useMemo(
+    () => ({
+      intelligence:
+        meta?.features.intelligence ?? DEFAULT_META.features.intelligence,
+    }),
+    [meta?.features.intelligence],
+  )
   const sessionReady = Boolean(me?.authenticated)
 
   const wb = useWorkboardQuery(sessionReady)
@@ -128,11 +126,10 @@ export function DashboardHomePage() {
 
   const kpiLoading = sessionReady && (wb.isPending || fu.isPending)
 
-  const showFollowUpsLink = role === 'admin' || role === 'leader'
-  const showPoolLink = role === 'leader' || role === 'team' || role === 'admin'
-  const showIntel =
-    (meta?.features.intelligence ?? true) &&
-    (role === 'admin' || role === 'team')
+  const quickActions = useMemo(() => {
+    if (role == null) return []
+    return getHomeQuickActions(role, navFlags, { poolTotal })
+  }, [role, navFlags, poolTotal])
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -144,7 +141,14 @@ export function DashboardHomePage() {
               Welcome, {firstName}!
             </CardTitle>
             <p className="mt-2 max-w-xl text-ds-body text-muted-foreground">
-              {titles[role]} — {t('appTagline')}
+              {rolePending && role == null ? (
+                <span className="inline-block h-4 w-48 animate-pulse rounded bg-muted/60" />
+              ) : (
+                <>
+                  {role != null ? DASHBOARD_HOME_OVERVIEW_TITLE[role] : 'Dashboard'} —{' '}
+                  {t('appTagline')}
+                </>
+              )}
             </p>
             {me?.email ? (
               <p className="mt-1 text-ds-caption text-subtle">{me.email}</p>
@@ -155,6 +159,8 @@ export function DashboardHomePage() {
           </div>
         </CardHeader>
       </Card>
+
+      <GateAssistantCard sessionReady={sessionReady} />
 
       {wb.isError ? (
         <ErrorState
@@ -295,61 +301,27 @@ export function DashboardHomePage() {
             <CardDescription>Jump to common screens</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
-            <Button variant="outline" className="justify-between" asChild>
-              <Link to="/dashboard/work/leads">
-                <span className="flex items-center gap-2">
-                  <Users className="size-4" />
-                  {role === 'admin' ? 'All leads' : 'My leads'}
-                </span>
-                <ArrowRight className="size-4 opacity-60" />
-              </Link>
-            </Button>
-            <Button variant="outline" className="justify-between" asChild>
-              <Link to="/dashboard/work/workboard">
-                <span className="flex items-center gap-2">
-                  <Kanban className="size-4" />
-                  Workboard
-                </span>
-                <ArrowRight className="size-4 opacity-60" />
-              </Link>
-            </Button>
-            {showFollowUpsLink ? (
-              <Button variant="outline" className="justify-between" asChild>
-                <Link to="/dashboard/work/follow-ups">
-                  <span className="flex items-center gap-2">
-                    <ListTodo className="size-4" />
-                    Follow-ups
-                  </span>
-                  <ArrowRight className="size-4 opacity-60" />
-                </Link>
-              </Button>
-            ) : null}
-            {showPoolLink ? (
-              <Button variant="outline" className="justify-between" asChild>
-                <Link to="/dashboard/work/lead-pool">
-                  <span className="flex items-center gap-2">
-                    Lead pool
-                    {poolTotal > 0 ? (
-                      <Badge variant="primary" className="ml-1">
-                        {poolTotal}
+            {quickActions.map((a) => (
+              <Button
+                key={a.path}
+                variant="outline"
+                className="justify-between"
+                asChild
+              >
+                <Link to={a.to}>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <a.Icon className="size-4 shrink-0" aria-hidden />
+                    <span className="truncate">{a.label}</span>
+                    {a.badgeCount != null ? (
+                      <Badge variant="primary" className="ml-1 shrink-0">
+                        {a.badgeCount}
                       </Badge>
                     ) : null}
                   </span>
-                  <ArrowRight className="size-4 opacity-60" />
+                  <ArrowRight className="size-4 shrink-0 opacity-60" />
                 </Link>
               </Button>
-            ) : null}
-            {showIntel ? (
-              <Button variant="outline" className="justify-between" asChild>
-                <Link to="/dashboard/intelligence">
-                  <span className="flex items-center gap-2">
-                    <Sparkles className="size-4" />
-                    Intelligence
-                  </span>
-                  <ArrowRight className="size-4 opacity-60" />
-                </Link>
-              </Button>
-            ) : null}
+            ))}
           </CardContent>
         </Card>
       </div>

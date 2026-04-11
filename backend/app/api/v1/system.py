@@ -1,14 +1,16 @@
-"""System section stubs (training, decision engine, coaching) — empty until modeled."""
+"""System section — training/coaching stubs; decision engine uses `shell_insights`."""
 
 from __future__ import annotations
 
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
-from app.api.deps import AuthUser, require_auth_user
+from app.api.deps import AuthUser, get_db, require_auth_user
 from app.schemas.system_surface import SystemStubResponse
+from app.services.shell_insights import build_decision_engine_snapshot
 
 router = APIRouter()
 
@@ -37,12 +39,11 @@ async def system_training(
 @router.get("/decision-engine", response_model=SystemStubResponse)
 async def system_decision_engine(
     user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
 ) -> SystemStubResponse:
-    """Admin decision / rules placeholder."""
+    """Admin — pipeline signals (stale new leads, pool depth)."""
     _require_admin(user)
-    return SystemStubResponse(
-        note="Decision rules will be listed here when the engine is implemented server-side.",
-    )
+    return await build_decision_engine_snapshot(session, user)
 
 
 @router.get("/coaching", response_model=SystemStubResponse)

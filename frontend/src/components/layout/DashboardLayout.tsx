@@ -6,37 +6,37 @@ import { DashboardOutletErrorBoundary } from '@/components/routing/DashboardOutl
 import { getDashboardNavIcon } from '@/config/dashboard-nav-icons'
 import { filterDashboardNav, resolveItemLabel } from '@/config/dashboard-nav'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
+import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { useMetaQuery } from '@/hooks/use-meta-query'
 import { useRealtimeInvalidation } from '@/hooks/use-realtime-invalidation'
 import { useSyncRoleFromMe } from '@/hooks/use-sync-role-from-me'
 import { cn } from '@/lib/utils'
 import { authLogout } from '@/lib/auth-api'
 import { useAuthStore } from '@/stores/auth-store'
-import { useRoleStore } from '@/stores/role-store'
 import { useShellStore } from '@/stores/shell-store'
-import { ROLES, roleShortLabel, type Role } from '@/types/role'
+import { roleShortLabel } from '@/types/role'
 
 export function DashboardLayout() {
   useSyncRoleFromMe()
   useRealtimeInvalidation(true)
   const { data: meta } = useMetaQuery()
   const { data: me } = useAuthMeQuery()
+  const { role: shellRole, isPending: rolePending } = useDashboardShellRole()
   const navigate = useNavigate()
   const { sidebarOpen, toggleSidebar } = useShellStore()
-  const role = useRoleStore((s) => s.role)
-  const setRole = useRoleStore((s) => s.setRole)
   const logout = useAuthStore((s) => s.logout)
 
   const navFlags = {
     intelligence: meta?.features.intelligence ?? true,
   }
-  const sections = filterDashboardNav(role, navFlags)
+  const sections =
+    shellRole != null ? filterDashboardNav(shellRole, navFlags) : []
   const envLabel = meta?.environment
 
   const displayInitial =
     me?.email?.[0]?.toUpperCase() ??
     me?.role?.[0]?.toUpperCase() ??
-    role[0]?.toUpperCase() ??
+    shellRole?.[0]?.toUpperCase() ??
     '?'
 
   async function handleLogout() {
@@ -75,7 +75,18 @@ export function DashboardLayout() {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden px-2 py-3 pb-2">
-          {sections.map((section) => (
+          {rolePending && shellRole == null ? (
+            <div className="space-y-2 px-2" aria-busy="true" aria-label="Loading navigation">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-10 animate-pulse rounded-xl bg-muted/50"
+                />
+              ))}
+            </div>
+          ) : null}
+          {shellRole != null
+            ? sections.map((section) => (
             <div key={section.id}>
               {section.label ? (
                 <p className="mb-2 px-3 text-[0.62rem] font-semibold uppercase tracking-label-wide text-muted-foreground/80">
@@ -86,7 +97,7 @@ export function DashboardLayout() {
                 {section.items.map((item) => {
                   const to =
                     item.path === '' ? '/dashboard' : `/dashboard/${item.path}`
-                  const label = resolveItemLabel(item, role)
+                  const label = resolveItemLabel(item, shellRole)
                   const Icon = getDashboardNavIcon(item.path)
                   return (
                     <li key={item.path || 'index'}>
@@ -128,7 +139,8 @@ export function DashboardLayout() {
                 })}
               </ul>
             </div>
-          ))}
+              ))
+            : null}
         </nav>
 
         <div className="mt-auto shrink-0 border-t border-border/80 p-3">
@@ -182,25 +194,20 @@ export function DashboardLayout() {
               <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-primary ring-2 ring-background" />
             </Button>
 
-            <label className="sr-only" htmlFor="role-preview">
-              Preview as role
-            </label>
-            <select
-              id="role-preview"
-              value={role}
-              onChange={(e) => setRole(e.target.value as Role)}
-              className="max-w-[6.5rem] rounded-lg border border-border bg-muted/60 px-2 py-1.5 text-ds-caption font-medium text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/25 sm:max-w-[9rem]"
-            >
-              {ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {roleShortLabel(r)}
-                </option>
-              ))}
-            </select>
+            {shellRole != null ? (
+              <span
+                className="max-w-[7rem] truncate rounded-lg border border-border bg-muted/50 px-2.5 py-1.5 text-center text-ds-caption font-semibold text-foreground shadow-glass-inset sm:max-w-[9rem]"
+                title="Your role from the signed-in account"
+              >
+                {roleShortLabel(shellRole)}
+              </span>
+            ) : rolePending ? (
+              <span className="inline-block h-8 w-16 animate-pulse rounded-lg bg-muted/50" />
+            ) : null}
 
             <div
               className="flex size-9 shrink-0 items-center justify-center rounded-full border border-primary/25 bg-primary/10 text-xs font-bold text-primary"
-              title={me?.email ?? role}
+              title={me?.email ?? shellRole ?? ''}
             >
               {displayInitial}
             </div>
