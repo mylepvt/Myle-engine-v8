@@ -16,10 +16,12 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: backend/requirements.txt
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
 
       - name: Install Python dependencies
-        run: pip install -r backend/requirements.txt
+        run: pip install --no-cache-dir -r backend/requirements-dev.txt
 
       - name: Pytest
         run: python -m pytest tests/ -q
