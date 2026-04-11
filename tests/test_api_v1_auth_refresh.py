@@ -5,20 +5,13 @@ import pytest
 from app.core.passwords import DEV_LOGIN_PASSWORD_PLAIN
 from main import app
 
+from util_jwt_patch import patch_jwt_settings
+
 
 def test_refresh_reissues_session(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import app.api.deps as deps_mod
-    import app.api.v1.auth as auth_mod
-    from app.core.config import settings
-
-    patched = settings.model_copy(
-        update={"secret_key": "unit-test-jwt-secret-at-least-32-chars!!"},
-    )
-    monkeypatch.setattr(auth_mod, "settings", patched)
-    monkeypatch.setattr(deps_mod, "settings", patched)
-    monkeypatch.setattr("app.core.auth_cookies.settings", patched)
+    patch_jwt_settings(monkeypatch)
 
     client = TestClient(app)
     login = client.post(

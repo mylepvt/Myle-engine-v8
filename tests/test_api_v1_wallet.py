@@ -5,20 +5,11 @@ from fastapi.testclient import TestClient
 
 from main import app
 
+from util_jwt_patch import patch_jwt_settings
+
 
 def _authed(monkeypatch: pytest.MonkeyPatch) -> TestClient:
-    import app.api.deps as deps_mod
-    import app.api.v1.auth as auth_mod
-    from app.core.config import settings
-
-    patched = settings.model_copy(
-        update={
-            "auth_dev_login_enabled": True,
-            "secret_key": "unit-test-jwt-secret-at-least-32-chars!!",
-        },
-    )
-    monkeypatch.setattr(auth_mod, "settings", patched)
-    monkeypatch.setattr(deps_mod, "settings", patched)
+    patch_jwt_settings(monkeypatch, auth_dev_login_enabled=True)
     return TestClient(app)
 
 

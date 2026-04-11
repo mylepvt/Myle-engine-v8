@@ -11,6 +11,8 @@ from app.core.passwords import DEV_LOGIN_PASSWORD_PLAIN
 from app.core.realtime_hub import hub
 from main import app
 
+from util_jwt_patch import patch_jwt_settings
+
 client = TestClient(app)
 
 
@@ -30,15 +32,7 @@ def test_ws_rejects_without_cookie() -> None:
 def test_ws_accepts_cookie_and_receives_broadcast(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import app.api.deps as deps_mod
-    import app.api.v1.auth as auth_mod
-    from app.core.config import settings
-
-    patched = settings.model_copy(
-        update={"secret_key": "unit-test-jwt-secret-at-least-32-chars!!"},
-    )
-    monkeypatch.setattr(auth_mod, "settings", patched)
-    monkeypatch.setattr(deps_mod, "settings", patched)
+    patch_jwt_settings(monkeypatch)
 
     login = client.post(
         "/api/v1/auth/login",

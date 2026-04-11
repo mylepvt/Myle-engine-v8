@@ -5,23 +5,15 @@ import pytest
 from app.core.passwords import DEV_LOGIN_PASSWORD_PLAIN
 from main import app
 
+from util_jwt_patch import patch_jwt_settings
+
 client = TestClient(app)
 
 
 def test_password_login_success(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import app.api.deps as deps_mod
-    import app.api.v1.auth as auth_mod
-    from app.core.config import settings
-
-    patched = settings.model_copy(
-        update={"secret_key": "unit-test-jwt-secret-at-least-32-chars!!"},
-    )
-    monkeypatch.setattr(auth_mod, "settings", patched)
-    monkeypatch.setattr(deps_mod, "settings", patched)
-    # Cookies are issued in app.core.auth_cookies (separate `settings` binding).
-    monkeypatch.setattr("app.core.auth_cookies.settings", patched)
+    patch_jwt_settings(monkeypatch)
 
     res = client.post(
         "/api/v1/auth/login",
@@ -41,15 +33,7 @@ def test_password_login_success(
 def test_password_login_wrong_password(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import app.api.deps as deps_mod
-    import app.api.v1.auth as auth_mod
-    from app.core.config import settings
-
-    patched = settings.model_copy(
-        update={"secret_key": "unit-test-jwt-secret-at-least-32-chars!!"},
-    )
-    monkeypatch.setattr(auth_mod, "settings", patched)
-    monkeypatch.setattr(deps_mod, "settings", patched)
+    patch_jwt_settings(monkeypatch)
 
     res = client.post(
         "/api/v1/auth/login",
@@ -62,15 +46,7 @@ def test_password_login_wrong_password(
 def test_password_login_unknown_fbo_id(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import app.api.deps as deps_mod
-    import app.api.v1.auth as auth_mod
-    from app.core.config import settings
-
-    patched = settings.model_copy(
-        update={"secret_key": "unit-test-jwt-secret-at-least-32-chars!!"},
-    )
-    monkeypatch.setattr(auth_mod, "settings", patched)
-    monkeypatch.setattr(deps_mod, "settings", patched)
+    patch_jwt_settings(monkeypatch)
 
     res = client.post(
         "/api/v1/auth/login",

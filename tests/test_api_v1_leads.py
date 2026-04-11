@@ -11,6 +11,8 @@ from sqlalchemy import delete
 from app.models.lead import Lead
 from main import app
 
+from util_jwt_patch import patch_jwt_settings
+
 client = TestClient(app)
 
 
@@ -32,18 +34,7 @@ def test_lead_pool_requires_auth() -> None:
 def test_list_leads_empty_when_authenticated(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import app.api.deps as deps_mod
-    import app.api.v1.auth as auth_mod
-    from app.core.config import settings
-
-    patched = settings.model_copy(
-        update={
-            "auth_dev_login_enabled": True,
-            "secret_key": "unit-test-jwt-secret-at-least-32-chars!!",
-        },
-    )
-    monkeypatch.setattr(auth_mod, "settings", patched)
-    monkeypatch.setattr(deps_mod, "settings", patched)
+    patch_jwt_settings(monkeypatch, auth_dev_login_enabled=True)
 
     c = TestClient(app)
     login = c.post("/api/v1/auth/dev-login", json={"role": "leader"})
@@ -92,18 +83,7 @@ async def _clear_leads() -> None:
 
 
 def _authed_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
-    import app.api.deps as deps_mod
-    import app.api.v1.auth as auth_mod
-    from app.core.config import settings
-
-    patched = settings.model_copy(
-        update={
-            "auth_dev_login_enabled": True,
-            "secret_key": "unit-test-jwt-secret-at-least-32-chars!!",
-        },
-    )
-    monkeypatch.setattr(auth_mod, "settings", patched)
-    monkeypatch.setattr(deps_mod, "settings", patched)
+    patch_jwt_settings(monkeypatch, auth_dev_login_enabled=True)
     return TestClient(app)
 
 
