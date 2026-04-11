@@ -1,0 +1,39 @@
+# One-way mirror: Mylecommunity (canonical) -> mylepvt (Render watches this repo).
+# Setup (once):
+# 1. GitHub (mylepvt): Fine-grained PAT or classic token with repo push to mylepvt/New-Myle-Community
+# 2. Repo Mylecommunity/Myle-community -> Settings -> Secrets -> Actions -> MYLEPVT_SYNC_PAT
+# 3. Edit env MYLEPVT_TARGET below if your mirror repo path differs.
+
+name: Sync to mylepvt mirror
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: sync-mylepvt
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    # Avoid running on forks (they won't have the secret anyway)
+    if: github.event.repository.fork == false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to mylepvt
+        env:
+          PAT: ${{ secrets.MYLEPVT_SYNC_PAT }}
+          MYLEPVT_TARGET: mylepvt/New-Myle-Community
+        run: |
+          set -euo pipefail
+          if [ -z "${PAT}" ]; then
+            echo "::error::Add repository secret MYLEPVT_SYNC_PAT (PAT with push access to ${MYLEPVT_TARGET})."
+            exit 1
+          fi
+          git remote add mylepvt "https://x-access-token:${PAT}@github.com/${MYLEPVT_TARGET}.git"
+          git push mylepvt "HEAD:refs/heads/main"
