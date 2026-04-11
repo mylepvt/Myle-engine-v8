@@ -16,6 +16,8 @@ def create_access_token(
     role: str,
     secret: str,
     email: Optional[str] = None,
+    fbo_id: Optional[str] = None,
+    username: Optional[str] = None,
     minutes: int = 60,
 ) -> str:
     now = dt.datetime.now(dt.timezone.utc)
@@ -29,6 +31,10 @@ def create_access_token(
     }
     if email:
         payload["email"] = email
+    if fbo_id:
+        payload["fbo_id"] = fbo_id
+    if username:
+        payload["username"] = username
     return jwt.encode(payload, secret, algorithm=JWT_ALG)
 
 

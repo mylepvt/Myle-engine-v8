@@ -6,10 +6,10 @@ import {
   ArrowRight,
   Eye,
   EyeOff,
+  IdCard,
   Loader2,
   Lock,
   LogIn,
-  Mail,
   Network,
   Shield,
   X,
@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 import { useRoleStore } from '@/stores/role-store'
 import {
-  devEmailForRole,
+  devFboIdForRole,
   ROLES,
   roleShortLabel,
   type Role,
@@ -58,7 +58,7 @@ export function LoginPage() {
 
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
-  const [email, setEmail] = useState('')
+  const [fboId, setFboId] = useState('')
   const [password, setPassword] = useState('')
   const [pwPending, setPwPending] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -67,7 +67,7 @@ export function LoginPage() {
 
   useEffect(() => {
     if (meta?.auth_dev_login_enabled) {
-      setEmail((e) => (e === '' ? devEmailForRole('leader') : e))
+      setFboId((v) => (v === '' ? devFboIdForRole('leader') : v))
     }
   }, [meta?.auth_dev_login_enabled])
 
@@ -81,13 +81,13 @@ export function LoginPage() {
       )
       return
     }
-    if (!email.trim()) {
-      setError('Please enter your email address.')
+    if (!fboId.trim()) {
+      setError('Please enter your FBO ID.')
       return
     }
     setPwPending(true)
     try {
-      await authPasswordLogin(email.trim(), password)
+      await authPasswordLogin(fboId, password)
       await queryClient.resetQueries({ queryKey: ['auth', 'me'] })
       let me = await queryClient.fetchQuery({
         queryKey: ['auth', 'me'],
@@ -260,29 +260,27 @@ export function LoginPage() {
             >
               <p className="mb-4 text-center text-xs font-medium leading-relaxed text-muted-foreground sm:text-left">
                 {devLoginAllowed
-                  ? 'Or sign in with email and password'
-                  : 'Use your work email and password.'}
+                  ? 'Or sign in with your FBO ID and password'
+                  : 'Use your unique FBO ID and password.'}
               </p>
 
               <div className="space-y-3.5">
                 <div>
                   <label
                     className="mb-1.5 flex flex-wrap items-baseline gap-1 text-sm font-semibold text-foreground"
-                    htmlFor="login-email"
+                    htmlFor="login-fbo-id"
                   >
-                    Email
+                    FBO ID
                     <RequiredMark />
                   </label>
                   <IconInput
-                    id="login-email"
-                    type="email"
-                    autoComplete="email"
-                    inputMode="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    id="login-fbo-id"
+                    autoComplete="username"
+                    value={fboId}
+                    onChange={(e) => setFboId(e.target.value)}
                     disabled={pwPending}
-                    placeholder="name@company.com"
-                    icon={Mail}
+                    placeholder="e.g. FBO-12345"
+                    icon={IdCard}
                   />
                 </div>
 

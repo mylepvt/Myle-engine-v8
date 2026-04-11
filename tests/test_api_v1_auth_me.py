@@ -13,3 +13,4 @@ def test_auth_me_unauthenticated_shape() -> None:
     assert body.get("role") is None
     assert body.get("user_id") is None
     assert body.get("email") is None
+    assert body.get("fbo_id") is None

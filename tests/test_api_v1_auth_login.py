@@ -23,7 +23,7 @@ def test_password_login_success(
 
     res = client.post(
         "/api/v1/auth/login",
-        json={"email": "dev-leader@myle.local", "password": DEV_LOGIN_PASSWORD_PLAIN},
+        json={"fbo_id": "fbo-leader-001", "password": DEV_LOGIN_PASSWORD_PLAIN},
     )
     assert res.status_code == 200
     assert res.json() == {"ok": True}
@@ -33,6 +33,7 @@ def test_password_login_success(
     body = me.json()
     assert body["authenticated"] is True
     assert body["role"] == "leader"
+    assert body.get("fbo_id") == "fbo-leader-001"
 
 
 def test_password_login_wrong_password(
@@ -50,13 +51,13 @@ def test_password_login_wrong_password(
 
     res = client.post(
         "/api/v1/auth/login",
-        json={"email": "dev-leader@myle.local", "password": "wrong"},
+        json={"fbo_id": "fbo-leader-001", "password": "wrong"},
     )
     assert res.status_code == 401
     assert res.json()["error"]["code"] == "unauthorized"
 
 
-def test_password_login_unknown_email(
+def test_password_login_unknown_fbo_id(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import app.api.deps as deps_mod
@@ -71,6 +72,6 @@ def test_password_login_unknown_email(
 
     res = client.post(
         "/api/v1/auth/login",
-        json={"email": "nobody@example.com", "password": DEV_LOGIN_PASSWORD_PLAIN},
+        json={"fbo_id": "fbo-does-not-exist", "password": DEV_LOGIN_PASSWORD_PLAIN},
     )
     assert res.status_code == 401

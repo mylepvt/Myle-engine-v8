@@ -15,6 +15,8 @@ export function TeamMembersPage({ title }: Props) {
   const isAdmin = me?.authenticated && me.role === 'admin'
   const { data, isPending, isError, error, refetch } = useTeamMembersQuery()
 
+  const [fboId, setFboId] = useState('')
+  const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [newRole, setNewRole] = useState<Role>('team')
@@ -24,6 +26,8 @@ export function TeamMembersPage({ title }: Props) {
     mutationFn: createTeamMember,
     onSuccess: async () => {
       setCreateError(null)
+      setFboId('')
+      setUsername('')
       setEmail('')
       setPassword('')
       await queryClient.invalidateQueries({ queryKey: ['team', 'members'] })
@@ -45,6 +49,26 @@ export function TeamMembersPage({ title }: Props) {
             Creates a password-login account (min. 8 characters). Admin only.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+            <label className="block min-w-[10rem] flex-1">
+              <span className="mb-1 block text-xs text-muted-foreground">FBO ID (unique)</span>
+              <input
+                autoComplete="off"
+                value={fboId}
+                onChange={(e) => setFboId(e.target.value)}
+                disabled={createMut.isPending}
+                className="w-full rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2.5 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+              />
+            </label>
+            <label className="block min-w-[10rem] flex-1">
+              <span className="mb-1 block text-xs text-muted-foreground">Username (optional)</span>
+              <input
+                autoComplete="off"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                disabled={createMut.isPending}
+                className="w-full rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2.5 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+              />
+            </label>
             <label className="block min-w-[12rem] flex-1">
               <span className="mb-1 block text-xs text-muted-foreground">Email</span>
               <input
@@ -84,9 +108,16 @@ export function TeamMembersPage({ title }: Props) {
             </label>
             <Button
               type="button"
-              disabled={createMut.isPending || !email.trim() || password.length < 8}
+              disabled={
+                createMut.isPending ||
+                !fboId.trim() ||
+                !email.trim() ||
+                password.length < 8
+              }
               onClick={() =>
                 createMut.mutate({
+                  fbo_id: fboId.trim(),
+                  username: username.trim() || null,
                   email: email.trim(),
                   password,
                   role: newRole,
@@ -127,7 +158,11 @@ export function TeamMembersPage({ title }: Props) {
                 key={m.id}
                 className="surface-inset px-3 py-2.5 text-muted-foreground"
               >
-                <span className="font-medium text-foreground">{m.email}</span>
+                <span className="font-medium text-foreground">{m.fbo_id}</span>
+                {m.username ? (
+                  <span className="ml-1.5 text-muted-foreground">({m.username})</span>
+                ) : null}
+                <span className="mt-0.5 block text-xs text-muted-foreground">{m.email}</span>
                 <span className="mt-0.5 block text-xs">
                   {m.role} · joined {new Date(m.created_at).toLocaleString()}
                 </span>

@@ -18,6 +18,7 @@ from app.models.follow_up import FollowUp  # noqa: F401
 from app.models.lead import Lead  # noqa: F401
 from app.models.user import User
 from app.models.wallet_ledger import WalletLedgerEntry  # noqa: F401
+from app.constants.roles import DEV_FBO_BY_ROLE
 from app.services.dev_users import DEV_EMAIL_BY_ROLE
 
 
@@ -30,16 +31,19 @@ async def _setup_sqlite() -> tuple[object, async_sessionmaker[AsyncSession]]:
         session.add_all(
             [
                 User(
+                    fbo_id=DEV_FBO_BY_ROLE["admin"],
                     email=DEV_EMAIL_BY_ROLE["admin"],
                     role="admin",
                     hashed_password=DEV_LOGIN_BCRYPT_HASH,
                 ),
                 User(
+                    fbo_id=DEV_FBO_BY_ROLE["leader"],
                     email=DEV_EMAIL_BY_ROLE["leader"],
                     role="leader",
                     hashed_password=DEV_LOGIN_BCRYPT_HASH,
                 ),
                 User(
+                    fbo_id=DEV_FBO_BY_ROLE["team"],
                     email=DEV_EMAIL_BY_ROLE["team"],
                     role="team",
                     hashed_password=DEV_LOGIN_BCRYPT_HASH,

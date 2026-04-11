@@ -35,6 +35,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.constants.roles import ROLES
+from app.core.fbo_id import normalize_fbo_id
 from app.core.passwords import hash_password
 from app.db.session import AsyncSessionLocal
 from app.models.user import User
@@ -43,18 +44,27 @@ from app.models.user import User
 async def run(
     *,
     email: str,
+    fbo_id: str | None,
     password: str,
     role: str,
     update: bool,
 ) -> None:
     async with AsyncSessionLocal() as session:
-        await _upsert(session, email=email, password=password, role=role, update=update)
+        await _upsert(
+            session,
+            email=email,
+            fbo_id=fbo_id,
+            password=password,
+            role=role,
+            update=update,
+        )
 
 
 async def _upsert(
     session: AsyncSession,
     *,
     email: str,
+    fbo_id: str | None,
     password: str,
     role: str,
     update: bool,
@@ -63,11 +73,25 @@ async def _upsert(
     row = q.scalar_one_or_none()
     h = hash_password(password)
     if row is None:
-        u = User(email=email, role=role, hashed_password=h)
+        if not fbo_id or not fbo_id.strip():
+            print(
+                "--fbo-id is required when creating a new user (globally unique login id).",
+                file=sys.stderr,
+            )
+            raise SystemExit(1)
+        fn = normalize_fbo_id(fbo_id)
+        dup = await session.execute(select(User.id).where(User.fbo_id == fn))
+        if dup.scalar_one_or_none() is not None:
+            print(f"FBO ID {fn!r} is already registered.", file=sys.stderr)
+            raise SystemExit(1)
+        u = User(fbo_id=fn, email=email, role=role, hashed_password=h)
         session.add(u)
         await session.commit()
         await session.refresh(u)
-        print(f"OK: created user id={u.id} email={email!r} role={role}", file=sys.stderr)
+        print(
+            f"OK: created user id={u.id} fbo_id={fn!r} email={email!r} role={role}",
+            file=sys.stderr,
+        )
         return
     if not update:
         print(
@@ -83,7 +107,12 @@ async def _upsert(
 
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Create or update a Myle vl2 user (bcrypt).")
-    p.add_argument("--email", required=True, help="Unique email (login identifier).")
+    p.add_argument("--email", required=True, help="Unique email (contact / recovery).")
+    p.add_argument(
+        "--fbo-id",
+        default="",
+        help="Globally unique FBO ID (required for new users; login identifier).",
+    )
     p.add_argument(
         "--role",
         required=True,
@@ -116,9 +145,11 @@ def main() -> None:
         print("Password is required (or set CREATE_USER_PASSWORD).", file=sys.stderr)
         raise SystemExit(1)
 
+    fbo_raw = (args.fbo_id or "").strip()
     asyncio.run(
         run(
             email=args.email.strip().lower(),
+            fbo_id=fbo_raw or None,
             password=pw,
             role=args.role,
             update=args.update,

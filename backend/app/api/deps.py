@@ -17,11 +17,13 @@ __all__ = ["get_db", "AuthUser", "require_auth_user", "optional_auth_user_from_t
 
 @dataclass(frozen=True)
 class AuthUser:
-    """Authenticated principal from cookie JWT (user id + role + email claims)."""
+    """Authenticated principal from cookie JWT (user id + role + claims)."""
 
     user_id: int
     role: str
     email: str
+    fbo_id: str = ""
+    username: str = ""
 
 
 def optional_auth_user_from_token(token: Optional[str]) -> Optional[AuthUser]:
@@ -40,7 +42,17 @@ def optional_auth_user_from_token(token: Optional[str]) -> Optional[AuthUser]:
     user_id = int(sub)
     email_raw = payload.get("email")
     email = email_raw if isinstance(email_raw, str) else ""
-    return AuthUser(user_id=user_id, role=role, email=email)
+    fbo_raw = payload.get("fbo_id")
+    fbo_id = fbo_raw if isinstance(fbo_raw, str) else ""
+    un_raw = payload.get("username")
+    username = un_raw if isinstance(un_raw, str) else ""
+    return AuthUser(
+        user_id=user_id,
+        role=role,
+        email=email,
+        fbo_id=fbo_id,
+        username=username,
+    )
 
 
 def require_auth_user(request: Request) -> AuthUser:

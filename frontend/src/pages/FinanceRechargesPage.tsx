@@ -71,7 +71,7 @@ export function FinanceRechargesPage({ title }: Props) {
               <option value="">Select…</option>
               {members.data.items.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.email} ({m.role})
+                  {m.fbo_id} · {m.email} ({m.role})
                 </option>
               ))}
             </select>

@@ -14,6 +14,11 @@ class MeResponse(BaseModel):
         description="admin | leader | team when authenticated",
     )
     user_id: Optional[int] = Field(default=None, description="DB user id when JWT sub is numeric")
+    fbo_id: Optional[str] = Field(
+        default=None,
+        description="Unique FBO ID (primary directory / login identifier)",
+    )
+    username: Optional[str] = Field(default=None, description="Optional display handle when present")
     email: Optional[str] = Field(default=None, description="User email from JWT when present")
 
 
@@ -22,9 +27,9 @@ class DevLoginRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    """Email kept as str so dev domains like ``@myle.local`` validate without DNS rules."""
+    """Password login: **FBO ID** (unique) + password. Stored FBO IDs are case-insensitive."""
 
-    email: str = Field(min_length=3, max_length=320)
+    fbo_id: str = Field(min_length=1, max_length=64)
     password: str = Field(min_length=1, max_length=512)
 
 

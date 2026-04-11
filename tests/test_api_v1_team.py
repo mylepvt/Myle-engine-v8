@@ -55,6 +55,7 @@ def test_create_team_member_admin(monkeypatch: pytest.MonkeyPatch) -> None:
     res = c.post(
         "/api/v1/team/members",
         json={
+            "fbo_id": "new-member-fbo-001",
             "email": "new-member@myle.local",
             "password": "password123",
             "role": "team",
@@ -62,6 +63,7 @@ def test_create_team_member_admin(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     assert res.status_code == 201
     body = res.json()
+    assert body["fbo_id"] == "new-member-fbo-001"
     assert body["email"] == "new-member@myle.local"
     assert body["role"] == "team"
     assert "id" in body
@@ -73,7 +75,24 @@ def test_create_team_member_admin(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_create_team_member_duplicate_email(monkeypatch: pytest.MonkeyPatch) -> None:
     c = _authed_client(monkeypatch)
     assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
-    payload = {"email": "dev-leader@myle.local", "password": "password123", "role": "team"}
+    payload = {
+        "fbo_id": "duplicate-email-test-001",
+        "email": "dev-leader@myle.local",
+        "password": "password123",
+        "role": "team",
+    }
+    assert c.post("/api/v1/team/members", json=payload).status_code == 409
+
+
+def test_create_team_member_duplicate_fbo_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    c = _authed_client(monkeypatch)
+    assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+    payload = {
+        "fbo_id": "fbo-leader-001",
+        "email": "someone-else@myle.local",
+        "password": "password123",
+        "role": "team",
+    }
     assert c.post("/api/v1/team/members", json=payload).status_code == 409
 
 
@@ -82,7 +101,12 @@ def test_create_team_member_forbidden_leader(monkeypatch: pytest.MonkeyPatch) ->
     assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
     res = c.post(
         "/api/v1/team/members",
-        json={"email": "x@myle.local", "password": "password123", "role": "team"},
+        json={
+            "fbo_id": "x-fbo-001",
+            "email": "x@myle.local",
+            "password": "password123",
+            "role": "team",
+        },
     )
     assert res.status_code == 403
 
@@ -92,7 +116,12 @@ def test_create_team_member_short_password(monkeypatch: pytest.MonkeyPatch) -> N
     assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
     res = c.post(
         "/api/v1/team/members",
-        json={"email": "short-pw@myle.local", "password": "short", "role": "team"},
+        json={
+            "fbo_id": "short-pw-fbo",
+            "email": "short-pw@myle.local",
+            "password": "short",
+            "role": "team",
+        },
     )
     assert res.status_code == 422
 
@@ -106,6 +135,7 @@ def test_my_team_leader_returns_self(monkeypatch: pytest.MonkeyPatch) -> None:
     assert body["total"] == 1
     assert len(body["items"]) == 1
     assert body["items"][0]["email"] == "dev-leader@myle.local"
+    assert body["items"][0]["fbo_id"] == "fbo-leader-001"
     assert body["items"][0]["role"] == "leader"
 
 

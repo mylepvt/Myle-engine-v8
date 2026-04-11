@@ -5,9 +5,14 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def _normalize_database_url(url: str) -> str:
-    """Hosted Postgres often uses ``postgres://`` or ``postgresql://``; async engine needs ``+asyncpg``."""
+    """Normalize DSN for ``create_async_engine`` — must use an async driver (``asyncpg``)."""
     if url.startswith("postgresql+asyncpg://"):
         return url
+    # Docs / copy-paste often use sync drivers; async engine cannot use psycopg2.
+    if url.startswith("postgresql+psycopg2://"):
+        return "postgresql+asyncpg://" + url[len("postgresql+psycopg2://") :]
+    if url.startswith("postgresql+psycopg://"):
+        return "postgresql+asyncpg://" + url[len("postgresql+psycopg://") :]
     if url.startswith("postgres://"):
         return "postgresql+asyncpg://" + url[len("postgres://") :]
     if url.startswith("postgresql://"):

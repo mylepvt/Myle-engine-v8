@@ -46,6 +46,8 @@ export function DashboardLayout() {
   const envLabel = meta?.environment
 
   const displayInitial =
+    me?.fbo_id?.[0]?.toUpperCase() ??
+    me?.username?.[0]?.toUpperCase() ??
     me?.email?.[0]?.toUpperCase() ??
     me?.role?.[0]?.toUpperCase() ??
     shellRole?.[0]?.toUpperCase() ??
@@ -221,7 +223,11 @@ export function DashboardLayout() {
 
             <div
               className="flex size-9 shrink-0 items-center justify-center rounded-full border border-primary/35 bg-primary/15 text-xs font-bold text-primary"
-              title={me?.email ?? shellRole ?? ''}
+              title={
+                me?.fbo_id
+                  ? `${me.fbo_id}${me.username ? ` · ${me.username}` : ''}${me.email ? ` · ${me.email}` : ''}`
+                  : (me?.email ?? shellRole ?? '')
+              }
             >
               {displayInitial}
             </div>

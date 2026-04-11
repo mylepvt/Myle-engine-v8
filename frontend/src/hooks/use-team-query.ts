@@ -4,6 +4,8 @@ import { apiFetch } from '@/lib/api'
 
 export type TeamMemberPublic = {
   id: number
+  fbo_id: string
+  username: string | null
   email: string
   role: string
   created_at: string
@@ -56,6 +58,8 @@ async function fetchEnrollmentRequests(): Promise<TeamEnrollmentListResponse> {
 }
 
 export type TeamMemberCreateBody = {
+  fbo_id: string
+  username?: string | null
   email: string
   password: string
   role: 'admin' | 'leader' | 'team'

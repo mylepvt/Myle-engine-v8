@@ -45,7 +45,11 @@ export function MyTeamPage({ title }: Props) {
                 key={m.id}
                 className="surface-inset px-3 py-2 text-muted-foreground"
               >
-                <span className="font-medium text-foreground">{m.email}</span>
+                <span className="font-medium text-foreground">{m.fbo_id}</span>
+                {m.username ? (
+                  <span className="text-muted-foreground"> · {m.username}</span>
+                ) : null}
+                <span className="mt-0.5 block text-xs text-muted-foreground">{m.email}</span>
                 <span className="mt-0.5 block text-xs">
                   {m.role} · joined {new Date(m.created_at).toLocaleString()}
                 </span>

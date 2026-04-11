@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
+from app.core.fbo_id import normalize_fbo_id
 from app.core.passwords import hash_password
 from app.models.user import User
 from app.schemas.system_surface import SystemStubResponse
@@ -76,6 +77,13 @@ async def create_team_member(
 ) -> TeamMemberPublic:
     """Create a user (password login). Admin only — complements ``scripts/create_user.py`` for HTTP flows."""
     _require_admin(user)
+    fbo_n = normalize_fbo_id(body.fbo_id)
+    dup_fbo = await session.execute(select(User.id).where(User.fbo_id == fbo_n))
+    if dup_fbo.scalar_one_or_none() is not None:
+        raise HTTPException(
+            status_code=http_status.HTTP_409_CONFLICT,
+            detail="FBO ID already registered",
+        )
     email_n = body.email.strip().lower()
     dup = await session.execute(select(User.id).where(User.email == email_n))
     if dup.scalar_one_or_none() is not None:
@@ -83,7 +91,10 @@ async def create_team_member(
             status_code=http_status.HTTP_409_CONFLICT,
             detail="Email already registered",
         )
+    un = body.username.strip() if body.username and body.username.strip() else None
     row = User(
+        fbo_id=fbo_n,
+        username=un,
         email=email_n,
         role=body.role,
         hashed_password=hash_password(body.password),
@@ -95,7 +106,7 @@ async def create_team_member(
         await session.rollback()
         raise HTTPException(
             status_code=http_status.HTTP_409_CONFLICT,
-            detail="Email already registered",
+            detail="FBO ID or email already registered",
         ) from None
     await session.refresh(row)
     return TeamMemberPublic.model_validate(row)

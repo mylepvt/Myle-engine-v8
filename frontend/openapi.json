@@ -95,7 +95,7 @@
           "auth"
         ],
         "summary": "Login With Password",
-        "description": "Email + password; user must have ``hashed_password`` set (see migrations / admin tooling).",
+        "description": "FBO ID + password; user must have ``hashed_password`` set (see migrations / admin tooling).",
         "operationId": "login_with_password_api_v1_auth_login_post",
         "requestBody": {
           "content": {
@@ -482,6 +482,164 @@
             }
           }
         }
+      },
+      "get": {
+        "tags": [
+          "leads"
+        ],
+        "summary": "Get Lead",
+        "description": "Fetch full detail for a single lead (respects visibility rules).",
+        "operationId": "get_lead_api_v1_leads__lead_id__get",
+        "parameters": [
+          {
+            "name": "lead_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Lead Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadDetailPublic"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/leads/{lead_id}/calls": {
+      "post": {
+        "tags": [
+          "leads"
+        ],
+        "summary": "Log Call",
+        "description": "Log a call event against a lead; updates call_count, last_called_at, call_status.",
+        "operationId": "log_call_api_v1_leads__lead_id__calls_post",
+        "parameters": [
+          {
+            "name": "lead_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Lead Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CallEventCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallEventPublic"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "leads"
+        ],
+        "summary": "List Calls",
+        "description": "List all call events for a lead (respects visibility rules).",
+        "operationId": "list_calls_api_v1_leads__lead_id__calls_get",
+        "parameters": [
+          {
+            "name": "lead_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Lead Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallEventListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/team/members": {
@@ -730,7 +888,7 @@
           "system"
         ],
         "summary": "System Decision Engine",
-        "description": "Admin decision / rules placeholder.",
+        "description": "Admin \u2014 pipeline signals (stale new leads, pool depth).",
         "operationId": "system_decision_engine_api_v1_system_decision_engine_get",
         "responses": {
           "200": {
@@ -774,7 +932,7 @@
           "analytics"
         ],
         "summary": "Analytics Activity Log",
-        "description": "Admin activity feed placeholder (HTTP access logs are not queryable here yet).",
+        "description": "Admin \u2014 recent lead creations (scoped); replace with audit store when added.",
         "operationId": "analytics_activity_log_api_v1_analytics_activity_log_get",
         "responses": {
           "200": {
@@ -796,7 +954,7 @@
           "analytics"
         ],
         "summary": "Analytics Day 2 Report",
-        "description": "Admin Day 2 test report placeholder.",
+        "description": "Admin \u2014 funnel by lead status (scoped); extend when Day 2 test entities exist.",
         "operationId": "analytics_day_2_report_api_v1_analytics_day_2_report_get",
         "responses": {
           "200": {
@@ -1268,6 +1426,175 @@
         }
       }
     },
+    "/api/v1/wallet/recharge-requests": {
+      "post": {
+        "tags": [
+          "wallet"
+        ],
+        "summary": "Create Recharge Request",
+        "description": "Submit a wallet recharge request; idempotent via idempotency_key.",
+        "operationId": "create_recharge_request_api_v1_wallet_recharge_requests_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WalletRechargeCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletRechargePublic"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "wallet"
+        ],
+        "summary": "List Recharge Requests",
+        "description": "List recharge requests; admin sees all, others see only their own.",
+        "operationId": "list_recharge_requests_api_v1_wallet_recharge_requests_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by status",
+              "title": "Status"
+            },
+            "description": "Filter by status"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletRechargeListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wallet/recharge-requests/{request_id}": {
+      "patch": {
+        "tags": [
+          "wallet"
+        ],
+        "summary": "Review Recharge Request",
+        "description": "Admin-only: approve or reject a recharge request. Idempotent.",
+        "operationId": "review_recharge_request_api_v1_wallet_recharge_requests__request_id__patch",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Request Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WalletRechargeReview"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletRechargePublic"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/lead-pool": {
       "get": {
         "tags": [
@@ -1636,6 +1963,27 @@
         }
       }
     },
+    "/api/v1/gate-assistant": {
+      "get": {
+        "tags": [
+          "gate-assistant"
+        ],
+        "summary": "Get Gate Assistant",
+        "operationId": "get_gate_assistant_api_v1_gate_assistant_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GateAssistantResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health",
@@ -1679,10 +2027,154 @@
           }
         }
       }
+    },
+    "/health/migrations": {
+      "get": {
+        "summary": "Health Migrations",
+        "description": "Compare DB ``alembic_version`` to script heads (deploy / drift checks).",
+        "operationId": "health_migrations_health_migrations_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Health Migrations Health Migrations Get"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "CallEventCreate": {
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "maxLength": 32,
+            "title": "Outcome"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "outcome"
+        ],
+        "title": "CallEventCreate"
+      },
+      "CallEventListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CallEventPublic"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "CallEventListResponse"
+      },
+      "CallEventPublic": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "lead_id": {
+            "type": "integer",
+            "title": "Lead Id"
+          },
+          "user_id": {
+            "type": "integer",
+            "title": "User Id"
+          },
+          "outcome": {
+            "type": "string",
+            "title": "Outcome"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "called_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Called At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "lead_id",
+          "user_id",
+          "outcome",
+          "duration_seconds",
+          "notes",
+          "called_at",
+          "created_at"
+        ],
+        "title": "CallEventPublic"
+      },
       "ClientFeatures": {
         "properties": {
           "intelligence": {
@@ -1699,13 +2191,7 @@
       "DevLoginRequest": {
         "properties": {
           "role": {
-            "type": "string",
-            "enum": [
-              "admin",
-              "leader",
-              "team"
-            ],
-            "title": "Role"
+            "$ref": "#/components/schemas/Role"
           }
         },
         "type": "object",
@@ -1897,6 +2383,119 @@
         "type": "object",
         "title": "FollowUpUpdate"
       },
+      "GateAssistantResponse": {
+        "properties": {
+          "risk_level": {
+            "type": "string",
+            "enum": [
+              "green",
+              "yellow",
+              "red"
+            ],
+            "title": "Risk Level"
+          },
+          "progress_done": {
+            "type": "integer",
+            "title": "Progress Done"
+          },
+          "progress_total": {
+            "type": "integer",
+            "title": "Progress Total"
+          },
+          "next_action": {
+            "type": "string",
+            "title": "Next Action"
+          },
+          "next_href": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Href"
+          },
+          "checklist": {
+            "items": {
+              "$ref": "#/components/schemas/GateChecklistItem"
+            },
+            "type": "array",
+            "title": "Checklist"
+          },
+          "open_follow_ups": {
+            "type": "integer",
+            "title": "Open Follow Ups",
+            "default": 0
+          },
+          "overdue_follow_ups": {
+            "type": "integer",
+            "title": "Overdue Follow Ups",
+            "default": 0
+          },
+          "active_pipeline_leads": {
+            "type": "integer",
+            "title": "Active Pipeline Leads",
+            "default": 0
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "risk_level",
+          "progress_done",
+          "progress_total",
+          "next_action",
+          "checklist"
+        ],
+        "title": "GateAssistantResponse"
+      },
+      "GateChecklistItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "done": {
+            "type": "boolean",
+            "title": "Done"
+          },
+          "href": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Href",
+            "description": "Dashboard path segment, e.g. work/follow-ups \u2014 client prefixes /dashboard/"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "done"
+        ],
+        "title": "GateChecklistItem"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1923,6 +2522,66 @@
             "maxLength": 32,
             "title": "Status",
             "default": "new"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 320
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 5000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
           }
         },
         "type": "object",
@@ -1930,6 +2589,257 @@
           "name"
         ],
         "title": "LeadCreate"
+      },
+      "LeadDetailPublic": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "created_by_user_id": {
+            "type": "integer",
+            "title": "Created By User Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "archived_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived At"
+          },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At"
+          },
+          "in_pool": {
+            "type": "boolean",
+            "title": "In Pool",
+            "default": false
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "assigned_to_user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned To User Id"
+          },
+          "call_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Call Status"
+          },
+          "call_count": {
+            "type": "integer",
+            "title": "Call Count",
+            "default": 0
+          },
+          "last_called_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Called At"
+          },
+          "whatsapp_sent_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Whatsapp Sent At"
+          },
+          "payment_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Status"
+          },
+          "payment_amount_cents": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Amount Cents"
+          },
+          "payment_proof_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Proof Url"
+          },
+          "payment_proof_uploaded_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Proof Uploaded At"
+          },
+          "day1_completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day1 Completed At"
+          },
+          "day2_completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day2 Completed At"
+          },
+          "day3_completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day3 Completed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "status",
+          "created_by_user_id",
+          "created_at"
+        ],
+        "title": "LeadDetailPublic",
+        "description": "Extended lead detail \u2014 same fields as LeadPublic (all included)."
       },
       "LeadListResponse": {
         "properties": {
@@ -2013,6 +2923,193 @@
             "type": "boolean",
             "title": "In Pool",
             "default": false
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "assigned_to_user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned To User Id"
+          },
+          "call_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Call Status"
+          },
+          "call_count": {
+            "type": "integer",
+            "title": "Call Count",
+            "default": 0
+          },
+          "last_called_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Called At"
+          },
+          "whatsapp_sent_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Whatsapp Sent At"
+          },
+          "payment_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Status"
+          },
+          "payment_amount_cents": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Amount Cents"
+          },
+          "payment_proof_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Proof Url"
+          },
+          "payment_proof_uploaded_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Proof Uploaded At"
+          },
+          "day1_completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day1 Completed At"
+          },
+          "day2_completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day2 Completed At"
+          },
+          "day3_completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day3 Completed At"
           }
         },
         "type": "object",
@@ -2087,6 +3184,138 @@
             ],
             "title": "Restored",
             "description": "Admin only: true = undo soft-delete (clears deleted_at)"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 320
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 5000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "call_status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Call Status"
+          },
+          "whatsapp_sent": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Whatsapp Sent",
+            "description": "True = set whatsapp_sent_at to now; False = clear it"
+          },
+          "payment_status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Status"
+          },
+          "day1_completed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day1 Completed",
+            "description": "True = set day1_completed_at to now; False = clear it"
+          },
+          "day2_completed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day2 Completed",
+            "description": "True = set day2_completed_at to now; False = clear it"
+          },
+          "day3_completed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day3 Completed",
+            "description": "True = set day3_completed_at to now; False = clear it"
           }
         },
         "type": "object",
@@ -2094,11 +3323,11 @@
       },
       "LoginRequest": {
         "properties": {
-          "email": {
+          "fbo_id": {
             "type": "string",
-            "maxLength": 320,
-            "minLength": 3,
-            "title": "Email"
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Fbo Id"
           },
           "password": {
             "type": "string",
@@ -2109,11 +3338,11 @@
         },
         "type": "object",
         "required": [
-          "email",
+          "fbo_id",
           "password"
         ],
         "title": "LoginRequest",
-        "description": "Email kept as str so dev domains like ``@myle.local`` validate without DNS rules."
+        "description": "Password login: **FBO ID** (unique) + password. Stored FBO IDs are case-insensitive."
       },
       "MeResponse": {
         "properties": {
@@ -2145,6 +3374,30 @@
             ],
             "title": "User Id",
             "description": "DB user id when JWT sub is numeric"
+          },
+          "fbo_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fbo Id",
+            "description": "Unique FBO ID (primary directory / login identifier)"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username",
+            "description": "Optional display handle when present"
           },
           "email": {
             "anyOf": [
@@ -2196,6 +3449,16 @@
           "features"
         ],
         "title": "MetaResponse"
+      },
+      "Role": {
+        "type": "string",
+        "enum": [
+          "admin",
+          "leader",
+          "team"
+        ],
+        "title": "Role",
+        "description": "Stored in ``users.role`` and JWT ``role`` claim \u2014 values are stable API strings."
       },
       "SystemStubResponse": {
         "properties": {
@@ -2261,6 +3524,26 @@
       },
       "TeamMemberCreate": {
         "properties": {
+          "fbo_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Fbo Id",
+            "description": "Globally unique login / directory id"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username",
+            "description": "Optional display name; may duplicate across users"
+          },
           "email": {
             "type": "string",
             "maxLength": 320,
@@ -2274,17 +3557,12 @@
             "title": "Password"
           },
           "role": {
-            "type": "string",
-            "enum": [
-              "admin",
-              "leader",
-              "team"
-            ],
-            "title": "Role"
+            "$ref": "#/components/schemas/Role"
           }
         },
         "type": "object",
         "required": [
+          "fbo_id",
           "email",
           "password",
           "role"
@@ -2329,6 +3607,21 @@
             "type": "integer",
             "title": "Id"
           },
+          "fbo_id": {
+            "type": "string",
+            "title": "Fbo Id"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
           "email": {
             "type": "string",
             "title": "Email"
@@ -2346,6 +3639,7 @@
         "type": "object",
         "required": [
           "id",
+          "fbo_id",
           "email",
           "role",
           "created_at"
@@ -2527,6 +3821,207 @@
           "offset"
         ],
         "title": "WalletLedgerListResponse"
+      },
+      "WalletRechargeCreate": {
+        "properties": {
+          "amount_cents": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Amount Cents"
+          },
+          "utr_number": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utr Number"
+          },
+          "proof_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proof Url"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          }
+        },
+        "type": "object",
+        "required": [
+          "amount_cents"
+        ],
+        "title": "WalletRechargeCreate"
+      },
+      "WalletRechargeListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WalletRechargePublic"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "WalletRechargeListResponse"
+      },
+      "WalletRechargePublic": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "user_id": {
+            "type": "integer",
+            "title": "User Id"
+          },
+          "amount_cents": {
+            "type": "integer",
+            "title": "Amount Cents"
+          },
+          "utr_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utr Number"
+          },
+          "proof_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proof Url"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "admin_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admin Note"
+          },
+          "reviewed_by_user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed By User Id"
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "amount_cents",
+          "utr_number",
+          "proof_url",
+          "status",
+          "admin_note",
+          "reviewed_by_user_id",
+          "reviewed_at",
+          "created_at"
+        ],
+        "title": "WalletRechargePublic"
+      },
+      "WalletRechargeReview": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "admin_note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admin Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "WalletRechargeReview"
       },
       "WalletSummaryResponse": {
         "properties": {

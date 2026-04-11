@@ -11,6 +11,10 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    # Globally unique — primary sign-in identifier (case-insensitive; stored lowercase).
+    fbo_id: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
+    # Display / social handle — not unique; optional.
+    username: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True, nullable=False)
     role: Mapped[str] = mapped_column(String(32), nullable=False)
     hashed_password: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)

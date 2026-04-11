@@ -40,6 +40,9 @@ function SectionTitle({ children }: { children: string }) {
 }
 
 export function RegisterPage() {
+  /** Requested unique FBO ID (primary account identifier). */
+  const [fboId, setFboId] = useState('')
+  /** Optional display name — may match others. */
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -99,21 +102,40 @@ export function RegisterPage() {
           ) : (
           <form className="space-y-6" onSubmit={handleSubmit} noValidate>
             <div className="space-y-3.5">
-              <SectionTitle>Login credentials</SectionTitle>
+              <SectionTitle>Account</SectionTitle>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                FBO ID is your unique login across Myle. Username is optional and can match other members.
+              </p>
               <div>
                 <label
                   className="mb-1.5 flex flex-wrap items-baseline gap-1 text-sm font-semibold text-foreground"
-                  htmlFor="reg-username"
+                  htmlFor="reg-fbo-id"
                 >
-                  Username
+                  FBO ID
                   <RequiredMark />
                 </label>
                 <IconInput
+                  id="reg-fbo-id"
+                  autoComplete="off"
+                  value={fboId}
+                  onChange={(e) => setFboId(e.target.value)}
+                  placeholder="e.g. FBO-12345"
+                  icon={IdCard}
+                />
+              </div>
+              <div>
+                <label
+                  className="mb-1.5 block text-sm font-semibold text-foreground"
+                  htmlFor="reg-username"
+                >
+                  Username <span className="font-normal text-muted-foreground">(optional)</span>
+                </label>
+                <IconInput
                   id="reg-username"
-                  autoComplete="username"
+                  autoComplete="nickname"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Choose a username"
+                  placeholder="Display name"
                   icon={User}
                 />
               </div>

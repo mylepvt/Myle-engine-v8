@@ -71,7 +71,10 @@ export function DashboardHomePage() {
   const pool = useLeadPoolQuery(sessionReady)
 
   const firstName =
-    me?.email?.split('@')[0]?.split(/[._-]/)[0] ?? 'there'
+    (me?.username?.trim() && me.username.split(/\s+/)[0]) ||
+    me?.fbo_id ||
+    me?.email?.split('@')[0]?.split(/[._-]/)[0] ||
+    'there'
 
   const metrics = useMemo(() => {
     const columns = wb.data?.columns
@@ -150,8 +153,19 @@ export function DashboardHomePage() {
                 </>
               )}
             </p>
-            {me?.email ? (
-              <p className="mt-1 text-ds-caption text-subtle">{me.email}</p>
+            {me?.fbo_id || me?.email ? (
+              <p className="mt-1 text-ds-caption text-subtle">
+                {me?.fbo_id ? (
+                  <>
+                    <span className="font-medium text-foreground/90">{me.fbo_id}</span>
+                    {me?.email ? (
+                      <span className="text-muted-foreground"> · {me.email}</span>
+                    ) : null}
+                  </>
+                ) : (
+                  me?.email
+                )}
+              </p>
             ) : null}
           </div>
           <div className="hidden shrink-0 rounded-2xl border border-primary/20 bg-primary/10 p-3 text-primary sm:block">

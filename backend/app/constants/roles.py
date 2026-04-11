@@ -24,3 +24,10 @@ DEV_EMAIL_BY_ROLE: Final[dict[str, str]] = {
     Role.LEADER: "dev-leader@myle.local",
     Role.TEAM: "dev-team@myle.local",
 }
+
+# Unique login identifier for seeded dev accounts (normalized lowercase in DB).
+DEV_FBO_BY_ROLE: Final[dict[str, str]] = {
+    Role.ADMIN: "fbo-admin-001",
+    Role.LEADER: "fbo-leader-001",
+    Role.TEAM: "fbo-team-001",
+}

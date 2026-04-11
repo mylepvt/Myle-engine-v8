@@ -47,6 +47,7 @@ def test_dev_login_sets_cookie_and_me_matches(
     assert body["role"] == "leader"
     assert body["user_id"] == 2
     assert body["email"] == "dev-leader@myle.local"
+    assert body["fbo_id"] == "fbo-leader-001"
 
 
 def test_logout_clears_session(

@@ -13,6 +13,7 @@ from app.core.jwt_tokens import (
     decode_access_token,
     decode_refresh_token,
 )
+from app.core.fbo_id import normalize_fbo_id
 from app.core.passwords import verify_password
 from app.models.user import User
 from app.schemas.auth import DevLoginRequest, DevLoginResponse, LoginRequest, MeResponse
@@ -36,6 +37,8 @@ def _set_session_cookies(response: Response, user: User) -> None:
         role=user.role,
         secret=settings.secret_key,
         email=user.email,
+        fbo_id=user.fbo_id,
+        username=user.username,
         minutes=settings.jwt_access_minutes,
     )
     refresh = create_refresh_token(
@@ -81,7 +84,18 @@ async def read_me(request: Request) -> MeResponse:
         user_id = int(sub)
     email = payload.get("email")
     email_s = email if isinstance(email, str) else None
-    return MeResponse(authenticated=True, role=role, user_id=user_id, email=email_s)
+    fbo_raw = payload.get("fbo_id")
+    fbo_s = fbo_raw if isinstance(fbo_raw, str) else None
+    un_raw = payload.get("username")
+    un_s = un_raw if isinstance(un_raw, str) else None
+    return MeResponse(
+        authenticated=True,
+        role=role,
+        user_id=user_id,
+        fbo_id=fbo_s,
+        username=un_s,
+        email=email_s,
+    )
 
 
 @router.post("/dev-login", response_model=DevLoginResponse)
@@ -110,19 +124,19 @@ async def login_with_password(
     response: Response,
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> DevLoginResponse:
-    """Email + password; user must have ``hashed_password`` set (see migrations / admin tooling)."""
-    email = body.email.strip().lower()
-    result = await session.execute(select(User).where(User.email == email))
+    """FBO ID + password; user must have ``hashed_password`` set (see migrations / admin tooling)."""
+    fbo_key = normalize_fbo_id(body.fbo_id)
+    result = await session.execute(select(User).where(User.fbo_id == fbo_key))
     user = result.scalar_one_or_none()
     if user is None or not user.hashed_password:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
+            detail="Invalid FBO ID or password",
         )
     if not verify_password(body.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
+            detail="Invalid FBO ID or password",
         )
     _set_session_cookies(response, user)
     return DevLoginResponse()

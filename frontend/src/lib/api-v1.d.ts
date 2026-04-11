@@ -69,7 +69,7 @@ export interface paths {
         put?: never;
         /**
          * Login With Password
-         * @description Email + password; user must have ``hashed_password`` set (see migrations / admin tooling).
+         * @description FBO ID + password; user must have ``hashed_password`` set (see migrations / admin tooling).
          */
         post: operations["login_with_password_api_v1_auth_login_post"];
         delete?: never;
@@ -177,7 +177,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Get Lead
+         * @description Fetch full detail for a single lead (respects visibility rules).
+         */
+        get: operations["get_lead_api_v1_leads__lead_id__get"];
         put?: never;
         post?: never;
         /** Delete Lead */
@@ -186,6 +190,30 @@ export interface paths {
         head?: never;
         /** Update Lead */
         patch: operations["update_lead_api_v1_leads__lead_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/leads/{lead_id}/calls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Calls
+         * @description List all call events for a lead (respects visibility rules).
+         */
+        get: operations["list_calls_api_v1_leads__lead_id__calls_get"];
+        put?: never;
+        /**
+         * Log Call
+         * @description Log a call event against a lead; updates call_count, last_called_at, call_status.
+         */
+        post: operations["log_call_api_v1_leads__lead_id__calls_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/team/members": {
@@ -315,7 +343,7 @@ export interface paths {
         };
         /**
          * System Decision Engine
-         * @description Admin decision / rules placeholder.
+         * @description Admin — pipeline signals (stale new leads, pool depth).
          */
         get: operations["system_decision_engine_api_v1_system_decision_engine_get"];
         put?: never;
@@ -355,7 +383,7 @@ export interface paths {
         };
         /**
          * Analytics Activity Log
-         * @description Admin activity feed placeholder (HTTP access logs are not queryable here yet).
+         * @description Admin — recent lead creations (scoped); replace with audit store when added.
          */
         get: operations["analytics_activity_log_api_v1_analytics_activity_log_get"];
         put?: never;
@@ -375,7 +403,7 @@ export interface paths {
         };
         /**
          * Analytics Day 2 Report
-         * @description Admin Day 2 test report placeholder.
+         * @description Admin — funnel by lead status (scoped); extend when Day 2 test entities exist.
          */
         get: operations["analytics_day_2_report_api_v1_analytics_day_2_report_get"];
         put?: never;
@@ -704,6 +732,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/wallet/recharge-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Recharge Requests
+         * @description List recharge requests; admin sees all, others see only their own.
+         */
+        get: operations["list_recharge_requests_api_v1_wallet_recharge_requests_get"];
+        put?: never;
+        /**
+         * Create Recharge Request
+         * @description Submit a wallet recharge request; idempotent via idempotency_key.
+         */
+        post: operations["create_recharge_request_api_v1_wallet_recharge_requests_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/wallet/recharge-requests/{request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Review Recharge Request
+         * @description Admin-only: approve or reject a recharge request. Idempotent.
+         */
+        patch: operations["review_recharge_request_api_v1_wallet_recharge_requests__request_id__patch"];
+        trace?: never;
+    };
     "/api/v1/lead-pool": {
         parameters: {
             query?: never;
@@ -800,6 +872,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/gate-assistant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Gate Assistant */
+        get: operations["get_gate_assistant_api_v1_gate_assistant_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -834,10 +923,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/health/migrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Health Migrations
+         * @description Compare DB ``alembic_version`` to script heads (deploy / drift checks).
+         */
+        get: operations["health_migrations_health_migrations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** CallEventCreate */
+        CallEventCreate: {
+            /** Outcome */
+            outcome: string;
+            /** Duration Seconds */
+            duration_seconds?: number | null;
+            /** Notes */
+            notes?: string | null;
+        };
+        /** CallEventListResponse */
+        CallEventListResponse: {
+            /** Items */
+            items: components["schemas"]["CallEventPublic"][];
+            /** Total */
+            total: number;
+        };
+        /** CallEventPublic */
+        CallEventPublic: {
+            /** Id */
+            id: number;
+            /** Lead Id */
+            lead_id: number;
+            /** User Id */
+            user_id: number;
+            /** Outcome */
+            outcome: string;
+            /** Duration Seconds */
+            duration_seconds: number | null;
+            /** Notes */
+            notes: string | null;
+            /**
+             * Called At
+             * Format: date-time
+             */
+            called_at: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /**
          * ClientFeatures
          * @description Feature toggles the SPA should read once and cache (single source vs hardcoded UI).
@@ -852,11 +1002,7 @@ export interface components {
         };
         /** DevLoginRequest */
         DevLoginRequest: {
-            /**
-             * Role
-             * @enum {string}
-             */
-            role: "admin" | "leader" | "team";
+            role: components["schemas"]["Role"];
         };
         /** DevLoginResponse */
         DevLoginResponse: {
@@ -926,6 +1072,55 @@ export interface components {
              */
             completed?: boolean | null;
         };
+        /** GateAssistantResponse */
+        GateAssistantResponse: {
+            /**
+             * Risk Level
+             * @enum {string}
+             */
+            risk_level: "green" | "yellow" | "red";
+            /** Progress Done */
+            progress_done: number;
+            /** Progress Total */
+            progress_total: number;
+            /** Next Action */
+            next_action: string;
+            /** Next Href */
+            next_href?: string | null;
+            /** Checklist */
+            checklist: components["schemas"]["GateChecklistItem"][];
+            /**
+             * Open Follow Ups
+             * @default 0
+             */
+            open_follow_ups: number;
+            /**
+             * Overdue Follow Ups
+             * @default 0
+             */
+            overdue_follow_ups: number;
+            /**
+             * Active Pipeline Leads
+             * @default 0
+             */
+            active_pipeline_leads: number;
+            /** Note */
+            note?: string | null;
+        };
+        /** GateChecklistItem */
+        GateChecklistItem: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Done */
+            done: boolean;
+            /**
+             * Href
+             * @description Dashboard path segment, e.g. work/follow-ups — client prefixes /dashboard/
+             */
+            href?: string | null;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -940,6 +1135,81 @@ export interface components {
              * @default new
              */
             status: string;
+            /** Phone */
+            phone?: string | null;
+            /** Email */
+            email?: string | null;
+            /** City */
+            city?: string | null;
+            /** Source */
+            source?: string | null;
+            /** Notes */
+            notes?: string | null;
+        };
+        /**
+         * LeadDetailPublic
+         * @description Extended lead detail — same fields as LeadPublic (all included).
+         */
+        LeadDetailPublic: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Status */
+            status: string;
+            /** Created By User Id */
+            created_by_user_id: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Archived At */
+            archived_at?: string | null;
+            /** Deleted At */
+            deleted_at?: string | null;
+            /**
+             * In Pool
+             * @default false
+             */
+            in_pool: boolean;
+            /** Phone */
+            phone?: string | null;
+            /** Email */
+            email?: string | null;
+            /** City */
+            city?: string | null;
+            /** Source */
+            source?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Assigned To User Id */
+            assigned_to_user_id?: number | null;
+            /** Call Status */
+            call_status?: string | null;
+            /**
+             * Call Count
+             * @default 0
+             */
+            call_count: number;
+            /** Last Called At */
+            last_called_at?: string | null;
+            /** Whatsapp Sent At */
+            whatsapp_sent_at?: string | null;
+            /** Payment Status */
+            payment_status?: string | null;
+            /** Payment Amount Cents */
+            payment_amount_cents?: number | null;
+            /** Payment Proof Url */
+            payment_proof_url?: string | null;
+            /** Payment Proof Uploaded At */
+            payment_proof_uploaded_at?: string | null;
+            /** Day1 Completed At */
+            day1_completed_at?: string | null;
+            /** Day2 Completed At */
+            day2_completed_at?: string | null;
+            /** Day3 Completed At */
+            day3_completed_at?: string | null;
         };
         /** LeadListResponse */
         LeadListResponse: {
@@ -976,6 +1246,43 @@ export interface components {
              * @default false
              */
             in_pool: boolean;
+            /** Phone */
+            phone?: string | null;
+            /** Email */
+            email?: string | null;
+            /** City */
+            city?: string | null;
+            /** Source */
+            source?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Assigned To User Id */
+            assigned_to_user_id?: number | null;
+            /** Call Status */
+            call_status?: string | null;
+            /**
+             * Call Count
+             * @default 0
+             */
+            call_count: number;
+            /** Last Called At */
+            last_called_at?: string | null;
+            /** Whatsapp Sent At */
+            whatsapp_sent_at?: string | null;
+            /** Payment Status */
+            payment_status?: string | null;
+            /** Payment Amount Cents */
+            payment_amount_cents?: number | null;
+            /** Payment Proof Url */
+            payment_proof_url?: string | null;
+            /** Payment Proof Uploaded At */
+            payment_proof_uploaded_at?: string | null;
+            /** Day1 Completed At */
+            day1_completed_at?: string | null;
+            /** Day2 Completed At */
+            day2_completed_at?: string | null;
+            /** Day3 Completed At */
+            day3_completed_at?: string | null;
         };
         /** LeadUpdate */
         LeadUpdate: {
@@ -998,14 +1305,48 @@ export interface components {
              * @description Admin only: true = undo soft-delete (clears deleted_at)
              */
             restored?: boolean | null;
+            /** Phone */
+            phone?: string | null;
+            /** Email */
+            email?: string | null;
+            /** City */
+            city?: string | null;
+            /** Source */
+            source?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Call Status */
+            call_status?: string | null;
+            /**
+             * Whatsapp Sent
+             * @description True = set whatsapp_sent_at to now; False = clear it
+             */
+            whatsapp_sent?: boolean | null;
+            /** Payment Status */
+            payment_status?: string | null;
+            /**
+             * Day1 Completed
+             * @description True = set day1_completed_at to now; False = clear it
+             */
+            day1_completed?: boolean | null;
+            /**
+             * Day2 Completed
+             * @description True = set day2_completed_at to now; False = clear it
+             */
+            day2_completed?: boolean | null;
+            /**
+             * Day3 Completed
+             * @description True = set day3_completed_at to now; False = clear it
+             */
+            day3_completed?: boolean | null;
         };
         /**
          * LoginRequest
-         * @description Email kept as str so dev domains like ``@myle.local`` validate without DNS rules.
+         * @description Password login: **FBO ID** (unique) + password. Stored FBO IDs are case-insensitive.
          */
         LoginRequest: {
-            /** Email */
-            email: string;
+            /** Fbo Id */
+            fbo_id: string;
             /** Password */
             password: string;
         };
@@ -1030,6 +1371,16 @@ export interface components {
              */
             user_id?: number | null;
             /**
+             * Fbo Id
+             * @description Unique FBO ID (primary directory / login identifier)
+             */
+            fbo_id?: string | null;
+            /**
+             * Username
+             * @description Optional display handle when present
+             */
+            username?: string | null;
+            /**
              * Email
              * @description User email from JWT when present
              */
@@ -1053,6 +1404,12 @@ export interface components {
             auth_dev_login_enabled: boolean;
             features: components["schemas"]["ClientFeatures"];
         };
+        /**
+         * Role
+         * @description Stored in ``users.role`` and JWT ``role`` claim — values are stable API strings.
+         * @enum {string}
+         */
+        Role: "admin" | "leader" | "team";
         /** SystemStubResponse */
         SystemStubResponse: {
             /** Items */
@@ -1091,15 +1448,21 @@ export interface components {
          * @description Admin-only: create a user with password login (bcrypt stored server-side).
          */
         TeamMemberCreate: {
+            /**
+             * Fbo Id
+             * @description Globally unique login / directory id
+             */
+            fbo_id: string;
+            /**
+             * Username
+             * @description Optional display name; may duplicate across users
+             */
+            username?: string | null;
             /** Email */
             email: string;
             /** Password */
             password: string;
-            /**
-             * Role
-             * @enum {string}
-             */
-            role: "admin" | "leader" | "team";
+            role: components["schemas"]["Role"];
         };
         /** TeamMemberListResponse */
         TeamMemberListResponse: {
@@ -1116,6 +1479,10 @@ export interface components {
         TeamMemberPublic: {
             /** Id */
             id: number;
+            /** Fbo Id */
+            fbo_id: string;
+            /** Username */
+            username?: string | null;
             /** Email */
             email: string;
             /** Role */
@@ -1188,6 +1555,61 @@ export interface components {
             limit: number;
             /** Offset */
             offset: number;
+        };
+        /** WalletRechargeCreate */
+        WalletRechargeCreate: {
+            /** Amount Cents */
+            amount_cents: number;
+            /** Utr Number */
+            utr_number?: string | null;
+            /** Proof Url */
+            proof_url?: string | null;
+            /** Idempotency Key */
+            idempotency_key?: string | null;
+        };
+        /** WalletRechargeListResponse */
+        WalletRechargeListResponse: {
+            /** Items */
+            items: components["schemas"]["WalletRechargePublic"][];
+            /** Total */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
+        /** WalletRechargePublic */
+        WalletRechargePublic: {
+            /** Id */
+            id: number;
+            /** User Id */
+            user_id: number;
+            /** Amount Cents */
+            amount_cents: number;
+            /** Utr Number */
+            utr_number: string | null;
+            /** Proof Url */
+            proof_url: string | null;
+            /** Status */
+            status: string;
+            /** Admin Note */
+            admin_note: string | null;
+            /** Reviewed By User Id */
+            reviewed_by_user_id: number | null;
+            /** Reviewed At */
+            reviewed_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** WalletRechargeReview */
+        WalletRechargeReview: {
+            /** Status */
+            status: string;
+            /** Admin Note */
+            admin_note?: string | null;
         };
         /** WalletSummaryResponse */
         WalletSummaryResponse: {
@@ -1507,6 +1929,37 @@ export interface operations {
             };
         };
     };
+    get_lead_api_v1_leads__lead_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadDetailPublic"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     delete_lead_api_v1_leads__lead_id__delete: {
         parameters: {
             query?: never;
@@ -1558,6 +2011,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LeadPublic"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_calls_api_v1_leads__lead_id__calls_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                lead_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CallEventListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    log_call_api_v1_leads__lead_id__calls_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CallEventCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CallEventPublic"];
                 };
             };
             /** @description Validation Error */
@@ -2215,6 +2737,108 @@ export interface operations {
             };
         };
     };
+    list_recharge_requests_api_v1_wallet_recharge_requests_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+                /** @description Filter by status */
+                status?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalletRechargeListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_recharge_request_api_v1_wallet_recharge_requests_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WalletRechargeCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalletRechargePublic"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_recharge_request_api_v1_wallet_recharge_requests__request_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WalletRechargeReview"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalletRechargePublic"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_lead_pool_api_v1_lead_pool_get: {
         parameters: {
             query?: {
@@ -2444,6 +3068,26 @@ export interface operations {
             };
         };
     };
+    get_gate_assistant_api_v1_gate_assistant_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GateAssistantResponse"];
+                };
+            };
+        };
+    };
     health_health_get: {
         parameters: {
             query?: never;
@@ -2483,6 +3127,28 @@ export interface operations {
                 content: {
                     "application/json": {
                         [key: string]: string;
+                    };
+                };
+            };
+        };
+    };
+    health_migrations_health_migrations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
                     };
                 };
             };

@@ -22,7 +22,7 @@ def test_refresh_reissues_session(
     client = TestClient(app)
     login = client.post(
         "/api/v1/auth/login",
-        json={"email": "dev-leader@myle.local", "password": DEV_LOGIN_PASSWORD_PLAIN},
+        json={"fbo_id": "fbo-leader-001", "password": DEV_LOGIN_PASSWORD_PLAIN},
     )
     assert login.status_code == 200
     assert "myle_access" in client.cookies

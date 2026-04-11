@@ -6,6 +6,9 @@ export type MeResponse = {
   authenticated: boolean
   role: string | null
   user_id: number | null
+  /** Globally unique account id (primary). */
+  fbo_id: string | null
+  username: string | null
   email: string | null
 }
 
@@ -19,6 +22,8 @@ export async function fetchAuthMe(): Promise<MeResponse> {
     authenticated: Boolean(raw.authenticated),
     role: raw.role ?? null,
     user_id: raw.user_id ?? null,
+    fbo_id: raw.fbo_id ?? null,
+    username: raw.username ?? null,
     email: raw.email ?? null,
   }
 }
