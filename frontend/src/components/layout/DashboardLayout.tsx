@@ -1,7 +1,8 @@
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { Bell, Home, LogOut, Menu, PanelLeftClose, Search } from 'lucide-react'
 
+import { DashboardMobileTabBar } from '@/components/layout/DashboardMobileTabBar'
 import { Button } from '@/components/ui/button'
 import { DashboardOutletErrorBoundary } from '@/components/routing/DashboardOutletErrorBoundary'
 import { getDashboardNavIcon } from '@/config/dashboard-nav-icons'
@@ -24,9 +25,16 @@ export function DashboardLayout() {
   const { data: me } = useAuthMeQuery()
   const { role: shellRole, isPending: rolePending } = useDashboardShellRole()
   const navigate = useNavigate()
-  const { sidebarOpen, toggleSidebar } = useShellStore()
+  const { sidebarOpen, toggleSidebar, setSidebarOpen } = useShellStore()
   const logout = useAuthStore((s) => s.logout)
   const [headerSearch, setHeaderSearch] = useState('')
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (window.matchMedia('(max-width: 767px)').matches) {
+      setSidebarOpen(false)
+    }
+  }, [setSidebarOpen])
 
   function submitHeaderSearch(e: FormEvent) {
     e.preventDefault()
@@ -65,22 +73,35 @@ export function DashboardLayout() {
 
   return (
     <div className="flex min-h-dvh bg-background">
+      {sidebarOpen ? (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[1px] transition-opacity md:hidden"
+          aria-label="Close menu"
+          onClick={() => setSidebarOpen(false)}
+        />
+      ) : null}
+
       <aside
         className={cn(
-          'flex min-h-dvh shrink-0 flex-col border-r border-white/[0.06] bg-surface shadow-sidebar-glow transition-[width] duration-300 ease-out',
-          sidebarOpen ? 'w-[17rem]' : 'w-0 overflow-hidden border-0',
+          'flex min-h-dvh shrink-0 flex-col border-r border-border bg-surface transition-[width,transform] duration-300 ease-out',
+          sidebarOpen ? 'md:w-[17rem]' : 'md:w-0 md:overflow-hidden md:border-0',
+          'max-md:fixed max-md:left-0 max-md:top-0 max-md:z-50 max-md:h-dvh max-md:w-[min(19rem,88vw)] max-md:pt-[env(safe-area-inset-top)] max-md:shadow-[0_0_48px_rgba(0,0,0,0.65)]',
+          sidebarOpen
+            ? 'max-md:translate-x-0'
+            : 'max-md:pointer-events-none max-md:-translate-x-full',
         )}
       >
-        <div className="flex h-16 shrink-0 items-center border-b border-white/[0.06] px-4">
+        <div className="flex h-[52px] shrink-0 items-center border-b border-border px-4">
           <Link
             to="/dashboard"
-            className="font-heading text-lg font-semibold tracking-tight text-foreground"
+            className="font-heading text-[1.0625rem] font-semibold tracking-tight text-foreground"
           >
             Myle
           </Link>
           {envLabel && envLabel !== 'production' ? (
             <span
-              className="ml-2 shrink-0 rounded border border-warning/40 bg-warning/10 px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-warning"
+              className="ml-2 shrink-0 rounded-md border border-warning/45 bg-warning/12 px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-warning"
               title="Server-reported environment (APP_ENV)"
             >
               {envLabel}
@@ -88,74 +109,85 @@ export function DashboardLayout() {
           ) : null}
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden px-2 py-3 pb-2">
+        <nav className="flex flex-1 flex-col gap-2 overflow-y-auto overflow-x-hidden px-2 py-3 pb-2">
           {rolePending && shellRole == null ? (
             <div className="space-y-2 px-2" aria-busy="true" aria-label="Loading navigation">
               {Array.from({ length: 8 }).map((_, i) => (
                 <div
                   key={i}
-                  className="h-10 animate-pulse rounded-2xl bg-muted/50"
+                  className="h-11 animate-pulse rounded-[0.625rem] bg-muted/60"
                 />
               ))}
             </div>
           ) : null}
           {shellRole != null
             ? sections.map((section) => (
-            <div key={section.id}>
-              {section.label ? (
-                <p className="mb-2 px-3 text-[0.62rem] font-semibold uppercase tracking-label-wide text-muted-foreground/80">
-                  {section.label}
-                </p>
-              ) : null}
-              <ul className="flex flex-col gap-1">
-                {section.items.map((item) => {
-                  const to =
-                    item.path === '' ? '/dashboard' : `/dashboard/${item.path}`
-                  const label = resolveItemLabel(item, shellRole)
-                  const Icon = getDashboardNavIcon(item.path)
-                  return (
-                    <li key={item.path || 'index'}>
-                      <NavLink
-                        to={to}
-                        end={item.end ?? false}
-                        className={({ isActive }) =>
-                          cn(
-                            'group relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition-all duration-200',
-                            isActive
-                              ? 'bg-primary font-semibold text-primary-foreground shadow-md shadow-primary/25'
-                              : 'border border-transparent text-muted-foreground hover:bg-white/[0.06] hover:text-foreground',
-                          )
-                        }
-                      >
-                        {({ isActive }) => (
-                          <>
-                            <Icon
-                              className={cn(
-                                'size-[1.125rem] shrink-0',
-                                isActive ? 'text-primary-foreground' : 'opacity-80',
-                              )}
-                              aria-hidden
-                            />
-                            <span className="min-w-0 flex-1 truncate">
-                              {label}
-                            </span>
-                          </>
-                        )}
-                      </NavLink>
-                    </li>
-                  )
-                })}
-              </ul>
-            </div>
+                <div key={section.id}>
+                  {section.label ? (
+                    <p className="mb-1.5 px-3 text-[0.6875rem] font-semibold uppercase tracking-label-wide text-muted-foreground">
+                      {section.label}
+                    </p>
+                  ) : null}
+                  <ul
+                    className={cn(
+                      'flex flex-col overflow-hidden rounded-[0.625rem] border border-border/90 bg-card/40',
+                      section.label ? '' : '',
+                    )}
+                  >
+                    {section.items.map((item) => {
+                      const to =
+                        item.path === '' ? '/dashboard' : `/dashboard/${item.path}`
+                      const label = resolveItemLabel(item, shellRole)
+                      const Icon = getDashboardNavIcon(item.path)
+                      return (
+                        <li
+                          key={item.path || 'index'}
+                          className="border-b border-border/80 last:border-b-0"
+                        >
+                          <NavLink
+                            to={to}
+                            end={item.end ?? false}
+                            onClick={() => {
+                              if (window.matchMedia('(max-width: 767px)').matches) {
+                                setSidebarOpen(false)
+                              }
+                            }}
+                            className={({ isActive }) =>
+                              cn(
+                                'flex min-h-[44px] items-center gap-3 px-3 py-2.5 text-ds-body transition-colors active:opacity-80',
+                                isActive
+                                  ? 'bg-primary font-semibold text-primary-foreground'
+                                  : 'text-foreground/90 hover:bg-muted/50',
+                              )
+                            }
+                          >
+                            {({ isActive }) => (
+                              <>
+                                <Icon
+                                  className={cn(
+                                    'size-[1.25rem] shrink-0',
+                                    isActive ? 'text-primary-foreground' : 'text-muted-foreground',
+                                  )}
+                                  aria-hidden
+                                />
+                                <span className="min-w-0 flex-1 truncate">{label}</span>
+                              </>
+                            )}
+                          </NavLink>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
               ))
             : null}
         </nav>
 
-        <div className="mt-auto shrink-0 border-t border-border/80 p-3">
+        <div className="mt-auto shrink-0 border-t border-border p-3">
           <Button
             type="button"
             variant="outline"
-            className="w-full gap-2 border-destructive/45 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            className="w-full gap-2 border-destructive/50 text-destructive hover:bg-destructive/12 hover:text-destructive"
             onClick={() => void handleLogout()}
           >
             <LogOut className="size-4" aria-hidden />
@@ -164,13 +196,13 @@ export function DashboardLayout() {
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center gap-3 border-b border-white/[0.06] bg-background/95 px-3 shadow-header-bar backdrop-blur-xl">
+      <div className="flex min-w-0 flex-1 flex-col pt-[env(safe-area-inset-top)]">
+        <header className="flex h-[52px] shrink-0 items-center gap-2 border-b border-border bg-background/90 px-2 shadow-ios-bar backdrop-blur-xl supports-[backdrop-filter]:bg-background/75 md:px-3">
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="shrink-0 text-muted-foreground hover:text-foreground"
+            className="shrink-0"
             onClick={toggleSidebar}
             aria-label="Toggle sidebar"
           >
@@ -183,7 +215,7 @@ export function DashboardLayout() {
             role="search"
           >
             <Search
-              className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
               aria-hidden
             />
             <input
@@ -191,38 +223,38 @@ export function DashboardLayout() {
               name="q"
               value={headerSearch}
               onChange={(e) => setHeaderSearch(e.target.value)}
-              placeholder="Search leads (Enter → open list)"
-              className="h-10 w-full rounded-full border border-white/[0.08] bg-muted/40 pl-10 pr-4 text-ds-body text-foreground placeholder:text-muted-foreground shadow-glass-inset focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/25"
+              placeholder="Search leads"
+              className="h-10 w-full rounded-[0.625rem] border border-border bg-muted/50 pl-10 pr-4 text-ds-body text-foreground placeholder:text-muted-foreground focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/30"
               aria-label="Search leads"
               autoComplete="off"
             />
           </form>
 
-          <div className="flex min-w-0 flex-1 items-center justify-end gap-2 sm:flex-initial sm:gap-3">
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-2 sm:flex-initial sm:gap-2">
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="relative hidden text-muted-foreground hover:text-foreground sm:inline-flex"
+              className="relative hidden sm:inline-flex"
               aria-label="Notifications"
             >
-              <Bell className="size-5" />
-              <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-primary ring-2 ring-background shadow-[0_0_8px_hsl(68_100%_50%/0.8)]" />
+              <Bell className="size-[1.35rem]" />
+              <span className="absolute right-2 top-2 size-2 rounded-full bg-primary ring-2 ring-background" />
             </Button>
 
             {shellRole != null ? (
               <span
-                className="max-w-[7rem] truncate rounded-xl border border-white/[0.08] bg-muted/40 px-2.5 py-1.5 text-center text-ds-caption font-semibold text-foreground shadow-glass-inset sm:max-w-[9rem]"
+                className="max-w-[7rem] truncate rounded-[0.5rem] border border-border bg-muted/40 px-2 py-1.5 text-center text-ds-caption font-medium text-foreground sm:max-w-[9rem]"
                 title="Your role from the signed-in account"
               >
                 {roleShortLabel(shellRole)}
               </span>
             ) : rolePending ? (
-              <span className="inline-block h-8 w-16 animate-pulse rounded-lg bg-muted/50" />
+              <span className="inline-block h-8 w-16 animate-pulse rounded-md bg-muted/60" />
             ) : null}
 
             <div
-              className="flex size-9 shrink-0 items-center justify-center rounded-full border border-primary/35 bg-primary/15 text-xs font-bold text-primary"
+              className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-xs font-semibold text-foreground"
               title={
                 me?.fbo_id
                   ? `${me.fbo_id}${me.username ? ` · ${me.username}` : ''}${me.email ? ` · ${me.email}` : ''}`
@@ -241,11 +273,24 @@ export function DashboardLayout() {
           </div>
         </header>
 
-        <main className="relative flex-1 overflow-auto bg-gradient-to-b from-background via-background to-muted/25 p-4 md:p-6 lg:p-8">
+        <main
+          className={cn(
+            'relative flex-1 overflow-auto bg-background p-4 md:p-6 lg:p-8',
+            'pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-6 lg:pb-8',
+          )}
+        >
           <DashboardOutletErrorBoundary>
             <Outlet />
           </DashboardOutletErrorBoundary>
         </main>
+
+        {shellRole != null ? (
+          <DashboardMobileTabBar
+            role={shellRole}
+            flags={navFlags}
+            onOpenMenu={() => setSidebarOpen(true)}
+          />
+        ) : null}
       </div>
     </div>
   )

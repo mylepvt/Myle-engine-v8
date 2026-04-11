@@ -8,35 +8,45 @@ export default {
     extend: {
       fontFamily: {
         sans: [
-          'Inter',
-          'ui-sans-serif',
           'system-ui',
           '-apple-system',
           'BlinkMacSystemFont',
+          '"Segoe UI"',
+          'Roboto',
+          'Helvetica',
+          'Arial',
           'sans-serif',
         ],
-        heading: ['Inter', 'system-ui', 'sans-serif'],
+        heading: [
+          'system-ui',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          '"Segoe UI"',
+          'Roboto',
+          'sans-serif',
+        ],
       },
       fontSize: {
+        /* iOS large title feel on web (scaled for dashboard density) */
         'ds-h1': [
-          '1.5rem',
-          { lineHeight: '2rem', fontWeight: '600', letterSpacing: '-0.02em' },
+          '1.375rem',
+          { lineHeight: '1.75rem', fontWeight: '600', letterSpacing: '-0.022em' },
         ],
         'ds-h2': [
-          '1.25rem',
-          { lineHeight: '1.75rem', fontWeight: '600', letterSpacing: '-0.015em' },
+          '1.125rem',
+          { lineHeight: '1.5rem', fontWeight: '600', letterSpacing: '-0.018em' },
         ],
         'ds-h3': [
           '1rem',
-          { lineHeight: '1.5rem', fontWeight: '500', letterSpacing: '-0.01em' },
+          { lineHeight: '1.375rem', fontWeight: '600', letterSpacing: '-0.012em' },
         ],
         'ds-body': [
-          '0.875rem',
-          { lineHeight: '1.375rem', fontWeight: '400' },
+          '0.9375rem',
+          { lineHeight: '1.4rem', fontWeight: '400' },
         ],
         'ds-caption': [
-          '0.75rem',
-          { lineHeight: '1rem', fontWeight: '400' },
+          '0.8125rem',
+          { lineHeight: '1.125rem', fontWeight: '400' },
         ],
       },
       spacing: {
@@ -96,20 +106,16 @@ export default {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
         xl: 'calc(var(--radius) + 4px)',
-        '2xl': 'calc(var(--radius) + 10px)',
+        '2xl': 'calc(var(--radius) + 8px)',
       },
       letterSpacing: {
-        'label-wide': '0.08em',
+        'label-wide': '0.06em',
       },
       boxShadow: {
-        'glass-glow':
-          '0 0 48px -10px hsl(68 100% 50% / 0.35), inset 0 1px 0 0 hsl(0 0% 100% / 0.06)',
-        'glass-inset':
-          'inset 0 1px 2px rgba(0,0,0,0.35), inset 0 -1px 0 rgba(255,255,255,0.03)',
-        'sidebar-glow':
-          'inset -1px 0 0 hsl(68 100% 50% / 0.1)',
-        'header-bar':
-          '0 1px 0 0 hsl(0 0% 100% / 0.06), 0 16px 48px -20px rgba(0,0,0,0.65)',
+        'ios-bar':
+          '0 0.5px 0 0 hsl(0 0% 100% / 0.12), 0 8px 24px -12px rgba(0,0,0,0.45)',
+        'ios-card': '0 4px 24px -8px rgba(0,0,0,0.55)',
+        'glass-inset': 'inset 0 1px 1px rgba(0,0,0,0.35)',
       },
     },
   },

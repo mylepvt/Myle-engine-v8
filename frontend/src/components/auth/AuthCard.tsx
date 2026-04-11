@@ -27,14 +27,14 @@ export function AuthCard({
   return (
     <div
       className={cn(
-        'w-full max-w-[min(100%,26rem)] overflow-hidden rounded-[1.35rem] border border-white/[0.08]',
-        'bg-card shadow-[0_28px_80px_-32px_rgba(0,0,0,0.85)]',
+        'w-full max-w-[min(100%,26rem)] overflow-hidden rounded-[0.875rem] border border-border',
+        'bg-card shadow-ios-card',
         className,
       )}
     >
       <div
         className={cn(
-          'relative bg-gradient-to-br from-primary via-[hsl(68_100%_46%)] to-[hsl(72_90%_38%)]',
+          'relative bg-primary',
           variant === 'center' ? 'px-6 pb-8 pt-9 text-center' : 'px-5 pb-6 pt-6 sm:px-6',
         )}
       >
@@ -70,7 +70,7 @@ export function AuthCard({
       <div className="space-y-5 bg-card px-5 py-6 sm:px-7">{children}</div>
 
       {footer ? (
-        <div className="border-t border-white/[0.08] bg-card/80 px-5 py-4 text-center sm:px-7">
+        <div className="border-t border-border bg-card/95 px-5 py-4 text-center sm:px-7">
           {footer}
         </div>
       ) : null}

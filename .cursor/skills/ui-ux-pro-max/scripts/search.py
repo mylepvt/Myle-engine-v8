@@ -6,8 +6,8 @@ Usage: python search.py "<query>" [--domain <domain>] [--stack <stack>] [--max-r
        python search.py "<query>" --design-system [-p "Project Name"]
        python search.py "<query>" --design-system --persist [-p "Project Name"] [--page "dashboard"]
 
-Domains: style, prompt, color, chart, landing, product, ux, typography
-Stacks: html-tailwind, react, nextjs
+Domains: see CSV_CONFIG keys in core.py (e.g. style, color, product, ux, typography, icons, react, web).
+Stacks: see STACK_CONFIG / AVAILABLE_STACKS in core.py (includes vite, react, html-tailwind, nextjs, shadcn, …).
 
 Persistence (Master + Overrides pattern):
   --persist    Save design system to design-system/MASTER.md
@@ -57,7 +57,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="UI Pro Max Search")
     parser.add_argument("query", help="Search query")
     parser.add_argument("--domain", "-d", choices=list(CSV_CONFIG.keys()), help="Search domain")
-    parser.add_argument("--stack", "-s", choices=AVAILABLE_STACKS, help="Stack-specific search (html-tailwind, react, nextjs)")
+    parser.add_argument("--stack", "-s", choices=AVAILABLE_STACKS, help="Stack-specific search (see SKILL.md; Myle frontend: vite + react + html-tailwind)")
     parser.add_argument("--max-results", "-n", type=int, default=MAX_RESULTS, help="Max results (default: 3)")
     parser.add_argument("--json", action="store_true", help="Output as JSON")
     # Design system generation

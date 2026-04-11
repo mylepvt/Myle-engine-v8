@@ -4,7 +4,9 @@
 
 `python3 .cursor/skills/ui-ux-pro-max/scripts/...`
 
-Comprehensive design guide for web and mobile applications. Contains 67 styles, 96 color palettes, 57 font pairings, 99 UX guidelines, and 25 chart types across 13 technology stacks. Searchable database with priority-based recommendations.
+**Myle frontend (this app):** Source of truth is `frontend/package.json` — **Vite**, **React 19**, **Tailwind CSS**, **React Router**, TanStack Query, Zustand, Lucide. For UI implementation in this repo, use stack searches in this order: **`vite`** (bundler, env, SPA), then **`react`** (components, hooks), then **`html-tailwind`** (styling). Do not treat **`nextjs`** as the default here unless the work is explicitly Next.js.
+
+Comprehensive design guide for web and mobile applications. Contains 67 styles, 96 color palettes, 57 font pairings, 99 UX guidelines, and 25 chart types across 14 technology stacks. Searchable database with priority-based recommendations.
 
 ## Prerequisites
 
@@ -43,7 +45,7 @@ Extract key information from user request:
 - **Product type**: SaaS, e-commerce, portfolio, dashboard, landing page, etc.
 - **Style keywords**: minimal, playful, professional, elegant, dark mode, etc.
 - **Industry**: healthcare, fintech, gaming, education, etc.
-- **Stack**: React, Vue, Next.js, or default to `html-tailwind`
+- **Stack**: For **this** Myle dashboard, default to `vite` + `react` + `html-tailwind` (see block above). For generic/non-Myle work: React, Vue, Next.js, or default to `html-tailwind`.
 
 ### Step 2: Generate Design System (REQUIRED)
 
@@ -107,15 +109,17 @@ python3 .cursor/skills/ui-ux-pro-max/scripts/search.py "<keyword>" --domain <dom
 | Alternative fonts | `typography` | `--domain typography "elegant luxury"` |
 | Landing structure | `landing` | `--domain landing "hero social-proof"` |
 
-### Step 4: Stack Guidelines (Default: html-tailwind)
+### Step 4: Stack Guidelines (Myle default: vite → react → html-tailwind)
 
-Get implementation-specific best practices. If user doesn't specify a stack, **default to `html-tailwind`**.
+Get implementation-specific best practices. For **this repo’s frontend**, run **`vite`** first, then **`react`**, then **`html-tailwind`**. If the user doesn’t specify a stack and the work is **not** Myle UI, default to **`html-tailwind`**.
 
 ```bash
+python3 .cursor/skills/ui-ux-pro-max/scripts/search.py "<keyword>" --stack vite
+python3 .cursor/skills/ui-ux-pro-max/scripts/search.py "<keyword>" --stack react
 python3 .cursor/skills/ui-ux-pro-max/scripts/search.py "<keyword>" --stack html-tailwind
 ```
 
-Available stacks: `html-tailwind`, `react`, `nextjs`, `vue`, `svelte`, `swiftui`, `react-native`, `flutter`, `shadcn`, `jetpack-compose`
+Available stacks: `html-tailwind`, `react`, `vite`, `nextjs`, `vue`, `svelte`, `astro`, `nuxtjs`, `nuxt-ui`, `swiftui`, `react-native`, `flutter`, `shadcn`, `jetpack-compose`
 
 ---
 
@@ -140,8 +144,9 @@ Available stacks: `html-tailwind`, `react`, `nextjs`, `vue`, `svelte`, `swiftui`
 
 | Stack | Focus |
 |-------|-------|
-| `html-tailwind` | Tailwind utilities, responsive, a11y (DEFAULT) |
+| `html-tailwind` | Tailwind utilities, responsive, a11y (generic default) |
 | `react` | State, hooks, performance, patterns |
+| `vite` | Vite config, env (`import.meta.env`), SPA build, Vitest alignment |
 | `nextjs` | SSR, routing, images, API routes |
 | `vue` | Composition API, Pinia, Vue Router |
 | `svelte` | Runes, stores, SvelteKit |
@@ -161,7 +166,7 @@ Available stacks: `html-tailwind`, `react`, `nextjs`, `vue`, `svelte`, `swiftui`
 - Product type: Beauty/Spa service
 - Style keywords: elegant, professional, soft
 - Industry: Beauty/Wellness
-- Stack: html-tailwind (default)
+- Stack: vite + react + html-tailwind (Myle frontend default)
 
 ### Step 2: Generate Design System (REQUIRED)
 
@@ -184,6 +189,8 @@ python3 .cursor/skills/ui-ux-pro-max/scripts/search.py "elegant luxury serif" --
 ### Step 4: Stack Guidelines
 
 ```bash
+python3 .cursor/skills/ui-ux-pro-max/scripts/search.py "layout responsive form" --stack vite
+python3 .cursor/skills/ui-ux-pro-max/scripts/search.py "layout responsive form" --stack react
 python3 .cursor/skills/ui-ux-pro-max/scripts/search.py "layout responsive form" --stack html-tailwind
 ```
 
