@@ -7,8 +7,10 @@ alwaysApply: false
 # Dashboard shell (must follow)
 
 ## Single source of truth
-- All `/dashboard/*` paths and sidebar labels live in **`frontend/src/config/dashboard-nav.ts`** only.
-- Adding a screen = add **one** `DashboardNavItem` there (path + roles + label). Paths flow into `dashboardChildPathSet` automatically — do not maintain a second list.
+- All `/dashboard/*` paths, sidebar labels, stub API paths, and what renders (`full` vs `stub`) live in **`frontend/src/config/dashboard-registry.ts`** only. **`dashboard-nav.ts`** re-exports nav helpers for imports.
+- Adding a screen = add **one** entry to **`DASHBOARD_ROUTE_DEFS`** (path + section + roles + `surface` + payload). Paths flow into `dashboardChildPathSet` and stub maps automatically — do not maintain parallel lists in **`shell-stub-routes.ts`** (re-export only) or a separate route `if` chain.
+- **Roles (admin / leader / team):** ids, human-readable labels, short labels, and dev seed emails live in **`frontend/src/types/role.ts`** (`ROLE_CATALOG`). Backend mirror: **`backend/app/constants/roles.py`**. Do not duplicate role strings or `dev-*@myle.local` emails elsewhere.
+- **Route ↔ role (who may open which `/dashboard/...` path):** edit **`config/dashboard-route-roles.json` only** — the registry imports it (`routeRoles(path)`). CI/tests validate JSON against known roles; do not re-list role arrays inside **`dashboard-registry.ts`**.
 
 ## Routing
 - Under `/dashboard`, use **only** the existing pattern in `App.tsx`: `index` + **one** splat route → `DashboardNestedPage`.
@@ -22,7 +24,7 @@ alwaysApply: false
 ## Placeholders
 - Feature stubs use **`DashboardPlaceholderPage`** — **title only** unless the feature needs real layout. No “Shell” badges, route path echo, or long placeholder copy.
 - **Exception:** **`IntelligenceWorkPage`** (`/dashboard/intelligence`) — short copy + **`useMetaQuery`**; redirect to `/dashboard` when **`features.intelligence`** is false after fetch (not placeholder data).
-- **Shell stubs:** paths listed in **`frontend/src/config/shell-stub-routes.ts`** render **`ShellStubPage`** (TanStack Query → JSON stub). **`WalletPage`** / **`FinanceRechargesPage`** use **`/api/v1/wallet/*`**. **`DashboardNestedPage`** is **`lazy`** + **`Suspense`** in **`App.tsx`** for a route-level skeleton.
+- **Shell stubs:** `surface: 'stub'` entries in the registry render **`ShellStubPage`** (TanStack Query → JSON stub); **`shell-stub-routes.ts`** re-exports the derived map. **`WalletPage`** / **`FinanceRechargesPage`** use **`/api/v1/wallet/*`**. **`DashboardNestedPage`** is **`lazy`** + **`Suspense`** in **`App.tsx`** for a route-level skeleton.
 
 ## Clutter
 - No redundant tips, duplicate “Back” + header **Home**, or extra dev toggles in the chrome. Role preview stays **one** compact control unless product requires more.

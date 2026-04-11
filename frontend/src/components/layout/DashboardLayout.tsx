@@ -14,7 +14,7 @@ import { authLogout } from '@/lib/auth-api'
 import { useAuthStore } from '@/stores/auth-store'
 import { useRoleStore } from '@/stores/role-store'
 import { useShellStore } from '@/stores/shell-store'
-import { ROLES, type Role } from '@/types/role'
+import { ROLES, roleShortLabel, type Role } from '@/types/role'
 
 export function DashboardLayout() {
   useSyncRoleFromMe()
@@ -193,7 +193,7 @@ export function DashboardLayout() {
             >
               {ROLES.map((r) => (
                 <option key={r} value={r}>
-                  {r}
+                  {roleShortLabel(r)}
                 </option>
               ))}
             </select>

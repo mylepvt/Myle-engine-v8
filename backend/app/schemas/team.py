@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from app.constants.roles import Role
 
 
 class TeamMemberPublic(BaseModel):
@@ -28,7 +30,7 @@ class TeamMemberCreate(BaseModel):
     # Str (not EmailStr) so ``@myle.local`` and internal domains work without email-validator.
     email: str = Field(min_length=3, max_length=320)
     password: str = Field(min_length=8, max_length=128)
-    role: Literal["admin", "leader", "team"]
+    role: Role
 
 
 class TeamMyTeamResponse(BaseModel):

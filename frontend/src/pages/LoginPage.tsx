@@ -11,7 +11,12 @@ import { t } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 import { useRoleStore } from '@/stores/role-store'
-import { ROLES, type Role } from '@/types/role'
+import {
+  devEmailForRole,
+  ROLES,
+  roleShortLabel,
+  type Role,
+} from '@/types/role'
 
 export function LoginPage() {
   const { data: meta } = useMetaQuery()
@@ -34,7 +39,7 @@ export function LoginPage() {
 
   useEffect(() => {
     if (meta?.auth_dev_login_enabled) {
-      setEmail((e) => (e === '' ? 'dev-leader@myle.local' : e))
+      setEmail((e) => (e === '' ? devEmailForRole('leader') : e))
     }
   }, [meta?.auth_dev_login_enabled])
 
@@ -164,7 +169,7 @@ export function LoginPage() {
               >
                 {ROLES.map((r) => (
                   <option key={r} value={r}>
-                    {r}
+                    {roleShortLabel(r)}
                   </option>
                 ))}
               </select>

@@ -1,7 +1,11 @@
-/* Minimal service worker — no offline cache (Vite 8 + vite-plugin-pwa gap). Registers installability only. */
+/* Minimal SW — enables Chrome install + standalone; no offline cache. */
 self.addEventListener('install', (event) => {
   event.waitUntil(self.skipWaiting())
 })
+
 self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim())
 })
+
+/* Required for installability on some Chrome builds */
+self.addEventListener('fetch', () => {})

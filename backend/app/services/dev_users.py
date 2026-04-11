@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-DEV_EMAIL_BY_ROLE = {
-    "admin": "dev-admin@myle.local",
-    "leader": "dev-leader@myle.local",
-    "team": "dev-team@myle.local",
-}
+from app.constants.roles import DEV_EMAIL_BY_ROLE
+
+__all__ = ["DEV_EMAIL_BY_ROLE", "dev_email_for_role"]
 
 
 def dev_email_for_role(role: str) -> str:

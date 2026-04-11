@@ -1,8 +1,9 @@
 import { Suspense, lazy, useEffect } from 'react'
 import { Route, Routes } from 'react-router-dom'
 
-import { ProtectedRoute } from '@/components/routing/ProtectedRoute'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
+import { InstallAppBanner } from '@/components/pwa/InstallAppBanner'
+import { ProtectedRoute } from '@/components/routing/ProtectedRoute'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DashboardHomePage } from '@/pages/DashboardHomePage'
 import { HomePage } from '@/pages/HomePage'
@@ -30,25 +31,28 @@ export function App() {
   }, [])
 
   return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/login" element={<LoginPage />} />
+    <>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/login" element={<LoginPage />} />
 
-      <Route element={<ProtectedRoute />}>
-        <Route path="/dashboard" element={<DashboardLayout />}>
-          <Route index element={<DashboardHomePage />} />
-          <Route
-            path="*"
-            element={
-              <Suspense fallback={<DashboardRouteFallback />}>
-                <DashboardNestedPage />
-              </Suspense>
-            }
-          />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/dashboard" element={<DashboardLayout />}>
+            <Route index element={<DashboardHomePage />} />
+            <Route
+              path="*"
+              element={
+                <Suspense fallback={<DashboardRouteFallback />}>
+                  <DashboardNestedPage />
+                </Suspense>
+              }
+            />
+          </Route>
         </Route>
-      </Route>
 
-      <Route path="*" element={<NotFoundPage />} />
-    </Routes>
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+      <InstallAppBanner />
+    </>
   )
 }

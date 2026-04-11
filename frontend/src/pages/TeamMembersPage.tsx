@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { createTeamMember, useTeamMembersQuery } from '@/hooks/use-team-query'
-import { ROLES, type Role } from '@/types/role'
+import { ROLES, roleShortLabel, type Role } from '@/types/role'
 
 type Props = { title: string }
 
@@ -77,7 +77,7 @@ export function TeamMembersPage({ title }: Props) {
               >
                 {ROLES.map((r) => (
                   <option key={r} value={r}>
-                    {r}
+                    {roleShortLabel(r)}
                   </option>
                 ))}
               </select>

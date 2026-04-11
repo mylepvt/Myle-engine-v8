@@ -1,7 +1,11 @@
 import { Navigate, useParams } from 'react-router-dom'
 
-import { dashboardChildPathSet, resolveTitleForPath } from '@/config/dashboard-nav'
-import { SHELL_STUB_API_PATHS, isShellStubDashboardPath } from '@/config/shell-stub-routes'
+import {
+  dashboardChildPathSet,
+  getDashboardChildRoute,
+  resolveTitleForPath,
+  type FullUiSurface,
+} from '@/config/dashboard-registry'
 import { DashboardPlaceholderPage } from '@/pages/DashboardPlaceholderPage'
 import { LeadsWorkPage } from '@/pages/LeadsWorkPage'
 import { FollowUpsWorkPage } from '@/pages/FollowUpsWorkPage'
@@ -21,6 +25,45 @@ import { WalletPage } from '@/pages/WalletPage'
 import { FinanceRechargesPage } from '@/pages/FinanceRechargesPage'
 import { useRoleStore } from '@/stores/role-store'
 
+function renderFullUi(ui: FullUiSurface, title: string) {
+  switch (ui.kind) {
+    case 'leads':
+      return <LeadsWorkPage title={title} listMode={ui.listMode} />
+    case 'workboard':
+      return <WorkboardPage title={title} />
+    case 'follow-ups':
+      return <FollowUpsWorkPage title={title} />
+    case 'retarget':
+      return <RetargetWorkPage title={title} />
+    case 'lead-flow':
+      return <LeadFlowPage title={title} />
+    case 'lead-pool':
+      return <LeadPoolWorkPage title={title} />
+    case 'recycle-bin':
+      return <RecycleBinWorkPage title={title} />
+    case 'intelligence':
+      return <IntelligenceWorkPage title={title} />
+    case 'team-members':
+      return <TeamMembersPage title={title} />
+    case 'my-team':
+      return <MyTeamPage title={title} />
+    case 'enrollment-approvals':
+      return <EnrollmentApprovalsPage title={title} />
+    case 'system':
+      return <SystemSurfacePage title={title} surface={ui.surface} />
+    case 'analytics':
+      return <AnalyticsSurfacePage title={title} surface={ui.surface} />
+    case 'wallet':
+      return <WalletPage title={title} />
+    case 'finance-recharges':
+      return <FinanceRechargesPage title={title} />
+    default: {
+      const _exhaustive: never = ui
+      return _exhaustive
+    }
+  }
+}
+
 /**
  * Single outlet for all `/dashboard/*` segments — avoids dozens of duplicate routes.
  */
@@ -33,69 +76,25 @@ export function DashboardNestedPage() {
     return <Navigate to="/dashboard" replace />
   }
 
+  const def = getDashboardChildRoute(path)
   const title = resolveTitleForPath(path, role) ?? path
-  if (path === 'work/add-lead') {
-    return <LeadsWorkPage title={title} listMode="active" />
+
+  if (!def) {
+    return <Navigate to="/dashboard" replace />
   }
-  if (path === 'work/leads') {
-    return <LeadsWorkPage title={title} listMode="active" />
+
+  switch (def.surface) {
+    case 'stub':
+      return <ShellStubPage title={title} apiPath={def.stubApiPath} />
+    case 'placeholder':
+      return <DashboardPlaceholderPage title={title} />
+    case 'dashboard-home':
+      return <Navigate to="/dashboard" replace />
+    case 'full':
+      return renderFullUi(def.ui, title)
+    default: {
+      const _exhaustive: never = def
+      return _exhaustive
+    }
   }
-  if (path === 'work/archived') {
-    return <LeadsWorkPage title={title} listMode="archived" />
-  }
-  if (path === 'work/workboard') {
-    return <WorkboardPage title={title} />
-  }
-  if (path === 'work/follow-ups') {
-    return <FollowUpsWorkPage title={title} />
-  }
-  if (path === 'work/retarget') {
-    return <RetargetWorkPage title={title} />
-  }
-  if (path === 'work/lead-flow') {
-    return <LeadFlowPage title={title} />
-  }
-  if (path === 'work/lead-pool' || path === 'work/lead-pool-admin') {
-    return <LeadPoolWorkPage title={title} />
-  }
-  if (path === 'work/recycle-bin') {
-    return <RecycleBinWorkPage title={title} />
-  }
-  if (path === 'intelligence') {
-    return <IntelligenceWorkPage title={title} />
-  }
-  if (path === 'team/members') {
-    return <TeamMembersPage title={title} />
-  }
-  if (path === 'team/my-team') {
-    return <MyTeamPage title={title} />
-  }
-  if (path === 'team/enrollment-approvals') {
-    return <EnrollmentApprovalsPage title={title} />
-  }
-  if (path === 'system/training') {
-    return <SystemSurfacePage title={title} surface="training" />
-  }
-  if (path === 'system/decision-engine') {
-    return <SystemSurfacePage title={title} surface="decision-engine" />
-  }
-  if (path === 'system/coaching') {
-    return <SystemSurfacePage title={title} surface="coaching" />
-  }
-  if (path === 'analytics/activity-log') {
-    return <AnalyticsSurfacePage title={title} surface="activity-log" />
-  }
-  if (path === 'analytics/day-2-report') {
-    return <AnalyticsSurfacePage title={title} surface="day-2-report" />
-  }
-  if (path === 'finance/wallet') {
-    return <WalletPage title={title} />
-  }
-  if (path === 'finance/recharges') {
-    return <FinanceRechargesPage title={title} />
-  }
-  if (isShellStubDashboardPath(path)) {
-    return <ShellStubPage title={title} apiPath={SHELL_STUB_API_PATHS[path]} />
-  }
-  return <DashboardPlaceholderPage title={title} />
 }

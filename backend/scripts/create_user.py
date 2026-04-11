@@ -34,11 +34,10 @@ load_dotenv(BACKEND.parent / ".env")
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.constants.roles import ROLES
 from app.core.passwords import hash_password
 from app.db.session import AsyncSessionLocal
 from app.models.user import User
-
-ROLES = ("admin", "leader", "team")
 
 
 async def run(

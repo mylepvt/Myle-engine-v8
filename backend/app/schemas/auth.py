@@ -1,6 +1,8 @@
-from typing import Literal, Optional
+from typing import Optional
 
 from pydantic import BaseModel, Field
+
+from app.constants.roles import Role
 
 
 class MeResponse(BaseModel):
@@ -16,7 +18,7 @@ class MeResponse(BaseModel):
 
 
 class DevLoginRequest(BaseModel):
-    role: Literal["admin", "leader", "team"]
+    role: Role
 
 
 class LoginRequest(BaseModel):
