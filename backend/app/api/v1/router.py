@@ -7,6 +7,7 @@ from fastapi import APIRouter
 from app.api.v1 import (
     analytics,
     auth,
+    enroll,
     execution,
     finance_surfaces,
     follow_ups,
@@ -46,3 +47,6 @@ api_router.include_router(
     gate_assistant.router, prefix="/gate-assistant", tags=["gate-assistant"]
 )
 api_router.include_router(realtime_ws.router, tags=["realtime"])
+api_router.include_router(enroll.router, prefix="/enroll", tags=["enroll"])
+# Public watch route — no /enroll prefix so the URL is /api/v1/watch/{token}
+api_router.include_router(enroll.watch_router, tags=["watch"])

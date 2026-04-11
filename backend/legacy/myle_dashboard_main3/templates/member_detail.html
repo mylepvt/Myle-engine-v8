@@ -1,0 +1,474 @@
+{% extends "base.html" %}
+{% block title %}@{{ member.username }} – Activity{% endblock %}
+
+{% block page_title %}Member: @{{ member.username }}{% endblock %}
+
+{% block content %}
+
+<!-- Back + Status Badge -->
+<div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+  <a href="{{ url_for('admin_members') }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>All Members
+  </a>
+  {% if member.status == 'approved' %}
+    <span class="badge bg-success fs-6"><i class="bi bi-check-circle me-1"></i>Active</span>
+  {% elif member.status == 'pending' %}
+    <span class="badge bg-warning text-dark fs-6">Pending Approval</span>
+  {% else %}
+    <span class="badge bg-danger fs-6">Rejected</span>
+  {% endif %}
+  <div class="ms-auto d-flex gap-2 flex-wrap">
+    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editMemberModal">
+      <i class="bi bi-pencil me-1"></i>Edit Member
+    </button>
+    <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#walletAdjustModal">
+      <i class="bi bi-wallet2 me-1"></i>Adjust Wallet
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteMemberModal">
+      <i class="bi bi-trash me-1"></i>Delete
+    </button>
+  </div>
+</div>
+
+<!-- Profile Header -->
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      {% if member.display_picture %}
+        <img src="{{ member.display_picture }}" class="rounded-circle" width="72" height="72"
+             style="object-fit:cover;">
+      {% else %}
+        <div class="rounded-circle d-flex align-items-center justify-content-center"
+             style="width:72px;height:72px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;font-size:1.75rem;font-weight:700;flex-shrink:0;">
+          {{ member.username[0]|upper }}
+        </div>
+      {% endif %}
+      <div>
+        <h4 class="mb-1 fw-bold">@{{ member.username }}</h4>
+        <div class="d-flex flex-wrap gap-3 small text-muted">
+          {% if member.fbo_id %}
+            <span><i class="bi bi-person-badge me-1"></i>FBO: {{ member.fbo_id }}</span>
+          {% endif %}
+          {% if member.upline_name %}
+            <span><i class="bi bi-diagram-3 me-1"></i>Upline: @{{ member.upline_name }}</span>
+          {% endif %}
+          {% if member.phone %}
+            <span><i class="bi bi-telephone me-1"></i>{{ member.phone }}</span>
+          {% endif %}
+          {% if member.email %}
+            <span><i class="bi bi-envelope me-1"></i>{{ member.email }}</span>
+          {% endif %}
+          <span><i class="bi bi-calendar me-1"></i>Joined {{ member.created_at[:10] }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="fw-bold fs-3 text-primary">{{ metrics.total }}</div>
+      <div class="text-muted small">Total Leads</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="fw-bold fs-3 text-success">{{ metrics.paid }}</div>
+      <div class="text-muted small">Paid ₹{{ payment_amount|int }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="fw-bold fs-3 text-info">{{ metrics.converted }}</div>
+      <div class="text-muted small">Converted</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="fw-bold fs-3 text-warning">₹{{ metrics.revenue|int }}</div>
+      <div class="text-muted small">Revenue</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="fw-bold fs-3" style="color:#6366f1;">{{ metrics.day1 }}</div>
+      <div class="text-muted small">Day 1 Done</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="fw-bold fs-3" style="color:#8b5cf6;">{{ metrics.day2 }}</div>
+      <div class="text-muted small">Day 2 Done</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="fw-bold fs-3 text-secondary">{{ metrics.interviews }}</div>
+      <div class="text-muted small">Interviews</div>
+    </div>
+  </div>
+    <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3" style="cursor:pointer;"
+         data-bs-toggle="modal" data-bs-target="#walletAdjustModal" title="Click to adjust wallet">
+      <div class="fw-bold fs-3 {% if wallet.balance > 0 %}text-success{% else %}text-secondary{% endif %}">
+        ₹{{ wallet.balance|rupee }}
+      </div>
+      <div class="text-muted small">Available for pool</div>
+      <div class="text-muted mt-1" style="font-size:0.68rem;line-height:1.3;">
+        Credits ₹{{ wallet.recharged|rupee }} · Spend ₹{{ wallet.spent|rupee }}
+      </div>
+      {% if wallet.balance == 0 and wallet.spent > wallet.recharged %}
+      <div class="small text-warning mt-1 px-1" style="font-size:0.62rem;">
+        Pool spend exceeds credits — add more for available balance.
+      </div>
+      {% endif %}
+      <div class="text-muted small mt-1"><i class="bi bi-pencil-fill me-1" style="font-size:0.65rem;"></i>Adjust wallet</div>
+    </div>
+  </div>
+  {% if member_inactivity_hours is not none %}
+  <div class="col-12 col-md-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div>
+          <div class="text-muted small">Hours since last logged activity</div>
+          <div class="fw-bold fs-4 {% if member_inactivity_hours >= 72 %}text-danger{% elif member_inactivity_hours >= 48 %}text-warning{% else %}text-secondary{% endif %}">
+            {{ member_inactivity_hours }}h
+          </div>
+          <div class="small text-muted">Warn ≥24h · Block claim ≥48h · Lock ≥72h</div>
+        </div>
+        <form method="post" action="{{ url_for('admin_reset_member_inactivity', username=member.username) }}" class="m-0">
+          <button type="submit" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-arrow-counterclockwise me-1"></i>Reset activity clock
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% if member.role in ('team','leader') and member.status == 'approved'
+        and (member.discipline_status == 'removed' or member.access_blocked) %}
+  <div class="col-12">
+    <div class="alert alert-warning border-0 py-2 mb-0">
+      <div class="small fw-semibold mb-1">Removed / blocked by system discipline</div>
+      <form method="post" action="{{ url_for('admin_restore_member_discipline', username=member.username) }}" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn btn-sm btn-success">
+          Restore member (reset streaks — Step 7 re-entry)
+        </button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Conversion rates row -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-4">
+    <div class="card border-0 shadow-sm p-3">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span class="small text-muted">Paid %</span>
+        <span class="fw-bold">{{ metrics.paid196_pct }}%</span>
+      </div>
+      <div class="progress" style="height:6px;">
+        <div class="progress-bar bg-success" style="width:{{ [metrics.paid196_pct,100]|min }}%"></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="card border-0 shadow-sm p-3">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span class="small text-muted">Close Rate</span>
+        <span class="fw-bold">{{ metrics.close_pct }}%</span>
+      </div>
+      <div class="progress" style="height:6px;">
+        <div class="progress-bar bg-primary" style="width:{{ [metrics.close_pct,100]|min }}%"></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="card border-0 shadow-sm p-3">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span class="small text-muted">Rev / Lead</span>
+        <span class="fw-bold">₹{{ metrics.rev_per_lead }}</span>
+      </div>
+      <div class="progress" style="height:6px;">
+        <div class="progress-bar bg-warning" style="width:{{ [metrics.paid196_pct,100]|min }}%"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Status Breakdown -->
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-transparent border-0 fw-semibold pt-3">
+    <i class="bi bi-bar-chart-line me-2 text-primary"></i>Lead Status Breakdown
+  </div>
+  <div class="card-body">
+    <div class="row g-2">
+      {% for s, count in status_data.items() %}
+      <div class="col-6 col-sm-4 col-md-3">
+        <div class="d-flex justify-content-between align-items-center p-2 rounded border small">
+          <span class="text-muted">{{ s }}</span>
+          <span class="badge bg-secondary-subtle text-secondary fw-bold">{{ count }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Recent Leads -->
+  <div class="col-12 col-lg-7">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-transparent border-0 fw-semibold pt-3 d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-people me-2 text-primary"></i>Recent Leads (last 20)</span>
+        <a href="{{ url_for('leads') }}?q={{ member.username }}" class="btn btn-xs btn-outline-primary">View All</a>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle mb-0 small">
+            <thead class="table-light text-muted">
+              <tr>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Status</th>
+                <th class="text-center">Paid</th>
+                <th>Date</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for lead in recent_leads %}
+              <tr>
+                <td class="fw-semibold">{{ lead.name }}</td>
+                <td class="text-muted">{{ lead.phone }}</td>
+                <td><span class="badge status-{{ lead.status|replace(' ','') }}">{{ lead.status }}</span></td>
+                <td class="text-center">
+                  {% if lead.payment_done %}
+                    <i class="bi bi-check-circle-fill text-success"></i>
+                  {% else %}
+                    <i class="bi bi-circle text-muted"></i>
+                  {% endif %}
+                </td>
+                <td class="text-muted">{{ lead.created_at[:10] }}</td>
+                <td>
+                  <a href="{{ url_for('edit_lead', lead_id=lead.id) }}"
+                     class="btn btn-xs btn-outline-secondary">
+                    <i class="bi bi-pencil"></i>
+                  </a>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="6" class="text-center text-muted py-4">No leads yet.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reports + Downlines -->
+  <div class="col-12 col-lg-5">
+    <!-- Recent Reports -->
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-transparent border-0 fw-semibold pt-3">
+        <i class="bi bi-clipboard-data me-2 text-success"></i>Recent Daily Reports
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle mb-0 small">
+            <thead class="table-light text-muted">
+              <tr>
+                <th>Date</th>
+                <th class="text-center">Calls</th>
+                <th class="text-center">Picked</th>
+                <th class="text-center">Enrolled</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in recent_reports %}
+              <tr>
+                <td class="fw-semibold">{{ r.report_date }}</td>
+                <td class="text-center">{{ r.total_calling }}</td>
+                <td class="text-center">{{ r.calls_picked }}</td>
+                <td class="text-center">
+                  <span class="badge bg-success-subtle text-success">{{ r.enrollments_done }}</span>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="4" class="text-center text-muted py-3">No reports submitted yet.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Downlines -->
+    {% if downlines %}
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-transparent border-0 fw-semibold pt-3">
+        <i class="bi bi-diagram-3 me-2" style="color:#8b5cf6;"></i>Direct Downlines ({{ downlines|length }})
+      </div>
+      <div class="card-body">
+        <div class="d-flex flex-wrap gap-2">
+          {% for d in downlines %}
+          <a href="{{ url_for('member_detail', username=d.username) }}"
+             class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-person me-1"></i>@{{ d.username }}
+            {% if d.status == 'approved' %}
+              <span class="badge bg-success ms-1" style="font-size:0.65rem;">✓</span>
+            {% elif d.status == 'pending' %}
+              <span class="badge bg-warning text-dark ms-1" style="font-size:0.65rem;">⏳</span>
+            {% endif %}
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ── Wallet Adjust Modal ────────────────────────────── -->
+<div class="modal fade" id="walletAdjustModal" tabindex="-1" aria-labelledby="walletAdjustLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <form method="post" action="{{ url_for('admin_wallet_adjust', username=member.username) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="modal-header modal-header-indigo">
+          <h5 class="modal-title" id="walletAdjustLabel">
+            <i class="bi bi-wallet2 me-2"></i>Adjust Wallet — @{{ member.username }}
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+
+          <!-- Current balance display (available = max(0, credits − pool spend)) -->
+          <div class="rounded p-3 mb-4 text-center"
+               style="background:#f5f3ff;border:1px solid #e0d9ff;">
+            <div class="text-muted small mb-1">Available (for pool claims)</div>
+            <div class="fw-bold fs-3 {% if wallet.balance > 0 %}text-success{% else %}text-secondary{% endif %}">
+              ₹{{ wallet.balance|rupee }}
+            </div>
+            <div class="small text-muted mt-2">
+              Total credits ₹{{ wallet.recharged|rupee }} · Pool spend ₹{{ wallet.spent|rupee }}
+            </div>
+            {% if wallet.balance == 0 and wallet.spent > wallet.recharged %}
+            <div class="small text-warning mt-2 mb-0">
+              Spend is higher than credits, so available stays ₹0 until credits exceed spend.
+            </div>
+            {% endif %}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">
+              Amount <span class="text-danger">*</span>
+              <span class="text-muted fw-normal small ms-1">(use negative to deduct, e.g. -500)</span>
+            </label>
+            <div class="input-group">
+              <span class="input-group-text fw-bold">₹</span>
+              <input type="number" name="amount" class="form-control form-control-lg fw-bold"
+                     placeholder="e.g. 500 or -200" step="1" required autofocus>
+            </div>
+          </div>
+
+          <div class="mb-1">
+            <label class="form-label fw-semibold">Note / Reason</label>
+            <input type="text" name="note" class="form-control"
+                   placeholder="e.g. Bonus credit, Event refund, Penalty…">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success px-4 fw-semibold">
+            <i class="bi bi-check-circle me-1"></i>Apply Adjustment
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal fade" id="editMemberModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('admin_edit_member', username=member.username) }}">
+        <div class="modal-header modal-header-indigo">
+          <h5 class="modal-title text-white"><i class="bi bi-pencil me-2"></i>Edit Member — @{{ member.username }}</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-info small py-2 mb-3">
+            <i class="bi bi-info-circle me-1"></i>
+            Leave a field blank to keep it unchanged. Username must be unique and at least 3 characters.
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">New Username</label>
+            <div class="input-group">
+              <span class="input-group-text">@</span>
+              <input type="text" name="new_username" class="form-control"
+                     placeholder="{{ member.username }}" autocomplete="off">
+            </div>
+            <div class="form-text">Current: @{{ member.username }}</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">New Email Address</label>
+            <input type="email" name="new_email" class="form-control"
+                   placeholder="{{ member.email or 'No email set' }}" autocomplete="off">
+            <div class="form-text">Current: {{ member.email or '(not set)' }}</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary fw-semibold px-4">
+            <i class="bi bi-check-circle me-1"></i>Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Member Modal -->
+<div class="modal fade" id="deleteMemberModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content border-danger">
+      <form method="post" action="{{ url_for('admin_delete_member', username=member.username) }}">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Permanently Delete Member</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-danger">
+            <strong>⚠️ This action cannot be undone!</strong><br>
+            Deleting @{{ member.username }} will permanently remove their account, wallet history, and reports.
+            Their claimed leads will be returned to the pool.
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Type <code>{{ member.username }}</code> to confirm:</label>
+            <input type="text" name="confirm_username" class="form-control border-danger"
+                   placeholder="Type username to confirm" autocomplete="off" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger fw-semibold px-4">
+            <i class="bi bi-trash me-1"></i>Delete Permanently
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

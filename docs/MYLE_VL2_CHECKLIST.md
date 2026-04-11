@@ -2,6 +2,8 @@
 
 **Full phased plan + progress snapshot:** [`MYLE_VL2_ROADMAP.md`](./MYLE_VL2_ROADMAP.md) — nitty-gritty ticks here; roadmap has order and the progress table.
 
+**Parity lock (legacy = spec):** [`LEGACY_100_PARITY_LOCK.md`](./LEGACY_100_PARITY_LOCK.md) — vl2 must match old app unless documented in [`LEGACY_PARITY_MAPPING.md`](./LEGACY_PARITY_MAPPING.md).
+
 **Names**
 
 - **This repo / folder:** `myle vl2` — new stack (FastAPI + Vite/React, velvet UI).
@@ -122,6 +124,11 @@ Stub = contract only; **Done** = backed by DB + rules.
 - [x] Pytest: wallet + shell stub routers + broader domain coverage (**~87+** tests in CI)
 - [x] Frontend tests — **Vitest + Testing Library** (`npm run test`); **LoginPage** + **`ProtectedRoute`** (CI)
 - [x] **OpenAPI → TS types** — `scripts/export_openapi.py` writes `frontend/openapi.json`; **`npm run generate-api-types`** (in `frontend/`) refreshes `src/lib/api-v1.d.ts` via `npx openapi-typescript@7.13.0` (run after API contract changes; commit both JSON + `.d.ts`)
+
+## Phase 7 — Testing & safety
+
+- [x] **`tests/`** — Validated subsets: **auth** (`test_api_v1_auth_*`, `test_auth_rate_limit`), **leads flow** (`leads`, `workboard`, `follow_ups`, `retarget`), **wallet** (`test_api_v1_wallet`). Run: **`bash scripts/verify_phase7.sh`** (see **`scripts/README.md`**).
+- [x] **`scripts/`** — **`verify_phase7.sh`** / **`verify_wave_a.sh`**; **`run_alembic_upgrade.sh`** (local Alembic). **Migrations + data path:** Alembic under **`backend/alembic/`**; legacy import + user bootstrap in **`backend/scripts/`** (`import_legacy_sqlite.py`, `create_user.py`, `legacy_sqlite_inspect.py`) — documented in **`backend/README.md`** and **`scripts/README.md`**.
 
 ## Cursor / team rules
 

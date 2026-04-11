@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+{% block title %}Team Reports — Myle Community{% endblock %}
+{% block page_title %}My Team Reports{% endblock %}
+
+{% block content %}
+
+{# Date picker #}
+<div class="d-flex align-items-center gap-2 mb-3">
+  <form method="get" class="d-flex align-items-center gap-2">
+    <label class="small fw-semibold text-muted">Date:</label>
+    <input type="date" name="date" value="{{ date_filter }}"
+           class="form-control form-control-sm" style="width:auto;"
+           onchange="this.form.submit()">
+  </form>
+  <span class="badge bg-light text-dark border">{{ reports|length }} reports submitted</span>
+  {% if pending_proofs %}
+  <a href="{{ url_for('enrollment_approvals') }}" class="btn btn-sm btn-warning fw-semibold">
+    <i class="bi bi-receipt-cutoff me-1"></i>Pending Approval Enrollments
+    <span class="badge bg-dark ms-1">{{ pending_proofs|length }}</span>
+  </a>
+  {% else %}
+  <button class="btn btn-sm btn-outline-warning" disabled>
+    <i class="bi bi-receipt-cutoff me-1"></i>Pending Approval Enrollments
+  </button>
+  {% endif %}
+  <a href="{{ url_for('team_dashboard') }}" class="btn btn-sm btn-outline-secondary ms-auto">Back to Dashboard</a>
+</div>
+
+{% if perf_state and perf_state.get('alerts') %}
+<div class="mb-3">
+  {% for a in perf_state.alerts %}
+  <div class="alert alert-{% if a.level == 'warning' %}warning{% elif a.level == 'info' %}info{% else %}danger{% endif %} border-0 py-2 mb-2">
+    {{ a.text }}
+  </div>
+  {% endfor %}
+  {% if perf_state.get('show_grace_form') and perf_state.daily_target and perf_state.daily_target > 0 %}
+  <div class="card border-0 shadow-sm mb-2">
+    <div class="card-body py-2 px-3">
+      <form method="post" action="{{ url_for('request_performance_grace') }}" class="row g-2 align-items-end">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="col-12 col-md-5">
+          <input type="text" name="reason_text" class="form-control form-control-sm" required minlength="8" placeholder="Grace reason">
+        </div>
+        <div class="col-6 col-md-3">
+          <input type="date" name="expected_return_date" class="form-control form-control-sm" required>
+        </div>
+        <div class="col-6 col-md-2">
+          <button type="submit" class="btn btn-sm btn-outline-primary w-100">Request grace</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{# Live data row (from leads table — always real-time) #}
+<div class="mb-1" style="font-size:0.68rem;color:#6b7280;font-weight:600;letter-spacing:.04em;">
+  LIVE DATA (from system)
+</div>
+<div class="row g-2 mb-3">
+  {% for label, val, color in [
+    ('Claimed Today',  live_summary.leads_claimed_today, 'primary'),
+    ('Calls Today',    live_summary.calls_made_today,    'success'),
+    ('Enrolled Today', live_summary.enrolled_today,      'warning'),
+    ('In Day 1',       live_summary.day1_total,          'info'),
+    ('In Day 2',       live_summary.day2_total,          'purple'),
+    ('Converted',      live_summary.converted_total,     'secondary'),
+  ] %}
+  <div class="col-4 col-md-2">
+    <div class="card border-0 shadow-sm text-center py-2" style="border-top:2px solid #e5e7eb;">
+      <div class="fw-bold text-{{ color }}" style="font-size:1.3rem;">{{ val }}</div>
+      <div style="font-size:0.62rem;color:#9ca3af;">{{ label }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if pending_proofs %}
+<div id="pending-enrollment-approvals" class="card border-0 shadow-sm mb-3" style="border-left:4px solid #f59e0b!important;">
+  <div class="card-header py-2 d-flex align-items-center gap-2"
+       style="background:rgba(245,158,11,.08);border-bottom:1px solid rgba(245,158,11,.2);">
+    <i class="bi bi-receipt-cutoff text-warning"></i>
+    <span class="fw-semibold small">₹196 Screenshot Review</span>
+    <span class="badge bg-warning text-dark ms-1">{{ pending_proofs|length }} pending</span>
+    <span class="text-muted ms-auto" style="font-size:.68rem;">Team member ne upload kiya — approve ya reject karo</span>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0 small">
+        <thead class="table-light">
+          <tr>
+            <th>Lead</th>
+            <th>Team Member</th>
+            <th>Screenshot</th>
+            <th>Uploaded</th>
+            <th class="text-center">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in pending_proofs %}
+          <tr>
+            <td>
+              <span class="fw-semibold">{{ p.name }}</span>
+              <div class="text-muted" style="font-size:.7rem;">{{ p.phone }}</div>
+            </td>
+            <td>
+              <span class="badge bg-success-subtle text-success">@{{ p.assigned_to }}</span>
+            </td>
+            <td>
+              {% if p.payment_proof_path %}
+              <a href="{{ p.payment_proof_path }}" target="_blank"
+                 class="btn btn-xs btn-outline-primary">
+                <i class="bi bi-image me-1"></i>View
+              </a>
+              {% else %}
+              <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td class="text-muted" style="font-size:.72rem;">{{ p.updated_at[:16] if p.updated_at else '—' }}</td>
+            <td class="text-center">
+              <form method="POST"
+                    action="{{ url_for('review_payment_proof', lead_id=p.id) }}"
+                    class="d-inline-flex gap-1 align-items-center flex-wrap justify-content-center">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="next" value="{{ url_for('leader_team_reports', date=date_filter) }}">
+                <input type="hidden" name="review_action" value="">
+                <button type="submit"
+                        class="btn btn-xs btn-success"
+                        onclick="this.form.querySelector('[name=review_action]').value='approve';return confirm('₹196 proof approve karo — @{{ p.assigned_to }}?')">
+                  <i class="bi bi-check-lg"></i> Approve
+                </button>
+                <button type="submit"
+                        class="btn btn-xs btn-danger"
+                        onclick="this.form.querySelector('[name=review_action]').value='reject';let n=prompt('Reject reason (optional):');if(n===null)return false;this.form.querySelector('[name=note]').value=n;return true;">
+                  <i class="bi bi-x-lg"></i> Reject
+                </button>
+                <input type="hidden" name="note" value="">
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if d2_eval_rows %}
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-header bg-white py-2 fw-semibold small">Day 2 business test (team)</div>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0">
+      <thead class="table-light"><tr><th>Lead</th><th>Member</th><th>Status</th><th>Test</th><th>Score</th><th>Attempts</th></tr></thead>
+      <tbody>
+        {% for r in d2_eval_rows %}
+        <tr>
+          <td class="fw-semibold">{{ r.name }}</td>
+          <td>{{ r.assigned_to }}</td>
+          <td><span class="badge bg-secondary">{{ r.status }}</span></td>
+          <td>{{ r.test_status or 'pending' }}</td>
+          <td>{{ r.test_score or 0 }}/30</td>
+          <td>{{ r.test_attempts or 0 }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{# Manual reports summary row #}
+<div class="mb-1" style="font-size:0.68rem;color:#6b7280;font-weight:600;letter-spacing:.04em;">
+  MANUAL REPORTS (submitted by team)
+</div>
+<div class="row g-2 mb-3">
+  {% for label, key, color in [
+    ('Total Calls', 'total_calling', 'primary'),
+    ('Leads Claimed', 'leads_claimed', 'info'),
+    ('Calls Picked', 'calls_picked', 'success'),
+    ('Enrolled', 'enrollments_done', 'warning'),
+    ('2cc Plan', 'plan_2cc', 'purple'),
+    ('Seat Hold', 'seat_holdings', 'secondary'),
+  ] %}
+  <div class="col-4 col-md-2">
+    <div class="card border-0 shadow-sm text-center py-2">
+      <div class="fw-bold text-{{ color }}" style="font-size:1.3rem;">
+        {{ summary[key] }}
+      </div>
+      <div style="font-size:0.62rem;color:#9ca3af;">{{ label }}</div>
+    </div>
+  </div>
+  {% endfor %}
+ </div>
+
+{# Missing reports #}
+{% if missing %}
+<div class="alert alert-danger py-2 mb-3 d-flex align-items-center gap-2"
+     style="border-radius:10px;">
+  <i class="bi bi-exclamation-circle-fill flex-shrink-0"></i>
+  <div class="small">
+    <span class="fw-semibold">Report not submitted:</span>
+    {{ missing | join(', ') }}
+  </div>
+  <span class="ms-auto small text-muted">{{ today }}</span>
+</div>
+{% endif %}
+
+{# Reports table #}
+{% if reports %}
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-sm table-hover align-middle mb-0 small">
+      <thead class="table-light">
+        <tr>
+          <th>Member</th>
+          <th class="text-center">Calls</th>
+          <th class="text-center">Claimed</th>
+          <th class="text-center">Picked</th>
+          <th class="text-center">Enrolled</th>
+          <th class="text-center">2cc</th>
+          <th class="text-center">Seat</th>
+          <th>Remarks</th>
+          <th class="text-center">Verified</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reports %}
+        <tr>
+          <td class="fw-semibold">{{ r.username }}</td>
+          <td class="text-center">{{ r.total_calling or 0 }}</td>
+          <td class="text-center">{{ r.leads_claimed if r.leads_claimed is defined else r.pdf_covered or 0 }}</td>
+          <td class="text-center">{{ r.calls_picked or 0 }}</td>
+          <td class="text-center">{{ r.enrollments_done or 0 }}</td>
+          <td class="text-center">{{ r.plan_2cc or 0 }}</td>
+          <td class="text-center">{{ r.seat_holdings or 0 }}</td>
+          <td style="max-width:150px;" class="text-truncate text-muted small">
+            {{ r.remarks or '—' }}
+          </td>
+          <td class="text-center">
+            {% if r.system_verified %}
+            <span class="badge bg-success" style="font-size:0.65rem;">✅ Verified</span>
+            {% else %}
+            <span class="badge bg-light text-muted border" style="font-size:0.65rem;">Manual</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+ </div>
+{% else %}
+<div class="text-muted text-center py-4">
+  <i class="bi bi-inbox fs-2 d-block mb-2 opacity-50"></i>
+  No reports submitted for {{ date_filter }}.
+  </div>
+{% endif %}
+
+{% endblock %}

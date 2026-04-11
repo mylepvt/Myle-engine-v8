@@ -1,5 +1,11 @@
 # Myle-Dashboard-main-3 (reference)
 
+- **`static/`** — Bootstrap, icons, PWA (`manifest.json`, `sw.js`), page CSS/JS. Snapshot: **`static/README.md`** · vl2: Vite **`frontend/`** build.
+- **`templates/`** — Jinja2 HTML (74 files). Snapshot: **`templates/README.md`** · vl2: React **`frontend/src`**.
+- **`TRAINING_FIX_SUMMARY.md`** — Monolith training page fixes (`templates/training.html`, podcast link behavior, sample `training_videos` seed notes, test/certificate flow). **Historical** — vl2 training surface is **`GET /api/v1/system/training`** (stub) + **`/dashboard/system/training`** until product ships real content.
+- **`TUTORIAL_SETUP.md`** — How to generate a Hindi screen-capture tutorial (**FFmpeg**, **Playwright**, separate `tutorial_video/` tree in old repos). **Not** part of vl2; keep as ops/docs reference only.
+- **`docs/`** — Monolith design/audit/live-test markdown (11 files). Snapshot: **`docs/README.md`** · vl2 canonical docs: repo **`docs/`** at workspace root (**`MYLE_VL2_*`**, parity sprint files).
+
 - `auth_context.py` — Flask session helpers (`acting_user_id`, `refresh_session_user`).  
   **vl2 equivalent:** `app/core/auth_context.py` + `POST /api/v1/auth/sync-identity` + JWT cookies (`app/core/auth_cookies.py`).
 
@@ -13,6 +19,8 @@
   **vl2:** `app/core/reliability.py`; request ids via `RequestIdMiddleware` + `ensure_request_id`. Unhandled exceptions log/return `incident_id` (`API-500-…`) in `app/core/errors.py`.
 
 ### `services/` (full tree snapshot + vl2 ports)
+
+Short index per file: **`services/README.md`**.
 
 | Monolith file | Verbatim snapshot | Runnable in vl2 |
 |---------------|-------------------|-----------------|
@@ -47,3 +55,24 @@ Entire folder: **`backend/legacy/myle_dashboard_main3/routes/`** (19 modules). M
 | `social_routes.py` | Social links / sharing helpers | `other_pages` / nav stubs |
 | `tasks_routes.py` | Background/cron-style tasks | No vl2 cron in repo |
 | `misc_routes.py` | Misc HTML (health, static checks) | `GET /health`, `GET /health/db`, `GET /hello` |
+
+### Deployment (monolith vs vl2)
+
+| Monolith (repo root) | vl2 (this workspace) |
+|----------------------|----------------------|
+| `wsgi.py` — Flask `application` | `backend/asgi.py` + `backend/main.py` — FastAPI `app` (ASGI) |
+| `gunicorn.conf.py` — sync workers, `post_fork` scheduler hooks | `backend/gunicorn.conf.py` — `uvicorn.workers.UvicornWorker` (optional); no Flask scheduler |
+| `render.yaml` — Python runtime, `gunicorn app:app -c gunicorn.conf.py` | Repo root `render.yaml` — Docker image, `uvicorn` in `Dockerfile`; monolith snapshot: **`render.monolith.yaml`** |
+| **`setup_vps.sh`** — Hostinger-style VPS: `apt`, venv, **systemd** `gunicorn` → `wsgi:application`, **nginx** reverse proxy, `/static/`, `certbot` hint | vl2: **managed** path via **`render.yaml`** + **`Dockerfile`**, or self-host **Docker** (or build your own systemd unit for `uvicorn`/`gunicorn` + `asgi:app` — not shipped here). Legacy script: **`setup_vps.sh`** (Flask repo clone URL + `PORT=8000`; **do not** run against this monorepo without edits). |
+
+### `scripts/` (monolith ops & E2E — verbatim snapshot)
+
+Full tree: **`backend/legacy/myle_dashboard_main3/scripts/`** (10 files: SQLite backfills, hierarchy SQL, Playwright/Chrome flows, `verify_app_flow.py`). Index and caveats: **`scripts/README.md`** in that folder.
+
+| Monolith script (category) | vl2 |
+|----------------------------|-----|
+| `verify_app_flow.py`, Playwright/Chrome `live_*`, `prod_step1_*`, `chrome_*` | API tests: repo root **`scripts/verify_phase7.sh`**; browser E2E not ported to this tree |
+| `backfill_calls_made.py` | No `daily_scores` / same SQLite schema in vl2 — reimplement against Postgres + product metrics if needed |
+| `seed_demo_users.py` | Dev users: Alembic seeds + **`POST /api/v1/auth/dev-login`** / **`backend/scripts/create_user.py`** |
+| `fix_user_hierarchy.sql` | vl2 `users` model differs — one-off fixes via migrations or dedicated **`backend/scripts/`** job + backup |
+| `print_leader_teams.py` | Team tree: **`GET /api/v1/team/*`** + DB queries; no drop-in CLI in vl2 yet |

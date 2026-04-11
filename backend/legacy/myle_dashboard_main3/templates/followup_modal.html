@@ -1,0 +1,23 @@
+<!-- Global Follow-up Modal -->
+<div class="modal fade" id="globalFollowupModal" tabindex="-1" aria-hidden="true" data-bs-focus="false">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold">Set Follow-up</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-3 pb-4">
+        <input type="hidden" id="fuModalLeadId">
+        <input type="hidden" id="fuModalLeadName">
+        <input type="hidden" id="fuModalLeadDate">
+        
+        <label class="form-label small fw-semibold text-muted mb-1">Reminder Time (IST)</label>
+        <input type="time" id="fuModalTime" class="form-control mb-3">
+        
+        <button type="button" id="fuModalSaveBtn" class="btn btn-primary w-100 fw-semibold">
+          <i class="bi bi-clock me-1"></i>Save Reminder
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,495 @@
+{% extends "base.html" %}
+{% block title %}Edit Lead – Myle Community{% endblock %}
+{% block page_title %}Edit Lead{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-pencil-square me-2"></i>{{ lead.name }}</h5>
+        <span class="badge bg-dark">ID #{{ lead.id }}</span>
+      </div>
+      <div class="card-body p-4">
+        {# Separate forms (not nested in edit form): upload + proof review use form="…" on controls. #}
+        <form id="lead196-proof-upload-{{ lead.id }}" method="post" action="{{ url_for('upload_payment_proof', lead_id=lead.id) }}" enctype="multipart/form-data" class="d-none" aria-hidden="true">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        </form>
+        <form id="pp-proof-approve-{{ lead.id }}" method="post" action="{{ url_for('review_payment_proof', lead_id=lead.id) }}" class="d-none" aria-hidden="true">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="action" value="approve">
+        </form>
+        <form id="pp-proof-reject-{{ lead.id }}" method="post" action="{{ url_for('review_payment_proof', lead_id=lead.id) }}" class="d-none" aria-hidden="true">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="action" value="reject">
+        </form>
+        <form method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <div class="row g-3">
+
+            <!-- Basic Info -->
+            <div class="col-12"><h6 class="text-muted fw-semibold text-uppercase small">Basic Info</h6><hr class="mt-1 mb-2"/></div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" value="{{ lead.name }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Phone <span class="text-danger">*</span></label>
+              <input type="tel" name="phone" class="form-control" value="{{ lead.phone }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Email</label>
+              <input type="email" name="email" class="form-control" value="{{ lead.email or '' }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">City</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+                <input type="text" name="city" class="form-control"
+                       value="{{ lead.city or '' }}" placeholder="Mumbai">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Referred By</label>
+              <select name="referred_by" class="form-select">
+                <option value="">— None —</option>
+                {% for m in team %}
+                  <option value="{{ m.name }}" {% if m.name == lead.referred_by %}selected{% endif %}>{{ m.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            {% if session.get('role') == 'admin' %}
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Assigned To</label>
+              <select name="assigned_to" class="form-select">
+                <option value="">— Unassigned —</option>
+                {% for m in team %}
+                  <option value="{{ m.name }}" {% if m.name == lead.assignee_username %}selected{% endif %}>{{ m.name }}</option>
+                {% endfor %}
+              </select>
+              <div class="form-text text-warning"><i class="bi bi-shield-lock-fill me-1"></i>Admin only — reassign this lead.</div>
+            </div>
+            {% else %}
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Assigned To</label>
+              <input type="text" class="form-control bg-light" value="{{ lead.assignee_display or '—' }}" disabled>
+              <div class="form-text">You cannot reassign leads.</div>
+            </div>
+            {% endif %}
+
+            <!-- Status -->
+            <div class="col-12 mt-2"><h6 class="text-muted fw-semibold text-uppercase small">Status & Funnel</h6><hr class="mt-1 mb-2"/></div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Lead Status</label>
+              {% if session.get('role') == 'team' and lead.status | team_pipeline_readonly %}
+              <div class="form-control bg-light fw-semibold">{{ lead.status }}</div>
+              <input type="hidden" name="status" id="statusSelect" value="{{ lead.status }}">
+              <div class="form-text text-muted">Leader / admin pipeline — aap sirf notes &amp; basic details update kar sakte ho.</div>
+              {% else %}
+              <select name="status" id="statusSelect" class="form-select">
+                {% for s in statuses %}
+                  <option value="{{ s }}" {% if s == lead.status %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+              </select>
+              {% endif %}
+            </div>
+
+            <!-- Funnel Checkboxes (leader / admin — Day 1+ team ke scope mein nahi) -->
+            {% if session.get('role') != 'team' %}
+            <div class="col-md-8">
+              <label class="form-label fw-semibold d-block">Funnel Stages</label>
+              <div class="d-flex flex-wrap gap-3 mt-1">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="day1_done" id="day1"
+                         {% if lead.day1_done %}checked{% endif %}>
+                  <label class="form-check-label fw-semibold" for="day1">Day 1 Done</label>
+                </div>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="day2_done" id="day2"
+                         {% if lead.day2_done %}checked{% endif %}>
+                  <label class="form-check-label fw-semibold" for="day2">Day 2 Done</label>
+                </div>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="interview_done" id="interview"
+                         {% if lead.interview_done %}checked{% endif %}>
+                  <label class="form-check-label fw-semibold" for="interview">Interview Done</label>
+                </div>
+              </div>
+              <div class="col-12 small text-muted mt-1">
+                Day 2 eval: <strong>{{ (lead.test_status or 'pending') }}</strong>
+                {% if lead.test_score is defined %} — score {{ lead.test_score or 0 }}/30{% endif %}
+                {% if lead.status == 'Day 2' %}
+                <a href="{{ url_for('day2_business_test_page', lead_id=lead.id) }}" class="ms-2">Take / view test</a>
+                {% endif %}
+                {% if (lead.test_status or '')|lower == 'passed' %}
+                <a href="{{ url_for('lead_day2_certificate', lead_id=lead.id) }}" target="_blank" class="ms-2 text-success fw-semibold">Certificate (print / PDF)</a>
+                {% endif %}
+              </div>
+            </div>
+            {% endif %}
+
+            <!-- Payment -->
+            {% set _pp_appr = lead|payment_proof_status %}
+            {% set _from_retarget = (request.args.get('from') == 'retarget') %}
+            {% set _proof_path_ok = (lead.payment_proof_path or '')|trim %}
+            {# One-time proof (all roles): upload UI only if no file or rejected; not on retarget quick-edit. #}
+            {% set _show_proof_upload = not _from_retarget and (not _proof_path_ok or _pp_appr == 'rejected') %}
+            <div class="col-12 mt-2"><h6 class="text-muted fw-semibold text-uppercase small">Payment (₹{{ payment_amount|int }})</h6><hr class="mt-1 mb-2"/></div>
+            <div class="col-12">
+              {% if session.get('role') != 'team' %}
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="payment_done" id="payDone"
+                       {% if lead.payment_done %}checked{% endif %}>
+                <label class="form-check-label fw-semibold" for="payDone">
+                  ₹{{ payment_amount|int }} Payment Received
+                </label>
+              </div>
+              {% else %}
+              <div class="small text-muted mb-2">Payment / Paid ₹196 — <strong>Lead Status</strong> se set karein (My Leads par); yahan sirf ₹196 proof.</div>
+              {% endif %}
+              {% if not _from_retarget %}
+              <div class="mt-2 p-2 rounded border bg-light">
+                <div class="small fw-semibold mb-1">
+                  ₹196 Proof Screenshot
+                  <span class="text-muted fw-normal">(My Leads se upload — team: leader approve · leader own lead: admin approve · ek baar ke baad yahan upload band)</span>
+                </div>
+                {% if session.get('role') in ('team', 'leader') and lead.assigned_user_id == session.get('user_id') and lead.payment_proof_path %}
+                  {% if _pp_appr == 'pending' %}
+                    <div class="alert alert-warning py-1 px-2 small mb-2 mb-0">
+                      {% if session.get('role') == 'team' %}
+                      <i class="bi bi-hourglass-split me-1"></i>Leader approval pending — tab tak Paid / Payment Done block.
+                      {% else %}
+                      <i class="bi bi-hourglass-split me-1"></i>Admin approval pending (apni lead) — tab tak Paid / Day 1 / Payment Done block.
+                      {% endif %}
+                    </div>
+                  {% elif _pp_appr == 'rejected' %}
+                    <div class="alert alert-danger py-1 px-2 small mb-2 mb-0"><i class="bi bi-x-circle me-1"></i>Proof reject — naya screenshot upload karo.
+                      {% if lead.payment_proof_reject_note %}<span class="d-block mt-1 text-dark">{{ lead.payment_proof_reject_note }}</span>{% endif %}
+                    </div>
+                  {% elif _pp_appr == 'approved' %}
+                    <div class="alert alert-success py-1 px-2 small mb-2 mb-0"><i class="bi bi-check2-circle me-1"></i>₹196 proof approved.</div>
+                  {% endif %}
+                {% endif %}
+                {% if (can_review_rupees_proof|default(false)) and lead.payment_proof_path and lead.assigned_user_id %}
+                  {% if _pp_appr == 'pending' %}
+                    <div class="d-flex flex-wrap gap-2 align-items-center mt-2 mb-2">
+                      <button type="submit" class="btn btn-sm btn-success" form="pp-proof-approve-{{ lead.id }}"><i class="bi bi-check-lg me-1"></i>Approve ₹196 proof</button>
+                      <input type="text" name="note" form="pp-proof-reject-{{ lead.id }}" class="form-control form-control-sm" style="max-width:14rem" placeholder="Reject reason (optional)">
+                      <button type="submit" class="btn btn-sm btn-outline-danger" form="pp-proof-reject-{{ lead.id }}">Reject</button>
+                    </div>
+                  {% else %}
+                    <div class="small text-muted mb-1">Proof status: <strong>{{ _pp_appr }}</strong>{% if lead.payment_proof_reviewed_by %} ({{ lead.payment_proof_reviewed_by }}, {{ lead.payment_proof_reviewed_at }}){% endif %}</div>
+                  {% endif %}
+                {% endif %}
+                {% if lead.payment_proof_path %}
+                  <a href="{{ lead.payment_proof_path }}" target="_blank" rel="noopener" class="small text-decoration-none">
+                    <i class="bi bi-image me-1"></i>View uploaded proof
+                  </a>
+                {% else %}
+                  <div class="small text-muted mb-1">No proof uploaded yet — <strong>My Leads</strong> page se upload karein.</div>
+                {% endif %}
+                {% if _show_proof_upload %}
+                <div class="d-flex gap-2 align-items-center mt-2">
+                  <input type="file" name="payment_proof" form="lead196-proof-upload-{{ lead.id }}" class="form-control form-control-sm" accept=".png,.jpg,.jpeg,.webp">
+                  <button class="btn btn-sm btn-outline-primary" type="submit" form="lead196-proof-upload-{{ lead.id }}">Upload</button>
+                </div>
+                {% elif _proof_path_ok and _pp_appr != 'rejected' %}
+                <div class="small text-muted mt-2 mb-0">₹196 proof already on file — dubara upload ki zaroorat nahi.</div>
+                {% endif %}
+              </div>
+              {% else %}
+              {# Retarget quick edit: no ₹196 upload block — use My Leads or enrollment queue #}
+              {% if _proof_path_ok %}
+              <div class="mt-2 small">
+                <a href="{{ lead.payment_proof_path }}" target="_blank" rel="noopener" class="text-decoration-none">
+                  <i class="bi bi-image me-1"></i>View proof
+                </a>
+                <span class="text-muted">({{ _pp_appr }})</span>
+              </div>
+              {% endif %}
+              {% endif %}
+              {% if lead.payment_done %}
+                <div class="alert alert-success mt-2 py-2 mb-0">
+                  <i class="bi bi-check-circle-fill me-2"></i>Payment of ₹{{ lead.payment_amount|int }} recorded.
+                </div>
+              {% endif %}
+            </div>
+
+            <!-- Track & Advanced Payments — team nahi (leader handoff ke baad) -->
+            {% if session.get('role') != 'team' %}
+            <div class="col-12 mt-2" id="trackSection"
+                 style="{% if lead.status not in ['Track Selected','Seat Hold Confirmed','Fully Converted','Interview','Day 2','Day 1'] and not lead.track_selected %}display:none;{% endif %}">
+              <h6 class="text-muted fw-semibold text-uppercase small">Track &amp; Advanced Payments</h6>
+              <hr class="mt-1 mb-2"/>
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">Track</label>
+                  <select name="track_selected" id="trackDropdown" class="form-select">
+                    <option value="">— Not Selected —</option>
+                    <option value="Slow Track" {% if lead.track_selected == 'Slow Track' %}selected{% endif %}>Slow Track (₹8,000)</option>
+                    <option value="Medium Track" {% if lead.track_selected == 'Medium Track' %}selected{% endif %}>Medium Track (₹18,000)</option>
+                    <option value="Fast Track" {% if lead.track_selected == 'Fast Track' %}selected{% endif %}>Fast Track (₹38,000)</option>
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">Track Price (₹)</label>
+                  <input type="number" name="track_price" id="trackPrice" class="form-control"
+                         value="{{ lead.track_price|int if lead.track_price else '' }}"
+                         placeholder="Auto-filled" min="0" step="1">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">Seat Hold Amount (₹)</label>
+                  <input type="number" name="seat_hold_amount" id="seatHoldAmount" class="form-control"
+                         value="{{ lead.seat_hold_amount|int if lead.seat_hold_amount else '' }}"
+                         placeholder="Manually editable" min="0" step="1">
+                  <div class="form-text">Team can override this amount.</div>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">Pending Amount (₹)</label>
+                  <input type="number" id="pendingAmountDisplay" class="form-control bg-light"
+                         value="{{ (lead.track_price - lead.seat_hold_amount)|int if lead.track_price and lead.seat_hold_amount else '' }}"
+                         placeholder="Auto-calculated" readonly>
+                  <div class="form-text text-muted">Track Price − Seat Hold (read-only)</div>
+                </div>
+                <div class="col-md-8">
+                  <label class="form-label fw-semibold d-block">Stage Actions</label>
+                  <div class="d-flex flex-wrap gap-3 mt-1">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" name="seat_hold_received" id="seatHoldReceived"
+                             {% if lead.status == 'Seat Hold Confirmed' or lead.status == 'Fully Converted' %}checked{% endif %}>
+                      <label class="form-check-label fw-semibold" for="seatHoldReceived">
+                        <i class="bi bi-shield-check me-1 text-purple"></i>Seat Hold Received
+                      </label>
+                    </div>
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" name="final_payment_received" id="finalPaymentReceived"
+                             {% if lead.status == 'Fully Converted' %}checked{% endif %}>
+                      <label class="form-check-label fw-semibold" for="finalPaymentReceived">
+                        <i class="bi bi-trophy-fill me-1 text-success"></i>Final Payment → Fully Converted
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endif %}
+
+            {% if session.get('role') != 'team' %}
+            <!-- Follow-up Date (leaders / admins — team does not schedule follow-ups) -->
+            <div class="col-12 mt-2"><h6 class="text-muted fw-semibold text-uppercase small">Follow-up</h6><hr class="mt-1 mb-2"/></div>
+            <div id="retargetDateAlert" class="col-12" style="display:none;">
+              <div class="alert alert-warning py-2 mb-2 d-flex align-items-center gap-2">
+                <i class="bi bi-calendar-event-fill"></i>
+                <span>Status set to <strong>Retarget</strong> — please set a follow-up date below so this lead appears in the Retarget List with a scheduled date.</span>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Follow-up Date</label>
+              <input type="date" id="followUpDateInput" name="follow_up_date" class="form-control"
+                     value="{{ lead.follow_up_date or '' }}">
+              <div class="form-text">Leave blank to clear reminder.</div>
+            </div>
+            {% endif %}
+            <div class="col-md-{% if session.get('role') == 'team' %}12{% else %}8{% endif %}">
+              <label class="form-label fw-semibold">Call tag (reason)</label>
+              <div class="form-text small mb-1">Lead Status drives the pipeline; use this field for reason or notes only — avoid duplicating the status text.</div>
+              <select name="call_result" class="form-select">
+                {% for tag in call_result_tags %}
+                <option value="{{ tag }}" {% if lead.call_result == tag %}selected{% endif %}>
+                  {% if tag %}{{ tag }}{% else %}-- None --{% endif %}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Notes -->
+            <div class="col-12 mt-2"><h6 class="text-muted fw-semibold text-uppercase small">Notes</h6><hr class="mt-1 mb-2"/></div>
+            <div class="col-12">
+              <textarea name="notes" class="form-control" rows="3">{{ lead.notes or '' }}</textarea>
+            </div>
+
+          </div>
+          <hr class="my-4" />
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-warning text-dark px-4 fw-semibold">
+              <i class="bi bi-save-fill me-1"></i>Save Changes
+            </button>
+            <a href="{{ url_for('leads') }}" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+      <div class="card-footer text-muted small">
+        Added: {{ lead.created_at }} &bull; Last updated: {{ lead.updated_at }}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Lead Notes / Timeline ──────────────────────────── -->
+<div class="row justify-content-center mt-4">
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white d-flex align-items-center justify-content-between">
+        <h6 class="mb-0"><i class="bi bi-chat-left-text-fill me-2 text-primary"></i>Activity Notes</h6>
+        <span class="badge bg-secondary">{{ lead_notes|length }}</span>
+      </div>
+      <div class="card-body">
+
+        <!-- Add Note Form -->
+        <form method="post" action="{{ url_for('add_lead_note', lead_id=lead.id) }}" class="mb-4">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <div class="d-flex gap-2">
+            <textarea name="note" class="form-control form-control-sm" rows="2"
+                      placeholder="Add a note, call outcome, follow-up detail…" required></textarea>
+            <button type="submit" class="btn btn-primary btn-sm align-self-end px-3">
+              <i class="bi bi-send-fill"></i>
+            </button>
+          </div>
+        </form>
+
+        <!-- Notes Timeline -->
+        {% if lead_notes %}
+          <div class="d-flex flex-column gap-3">
+            {% for note in lead_notes %}
+            <div class="note-item d-flex gap-3">
+              <div class="flex-shrink-0">
+                <div class="d-flex align-items-center justify-content-center rounded-circle bg-primary bg-opacity-10"
+                     style="width:34px;height:34px;">
+                  <i class="bi bi-person-fill text-primary"></i>
+                </div>
+              </div>
+              <div class="flex-grow-1">
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                  <span class="fw-semibold small">{{ note.username }}</span>
+                  <span class="text-muted" style="font-size:0.72rem;">{{ note.created_at[:16] }}</span>
+                </div>
+                <p class="mb-0 small" style="white-space:pre-wrap;">{{ note.note }}</p>
+              </div>
+              {% if (db_user and db_user.username == note.username) or (db_user and db_user.fbo_id and db_user.fbo_id == note.username) or session.get('role') == 'admin' %}
+              <div class="flex-shrink-0">
+                <form method="post" action="{{ url_for('delete_lead_note', lead_id=lead.id, note_id=note.id) }}"
+                      onsubmit="return confirm('Delete this note?')">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <button type="submit" class="btn btn-xs btn-outline-danger px-1 py-0" title="Delete note">
+                    <i class="bi bi-trash-fill" style="font-size:0.72rem;"></i>
+                  </button>
+                </form>
+              </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center text-muted py-4">
+            <i class="bi bi-chat-square-dots fs-2 d-block mb-2 opacity-25"></i>
+            No notes yet. Add the first one above!
+          </div>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if timeline %}
+<div class="card border-0 shadow-sm mt-3 mb-3">
+  <div class="card-header py-2 d-flex align-items-center gap-2">
+    <i class="bi bi-clock-history text-primary"></i>
+    <span class="fw-semibold small">Activity Timeline</span>
+    <span class="badge bg-secondary ms-auto">{{ timeline|length }}</span>
+  </div>
+  <div class="card-body p-0">
+    {% for event in timeline %}
+    <div class="d-flex gap-3 px-3 py-2 border-bottom">
+      <div class="text-muted flex-shrink-0" style="font-size:.68rem;min-width:90px;">
+        {{ event.created_at[:16] }}
+      </div>
+      <div class="small flex-grow-1">{{ event.note }}</div>
+      <div class="text-muted flex-shrink-0 small">{{ event.username }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+  const statusSel  = document.getElementById('statusSelect');
+  const dateAlert  = document.getElementById('retargetDateAlert');
+  const dateInput  = document.getElementById('followUpDateInput');
+
+  // Track section
+  const trackSection      = document.getElementById('trackSection');
+  const trackDropdown     = document.getElementById('trackDropdown');
+  const trackPriceInput   = document.getElementById('trackPrice');
+  const seatHoldInput     = document.getElementById('seatHoldAmount');
+  const pendingDisplay    = document.getElementById('pendingAmountDisplay');
+
+  const TRACKS = {
+    'Slow Track':   { price: 8000,  seat_hold: 2000 },
+    'Medium Track': { price: 18000, seat_hold: 4000 },
+    'Fast Track':   { price: 38000, seat_hold: 5000 },
+  };
+
+  const TRACK_STATUSES = ['Day 1','Day 2','Interview',
+                          'Track Selected','Seat Hold Confirmed','Fully Converted'];
+
+  function showTrackSection() {
+    if (!statusSel || !trackSection || !trackDropdown) return;
+    const inTrackStatus = TRACK_STATUSES.includes(statusSel.value);
+    const hasTrack = trackDropdown.value !== '';
+    trackSection.style.display = (inTrackStatus || hasTrack) ? '' : 'none';
+  }
+
+  function updatePending() {
+    if (!trackPriceInput || !seatHoldInput || !pendingDisplay) return;
+    const price    = parseFloat(trackPriceInput.value) || 0;
+    const seatHold = parseFloat(seatHoldInput.value)   || 0;
+    pendingDisplay.value = (price - seatHold > 0) ? (price - seatHold) : '';
+  }
+
+  if (trackDropdown) {
+  trackDropdown.addEventListener('change', function () {
+    const t = TRACKS[this.value];
+    if (t) {
+      if (!trackPriceInput.value) trackPriceInput.value = t.price;
+      if (!seatHoldInput.value)   seatHoldInput.value   = t.seat_hold;
+    }
+    updatePending();
+    showTrackSection();
+  });
+  }
+
+  if (trackPriceInput) trackPriceInput.addEventListener('input', updatePending);
+  if (seatHoldInput) seatHoldInput.addEventListener('input', updatePending);
+
+  function toggleRetarget() {
+    if (!dateAlert || !dateInput) return;
+    if (statusSel.value === 'Retarget') {
+      dateAlert.style.display = '';
+      dateInput.classList.add('border-warning');
+      dateInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+      dateAlert.style.display = 'none';
+      dateInput.classList.remove('border-warning');
+    }
+  }
+
+  if (statusSel && statusSel.tagName === 'SELECT') {
+  statusSel.addEventListener('change', function () {
+    toggleRetarget();
+    showTrackSection();
+  });
+  }
+
+  // Run on page load
+  toggleRetarget();
+  showTrackSection();
+  updatePending();
+})();
+</script>
+{% endblock %}

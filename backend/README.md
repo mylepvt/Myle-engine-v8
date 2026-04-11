@@ -17,7 +17,7 @@ Run from **`backend/`** so `DATABASE_URL` and `app.*` imports match production.
 |--------|---------|
 | `scripts/create_user.py` | Bootstrap / reset a user (bcrypt; same as `POST /api/v1/auth/login`). |
 | `scripts/legacy_sqlite_inspect.py` | Read-only: list legacy SQLite tables + row counts (`LEGACY_SQLITE_PATH`). |
-| `scripts/import_legacy_sqlite.py` | Copy **legacy Flask `leads.db`** → vl2 PostgreSQL (users → leads → wallet → activity). |
+| `scripts/import_legacy_sqlite.py` | Copy **legacy Flask `leads.db`** → vl2 PostgreSQL (users → leads → wallet → activity) **and** optional **100% row snapshot** (`legacy_row_snapshots` JSON — default on; use `--no-full-snapshot` to skip). |
 
 **Auth (JWT cookies):** after DB changes to the signed-in user (profile / admin), call **`POST /api/v1/auth/sync-identity`** so access-token claims match `users` — see `app/core/auth_context.py` (parity with legacy Flask `auth_context.refresh_session_user`).
 
@@ -38,8 +38,11 @@ python scripts/import_legacy_sqlite.py --sqlite-only --legacy-db /path/to/leads.
 # Dry-run against Postgres (no writes)
 python scripts/import_legacy_sqlite.py --dry-run --legacy-db /path/to/leads.db
 
-# Import
+# Import (includes full JSON snapshot of every SQLite table unless --no-full-snapshot)
 python scripts/import_legacy_sqlite.py --legacy-db /path/to/leads.db
+
+# Snapshot only (archival; no normalized users/leads)
+python scripts/import_legacy_sqlite.py --snapshot-only --legacy-db /path/to/leads.db
 
 # Save id maps after a real import
 python scripts/import_legacy_sqlite.py --legacy-db /path/to/leads.db --write-mapping ./legacy_id_maps.json

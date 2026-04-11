@@ -10,6 +10,7 @@ import {
   useLogCallMutation,
   usePatchLeadDetailMutation,
 } from '@/hooks/use-lead-detail-query'
+import { EnrollmentCard } from '@/components/leads/EnrollmentCard'
 
 type Props = {
   leadId: number
@@ -78,7 +79,6 @@ export function LeadDetailPage({ leadId }: Props) {
   const callsQuery = useLeadCallsQuery(leadId)
   const patchMut = usePatchLeadDetailMutation()
   const logCallMut = useLogCallMutation()
-
   // Pipeline card local state
   const [pipelineStatus, setPipelineStatus] = useState('')
   const [pipelineCallStatus, setPipelineCallStatus] = useState('')
@@ -543,6 +543,9 @@ export function LeadDetailPage({ leadId }: Props) {
               ) : null}
             </div>
           </div>
+
+          {/* Enrollment card */}
+          <EnrollmentCard leadId={leadId} />
 
           {/* Payment card */}
           <div className="surface-elevated p-4 space-y-3">

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}At-risk leads · Admin{% endblock %}
+{% block page_title %}At-risk leads{% endblock %}
+
+{% block content %}
+<p class="small text-muted mb-3">
+  Active leads with no stage movement for <strong>24+ hours</strong> (uses <code>pipeline_entered_at</code> or <code>updated_at</code>).
+  Sorted by <strong>days stuck</strong> (worst first). IST date: {{ today }}.
+  <br>
+  <strong>Member</strong> = buyer (<code>current_owner</code>) when set, else assignee.
+  <strong>Leader</strong> = first approved leader walking upline from that member (same resolution as org tree / Day‑1 routing).
+  <strong>Exec</strong> line = current <code>assigned_user_id</code> when it differs (e.g. handoff to leader).
+</p>
+<div class="table-responsive card border-0 shadow-sm">
+  <table class="table table-sm align-middle mb-0">
+    <thead class="table-light">
+      <tr>
+        <th>Lead</th>
+        <th>Member</th>
+        <th>Leader</th>
+        <th>Status</th>
+        <th class="text-end">Days stuck</th>
+        <th>Last action</th>
+        <th>Proof</th>
+        <th>Assigned to</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td class="fw-semibold">{{ r.name }} <span class="text-muted small">#{{ r.id }}</span></td>
+        <td class="small">
+          <span class="fw-semibold">{{ r.team_member_display or '—' }}</span>
+          {% if r.assignee and r.team_member_display and r.assignee != r.team_member_display %}
+            <div class="text-muted" style="font-size:0.7rem;">Exec: {{ r.assignee }}</div>
+          {% endif %}
+        </td>
+        <td>{{ r.leader_username or '—' }}</td>
+        <td><span class="badge bg-secondary-subtle text-dark">{{ r.status }}</span></td>
+        <td class="text-end fw-bold text-danger">{{ r.days_stuck }}</td>
+        <td class="small text-muted">{{ r.last_contacted or r.updated_at or '—' }}</td>
+        <td class="small">{{ r.proof_state }}</td>
+        <td class="small">
+          {% if r.stale_worker %}
+            <span class="badge" style="background:#eef2ff;color:#6366f1;font-size:0.7rem;">
+              <i class="bi bi-person-fill-up me-1"></i>{{ r.stale_worker }}
+            </span>
+            {% if r.stale_worker_by %}<div class="text-muted" style="font-size:0.65rem;">by {{ r.stale_worker_by }}</div>{% endif %}
+          {% else %}—{% endif %}
+        </td>
+        <td><a href="{{ url_for('edit_lead', lead_id=r.id) }}" class="btn btn-sm btn-outline-primary py-0">Open</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="9" class="text-center text-muted py-4">No at-risk leads right now.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

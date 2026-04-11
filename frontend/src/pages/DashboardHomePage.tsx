@@ -29,6 +29,7 @@ import { DEFAULT_META, useMetaQuery } from '@/hooks/use-meta-query'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
 import { t } from '@/lib/i18n'
 
+/** Canonical stage labels — same source as leads/workboard (legacy parity; all roles). */
 function statusLabel(status: string): string {
   return LEAD_STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status
 }
@@ -96,9 +97,9 @@ export function DashboardHomePage() {
     const bars: { status: string; total: number; label: string }[] = []
     for (const c of columns) {
       pipelineTotal += c.total
-      if (c.status === 'won') won = c.total
+      if (c.status === 'converted' || c.status === 'won') won = c.total
       if (c.status === 'lost') lost = c.total
-      if (c.status === 'new') newLeads = c.total
+      if (c.status === 'new_lead' || c.status === 'new') newLeads = c.total
       bars.push({
         status: c.status,
         total: c.total,
@@ -264,14 +265,14 @@ export function DashboardHomePage() {
               <Card className="h-full border-primary/20 transition-colors hover:border-primary/35">
                 <CardContent className="pt-6">
                   <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
-                    Won
+                    Converted
                   </p>
                   <p className="mt-2 font-heading text-3xl font-semibold tabular-nums text-success">
                     {metrics.won}
                   </p>
                   <p className="mt-1 text-ds-caption text-subtle">
                     {metrics.winRatePct !== null
-                      ? `Win rate ${metrics.winRatePct}% (won / won+lost) — open leads`
+                      ? `Win rate ${metrics.winRatePct}% (converted / converted+lost) — open leads`
                       : 'No closed outcomes yet — open leads'}
                   </p>
                 </CardContent>
@@ -290,7 +291,7 @@ export function DashboardHomePage() {
                     {metrics.newLeads}
                   </p>
                   <p className="mt-1 text-ds-caption text-subtle">
-                    In &quot;new&quot; stage — open list
+                    New lead stage — open list
                   </p>
                 </CardContent>
               </Card>

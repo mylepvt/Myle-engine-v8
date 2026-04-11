@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Day 2 Business Test — {{ lead.name }}{% endblock %}
+{% block page_title %}Day 2 Business Evaluation{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-9">
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body">
+        <h5 class="fw-bold mb-1">{{ lead.name }}</h5>
+        <p class="text-muted small mb-0">30 questions · Pass ≥ {{ pass_mark }}/{{ total_q }} · Max 2 attempts</p>
+      </div>
+    </div>
+
+    {% set ts = (lead.test_status or 'pending')|lower %}
+    {% if ts not in ('passed', 'failed') %}
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body">
+        <div class="fw-semibold small mb-2"><i class="bi bi-whatsapp text-success me-1"></i>WhatsApp test link (prospect)</div>
+        <p class="small text-muted mb-2">24 hours · prospect must enter same mobile as on file · single-use flow per browser session</p>
+        <div class="input-group input-group-sm mb-2">
+          <input type="text" class="form-control font-monospace small" id="d2waUrl" readonly placeholder="Generate…">
+          <button type="button" class="btn btn-outline-primary" onclick="genD2WaLink({{ lead.id }})">Generate</button>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyD2Wa()" id="d2waCopy" disabled>Copy</button>
+      </div>
+    </div>
+    {% endif %}
+    {% set att = lead.test_attempts|default(0)|int %}
+
+    {% if ts == 'passed' %}
+    <div class="alert alert-success">
+      <strong>Passed</strong> — Score {{ lead.test_score or 0 }}/{{ total_q }}.
+      <div class="mt-2 d-flex flex-wrap gap-2 align-items-center">
+        <a href="{{ url_for('lead_day2_certificate', lead_id=lead.id) }}" target="_blank" rel="noopener"
+           class="btn btn-sm btn-success">Certificate — print / PDF</a>
+        {% if (lead.assigned_user_id|int) == (session.get('user_id', 0)|int) or session.get('role') == 'admin' %}
+        <button type="button" class="btn btn-sm btn-danger" id="btnQuickD2"
+                onclick="quickAdvanceFromDay2({{ lead.id }}, this)">
+          Proceed to Interview (Day 3)
+        </button>
+        {% endif %}
+      </div>
+    </div>
+    {% elif ts == 'failed' %}
+    <div class="alert alert-danger">Test locked — maximum attempts used. Contact an admin.</div>
+    {% elif ts == 'retry' %}
+    <div class="alert alert-warning">Last attempt remaining — start the test again carefully.</div>
+    {% endif %}
+
+    {% if ts not in ('passed', 'failed') %}
+      {% if not payload %}
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5">
+          <p class="mb-3">Questions are shuffled. The timer is recorded when you submit.</p>
+          <form method="post" action="{{ url_for('day2_business_test_start', lead_id=lead.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn btn-warning text-dark fw-semibold px-4">
+              {% if ts == 'retry' %}Retry Test (final){% else %}Start Test{% endif %}
+            </button>
+          </form>
+        </div>
+      </div>
+      {% else %}
+      <form method="post" action="{{ url_for('day2_business_test_submit', lead_id=lead.id) }}" id="d2testForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        {% for qid in payload.q_order %}
+        {% set meta = payload.per_q[qid|string] %}
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-body">
+            <div class="fw-semibold mb-2">{{ loop.index }}. {{ meta.qtext }}</div>
+            {% for letter, text in meta.options %}
+            <div class="form-check mb-1">
+              <input class="form-check-input" type="radio" name="q_{{ qid }}" id="q{{ qid }}_{{ letter }}" value="{{ letter }}"{% if loop.first %} required{% endif %}>
+              <label class="form-check-label" for="q{{ qid }}_{{ letter }}"><strong>{{ letter }}.</strong> {{ text }}</label>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold mb-4">Submit answers</button>
+      </form>
+      {% endif %}
+    {% endif %}
+
+    <a href="{{ url_for('working') }}" class="btn btn-outline-secondary btn-sm">← Back to Working</a>
+  </div>
+</div>
+
+<script>
+function genD2WaLink(leadId) {
+  fetch('/test/generate-link/' + leadId, {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': '{{ csrf_token }}', 'Content-Type': 'application/json' },
+    body: '{}',
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (!d.ok) { alert(d.error || 'Could not generate'); return; }
+    var el = document.getElementById('d2waUrl');
+    el.value = d.test_url || '';
+    document.getElementById('d2waCopy').disabled = !el.value;
+  })
+  .catch(() => alert('Network error'));
+}
+function copyD2Wa() {
+  var el = document.getElementById('d2waUrl');
+  if (!el.value) return;
+  navigator.clipboard.writeText(el.value).then(function() { alert('Copied'); }).catch(function() { el.select(); document.execCommand('copy'); });
+}
+function quickAdvanceFromDay2(leadId, btnEl) {
+  if (!confirm('Move this lead to Interview (Day 3)?')) return;
+  const orig = btnEl.innerHTML;
+  btnEl.disabled = true;
+  btnEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+  fetch('/leads/' + leadId + '/quick-advance', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': '{{ csrf_token }}'
+    },
+    body: JSON.stringify({ current_status: 'Day 2' })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok) {
+      location.reload();
+    } else {
+      alert(d.error || 'Could not advance');
+      btnEl.disabled = false;
+      btnEl.innerHTML = orig;
+    }
+  })
+  .catch(() => {
+    alert('Network error');
+    btnEl.disabled = false;
+    btnEl.innerHTML = orig;
+  });
+}
+</script>
+{% endblock %}

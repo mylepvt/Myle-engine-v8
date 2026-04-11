@@ -80,6 +80,8 @@ export type FullUiSurface =
   | { kind: 'finance-recharges' }
   | { kind: 'wallet-recharge' }
   | { kind: 'wallet-recharge-admin' }
+  | { kind: 'notice-board' }
+  | { kind: 'team-reports' }
 
 export type DashboardRouteDef = {
   path: string
@@ -140,7 +142,7 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     path: 'work/leads',
     section: { id: 'work', label: 'Work' },
     label: 'My Leads',
-    labelByRole: { admin: 'All Leads' },
+    labelByRole: { admin: 'All Leads', leader: 'All Leads' },
     roles: routeRoles('work/leads'),
     surface: 'full',
     ui: { kind: 'leads', listMode: 'active' },
@@ -239,8 +241,8 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     section: { id: 'team', label: 'Team' },
     label: 'Reports',
     roles: routeRoles('team/reports'),
-    surface: 'stub',
-    stubApiPath: '/api/v1/team/reports',
+    surface: 'full',
+    ui: { kind: 'team-reports' },
   },
   {
     path: 'team/approvals',
@@ -375,8 +377,8 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     section: { id: 'other', label: 'Other' },
     label: 'Notice board',
     roles: routeRoles('other/notice-board'),
-    surface: 'stub',
-    stubApiPath: '/api/v1/other/notice-board',
+    surface: 'full',
+    ui: { kind: 'notice-board' },
   },
   {
     path: 'other/live-session',

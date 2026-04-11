@@ -10,6 +10,21 @@ from util_jwt_patch import patch_jwt_settings
 client = TestClient(app)
 
 
+def test_password_login_with_username_same_as_legacy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Legacy allowed login by exact username when FBO match failed."""
+    patch_jwt_settings(monkeypatch)
+
+    res = client.post(
+        "/api/v1/auth/login",
+        json={"fbo_id": "TestLeaderDisplay", "password": DEV_LOGIN_PASSWORD_PLAIN},
+    )
+    assert res.status_code == 200
+    me = client.get("/api/v1/auth/me")
+    assert me.json().get("fbo_id") == "fbo-leader-001"
+
+
 def test_password_login_success(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

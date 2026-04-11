@@ -55,3 +55,28 @@ class TeamEnrollmentListResponse(BaseModel):
     total: int = 0
     limit: int
     offset: int
+
+
+class TeamReportsLiveSummary(BaseModel):
+    """Legacy dashboard “LIVE DATA” tiles (approximations documented on API)."""
+
+    leads_claimed_today: int
+    calls_made_today: int
+    enrolled_today: int
+    day1_total: int
+    day2_total: int
+    converted_total: int
+
+
+class TeamReportsResponse(BaseModel):
+    """Admin team reports — extends stub shape with dated live summary."""
+
+    items: list[dict[str, Any]] = Field(default_factory=list)
+    total: int = 0
+    note: Optional[str] = Field(
+        default=None,
+        description="Optional footnote (e.g. daily member rows not yet in Postgres).",
+    )
+    date: str = Field(description="Report calendar day (YYYY-MM-DD), Asia/Kolkata")
+    timezone: str = Field(default="Asia/Kolkata")
+    live_summary: TeamReportsLiveSummary

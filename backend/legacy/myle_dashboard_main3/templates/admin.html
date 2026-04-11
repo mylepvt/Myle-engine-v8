@@ -1,0 +1,1115 @@
+{% extends "base.html" %}
+{% block page_content_class %}admin-premium-layout{% endblock %}
+{% block title %}Admin · Command Center{% endblock %}
+{% block page_title %}<span class="ap-nav-title">Overview</span>{% endblock %}
+{% block extra_head %}<script src="{{ url_for('static', filename='js/chart.umd.min.js') }}"></script>{% endblock %}
+
+{% block content %}
+{% set flow_pct = (kpi_today_enrolled / kpi_today_claimed * 100)|round(1) if kpi_today_claimed|default(0) > 0 else 0 %}
+{% set top_performers = [] %}{% set low_activity = [] %}
+{% for m in team_board %}{% if m.score >= 30 %}{% set _ = top_performers.append(m) %}{% endif %}{% if m.score == 0 %}{% set _ = low_activity.append(m) %}{% endif %}{% endfor %}
+
+{# ═══ A. HERO METRICS (Command Center shell — dark navy + live pulse) ═══ #}
+<div class="ap-command-hero">
+  <div class="ap-command-hero-head">
+    <h2 class="ap-command-hero-title">Command Center</h2>
+    <div class="ap-command-live d-flex align-items-center gap-2 flex-wrap">
+      <i class="bi bi-heart-fill ap-live-heart" aria-hidden="true"></i>
+      <span>Live</span>
+      <span class="ap-microhint">· {{ today }} IST</span>
+    </div>
+    <p class="ap-command-sub ap-microhint mb-0">Daily KPIs and pipeline — IST calendar date</p>
+  </div>
+  {# ── Group 1: Today's Flow ── #}
+  <div class="ap-kpi-group mb-3">
+    <div class="ap-kpi-group-header">
+      <i class="bi bi-activity me-1"></i>Today's Flow
+      <span class="ap-kpi-group-hint">top of funnel</span>
+    </div>
+    <div class="ap-hero-kpi ap-hero-kpi--4">
+      <a href="{{ url_for('drilldown', metric='claimed') }}" class="ap-kpi-tile ap-kpi-tile--claim ap-kpi-tile--link" title="Claimed leads — click to view list">
+        <div class="ap-kpi-value">{{ kpi_today_claimed|default(0) }}</div>
+        <div class="ap-kpi-title">Claimed</div>
+        <div class="ap-kpi-meta">aaj claimed</div>
+      </a>
+      <a href="{{ url_for('drilldown', metric='total_calling') }}" class="ap-kpi-tile ap-kpi-tile--link" style="border-top:3px solid #818cf8;" title="Calls made — click to view">
+        <div class="ap-kpi-value" style="color:#818cf8;">{{ pulse.total_calls|default(0) }}</div>
+        <div class="ap-kpi-title">Calls Made</div>
+        <div class="ap-kpi-meta">aaj ke calls</div>
+      </a>
+      <a href="{{ url_for('drilldown', metric='paid') }}" class="ap-kpi-tile ap-kpi-tile--link" style="border-top:3px solid #fb923c;" title="Payments — click to view leads">
+        <div class="ap-kpi-value" style="color:#fb923c;">{{ pulse.payments_count|default(0) }}</div>
+        <div class="ap-kpi-title">Payments</div>
+        <div class="ap-kpi-meta">₹{{ (pulse.payments_amount|default(0))|int }} aaj</div>
+      </a>
+      <a href="{{ url_for('drilldown', metric='enrolled') }}" class="ap-kpi-tile ap-kpi-tile--money ap-kpi-tile--link" title="Enrolled leads — click to view list">
+        <div class="ap-kpi-value">{{ kpi_today_enrolled|default(0) }}</div>
+        <div class="ap-kpi-title">Enrolled</div>
+        <div class="ap-kpi-meta">₹{{ (kpi_today_enrolled_amount|default(0))|int }} aaj</div>
+      </a>
+    </div>
+  </div>
+
+  {# ── Group 2: Pipeline ── #}
+  <div class="ap-kpi-group mb-3">
+    <div class="ap-kpi-group-header">
+      <i class="bi bi-funnel me-1"></i>Pipeline
+      <span class="ap-kpi-group-hint">training stages</span>
+    </div>
+    <div class="ap-hero-kpi ap-hero-kpi--4">
+      <a href="{{ url_for('drilldown', metric='day1') }}" class="ap-kpi-tile ap-kpi-tile--link" style="border-top:3px solid #34d399;" title="Day 1 active leads">
+        <div class="ap-kpi-value" style="color:#34d399;">{{ pipeline.day1|default(0) }}</div>
+        <div class="ap-kpi-title">Day 1 Active</div>
+        <div class="ap-kpi-meta">training pipeline</div>
+      </a>
+      <a href="{{ url_for('drilldown', metric='day2') }}" class="ap-kpi-tile ap-kpi-tile--link" style="border-top:3px solid #60a5fa;" title="Day 2 active leads">
+        <div class="ap-kpi-value" style="color:#60a5fa;">{{ pipeline.day2|default(0) }}</div>
+        <div class="ap-kpi-title">Day 2 Active</div>
+        <div class="ap-kpi-meta">training pipeline</div>
+      </a>
+      <a href="{{ url_for('drilldown', metric='seat_hold') }}" class="ap-kpi-tile ap-kpi-tile--link" style="border-top:3px solid #f472b6;" title="Seat hold confirmed leads">
+        <div class="ap-kpi-value" style="color:#f472b6;">{{ metrics.seat_hold|default(0) }}</div>
+        <div class="ap-kpi-title">Seat Hold</div>
+        <div class="ap-kpi-meta">confirmed</div>
+      </a>
+      <a href="{{ url_for('drilldown', metric='converted') }}" class="ap-kpi-tile ap-kpi-tile--link" style="border-top:3px solid #facc15;" title="Converted leads">
+        <div class="ap-kpi-value" style="color:#facc15;">{{ metrics.converted|default(0) }}</div>
+        <div class="ap-kpi-title">Converted</div>
+        <div class="ap-kpi-meta">converted + fully converted</div>
+      </a>
+    </div>
+  </div>
+
+  {# ── Group 3: Performance ── #}
+  <div class="ap-kpi-group">
+    <div class="ap-kpi-group-header">
+      <i class="bi bi-graph-up-arrow me-1"></i>Performance
+      <span class="ap-kpi-group-hint">conversion &amp; revenue</span>
+    </div>
+    <div class="ap-hero-kpi ap-hero-kpi--4">
+      <div class="ap-kpi-tile ap-kpi-tile--convert">
+        <div class="ap-kpi-value" style="color:#86efac;">{{ flow_pct }}%</div>
+        <div class="ap-kpi-title">Today's Conversion</div>
+        <div class="ap-kpi-meta">claimed → enrolled aaj</div>
+      </div>
+      <div class="ap-kpi-tile" style="border-top:3px solid #94a3b8;">
+        <div class="ap-kpi-value" style="color:#94a3b8;">{{ metrics.close_pct }}%</div>
+        <div class="ap-kpi-title">Overall Close Rate</div>
+        <div class="ap-kpi-meta">total history</div>
+      </div>
+      <a href="{{ url_for('drilldown', metric='enrolled') }}" class="ap-kpi-tile ap-kpi-tile--link" style="border-top:3px solid #fb923c;" title="Revenue today — click to view enrollments">
+        <div class="ap-kpi-value" style="color:#fb923c;">₹{{ (kpi_today_enrolled_amount|default(0))|int }}</div>
+        <div class="ap-kpi-title">Revenue Today</div>
+        <div class="ap-kpi-meta">₹196 enrollments</div>
+      </a>
+      <a href="{{ url_for('drilldown', metric='revenue') }}" class="ap-kpi-tile ap-kpi-tile--link" style="border-top:3px solid #facc15;" title="Total revenue — click to view">
+        <div class="ap-kpi-value" style="color:#facc15;">₹{{ (metrics.revenue|default(0))|int }}</div>
+        <div class="ap-kpi-title">Total Revenue</div>
+        <div class="ap-kpi-meta">all time</div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-3" style="background:linear-gradient(135deg,#fff7ed,#ffedd5);">
+  <div class="card-body py-2 d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div class="small fw-semibold text-dark">
+      <i class="bi bi-receipt-cutoff text-warning me-1"></i>₹196 Proof Approvals (Leader Queue)
+      <span class="badge bg-warning text-dark ms-2">{{ pending_proof_count or 0 }} pending</span>
+    </div>
+    <a href="{{ url_for('enrollment_approvals') }}"
+       class="btn btn-sm btn-warning fw-semibold">
+      <i class="bi bi-check2-square me-1"></i>Pending Approval Enrollments
+    </a>
+  </div>
+</div>
+
+{# ═══ B. PERFORMANCE FLOW ═══ #}
+<div class="ap-performance-flow mb-4">
+  <div class="ap-flow-labels">
+    <span>Claimed <strong style="color:#e0e7ff;">{{ kpi_today_claimed|default(0) }}</strong></span>
+    <span class="ap-microhint">{{ flow_pct }}% today's conversion</span>
+    <span>Enrolled <strong style="color:#86efac;">{{ kpi_today_enrolled|default(0) }}</strong></span>
+  </div>
+  <div class="ap-flow-track">
+    <div class="ap-flow-bar" style="width:{{ [flow_pct, 100]|min }}%;"></div>
+  </div>
+</div>
+
+{# ═══ B2. STABILIZATION WATCH (LIVE) ═══ #}
+<div class="ap-section-label mb-3">Stabilization Watch</div>
+<div class="card ap-panel border-0 mb-4">
+  <div class="card-body pt-3">
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+      <span class="badge bg-dark-subtle text-light border">Auto sync: 5s</span>
+      <button id="stab-refresh-btn" class="btn btn-sm btn-outline-light py-1 px-2" type="button">Refresh now</button>
+      <button id="stab-reconcile-btn" class="btn btn-sm btn-outline-primary py-1 px-2" type="button">Reconcile now</button>
+      <button id="stab-strict-on-btn" class="btn btn-sm btn-outline-success py-1 px-2" type="button">Strict ON</button>
+      <button id="stab-strict-off-btn" class="btn btn-sm btn-outline-warning py-1 px-2" type="button">Strict OFF</button>
+      <button id="stab-maint-on-btn" class="btn btn-sm btn-outline-danger py-1 px-2" type="button">Maintenance ON</button>
+      <button id="stab-maint-off-btn" class="btn btn-sm btn-outline-info py-1 px-2" type="button">Maintenance OFF</button>
+      <span id="stab-last-sync" class="small ap-microhint ms-auto">Last sync: --</span>
+    </div>
+    <div id="stab-error" class="small text-warning mb-2" style="display:none;"></div>
+    <div id="stab-reconcile-status" class="small mb-2 ap-microhint">Reconcile: --</div>
+    <div class="row g-2">
+      <div class="col-6 col-md-2"><div class="pulse-card"><div class="p-icon">🧬</div><div id="stab-dup" class="p-val">0</div><div class="p-lbl">Duplicate assign</div></div></div>
+      <div class="col-6 col-md-2"><div class="pulse-card"><div class="p-icon">💳</div><div id="stab-wallet" class="p-val">0</div><div class="p-lbl">Wallet mismatch</div></div></div>
+      <div class="col-6 col-md-2"><div class="pulse-card"><div class="p-icon">⛔</div><div id="stab-skip" class="p-val">0</div><div class="p-lbl">Skip attempts</div></div></div>
+      <div class="col-6 col-md-2"><div class="pulse-card"><div class="p-icon">🧱</div><div id="stab-status-block" class="p-val">0</div><div class="p-lbl">Status blocked</div></div></div>
+      <div class="col-6 col-md-2"><div class="pulse-card"><div class="p-icon">✅</div><div id="stab-review-invalid" class="p-val">0</div><div class="p-lbl">Invalid review</div></div></div>
+      <div class="col-6 col-md-2"><div class="pulse-card"><div class="p-icon">🛡️</div><div id="stab-review-forbid" class="p-val">0</div><div class="p-lbl">Forbidden review</div></div></div>
+      <div class="col-6 col-md-2"><div class="pulse-card"><div class="p-icon">⏱️</div><div id="stab-stuck" class="p-val">0</div><div class="p-lbl">Stuck 24h+</div></div></div>
+      <div class="col-6 col-md-2"><div class="pulse-card"><div class="p-icon">📊</div><div id="stab-enroll" class="p-val">0</div><div class="p-lbl">Count mismatch</div></div></div>
+      <div class="col-6 col-md-2"><div class="pulse-card"><div class="p-icon">⚙️</div><div id="stab-flags" class="p-val" style="font-size:.8rem;">--</div><div class="p-lbl">Flags</div></div></div>
+    </div>
+  </div>
+</div>
+
+{# ═══ C. TEAM PERFORMANCE ═══ #}
+{% if team_board %}
+<div class="ap-section-label mb-3">Team Performance</div>
+<div class="ap-team-split mb-4">
+  <div class="ap-team-card ap-team-card--good">
+    <div class="ap-team-card-head"><i class="bi bi-arrow-up-circle-fill me-2" style="color:#4ade80;font-size:.85rem;"></i>Top Performers</div>
+    {% if top_performers %}
+    <div class="ap-team-rows">
+      {% for m in top_performers[:5] %}
+      <div class="ap-team-row">
+        <span class="ap-team-name">{{ m.username }}</span>
+        <span class="ap-team-stat"><i class="bi bi-telephone me-1" style="opacity:.5;"></i>{{ m.stage1 or 0 }}</span>
+        <span class="ap-team-stat" style="color:#4ade80;"><i class="bi bi-check2-circle me-1"></i>{{ m.converted or 0 }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="ap-team-empty">No members above threshold yet</div>
+    {% endif %}
+  </div>
+  <div class="ap-team-card ap-team-card--warn">
+    <div class="ap-team-card-head"><i class="bi bi-exclamation-circle-fill me-2" style="color:#f87171;font-size:.85rem;"></i>Low Activity</div>
+    {% if low_activity %}
+    <div class="ap-team-rows">
+      {% for m in low_activity[:5] %}
+      <div class="ap-team-row">
+        <span class="ap-team-name">{{ m.username }}</span>
+        <span class="ap-team-stat"><i class="bi bi-telephone me-1" style="opacity:.5;"></i>{{ m.stage1 or 0 }}</span>
+        <span class="ap-team-stat">{% if m.report_done %}<i class="bi bi-check-circle" style="color:#4ade80;"></i>{% else %}<i class="bi bi-x-circle" style="color:#f87171;"></i>{% endif %} rpt</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="ap-team-empty" style="color:#4ade80;"><i class="bi bi-check-circle-fill me-1"></i>All members active</div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{# ═══ D. PIPELINE SNAPSHOT ═══ #}
+<div class="ap-section-label mb-3">Pipeline Snapshot</div>
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="ap-pipeline-card">
+      <div class="ap-pipeline-icon" style="background:rgba(99,102,241,0.12);"><i class="bi bi-person-fill-check" style="color:#818cf8;"></i></div>
+      <div class="ap-pipeline-val" style="color:#a5b4fc;">{{ pipeline_buckets.enrollment }}</div>
+      <div class="ap-pipeline-label">Enrollment</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="ap-pipeline-card">
+      <div class="ap-pipeline-icon" style="background:rgba(20,184,166,0.12);"><i class="bi bi-mortarboard-fill" style="color:#5eead4;"></i></div>
+      <div class="ap-pipeline-val" style="color:#5eead4;">{{ pipeline_buckets.training }}</div>
+      <div class="ap-pipeline-label">Training</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="ap-pipeline-card">
+      <div class="ap-pipeline-icon" style="background:rgba(139,92,246,0.12);"><i class="bi bi-trophy-fill" style="color:#c4b5fd;"></i></div>
+      <div class="ap-pipeline-val" style="color:#c4b5fd;">{{ pipeline_buckets.closing }}</div>
+      <div class="ap-pipeline-label">Closing</div>
+    </div>
+  </div>
+</div>
+
+{# ═══ E. ALERTS & WARNINGS ═══ #}
+{% set low_activity_count = low_activity|length %}
+{% set missing_report_count = (pulse.reports_total - pulse.reports_done) if pulse is defined else 0 %}
+{% if (pulse is defined and pulse.stale_count > 0) or (followup_count is defined and followup_count > 0) or low_activity_count > 0 or missing_report_count > 0 or pending_count > 0 or wallet_pending_count > 0 %}
+<div class="ap-section-label mb-3">Alerts &amp; Actions</div>
+<div class="ap-alerts-panel mb-4">
+  {% if pulse is defined and pulse.stale_count > 0 %}
+  <div class="ap-alert-item ap-alert-item--warn">
+    <i class="bi bi-clock-history ap-alert-icon"></i>
+    <div class="ap-alert-body"><span class="ap-alert-title">Stale leads — no update 48h+</span><span class="ap-alert-sub">{{ pulse.stale_count }} leads idle · redistribute to top-5</span></div>
+    <span class="ap-alert-badge">{{ pulse.stale_count }}</span>
+    <a href="{{ url_for('admin_stale_leads') }}" class="ap-alert-action">Manage <i class="bi bi-arrow-right"></i></a>
+  </div>
+  {% endif %}
+  {% if followup_count is defined and followup_count > 0 %}
+  <div class="ap-alert-item ap-alert-item--warn">
+    <i class="bi bi-telephone-x ap-alert-icon"></i>
+    <div class="ap-alert-body"><span class="ap-alert-title">Follow-ups overdue</span><span class="ap-alert-sub">{{ followup_count }} follow-up{% if followup_count != 1 %}s{% endif %} pending</span></div>
+    <span class="ap-alert-badge">{{ followup_count }}</span>
+    <a href="{{ url_for('follow_up_queue') }}" class="ap-alert-action">Review <i class="bi bi-arrow-right"></i></a>
+  </div>
+  {% endif %}
+  {% if low_activity_count > 0 %}
+  <div class="ap-alert-item ap-alert-item--danger">
+    <i class="bi bi-person-x ap-alert-icon"></i>
+    <div class="ap-alert-body"><span class="ap-alert-title">Low activity members</span><span class="ap-alert-sub">{{ low_activity_count }} member{% if low_activity_count != 1 %}s{% endif %} with score 0</span></div>
+    <span class="ap-alert-badge ap-alert-badge--danger">{{ low_activity_count }}</span>
+    <a href="{{ url_for('reports_admin') }}" class="ap-alert-action">Review <i class="bi bi-arrow-right"></i></a>
+  </div>
+  {% endif %}
+  {% if missing_report_count > 0 %}
+  <div class="ap-alert-item ap-alert-item--warn">
+    <i class="bi bi-file-earmark-x ap-alert-icon"></i>
+    <div class="ap-alert-body"><span class="ap-alert-title">Reports missing</span><span class="ap-alert-sub">{{ missing_report_count }} of {{ pulse.reports_total }} not submitted</span></div>
+    <span class="ap-alert-badge">{{ missing_report_count }}</span>
+    <a href="{{ url_for('reports_admin') }}" class="ap-alert-action">Review <i class="bi bi-arrow-right"></i></a>
+  </div>
+  {% endif %}
+  {% if pending_count > 0 %}
+  <div class="ap-alert-item ap-alert-item--info">
+    <i class="bi bi-person-check ap-alert-icon"></i>
+    <div class="ap-alert-body"><span class="ap-alert-title">Pending approvals</span><span class="ap-alert-sub">{{ pending_count }} member{% if pending_count != 1 %}s{% endif %} awaiting approval</span></div>
+    <span class="ap-alert-badge ap-alert-badge--info">{{ pending_count }}</span>
+    <a href="{{ url_for('admin_approvals') }}" class="ap-alert-action">Review <i class="bi bi-arrow-right"></i></a>
+  </div>
+  {% endif %}
+  {% if wallet_pending_count > 0 %}
+  <div class="ap-alert-item ap-alert-item--info">
+    <i class="bi bi-wallet2 ap-alert-icon"></i>
+    <div class="ap-alert-body"><span class="ap-alert-title">Wallet recharges pending</span><span class="ap-alert-sub">{{ wallet_pending_count }} recharge request{% if wallet_pending_count != 1 %}s{% endif %}</span></div>
+    <span class="ap-alert-badge ap-alert-badge--info">{{ wallet_pending_count }}</span>
+    <a href="{{ url_for('admin_wallet_requests') }}" class="ap-alert-action">Review <i class="bi bi-arrow-right"></i></a>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{# ═══ F. TODAY'S PULSE (collapsible) ═══ #}
+{% set dh = data_health|default({'bad_payment':0,'updated_not_today':0,'bad_seat':0,'bad_track':0}) %}
+<details class="card ap-panel border-0 mb-3">
+  <summary class="card-header bg-transparent border-0 list-unstyled" style="cursor:pointer;">
+    <span class="fw-semibold"><i class="bi bi-heart-pulse me-2" style="color:#fbbf24;"></i>Data health</span>
+    <span class="small ap-microhint ms-1">Invariant checks · non-zero → investigate</span>
+  </summary>
+  <div class="card-body pt-2 border-top border-secondary border-opacity-25">
+    <div class="row g-3 small">
+      <div class="col-md-3"><div class="cmd-stat py-2"><div class="val {% if dh.bad_payment %}text-danger{% else %}text-success{% endif %}">{{ dh.bad_payment }}</div><div class="lbl">Paid flag but amount ≤ 0</div></div></div>
+      <div class="col-md-3"><div class="cmd-stat py-2"><div class="val {% if dh.updated_not_today %}text-warning{% else %}text-success{% endif %}">{{ dh.updated_not_today }}</div><div class="lbl">Not touched today (IST)</div></div></div>
+      <div class="col-md-3"><div class="cmd-stat py-2"><div class="val {% if dh.bad_seat %}text-danger{% else %}text-success{% endif %}">{{ dh.bad_seat }}</div><div class="lbl">Seat Hold + seat ≤ 0</div></div></div>
+      <div class="col-md-3"><div class="cmd-stat py-2"><div class="val {% if dh.bad_track %}text-danger{% else %}text-success{% endif %}">{{ dh.bad_track }}</div><div class="lbl">Fully + track ≤ 0</div></div></div>
+    </div>
+  </div>
+</details>
+
+<details class="card ap-panel border-0 mb-4">
+  <summary class="card-header bg-transparent border-0 list-unstyled" style="cursor:pointer;">
+    <span class="fw-semibold"><i class="bi bi-activity me-2" style="color:#818cf8;"></i>Today's pulse</span>
+    <span class="small ap-microhint ms-1">Reports · batch · stale</span>
+  </summary>
+  <div class="card-body pt-2 border-top border-secondary border-opacity-25">
+    <div class="row g-2">
+      <div class="col-4 col-md-2">
+        <div class="pulse-card">
+          <div class="p-icon">📋</div>
+          <div class="p-val {% if pulse.reports_done < pulse.reports_total %}text-warning{% else %}text-success{% endif %}">
+            {{ pulse.reports_done }}/{{ pulse.reports_total }}
+          </div>
+          <div class="p-lbl">Reports</div>
+        </div>
+      </div>
+      <div class="col-4 col-md-2">
+        <div class="pulse-card">
+          <div class="p-icon">📥</div>
+          <div class="p-val text-primary">{{ pulse.total_calls }}</div>
+          <div class="p-lbl">Claimed today</div>
+        </div>
+      </div>
+      <div class="col-4 col-md-2">
+        <div class="pulse-card">
+          <div class="p-icon">💰</div>
+          <div class="p-val text-success">{{ pulse.payments_count }}</div>
+          <div class="p-lbl">Enrolled (₹196 path) · ₹{{ pulse.payments_amount|int }}</div>
+        </div>
+      </div>
+      <div class="col-4 col-md-2">
+        <div class="pulse-card">
+          <div class="p-icon">📚</div>
+          <div class="p-val {% if pulse.batch_d1_pct >= 80 %}text-success{% elif pulse.batch_d1_pct >= 50 %}text-warning{% else %}text-danger{% endif %}">{{ pulse.batch_d1_pct }}%</div>
+          <div class="p-lbl">D1 Batch ({{ pulse.batch_d1_done }}/{{ pulse.batch_d1_total }})</div>
+        </div>
+      </div>
+      <div class="col-4 col-md-2">
+        <div class="pulse-card">
+          <div class="p-icon">📖</div>
+          <div class="p-val {% if pulse.batch_d2_pct >= 80 %}text-success{% elif pulse.batch_d2_pct >= 50 %}text-warning{% else %}text-danger{% endif %}">{{ pulse.batch_d2_pct }}%</div>
+          <div class="p-lbl">D2 Batch ({{ pulse.batch_d2_done }}/{{ pulse.batch_d2_total }})</div>
+        </div>
+      </div>
+      <div class="col-4 col-md-2">
+        <div class="pulse-card" {% if pulse.stale_count > 0 %}style="border:1.5px solid #f59e0b;"{% endif %}>
+          <div class="p-icon">⚠️</div>
+          <div class="p-val {% if pulse.stale_count > 0 %}text-warning{% else %}text-success{% endif %}">{{ pulse.stale_count }}</div>
+          <div class="p-lbl">Stale &gt;48h</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</details>
+
+{% if step7_pressure and step7_pressure.lines %}
+<details class="card ap-panel border-0 mb-4">
+  <summary class="card-header bg-transparent border-0 d-flex align-items-center gap-2" style="cursor:pointer;list-style:none;">
+    <i class="bi bi-robot" style="color:#818cf8;"></i>
+    <span class="fw-semibold">Step 7 — Daily pressure</span>
+    <span class="ap-microhint fw-normal ms-1" style="font-size:.72rem;">9 PM IST snapshot</span>
+    <a href="{{ url_for('admin_decision_engine', live=1) }}" class="ms-auto small ap-microhint link-underline-opacity-50 text-decoration-none" onclick="event.stopPropagation()">Decision engine</a>
+  </summary>
+  <div class="card-body pt-2 small border-top border-secondary border-opacity-25">
+    {% for k, label in [('top','TOP'), ('good','GOOD'), ('warning','WARNING'), ('critical','CRITICAL'), ('remove','REMOVE')] %}
+      {% if step7_pressure.lines.get(k) %}
+      <div class="mb-1"><span class="fw-semibold text-secondary">{{ label }}:</span> {{ step7_pressure.lines[k] }}</div>
+      {% endif %}
+    {% endfor %}
+  </div>
+</details>
+{% endif %}
+
+{% if step8_admin_ai_lines %}
+<details class="card ap-panel border-0 mb-4">
+  <summary class="card-header bg-transparent border-0 d-flex align-items-center gap-2" style="cursor:pointer;list-style:none;">
+    <i class="bi bi-stars" style="color:#c084fc;"></i>
+    <span class="fw-semibold">Step 8 — AI triage</span>
+    <span class="ap-microhint fw-normal ms-1" style="font-size:.72rem;">read-only</span>
+  </summary>
+  <div class="card-body pt-2 border-top border-secondary border-opacity-25">
+    <p class="small ap-microhint mb-1">From today's decision snapshot · no DB writes · human executes</p>
+    {% if step8_admin_evening %}
+    <p class="small text-secondary mb-2">{{ step8_admin_evening }}</p>
+    {% endif %}
+    <ul class="list-group list-group-flush small">
+      {% for line in step8_admin_ai_lines %}
+      <li class="list-group-item py-1 px-3">{{ line }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+</details>
+{% endif %}
+
+{% if system_auto_actions %}
+<details class="card ap-panel border-0 mb-4">
+  <summary class="card-header bg-transparent border-0 d-flex align-items-center gap-2" style="cursor:pointer;list-style:none;">
+    <i class="bi bi-journal-text ap-microhint"></i>
+    <span class="fw-semibold small">Recent auto-actions</span>
+    <span class="badge ms-1" style="font-size:.6rem;background:rgba(255,255,255,.08);color:#a1a1aa;">{{ system_auto_actions|length }}</span>
+  </summary>
+  <div class="border-top border-secondary border-opacity-25">
+    <ul class="list-group list-group-flush small">
+      {% for a in system_auto_actions %}
+      <li class="list-group-item py-1 px-3 d-flex flex-wrap gap-2 justify-content-between">
+        <span><code>{{ a.event_type }}</code>{% if a.target_username %} → <strong>{{ a.target_username }}</strong>{% endif %}</span>
+        <span class="text-muted">{{ a.created_at }}</span>
+        <span class="text-secondary w-100" style="font-size:0.72rem;">{{ a.reason }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</details>
+{% endif %}
+
+{# ═══ Optional: har stage detail funnel ═══ #}
+{% set total_active = pipeline.prospecting + pipeline.enrolled + pipeline.day1 + pipeline.day2 + pipeline.day3 + pipeline.plan_2cc + pipeline.seat_hold + pipeline.pending_as + pipeline.level_up + pipeline.converted %}
+{% set max_pipe = [pipeline.prospecting, pipeline.enrolled, pipeline.day1, pipeline.day2, pipeline.day3, pipeline.plan_2cc, pipeline.seat_hold, pipeline.pending_as, pipeline.level_up, pipeline.converted]|max or 1 %}
+<details class="card ap-panel border-0 mb-4">
+  <summary class="card-header bg-transparent border-0 list-unstyled" style="cursor:pointer;">
+    <span class="fw-semibold"><i class="bi bi-funnel-fill me-2" style="color:#818cf8;"></i>All stages (detail)</span>
+    <span class="small ap-microhint ms-1">Prospecting → Converted</span>
+  </summary>
+  <div class="card-body pt-2 border-top border-secondary border-opacity-25">
+    <p class="small ap-microhint mb-3">Legacy stage breakdown. Buckets above group Enrollment / Training / Closing.</p>
+    {% set stages = [
+      ('Prospecting', pipeline.prospecting, '#6b7280'),
+      ('Enrolled', pipeline.enrolled, '#0d6efd'),
+      ('Day 1', pipeline.day1, '#0dcaf0'),
+      ('Day 2', pipeline.day2, '#ffc107'),
+      ('Day 3', pipeline.day3, '#fd7e14'),
+      ('2cc Plan', pipeline.plan_2cc, '#e11d48'),
+      ('Seat Hold', pipeline.seat_hold, '#7c3aed'),
+      ('Pending AS', pipeline.pending_as, '#f59e0b'),
+      ('Level Up', pipeline.level_up, '#06b6d4'),
+      ('Converted', pipeline.converted, '#198754'),
+    ] %}
+    {% for label, count, color in stages %}
+    <div class="funnel-row">
+      <div class="funnel-label">{{ label }}</div>
+      <div class="funnel-bar-wrap">
+        <div class="funnel-bar" style="width:{{ (count / max_pipe * 100)|int }}%;background:{{ color }};"></div>
+      </div>
+      <div class="funnel-count">{{ count }}</div>
+      <div class="funnel-pct">
+        {% if total_active > 0 %}{{ (count / total_active * 100)|round(1) }}%{% else %}—{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</details>
+
+{# ═══ SECTION 4: TEAM LEADERBOARD ═══ #}
+<details class="card ap-panel border-0 mb-4">
+  <summary class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center" style="cursor:pointer;list-style:none;">
+    <h6 class="mb-0 fw-semibold"><i class="bi bi-trophy-fill me-2" style="color:#fbbf24;"></i>Team leaderboard</h6>
+    <a href="{{ url_for('working') }}" class="btn ap-btn-ghost py-0 text-decoration-none" style="font-size:.72rem;" onclick="event.stopPropagation()">
+      Working <i class="bi bi-arrow-right ms-1"></i>
+    </a>
+  </summary>
+  <div class="border-top border-secondary border-opacity-25">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <div class="d-none d-md-flex lb-row fw-bold ap-lb-head">
+        <div style="width:22px;flex-shrink:0;"></div>
+        <div class="lb-name">Member</div>
+        <div class="lb-cell">Score</div>
+        <div class="lb-cell">Streak</div>
+        <div class="lb-cell">S1</div>
+        <div class="lb-cell">D1</div>
+        <div class="lb-cell">D2</div>
+        <div class="lb-cell">D3</div>
+        <div class="lb-cell">SH</div>
+        <div class="lb-cell">Conv</div>
+        <div class="lb-cell" style="min-width:42px;">Batch</div>
+        <div class="lb-cell" style="min-width:32px;">Rpt</div>
+      </div>
+      {% for m in team_board %}
+      {% set rank_colors = {0: 'background:#fbbf24;color:#92400e;', 1: 'background:#d1d5db;color:#374151;', 2: 'background:#f59e0b;color:#78350f;'} %}
+      <div class="lb-row {% if m.score >= 50 %}bg-success bg-opacity-10{% elif m.score == 0 and not m.report_done %}bg-danger bg-opacity-10{% endif %}">
+        <div class="lb-rank" style="{{ rank_colors.get(loop.index0, 'background:var(--bg-muted,#f3f4f6);color:var(--label-3,#6b7280);') }}">
+          {{ loop.index }}
+        </div>
+        <div class="lb-name">
+          {{ m.username }}
+          <span class="d-md-none text-muted" style="font-size:.6rem;"> · {{ m.total }} leads</span>
+        </div>
+        <div class="lb-cell">
+          <span class="badge {% if m.score >= 50 %}bg-success{% elif m.score >= 10 %}bg-warning text-dark{% else %}bg-secondary{% endif %}" style="font-size:.65rem;">
+            {{ m.score }}
+          </span>
+        </div>
+        <div class="lb-cell">
+          {% if m.streak > 1 %}<span style="color:#d97706;">{{ m.streak }}d</span>{% else %}—{% endif %}
+        </div>
+        <div class="lb-cell {% if m.stage1 == 0 %}dim{% endif %}">{{ m.stage1 or '—' }}</div>
+        <div class="lb-cell {% if m.day1 == 0 %}dim{% endif %}">{{ m.day1 or '—' }}</div>
+        <div class="lb-cell {% if m.day2 == 0 %}dim{% endif %}">{{ m.day2 or '—' }}</div>
+        <div class="lb-cell {% if m.day3 == 0 %}dim{% endif %}">{{ m.day3 or '—' }}</div>
+        <div class="lb-cell {% if m.pending == 0 %}dim{% endif %}" style="{% if m.pending > 0 %}color:#7c3aed;{% endif %}">{{ m.pending or '—' }}</div>
+        <div class="lb-cell {% if m.converted == 0 %}dim{% endif %}" style="{% if m.converted > 0 %}color:#16a34a;font-weight:700;{% endif %}">{{ m.converted or '—' }}</div>
+        <div class="lb-cell" style="min-width:42px;">
+          {% if m.batch_pct >= 0 %}
+            <span class="{% if m.batch_pct >= 80 %}text-success{% elif m.batch_pct >= 40 %}text-warning{% else %}text-danger{% endif %}" style="font-size:.68rem;font-weight:600;">{{ m.batch_pct }}%</span>
+          {% else %}—{% endif %}
+        </div>
+        <div class="lb-cell" style="min-width:32px;">
+          {% if m.report_done %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-x-circle text-danger"></i>{% endif %}
+        </div>
+      </div>
+      {% else %}
+      <div class="text-center text-muted py-4 small">No team members yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+  </div>{# /details body #}
+</details>
+
+{# ═══ MONTHLY REPORT (slower: MTD + revenue / trends) ═══ #}
+<details class="mb-4">
+<summary class="card ap-panel border-0 mb-3 d-flex align-items-center gap-2 px-3 py-2" style="cursor:pointer;list-style:none;border-radius:var(--ap-radius,10px);">
+  <i class="bi bi-calendar3" style="color:#818cf8;"></i>
+  <span class="fw-semibold">Monthly · {{ month_label }}</span>
+  <span class="small ap-microhint ms-1">MTD pipeline + revenue + charts</span>
+</summary>
+<div class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-3 ap-month-head">
+  <div>
+    <h5 class="mb-1"><i class="bi bi-calendar3 me-2 ap-microhint"></i>Monthly · {{ month_label }}</h5>
+    <p class="small ap-microhint mb-0">
+      {% if report_month_is_current %}MTD (IST){% else %}Full month (IST){% endif %}:
+      <strong class="text-light">{{ ms_start }}</strong> → <strong class="text-light">{{ month_range_end }}</strong>
+    </p>
+  </div>
+  <form method="get" action="{{ url_for('admin_dashboard') }}" class="d-flex align-items-center gap-2">
+    <label class="small ap-microhint mb-0">Month</label>
+    <select name="report_month" class="form-select form-select-sm" style="max-width:9rem;" onchange="this.form.submit()" aria-label="Report month">
+      {% for ym in month_options %}
+      <option value="{{ ym }}" {% if ym == report_month %}selected{% endif %}>{{ ym }}</option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+
+<div class="card ap-panel border-0 mb-4">
+  <div class="card-header bg-transparent border-0 pb-0">
+    <h6 class="mb-1 fw-semibold" style="font-size:.85rem;">Month-end snapshot</h6>
+    <p class="small ap-microhint mb-0">Wallet = approved recharges. Pipeline budget = track/seat on leads <em>updated</em> this month. Funnel from <code>lead_stage_history</code> (transition dates).</p>
+  </div>
+  <div class="card-body pt-2">
+    <div class="row g-3 mb-2">
+      <div class="col-6 col-md-3">
+        <div class="cmd-stat py-2">
+          <div class="val" style="color:var(--ap-text) !important;">₹{{ "{:,.0f}".format(month_wallet_recharged or 0) }}</div>
+          <div class="lbl">Total wallet budget (recharge, approved)</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="cmd-stat py-2">
+          <div class="val text-success">₹{{ "{:,.0f}".format(month_pipeline_budget or 0) }}</div>
+          <div class="lbl">Pipeline budget snapshot (track / seat on leads updated)</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="cmd-stat py-2">
+          <div class="val text-success">{{ admin_month_enrolled }}</div>
+          <div class="lbl">Enrollments (₹196 path, lead <code>updated_at</code> in selected month)</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="cmd-stat py-2">
+          <div class="val text-primary">{{ admin_month_claimed }}</div>
+          <div class="lbl">Claims from pool</div>
+        </div>
+      </div>
+    </div>
+    <div class="ap-section-label mt-3">Funnel (stage history)</div>
+    <div class="row g-3">
+      <div class="col-6 col-md">
+        <div class="cmd-stat py-2"><div class="val text-primary">{{ month_stage_history.day1 }}</div><div class="lbl">Reached Day 1</div></div>
+      </div>
+      <div class="col-6 col-md">
+        <div class="cmd-stat py-2"><div class="val" style="color:#0d9488;">{{ month_stage_history.day2 }}</div><div class="lbl">Reached Day 2</div></div>
+      </div>
+      <div class="col-6 col-md">
+        <div class="cmd-stat py-2"><div class="val" style="color:#7c3aed;">{{ month_stage_history.seat_track }}</div><div class="lbl">Seat hold / 2CC milestone</div></div>
+      </div>
+      <div class="col-6 col-md">
+        <div class="cmd-stat py-2"><div class="val text-success">{{ month_stage_history.final_close }}</div><div class="lbl">Final close (closing / complete)</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="cmd-stat">
+      <div class="val text-primary">{{ pipeline.prospecting + pipeline.enrolled + pipeline.day1 + pipeline.day2 + pipeline.day3 + pipeline.plan_2cc + pipeline.seat_hold + pipeline.pending_as + pipeline.level_up }}</div>
+      <div class="lbl">Active Leads</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="cmd-stat">
+      <div class="val text-success">₹{{ "{:,.0f}".format(pipeline_value) }}</div>
+      <div class="lbl">Pipeline Value</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="cmd-stat">
+      <div class="val text-warning">{{ metrics.close_pct }}%</div>
+      <div class="lbl">Close Rate</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="cmd-stat">
+      <div class="val" style="color:#6366f1;">{{ pipeline.converted }}</div>
+      <div class="lbl">Total Converted</div>
+    </div>
+  </div>
+</div>
+
+{# ═══ SECTION 5: CHARTS ROW — Revenue + Trend + Status ═══ #}
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card ap-chart-card border-0 h-100">
+      <div class="card-body">
+        <h6 class="card-title mb-3"><i class="bi bi-bar-chart-fill me-2" style="color:#4ade80;"></i>Revenue</h6>
+        <canvas id="revenueChart" height="180"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card ap-chart-card border-0 h-100">
+      <div class="card-body">
+        <h6 class="card-title mb-3"><i class="bi bi-graph-up me-2" style="color:#818cf8;"></i>Daily (7d)</h6>
+        <canvas id="trendChart" height="180"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card ap-chart-card border-0 h-100">
+      <div class="card-body">
+        <h6 class="card-title mb-3"><i class="bi bi-pie-chart-fill me-2" style="color:#fbbf24;"></i>Status</h6>
+        <canvas id="statusChart" height="180"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+</details>{# /monthly report #}
+
+{# ═══ SECTION 6: ACTION QUEUE ═══ #}
+<details class="mb-2">
+<summary class="card ap-panel border-0 mb-3 d-flex align-items-center gap-2 px-3 py-2" style="cursor:pointer;list-style:none;border-radius:var(--ap-radius,10px);">
+  <i class="bi bi-stack" style="color:#fbbf24;"></i>
+  <span class="fw-semibold">Action queue</span>
+  <span class="small ap-microhint ms-1">Approvals · stale leads · reports · wallets · KPIs</span>
+</summary>
+
+{# Pending Approvals #}
+{% if pending_users %}
+<div class="card ap-panel border-0 mb-4">
+  <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+    <h6 class="mb-0 fw-semibold" style="color:#fcd34d;"><i class="bi bi-hourglass-split me-2"></i>Pending approvals <span class="badge rounded-pill ms-1" style="background:rgba(251,191,36,.2);color:#fde68a;">{{ pending_users|length }}</span></h6>
+    <a href="{{ url_for('admin_approvals', filter='pending') }}" class="btn btn-sm btn-warning py-0" style="font-size:.72rem;">Review All</a>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle mb-0" style="font-size:.78rem;">
+        <thead class="table-light"><tr><th>Username</th><th>FBO ID</th><th>Upline</th><th>Phone</th><th class="text-end">Actions</th></tr></thead>
+        <tbody>
+          {% for u in pending_users[:5] %}
+          <tr>
+            <td class="fw-semibold">{{ u.username }}</td>
+            <td><span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2" style="font-size:.65rem;">{{ u.fbo_id or '—' }}</span></td>
+            <td class="text-muted">{{ u.upline_name or '—' }}</td>
+            <td class="text-muted">{{ u.phone or '—' }}</td>
+            <td class="text-end">
+              <div class="d-flex gap-1 justify-content-end">
+                <form method="post" action="{{ url_for('approve_user', user_id=u.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <input type="hidden" name="current_filter" value="pending">
+                  <button type="submit" class="btn btn-sm btn-success py-0 px-2" style="font-size:.7rem;" onclick="return confirm('Approve {{ u.username }}?')"><i class="bi bi-check-lg"></i></button>
+                </form>
+                <form method="post" action="{{ url_for('reject_user', user_id=u.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <input type="hidden" name="current_filter" value="pending">
+                  <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size:.7rem;" onclick="return confirm('Reject {{ u.username }}?')"><i class="bi bi-x-lg"></i></button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# Missing Reports Alert #}
+{% if missing_reports %}
+<div class="alert alert-warning py-3 mb-4 d-flex align-items-center gap-2" style="font-size:.78rem;">
+  <i class="bi bi-file-earmark-x-fill text-warning"></i>
+  <span class="fw-semibold">
+    {{ missing_reports|length }} report{% if missing_reports|length > 1 %}s{% endif %} missing:
+    {{ missing_reports[:4]|join(', ') }}{% if missing_reports|length > 4 %} +{{ missing_reports|length - 4 }}{% endif %}
+  </span>
+  <a href="{{ url_for('reports_admin') }}" class="btn btn-sm btn-warning ms-auto py-0" style="font-size:.68rem;">View</a>
+</div>
+{% endif %}
+
+{# Stale Leads #}
+{% if stale_leads %}
+<div class="card ap-panel border-0 mb-4">
+  <div class="card-header bg-transparent border-0">
+    <h6 class="mb-0 fw-semibold" style="color:#fcd34d;"><i class="bi bi-exclamation-triangle-fill me-2"></i>Stale leads · 48h+ idle</h6>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle mb-0" style="font-size:.78rem;">
+        <thead class="table-light"><tr><th>Name</th><th>Member</th><th>Status</th><th>Last Update</th></tr></thead>
+        <tbody>
+          {% for l in stale_leads[:10] %}
+          <tr>
+            <td><a href="{{ url_for('edit_lead', lead_id=l.id) }}" class="text-decoration-none fw-semibold">{{ l.name }}</a></td>
+            <td class="text-muted">{{ l.assignee_display or '—' }}</td>
+            <td><span class="badge bg-secondary" style="font-size:.62rem;">{{ l.status }}</span></td>
+            <td class="text-danger small">{{ l.updated_at[:16] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# Wallet Recharges #}
+{% if wallet_pending_count > 0 %}
+<div class="alert alert-info py-3 mb-4 d-flex align-items-center gap-2" style="font-size:.78rem;">
+  <i class="bi bi-wallet2 text-info"></i>
+  <span class="fw-semibold">{{ wallet_pending_count }} pending wallet recharge{% if wallet_pending_count > 1 %}s{% endif %}</span>
+  <a href="{{ url_for('admin_wallet_requests') }}" class="btn btn-sm btn-info ms-auto py-0 text-white" style="font-size:.68rem;">Review</a>
+</div>
+{% endif %}
+
+{# Today's Reports Detail (collapsible) #}
+{% if today_reports %}
+<div class="card ap-panel border-0 mb-4">
+  <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+    <h6 class="mb-0 fw-semibold" style="font-size:.82rem;">
+      <i class="bi bi-clipboard2-data-fill me-2" style="color:#818cf8;"></i>Today's reports
+      <span class="badge ms-1" style="font-size:.62rem;background:rgba(99,102,241,.25);color:#c7d2fe;">{{ today_reports|length }}</span>
+    </h6>
+    <button class="btn ap-btn-ghost py-0" style="font-size:.68rem;" type="button" data-bs-toggle="collapse" data-bs-target="#reportDetail">
+      <i class="bi bi-chevron-down"></i> Details
+    </button>
+  </div>
+  <div class="collapse" id="reportDetail">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0" style="font-size:.75rem;">
+          <thead class="table-light">
+            <tr>
+              <th>Member</th><th class="text-center">Calls</th><th class="text-center">PDF</th>
+              <th class="text-center">Enrolled</th><th class="text-center">₹196 Actual</th>
+              <th class="text-center">2CC</th><th>Remarks</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in today_reports %}
+            {% set actual = report_verification.get(r.username, 0) %}
+            {% set mismatch = r.enrollments_done > actual %}
+            <tr {% if mismatch %}class="table-warning"{% endif %}>
+              <td class="fw-semibold">
+                {{ r.username }}
+                {% if mismatch %}<i class="bi bi-exclamation-triangle-fill text-warning ms-1" title="Reported ({{ r.enrollments_done }}) > Actual ({{ actual }})"></i>{% endif %}
+              </td>
+              <td class="text-center fw-bold text-primary">{{ r.total_calling }}</td>
+              <td class="text-center">{{ r.pdf_covered }}</td>
+              <td class="text-center fw-bold {% if mismatch %}text-warning{% else %}text-success{% endif %}">{{ r.enrollments_done }}</td>
+              <td class="text-center"><span class="badge {% if actual > 0 %}bg-success{% else %}bg-secondary{% endif %}" style="font-size:.6rem;">{{ actual }}</span></td>
+              <td class="text-center" style="color:#7c3aed;">{{ r.plan_2cc }}</td>
+              <td class="text-muted">{{ (r.remarks or '')[:30] }}{% if r.remarks and r.remarks|length > 30 %}…{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# KPI Cards (compact) #}
+<div class="row g-2 mb-4">
+  {% set kpis = [
+    ('Total Leads', metrics.total, 'bi-people-fill', 'primary', 'total'),
+    ('Payments ₹196', metrics.paid, 'bi-credit-card-2-front-fill', 'info', 'paid'),
+    ('Revenue', '₹' ~ "%.0f"|format(metrics.revenue), 'bi-currency-rupee', 'warning', 'revenue'),
+    ('Seat Hold', metrics.seat_hold, 'bi-shield-fill', 'purple', 'seat_hold'),
+    ('Fully Conv', metrics.fully_conv, 'bi-trophy-fill', 'success', 'fully_converted'),
+    ('Close %', metrics.close_pct ~ '%', 'bi-graph-up-arrow', 'success', None),
+  ] %}
+  {% for label, val, icon, color, metric_key in kpis %}
+  <div class="col-4 col-md-2">
+    <div class="card kpi-card border-0 h-100 position-relative" style="padding:0;">
+      <div class="card-body py-3 px-2 text-center">
+        <i class="bi {{ icon }} text-{{ color }}" style="font-size:1rem;opacity:.9;"></i>
+        <div class="fw-bold mt-1" style="font-size:1.02rem;color:var(--ap-text);">{{ val }}</div>
+        <div class="ap-microhint" style="font-size:.62rem;">{{ label }}</div>
+        {% if metric_key %}<a href="{{ url_for('drilldown', metric=metric_key) }}" class="stretched-link"></a>{% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+</details>{# /action queue #}
+
+{# Live Activity Feed #}
+<details class="card ap-panel border-0 mb-4">
+  <summary class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center" style="cursor:pointer;list-style:none;">
+    <h6 class="mb-0 fw-semibold" style="font-size:.82rem;"><i class="bi bi-activity me-2" style="color:#818cf8;"></i>Live activity</h6>
+    <a href="{{ url_for('leads') }}" class="btn ap-btn-ghost py-0 text-decoration-none" style="font-size:.68rem;" onclick="event.stopPropagation()">All leads</a>
+  </summary>
+  <div class="card-body p-0 border-top border-secondary border-opacity-25">
+    {% if recent_activity %}
+    <ul class="list-unstyled mb-0" id="activityFeed">
+      {% for act in recent_activity %}
+      <li class="d-flex align-items-start gap-2 px-3 py-2 activity-item">
+        {% if act.type == 'stage' %}
+          <span class="act-icon text-info"><i class="bi bi-arrow-right-circle-fill"></i></span>
+          <div class="flex-grow-1 min-w-0">
+            <span class="fw-semibold" style="font-size:.8rem;">{{ act.actor or '—' }}</span>
+            <span class="text-muted" style="font-size:.78rem;"> moved </span>
+            <a href="{{ url_for('edit_lead', lead_id=act.lead_id) }}" class="fw-semibold text-decoration-none" style="font-size:.8rem;">{{ act.lead_name }}</a>
+            <span class="text-muted" style="font-size:.78rem;"> → </span>
+            <span class="badge bg-secondary" style="font-size:.62rem;">{{ act.stage }}</span>
+          </div>
+        {% elif act.type == 'new_lead' %}
+          <span class="act-icon text-success"><i class="bi bi-person-plus-fill"></i></span>
+          <div class="flex-grow-1 min-w-0">
+            <span class="fw-semibold" style="font-size:.8rem;">{{ act.actor or 'Someone' }}</span>
+            <span class="text-muted" style="font-size:.78rem;"> added </span>
+            <a href="{{ url_for('edit_lead', lead_id=act.lead_id) }}" class="fw-semibold text-decoration-none" style="font-size:.8rem;">{{ act.lead_name }}</a>
+          </div>
+        {% elif act.type == 'payment' %}
+          <span class="act-icon text-warning"><i class="bi bi-currency-rupee"></i></span>
+          <div class="flex-grow-1 min-w-0">
+            <span class="text-muted" style="font-size:.78rem;">Payment from </span>
+            <a href="{{ url_for('edit_lead', lead_id=act.lead_id) }}" class="fw-semibold text-decoration-none" style="font-size:.8rem;">{{ act.lead_name }}</a>
+            <span class="text-muted" style="font-size:.78rem;"> via {{ act.actor or '—' }}</span>
+          </div>
+        {% endif %}
+        <span class="text-muted flex-shrink-0 act-time" data-ts="{{ act.created_at }}" style="font-size:.68rem;white-space:nowrap;"></span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="text-center text-muted py-4 small"><i class="bi bi-clock" style="font-size:1.5rem;opacity:.3;"></i><p class="mt-2 mb-0">No recent activity</p></div>
+    {% endif %}
+  </div>
+</details>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+
+const _isMobile = window.innerWidth < 992;
+const _apCh = {
+  border: '#3f3f46',
+  tick: '#a1a1aa',
+  grid: 'rgba(255,255,255,0.06)',
+  legend: '#d4d4d8'
+};
+
+// ── Status Doughnut ──
+new Chart(document.getElementById('statusChart'), {
+  type: 'doughnut',
+  data: {
+    labels: [{% for s, c in status_data.items() %}'{{ s }}',{% endfor %}],
+    datasets: [{
+      data: [{% for s, c in status_data.items() %}{{ c }},{% endfor %}],
+      backgroundColor: ['#71717a','#6366f1','#22d3ee','#34d399','#fbbf24','#fb923c','#a78bfa','#f472b6','#4ade80','#f87171','#94a3b8','#52525b','#ea580c'],
+      borderWidth: 2, borderColor: _apCh.border
+    }]
+  },
+  options: { responsive:true, plugins:{legend:{display:!_isMobile,position:'right',labels:{boxWidth:8,padding:4,font:{size:9},color:_apCh.legend}}}, cutout:'65%' }
+});
+
+// ── Revenue Bar ──
+new Chart(document.getElementById('revenueChart'), {
+  type: 'bar',
+  data: {
+    labels: [{% for r in monthly|reverse %}'{{ r.month }}',{% endfor %}],
+    datasets: [{ label:'₹ Revenue', data:[{% for r in monthly|reverse %}{{ r.total or 0 }},{% endfor %}],
+      backgroundColor:'rgba(74,222,128,0.55)', borderRadius:6 }]
+  },
+  options: { responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,grid:{color:_apCh.grid},ticks:{callback:v=>'₹'+v,font:{size:9},color:_apCh.tick}},x:{grid:{display:false},ticks:{font:{size:9},color:_apCh.tick}}} }
+});
+
+// ── Daily Trend ──
+new Chart(document.getElementById('trendChart'), {
+  type: 'bar',
+  data: {
+    labels: [{% for t in daily_trend %}'{{ t.d[5:] }}',{% endfor %}],
+    datasets: [
+      { label:'Payments', data:[{% for t in daily_trend %}{{ t.payments or 0 }},{% endfor %}], backgroundColor:'rgba(129,140,248,0.55)', borderRadius:4, order:2 },
+      { label:'Conversions', data:[{% for t in daily_trend %}{{ t.conversions or 0 }},{% endfor %}], type:'line', borderColor:'#4ade80', backgroundColor:'rgba(74,222,128,0.08)', pointRadius:3, tension:0.3, fill:true, order:1 }
+    ]
+  },
+  options: { responsive:true, plugins:{legend:{labels:{boxWidth:8,font:{size:9},color:_apCh.legend}}}, scales:{y:{beginAtZero:true,grid:{color:_apCh.grid},ticks:{stepSize:1,font:{size:9},color:_apCh.tick}},x:{grid:{display:false},ticks:{font:{size:9},color:_apCh.tick}}} }
+});
+
+// ── Activity Feed timestamps ──
+(function() {
+  function timeAgo(ts) {
+    if (!ts) return '';
+    const d = new Date(ts.replace(' ', 'T'));
+    if (isNaN(d)) return '';
+    const s = Math.floor((Date.now() - d.getTime()) / 1000);
+    if (s < 60) return s + 's ago';
+    if (s < 3600) return Math.floor(s/60) + 'm ago';
+    if (s < 86400) return Math.floor(s/3600) + 'h ago';
+    return Math.floor(s/86400) + 'd ago';
+  }
+  document.querySelectorAll('.act-time[data-ts]').forEach(function(el) {
+    el.textContent = timeAgo(el.dataset.ts);
+  });
+})();
+
+// ── Stabilization watch (admin) ──
+(function() {
+  const els = {
+    dup: document.getElementById('stab-dup'),
+    wallet: document.getElementById('stab-wallet'),
+    skip: document.getElementById('stab-skip'),
+    statusBlocked: document.getElementById('stab-status-block'),
+    reviewInvalid: document.getElementById('stab-review-invalid'),
+    reviewForbid: document.getElementById('stab-review-forbid'),
+    stuck: document.getElementById('stab-stuck'),
+    enroll: document.getElementById('stab-enroll'),
+    flags: document.getElementById('stab-flags'),
+    reconcile: document.getElementById('stab-reconcile-status'),
+    err: document.getElementById('stab-error'),
+    last: document.getElementById('stab-last-sync'),
+  };
+  if (!els.dup) return;
+
+  function setErr(msg) {
+    if (!els.err) return;
+    if (!msg) { els.err.style.display = 'none'; els.err.textContent = ''; return; }
+    els.err.style.display = 'block';
+    els.err.textContent = msg;
+  }
+
+  function stamp() {
+    if (!els.last) return;
+    const d = new Date();
+    els.last.textContent = 'Last sync: ' + d.toLocaleTimeString();
+  }
+
+  function applyWatch(w) {
+    els.dup.textContent = String(w.duplicate_lead_assignment || 0);
+    els.wallet.textContent = String(w.wallet_mismatch_users || 0);
+    els.skip.textContent = String(w.status_skip_attempts_today || 0);
+    if (els.statusBlocked) els.statusBlocked.textContent = String(w.status_update_blocked_today || 0);
+    if (els.reviewInvalid) els.reviewInvalid.textContent = String(w.reliability_invalid_review_actions_today || 0);
+    if (els.reviewForbid) els.reviewForbid.textContent = String(w.reliability_forbidden_review_actions_today || 0);
+    els.stuck.textContent = String(w.stuck_leads_24h_plus || 0);
+    els.enroll.textContent = String(w.enrollment_count_mismatch || 0);
+  }
+
+  function applyFlags(flags) {
+    const strictRaw = String((flags && flags.strict_flow_guard_enabled) || '1').toLowerCase();
+    const mmRaw = String((flags && flags.maintenance_mode) || '0').toLowerCase();
+    const strictOn = !['0', 'false', 'off', 'no'].includes(strictRaw);
+    const mmOn = ['1', 'true', 'on', 'yes'].includes(mmRaw);
+    els.flags.textContent = `S:${strictOn ? 'ON' : 'OFF'} M:${mmOn ? 'ON' : 'OFF'}`;
+  }
+
+  async function pollWatch() {
+    try {
+      const r = await fetch('{{ url_for("admin_stabilization_watch") }}', { credentials: 'same-origin' });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error || 'watch failed');
+      applyWatch(d.watchlist || {});
+      applyFlags(d.feature_flags || {});
+      setErr('');
+      stamp();
+    } catch (e) {
+      setErr('Watch sync failed. Retrying...');
+    }
+  }
+
+  async function runReconcile() {
+    try {
+      const r = await fetch('{{ url_for("admin_reliability_reconcile") }}', { credentials: 'same-origin' });
+      const d = await r.json();
+      const mm = d.mismatches || {};
+      const mmTotal = Object.values(mm).reduce((acc, n) => acc + Math.abs(Number(n) || 0), 0);
+      if (els.reconcile) {
+        els.reconcile.textContent = mmTotal === 0
+          ? 'Reconcile: OK (no mismatch)'
+          : `Reconcile: mismatch detected (${mmTotal})`;
+        els.reconcile.className = mmTotal === 0
+          ? 'small mb-2 text-success'
+          : 'small mb-2 text-warning';
+      }
+      if (!d.ok) setErr('Reconcile found mismatch — please check stabilization cards.');
+      else setErr('');
+    } catch (e) {
+      if (els.reconcile) {
+        els.reconcile.textContent = 'Reconcile: failed';
+        els.reconcile.className = 'small mb-2 text-warning';
+      }
+      setErr('Reconcile failed.');
+    }
+  }
+
+  async function toggle(key, value) {
+    try {
+      const r = await fetch('{{ url_for("admin_stabilization_toggle") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '{{ csrf_token }}' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ key, value }),
+      });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error || 'toggle failed');
+      setErr('');
+      pollWatch();
+    } catch (e) {
+      setErr(e.message || 'Toggle failed');
+    }
+  }
+
+  const on = (id, fn) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', fn);
+  };
+  on('stab-refresh-btn', () => pollWatch());
+  on('stab-reconcile-btn', () => runReconcile());
+  on('stab-strict-on-btn', () => toggle('strict_flow_guard_enabled', '1'));
+  on('stab-strict-off-btn', () => toggle('strict_flow_guard_enabled', '0'));
+  on('stab-maint-on-btn', () => toggle('maintenance_mode', '1'));
+  on('stab-maint-off-btn', () => toggle('maintenance_mode', '0'));
+
+  pollWatch();
+  runReconcile();
+  setInterval(pollWatch, 5000);
+})();
+</script>
+
+{# ═══ KPI Detail Modal ═══ #}
+<div class="modal fade" id="kpiDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title fw-semibold" id="kpiDetailTitle">Loading...</h6>
+        <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0" id="kpiDetailBody">
+        <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function openKpiDetail(type) {
+  var modal = new bootstrap.Modal(document.getElementById('kpiDetailModal'));
+  document.getElementById('kpiDetailTitle').textContent = 'Loading...';
+  document.getElementById('kpiDetailBody').innerHTML = '<div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>';
+  modal.show();
+  fetch('/admin/kpi-detail?type=' + type, { credentials: 'same-origin' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (!d.ok) { document.getElementById('kpiDetailBody').innerHTML = '<div class="p-3 text-danger">' + (d.error || 'Error') + '</div>'; return; }
+      document.getElementById('kpiDetailTitle').textContent = d.title;
+      if (!d.rows.length) { document.getElementById('kpiDetailBody').innerHTML = '<div class="p-3 text-muted text-center">No data for today.</div>'; return; }
+      var html = '<div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0" style="font-size:.82rem;">';
+      html += '<thead class="table-light"><tr>';
+      d.columns.forEach(function(c) { html += '<th>' + c + '</th>'; });
+      html += '</tr></thead><tbody>';
+      d.rows.forEach(function(r) {
+        html += '<tr>';
+        if (type === 'claimed') {
+          html += '<td class="fw-semibold">' + esc(r.name) + '</td>';
+          html += '<td>' + esc(r.phone) + '</td>';
+          html += '<td><span class="badge bg-primary-subtle text-primary border">' + esc(r.assigned_to) + '</span></td>';
+          html += '<td class="text-muted small">' + esc(r.claimed_at.substring(0, 16)) + '</td>';
+        } else {
+          html += '<td class="fw-semibold">' + esc(r.name) + '</td>';
+          html += '<td>' + esc(r.phone) + '</td>';
+          html += '<td><span class="badge bg-primary-subtle text-primary border">' + esc(r.assigned_to) + '</span></td>';
+          html += '<td class="text-success fw-semibold">\u20b9' + (r.amount || 0) + '</td>';
+          html += '<td class="text-muted small">' + esc((r.enrolled_at || '').substring(0, 16)) + '</td>';
+        }
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+      html += '<div class="px-3 py-2 text-muted small border-top">Total: ' + d.rows.length + ' lead' + (d.rows.length !== 1 ? 's' : '') + '</div>';
+      document.getElementById('kpiDetailBody').innerHTML = html;
+    })
+    .catch(function(e) { document.getElementById('kpiDetailBody').innerHTML = '<div class="p-3 text-danger">Failed to load: ' + e.message + '</div>'; });
+}
+function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+</script>
+{% endblock %}

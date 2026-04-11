@@ -1,0 +1,400 @@
+{% extends "base.html" %}
+{% block title %}All Members – Myle Community{% endblock %}
+{% block page_title %}All Registered Members{% endblock %}
+
+{% block content %}
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+  {% set approved = users|selectattr('status','equalto','approved')|list %}
+  {% set pending  = users|selectattr('status','equalto','pending')|list %}
+  {% set rejected = users|selectattr('status','equalto','rejected')|list %}
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="fw-bold fs-4 text-primary">{{ users|length }}</div>
+      <div class="text-muted small">Total Members</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="fw-bold fs-4 text-success">{{ approved|length }}</div>
+      <div class="text-muted small">Approved</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="fw-bold fs-4 text-warning">{{ pending|length }}</div>
+      <div class="text-muted small">Pending</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="fw-bold fs-4 text-danger">{{ rejected|length }}</div>
+      <div class="text-muted small">Rejected</div>
+    </div>
+  </div>
+</div>
+
+<!-- Search + Filter Bar -->
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-2">
+    <div class="row g-2 align-items-center">
+      <div class="col-12 col-sm">
+        <input type="text" id="memberSearch" class="form-control form-control-sm"
+               placeholder="Search by username, email, phone or FBO ID…" oninput="filterTable()">
+      </div>
+      <div class="col-auto">
+        <select id="statusFilter" class="form-select form-select-sm" onchange="filterTable()">
+          <option value="">All Statuses</option>
+          <option value="approved">Approved</option>
+          <option value="pending">Pending</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Members Table -->
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" id="membersTable">
+        <thead class="table-light small text-muted">
+          <tr>
+            <th>Member</th>
+            <th class="d-none d-md-table-cell">FBO ID</th>
+            <th class="d-none d-md-table-cell">Upline</th>
+            <th class="d-none d-sm-table-cell">Phone / Email</th>
+            <th class="text-center">Leads</th>
+            <th class="text-center">Paid</th>
+            <th class="text-center">Converted</th>
+            <th class="text-center">Reports</th>
+            <th>Status</th>
+            <th>Joined</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="membersBody">
+          {% for u in users %}
+          {% set s = stats_map.get(u.username, {}) %}
+          <tr class="member-row"
+              data-name="{{ u.username|lower }}"
+              data-email="{{ u.email|lower }}"
+              data-phone="{{ u.phone }}"
+              data-fbo="{{ u.fbo_id|lower }}"
+              data-status="{{ u.status }}">
+
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                {% if u.display_picture %}
+                  <img src="{{ u.display_picture }}" class="rounded-circle" width="34" height="34"
+                       style="object-fit:cover;flex-shrink:0;">
+                {% else %}
+                  <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                       style="width:34px;height:34px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;font-size:0.9rem;font-weight:700;">
+                    {{ u.username[0]|upper }}
+                  </div>
+                {% endif %}
+                <div>
+                  <div class="fw-semibold" style="font-size:0.9rem;">@{{ u.username }}</div>
+                  {% if u.role == 'leader' %}
+                  <span class="badge bg-warning text-dark" style="font-size:0.58rem;letter-spacing:0.03em;">⭐ Leader</span>
+                  {% endif %}
+                </div>
+              </div>
+            </td>
+
+            <td class="d-none d-md-table-cell text-muted small">{{ u.fbo_id or '—' }}</td>
+            <td class="d-none d-md-table-cell text-muted small">{{ u.upline_username or u.upline_name or '—' }}</td>
+            <td class="d-none d-sm-table-cell">
+              <div class="small">{{ u.phone or '—' }}</div>
+              <div class="text-muted" style="font-size:0.75rem;">{{ u.email or '—' }}</div>
+            </td>
+
+            <td class="text-center fw-semibold">{{ s.total_leads if s else 0 }}</td>
+            <td class="text-center">
+              <span class="badge bg-success-subtle text-success">{{ s.paid if s else 0 }}</span>
+            </td>
+            <td class="text-center">
+              <span class="badge bg-primary-subtle text-primary">{{ s.converted if s else 0 }}</span>
+            </td>
+            <td class="text-center text-muted small">{{ report_map.get(u.username, 0) }}</td>
+
+            <td>
+              {% if u.status == 'approved' %}
+                <span class="badge bg-success">Active</span>
+              {% elif u.status == 'pending' %}
+                <span class="badge bg-warning text-dark">Pending</span>
+              {% else %}
+                <span class="badge bg-danger">Rejected</span>
+              {% endif %}
+            </td>
+
+            <td class="text-muted small text-nowrap">{{ u.created_at[:10] }}</td>
+
+            <td>
+              <div class="d-flex gap-1 flex-wrap">
+                <a href="{{ url_for('member_detail', username=u.username) }}"
+                   class="btn btn-xs btn-outline-primary text-nowrap">
+                  <i class="bi bi-eye-fill me-1"></i>View
+                </a>
+                {% if u.role in ('team', 'leader') %}
+                <form method="POST"
+                      action="{{ url_for('admin_promote_leader', username=u.username) }}"
+                      class="d-inline"
+                      onsubmit="return confirm('{{ 'Remove Leader role from' if u.role == 'leader' else 'Promote to Leader' }}: @{{ u.username }}?')">
+                  <input type="hidden" name="csrf_token" value="{{ session.get('_csrf_token', '') }}">
+                  <button type="submit"
+                          class="btn btn-xs {% if u.role == 'leader' %}btn-warning text-dark{% else %}btn-outline-warning{% endif %} text-nowrap">
+                    {% if u.role == 'leader' %}
+                    <i class="bi bi-person-dash me-1"></i>Demote
+                    {% else %}
+                    <i class="bi bi-person-up me-1"></i>Leader
+                    {% endif %}
+                  </button>
+                </form>
+                {% endif %}
+                {% if u.role == 'team' %}
+                <form method="POST" action="{{ url_for('admin_set_upline', username=u.username) }}"
+                      class="d-inline-flex align-items-center gap-1 mt-1 flex-wrap">
+                  <input type="hidden" name="csrf_token" value="{{ session.get('_csrf_token', '') }}">
+                  <input type="text" name="upline_fbo_id" inputmode="numeric" autocomplete="off"
+                         class="form-control form-control-sm"
+                         placeholder="FBO"
+                         value=""
+                         style="font-size:0.7rem;width:5rem;"
+                         title="Leave blank to use dropdown only. Fill to assign by leader FBO ID (approved leader). Current: {{ u.upline_fbo_id or '—' }}">
+                  <select name="upline_username" class="form-select form-select-sm"
+                          style="font-size:0.7rem;width:auto;max-width:120px;">
+                    <option value="">— Upline —</option>
+                    {% for ldr in leaders %}
+                    <option value="{{ ldr.username }}"
+                            {% if u.upline_username == ldr.username %}selected{% endif %}>
+                      ⭐ {{ ldr.username }}
+                    </option>
+                    {% endfor %}
+                  </select>
+                  <button type="submit" class="btn btn-xs btn-outline-info" title="Save upline">
+                    <i class="bi bi-check-lg"></i>
+                  </button>
+                </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="11" class="text-center text-muted py-5">
+              <i class="bi bi-people display-5 d-block mb-2"></i>No members registered yet.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% if leader_wallet_summaries %}
+<!-- Leader wallets: balance + recharge / pool spend history -->
+<div class="card border-0 shadow-sm mt-4">
+  <div class="card-header bg-transparent border-0 pt-3 pb-0 d-flex flex-wrap align-items-center justify-content-between gap-2">
+    <h6 class="mb-0 fw-semibold">
+      <i class="bi bi-wallet2 me-2 text-success"></i>Team leaders — wallet overview
+    </h6>
+    <span class="small text-muted">Balance = approved recharges − pool spend (same as member wallet)</span>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle mb-0 small">
+        <thead class="table-light">
+          <tr>
+            <th>Leader</th>
+            <th>Account</th>
+            <th class="text-end">Balance</th>
+            <th class="text-end">Approved recharge</th>
+            <th class="text-end">Pool spent</th>
+            <th class="text-center">Pending reqs</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in leader_wallet_summaries %}
+          {% set w = row.wallet %}
+          <tr>
+            <td class="fw-semibold">
+              <i class="bi bi-star-fill text-warning me-1" style="font-size:0.7rem;"></i>@{{ row.username }}
+            </td>
+            <td>
+              {% if row.status == 'approved' %}
+              <span class="badge bg-success">Active</span>
+              {% elif row.status == 'pending' %}
+              <span class="badge bg-warning text-dark">Pending</span>
+              {% else %}
+              <span class="badge bg-secondary">{{ row.status }}</span>
+              {% endif %}
+            </td>
+            <td class="text-end fw-semibold text-success">₹{{ w.balance|rupee }}</td>
+            <td class="text-end text-muted">₹{{ w.recharged|rupee }}</td>
+            <td class="text-end text-muted">₹{{ w.spent|rupee }}</td>
+            <td class="text-center">
+              {% if row.pending_count > 0 %}
+              <span class="badge bg-warning text-dark">{{ row.pending_count }}</span>
+              {% else %}
+              <span class="text-muted">0</span>
+              {% endif %}
+            </td>
+            <td>
+              <a href="{{ url_for('member_detail', username=row.username) }}" class="btn btn-xs btn-outline-primary text-nowrap">
+                <i class="bi bi-eye-fill me-1"></i>Profile
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% if leader_wallet_history %}
+<div class="card border-0 shadow-sm mt-3">
+  <div class="card-header bg-transparent border-0 pt-3 pb-0">
+    <h6 class="mb-0 fw-semibold"><i class="bi bi-clock-history me-2 text-primary"></i>All leaders — recharge history (latest 120)</h6>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+      <table class="table table-sm table-hover align-middle mb-0 small">
+        <thead class="table-light sticky-top">
+          <tr>
+            <th>When</th>
+            <th>Leader</th>
+            <th class="text-end">Amount</th>
+            <th>UTR</th>
+            <th>Status</th>
+            <th class="d-none d-md-table-cell">Processed</th>
+            <th class="d-none d-lg-table-cell">Note</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for h in leader_wallet_history %}
+          <tr>
+            <td class="text-nowrap text-muted">{{ h.requested_at[:16] if h.requested_at else '—' }}</td>
+            <td class="fw-semibold">@{{ h.username }}</td>
+            <td class="text-end">₹{{ "%.0f"|format(h.amount or 0) }}</td>
+            <td class="text-muted" style="font-size:0.75rem;max-width:8rem;overflow:hidden;text-overflow:ellipsis;" title="{{ h.utr_number or '' }}">{{ h.utr_number or '—' }}</td>
+            <td>
+              {% if h.status == 'approved' %}
+              <span class="badge bg-success">approved</span>
+              {% elif h.status == 'pending' %}
+              <span class="badge bg-warning text-dark">pending</span>
+              {% else %}
+              <span class="badge bg-secondary">{{ h.status }}</span>
+              {% endif %}
+            </td>
+            <td class="text-muted d-none d-md-table-cell">{{ h.processed_at[:16] if h.processed_at else '—' }}</td>
+            <td class="d-none d-lg-table-cell text-muted" style="font-size:0.75rem;">{{ h.admin_note or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if leader_pool_claims_recent %}
+<div class="card border-0 shadow-sm mt-3">
+  <div class="card-header bg-transparent border-0 pt-3 pb-0">
+    <h6 class="mb-0 fw-semibold"><i class="bi bi-funnel me-2" style="color:#6366f1;"></i>All leaders — recent pool purchases (latest 60)</h6>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive" style="max-height: 360px; overflow-y: auto;">
+      <table class="table table-sm table-hover align-middle mb-0 small">
+        <thead class="table-light sticky-top">
+          <tr>
+            <th>Claimed</th>
+            <th>Buyer (leader)</th>
+            <th>Lead</th>
+            <th>Phone</th>
+            <th class="text-end">Pool ₹</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in leader_pool_claims_recent %}
+          <tr>
+            <td class="text-nowrap text-muted">{{ c.claimed_at[:16] if c.claimed_at else '—' }}</td>
+            <td class="fw-semibold">@{{ c.current_owner }}</td>
+            <td>{{ c.name or '—' }}</td>
+            <td class="text-muted">{{ c.phone or '—' }}</td>
+            <td class="text-end">₹{{ (c.pool_price or 0)|rupee }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endif %}
+
+{% if leader_metrics %}
+<!-- Leader Metrics Section -->
+<div class="card border-0 shadow-sm mt-4">
+  <div class="card-header bg-transparent border-0 pt-3 pb-0">
+    <h6 class="mb-0 fw-semibold"><i class="bi bi-people-fill me-2 text-warning"></i>Leader Downline Metrics</h6>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle mb-0 small">
+        <thead class="table-light">
+          <tr>
+            <th>Leader</th>
+            <th class="text-center">Downline</th>
+            <th class="text-center">Day 1</th>
+            <th class="text-center">Seat Holds</th>
+            <th class="text-center">Converted</th>
+            <th class="text-center">Conv %</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for lname, m in leader_metrics.items() %}
+          <tr>
+            <td class="fw-semibold">
+              <i class="bi bi-star-fill text-warning me-1" style="font-size:0.7rem;"></i>@{{ lname }}
+            </td>
+            <td class="text-center">{{ m.downline_count }}</td>
+            <td class="text-center">{{ m.day1_leads }}</td>
+            <td class="text-center text-success fw-semibold">{{ m.seat_holds }}</td>
+            <td class="text-center text-primary fw-semibold">{{ m.converted }}</td>
+            <td class="text-center">
+              <span class="badge {% if m.conv_pct >= 20 %}bg-success{% elif m.conv_pct >= 10 %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                {{ m.conv_pct }}%
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<script>
+function filterTable() {
+  const q      = document.getElementById('memberSearch').value.toLowerCase();
+  const status = document.getElementById('statusFilter').value;
+  document.querySelectorAll('.member-row').forEach(row => {
+    const matchQ = !q ||
+      row.dataset.name.includes(q) ||
+      row.dataset.email.includes(q) ||
+      row.dataset.phone.includes(q) ||
+      row.dataset.fbo.includes(q);
+    const matchS = !status || row.dataset.status === status;
+    row.style.display = (matchQ && matchS) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

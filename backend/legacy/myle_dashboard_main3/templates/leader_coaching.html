@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+{% block title %}Coaching Panel — Myle Community{% endblock %}
+{% block page_title %}Coaching Panel{% endblock %}
+
+{% block content %}
+
+<!-- Summary bar -->
+<div class="row g-3 mb-4">
+  <div class="col-4">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="fw-bold fs-4" style="color:var(--ios-indigo);">{{ coaching_cards|length }}</div>
+      <div class="text-muted small">Members</div>
+    </div>
+  </div>
+  <div class="col-4">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="fw-bold fs-4" style="color:var(--ios-blue);">{{ total_active }}</div>
+      <div class="text-muted small">Active Leads</div>
+    </div>
+  </div>
+  <div class="col-4">
+    <div class="card border-0 shadow-sm text-center py-3 {% if total_stuck > 0 %}border-warning{% endif %}">
+      <div class="fw-bold fs-4" style="color:{% if total_stuck > 0 %}var(--ios-red){% else %}var(--ios-green){% endif %};">{{ total_stuck }}</div>
+      <div class="text-muted small">Stuck &gt;24h</div>
+    </div>
+  </div>
+</div>
+
+{% if not coaching_cards %}
+<div class="card border-0 shadow-sm">
+  <div class="card-body text-center py-5">
+    <i class="bi bi-people-fill fs-1 d-block mb-3 opacity-25"></i>
+    <div class="text-muted">
+      {% if role == 'leader' %}
+        No downline team members yet. Ask an admin to set your upline.
+      {% else %}
+        No leader found. Promote someone to leader from the All Members page.
+      {% endif %}
+    </div>
+    {% if role == 'admin' %}
+    <a href="{{ url_for('admin_members') }}" class="btn btn-primary mt-3">
+      <i class="bi bi-people me-1"></i>All Members
+    </a>
+    {% endif %}
+  </div>
+</div>
+{% else %}
+
+{% for card in coaching_cards %}
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body">
+
+    <!-- Header: avatar + name + actions -->
+    <div class="d-flex justify-content-between align-items-start mb-3 gap-2">
+      <div class="d-flex align-items-center gap-2 flex-shrink-1 min-width-0">
+        <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white flex-shrink-0"
+             style="width:38px;height:38px;background:linear-gradient(135deg,var(--ios-indigo),var(--ios-purple));font-size:1rem;">
+          {{ card.username[0]|upper }}
+        </div>
+        <div class="min-width-0">
+          <div class="fw-semibold text-truncate">@{{ card.username }}</div>
+          {% if role == 'admin' %}
+          <div class="text-muted small">under @{{ card.upline }}</div>
+          {% endif %}
+        </div>
+      </div>
+      <a href="{{ url_for('leads') }}?assigned_to={{ card.username }}"
+         class="btn btn-sm btn-outline-secondary flex-shrink-0">
+        <i class="bi bi-eye me-1"></i>Leads
+      </a>
+    </div>
+
+    <!-- Stats badges -->
+    <div class="d-flex flex-wrap gap-2 mb-3">
+      <span class="wk-stat-badge wk-stat-indigo">
+        <i class="bi bi-people me-1"></i>{{ card.active_count }} active
+      </span>
+      <span class="wk-stat-badge {% if card.stuck_count > 0 %}wk-stat-red{% else %}wk-stat-green{% endif %}">
+        <i class="bi bi-clock me-1"></i>{{ card.stuck_count }} stuck
+      </span>
+      <span class="wk-stat-badge {% if card.batch_pct < 50 %}wk-stat-orange{% else %}wk-stat-green{% endif %}">
+        <i class="bi bi-check-square me-1"></i>{{ card.batch_pct }}% batches
+      </span>
+      <span class="wk-stat-badge wk-stat-green">
+        <i class="bi bi-telephone me-1"></i>{{ card.calls_today }} calls today
+      </span>
+      {% if card.pts_today > 0 %}
+      <span class="wk-stat-badge wk-stat-yellow">
+        <i class="bi bi-trophy me-1"></i>{{ card.pts_today }} pts
+      </span>
+      {% endif %}
+    </div>
+
+    <!-- Pipeline stage mini-bar -->
+    {% if card.stage_counts %}
+    <div class="d-flex flex-wrap gap-1 mb-3">
+      {% for stage_id, label in [('prospecting','P'),('enrolled','E'),('day1','1'),('day2','2'),('day3','3'),('plan_2cc','2c'),('seat_hold','S'),('pending','PA'),('level_up','LU'),('closing','C'),('training','T')] %}
+      {% if card.stage_counts.get(stage_id, 0) > 0 %}
+      <span class="badge rounded-pill"
+            style="background:rgba(94,92,230,0.1);color:var(--ios-indigo);font-size:0.7rem;">
+        {{ label }}: {{ card.stage_counts[stage_id] }}
+      </span>
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Stuck lead chips (clickable → timeline) -->
+    {% if card.stuck_leads %}
+    <div class="alert alert-warning border-0 py-2 mb-0 small" style="border-radius:10px;">
+      <i class="bi bi-exclamation-triangle-fill me-1"></i>
+      <strong>Stuck leads:</strong>
+      {% for l in card.stuck_leads %}
+      <span class="badge bg-warning text-dark ms-1"
+            style="cursor:pointer;font-size:0.72rem;"
+            onclick="openTimeline({{ l.id }}, {{ l.name|tojson }})"
+            title="Click to view history">
+        {{ l.name }}
+      </span>
+      {% endfor %}
+      {% if card.stuck_count > 3 %}
+      <span class="text-muted ms-1">+{{ card.stuck_count - 3 }} more</span>
+      {% endif %}
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endfor %}
+
+{% endif %}
+
+{# ── Monthly Pipeline Summary (Leader's Team) ── #}
+{% if ldr_monthly_pipeline %}
+<div class="card border-0 shadow-sm mt-3">
+  <div class="card-header bg-transparent border-0 pt-3 pb-1 d-flex justify-content-between align-items-center"
+       style="cursor:pointer;" onclick="this.nextElementSibling.classList.toggle('d-none')">
+    <h6 class="mb-0 fw-bold"><i class="bi bi-calendar3 me-2" style="color:#6366f1;"></i>Monthly Pipeline Summary — My Team</h6>
+    <span class="text-muted small">Tap to expand</span>
+  </div>
+  <div class="card-body pt-1 d-none">
+
+    <div class="table-responsive mb-3">
+      <table class="table table-sm mb-0" style="font-size:.8rem;">
+        <thead>
+          <tr style="color:#6b7280;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;">
+            <th>Month</th>
+            <th class="text-center">Leads</th>
+            <th class="text-center">Enrolled</th>
+            <th class="text-center">Working<br><span style="font-size:.65rem;color:#0dcaf0;">%</span></th>
+            <th class="text-center">Seat Hold<br><span style="font-size:.65rem;color:#7c3aed;">%</span></th>
+            <th class="text-center">Converted<br><span style="font-size:.65rem;color:#198754;">%</span></th>
+            <th class="text-end">Budget</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in ldr_monthly_pipeline %}
+          <tr>
+            <td class="fw-semibold">{{ m.month }}</td>
+            <td class="text-center">{{ m.total_leads }}</td>
+            <td class="text-center">{{ m.enrolled_count }}</td>
+            <td class="text-center">
+              {{ m.reached_working }}
+              <div class="progress mt-1" style="height:3px;"><div class="progress-bar bg-info" style="width:{{ m.working_pct }}%;"></div></div>
+              <span style="font-size:.65rem;color:#0dcaf0;">{{ m.working_pct }}%</span>
+            </td>
+            <td class="text-center">
+              {{ m.reached_seat_hold }}
+              <div class="progress mt-1" style="height:3px;"><div class="progress-bar" style="width:{{ m.seat_hold_pct }}%;background:#7c3aed;"></div></div>
+              <span style="font-size:.65rem;color:#7c3aed;">{{ m.seat_hold_pct }}%</span>
+            </td>
+            <td class="text-center">
+              {{ m.converted }}
+              <div class="progress mt-1" style="height:3px;"><div class="progress-bar bg-success" style="width:{{ m.conv_pct }}%;"></div></div>
+              <span style="font-size:.65rem;color:#198754;">{{ m.conv_pct }}%</span>
+            </td>
+            <td class="text-end fw-semibold" style="color:#6366f1;">₹{{ "{:,.0f}".format(m.total_budget) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr style="border-top:2px solid #e5e7eb;font-weight:700;">
+            <td>Total</td>
+            <td class="text-center">{{ ldr_monthly_pipeline|sum(attribute='total_leads') }}</td>
+            <td class="text-center">{{ ldr_monthly_pipeline|sum(attribute='enrolled_count') }}</td>
+            <td class="text-center">{{ ldr_monthly_pipeline|sum(attribute='reached_working') }}</td>
+            <td class="text-center">{{ ldr_monthly_pipeline|sum(attribute='reached_seat_hold') }}</td>
+            <td class="text-center">{{ ldr_monthly_pipeline|sum(attribute='converted') }}</td>
+            <td class="text-end" style="color:#6366f1;">₹{{ "{:,.0f}".format(ldr_monthly_pipeline|sum(attribute='total_budget')) }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    {# Per-member breakdown #}
+    {% if member_monthly %}
+    <div class="border-top pt-2">
+      <div class="text-muted mb-2" style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">
+        <i class="bi bi-person-lines-fill me-1"></i>Member-wise (Last 3 Months)
+      </div>
+      {% for mem, mem_months in member_monthly.items() %}
+      <div class="mb-3">
+        <div class="fw-semibold mb-1" style="font-size:.82rem;">
+          <i class="bi bi-person-fill me-1 text-primary"></i>{{ mem }}
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0" style="font-size:.76rem;">
+            <thead>
+              <tr style="color:#9ca3af;font-size:.68rem;">
+                <th>Month</th><th class="text-center">Leads</th><th class="text-center">Converted</th>
+                <th class="text-center">Conv %</th><th class="text-end">Seat Hold</th>
+                <th class="text-end">Revenue</th><th class="text-end">Budget</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for lm in mem_months %}
+              {% set lm_conv_pct = (lm.converted / lm.total_leads * 100)|round(1) if lm.total_leads else 0 %}
+              <tr>
+                <td>{{ lm.month }}</td>
+                <td class="text-center">{{ lm.total_leads }}</td>
+                <td class="text-center fw-semibold text-success">{{ lm.converted }}</td>
+                <td class="text-center">
+                  <span class="badge {% if lm_conv_pct >= 20 %}bg-success{% elif lm_conv_pct >= 10 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                    {{ lm_conv_pct }}%
+                  </span>
+                </td>
+                <td class="text-end text-muted">₹{{ "{:,.0f}".format(lm.seat_hold_budget) }}</td>
+                <td class="text-end text-success">₹{{ "{:,.0f}".format(lm.revenue) }}</td>
+                <td class="text-end fw-semibold" style="color:#6366f1;">₹{{ "{:,.0f}".format(lm.total_budget) }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

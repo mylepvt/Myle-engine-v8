@@ -10,9 +10,13 @@ from app.core.auth_cookies import clear_session_cookies, issue_session_cookies
 from app.core.auth_cookie import MYLE_ACCESS_COOKIE, MYLE_REFRESH_COOKIE
 from app.core.config import settings
 from app.core.jwt_tokens import decode_access_token, decode_refresh_token
-from app.core.fbo_id import normalize_fbo_id
-from app.core.passwords import verify_password
+from app.core.passwords import (
+    hash_password,
+    should_upgrade_stored_password_to_bcrypt,
+    verify_password_legacy_compatible,
+)
 from app.models.user import User
+from app.services.login_identity import resolve_user_by_fbo_or_username
 from app.schemas.auth import DevLoginRequest, DevLoginResponse, LoginRequest, MeResponse
 from app.services.dev_users import dev_email_for_role
 
@@ -86,20 +90,22 @@ async def login_with_password(
     response: Response,
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> DevLoginResponse:
-    """FBO ID + password; user must have ``hashed_password`` set (see migrations / admin tooling)."""
-    fbo_key = normalize_fbo_id(body.fbo_id)
-    result = await session.execute(select(User).where(User.fbo_id == fbo_key))
-    user = result.scalar_one_or_none()
+    """FBO ID or username + password — legacy-compatible verification (bcrypt / Werkzeug / plain)."""
+    user = await resolve_user_by_fbo_or_username(session, body.fbo_id)
     if user is None or not user.hashed_password:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid FBO ID or password",
         )
-    if not verify_password(body.password, user.hashed_password):
+    if not verify_password_legacy_compatible(body.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid FBO ID or password",
         )
+    if should_upgrade_stored_password_to_bcrypt(user.hashed_password):
+        user.hashed_password = hash_password(body.password)
+        await session.commit()
+        await session.refresh(user)
     issue_session_cookies(response, user)
     return DevLoginResponse()
 

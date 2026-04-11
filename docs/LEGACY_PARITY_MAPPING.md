@@ -23,7 +23,7 @@ These apply everywhere; legacy comparison rows belong in the **matrix** only aft
 
 | Topic | New app behavior | Source |
 |--------|------------------|--------|
-| Lead visibility | `admin`: all active leads; `leader` / `team`: `created_by_user_id = self` | `backend/app/services/lead_scope.py` |
+| Lead visibility | `admin`: all; `leader`: self + downline (`upline_user_id` tree); `team`: own created | `backend/app/services/lead_scope.py` |
 | Workboard buckets | Same visibility as `GET /leads`, grouped by `status`, capped | `backend/app/api/v1/workboard.py` |
 | Dashboard routes & roles | Single registry + JSON roles | `frontend/src/config/dashboard-registry.ts`, `frontend/src/config/dashboard-route-roles.json` |
 | Feature flag (Intelligence nav) | `GET /api/v1/meta` → `features.intelligence` | `backend` meta router + `frontend` `useMetaQuery` |
@@ -52,7 +52,7 @@ Roles: **`frontend/src/config/dashboard-route-roles.json`** (exact list per path
 | `work/recycle-bin` | full | `RecycleBinWorkPage` |
 | `intelligence` | full | `IntelligenceWorkPage` (gated by `features.intelligence`) |
 | `team/members` | full | `TeamMembersPage` |
-| `team/reports` | stub | `GET /api/v1/team/reports` |
+| `team/reports` | full | `TeamReportsPage` + `GET /api/v1/team/reports` (live metrics) |
 | `team/approvals` | stub | `GET /api/v1/team/approvals` |
 | `team/enrollment-approvals` | full | `EnrollmentApprovalsPage` |
 | `team/my-team` | full | `MyTeamPage` |
@@ -67,7 +67,7 @@ Roles: **`frontend/src/config/dashboard-route-roles.json`** (exact list per path
 | `finance/wallet` | full | `WalletPage` |
 | `finance/lead-pool` | stub | `GET /api/v1/finance/lead-pool` |
 | `other/leaderboard` | stub | `GET /api/v1/other/leaderboard` |
-| `other/notice-board` | stub | `GET /api/v1/other/notice-board` |
+| `other/notice-board` | full | `NoticeBoardPage` + `GET/POST/DELETE` `/api/v1/other/notice-board` |
 | `other/live-session` | stub | `GET /api/v1/other/live-session` |
 | `other/training` | stub | `GET /api/v1/other/training` |
 | `other/daily-report` | stub | `GET /api/v1/other/daily-report` |
@@ -124,3 +124,4 @@ When mapping a legacy feature, point the **new** row to the concrete router modu
 - When adding a dashboard screen: update **`DASHBOARD_ROUTE_DEFS`** first, then add or adjust a row in the **inventory** table above.
 - When legacy parity is agreed: fill **Parity matrix** — never claim parity in chat or PR description without updating this file.
 - **Implementation order (waves, stub→full checklist):** **`docs/PARITY_ROLLOUT_PLAN.md`**.
+- **Full behavior port (backend + frontend, lossless rules):** **`docs/LOSSLESS_FULLSTACK_PORT.md`**.

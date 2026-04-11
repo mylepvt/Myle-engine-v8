@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Decision Engine — Admin{% endblock %}
+{% block page_title %}Daily Decision Engine{% endblock %}
+
+{% block content %}
+<p class="text-muted small mb-3">
+  Step 6 — fixed window: <strong>last 3 days (IST)</strong> for averages &amp; follow-up notes;
+  <strong>today_calls</strong> is live today only. Snapshot runs <strong>9:05 PM IST</strong> daily.
+  {% if source == 'snapshot' %}
+  <span class="badge bg-success">Today’s snapshot</span>
+  {% else %}
+  <span class="badge bg-warning text-dark">Live preview</span>
+  <a href="{{ url_for('admin_decision_engine') }}" class="ms-2 small">Load snapshot</a>
+  {% endif %}
+  <a href="{{ url_for('admin_decision_engine', live=1) }}" class="ms-2 small">Recompute live (read-only)</a>
+</p>
+
+{% for key, title, color in display_order %}
+  {% set items = buckets.get(key, []) %}
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-header py-2 d-flex align-items-center justify-content-between {% if color == 'warning' %}bg-warning text-dark{% elif color == 'secondary' %}bg-secondary text-white{% else %}bg-{{ color }} text-white{% endif %}">
+      <span class="fw-semibold">{{ title }}</span>
+      <span class="badge bg-light text-dark">{{ items|length }}</span>
+    </div>
+    <div class="card-body py-2">
+      <p class="small text-muted mb-2"><em>{{ admin_decision_action_hint(key) }}</em></p>
+      {% if not items %}
+      <div class="text-muted small">—</div>
+      {% else %}
+      <ul class="list-group list-group-flush">
+        {% for row in items %}
+        <li class="list-group-item px-0 d-flex flex-wrap align-items-baseline gap-2 justify-content-between">
+          <div>
+            <a href="{{ url_for('member_detail', username=row.username) }}" class="fw-semibold text-decoration-none">
+              {{ row.username }}
+            </a>
+            <span class="text-muted small">
+              — avg <strong>{{ row.calls_avg }}</strong>/day · today <strong>{{ row.today_calls }}</strong>
+              {% if row.followups_done is defined %}· FU notes {{ row.followups_done }}{% endif %}
+              {% if row.missed_followups %}· missed/FU backlog {{ row.missed_followups }}{% endif %}
+              · inactive <strong>{{ row.inactivity_hours }}h</strong>
+            </span>
+          </div>
+          <div class="small text-secondary">{{ row.detail }}</div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+  </div>
+{% endfor %}
+{% endblock %}

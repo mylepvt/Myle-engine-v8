@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.db.base import Base
 from app.core.passwords import DEV_LOGIN_BCRYPT_HASH
+from app.models.announcement import Announcement  # noqa: F401
 from app.models.follow_up import FollowUp  # noqa: F401
 from app.models.lead import Lead  # noqa: F401
 from app.models.user import User
@@ -38,6 +39,7 @@ async def _setup_sqlite() -> tuple[object, async_sessionmaker[AsyncSession]]:
                 ),
                 User(
                     fbo_id=DEV_FBO_BY_ROLE["leader"],
+                    username="TestLeaderDisplay",
                     email=DEV_EMAIL_BY_ROLE["leader"],
                     role="leader",
                     hashed_password=DEV_LOGIN_BCRYPT_HASH,
@@ -47,6 +49,7 @@ async def _setup_sqlite() -> tuple[object, async_sessionmaker[AsyncSession]]:
                     email=DEV_EMAIL_BY_ROLE["team"],
                     role="team",
                     hashed_password=DEV_LOGIN_BCRYPT_HASH,
+                    upline_user_id=2,
                 ),
             ]
         )

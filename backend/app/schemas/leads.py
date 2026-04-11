@@ -13,6 +13,13 @@ _CALL_STATUS_SET = {
     "callback_requested",
     "not_interested",
     "converted",
+    # Enrollment funnel (workboard + team UI)
+    "no_answer",
+    "interested",
+    "follow_up",
+    "video_sent",
+    "video_watched",
+    "payment_done",
 }
 
 _PAYMENT_STATUS_SET = {"pending", "proof_uploaded", "approved", "rejected"}

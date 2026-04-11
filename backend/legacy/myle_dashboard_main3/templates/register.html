@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register – Myle Community</title>
+  <link href="{{ url_for('static', filename='vendor/bootstrap-5.3.3/css/bootstrap.min.css') }}" rel="stylesheet" />
+  <link href="{{ url_for('static', filename='vendor/bootstrap-icons/font/bootstrap-icons.min.css') }}" rel="stylesheet" />
+  <style>
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+    .register-card {
+      width: 100%;
+      max-width: 480px;
+      border-radius: 16px;
+      border: none;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    }
+    .register-brand {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border-radius: 16px 16px 0 0;
+      padding: 1.5rem 2rem;
+      color: white;
+    }
+    .register-brand .brand-icon {
+      width: 52px;
+      height: 52px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+    }
+    .form-control:focus, .form-select:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 0.2rem rgba(99,102,241,0.25);
+    }
+    .btn-register {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border: none;
+      color: white;
+      font-weight: 600;
+      padding: 0.65rem;
+      border-radius: 8px;
+      transition: opacity 0.2s;
+    }
+    .btn-register:hover { opacity: 0.9; color: white; }
+    .input-group-text { background: #f8f9fa; border-right: none; }
+    .form-control, .form-select { border-left: none; }
+    .section-divider {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #6c757d;
+      border-bottom: 1px solid #e9ecef;
+      padding-bottom: 0.3rem;
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="register-card card">
+  <!-- Brand header -->
+  <div class="register-brand d-flex align-items-center gap-3">
+    <div class="brand-icon flex-shrink-0">
+      <i class="bi bi-person-plus-fill"></i>
+    </div>
+    <div>
+      <h5 class="fw-bold mb-0">Join Myle Community</h5>
+      <p class="mb-0 opacity-75 small">Submit your registration request</p>
+    </div>
+  </div>
+
+  <!-- Form body -->
+  <div class="card-body p-4">
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for cat, msg in messages %}
+          <div class="alert alert-{{ cat }} alert-dismissible fade show py-2 small" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="post" novalidate>
+
+      <!-- Login Credentials -->
+      <div class="section-divider">Login Credentials</div>
+      <div class="row g-3 mb-3">
+        <div class="col-12">
+          <label class="form-label fw-semibold small">Username <span class="text-danger">*</span></label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-person text-muted"></i></span>
+            <input type="text" name="username" class="form-control"
+                   placeholder="Choose a username" required autofocus>
+          </div>
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-semibold small">Email Address <span class="text-danger">*</span></label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-envelope text-muted"></i></span>
+            <input type="email" name="email" class="form-control"
+                   placeholder="your@email.com" required>
+          </div>
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-semibold small">Password <span class="text-danger">*</span></label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-lock text-muted"></i></span>
+            <input type="password" name="password" id="passwordInput"
+                   class="form-control" placeholder="Set a password" required>
+            <button type="button" class="btn btn-outline-secondary border-start-0"
+                    onclick="togglePassword()" tabindex="-1">
+              <i class="bi bi-eye" id="eyeIcon"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Network Details -->
+      <div class="section-divider">Network Details</div>
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold small">FBO ID <span class="text-danger">*</span></label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-person-badge text-muted"></i></span>
+            <input type="text" name="fbo_id" class="form-control"
+                   placeholder="e.g. FBO-12345" required>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold small">Upline FBO ID (leader or admin) <span class="text-danger">*</span></label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-diagram-3 text-muted"></i></span>
+            <input type="text" name="upline_fbo_id" id="uplineFboInput" class="form-control"
+                   placeholder="Your leader's or admin FBO ID" required autocomplete="off">
+          </div>
+          <div id="uplineFboFeedback" class="form-text small mt-1" style="min-height:1.2em;"></div>
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-semibold small">Phone Number</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-telephone text-muted"></i></span>
+            <input type="tel" name="phone" class="form-control"
+                   placeholder="9876543210">
+          </div>
+        </div>
+      </div>
+
+      <!-- Joining Type -->
+      <div class="section-divider">Joining Info</div>
+      <div class="mb-3">
+        <div class="card border-0 bg-light rounded-3 p-3">
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" id="is_new_joining"
+                   name="is_new_joining" value="1" onchange="toggleJoiningDate(this)">
+            <label class="form-check-label fw-semibold" for="is_new_joining">
+              <i class="bi bi-star-fill text-warning me-1"></i> New Joining
+            </label>
+          </div>
+          <div class="form-text mb-2" style="padding-left:1.6rem;">
+            Check this if you are joining Myle Community for the <strong>first time</strong>.
+            You will need to complete a 7-day training program before accessing the app.
+          </div>
+          <div id="joiningDateField" class="d-none" style="padding-left:1.6rem;">
+            <label class="form-label fw-semibold small mb-1">
+              Joining Date <span class="text-danger">*</span>
+            </label>
+            <input type="date" name="joining_date" class="form-control form-control-sm"
+                   max="{{ today }}" id="joiningDateInput">
+            <div class="form-text">Date you officially joined Myle Community</div>
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-register w-100 mt-1">
+        <i class="bi bi-send-fill me-2"></i>Submit Registration Request
+      </button>
+
+    </form>
+  </div>
+
+  <div class="card-footer text-center py-3 bg-light rounded-bottom">
+    <small class="text-muted">
+      Already have an account?
+      <a href="{{ url_for('login') }}" class="fw-semibold text-decoration-none" style="color:#6366f1;">Sign In</a>
+    </small>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='vendor/bootstrap-5.3.3/js/bootstrap.bundle.min.js') }}"></script>
+<script>
+  function toggleJoiningDate(cb) {
+    const field = document.getElementById('joiningDateField');
+    const input = document.getElementById('joiningDateInput');
+    if (cb.checked) {
+      field.classList.remove('d-none');
+      input.required = true;
+    } else {
+      field.classList.add('d-none');
+      input.required = false;
+      input.value = '';
+    }
+  }
+  // ── Live upline FBO ID verification ──────────────────────────
+  (function () {
+    var input    = document.getElementById('uplineFboInput');
+    var feedback = document.getElementById('uplineFboFeedback');
+    var form     = input ? input.closest('form') : null;
+    var submitBtn = form ? form.querySelector('[type=submit]') : null;
+    var _timer   = null;
+    var _lastVal = '';
+    var _verified = false;
+
+    function setFeedback(msg, color, icon) {
+      feedback.innerHTML = '<i class="bi ' + icon + ' me-1"></i>' + msg;
+      feedback.style.color = color;
+    }
+
+    function lockSubmit(lock) {
+      if (!submitBtn) return;
+      submitBtn.disabled = lock;
+    }
+
+    function verify(val) {
+      if (!val) {
+        setFeedback('Enter your upline FBO ID (leader or admin)', '#6c757d', 'bi-info-circle');
+        lockSubmit(false);
+        _verified = false;
+        return;
+      }
+      setFeedback('Checking…', '#6c757d', 'bi-hourglass-split');
+      fetch('/api/lookup-upline-fbo?fbo_id=' + encodeURIComponent(val))
+        .then(function(r){ return r.json(); })
+        .then(function(d) {
+          if (d.is_valid_upline || d.is_leader) {
+            setFeedback(d.message, '#198754', 'bi-check-circle-fill');
+            lockSubmit(false);
+            _verified = true;
+          } else {
+            setFeedback(d.message, '#dc3545', 'bi-x-circle-fill');
+            lockSubmit(true);
+            _verified = false;
+          }
+        })
+        .catch(function() {
+          setFeedback('Could not verify. Please check your connection.', '#fd7e14', 'bi-exclamation-triangle-fill');
+          lockSubmit(false);
+          _verified = false;
+        });
+    }
+
+    if (input) {
+      input.addEventListener('input', function() {
+        var val = this.value.trim();
+        if (val === _lastVal) return;
+        _lastVal = val;
+        _verified = false;
+        clearTimeout(_timer);
+        lockSubmit(true);
+        if (!val) { verify(''); return; }
+        setFeedback('Checking…', '#6c757d', 'bi-hourglass-split');
+        _timer = setTimeout(function(){ verify(val); }, 600);
+      });
+      input.addEventListener('blur', function() {
+        clearTimeout(_timer);
+        var val = this.value.trim();
+        if (val && !_verified) verify(val);
+      });
+      // Initial hint
+      setFeedback('Approved leader or admin FBO ID is accepted', '#6c757d', 'bi-info-circle');
+    }
+  })();
+
+  function togglePassword() {
+    const input = document.getElementById('passwordInput');
+    const icon  = document.getElementById('eyeIcon');
+    if (input.type === 'password') {
+      input.type = 'text';
+      icon.classList.replace('bi-eye', 'bi-eye-slash');
+    } else {
+      input.type = 'password';
+      icon.classList.replace('bi-eye-slash', 'bi-eye');
+    }
+  }
+</script>
+</body>
+</html>

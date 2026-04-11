@@ -1,0 +1,452 @@
+{# ═══════════════════════════════════════════════════════════════
+   working_admin.html — Admin view for Working Section
+   Included by working.html when is_admin is True
+   ═══════════════════════════════════════════════════════════════ #}
+{% from '_macros.html' import stage_sla_watch with context %}
+
+{# ── Admin main tabs ── #}
+<div class="wk-kanban-tabs mb-3" id="adminMainTabs" style="gap:6px;">
+  <button class="wk-tab active" onclick="adminTab('day1',this)" id="atab-day1">
+    <i class="bi bi-1-circle me-1"></i>Day 1
+    <span class="badge bg-info ms-1" style="font-size:.65rem;">{{ admin_day1_leads|length }}</span>
+  </button>
+  <button class="wk-tab" onclick="adminTab('day2',this)" id="atab-day2">
+    <i class="bi bi-2-circle me-1"></i>Day 2
+    <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem;">{{ admin_day2_leads|length }}</span>
+  </button>
+  <button class="wk-tab" onclick="adminTab('day3',this)" id="atab-day3">
+    <i class="bi bi-3-circle me-1"></i>Day 3
+    <span class="badge bg-danger ms-1" style="font-size:.65rem;">{{ admin_day3_leads|length }}</span>
+  </button>
+  <button class="wk-tab" onclick="adminTab('tasks',this)" id="atab-tasks">
+    <i class="bi bi-list-task me-1"></i>Tasks
+    {% if admin_tasks %}<span class="badge bg-danger ms-1" style="font-size:.65rem;">{{ admin_tasks|length }}</span>{% endif %}
+  </button>
+</div>
+
+{# ══════════════════════════════════
+   ADMIN DAY 1 TAB
+══════════════════════════════════ #}
+<div id="admin-section-day1">
+  <div class="small text-muted mb-2"><i class="bi bi-info-circle me-1"></i>Day 1 leads — track batches. When 3/3 are done, the Day 2 button unlocks.</div>
+  {% if admin_day1_leads %}
+  <div class="d-flex flex-column gap-2">
+    {% for lead in admin_day1_leads %}
+    {% set bd = lead.d1_morning + lead.d1_afternoon + lead.d1_evening %}
+    {% set all_done = bd == 3 %}
+    <div class="card border-0 shadow-sm {% if all_done %}border-success{% endif %}" style="border-radius:14px;{% if all_done %}border-left:3px solid #34c759!important;{% endif %}">
+      <div class="card-body p-3">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <div class="fw-bold">{{ lead.name }}</div>
+            <div class="d-flex gap-1 mt-1 flex-wrap">
+              <span class="badge bg-secondary bg-opacity-25 text-body" style="font-size:.65rem;"><i class="bi bi-person-fill me-1"></i>{{ lead.assignee_username }}</span>
+              {% if lead.city %}<span class="badge bg-light text-muted border" style="font-size:.62rem;">{{ lead.city }}</span>{% endif %}
+              {% set _appr = lead|payment_proof_status %}
+              {% if _appr == 'approved' %}
+              <span class="badge bg-success-subtle text-success border" style="font-size:.6rem;"><i class="bi bi-check-circle-fill me-1"></i>₹196 ✓{% if lead.payment_proof_reviewed_by %} {{ lead.payment_proof_reviewed_by }}{% endif %}</span>
+              {% elif _appr == 'pending' %}
+              <span class="badge bg-warning-subtle text-warning border" style="font-size:.6rem;"><i class="bi bi-hourglass-split me-1"></i>₹196 pending</span>
+              {% elif _appr == 'rejected' %}
+              <span class="badge bg-danger-subtle text-danger border" style="font-size:.6rem;"><i class="bi bi-x-circle me-1"></i>₹196 rejected</span>
+              {% endif %}
+            </div>
+          </div>
+          <span class="badge {% if all_done %}bg-success{% else %}bg-info{% endif %}">{{ bd }}/3</span>
+        </div>
+        {{ stage_sla_watch(lead) }}
+        <div class="wk-batch-progress mb-2"><div class="wk-batch-bar" style="width:{{ (bd/3*100)|int }}%"></div></div>
+        <div class="d-flex gap-2 mb-2">
+          <button class="wk-batch-btn {% if lead.d1_morning %}wk-batch-done{% endif %}" onclick="openBatchPopup('{{ lead.id }}','d1_morning','{{ lead.phone }}','{{ lead.name }}',this)"><i class="bi bi-sunrise-fill"></i> M</button>
+          <button class="wk-batch-btn {% if lead.d1_afternoon %}wk-batch-done{% endif %}" onclick="openBatchPopup('{{ lead.id }}','d1_afternoon','{{ lead.phone }}','{{ lead.name }}',this)"><i class="bi bi-sun-fill"></i> A</button>
+          <button class="wk-batch-btn {% if lead.d1_evening %}wk-batch-done{% endif %}" onclick="openBatchPopup('{{ lead.id }}','d1_evening','{{ lead.phone }}','{{ lead.name }}',this)"><i class="bi bi-moon-fill"></i> E</button>
+          <div class="ms-auto d-flex gap-2">
+            <a href="tel:{{ lead.phone }}" class="btn btn-sm btn-outline-primary wk-btn"><i class="bi bi-telephone-fill"></i></a>
+            <a href="https://wa.me/{{ lead.phone|wa_phone }}" target="_blank" class="btn btn-sm btn-outline-success wk-btn"><i class="bi bi-whatsapp"></i></a>
+            <a href="{{ url_for('edit_lead', lead_id=lead.id) }}" class="btn btn-sm btn-outline-secondary wk-btn" title="Edit lead"><i class="bi bi-pencil"></i></a>
+            <button class="btn btn-sm btn-outline-warning wk-btn" title="Override status" onclick="openAdminStatusEdit({{ lead.id }},'{{ lead.name|e }}','{{ lead.status|e }}')"><i class="bi bi-pencil-square"></i></button>
+            {% if all_done %}
+            <button class="btn btn-sm btn-success wk-btn" onclick="stageAdvance({{ lead.id }},'day1_complete',this)"><i class="bi bi-arrow-right me-1"></i>Day 2</button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center py-5 text-muted">
+    <i class="bi bi-1-circle fs-1 d-block mb-2 opacity-50"></i>
+    <div class="small">No Day 1 leads right now.</div>
+  </div>
+  {% endif %}
+</div>{# end admin-section-day1 #}
+
+{# ══════════════════════════════════
+   ADMIN DAY 2 LIVE TAB (inline)
+══════════════════════════════════ #}
+<div id="admin-section-day2" style="display:none;">
+
+  {# Summary chips #}
+  <div class="d-flex gap-2 flex-wrap mb-3">
+    <div class="d2-summary-chip d2-chip-complete"><i class="bi bi-check-circle-fill me-1"></i>{{ admin_d2_complete }} complete</div>
+    <div class="d2-summary-chip d2-chip-progress"><i class="bi bi-circle-half me-1"></i>{{ admin_d2_in_progress }} in progress</div>
+    <div class="d2-summary-chip d2-chip-notstarted"><i class="bi bi-circle me-1"></i>{{ admin_d2_not_started }} not started</div>
+    {% if admin_d2_complete > 0 %}
+    <div class="d2-summary-chip" style="background:rgba(52,199,89,.12);color:var(--ios-green);border-color:var(--ios-green);">
+      <i class="bi bi-arrow-right-circle-fill me-1"></i>{{ admin_d2_complete }} ready for Day 3
+    </div>
+    {% endif %}
+  </div>
+
+  {# Day 2 Batch Videos quick access #}
+  {% set bv = batch_videos %}
+  {% if bv.d2_morning_v1 or bv.d2_afternoon_v1 or bv.d2_evening_v1 %}
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body p-2">
+      <div class="fw-semibold small mb-2"><i class="bi bi-play-circle text-warning me-1"></i>Day 2 Batch Videos</div>
+      <div class="row g-1">
+        {% for label, v1, v2 in [('🌅 Morning', bv.d2_morning_v1, bv.d2_morning_v2), ('☀️ Afternoon', bv.d2_afternoon_v1, bv.d2_afternoon_v2), ('🌙 Evening', bv.d2_evening_v1, bv.d2_evening_v2)] %}
+        {% if v1 or v2 %}
+        <div class="col-4">
+          <div class="border rounded p-1 text-center" style="background:var(--fill-4);">
+            <div class="fw-semibold mb-1" style="font-size:.65rem;">{{ label }}</div>
+            {% if v1 %}<a href="{{ v1 }}" target="_blank" class="btn btn-outline-warning w-100 mb-1 py-1" style="font-size:.65rem;"><i class="bi bi-play-fill"></i> V1</a>{% endif %}
+            {% if v2 %}<a href="{{ v2 }}" target="_blank" class="btn btn-outline-secondary w-100 py-1" style="font-size:.65rem;"><i class="bi bi-play-fill"></i> V2</a>{% endif %}
+          </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {# Day 2 Lead Cards #}
+  {% if admin_day2_leads %}
+  <div class="d-flex flex-column gap-2">
+    {% for lead in admin_day2_leads %}
+    {% set done_count = lead.d2_morning + lead.d2_afternoon + lead.d2_evening %}
+    <div class="card border-0 shadow-sm d2-lead-card
+      {% if done_count == 3 %}d2-row-complete{% elif done_count > 0 %}d2-row-progress{% else %}d2-row-notstarted{% endif %}">
+      <div class="card-body p-3">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <div class="fw-bold">{{ lead.name }}</div>
+            <div class="d-flex gap-1 mt-1 flex-wrap">
+              <span class="badge bg-secondary bg-opacity-25 text-body" style="font-size:.65rem;"><i class="bi bi-person-fill me-1"></i>{{ lead.assignee_username }}</span>
+              {% if admin_leader_map.get(lead.assignee_username) %}<span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25" style="font-size:.62rem;">Leader: {{ admin_leader_map[lead.assignee_username] }}</span>{% endif %}
+            </div>
+          </div>
+          <span class="badge {% if done_count==3 %}bg-success{% elif done_count>0 %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ done_count }}/3</span>
+        </div>
+        {{ stage_sla_watch(lead) }}
+        <div class="wk-batch-progress mb-2"><div class="wk-batch-bar wk-batch-bar-d2" style="width:{{ (done_count/3*100)|int }}%"></div></div>
+        <div class="d-flex gap-2 mb-2">
+          <button class="d2-batch-btn {% if lead.d2_morning %}done{% endif %}" onclick="openBatchPopup('{{ lead.id }}','d2_morning','{{ lead.phone }}','{{ lead.name }}',this)">
+            <i class="bi {% if lead.d2_morning %}bi-check-circle-fill{% else %}bi-sunrise-fill{% endif %}"></i><span>M</span>
+          </button>
+          <button class="d2-batch-btn {% if lead.d2_afternoon %}done{% endif %}" onclick="openBatchPopup('{{ lead.id }}','d2_afternoon','{{ lead.phone }}','{{ lead.name }}',this)">
+            <i class="bi {% if lead.d2_afternoon %}bi-check-circle-fill{% else %}bi-sun-fill{% endif %}"></i><span>A</span>
+          </button>
+          <button class="d2-batch-btn {% if lead.d2_evening %}done{% endif %}" onclick="openBatchPopup('{{ lead.id }}','d2_evening','{{ lead.phone }}','{{ lead.name }}',this)">
+            <i class="bi {% if lead.d2_evening %}bi-check-circle-fill{% else %}bi-moon-fill{% endif %}"></i><span>E</span>
+          </button>
+          {% set adm_ts = (lead.test_status or 'pending')|lower %}
+          {% if done_count == 3 and adm_ts not in ('passed','failed') %}
+          <button type="button" class="d2-batch-btn d2-test-send-btn" title="Send test link on WhatsApp (batch style)"
+                  data-d2-test='{{ {"id": lead.id, "phone": (lead.phone or "")|string, "name": (lead.name or "")|string}|tojson }}'>
+            <i class="bi bi-whatsapp" style="color:#25D366;"></i><span>Test</span>
+          </button>
+          {% endif %}
+        </div>
+        {% if done_count == 3 %}
+        <div class="small mb-2">
+          <span class="text-muted">Eval:</span>
+          {% if adm_ts == 'passed' %}<span class="text-success fw-semibold">{{ lead.test_score|default(0) }}/30 passed</span>
+          {% elif adm_ts == 'failed' %}<span class="text-danger">Test locked</span>
+          {% elif adm_ts == 'retry' %}<span class="text-warning">Retry pending</span>
+          {% else %}<span class="text-secondary">Test pending</span>{% endif %}
+        </div>
+        {% endif %}
+        <div class="d-flex gap-2 align-items-center">
+          <a href="tel:{{ lead.phone }}" class="btn btn-sm btn-outline-primary wk-btn"><i class="bi bi-telephone-fill"></i></a>
+          <a href="https://wa.me/{{ lead.phone|wa_phone }}" target="_blank" class="btn btn-sm btn-outline-success wk-btn"><i class="bi bi-whatsapp"></i></a>
+          <a href="{{ url_for('edit_lead', lead_id=lead.id) }}" class="btn btn-sm btn-outline-secondary wk-btn" title="Edit lead"><i class="bi bi-pencil"></i></a>
+          <button class="btn btn-sm btn-outline-warning wk-btn" title="Override status" onclick="openAdminStatusEdit({{ lead.id }},'{{ lead.name|e }}','{{ lead.status|e }}')"><i class="bi bi-pencil-square"></i></button>
+          {% if done_count == 3 and adm_ts == 'passed' %}
+          <button class="btn btn-sm btn-success ms-auto" onclick="stageAdvance({{ lead.id }},'day2_complete',this)" style="font-size:.78rem;">
+            <i class="bi bi-arrow-right me-1"></i>Day 3
+          </button>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center py-5 text-muted">
+    <i class="bi bi-2-circle fs-1 d-block mb-2 opacity-50"></i>
+    <div class="small">No Day 2 leads right now.</div>
+  </div>
+  {% endif %}
+
+</div>{# end admin-section-day2 #}
+
+{# ══════════════════════════════════
+   ADMIN DAY 3 TAB
+══════════════════════════════════ #}
+<div id="admin-section-day3" style="display:none;">
+  <div class="small text-muted mb-2"><i class="bi bi-info-circle me-1"></i>Day 3 — Interview, track selection & seat hold.</div>
+  {% set d3_active = admin_day3_leads|selectattr('status', 'ne', 'Seat Hold Confirmed')|list %}
+  {% set d3_seat_hold = admin_day3_leads|selectattr('status', 'eq', 'Seat Hold Confirmed')|list %}
+  {% if d3_active %}
+  <div class="d-flex flex-column gap-2">
+    {% for lead in d3_active %}
+    <div class="card border-0 shadow-sm" style="border-radius:14px;border-left:3px solid var(--ios-red)!important;">
+      <div class="card-body p-3">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <div class="fw-bold">{{ lead.name }}</div>
+            <div class="d-flex gap-1 mt-1 flex-wrap">
+              <span class="badge bg-secondary bg-opacity-25 text-body" style="font-size:.65rem;"><i class="bi bi-person-fill me-1"></i>{{ lead.assignee_username }}</span>
+              {% if admin_leader_map.get(lead.assignee_username) %}<span class="badge bg-primary bg-opacity-10 text-primary" style="font-size:.62rem;">{{ admin_leader_map[lead.assignee_username] }}</span>{% endif %}
+              <span class="badge bg-danger" style="font-size:.65rem;">{{ lead.status }}</span>
+            </div>
+          </div>
+          {% if lead.hours_since_update is defined and lead.hours_since_update > 24 %}
+          <span class="badge bg-warning text-dark" style="font-size:.62rem;"><i class="bi bi-clock me-1"></i>{{ lead.hours_since_update }}h</span>
+          {% endif %}
+        </div>
+        {{ stage_sla_watch(lead) }}
+        {% if lead.track_selected %}<div class="small text-muted mb-2">Track: <strong>{{ lead.track_selected }}</strong></div>{% endif %}
+        <div class="d-flex gap-2 flex-wrap">
+          <a href="tel:{{ lead.phone }}" class="btn btn-sm btn-outline-primary wk-btn"><i class="bi bi-telephone-fill"></i></a>
+          <a href="https://wa.me/{{ lead.phone|wa_phone }}" target="_blank" class="btn btn-sm btn-outline-success wk-btn"><i class="bi bi-whatsapp"></i></a>
+          {% if lead.status == 'Interview' %}
+          <button class="btn btn-sm btn-danger wk-btn ms-auto" onclick="stageAdvance({{ lead.id }},'interview_done',this)"><i class="bi bi-arrow-right me-1"></i>Track</button>
+          {% elif lead.status == 'Track Selected' %}
+          <button class="btn btn-sm btn-danger wk-btn ms-auto" onclick="stageAdvance({{ lead.id }},'seat_hold_done',this)"><i class="bi bi-arrow-right me-1"></i>Seat Hold</button>
+          {% endif %}
+          <button class="btn btn-sm btn-outline-warning wk-btn" title="Override status" onclick="openAdminStatusEdit({{ lead.id }},'{{ lead.name|e }}','{{ lead.status|e }}')"><i class="bi bi-pencil-square"></i></button>
+          <a href="{{ url_for('edit_lead', lead_id=lead.id) }}" class="btn btn-sm btn-outline-secondary wk-btn"><i class="bi bi-pencil"></i></a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% elif not d3_seat_hold %}
+  <div class="text-center py-5 text-muted">
+    <i class="bi bi-3-circle fs-1 d-block mb-2 opacity-50"></i>
+    <div class="small">No Day 3 (Interview / Track) leads right now.</div>
+  </div>
+  {% endif %}
+
+  {# Seat Hold Confirmed leads — visible in Day 3 tab #}
+  {% if d3_seat_hold %}
+  <div class="mt-3">
+    <div class="d-flex align-items-center gap-2 mb-2 px-1">
+      <i class="bi bi-shield-check-fill" style="color:#7c3aed;font-size:1.1rem;"></i>
+      <strong style="font-size:0.9rem;">Seat Hold Confirmed</strong>
+      <span class="badge text-white" style="background:#7c3aed;">{{ d3_seat_hold|length }}</span>
+    </div>
+    <div class="d-flex flex-column gap-2">
+      {% for lead in d3_seat_hold %}
+      <div class="card border-0 shadow-sm" style="border-radius:14px;border-left:3px solid #7c3aed!important;">
+        <div class="card-body p-3">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <div>
+              <div class="fw-bold">{{ lead.name }}</div>
+              <div class="d-flex gap-1 mt-1 flex-wrap">
+                <span class="badge bg-secondary bg-opacity-25 text-body" style="font-size:.65rem;"><i class="bi bi-person-fill me-1"></i>{{ lead.assignee_username }}</span>
+                {% if admin_leader_map.get(lead.assignee_username) %}<span class="badge bg-primary bg-opacity-10 text-primary" style="font-size:.62rem;">{{ admin_leader_map[lead.assignee_username] }}</span>{% endif %}
+                <span class="badge text-white" style="font-size:.65rem;background:#7c3aed;">Seat Hold Confirmed</span>
+              </div>
+            </div>
+            {% if lead.hours_since_update is defined and lead.hours_since_update > 24 %}
+            <span class="badge bg-warning text-dark" style="font-size:.62rem;"><i class="bi bi-clock me-1"></i>{{ lead.hours_since_update }}h</span>
+            {% endif %}
+          </div>
+          {{ stage_sla_watch(lead) }}
+          {% if lead.track_selected %}<div class="small text-muted mb-2">Track: <strong>{{ lead.track_selected }}</strong></div>{% endif %}
+          <div class="d-flex gap-2 flex-wrap">
+            <a href="tel:{{ lead.phone }}" class="btn btn-sm btn-outline-primary wk-btn"><i class="bi bi-telephone-fill"></i></a>
+            <a href="https://wa.me/{{ lead.phone|wa_phone }}" target="_blank" class="btn btn-sm btn-outline-success wk-btn"><i class="bi bi-whatsapp"></i></a>
+            <button class="btn btn-sm btn-outline-warning wk-btn" title="Override status" onclick="openAdminStatusEdit({{ lead.id }},'{{ lead.name|e }}','{{ lead.status|e }}')"><i class="bi bi-pencil-square"></i></button>
+            <a href="{{ url_for('edit_lead', lead_id=lead.id) }}" class="btn btn-sm btn-outline-secondary wk-btn"><i class="bi bi-pencil"></i></a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>{# end admin-section-day3 #}
+
+{# ══════════════════════════════════
+   ADMIN TASKS TAB
+══════════════════════════════════ #}
+<div id="admin-section-tasks" style="display:none;">
+
+  {# Create task form #}
+  <div class="card border-0 shadow-sm mb-3" style="border-radius:14px;">
+    <div class="card-body p-3">
+      <div class="fw-semibold mb-2"><i class="bi bi-plus-circle me-1 text-primary"></i>New task broadcast</div>
+          <input type="text" id="taskTitle" class="form-control form-control-sm mb-2" placeholder="Task title (what to do)" maxlength="100">
+      <textarea id="taskBody" class="form-control form-control-sm mb-2" rows="2" placeholder="Details (optional)" maxlength="500"></textarea>
+      <div class="d-flex gap-2 mb-2 flex-wrap">
+        <select id="taskTarget" class="form-select form-select-sm" style="flex:1;min-width:100px;">
+          <option value="all">Sabko (All)</option>
+          <option value="leader">Leaders only</option>
+          <option value="team">Team members only</option>
+        </select>
+        <select id="taskPriority" class="form-select form-select-sm" style="flex:1;min-width:100px;">
+          <option value="normal">Normal</option>
+          <option value="urgent">Urgent</option>
+        </select>
+        <input type="date" id="taskDueDate" class="form-control form-control-sm" style="flex:1;min-width:120px;">
+      </div>
+      <button class="btn btn-primary btn-sm w-100" onclick="adminCreateTask()">
+        <i class="bi bi-send-fill me-1"></i>Send task
+      </button>
+    </div>
+  </div>
+
+  {# Pending tasks list #}
+  <div id="adminTaskList">
+    {% if admin_tasks %}
+    {% for t in admin_tasks %}
+    <div class="card border-0 shadow-sm mb-2 admin-task-card" id="atask-{{ t.id }}" style="border-radius:12px;{% if t.priority=='urgent' %}border-left:3px solid var(--ios-red)!important;{% else %}border-left:3px solid var(--ios-blue)!important;{% endif %}">
+      <div class="card-body p-2 px-3">
+        <div class="d-flex justify-content-between align-items-start">
+          <div class="flex-grow-1">
+            {% if t.priority == 'urgent' %}<span class="badge bg-danger me-1" style="font-size:.6rem;">URGENT</span>{% endif %}
+            <span class="fw-semibold" style="font-size:.88rem;">{{ t.title }}</span>
+            {% if t.body %}<div class="text-muted small mt-1">{{ t.body }}</div>{% endif %}
+            <div class="d-flex gap-2 flex-wrap mt-1">
+              <span class="text-muted" style="font-size:.65rem;"><i class="bi bi-people me-1"></i>{{ t.target }}</span>
+              {% if t.due_date %}<span class="text-muted" style="font-size:.65rem;"><i class="bi bi-calendar me-1"></i>{{ t.due_date }}</span>{% endif %}
+              {% if t.done_by_list %}
+              <span class="text-success" style="font-size:.65rem;"><i class="bi bi-check-all me-1"></i>Done: {{ t.done_by_list }}</span>
+              {% endif %}
+            </div>
+          </div>
+          <button class="btn btn-outline-danger btn-sm ms-2" onclick="adminDeleteTask({{ t.id }})" style="flex-shrink:0;"><i class="bi bi-trash"></i></button>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="text-center py-4 text-muted" id="noTasksMsg">
+      <i class="bi bi-list-check fs-2 d-block mb-1 opacity-50"></i>
+      <div class="small">No pending tasks. Create one above.</div>
+    </div>
+    {% endif %}
+  </div>
+
+</div>{# end admin-section-tasks #}
+
+{# ══════════════════════════════════════════════════════
+   ADMIN STATUS OVERRIDE MODAL (Day 1 / Day 2 / Day 3)
+══════════════════════════════════════════════════════ #}
+<div class="modal fade" id="adminWbStatusModal" tabindex="-1" aria-labelledby="adminWbStatusModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:18px;border:none;">
+      <div class="modal-header border-0 pb-0">
+        <h6 class="modal-title fw-bold" id="adminWbStatusModalLabel"><i class="bi bi-pencil-square me-1 text-warning"></i>Override Lead Status</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-2">
+        <p class="small text-muted mb-3" id="adminWbStatusLeadName"></p>
+        <label class="form-label small fw-semibold mb-1">New Status</label>
+        <select class="form-select" id="adminWbStatusSelect">
+          <optgroup label="Prospecting">
+            <option value="New Lead">New Lead</option>
+            <option value="Invited">Invited</option>
+            <option value="Video Watched">Video Watched</option>
+            <option value="Interested">Interested</option>
+            <option value="Not Interested">Not Interested</option>
+          </optgroup>
+          <optgroup label="Enrollment">
+            <option value="Paid ₹196">Paid ₹196</option>
+          </optgroup>
+          <optgroup label="3-Day Process">
+            <option value="Day 1">Day 1</option>
+            <option value="Day 2">Day 2</option>
+            <option value="Interview">Interview</option>
+            <option value="Track Selected">Track Selected</option>
+            <option value="Seat Hold Confirmed">Seat Hold Confirmed</option>
+            <option value="2cc Plan">2cc Plan</option>
+            <option value="Level Up">Level Up</option>
+          </optgroup>
+          <optgroup label="Closing">
+            <option value="Pending">Pending</option>
+            <option value="Training">Training</option>
+            <option value="Converted">Converted</option>
+            <option value="Fully Converted">Fully Converted</option>
+          </optgroup>
+          <optgroup label="Other">
+            <option value="Lost">Lost</option>
+            <option value="Retarget">Retarget</option>
+            <option value="Inactive">Inactive</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-warning btn-sm fw-semibold" id="adminWbStatusConfirmBtn" onclick="submitAdminStatusOverride()">
+          <i class="bi bi-check-lg me-1"></i>Save Status
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var _adminWbLeadId = null;
+
+  window.openAdminStatusEdit = function(leadId, leadName, currentStatus) {
+    _adminWbLeadId = leadId;
+    document.getElementById('adminWbStatusLeadName').textContent = leadName;
+    var sel = document.getElementById('adminWbStatusSelect');
+    for (var i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === currentStatus) { sel.selectedIndex = i; break; }
+    }
+    var modal = new bootstrap.Modal(document.getElementById('adminWbStatusModal'));
+    modal.show();
+  };
+
+  window.submitAdminStatusOverride = function() {
+    if (!_adminWbLeadId) return;
+    var newStatus = document.getElementById('adminWbStatusSelect').value;
+    var csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content
+               || '{{ csrf_token }}';
+    var btn = document.getElementById('adminWbStatusConfirmBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
+
+    fetch('/leads/' + _adminWbLeadId + '/status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'status=' + encodeURIComponent(newStatus) + '&csrf_token=' + encodeURIComponent(csrf)
+    })
+    .then(function(r) {
+      if (r.ok || r.redirected) {
+        bootstrap.Modal.getInstance(document.getElementById('adminWbStatusModal')).hide();
+        showToast('Status updated to: ' + newStatus, 'success');
+        setTimeout(function(){ location.reload(); }, 800);
+      } else {
+        showToast('Could not update status. Please try again.', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Save Status';
+      }
+    })
+    .catch(function() {
+      showToast('Network error. Please try again.', 'danger');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Save Status';
+    });
+  };
+})();
+</script>

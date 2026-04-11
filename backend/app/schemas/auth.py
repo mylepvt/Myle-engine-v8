@@ -35,9 +35,13 @@ class DevLoginRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    """Password login: **FBO ID** (unique) + password. Stored FBO IDs are case-insensitive."""
+    """Password login: **FBO ID or username** (legacy ``/login``) + password."""
 
-    fbo_id: str = Field(min_length=1, max_length=64)
+    fbo_id: str = Field(
+        min_length=1,
+        max_length=128,
+        description="FBO ID (normalized) or exact username, same as legacy first field",
+    )
     password: str = Field(min_length=1, max_length=512)
 
 

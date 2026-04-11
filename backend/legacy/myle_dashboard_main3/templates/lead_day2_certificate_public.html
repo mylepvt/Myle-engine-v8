@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Certificate — {{ lead.name }} — MYLE</title>
+  <link href="{{ url_for('static', filename='vendor/bootstrap-5.3.3/css/bootstrap.min.css') }}" rel="stylesheet">
+</head>
+<body class="bg-light">
+  <div class="container py-4" style="max-width:720px;">
+    <div class="p-4 p-md-5 rounded-3 position-relative overflow-hidden"
+         style="background:linear-gradient(165deg,#faf6ef 0%,#f3ead8 100%);
+                border:3px solid #1a1a1a;
+                box-shadow:0 0 0 4px #c9a227, 0 12px 40px rgba(0,0,0,.12);">
+      <div class="position-absolute top-50 start-50 translate-middle opacity-06 pointer-events-none user-select-none"
+           style="font-size:8rem;font-weight:800;color:#c9a227;white-space:nowrap;">MYLE</div>
+      <div class="text-center position-relative" style="z-index:1;">
+        <div class="mb-2" style="font-size:2rem;color:#b8860b;">✦</div>
+        <h1 class="fw-bold mb-1" style="font-family:Georgia,serif;letter-spacing:.12em;font-size:1.05rem;">MYLE COMMUNITY</h1>
+        <h2 class="fw-bold mb-4" style="font-family:Georgia,serif;font-size:1.35rem;">CERTIFICATE OF QUALIFICATION</h2>
+        <p class="mb-2">This is to certify that</p>
+        <p class="fw-bold mb-1 mx-auto" style="font-size:1.55rem;font-family:Georgia,serif;max-width:90%;text-decoration:underline;text-underline-offset:6px;text-decoration-thickness:2px;">{{ lead.name }}</p>
+        <p class="small lh-lg mb-4 px-md-4">
+          has successfully completed the Day 2 Business Evaluation Process and demonstrated the required understanding,
+          discipline, and clarity to move forward within the MYLE Community system. This certification confirms eligibility
+          for the Interview Stage.
+        </p>
+        <div class="mx-auto mb-4" style="max-width:320px;border-top:1px solid #1a1a1a;padding-top:12px;">
+          <div class="d-flex justify-content-between small">
+            <span>Score Achieved</span>
+            <span class="fw-semibold text-decoration-underline">{{ score_display }} / {{ total_q }}</span>
+          </div>
+          <div class="d-flex justify-content-between small mt-1">
+            <span>Status</span>
+            <span class="fw-semibold text-decoration-underline">Approved for Interview Stage</span>
+          </div>
+          <div class="d-flex justify-content-between small mt-1">
+            <span>Date</span>
+            <span class="fw-semibold text-decoration-underline">{{ cert_date_display }}</span>
+          </div>
+        </div>
+        <div class="row small mt-4 text-start g-4">
+          <div class="col-md-6">
+            <div class="text-muted mb-1">Certified by:</div>
+            <div class="fst-italic fs-5 mb-0" style="font-family:Georgia,serif;">Karanveer Singh</div>
+            <div>CEO &amp; Founder, MYLE Community</div>
+          </div>
+          <div class="col-md-6 text-md-end">
+            <div class="text-muted mb-1">Management</div>
+            <div class="fst-italic fs-5 mb-0" style="font-family:Georgia,serif;">Shikha Chaudhry</div>
+            <div>Management, MYLE Community</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="text-center mt-3 d-grid gap-2">
+      <a href="{{ url_for('day2_test_public_certificate_pdf', token=token) }}" class="btn btn-dark">Download PDF</a>
+      <button type="button" class="btn btn-outline-dark" onclick="window.print()">Print</button>
+      <a href="{{ url_for('day2_test_public_entry', token=token) }}" class="btn btn-outline-secondary btn-sm">← Wapas</a>
+    </div>
+    <p class="text-center text-muted small mt-4 mb-0">© MYLE Community</p>
+  </div>
+</body>
+</html>

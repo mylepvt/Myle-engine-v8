@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+{% block title %}Training Test – Myle Community{% endblock %}
+{% block page_title %}Training Test{% endblock %}
+
+{% block content %}
+<div class="tq-page">
+
+  <!-- Header card -->
+  <div class="tq-header mb-4">
+    <div class="tq-header-icon">📝</div>
+    <h4 class="tq-header-title">Training Test</h4>
+    <p class="tq-header-sub">{{ questions|length }} questions &nbsp;·&nbsp; Pass mark: 60/100</p>
+    {% if test_attempts > 0 %}
+    <div class="tq-header-badges">
+      <span class="tq-pill">Attempt #{{ test_attempts + 1 }}</span>
+      {% if test_score >= 0 %}
+      <span class="tq-pill {{ 'pass' if test_score >= 60 else 'fail' }}">
+        Last score: {{ test_score }}/100
+      </span>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  {% if not questions %}
+  <!-- No questions -->
+  <div class="tq-card text-center py-5">
+    <i class="bi bi-patch-question tq-empty-icon"></i>
+    <h5 class="fw-bold mt-3 mb-2">No questions added yet</h5>
+    <p class="tq-subdesc">Admin hasn't added test questions. Check back later.</p>
+    <a href="{{ url_for('training_home') }}" class="tq-btn outline mt-2">
+      <i class="bi bi-arrow-left me-1"></i>Back to Training
+    </a>
+  </div>
+
+  {% else %}
+  <!-- Question form -->
+  <form method="post" action="{{ url_for('training_test_submit') }}" id="testForm">
+    <input type="hidden" name="csrf_token" value="{{ session.get('_csrf_token','') }}">
+
+    {% for q in questions %}
+    <div class="tq-card mb-3" id="qcard_{{ loop.index }}">
+      <!-- Question header -->
+      <div class="tq-q-header">
+        <div class="tq-q-num">{{ loop.index }}</div>
+        <p class="tq-q-text">{{ q.question }}</p>
+      </div>
+      <!-- Options -->
+      <div class="tq-options" role="radiogroup">
+        {% for opt, label in [('option_a','a'), ('option_b','b'), ('option_c','c'), ('option_d','d')] %}
+        {% if q[opt] %}
+        <label class="tq-option" for="q{{ q.id }}_{{ label }}" onclick="selectOption(this, {{ q.id }})">
+          <input type="radio" name="q_{{ q.id }}" id="q{{ q.id }}_{{ label }}"
+                 value="{{ label }}" class="tq-radio" required>
+          <span class="tq-opt-letter">{{ label|upper }}</span>
+          <span class="tq-opt-text">{{ q[opt] }}</span>
+        </label>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+
+    <!-- Submit card -->
+    <div class="tq-card mb-4 text-center">
+      <p class="tq-subdesc mb-1">Answer all {{ questions|length }} questions, then submit.</p>
+      <p class="tq-subdesc mb-4"><strong>Pass mark: 60 / 100</strong></p>
+
+      <div id="answerWarning" class="tq-warning d-none mb-3">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        Some questions are unanswered. Please go back and answer them all.
+      </div>
+
+      <button type="button" class="tq-btn primary px-5" onclick="submitTest()">
+        <i class="bi bi-check2-circle me-2"></i>Submit Test
+      </button>
+
+      <div class="mt-4">
+        <a href="{{ url_for('training_home') }}" class="tq-subdesc" style="text-decoration:none;">
+          <i class="bi bi-arrow-left me-1"></i>Come back later
+        </a>
+      </div>
+    </div>
+  </form>
+  {% endif %}
+
+</div>
+
+<script>
+function selectOption(label, qId) {
+  // Remove selected from all options in this question
+  var group = label.closest('.tq-options');
+  group.querySelectorAll('.tq-option').forEach(function(el) {
+    el.classList.remove('selected');
+  });
+  label.classList.add('selected');
+}
+
+function submitTest() {
+  var qIds = [];
+  {% for q in questions %}
+  qIds.push({{ q.id }});
+  {% endfor %}
+
+  var unanswered = [];
+  qIds.forEach(function(id) {
+    if (!document.querySelector('input[name="q_' + id + '"]:checked')) {
+      unanswered.push(id);
+    }
+  });
+
+  if (unanswered.length > 0) {
+    document.getElementById('answerWarning').classList.remove('d-none');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
+  document.getElementById('testForm').submit();
+}
+
+// Restore selection on back-nav
+document.querySelectorAll('input[type="radio"]:checked').forEach(function(inp) {
+  inp.closest('.tq-option').classList.add('selected');
+});
+</script>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ═══════════════════════════════════════════════
+   Apple-style Test UI
+   ═══════════════════════════════════════════════ */
+:root {
+  --tq-blue:   #007AFF;
+  --tq-green:  #34C759;
+  --tq-red:    #FF3B30;
+  --tq-gray1:  #F2F2F7;
+  --tq-gray2:  #E5E5EA;
+  --tq-gray3:  #8E8E93;
+  --tq-label:  #1C1C1E;
+  --tq-radius: 14px;
+  --tq-shadow: 0 2px 16px rgba(0,0,0,.06), 0 1px 4px rgba(0,0,0,.04);
+  --tq-font:   -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+}
+
+.tq-page {
+  font-family: var(--tq-font);
+  max-width: 720px;
+}
+
+/* Header */
+.tq-header {
+  background: linear-gradient(135deg, #1d4ed8, #7c3aed);
+  border-radius: var(--tq-radius);
+  padding: 2rem 1.5rem;
+  text-align: center;
+  color: #fff;
+}
+.tq-header-icon   { font-size: 2.5rem; margin-bottom: .5rem; }
+.tq-header-title  { font-size: 1.4rem; font-weight: 700; margin-bottom: .3rem; }
+.tq-header-sub    { font-size: .9rem; opacity: .85; margin-bottom: .75rem; }
+.tq-header-badges { display: flex; justify-content: center; gap: .5rem; flex-wrap: wrap; }
+
+.tq-pill {
+  background: rgba(255,255,255,.2);
+  border-radius: 20px;
+  padding: .25rem .75rem;
+  font-size: .8rem;
+  font-weight: 600;
+}
+.tq-pill.pass { background: rgba(52,199,89,.35); }
+.tq-pill.fail { background: rgba(255,59,48,.35); }
+
+/* Card */
+.tq-card {
+  background: #fff;
+  border-radius: var(--tq-radius);
+  box-shadow: var(--tq-shadow);
+  padding: 1.25rem 1.25rem 1rem;
+}
+
+/* Question */
+.tq-q-header {
+  display: flex;
+  align-items: flex-start;
+  gap: .85rem;
+  margin-bottom: 1rem;
+}
+.tq-q-num {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--tq-blue);
+  color: #fff;
+  font-size: .82rem;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  margin-top: .05rem;
+}
+.tq-q-text {
+  font-size: .97rem;
+  font-weight: 600;
+  color: var(--tq-label);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Options */
+.tq-options {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+  padding-left: calc(30px + .85rem); /* align under question text */
+}
+
+.tq-option {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .75rem 1rem;
+  border-radius: 10px;
+  border: 1.5px solid var(--tq-gray2);
+  background: var(--tq-gray1);
+  cursor: pointer;
+  transition: border-color .15s, background .15s, transform .1s;
+  user-select: none;
+}
+.tq-option:hover {
+  border-color: rgba(0,122,255,.4);
+  background: rgba(0,122,255,.05);
+  transform: translateX(2px);
+}
+.tq-option.selected {
+  border-color: var(--tq-blue);
+  background: rgba(0,122,255,.08);
+}
+.tq-option.selected .tq-opt-letter {
+  background: var(--tq-blue);
+  color: #fff;
+  border-color: var(--tq-blue);
+}
+
+/* Hide the actual radio (we style the label) */
+.tq-radio {
+  position: absolute;
+  opacity: 0;
+  width: 0; height: 0;
+  pointer-events: none;
+}
+
+.tq-opt-letter {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid var(--tq-gray3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--tq-gray3);
+  flex-shrink: 0;
+  transition: all .15s;
+}
+.tq-opt-text {
+  font-size: .9rem;
+  color: var(--tq-label);
+  line-height: 1.4;
+}
+
+/* Buttons */
+.tq-btn {
+  display: inline-flex; align-items: center;
+  border-radius: 10px;
+  padding: .65rem 1.4rem;
+  font-size: .92rem;
+  font-weight: 600;
+  border: none; cursor: pointer;
+  text-decoration: none;
+  transition: opacity .15s, transform .12s;
+}
+.tq-btn:hover { opacity: .88; transform: scale(1.02); }
+.tq-btn.primary { background: var(--tq-blue); color: #fff; }
+.tq-btn.outline {
+  background: transparent;
+  border: 1.5px solid var(--tq-gray2);
+  color: var(--tq-gray3);
+}
+
+/* Warning */
+.tq-warning {
+  background: rgba(255,149,0,.1);
+  border: 1px solid rgba(255,149,0,.3);
+  border-radius: 10px;
+  padding: .65rem 1rem;
+  font-size: .87rem;
+  color: #8a5c00;
+  display: flex; align-items: center;
+}
+
+/* Misc */
+.tq-subdesc   { font-size: .85rem; color: var(--tq-gray3); }
+.tq-empty-icon { font-size: 3rem; opacity: .35; }
+</style>
+{% endblock %}

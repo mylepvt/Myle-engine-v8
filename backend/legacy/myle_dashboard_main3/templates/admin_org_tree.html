@@ -1,0 +1,677 @@
+{% extends "base.html" %}
+{% block title %}Org Tree – Myle Admin{% endblock %}
+{% block page_title %}Organisation Control Panel{% endblock %}
+
+{% block content %}
+<style>
+:root {
+  --ot-admin:  #6366f1;
+  --ot-leader: #f59e0b;
+  --ot-team:   #10b981;
+  --ot-line:   rgba(148,163,184,.35);
+}
+
+/* ── Node card ─────────────────────────────────────────── */
+.ot-node {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  border-radius: 10px;
+  margin-bottom: 6px;
+  background: var(--card-bg, #fff);
+  box-shadow: 0 1px 4px rgba(0,0,0,.07);
+  overflow: hidden;
+  transition: box-shadow .15s, transform .1s;
+}
+.ot-node:hover { box-shadow: 0 3px 12px rgba(0,0,0,.13); transform: translateY(-1px); }
+
+/* Left role color strip */
+.ot-role-strip {
+  width: 5px;
+  flex-shrink: 0;
+  align-self: stretch;
+}
+.ot-node--admin   .ot-role-strip { background: var(--ot-admin); }
+.ot-node--leader  .ot-role-strip { background: var(--ot-leader); }
+.ot-node--team    .ot-role-strip { background: var(--ot-team); }
+.ot-node--invalid .ot-role-strip { background: #ef4444 !important; }
+.ot-node--invalid { background: rgba(239,68,68,.03) !important; }
+
+/* Node body */
+.ot-node-body { flex: 1; padding: 8px 10px; min-width: 0; }
+
+/* Avatar */
+.ot-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  font-size: .85rem; font-weight: 700; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  border: 2px solid rgba(255,255,255,.8);
+  box-shadow: 0 0 0 2px var(--ot-line);
+}
+.ot-avatar--admin  { background: var(--ot-admin); box-shadow: 0 0 0 2px var(--ot-admin); }
+.ot-avatar--leader { background: var(--ot-leader); box-shadow: 0 0 0 2px var(--ot-leader); }
+.ot-avatar--team   { background: var(--ot-team);   box-shadow: 0 0 0 2px var(--ot-team); }
+
+/* Role badges */
+.ot-badge-role {
+  font-size: .6rem; padding: 2px 8px; border-radius: 20px;
+  font-weight: 700; letter-spacing: .03em; flex-shrink: 0;
+}
+.ot-badge-admin  { background: #eef2ff; color: var(--ot-admin); border: 1px solid #c7d2fe; }
+.ot-badge-leader { background: #fffbeb; color: #92400e;         border: 1px solid #fde68a; }
+.ot-badge-team   { background: #ecfdf5; color: #065f46;         border: 1px solid #a7f3d0; }
+
+.ot-badge-status { font-size: .58rem; padding: 1px 7px; border-radius: 20px; font-weight: 600; }
+.ot-depth-badge  {
+  font-size: .55rem; padding: 1px 6px; border-radius: 10px; font-weight: 700;
+  background: rgba(148,163,184,.15); color: #64748b; border: 1px solid rgba(148,163,184,.3);
+}
+
+.ot-issue { font-size: .67rem; color: #ef4444; margin-top: 2px; }
+
+/* ── Tree connector lines ──────────────────────────────── */
+.ot-indent {
+  margin-left: 28px;
+  padding-left: 22px;
+  border-left: 2px solid var(--ot-line);
+  position: relative;
+  overflow: hidden;
+  transition: max-height .35s cubic-bezier(.4,0,.2,1), opacity .25s;
+}
+.ot-indent.collapsed { max-height: 0 !important; opacity: 0; pointer-events: none; }
+
+/* Horizontal branch lines */
+.ot-indent > .ot-tree-node { position: relative; }
+.ot-indent > .ot-tree-node::before {
+  content: '';
+  position: absolute;
+  left: -22px; top: 20px;
+  width: 20px; height: 2px;
+  background: var(--ot-line);
+}
+
+/* ── Collapse toggle ────────────────────────────────────── */
+.ot-toggle {
+  cursor: pointer; user-select: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+  background: rgba(148,163,184,.15); border: 1px solid var(--ot-line);
+  transition: transform .2s, background .15s;
+}
+.ot-toggle:hover  { background: rgba(148,163,184,.3); }
+.ot-toggle.open   { transform: rotate(90deg); }
+
+/* ── Inline forms ──────────────────────────────────────── */
+.ot-assign-form { display:none; margin-top:8px; }
+.ot-assign-form.open { display:flex; }
+.ot-edit-form   { display:none; margin-top:8px; }
+.ot-edit-form.open { display:flex; }
+
+/* ── View tabs ─────────────────────────────────────────── */
+.view-tab { cursor:pointer; }
+.view-tab.active { font-weight:600; border-bottom:2px solid var(--bs-primary); }
+</style>
+
+<!-- Summary cards -->
+<div class="row g-3 mb-4">
+  {% set cards = [
+    ('total',   stats.total,   'Total Users',    'primary',  'bi-people-fill'),
+    ('leaders', stats.leaders, 'Leaders',        'warning',  'bi-star-fill'),
+    ('teams',   stats.teams,   'Team Members',   'success',  'bi-person-fill'),
+    ('pending', stats.pending, 'Pending',        'secondary','bi-hourglass'),
+    ('orphans', stats.orphans, 'No Upline',      'danger',   'bi-person-x-fill'),
+    ('invalid', stats.invalid, 'Invalid Links',  'danger',   'bi-exclamation-triangle-fill'),
+  ] %}
+  {% for key, val, label, color, icon in cards %}
+  <div class="col-6 col-md-2">
+    <a href="{{ url_for('admin_org_tree', view=('orphans' if key=='orphans' else ('invalid' if key=='invalid' else 'tree'))) }}"
+       class="text-decoration-none">
+      <div class="card border-0 shadow-sm text-center py-3 h-100 {% if val > 0 and key in ('orphans','invalid') %}border border-danger{% endif %}">
+        <i class="bi {{ icon }} text-{{ color }} mb-1" style="font-size:1.1rem;"></i>
+        <div class="fw-bold fs-5 text-{{ color }}">{{ val }}</div>
+        <div class="text-muted" style="font-size:.7rem;">{{ label }}</div>
+      </div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+
+{% if show_d1_routing_debug|default(false) %}
+<div class="alert alert-info border-0 shadow-sm mb-3">
+  <div class="fw-semibold mb-2"><i class="bi bi-bug me-1"></i>Day 1 routing debug (<code>?d1debug=1</code>)</div>
+  <p class="small mb-2 mb-md-3">
+    <strong>D1 ON</strong> per leader = admin toggle on Org Tree. Jab ON ho, ₹196 proof approve / Paid ₹196 handoff
+    us leader par execution assign karke <strong>Day 1</strong> par le ja sakta hai. <strong>OFF</strong> par lead
+    <code>Paid ₹196</code> par reh sakti hai. Har toggle server par <code>INFO</code> log hota hai
+    (<code>day1_routing_toggle</code>). Proof flow par har routing decision ke liye env
+    <code>DAY1_ROUTING_DEBUG=1</code> set karo (log: <code>day1_routing_check</code>).
+  </p>
+  {% if d1_routing_leader_rows|default([]) %}
+  <div class="table-responsive">
+    <table class="table table-sm table-bordered mb-2 bg-white small">
+      <thead><tr><th>Leader</th><th>day1_routing_on (DB)</th><th>status</th></tr></thead>
+      <tbody>
+      {% for r in d1_routing_leader_rows %}
+        <tr>
+          <td>@{{ r.username }}</td>
+          <td><code>{{ r.day1_routing_on }}</code></td>
+          <td>{{ r.status }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+  <a href="{{ url_for('admin_org_tree', view=view, filter=flat_filter) }}" class="small">Exit debug (normal view)</a>
+</div>
+{% endif %}
+
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-2 d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div class="small text-muted">
+      One-click repair: leaders → admin, teams → nearest leader (fallback leader), invalid upline FBO cleanup.
+    </div>
+    <form method="POST" action="{{ url_for('admin_fix_hierarchy') }}" class="m-0">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit"
+              class="btn btn-sm btn-danger fw-semibold"
+              onclick="return confirm('Run full hierarchy fix now?')">
+        <i class="bi bi-lightning-charge-fill me-1"></i>Fix Full Hierarchy
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- View tabs -->
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-2 d-flex flex-wrap gap-3 align-items-center">
+    {% for vname, vlabel in [('tree','🌲 Tree'),('orphans','🚨 No Upline'),('invalid','⚠️ Invalid'),('flat','📋 All Users')] %}
+    <a href="{% if show_d1_routing_debug|default(false) %}{{ url_for('admin_org_tree', view=vname, filter=flat_filter, d1debug='1') }}{% else %}{{ url_for('admin_org_tree', view=vname, filter=flat_filter) }}{% endif %}"
+       class="view-tab text-decoration-none small {{ 'active text-primary' if view==vname else 'text-muted' }}">
+      {{ vlabel }}
+      {% if vname=='orphans' and stats.orphans > 0 %}<span class="badge bg-danger ms-1">{{ stats.orphans }}</span>{% endif %}
+      {% if vname=='invalid' and stats.invalid > 0 %}<span class="badge bg-warning text-dark ms-1">{{ stats.invalid }}</span>{% endif %}
+    </a>
+    {% endfor %}
+    <div class="ms-auto">
+      <input type="text" id="treeSearch" class="form-control form-control-sm"
+             placeholder="Search username / FBO…" oninput="filterNodes()" style="width:200px;">
+    </div>
+  </div>
+</div>
+
+{# ─── MACRO: edit profile (FBO / contact) ───────────────────────────────── #}
+{% macro edit_form(u) %}
+<form method="POST" action="{{ url_for('admin_org_tree_edit') }}"
+      id="ef-{{ u.username }}"
+      class="ot-edit-form flex-column gap-2 mt-2 pt-2 border-top border-secondary border-opacity-25">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="username" value="{{ u.username }}">
+  <input type="hidden" name="return_view" value="{{ view }}">
+  <input type="hidden" name="return_filter" value="{{ flat_filter }}">
+  <div class="small fw-semibold text-muted"><i class="bi bi-sliders me-1"></i>Edit details (tree / login FBO)</div>
+  <div class="row g-2">
+    <div class="col-6 col-md-3">
+      <label class="form-label mb-0" style="font-size:.68rem;">FBO ID</label>
+      <input type="text" name="fbo_id" class="form-control form-control-sm" autocomplete="off"
+             value="{{ u.fbo_id or '' }}" {% if u.role != 'admin' %}required{% endif %}
+             placeholder="{% if u.role == 'admin' %}Optional…{% endif %}">
+    </div>
+    <div class="col-6 col-md-3">
+      <label class="form-label mb-0" style="font-size:.68rem;">Phone</label>
+      <input type="text" name="phone" class="form-control form-control-sm" value="{{ u.phone or '' }}">
+    </div>
+    <div class="col-6 col-md-3">
+      <label class="form-label mb-0" style="font-size:.68rem;">Display name</label>
+      <input type="text" name="name" class="form-control form-control-sm" value="{{ u.name or '' }}">
+    </div>
+    <div class="col-6 col-md-3">
+      <label class="form-label mb-0" style="font-size:.68rem;">Email</label>
+      <input type="email" name="email" class="form-control form-control-sm" value="{{ u.email or '' }}">
+    </div>
+  </div>
+  <div class="d-flex gap-2">
+    <button type="submit" class="btn btn-sm btn-primary">Save details</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleEdit('{{ u.username }}')">Cancel</button>
+  </div>
+</form>
+{% endmacro %}
+
+{# ─── MACRO: single assignable node ─────────────────────────────────────── #}
+{% macro node_card(u, depth, show_assign) %}
+<div class="ot-tree-node" data-uname="{{ u.username|lower }}" data-fbo="{{ u.fbo_id|lower }}">
+
+  <div class="ot-node ot-node--{{ u.role }} {% if u.issues %}ot-node--invalid{% endif %}">
+
+    {# Left role color strip #}
+    <div class="ot-role-strip"></div>
+
+    <div class="ot-node-body">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+
+        {# Collapse toggle #}
+        {% if u.children %}
+        <span class="ot-toggle open" onclick="otToggle(this)" title="Expand / Collapse">
+          <i class="bi bi-chevron-right" style="font-size:.6rem;"></i>
+        </span>
+        {% else %}
+        <span style="width:20px;flex-shrink:0;"></span>
+        {% endif %}
+
+        {# Avatar #}
+        {% if u.display_picture %}
+          <img src="{{ u.display_picture }}" class="ot-avatar flex-shrink-0"
+               style="object-fit:cover;" alt="avatar" title="{{ u.username }}">
+        {% else %}
+          <div class="ot-avatar ot-avatar--{{ u.role }} flex-shrink-0">
+            {{ u.username[0]|upper }}
+          </div>
+        {% endif %}
+
+        {# Name + FBO + issues #}
+        <div class="flex-grow-1 min-w-0">
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="fw-bold" style="font-size:.9rem;">@{{ u.username }}</span>
+            {% if u.fbo_id %}
+              <span class="text-muted" style="font-size:.72rem;font-family:monospace;">#{{ u.fbo_id }}</span>
+            {% endif %}
+            {# Role badge #}
+            {% if u.role=='admin' %}
+              <span class="ot-badge-role ot-badge-admin">🔑 ADMIN</span>
+            {% elif u.role=='leader' %}
+              <span class="ot-badge-role ot-badge-leader">⭐ LEADER</span>
+            {% else %}
+              <span class="ot-badge-role ot-badge-team">👤 TEAM</span>
+            {% endif %}
+            {# Status #}
+            {% if u.status=='approved' %}
+              <span class="ot-badge-status bg-success-subtle text-success">● Active</span>
+            {% elif u.status=='pending' %}
+              <span class="ot-badge-status bg-warning-subtle text-warning">● Pending</span>
+            {% else %}
+              <span class="ot-badge-status bg-danger-subtle text-danger">● Rejected</span>
+            {% endif %}
+            {# Depth #}
+            {% if depth == 0 %}
+              <span class="ot-depth-badge">ROOT</span>
+            {% else %}
+              <span class="ot-depth-badge">L{{ depth }}</span>
+            {% endif %}
+            {% if u.phone %}
+              <span class="text-muted d-none d-lg-inline" style="font-size:.7rem;">
+                <i class="bi bi-telephone me-1"></i>{{ u.phone }}
+              </span>
+            {% endif %}
+          </div>
+          {% if u.issues %}
+            {% for iss in u.issues %}
+              <div class="ot-issue"><i class="bi bi-exclamation-circle-fill me-1"></i>{{ iss }}</div>
+            {% endfor %}
+          {% endif %}
+          {% if u.children %}
+            <div class="text-muted mt-1" style="font-size:.65rem;">
+              <i class="bi bi-diagram-2 me-1"></i>{{ u.children|length }} direct report{{ 's' if u.children|length != 1 }}
+            </div>
+          {% endif %}
+        </div>
+
+        {# Actions #}
+        <div class="d-flex gap-1 ms-auto flex-wrap align-items-center">
+          {% if u.role == 'leader' and u.status == 'approved' %}
+            {% if u.username in day1_routing_leaders %}
+            <button type="button" class="btn btn-xs btn-success fw-semibold ot-d1-btn"
+                    data-leader="{{ u.username }}" data-state="1"
+                    title="Day 1 routing ON — click to OFF" onclick="otToggleD1(this)">
+              <i class="bi bi-arrow-right-circle-fill me-1"></i>D1 ON
+            </button>
+            {% else %}
+            <button type="button" class="btn btn-xs btn-outline-secondary ot-d1-btn"
+                    data-leader="{{ u.username }}" data-state="0"
+                    title="Day 1 routing OFF — click to ON" onclick="otToggleD1(this)">
+              <i class="bi bi-arrow-right-circle me-1"></i>D1 OFF
+            </button>
+            {% endif %}
+          {% endif %}
+          <button type="button" class="btn btn-xs btn-outline-primary"
+                  onclick="toggleEdit('{{ u.username }}')" title="Edit details">
+            <i class="bi bi-sliders"></i><span class="d-none d-sm-inline ms-1">Edit</span>
+          </button>
+          {% if u.role != 'admin' %}
+          <button type="button" class="btn btn-xs btn-outline-secondary"
+                  onclick="toggleAssign('{{ u.username }}')" title="Change upline">
+            <i class="bi bi-diagram-3"></i><span class="d-none d-sm-inline ms-1">Upline</span>
+          </button>
+          {% endif %}
+        </div>
+      </div>
+
+      {{ edit_form(u) }}
+
+      {# Inline assign form #}
+      {% if u.role != 'admin' %}
+      <form method="POST" action="{{ url_for('admin_org_tree_assign') }}"
+            class="ot-assign-form align-items-center gap-2 flex-wrap"
+            id="af-{{ u.username }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="username" value="{{ u.username }}">
+        <input type="hidden" name="return_view" value="{{ view }}">
+        <select name="new_upline" class="form-select form-select-sm" style="max-width:200px;">
+          <option value="">— Select upline —</option>
+          {% for opt in assignable[u.role] %}
+          <option value="{{ opt.username }}"
+            {% if opt.username == (u.upline_username or u.upline_name) %}selected{% endif %}>
+            {{ '⭐ ' if opt.role=='leader' else '🔑 ' }}@{{ opt.username }} ({{ opt.role }})
+          </option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-sm btn-primary">Save</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary"
+                onclick="toggleAssign('{{ u.username }}')">Cancel</button>
+      </form>
+      {% endif %}
+
+    </div>{# /ot-node-body #}
+  </div>{# /ot-node #}
+
+  {# Children with connecting lines #}
+  {% if u.children %}
+  <div class="ot-indent">
+    {% for child in u.children %}
+      {{ node_card(child, depth + 1, show_assign) }}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div>
+{% endmacro %}
+
+
+{# ═══ VIEW: TREE ══════════════════════════════════════════════════════════ #}
+{% if view == 'tree' %}
+<div class="card border-0 shadow-sm">
+  <div class="card-body" id="treeContainer">
+    {% for root in tree %}{{ node_card(root, 0, true) }}{% endfor %}
+    {% if not tree %}<p class="text-muted text-center py-4">No hierarchy data.</p>{% endif %}
+  </div>
+</div>
+
+
+{# ═══ VIEW: ORPHANS ═══════════════════════════════════════════════════════ #}
+{% elif view == 'orphans' %}
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-header bg-danger bg-opacity-10 border-0 pt-3 pb-0">
+    <h6 class="mb-2 fw-semibold text-danger">
+      <i class="bi bi-person-x-fill me-2"></i>{{ orphans|length }} User(s) Without Upline
+    </h6>
+  </div>
+  <div class="card-body">
+    {# Bulk fix #}
+    {% if orphans %}
+    <form method="POST" action="{{ url_for('admin_org_tree_bulk_fix') }}"
+          class="d-flex align-items-center gap-2 flex-wrap mb-4 p-3 rounded"
+          style="background:rgba(239,68,68,.06);border:1px dashed #ef4444;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <span class="fw-semibold small text-danger"><i class="bi bi-lightning-fill me-1"></i>Bulk Fix All Orphans →</span>
+      <select name="bulk_upline" class="form-select form-select-sm" style="max-width:220px;" required title="Select leader for orphan fix">
+        <option value="">— Select upline for all —</option>
+        {% for opt in assignable['team'] %}
+        <option value="{{ opt.username }}">{{ '⭐ ' if opt.role=='leader' else '🔑 ' }}@{{ opt.username }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-sm btn-danger"
+              onclick="return confirm('Assign ALL orphans to selected upline?')">
+        <i class="bi bi-check2-all me-1"></i>Fix All
+      </button>
+    </form>
+    {% endif %}
+
+    {% for u in orphans %}{{ node_card(u, 0, true) }}{% endfor %}
+    {% if not orphans %}<p class="text-success text-center py-4"><i class="bi bi-check-circle-fill me-2"></i>No orphans. All users have an upline.</p>{% endif %}
+  </div>
+</div>
+
+
+{# ═══ VIEW: INVALID ════════════════════════════════════════════════════════ #}
+{% elif view == 'invalid' %}
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-header bg-warning bg-opacity-10 border-0 pt-3 pb-0">
+    <h6 class="mb-2 fw-semibold text-warning">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ invalid_list|length }} Invalid Hierarchy Link(s)
+    </h6>
+    <p class="text-muted small mb-2">These users have a role mismatch or circular reference. Fix them manually below.</p>
+  </div>
+  <div class="card-body">
+    {% for u in invalid_list %}{{ node_card(u, 0, true) }}{% endfor %}
+    {% if not invalid_list %}<p class="text-success text-center py-4"><i class="bi bi-check-circle-fill me-2"></i>No invalid links. Hierarchy is clean.</p>{% endif %}
+  </div>
+</div>
+
+
+{# ═══ VIEW: FLAT TABLE ════════════════════════════════════════════════════ #}
+{% elif view == 'flat' %}
+<div class="card border-0 shadow-sm mb-2">
+  <div class="card-body py-2 d-flex flex-wrap align-items-center gap-2">
+    <span class="small text-muted fw-semibold me-1">Filter:</span>
+    <a href="{{ url_for('admin_org_tree', view='flat', filter='all') }}"
+       class="btn btn-xs {{ 'btn-primary' if flat_filter=='all' else 'btn-outline-secondary' }}">All</a>
+    <a href="{{ url_for('admin_org_tree', view='flat', filter='no_upline') }}"
+       class="btn btn-xs {{ 'btn-primary' if flat_filter=='no_upline' else 'btn-outline-secondary' }}">
+      No upline <span class="badge bg-danger ms-1">{{ stats.orphans }}</span>
+    </a>
+    <a href="{{ url_for('admin_org_tree', view='flat', filter='invalid') }}"
+       class="btn btn-xs {{ 'btn-primary' if flat_filter=='invalid' else 'btn-outline-secondary' }}">
+      Invalid <span class="badge bg-warning text-dark ms-1">{{ stats.invalid }}</span>
+    </a>
+  </div>
+</div>
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle mb-0 small" id="flatTable">
+        <thead class="table-light">
+          <tr>
+            <th>#</th><th>Username</th><th>FBO ID</th><th>Role</th>
+            <th>Status</th><th>Stored upline</th><th>Resolved upline</th><th>Upline FBO</th>
+            <th>Phone</th><th>Joined</th><th>Issues</th><th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in all_users %}
+          {% set show_flat = (flat_filter == 'all')
+              or (flat_filter == 'no_upline' and u.username in orphan_names)
+              or (flat_filter == 'invalid' and u.username in invalid_names) %}
+          {% if show_flat %}
+          <tr class="flat-row" data-uname="{{ u.username|lower }}" data-fbo="{{ (u.fbo_id or '')|lower }}">
+            <td class="text-muted">{{ loop.index }}</td>
+            <td class="fw-semibold">@{{ u.username }}</td>
+            <td class="text-muted">{{ u.fbo_id or '—' }}</td>
+            <td>
+              {% if u.role=='admin' %}<span class="badge bg-primary">Admin</span>
+              {% elif u.role=='leader' %}<span class="badge bg-warning text-dark">⭐ Leader</span>
+              {% else %}<span class="badge bg-success">Team</span>{% endif %}
+            </td>
+            <td>
+              {% if u.status=='approved' %}<span class="badge bg-success-subtle text-success">Active</span>
+              {% elif u.status=='pending' %}<span class="badge bg-warning-subtle text-warning">Pending</span>
+              {% else %}<span class="badge bg-danger-subtle text-danger">Rejected</span>{% endif %}
+            </td>
+            <td class="small">{{ u.upline_username or u.upline_name or '—' }}</td>
+            <td class="small fw-semibold">{{ u.resolved_upline or '—' }}</td>
+            <td class="text-muted">{{ u.upline_fbo_id or '—' }}</td>
+            <td class="text-muted">{{ u.phone or '—' }}</td>
+            <td class="text-muted">{{ u.created_at[:10] }}</td>
+            <td>
+              {% if u.issues %}
+                {% for iss in u.issues %}<div class="text-danger" style="font-size:.65rem;">⚠ {{ iss }}</div>{% endfor %}
+              {% else %}<span class="text-success" style="font-size:.7rem;">✓ OK</span>{% endif %}
+            </td>
+            <td style="min-width:250px;">
+              <div class="d-flex gap-1 mb-1 flex-wrap">
+                {% if u.role == 'leader' and u.status == 'approved' %}
+                  {% if u.username in day1_routing_leaders %}
+                  <button type="button" class="btn btn-xs btn-success ot-d1-btn"
+                          data-leader="{{ u.username }}" data-state="1"
+                          title="Day 1 ON — click to OFF" onclick="otToggleD1(this)">
+                    <i class="bi bi-arrow-right-circle-fill"></i>
+                  </button>
+                  {% else %}
+                  <button type="button" class="btn btn-xs btn-outline-secondary ot-d1-btn"
+                          data-leader="{{ u.username }}" data-state="0"
+                          title="Day 1 OFF — click to ON" onclick="otToggleD1(this)">
+                    <i class="bi bi-arrow-right-circle"></i>
+                  </button>
+                  {% endif %}
+                {% endif %}
+                <button type="button" class="btn btn-xs btn-outline-primary" onclick="toggleEdit('{{ u.username }}')"
+                        title="Details"><i class="bi bi-sliders"></i></button>
+                {% if u.role != 'admin' %}
+                <button type="button" class="btn btn-xs btn-outline-secondary" onclick="toggleAssign('{{ u.username }}')"
+                        title="Upline"><i class="bi bi-diagram-3"></i></button>
+                {% endif %}
+              </div>
+              {{ edit_form(u) }}
+              {% if u.role != 'admin' %}
+              <form method="POST" action="{{ url_for('admin_org_tree_assign') }}"
+                    class="ot-assign-form flex-wrap gap-1 mt-1" id="af-{{ u.username }}" style="min-width:240px;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="username" value="{{ u.username }}">
+                <input type="hidden" name="return_view" value="flat">
+                <select name="new_upline" class="form-select form-select-sm" style="width:auto;">
+                  <option value="">— Select —</option>
+                  {% for opt in assignable[u.role] %}
+                  <option value="{{ opt.username }}"
+                    {% if opt.username == (u.upline_username or u.upline_name) %}selected{% endif %}>
+                    @{{ opt.username }}
+                  </option>
+                  {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-xs btn-primary">✓</button>
+                <button type="button" class="btn btn-xs btn-light" onclick="toggleAssign('{{ u.username }}')">✕</button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<script>
+function toggleEdit(uname) {
+  const el = document.getElementById('ef-' + uname);
+  if (!el) return;
+  el.classList.toggle('open');
+  if (el.classList.contains('open')) {
+    const af = document.getElementById('af-' + uname);
+    if (af) af.classList.remove('open');
+  }
+}
+function toggleAssign(uname) {
+  const el = document.getElementById('af-' + uname);
+  if (!el) return;
+  el.classList.toggle('open');
+  if (el.classList.contains('open')) {
+    const ef = document.getElementById('ef-' + uname);
+    if (ef) ef.classList.remove('open');
+  }
+}
+function filterNodes() {
+  const q = document.getElementById('treeSearch').value.toLowerCase().trim();
+  document.querySelectorAll('.ot-tree-node').forEach(n => {
+    if (!q) { n.style.display = ''; return; }
+    n.style.display = (n.dataset.uname.includes(q) || (n.dataset.fbo||'').includes(q)) ? '' : 'none';
+  });
+  document.querySelectorAll('.flat-row').forEach(n => {
+    if (!q) { n.style.display = ''; return; }
+    n.style.display = (n.dataset.uname.includes(q) || (n.dataset.fbo||'').includes(q)) ? '' : 'none';
+  });
+}
+
+/* ── Collapse / Expand tree children ─────────────────────── */
+function otToggle(arrow) {
+  var node = arrow.closest('.ot-tree-node');
+  var children = node.querySelector('.ot-indent');
+  if (!children) return;
+  var isOpen = arrow.classList.contains('open');
+  if (isOpen) {
+    children.style.maxHeight = children.scrollHeight + 'px';
+    requestAnimationFrame(function(){ children.classList.add('collapsed'); });
+    arrow.classList.remove('open');
+  } else {
+    children.classList.remove('collapsed');
+    children.style.maxHeight = children.scrollHeight + 'px';
+    setTimeout(function(){ children.style.maxHeight = ''; }, 350);
+    arrow.classList.add('open');
+  }
+}
+
+/* ── AJAX Day 1 routing toggle ───────────────────────────── */
+function otToggleD1(btn) {
+  var leader = btn.dataset.leader;
+  var state  = parseInt(btn.dataset.state);
+  var action = state ? 'OFF' : 'ON';
+  if (!confirm('@' + leader + ' ka Day 1 routing ' + action + ' karna hai?')) return;
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>' + action + '...';
+
+  fetch('{{ url_for("admin_org_tree_day1_routing_toggle") }}', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-CSRF-Token': '{{ csrf_token }}'
+    },
+    body: JSON.stringify({ leader_username: leader })
+  })
+  .then(function(r){
+    return r.json().then(function(data){ return { httpOk: r.ok, data: data }; });
+  })
+  .then(function(x) {
+    var d = x.data;
+    if (!x.httpOk || !d.ok) {
+      alert((d && d.error) ? d.error : ('HTTP error ' + (x.httpOk ? '' : ' — check login/CSRF')));
+      btn.disabled = false;
+      btn.innerHTML = state ? '<i class="bi bi-arrow-right-circle-fill me-1"></i>D1 ON' : '<i class="bi bi-arrow-right-circle me-1"></i>D1 OFF';
+      return;
+    }
+    var nv = d.new_val;
+    document.querySelectorAll('.ot-d1-btn[data-leader="' + leader + '"]').forEach(function(b){
+      b.dataset.state = String(nv);
+      b.disabled = false;
+      b.classList.remove('btn-success', 'btn-outline-secondary', 'fw-semibold');
+      if (nv) {
+        b.classList.add('btn-success', 'fw-semibold');
+        b.innerHTML = '<i class="bi bi-arrow-right-circle-fill me-1"></i>Day 1 ON';
+        b.title = 'Day 1 routing ON — click to OFF';
+      } else {
+        b.classList.add('btn-outline-secondary');
+        b.innerHTML = '<i class="bi bi-arrow-right-circle me-1"></i>Day 1 OFF';
+        b.title = 'Day 1 routing OFF — click to ON';
+      }
+    });
+    _otToast(d.message);
+  })
+  .catch(function(e){
+    alert('Network or JSON error: ' + (e && e.message ? e.message : e));
+    btn.disabled = false;
+    btn.innerHTML = state ? '<i class="bi bi-arrow-right-circle-fill me-1"></i>D1 ON' : '<i class="bi bi-arrow-right-circle me-1"></i>D1 OFF';
+  });
+}
+
+function _otToast(msg) {
+  var t = document.createElement('div');
+  t.className = 'position-fixed bottom-0 end-0 m-3 p-3 bg-dark text-white rounded shadow';
+  t.style.cssText = 'z-index:9999;font-size:.85rem;max-width:340px;animation:fadeIn .3s';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function(){ t.remove(); }, 3000);
+}
+</script>
+{% endblock %}

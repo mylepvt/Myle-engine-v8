@@ -7,6 +7,7 @@ alwaysApply: false
 # Backend conventions
 
 ## Structure
+- **Deploy entrypoints:** Production image runs **`uvicorn main:app`** from **`Dockerfile`** (`PORT`, optional **`WEB_CONCURRENCY`**). ASGI mirror **`asgi:app`**; optional **`gunicorn -c gunicorn.conf.py asgi:app`** uses **`uvicorn.workers.UvicornWorker`**. Legacy Flask **`wsgi.py` / sync gunicorn** live under **`backend/legacy/myle_dashboard_main3/`** with **`render.monolith.yaml`** — not used by vl2’s root Blueprint.
 - HTTP routes live under **`app/api/v1/`** (one module per domain). Register them only in **`app/api/v1/router.py`** — `main.py` includes a single `api_router` with prefix `/api/v1`.
 - **`GET /api/v1/meta`** — public **JSON** bootstrap only: `environment` (**`APP_ENV`**), **`features.intelligence`** (**`FEATURE_INTELLIGENCE`**, legacy **`FEATURE_AI_INTELLIGENCE`** accepted). **Not** a webhook endpoint — no POST ingest (e.g. Meta/social). Frontend caches this; do not duplicate toggles only in UI.
 - Shared FastAPI deps (e.g. DB session, **`require_auth_user`** / **`AuthUser`** for cookie JWT): **`app/api/deps.py`**. Settings: **`app/core/config.py`**. Engine/session factory: **`app/db/session.py`** — do not open ad-hoc engines in route files.

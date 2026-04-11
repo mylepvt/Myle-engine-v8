@@ -82,7 +82,7 @@ export function LoginPage() {
       return
     }
     if (!fboId.trim()) {
-      setError('Please enter your FBO ID.')
+      setError('Please enter your FBO ID or username.')
       return
     }
     setPwPending(true)
@@ -260,8 +260,8 @@ export function LoginPage() {
             >
               <p className="mb-4 text-center text-xs font-medium leading-relaxed text-muted-foreground sm:text-left">
                 {devLoginAllowed
-                  ? 'Or sign in with your FBO ID and password'
-                  : 'Use your unique FBO ID and password.'}
+                  ? 'Or sign in with FBO ID or username and password'
+                  : 'Use your FBO ID or username and password (same as the previous app).'}
               </p>
 
               <div className="space-y-3.5">
@@ -270,7 +270,7 @@ export function LoginPage() {
                     className="mb-1.5 flex flex-wrap items-baseline gap-1 text-sm font-semibold text-foreground"
                     htmlFor="login-fbo-id"
                   >
-                    FBO ID
+                    FBO ID or username
                     <RequiredMark />
                   </label>
                   <IconInput
@@ -279,7 +279,7 @@ export function LoginPage() {
                     value={fboId}
                     onChange={(e) => setFboId(e.target.value)}
                     disabled={pwPending}
-                    placeholder="e.g. FBO-12345"
+                    placeholder="e.g. 910900367506 or your name"
                     icon={IdCard}
                   />
                 </div>

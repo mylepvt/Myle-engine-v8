@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
 
@@ -103,6 +108,12 @@ export type LeadListFilters = {
   status: '' | LeadStatus
 }
 
+/** Optional paging — used by infinite list; plain list omits these (server defaults). */
+export type LeadListFetchParams = LeadListFilters & {
+  limit?: number
+  offset?: number
+}
+
 /** Group statuses by phase for filter dropdowns */
 export const LEAD_STATUS_GROUPS: { label: string; statuses: LeadStatus[] }[] = [
   { label: 'Pre-Enrollment', statuses: ['new_lead', 'contacted', 'invited', 'video_sent', 'video_watched'] },
@@ -123,19 +134,28 @@ async function parseError(res: Response): Promise<never> {
 
 export type LeadsListMode = 'active' | 'archived' | 'recycle'
 
-function buildLeadsQueryString(filters: LeadListFilters, listMode: LeadsListMode): string {
+const DEFAULT_PAGE_SIZE = 50
+
+function buildLeadsQueryString(
+  filters: LeadListFetchParams,
+  listMode: LeadsListMode,
+): string {
   const p = new URLSearchParams()
   const t = filters.q.trim()
   if (t) p.set('q', t)
   if (filters.status) p.set('status', filters.status)
   if (listMode === 'archived') p.set('archived_only', 'true')
   if (listMode === 'recycle') p.set('deleted_only', 'true')
+  if (filters.limit != null) p.set('limit', String(filters.limit))
+  if (filters.offset != null && filters.offset > 0) {
+    p.set('offset', String(filters.offset))
+  }
   const qs = p.toString()
   return qs ? `?${qs}` : ''
 }
 
 async function fetchLeads(
-  filters: LeadListFilters,
+  filters: LeadListFetchParams,
   listMode: LeadsListMode,
 ): Promise<LeadListResponse> {
   const res = await apiFetch(`/api/v1/leads${buildLeadsQueryString(filters, listMode)}`)
@@ -213,6 +233,29 @@ export function useLeadsQuery(
   return useQuery({
     queryKey: ['leads', 'list', listMode, filters.q.trim(), filters.status],
     queryFn: () => fetchLeads(filters, listMode),
+    enabled,
+  })
+}
+
+/** Paged list for Work → Leads (load more). */
+export function useLeadsInfiniteQuery(
+  enabled: boolean,
+  filters: LeadListFilters,
+  listMode: LeadsListMode = 'active',
+  pageSize: number = DEFAULT_PAGE_SIZE,
+) {
+  return useInfiniteQuery({
+    queryKey: ['leads', 'list', 'paged', listMode, filters.q.trim(), filters.status, pageSize],
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) =>
+      fetchLeads(
+        { ...filters, limit: pageSize, offset: pageParam as number },
+        listMode,
+      ),
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((sum, p) => sum + p.items.length, 0)
+      return loaded < lastPage.total ? loaded : undefined
+    },
     enabled,
   })
 }

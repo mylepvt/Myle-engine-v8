@@ -1,0 +1,2170 @@
+{% extends "base.html" %}
+{% from '_macros.html' import pipeline_indicator, stage_sla_watch, heat_bar with context %}
+{% block title %}My Dashboard – Myle Community{% endblock %}
+{% block page_title %}My Dashboard{% endblock %}
+{% block extra_head %}
+{% if user_role in ('team', 'leader') %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/working.css') }}?v=20260409mlp2">
+<script>
+window._workingCfg = window._workingCfg || { csrf: '{{ csrf_token }}' };
+</script>
+<script src="{{ url_for('static', filename='js/working.js') }}?v=20260409mlp2" defer></script>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+{% if user_role == 'leader' %}
+<div class="d-flex align-items-center gap-2 flex-wrap mb-2 myle-dashboard-live">
+  <span class="d-inline-flex align-items-center gap-1 myle-live-pulse-label">
+    <i class="bi bi-heart-fill ap-live-heart" aria-hidden="true"></i>
+    <span>Live</span>
+  </span>
+  <span class="small text-muted">· {{ today }} IST</span>
+</div>
+{% endif %}
+
+{# ════════════════════════════════════════════════════════════
+   ZONE 1 · COMPACT STATUS BAR
+   ════════════════════════════════════════════════════════════ #}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+  {# Stage pill #}
+  <span class="badge rounded-pill px-3 py-2 fw-bold"
+        style="background:#f0fdf4;color:#16a34a;font-size:0.82rem;">
+    🎯 Stage: {% if user_stage == 'day1' %}Day 1{% elif user_stage == 'day2' %}Day 2{% elif user_stage == 'day3' %}Day 3{% else %}{{ user_stage|default('Day 1')|title }}{% endif %}
+  </span>
+
+  {# Streak pill #}
+  {% if today_streak > 0 %}
+  <span class="badge rounded-pill px-3 py-2 fw-bold"
+        style="background:#fff7ed;color:#d97706;font-size:0.82rem;">
+    🔥 {{ today_streak }}-day streak
+  </span>
+  {% endif %}
+
+  {# Follow-ups pill (not shown to team) #}
+  {% if followups and session.get('role') != 'team' %}
+  <a href="{{ url_for('follow_up_queue') }}"
+     class="badge rounded-pill px-3 py-2 fw-bold text-decoration-none"
+     style="background:#fee2e2;color:#dc2626;font-size:0.82rem;">
+    <i class="bi bi-calendar-x-fill me-1"></i>{{ followups|length }} follow-up{% if followups|length != 1 %}s{% endif %}
+  </a>
+  {% endif %}
+
+  {# Report status #}
+  <div class="ms-auto d-flex align-items-center gap-1 flex-shrink-0">
+    {% if today_report %}
+    <span class="small text-success fw-semibold">
+      <i class="bi bi-check-circle-fill me-1"></i>Report ✓
+    </span>
+    {% else %}
+    <a href="{{ url_for('report_submit') }}" class="small fw-semibold text-danger text-decoration-none">
+      <i class="bi bi-exclamation-triangle-fill me-1"></i>Submit Report
+    </a>
+    {% endif %}
+  </div>
+
+</div>
+
+{% if user_role in ('team', 'leader') and gate_assistant %}
+<div class="card border-0 shadow-sm mb-3"
+     style="border-left:4px solid {% if gate_assistant.risk_level == 'red' %}#dc2626{% elif gate_assistant.risk_level == 'yellow' %}#d97706{% else %}#16a34a{% endif %};">
+  <div class="card-body py-2 px-3">
+    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+      <div class="fw-semibold small text-primary">
+        <i class="bi bi-shield-check me-1"></i>Daily checklist
+      </div>
+      <span class="badge {% if gate_assistant.risk_level == 'red' %}bg-danger-subtle text-danger{% elif gate_assistant.risk_level == 'yellow' %}bg-warning-subtle text-warning{% else %}bg-success-subtle text-success{% endif %} border">
+        {% if gate_assistant.risk_level == 'red' %}Urgent{% elif gate_assistant.risk_level == 'yellow' %}Do today{% else %}All clear{% endif %}
+      </span>
+      <span class="badge bg-primary-subtle text-primary border">
+        {{ gate_assistant.done }} of {{ gate_assistant.total }} done
+      </span>
+    </div>
+    <div class="progress mb-2" style="height:7px;" title="Checklist progress">
+      <div class="progress-bar bg-primary" role="progressbar"
+           title="Checklist progress"
+           style="width:{{ gate_assistant.progress_pct }}%;"
+           aria-valuemin="0" aria-valuemax="100"></div>
+    </div>
+    <div class="small text-muted mb-2">Do these every day so your work stays on track.</div>
+    <div class="small mb-2">
+      <span class="fw-semibold">Next step:</span>
+      {% if gate_assistant.next_action_link %}
+      <a href="{{ gate_assistant.next_action_link }}" class="text-decoration-none">{{ gate_assistant.next_action }}</a>
+      {% else %}
+      <span>{{ gate_assistant.next_action }}</span>
+      {% endif %}
+    </div>
+    <div class="row g-2 small">
+      <div class="col-12 col-md-6">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi {% if gate_assistant.report_done %}bi-check-circle-fill text-success{% else %}bi-x-circle-fill text-danger{% endif %}"></i>
+          <span>Daily report</span>
+          {% if not gate_assistant.report_done %}
+          <a href="{{ url_for('report_submit') }}" class="ms-auto text-decoration-none">Send</a>
+          {% endif %}
+        </div>
+      </div>
+      {% if user_role != 'team' %}
+      <div class="col-12 col-md-6">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi {% if gate_assistant.overdue_count == 0 %}bi-check-circle-fill text-success{% else %}bi-exclamation-circle-fill text-warning{% endif %}"></i>
+          <span>Old follow-up dates: {{ gate_assistant.overdue_count }}</span>
+          {% if gate_assistant.overdue_count > 0 %}
+          <a href="{{ url_for('follow_up_queue') }}" class="ms-auto text-decoration-none">Open list</a>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+      {% if user_role == 'leader' %}
+      <div class="col-12 col-md-6">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-check-circle-fill text-success"></i>
+          <span>Missing follow-up dates filled by system</span>
+        </div>
+      </div>
+      {% endif %}
+      <div class="col-12 col-md-6">
+        <div class="d-flex align-items-center gap-2">
+          {% if gate_assistant.calls_today >= gate_assistant.call_target %}
+          <i class="bi bi-check-circle-fill text-success"></i>
+          {% elif gate_assistant.is_evening %}
+          <i class="bi bi-exclamation-circle-fill text-warning"></i>
+          {% else %}
+          <i class="bi bi-hourglass-split text-info"></i>
+          {% endif %}
+          <span>Calls logged: {{ gate_assistant.calls_today }} / {{ gate_assistant.call_target }}{% if not gate_assistant.is_evening and gate_assistant.calls_today < gate_assistant.call_target %} <span class="text-muted">(still time today)</span>{% endif %}</span>
+        </div>
+      </div>
+      <div class="col-12">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi {% if gate_assistant.pending_proof_count == 0 %}bi-check-circle-fill text-success{% else %}bi-exclamation-circle-fill text-warning{% endif %}"></i>
+          <span>Rs 196 proofs to check: {{ gate_assistant.pending_proof_count }}</span>
+          {% if gate_assistant.pending_proof_count > 0 %}
+          <a href="{{ url_for('enrollment_approvals') }}" class="ms-auto text-decoration-none">Open list</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if user_role == 'team' and team_execution_funnel %}
+<div class="card border-0 shadow-sm mb-3" style="border-left:4px solid #dc2626;">
+  <div class="card-body py-3 px-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+      <h6 class="fw-bold mb-0 text-danger"><i class="bi bi-funnel-fill me-2"></i>My enrollment funnel</h6>
+      <span class="small text-muted">Your active leads — see where they stop</span>
+    </div>
+    <div class="d-flex flex-wrap align-items-center gap-2 small mb-2">
+      <span class="badge bg-dark">{{ team_execution_funnel.claimed }} claimed</span>
+      <span class="text-muted">→</span>
+      <span class="badge bg-primary">{{ team_execution_funnel.video_reached }} video+</span>
+      <span class="text-muted">({{ team_execution_funnel.pct_video_vs_claimed }}%)</span>
+      <span class="text-muted">→</span>
+      <span class="badge bg-warning text-dark">{{ team_execution_funnel.proof_pending }} proof waiting</span>
+      <span class="text-muted">({{ team_execution_funnel.pct_proof_vs_video }}% of video+)</span>
+      <span class="text-muted">→</span>
+      <span class="badge bg-success">{{ team_execution_funnel.enrolled_total }} enrolled</span>
+      <span class="text-muted">({{ team_execution_funnel.pct_enrolled_vs_claimed }}% of claimed)</span>
+    </div>
+    <div class="small text-muted mb-2">
+      Paid ₹196: <strong>{{ team_execution_funnel.paid_196 }}</strong>
+    </div>
+    {% if team_enrollment_pressure %}
+    <div class="row g-2 mb-2">
+      <div class="col-6 col-md-3">
+        <div class="border rounded p-2 text-center bg-danger-subtle">
+          <div class="fw-bold fs-5">{{ team_enrollment_pressure.enrolled_today }}</div>
+          <div class="small text-muted">Enrolled today</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="border rounded p-2 text-center">
+          <div class="fw-bold fs-5">{{ team_enrollment_pressure.claimed_today }}</div>
+          <div class="small text-muted">Claimed today</div>
+        </div>
+      </div>
+      <div class="col-12 col-md-6">
+        <div class="border rounded p-2">
+          <div class="small text-muted mb-1">Month · ₹196 payments target</div>
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="fw-bold">{{ team_enrollment_pressure.month_payments_actual }} / {{ team_enrollment_pressure.month_payments_target or '—' }}</span>
+            {% if team_enrollment_pressure.month_payments_target %}
+            {% set _mp = team_enrollment_pressure.month_payments_target %}
+            {% set _ma = team_enrollment_pressure.month_payments_actual %}
+            <span class="badge {% if _ma >= _mp %}bg-success{% elif _ma * 2 >= _mp %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+              {{ ((_ma / _mp * 100) if _mp else 0)|int }}%
+            </span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+    {% if team_followup_attack and team_followup_attack|length > 0 %}
+    <div class="border-top pt-2 mt-2">
+      <div class="fw-semibold text-danger small mb-2"><i class="bi bi-bullseye me-1"></i>Urgent: open these leads first</div>
+      <ul class="list-unstyled mb-0 small">
+        {% for fl in team_followup_attack[:12] %}
+        <li class="d-flex align-items-center gap-2 py-1 border-bottom border-light">
+          <a href="{{ url_for('edit_lead', lead_id=fl.id) }}" class="fw-semibold text-decoration-none">{{ fl.name }}</a>
+          <span class="text-muted">{{ fl.phone }}</span>
+          <span class="badge bg-secondary-subtle text-dark ms-auto">{{ fl.follow_up_date or fl.call_result or 'due' }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      <a href="{{ url_for('leads') }}" class="btn btn-sm btn-outline-danger mt-2">My Leads →</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% if step8_coach and user_role == 'leader' %}
+<div class="card border-0 shadow-sm mb-3" style="border-left:4px solid #7c3aed!important;">
+  <div class="card-body py-2 px-3">
+    <div class="d-flex align-items-start gap-2">
+      <i class="bi bi-stars fs-5 flex-shrink-0" style="color:#7c3aed;" aria-hidden="true"></i>
+      <div class="flex-grow-1" style="font-size:0.88rem;">
+        <div class="fw-semibold text-secondary mb-1" style="font-size:0.72rem;">Tips (information only — you still tap buttons)</div>
+        <p class="fw-semibold mb-1">{{ step8_coach.next_action }}</p>
+        {% if step8_coach.priority %}
+        <p class="text-muted small mb-1">{{ step8_coach.priority | join(' · ') }}</p>
+        {% endif %}
+        {% for line in step8_coach.appreciation %}
+        <p class="text-success small mb-0">{{ line }}</p>
+        {% endfor %}
+        {% for line in step8_coach.warnings %}
+        <p class="text-warning small mb-0">{{ line }}</p>
+        {% endfor %}
+        {% if step8_evening_line %}
+        <p class="mt-2 mb-0 pt-2 border-top small text-muted">{{ step8_evening_line }}</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if step8_leader_ai and step8_leader_ai.summaries and user_role == 'leader' %}
+<div class="card border-0 shadow-sm mb-3" style="border-left:4px solid #0ea5e9!important;">
+  <div class="card-body py-2 px-3">
+    <div class="d-flex align-items-start gap-2">
+      <i class="bi bi-people-fill fs-5 flex-shrink-0 text-info" aria-hidden="true"></i>
+      <div class="flex-grow-1 small">
+        <div class="fw-semibold text-secondary mb-1" style="font-size:0.72rem;">Leader view · read-only</div>
+        {% for s in step8_leader_ai.summaries %}
+        <p class="mb-1 fw-semibold mb-0">{{ s }}</p>
+        {% endfor %}
+        {% if step8_leader_ai.actions %}
+        <p class="text-muted mb-0">{{ step8_leader_ai.actions | join(' · ') }}</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if user_role == 'leader' and perf_state and perf_state.get('alerts') %}
+<div class="mb-3">
+  {% for a in perf_state.alerts %}
+  <div class="alert alert-{% if a.level == 'warning' %}warning{% elif a.level == 'info' %}info{% else %}danger{% endif %} border-0 py-2 mb-2 shadow-sm"
+       style="{% if a.level == 'warning' %}border-left:4px solid #f59e0b;{% elif a.level == 'info' %}border-left:4px solid #0ea5e9;{% else %}border-left:4px solid #dc2626;{% endif %}border-radius:10px;">
+    <i class="bi bi-{% if a.level == 'warning' %}exclamation-triangle{% elif a.level == 'info' %}info-circle{% else %}exclamation-octagon{% endif %} me-2"></i>
+    {{ a.text }}
+  </div>
+  {% endfor %}
+  {% if perf_state.get('show_grace_form') and perf_state.daily_target and perf_state.daily_target > 0 %}
+  <div class="card border-0 shadow-sm mb-0" style="border-left:3px solid #6366f1;">
+    <div class="card-body py-2 px-3">
+      <div class="small fw-semibold text-secondary mb-2">Personal grace (max 2 / 30 days)</div>
+      <form method="post" action="{{ url_for('request_performance_grace') }}" class="row g-2 align-items-end">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="col-12 col-md-5">
+          <label class="form-label small mb-0">Reason (required)</label>
+          <input type="text" name="reason_text" class="form-control form-control-sm" required minlength="8" placeholder="Short genuine reason">
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label small mb-0">Return date</label>
+          <input type="date" name="expected_return_date" class="form-control form-control-sm" required>
+        </div>
+        <div class="col-6 col-md-2">
+          <button type="submit" class="btn btn-sm btn-outline-primary w-100">Request grace</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{# ════════════════════════════════════════════════════════════
+   ZONE 1b · PIPELINE STAT ROW
+   ════════════════════════════════════════════════════════════ #}
+{% if user_role in ('team', 'leader') %}
+{% if tracking_start %}
+<div class="d-flex align-items-center gap-1 mb-2 px-1" style="font-size:0.7rem;color:#6b7280;">
+  <span>📊</span><span>New tracking from <strong>{{ tracking_start }}</strong> — old leads excluded from counts</span>
+</div>
+{% endif %}
+<div class="d-flex align-items-center justify-content-end mb-2">
+  <span class="badge bg-secondary-subtle text-secondary border" style="font-size:0.65rem;">
+    Live sync: {% if user_role == 'leader' %}8s{% else %}10s{% endif %}
+  </span>
+</div>
+{% if user_role == 'team' %}
+<div class="d-flex gap-2 mb-3">
+  <div class="flex-fill text-center rounded-3 py-2 px-1" style="background:#eff6ff;border:1px solid #bfdbfe;">
+    <div class="fw-bold fs-5 text-primary">{{ team_today_stats.claimed_today or 0 }}</div>
+    <div class="text-muted" style="font-size:0.7rem;">Leads Claimed Today</div>
+  </div>
+  <div class="flex-fill text-center rounded-3 py-2 px-1" style="background:#f0fdf4;border:1px solid #bbf7d0;">
+    <div class="fw-bold fs-5 text-success">{{ team_today_stats.calls_today or 0 }}</div>
+    <div class="text-muted" style="font-size:0.7rem;">Calls Done Today</div>
+  </div>
+  <div class="flex-fill text-center rounded-3 py-2 px-1" style="background:#fff7ed;border:1px solid #fed7aa;">
+    <div class="fw-bold fs-5 text-warning">{{ team_today_stats.enrolled_today or 0 }}</div>
+    <div class="text-muted" style="font-size:0.7rem;">Enrolled Today</div>
+  </div>
+</div>
+{% else %}
+<div class="d-flex gap-2 mb-3">
+  <div class="flex-fill text-center rounded-3 py-2 px-1" style="background:#f0fdf4;border:1px solid #bbf7d0;">
+    <div class="fw-bold fs-5 text-success">{{ today_paid or 0 }}</div>
+    <div class="text-muted" style="font-size:0.7rem;">Enrolled Today</div>
+  </div>
+  <div class="flex-fill text-center rounded-3 py-2 px-1" style="background:#eff6ff;border:1px solid #bfdbfe;">
+    <div class="fw-bold fs-5 text-primary">{{ metrics.converted or 0 }}</div>
+    <div class="text-muted" style="font-size:0.7rem;">Fully Converted</div>
+  </div>
+  <div class="flex-fill text-center rounded-3 py-2 px-1" style="background:#faf5ff;border:1px solid #e9d5ff;">
+    <div class="fw-bold fs-5" style="color:#7c3aed;">{{ pending_count_pipeline or 0 }}</div>
+    <div class="text-muted" style="font-size:0.7rem;">Seat Hold</div>
+  </div>
+</div>
+{% endif %}
+{% endif %}
+
+{# ════════════════════════════════════════════════════════════
+   ZONE 2 · NOTICE BOARD + LIVE SESSION
+   ════════════════════════════════════════════════════════════ #}
+{% if notices or zoom_link %}
+<div class="mb-3">
+
+  {% if notices %}
+  <div class="alert alert-warning alert-dismissible py-2 mb-2 shadow-sm"
+       style="border-left:4px solid #f59e0b;border-radius:10px;">
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <i class="bi bi-megaphone-fill text-warning"></i>
+      <span class="fw-semibold small">Notice Board</span>
+      <a href="{{ url_for('announcements') }}" class="ms-auto text-muted small text-decoration-none">View all →</a>
+    </div>
+    {% for n in notices[:2] %}
+    <div class="small {% if n.pin %}fw-semibold{% endif %} text-truncate">
+      {% if n.pin %}<i class="bi bi-pin-angle-fill text-warning me-1"></i>{% endif %}
+      {{ n.message }}
+    </div>
+    {% endfor %}
+    <button type="button" class="btn-close btn-sm" data-bs-dismiss="alert"></button>
+  </div>
+  {% endif %}
+
+  {% if zoom_link %}
+  <div class="card border-0 shadow-sm p-2 mb-0">
+    <div class="d-flex align-items-center gap-2">
+      <i class="bi bi-camera-video-fill fs-5 text-purple flex-shrink-0"></i>
+      <div class="flex-grow-1 min-w-0">
+        <div class="fw-semibold small text-truncate">{{ zoom_title }}</div>
+        <div class="text-muted" style="font-size:0.72rem;">{{ zoom_time }}</div>
+      </div>
+      <a href="{{ zoom_link }}" target="_blank" rel="noopener"
+         class="btn btn-sm btn-primary flex-shrink-0">Join</a>
+      <button class="btn btn-sm btn-outline-secondary flex-shrink-0"
+              onclick="copyToClipboard('{{ zoom_link }}').then(function(){showToast('Link copied!','success')})">
+        <i class="bi bi-clipboard"></i>
+      </button>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endif %}
+
+{# ════════════════════════════════════════════════════════════
+   ZONE 2b · TODAY'S PRIORITIES (Team / Leader)
+   ════════════════════════════════════════════════════════════ #}
+{% if user_role == 'leader' %}
+{% set has_priorities = (followup_count and followup_count > 0) or (pending_batches and pending_batches > 0) or (stage1_count and stage1_count > 0) or not today_report or user_stage == 'day2' %}
+{% if has_priorities %}
+<div class="card border-0 shadow-sm mb-3" style="border-left: 4px solid #6366f1;">
+  <div class="card-header bg-transparent border-0 py-2 px-3">
+    <span class="fw-semibold small text-primary"><i class="bi bi-list-check me-2"></i>Today's Priorities</span>
+  </div>
+  <div class="card-body py-2 px-3">
+    <ul class="mb-0 list-unstyled small">
+      {% if not today_report %}
+      <li class="d-flex align-items-center gap-2 py-1">
+        <i class="bi bi-exclamation-triangle-fill text-danger"></i>
+        <a href="{{ url_for('report_submit') }}" class="text-danger fw-semibold text-decoration-none">Submit daily report</a>
+      </li>
+      {% endif %}
+      {% if followup_count and followup_count > 0 %}
+      <li class="d-flex align-items-center gap-2 py-1">
+        <i class="bi bi-calendar-x-fill text-warning"></i>
+        <a href="{{ url_for('follow_up_queue') }}" class="text-decoration-none">{{ followup_count }} follow-up{% if followup_count != 1 %}s{% endif %} due</a>
+      </li>
+      {% endif %}
+      {% if stage1_count and stage1_count > 0 %}
+      <li class="d-flex align-items-center gap-2 py-1">
+        <i class="bi bi-camera-video text-info"></i>
+        <a href="{{ url_for('working') }}#stage1" class="text-decoration-none">{{ stage1_count }} in Stage 1 — send videos &amp; call</a>
+      </li>
+      {% endif %}
+      {% if pending_batches and pending_batches > 0 %}
+      <li class="d-flex align-items-center gap-2 py-1">
+        <i class="bi bi-check2-square text-success"></i>
+        <a href="{{ url_for('working') }}" class="text-decoration-none">{{ pending_batches }} batch(es) pending (Day 1/2)</a>
+      </li>
+      {% endif %}
+      {% if user_stage == 'day2' %}
+      <li class="d-flex align-items-center gap-2 py-1 bg-primary-subtle rounded px-2 mt-1">
+        <i class="bi bi-rocket-takeoff-fill text-primary"></i>
+        <a href="{{ url_for('progression_routes.day2_test') }}" class="text-primary fw-bold text-decoration-none">Pass Day 2 Evaluation to unlock Day 3</a>
+      </li>
+      {% endif %}
+    </ul>
+  </div>
+</div>
+{% endif %}
+{% endif %}
+
+{# ════════════════════════════════════════════════════════════
+   ZONE 2c · TEAM SNAPSHOT (Leader only)
+   ════════════════════════════════════════════════════════════ #}
+{% if user_role == 'leader' %}
+
+{# ── Today's summary stats ── #}
+<div class="row g-2 mb-3">
+  <div class="col-6 col-sm-3">
+    <div class="card border-0 shadow-sm text-center py-2 px-1">
+      <div class="fw-bold fs-5 text-primary">{{ leader_today_stats.leads_today }}</div>
+      <div class="text-muted" style="font-size:0.68rem;">Leads Today</div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-3">
+    <div class="card border-0 shadow-sm text-center py-2 px-1">
+      <div class="fw-bold fs-5 text-success">{{ leader_today_stats.calls_today }}</div>
+      <div class="text-muted" style="font-size:0.68rem;">Calls Today</div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-3">
+    <div class="card border-0 shadow-sm text-center py-2 px-1">
+      <div class="fw-bold fs-5 text-warning">{{ leader_today_stats.enrolled_today }}</div>
+      <div class="text-muted" style="font-size:0.68rem;">Enrolled Today</div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-3">
+    <div class="card border-0 shadow-sm text-center py-2 px-1">
+      <div class="fw-bold fs-5 text-info">{{ leader_today_stats.conv_rate }}%</div>
+      <div class="text-muted" style="font-size:0.68rem;">Conv. Rate</div>
+    </div>
+  </div>
+</div>
+
+{# ── Team performance table ── #}
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-header bg-transparent border-0 py-2 px-3 d-flex align-items-center gap-2">
+    <span class="fw-semibold small text-primary"><i class="bi bi-people-fill me-2"></i>Downline control</span>
+    {% if leader_report_stats %}
+    <span class="badge ms-2
+      {% if leader_report_stats.submitted == leader_report_stats.total %}bg-success
+      {% elif leader_report_stats.submitted == 0 %}bg-danger
+      {% else %}bg-warning text-dark{% endif %}"
+      style="font-size:0.68rem;">
+      Reports {{ leader_report_stats.submitted }}/{{ leader_report_stats.total }}
+    </span>
+    {% endif %}
+    <a href="{{ url_for('leader_team_reports') }}" class="btn btn-sm btn-outline-secondary ms-auto py-0 px-2"
+       style="font-size:0.72rem;">Full Reports →</a>
+  </div>
+  <div class="card-body p-0">
+    {% if team_snapshot %}
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th class="small px-3">Member</th>
+            <th class="text-center small">Active</th>
+            <th class="text-center small">F/U</th>
+            <th class="text-center small">Proof</th>
+            <th class="text-center small">Enr%</th>
+            <th class="small">Bottleneck</th>
+            <th class="text-center small">Leads</th>
+            <th class="text-center small">D1</th>
+            <th class="text-center small">D2</th>
+            <th class="text-center small">Conv</th>
+            <th class="text-center small">Pts</th>
+            <th class="text-center small">Report</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in team_snapshot %}
+          <tr>
+            <td class="fw-semibold small px-3">{{ m.username }}</td>
+            <td class="text-center small">{{ m.ex.total_active if m.ex is defined else '—' }}</td>
+            <td class="text-center small {% if m.ex is defined and m.ex.fu_due > 0 %}text-warning fw-bold{% endif %}">{{ m.ex.fu_due if m.ex is defined else '—' }}</td>
+            <td class="text-center small {% if m.ex is defined and m.ex.proof_pend > 0 %}text-danger fw-bold{% endif %}">{{ m.ex.proof_pend if m.ex is defined else '—' }}</td>
+            <td class="text-center small fw-bold {% if m.ex is defined and m.ex.conv_pct < 15 %}text-danger{% elif m.ex is defined and m.ex.conv_pct < 35 %}text-warning{% else %}text-success{% endif %}">{{ m.ex.conv_pct if m.ex is defined else '—' }}%</td>
+            <td class="small">
+              {% if m.bottlenecks is defined %}
+                {% for t in m.bottlenecks %}
+                <span class="badge {% if t == 'On track' %}bg-success-subtle text-success{% elif t == 'No assigned leads' %}bg-secondary-subtle{% else %}bg-danger-subtle text-danger{% endif %} me-1">{{ t }}</span>
+                {% endfor %}
+              {% else %}—{% endif %}
+            </td>
+            <td class="text-center small">{{ m.stage1 + m.day1 + m.day2 + m.day3 + m.pending + m.converted }}</td>
+            <td class="text-center small">{{ m.day1 }}</td>
+            <td class="text-center small">{{ m.day2 }}</td>
+            <td class="text-center small fw-bold text-success">{{ m.converted }}</td>
+            <td class="text-center small fw-bold text-primary">{{ m.score }}</td>
+            <td class="text-center">{% if m.report_done %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-x-circle-fill text-danger"></i>{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-muted text-center py-3 small">
+      <i class="bi bi-people fs-4 d-block mb-1 opacity-50"></i>No downline members found.
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{# ── Alerts ── #}
+<div class="mb-3">
+{% if not leader_alerts.stuck and not leader_alerts.no_calls and not downline_missing_reports %}
+<div class="d-flex align-items-center gap-2 px-1 py-2 text-success" style="font-size:0.8rem;">
+  <i class="bi bi-check-circle-fill"></i><span>No alerts — team is on track today.</span>
+</div>
+{% endif %}
+{% if leader_alerts.stuck %}
+<div class="alert alert-warning py-2 mb-2 d-flex align-items-start gap-2"
+     style="border-radius:10px;border-left:4px solid #f59e0b;font-size:0.8rem;">
+  <i class="bi bi-exclamation-triangle-fill text-warning flex-shrink-0 mt-1"></i>
+  <div>
+    <span class="fw-semibold">Leads stuck (&gt;24h no update):</span>
+    {% for s in leader_alerts.stuck %}
+      <span class="badge bg-warning text-dark ms-1">{{ s.username }} ({{ s.count }})</span>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% if leader_alerts.no_calls %}
+<div class="alert alert-danger py-2 mb-2 d-flex align-items-start gap-2"
+     style="border-radius:10px;border-left:4px solid #dc3545;font-size:0.8rem;">
+  <i class="bi bi-telephone-x-fill text-danger flex-shrink-0 mt-1"></i>
+  <div>
+    <span class="fw-semibold">No calls today:</span>
+    {% for u in leader_alerts.no_calls %}
+      <span class="badge bg-danger ms-1">{{ u }}</span>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% if leader_alerts.gates %}
+{% set _active_gates = leader_alerts.gates | selectattr('count', 'gt', 0) | list %}
+{% if _active_gates %}
+<div class="alert alert-info py-2 mb-2 d-flex align-items-start gap-2"
+     style="border-radius:10px;border-left:4px solid #0ea5e9;font-size:0.8rem;">
+  <i class="bi bi-flag-fill text-info flex-shrink-0 mt-1"></i>
+  <div>
+    <span class="fw-semibold">Leader gates (alerts only):</span>
+    {% for g in _active_gates %}
+      <span class="badge bg-info text-dark ms-1">{{ g.code }} {{ g.count }}</span>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endif %}
+{% if downline_missing_reports %}
+<div class="alert alert-secondary py-2 mb-2 d-flex align-items-start gap-2"
+     style="border-radius:10px;border-left:4px solid #6c757d;font-size:0.8rem;">
+  <i class="bi bi-clipboard2-x-fill flex-shrink-0 mt-1"></i>
+  <div>
+    <span class="fw-semibold">Report missing:</span>
+    {{ downline_missing_reports | join(', ') }}
+  </div>
+</div>
+{% endif %}
+</div>
+
+{% endif %}
+
+{# ════════════════════════════════════════════════════════════
+   ZONE 2d · MY PEOPLE PROGRESS (view-only)
+   ════════════════════════════════════════════════════════════ #}
+{% if user_role in ('team', 'leader') %}
+{% if my_progress_leads %}
+<div class="card border-0 shadow-sm mb-3 my-leads-progress mlp-compact">
+  <div class="card-header bg-transparent border-0 py-2 px-3 d-flex align-items-center justify-content-between">
+    <span class="fw-semibold small"><i class="bi bi-bar-chart-steps me-2"></i>My Leads Progress</span>
+    <span class="badge bg-secondary" style="font-size:0.68rem;">{{ my_progress_leads|length }}</span>
+  </div>
+  <div class="card-body p-2">
+    {% for lead in my_progress_leads %}
+    {% set _mlp_st = (lead.status|default(''))|trim|lower %}
+    {% set _mlp_sl = (lead.stage_label|default(''))|trim|lower %}
+    {% set _mlp_hide_status = (_mlp_st == _mlp_sl) or (_mlp_st in _mlp_sl and _mlp_st|length >= 3) or (_mlp_sl in _mlp_st and _mlp_sl|length >= 3) %}
+    <div class="lw-card enroll wk-lead-card mb-2" id="mlp-lead-{{ lead.id }}">
+      <div class="lw-card-head">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <div class="fw-bold text-truncate mlp-card-name">{{ lead.name }}</div>
+          <span class="badge rounded-pill flex-shrink-0 mlp-stage-pill" style="--mlp-accent: {{ lead.stage_color }};" title="{{ lead.stage_label }}">{{ lead.stage_label }}</span>
+        </div>
+        {% if not _mlp_hide_status %}
+        <div class="mlp-status-row">
+          <span class="mlp-status-chip">{{ lead.status }}</span>
+        </div>
+        {% endif %}
+        <div class="mlp-sla-slot">{{ stage_sla_watch(lead) }}</div>
+      </div>
+      <div class="lw-card-body">
+        <div class="d-flex justify-content-between align-items-center mlp-pipe-row">
+          <span class="mlp-pipe-label">Pipeline</span>
+          <span class="mlp-pipe-count">{{ lead.stage_step }}/{{ lead.stage_total }}</span>
+        </div>
+        <div class="lw-progress-wrap mlp-progress-wrap"><div class="lw-progress-bar" style="width:{{ lead.progress_pct|default(0) }}%;background:{{ lead.stage_color }};"></div></div>
+        <div class="mlp-pipe-ind">{{ pipeline_indicator(lead) }}</div>
+        {% if lead.heat is defined and (lead.heat|int) > 0 %}{{ heat_bar(lead) }}{% endif %}
+      </div>
+      <div class="lw-card-foot d-flex align-items-center gap-2 flex-wrap">
+        <a href="tel:{{ lead.phone }}" class="lw-icon-btn" title="Call" aria-label="Call"><i class="bi bi-telephone-fill" aria-hidden="true"></i></a>
+        <a href="https://wa.me/{{ lead.phone|wa_phone }}" target="_blank" rel="noopener noreferrer" class="lw-icon-btn" title="WhatsApp" aria-label="WhatsApp"><i class="bi bi-whatsapp" aria-hidden="true"></i></a>
+        <a href="{{ url_for('edit_lead', lead_id=lead.id) }}" class="lw-icon-btn ms-auto" title="Edit lead" aria-label="Edit lead"><i class="bi bi-pencil-square" aria-hidden="true"></i></a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% if user_role == 'team' and my_progress_leads %}
+  <div class="card-footer bg-transparent border-0 py-1 px-3 d-flex align-items-center gap-1 mlp-footer-hint">
+    <i class="bi bi-shield-check" aria-hidden="true"></i>
+    <span>Only your own claimed leads are shown.</span>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+{% endif %}
+
+{# ════════════════════════════════════════════════════════════
+   ZONE 3 · PIPELINE
+   ════════════════════════════════════════════════════════════ #}
+
+{% if user_role == 'team' %}
+  {% set _pipe_stages = [('prospecting','Inv'),('enrolled','Paid'),('day1','D1'),('day2','D2'),('day3','D3'),('closing','Close')] %}
+  {% set _pipe_order  = ['prospecting','enrolled','day1','day2','day3','closing'] %}
+{% else %}
+  {% set _pipe_stages = [('prospecting','P'),('enrolled','E'),('day1','1'),('day2','2'),('day3','3'),('plan_2cc','2c'),('seat_hold','S'),('pending','PA'),('level_up','LU'),('closing','C'),('training','T')] %}
+  {% set _pipe_order  = ['prospecting','enrolled','day1','day2','day3','plan_2cc','seat_hold','pending','level_up','closing','training'] %}
+{% endif %}
+
+{% if user_role in ('team', 'leader') %}
+
+{# ── Pre-compute section header hints (namespace for mutable loop vars) ── #}
+{% set _d3 = namespace(hot=0, urgent=0) %}
+{% for l in day3_leads %}
+  {% if l.heat is defined and l.heat >= 75 %}{% set _d3.hot = _d3.hot + 1 %}{% endif %}
+  {% if l.next_action_type == 'urgent' %}{% set _d3.urgent = _d3.urgent + 1 %}{% endif %}
+{% endfor %}
+
+{% set _d1 = namespace(hot=0, batches_pending=0) %}
+{% for l in day1_leads %}
+  {% if l.heat is defined and l.heat >= 75 %}{% set _d1.hot = _d1.hot + 1 %}{% endif %}
+  {% set _bd1 = l.d1_morning + l.d1_afternoon + l.d1_evening %}
+  {% if _bd1 < 3 %}{% set _d1.batches_pending = _d1.batches_pending + 1 %}{% endif %}
+{% endfor %}
+
+{% set _d2 = namespace(hot=0, batches_pending=0) %}
+{% for l in day2_leads %}
+  {% if l.heat is defined and l.heat >= 75 %}{% set _d2.hot = _d2.hot + 1 %}{% endif %}
+  {% set _bd2 = l.d2_morning + l.d2_afternoon + l.d2_evening %}
+  {% if _bd2 < 3 %}{% set _d2.batches_pending = _d2.batches_pending + 1 %}{% endif %}
+{% endfor %}
+
+{% set _s1 = namespace(hot=0, urgent=0) %}
+{% for l in stage1_leads %}
+  {% if l.heat is defined and l.heat >= 75 %}{% set _s1.hot = _s1.hot + 1 %}{% endif %}
+  {% if l.next_action_type == 'urgent' %}{% set _s1.urgent = _s1.urgent + 1 %}{% endif %}
+{% endfor %}
+
+{% set has_any = stage1_leads|length > 0 or day1_leads|length > 0 or day2_leads|length > 0 or day3_leads|length > 0 or pending_leads|length > 0 %}
+
+{% if has_any %}
+
+{# ── Stage 1: Enrollment Video (all roles) ───────────────── #}
+{% if enrollment_video_url %}
+<div class="card border-0 shadow-sm mb-2">
+  <div class="card-body p-2">
+    <a href="{{ enrollment_watch_url or enrollment_video_url }}" class="video-in-app d-flex align-items-center gap-2 text-decoration-none" style="color:#6366f1;">
+      <i class="bi bi-play-circle-fill fs-5 flex-shrink-0"></i>
+      <span class="fw-semibold small">{{ enrollment_video_title|default('Enrollment Video') }}</span>
+      <i class="bi bi-play-btn ms-auto small"></i>
+    </a>
+    <div class="small text-muted mt-1">Stage 1 — send this link; the video opens on our site (not YouTube)</div>
+  </div>
+</div>
+{% endif %}
+
+{# ── 1. Day 3 / Interview — FIRST (most urgent) ───────── #}
+{% if day3_leads %}
+<div class="card border-0 shadow-sm mb-2">
+  <button class="card-header bg-transparent border-0 d-flex align-items-center gap-2 w-100 text-start py-2 px-3"
+          data-bs-toggle="collapse" data-bs-target="#pipe-day3" aria-expanded="true"
+          style="cursor:pointer;">
+    <span class="badge fw-bold rounded-circle"
+          style="background:#7c3aed;min-width:22px;height:22px;line-height:22px;font-size:0.72rem;">{{ day3_leads|length }}</span>
+    <span class="fw-semibold small" style="color:#7c3aed;">Day 3 / Interview</span>
+    {% if _d3.hot > 0 %}<span style="font-size:0.82rem;line-height:1;">🔥</span>{% endif %}
+    {% if _d3.urgent > 0 %}<span class="badge bg-danger ms-1" style="font-size:0.6rem;">{{ _d3.urgent }} urgent</span>{% endif %}
+    <i class="bi bi-chevron-down ms-auto small text-muted"></i>
+  </button>
+  <div class="collapse show" id="pipe-day3">
+    <div class="card-body p-0">
+      {% for lead in day3_leads %}
+      <div class="d-flex align-items-center gap-2 px-3 py-2 {% if not loop.last %}border-bottom{% endif %}">
+        <div class="flex-grow-1 min-w-0">
+          <div class="fw-semibold small text-truncate">{{ lead.name }}</div>
+          <div class="pipeline-indicator mt-1 mb-1">
+            {% set stages = _pipe_stages %}
+            {% set stage_order = _pipe_order %}
+            {% set current_idx = stage_order.index(lead.pipeline_stage) if lead.pipeline_stage in stage_order else 0 %}
+            <div class="d-flex align-items-center" style="gap:3px;">
+              {% for stage_id, stage_short in stages %}
+              {% set s_idx = loop.index0 %}
+              <div class="pipeline-step
+                {% if s_idx == current_idx %}active
+                {% elif s_idx < current_idx %}completed
+                {% endif %}"
+                title="{{ stage_id }}">{{ stage_short }}</div>
+              {% if not loop.last %}
+              <div class="pipeline-connector {% if s_idx < current_idx %}completed{% endif %}"></div>
+              {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+          {% if lead.heat is defined %}
+          <div class="d-flex align-items-center gap-1 mb-1">
+            <div class="progress flex-grow-1" style="height:3px;border-radius:99px;">
+              <div class="progress-bar {% if lead.heat >= 75 %}bg-danger{% elif lead.heat >= 40 %}bg-warning{% else %}bg-secondary{% endif %}" style="width:{{ lead.heat }}%;"></div>
+            </div>
+            <span style="font-size:0.6rem;font-weight:700;color:{% if lead.heat >= 75 %}#dc2626{% elif lead.heat >= 40 %}#d97706{% else %}#9ca3af{% endif %};">
+              {% if lead.heat >= 75 %}🔥{% elif lead.heat >= 40 %}🌤{% else %}❄{% endif %} {{ lead.heat }}
+            </span>
+          </div>
+          {% if lead.next_action %}<span class="next-action-badge {{ lead.next_action_type or 'urgent' }}" style="font-size:0.6rem;padding:2px 6px;margin-bottom:4px;display:inline-flex;">{% if lead.next_action_type == 'urgent' %}🚨{% elif lead.next_action_type == 'today' %}⏰{% else %}📞{% endif %} {{ lead.next_action }}</span>{% endif %}
+          {% endif %}
+          <div class="d-flex gap-1 flex-wrap mt-1">
+            <span class="badge" style="background:#f5f3ff;color:#7c3aed;font-size:0.62rem;">{{ lead.status }}</span>
+            {% if lead.interview_done %}
+            <span class="badge bg-success-subtle text-success" style="font-size:0.62rem;"><i class="bi bi-check-circle-fill me-1"></i>Interview ✓</span>
+            {% else %}
+            <span class="badge bg-warning-subtle text-warning" style="font-size:0.62rem;">Interview pending</span>
+            {% endif %}
+            {% if lead.track_selected %}
+            <span class="badge bg-secondary-subtle text-secondary" style="font-size:0.62rem;">{{ lead.track_selected }}</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="d-flex gap-1 flex-shrink-0">
+          <a href="tel:{{ lead.phone }}" class="btn btn-xs btn-outline-success px-2" title="Call">
+            <i class="bi bi-telephone-fill"></i>
+          </a>
+          <a href="{{ url_for('edit_lead', lead_id=lead.id) }}"
+             class="btn btn-xs btn-outline-secondary px-2" title="Edit">
+            <i class="bi bi-pencil-fill"></i>
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ── 2. Day 1 — SECOND (main kaam) ────────────────────── #}
+{% if day1_leads %}
+<div class="card border-0 shadow-sm mb-2">
+  <button class="card-header bg-transparent border-0 d-flex align-items-center gap-2 w-100 text-start py-2 px-3"
+          data-bs-toggle="collapse" data-bs-target="#pipe-day1" aria-expanded="true"
+          style="cursor:pointer;">
+    <span class="badge bg-info fw-bold rounded-circle"
+          style="min-width:22px;height:22px;line-height:22px;font-size:0.72rem;">{{ day1_leads|length }}</span>
+    <span class="fw-semibold small text-info">Day 1</span>
+    {% if _d1.hot > 0 %}<span style="font-size:0.82rem;line-height:1;">🔥</span>{% endif %}
+    {% if _d1.batches_pending > 0 %}<span class="badge bg-danger ms-1" style="font-size:0.6rem;">{{ _d1.batches_pending }} batches pending</span>{% endif %}
+    <i class="bi bi-chevron-down ms-auto small text-muted"></i>
+  </button>
+  <div class="collapse show" id="pipe-day1">
+    <div class="card-body p-2">
+      {% for lead in day1_leads %}
+      {% set bd = lead.d1_morning + lead.d1_afternoon + lead.d1_evening %}
+      {% set all_done = bd == 3 %}
+      <div class="db-batch-card {% if all_done %}db-batch-complete{% endif %} mb-2"
+           id="db-lead-{{ lead.id }}">
+        <div class="d-flex align-items-center justify-content-between mb-1">
+          <div class="fw-semibold small text-truncate" style="max-width:160px;">{{ lead.name }}</div>
+          <span class="small text-muted ms-2 flex-shrink-0" id="db-bd-{{ lead.id }}">{{ bd }}/3</span>
+        </div>
+        <div class="pipeline-indicator mb-1">
+          {% set stages = _pipe_stages %}
+          {% set stage_order = _pipe_order %}
+          {% set current_idx = stage_order.index(lead.pipeline_stage) if lead.pipeline_stage in stage_order else 0 %}
+          <div class="d-flex align-items-center" style="gap:3px;">
+            {% for stage_id, stage_short in stages %}
+            {% set s_idx = loop.index0 %}
+            <div class="pipeline-step
+              {% if s_idx == current_idx %}active
+              {% elif s_idx < current_idx %}completed
+              {% endif %}"
+              title="{{ stage_id }}">{{ stage_short }}</div>
+            {% if not loop.last %}
+            <div class="pipeline-connector {% if s_idx < current_idx %}completed{% endif %}"></div>
+            {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+        {% if lead.heat is defined %}
+        <div class="d-flex align-items-center gap-1 mb-1">
+          <div class="progress flex-grow-1" style="height:3px;border-radius:99px;">
+            <div class="progress-bar {% if lead.heat >= 75 %}bg-danger{% elif lead.heat >= 40 %}bg-warning{% else %}bg-secondary{% endif %}" style="width:{{ lead.heat }}%;"></div>
+          </div>
+          <span style="font-size:0.6rem;font-weight:700;color:{% if lead.heat >= 75 %}#dc2626{% elif lead.heat >= 40 %}#d97706{% else %}#9ca3af{% endif %};">
+            {% if lead.heat >= 75 %}🔥{% elif lead.heat >= 40 %}🌤{% else %}❄{% endif %} {{ lead.heat }}
+          </span>
+        </div>
+        {% if lead.next_action %}<span class="next-action-badge {{ lead.next_action_type or 'today' }}" style="font-size:0.6rem;padding:2px 6px;margin-bottom:4px;display:inline-flex;">{% if lead.next_action_type == 'urgent' %}🚨{% elif lead.next_action_type == 'today' %}⏰{% else %}📞{% endif %} {{ lead.next_action }}</span>{% endif %}
+        {% endif %}
+        <div class="db-batch-progress mb-2">
+          <div class="db-batch-bar db-bar-d1" id="db-bar-{{ lead.id }}"
+               style="width:{{ (bd/3*100)|int }}%"></div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          {% if show_day1_batches %}
+          <button class="dash-mael-btn {% if lead.d1_morning %}dash-mael-done{% endif %}"
+                  data-lead="{{ lead.id }}" data-b="d1_morning" data-batch="d1_morning"
+                  onclick="openBatchPopup('{{ lead.id }}', 'd1_morning', '{{ lead.phone }}', '{{ lead.name }}', this)">M</button>
+          <button class="dash-mael-btn {% if lead.d1_afternoon %}dash-mael-done{% endif %}"
+                  data-lead="{{ lead.id }}" data-b="d1_afternoon" data-batch="d1_afternoon"
+                  onclick="openBatchPopup('{{ lead.id }}', 'd1_afternoon', '{{ lead.phone }}', '{{ lead.name }}', this)">A</button>
+          <button class="dash-mael-btn {% if lead.d1_evening %}dash-mael-done{% endif %}"
+                  data-lead="{{ lead.id }}" data-b="d1_evening" data-batch="d1_evening"
+                  onclick="openBatchPopup('{{ lead.id }}', 'd1_evening', '{{ lead.phone }}', '{{ lead.name }}', this)">E</button>
+          {% else %}
+          <span class="small text-muted">Leader sends Day 1 batches</span>
+          {% endif %}
+          <div class="ms-auto d-flex gap-1 align-items-center" id="db-act-{{ lead.id }}">
+            <a href="tel:{{ lead.phone }}" class="btn btn-xs btn-outline-success px-2">
+              <i class="bi bi-telephone-fill"></i>
+            </a>
+            <a href="https://wa.me/{{ lead.phone|wa_phone }}" target="_blank" rel="noopener"
+               class="btn btn-xs px-2" style="background:#25D366;color:#fff;border-radius:4px;">
+              <i class="bi bi-whatsapp"></i>
+            </a>
+            {# Team members cannot manually advance — auto-advance via Payment Done call status #}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ── 3. Day 2 — THIRD (read only for team) ───────────── #}
+{% if day2_leads %}
+<div class="card border-0 shadow-sm mb-2">
+  <button class="card-header bg-transparent border-0 d-flex align-items-center gap-2 w-100 text-start py-2 px-3"
+          data-bs-toggle="collapse" data-bs-target="#pipe-day2" aria-expanded="true"
+          style="cursor:pointer;">
+    <span class="badge bg-warning text-dark fw-bold rounded-circle"
+          style="min-width:22px;height:22px;line-height:22px;font-size:0.72rem;">{{ day2_leads|length }}</span>
+    <span class="fw-semibold small text-warning">Day 2</span>
+    {% if _d2.hot > 0 %}<span style="font-size:0.82rem;line-height:1;">🔥</span>{% endif %}
+    {% if _d2.batches_pending > 0 %}<span class="badge bg-warning text-dark ms-1" style="font-size:0.6rem;">{{ _d2.batches_pending }} batches pending</span>{% endif %}
+    <span class="ms-auto small text-muted me-2 flex-shrink-0" style="font-size:0.67rem;">
+      <i class="bi bi-eye me-1"></i>Team visible
+    </span>
+    <i class="bi bi-chevron-down small text-muted"></i>
+  </button>
+  <div class="collapse show" id="pipe-day2">
+    <div class="card-body p-2">
+      <div class="alert alert-warning py-1 px-2 mb-2 d-flex align-items-center gap-1"
+           style="font-size:0.72rem;border-radius:8px;border-left:3px solid #d97706;">
+        <i class="bi bi-eye-fill text-warning flex-shrink-0"></i>
+        <span>👁 Visible to the whole team — stay active</span>
+      </div>
+      {% for lead in day2_leads %}
+      {% set bd = lead.d2_morning + lead.d2_afternoon + lead.d2_evening %}
+      {% set all_done = bd == 3 %}
+      <div class="db-batch-card {% if all_done %}db-batch-complete{% endif %} mb-2"
+           id="db-lead-{{ lead.id }}">
+        <div class="d-flex align-items-center justify-content-between mb-1">
+          <div class="fw-semibold small text-truncate" style="max-width:160px;">{{ lead.name }}</div>
+          <span class="small text-muted ms-2 flex-shrink-0" id="db-bd-{{ lead.id }}">{{ bd }}/3</span>
+        </div>
+        <div class="pipeline-indicator mb-1">
+          {% set stages = _pipe_stages %}
+          {% set stage_order = _pipe_order %}
+          {% set current_idx = stage_order.index(lead.pipeline_stage) if lead.pipeline_stage in stage_order else 0 %}
+          <div class="d-flex align-items-center" style="gap:3px;">
+            {% for stage_id, stage_short in stages %}
+            {% set s_idx = loop.index0 %}
+            <div class="pipeline-step
+              {% if s_idx == current_idx %}active
+              {% elif s_idx < current_idx %}completed
+              {% endif %}"
+              title="{{ stage_id }}">{{ stage_short }}</div>
+            {% if not loop.last %}
+            <div class="pipeline-connector {% if s_idx < current_idx %}completed{% endif %}"></div>
+            {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+        {% if lead.heat is defined %}
+        <div class="d-flex align-items-center gap-1 mb-1">
+          <div class="progress flex-grow-1" style="height:3px;border-radius:99px;">
+            <div class="progress-bar {% if lead.heat >= 75 %}bg-danger{% elif lead.heat >= 40 %}bg-warning{% else %}bg-secondary{% endif %}" style="width:{{ lead.heat }}%;"></div>
+          </div>
+          <span style="font-size:0.6rem;font-weight:700;color:{% if lead.heat >= 75 %}#dc2626{% elif lead.heat >= 40 %}#d97706{% else %}#9ca3af{% endif %};">
+            {% if lead.heat >= 75 %}🔥{% elif lead.heat >= 40 %}🌤{% else %}❄{% endif %} {{ lead.heat }}
+          </span>
+        </div>
+        {% if lead.next_action %}<span class="next-action-badge {{ lead.next_action_type or 'today' }}" style="font-size:0.6rem;padding:2px 6px;margin-bottom:4px;display:inline-flex;">{% if lead.next_action_type == 'urgent' %}🚨{% elif lead.next_action_type == 'today' %}⏰{% else %}📞{% endif %} {{ lead.next_action }}</span>{% endif %}
+        {% endif %}
+        <div class="db-batch-progress mb-2">
+          <div class="db-batch-bar db-bar-d2" id="db-bar-{{ lead.id }}"
+               style="width:{{ (bd/3*100)|int }}%"></div>
+        </div>
+        {% set ts2 = (lead.test_status or 'pending')|lower %}
+        {% if all_done %}
+        <div class="d-flex flex-wrap gap-1 align-items-center mb-2" style="font-size:0.68rem;">
+          <span class="text-muted">Eval:</span>
+          {% if ts2 == 'passed' %}<span class="text-success fw-bold">{{ lead.test_score|default(0) }}/30</span>
+          {% elif ts2 == 'failed' %}<span class="text-danger">Locked</span>
+          {% elif ts2 == 'retry' %}<span class="text-warning">Retry</span>
+          {% else %}<span class="text-secondary">Pending</span>{% endif %}
+          {% if ts2 not in ('passed','failed') %}
+          <a href="{{ url_for('day2_business_test_page', lead_id=lead.id) }}" class="btn btn-xs btn-outline-secondary px-2 py-0">Test</a>
+          {% endif %}
+          {% if ts2 == 'passed' and (lead.assigned_user_id|int) == (session.get('user_id', 0)|int) %}
+          <button type="button" class="btn btn-xs btn-danger px-2 py-0" onclick="quickAdvanceFromDay2({{ lead.id }}, this)">Day 3</button>
+          {% endif %}
+        </div>
+        {% endif %}
+        <div class="d-flex align-items-center gap-2">
+          {% if user_role == 'admin' %}
+          <button class="dash-mael-btn {% if lead.d2_morning %}dash-mael-done{% endif %}"
+                  data-lead="{{ lead.id }}" data-b="d2_morning" data-batch="d2_morning"
+                  onclick="openBatchPopup('{{ lead.id }}', 'd2_morning', '{{ lead.phone }}', '{{ lead.name }}', this)">M</button>
+          <button class="dash-mael-btn {% if lead.d2_afternoon %}dash-mael-done{% endif %}"
+                  data-lead="{{ lead.id }}" data-b="d2_afternoon" data-batch="d2_afternoon"
+                  onclick="openBatchPopup('{{ lead.id }}', 'd2_afternoon', '{{ lead.phone }}', '{{ lead.name }}', this)">A</button>
+          <button class="dash-mael-btn {% if lead.d2_evening %}dash-mael-done{% endif %}"
+                  data-lead="{{ lead.id }}" data-b="d2_evening" data-batch="d2_evening"
+                  onclick="openBatchPopup('{{ lead.id }}', 'd2_evening', '{{ lead.phone }}', '{{ lead.name }}', this)">E</button>
+          {% endif %}
+          <div class="ms-auto d-flex gap-1 align-items-center" id="db-act-{{ lead.id }}">
+            <a href="tel:{{ lead.phone }}" class="btn btn-xs btn-outline-success px-2">
+              <i class="bi bi-telephone-fill"></i>
+            </a>
+            <a href="https://wa.me/{{ lead.phone|wa_phone }}" target="_blank" rel="noopener"
+               class="btn btn-xs px-2" style="background:#25D366;color:#fff;border-radius:4px;">
+              <i class="bi bi-whatsapp"></i>
+            </a>
+            {% if all_done and user_role == 'admin' and ts2 == 'passed' %}
+            <button class="btn btn-xs btn-warning text-dark advance-btn px-2"
+                    data-lead="{{ lead.id }}" data-status="Day 2"
+                    onclick="stageAdvance({{ lead.id }}, 'day2_complete', this)"
+                    title="Move to Interview">
+              <i class="bi bi-arrow-right me-1"></i>Int.
+            </button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ── 4. Pending Conversion — FOURTH ───────────────────── #}
+{% if pending_leads %}
+<div class="card border-0 shadow-sm mb-2">
+  <button class="card-header bg-transparent border-0 d-flex align-items-center gap-2 w-100 text-start py-2 px-3"
+          data-bs-toggle="collapse" data-bs-target="#pipe-pending" aria-expanded="true"
+          style="cursor:pointer;">
+    <span class="badge bg-success fw-bold rounded-circle"
+          style="min-width:22px;height:22px;line-height:22px;font-size:0.72rem;">{{ pending_leads|length }}</span>
+    <span class="fw-semibold small text-success">Pending Conversion</span>
+    <i class="bi bi-chevron-down ms-auto small text-muted"></i>
+  </button>
+  <div class="collapse show" id="pipe-pending">
+    <div class="card-body p-0">
+      {% for lead in pending_leads %}
+      <div class="d-flex align-items-center gap-2 px-3 py-2 {% if not loop.last %}border-bottom{% endif %}">
+        <i class="bi bi-shield-check text-success fs-5 flex-shrink-0"></i>
+        <div class="flex-grow-1 min-w-0">
+          <div class="fw-semibold small text-truncate">{{ lead.name }}</div>
+          <div class="text-muted" style="font-size:0.7rem;">Seat Hold Confirmed</div>
+          <div class="pipeline-indicator mt-1">
+            {% set stages = _pipe_stages %}
+            {% set stage_order = _pipe_order %}
+            {% set current_idx = stage_order.index(lead.pipeline_stage) if lead.pipeline_stage in stage_order else 0 %}
+            <div class="d-flex align-items-center" style="gap:3px;">
+              {% for stage_id, stage_short in stages %}
+              {% set s_idx = loop.index0 %}
+              <div class="pipeline-step
+                {% if s_idx == current_idx %}active
+                {% elif s_idx < current_idx %}completed
+                {% endif %}"
+                title="{{ stage_id }}">{{ stage_short }}</div>
+              {% if not loop.last %}
+              <div class="pipeline-connector {% if s_idx < current_idx %}completed{% endif %}"></div>
+              {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        <div class="d-flex gap-1 flex-shrink-0">
+          <a href="tel:{{ lead.phone }}" class="btn btn-xs btn-outline-success px-2" title="Call">
+            <i class="bi bi-telephone-fill"></i>
+          </a>
+          <a href="{{ url_for('edit_lead', lead_id=lead.id) }}"
+             class="btn btn-xs btn-outline-secondary px-2" title="Edit">
+            <i class="bi bi-pencil-fill"></i>
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ── 5. Stage 1 / Enrollment — LAST (least urgent, collapsed) #}
+{% if stage1_leads %}
+<div class="card border-0 shadow-sm mb-2">
+  <button class="card-header bg-transparent border-0 d-flex align-items-center gap-2 w-100 text-start py-2 px-3"
+          data-bs-toggle="collapse" data-bs-target="#pipe-stage1" aria-expanded="false"
+          style="cursor:pointer;">
+    <span class="badge rounded-circle fw-bold"
+          style="background:#6366f1;min-width:22px;height:22px;line-height:22px;font-size:0.72rem;">{{ stage1_leads|length }}</span>
+    <span class="fw-semibold small" style="color:#6366f1;">Stage 1 / Enrollment</span>
+    {% if _s1.hot > 0 %}<span style="font-size:0.82rem;line-height:1;">🔥</span>{% endif %}
+    {% if _s1.urgent > 0 %}<span class="badge bg-secondary ms-1" style="font-size:0.6rem;">{{ _s1.urgent }} urgent</span>{% endif %}
+    <i class="bi bi-chevron-down ms-auto small text-muted"></i>
+  </button>
+  <div class="collapse" id="pipe-stage1">
+    <div class="card-body p-0">
+      {% for lead in stage1_leads[:5] %}
+      <div class="d-flex align-items-center gap-2 px-3 py-2 {% if not loop.last %}border-bottom{% endif %}">
+        <div class="flex-grow-1 min-w-0">
+          <div class="fw-semibold small text-truncate">{{ lead.name }}</div>
+          <span class="badge" style="background:#eef2ff;color:#6366f1;font-size:0.65rem;">{{ lead.status }}</span>
+          <div class="pipeline-indicator mt-1">
+            {% set stages = _pipe_stages %}
+            {% set stage_order = _pipe_order %}
+            {% set current_idx = stage_order.index(lead.pipeline_stage) if lead.pipeline_stage in stage_order else 0 %}
+            <div class="d-flex align-items-center" style="gap:3px;">
+              {% for stage_id, stage_short in stages %}
+              {% set s_idx = loop.index0 %}
+              <div class="pipeline-step
+                {% if s_idx == current_idx %}active
+                {% elif s_idx < current_idx %}completed
+                {% endif %}"
+                title="{{ stage_id }}">{{ stage_short }}</div>
+              {% if not loop.last %}
+              <div class="pipeline-connector {% if s_idx < current_idx %}completed{% endif %}"></div>
+              {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+          {% if lead.heat is defined %}
+          <div class="d-flex align-items-center gap-1 mt-1">
+            <div class="progress flex-grow-1" style="height:3px;border-radius:99px;">
+              <div class="progress-bar {% if lead.heat >= 75 %}bg-danger{% elif lead.heat >= 40 %}bg-warning{% else %}bg-secondary{% endif %}" style="width:{{ lead.heat }}%;"></div>
+            </div>
+            <span style="font-size:0.6rem;font-weight:700;color:{% if lead.heat >= 75 %}#dc2626{% elif lead.heat >= 40 %}#d97706{% else %}#9ca3af{% endif %};">
+              {% if lead.heat >= 75 %}🔥{% elif lead.heat >= 40 %}🌤{% else %}❄{% endif %} {{ lead.heat }}
+            </span>
+          </div>
+          {% if lead.next_action %}<span class="next-action-badge {{ lead.next_action_type or 'followup' }}" style="font-size:0.6rem;padding:2px 6px;margin-top:2px;display:inline-flex;">{% if lead.next_action_type == 'urgent' %}🚨{% elif lead.next_action_type == 'today' %}⏰{% elif lead.next_action_type == 'followup' %}📞{% else %}❄{% endif %} {{ lead.next_action }}</span>{% endif %}
+          {% endif %}
+        </div>
+        <div class="d-flex gap-1 flex-shrink-0">
+          <a href="tel:{{ lead.phone }}" class="btn btn-xs btn-outline-success px-2" title="Call">
+            <i class="bi bi-telephone-fill"></i>
+          </a>
+          <a href="https://wa.me/{{ lead.phone|wa_phone }}" target="_blank" rel="noopener"
+             class="btn btn-xs px-2" title="WhatsApp"
+             style="background:#25D366;color:#fff;border-radius:4px;">
+            <i class="bi bi-whatsapp"></i>
+          </a>
+          <a href="{{ url_for('edit_lead', lead_id=lead.id) }}"
+             class="btn btn-xs btn-outline-secondary px-2" title="Edit">
+            <i class="bi bi-pencil-fill"></i>
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+      {% if stage1_leads|length > 5 %}
+      <div class="px-3 py-2 text-center border-top">
+        <a href="{{ url_for('working') }}?tab=stage1"
+           class="small text-muted text-decoration-none">
+          +{{ stage1_leads|length - 5 }} more · View All →
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% else %}
+{# Empty state for team #}
+<div class="card border-0 shadow-sm text-center py-3 mb-3">
+  <div class="card-body py-2">
+    <i class="bi bi-inbox fs-3 text-muted mb-2 d-block"></i>
+    <div class="fw-semibold text-muted mb-1">No leads here yet</div>
+    <p class="text-muted small mb-3">Claim leads from the pool or add a new lead.</p>
+    <div class="d-flex gap-2 justify-content-center">
+      <a href="{{ url_for('add_lead') }}" class="btn btn-primary btn-sm">
+        <i class="bi bi-person-plus-fill me-1"></i>Add Lead
+      </a>
+      <a href="{{ url_for('lead_pool') }}" class="btn btn-warning text-dark btn-sm">
+        <i class="bi bi-lightning-charge-fill me-1"></i>Claim from Pool
+        {% if pool_count > 0 %}
+        <span class="badge bg-dark ms-1">{{ pool_count }}</span>
+        {% endif %}
+      </a>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ── ZONE 4 · Stats Card (Team Only, collapsed by default) ── #}
+{% set total_leads_count = stage1_leads|length + day1_leads|length + day2_leads|length + day3_leads|length + pending_leads|length %}
+<div class="card border-0 shadow-sm mb-3">
+  <button class="card-header bg-transparent border-0 d-flex align-items-center gap-2 w-100 text-start py-2 px-3"
+          data-bs-toggle="collapse" data-bs-target="#statsPanel" aria-expanded="false"
+          style="cursor:pointer;">
+    <span class="fw-semibold small">📊 Stats</span>
+    <i class="bi bi-chevron-down ms-auto small text-muted"></i>
+  </button>
+  <div class="collapse" id="statsPanel">
+    <div class="card-body p-3">
+      <div class="row g-2 text-center">
+        <div class="col-4">
+          <div class="p-2 rounded" style="background:#eef2ff;">
+            <div class="fw-bold" style="color:#6366f1;font-size:1.15rem;"><span data-countup="{{ total_leads_count }}">{{ total_leads_count }}</span></div>
+            <div class="text-muted" style="font-size:0.68rem;">Total Leads</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="p-2 rounded" style="background:#f0fdf4;">
+            <div class="fw-bold text-success" style="font-size:1.15rem;"><span data-countup="{{ pending_leads|length }}">{{ pending_leads|length }}</span></div>
+            <div class="text-muted" style="font-size:0.68rem;">Seat Holds</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <a href="{{ url_for('wallet') }}" class="text-decoration-none d-block p-2 rounded" style="background:#fff7ed;">
+            <div class="fw-bold" style="color:#d97706;font-size:1.15rem;">
+              <i class="bi bi-wallet2"></i>
+            </div>
+            <div class="text-muted" style="font-size:0.68rem;">My Wallet →</div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% else %}
+{# ══════════════════════════════════════════════════════════════
+   Admin / Leader view — original section order
+   ══════════════════════════════════════════════════════════════ #}
+
+{% set has_any = stage1_leads|length > 0 or day1_leads|length > 0 or day2_leads|length > 0 or day3_leads|length > 0 or pending_leads|length > 0 %}
+
+{% if has_any %}
+
+{# ── Stage 1 / Enrollment ─────────────────────────────────── #}
+{% if stage1_leads %}
+<div class="card border-0 shadow-sm mb-2">
+  <button class="card-header bg-transparent border-0 d-flex align-items-center gap-2 w-100 text-start py-2 px-3"
+          data-bs-toggle="collapse" data-bs-target="#pipe-stage1" aria-expanded="true"
+          style="cursor:pointer;">
+    <span class="badge rounded-circle fw-bold"
+          style="background:#6366f1;min-width:22px;height:22px;line-height:22px;font-size:0.72rem;">{{ stage1_leads|length }}</span>
+    <span class="fw-semibold small" style="color:#6366f1;">Stage 1 / Enrollment</span>
+    <i class="bi bi-chevron-down ms-auto small text-muted"></i>
+  </button>
+  <div class="collapse show" id="pipe-stage1">
+    <div class="card-body p-0">
+      {% for lead in stage1_leads[:5] %}
+      <div class="d-flex align-items-center gap-2 px-3 py-2 {% if not loop.last %}border-bottom{% endif %}">
+        <div class="flex-grow-1 min-w-0">
+          <div class="fw-semibold small text-truncate">{{ lead.name }}</div>
+          <span class="badge" style="background:#eef2ff;color:#6366f1;font-size:0.65rem;">{{ lead.status }}</span>
+          <div class="pipeline-indicator mt-1">
+            {% set stages = _pipe_stages %}
+            {% set stage_order = _pipe_order %}
+            {% set current_idx = stage_order.index(lead.pipeline_stage) if lead.pipeline_stage in stage_order else 0 %}
+            <div class="d-flex align-items-center" style="gap:3px;">
+              {% for stage_id, stage_short in stages %}
+              {% set s_idx = loop.index0 %}
+              <div class="pipeline-step
+                {% if s_idx == current_idx %}active
+                {% elif s_idx < current_idx %}completed
+                {% endif %}"
+                title="{{ stage_id }}">{{ stage_short }}</div>
+              {% if not loop.last %}
+              <div class="pipeline-connector {% if s_idx < current_idx %}completed{% endif %}"></div>
+              {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+          {% if lead.heat is defined %}
+          <div class="d-flex align-items-center gap-1 mt-1">
+            <div class="progress flex-grow-1" style="height:3px;border-radius:99px;">
+              <div class="progress-bar {% if lead.heat >= 75 %}bg-danger{% elif lead.heat >= 40 %}bg-warning{% else %}bg-secondary{% endif %}" style="width:{{ lead.heat }}%;"></div>
+            </div>
+            <span style="font-size:0.6rem;font-weight:700;color:{% if lead.heat >= 75 %}#dc2626{% elif lead.heat >= 40 %}#d97706{% else %}#9ca3af{% endif %};">
+              {% if lead.heat >= 75 %}🔥{% elif lead.heat >= 40 %}🌤{% else %}❄{% endif %} {{ lead.heat }}
+            </span>
+          </div>
+          {% if lead.next_action %}<span class="next-action-badge {{ lead.next_action_type or 'followup' }}" style="font-size:0.6rem;padding:2px 6px;margin-top:2px;display:inline-flex;">{% if lead.next_action_type == 'urgent' %}🚨{% elif lead.next_action_type == 'today' %}⏰{% elif lead.next_action_type == 'followup' %}📞{% else %}❄{% endif %} {{ lead.next_action }}</span>{% endif %}
+          {% endif %}
+        </div>
+        <div class="d-flex gap-1 flex-shrink-0">
+          <a href="tel:{{ lead.phone }}" class="btn btn-xs btn-outline-success px-2" title="Call">
+            <i class="bi bi-telephone-fill"></i>
+          </a>
+          <a href="https://wa.me/{{ lead.phone|wa_phone }}" target="_blank" rel="noopener"
+             class="btn btn-xs px-2" title="WhatsApp"
+             style="background:#25D366;color:#fff;border-radius:4px;">
+            <i class="bi bi-whatsapp"></i>
+          </a>
+          <a href="{{ url_for('edit_lead', lead_id=lead.id) }}"
+             class="btn btn-xs btn-outline-secondary px-2" title="Edit">
+            <i class="bi bi-pencil-fill"></i>
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+      {% if stage1_leads|length > 5 %}
+      <div class="px-3 py-2 text-center border-top">
+        <a href="{{ url_for('working') }}?tab=stage1"
+           class="small text-muted text-decoration-none">
+          +{{ stage1_leads|length - 5 }} more · View All →
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ── Day 1 ────────────────────────────────────────────────── #}
+{% if day1_leads %}
+<div class="card border-0 shadow-sm mb-2">
+  <button class="card-header bg-transparent border-0 d-flex align-items-center gap-2 w-100 text-start py-2 px-3"
+          data-bs-toggle="collapse" data-bs-target="#pipe-day1" aria-expanded="true"
+          style="cursor:pointer;">
+    <span class="badge bg-info fw-bold rounded-circle"
+          style="min-width:22px;height:22px;line-height:22px;font-size:0.72rem;">{{ day1_leads|length }}</span>
+    <span class="fw-semibold small text-info">Day 1</span>
+    {% if pending_batches > 0 %}
+    <span class="badge bg-danger ms-1" style="font-size:0.62rem;">{{ pending_batches }} pending</span>
+    {% endif %}
+    <i class="bi bi-chevron-down ms-auto small text-muted"></i>
+  </button>
+  <div class="collapse show" id="pipe-day1">
+    <div class="card-body p-2">
+      {% for lead in day1_leads %}
+      {% set bd = lead.d1_morning + lead.d1_afternoon + lead.d1_evening %}
+      {% set all_done = bd == 3 %}
+      <div class="db-batch-card {% if all_done %}db-batch-complete{% endif %} mb-2"
+           id="db-lead-{{ lead.id }}">
+        <div class="d-flex align-items-center justify-content-between mb-1">
+          <div class="fw-semibold small text-truncate" style="max-width:160px;">{{ lead.name }}</div>
+          <span class="small text-muted ms-2 flex-shrink-0" id="db-bd-{{ lead.id }}">{{ bd }}/3</span>
+        </div>
+        <div class="pipeline-indicator mb-1">
+          {% set stages = _pipe_stages %}
+          {% set stage_order = _pipe_order %}
+          {% set current_idx = stage_order.index(lead.pipeline_stage) if lead.pipeline_stage in stage_order else 0 %}
+          <div class="d-flex align-items-center" style="gap:3px;">
+            {% for stage_id, stage_short in stages %}
+            {% set s_idx = loop.index0 %}
+            <div class="pipeline-step
+              {% if s_idx == current_idx %}active
+              {% elif s_idx < current_idx %}completed
+              {% endif %}"
+              title="{{ stage_id }}">{{ stage_short }}</div>
+            {% if not loop.last %}
+            <div class="pipeline-connector {% if s_idx < current_idx %}completed{% endif %}"></div>
+            {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+        {% if lead.heat is defined %}
+        <div class="d-flex align-items-center gap-1 mb-1">
+          <div class="progress flex-grow-1" style="height:3px;border-radius:99px;">
+            <div class="progress-bar {% if lead.heat >= 75 %}bg-danger{% elif lead.heat >= 40 %}bg-warning{% else %}bg-secondary{% endif %}" style="width:{{ lead.heat }}%;"></div>
+          </div>
+          <span style="font-size:0.6rem;font-weight:700;color:{% if lead.heat >= 75 %}#dc2626{% elif lead.heat >= 40 %}#d97706{% else %}#9ca3af{% endif %};">
+            {% if lead.heat >= 75 %}🔥{% elif lead.heat >= 40 %}🌤{% else %}❄{% endif %} {{ lead.heat }}
+          </span>
+        </div>
+        {% if lead.next_action %}<span class="next-action-badge {{ lead.next_action_type or 'today' }}" style="font-size:0.6rem;padding:2px 6px;margin-bottom:4px;display:inline-flex;">{% if lead.next_action_type == 'urgent' %}🚨{% elif lead.next_action_type == 'today' %}⏰{% else %}📞{% endif %} {{ lead.next_action }}</span>{% endif %}
+        {% endif %}
+        <div class="db-batch-progress mb-2">
+          <div class="db-batch-bar db-bar-d1" id="db-bar-{{ lead.id }}"
+               style="width:{{ (bd/3*100)|int }}%"></div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          {% if show_day1_batches %}
+          <button class="dash-mael-btn {% if lead.d1_morning %}dash-mael-done{% endif %}"
+                  data-lead="{{ lead.id }}" data-b="d1_morning" data-batch="d1_morning"
+                  onclick="openBatchPopup('{{ lead.id }}', 'd1_morning', '{{ lead.phone }}', '{{ lead.name }}', this)">M</button>
+          <button class="dash-mael-btn {% if lead.d1_afternoon %}dash-mael-done{% endif %}"
+                  data-lead="{{ lead.id }}" data-b="d1_afternoon" data-batch="d1_afternoon"
+                  onclick="openBatchPopup('{{ lead.id }}', 'd1_afternoon', '{{ lead.phone }}', '{{ lead.name }}', this)">A</button>
+          <button class="dash-mael-btn {% if lead.d1_evening %}dash-mael-done{% endif %}"
+                  data-lead="{{ lead.id }}" data-b="d1_evening" data-batch="d1_evening"
+                  onclick="openBatchPopup('{{ lead.id }}', 'd1_evening', '{{ lead.phone }}', '{{ lead.name }}', this)">E</button>
+          {% else %}
+          <span class="small text-muted">Leader sends Day 1 batches</span>
+          {% endif %}
+          <div class="ms-auto d-flex gap-1 align-items-center" id="db-act-{{ lead.id }}">
+            <a href="tel:{{ lead.phone }}" class="btn btn-xs btn-outline-success px-2">
+              <i class="bi bi-telephone-fill"></i>
+            </a>
+            <a href="https://wa.me/{{ lead.phone|wa_phone }}" target="_blank" rel="noopener"
+               class="btn btn-xs px-2" style="background:#25D366;color:#fff;border-radius:4px;">
+              <i class="bi bi-whatsapp"></i>
+            </a>
+            {% if all_done and show_day1_batches %}
+            <button class="btn btn-xs btn-success advance-btn px-2"
+                    data-lead="{{ lead.id }}" data-status="Day 1"
+                    onclick="stageAdvance({{ lead.id }}, 'day1_complete', this)"
+                    title="Push to Day 2">
+              <i class="bi bi-arrow-right me-1"></i>Push to Day 2
+            </button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ── Day 2 ────────────────────────────────────────────────── #}
+{% if day2_leads %}
+<div class="card border-0 shadow-sm mb-2">
+  <button class="card-header bg-transparent border-0 d-flex align-items-center gap-2 w-100 text-start py-2 px-3"
+          data-bs-toggle="collapse" data-bs-target="#pipe-day2" aria-expanded="true"
+          style="cursor:pointer;">
+    <span class="badge bg-warning text-dark fw-bold rounded-circle"
+          style="min-width:22px;height:22px;line-height:22px;font-size:0.72rem;">{{ day2_leads|length }}</span>
+    <span class="fw-semibold small text-warning">Day 2</span>
+    <span class="ms-auto small text-muted me-2 flex-shrink-0" style="font-size:0.67rem;">
+      <i class="bi bi-eye me-1"></i>Team visible
+    </span>
+    <i class="bi bi-chevron-down small text-muted"></i>
+  </button>
+  <div class="collapse show" id="pipe-day2">
+    <div class="card-body p-2">
+      <div class="alert alert-warning py-1 px-2 mb-2 d-flex align-items-center gap-1"
+           style="font-size:0.72rem;border-radius:8px;border-left:3px solid #d97706;">
+        <i class="bi bi-eye-fill text-warning flex-shrink-0"></i>
+        <span>👁 Visible to the whole team — stay active</span>
+      </div>
+      {% for lead in day2_leads %}
+      {% set bd = lead.d2_morning + lead.d2_afternoon + lead.d2_evening %}
+      {% set all_done = bd == 3 %}
+      <div class="db-batch-card {% if all_done %}db-batch-complete{% endif %} mb-2"
+           id="db-lead-{{ lead.id }}">
+        <div class="d-flex align-items-center justify-content-between mb-1">
+          <div class="fw-semibold small text-truncate" style="max-width:160px;">{{ lead.name }}</div>
+          <span class="small text-muted ms-2 flex-shrink-0" id="db-bd-{{ lead.id }}">{{ bd }}/3</span>
+        </div>
+        <div class="pipeline-indicator mb-1">
+          {% set stages = _pipe_stages %}
+          {% set stage_order = _pipe_order %}
+          {% set current_idx = stage_order.index(lead.pipeline_stage) if lead.pipeline_stage in stage_order else 0 %}
+          <div class="d-flex align-items-center" style="gap:3px;">
+            {% for stage_id, stage_short in stages %}
+            {% set s_idx = loop.index0 %}
+            <div class="pipeline-step
+              {% if s_idx == current_idx %}active
+              {% elif s_idx < current_idx %}completed
+              {% endif %}"
+              title="{{ stage_id }}">{{ stage_short }}</div>
+            {% if not loop.last %}
+            <div class="pipeline-connector {% if s_idx < current_idx %}completed{% endif %}"></div>
+            {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+        {% if lead.heat is defined %}
+        <div class="d-flex align-items-center gap-1 mb-1">
+          <div class="progress flex-grow-1" style="height:3px;border-radius:99px;">
+            <div class="progress-bar {% if lead.heat >= 75 %}bg-danger{% elif lead.heat >= 40 %}bg-warning{% else %}bg-secondary{% endif %}" style="width:{{ lead.heat }}%;"></div>
+          </div>
+          <span style="font-size:0.6rem;font-weight:700;color:{% if lead.heat >= 75 %}#dc2626{% elif lead.heat >= 40 %}#d97706{% else %}#9ca3af{% endif %};">
+            {% if lead.heat >= 75 %}🔥{% elif lead.heat >= 40 %}🌤{% else %}❄{% endif %} {{ lead.heat }}
+          </span>
+        </div>
+        {% if lead.next_action %}<span class="next-action-badge {{ lead.next_action_type or 'today' }}" style="font-size:0.6rem;padding:2px 6px;margin-bottom:4px;display:inline-flex;">{% if lead.next_action_type == 'urgent' %}🚨{% elif lead.next_action_type == 'today' %}⏰{% else %}📞{% endif %} {{ lead.next_action }}</span>{% endif %}
+        {% endif %}
+        <div class="db-batch-progress mb-2">
+          <div class="db-batch-bar db-bar-d2" id="db-bar-{{ lead.id }}"
+               style="width:{{ (bd/3*100)|int }}%"></div>
+        </div>
+        {% set ts2 = (lead.test_status or 'pending')|lower %}
+        {% if all_done %}
+        <div class="d-flex flex-wrap gap-1 align-items-center mb-2" style="font-size:0.68rem;">
+          <span class="text-muted">Eval:</span>
+          {% if ts2 == 'passed' %}<span class="text-success fw-bold">{{ lead.test_score|default(0) }}/30</span>
+          {% elif ts2 == 'failed' %}<span class="text-danger">Locked</span>
+          {% elif ts2 == 'retry' %}<span class="text-warning">Retry</span>
+          {% else %}<span class="text-secondary">Pending</span>{% endif %}
+          {% if ts2 not in ('passed','failed') %}
+          <a href="{{ url_for('day2_business_test_page', lead_id=lead.id) }}" class="btn btn-xs btn-outline-secondary px-2 py-0">Test</a>
+          {% endif %}
+          {% if ts2 == 'passed' and (lead.assigned_user_id|int) == (session.get('user_id', 0)|int) %}
+          <button type="button" class="btn btn-xs btn-danger px-2 py-0" onclick="quickAdvanceFromDay2({{ lead.id }}, this)">Day 3</button>
+          {% endif %}
+        </div>
+        {% endif %}
+        <div class="d-flex align-items-center gap-2">
+          {% if user_role == 'admin' %}
+          <button class="dash-mael-btn {% if lead.d2_morning %}dash-mael-done{% endif %}"
+                  data-lead="{{ lead.id }}" data-b="d2_morning" data-batch="d2_morning"
+                  onclick="openBatchPopup('{{ lead.id }}', 'd2_morning', '{{ lead.phone }}', '{{ lead.name }}', this)">M</button>
+          <button class="dash-mael-btn {% if lead.d2_afternoon %}dash-mael-done{% endif %}"
+                  data-lead="{{ lead.id }}" data-b="d2_afternoon" data-batch="d2_afternoon"
+                  onclick="openBatchPopup('{{ lead.id }}', 'd2_afternoon', '{{ lead.phone }}', '{{ lead.name }}', this)">A</button>
+          <button class="dash-mael-btn {% if lead.d2_evening %}dash-mael-done{% endif %}"
+                  data-lead="{{ lead.id }}" data-b="d2_evening" data-batch="d2_evening"
+                  onclick="openBatchPopup('{{ lead.id }}', 'd2_evening', '{{ lead.phone }}', '{{ lead.name }}', this)">E</button>
+          {% endif %}
+          <div class="ms-auto d-flex gap-1 align-items-center" id="db-act-{{ lead.id }}">
+            <a href="tel:{{ lead.phone }}" class="btn btn-xs btn-outline-success px-2">
+              <i class="bi bi-telephone-fill"></i>
+            </a>
+            <a href="https://wa.me/{{ lead.phone|wa_phone }}" target="_blank" rel="noopener"
+               class="btn btn-xs px-2" style="background:#25D366;color:#fff;border-radius:4px;">
+              <i class="bi bi-whatsapp"></i>
+            </a>
+            {% if all_done and user_role == 'admin' and ts2 == 'passed' %}
+            <button class="btn btn-xs btn-warning text-dark advance-btn px-2"
+                    data-lead="{{ lead.id }}" data-status="Day 2"
+                    onclick="stageAdvance({{ lead.id }}, 'day2_complete', this)"
+                    title="Move to Interview">
+              <i class="bi bi-arrow-right me-1"></i>Int.
+            </button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ── Day 3 / Interview ────────────────────────────────────── #}
+{% if day3_leads %}
+<div class="card border-0 shadow-sm mb-2">
+  <button class="card-header bg-transparent border-0 d-flex align-items-center gap-2 w-100 text-start py-2 px-3"
+          data-bs-toggle="collapse" data-bs-target="#pipe-day3" aria-expanded="true"
+          style="cursor:pointer;">
+    <span class="badge fw-bold rounded-circle"
+          style="background:#7c3aed;min-width:22px;height:22px;line-height:22px;font-size:0.72rem;">{{ day3_leads|length }}</span>
+    <span class="fw-semibold small" style="color:#7c3aed;">Day 3 / Interview</span>
+    <i class="bi bi-chevron-down ms-auto small text-muted"></i>
+  </button>
+  <div class="collapse show" id="pipe-day3">
+    <div class="card-body p-0">
+      {% for lead in day3_leads %}
+      <div class="d-flex align-items-center gap-2 px-3 py-2 {% if not loop.last %}border-bottom{% endif %}">
+        <div class="flex-grow-1 min-w-0">
+          <div class="fw-semibold small text-truncate">{{ lead.name }}</div>
+          <div class="pipeline-indicator mt-1 mb-1">
+            {% set stages = _pipe_stages %}
+            {% set stage_order = _pipe_order %}
+            {% set current_idx = stage_order.index(lead.pipeline_stage) if lead.pipeline_stage in stage_order else 0 %}
+            <div class="d-flex align-items-center" style="gap:3px;">
+              {% for stage_id, stage_short in stages %}
+              {% set s_idx = loop.index0 %}
+              <div class="pipeline-step
+                {% if s_idx == current_idx %}active
+                {% elif s_idx < current_idx %}completed
+                {% endif %}"
+                title="{{ stage_id }}">{{ stage_short }}</div>
+              {% if not loop.last %}
+              <div class="pipeline-connector {% if s_idx < current_idx %}completed{% endif %}"></div>
+              {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+          {% if lead.heat is defined %}
+          <div class="d-flex align-items-center gap-1 mb-1">
+            <div class="progress flex-grow-1" style="height:3px;border-radius:99px;">
+              <div class="progress-bar {% if lead.heat >= 75 %}bg-danger{% elif lead.heat >= 40 %}bg-warning{% else %}bg-secondary{% endif %}" style="width:{{ lead.heat }}%;"></div>
+            </div>
+            <span style="font-size:0.6rem;font-weight:700;color:{% if lead.heat >= 75 %}#dc2626{% elif lead.heat >= 40 %}#d97706{% else %}#9ca3af{% endif %};">
+              {% if lead.heat >= 75 %}🔥{% elif lead.heat >= 40 %}🌤{% else %}❄{% endif %} {{ lead.heat }}
+            </span>
+          </div>
+          {% if lead.next_action %}<span class="next-action-badge {{ lead.next_action_type or 'urgent' }}" style="font-size:0.6rem;padding:2px 6px;margin-bottom:4px;display:inline-flex;">{% if lead.next_action_type == 'urgent' %}🚨{% elif lead.next_action_type == 'today' %}⏰{% else %}📞{% endif %} {{ lead.next_action }}</span>{% endif %}
+          {% endif %}
+          <div class="d-flex gap-1 flex-wrap mt-1">
+            <span class="badge" style="background:#f5f3ff;color:#7c3aed;font-size:0.62rem;">{{ lead.status }}</span>
+            {% if lead.interview_done %}
+            <span class="badge bg-success-subtle text-success" style="font-size:0.62rem;">
+              <i class="bi bi-check-circle-fill me-1"></i>Interview ✓
+            </span>
+            {% else %}
+            <span class="badge bg-warning-subtle text-warning" style="font-size:0.62rem;">
+              Interview pending
+            </span>
+            {% endif %}
+            {% if lead.track_selected %}
+            <span class="badge bg-secondary-subtle text-secondary" style="font-size:0.62rem;">{{ lead.track_selected }}</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="d-flex gap-1 flex-shrink-0">
+          <a href="tel:{{ lead.phone }}" class="btn btn-xs btn-outline-success px-2" title="Call">
+            <i class="bi bi-telephone-fill"></i>
+          </a>
+          <a href="{{ url_for('edit_lead', lead_id=lead.id) }}"
+             class="btn btn-xs btn-outline-secondary px-2" title="Edit">
+            <i class="bi bi-pencil-fill"></i>
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ── Pending / Seat Hold ──────────────────────────────────── #}
+{% if pending_leads %}
+<div class="card border-0 shadow-sm mb-2">
+  <button class="card-header bg-transparent border-0 d-flex align-items-center gap-2 w-100 text-start py-2 px-3"
+          data-bs-toggle="collapse" data-bs-target="#pipe-pending" aria-expanded="true"
+          style="cursor:pointer;">
+    <span class="badge bg-success fw-bold rounded-circle"
+          style="min-width:22px;height:22px;line-height:22px;font-size:0.72rem;">{{ pending_leads|length }}</span>
+    <span class="fw-semibold small text-success">Pending Conversion</span>
+    <i class="bi bi-chevron-down ms-auto small text-muted"></i>
+  </button>
+  <div class="collapse show" id="pipe-pending">
+    <div class="card-body p-0">
+      {% for lead in pending_leads %}
+      <div class="d-flex align-items-center gap-2 px-3 py-2 {% if not loop.last %}border-bottom{% endif %}">
+        <i class="bi bi-shield-check text-success fs-5 flex-shrink-0"></i>
+        <div class="flex-grow-1 min-w-0">
+          <div class="fw-semibold small text-truncate">{{ lead.name }}</div>
+          <div class="text-muted" style="font-size:0.7rem;">Seat Hold Confirmed</div>
+          <div class="pipeline-indicator mt-1">
+            {% set stages = _pipe_stages %}
+            {% set stage_order = _pipe_order %}
+            {% set current_idx = stage_order.index(lead.pipeline_stage) if lead.pipeline_stage in stage_order else 0 %}
+            <div class="d-flex align-items-center" style="gap:3px;">
+              {% for stage_id, stage_short in stages %}
+              {% set s_idx = loop.index0 %}
+              <div class="pipeline-step
+                {% if s_idx == current_idx %}active
+                {% elif s_idx < current_idx %}completed
+                {% endif %}"
+                title="{{ stage_id }}">{{ stage_short }}</div>
+              {% if not loop.last %}
+              <div class="pipeline-connector {% if s_idx < current_idx %}completed{% endif %}"></div>
+              {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        <div class="d-flex gap-1 flex-shrink-0">
+          <a href="tel:{{ lead.phone }}" class="btn btn-xs btn-outline-success px-2" title="Call">
+            <i class="bi bi-telephone-fill"></i>
+          </a>
+          <a href="{{ url_for('edit_lead', lead_id=lead.id) }}"
+             class="btn btn-xs btn-outline-secondary px-2" title="Edit">
+            <i class="bi bi-pencil-fill"></i>
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% else %}
+{# Empty state for admin/leader #}
+<div class="card border-0 shadow-sm text-center py-3 mb-3">
+  <div class="card-body py-2">
+    <i class="bi bi-inbox fs-3 text-muted mb-2 d-block"></i>
+    <div class="fw-semibold text-muted mb-1">No leads here yet</div>
+    <p class="text-muted small mb-3">Claim leads from the pool or add a new lead.</p>
+    <div class="d-flex gap-2 justify-content-center">
+      <a href="{{ url_for('add_lead') }}" class="btn btn-primary btn-sm">
+        <i class="bi bi-person-plus-fill me-1"></i>Add Lead
+      </a>
+      <a href="{{ url_for('lead_pool') }}" class="btn btn-warning text-dark btn-sm">
+        <i class="bi bi-lightning-charge-fill me-1"></i>Claim from Pool
+        {% if pool_count > 0 %}
+        <span class="badge bg-dark ms-1">{{ pool_count }}</span>
+        {% endif %}
+      </a>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ── Activity Feed (admin/leader only) ─────────────────────── #}
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-header py-2 d-flex align-items-center">
+    <i class="bi bi-activity me-2 text-success"></i>
+    <span class="fw-semibold small">Team Activity</span>
+    <span class="badge bg-success ms-2" style="font-size:.55rem;animation:pulse 2s infinite;">LIVE</span>
+  </div>
+  <div id="activityFeed" class="card-body p-0" style="max-height:200px;overflow-y:auto;">
+    <div class="text-muted text-center py-3 small" id="activityEmpty">Loading…</div>
+  </div>
+</div>
+
+{% endif %}{# end pipeline (team/leader) #}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Dashboard Batch Toggle ─────────────────────────────────
+function toggleBatch(leadId, batch, btn) {
+  btn.disabled = true;
+  btn.classList.toggle('db-batch-done');
+
+  fetch(`/leads/${leadId}/batch-toggle`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': '{{ csrf_token }}'
+    },
+    body: JSON.stringify({ batch })
+  })
+  .then(r => r.json())
+  .then(d => {
+    btn.disabled = false;
+    if (!d.ok) {
+      btn.classList.toggle('db-batch-done');
+      showToast('Error updating batch', 'danger');
+      return;
+    }
+
+    const card = document.getElementById('db-lead-' + leadId);
+    if (!card) return;
+    const doneBtns = card.querySelectorAll('.db-batch-btn.db-batch-done').length;
+    const bar = document.getElementById('db-bar-' + leadId);
+    const cnt = document.getElementById('db-bd-' + leadId);
+    if (bar) bar.style.width = (doneBtns / 3 * 100).toFixed(0) + '%';
+    if (cnt) cnt.textContent = doneBtns + '/3';
+
+    if (d.all_done) {
+      card.classList.add('db-batch-complete');
+      const actRow = document.getElementById('db-act-' + leadId);
+      if (actRow && !actRow.querySelector('.advance-btn')) {
+        const isDayOne = batch.startsWith('d1');
+        const advBtn = document.createElement('button');
+        advBtn.className = 'btn btn-xs ' + (isDayOne ? 'btn-success' : 'btn-warning text-dark') + ' advance-btn px-2';
+        advBtn.dataset.lead   = leadId;
+        advBtn.dataset.status = isDayOne ? 'Day 1' : 'Day 2';
+        advBtn.innerHTML      = '<i class="bi bi-arrow-right me-1"></i>' + (isDayOne ? 'D2' : 'Int.');
+        actRow.appendChild(advBtn);
+      }
+      if (typeof MyleSound !== 'undefined') MyleSound.celebrate();
+      showToast('All batches done! 🎉', 'success');
+    } else {
+      card.classList.remove('db-batch-complete');
+      if (typeof MyleSound !== 'undefined') MyleSound.batch();
+    }
+
+    if (typeof refreshDashboardStats === 'function') refreshDashboardStats(d);
+  })
+  .catch(() => {
+    btn.disabled = false;
+    btn.classList.toggle('db-batch-done');
+    showToast('Network error', 'danger');
+  });
+}
+
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.db-batch-btn');
+  if (!btn) return;
+  const leadId = parseInt(btn.dataset.lead);
+  const batch  = btn.dataset.b;
+  if (leadId && batch) toggleBatch(leadId, batch, btn);
+});
+
+// ── Advance Lead ───────────────────────────────────────────
+function advanceLead(btn) {
+  const leadId = btn.dataset.lead;
+  const status = btn.dataset.status;
+  btn.disabled = true;
+  fetch(`/leads/${leadId}/quick-advance`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': '{{ csrf_token }}'
+    },
+    body: JSON.stringify({ current_status: status })
+  })
+  .then(r => r.json())
+  .then(d => {
+    btn.disabled = false;
+    if (d.ok) {
+      showToast('Lead moved to ' + d.new_status + '!', 'success');
+      const card = document.getElementById('db-lead-' + leadId);
+      if (card) { card.style.opacity = '0.4'; card.style.pointerEvents = 'none'; }
+      setTimeout(() => location.reload(), 1200);
+    } else {
+      showToast(d.error || 'Error', 'danger');
+    }
+  })
+  .catch(() => { btn.disabled = false; showToast('Network error', 'danger'); });
+}
+
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.advance-btn');
+  if (!btn) return;
+  advanceLead(btn);
+});
+
+// ── Activity Feed (polls every 30s) — admin/leader only ───
+(function(){
+  const feed  = document.getElementById('activityFeed');
+  const empty = document.getElementById('activityEmpty');
+  if (!feed) return;
+
+  let lastTs = '';
+  const ICONS = {
+    lead_status_change: 'bi-arrow-repeat text-primary',
+    payment_done:       'bi-cash-coin text-success',
+    seat_hold:          'bi-shield-check text-purple',
+    fully_converted:    'bi-trophy-fill text-warning',
+    new_member:         'bi-person-plus-fill text-info',
+    login:              'bi-box-arrow-in-right text-secondary',
+  };
+
+  function renderEvents(events) {
+    if (!events.length) {
+      if (empty) empty.textContent = 'No recent activity.';
+      return;
+    }
+    if (empty) empty.remove();
+    events.forEach(ev => {
+      const row  = document.createElement('div');
+      row.className = 'd-flex align-items-start gap-2 px-3 py-2 border-bottom feed-row';
+      row.style.animation = 'feedIn .3s ease';
+      const icon = ICONS[ev.event_type] || 'bi-dot text-muted';
+      row.innerHTML = `
+        <i class="bi ${icon} mt-1" style="font-size:.85rem;flex-shrink:0;"></i>
+        <div class="flex-grow-1 min-w-0">
+          <span class="fw-semibold small">${ev.username}</span>
+          <span class="text-muted small ms-1">${ev.details || ev.event_type.replace(/_/g,' ')}</span>
+        </div>
+        <div class="text-muted flex-shrink-0" style="font-size:.65rem;">${ev.created_at.slice(11,16)}</div>`;
+      feed.prepend(row);
+    });
+  }
+
+  function poll() {
+    fetch('/api/activity-feed' + (lastTs ? '?since=' + encodeURIComponent(lastTs) : ''))
+      .then(r => r.json())
+      .then(d => {
+        if (d.events && d.events.length) {
+          renderEvents(d.events);
+          if (d.latest) lastTs = d.latest;
+        } else if (!lastTs) {
+          if (empty) empty.textContent = 'No recent activity in your network.';
+        }
+      })
+      .catch(() => {});
+  }
+
+  const role = "{{ user_role }}";
+  const pollMs = role === 'leader' ? 8000 : 10000;
+  poll();
+  setInterval(poll, pollMs);
+})();
+
+// Role-wise live refresh (Admin 30s, Leader 8s, Team 10s)
+(function() {
+  const role = "{{ user_role }}";
+  if (role !== 'team' && role !== 'leader' && role !== 'admin') return;
+  const refreshMs = role === 'admin' ? 30000 : role === 'leader' ? 8000 : 10000;
+  function safeToRefresh() {
+    if (document.hidden) return false;
+    const active = document.activeElement;
+    if (active && ['INPUT', 'TEXTAREA', 'SELECT'].includes(active.tagName)) return false;
+    const popup = document.getElementById('batchPopup');
+    if (popup && popup.style.display === 'flex') return false;
+    return true;
+  }
+  setInterval(() => {
+    if (!safeToRefresh()) return;
+    window.location.reload();
+  }, refreshMs);
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BATCH VIDEO POPUP
+// ═══════════════════════════════════════════════════════════════════════════
+
+const BATCH_VIDEOS = {
+  d1_morning:   { v1: "{{ batch_videos.d1_morning_v1 }}", v2: "{{ batch_videos.d1_morning_v2 }}" },
+  d1_afternoon: { v1: "{{ batch_videos.d1_afternoon_v1 }}", v2: "{{ batch_videos.d1_afternoon_v2 }}" },
+  d1_evening:   { v1: "{{ batch_videos.d1_evening_v1 }}", v2: "{{ batch_videos.d1_evening_v2 }}" },
+  d2_morning:   { v1: "{{ batch_videos.d2_morning_v1 }}", v2: "{{ batch_videos.d2_morning_v2 }}" },
+  d2_afternoon: { v1: "{{ batch_videos.d2_afternoon_v1 }}", v2: "{{ batch_videos.d2_afternoon_v2 }}" },
+  d2_evening:   { v1: "{{ batch_videos.d2_evening_v1 }}", v2: "{{ batch_videos.d2_evening_v2 }}" },
+};
+const BATCH_WATCH_URLS = {
+  d1_morning:   { v1: "{{ batch_watch_urls.d1_morning.v1 }}", v2: "{{ batch_watch_urls.d1_morning.v2 }}" },
+  d1_afternoon: { v1: "{{ batch_watch_urls.d1_afternoon.v1 }}", v2: "{{ batch_watch_urls.d1_afternoon.v2 }}" },
+  d1_evening:   { v1: "{{ batch_watch_urls.d1_evening.v1 }}", v2: "{{ batch_watch_urls.d1_evening.v2 }}" },
+  d2_morning:   { v1: "{{ batch_watch_urls.d2_morning.v1 }}", v2: "{{ batch_watch_urls.d2_morning.v2 }}" },
+  d2_afternoon: { v1: "{{ batch_watch_urls.d2_afternoon.v1 }}", v2: "{{ batch_watch_urls.d2_afternoon.v2 }}" },
+  d2_evening:   { v1: "{{ batch_watch_urls.d2_evening.v1 }}", v2: "{{ batch_watch_urls.d2_evening.v2 }}" },
+};
+
+const BATCH_LABELS = {
+  d1_morning:   '🌅 Day 1 — Morning Batch',
+  d1_afternoon: '☀️ Day 1 — Afternoon Batch',
+  d1_evening:   '🌙 Day 1 — Evening Batch',
+  d2_morning:   '🌅 Day 2 — Morning Batch',
+  d2_afternoon: '☀️ Day 2 — Afternoon Batch',
+  d2_evening:   '🌙 Day 2 — Evening Batch',
+};
+
+let _popupState = {
+  leadId: null,
+  batchKey: null,
+  phone: null,
+  cardEl: null,
+};
+
+function openBatchPopup(leadId, batchKey, phone, leadName, btnEl) {
+  _popupState = { leadId, batchKey, phone, cardEl: btnEl.closest('[data-lead-card]') || btnEl.closest('.batch-card') };
+  document.getElementById('popupBatchName').textContent = BATCH_LABELS[batchKey] || batchKey;
+  document.getElementById('popupLeadName').textContent = leadName;
+
+  const videos = BATCH_VIDEOS[batchKey] || {};
+  const watchUrls = (typeof BATCH_WATCH_URLS !== 'undefined' && BATCH_WATCH_URLS[batchKey]) ? BATCH_WATCH_URLS[batchKey] : {};
+  const link1 = watchUrls.v1 || videos.v1 || '';
+  const link2 = watchUrls.v2 || videos.v2 || '';
+  const hasLinks = link1 || link2;
+  const linksDiv = document.getElementById('popupVideoLinks');
+
+  if (hasLinks) {
+    linksDiv.innerHTML = `
+      <div style="font-size:0.75rem;font-weight:700;color:#6b7280;margin-bottom:8px;">
+        Send this link to the prospect — video opens on our site, not YouTube.
+      </div>
+      ${link1 ? `<div style="font-size:0.8rem;margin-bottom:4px;word-break:break-all;">
+        📹 Video 1: <span style="color:#6366f1">${link1}</span>
+      </div>` : ''}
+      ${link2 ? `<div style="font-size:0.8rem;word-break:break-all;">
+        📹 Video 2: <span style="color:#6366f1">${link2}</span>
+      </div>` : ''}
+    `;
+    document.getElementById('popupSendBtn').style.display = 'flex';
+  } else {
+    linksDiv.innerHTML = `
+      <div style="font-size:0.8rem;color:#9ca3af;text-align:center;">
+        ⚠️ Video URLs are not configured. Contact an admin.
+      </div>
+    `;
+    document.getElementById('popupSendBtn').style.display = 'none';
+  }
+
+  const popup = document.getElementById('batchPopup');
+  popup.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeBatchPopup() {
+  document.getElementById('batchPopup').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+async function sendAndMark() {
+  const { leadId, batchKey, phone } = _popupState;
+  var watchUrls = (typeof BATCH_WATCH_URLS !== 'undefined' && BATCH_WATCH_URLS[batchKey]) ? BATCH_WATCH_URLS[batchKey] : {};
+  var videos = BATCH_VIDEOS[batchKey] || {};
+  var link1 = (watchUrls.v1 || videos.v1) || '';
+  var link2 = (watchUrls.v2 || videos.v2) || '';
+
+  await _markBatchDone(leadId, batchKey);
+
+  const label = BATCH_LABELS[batchKey];
+  const msg = `${label}\n\n` +
+    (link1 ? `📹 Video 1:\n${link1}\n` : '') +
+    (link2 ? `📹 Video 2:\n${link2}\n` : '') +
+    `\nWatch both videos and reply ✅`;
+
+  let cleanPhone = phone.replace(/[^\d]/g, '');
+  if (cleanPhone.length === 10 && '6789'.includes(cleanPhone[0])) {
+    cleanPhone = '91' + cleanPhone;
+  } else if (cleanPhone.startsWith('0') && cleanPhone.length === 11) {
+    cleanPhone = '91' + cleanPhone.substring(1);
+  }
+
+  const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+  closeBatchPopup();
+  window.location.href = waUrl;
+}
+
+async function alreadySentMark() {
+  const { leadId, batchKey } = _popupState;
+  closeBatchPopup();  // close first so toast is visible
+  await _markBatchDone(leadId, batchKey, true);  // force_mark=true → always mark done
+}
+
+async function _markBatchDone(leadId, batchKey, forceMark = false) {
+  const dbColumn = batchKey;
+  try {
+    const res = await fetch(`/leads/${leadId}/batch-toggle`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': '{{ csrf_token }}'
+      },
+      body: JSON.stringify({ batch: dbColumn, force_mark: forceMark })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      const card = _popupState.cardEl;
+      if (card) {
+        const btn = card.querySelector(`[data-batch="${batchKey}"]`);
+        if (btn) {
+          if (data.new_val) {
+            btn.style.background = '#d1fae5';
+            btn.style.color = '#065f46';
+            btn.style.borderColor = '#6ee7b7';
+          } else {
+            btn.style.background = '';
+            btn.style.color = '';
+            btn.style.borderColor = '';
+          }
+        }
+        if (data.all_done) {
+          card.style.borderLeftColor = '#16a34a';
+          card.style.background = '#f0fdf4';
+          const advBtn = card.querySelector('.advance-btn');
+          if (advBtn) advBtn.style.display = 'block';
+        }
+      }
+      if (data.new_val && typeof MyleSound !== 'undefined') MyleSound.batch();
+      showToast(data.new_val ? '+15 pts! Batch mark ho gayi ✅' : 'Batch un-mark ho gayi', data.new_val ? 'success' : 'warning');
+      
+      // Sync Dashboard Scores
+      if (typeof refreshDashboardStats === 'function') {
+        refreshDashboardStats(data);
+      }
+    } else {
+      showToast(data.error || 'Batch update failed. Please try again.', 'danger');
+    }
+  } catch(e) {
+    showToast('Something went wrong. Please try again.', 'danger');
+  }
+}
+
+// (refreshDashboardStats moved to base.html)
+
+document.addEventListener('DOMContentLoaded', function() {
+  var bp = document.getElementById('batchPopup');
+  if (bp) bp.addEventListener('click', function(e) {
+    if (e.target === this) closeBatchPopup();
+  });
+});
+
+function quickAdvanceFromDay2(leadId, btnEl) {
+  if (!confirm('Move this lead to Interview (Day 3)?')) return;
+  const origHTML = btnEl ? btnEl.innerHTML : '';
+  if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '…'; }
+  fetch(`/leads/${leadId}/quick-advance`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': '{{ csrf_token }}'
+    },
+    body: JSON.stringify({ current_status: 'Day 2' })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok) {
+      showToast('Moved to Interview.', 'success');
+      setTimeout(() => location.reload(), 800);
+    } else {
+      showToast(d.error || 'Error', 'danger');
+      if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = origHTML; }
+    }
+  })
+  .catch(() => {
+    showToast('Network error', 'danger');
+    if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = origHTML; }
+  });
+}
+
+// ── Stage Advance via Pipeline ─────────────────────────────────
+function stageAdvance(leadId, action, btnEl) {
+  const origHTML = btnEl ? btnEl.innerHTML : '';
+  if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span>'; }
+  fetch(`/leads/${leadId}/stage-advance`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '{{ csrf_token }}' },
+    body: JSON.stringify({ action }),
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (!d.ok) {
+      showToast(d.error || 'Could not advance stage', 'danger');
+      if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = origHTML; }
+      return;
+    }
+    showToast(d.message || 'Stage advanced ✅', 'success');
+    
+    // Sync Dashboard Scores
+    if (typeof refreshDashboardStats === 'function') {
+      refreshDashboardStats(d);
+    }
+
+    const card = document.getElementById(`db-lead-${leadId}`);
+    if (card) {
+      card.style.transition = 'opacity 0.3s';
+      card.style.opacity = '0';
+      setTimeout(() => { card.remove(); }, 320);
+    }
+  })
+  .catch(() => {
+    showToast('Network error', 'danger');
+    if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = origHTML; }
+  });
+}
+
+// ── Call Status Update ─────────────────────────────────────────
+function updateCallStatus(leadId, newStatus, selectEl) {
+  fetch(`/leads/${leadId}/call-status`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '{{ csrf_token }}' },
+    body: JSON.stringify({ call_status: newStatus }),
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok) {
+      showToast('Call status updated ✅', 'success');
+      if (d.ai_feedback) {
+        showToast(d.ai_feedback, 'info');
+      }
+      // Sync Dashboard Scores
+      if (typeof refreshDashboardStats === 'function') {
+        refreshDashboardStats(d);
+      }
+    } else {
+      showToast(d.error || 'Could not update', 'danger');
+    }
+  })
+  .catch(() => { showToast('Network error', 'danger'); });
+}
+</script>
+
+<!-- Batch Popup HTML -->
+<div id="batchPopup" style="display:none; position:fixed; inset:0; z-index:9999;
+  background:rgba(0,0,0,0.5); align-items:flex-end; justify-content:center;">
+
+  <div style="background:#fff; border-radius:20px 20px 0 0;
+    width:100%; max-width:480px; padding:20px;
+    animation: slideUp 0.2s ease;">
+
+    <!-- Header -->
+    <div style="display:flex; justify-content:space-between;
+      align-items:center; margin-bottom:16px;">
+      <div>
+        <div id="popupBatchName" style="font-weight:700;
+          font-size:1rem;"></div>
+        <div id="popupLeadName" style="font-size:0.8rem;
+          color:#6b7280; margin-top:2px;"></div>
+      </div>
+      <button onclick="closeBatchPopup()"
+        style="background:none;border:none;
+          font-size:1.2rem;cursor:pointer;
+          color:#9ca3af;">✕</button>
+    </div>
+
+    <!-- Video links preview -->
+    <div id="popupVideoLinks" style="margin-bottom:16px;
+      background:#f8f9fc; border-radius:10px; padding:12px;">
+    </div>
+
+    <!-- Buttons -->
+    <button id="popupSendBtn"
+      onclick="sendAndMark()"
+      style="width:100%; padding:14px; border-radius:12px;
+        background:#25D366; color:#fff; border:none;
+        font-weight:700; font-size:0.95rem; cursor:pointer;
+        margin-bottom:8px; display:flex; align-items:center;
+        justify-content:center; gap:8px;">
+      📤 Send on WhatsApp + Mark done
+    </button>
+
+    <button id="popupAlreadySentBtn"
+      onclick="alreadySentMark()"
+      style="width:100%; padding:12px; border-radius:12px;
+        background:#eef2ff; color:#6366f1; border:none;
+        font-weight:700; font-size:0.9rem; cursor:pointer;
+        margin-bottom:8px;">
+      ✅ Already sent — mark only
+    </button>
+
+    <button onclick="closeBatchPopup()"
+      style="width:100%; padding:10px; border-radius:12px;
+        background:#f3f4f6; color:#6b7280; border:none;
+        font-weight:600; font-size:0.85rem; cursor:pointer;">
+      Cancel
+    </button>
+  </div>
+</div>
+
+<style>
+@keyframes slideUp {
+  0%   { transform: translateY(100%); }
+  100% { transform: translateY(0); }
+}
+</style>
+
+{% endblock %}

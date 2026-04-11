@@ -15,7 +15,11 @@ from app.models.lead import Lead
 from app.models.wallet_ledger import WalletLedgerEntry
 from app.schemas.call_events import CallEventCreate, CallEventListResponse, CallEventPublic
 from app.schemas.leads import LeadCreate, LeadDetailPublic, LeadListResponse, LeadPublic, LeadUpdate
-from app.services.lead_scope import lead_visibility_where
+from app.services.lead_scope import (
+    lead_visibility_where,
+    user_can_access_lead,
+    user_can_mutate_lead,
+)
 
 router = APIRouter()
 
@@ -85,7 +89,7 @@ async def list_leads(
         description="If true, soft-deleted leads (recycle bin) — admin only",
     ),
 ) -> LeadListResponse:
-    """List leads visible to this role; admin sees all, others only their own."""
+    """List leads visible to this role (admin: all; leader: self + downline; team: own)."""
     if archived_only and deleted_only:
         raise HTTPException(
             status_code=http_status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -155,10 +159,6 @@ async def _get_lead_or_404(session: AsyncSession, lead_id: int) -> Lead:
     if lead is None:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
     return lead
-
-
-def _can_mutate_lead(user: AuthUser, lead: Lead) -> bool:
-    return user.role == "admin" or lead.created_by_user_id == user.user_id
 
 
 @router.post("/{lead_id}/claim", response_model=LeadPublic)
@@ -255,7 +255,7 @@ async def update_lead(
         await notify_topics("leads")
         return lead
 
-    if not _can_mutate_lead(user, lead):
+    if not await user_can_mutate_lead(session, user, lead):
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
     if body.in_pool is not None:
@@ -342,7 +342,7 @@ async def delete_lead(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     lead = await _get_lead_or_404(session, lead_id)
-    if not _can_mutate_lead(user, lead):
+    if not await user_can_mutate_lead(session, user, lead):
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
     if lead.deleted_at is not None:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
@@ -364,11 +364,8 @@ async def get_lead(
     if lead.deleted_at is not None:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
 
-    vis = lead_visibility_where(user)
-    if vis is not None:
-        # Non-admin: must be creator or assigned
-        if lead.created_by_user_id != user.user_id and lead.assigned_to_user_id != user.user_id:
-            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    if not await user_can_access_lead(session, user, lead):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
     return LeadDetailPublic.model_validate(lead)
 
@@ -390,7 +387,7 @@ async def log_call(
     if lead.deleted_at is not None:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
 
-    if not _can_mutate_lead(user, lead):
+    if not await user_can_mutate_lead(session, user, lead):
         # Also allow assigned user to log calls
         if lead.assigned_to_user_id != user.user_id:
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
@@ -457,10 +454,8 @@ async def list_calls(
     if lead.deleted_at is not None:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
 
-    vis = lead_visibility_where(user)
-    if vis is not None:
-        if lead.created_by_user_id != user.user_id and lead.assigned_to_user_id != user.user_id:
-            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    if not await user_can_access_lead(session, user, lead):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
     count_stmt = (
         select(func.count())

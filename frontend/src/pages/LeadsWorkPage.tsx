@@ -4,15 +4,25 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  LEAD_STATUS_GROUPS,
   LEAD_STATUS_OPTIONS,
   type LeadListFilters,
   type LeadStatus,
   useCreateLeadMutation,
   useDeleteLeadMutation,
-  useLeadsQuery,
+  useLeadsInfiniteQuery,
   usePatchLeadMutation,
 } from '@/hooks/use-leads-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
+import type { Role } from '@/types/role'
 
 type Props = {
   title: string
@@ -26,6 +36,19 @@ function statusLabel(value: string): string {
   return LEAD_STATUS_OPTIONS.find((o) => o.value === value)?.label ?? value
 }
 
+function emptyListHint(role: Role | null, archivedOnly: boolean): string {
+  if (archivedOnly) {
+    return 'No archived leads — archive from the active list when you want to clear your pipeline without deleting.'
+  }
+  if (role === 'admin') {
+    return 'No leads match this view — adjust filters or add one above. You see all active leads (admin scope).'
+  }
+  if (role === 'leader') {
+    return 'No leads match this view — adjust filters or add one above. You see your leads and your downline’s leads (same rules as workboard).'
+  }
+  return 'No leads match this view — adjust filters or add one above. You see only leads you created.'
+}
+
 export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const archivedOnly = listMode === 'archived'
   const leadsListMode = listMode === 'archived' ? 'archived' : 'active'
@@ -34,7 +57,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const qParam = searchParams.get('q') ?? ''
   const [qInput, setQInput] = useState(qParam)
   const [filters, setFilters] = useState<LeadListFilters>({ ...emptyFilters, q: qParam })
-  const [newStatus, setNewStatus] = useState<LeadStatus>('new')
+  const [newStatus, setNewStatus] = useState<LeadStatus>('new_lead')
   const [name, setName] = useState('')
 
   useEffect(() => {
@@ -48,7 +71,15 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
     return () => window.clearTimeout(id)
   }, [qInput])
 
-  const { data, isPending, isError, error, refetch } = useLeadsQuery(true, filters, leadsListMode)
+  const leadsQ = useLeadsInfiniteQuery(true, filters, leadsListMode)
+  const data = leadsQ.data
+  const items = data?.pages.flatMap((p) => p.items) ?? []
+  const total = data?.pages[0]?.total ?? 0
+  const limit = data?.pages[0]?.limit ?? 50
+  const isPending = leadsQ.isPending
+  const isError = leadsQ.isError
+  const error = leadsQ.error
+  const refetch = leadsQ.refetch
   const createMut = useCreateLeadMutation()
   const deleteMut = useDeleteLeadMutation()
   const patchMut = usePatchLeadMutation()
@@ -66,7 +97,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
         {archivedOnly ? (
@@ -120,11 +151,19 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
             }
             className="w-full rounded-md border border-white/12 bg-white/[0.05] backdrop-blur-sm px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
           >
-            <option value="">All</option>
-            {LEAD_STATUS_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
+            <option value="">All statuses</option>
+            {LEAD_STATUS_GROUPS.map((g) => (
+              <optgroup key={g.label} label={g.label}>
+                {g.statuses.map((value) => {
+                  const o = LEAD_STATUS_OPTIONS.find((x) => x.value === value)
+                  if (!o) return null
+                  return (
+                    <option key={value} value={value}>
+                      {o.label}
+                    </option>
+                  )
+                })}
+              </optgroup>
             ))}
           </select>
         </div>
@@ -202,109 +241,147 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
       {data ? (
         <div className="surface-elevated p-4 text-sm text-muted-foreground">
           <p className="mb-3 font-medium text-foreground">
-            Total: {data.total}
-            {data.total > data.items.length ? (
+            Total: {total}
+            {total > items.length ? (
               <span className="ml-2 font-normal text-muted-foreground">
-                (showing {data.items.length}, limit {data.limit}, offset {data.offset})
+                (showing {items.length} loaded · {limit} per page)
               </span>
             ) : null}
           </p>
-          {data.items.length === 0 ? (
-            <p>
-              {archivedOnly
-                ? 'No archived leads — archive from the active list when you want to clear your pipeline without deleting.'
-                : 'No leads match this view — adjust filters or add one above. Non-admin users only see leads they created.'}
-            </p>
+          {items.length === 0 ? (
+            <p>{emptyListHint(role ?? null, archivedOnly)}</p>
           ) : (
-            <ul className="space-y-2">
-              {data.items.map((l) => (
-                <li
-                  key={l.id}
-                  className="surface-inset flex flex-wrap items-center justify-between gap-2 px-3 py-2"
-                >
-                  <div className="min-w-0 flex-1">
-                    <Link
-                      to={`/dashboard/work/leads/${l.id}`}
-                      className="font-medium text-foreground hover:text-primary hover:underline underline-offset-2"
-                    >
-                      {l.name}
-                    </Link>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">
-                      #{l.id} · {statusLabel(l.status)} · {new Date(l.created_at).toLocaleString()}
-                      {l.archived_at ? (
-                        <span className="block text-muted-foreground/90">
-                          Archived {new Date(l.archived_at).toLocaleString()}
-                        </span>
-                      ) : null}
-                    </span>
-                  </div>
-                  <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    {!archivedOnly && role === 'admin' ? (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        disabled={patchMut.isPending}
-                        title="Move to shared pool for members to claim"
-                        onClick={() => void patchMut.mutateAsync({ id: l.id, body: { in_pool: true } })}
+            <Table className="table-fixed">
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-[4.5rem] text-right tabular-nums text-muted-foreground">
+                    ID
+                  </TableHead>
+                  <TableHead className="min-w-[10rem] text-foreground">Name</TableHead>
+                  <TableHead className="w-[min(14rem,26vw)] text-foreground">Stage</TableHead>
+                  <TableHead className="w-[10rem] text-right text-foreground">Created</TableHead>
+                  {archivedOnly ? (
+                    <TableHead className="w-[10rem] text-right text-foreground">Archived</TableHead>
+                  ) : null}
+                  <TableHead className="w-[min(18rem,40%)] text-right text-foreground">
+                    Actions
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((l) => (
+                  <TableRow key={l.id} className="align-middle">
+                    <TableCell className="text-right tabular-nums text-muted-foreground">{l.id}</TableCell>
+                    <TableCell className="min-w-0 font-medium text-foreground">
+                      <Link
+                        to={`/dashboard/work/leads/${l.id}`}
+                        className="block truncate text-foreground hover:text-primary hover:underline underline-offset-2"
                       >
-                        To pool
-                      </Button>
-                    ) : null}
-                    {!archivedOnly ? (
-                      <select
-                        aria-label={`Status for ${l.name}`}
-                        value={l.status}
-                        disabled={patchMut.isPending}
-                        onChange={(e) => {
-                          const v = e.target.value as LeadStatus
-                          void patchMut.mutateAsync({ id: l.id, body: { status: v } })
-                        }}
-                        className="rounded-md border border-white/12 bg-white/[0.05] backdrop-blur-sm px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
-                      >
-                        {LEAD_STATUS_OPTIONS.map((o) => (
-                          <option key={o.value} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
-                    ) : null}
+                        {l.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="min-w-0">
+                      {!archivedOnly ? (
+                        <select
+                          aria-label={`Status for ${l.name}`}
+                          value={l.status}
+                          disabled={patchMut.isPending}
+                          onChange={(e) => {
+                            const v = e.target.value as LeadStatus
+                            void patchMut.mutateAsync({ id: l.id, body: { status: v } })
+                          }}
+                          className="w-full max-w-full rounded-md border border-white/12 bg-white/[0.05] px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+                        >
+                          {LEAD_STATUS_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="text-sm text-foreground">{statusLabel(l.status)}</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-right text-xs text-muted-foreground">
+                      {new Date(l.created_at).toLocaleString(undefined, {
+                        dateStyle: 'short',
+                        timeStyle: 'short',
+                      })}
+                    </TableCell>
                     {archivedOnly ? (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        disabled={patchMut.isPending}
-                        onClick={() => void patchMut.mutateAsync({ id: l.id, body: { archived: false } })}
-                      >
-                        Restore
-                      </Button>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={patchMut.isPending}
-                        onClick={() => void patchMut.mutateAsync({ id: l.id, body: { archived: true } })}
-                      >
-                        Archive
-                      </Button>
-                    )}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      disabled={deleteMut.isPending}
-                      onClick={() => void deleteMut.mutateAsync(l.id)}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                      <TableCell className="whitespace-nowrap text-right text-xs text-muted-foreground">
+                        {l.archived_at
+                          ? new Date(l.archived_at).toLocaleString(undefined, {
+                              dateStyle: 'short',
+                              timeStyle: 'short',
+                            })
+                          : '—'}
+                      </TableCell>
+                    ) : null}
+                    <TableCell className="text-right">
+                      <div className="flex flex-wrap items-center justify-end gap-1.5">
+                        {!archivedOnly && role === 'admin' ? (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            disabled={patchMut.isPending}
+                            title="Move to shared pool for members to claim"
+                            onClick={() => void patchMut.mutateAsync({ id: l.id, body: { in_pool: true } })}
+                          >
+                            To pool
+                          </Button>
+                        ) : null}
+                        {archivedOnly ? (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            disabled={patchMut.isPending}
+                            onClick={() => void patchMut.mutateAsync({ id: l.id, body: { archived: false } })}
+                          >
+                            Restore
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={patchMut.isPending}
+                            onClick={() => void patchMut.mutateAsync({ id: l.id, body: { archived: true } })}
+                          >
+                            Archive
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          disabled={deleteMut.isPending}
+                          onClick={() => void deleteMut.mutateAsync(l.id)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
+          {items.length > 0 && leadsQ.hasNextPage ? (
+            <div className="mt-4 flex justify-center">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={leadsQ.isFetchingNextPage}
+                onClick={() => void leadsQ.fetchNextPage()}
+              >
+                {leadsQ.isFetchingNextPage ? 'Loading…' : 'Load more'}
+              </Button>
+            </div>
+          ) : null}
           {deleteMut.isError ? (
             <p className="mt-2 text-xs text-destructive">
               {deleteMut.error instanceof Error ? deleteMut.error.message : 'Delete failed'}

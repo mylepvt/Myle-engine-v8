@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block title %}Lead Flow · {{ 'Admin' if role == 'admin' else ('Leader' if role == 'leader' else 'My') }}{% endblock %}
+{% block page_title %}Lead Flow{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+  <a href="{{ url_for('team_dashboard') if role != 'admin' else url_for('admin_dashboard') }}"
+     class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Back
+  </a>
+  <span class="text-muted small">
+    {% if role == 'leader' %}Apne aur team ke leads ki status movements dekho.
+    {% elif role == 'admin' %}Saare leads ki status movements.
+    {% else %}Apne leads ki status movements dekho.
+    {% endif %}
+  </span>
+</div>
+
+<!-- Search -->
+<form method="get" class="d-flex gap-2 mb-3 flex-wrap">
+  <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm"
+         placeholder="Lead naam ya phone..." style="max-width:260px;">
+  <button type="submit" class="btn btn-sm btn-primary">
+    <i class="bi bi-search me-1"></i>Filter
+  </button>
+  {% if q %}
+  <a href="{{ url_for('my_lead_flow') }}" class="btn btn-sm btn-outline-secondary">Reset</a>
+  {% endif %}
+</form>
+
+<p class="small text-muted mb-3">{{ total }} lead{{ 's' if total != 1 }} (page {{ page }}/{{ total_pages }})</p>
+
+{% if leads %}
+<div class="d-flex flex-column gap-3">
+{% for lead in leads %}
+{% set has_events = lead.status_events or lead.stage_events %}
+<div class="card border-0 shadow-sm">
+
+  <!-- Lead header -->
+  <div class="card-header d-flex align-items-center gap-2 flex-wrap py-2"
+       style="background:#f8fafc;border-bottom:1px solid #e2e8f0;">
+    <span class="fw-semibold">#{{ lead.id }} — {{ lead.name or 'Unnamed' }}</span>
+    <span class="text-muted small">{{ lead.phone }}</span>
+
+    {# Status badge with colour by pipeline stage #}
+    {% set _stg = lead.pipeline_stage or '' %}
+    {% if _stg in ('closing','complete') %}
+      {% set _bc = '#dcfce7' %} {% set _tc = '#166534' %}
+    {% elif _stg in ('day1','day2','day3','seat_hold','plan_2cc','level_up') %}
+      {% set _bc = '#dbeafe' %} {% set _tc = '#1e40af' %}
+    {% elif _stg == 'enrolled' %}
+      {% set _bc = '#fef9c3' %} {% set _tc = '#854d0e' %}
+    {% elif _stg in ('lost','inactive') %}
+      {% set _bc = '#fee2e2' %} {% set _tc = '#991b1b' %}
+    {% else %}
+      {% set _bc = '#f1f5f9' %} {% set _tc = '#475569' %}
+    {% endif %}
+    <span class="badge rounded-pill px-2"
+          style="background:{{ _bc }};color:{{ _tc }};font-size:0.72rem;">{{ lead.status }}</span>
+
+    {% if role in ('leader','admin') and lead.assignee %}
+    <span class="ms-auto text-muted small">
+      <i class="bi bi-person me-1"></i>{{ lead.assignee }}
+    </span>
+    {% endif %}
+
+    <span class="{% if role not in ('leader','admin') %}ms-auto{% endif %} text-muted small">
+      Updated {{ lead.updated_at[:16] if lead.updated_at else '—' }}
+    </span>
+  </div>
+
+  <div class="card-body p-0">
+    {% if has_events %}
+    {# Merge and sort all events by timestamp descending #}
+    {% set all_events = [] %}
+    {% for e in lead.status_events %}
+      {% set _ = all_events.append({'ts': e.created_at, 'type': 'status', 'data': e}) %}
+    {% endfor %}
+    {% for e in lead.stage_events %}
+      {% set _ = all_events.append({'ts': e.created_at, 'type': 'stage', 'data': e}) %}
+    {% endfor %}
+    {% set sorted_events = all_events | sort(attribute='ts', reverse=True) %}
+
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0" style="font-size:0.8rem;">
+        <thead class="table-light">
+          <tr>
+            <th style="width:145px;">Time</th>
+            <th style="width:100px;">Type</th>
+            <th>Detail</th>
+            <th style="width:110px;">By</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for ev in sorted_events %}
+        <tr>
+          <td class="text-muted">{{ ev.ts[:16] if ev.ts else '—' }}</td>
+
+          {% if ev.type == 'status' %}
+          <td>
+            <span class="badge rounded-pill px-2"
+                  style="background:#f0fdf4;color:#16a34a;font-size:0.7rem;">
+              <i class="bi bi-arrow-right-circle me-1"></i>Status
+            </span>
+          </td>
+          <td>
+            {# Parse "Status to X" or "Status → X" or "[Bulk] Status → X" #}
+            {% set note = ev.data.note or '' %}
+            {% if 'to ' in note %}
+              {% set new_s = note.split('to ', 1)[1] %}
+              <span class="text-muted">Status</span>
+              <i class="bi bi-arrow-right mx-1 text-muted" style="font-size:0.7rem;"></i>
+              <strong>{{ new_s }}</strong>
+            {% elif '→' in note %}
+              {% set new_s = note.split('→', 1)[1].strip() %}
+              <span class="text-muted">Status</span>
+              <i class="bi bi-arrow-right mx-1 text-muted" style="font-size:0.7rem;"></i>
+              <strong>{{ new_s }}</strong>
+            {% else %}
+              {{ note }}
+            {% endif %}
+          </td>
+          <td class="text-muted">{{ ev.data.username or '—' }}</td>
+
+          {% elif ev.type == 'stage' %}
+          <td>
+            <span class="badge rounded-pill px-2"
+                  style="background:#dbeafe;color:#1e40af;font-size:0.7rem;">
+              <i class="bi bi-diagram-3 me-1"></i>Stage
+            </span>
+          </td>
+          <td>
+            Pipeline →
+            <strong>{{ ev.data.stage }}</strong>
+            {% if ev.data.owner %}
+              <span class="text-muted ms-1">({{ ev.data.owner }})</span>
+            {% endif %}
+          </td>
+          <td class="text-muted">{{ ev.data.triggered_by or '—' }}</td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted small px-3 py-2 mb-0">
+      <i class="bi bi-info-circle me-1"></i>Is lead ke liye abhi koi status movement record nahi hai.
+    </p>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<nav class="mt-4">
+  <ul class="pagination pagination-sm justify-content-center flex-wrap gap-1">
+    {% if page > 1 %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ page-1 }}{% if q %}&q={{ q }}{% endif %}">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+    </li>
+    {% endif %}
+    {% for p in range([1, page-2]|max, [total_pages+1, page+3]|min) %}
+    <li class="page-item {% if p == page %}active{% endif %}">
+      <a class="page-link" href="?page={{ p }}{% if q %}&q={{ q }}{% endif %}">{{ p }}</a>
+    </li>
+    {% endfor %}
+    {% if page < total_pages %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ page+1 }}{% if q %}&q={{ q }}{% endif %}">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="text-center text-muted py-5">
+  <i class="bi bi-journal-x" style="font-size:2.5rem;"></i>
+  <p class="mt-2 mb-0">
+    {% if q %}
+      "{{ q }}" ke liye koi lead nahi mila.
+    {% else %}
+      Abhi tak koi lead nahi hai.
+    {% endif %}
+  </p>
+</div>
+{% endif %}
+{% endblock %}

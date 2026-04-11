@@ -1,0 +1,295 @@
+{% extends "base.html" %}
+{% block title %}Stale Leads · Admin{% endblock %}
+{% block page_title %}Stale Leads — Redistribution{% endblock %}
+
+{% block content %}
+<p class="small text-muted mb-3">
+  Leads with <strong>no update for 48+ hours</strong>. <code>assigned_user_id</code> is never changed —
+  only a <em>working assignment</em> (<code>stale_worker</code>) is set, so all revenue and conversion
+  calculations remain intact. IST date: {{ today }}.
+</p>
+
+{# ── Auto-distribute panel ── #}
+<div class="card border-0 shadow-sm mb-3" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);">
+  <div class="card-body py-3">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+      <div>
+        <span class="fw-semibold text-dark"><i class="bi bi-trophy-fill text-success me-1"></i>Top 5 — Auto-redistribution targets</span>
+        <span class="text-muted small ms-2">(by all-time points)</span>
+      </div>
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <label class="small fw-semibold text-dark mb-0">Limit:</label>
+        <select id="auto-limit-preset" class="form-select form-select-sm" style="width:90px;">
+          <option value="30">30</option>
+          <option value="50" selected>50</option>
+          <option value="100">100</option>
+          <option value="custom">Custom</option>
+        </select>
+        <input id="auto-limit-custom" type="number" min="1" max="1000" value="50"
+               class="form-control form-control-sm d-none" style="width:80px;" placeholder="e.g. 75">
+        <button id="btn-auto-redistribute" class="btn btn-success btn-sm fw-semibold">
+          <i class="bi bi-arrow-repeat me-1"></i>Auto distribute
+        </button>
+      </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      {% for m in top5 %}
+      <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2">
+        {{ m.username }} <span class="text-muted fw-normal ms-1">{{ m.total_points }} pts</span>
+      </span>
+      {% else %}
+      <span class="text-muted small">No active team members found.</span>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+{# ── Result banner ── #}
+<div id="redistribute-result" class="alert d-none mb-3" role="alert"></div>
+
+{# ── Bulk action bar (shown when rows selected) ── #}
+<div id="bulk-bar" class="d-none card border-0 shadow-sm mb-2 px-3 py-2"
+     style="background:#eff6ff;border-left:3px solid #3b82f6 !important;">
+  <div class="d-flex align-items-center gap-3 flex-wrap">
+    <span id="bulk-count" class="fw-semibold text-primary small">0 selected</span>
+    <select id="bulk-assign-to" class="form-select form-select-sm" style="width:160px;">
+      <option value="">— assign to —</option>
+      {% for u in all_team %}
+      <option value="{{ u }}">{{ u }}</option>
+      {% endfor %}
+    </select>
+    <button id="btn-bulk-assign" class="btn btn-primary btn-sm fw-semibold">
+      <i class="bi bi-person-check me-1"></i>Assign selected
+    </button>
+    <button id="btn-deselect-all" class="btn btn-outline-secondary btn-sm">Deselect all</button>
+  </div>
+</div>
+
+{# ── Stale leads table ── #}
+<div class="table-responsive card border-0 shadow-sm">
+  <table class="table table-sm align-middle mb-0" id="stale-table">
+    <thead class="table-light">
+      <tr>
+        <th style="width:36px;">
+          <input type="checkbox" id="chk-all" class="form-check-input" title="Select all">
+        </th>
+        <th>Lead</th>
+        <th>Owner</th>
+        <th class="text-end">Days stuck</th>
+        <th>Status</th>
+        <th>Current worker</th>
+        <th>Assign to (single)</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr id="lead-row-{{ r.id }}" data-lead-id="{{ r.id }}">
+        <td><input type="checkbox" class="form-check-input row-chk" value="{{ r.id }}"></td>
+        <td class="fw-semibold">{{ r.name }} <span class="text-muted small">#{{ r.id }}</span></td>
+        <td class="small">{{ r.assignee or '—' }}</td>
+        <td class="text-end fw-bold text-danger">{{ r.days_stuck }}d</td>
+        <td><span class="badge bg-secondary-subtle text-dark">{{ r.status }}</span></td>
+        <td class="small" id="worker-{{ r.id }}">
+          {% if r.stale_worker %}
+            <span class="badge bg-info-subtle text-info border border-info-subtle">{{ r.stale_worker }}</span>
+            <div class="text-muted" style="font-size:.7rem;">since {{ r.stale_worker_since[:10] if r.stale_worker_since else '' }}</div>
+          {% else %}
+            <span class="text-muted">—</span>
+          {% endif %}
+        </td>
+        <td>
+          <select class="form-select form-select-sm" id="sel-{{ r.id }}" style="min-width:130px;">
+            <option value="">— pick person —</option>
+            {% for u in all_team %}
+            <option value="{{ u }}" {% if u == r.stale_worker %}selected{% endif %}>{{ u }}</option>
+            {% endfor %}
+          </select>
+        </td>
+        <td>
+          <button class="btn btn-sm btn-outline-primary py-0" onclick="assignLead({{ r.id }})">Assign</button>
+          <a href="{{ url_for('edit_lead', lead_id=r.id) }}" class="btn btn-sm btn-outline-secondary py-0 ms-1">Open</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="text-center text-muted py-4">No stale leads right now.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+const CSRF        = {{ csrf_token | tojson }};
+const CURRENT_USER = {{ session.get('username', '') | tojson }};
+const IST_TODAY   = {{ today | tojson }};
+
+/* ── helpers ── */
+function showBanner(msg, ok) {
+  const b = document.getElementById('redistribute-result');
+  b.className = 'alert mb-3 ' + (ok ? 'alert-success' : 'alert-danger');
+  b.textContent = msg;
+  b.classList.remove('d-none');
+}
+
+function setWorkerCell(leadId, worker, by) {
+  const wCell  = document.getElementById('worker-' + leadId);
+  const today  = IST_TODAY;
+  const badge  = document.createElement('span');
+  badge.className = 'badge bg-info-subtle text-info border border-info-subtle';
+  badge.textContent = worker;
+  const since = document.createElement('div');
+  since.className   = 'text-muted';
+  since.style.fontSize = '.7rem';
+  since.textContent = 'since ' + today;
+  wCell.replaceChildren(badge, since);
+  if (by !== null) {
+    const byCell = document.getElementById('worker-by-' + leadId);
+    if (byCell) byCell.textContent = by;
+  }
+}
+
+/* ── limit preset toggle ── */
+document.getElementById('auto-limit-preset').addEventListener('change', function () {
+  const custom = document.getElementById('auto-limit-custom');
+  if (this.value === 'custom') {
+    custom.classList.remove('d-none');
+  } else {
+    custom.classList.add('d-none');
+    custom.value = this.value;
+  }
+});
+
+function getLimit() {
+  const preset = document.getElementById('auto-limit-preset').value;
+  if (preset === 'custom') {
+    const v = parseInt(document.getElementById('auto-limit-custom').value, 10);
+    return (v > 0 && v <= 1000) ? v : 50;
+  }
+  return parseInt(preset, 10);
+}
+
+/* ── auto distribute ── */
+document.getElementById('btn-auto-redistribute').addEventListener('click', async () => {
+  const btn   = document.getElementById('btn-auto-redistribute');
+  const limit = getLimit();
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Running…';
+
+  try {
+    const res  = await fetch('/api/admin/stale-redistribute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+      body: JSON.stringify({ limit }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showBanner(`Done — ${data.assigned} lead(s) assigned (limit: ${limit}), ${data.skipped ?? 0} skipped (churn-protected). Reload to see updated workers.`, true);
+    } else {
+      showBanner('Error: ' + (data.error || 'unknown'), false);
+    }
+  } catch (err) {
+    showBanner('Network error: ' + err.message, false);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Auto distribute';
+  }
+});
+
+/* ── single lead assign ── */
+async function assignLead(leadId) {
+  const sel      = document.getElementById('sel-' + leadId);
+  const assignTo = sel.value;
+  if (!assignTo) { alert('Please select a person first.'); return; }
+
+  try {
+    const res  = await fetch('/api/admin/stale-assign-lead', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+      body: JSON.stringify({ lead_id: leadId, assign_to: assignTo }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      setWorkerCell(leadId, assignTo, CURRENT_USER);
+    } else {
+      alert('Error: ' + (data.error || 'unknown'));
+    }
+  } catch (err) {
+    alert('Network error: ' + err.message);
+  }
+}
+
+/* ── checkbox multi-select ── */
+function getCheckedIds() {
+  return [...document.querySelectorAll('.row-chk:checked')].map(c => parseInt(c.value, 10));
+}
+
+function updateBulkBar() {
+  const ids = getCheckedIds();
+  const bar = document.getElementById('bulk-bar');
+  if (ids.length === 0) {
+    bar.classList.add('d-none');
+  } else {
+    bar.classList.remove('d-none');
+    document.getElementById('bulk-count').textContent = ids.length + ' selected';
+  }
+}
+
+document.getElementById('chk-all').addEventListener('change', function () {
+  document.querySelectorAll('.row-chk').forEach(c => { c.checked = this.checked; });
+  updateBulkBar();
+});
+
+document.querySelectorAll('.row-chk').forEach(c => {
+  c.addEventListener('change', () => {
+    const all  = document.querySelectorAll('.row-chk');
+    const chkd = document.querySelectorAll('.row-chk:checked');
+    document.getElementById('chk-all').indeterminate = chkd.length > 0 && chkd.length < all.length;
+    document.getElementById('chk-all').checked = chkd.length === all.length && all.length > 0;
+    updateBulkBar();
+  });
+});
+
+document.getElementById('btn-deselect-all').addEventListener('click', () => {
+  document.querySelectorAll('.row-chk').forEach(c => { c.checked = false; });
+  document.getElementById('chk-all').checked = false;
+  document.getElementById('chk-all').indeterminate = false;
+  updateBulkBar();
+});
+
+/* ── bulk assign ── */
+document.getElementById('btn-bulk-assign').addEventListener('click', async () => {
+  const ids      = getCheckedIds();
+  const assignTo = document.getElementById('bulk-assign-to').value;
+  if (!assignTo)    { alert('Please select a person to assign to.'); return; }
+  if (!ids.length)  { alert('No leads selected.'); return; }
+
+  const btn = document.getElementById('btn-bulk-assign');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Assigning…';
+
+  try {
+    const res  = await fetch('/api/admin/stale-bulk-assign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+      body: JSON.stringify({ lead_ids: ids, assign_to: assignTo }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      ids.forEach(id => setWorkerCell(id, assignTo, CURRENT_USER));
+      document.querySelectorAll('.row-chk').forEach(c => { c.checked = false; });
+      document.getElementById('chk-all').checked = false;
+      document.getElementById('chk-all').indeterminate = false;
+      updateBulkBar();
+      showBanner(`${data.assigned} lead(s) assigned to ${assignTo}.`, true);
+    } else {
+      showBanner('Error: ' + (data.error || 'unknown'), false);
+    }
+  } catch (err) {
+    showBanner('Network error: ' + err.message, false);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-person-check me-1"></i>Assign selected';
+  }
+});
+</script>
+{% endblock %}

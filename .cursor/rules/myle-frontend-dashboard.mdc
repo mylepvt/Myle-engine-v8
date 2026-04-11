@@ -14,6 +14,10 @@ alwaysApply: false
 - **Nested route gate:** **`DashboardNestedPage`** allows a child path only if **`useDashboardShellRole()`** / **`routeDefAccessible`** pass (registry roles + Intelligence flag). Sidebar + home quick actions use the same hook — **no header “preview role”** control.
 - **Dashboard home quick actions:** **`frontend/src/config/dashboard-home-actions.ts`** — ordered path ids + icons only; visibility and labels come from **`routeDefAccessible`** + **`resolveTitleForPath`** (same as nav). Do not re-list role `if` chains on **`DashboardHomePage`**.
 
+## Dashboard home copy (locked — legacy parity)
+- **`DashboardHomePage.tsx`** must use **one** set of KPI strings and chart labels for **all roles** (admin / leader / team). Stage names come only from **`LEAD_STATUS_OPTIONS`** in **`use-leads-query.ts`** via a local **`statusLabel()`** — same wording as leads list and workboard.
+- Do **not** add alternate per-role marketing copy, Hinglish variants, or a second label map for “team UX” unless product updates **`docs/LEGACY_PARITY_MAPPING.md`** with evidence and an explicit acceptance spec.
+
 ## Routing
 - Under `/dashboard`, use **only** the existing pattern in `App.tsx`: `index` + **one** splat route → `DashboardNestedPage`.
 - **Never** add per-path `<Route path="work/leads" />` (or similar) under `/dashboard` — that duplicates the shell and drifts from nav.

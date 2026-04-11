@@ -30,6 +30,8 @@ import { FinanceRechargesPage } from '@/pages/FinanceRechargesPage'
 import { LeadDetailPage } from '@/pages/LeadDetailPage'
 import { WalletRechargePage } from '@/pages/WalletRechargePage'
 import { WalletRechargeAdminPage } from '@/pages/WalletRechargeAdminPage'
+import { NoticeBoardPage } from '@/pages/NoticeBoardPage'
+import { TeamReportsPage } from '@/pages/TeamReportsPage'
 
 function renderFullUi(ui: FullUiSurface, title: string) {
   switch (ui.kind) {
@@ -67,6 +69,10 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <WalletRechargePage title={title} />
     case 'wallet-recharge-admin':
       return <WalletRechargeAdminPage title={title} />
+    case 'notice-board':
+      return <NoticeBoardPage title={title} />
+    case 'team-reports':
+      return <TeamReportsPage title={title} />
     default: {
       const _exhaustive: never = ui
       return _exhaustive

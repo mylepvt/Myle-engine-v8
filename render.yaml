@@ -5,6 +5,9 @@
 # After first deploy: set BACKEND_CORS_ORIGINS to your service URL exactly, e.g.
 #   https://myle-vl2-api.onrender.com
 # (same URL users open in the browser; no trailing slash.)
+#
+# Monolith reference (Flask + gunicorn sync): see backend/legacy/myle_dashboard_main3/render.monolith.yaml
+# — vl2 uses Docker + uvicorn ASGI; optional gunicorn+UvicornWorker via backend/gunicorn.conf.py + asgi:app.
 
 databases:
   - name: myle-vl2-db
@@ -40,3 +43,9 @@ services:
         sync: false
       - key: FEATURE_INTELLIGENCE
         value: "false"
+      # Render injects PORT (mapped in Dockerfile CMD). Optional: raise after RAM upgrade.
+      - key: WEB_CONCURRENCY
+        value: "1"
+      # Set by Render on managed services — used by gunicorn.conf.py if you switch start command.
+      - key: RENDER
+        value: "true"

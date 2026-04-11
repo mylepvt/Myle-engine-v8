@@ -1,0 +1,274 @@
+{# ═══════════════════════════════════════════════════════════════
+   working_member.html — Team Member view for Working Section
+   Included by working.html when user is a regular member
+   ═══════════════════════════════════════════════════════════════ #}
+{% from '_macros.html' import pipeline_indicator %}
+{% from '_macros.html' import stage_sla_watch with context %}
+
+<!-- Sticky score bar -->
+<div class="wk-score-bar sticky-top mb-4" id="scoreBar">
+  <div class="d-flex align-items-center gap-3 flex-wrap">
+    <button class="btn btn-link p-0 text-white text-decoration-none" id="scoreBtn" onclick="toggleScoreBreakdown()">
+      <span class="fs-5 fw-bold" id="liveScore" data-today-score>{{ today_score }}</span>
+      <span class="opacity-75 small ms-1">pts today</span>
+    </button>
+    <span class="wk-score-divider"></span>
+    <span>
+      {% set total_actions = today_actions.pending_calls + today_actions.videos_to_send + today_actions.batches_due + today_actions.closings_due %}
+      <i class="bi bi-bullseye me-1"></i>
+      <strong>{{ total_actions }}</strong>
+      <span class="opacity-75 small">kaam baaki</span>
+    </span>
+    {% if streak > 1 %}
+    <span class="wk-score-divider"></span>
+    <span><i class="bi bi-fire me-1 text-warning"></i><strong>{{ streak }}</strong> <span class="opacity-75 small">day streak</span></span>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Score breakdown popup -->
+<div class="wk-score-popup d-none" id="scorePopup">
+  <div class="card border-0 shadow-lg p-3">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h6 class="mb-0 fw-bold">Today's Scoring</h6>
+      <button class="btn-close btn-close-sm" onclick="toggleScoreBreakdown()"></button>
+    </div>
+    <ul class="list-unstyled small mb-0">
+      <li class="d-flex justify-content-between py-1"><span><i class="bi bi-telephone me-2 text-primary"></i>1 call</span><span class="text-muted">+5 pts</span></li>
+      <li class="d-flex justify-content-between py-1"><span><i class="bi bi-camera-video me-2 text-info"></i>1 video sent</span><span class="text-muted">+10 pts</span></li>
+      <li class="d-flex justify-content-between py-1"><span><i class="bi bi-check2-circle me-2 text-success"></i>1 batch done</span><span class="text-muted">+15 pts</span></li>
+      <li class="d-flex justify-content-between py-1"><span><i class="bi bi-currency-rupee me-2 text-warning"></i>₹196 payment</span><span class="text-muted">+25 pts</span></li>
+      <li class="d-flex justify-content-between py-1"><span><i class="bi bi-shield-check me-2 text-purple"></i>Seat hold</span><span class="text-muted">+50 pts</span></li>
+      <li class="d-flex justify-content-between py-1"><span><i class="bi bi-trophy me-2 text-success"></i>Full conversion</span><span class="text-muted">+100 pts</span></li>
+      <li class="d-flex justify-content-between py-1 border-top pt-2"><span><i class="bi bi-fire me-2 text-danger"></i>Daily streak</span><span class="text-muted">+10 pts/day</span></li>
+    </ul>
+  </div>
+</div>
+
+<!-- Zone 1: Today's action cards -->
+{% set total_actions = today_actions.pending_calls + today_actions.videos_to_send + today_actions.batches_due + today_actions.closings_due %}
+{% if total_actions > 0 %}
+<div class="wk-action-scroll mb-4">
+  {% if today_actions.pending_calls > 0 %}
+  <a href="#zone-stage1" class="wk-action-card wk-action-calls">
+    <div class="wk-action-icon"><i class="bi bi-telephone-fill"></i></div>
+    <div class="fw-semibold">{{ today_actions.pending_calls }}</div>
+    <div class="small opacity-75">calls pending</div>
+  </a>
+  {% endif %}
+  {% if today_actions.videos_to_send > 0 %}
+  <a href="#zone-stage1" class="wk-action-card wk-action-videos">
+    <div class="wk-action-icon"><i class="bi bi-camera-video-fill"></i></div>
+    <div class="fw-semibold">{{ today_actions.videos_to_send }}</div>
+    <div class="small opacity-75">videos to send</div>
+  </a>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- Zone 2: Kanban Pipeline (desktop) / Tabs (mobile) -->
+<div class="wk-kanban-tabs mb-3">
+  <button class="wk-tab active" data-col="stage1">Enrollment <span class="badge bg-success ms-1">{{ stage1_leads|length }}</span></button>
+  <button class="wk-tab" data-col="side">On hold <span class="badge bg-secondary ms-1">{{ (side_pipeline_leads|default([]))|length }}</span></button>
+</div>
+
+<div class="wk-kanban-grid">
+
+  {# ── Stage 1 Column (Enrollment — all pre-Day-1 leads) ──────── #}
+  <div class="wk-kanban-col" id="zone-stage1" data-col="stage1">
+    <div class="wk-col-header">
+      <span class="wk-col-title"><i class="bi bi-play-circle me-2 text-indigo"></i>Enrollment</span>
+      <span class="badge bg-success">{{ stage1_leads|length }}</span>
+    </div>
+    {% if enrollment_video_url %}
+    <div class="wk-lead-card mb-2" style="background:rgba(94,92,230,0.08);">
+      <a href="{{ enrollment_watch_url or enrollment_video_url }}" class="video-in-app d-flex align-items-center gap-2 text-decoration-none" style="color:var(--ios-indigo);">
+        <i class="bi bi-play-circle-fill fs-5 flex-shrink-0"></i>
+        <span class="fw-semibold small">{{ enrollment_video_title|default('Enrollment Video') }}</span>
+        <i class="bi bi-play-btn ms-auto small"></i>
+      </a>
+      <div class="small text-muted mt-1">Send this link on WhatsApp — the video opens on our site, not YouTube</div>
+    </div>
+    {% endif %}
+    {% if stage1_leads %}
+    {% for lead in stage1_leads %}
+    <div class="wk-lead-card" id="lead-{{ lead.id }}">
+      <div class="d-flex justify-content-between align-items-start mb-1">
+        <div class="fw-semibold text-truncate" style="max-width:160px;">{{ lead.name }}</div>
+        <span class="wk-status-dot wk-status-{{ lead.status|lower|replace(' ','_')|replace('₹','') }}"></span>
+      </div>
+      {% if lead.city %}
+      <div class="small text-muted mb-1"><i class="bi bi-geo-alt me-1"></i>{{ lead.city }}</div>
+      {% endif %}
+      <div class="mb-1">
+        <span class="badge wk-status-badge-{{ lead.status|lower|replace(' ','_')|replace('₹','') }} rounded-pill small">{{ lead.status }}</span>
+      </div>
+      {{ pipeline_indicator(lead) }}
+      {% set _csv = team_call_status_values if user_role == 'team' else call_status_values %}
+      <select class="form-select form-select-sm mb-2"
+              style="font-size:0.75rem;padding:4px 8px;border-radius:8px;"
+              title="{% if user_role == 'team' %}Dial outcome — stage Lead Status / batches se{% else %}Call classification{% endif %}"
+              onchange="updateCallStatus({{ lead.id }}, this.value, this)">
+        <option value="" disabled {% if not lead.call_status or lead.call_status == 'Not Called Yet' %}selected{% endif %}>
+          📞 Call (dial)
+        </option>
+        {% for cs in _csv %}
+        <option value="{{ cs }}"
+                {% if lead.call_status == cs %}selected{% endif %}>
+          {% if cs == 'Not Called Yet' %}📞 Not Called Yet
+          {% elif cs == 'Called - No Answer' %}📵 No Answer
+          {% elif cs == 'Called - Interested' %}✅ Interested
+          {% elif cs == 'Called - Not Interested' %}❌ Not Interested
+          {% elif cs == 'Called - Follow Up' %}🔄 Follow Up
+          {% elif cs == 'Video Sent' %}📤 Video Sent
+          {% elif cs == 'Video Watched' %}👀 Video Watched
+          {% elif cs == 'Payment Done' %}💰 Payment Done
+          {% else %}{{ cs }}
+          {% endif %}
+        </option>
+        {% endfor %}
+      </select>
+      {% if lead.call_status and lead.call_status != 'Not Called Yet' %}
+      <div class="mb-2" style="font-size:0.68rem;font-weight:600;
+        {% if lead.call_status in ('Called - No Answer','Called - Follow Up') %}color:#d97706;
+        {% elif lead.call_status == 'Called - Not Interested' %}color:#dc2626;
+        {% else %}color:#6b7280;{% endif %}">
+        {% if lead.call_status == 'Called - Interested' %}✅ Interested (call)
+        {% elif lead.call_status == 'Called - No Answer' %}📵 No answer
+        {% elif lead.call_status == 'Called - Follow Up' %}🔄 Follow up (call)
+        {% elif lead.call_status == 'Called - Not Interested' %}❌ Not interested
+        {% elif lead.call_status == 'Wrong Number' %}📵 Wrong number
+        {% else %}{{ lead.call_status }}
+        {% endif %}
+      </div>
+      {% endif %}
+      {% if lead.status == 'Video Watched' or lead.call_status == 'Video Watched' %}
+      <div class="wk-hotspot-badge wk-hotspot-watched mt-1" style="font-size:0.68rem;">
+        👀 Prospect watched the video — call now!
+      </div>
+      {% elif lead.status == 'Video Sent' or lead.call_status == 'Video Sent' %}
+      <div class="wk-hotspot-badge wk-hotspot-sent mt-1" style="font-size:0.68rem;">
+        📤 Video sent — waiting for response
+      </div>
+      {% endif %}
+      <!-- Heat + Next Action -->
+      {% if lead.heat is defined %}
+      <div class="heat-bar-wrap">
+        <div class="d-flex justify-content-between mb-1">
+          <span class="wk-heat-label" style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:var(--label-3);">Heat</span>
+          <span style="font-size:0.6rem;font-weight:700;
+            color:{% if lead.heat >= 75 %}#dc2626{% elif lead.heat >= 40 %}#d97706{% else %}#9ca3af{% endif %}">
+            {% if lead.heat >= 75 %}🔥{% elif lead.heat >= 40 %}🌤{% else %}❄{% endif %} {{ lead.heat }}
+          </span>
+        </div>
+        <div class="progress" style="height:4px;">
+          <div class="progress-bar {% if lead.heat >= 75 %}bg-danger{% elif lead.heat >= 40 %}bg-warning{% else %}bg-secondary{% endif %}"
+               style="width:{{ lead.heat }}%;border-radius:99px;"></div>
+        </div>
+      </div>
+      {% if lead.next_action %}
+      <span class="next-action-badge {{ lead.next_action_type or 'followup' }}" style="font-size:0.67rem;padding:3px 8px;margin-bottom:4px;">
+        {% if lead.next_action_type == 'urgent' %}🚨{% elif lead.next_action_type == 'today' %}⏰{% elif lead.next_action_type == 'followup' %}📞{% else %}❄{% endif %}
+        {{ lead.next_action }}
+      </span>
+      {% endif %}
+      {% endif %}
+      <div class="d-flex gap-2 mt-1">
+        <a href="tel:{{ lead.phone }}" class="btn btn-sm btn-outline-primary wk-btn" title="Call">
+          <i class="bi bi-telephone-fill"></i>
+        </a>
+        <a href="https://wa.me/{{ lead.phone|wa_phone }}" target="_blank"
+           class="btn btn-sm btn-outline-success wk-btn" title="WhatsApp">
+          <i class="bi bi-whatsapp"></i>
+        </a>
+        {% if enrollment_watch_url %}
+        <button class="btn btn-sm wk-btn" style="background:rgba(94,92,230,0.15);color:var(--ios-indigo);border:1px solid rgba(94,92,230,0.3);" onclick="sendEnrollVideo({{ lead.id }}, '{{ lead.phone }}', {{ lead.name|tojson }})" title="Send enrollment video">
+          <i class="bi bi-play-circle-fill"></i>
+        </button>
+        {% endif %}
+        {# Team cannot move leads to Day 1 — leader/admin use Ready for Day 1 on their boards #}
+        {% if session.get('role') != 'team' and lead.status == 'Paid ₹196' %}
+        <button class="btn btn-sm wk-btn ms-auto fw-semibold"
+                style="background:#16a34a;color:#fff;border:none;"
+                onclick="pushToDay1({{ lead.id }}, this)"
+                title="Send to Day 1">
+          <i class="bi bi-check-circle-fill me-1"></i>Ready for Day 1
+        </button>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="wk-empty-state">
+      <i class="bi bi-person-plus fs-2 text-muted mb-2 d-block"></i>
+      <div class="text-muted small">No leads in this stage.</div>
+      <a href="{{ url_for('lead_pool') }}" class="btn btn-sm btn-outline-primary mt-2">Claim Leads</a>
+    </div>
+    {% endif %}
+  </div>
+
+  {# On hold — Retarget / Inactive / 2cc / Level Up / Training (enrollment se alag) #}
+  <div class="wk-kanban-col d-none d-lg-block" id="zone-side" data-col="side">
+    <div class="wk-col-header">
+      <span class="wk-col-title"><i class="bi bi-pause-circle me-2 text-secondary"></i>On hold</span>
+      <span class="badge bg-secondary">{{ (side_pipeline_leads|default([]))|length }}</span>
+    </div>
+    <div class="small text-muted mb-2" style="font-size:0.65rem;">
+      Leads in <strong>Pending</strong> are only on <a href="{{ url_for('old_leads') }}">Archived Leads</a>.
+    </div>
+    {% if side_pipeline_leads|default([]) %}
+    {% for lead in side_pipeline_leads %}
+    <div class="wk-lead-card" id="lead-side-{{ lead.id }}">
+      <div class="d-flex justify-content-between align-items-start mb-1">
+        <div class="fw-semibold text-truncate" style="max-width:160px;">{{ lead.name }}</div>
+        <span class="wk-status-dot wk-status-{{ lead.status|lower|replace(' ','_')|replace('₹','') }}"></span>
+      </div>
+      <div class="mb-1">
+        <span class="badge wk-status-badge-{{ lead.status|lower|replace(' ','_')|replace('₹','') }} rounded-pill small">{{ lead.status }}</span>
+      </div>
+      {{ pipeline_indicator(lead) }}
+      {{ stage_sla_watch(lead) }}
+      <div class="d-flex gap-2 mt-1">
+        <a href="tel:{{ lead.phone }}" class="btn btn-sm btn-outline-primary wk-btn" title="Call"><i class="bi bi-telephone-fill"></i></a>
+        <a href="https://wa.me/{{ lead.phone|wa_phone }}" target="_blank" class="btn btn-sm btn-outline-success wk-btn" title="WhatsApp"><i class="bi bi-whatsapp"></i></a>
+        <a href="{{ url_for('edit_lead', lead_id=lead.id) }}" class="btn btn-sm btn-outline-secondary wk-btn ms-auto"><i class="bi bi-pencil"></i></a>
+      </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="wk-empty-state">
+      <i class="bi bi-check2-circle fs-2 text-muted mb-2 d-block"></i>
+      <div class="text-muted small">No on-hold leads.</div>
+    </div>
+    {% endif %}
+  </div>
+
+</div>{# end kanban grid #}
+
+{# Team member tasks from admin #}
+{% if leader_tasks %}
+<div class="mt-3" id="teamTasksSection">
+  <div class="fw-semibold small mb-2" style="color:var(--ios-red);"><i class="bi bi-list-task me-1"></i>Admin tasks ({{ leader_tasks|length }})</div>
+  {% for t in leader_tasks %}
+  <div class="card border-0 shadow-sm mb-2" id="ltask-tm-{{ t.id }}" style="border-radius:12px;{% if t.priority=='urgent' %}border-left:3px solid var(--ios-red)!important;{% else %}border-left:3px solid var(--ios-blue)!important;{% endif %}{% if t.done_at %}opacity:0.5;{% endif %}">
+    <div class="card-body p-2 px-3 d-flex align-items-start gap-2">
+      <div class="flex-grow-1">
+        {% if t.priority == 'urgent' %}<span class="badge bg-danger me-1" style="font-size:.6rem;">URGENT</span>{% endif %}
+        <span class="fw-semibold" style="font-size:.85rem;{% if t.done_at %}text-decoration:line-through;{% endif %}">{{ t.title }}</span>
+        {% if t.body %}<div class="text-muted small">{{ t.body }}</div>{% endif %}
+        {% if t.due_date %}<div class="text-muted" style="font-size:.65rem;"><i class="bi bi-calendar me-1"></i>Due: {{ t.due_date }}</div>{% endif %}
+      </div>
+      {% if not t.done_at %}
+      <button class="btn btn-sm btn-outline-success flex-shrink-0" onclick="markTaskDone({{ t.id }}, this)" style="font-size:.72rem;padding:4px 10px;">
+        <i class="bi bi-check2"></i> Done
+      </button>
+      {% else %}
+      <span class="badge bg-success flex-shrink-0" style="font-size:.65rem;"><i class="bi bi-check-all"></i> Done</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+

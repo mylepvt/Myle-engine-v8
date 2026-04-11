@@ -12,6 +12,18 @@ Examples (run from ``backend/`` so ``app`` package resolves):
   # Import (set DATABASE_URL / .env like the API)
   python scripts/import_legacy_sqlite.py --legacy-db /path/to/leads.db
 
+  # 100% lossless: same as above also stores every SQLite row in ``legacy_row_snapshots`` (default).
+  # Structured users/leads/wallet/activity + full JSON snapshot (run ``alembic upgrade head`` first).
+
+  # Only archival snapshot (no normalized tables)
+  python scripts/import_legacy_sqlite.py --snapshot-only --legacy-db /path/to/leads.db
+
+  # Normalized import only (skip JSON snapshot)
+  python scripts/import_legacy_sqlite.py --no-full-snapshot --legacy-db /path/to/leads.db
+
+  After users are inserted, ``upline_user_id`` is backfilled from legacy
+  ``upline_id`` / ``upline_username`` / ``upline_name`` / ``upline_fbo_id`` (leader downline).
+
   # Save legacy→new id maps for debugging
   python scripts/import_legacy_sqlite.py --dry-run --legacy-db ./leads.db --write-mapping /tmp/legacy_maps.json
 
@@ -23,11 +35,13 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import base64
 import json
 import os
 import re
 import sqlite3
 import sys
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -45,7 +59,7 @@ else:
     load_dotenv(BACKEND / ".env")
     load_dotenv(BACKEND.parent / ".env")
 
-from sqlalchemy import select, text
+from sqlalchemy import select, text, update
 from sqlalchemy.exc import IntegrityError
 
 from app.constants.roles import ROLES_SET
@@ -54,6 +68,7 @@ from app.core.passwords import hash_password
 from app.db.session import AsyncSessionLocal
 from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
+from app.models.legacy_row_snapshot import LegacyRowSnapshot
 from app.models.user import User
 from app.models.wallet_recharge import WalletRecharge
 
@@ -242,6 +257,92 @@ async def import_users_phase(
 
     print(f"  [users] imported {len(mapping)}, skipped {skipped}")
     return mapping
+
+
+def _legacy_col(row: sqlite3.Row, name: str) -> Any:
+    if name not in row.keys():
+        return None
+    return row[name]
+
+
+def _resolve_legacy_upline_legacy_user_id(
+    row: sqlite3.Row,
+    by_username: dict[str, int],
+    by_fbo: dict[str, int],
+) -> int | None:
+    """Match legacy hierarchy resolution order: upline_id → username → name-as-username → FBO."""
+    uid = _legacy_col(row, "upline_id")
+    if uid is not None:
+        try:
+            x = int(uid)
+            if x > 0:
+                return x
+        except (TypeError, ValueError):
+            pass
+
+    uun = str(_legacy_col(row, "upline_username") or "").strip()
+    if uun:
+        hit = by_username.get(uun.lower())
+        if hit is not None:
+            return hit
+
+    unm = str(_legacy_col(row, "upline_name") or "").strip()
+    if unm:
+        hit = by_username.get(unm.lower())
+        if hit is not None:
+            return hit
+
+    ufbo = str(_legacy_col(row, "upline_fbo_id") or "").strip()
+    if ufbo:
+        nk = _norm_fbo(ufbo, 0)
+        hit = by_fbo.get(nk)
+        if hit is not None:
+            return hit
+
+    return None
+
+
+async def apply_upline_user_ids_phase(
+    legacy: sqlite3.Connection,
+    user_map: dict[int, int],
+) -> None:
+    """After all users exist, set ``User.upline_user_id`` from legacy upline columns."""
+    if not user_map:
+        return
+
+    rows = legacy.execute("SELECT * FROM users ORDER BY id").fetchall()
+    by_username: dict[str, int] = {}
+    by_fbo: dict[str, int] = {}
+    for row in rows:
+        lid = int(row["id"])
+        un = str(row["username"] or "").strip().lower()
+        if un:
+            by_username[un] = lid
+        fbo = _norm_fbo(str(row["fbo_id"] or ""), lid)
+        by_fbo[fbo] = lid
+
+    n_set = 0
+    async with AsyncSessionLocal() as session:
+        for row in rows:
+            lid = int(row["id"])
+            if lid not in user_map:
+                continue
+            plid = _resolve_legacy_upline_legacy_user_id(row, by_username, by_fbo)
+            if plid is None or plid == lid:
+                continue
+            if plid not in user_map:
+                continue
+            new_uid = user_map[lid]
+            parent_new = user_map[plid]
+            await session.execute(
+                update(User)
+                .where(User.id == new_uid)
+                .values(upline_user_id=parent_new),
+            )
+            n_set += 1
+        await session.commit()
+
+    print(f"  [users] upline_user_id links set: {n_set}")
 
 
 async def pick_default_creator_id(user_map: dict[int, int]) -> int:
@@ -476,6 +577,119 @@ async def import_activity_phase(
     return n
 
 
+def _strip_postgres_json_nul(obj: Any) -> Any:
+    """PostgreSQL JSON/JSONB rejects \\u0000 in string values."""
+    if isinstance(obj, str):
+        return obj.replace("\x00", "") if "\x00" in obj else obj
+    if isinstance(obj, dict):
+        return {k: _strip_postgres_json_nul(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_strip_postgres_json_nul(x) for x in obj]
+    return obj
+
+
+def _json_safe(val: Any) -> Any:
+    if val is None:
+        return None
+    if isinstance(val, (str, int, float, bool)):
+        return val
+    if isinstance(val, bytes):
+        return {"__bytes_b64__": base64.b64encode(val).decode("ascii")}
+    if isinstance(val, memoryview):
+        return {"__bytes_b64__": base64.b64encode(val.tobytes()).decode("ascii")}
+    return str(val)
+
+
+def _sqlite_ident(name: str) -> str:
+    if not name or not all(c.isalnum() or c == "_" for c in name):
+        raise ValueError(f"unsafe table name: {name!r}")
+    return '"' + name.replace('"', '""') + '"'
+
+
+def _list_user_tables(conn: sqlite3.Connection) -> list[str]:
+    rows = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' "
+        "AND name NOT LIKE 'sqlite_%' ORDER BY name",
+    ).fetchall()
+    return [r[0] for r in rows]
+
+
+def _stable_row_key(d: dict[str, Any]) -> str:
+    """Prefer SQLite rowid (always on our SELECT); else legacy id column."""
+    if "__sqlite_rowid__" in d and d["__sqlite_rowid__"] is not None:
+        return f"rowid:{d['__sqlite_rowid__']}"
+    if "id" in d and d["id"] is not None:
+        return f"id:{d['id']}"
+    h = hash(json.dumps(d, sort_keys=True, default=str))
+    return f"hash:{h % (10 ** 15)}"
+
+
+async def import_full_snapshot_phase(
+    legacy: sqlite3.Connection,
+    import_run_id: str,
+    sqlite_label: str,
+    dry_run: bool,
+) -> int:
+    """Store every legacy table row in ``legacy_row_snapshots`` (100% lossless archive)."""
+    tables = _list_user_tables(legacy)
+    if dry_run:
+        total = 0
+        for t in tables:
+            try:
+                ident = _sqlite_ident(t)
+            except ValueError:
+                print(f"    skip unsafe name: {t!r}", file=sys.stderr)
+                continue
+            n = int(legacy.execute(f"SELECT COUNT(*) FROM {ident}").fetchone()[0])
+            total += n
+            print(f"    {t}: {n}")
+        print(
+            f"  [snapshot] dry-run: {len(tables)} tables, {total} rows (not written)",
+        )
+        return total
+
+    n_inserted = 0
+    chunk: list[LegacyRowSnapshot] = []
+    chunk_size = 400
+
+    async with AsyncSessionLocal() as session:
+        for t in tables:
+            try:
+                ident = _sqlite_ident(t)
+            except ValueError:
+                print(f"  [snapshot] skip unsafe table name: {t!r}", file=sys.stderr)
+                continue
+            cur = legacy.execute(
+                f"SELECT rowid AS __sqlite_rowid__, * FROM {ident}",
+            )
+            rows = cur.fetchall()
+            for row in rows:
+                d_raw = {k: row[k] for k in row.keys()}
+                payload = _strip_postgres_json_nul(
+                    {k: _json_safe(v) for k, v in d_raw.items()},
+                )
+                rk = _stable_row_key(payload)
+                snap = LegacyRowSnapshot(
+                    import_run_id=import_run_id,
+                    sqlite_label=sqlite_label[:512],
+                    table_name=t[:128],
+                    row_key=rk[:512],
+                    payload=payload,
+                )
+                chunk.append(snap)
+                n_inserted += 1
+                if len(chunk) >= chunk_size:
+                    session.add_all(chunk)
+                    await session.commit()
+                    chunk.clear()
+        if chunk:
+            session.add_all(chunk)
+            await session.commit()
+
+    print(f"  [snapshot] inserted {n_inserted} rows into legacy_row_snapshots")
+    return n_inserted
+
+
 async def _pg_smoke() -> None:
     async with AsyncSessionLocal() as s:
         await s.execute(text("SELECT 1"))
@@ -506,6 +720,16 @@ async def main() -> int:
         action="store_true",
         help="Do not connect to PostgreSQL (for dry-run inspection without API DB)",
     )
+    p.add_argument(
+        "--no-full-snapshot",
+        action="store_true",
+        help="Skip lossless JSON snapshot into legacy_row_snapshots (structured import only)",
+    )
+    p.add_argument(
+        "--snapshot-only",
+        action="store_true",
+        help="Only run 100%% snapshot into legacy_row_snapshots (no users/leads/wallet/activity)",
+    )
     args = p.parse_args()
 
     db_path = (args.legacy_db or "").strip()
@@ -531,6 +755,22 @@ async def main() -> int:
 
     legacy = sqlite3.connect(str(lp))
     legacy.row_factory = sqlite3.Row
+    # Legacy DB may store non–UTF-8 bytes in TEXT columns (e.g. truncated base64 in display_picture).
+    def _legacy_sqlite_text_factory(raw):  # bytes from sqlite3 TEXT/BLOB
+        if isinstance(raw, memoryview):
+            raw = raw.tobytes()
+        elif isinstance(raw, bytearray):
+            raw = bytes(raw)
+        return bytes(raw).decode("utf-8", errors="replace")
+
+    legacy.text_factory = _legacy_sqlite_text_factory
+
+    if args.snapshot_only and args.sqlite_only:
+        print("--snapshot-only requires PostgreSQL (omit --sqlite-only)", file=sys.stderr)
+        return 1
+
+    import_run_id = str(uuid.uuid4())
+    sqlite_label = lp.name
 
     if not args.sqlite_only:
         try:
@@ -543,20 +783,47 @@ async def main() -> int:
     lead_map: dict[int, int] = {}
 
     try:
-        user_map = await import_users_phase(legacy, dry_run, default_pw_hash)
-        if args.users_only:
-            pass
-        elif not dry_run and not user_map:
-            print("No users imported; skipping leads.", file=sys.stderr)
-        else:
+        if args.snapshot_only:
             if dry_run:
-                await import_leads_phase(legacy, user_map, True)
+                await import_full_snapshot_phase(
+                    legacy, import_run_id, sqlite_label, True,
+                )
             else:
-                lead_map = await import_leads_phase(legacy, user_map, False)
-                if not args.skip_wallet:
-                    await import_wallet_phase(legacy, user_map, False)
-                if not args.skip_activity:
-                    await import_activity_phase(legacy, user_map, False)
+                n_snap = await import_full_snapshot_phase(
+                    legacy, import_run_id, sqlite_label, False,
+                )
+                print(f"import_run_id={import_run_id} (save for audit; rows={n_snap})")
+        else:
+            user_map = await import_users_phase(legacy, dry_run, default_pw_hash)
+            if not dry_run and user_map:
+                await apply_upline_user_ids_phase(legacy, user_map)
+            if args.users_only:
+                pass
+            elif not dry_run and not user_map:
+                print("No users imported; skipping leads.", file=sys.stderr)
+            else:
+                if dry_run:
+                    await import_leads_phase(legacy, user_map, True)
+                else:
+                    lead_map = await import_leads_phase(legacy, user_map, False)
+                    if not args.skip_wallet:
+                        await import_wallet_phase(legacy, user_map, False)
+                    if not args.skip_activity:
+                        await import_activity_phase(legacy, user_map, False)
+
+            if (
+                not args.no_full_snapshot
+                and not args.sqlite_only
+            ):
+                print(f"Full snapshot import_run_id={import_run_id}")
+                if dry_run:
+                    await import_full_snapshot_phase(
+                        legacy, import_run_id, sqlite_label, True,
+                    )
+                else:
+                    await import_full_snapshot_phase(
+                        legacy, import_run_id, sqlite_label, False,
+                    )
     finally:
         legacy.close()
 
@@ -564,6 +831,7 @@ async def main() -> int:
         out = {
             "users": {str(k): v for k, v in user_map.items()},
             "leads": {str(k): v for k, v in lead_map.items()},
+            "import_run_id": import_run_id,
         }
         Path(args.write_mapping).write_text(json.dumps(out, indent=2), encoding="utf-8")
         print(f"Wrote mapping: {args.write_mapping}")

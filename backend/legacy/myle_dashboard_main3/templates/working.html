@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Working Section — Myle Community{% endblock %}
+{% block page_title %}Working Section{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/working.css') }}?v=20260409sla">
+{% endblock %}
+
+{% block content %}
+
+{% if is_admin %}
+  {% include 'working_admin.html' %}
+{% elif is_leader %}
+  {% include 'working_leader.html' %}
+{% else %}
+  {% include 'working_member.html' %}
+{% endif %}
+
+{% include 'working_shared.html' %}
+
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Leaderboard Summaries – Myle Community{% endblock %}
+{% block page_title %}Daily Leaderboard Summaries{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <p class="text-muted mb-0">Auto-generated at 9 PM IST each day. Last 30 days shown.</p>
+  <form method="POST" action="{{ url_for('admin_run_leaderboard_summary') }}">
+    <button type="submit" class="btn btn-sm btn-primary">
+      ▶ Run Now
+    </button>
+  </form>
+</div>
+
+{% if not summaries %}
+<div class="alert alert-info">No summaries yet. Click <strong>Run Now</strong> to generate today's summary.</div>
+{% endif %}
+
+{% for s in summaries %}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-white d-flex justify-content-between align-items-center py-2 px-3">
+    <strong>{{ s.date }}</strong>
+    <span class="text-muted small">Generated {{ s.created_at }}</span>
+  </div>
+  <div class="card-body px-3 py-3">
+
+    <!-- Tags row -->
+    <div class="d-flex flex-wrap gap-2 mb-3">
+      {% for u in s.top3 %}
+      <span class="badge text-bg-success">🏆 {{ u.username }} — {{ u.today_pts }} pts · Top Performer</span>
+      {% endfor %}
+      {% for u in s.bottom5 %}
+      {% if u.username not in s.top3|map(attribute='username')|list %}
+      <span class="badge text-bg-warning text-dark">⚠️ {{ u.username }} — {{ u.today_pts }} pts · Needs Improvement</span>
+      {% endif %}
+      {% endfor %}
+    </div>
+
+    <!-- WhatsApp message -->
+    <pre class="bg-light border rounded p-3 mb-0" style="white-space:pre-wrap;font-size:.85rem;font-family:inherit;">{{ s.message }}</pre>
+
+  </div>
+</div>
+{% endfor %}
+
+{% endblock %}

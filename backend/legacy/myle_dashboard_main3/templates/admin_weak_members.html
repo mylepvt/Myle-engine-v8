@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Weak members · Admin{% endblock %}
+{% block page_title %}Weak members{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <a href="{{ url_for('admin_dashboard') }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Back
+  </a>
+</div>
+<p class="small text-muted mb-3">
+  <strong>Lowest enrollment conversion first</strong> (₹196 path / active assigned leads). Follow-up debt included.
+</p>
+<div class="table-responsive card border-0 shadow-sm">
+  <table class="table table-sm align-middle mb-0">
+    <thead class="table-light">
+      <tr>
+        <th>Member</th>
+        <th>Role</th>
+        <th class="text-end">Leads</th>
+        <th class="text-end">Enrollments</th>
+        <th class="text-end">Conv %</th>
+        <th class="text-end">F/U pending</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td class="fw-semibold">{{ r.username }}</td>
+        <td>{{ r.role }}</td>
+        <td class="text-end">{{ r.total_leads }}</td>
+        <td class="text-end">{{ r.enrollments }}</td>
+        <td class="text-end {% if r.conv_pct < 15 %}text-danger fw-bold{% elif r.conv_pct < 35 %}text-warning{% endif %}">{{ r.conv_pct }}%</td>
+        <td class="text-end {% if r.fu_pending > 0 %}text-warning fw-semibold{% endif %}">{{ r.fu_pending }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="text-center text-muted py-4">No members.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

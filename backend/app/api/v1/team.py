@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from datetime import date, datetime
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
@@ -21,7 +22,10 @@ from app.schemas.team import (
     TeamMemberListResponse,
     TeamMemberPublic,
     TeamMyTeamResponse,
+    TeamReportsLiveSummary,
+    TeamReportsResponse,
 )
+from app.services.team_reports_metrics import IST, compute_live_summary
 
 router = APIRouter()
 
@@ -137,13 +141,39 @@ async def list_enrollment_requests(
     return TeamEnrollmentListResponse(items=[], total=0, limit=limit, offset=offset)
 
 
-@router.get("/reports", response_model=SystemStubResponse)
+def _parse_report_date_param(raw: Optional[str]) -> date:
+    if raw is None or not str(raw).strip():
+        return datetime.now(IST).date()
+    s = str(raw).strip()[:10]
+    try:
+        return date.fromisoformat(s)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Invalid date; use YYYY-MM-DD",
+        ) from e
+
+
+@router.get("/reports", response_model=TeamReportsResponse)
 async def team_reports(
     user: Annotated[AuthUser, Depends(require_auth_user)],
-) -> SystemStubResponse:
+    session: Annotated[AsyncSession, Depends(get_db)],
+    date: Optional[str] = Query(
+        default=None,
+        description="Calendar day YYYY-MM-DD (Asia/Kolkata); default today",
+    ),
+) -> TeamReportsResponse:
+    """Admin — live pipeline metrics (legacy team reports top row)."""
     _require_admin(user)
-    return SystemStubResponse(
-        note="Team reports will aggregate server-side metrics when definitions exist.",
+    d = _parse_report_date_param(date)
+    live = await compute_live_summary(session, d)
+    return TeamReportsResponse(
+        date=d.isoformat(),
+        live_summary=TeamReportsLiveSummary(**live),
+        note=(
+            "Per-member daily report submissions (legacy daily_reports) are not in v2 yet; "
+            "tiles use pool claims, call events, payment proof timestamps, and active pipeline counts."
+        ),
     )
 
 

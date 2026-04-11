@@ -1,0 +1,82 @@
+{# ═══════════════════════════════════════════════════════════════
+   working_shared.html — Shared elements for Working Section
+   Confetti container, Batch popup HTML, and all JavaScript
+   Included by working.html for all user roles
+   ═══════════════════════════════════════════════════════════════ #}
+
+<!-- Confetti container -->
+<div id="confettiContainer" style="position:fixed;top:0;left:0;width:100%;pointer-events:none;z-index:9999;"></div>
+
+<!-- Working section config: Jinja2 values injected here so working.js stays cacheable -->
+<script>
+window._workingCfg = {
+  csrf: '{{ csrf_token }}',
+  enrollmentWatchUrl: '{{ enrollment_watch_url or "" }}',
+  batchWatchUrls: {
+    d1_morning:   { v1: "{{ batch_watch_urls.d1_morning.v1|default('') }}", v2: "{{ batch_watch_urls.d1_morning.v2|default('') }}" },
+    d1_afternoon: { v1: "{{ batch_watch_urls.d1_afternoon.v1|default('') }}", v2: "{{ batch_watch_urls.d1_afternoon.v2|default('') }}" },
+    d1_evening:   { v1: "{{ batch_watch_urls.d1_evening.v1|default('') }}", v2: "{{ batch_watch_urls.d1_evening.v2|default('') }}" },
+    d2_morning:   { v1: "{{ batch_watch_urls.d2_morning.v1|default('') }}", v2: "{{ batch_watch_urls.d2_morning.v2|default('') }}" },
+    d2_afternoon: { v1: "{{ batch_watch_urls.d2_afternoon.v1|default('') }}", v2: "{{ batch_watch_urls.d2_afternoon.v2|default('') }}" },
+    d2_evening:   { v1: "{{ batch_watch_urls.d2_evening.v1|default('') }}", v2: "{{ batch_watch_urls.d2_evening.v2|default('') }}" },
+  }
+};
+</script>
+<script src="{{ url_for('static', filename='js/working.js') }}?v=20260410lwcard" defer></script>
+<script>
+(function () {
+  var ms = {{ workboard_poll_ms|default(0)|int }};
+  if (!ms) return;
+  function safeToReload() {
+    if (document.visibilityState !== 'visible') return false;
+    var a = document.activeElement;
+    if (a && ['INPUT', 'TEXTAREA', 'SELECT'].includes(a.tagName)) return false;
+    var bp = document.getElementById('batchPopup');
+    if (bp && (bp.style.display === 'flex' || bp.style.display === 'block')) return false;
+    return true;
+  }
+  setInterval(function () {
+    if (safeToReload()) window.location.reload();
+  }, ms);
+})();
+</script>
+
+<!-- Batch Popup HTML -->
+<div id="batchPopup" class="wk-batch-popup-overlay">
+
+  <div class="wk-batch-popup-panel">
+
+    <!-- Header -->
+    <div class="wk-batch-popup-header">
+      <div>
+        <div id="popupBatchName" class="wk-batch-popup-title"></div>
+        <div id="popupLeadName" class="wk-batch-popup-subtitle"></div>
+      </div>
+      <button type="button" class="wk-batch-popup-close" onclick="closeBatchPopup()" aria-label="Close">✕</button>
+    </div>
+
+    <!-- Video links preview -->
+    <div id="popupVideoLinks" class="wk-batch-popup-video"></div>
+
+    <!-- Buttons (non-sticky: iOS Safari can clip sticky inside overflow sheets) -->
+    <div class="wk-batch-popup-footer">
+    <button type="button" id="popupSendBtn"
+      onclick="sendAndMark()"
+      class="wk-batch-popup-wa">
+      📤 Send on WhatsApp + Mark done
+    </button>
+
+    <button type="button" id="popupAlreadySentBtn"
+      onclick="alreadySentMark()"
+      class="wk-batch-popup-mark">
+      ✅ Already sent — mark only
+    </button>
+
+    <button type="button" onclick="closeBatchPopup()"
+      class="wk-batch-popup-cancel">
+      Cancel
+    </button>
+    </div>
+  </div>
+</div>
+

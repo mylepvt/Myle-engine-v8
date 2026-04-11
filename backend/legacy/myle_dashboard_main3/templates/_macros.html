@@ -1,0 +1,165 @@
+{# ═══════════════════════════════════════════════════════════════
+   _macros.html — Shared Jinja2 macros for Working Section
+   Usage: {% from '_macros.html' import pipeline_indicator, heat_bar, batch_progress %}
+   ═══════════════════════════════════════════════════════════════ #}
+
+{# ── Pipeline indicator (stage dots + connectors) ─────────────── #}
+{% macro pipeline_indicator(lead) %}
+{% set stages = [('prospecting','P'),('enrolled','E'),('day1','1'),('day2','2'),('day3','3'),('plan_2cc','2c'),('seat_hold','S'),('pending','PA'),('level_up','LU'),('closing','C'),('training','T')] %}
+{% set stage_order = ['prospecting','enrolled','day1','day2','day3','plan_2cc','seat_hold','pending','level_up','closing','training'] %}
+{% set current_idx = stage_order.index(lead.pipeline_stage) if lead.pipeline_stage in stage_order else 0 %}
+<div class="pipeline-indicator mb-2">
+  <div class="d-flex align-items-center" style="gap:3px;">
+    {% for stage_id, stage_short in stages %}
+    {% set s_idx = loop.index0 %}
+    <div class="pipeline-step
+      {% if s_idx == current_idx %}active
+      {% elif s_idx < current_idx %}completed
+      {% endif %}"
+      title="{{ stage_id }}">{{ stage_short }}</div>
+    {% if not loop.last %}
+    <div class="pipeline-connector {% if s_idx < current_idx %}completed{% endif %}"></div>
+    {% endif %}
+    {% endfor %}
+  </div>
+  {% if lead.current_owner %}
+  <div class="mt-1" style="font-size:0.65rem;color:var(--label-3);">With: <span style="font-weight:700;color:var(--ios-indigo);">{{ lead.current_owner }}</span></div>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{# ── Heat bar ─────────────────────────────────────────────────── #}
+{% macro heat_bar(lead) %}
+{% if lead.heat is defined %}
+<div class="heat-bar-wrap mt-1 mb-1">
+  <div class="d-flex justify-content-between mb-1">
+    <span class="wk-heat-label" style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:var(--label-3);">Heat</span>
+    <span style="font-size:0.6rem;font-weight:700;
+      color:{% if lead.heat >= 75 %}#dc2626{% elif lead.heat >= 40 %}#d97706{% else %}#9ca3af{% endif %}">
+      {% if lead.heat >= 75 %}🔥{% elif lead.heat >= 40 %}🌤{% else %}❄{% endif %} {{ lead.heat }}
+    </span>
+  </div>
+  <div class="progress" style="height:4px;">
+    <div class="progress-bar {% if lead.heat >= 75 %}bg-danger{% elif lead.heat >= 40 %}bg-warning{% else %}bg-secondary{% endif %}"
+         style="width:{{ lead.heat }}%;border-radius:99px;"></div>
+  </div>
+</div>
+{% if lead.next_action %}
+<span class="next-action-badge {{ lead.next_action_type or 'followup' }}" style="font-size:0.67rem;padding:3px 8px;margin-bottom:4px;display:inline-flex;">
+  {% if lead.next_action_type == 'urgent' %}🚨{% elif lead.next_action_type == 'today' %}⏰{% else %}📞{% endif %}
+  {{ lead.next_action }}
+</span>
+{% endif %}
+{% endif %}
+{% endmacro %}
+
+{# ── Day 1 batch progress bar ─────────────────────────────────── #}
+{% macro d1_batch_progress(lead) %}
+{% set batches_done = lead.d1_morning + lead.d1_afternoon + lead.d1_evening %}
+<div class="wk-batch-progress mb-2">
+  <div class="wk-batch-bar" style="width:{{ (batches_done/3*100)|int }}%"></div>
+</div>
+<div class="small text-muted mb-2 wk-batch-count">{{ batches_done }}/3 batches done</div>
+{% endmacro %}
+
+{# ── Day 1 batch toggle buttons ───────────────────────────────── #}
+{% macro d1_batch_buttons(lead, interactive=true) %}
+<div class="d-flex gap-2 mb-2 align-items-center">
+  {% if interactive %}
+  <button class="wk-batch-btn {% if lead.d1_morning %}wk-batch-done{% endif %}"
+          data-lead-id="{{ lead.id }}" data-batch="d1_morning" title="Morning batch"
+          onclick="openBatchPopup('{{ lead.id }}', 'd1_morning', '{{ lead.phone }}', '{{ lead.name }}', this)">
+    <i class="bi bi-sunrise-fill"></i><span class="d-none d-sm-inline ms-1">M</span>
+  </button>
+  <button class="wk-batch-btn {% if lead.d1_afternoon %}wk-batch-done{% endif %}"
+          data-lead-id="{{ lead.id }}" data-batch="d1_afternoon" title="Afternoon batch"
+          onclick="openBatchPopup('{{ lead.id }}', 'd1_afternoon', '{{ lead.phone }}', '{{ lead.name }}', this)">
+    <i class="bi bi-sun-fill"></i><span class="d-none d-sm-inline ms-1">A</span>
+  </button>
+  <button class="wk-batch-btn {% if lead.d1_evening %}wk-batch-done{% endif %}"
+          data-lead-id="{{ lead.id }}" data-batch="d1_evening" title="Evening batch"
+          onclick="openBatchPopup('{{ lead.id }}', 'd1_evening', '{{ lead.phone }}', '{{ lead.name }}', this)">
+    <i class="bi bi-moon-fill"></i><span class="d-none d-sm-inline ms-1">E</span>
+  </button>
+  {% else %}
+  <span class="wk-batch-btn {% if lead.d1_morning %}wk-batch-done{% endif %}" style="pointer-events:none;opacity:0.7;" title="Morning">
+    <i class="bi bi-sunrise-fill"></i><span class="d-none d-sm-inline ms-1">M</span>
+  </span>
+  <span class="wk-batch-btn {% if lead.d1_afternoon %}wk-batch-done{% endif %}" style="pointer-events:none;opacity:0.7;" title="Afternoon">
+    <i class="bi bi-sun-fill"></i><span class="d-none d-sm-inline ms-1">A</span>
+  </span>
+  <span class="wk-batch-btn {% if lead.d1_evening %}wk-batch-done{% endif %}" style="pointer-events:none;opacity:0.7;" title="Evening">
+    <i class="bi bi-moon-fill"></i><span class="d-none d-sm-inline ms-1">E</span>
+  </span>
+  <span class="text-muted ms-1" style="font-size:0.68rem;">Leader sends Day 1 batches</span>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{# ── 24h SLA watches (IST): hard = auto-Inactive stages (pipeline_entered_at → updated_at → claimed_at → created_at); soft = all other working statuses (same anchor chain; resets when team/leader updates). ── #}
+{% macro stage_sla_watch(lead) %}
+{% set _st = (lead.status | default('') ) | trim %}
+{% if not _st %}{% else %}
+{% set _p = (lead.pipeline_entered_at | default('') ) | trim %}
+{% set _u = (lead.updated_at | default('') ) | trim %}
+{% set _c = (lead.claimed_at | default('') ) | trim %}
+{% set _cr = (lead.created_at | default('') ) | trim %}
+{% set _anchor = _u if _u else (_c if _c else _cr) %}
+{% set _hard_entered = _p if _p else _anchor %}
+{% if pipeline_auto_expire_statuses is defined and _st in pipeline_auto_expire_statuses %}
+{% if _hard_entered %}
+<div class="wk-sla-watch wk-sla-watch--tier-safe" data-sla-start="{{ _hard_entered }}" title="Time remaining until 24h on this stage (auto-Inactive if not moved). Seconds + colours. Resets when status advances.">
+  <span class="wk-sla-watch-face" aria-hidden="true">
+    <span class="wk-sla-face-ring"></span>
+    <span class="wk-sla-hand"></span>
+    <span class="wk-sla-hub"></span>
+  </span>
+  <span class="wk-sla-watch-text"><span class="wk-sla-watch-label">24h</span><span class="wk-sla-watch-sep" aria-hidden="true"></span><span class="wk-sla-remain">…</span></span>
+</div>
+{% endif %}
+{% else %}
+{% set _excl = sla_soft_watch_exclude if sla_soft_watch_exclude is defined else ('Lost','Retarget','Inactive','Converted') %}
+{% if _st not in _excl and _anchor %}
+<div class="wk-sla-watch wk-sla-watch--soft wk-sla-watch--tier-safe" data-sla-start="{{ _anchor }}" data-sla-soft="1" title="24h window from last update (or claim / created time). Resets when you change status. UI reminder; pipeline stages use the hard 24h rule above.">
+  <span class="wk-sla-watch-face" aria-hidden="true">
+    <span class="wk-sla-face-ring"></span>
+    <span class="wk-sla-hand"></span>
+    <span class="wk-sla-hub"></span>
+  </span>
+  <span class="wk-sla-watch-text"><span class="wk-sla-watch-label">24h</span><span class="wk-sla-watch-sep" aria-hidden="true"></span><span class="wk-sla-remain">…</span></span>
+</div>
+{% endif %}
+{% endif %}
+{% endif %}
+{% endmacro %}
+
+{# ── Admin task card ──────────────────────────────────────────── #}
+{% macro admin_task_card(t, deletable=false) %}
+<div class="card border-0 shadow-sm mb-2 {% if deletable %}admin-task-card{% endif %}"
+     id="{% if deletable %}atask-{{ t.id }}{% else %}ltask-{{ t.id }}{% endif %}"
+     style="border-radius:12px;{% if t.priority=='urgent' %}border-left:3px solid var(--ios-red)!important;{% else %}border-left:3px solid var(--ios-blue)!important;{% endif %}{% if t.done_at is defined and t.done_at %}opacity:0.5;{% endif %}">
+  <div class="card-body p-2 px-3 d-flex align-items-start gap-2">
+    <div class="flex-grow-1">
+      {% if t.priority == 'urgent' %}<span class="badge bg-danger me-1" style="font-size:.6rem;">URGENT</span>{% endif %}
+      <span class="fw-semibold" style="font-size:.85rem;{% if t.done_at is defined and t.done_at %}text-decoration:line-through;{% endif %}">{{ t.title }}</span>
+      {% if t.body %}<div class="text-muted small">{{ t.body }}</div>{% endif %}
+      {% if t.due_date %}<div class="text-muted" style="font-size:.65rem;"><i class="bi bi-calendar me-1"></i>Due: {{ t.due_date }}</div>{% endif %}
+      {% if deletable and t.done_by_list %}
+      <div class="d-flex gap-2 flex-wrap mt-1">
+        <span class="text-muted" style="font-size:.65rem;"><i class="bi bi-people me-1"></i>{{ t.target }}</span>
+        <span class="text-success" style="font-size:.65rem;"><i class="bi bi-check-all me-1"></i>Done: {{ t.done_by_list }}</span>
+      </div>
+      {% endif %}
+    </div>
+    {% if deletable %}
+    <button class="btn btn-outline-danger btn-sm ms-2" onclick="adminDeleteTask({{ t.id }})" style="flex-shrink:0;"><i class="bi bi-trash"></i></button>
+    {% elif not t.done_at %}
+    <button class="btn btn-sm btn-outline-success flex-shrink-0" onclick="markTaskDone({{ t.id }}, this)" style="font-size:.72rem;padding:4px 10px;">
+      <i class="bi bi-check2"></i> Done
+    </button>
+    {% else %}
+    <span class="badge bg-success flex-shrink-0" style="font-size:.65rem;"><i class="bi bi-check-all"></i> Done</span>
+    {% endif %}
+  </div>
+</div>
+{% endmacro %}

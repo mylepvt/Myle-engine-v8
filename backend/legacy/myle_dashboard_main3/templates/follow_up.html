@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}Follow-up Queue – Myle Community{% endblock %}
+{% block page_title %}Follow-up Queue{% endblock %}
+
+{% block content %}
+<!-- Summary badges -->
+<div class="d-flex gap-2 mb-3 flex-wrap">
+  <span class="badge bg-primary fs-6 px-3 py-2">
+    <i class="bi bi-calendar-check me-1"></i>Today: {{ today_count }}
+  </span>
+  {% if overdue_count %}
+  <span class="badge bg-danger fs-6 px-3 py-2">
+    <i class="bi bi-exclamation-circle me-1"></i>Overdue: {{ overdue_count }}
+  </span>
+  {% endif %}
+  <span class="badge bg-secondary fs-6 px-3 py-2 ms-auto">
+    Total: {{ leads|length }}
+  </span>
+</div>
+
+{% for lead in leads %}
+{% set is_today = lead.follow_up_date and lead.follow_up_date[:10] == now_date %}
+{% set is_overdue = lead.follow_up_date and lead.follow_up_date[:10] < now_date %}
+<div class="card border-0 shadow-sm mb-2 {% if is_overdue %}border-start border-danger border-3{% elif is_today %}border-start border-primary border-3{% endif %}">
+  <div class="card-body py-2 px-3">
+    <div class="d-flex align-items-start gap-2">
+      <div class="flex-grow-1 min-w-0">
+        <div class="fw-semibold text-truncate">{{ lead.name }}</div>
+        <div class="text-muted small">
+          <span class="badge badge-status-{{ lead.status|replace(' ','') }} me-1" style="font-size:.6rem;">{{ lead.status }}</span>
+          {% if lead.call_result %}
+            <span class="text-muted" style="font-size:.72rem;">{{ lead.call_result }}</span>
+          {% endif %}
+        </div>
+        {% if lead.follow_up_date %}
+        <div class="small {% if is_overdue %}text-danger{% else %}text-muted{% endif %}" style="font-size:.72rem;">
+          <i class="bi bi-calendar2 me-1"></i>{{ lead.follow_up_date[:10] }}
+          {% if lead.follow_up_time %}<span class="ms-1">{{ lead.follow_up_time }}</span>{% endif %}
+          {% if is_overdue %}<span class="badge bg-danger ms-1" style="font-size:.55rem;">OVERDUE</span>{% elif is_today and lead.follow_up_time and (lead.follow_up_time < now_time) %}<span class="badge bg-warning text-dark ms-1" style="font-size:.55rem;">OVERDUE</span>{% endif %}
+        </div>
+        {% endif %}
+        {% if lead.last_contacted %}
+        <div class="text-muted" style="font-size:.68rem;">
+          <i class="bi bi-telephone me-1"></i>Last: {{ lead.last_contacted[:16] }}
+          {% if lead.contact_count %} · {{ lead.contact_count }}x{% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Reminder time picker (IST — server timezone so no user/server mismatch) -->
+        <div class="d-flex align-items-center gap-1 mt-1">
+          <i class="bi bi-alarm text-primary" style="font-size:.75rem;"></i>
+          <input type="time" class="form-control form-control-sm reminder-time py-0"
+                 data-id="{{ lead.id }}"
+                 data-name="{{ lead.name | e }}"
+                 data-date="{{ lead.follow_up_date[:10] if lead.follow_up_date else now_date }}"
+                 value="{{ lead.follow_up_time or '' }}"
+                 style="width:110px;font-size:.72rem;height:24px;">
+          <span class="text-muted" style="font-size:.65rem;">Reminder (IST)</span>
+        </div>
+      </div>
+      <!-- Actions -->
+      <div class="d-flex gap-1 flex-shrink-0 mt-1">
+        <a href="tel:{{ lead.phone }}" class="btn btn-sm btn-outline-primary py-1 px-2">
+          <i class="bi bi-telephone-fill"></i>
+        </a>
+        <a href="javascript:void(0)" onclick="openWABusiness('{{ lead.phone|wa_phone }}')"
+           class="btn btn-sm py-1 px-2" style="background:#25D366;color:#fff;">
+          <i class="bi bi-whatsapp"></i>
+        </a>
+        <button class="btn btn-sm btn-outline-secondary py-1 px-2 called-btn"
+                data-id="{{ lead.id }}"
+                data-called="0"
+                title="Mark Called">
+          <i class="bi bi-check2"></i>
+        </button>
+        <a href="{{ url_for('edit_lead', lead_id=lead.id) }}" class="btn btn-sm btn-outline-dark py-1 px-2">
+          <i class="bi bi-pencil"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="empty-state py-5">
+  <i class="bi bi-check-circle-fill text-success" style="font-size:3rem;"></i>
+  <p class="mt-2">All caught up! No follow-ups pending.</p>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── Mark Called toggle ───────────────────────────────── */
+document.querySelectorAll('.called-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const id     = this.dataset.id;
+    const called = this.dataset.called === '1';
+
+    if (called) {
+      /* Toggle OFF — just visual reset, no backend call */
+      this.dataset.called = '0';
+      this.innerHTML = '<i class="bi bi-check2"></i>';
+      this.classList.replace('btn-success', 'btn-outline-secondary');
+      return;
+    }
+
+    /* Mark as called → backend */
+    fetch('/leads/' + id + '/mark-called', {
+      method: 'POST',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    }).then(r => r.json()).then(d => {
+      if (d.ok) {
+        this.dataset.called = '1';
+        this.innerHTML = '<i class="bi bi-check2-all"></i>';
+        this.classList.replace('btn-outline-secondary', 'btn-success');
+        showToast('Marked as called', 'success');
+      }
+    });
+  });
+});
+
+/* ── Reminder time picker ─────────────────────────────── */
+const _followUpCsrf = '{{ session.get("_csrf_token", "") }}';
+document.querySelectorAll('.reminder-time').forEach(inp => {
+  inp.addEventListener('change', function() {
+    const id = (this.dataset.id || '').trim();
+    const reminderTime = (this.value || '').trim();
+    if (!id) return;
+
+    fetch('/leads/' + id + '/follow-up-time', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': _followUpCsrf },
+      body: JSON.stringify({ reminder_time: reminderTime, time: reminderTime })
+    }).then(r => r.json()).then(d => {
+      if (d.ok) {
+        showToast(reminderTime ? 'Reminder set for ' + reminderTime : 'Reminder cleared', 'success');
+        if (reminderTime) _scheduleReminder(this);
+      } else {
+        showToast(d.error || 'Could not set reminder', 'danger');
+      }
+    }).catch(() => showToast('Network error', 'danger'));
+  });
+});
+
+/* ── Schedule client-side notification ───────────────── */
+function _scheduleReminder(inp) {
+  const time = inp.value;
+  const date = inp.dataset.date;   /* YYYY-MM-DD */
+  const name = inp.dataset.name;
+  if (!time || !date) return;
+
+  const fireAt = new Date(date + 'T' + time + ':00');
+  const msUntil = fireAt - Date.now();
+  if (msUntil <= 0) return;  /* already past */
+
+  setTimeout(() => {
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.ready.then(reg => {
+        reg.showNotification('Follow-up Reminder', {
+          body:  'Time to follow up with ' + name,
+          icon:  '/static/icon-192.png',
+          badge: '/static/icon-192.png',
+          data:  { url: '/follow-up' },
+          tag:   'followup-' + inp.dataset.id,
+          renotify: true
+        });
+      });
+    } else if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('Follow-up Reminder', {
+        body: 'Time to follow up with ' + name,
+        icon: '/static/icon-192.png'
+      });
+    }
+  }, msUntil);
+}
+
+/* Schedule all reminders on page load for today's leads */
+(function() {
+  const today = "{{ now_date }}";
+  document.querySelectorAll('.reminder-time').forEach(inp => {
+    if (inp.value && inp.dataset.date === today) {
+      _scheduleReminder(inp);
+    }
+  });
+})();
+</script>
+{% endblock %}

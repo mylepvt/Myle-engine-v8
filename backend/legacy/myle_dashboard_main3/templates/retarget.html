@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+{% block title %}Retarget List – Myle Community{% endblock %}
+{% block page_title %}Retarget List{% endblock %}
+
+{% block content %}
+<style>
+  .retarget-wrap { max-width: 1320px; margin: 0 auto; }
+  .retarget-hero {
+    border-radius: 14px;
+    padding: 1.15rem 1.25rem;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 55%, #334155 100%);
+    color: #f8fafc;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    box-shadow: 0 12px 40px -12px rgba(15, 23, 42, 0.45);
+  }
+  .retarget-hero h1, .retarget-hero .h5 { color: #f8fafc; letter-spacing: -0.02em; }
+  .retarget-hero .sub { color: #94a3b8; font-size: 0.875rem; line-height: 1.45; max-width: 42rem; }
+  .retarget-count {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fecaca;
+    border: 1px solid rgba(248, 113, 113, 0.35);
+    font-weight: 600;
+    font-size: 0.75rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+  }
+  .retarget-filters {
+    display: flex; gap: 0.45rem; overflow-x: auto;
+    padding: 0.35rem 0.15rem 0.6rem; flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .retarget-filters::-webkit-scrollbar { display: none; }
+  .retarget-filters .btn {
+    border-radius: 999px; font-size: 0.8rem; font-weight: 500;
+    padding: 0.35rem 0.85rem; white-space: nowrap; flex-shrink: 0;
+  }
+  .retarget-card {
+    border-radius: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    overflow: hidden;
+    box-shadow: 0 4px 24px -8px rgba(15, 23, 42, 0.12);
+  }
+  .retarget-card .table { margin-bottom: 0; font-size: 0.875rem; }
+  .retarget-card thead th {
+    font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em;
+    color: #64748b; font-weight: 600; border-bottom-width: 1px;
+    padding-top: 0.85rem; padding-bottom: 0.85rem; vertical-align: middle;
+    background: #f8fafc;
+  }
+  .retarget-card tbody tr:hover { background: #f1f5f9; }
+  .retarget-card tbody td { vertical-align: middle; padding-top: 0.65rem; padding-bottom: 0.65rem; }
+  .retarget-actions .form-select { border-radius: 8px; border-color: #cbd5e1; }
+  .retarget-actions .btn-primary {
+    border-radius: 8px; font-weight: 600; font-size: 0.8rem;
+    padding: 0.25rem 0.6rem;
+  }
+  .retarget-actions .btn-outline-secondary {
+    border-radius: 8px; font-size: 0.75rem; margin-top: 0.35rem;
+  }
+  [data-theme="dark"] .retarget-card thead th { background: #1e293b; color: #94a3b8; }
+  [data-theme="dark"] .retarget-card tbody tr:hover { background: #334155; }
+</style>
+
+<div class="retarget-wrap">
+<section class="retarget-hero mb-3">
+  <div class="d-flex flex-wrap align-items-start justify-content-between gap-2">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <h5 class="fw-bold mb-0"><i class="bi bi-bullseye me-2" style="color:#fca5a5;"></i>Retarget workspace</h5>
+        {% if leads %}<span class="retarget-count">{{ leads|length }} open</span>{% endif %}
+      </div>
+      {% if user_role == 'team' %}
+      <p class="sub mb-0">Leads your leader shared for callbacks. Update status (up to ₹196 funnel), call tags, and notes — or open full edit.</p>
+      {% else %}
+      <p class="sub mb-0">Callback and no-answer leads across your network. Filter by tag, bulk-assign to a team member, or update status in-line.</p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% if leads %}
+<!-- Filters -->
+<div class="retarget-filters mb-3">
+  <a href="{{ url_for('retarget') }}" class="btn flex-shrink-0 {% if not request.args.get('tag') %}btn-dark{% else %}btn-outline-secondary{% endif %}">All</a>
+  <a href="{{ url_for('retarget', tag='Retarget') }}" class="btn flex-shrink-0 {% if request.args.get('tag')=='Retarget' %}btn-dark{% else %}btn-outline-secondary{% endif %}">
+    <i class="bi bi-arrow-repeat me-1"></i>Retarget
+  </a>
+  <a href="{{ url_for('retarget', tag='No Answer') }}" class="btn flex-shrink-0 {% if request.args.get('tag')=='No Answer' %}btn-dark{% else %}btn-outline-secondary{% endif %}">
+    <i class="bi bi-telephone-x me-1"></i>No Answer
+  </a>
+  <a href="{{ url_for('retarget', tag='Switched Off') }}" class="btn flex-shrink-0 {% if request.args.get('tag')=='Switched Off' %}btn-dark{% else %}btn-outline-secondary{% endif %}">
+    <i class="bi bi-phone-vibrate me-1"></i>Switched Off
+  </a>
+  <a href="{{ url_for('retarget', tag='Busy') }}" class="btn flex-shrink-0 {% if request.args.get('tag')=='Busy' %}btn-dark{% else %}btn-outline-secondary{% endif %}">
+    <i class="bi bi-hourglass-split me-1"></i>Busy
+  </a>
+  <a href="{{ url_for('retarget', tag='Call Later') }}" class="btn flex-shrink-0 {% if request.args.get('tag')=='Call Later' %}btn-dark{% else %}btn-outline-secondary{% endif %}">
+    <i class="bi bi-clock me-1"></i>Call Later
+  </a>
+  {% if user_role != 'team' %}
+  <a href="{{ url_for('retarget', tag='Follow-up Needed') }}" class="btn flex-shrink-0 {% if request.args.get('tag')=='Follow-up Needed' %}btn-dark{% else %}btn-outline-secondary{% endif %}">
+    <i class="bi bi-arrow-repeat me-1"></i>Follow-up Needed
+  </a>
+  {% endif %}
+</div>
+
+<!-- ── Bulk Assign Toolbar (leader / admin only) ── -->
+{% if user_role in ('leader', 'admin') %}
+<div id="assignToolbar" class="card border-0 shadow-sm mb-3" style="border-radius:12px; background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);">
+  <div class="card-body py-2 px-3 d-flex flex-wrap gap-2 align-items-center">
+    <div class="form-check mb-0 me-1">
+      <input class="form-check-input" type="checkbox" id="selectAllLeads" title="Select All">
+      <label class="form-check-label text-white small fw-semibold" for="selectAllLeads">Select All</label>
+    </div>
+    <span class="text-white-50 small" id="selectedCount">0 selected</span>
+    <div class="ms-auto d-flex gap-2 align-items-center flex-wrap">
+      <select class="form-select form-select-sm" id="assignToSelect" style="min-width:160px;max-width:220px;">
+        <option value="">— Assign to —</option>
+        {% for member in downline_members %}
+        <option value="{{ member }}">{{ member }}</option>
+        {% endfor %}
+      </select>
+      <button id="assignBtn" class="btn btn-sm btn-warning text-dark fw-semibold" disabled
+              onclick="bulkAssign()">
+        <i class="bi bi-person-check-fill me-1"></i>Assign Selected
+      </button>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+
+<div class="card border-0 retarget-card bg-white">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            {% if user_role in ('leader', 'admin') %}
+            <th class="ps-3" style="width:36px;"></th>
+            {% endif %}
+            <th class="{% if not (user_role in ('leader', 'admin')) %}ps-3{% endif %}">Name</th>
+            <th>Phone</th>
+            <th>Tag</th>
+            <th>Status</th>
+            {% if user_role in ('leader','admin') %}<th>Assigned To</th>{% endif %}
+            {% if user_role != 'team' %}<th>Follow Up</th>{% endif %}
+            <th>Last Updated</th>
+            <th style="min-width:11rem;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set tag_filter = request.args.get('tag', '') %}
+          {% for lead in leads %}
+          {% if not tag_filter or
+               (tag_filter == 'Retarget' and lead.status == 'Retarget') or
+               (tag_filter != 'Retarget' and lead.call_result == tag_filter) %}
+          <tr>
+            {% if user_role in ('leader', 'admin') %}
+            <td class="ps-3">
+              <input class="form-check-input lead-checkbox" type="checkbox"
+                     value="{{ lead.id }}" id="chk{{ lead.id }}">
+            </td>
+            {% endif %}
+            <td class="fw-semibold {% if not (user_role in ('leader', 'admin')) %}ps-3{% endif %}">
+              {{ lead.name }}
+              {% if lead.retarget_assigned_by and lead.assignee_username != lead.retarget_assigned_by %}
+              <div style="font-size:0.65rem;color:#d97706;background:#fffbeb;border:1px solid #fde68a;border-radius:3px;padding:1px 5px;display:inline-block;margin-left:4px;font-weight:400;">
+                <i class="bi bi-arrow-repeat me-1"></i>Shared → {{ lead.assignee_display or lead.assignee_username or '—' }}
+              </div>
+              {% endif %}
+            </td>
+            <td>
+              <div class="d-flex align-items-center gap-1">
+                <span class="small">{{ lead.phone }}</span>
+                <a href="tel:{{ lead.phone }}" class="btn btn-xs btn-success px-1 py-0"
+                   title="Call" style="font-size:0.72rem;line-height:1.5;">
+                  <i class="bi bi-telephone-fill"></i>
+                </a>
+                <div class="btn-group" role="group">
+                  <a href="https://wa.me/{{ lead.phone|wa_phone }}"
+                     class="btn btn-xs px-1 py-0" target="_blank" rel="noopener"
+                     title="WhatsApp" style="background:#25D366;color:#fff;font-size:0.72rem;line-height:1.5;border-radius:4px 0 0 4px;">
+                    <i class="bi bi-whatsapp"></i>
+                  </a>
+                  <button type="button" class="btn btn-xs dropdown-toggle dropdown-toggle-split px-1"
+                          style="background:#1ea34b;color:#fff;font-size:0.72rem;line-height:1.5;border-radius:0 4px 4px 0;border-left:1px solid rgba(255,255,255,0.3);"
+                          data-bs-toggle="dropdown" aria-expanded="false">
+                  </button>
+                  <ul class="dropdown-menu shadow-sm" style="font-size:0.82rem;min-width:170px;">
+                    <li><a class="dropdown-item" href="https://wa.me/{{ lead.phone|wa_phone }}" target="_blank" rel="noopener">
+                      <i class="bi bi-whatsapp me-2" style="color:#25D366;"></i>WhatsApp
+                    </a></li>
+                    <li><a class="dropdown-item" href="#" onclick="openWABusiness('{{ lead.phone|wa_phone }}');return false;" rel="noopener">
+                      <i class="bi bi-whatsapp me-2" style="color:#00a884;"></i>WhatsApp Business
+                    </a></li>
+                  </ul>
+                </div>
+              </div>
+            </td>
+            <td>
+              {% if lead.status == 'Retarget' and not lead.call_result %}
+                <span class="badge status-Retarget"><i class="bi bi-arrow-repeat me-1"></i>Retarget</span>
+              {% elif lead.call_result == 'No Answer' or lead.call_result == 'Call Not Picked' %}
+                <span class="badge bg-warning text-dark"><i class="bi bi-telephone-x me-1"></i>{{ lead.call_result }}</span>
+              {% elif lead.call_result == 'Switched Off' or lead.call_result == 'Phone Switched Off' %}
+                <span class="badge bg-danger"><i class="bi bi-phone-vibrate me-1"></i>{{ lead.call_result }}</span>
+              {% elif lead.call_result == 'Busy' %}
+                <span class="badge bg-secondary"><i class="bi bi-hourglass-split me-1"></i>Busy</span>
+              {% elif lead.call_result == 'Not Reachable' %}
+                <span class="badge bg-danger"><i class="bi bi-telephone-minus me-1"></i>Not Reachable</span>
+              {% elif lead.call_result == 'Call Later' or lead.call_result == 'Follow Up Later' %}
+                <span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>{{ lead.call_result }}</span>
+              {% elif lead.call_result == 'Follow-up Needed' or lead.call_result == 'Missed Follow-up' %}
+                <span class="badge bg-info text-dark"><i class="bi bi-arrow-repeat me-1"></i>{{ lead.call_result }}</span>
+              {% elif lead.call_result == 'Callback Requested' %}
+                <span class="badge bg-info text-dark"><i class="bi bi-arrow-return-left me-1"></i>Callback</span>
+              {% elif lead.call_result == 'Not Interested' %}
+                <span class="badge bg-dark"><i class="bi bi-x-lg me-1"></i>Not Interested</span>
+              {% elif lead.call_result == 'Hot Lead' %}
+                <span class="badge bg-success"><i class="bi bi-fire me-1"></i>Hot Lead</span>
+              {% elif lead.status == 'Retarget' %}
+                <span class="badge status-Retarget"><i class="bi bi-arrow-repeat me-1"></i>Retarget</span>
+              {% endif %}
+            </td>
+            <td><span class="badge status-{{ lead.status|replace(' ','') }}">{{ lead.status }}</span></td>
+            {% if user_role in ('leader','admin') %}
+            <td class="small text-muted">{{ lead.assignee_display or lead.assignee_username or '—' }}</td>
+            {% endif %}
+            {% if user_role != 'team' %}
+            <td class="text-muted small">
+              {% if lead.follow_up_date %}
+                <span class="badge bg-primary-subtle text-primary">{{ lead.follow_up_date }}</span>
+              {% else %}—{% endif %}
+            </td>
+            {% endif %}
+            <td class="text-muted small">{{ lead.updated_at[:10] }}</td>
+            <td class="retarget-actions" style="min-width:11rem;">
+              <form method="post" action="{{ url_for('update_status', lead_id=lead.id) }}" class="mb-0">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <div class="d-flex flex-wrap gap-1 align-items-center">
+                  <select name="status" class="form-select form-select-sm flex-grow-1" style="min-width:7rem;max-width:11rem;" title="{% if user_role == 'team' %}Your statuses (up to ₹196){% else %}Lead status{% endif %}">
+                    {% for s in lead.retarget_status_opts %}
+                    <option value="{{ s }}" {% if s == lead.status %}selected{% endif %}>{{ s }}</option>
+                    {% endfor %}
+                  </select>
+                  <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                </div>
+              </form>
+              <a href="{{ url_for('edit_lead', lead_id=lead.id) }}?from=retarget" class="btn btn-sm btn-outline-secondary w-100">
+                <i class="bi bi-pencil-square me-1"></i>Full edit
+              </a>
+            </td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% if user_role in ('leader', 'admin') %}
+<!-- Toast notification -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index:9999;">
+  <div id="assignToast" class="toast align-items-center text-white border-0" role="alert" style="border-radius:12px;background:linear-gradient(135deg,#1a1a2e,#16213e);">
+    <div class="d-flex">
+      <div class="toast-body fw-semibold" id="toastMsg">Done!</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CSRF = "{{ csrf_token }}";
+
+// Select-all toggle
+document.getElementById('selectAllLeads').addEventListener('change', function() {
+  document.querySelectorAll('.lead-checkbox').forEach(cb => cb.checked = this.checked);
+  updateCount();
+});
+
+// Individual checkbox change
+document.addEventListener('change', function(e) {
+  if (e.target.classList.contains('lead-checkbox')) updateCount();
+});
+
+function updateCount() {
+  const n = document.querySelectorAll('.lead-checkbox:checked').length;
+  document.getElementById('selectedCount').textContent = n + ' selected';
+  const assignTo = document.getElementById('assignToSelect').value;
+  document.getElementById('assignBtn').disabled = (n === 0 || !assignTo);
+}
+
+document.getElementById('assignToSelect').addEventListener('change', updateCount);
+
+async function bulkAssign() {
+  const leadIds = [...document.querySelectorAll('.lead-checkbox:checked')].map(cb => parseInt(cb.value));
+  const assignTo = document.getElementById('assignToSelect').value;
+  if (!leadIds.length || !assignTo) return;
+
+  const btn = document.getElementById('assignBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Assigning…';
+
+  try {
+    const res = await fetch('/retarget/bulk-assign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+      body: JSON.stringify({ lead_ids: leadIds, assign_to: assignTo, csrf_token: CSRF })
+    });
+    const data = await res.json();
+    const msg  = data.ok
+      ? `✅ ${data.count} lead(s) assigned to ${assignTo}`
+      : `❌ ${data.error}`;
+    document.getElementById('toastMsg').textContent = msg;
+    const toast = new bootstrap.Toast(document.getElementById('assignToast'), { delay: 3000 });
+    toast.show();
+    if (data.ok && data.count > 0) setTimeout(() => location.reload(), 1500);
+  } catch(e) {
+    document.getElementById('toastMsg').textContent = '❌ Network error';
+    new bootstrap.Toast(document.getElementById('assignToast')).show();
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-person-check-fill me-1"></i>Assign Selected';
+  }
+}
+</script>
+{% endif %}
+
+{% else %}
+<div class="text-center py-5">
+  <i class="bi bi-check-circle-fill text-success" style="font-size:3rem;"></i>
+  <h5 class="mt-3 fw-semibold">No retarget leads!</h5>
+  <p class="text-muted">{% if user_role == 'team' %}No retarget rows match this filter.{% else %}All caught up — no pending callbacks or follow-ups.{% endif %}</p>
+  <a href="{{ url_for('leads') }}" class="btn btn-primary">View All Leads</a>
+</div>
+{% endif %}
+</div>{# retarget-wrap #}
+{% endblock %}

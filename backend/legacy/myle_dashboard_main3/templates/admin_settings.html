@@ -1,0 +1,588 @@
+{% extends "base.html" %}
+{% block title %}Settings – Admin{% endblock %}
+{% block page_title %}System Settings{% endblock %}
+
+{% block content %}
+
+<div class="row g-3">
+
+  <!-- Quick link: YouTube (visible on all screens) -->
+  <div class="col-12">
+    <a href="#batch-video-links" class="card border-0 shadow-sm text-decoration-none mb-3 d-block settings-jump-card">
+      <div class="card-body py-3 d-flex align-items-center gap-3">
+        <span class="fs-2 flex-shrink-0"><i class="bi bi-youtube text-danger"></i></span>
+        <div class="flex-grow-1 min-w-0">
+          <h6 class="mb-0 fw-bold text-dark">YouTube / Batch Video Links</h6>
+          <p class="mb-0 small text-muted">Add Day 1 & Day 2 batch video URLs here. Tap to jump to section below.</p>
+        </div>
+        <i class="bi bi-chevron-down text-muted flex-shrink-0"></i>
+      </div>
+    </a>
+  </div>
+
+  <!-- Left: Form -->
+  <div class="col-lg-7">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold border-0 pt-3">
+        <i class="bi bi-gear-fill me-2 text-secondary"></i>App Configuration
+      </div>
+      <div class="card-body">
+        <form method="POST" enctype="multipart/form-data">
+
+          <!-- Enrollment Video (Stage 1) — Team + Leader see this -->
+          <div id="batch-video-links"></div>
+          <h6 class="fw-semibold text-muted mb-3">
+            <i class="bi bi-play-btn me-2 text-primary"></i>Enrollment Video (Stage 1)
+          </h6>
+          <p class="small text-muted mb-3">
+            <strong>Workflow placement:</strong> This video appears in <strong>Working Section → Stage 1</strong> and in <strong>Enroll To</strong>. Share it with prospects before payment. When prospects open the share link, they watch this video inside the app (no YouTube suggestions).
+          </p>
+          <div class="row g-2 mb-3">
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold small">Enrollment Video URL</label>
+              <input type="url" name="enrollment_video_url" class="form-control"
+                     value="{{ enrollment_video_url|default('') }}"
+                     placeholder="https://youtube.com/watch?v=... or youtu.be/...">
+              <div class="form-text small">YouTube watch, youtu.be, and Shorts URLs are supported. Save, then open /watch/enrollment to verify.</div>
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold small">Title (optional)</label>
+              <input type="text" name="enrollment_video_title" class="form-control"
+                     value="{{ enrollment_video_title|default('Enrollment Video') }}"
+                     placeholder="Enrollment Video">
+            </div>
+          </div>
+
+          <div class="row g-2 mb-3 mt-2">
+            <div class="col-12">
+              <label class="form-label fw-semibold small">📖 App Tutorial Link (for fully converted leads)</label>
+              <input type="url" name="app_tutorial_link" class="form-control"
+                     value="{{ app_tutorial_link|default('') }}"
+                     placeholder="https://youtube.com/watch?v=... or Drive link">
+              <div class="form-text small">When a lead is fully converted, the leader’s WhatsApp button uses this tutorial URL.</div>
+            </div>
+          </div>
+
+          <hr class="my-4">
+
+          <!-- YouTube / Batch Video Links — Day 1 & Day 2 (Leader + Admin only) -->
+          <h6 class="fw-semibold text-muted mb-3">
+            <i class="bi bi-youtube me-2 text-danger"></i>📹 Day 1 & Day 2 Batch Video Links
+          </h6>
+          <p class="small text-muted mb-3">
+            Day 1 links are visible only to <strong>leader</strong> and <strong>admin</strong>. Day 2 links are visible to team, leader, and admin.
+          </p>
+
+          <!-- Day 1 Videos -->
+          <div class="alert alert-light border-start border-info p-3 mb-3">
+            <div class="fw-semibold small text-muted mb-3">🌅 Day 1 Videos</div>
+
+            <!-- Morning -->
+            <div class="mb-3">
+              <label class="form-label fw-semibold small">🌅 Morning — Video Links</label>
+              <div class="row g-2">
+                <div class="col-12">
+                  <input type="url" name="batch_d1_morning_v1" class="form-control"
+                         value="{{ batch_videos.d1_morning_v1 }}"
+                         placeholder="https://youtube.com/watch?v=... (Video 1)">
+                </div>
+                <div class="col-12">
+                  <input type="url" name="batch_d1_morning_v2" class="form-control"
+                         value="{{ batch_videos.d1_morning_v2 }}"
+                         placeholder="https://youtube.com/watch?v=... (Video 2 — optional)">
+                </div>
+              </div>
+            </div>
+
+            <!-- Afternoon -->
+            <div class="mb-3">
+              <label class="form-label fw-semibold small">☀️ Afternoon — Video Links</label>
+              <div class="row g-2">
+                <div class="col-12">
+                  <input type="url" name="batch_d1_afternoon_v1" class="form-control"
+                         value="{{ batch_videos.d1_afternoon_v1 }}"
+                         placeholder="https://youtube.com/watch?v=... (Video 1)">
+                </div>
+                <div class="col-12">
+                  <input type="url" name="batch_d1_afternoon_v2" class="form-control"
+                         value="{{ batch_videos.d1_afternoon_v2 }}"
+                         placeholder="https://youtube.com/watch?v=... (Video 2 — optional)">
+                </div>
+              </div>
+            </div>
+
+            <!-- Evening -->
+            <div class="mb-3">
+              <label class="form-label fw-semibold small">🌙 Evening — Video Links</label>
+              <div class="row g-2">
+                <div class="col-12">
+                  <input type="url" name="batch_d1_evening_v1" class="form-control"
+                         value="{{ batch_videos.d1_evening_v1 }}"
+                         placeholder="https://youtube.com/watch?v=... (Video 1)">
+                </div>
+                <div class="col-12">
+                  <input type="url" name="batch_d1_evening_v2" class="form-control"
+                         value="{{ batch_videos.d1_evening_v2 }}"
+                         placeholder="https://youtube.com/watch?v=... (Video 2 — optional)">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Day 2 Videos -->
+          <div class="alert alert-light border-start border-warning p-3 mb-3">
+            <div class="fw-semibold small text-muted mb-3">🌅 Day 2 Videos</div>
+
+            <!-- Morning -->
+            <div class="mb-3">
+              <label class="form-label fw-semibold small">🌅 Morning — Video Links</label>
+              <div class="row g-2">
+                <div class="col-12">
+                  <input type="url" name="batch_d2_morning_v1" class="form-control"
+                         value="{{ batch_videos.d2_morning_v1 }}"
+                         placeholder="https://youtube.com/watch?v=... (Video 1)">
+                </div>
+                <div class="col-12">
+                  <input type="url" name="batch_d2_morning_v2" class="form-control"
+                         value="{{ batch_videos.d2_morning_v2 }}"
+                         placeholder="https://youtube.com/watch?v=... (Video 2 — optional)">
+                </div>
+              </div>
+            </div>
+
+            <!-- Afternoon -->
+            <div class="mb-3">
+              <label class="form-label fw-semibold small">☀️ Afternoon — Video Links</label>
+              <div class="row g-2">
+                <div class="col-12">
+                  <input type="url" name="batch_d2_afternoon_v1" class="form-control"
+                         value="{{ batch_videos.d2_afternoon_v1 }}"
+                         placeholder="https://youtube.com/watch?v=... (Video 1)">
+                </div>
+                <div class="col-12">
+                  <input type="url" name="batch_d2_afternoon_v2" class="form-control"
+                         value="{{ batch_videos.d2_afternoon_v2 }}"
+                         placeholder="https://youtube.com/watch?v=... (Video 2 — optional)">
+                </div>
+              </div>
+            </div>
+
+            <!-- Evening -->
+            <div class="mb-3">
+              <label class="form-label fw-semibold small">🌙 Evening — Video Links</label>
+              <div class="row g-2">
+                <div class="col-12">
+                  <input type="url" name="batch_d2_evening_v1" class="form-control"
+                         value="{{ batch_videos.d2_evening_v1 }}"
+                         placeholder="https://youtube.com/watch?v=... (Video 1)">
+                </div>
+                <div class="col-12">
+                  <input type="url" name="batch_d2_evening_v2" class="form-control"
+                         value="{{ batch_videos.d2_evening_v2 }}"
+                         placeholder="https://youtube.com/watch?v=... (Video 2 — optional)">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <hr class="my-4">
+
+          <h6 class="fw-semibold text-muted mb-3">
+            <i class="bi bi-toggles me-2 text-warning"></i>Execution Gates Control
+          </h6>
+          <p class="small text-muted mb-3">
+            Training phase ke liye gates temporarily ON/OFF karo. OFF karne par team/leader flow relax ho jayega.
+          </p>
+
+          <div class="card border-0 bg-light mb-3">
+            <div class="card-body py-3">
+              <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="gate_claim_discipline_enabled"
+                       name="gate_claim_discipline_enabled" {% if settings.gate_claim_discipline_enabled %}checked{% endif %}>
+                <label class="form-check-label small fw-semibold" for="gate_claim_discipline_enabled">
+                  Claim Discipline Gate
+                </label>
+                <div class="form-text">Pool claim se pehle follow-up/call discipline checks.</div>
+              </div>
+
+              <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="gate_followup_discipline_enabled"
+                       name="gate_followup_discipline_enabled" {% if settings.gate_followup_discipline_enabled %}checked{% endif %}>
+                <label class="form-check-label small fw-semibold" for="gate_followup_discipline_enabled">
+                  Follow-up Discipline Penalty
+                </label>
+                <div class="form-text">Overdue follow-up auto-discipline and 2h missed follow-up penalty.</div>
+              </div>
+
+              <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="gate_performance_discipline_enabled"
+                       name="gate_performance_discipline_enabled" {% if settings.gate_performance_discipline_enabled %}checked{% endif %}>
+                <label class="form-check-label small fw-semibold" for="gate_performance_discipline_enabled">
+                  Performance Discipline Gate
+                </label>
+                <div class="form-text">Low-performance / low-effort based blocking rules.</div>
+              </div>
+
+              <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="gate_rupees_196_enabled"
+                       name="gate_rupees_196_enabled" {% if settings.gate_rupees_196_enabled %}checked{% endif %}>
+                <label class="form-check-label small fw-semibold" for="gate_rupees_196_enabled">
+                  ₹196 Proof Gate
+                </label>
+                <div class="form-text">₹196 proof + approval related execution barrier.</div>
+              </div>
+
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="strict_flow_guard_enabled"
+                       name="strict_flow_guard_enabled" {% if settings.strict_flow_guard_enabled %}checked{% endif %}>
+                <label class="form-check-label small fw-semibold" for="strict_flow_guard_enabled">
+                  Strict Flow Guard
+                </label>
+                <div class="form-text">Status transition strict sequence validation.</div>
+              </div>
+            </div>
+          </div>
+
+          <hr class="my-4">
+
+          <!-- Payment Settings -->
+          <h6 class="fw-semibold text-muted mb-3 mt-1">
+            <i class="bi bi-qr-code me-2 text-primary"></i>Payment / Recharge Settings
+          </h6>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">Your UPI ID</label>
+            <input type="text" name="upi_id" class="form-control"
+                   value="{{ settings.upi_id }}"
+                   placeholder="e.g. yourname@okicici or 9876543210@upi">
+            <div class="form-text">
+              Team members see this UPI ID + auto-generated QR code to pay for recharges.
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold small">Default Lead Price (₹)</label>
+            <div class="input-group" style="max-width: 200px;">
+              <span class="input-group-text bg-white">₹</span>
+              <input type="number" name="lead_price" class="form-control"
+                     value="{{ settings.default_lead_price }}" min="0" step="0.01">
+            </div>
+            <div class="form-text">
+              Pre-filled price when you import CSV leads or add single leads to pool. Can be changed per import.
+            </div>
+          </div>
+
+          <hr class="my-4">
+
+          <!-- Email / SMTP Settings -->
+          <h6 class="fw-semibold text-muted mb-3">
+            <i class="bi bi-envelope-fill me-2 text-success"></i>Welcome Email (SMTP)
+          </h6>
+          <p class="small text-muted mb-3">
+            When you approve a member, they will receive a welcome email automatically.
+          </p>
+
+          <div class="row g-2 mb-3">
+            <div class="col-8">
+              <label class="form-label fw-semibold small">SMTP Host</label>
+              <input type="text" name="smtp_host" class="form-control"
+                     value="{{ settings.smtp_host }}" placeholder="smtp.gmail.com">
+            </div>
+            <div class="col-4">
+              <label class="form-label fw-semibold small">Port</label>
+              <input type="number" name="smtp_port" class="form-control"
+                     value="{{ settings.smtp_port }}" placeholder="587">
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">Email Address (From)</label>
+            <input type="email" name="smtp_user" class="form-control"
+                   value="{{ settings.smtp_user }}" placeholder="yourname@gmail.com">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">App Password / SMTP Password</label>
+            <input type="password" name="smtp_password" class="form-control"
+                   placeholder="{% if settings.smtp_password_set %}Leave blank to keep saved password{% else %}Enter app password{% endif %}">
+            {% if settings.smtp_password_set %}
+            <div class="form-text text-success">
+              <i class="bi bi-check-circle me-1"></i>Password saved. Leave blank to keep it unchanged.
+            </div>
+            {% else %}
+            <div class="form-text">
+              Gmail users: use an
+              <a href="https://myaccount.google.com/apppasswords" target="_blank">App Password</a>
+              (not your regular Gmail password). Enable 2FA first.
+            </div>
+            {% endif %}
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold small">Sender Name</label>
+            <input type="text" name="smtp_from_name" class="form-control"
+                   value="{{ settings.smtp_from_name }}" placeholder="Myle Community">
+          </div>
+
+          <hr class="my-4">
+
+          <!-- Maya AI -->
+          <h6 class="fw-semibold text-muted mb-3">
+            <i class="bi bi-robot me-2" style="color:#007AFF;"></i>Maya AI Assistant
+          </h6>
+          <p class="small text-muted mb-3">
+            <strong>AI Intelligence</strong> (sidebar) and <strong>Maya</strong> (floating chat) are <strong>off</strong> by default.
+            Enable on Render with <code>MYLE_AI_FEATURES=1</code> (legacy: <code>MAYA_CHAT_ENABLED=1</code>), then redeploy.
+          </p>
+
+          <!-- Status banner -->
+          {% if settings.anthropic_api_key_set %}
+          <div class="alert alert-success py-2 small border-0 mb-3 d-flex align-items-center gap-2">
+            <i class="bi bi-check-circle-fill text-success"></i>
+            <div><strong>Anthropic Claude active</strong> — Maya is working ✓</div>
+          </div>
+          {% else %}
+          <div class="alert alert-warning py-2 small border-0 mb-3 d-flex align-items-center gap-2">
+            <i class="bi bi-exclamation-triangle-fill text-warning"></i>
+            <div>Anthropic API key not set — Maya inactive. Add key below.</div>
+          </div>
+          {% endif %}
+
+          <!-- Anthropic -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">Anthropic API Key</label>
+            <input type="password" name="anthropic_api_key" class="form-control"
+                   placeholder="{% if settings.anthropic_api_key_set %}Leave blank to keep existing key{% else %}sk-ant-api03-...{% endif %}"
+                   autocomplete="off">
+            <div class="form-text">
+              Get from <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>.
+              Or set <code>ANTHROPIC_API_KEY</code> in your environment (e.g. on Render).
+            </div>
+          </div>
+
+          <hr class="my-4">
+
+          <!-- ── Call Scripts ───────────────────────────────────── -->
+          <h6 class="fw-semibold text-muted mb-1">
+            <i class="bi bi-journal-text me-2 text-success"></i>Call Scripts
+          </h6>
+          <p class="small text-muted mb-2">
+            These scripts appear <strong>step by step</strong> when someone taps Call on My Leads —
+            no need to memorize lines during live calls.
+          </p>
+          <div class="alert alert-info py-2 px-3 mb-3 small">
+            <strong>Dynamic variables</strong> — auto-filled from lead record + caller:<br>
+            <code>{% raw %}{{name}}{% endraw %}</code> or <code>[Name]</code> &nbsp;
+            <code>{% raw %}{{city}}{% endraw %}</code> or <code>[City]</code> &nbsp;
+            <code>{% raw %}{{agent_name}}{% endraw %}</code> or <code>[Aapka Naam]</code> &nbsp;
+            <code>{% raw %}{{phone}}{% endraw %}</code> &nbsp;
+            <code>{% raw %}{{source}}{% endraw %}</code> &nbsp;
+            <code>{% raw %}{{referrer_name}}{% endraw %}</code><br>
+            <span class="text-muted">Conditionals:</span>
+            <code>[if:instagram]…[/if]</code> &nbsp;
+            <code>[if:referral]…[/if]</code><br>
+            <span class="text-muted">Format lines as:</span>
+            <code>YOU: …</code> &nbsp; <code>LEAD: …</code> &nbsp; <code>👉 cue</code> &nbsp; <code>(Pause 1 sec)</code>
+          </div>
+
+          {% set _sfields = [
+            ('script_opening',       '🙏 Opening',       'First beat — introduce yourself and Myle.'),
+            ('script_qualification', '🔍 Qualification', 'Understand background — job/business, income goal.'),
+            ('script_pitch',         '🎯 Pitch',         'Value proposition — community, system, income.'),
+            ('script_closing',       '✅ Closing',       'Same-day enrollment — ₹196 signup, explain next step.'),
+          ] %}
+          {% for key, label, placeholder in _sfields %}
+          <div class="mb-3">
+            <label class="form-label fw-semibold small mb-1">{{ label }}</label>
+            <textarea name="{{ key }}" rows="4"
+                      class="form-control form-control-sm"
+                      style="font-size:.82rem;font-family:inherit;resize:vertical;"
+                      placeholder="{{ placeholder }}">{{ call_scripts[key] }}</textarea>
+          </div>
+          {% endfor %}
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold small mb-1">
+              <i class="bi bi-file-earmark-pdf me-1 text-danger"></i>Training PDF
+              <span class="text-muted fw-normal">(optional — training PDF only, not used in live calling)</span>
+            </label>
+            <input type="file" name="script_pdf" accept=".pdf" class="form-control form-control-sm">
+            {% if call_scripts.get('pdf_name') %}
+            <div class="form-text text-success">
+              <i class="bi bi-check-circle me-1"></i>Current: {{ call_scripts.pdf_name }}
+            </div>
+            {% endif %}
+          </div>
+
+          <hr class="my-4">
+
+          <!-- iPhone Contact Auto-Save via ntfy.sh -->
+          <h6 class="fw-semibold text-muted mb-2">
+            <i class="bi bi-phone me-2 text-success"></i>iPhone Contact Auto-Save
+          </h6>
+          <p class="small text-muted mb-3">
+            Jab leader kisi lead ko <strong>Day 2</strong> me push kare, toh iPhone pe automatically contact save ho jaye.
+            <br>
+            Setup: <strong>ntfy app install karo iPhone pe</strong> → neeche wala topic subscribe karo → ek Shortcut banao (guide neeche hai).
+          </p>
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">ntfy Topic (unique secret naam)</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-bell-fill text-success"></i></span>
+              <input type="text" name="ntfy_day2_topic" class="form-control"
+                     value="{{ ntfy_day2_topic|default('') }}"
+                     placeholder="e.g. myle-day2-karan-xyz123"
+                     autocomplete="off">
+            </div>
+            <div class="form-text small">
+              Koi bhi unique naam rakho (kisi ko pata na ho). App.ntfy.sh pe yahi topic subscribe karo iPhone me.
+            </div>
+          </div>
+          {% if ntfy_day2_topic %}
+          <div class="alert alert-success py-2 small mb-3">
+            <i class="bi bi-check-circle me-1"></i>
+            <strong>Active:</strong> ntfy.sh/{{ ntfy_day2_topic }} — Day 2 push hone par notification jayegi.
+          </div>
+          {% endif %}
+          <div class="alert alert-light border-start border-success p-3 mb-3 small">
+            <strong><i class="bi bi-phone me-1"></i>iPhone Shortcut Setup (ek baar):</strong>
+            <ol class="mb-0 mt-2 ps-3">
+              <li>iPhone pe <strong>ntfy app</strong> install karo (App Store — free)</li>
+              <li>ntfy app open karo → "+" → topic enter karo (jo upar dala)</li>
+              <li><strong>Shortcuts app</strong> open karo → "+" → new shortcut banao</li>
+              <li>Action add karo: <em>"URL" = ntfy message ka JSON</em></li>
+              <li>Action: <strong>"Get Contents of URL"</strong> (POST method)</li>
+              <li>Action: <strong>"Create Contact"</strong> — Name: <code>name</code> field, Phone: <code>phone</code> field</li>
+              <li>ntfy app me <strong>Automation</strong> set karo: "Jab notification aaye → Shortcut run karo"</li>
+            </ol>
+          </div>
+
+          <hr class="my-4">
+
+          <button type="submit" class="btn btn-primary w-100 fw-semibold">
+            <i class="bi bi-save me-2"></i>Save Settings
+          </button>
+        </form>
+
+        <!-- Test Email -->
+        <div class="border-top mt-3 pt-3">
+          <p class="small fw-semibold mb-2"><i class="bi bi-send me-1 text-info"></i>Test Email Configuration</p>
+          <form method="post" action="{{ url_for('admin_test_email') }}" class="d-flex gap-2">
+            <input type="email" name="test_email" class="form-control form-control-sm"
+                   placeholder="Send test to: your@email.com" required>
+            <button type="submit" class="btn btn-sm btn-outline-info text-nowrap">
+              <i class="bi bi-send"></i> Send Test
+            </button>
+          </form>
+          <div class="text-muted" style="font-size:0.72rem;margin-top:4px;">
+            Sends a test email to verify SMTP is working. Save settings first.
+          </div>
+        </div>
+
+        <!-- Test Push Notification -->
+        <div class="border-top mt-3 pt-3">
+          <p class="small fw-semibold mb-2"><i class="bi bi-bell me-1 text-warning"></i>Test Push Notifications</p>
+          <div class="d-flex gap-2 flex-wrap align-items-center">
+            <form method="post" action="{{ url_for('admin_test_push') }}">
+              <button type="submit" class="btn btn-sm btn-outline-warning">
+                <i class="bi bi-bell-fill"></i> Send Test Push to Me
+              </button>
+            </form>
+            <form method="post" action="{{ url_for('admin_test_calling_reminder') }}">
+              <button type="submit" class="btn btn-sm btn-outline-info"
+                      onclick="return confirm('This will fire the calling reminder job NOW for all users whose reminder time matches the current IST minute. Continue?')">
+                <i class="bi bi-telephone-fill"></i> Test Calling Reminder Job
+              </button>
+            </form>
+            <form method="post" action="{{ url_for('admin_reset_vapid') }}">
+              <button type="submit" class="btn btn-sm btn-outline-danger"
+                      onclick="return confirm('This will clear VAPID keys. All users must refresh their browser to re-subscribe. Continue?')">
+                <i class="bi bi-arrow-clockwise"></i> Reset VAPID Keys
+              </button>
+            </form>
+          </div>
+          <div class="text-muted" style="font-size:0.72rem;margin-top:4px;">
+            <strong>If push is broken:</strong> click "Reset VAPID Keys" first, then refresh your browser and test again.
+            All users need to refresh once after a VAPID reset.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Preview + Quick Links -->
+  <div class="col-lg-5">
+
+    <!-- UPI QR Preview -->
+    {% if settings.upi_id %}
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white fw-semibold border-0 pt-3">
+        <i class="bi bi-eye me-2 text-secondary"></i>QR Preview (what team sees)
+      </div>
+      <div class="card-body text-center py-4">
+        <img src="{{ url_for('admin_upi_qr_preview') }}" alt="UPI QR"
+             class="img-fluid border rounded p-2" style="max-width: 180px;">
+        <div class="mt-2 fw-semibold small">{{ settings.upi_id }}</div>
+        <div class="text-muted small">This QR is auto-generated from your UPI ID</div>
+      </div>
+    </div>
+    {% else %}
+    <div class="card border-0 shadow-sm mb-3 text-center">
+      <div class="card-body py-4">
+        <i class="bi bi-qr-code text-muted" style="font-size:3rem;"></i>
+        <div class="text-muted mt-2 small">Enter UPI ID above to generate QR</div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Quick Links -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white fw-semibold border-0 pt-3">
+        <i class="bi bi-grid me-2 text-secondary"></i>Quick Links
+      </div>
+      <div class="list-group list-group-flush rounded-bottom">
+        <a href="{{ url_for('admin_wallet_requests') }}"
+           class="list-group-item list-group-item-action d-flex align-items-center gap-2">
+          <i class="bi bi-wallet2 text-success"></i>
+          <span>Wallet Recharge Requests</span>
+          {% if wallet_pending > 0 %}
+          <span class="badge bg-success ms-auto">{{ wallet_pending }} pending</span>
+          {% endif %}
+        </a>
+        <a href="{{ url_for('admin_lead_pool') }}"
+           class="list-group-item list-group-item-action d-flex align-items-center gap-2">
+          <i class="bi bi-people-fill text-primary"></i>
+          <span>Lead Pool Management</span>
+        </a>
+        <a href="{{ url_for('admin_approvals') }}"
+           class="list-group-item list-group-item-action d-flex align-items-center gap-2">
+          <i class="bi bi-person-check-fill text-warning"></i>
+          <span>User Approvals</span>
+          {% if pending_count > 0 %}
+          <span class="badge bg-warning text-dark ms-auto">{{ pending_count }} pending</span>
+          {% endif %}
+        </a>
+      </div>
+    </div>
+
+    <!-- Meta Webhook Setup Guide -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold border-0 pt-3">
+        <i class="bi bi-book me-2 text-info"></i>Meta Webhook Setup Guide
+      </div>
+      <div class="card-body">
+        <ol class="small text-muted ps-3 mb-0">
+          <li class="mb-2">Go to <strong>Meta for Developers</strong> → Your App</li>
+          <li class="mb-2">Add Webhooks product → Subscribe to <strong>Page</strong> events</li>
+          <li class="mb-2">Set <strong>Callback URL</strong> to the webhook URL shown above</li>
+          <li class="mb-2">Set <strong>Verify Token</strong> same as what you entered here</li>
+          <li class="mb-2">Subscribe to <strong>leadgen</strong> field</li>
+          <li>Leads will auto-appear in Lead Pool with default price</li>
+        </ol>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,39 @@
+"""
+gunicorn.conf.py — Myle Dashboard production config
+"""
+import os
+
+# Render / Railway / etc. set PORT; bind required for public HTTP.
+bind = "0.0.0.0:" + os.environ.get("PORT", "5003")
+
+# Render free tier (512MB) often OOM-kills with 2 workers + preload + heavy app import.
+# Set WEB_CONCURRENCY=2 (or higher) in the dashboard when you upgrade RAM.
+_render = os.environ.get("RENDER", "").lower() in ("1", "true", "yes")
+_wc = os.environ.get("WEB_CONCURRENCY", "").strip()
+if _wc:
+    workers = max(1, int(_wc))
+else:
+    workers = 1 if _render else 2
+
+worker_class = "sync"
+timeout      = 120
+# Preload saves RAM when workers>1 (shared COW). With workers=1 on Render, off avoids
+# rare fork + scheduler edge cases and makes OOM logs easier to read.
+preload_app = not (_render and workers == 1)
+accesslog    = "-"
+errorlog     = "-"
+loglevel     = "info"
+
+
+def on_starting(server):
+    """Skip auto-start in master; workers will call start_scheduler() via post_fork."""
+    os.environ['GUNICORN_MULTI_WORKER'] = '1'
+
+
+def post_fork(server, worker):
+    """Start scheduler in exactly one worker (file lock prevents duplicates)."""
+    try:
+        from app import start_scheduler
+        start_scheduler()
+    except Exception as exc:
+        server.log.error(f"[Scheduler] post_fork start failed: {exc}")

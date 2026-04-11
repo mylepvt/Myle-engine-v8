@@ -1,0 +1,546 @@
+{% extends "base.html" %}
+{% block title %}Leaderboard – Myle Community{% endblock %}
+{% block page_title %}Leaderboard{% endblock %}
+
+{% block extra_head %}
+<script src="{{ url_for('static', filename='js/chart.umd.min.js') }}"></script>
+<style>
+/* Dark mode fixes: All-Time leaderboard was using light row backgrounds + dark text. */
+[data-theme="dark"] #pane-lb table thead {
+  background: #151722 !important;
+  color: #e5e7eb;
+}
+[data-theme="dark"] #pane-lb table tbody tr {
+  background: transparent !important;
+  color: #e5e7eb;
+}
+[data-theme="dark"] #pane-lb table tbody tr[style*="linear-gradient"] {
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+[data-theme="dark"] #pane-lb .text-muted {
+  color: #9ca3af !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <a href="{{ url_for('admin_dashboard') if role == 'admin' else url_for('working') if role == 'leader' else url_for('team_dashboard') }}"
+     class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Back
+  </a>
+</div>
+
+{% if role == 'admin' %}
+<div class="alert alert-sm py-2 px-3 mb-3 d-flex align-items-center gap-3 flex-wrap
+            {% if is_fallback %}alert-warning{% else %}alert-success{% endif %}"
+     style="font-size:0.78rem;">
+  <i class="bi bi-bug-fill me-1"></i>
+  <strong>Team members:</strong> {{ total_team }} total &nbsp;·&nbsp; {{ approved_team }} approved
+  {% if is_fallback %}
+  &nbsp;·&nbsp; <span class="fw-bold text-warning-emphasis">⚠️ Fallback active — no approved team users, showing all approved users</span>
+  {% else %}
+  &nbsp;·&nbsp; <span class="text-success fw-bold">✅ Showing approved team members</span>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- Tab Nav -->
+<ul class="nav nav-tabs mb-3" id="leaderboardTabs" role="tablist">
+  <li class="nav-item">
+    <button class="nav-link active fw-semibold"
+            id="tab-today" data-bs-toggle="tab" data-bs-target="#pane-today"
+            role="tab" aria-selected="true">
+      <i class="bi bi-calendar-check-fill me-1 text-success"></i>Today
+    </button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link fw-semibold"
+            id="tab-weekly" data-bs-toggle="tab" data-bs-target="#pane-weekly"
+            role="tab" aria-selected="false">
+      <i class="bi bi-lightning-charge-fill me-1 text-warning"></i>This Week
+    </button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link fw-semibold"
+            id="tab-lb" data-bs-toggle="tab" data-bs-target="#pane-lb"
+            role="tab" aria-selected="false">
+      <i class="bi bi-trophy-fill me-1 text-warning"></i>All Time
+    </button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link fw-semibold"
+            id="tab-net" data-bs-toggle="tab" data-bs-target="#pane-net"
+            role="tab" aria-selected="false">
+      <i class="bi bi-diagram-3-fill me-1 text-primary"></i>Network
+      {% if net_summary.total > 0 %}
+        <span class="badge bg-primary ms-1" style="font-size:0.6rem;">{{ net_summary.total }}</span>
+      {% endif %}
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content">
+
+  <!-- ── Tab 1: Today ─────────────────────────────────── -->
+  <div class="tab-pane fade show active" id="pane-today" role="tabpanel">
+
+    <!-- Daily Targets reference -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body py-2 px-3 d-flex align-items-center gap-3 flex-wrap">
+        <span class="fw-semibold small text-muted">🎯 Daily Targets:</span>
+        <span class="badge bg-primary-subtle text-primary fw-semibold">📞 {{ daily_targets.calls }} calls</span>
+        <span class="badge bg-success-subtle text-success fw-semibold">📚 {{ daily_targets.batches }} batches</span>
+        <span class="badge bg-warning-subtle text-warning-emphasis fw-semibold">🎥 {{ daily_targets.videos }} videos</span>
+      </div>
+    </div>
+
+    <!-- Team comparison -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header fw-semibold d-flex justify-content-between align-items-center"
+           style="background:linear-gradient(135deg,#064e3b,#065f46);color:#fff;border-radius:12px 12px 0 0;">
+        <span><i class="bi bi-calendar-check-fill me-2"></i>Today's Activity</span>
+        <span class="badge bg-light text-dark" style="font-size:0.62rem;">{{ today_board|length }} members</span>
+      </div>
+      <div class="card-body p-0">
+        {% for t in today_board %}
+        {% set idx = loop.index0 %}
+        <div class="px-3 py-3 border-bottom {% if t.username == current_user %}bg-primary bg-opacity-5{% endif %}">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <!-- Rank -->
+            <div class="fw-bold text-muted" style="width:22px;font-size:0.78rem;">{{ loop.index }}</div>
+            <!-- Avatar -->
+            {% if t.display_picture %}
+            <img src="{{ t.display_picture }}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;flex-shrink:0;" alt="dp">
+            {% else %}
+            <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);
+                        display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:0.75rem;flex-shrink:0;">
+              {{ t.username[0]|upper }}
+            </div>
+            {% endif %}
+            <!-- Name + badges -->
+            <div class="flex-grow-1 min-w-0">
+              <span class="fw-semibold" style="font-size:0.85rem;">{{ t.username }}</span>
+              {% if t.username == current_user %}<span class="badge bg-primary ms-1" style="font-size:0.52rem;">You</span>{% endif %}
+              {% if t.badges %}<span class="ms-1" style="font-size:0.82rem;">{{ t.badges }}</span>{% endif %}
+              {% if (t.streak or 0) >= 3 %}
+              <span class="ms-1" style="font-size:0.7rem;">🔥{{ t.streak }}d</span>
+              {% endif %}
+            </div>
+            <!-- Today score -->
+            <div class="fw-bold text-end flex-shrink-0" style="font-size:0.95rem;color:{% if idx == 0 %}#d97706{% else %}var(--label-1){% endif %};">
+              {{ t.today_pts }} pts
+            </div>
+          </div>
+          <!-- Target progress bars -->
+          <div class="ms-4 ps-3" style="font-size:0.7rem;">
+            {% set call_pct  = [((t.calls   or 0) / daily_targets.calls  * 100)|int, 100]|min %}
+            {% set batch_pct = [((t.batches or 0) / daily_targets.batches * 100)|int, 100]|min %}
+            {% set video_pct = [((t.videos  or 0) / daily_targets.videos  * 100)|int, 100]|min %}
+
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <span class="text-muted" style="width:54px;">📞 {{ t.calls or 0 }}/{{ daily_targets.calls }}</span>
+              <div class="progress flex-grow-1" style="height:5px;">
+                <div class="progress-bar bg-primary" style="width:{{ call_pct }}%;"></div>
+              </div>
+              {% if call_pct >= 100 %}<span>✅</span>{% endif %}
+            </div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <span class="text-muted" style="width:54px;">📚 {{ t.batches or 0 }}/{{ daily_targets.batches }}</span>
+              <div class="progress flex-grow-1" style="height:5px;">
+                <div class="progress-bar bg-success" style="width:{{ batch_pct }}%;"></div>
+              </div>
+              {% if batch_pct >= 100 %}<span>✅</span>{% endif %}
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span class="text-muted" style="width:54px;">🎥 {{ t.videos or 0 }}/{{ daily_targets.videos }}</span>
+              <div class="progress flex-grow-1" style="height:5px;">
+                <div class="progress-bar bg-warning" style="width:{{ video_pct }}%;"></div>
+              </div>
+              {% if video_pct >= 100 %}<span>✅</span>{% endif %}
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-center text-muted p-4">No activity today yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Streak leaderboard -->
+    {% set top_streaks = today_board | selectattr('streak', 'gt', 0) | list %}
+    {% if top_streaks %}
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header py-2" style="font-size:0.85rem;font-weight:600;">
+        🔥 Active Streaks
+      </div>
+      <div class="card-body p-0">
+        {% for t in today_board | sort(attribute='streak', reverse=True) %}
+        {% if (t.streak or 0) > 0 %}
+        <div class="d-flex align-items-center gap-3 px-3 py-2 border-bottom">
+          <span style="font-size:0.85rem;font-weight:700;color:#ef4444;">🔥 {{ t.streak }}d</span>
+          <span class="fw-semibold small">{{ t.username }}</span>
+          {% if t.username == current_user %}<span class="badge bg-primary" style="font-size:0.52rem;">You</span>{% endif %}
+          {% if (t.streak or 0) >= 7 %}<span class="badge bg-danger-subtle text-danger ms-auto" style="font-size:0.6rem;">7-Day Badge!</span>{% endif %}
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- ── Tab 2: Weekly Gamification ───────────────────── -->
+  <div class="tab-pane fade" id="pane-weekly" role="tabpanel">
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header fw-semibold d-flex justify-content-between align-items-center"
+           style="background:linear-gradient(135deg,#13152e,#1a1d3a);color:#fff;border-radius:12px 12px 0 0;">
+        <span><i class="bi bi-lightning-charge-fill me-2 text-warning"></i>This Week</span>
+        {% if current_user_rank %}
+        <span class="badge bg-warning text-dark" style="font-size:0.65rem;">You: #{{ current_user_rank }}</span>
+        {% endif %}
+      </div>
+      <div class="card-body p-0">
+        {% for w in weekly_board %}
+        {% set idx = loop.index0 %}
+        <div class="leaderboard-row {% if w.username == current_user %}me{% endif %} {% if idx == 0 %}top1{% endif %}">
+          <!-- Rank medal -->
+          <div class="rank-medal {% if idx == 0 %}gold{% elif idx == 1 %}silver{% elif idx == 2 %}bronze{% else %}other{% endif %}">
+            {% if idx == 0 %}🥇{% elif idx == 1 %}🥈{% elif idx == 2 %}🥉{% else %}{{ loop.index }}{% endif %}
+          </div>
+          <!-- Avatar -->
+          {% if w.display_picture %}
+          <img src="{{ w.display_picture }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;" alt="dp">
+          {% else %}
+          <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);
+                      display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:0.85rem;flex-shrink:0;">
+            {{ w.username[0]|upper }}
+          </div>
+          {% endif %}
+          <!-- Info -->
+          <div class="flex-grow-1 min-width-0">
+            <div class="fw-bold" style="font-size:0.87rem;">
+              {{ w.username }}
+              {% if w.username == current_user %}
+              <span class="badge bg-primary" style="font-size:0.55rem;">You</span>
+              {% endif %}
+              {% if w.badges %}<span style="font-size:0.9rem;margin-left:4px;">{{ w.badges }}</span>{% endif %}
+            </div>
+            <div style="font-size:0.62rem;color:#9ca3af;">
+              🔥 {{ w.streak or 0 }}-day streak &nbsp;·&nbsp; 🎯 {% if w.user_stage == 'day1' %}Day 1{% elif w.user_stage == 'day2' %}Day 2{% elif w.user_stage == 'day3' %}Day 3{% else %}{{ w.user_stage|default('Day 1')|title }}{% endif %}
+            </div>
+          </div>
+          <!-- Points + trend -->
+          <div class="text-end flex-shrink-0">
+            <div class="fw-bold" style="font-size:1rem;color:{% if idx == 0 %}#d97706{% else %}#1e2035{% endif %};">
+              {{ '{:,}'.format(w.week_pts or 0) }}
+            </div>
+            <div style="font-size:0.62rem;font-weight:700;
+                        color:{% if (w.trend or 0) >= 0 %}#16a34a{% else %}#dc2626{% endif %};">
+              {% if (w.trend or 0) >= 0 %}▲{% else %}▼{% endif %}
+              {{ '{:,}'.format((w.trend or 0)|abs) }} this week
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-center text-muted p-4">No data for this week.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Points guide -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body">
+        <div class="fw-bold mb-3" style="font-size:0.88rem;">⚡ How Points Are Earned</div>
+        {% for action, pts, icon in [
+          ('Call attempt', 5, '📞'),
+          ('Connected call', 15, '🟢'),
+          ('Follow-up set', 10, '📅'),
+          ('Follow-up completed', 25, '✅'),
+          ('Day 1 complete', 50, '🚀'),
+          ('Day 2 evaluation pass', 100, '🎓'),
+          ('Conversion (₹196)', 300, '💰'),
+          ('Streak bonus (daily)', 10, '🔥'),
+        ] %}
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <div style="font-size:0.8rem;">{{ icon }} {{ action }}</div>
+          <span class="badge bg-primary-subtle text-primary fw-bold">+{{ pts }} pts</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab 3: All Time Points ───────────────────────── -->
+  <div class="tab-pane fade" id="pane-lb" role="tabpanel">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header fw-semibold d-flex align-items-center justify-content-between"
+           style="background:linear-gradient(135deg,#1e1b4b,#312e81);color:#fff;border-radius:12px 12px 0 0;">
+        <span><i class="bi bi-trophy-fill me-2 text-warning"></i>All-Time Points</span>
+        {% if points_user_rank %}
+        <span class="badge bg-warning text-dark" style="font-size:0.65rem;">You: #{{ points_user_rank }}</span>
+        {% endif %}
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0" style="font-size:0.85rem;">
+          <thead style="background:#f8f9fa;">
+            <tr>
+              <th class="ps-3" style="width:52px;">Rank</th>
+              <th>Name</th>
+              <th class="text-end pe-3">Lifetime Pts</th>
+              <th class="text-end pe-3">Today</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in points_board %}
+            {% set rank = loop.index %}
+            {% if rank == 1 %}
+              {% set row_bg = 'background:linear-gradient(90deg,#fef9c3,#fff);' %}
+              {% set medal  = '🥇' %}
+              {% set pts_color = '#b45309' %}
+            {% elif rank == 2 %}
+              {% set row_bg = 'background:linear-gradient(90deg,#f1f5f9,#fff);' %}
+              {% set medal  = '🥈' %}
+              {% set pts_color = '#475569' %}
+            {% elif rank == 3 %}
+              {% set row_bg = 'background:linear-gradient(90deg,#fff7ed,#fff);' %}
+              {% set medal  = '🥉' %}
+              {% set pts_color = '#c2410c' %}
+            {% else %}
+              {% set row_bg = '' %}
+              {% set medal  = '' %}
+              {% set pts_color = 'var(--label-1)' %}
+            {% endif %}
+            <tr style="{{ row_bg }}{% if p.username == current_user %}outline:2px solid #6366f1;outline-offset:-2px;{% endif %}">
+              <td class="ps-3 fw-bold text-center align-middle" style="width:52px;">
+                {% if medal %}
+                  <span style="font-size:1.1rem;">{{ medal }}</span>
+                {% else %}
+                  <span class="text-muted">#{{ rank }}</span>
+                {% endif %}
+              </td>
+              <td class="align-middle">
+                <div class="d-flex align-items-center gap-2">
+                  {% if p.display_picture %}
+                  <img src="{{ p.display_picture }}"
+                       style="width:30px;height:30px;border-radius:50%;object-fit:cover;flex-shrink:0;" alt="dp">
+                  {% else %}
+                  <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);
+                              display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;
+                              font-size:0.75rem;flex-shrink:0;">{{ p.username[0]|upper }}</div>
+                  {% endif %}
+                  <span class="fw-semibold">{{ p.username }}</span>
+                  {% if p.username == current_user %}
+                  <span class="badge bg-primary" style="font-size:0.52rem;">You</span>
+                  {% endif %}
+                </div>
+              </td>
+              <td class="text-end pe-3 align-middle fw-bold" style="color:{{ pts_color }};">
+                {{ '{:,}'.format(p.lifetime_points or 0) }}
+              </td>
+              <td class="text-end pe-3 align-middle">
+                {% if (p.today_score or 0) > 0 %}
+                <span class="badge bg-success-subtle text-success fw-semibold">
+                  +{{ p.today_score }}
+                </span>
+                {% else %}
+                <span class="text-muted small">—</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="text-center text-muted py-4">No data yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab 2: My Network ──────────────────────────── -->
+  <div class="tab-pane fade" id="pane-net" role="tabpanel">
+
+    {% if net_summary.total > 0 %}
+
+    <!-- Summary cards -->
+    <div class="row g-2 mb-3">
+      <div class="col-4">
+        <div class="card border-0 shadow-sm text-center py-2">
+          <div class="fw-bold fs-5">{{ net_summary.total }}</div>
+          <div class="text-muted" style="font-size:0.72rem;">In Network</div>
+        </div>
+      </div>
+      <div class="col-4">
+        <div class="card border-0 shadow-sm text-center py-2">
+          <div class="fw-bold fs-5">{{ net_summary.direct }}</div>
+          <div class="text-muted" style="font-size:0.72rem;">Direct</div>
+        </div>
+      </div>
+      <div class="col-4">
+        <div class="card border-0 shadow-sm text-center py-2">
+          <div class="fw-bold fs-5 text-success">₹{{ "%.0f"|format(net_summary.revenue) }}</div>
+          <div class="text-muted" style="font-size:0.72rem;">Network Rev</div>
+        </div>
+      </div>
+    </div>
+
+    {% if growth_data %}
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header py-2">
+        <span class="small fw-semibold"><i class="bi bi-graph-up-arrow me-1 text-success"></i>Network Growth</span>
+      </div>
+      <div class="card-body py-2">
+        <canvas id="growthChart" height="120"></canvas>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- All / Direct toggle -->
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <span class="text-muted small fw-semibold">View:</span>
+      <div class="btn-group btn-group-sm" role="group">
+        <button type="button" class="btn btn-primary active" id="btnAllGens"
+                onclick="showAllGens()">All Generations</button>
+        <button type="button" class="btn btn-outline-primary" id="btnDirectOnly"
+                onclick="showDirectOnly()">Direct Only</button>
+      </div>
+    </div>
+
+    <!-- Tree -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-0">
+        {% for level in network_by_gen.keys()|sort %}
+        {% set members = network_by_gen[level] %}
+
+        <!-- Generation header -->
+        <div class="net-gen-header px-3 py-2 d-flex align-items-center gap-2" data-gen="{{ level }}">
+          <span class="badge net-gen-badge net-gen-badge-{{ level if level <= 5 else 5 }}">
+            Gen {{ level }}
+          </span>
+          <span class="fw-semibold small">
+            {% if level == 1 %}Direct{% else %}Generation {{ level }}{% endif %}
+          </span>
+          <span class="badge bg-light text-dark ms-auto">
+            {{ members|length }} member{{ 's' if members|length != 1 else '' }}
+          </span>
+        </div>
+
+        <!-- Member rows -->
+        {% for row in members %}
+        <div class="d-flex align-items-center gap-3 px-4 py-3 border-bottom net-member-row" data-gen="{{ level }}">
+
+          <!-- Avatar -->
+          {% if row.display_picture %}
+            <img src="{{ row.display_picture }}" alt="DP"
+                 style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #e9ecef;flex-shrink:0;">
+          {% else %}
+            <div class="d-flex align-items-center justify-content-center rounded-circle bg-primary bg-opacity-10"
+                 style="width:40px;height:40px;flex-shrink:0;">
+              <i class="bi bi-person-fill text-primary"></i>
+            </div>
+          {% endif %}
+
+          <!-- Name + stats -->
+          <div class="flex-grow-1 min-w-0">
+            <div class="fw-semibold text-truncate">{{ row.uname }}</div>
+            {% if row.parent_uname %}
+            <div class="text-muted small" style="font-size:0.72rem;">
+              <i class="bi bi-arrow-up-right me-1"></i>Upline:
+              <span class="fw-semibold text-body-secondary">@{{ row.parent_uname }}</span>
+              {% if row.parent_fbo %}
+              <span class="text-muted">· FBO {{ row.parent_fbo }}</span>
+              {% endif %}
+            </div>
+            {% endif %}
+            <div class="text-muted small">
+              {{ row.total or 0 }} leads · {{ row.converted or 0 }} conv · {{ row.paid_pct or 0 }}% paid
+            </div>
+            {% if (row.seat_holds or 0) > 0 or (row.fully_conv or 0) > 0 %}
+            <div class="label-xs mt-1">
+              {% if (row.seat_holds or 0) > 0 %}
+                <span class="badge" style="background:#7c3aed;font-size:0.58rem;">
+                  <i class="bi bi-shield-check-fill me-1"></i>{{ row.seat_holds }}
+                </span>
+              {% endif %}
+              {% if (row.fully_conv or 0) > 0 %}
+                <span class="badge bg-success ms-1" style="font-size:0.58rem;">
+                  <i class="bi bi-trophy-fill me-1"></i>{{ row.fully_conv }}
+                </span>
+              {% endif %}
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- Revenue KPI -->
+          <div class="text-end flex-shrink-0">
+            <div class="fw-bold text-success small">₹{{ "%.0f"|format(row.revenue or 0) }}</div>
+            <div class="text-muted" style="font-size:0.68rem;">{{ row.paid or 0 }} paid</div>
+          </div>
+
+        </div>
+        {% endfor %}
+
+        {% endfor %}
+      </div>
+    </div>
+
+    {% else %}
+    <div class="empty-state py-5">
+      <i class="bi bi-diagram-3"></i>
+      <p>Your network is empty.<br>
+        <span class="small text-muted">Members who register with your FBO as upline appear here after approval.</span>
+      </p>
+    </div>
+    {% endif %}
+
+  </div><!-- end pane-net -->
+
+</div><!-- end tab-content -->
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showAllGens() {
+  document.querySelectorAll('#pane-net [data-gen]').forEach(el => el.style.display = '');
+  document.getElementById('btnAllGens').classList.add('active', 'btn-primary');
+  document.getElementById('btnAllGens').classList.remove('btn-outline-primary');
+  document.getElementById('btnDirectOnly').classList.remove('active', 'btn-primary');
+  document.getElementById('btnDirectOnly').classList.add('btn-outline-primary');
+}
+function showDirectOnly() {
+  document.querySelectorAll('#pane-net [data-gen]').forEach(el => {
+    el.style.display = parseInt(el.dataset.gen) > 1 ? 'none' : '';
+  });
+  document.getElementById('btnDirectOnly').classList.add('active', 'btn-primary');
+  document.getElementById('btnDirectOnly').classList.remove('btn-outline-primary');
+  document.getElementById('btnAllGens').classList.remove('active', 'btn-primary');
+  document.getElementById('btnAllGens').classList.add('btn-outline-primary');
+}
+
+{% if growth_data %}
+(function(){
+  const ctx = document.getElementById('growthChart');
+  if (!ctx) return;
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: {{ growth_data | map(attribute='month') | list | tojson | safe }},
+      datasets: [{
+        label: 'New Members',
+        data: {{ growth_data | map(attribute='count') | list | tojson | safe }},
+        backgroundColor: 'rgba(99,102,241,0.7)',
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
+  });
+})();
+{% endif %}
+</script>
+{% endblock %}

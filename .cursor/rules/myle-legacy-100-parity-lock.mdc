@@ -1,0 +1,23 @@
+---
+description: Old Flask Myle app = spec; vl2 must match unless parity matrix records an exception
+alwaysApply: true
+---
+
+# Legacy parity lock (100% target)
+
+## Single source of truth (old app)
+- **Behavior spec** = shipped Flask monolith: **`backend/legacy/myle_dashboard_main3/`** (`routes/`, `helpers`, `services/`) plus the original dashboard repo’s **`database.py`** / schema and any migration notes there—not invented rules.
+- **Claims of “same as old app”** are valid only when **`docs/LEGACY_PARITY_MAPPING.md`** has a row with **Legacy ref + Evidence** and the new path—see that doc’s rules.
+
+## What “lock” means for implementation
+- **Do not** change user-visible labels, pipeline stages, lead visibility, wallet/pool math, or role gates **for “UX preference”** if that diverges from legacy. Same strings and semantics as **`LEAD_STATUS_OPTIONS`** / **`app/core/lead_status.py`** / **`lead_scope.py`** unless the parity matrix documents a deliberate difference.
+- **Do not** ship **stub** JSON for flows the old app already implemented end-to-end—either port behavior or leave the surface clearly WIP out of “done”.
+- **Do** trace any domain change to the **matching legacy route + helper**, add **`tests/`** that encode the old behavior, and update **`docs/LEGACY_PARITY_MAPPING.md`** (and import notes in **`backend/legacy/LEGACY_TO_VL2_MAPPING.md`** when data moves).
+
+## UI shell
+- Dashboard routing, nav, and **dashboard home copy** stay under **`myle-frontend-dashboard.mdc`** (one registry, no per-role marketing drift on home KPIs).
+
+## If something must differ
+- Record in **`docs/LEGACY_PARITY_MAPPING.md`** as **`won’t match (reason)`** with owner/date—never silent drift.
+
+See also: **`docs/LEGACY_100_PARITY_LOCK.md`**.

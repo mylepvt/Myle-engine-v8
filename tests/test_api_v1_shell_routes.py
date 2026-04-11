@@ -38,4 +38,8 @@ def test_other_leaderboard_any_role(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_team_reports_admin(monkeypatch: pytest.MonkeyPatch) -> None:
     c = _admin(monkeypatch)
-    assert c.get("/api/v1/team/reports").status_code == 200
+    r = c.get("/api/v1/team/reports")
+    assert r.status_code == 200
+    b = r.json()
+    assert "live_summary" in b
+    assert b["live_summary"]["day1_total"] == 0

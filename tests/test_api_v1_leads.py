@@ -294,17 +294,17 @@ def test_archived_and_deleted_only_mutually_exclusive(
 def test_list_leads_filter_by_status(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    asyncio.run(_seed_one_lead(user_id=2, name="A", lead_status="new"))
-    asyncio.run(_seed_one_lead(user_id=2, name="B", lead_status="won"))
+    asyncio.run(_seed_one_lead(user_id=2, name="A", lead_status="new_lead"))
+    asyncio.run(_seed_one_lead(user_id=2, name="B", lead_status="converted"))
     try:
         c = _authed_client(monkeypatch)
         assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
-        res = c.get("/api/v1/leads", params={"status": "won"})
+        res = c.get("/api/v1/leads", params={"status": "converted"})
         assert res.status_code == 200
         body = res.json()
         assert body["total"] == 1
         assert body["items"][0]["name"] == "B"
-        assert body["items"][0]["status"] == "won"
+        assert body["items"][0]["status"] == "converted"
     finally:
         asyncio.run(_clear_leads())
 
@@ -423,13 +423,13 @@ def test_api_flow_create_then_workboard_then_status_then_archive(
         assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
         cr = c.post(
             "/api/v1/leads",
-            json={"name": "Karanveer Singh Flow", "status": "new"},
+            json={"name": "Karanveer Singh Flow", "status": "new_lead"},
         )
         assert cr.status_code == 201
         lid = cr.json()["id"]
 
         wb0 = c.get("/api/v1/workboard").json()
-        new_col = next(col for col in wb0["columns"] if col["status"] == "new")
+        new_col = next(col for col in wb0["columns"] if col["status"] == "new_lead")
         assert new_col["total"] >= 1
         assert any(i["name"] == "Karanveer Singh Flow" for i in new_col["items"])
 

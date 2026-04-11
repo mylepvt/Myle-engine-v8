@@ -50,3 +50,11 @@ def test_samesite_none_allowed_when_secure() -> None:
         session_cookie_secure=True,
     )
     assert s.auth_cookie_samesite == "none"
+
+
+def test_asgi_exports_same_fastapi_app() -> None:
+    """``asgi:app`` must match ``main:app`` (Docker / optional gunicorn UvicornWorker)."""
+    import asgi
+    from main import app as main_app
+
+    assert asgi.app is main_app

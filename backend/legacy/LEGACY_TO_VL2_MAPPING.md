@@ -143,7 +143,25 @@ Adjust the script when Alembic adds columns; this doc stays the **field mapping 
 
 ---
 
-## 9. Supporting utilities
+## 9. 100% data — `legacy_row_snapshots` (lossless JSON)
+
+The normalized import (§8) maps only columns that exist on vl2 models. For **every** legacy table row preserved **byte-for-byte in JSON** (including columns not yet modeled in PostgreSQL), run the importer with the default behaviour:
+
+- Migration **`20260411_0014_legacy_row_snapshots`** creates table **`legacy_row_snapshots`** (`import_run_id`, `table_name`, `row_key`, `payload` JSONB, …).
+- **`import_legacy_sqlite.py`** (unless **`--no-full-snapshot`**) inserts **one row per SQLite row** for all user tables (`sqlite_master`, excluding `sqlite_%`). Blobs are stored as `{"__bytes_b64__": "..."}` inside `payload`.
+- Use **`--snapshot-only`** to archive the file **without** running users/leads/wallet/activity phases.
+- Each run gets a UUID **`import_run_id`** (printed on stdout; also inside **`--write-mapping`** JSON).
+
+Query examples (after import):
+
+```sql
+SELECT table_name, COUNT(*) FROM legacy_row_snapshots WHERE import_run_id = 'YOUR-UUID' GROUP BY 1 ORDER BY 2 DESC;
+SELECT payload FROM legacy_row_snapshots WHERE table_name = 'training_progress' LIMIT 1;
+```
+
+---
+
+## 10. Supporting utilities
 
 - **`scripts/legacy_sqlite_inspect.py`** — table list + row counts (read-only).
-- Keep **`legacy_user_id → users.id`** and **`legacy_lead_id → leads.id`** JSON from `--write-mapping` for reruns and FK fixes.
+- Keep **`legacy_user_id → users.id`** and **`legacy_lead_id → leads.id`** JSON from `--write-mapping` for reruns and FK fixes (plus **`import_run_id`** for snapshot batches).

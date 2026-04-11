@@ -1,0 +1,2221 @@
+{% extends "base.html" %}
+{% block title %}Leads – Myle Community{% endblock %}
+{% block page_title %}{% if session.get('role') == 'admin' %}All Leads{% else %}My Leads{% endif %}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/working.css') }}?v=20260409sla">
+{% endblock %}
+
+{% block content %}
+{% from '_macros.html' import stage_sla_watch with context %}
+
+{# ₹196 one-time upload (all roles): show only if no file on record or proof was rejected. #}
+{% macro proof_upload_button(lead, extra_class='') %}
+{% set _pst = lead|payment_proof_status %}
+{% if not ((lead.payment_proof_path or '')|trim) or _pst == 'rejected' %}
+<form method="post" action="{{ url_for('upload_payment_proof', lead_id=lead.id) }}"
+      enctype="multipart/form-data" class="d-inline {{ extra_class }}" title="Upload ₹196 proof">
+  <input type="hidden" name="csrf_token" value="{{ session.get('_csrf_token', '') }}">
+  <label class="btn btn-xs btn-outline-info mb-0 px-2" style="cursor:pointer;">
+    <i class="bi bi-cloud-arrow-up-fill"></i>
+    <input type="file" name="payment_proof" accept=".png,.jpg,.jpeg,.webp"
+           style="display:none;" onchange="if(this.files && this.files[0]) this.form.submit();">
+  </label>
+</form>
+{% endif %}
+{% endmacro %}
+
+{# Admin: Edit lead — same control everywhere (cards + table Actions). #}
+{% macro admin_edit_lead_btn(lead, extra_class='') %}
+{% if session.get('role') == 'admin' %}
+<a href="{{ url_for('edit_lead', lead_id=lead.id) }}" class="btn btn-xs btn-outline-secondary mb-0 {{ extra_class }}" title="Edit lead"><i class="bi bi-pencil"></i></a>
+{% endif %}
+{% endmacro %}
+
+{# ── Macro: compact lead card for Working section ──────────── #}
+{% macro wcard(lead, day=0) %}
+<div class="wl-card" id="wcard-{{ lead.id }}" data-status="{{ lead.status|replace(' ','') }}">
+  <div class="d-flex align-items-start justify-content-between gap-2 mb-1">
+    <div>
+      <div class="wl-name">{{ lead.name or ('Lead #' ~ lead.id) }}</div>
+      {% if lead|payment_proof_status == 'rejected' %}
+      <div class="wl-retarget-tag" style="color:#dc2626;">
+        <i class="bi bi-x-octagon-fill me-1"></i>₹196 proof rejected
+      </div>
+      {% endif %}
+      {% if lead.retarget_assigned_by %}<div class="wl-retarget-tag"><i class="bi bi-arrow-repeat me-1"></i>Retarget by {{ lead.retarget_assigned_by }}</div>{% endif %}
+      {% if lead.stale_worker and lead.stale_worker != session.get('username') %}<div class="wl-assigned-tag"><i class="bi bi-person-fill-up me-1"></i>Assigned by {{ lead.stale_worker_by or 'admin' }}</div>{% elif lead.stale_worker %}<div class="wl-assigned-tag"><i class="bi bi-person-fill-up me-1"></i>Assigned lead</div>{% endif %}
+      {% if lead.city %}<div class="wl-city"><i class="bi bi-geo-alt-fill me-1"></i>{{ lead.city }}</div>{% endif %}
+    </div>
+    <span class="wl-status-badge status-{{ lead.status|replace(' ','') }}" style="flex-shrink:0;">{{ lead.status }}</span>
+  </div>
+
+  <div class="d-flex align-items-center gap-2 mb-2">
+    <span class="wl-phone">{{ lead.phone }}</span>
+    <button type="button" class="wl-action-btn call cp-queue-item" title="Call"
+            data-lead-id="{{ lead.id }}"
+            data-lead-name="{{ lead.name|e }}"
+            data-lead-phone="{{ lead.phone|e }}"
+            onclick='openCallPanel({{ lead.id }}, {{ lead.name|tojson }}, {{ lead.phone|tojson }})'>
+      <i class="bi bi-telephone-fill"></i>
+    </button>
+    <a href="https://wa.me/{{ lead.phone|wa_phone }}" target="_blank" rel="noopener" class="wl-action-btn wa" title="WhatsApp">
+      <i class="bi bi-whatsapp"></i>
+    </a>
+    {% if session.get('role') != 'team' %}
+    <button type="button" class="wl-action-btn btn-followup" title="Set Follow-up"
+            data-id="{{ lead.id }}" data-name="{{ lead.name|e }}" 
+            data-date="{{ lead.follow_up_date[:10] if lead.follow_up_date else '' }}" 
+            data-time="{{ lead.follow_up_time or '' }}"
+            style="background:#f3f4f6;color:#4b5563;border:none;">
+      <i class="bi bi-alarm"></i>
+    </button>
+    {% if lead.follow_up_time %}
+      <span class="badge bg-info-subtle text-info border border-info-subtle" id="time-disp-{{ lead.id }}" style="font-size:0.65rem;">
+        <i class="bi bi-clock me-1"></i>{{ lead.follow_up_time }}
+      </span>
+    {% else %}
+      <span class="badge bg-light text-secondary border d-none" id="time-disp-{{ lead.id }}" style="font-size:0.65rem;">
+        <i class="bi bi-clock me-1"></i>
+      </span>
+    {% endif %}
+    {% endif %}
+  </div>
+
+  {{ stage_sla_watch(lead) }}
+
+  {% if day in (1, 2, 3) %}
+  {# Day-specific: show relevant completion badge + batch selector #}
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    {% if day == 1 %}
+      {% if lead.day1_done %}
+        <span class="wl-done-badge done"><i class="bi bi-check-circle-fill me-1"></i>Day 1 Done</span>
+      {% else %}
+        <span class="wl-done-badge pending"><i class="bi bi-circle me-1"></i>Day 1 Pending</span>
+      {% endif %}
+    {% elif day == 2 %}
+      {% if lead.day2_done %}
+        <span class="wl-done-badge done"><i class="bi bi-check-circle-fill me-1"></i>Day 2 Done</span>
+      {% else %}
+        <span class="wl-done-badge pending"><i class="bi bi-circle me-1"></i>Day 2 Pending</span>
+      {% endif %}
+    {% elif day == 3 %}
+      {% if lead.interview_done %}
+        <span class="wl-done-badge done"><i class="bi bi-check-circle-fill me-1"></i>Interview Done</span>
+      {% else %}
+        <span class="wl-done-badge pending"><i class="bi bi-circle me-1"></i>Interview Pending</span>
+      {% endif %}
+    {% endif %}
+
+  </div>
+  {% endif %}
+
+  <div class="d-flex align-items-center gap-1 mt-2">
+    {# Status: team pre-handoff = dropdown; post-handoff = badge only (leader owns Day 1+) #}
+    {% if user_role == 'team' and lead.status | team_pipeline_readonly %}
+    <div class="d-flex align-items-center gap-2 flex-wrap flex-grow-1">
+      <span class="badge bg-secondary rounded-pill">{{ lead.status }}</span>
+      <span class="text-muted" style="font-size:0.68rem;">Leader pipeline</span>
+    </div>
+    {% else %}
+    <form method="post" action="{{ url_for('update_status', lead_id=lead.id) }}" class="flex-grow-1">
+      {% if user_role == 'team' %}
+      <select name="status" data-lead-id="{{ lead.id }}"
+              class="form-select form-select-sm status-select status-{{ lead.status|replace(' ','') }}"
+              style="font-size:0.78rem;"
+              title="Statuses up to ₹196 (same as Retarget)">
+        {% for s in lead.status | team_status_opts %}
+        <option value="{{ s }}" {% if s | team_status_selected(lead.status) %}selected{% endif %}>{{ s }}{% if s == 'Paid ₹196' %} ✅{% endif %}</option>
+        {% endfor %}
+      </select>
+      {% else %}
+      <select name="status" data-lead-id="{{ lead.id }}"
+              class="form-select form-select-sm status-select status-{{ lead.status|replace(' ','') }}"
+              style="font-size:0.78rem;">
+        <optgroup label="── Enrollment ──">
+          <option value="New Lead"     {% if lead.status in ('New Lead','New') %}selected{% endif %}>New Lead</option>
+          <option value="Contacted"     {% if lead.status == 'Contacted'     %}selected{% endif %}>Contacted</option>
+          <option value="Invited"      {% if lead.status == 'Invited'      %}selected{% endif %}>Invited</option>
+          <option value="Video Sent"   {% if lead.status == 'Video Sent'   %}selected{% endif %}>Video Sent</option>
+          <option value="Video Watched"{% if lead.status == 'Video Watched' %}selected{% endif %}>Video Watched</option>
+          <option value="Paid ₹196"    {% if lead.status == 'Paid ₹196'    %}selected{% endif %}>Paid ₹196 ✅</option>
+        </optgroup>
+        <optgroup label="── Pipeline ──">
+          <option value="Day 1"             {% if lead.status == 'Day 1'             %}selected{% endif %}>Day 1</option>
+          <option value="Day 2"             {% if lead.status == 'Day 2'             %}selected{% endif %}>Day 2</option>
+          <option value="Interview"         {% if lead.status == 'Interview'         %}selected{% endif %}>Interview</option>
+          <option value="Track Selected"    {% if lead.status == 'Track Selected'    %}selected{% endif %}>Track Selected</option>
+          <option value="Seat Hold Confirmed" {% if lead.status == 'Seat Hold Confirmed' %}selected{% endif %}>Seat Hold</option>
+          <option value="Fully Converted"   {% if lead.status == 'Fully Converted'   %}selected{% endif %}>Fully Converted ✅</option>
+        </optgroup>
+        <optgroup label="── Other ──">
+          <option value="Lost"     {% if lead.status == 'Lost'     %}selected{% endif %}>Lost</option>
+          <option value="Retarget" {% if lead.status == 'Retarget' %}selected{% endif %}>Retarget</option>
+        </optgroup>
+        {% if lead.status and lead.status not in ('New Lead','New','Contacted','Invited','Video Sent','Video Watched','Paid ₹196','Day 1','Day 2','Interview','Track Selected','Seat Hold Confirmed','Fully Converted','Lost','Retarget') %}
+        <option value="{{ lead.status }}" selected>{{ lead.status }}</option>
+        {% endif %}
+      </select>
+      {% endif %}
+    </form>
+    {% endif %}
+    {{ admin_edit_lead_btn(lead, 'me-1') }}
+    {{ proof_upload_button(lead) }}
+  </div>
+
+  {# Call status = dial/line outcome only. Pipeline (Video Sent → Mindset → Day 1+) = Lead Status above. #}
+  {% if day == 0 %}
+  <div class="mt-1">
+    {% if user_role in ('team', 'admin', 'leader') %}
+    {% set _csv = team_call_status_values if user_role == 'team' else call_status_values %}
+    <select class="form-select form-select-sm call-status-select"
+            style="font-size:0.72rem;padding:3px 6px;"
+            data-lead-id="{{ lead.id }}"
+            data-current="{{ lead.call_status or '' }}"
+            title="{% if user_role == 'team' %}Call / line — advance funnel via Lead Status{% else %}Call classification{% endif %}">
+      <option value="">— Call (dial) —</option>
+      {% for cs in _csv %}
+      <option value="{{ cs }}" {% if lead.call_status == cs %}selected{% endif %}>{{ cs }}</option>
+      {% endfor %}
+    </select>
+    {% if lead.call_status and lead.call_status != 'Not Called Yet' %}
+    <div class="mt-1" style="font-size:0.68rem;font-weight:600;
+      {% if lead.call_status in ('Called - No Answer','Called - Follow Up') %}color:#d97706;
+      {% elif lead.call_status == 'Called - Not Interested' %}color:#dc2626;
+      {% else %}color:#6b7280;{% endif %}">
+      {% if lead.call_status == 'Called - Interested' %}✅ Interested (call)
+      {% elif lead.call_status == 'Called - No Answer' %}📵 No answer
+      {% elif lead.call_status == 'Called - Follow Up' %}🔄 Follow up (call)
+      {% elif lead.call_status == 'Called - Not Interested' %}❌ Not interested
+      {% elif lead.call_status == 'Wrong Number' %}📵 Wrong number
+      {% else %}{{ lead.call_status }}
+      {% endif %}
+    </div>
+    {% endif %}
+    {% else %}
+    <span class="badge bg-secondary" style="font-size:0.68rem;">
+      <i class="bi bi-telephone me-1"></i>{{ lead.call_status or 'Not Called Yet' }}
+    </span>
+    {% endif %}
+    {% if lead.status == 'Video Watched' or lead.call_status == 'Video Watched' %}
+    <div class="mt-1" style="background:#dcfce7; border-radius:6px; padding:3px 8px; font-size:0.67rem; font-weight:600; color:#16a34a;">
+      👀 Video watched — call now!
+    </div>
+    {% elif lead.status == 'Video Sent' or lead.call_status == 'Video Sent' %}
+    <div class="mt-1" style="background:#dbeafe; border-radius:6px; padding:3px 8px; font-size:0.67rem; color:#1d4ed8;">
+      📤 Video sent — response pending
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {# Heat Score + Next Action #}
+  {% set heat = lead.heat if lead.heat is defined else 0 %}
+  {% if heat is defined and lead.next_action is defined %}
+  <div class="heat-bar-wrap mt-2">
+    <div class="d-flex justify-content-between mb-1">
+      <span style="font-size:0.6rem;color:#9ca3af;font-weight:700;letter-spacing:0.04em;">HEAT</span>
+      <span style="font-size:0.6rem;font-weight:700;
+        color:{% if heat >= 75 %}#dc2626{% elif heat >= 40 %}#d97706{% else %}#9ca3af{% endif %}">
+        {% if heat >= 75 %}🔥{% elif heat >= 40 %}🌤{% else %}❄{% endif %} {{ heat }}
+      </span>
+    </div>
+    <div class="progress" style="height:4px;">
+      <div class="progress-bar {% if heat >= 75 %}bg-danger{% elif heat >= 40 %}bg-warning{% else %}bg-secondary{% endif %}"
+           style="width:{{ heat }}%;border-radius:99px;transition:width 0.5s ease;"></div>
+    </div>
+  </div>
+  {% if lead.next_action and lead.next_action != '—' %}
+  <div class="next-action-badge {{ lead.next_action_type or 'followup' }}" style="font-size:0.68rem;padding:4px 9px;margin-top:5px;">
+    {% if lead.next_action_type == 'urgent' %}🚨
+    {% elif lead.next_action_type == 'today' %}⏰
+    {% elif lead.next_action_type == 'cold' %}❄
+    {% else %}📞{% endif %}
+    {{ lead.next_action }}
+  </div>
+  {% endif %}
+  {% endif %}
+</div>
+{% endmacro %}
+
+
+
+
+<!-- ── Filter Bar ──────────────────────────────────────── -->
+<div class="card border-0 mb-3">
+  <div class="card-body py-2 px-3">
+    <form method="get" id="filterForm">
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        <div class="input-group input-group-sm" style="max-width:220px;">
+          <span class="input-group-text bg-transparent border-end-0" style="border-color:rgba(0,0,0,0.1);">
+            <i class="bi bi-search text-muted" style="font-size:0.8rem;"></i>
+          </span>
+          <input type="text" name="q" class="form-control border-start-0 ps-0"
+                 placeholder="Search name / phone…" value="{{ search }}"
+                 style="border-color:rgba(0,0,0,0.1);">
+        </div>
+        <select name="status" class="form-select form-select-sm" style="max-width:160px;border-color:rgba(0,0,0,0.1);">
+          <option value="">All Statuses</option>
+          {% for s in (team_allowed_statuses if user_role == 'team' else statuses) %}
+            <option value="{{ s }}" {% if s == selected_status %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="bi bi-search me-1"></i>Filter
+        </button>
+        <a href="{{ url_for('leads') }}" class="btn btn-outline-secondary btn-sm">Reset</a>
+
+        <div class="ms-auto d-flex align-items-center gap-2">
+          <span class="badge rounded-pill fw-semibold"
+                style="background:#eef2ff;color:#6366f1;font-size:0.72rem;padding:5px 10px;">
+            {{ (today_leads|length) + (hist_leads|length) }} leads
+          </span>
+          <a href="{{ url_for('export_leads') }}" class="btn btn-sm btn-outline-success" title="Export CSV">
+            <i class="bi bi-download me-1"></i><span class="d-none d-sm-inline">Export</span>
+          </a>
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#importModal">
+            <i class="bi bi-upload me-1"></i><span class="d-none d-sm-inline">Import</span>
+          </button>
+          <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#quickAddModal">
+            <i class="bi bi-plus-lg me-1"></i><span class="d-none d-sm-inline">Quick Add</span>
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     OUTER TABS: Working Today | History
+     ══════════════════════════════════════════════════════════ -->
+
+<ul class="nav nav-pills mb-3 gap-1" id="outerTabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active fw-semibold px-4" id="tab-working" data-bs-toggle="pill"
+            data-bs-target="#pane-working" type="button" role="tab">
+      <i class="bi bi-lightning-fill me-2" style="color:#facc15;"></i>Today Leads
+      <span class="badge rounded-pill ms-1" style="background:rgba(255,255,255,.25);font-size:.7rem;">{{ today_leads|length }}</span>
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link fw-semibold px-4" id="tab-history" data-bs-toggle="pill"
+            data-bs-target="#pane-history" type="button" role="tab">
+      <i class="bi bi-clock-history me-2"></i>History
+      <span class="badge rounded-pill ms-1" style="background:rgba(0,0,0,.07);color:#333;font-size:.7rem;">{{ hist_leads|length }}</span>
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content">
+
+<!-- ══════════════════════════════════════════════════════════
+     WORKING TODAY PANE
+     ══════════════════════════════════════════════════════════ -->
+<div class="tab-pane fade show active" id="pane-working" role="tabpanel">
+
+  {% if not today_leads %}
+  <div class="text-center py-5 text-muted">
+    <i class="bi bi-sun" style="font-size:3rem;opacity:.3;"></i>
+    <p class="mt-3 mb-1 fw-semibold">No leads today</p>
+    <p class="small">Add a lead or claim from pool to start working.</p>
+    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#quickAddModal">
+      <i class="bi bi-plus-lg me-1"></i>Quick Add
+    </button>
+  </div>
+  {% else %}
+
+  {# ── Inner Day tabs ─────────────────────────────────────── #}
+  <ul class="nav nav-tabs mb-3" id="dayTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active fw-semibold" id="dtab-active"
+              data-bs-toggle="tab" data-bs-target="#dpane-active" type="button" role="tab">
+        <i class="bi bi-activity me-1 text-primary"></i>Today Leads
+        <span class="badge bg-primary ms-1" style="font-size:.65rem;">{{ active_leads|length }}</span>
+      </button>
+    </li>
+    {% if user_role == 'team' %}
+    <li class="nav-item" role="presentation">
+      <button class="nav-link fw-semibold" id="dtab-enrolled"
+              data-bs-toggle="tab" data-bs-target="#dpane-enrolled" type="button" role="tab">
+        <i class="bi bi-check2-circle me-1" style="color:#059669;"></i>Enrolled
+        <span class="badge ms-1" style="background:#dcfce7;color:#166534;font-size:.65rem;">{{ enrolled_leads|length }}</span>
+      </button>
+    </li>
+    {% else %}
+    <li class="nav-item" role="presentation">
+      <button class="nav-link fw-semibold" id="dtab-d1"
+              data-bs-toggle="tab" data-bs-target="#dpane-d1" type="button" role="tab">
+        <i class="bi bi-1-circle-fill me-1" style="color:#0ea5e9;"></i>Day 1
+        <span class="badge ms-1" style="background:#e0f2fe;color:#0369a1;font-size:.65rem;">{{ day1_leads|length }}</span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link fw-semibold" id="dtab-d2"
+              data-bs-toggle="tab" data-bs-target="#dpane-d2" type="button" role="tab">
+        <i class="bi bi-2-circle-fill me-1" style="color:#8b5cf6;"></i>Day 2
+        <span class="badge ms-1" style="background:#ede9fe;color:#6d28d9;font-size:.65rem;">{{ day2_leads|length }}</span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link fw-semibold" id="dtab-d3"
+              data-bs-toggle="tab" data-bs-target="#dpane-d3" type="button" role="tab">
+        <i class="bi bi-3-circle-fill me-1" style="color:#f59e0b;"></i>Day 3
+        <span class="badge ms-1" style="background:#fef3c7;color:#92400e;font-size:.65rem;">{{ day3_leads|length }}</span>
+      </button>
+    </li>
+    {% endif %}
+    <li class="nav-item" role="presentation">
+      <button class="nav-link fw-semibold" id="dtab-converted"
+              data-bs-toggle="tab" data-bs-target="#dpane-converted" type="button" role="tab">
+        <i class="bi bi-trophy-fill me-1" style="color:#10b981;"></i>Converted
+        <span class="badge ms-1" style="background:#d1fae5;color:#065f46;font-size:.65rem;">{{ converted_leads|length }}</span>
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content">
+
+    {# ── Active tab ──────────────────────────────────────── #}
+    <div class="tab-pane fade show active" id="dpane-active" role="tabpanel">
+      {% if active_leads %}
+      <div class="row g-2">
+        {% for lead in active_leads %}
+        <div class="col-sm-6 col-lg-4">{{ wcard(lead, 0) }}</div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="text-center py-4 text-muted small">
+        <i class="bi bi-check2-all" style="font-size:2rem;opacity:.3;"></i>
+        <p class="mt-2 mb-0">No active leads — all are in Day 1 / 2 / 3!</p>
+      </div>
+      {% endif %}
+    </div>
+
+    {# ── Enrolled tab — team only ─────────────────────────── #}
+    {% if user_role == 'team' %}
+    <div class="tab-pane fade" id="dpane-enrolled" role="tabpanel">
+      {% if enrolled_leads %}
+      <div class="row g-2">
+        {% for lead in enrolled_leads %}
+        <div class="col-sm-6 col-lg-4">
+          <div class="card p-3 shadow-sm" id="ecard-{{ lead.id }}">
+            <div class="d-flex justify-content-between align-items-start mb-1">
+              <strong style="font-size:.9rem;">{{ lead.name or ('Lead #' ~ lead.id) }}</strong>
+              <span class="badge bg-success ms-2" style="font-size:.65rem;">{{ lead.status }}</span>
+            </div>
+            {% if lead.phone %}
+            <div class="text-muted small mb-2">{{ lead.phone }}</div>
+            {% endif %}
+            <div class="mb-2">{{ stage_sla_watch(lead) }}</div>
+            <form method="post" action="{{ url_for('ready_for_day1', lead_id=lead.id) }}">
+              <button type="submit" class="btn btn-success btn-sm w-100 fw-semibold"
+                      onclick="return confirm('Move {{ lead.name|e }} to Day 1?');">
+                <i class="bi bi-arrow-right-circle-fill me-1"></i>Ready for Day 1
+              </button>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="text-center py-5 text-muted small">
+        <i class="bi bi-inbox" style="font-size:2.5rem;opacity:.3;"></i>
+        <p class="mt-2 mb-0">No enrolled leads yet</p>
+      </div>
+      {% endif %}
+    </div>
+    {% else %}
+
+    {# ── Day 1 tab ───────────────────────────────────────── #}
+    <div class="tab-pane fade" id="dpane-d1" role="tabpanel">
+      {% if day1_leads %}
+      <div class="row g-2">
+        {% for lead in day1_leads %}
+        <div class="col-sm-6 col-lg-4">{{ wcard(lead, 1) }}</div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="text-center py-5 text-muted small">
+        <i class="bi bi-1-circle" style="font-size:2.5rem;opacity:.3;"></i>
+        <p class="mt-2 mb-0">No leads in Day 1 today</p>
+      </div>
+      {% endif %}
+    </div>
+
+    {# ── Day 2 tab ───────────────────────────────────────── #}
+    <div class="tab-pane fade" id="dpane-d2" role="tabpanel">
+      {% if day2_leads %}
+      <div class="row g-2">
+        {% for lead in day2_leads %}
+        <div class="col-sm-6 col-lg-4">{{ wcard(lead, 2) }}</div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="text-center py-5 text-muted small">
+        <i class="bi bi-2-circle" style="font-size:2.5rem;opacity:.3;"></i>
+        <p class="mt-2 mb-0">No leads in Day 2 today</p>
+      </div>
+      {% endif %}
+    </div>
+
+    {# ── Day 3 tab ───────────────────────────────────────── #}
+    <div class="tab-pane fade" id="dpane-d3" role="tabpanel">
+      {% if day3_leads %}
+      <div class="row g-2">
+        {% for lead in day3_leads %}
+        <div class="col-sm-6 col-lg-4">{{ wcard(lead, 3) }}</div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="text-center py-5 text-muted small">
+        <i class="bi bi-3-circle" style="font-size:2.5rem;opacity:.3;"></i>
+        <p class="mt-2 mb-0">No leads in Day 3 today</p>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}{# end team/non-team day tabs #}
+
+    {# ── Converted tab ──────────────────────────────────── #}
+    <div class="tab-pane fade" id="dpane-converted" role="tabpanel">
+      {% if converted_leads %}
+      <div class="row g-2">
+        {% for lead in converted_leads %}
+        <div class="col-sm-6 col-lg-4">
+          <div class="card p-3 shadow-sm border-success" id="ccard-{{ lead.id }}">
+            <div class="d-flex justify-content-between align-items-start mb-1">
+              <strong style="font-size:.9rem;">{{ lead.name or ('Lead #' ~ lead.id) }}</strong>
+              <span class="badge bg-success ms-2" style="font-size:.65rem;">Converted</span>
+            </div>
+            {% if lead.phone %}<div class="text-muted small mb-1">{{ lead.phone }}</div>{% endif %}
+            {% if lead.claimed_at %}<div class="text-muted" style="font-size:.65rem;">Claimed: {{ lead.claimed_at[:10] }}</div>{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="text-center py-5 text-muted small">
+        <i class="bi bi-trophy" style="font-size:2.5rem;opacity:.3;"></i>
+        <p class="mt-2 mb-0">No converted leads yet today</p>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>{# /inner tab-content #}
+  {% endif %}{# /today_leads check #}
+</div>{# /pane-working #}
+
+
+<!-- ══════════════════════════════════════════════════════════
+     HISTORY PANE (grouped by current stage so status change moves lead here)
+     ══════════════════════════════════════════════════════════ -->
+<div class="tab-pane fade" id="pane-history" role="tabpanel">
+
+  {% if not hist_leads %}
+  <div class="text-center py-5 text-muted">
+    <i class="bi bi-clock-history" style="font-size:3rem;opacity:.3;"></i>
+    <p class="mt-3 mb-0">No older leads</p>
+  </div>
+  {% else %}
+
+  {# ── History inner tabs: Active | (Enrolled for team) | Day 1 | Day 2 | Day 3 ─── #}
+  <ul class="nav nav-tabs mb-3" id="histDayTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active fw-semibold" id="htab-active"
+              data-bs-toggle="tab" data-bs-target="#hpane-active" type="button" role="tab"
+              title="Leads claimed before today — prospecting funnel (not Day 1+ / enrolled)">
+        <i class="bi bi-activity me-1 text-primary"></i>Active
+        <span class="badge bg-primary ms-1" style="font-size:.65rem;">{{ hist_active_leads|length }}</span>
+      </button>
+    </li>
+    {% if user_role == 'team' %}
+    <li class="nav-item" role="presentation">
+      <button class="nav-link fw-semibold" id="htab-enrolled"
+              data-bs-toggle="tab" data-bs-target="#hpane-enrolled" type="button" role="tab">
+        <i class="bi bi-check2-circle me-1" style="color:#059669;"></i>Enrolled
+        <span class="badge ms-1" style="background:#dcfce7;color:#166534;font-size:.65rem;">{{ hist_enrolled_leads|length }}</span>
+      </button>
+    </li>
+    {% else %}
+    <li class="nav-item" role="presentation">
+      <button class="nav-link fw-semibold"
+              id="htab-d1" data-bs-toggle="tab" data-bs-target="#hpane-d1" type="button" role="tab">
+        <i class="bi bi-1-circle-fill me-1" style="color:#0ea5e9;"></i>Day 1
+        <span class="badge ms-1" style="background:#e0f2fe;color:#0369a1;font-size:.65rem;">{{ hist_day1_leads|length }}</span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link fw-semibold" id="htab-d2" data-bs-toggle="tab" data-bs-target="#hpane-d2" type="button" role="tab">
+        <i class="bi bi-2-circle-fill me-1" style="color:#8b5cf6;"></i>Day 2
+        <span class="badge ms-1" style="background:#ede9fe;color:#6d28d9;font-size:.65rem;">{{ hist_day2_leads|length }}</span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link fw-semibold" id="htab-d3" data-bs-toggle="tab" data-bs-target="#hpane-d3" type="button" role="tab">
+        <i class="bi bi-3-circle-fill me-1" style="color:#f59e0b;"></i>Day 3
+        <span class="badge ms-1" style="background:#fef3c7;color:#92400e;font-size:.65rem;">{{ hist_day3_leads|length }}</span>
+      </button>
+    </li>
+    {% endif %}
+    <li class="nav-item" role="presentation">
+      <button class="nav-link fw-semibold" id="htab-converted"
+              data-bs-toggle="tab" data-bs-target="#hpane-converted" type="button" role="tab">
+        <i class="bi bi-trophy-fill me-1" style="color:#10b981;"></i>Converted
+        <span class="badge ms-1" style="background:#d1fae5;color:#065f46;font-size:.65rem;">{{ hist_converted_leads|length }}</span>
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content" id="histTabContent">
+
+  {# ── History Active ───────────────────────────────────── #}
+  <div class="tab-pane fade {% if hist_active_leads %}show active{% endif %}" id="hpane-active" role="tabpanel">
+  <div class="d-md-none">
+    <div class="d-flex align-items-center gap-2 mb-2 px-1">
+      <div class="form-check mb-0">
+        <input class="form-check-input lead-check" type="checkbox" id="selectAllMobile"
+               style="accent-color:#6366f1;">
+        <label class="form-check-label small text-muted fw-semibold" for="selectAllMobile">Select all</label>
+      </div>
+    </div>
+    {% for lead in hist_active_leads %}
+    {{ wcard(lead, 0) }}
+    {% endfor %}
+  </div>
+
+  {# ── Desktop table ────────────────────────────────────── #}
+  <div class="card border-0 shadow-sm d-none d-md-block">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead>
+            <tr>
+              <th style="width:36px;padding-left:16px;">
+                <input class="form-check-input lead-check" type="checkbox" id="selectAllDesktop"
+                       title="Select all" style="accent-color:#6366f1;">
+              </th>
+              <th class="text-muted">#</th>
+              <th>Name</th>
+              <th>Phone</th>
+              <th>Referred</th>
+              {% if session.get('role') == 'admin' %}<th>Assigned</th>{% endif %}
+              <th>Status</th>
+              <th class="text-muted" style="min-width:96px;" title="24h stage / activity (same as cards)">24h</th>
+              <th class="text-muted" style="min-width:138px;">Call / tag</th>
+              <th class="text-center">D1</th>
+              <th class="text-center">D2</th>
+              <th class="text-center">IV</th>
+              <th class="text-center">₹196</th>
+              <th>Claimed</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for lead in hist_active_leads %}
+            <tr>
+              <td style="padding-left:16px;">
+                <input class="form-check-input lead-check lead-check-desktop" type="checkbox"
+                       value="{{ lead.id }}" aria-label="Select {{ lead.name }}"
+                       style="accent-color:#6366f1;">
+              </td>
+              <td class="text-muted label-sm">{{ lead.id }}</td>
+              <td>
+                <div class="fw-semibold" style="font-size:0.875rem;letter-spacing:-0.01em;">{{ lead.name or ('Lead #' ~ lead.id) }}</div>
+                {% if lead.city %}<div class="text-muted" style="font-size:0.72rem;"><i class="bi bi-geo-alt-fill me-1"></i>{{ lead.city }}</div>{% endif %}
+                {% if lead.email %}<div class="text-muted" style="font-size:0.72rem;">{{ lead.email }}</div>{% endif %}
+              </td>
+              <td>
+                <div class="d-flex align-items-center gap-1">
+                  <span class="small">{{ lead.phone }}</span>
+                  <a href="tel:{{ lead.phone }}" class="btn btn-xs btn-success px-1 py-0" title="Call"
+                     style="font-size:0.72rem;line-height:1.5;"><i class="bi bi-telephone-fill"></i></a>
+                  <div class="btn-group" role="group">
+                    <a href="https://wa.me/{{ lead.phone|wa_phone }}" class="btn btn-xs px-1 py-0"
+                       target="_blank" rel="noopener"
+                       style="background:#25D366;color:#fff;font-size:0.72rem;line-height:1.5;border-radius:4px 0 0 4px;">
+                      <i class="bi bi-whatsapp"></i></a>
+                    <button type="button" class="btn btn-xs dropdown-toggle dropdown-toggle-split px-1"
+                            style="background:#1ea34b;color:#fff;font-size:0.72rem;line-height:1.5;border-radius:0 4px 4px 0;border-left:1px solid rgba(255,255,255,0.3);"
+                            data-bs-toggle="dropdown"></button>
+                    <ul class="dropdown-menu shadow-sm" style="font-size:0.82rem;min-width:170px;">
+                      <li><a class="dropdown-item" href="https://wa.me/{{ lead.phone|wa_phone }}" target="_blank" rel="noopener">
+                        <i class="bi bi-whatsapp me-2" style="color:#25D366;"></i>WhatsApp</a></li>
+                      <li><a class="dropdown-item" href="#" onclick="openWABusiness('{{ lead.phone|wa_phone }}');return false;">
+                        <i class="bi bi-whatsapp me-2" style="color:#00a884;"></i>WhatsApp Business</a></li>
+                    </ul>
+                  </div>
+                </div>
+              </td>
+              <td class="text-muted small">{{ lead.referred_by or '—' }}</td>
+              {% if session.get('role') == 'admin' %}
+              <td>
+                <span class="badge rounded-pill px-2 py-1"
+                      style="background:#eef2ff;color:#4f46e5;font-size:0.72rem;font-weight:600;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;">
+                  <i class="bi bi-person-fill me-1"></i>{{ lead.assignee_display or lead.assignee_username or '—' }}
+                </span>
+              </td>
+              {% endif %}
+              <td>
+                {% if session.get('role') == 'team' and lead.status | team_pipeline_readonly %}
+                <span class="badge bg-secondary rounded-pill">{{ lead.status }}</span>
+                {% else %}
+                <form method="post" action="{{ url_for('update_status', lead_id=lead.id) }}" class="d-inline">
+                  <select name="status"
+                          class="form-select form-select-sm status-select status-{{ lead.status|replace(' ','') }}"
+                          data-lead-id="{{ lead.id }}" style="min-width:120px;font-size:0.78rem;">
+                    {% if session.get('role') == 'team' %}
+                    {% for s in lead.status | team_status_opts %}
+                    <option value="{{ s }}" {% if s | team_status_selected(lead.status) %}selected{% endif %}>{{ s }}{% if s == 'Paid ₹196' %} ✅{% endif %}</option>
+                    {% endfor %}
+                    {% else %}
+                    <optgroup label="── Enrollment ──">
+                      <option value="New Lead"     {% if lead.status in ('New Lead','New') %}selected{% endif %}>New Lead</option>
+                      <option value="Contacted"    {% if lead.status == 'Contacted'    %}selected{% endif %}>Contacted</option>
+                      <option value="Invited"      {% if lead.status == 'Invited'      %}selected{% endif %}>Invited</option>
+                      <option value="Video Sent"   {% if lead.status == 'Video Sent'   %}selected{% endif %}>Video Sent</option>
+                      <option value="Video Watched"{% if lead.status == 'Video Watched'%}selected{% endif %}>Video Watched</option>
+                      <option value="Paid ₹196"    {% if lead.status == 'Paid ₹196'    %}selected{% endif %}>Paid ₹196 ✅</option>
+                    </optgroup>
+                    <optgroup label="── Pipeline ──">
+                      <option value="Day 1"             {% if lead.status == 'Day 1'             %}selected{% endif %}>Day 1</option>
+                      <option value="Day 2"             {% if lead.status == 'Day 2'             %}selected{% endif %}>Day 2</option>
+                      <option value="Interview"         {% if lead.status == 'Interview'         %}selected{% endif %}>Interview</option>
+                      <option value="Track Selected"    {% if lead.status == 'Track Selected'    %}selected{% endif %}>Track Selected</option>
+                      <option value="Seat Hold Confirmed" {% if lead.status == 'Seat Hold Confirmed' %}selected{% endif %}>Seat Hold</option>
+                      {% if session.get('role') == 'admin' %}
+                      <option value="2cc Plan"      {% if lead.status == '2cc Plan'      %}selected{% endif %}>2cc Plan</option>
+                      <option value="Level Up"      {% if lead.status == 'Level Up'      %}selected{% endif %}>Level Up</option>
+                      <option value="Pending"       {% if lead.status == 'Pending'       %}selected{% endif %}>Pending</option>
+                      <option value="Training"      {% if lead.status == 'Training'      %}selected{% endif %}>Training</option>
+                      {% endif %}
+                      <option value="Fully Converted"   {% if lead.status == 'Fully Converted'   %}selected{% endif %}>Fully Converted ✅</option>
+                      {% if session.get('role') == 'admin' %}
+                      <option value="Converted"     {% if lead.status == 'Converted'     %}selected{% endif %}>Converted ✅</option>
+                      {% endif %}
+                    </optgroup>
+                    <optgroup label="── Other ──">
+                      <option value="Lost"     {% if lead.status == 'Lost'     %}selected{% endif %}>Lost</option>
+                      <option value="Retarget" {% if lead.status == 'Retarget' %}selected{% endif %}>Retarget</option>
+                      {% if session.get('role') == 'admin' %}
+                      <option value="Inactive" {% if lead.status == 'Inactive' %}selected{% endif %}>Inactive</option>
+                      {% endif %}
+                    </optgroup>
+                    {% if lead.status and lead.status not in ('New Lead','New','Contacted','Invited','Video Sent','Video Watched','Paid ₹196','Day 1','Day 2','Interview','Track Selected','Seat Hold Confirmed','2cc Plan','Level Up','Pending','Training','Fully Converted','Converted','Lost','Retarget','Inactive') %}
+                    <option value="{{ lead.status }}" selected>{{ lead.status }}</option>
+                    {% endif %}
+                    {% endif %}
+                  </select>
+                </form>
+                {% endif %}
+              </td>
+              <td class="align-middle py-1">{{ stage_sla_watch(lead) }}</td>
+              <td style="min-width:130px;">
+                {% if user_role in ('team', 'admin', 'leader') %}
+                {% set _hcsv = team_call_status_values if user_role == 'team' else call_status_values %}
+                <select class="form-select form-select-sm call-status-select"
+                        style="font-size:0.72rem;padding:3px 6px;"
+                        data-lead-id="{{ lead.id }}"
+                        data-current="{{ lead.call_status or '' }}"
+                        title="{% if user_role == 'team' %}Dial outcome (same as Today cards){% else %}Call classification{% endif %}">
+                  <option value="">— Call —</option>
+                  {% for cs in _hcsv %}
+                  <option value="{{ cs }}" {% if lead.call_status == cs %}selected{% endif %}>{{ cs }}</option>
+                  {% endfor %}
+                </select>
+                {% if lead.call_status and lead.call_status != 'Not Called Yet' %}
+                <div class="mt-1 small fw-semibold text-muted" style="font-size:0.65rem;line-height:1.25;">
+                  {% if lead.call_status == 'Called - Interested' %}✅ Interested (call)
+                  {% elif lead.call_status == 'Called - No Answer' %}📵 No answer
+                  {% elif lead.call_status == 'Called - Follow Up' %}🔄 Follow up (call)
+                  {% elif lead.call_status == 'Called - Not Interested' %}❌ Not interested
+                  {% elif lead.call_status == 'Wrong Number' %}📵 Wrong number
+                  {% else %}{{ lead.call_status }}
+                  {% endif %}
+                </div>
+                {% endif %}
+                {% else %}
+                <span class="badge bg-secondary" style="font-size:0.68rem;">
+                  <i class="bi bi-telephone me-1"></i>{{ lead.call_status or '—' }}
+                </span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                {% if lead.day1_done %}<i class="bi bi-check-circle-fill text-success" style="font-size:1.1rem;"></i>
+                {% else %}<i class="bi bi-circle text-muted" style="font-size:1.1rem;"></i>{% endif %}
+              </td>
+              <td class="text-center">
+                {% if lead.day2_done %}<i class="bi bi-check-circle-fill text-success" style="font-size:1.1rem;"></i>
+                {% else %}<i class="bi bi-circle text-muted" style="font-size:1.1rem;"></i>{% endif %}
+              </td>
+              <td class="text-center">
+                {% if lead.interview_done %}<i class="bi bi-check-circle-fill text-success" style="font-size:1.1rem;"></i>
+                {% else %}<i class="bi bi-circle text-muted" style="font-size:1.1rem;"></i>{% endif %}
+              </td>
+              <td class="text-center">
+                {% if lead.payment_done %}
+                  <span class="badge bg-success" style="font-size:0.7rem;">Paid</span>
+                {% else %}
+                  <span class="badge" style="background:#fee2e2;color:#dc2626;font-size:0.7rem;">No</span>
+                {% endif %}
+              </td>
+              <td class="text-muted" style="font-size:0.78rem;">{% if lead.claimed_at %}{{ lead.claimed_at[:10] }}{% else %}{{ lead.created_at[:10] }}{% endif %}</td>
+              <td>
+                {{ admin_edit_lead_btn(lead, 'me-1') }}
+                {{ proof_upload_button(lead, 'me-1') }}
+                {% if session.get('role') == 'admin' %}
+                <form method="post" action="{{ url_for('delete_lead', lead_id=lead.id) }}" class="d-inline"
+                      onsubmit="return confirm('Delete {{ lead.name }}?')">
+                  <button type="submit" class="btn btn-xs btn-outline-danger" data-noloading>
+                    <i class="bi bi-trash-fill"></i>
+                  </button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  </div>{# /hpane-active #}
+
+  {# ── History Enrolled — team only ───────────────────── #}
+  {% if user_role == 'team' %}
+  <div class="tab-pane fade" id="hpane-enrolled" role="tabpanel">
+    {% if hist_enrolled_leads %}
+    <div class="row g-2">
+      {% for lead in hist_enrolled_leads %}
+      <div class="col-sm-6 col-lg-4">
+        <div class="card p-3 shadow-sm" id="hecard-{{ lead.id }}">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <strong style="font-size:.9rem;">{{ lead.name or ('Lead #' ~ lead.id) }}</strong>
+            <span class="badge bg-success ms-2" style="font-size:.65rem;">{{ lead.status }}</span>
+          </div>
+          {% if lead.phone %}<div class="text-muted small mb-2">{{ lead.phone }}</div>{% endif %}
+          <div class="mb-2">{{ stage_sla_watch(lead) }}</div>
+          <form method="post" action="{{ url_for('ready_for_day1', lead_id=lead.id) }}">
+            <button type="submit" class="btn btn-success btn-sm w-100 fw-semibold"
+                    onclick="return confirm('Move {{ lead.name|e }} to Day 1?');">
+              <i class="bi bi-arrow-right-circle-fill me-1"></i>Ready for Day 1
+            </button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted small">
+      <i class="bi bi-inbox" style="font-size:2.5rem;opacity:.3;"></i>
+      <p class="mt-2 mb-0">No enrolled leads in history</p>
+    </div>
+    {% endif %}
+  </div>
+  {% else %}
+
+  {# ── History Day 1 ───────────────────────────────────── #}
+  <div class="tab-pane fade" id="hpane-d1" role="tabpanel">
+  <div class="d-md-none">
+    {% for lead in hist_day1_leads %}
+    {{ wcard(lead, 1) }}
+    {% endfor %}
+  </div>
+  <div class="card border-0 shadow-sm d-none d-md-block">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead><tr><th style="width:36px;padding-left:16px;"><input class="form-check-input lead-check" type="checkbox" style="accent-color:#6366f1;"></th><th class="text-muted">#</th><th>Name</th><th>Phone</th><th>Referred</th>{% if session.get('role') == 'admin' %}<th>Assigned</th>{% endif %}<th>Status</th><th class="text-muted" style="min-width:92px;" title="24h stage / activity">24h</th><th class="text-center">D1</th><th class="text-center">D2</th><th class="text-center">IV</th><th class="text-center">₹196</th><th>Claimed</th><th>Actions</th></tr></thead>
+          <tbody>
+            {% for lead in hist_day1_leads %}
+            <tr>
+              <td style="padding-left:16px;"><input class="form-check-input lead-check lead-check-desktop" type="checkbox" value="{{ lead.id }}" style="accent-color:#6366f1;"></td>
+              <td class="text-muted label-sm">{{ lead.id }}</td>
+              <td><div class="fw-semibold" style="font-size:0.875rem;">{{ lead.name or ('Lead #' ~ lead.id) }}</div>{% if lead.city %}<div class="text-muted" style="font-size:0.72rem;">{{ lead.city }}</div>{% endif %}{% if lead.stale_worker %}<div class="wl-assigned-tag mt-1"><i class="bi bi-person-fill-up me-1"></i>Assigned{% if lead.stale_worker_by %} by {{ lead.stale_worker_by }}{% endif %}</div>{% endif %}</td>
+              <td><span class="small">{{ lead.phone }}</span> <a href="tel:{{ lead.phone }}" class="btn btn-xs btn-success px-1 py-0"><i class="bi bi-telephone-fill"></i></a> <a href="https://wa.me/{{ lead.phone|wa_phone }}" target="_blank" rel="noopener" class="btn btn-xs px-1 py-0" style="background:#25D366;color:#fff;"><i class="bi bi-whatsapp"></i></a></td>
+              <td class="text-muted small">{{ lead.referred_by or '—' }}</td>
+              {% if session.get('role') == 'admin' %}<td><span class="badge rounded-pill px-2 py-1" style="background:#eef2ff;color:#4f46e5;font-size:0.72rem;">{{ lead.assignee_display or lead.assignee_username or '—' }}</span></td>{% endif %}
+              <td>
+                <form method="post" action="{{ url_for('update_status', lead_id=lead.id) }}" class="d-inline">
+                  <select name="status" class="form-select form-select-sm status-select status-{{ lead.status|replace(' ','') }}"
+                          data-lead-id="{{ lead.id }}" style="min-width:120px;font-size:0.78rem;">
+                    <optgroup label="── Enrollment ──">
+                      <option value="New Lead"     {% if lead.status in ('New Lead','New') %}selected{% endif %}>New Lead</option>
+                      <option value="Contacted"    {% if lead.status == 'Contacted'    %}selected{% endif %}>Contacted</option>
+                      <option value="Invited"      {% if lead.status == 'Invited'      %}selected{% endif %}>Invited</option>
+                      <option value="Video Sent"   {% if lead.status == 'Video Sent'   %}selected{% endif %}>Video Sent</option>
+                      <option value="Video Watched"{% if lead.status == 'Video Watched'%}selected{% endif %}>Video Watched</option>
+                      <option value="Paid ₹196"    {% if lead.status == 'Paid ₹196'    %}selected{% endif %}>Paid ₹196 ✅</option>
+                    </optgroup>
+                    <optgroup label="── Pipeline ──">
+                      <option value="Day 1"             {% if lead.status == 'Day 1'             %}selected{% endif %}>Day 1</option>
+                      <option value="Day 2"             {% if lead.status == 'Day 2'             %}selected{% endif %}>Day 2</option>
+                      <option value="Interview"         {% if lead.status == 'Interview'         %}selected{% endif %}>Interview</option>
+                      <option value="Track Selected"    {% if lead.status == 'Track Selected'    %}selected{% endif %}>Track Selected</option>
+                      <option value="Seat Hold Confirmed" {% if lead.status == 'Seat Hold Confirmed' %}selected{% endif %}>Seat Hold</option>
+                      {% if session.get('role') == 'admin' %}
+                      <option value="2cc Plan"      {% if lead.status == '2cc Plan'      %}selected{% endif %}>2cc Plan</option>
+                      <option value="Level Up"      {% if lead.status == 'Level Up'      %}selected{% endif %}>Level Up</option>
+                      <option value="Pending"       {% if lead.status == 'Pending'       %}selected{% endif %}>Pending</option>
+                      <option value="Training"      {% if lead.status == 'Training'      %}selected{% endif %}>Training</option>
+                      {% endif %}
+                      <option value="Fully Converted"   {% if lead.status == 'Fully Converted'   %}selected{% endif %}>Fully Converted ✅</option>
+                      {% if session.get('role') == 'admin' %}
+                      <option value="Converted"     {% if lead.status == 'Converted'     %}selected{% endif %}>Converted ✅</option>
+                      {% endif %}
+                    </optgroup>
+                    <optgroup label="── Other ──">
+                      <option value="Lost"     {% if lead.status == 'Lost'     %}selected{% endif %}>Lost</option>
+                      <option value="Retarget" {% if lead.status == 'Retarget' %}selected{% endif %}>Retarget</option>
+                      {% if session.get('role') == 'admin' %}
+                      <option value="Inactive" {% if lead.status == 'Inactive' %}selected{% endif %}>Inactive</option>
+                      {% endif %}
+                    </optgroup>
+                    {% if lead.status and lead.status not in ('New Lead','New','Contacted','Invited','Video Sent','Video Watched','Paid ₹196','Day 1','Day 2','Interview','Track Selected','Seat Hold Confirmed','2cc Plan','Level Up','Pending','Training','Fully Converted','Converted','Lost','Retarget','Inactive') %}
+                    <option value="{{ lead.status }}" selected>{{ lead.status }}</option>
+                    {% endif %}
+                  </select>
+                </form>
+                {# Pipeline stage indicator — shows which stage and with whom #}
+                {% if lead.pipeline_stage and lead.pipeline_stage not in ('prospecting', 'enrolled') %}
+                <div style="font-size:0.63rem;background:#f0f4ff;color:#6366f1;
+                            border-radius:4px;padding:2px 7px;display:inline-block;
+                            margin-top:3px;font-weight:600;">
+                  {% if lead.pipeline_stage == 'day1' %}📚 Day 1 — Leader ke paas
+                  {% elif lead.pipeline_stage == 'day2' %}🎓 Day 2 — Admin conduct kar raha hai
+                  {% elif lead.pipeline_stage == 'day3' %}🏁 Day 3 — Interview stage
+                  {% elif lead.pipeline_stage == 'seat_hold' %}💰 Seat Hold confirmed
+                  {% elif lead.pipeline_stage == 'closing' %}🎉 Fully Converted!
+                  {% elif lead.pipeline_stage == 'training' %}📖 Training
+                  {% elif lead.pipeline_stage == 'complete' %}✅ Converted
+                  {% elif lead.pipeline_stage == 'lost' %}❌ Lost
+                  {% else %}{{ lead.pipeline_stage }}{% endif %}
+                  {% if lead.current_owner and lead.current_owner != lead.assignee_username %}
+                  <span class="ms-1" style="color:#9ca3af;">({{ lead.current_owner }})</span>
+                  {% endif %}
+                </div>
+                {% endif %}
+              </td>
+              <td class="align-middle py-1">{{ stage_sla_watch(lead) }}</td>
+              <td class="text-center">{% if lead.day1_done %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-circle text-muted"></i>{% endif %}</td>
+              <td class="text-center">{% if lead.day2_done %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-circle text-muted"></i>{% endif %}</td>
+              <td class="text-center">{% if lead.interview_done %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-circle text-muted"></i>{% endif %}</td>
+              <td class="text-center">{% if lead.payment_done %}<span class="badge bg-success" style="font-size:0.7rem;">Paid</span>{% else %}<span class="badge" style="background:#fee2e2;color:#dc2626;font-size:0.7rem;">No</span>{% endif %}</td>
+              <td class="text-muted" style="font-size:0.78rem;">{% if lead.claimed_at %}{{ lead.claimed_at[:10] }}{% else %}{{ lead.created_at[:10] }}{% endif %}</td>
+              <td>{{ admin_edit_lead_btn(lead, 'me-1') }}{{ proof_upload_button(lead, 'me-1') }}{% if session.get('role') == 'admin' %}<form method="post" action="{{ url_for('delete_lead', lead_id=lead.id) }}" class="d-inline" onsubmit="return confirm('Delete {{ lead.name }}?')"><button type="submit" class="btn btn-xs btn-outline-danger" data-noloading><i class="bi bi-trash-fill"></i></button></form>{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  </div>{# /hpane-d1 #}
+
+  {# ── History Day 2 ───────────────────────────────────── #}
+  <div class="tab-pane fade {% if not hist_active_leads and not hist_day1_leads and hist_day2_leads %}show active{% endif %}" id="hpane-d2" role="tabpanel">
+  <div class="d-md-none">
+    {% for lead in hist_day2_leads %}
+      {{ wcard(lead, 2) }}
+    {% endfor %}
+  </div>
+  <div class="card border-0 shadow-sm d-none d-md-block"><div class="card-body p-0"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th style="width:36px;padding-left:16px;"><input class="form-check-input lead-check" type="checkbox" style="accent-color:#6366f1;"></th><th class="text-muted">#</th><th>Name</th><th>Phone</th><th>Referred</th>{% if session.get('role') == 'admin' %}<th>Assigned</th>{% endif %}<th>Status</th><th class="text-muted" style="min-width:92px;" title="24h stage / activity">24h</th><th class="text-center">D1</th><th class="text-center">D2</th><th class="text-center">IV</th><th class="text-center">₹196</th><th>Claimed</th><th>Actions</th></tr></thead><tbody>
+    {% for lead in hist_day2_leads %}
+    <tr><td style="padding-left:16px;"><input class="form-check-input lead-check lead-check-desktop" type="checkbox" value="{{ lead.id }}" style="accent-color:#6366f1;"></td><td class="text-muted label-sm">{{ lead.id }}</td><td><div class="fw-semibold" style="font-size:0.875rem;">{{ lead.name or ('Lead #' ~ lead.id) }}</div></td><td><span class="small">{{ lead.phone }}</span> <a href="tel:{{ lead.phone }}" class="btn btn-xs btn-success px-1 py-0"><i class="bi bi-telephone-fill"></i></a> <a href="https://wa.me/{{ lead.phone|wa_phone }}" target="_blank" rel="noopener" class="btn btn-xs px-1 py-0" style="background:#25D366;color:#fff;"><i class="bi bi-whatsapp"></i></a></td><td class="text-muted small">{{ lead.referred_by or '—' }}</td>{% if session.get('role') == 'admin' %}<td><span class="badge rounded-pill px-2 py-1" style="background:#eef2ff;color:#4f46e5;font-size:0.72rem;">{{ lead.assignee_display or lead.assignee_username or '—' }}</span></td>{% endif %}<td><form method="post" action="{{ url_for('update_status', lead_id=lead.id) }}" class="d-inline"><select name="status" class="form-select form-select-sm status-select status-{{ lead.status|replace(' ','') }}" data-lead-id="{{ lead.id }}" style="min-width:120px;font-size:0.78rem;"><optgroup label="── Enrollment ──"><option value="Contacted" {% if lead.status == 'Contacted' %}selected{% endif %}>Contacted</option><option value="Video Sent" {% if lead.status == 'Video Sent' %}selected{% endif %}>Video Sent</option><option value="Video Watched" {% if lead.status == 'Video Watched' %}selected{% endif %}>Video Watched</option><option value="Paid ₹196" {% if lead.status == 'Paid ₹196' %}selected{% endif %}>Paid ₹196 ✅</option></optgroup><optgroup label="── Pipeline ──"><option value="Day 1" {% if lead.status == 'Day 1' %}selected{% endif %}>Day 1</option><option value="Day 2" {% if lead.status == 'Day 2' %}selected{% endif %}>Day 2</option><option value="Interview" {% if lead.status == 'Interview' %}selected{% endif %}>Interview</option><option value="Track Selected" {% if lead.status == 'Track Selected' %}selected{% endif %}>Track Selected</option><option value="Seat Hold Confirmed" {% if lead.status == 'Seat Hold Confirmed' %}selected{% endif %}>Seat Hold</option><option value="Fully Converted" {% if lead.status == 'Fully Converted' %}selected{% endif %}>Fully Converted ✅</option></optgroup><optgroup label="── Other ──"><option value="Lost" {% if lead.status == 'Lost' %}selected{% endif %}>Lost</option><option value="Retarget" {% if lead.status == 'Retarget' %}selected{% endif %}>Retarget</option></optgroup>{% if lead.status and lead.status in ('New Lead','New','Invited','Mindset Lock','Training','Converted') %}<option value="{{ lead.status }}" selected>{{ lead.status }}</option>{% endif %}</select></form></td><td class="align-middle py-1">{{ stage_sla_watch(lead) }}</td><td class="text-center">{% if lead.day1_done %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-circle text-muted"></i>{% endif %}</td><td class="text-center">{% if lead.day2_done %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-circle text-muted"></i>{% endif %}</td><td class="text-center">{% if lead.interview_done %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-circle text-muted"></i>{% endif %}</td><td class="text-center">{% if lead.payment_done %}<span class="badge bg-success" style="font-size:0.7rem;">Paid</span>{% else %}<span class="badge" style="background:#fee2e2;color:#dc2626;font-size:0.7rem;">No</span>{% endif %}</td><td class="text-muted" style="font-size:0.78rem;">{% if lead.claimed_at %}{{ lead.claimed_at[:10] }}{% else %}{{ lead.created_at[:10] }}{% endif %}</td><td>{{ admin_edit_lead_btn(lead, 'me-1') }}{{ proof_upload_button(lead, 'me-1') }}{% if session.get('role') == 'admin' %}<form method="post" action="{{ url_for('delete_lead', lead_id=lead.id) }}" class="d-inline" onsubmit="return confirm('Delete?')"><button type="submit" class="btn btn-xs btn-outline-danger" data-noloading><i class="bi bi-trash-fill"></i></button></form>{% endif %}</td></tr>
+    {% endfor %}
+  </tbody></table></div></div></div>
+  </div>{# /hpane-d2 #}
+
+  {# ── History Day 3 ───────────────────────────────────── #}
+  <div class="tab-pane fade {% if not hist_active_leads and not hist_day1_leads and not hist_day2_leads %}show active{% endif %}" id="hpane-d3" role="tabpanel">
+  <div class="d-md-none">
+    {% for lead in hist_day3_leads %}
+      {{ wcard(lead, 3) }}
+    {% endfor %}
+  </div>
+  <div class="card border-0 shadow-sm d-none d-md-block"><div class="card-body p-0"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th style="width:36px;padding-left:16px;"><input class="form-check-input lead-check" type="checkbox" style="accent-color:#6366f1;"></th><th class="text-muted">#</th><th>Name</th><th>Phone</th><th>Referred</th>{% if session.get('role') == 'admin' %}<th>Assigned</th>{% endif %}<th>Status</th><th class="text-muted" style="min-width:92px;" title="24h stage / activity">24h</th><th class="text-center">D1</th><th class="text-center">D2</th><th class="text-center">IV</th><th class="text-center">₹196</th><th>Claimed</th><th>Actions</th></tr></thead><tbody>
+    {% for lead in hist_day3_leads %}
+    <tr><td style="padding-left:16px;"><input class="form-check-input lead-check lead-check-desktop" type="checkbox" value="{{ lead.id }}" style="accent-color:#6366f1;"></td><td class="text-muted label-sm">{{ lead.id }}</td><td><div class="fw-semibold" style="font-size:0.875rem;">{{ lead.name or ('Lead #' ~ lead.id) }}</div></td><td><span class="small">{{ lead.phone }}</span> <a href="tel:{{ lead.phone }}" class="btn btn-xs btn-success px-1 py-0"><i class="bi bi-telephone-fill"></i></a> <a href="https://wa.me/{{ lead.phone|wa_phone }}" target="_blank" rel="noopener" class="btn btn-xs px-1 py-0" style="background:#25D366;color:#fff;"><i class="bi bi-whatsapp"></i></a></td><td class="text-muted small">{{ lead.referred_by or '—' }}</td>{% if session.get('role') == 'admin' %}<td><span class="badge rounded-pill px-2 py-1" style="background:#eef2ff;color:#4f46e5;font-size:0.72rem;">{{ lead.assignee_display or lead.assignee_username or '—' }}</span></td>{% endif %}<td><form method="post" action="{{ url_for('update_status', lead_id=lead.id) }}" class="d-inline"><select name="status" class="form-select form-select-sm status-select status-{{ lead.status|replace(' ','') }}" data-lead-id="{{ lead.id }}" style="min-width:120px;font-size:0.78rem;"><optgroup label="── Enrollment ──"><option value="Contacted" {% if lead.status == 'Contacted' %}selected{% endif %}>Contacted</option><option value="Video Sent" {% if lead.status == 'Video Sent' %}selected{% endif %}>Video Sent</option><option value="Video Watched" {% if lead.status == 'Video Watched' %}selected{% endif %}>Video Watched</option><option value="Paid ₹196" {% if lead.status == 'Paid ₹196' %}selected{% endif %}>Paid ₹196 ✅</option></optgroup><optgroup label="── Pipeline ──"><option value="Day 1" {% if lead.status == 'Day 1' %}selected{% endif %}>Day 1</option><option value="Day 2" {% if lead.status == 'Day 2' %}selected{% endif %}>Day 2</option><option value="Interview" {% if lead.status == 'Interview' %}selected{% endif %}>Interview</option><option value="Track Selected" {% if lead.status == 'Track Selected' %}selected{% endif %}>Track Selected</option><option value="Seat Hold Confirmed" {% if lead.status == 'Seat Hold Confirmed' %}selected{% endif %}>Seat Hold</option><option value="Fully Converted" {% if lead.status == 'Fully Converted' %}selected{% endif %}>Fully Converted ✅</option></optgroup><optgroup label="── Other ──"><option value="Lost" {% if lead.status == 'Lost' %}selected{% endif %}>Lost</option><option value="Retarget" {% if lead.status == 'Retarget' %}selected{% endif %}>Retarget</option></optgroup>{% if lead.status and lead.status in ('New Lead','New','Invited','Mindset Lock','Training','Converted') %}<option value="{{ lead.status }}" selected>{{ lead.status }}</option>{% endif %}</select></form></td><td class="align-middle py-1">{{ stage_sla_watch(lead) }}</td><td class="text-center">{% if lead.day1_done %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-circle text-muted"></i>{% endif %}</td><td class="text-center">{% if lead.day2_done %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-circle text-muted"></i>{% endif %}</td><td class="text-center">{% if lead.interview_done %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-circle text-muted"></i>{% endif %}</td><td class="text-center">{% if lead.payment_done %}<span class="badge bg-success" style="font-size:0.7rem;">Paid</span>{% else %}<span class="badge" style="background:#fee2e2;color:#dc2626;font-size:0.7rem;">No</span>{% endif %}</td><td class="text-muted" style="font-size:0.78rem;">{% if lead.claimed_at %}{{ lead.claimed_at[:10] }}{% else %}{{ lead.created_at[:10] }}{% endif %}</td><td>{{ admin_edit_lead_btn(lead, 'me-1') }}{{ proof_upload_button(lead, 'me-1') }}{% if session.get('role') == 'admin' %}<form method="post" action="{{ url_for('delete_lead', lead_id=lead.id) }}" class="d-inline" onsubmit="return confirm('Delete?')"><button type="submit" class="btn btn-xs btn-outline-danger" data-noloading><i class="bi bi-trash-fill"></i></button></form>{% endif %}</td></tr>
+    {% endfor %}
+  </tbody></table></div></div></div>
+  </div>{# /hpane-d3 #}
+  {% endif %}{# end team/non-team history day tabs #}
+
+  {# ── History Converted ──────────────────────────────── #}
+  <div class="tab-pane fade" id="hpane-converted" role="tabpanel">
+    {% if hist_converted_leads %}
+    <div class="row g-2">
+      {% for lead in hist_converted_leads %}
+      <div class="col-sm-6 col-lg-4">
+        <div class="card p-3 shadow-sm border-success" id="hccard-{{ lead.id }}">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <strong style="font-size:.9rem;">{{ lead.name or ('Lead #' ~ lead.id) }}</strong>
+            <span class="badge bg-success ms-2" style="font-size:.65rem;">Converted</span>
+          </div>
+          {% if lead.phone %}<div class="text-muted small mb-1">{{ lead.phone }}</div>{% endif %}
+          {% if lead.claimed_at %}<div class="text-muted" style="font-size:.65rem;">Claimed: {{ lead.claimed_at[:10] }}</div>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted small">
+      <i class="bi bi-trophy" style="font-size:2.5rem;opacity:.3;"></i>
+      <p class="mt-2 mb-0">No converted leads in history</p>
+    </div>
+    {% endif %}
+  </div>
+
+  </div>{# /histTabContent #}
+
+  {% if has_more_hist %}
+  <div class="text-center my-3">
+    <a href="{{ url_for('leads', page=page+1, status=selected_status, q=search) }}#pane-history"
+       class="btn btn-outline-primary btn-sm fw-semibold px-4">
+      <i class="bi bi-arrow-down-circle me-1"></i>Load More Leads
+    </a>
+  </div>
+  {% endif %}
+
+  {% endif %}{# /hist_leads check #}
+</div>{# /pane-history #}
+
+</div>{# /outer tab-content #}
+
+
+<!-- ── Bulk Action Bar ───────────────────────────────── -->
+<div id="bulkBar" class="d-none position-fixed start-0 end-0 px-3 py-2 d-flex align-items-center gap-2 flex-wrap"
+     style="bottom:0;z-index:1050;background:linear-gradient(135deg,#4f46e5,#7c3aed);border-top:1px solid rgba(255,255,255,.2);">
+  <span id="bulkCount" class="fw-bold me-1 text-white" style="font-size:0.9rem;">0 selected</span>
+  <form id="bulkForm" method="post" action="{{ url_for('bulk_action') }}"
+        class="d-flex align-items-center gap-2 flex-wrap">
+    <input type="hidden" name="bulk_action" id="bulkActionInput" value="">
+    <select id="bulkStatusSelect" class="form-select form-select-sm"
+            style="width:auto;background:rgba(255,255,255,0.15);color:#fff;border-color:rgba(255,255,255,0.3);">
+      <option value="">— Change status —</option>
+      {% for s in (team_allowed_statuses if session.get('role') == 'team' else statuses) %}
+        <option value="status:{{ s }}">→ {{ s }}</option>
+      {% endfor %}
+      <option value="mark_paid">✓ Mark Paid</option>
+    </select>
+    <button type="button" class="btn btn-sm btn-warning fw-semibold" onclick="submitBulk('status')">
+      <i class="bi bi-arrow-repeat me-1"></i>Apply
+    </button>
+    {% if session.get('role') == 'admin' %}
+    <button type="button" class="btn btn-sm btn-danger fw-semibold" onclick="submitBulk('delete')">
+      <i class="bi bi-trash-fill me-1"></i>Delete
+    </button>
+    {% endif %}
+  </form>
+  <button type="button" class="btn btn-sm ms-auto" onclick="clearBulk()"
+          style="background:rgba(255,255,255,0.15);color:#fff;border:none;">
+    <i class="bi bi-x-lg"></i>
+  </button>
+</div>
+
+
+<!-- ── Import Modal ──────────────────────────────────── -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-hidden="true" data-bs-focus="false" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0 pb-0 imp-modal-hdr" style="border-radius:12px 12px 0 0;">
+        <h5 class="modal-title fw-bold imp-modal-title">
+          <i class="bi bi-upload me-2"></i>Import Leads
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pb-1 pt-3">
+        <ul class="nav nav-tabs mb-3" id="importLeadsTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-semibold" id="imp-csv-tab" data-bs-toggle="tab"
+                    data-bs-target="#impCsvPane" type="button" role="tab">
+              <i class="bi bi-file-earmark-spreadsheet me-1 text-success"></i>CSV
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link fw-semibold" id="imp-pdf-tab" data-bs-toggle="tab"
+                    data-bs-target="#impPdfPane" type="button" role="tab">
+              <i class="bi bi-file-earmark-pdf me-1 text-danger"></i>PDF
+            </button>
+          </li>
+        </ul>
+        <div class="tab-content">
+          <div class="tab-pane fade show active" id="impCsvPane" role="tabpanel">
+            <form method="POST" action="{{ url_for('import_leads') }}" enctype="multipart/form-data">
+              <input type="hidden" name="import_type" value="csv">
+              <div class="mb-3">
+                <label class="form-label fw-semibold small">CSV File</label>
+                <input type="file" name="import_file" class="form-control" accept=".csv" required>
+                <div class="form-text">Columns: name, phone, email, city</div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-semibold small">Source Tag</label>
+                <input type="text" name="source_tag" class="form-control" value="CSV Import" placeholder="e.g. Meta, Event">
+              </div>
+              {% if session.get('role') == 'admin' %}
+              <div class="mb-3">
+                <label class="form-label fw-semibold small">Assign To (username)</label>
+                <input type="text" name="assigned_to" class="form-control" placeholder="Leave blank = yourself">
+              </div>
+              {% endif %}
+              <button type="submit" class="btn btn-success w-100 fw-semibold mb-2">
+                <i class="bi bi-upload me-2"></i>Import CSV
+              </button>
+            </form>
+          </div>
+          <div class="tab-pane fade" id="impPdfPane" role="tabpanel">
+            <form method="POST" action="{{ url_for('import_leads') }}" enctype="multipart/form-data">
+              <input type="hidden" name="import_type" value="pdf">
+              <div class="mb-3">
+                <label class="form-label fw-semibold small">PDF File</label>
+                <input type="file" name="import_file" class="form-control" accept=".pdf" required>
+                <div class="form-text">Works with tables containing 10-digit Indian numbers</div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-semibold small">Source Tag</label>
+                <input type="text" name="source_tag" class="form-control" value="PDF Import">
+              </div>
+              {% if session.get('role') == 'admin' %}
+              <div class="mb-3">
+                <label class="form-label fw-semibold small">Assign To (username)</label>
+                <input type="text" name="assigned_to" class="form-control" placeholder="Leave blank = yourself">
+              </div>
+              {% endif %}
+              <button type="submit" class="btn btn-danger w-100 fw-semibold mb-2">
+                <i class="bi bi-upload me-2"></i>Import PDF
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Quick Add Lead Modal ───────────────────────────── -->
+<!-- data-bs-focus="false" stops Bootstrap overriding our iOS gesture-focus -->
+<div class="modal fade" id="quickAddModal" tabindex="-1" aria-hidden="true" data-bs-focus="false">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow">
+      <!-- Header OUTSIDE <form> — Bootstrap scrollable modal requires direct
+           flex children of .modal-content (.modal-header / body / footer).
+           Placing <form> here broke that flex chain → footer hidden on iOS. -->
+      <div class="modal-header border-0 pb-0 qa-modal-hdr" style="border-radius:12px 12px 0 0;">
+        <h5 class="modal-title fw-bold qa-modal-title">
+          <i class="bi bi-person-plus-fill me-2"></i>Quick Add Lead
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="quickAddForm" method="post" action="{{ url_for('add_lead') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="modal-body pt-3">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">Full Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" id="quickAddName" class="form-control" placeholder="e.g. Rahul Sharma" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">Phone <span class="text-danger">*</span></label>
+              <input type="tel" name="phone" class="form-control" placeholder="10-digit number" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">City</label>
+              <input type="text" name="city" class="form-control" placeholder="Mumbai">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">Source</label>
+              <select name="source" class="form-select">
+                <option value="">— Select source —</option>
+                {% for src in sources %}
+                  <option>{{ src }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">Referred By</label>
+              <select name="referred_by" class="form-select">
+                <option value="">— None —</option>
+                {% for m in team %}
+                  <option>{{ m.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            {% if session.get('role') == 'admin' %}
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">Assign To</label>
+              <select name="assigned_to" class="form-select">
+                <option value="">— Unassigned —</option>
+                {% for m in team %}
+                  <option value="{{ m.name }}">{{ m.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success px-4 fw-semibold" id="quickAddBtn" data-noloading="1">
+            <i class="bi bi-plus-circle-fill me-1"></i>Add Lead
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── Bulk selection ──────────────────────────────────────── */
+const bulkBar         = document.getElementById('bulkBar');
+const bulkCountEl     = document.getElementById('bulkCount');
+const bulkForm        = document.getElementById('bulkForm');
+const bulkActionInput = document.getElementById('bulkActionInput');
+const bulkStatusSel   = document.getElementById('bulkStatusSelect');
+const isMobileView    = () => window.innerWidth < 768;
+
+function getActiveSelector() { return isMobileView() ? '.lead-check-mobile' : '.lead-check-desktop'; }
+function getCheckedIds() {
+  return [...new Set([...document.querySelectorAll(getActiveSelector() + ':checked')].map(cb => cb.value))];
+}
+function updateBulkBar() {
+  const ids = getCheckedIds();
+  if (ids.length > 0) {
+    bulkBar.classList.remove('d-none'); bulkBar.classList.add('d-flex');
+    bulkCountEl.textContent = ids.length + ' selected';
+  } else {
+    bulkBar.classList.add('d-none'); bulkBar.classList.remove('d-flex');
+  }
+}
+function clearBulk() {
+  document.querySelectorAll('.lead-check').forEach(cb => cb.checked = false);
+  ['selectAllDesktop','selectAllMobile'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.checked = false;
+  });
+  updateBulkBar();
+}
+function submitBulk(type) {
+  const ids = getCheckedIds();
+  if (!ids.length) { showToast('No leads selected.', 'warning'); return; }
+  let action = '';
+  if (type === 'delete') {
+    if (!confirm('Delete ' + ids.length + ' lead(s)? This cannot be undone.')) return;
+    action = 'delete';
+  } else {
+    action = bulkStatusSel.value;
+    if (!action) { showToast('Please choose a status first.', 'warning'); return; }
+  }
+  bulkForm.querySelectorAll('input[name="lead_ids"]').forEach(el => el.remove());
+  ids.forEach(id => {
+    const inp = document.createElement('input');
+    inp.type = 'hidden'; inp.name = 'lead_ids'; inp.value = id;
+    bulkForm.appendChild(inp);
+  });
+  bulkActionInput.value = action;
+  bulkForm.submit();
+}
+
+const selAllDesktop = document.getElementById('selectAllDesktop');
+if (selAllDesktop) {
+  selAllDesktop.addEventListener('change', function() {
+    document.querySelectorAll('.lead-check-desktop').forEach(cb => cb.checked = this.checked);
+    updateBulkBar();
+  });
+}
+const selAllMobile = document.getElementById('selectAllMobile');
+if (selAllMobile) {
+  selAllMobile.addEventListener('change', function() {
+    document.querySelectorAll('.lead-check-mobile').forEach(cb => cb.checked = this.checked);
+    updateBulkBar();
+  });
+}
+document.querySelectorAll('.lead-check').forEach(cb => cb.addEventListener('change', updateBulkBar));
+
+
+/* ── Quick Add AJAX ────────────────────────────────────── */
+(function() {
+  function escHtml(v) {
+    return String(v || '').replace(/[&<>"']/g, function(ch) {
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[ch];
+    });
+  }
+  var qf = document.getElementById('quickAddForm');
+  if (!qf) return;
+  qf.addEventListener('submit', function(e) {
+    e.preventDefault();
+    var btn = document.getElementById('quickAddBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Adding…';
+    var fd = new FormData(qf);
+    fd.append('csrf_token', '{{ csrf_token }}');
+    fetch('{{ url_for("add_lead") }}', {
+      method: 'POST',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      body: fd
+    })
+    .then(function(r) { return r.json().then(function(d) { return {status: r.status, data: d}; }); })
+    .then(function(res) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-plus-circle-fill me-1"></i>Add Lead';
+      if (res.data.ok) {
+        showToast('Lead "' + res.data.name + '" added ✅', 'success');
+        qf.reset();
+        var modal = bootstrap.Modal.getInstance(document.getElementById('quickAddModal'));
+        if (modal) modal.hide();
+        var container = document.querySelector('#dpane-active .row.g-2') ||
+                        document.querySelector('#pane-working');
+        if (container && container.classList.contains('row')) {
+          var col = document.createElement('div');
+          col.className = 'col-sm-6 col-lg-4';
+          var safeName = escHtml(res.data.name);
+          var safeCity = escHtml(res.data.city);
+          var safePhone = escHtml(res.data.phone).replace(/[^\d+]/g, '');
+          col.innerHTML = '<div class="wl-card" data-status="New">' +
+            '<div class="d-flex align-items-start justify-content-between gap-2 mb-1">' +
+              '<div><div class="wl-name">' + safeName + '</div>' +
+              (safeCity ? '<div class="wl-city"><i class="bi bi-geo-alt-fill me-1"></i>' + safeCity + '</div>' : '') +
+              '</div>' +
+              '<span class="wl-status-badge">New</span>' +
+            '</div>' +
+            '<div class="d-flex align-items-center gap-2 mb-2">' +
+              '<span class="wl-phone">' + safePhone + '</span>' +
+              '<a href="tel:' + safePhone + '" class="wl-action-btn call"><i class="bi bi-telephone-fill"></i></a>' +
+              '<a href="https://wa.me/' + safePhone + '" target="_blank" class="wl-action-btn wa"><i class="bi bi-whatsapp"></i></a>' +
+            '</div></div>';
+          container.prepend(col);
+          col.style.opacity = '0'; col.style.transform = 'translateY(-10px)';
+          requestAnimationFrame(function() {
+            col.style.transition = 'opacity .3s, transform .3s';
+            col.style.opacity = '1'; col.style.transform = 'none';
+          });
+        }
+        var countEl = document.querySelector('#outerTabs .nav-link.active .badge');
+        if (countEl) countEl.textContent = (parseInt(countEl.textContent)||0) + 1;
+      } else {
+        showToast(res.data.error || 'Could not add lead', 'danger');
+      }
+    })
+    .catch(function() {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-plus-circle-fill me-1"></i>Add Lead';
+      showToast('Network error — try again', 'danger');
+    });
+  });
+})();
+
+/* ── iOS keyboard fix for modals (temp-input trick) ──────────────────────
+   Problem: iOS Safari/Chrome only opens keyboard if focus() is called within
+   the SAME synchronous gesture chain as the user tap. But the actual target
+   input is inside display:none — focusing it does nothing until it's visible.
+
+   Solution (temp-input hack):
+   1. On trigger tap: create a tiny off-screen real <input>, append + focus it
+      immediately (within gesture) → keyboard opens for the temp input.
+   2. On shown.bs.modal: shift focus to the real input → keyboard stays open.
+   3. Remove the temp input.
+
+   This is the only approach proven reliable across Safari + Chrome on iOS.  ── */
+(function() {
+  function makeTempInput() {
+    var t = document.createElement('input');
+    t.setAttribute('type', 'text');
+    t.setAttribute('inputmode', 'text');
+    t.setAttribute('data-ios-temp-focus', '1');
+    // opacity:0.01 (not 0) + no pointer-events override so iOS WebKit
+    // still treats this as a valid focusable / touchable element.
+    // z-index:99999 ensures it's above backdrop so iOS hit-testing sees it.
+    // width/height 2px so it doesn't visually affect layout.
+    t.style.cssText = 'position:fixed;top:50%;left:50%;width:2px;height:2px;opacity:0.01;font-size:16px;border:none;outline:none;z-index:99999;background:transparent;color:transparent;caret-color:transparent;';
+    t.setAttribute('aria-hidden', 'true');
+    t.setAttribute('tabindex', '-1');
+    t.setAttribute('readonly', 'true');   // prevent its own keyboard on some browsers
+    return t;
+  }
+
+  function removeIosTempFocusInputs() {
+    document.querySelectorAll('input[data-ios-temp-focus], textarea[data-ios-temp-focus]').forEach(function(n) {
+      try { n.remove(); } catch (e) {}
+    });
+  }
+
+  function iosFocusModal(modalId, realInputSelector) {
+    var triggers = document.querySelectorAll('[data-bs-target="' + modalId + '"]');
+    var modalEl  = document.querySelector(modalId);
+    if (!modalEl) return;
+
+    triggers.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        // Never leave orphaned temp inputs (double-tap Quick Add → ghost layer bugs)
+        removeIosTempFocusInputs();
+        // Step 1: focus temp input within the synchronous gesture chain → keyboard opens
+        var tmp = makeTempInput();
+        document.body.appendChild(tmp);
+        tmp.removeAttribute('readonly');  // allow focus to trigger keyboard
+        try { tmp.focus(); } catch (e) {}  // some iOS versions may throw
+
+        var cleaned = false;
+        function cleanup() {
+          if (cleaned) return;
+          cleaned = true;
+          var real = modalEl.querySelector(realInputSelector);
+          if (real) {
+            real.focus();
+            try {
+              if (real.setSelectionRange && (real.tagName === 'INPUT' || real.tagName === 'TEXTAREA')) {
+                var len = real.value ? real.value.length : 0;
+                real.setSelectionRange(len, len);
+              }
+            } catch (e) {}
+          }
+          tmp.remove();
+        }
+
+        // Step 2: once modal animation completes, shift focus to real input
+        modalEl.addEventListener('shown.bs.modal', function handler() {
+          modalEl.removeEventListener('shown.bs.modal', handler);
+          cleanup();
+        });
+
+        // Safety net: cleanup after 1.5s even if shown.bs.modal never fires
+        setTimeout(cleanup, 1500);
+      });
+    });
+  }
+
+  iosFocusModal('#quickAddModal', '#quickAddName');
+  iosFocusModal('#importModal',   'input:not([type=file]), select');
+})();
+
+/* ── iOS: tap-to-focus inside modals (WebKit hit-testing vs keyboard) ───
+   After the keyboard opens, touches sometimes miss lower inputs (Enter still
+   works). Re-focus from touchend in the same user gesture restores taps.   ── */
+(function() {
+  var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (!isIOS) return;
+  function fieldFromTarget(t) {
+    if (!t || !t.closest) return null;
+    var field = t.closest('input, select, textarea');
+    if (field) return field;
+    var lbl = t.closest('label');
+    if (lbl) {
+      if (lbl.control) return lbl.control;
+      var fid = lbl.getAttribute('for');
+      if (fid) return document.getElementById(fid);
+    }
+    return null;
+  }
+  ['#quickAddModal', '#importModal'].forEach(function(sel) {
+    var modal = document.querySelector(sel);
+    if (!modal) return;
+    modal.addEventListener('touchend', function(e) {
+      var field = fieldFromTarget(e.target);
+      if (!field || field.disabled || field.type === 'file' || field.type === 'hidden') return;
+      if (document.activeElement === field) return;
+      requestAnimationFrame(function() {
+        try {
+          field.focus({ preventScroll: false });
+          if (field.tagName === 'INPUT' || field.tagName === 'TEXTAREA') {
+            try { field.setSelectionRange(field.value.length, field.value.length); } catch (err) {}
+          }
+        } catch (err) {}
+      });
+    }, { passive: true, capture: true });
+  });
+})();
+
+/* ── iOS visual-viewport / keyboard fix ─────────────────────────────────
+   Problem: when iOS keyboard opens, it covers the bottom of the modal —
+   hiding the footer buttons (Cancel / Add Lead). The keyboard shrinks the
+   visual viewport but the modal's position:fixed is anchored to the full
+   layout viewport so the footer ends up behind the keyboard.
+
+   Fix: listen to visualViewport resize → dynamically cap .modal-content
+   max-height to visualViewport.height minus the modal's top margin. This
+   forces the body to scroll inside a shorter container and keeps the
+   footer always visible above the keyboard.
+
+   IMPORTANT (Mar 2025+): Updating max-height on every visualViewport frame
+   causes layout thrashing AND mis-aligns touch hit-testing vs painted pixels
+   on iOS — taps miss fields below the first row; whole page can feel "dead".
+   We therefore SKIP this JS on iOS and rely on CSS dvh + inner scroll.
+   Non-iOS (e.g. Android Chrome) still gets the dynamic cap.                ── */
+(function() {
+  if (!window.visualViewport) return;
+  var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (isIOS) return;
+
+  var TOP_MARGIN = Math.max(10, Math.round(window.innerHeight * 0.02));
+  var lastRun = 0;
+  var rafId = null;
+
+  function onVVChange() {
+    var now = Date.now();
+    if (now - lastRun < 80) {
+      if (!rafId) rafId = requestAnimationFrame(function() {
+        rafId = null; lastRun = Date.now(); doResize();
+      });
+      return;
+    }
+    lastRun = now;
+    doResize();
+  }
+  function doResize() {
+    var vvH  = Math.floor(window.visualViewport.height);
+    var maxH = Math.max(200, vvH - TOP_MARGIN - 10);
+    document.querySelectorAll('#quickAddModal.show, #importModal.show').forEach(function(m) {
+      var dlg = m.querySelector('.modal-dialog');
+      var cnt = m.querySelector('.modal-content');
+      if (dlg) dlg.style.maxHeight = maxH + 'px';
+      if (cnt) cnt.style.maxHeight = maxH + 'px';
+    });
+  }
+
+  window.visualViewport.addEventListener('resize', onVVChange);
+  window.visualViewport.addEventListener('scroll', onVVChange);
+
+  // Reset inline styles when modal closes so CSS rules take over again
+  document.addEventListener('hidden.bs.modal', function() {
+    document.querySelectorAll('#quickAddModal, #importModal').forEach(function(m) {
+      var dlg = m.querySelector('.modal-dialog');
+      var cnt = m.querySelector('.modal-content');
+      if (dlg) dlg.style.maxHeight = '';
+      if (cnt) cnt.style.maxHeight = '';
+    });
+  });
+})();
+
+/* ── Modal close: strip temp focus hacks + heal body if Bootstrap glitches ─ */
+(function() {
+  document.addEventListener('hidden.bs.modal', function(ev) {
+    document.querySelectorAll('input[data-ios-temp-focus], textarea[data-ios-temp-focus]').forEach(function(n) {
+      try { n.remove(); } catch (e) {}
+    });
+    var id = ev.target && ev.target.id;
+    if (id !== 'quickAddModal' && id !== 'importModal') return;
+    requestAnimationFrame(function() {
+      if (!document.querySelector('.modal.show')) {
+        document.body.classList.remove('modal-open');
+        document.body.style.removeProperty('overflow');
+        document.body.style.removeProperty('padding-right');
+        document.querySelectorAll('.modal-backdrop').forEach(function(b) { b.remove(); });
+      }
+    });
+  });
+})();
+
+/* ── Lead status: handled globally in base.html (single listener — avoids duplicate POST + disabled select on Android) ── */
+
+/* ── Call status update — Android + iOS compatible ────────── */
+const _leadsPageCsrf = '{{ session.get("_csrf_token", "") }}';
+
+(function initCallStatusDropdowns() {
+  function onCallStatusChange(e) {
+    var sel = e.target;
+    if (!sel || !sel.classList || !sel.classList.contains('call-status-select')) return;
+    var leadId = (sel.dataset.leadId || '').trim();
+    var newVal = (sel.value || '').trim();
+    var oldVal = (sel.dataset.current || '').trim();
+    if (!leadId || !newVal || newVal === oldVal) return;
+    if (sel.dataset.callSaving === '1') return;
+    sel.dataset.callSaving = '1';
+    fetch('/leads/' + leadId + '/call-status', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRF-Token': _leadsPageCsrf},
+      body: JSON.stringify({ call_status: newVal })
+    })
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(d) {
+      delete sel.dataset.callSaving;
+      if (d.ok) {
+        sel.dataset.current = newVal;
+        showToast('Call status updated ✅', 'success');
+        if (d.ai_feedback) {
+          showToast(d.ai_feedback, 'info');
+        }
+        if (d.stage_advanced) {
+          showToast('₹196 confirmed — lead moved to Day 1 🎯', 'info');
+          setTimeout(function() { location.reload(); }, 1500);
+        }
+      } else {
+        sel.value = oldVal;
+        showToast(d.error || 'Could not update', 'danger');
+      }
+    })
+    .catch(function(err) {
+      delete sel.dataset.callSaving;
+      sel.value = oldVal;
+      showToast('Network error — try again', 'danger');
+    });
+  }
+  document.addEventListener('change', onCallStatusChange, true);
+})();
+
+/* ── Import form loading state ─────────────────────────── */
+document.querySelectorAll('#importModal form').forEach(function(form) {
+  form.addEventListener('submit', function() {
+    var btn = form.querySelector('button[type="submit"]');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Importing…';
+    }
+  });
+});
+</script>
+
+<style>
+/* ── Modal scrollable layout fix (iOS) ────────────────────────────────────
+   Root cause of "freeze": overflow-y:hidden on .modal blocks iOS from
+   recognising .modal-body as a touch-scrollable container — any scroll
+   gesture on the body is swallowed → modal feels completely frozen.
+
+   Fix strategy:
+   1. Do NOT set overflow on .modal itself — let Bootstrap keep its default
+      (overflow-y:auto). The dialog is capped at 94vh so it never exceeds
+      the viewport and the outer scroll never activates.
+   2. Clip at .modal-content level (overflow:hidden) — header stays fixed,
+      only the body scrolls.
+   3. .modal-body: overflow-y:scroll (not auto — forces iOS scroll context)
+      + overscroll-behavior:contain (stops propagation to page behind).
+   4. touch-action:manipulation on every interactive layer → kills 300ms
+      double-tap delay without blocking scroll gestures.                   */
+
+/* Kill 300ms tap delay — do NOT use overflow on .modal */
+#quickAddModal.modal,
+#importModal.modal {
+  touch-action: manipulation;
+}
+#quickAddModal .modal-content,
+#importModal   .modal-content,
+#quickAddModal .modal-body,
+#importModal   .modal-body,
+#quickAddModal .modal-footer,
+#importModal   .modal-footer {
+  touch-action: manipulation;
+}
+
+/* Dialog: never taller than 94vh so the outer modal doesn't scroll */
+#quickAddModal .modal-dialog,
+#importModal   .modal-dialog {
+  margin: 2vh auto !important;
+  max-height: 94vh;
+  height: auto;
+}
+
+/* Content: clip overflow so header/footer don't move */
+#quickAddModal .modal-content,
+#importModal   .modal-content {
+  max-height: 94vh;
+  overflow: hidden;
+}
+
+/* Safari/iOS: dvh tracks visible viewport (keyboard) — must come AFTER 94vh fallback */
+@supports (height: 100dvh) {
+  #quickAddModal .modal-dialog,
+  #importModal   .modal-dialog,
+  #quickAddModal .modal-content,
+  #importModal   .modal-content {
+    max-height: min(94dvh, 94vh);
+  }
+}
+
+/* Form inside modal-content: flex column so body expands and footer sticks */
+#quickAddModal .modal-content > form,
+#importModal   .modal-content > form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Body: scroll — use 'scroll' not 'auto' for reliable iOS touch-scroll.
+   overscroll-behavior:contain stops the page-behind from scrolling when
+   the body reaches its top/bottom edge.                                  */
+#quickAddModal .modal-body,
+#importModal   .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* ══ Working section card styles ══════════════════════════ */
+.wl-card {
+  background: #fff;
+  border: 1.5px solid #e5e7eb;
+  border-left: 3px solid #d1d5db;
+  border-radius: 12px;
+  padding: .75rem;
+  margin-bottom: .5rem;
+  transition: box-shadow .15s;
+}
+.wl-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+/* Left border color by status */
+.wl-card[data-status="New"],.wl-card[data-status="NewLead"] { border-left-color:#9ca3af; }
+.wl-card[data-status="Contacted"] { border-left-color:#3b82f6; }
+.wl-card[data-status="VideoSent"] { border-left-color:#a78bfa; }
+.wl-card[data-status="VideoWatched"] { border-left-color:#8b5cf6; }
+.wl-card[data-status="Paid₹196"] { border-left-color:#10b981; }
+.wl-card[data-status="Day1"] { border-left-color:#0ea5e9; }
+.wl-card[data-status="Day2"] { border-left-color:#8b5cf6; }
+.wl-card[data-status="Interview"] { border-left-color:#f59e0b; }
+.wl-card[data-status="TrackSelected"] { border-left-color:#f97316; }
+.wl-card[data-status="SeatHoldConfirmed"] { border-left-color:#f97316; }
+.wl-card[data-status="FullyConverted"],.wl-card[data-status="Converted"] { border-left-color:#10b981; }
+.wl-card[data-status="Lost"] { border-left-color:#ef4444; }
+.wl-card[data-status="Retarget"] { border-left-color:#f59e0b; }
+.wl-name  { font-weight: 600; font-size: .88rem; line-height: 1.3; }
+.wl-city  { font-size: .72rem; color: #6b7280; }
+.wl-retarget-tag { font-size: .68rem; color: #d97706; background: #fffbeb; border: 1px solid #fde68a; border-radius: 4px; padding: 1px 6px; display: inline-block; margin-top: 2px; }
+.wl-assigned-tag { font-size: .68rem; color: #6366f1; background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 4px; padding: 1px 6px; display: inline-block; margin-top: 2px; }
+.wl-phone { font-size: .8rem; color: #374151; font-family: monospace; }
+
+.wl-action-btn {
+  width: 28px; height: 28px; border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: .8rem; text-decoration: none; flex-shrink: 0;
+}
+.wl-action-btn.call { background: #dcfce7; color: #16a34a; }
+.wl-action-btn.wa   { background: #dcfce7; color: #15803d; }
+.wl-action-btn:hover { opacity: .8; }
+
+.wl-done-badge {
+  display: inline-flex; align-items: center;
+  border-radius: 20px; padding: 2px 8px; font-size: .72rem; font-weight: 600;
+}
+.wl-done-badge.done    { background: #dcfce7; color: #15803d; }
+.wl-done-badge.pending { background: #f3f4f6; color: #9ca3af; }
+
+
+/* Status badge colors (for Working section active tab) */
+.wl-status-badge {
+  display: inline-block; border-radius: 20px;
+  padding: 2px 8px; font-size: .7rem; font-weight: 600;
+  background: #e5e7eb; color: #374151;
+  white-space: nowrap; max-width: 120px;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.wl-status-badge.status-Day1 { background:#e0f2fe; color:#0369a1; }
+.wl-status-badge.status-Day2 { background:#ede9fe; color:#6d28d9; }
+.wl-status-badge.status-Interview { background:#fef3c7; color:#92400e; }
+.wl-status-badge.status-FullyConverted,
+.wl-status-badge.status-Converted { background:#dcfce7; color:#15803d; }
+.wl-status-badge.status-Lost { background:#fee2e2; color:#b91c1c; }
+.wl-status-badge.status-Paid₹196 { background:#d1fae5; color:#065f46; }
+
+/* Nav pills for outer tabs */
+#outerTabs .nav-link {
+  background: #f3f4f6; color: #374151;
+  border-radius: 10px; font-size: .88rem;
+}
+#outerTabs .nav-link.active {
+  background: linear-gradient(135deg,#4f46e5,#7c3aed); color: #fff;
+}
+
+/* Modal headers — light mode */
+.qa-modal-hdr  { background: #d1fae5; }
+.qa-modal-title { color: #065f46; }
+.imp-modal-hdr  { background: #eef2ff; }
+.imp-modal-title { color: #4f46e5; }
+
+/* ── Dark mode overrides for all wl-* lead card styles ─── */
+[data-theme="dark"] .wl-card { background: var(--bg-card); border-color: var(--sep); }
+[data-theme="dark"] .wl-name  { color: var(--label-1); }
+[data-theme="dark"] .wl-city  { color: var(--label-3); }
+[data-theme="dark"] .wl-phone { color: var(--label-2); }
+[data-theme="dark"] .wl-action-btn.call,
+[data-theme="dark"] .wl-action-btn.wa { background: rgba(48,209,88,0.15); color: var(--ios-green); }
+[data-theme="dark"] .wl-done-badge.done    { background: rgba(48,209,88,0.15); color: var(--ios-green); }
+[data-theme="dark"] .wl-done-badge.pending { background: var(--fill-3); color: var(--label-3); }
+[data-theme="dark"] .wl-status-badge { background: var(--fill-3); color: var(--label-2); }
+[data-theme="dark"] .wl-status-badge.status-Day1 { background: rgba(50,173,230,0.15); color: var(--ios-cyan); }
+[data-theme="dark"] .wl-status-badge.status-Day2 { background: rgba(191,90,242,0.15); color: var(--ios-purple); }
+[data-theme="dark"] .wl-status-badge.status-Interview { background: rgba(255,159,10,0.15); color: var(--ios-orange); }
+[data-theme="dark"] .wl-status-badge.status-FullyConverted,
+[data-theme="dark"] .wl-status-badge.status-Converted { background: rgba(48,209,88,0.15); color: var(--ios-green); }
+[data-theme="dark"] .wl-status-badge.status-Lost { background: rgba(255,69,58,0.15); color: var(--ios-red); }
+[data-theme="dark"] .wl-status-badge.status-Paid₹196 { background: rgba(48,209,88,0.12); color: var(--ios-green); }
+[data-theme="dark"] #outerTabs .nav-link { background: var(--fill-3); color: var(--label-2); }
+[data-theme="dark"] #outerTabs .nav-link.active { background: linear-gradient(135deg, var(--ios-indigo), var(--ios-purple)); color: #fff; }
+/* Modal headers dark mode */
+[data-theme="dark"] .qa-modal-hdr  { background: rgba(48,209,88,0.12) !important; }
+[data-theme="dark"] .qa-modal-title { color: var(--ios-green) !important; }
+[data-theme="dark"] .imp-modal-hdr  { background: rgba(94,92,230,0.15) !important; }
+[data-theme="dark"] .imp-modal-title { color: var(--ios-indigo) !important; }
+[data-theme="dark"] .modal-content  { background: var(--bg-card); }
+
+/* ── Call Panel ──────────────────────────────────────────── */
+.call-panel-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.5);
+  z-index: 1049;
+  backdrop-filter: blur(3px);
+}
+.call-panel {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--bg-card, #fff);
+  border-radius: 20px 20px 0 0;
+  padding: 0 0 env(safe-area-inset-bottom, 0);
+  box-shadow: 0 -8px 48px rgba(0,0,0,.22);
+  z-index: 1050;
+  max-height: 88vh;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  transform: translateY(100%);
+  transition: transform .35s cubic-bezier(.32,.72,0,1);
+}
+.call-panel.open { transform: translateY(0); }
+
+/* ── Panel header (fixed, never scrolls) ── */
+.cp-header {
+  padding: 10px 16px 12px;
+  border-bottom: 1px solid var(--bs-border-color, #e5e7eb);
+  flex-shrink: 0;
+}
+.cp-handle {
+  width: 36px; height: 4px;
+  background: #d1d5db; border-radius: 99px;
+  margin: 0 auto 12px;
+}
+
+/* ── Step label (no progress bar) ── */
+.cp-progress-wrap { padding: 0 16px; flex-shrink: 0; }
+.cp-step-label {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0 8px;
+  border-bottom: 1px solid var(--bs-border-color, #e5e7eb);
+}
+.cp-step-icon-label { font-size: 1rem; font-weight: 700; }
+.cp-step-counter { font-size: .72rem; color: #9ca3af; font-weight: 600; }
+
+/* ── Script content area (scrollable) ── */
+.cp-script-area {
+  flex: 1; overflow-y: auto;
+  padding: 12px 16px 4px;
+  overscroll-behavior: contain;
+}
+/* Script line types — clean, no heavy backgrounds */
+.cp-line-you {
+  font-size: 1rem; line-height: 1.6; font-weight: 600;
+  margin: 4px 0; color: var(--bs-body-color, #111827);
+}
+.cp-label-you {
+  font-size: .6rem; font-weight: 800; color: #16a34a;
+  text-transform: uppercase; letter-spacing: .07em;
+  display: inline-block; margin-right: 5px;
+}
+.cp-line-lead {
+  font-size: .9rem; color: #6b7280; font-style: italic;
+  margin: 3px 0 3px 2px;
+}
+.cp-label-lead {
+  font-size: .6rem; font-weight: 800; color: #9ca3af;
+  text-transform: uppercase; letter-spacing: .07em;
+  display: inline-block; margin-right: 5px;
+}
+.cp-line-cue  { font-size: .9rem; font-weight: 600; margin: 6px 0; }
+.cp-line-pause { font-size: .78rem; color: #9ca3af; font-style: italic; margin: 4px 0; }
+.cp-line-bullet { font-size: .92rem; line-height: 1.55; margin: 1px 0; }
+.cp-line-text   { font-size: .95rem; line-height: 1.6;  margin: 3px 0; }
+.cp-line-gap    { height: 10px; }
+
+/* ── Nav + action footer (fixed, never scrolls) ── */
+.cp-footer {
+  flex-shrink: 0; padding: 10px 16px 14px;
+  border-top: 1px solid var(--bs-border-color, #e5e7eb);
+  background: var(--bg-card, #fff);
+}
+.cp-nav { display: flex; gap: 8px; margin-bottom: 10px; }
+.cp-nav-btn {
+  flex: 1; padding: 9px 0; border-radius: 10px;
+  font-weight: 600; font-size: .88rem; border: none; cursor: pointer;
+  transition: opacity .15s;
+}
+.cp-nav-btn:disabled { opacity: .35; cursor: default; }
+.cp-nav-prev { background: #f3f4f6; color: #374151; }
+.cp-nav-next { background: #16a34a; color: #fff; }
+[data-theme="dark"] .cp-nav-prev { background: var(--fill-2); color: var(--label-1); }
+
+.cp-actions { display: flex; gap: 6px; }
+.cp-act-btn {
+  flex: 1; padding: 8px 4px; border-radius: 10px;
+  font-size: .78rem; font-weight: 600; border: 1.5px solid;
+  cursor: pointer; background: transparent; text-align: center;
+  transition: background .15s, color .15s;
+}
+.cp-act-btn.interested { border-color: #16a34a; color: #16a34a; }
+.cp-act-btn.interested.active { background: #16a34a; color: #fff; }
+.cp-act-btn.followup   { border-color: #d97706; color: #d97706; }
+.cp-act-btn.followup.active   { background: #d97706; color: #fff; }
+.cp-act-btn.notint     { border-color: #dc2626; color: #dc2626; }
+.cp-act-btn.notint.active     { background: #dc2626; color: #fff; }
+.cp-outcome-msg { font-size: .72rem; text-align: center; margin-top: 6px; min-height: 16px; }
+</style>
+
+{# ── Call Panel HTML ──────────────────────────────────────── #}
+<div id="callPanelBackdrop" class="call-panel-backdrop d-none" onclick="closeCallPanel()"></div>
+<div id="callPanel" class="call-panel" role="dialog" aria-modal="true">
+
+  {# ── Fixed header: handle + lead info + dial ── #}
+  <div class="cp-header">
+    <div class="cp-handle"></div>
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <span class="badge bg-success-subtle text-success border border-success-subtle small fw-semibold px-2" id="cpCallCounter">
+        📞 0 / {{ call_target }}
+      </span>
+      <span class="text-muted small ms-auto" id="cpQueuePos"></span>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+      <div class="flex-grow-1 min-w-0">
+        <div class="fw-bold text-truncate" id="cpLeadName">—</div>
+        <div class="text-muted small" id="cpLeadPhone">—</div>
+      </div>
+      <a id="cpDialBtn" href="tel:" class="btn btn-success fw-semibold px-3 flex-shrink-0">
+        <i class="bi bi-telephone-fill me-1"></i>Dial
+      </a>
+      <button class="btn btn-light btn-sm flex-shrink-0" onclick="closeCallPanel()" aria-label="Close">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+  </div>
+
+  {# ── Step label only (no progress bar) ── #}
+  <div class="cp-progress-wrap">
+    <div class="cp-step-label">
+      <span class="cp-step-icon-label" id="cpStepLabel">🙏 Opening</span>
+      <span class="cp-step-counter" id="cpStepCounter">Step 1 / 4</span>
+    </div>
+  </div>
+
+  {# ── Scrollable script content ── #}
+  <div class="cp-script-area" id="cpScriptArea">
+    <div class="text-center text-muted py-4 small" id="cpLoadingMsg">
+      <div class="spinner-border spinner-border-sm me-2"></div>Loading script…
+    </div>
+  </div>
+
+  {# ── Fixed footer: nav + action buttons ── #}
+  <div class="cp-footer">
+    <div class="cp-nav">
+      <button class="cp-nav-btn cp-nav-prev" id="cpPrevBtn" onclick="cpNav(-1)" disabled>← Previous</button>
+      <button class="cp-nav-btn cp-nav-next" id="cpNextBtn" onclick="cpNav(1)">Next →</button>
+    </div>
+    <div id="cpActionsWrap" style="display:none;">
+      <div class="cp-actions">
+        <button class="cp-act-btn interested" data-outcome="Hot Lead"       onclick="cpSaveOutcome(this)">🔥 Hot Lead</button>
+        <button class="cp-act-btn followup"   data-outcome="Call Later"     onclick="cpSaveOutcome(this)">🔁 Call Later</button>
+        <button class="cp-act-btn notint"     data-outcome="Not Interested" onclick="cpSaveOutcome(this)">❌ Not Interested</button>
+      </div>
+      <div class="cp-outcome-msg text-muted" id="cpOutcomeMsg"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var _csrf      = '{{ csrf_token }}';
+  var _target    = {{ call_target }};
+  var _lid       = null;   // current lead id
+  var _steps     = [];     // script steps for current lead
+  var _si        = 0;      // current step index
+  var _callsDone = 0;      // session call counter
+  var _qi        = -1;     // queue index of current lead
+
+  /* ── Backend-ordered lead queue (deduped, consistent across filters) ── */
+  var _queue = (function() {
+    var seen = {}, out = [];
+    {% set _all = active_leads %}
+    {% for lead in _all %}
+    if (!seen[{{ lead.id }}]) { seen[{{ lead.id }}] = true; out.push({id: {{ lead.id }}, name: {{ lead.name|tojson }}, phone: {{ lead.phone|tojson }}}); }
+    {% endfor %}
+    return out;
+  })();
+
+  /* ── localStorage persistence (survives refresh + tab reopen) ── */
+  var _SS_KEY = 'myle_call_state';
+  var _PR_KEY = 'myle_processed';
+  var _processed = {};   // leadId → true, skip in queue
+
+  function saveState() {
+    try {
+      localStorage.setItem(_SS_KEY, JSON.stringify({
+        lid: _lid, qi: _qi, si: _si, callsDone: _callsDone, steps: _steps
+      }));
+    } catch(e) {}
+  }
+  function clearState() {
+    try { localStorage.removeItem(_SS_KEY); localStorage.removeItem(_PR_KEY); } catch(e) {}
+    _processed = {};
+  }
+  function markProcessed(leadId) {
+    _processed[leadId] = true;
+    try {
+      var arr = JSON.parse(localStorage.getItem(_PR_KEY) || '[]');
+      if (arr.indexOf(leadId) < 0) arr.push(leadId);
+      localStorage.setItem(_PR_KEY, JSON.stringify(arr));
+    } catch(e) {}
+  }
+  function loadProcessed() {
+    try {
+      JSON.parse(localStorage.getItem(_PR_KEY) || '[]')
+        .forEach(function(id) { _processed[id] = true; });
+    } catch(e) {}
+  }
+  function restoreState() {
+    loadProcessed();
+    /* No leads in queue → clear stale state, never auto-open */
+    if (_queue.length === 0) { clearState(); return; }
+    try {
+      var raw = localStorage.getItem(_SS_KEY);
+      if (!raw) return;
+      var s = JSON.parse(raw);
+      if (!s.lid || !s.steps || !s.steps.length) return;
+      var hasContent = s.steps.some(function(st) { return st.content && st.content.trim(); });
+      if (!hasContent) { clearState(); return; }
+      var lead = null;
+      for (var i = 0; i < _queue.length; i++) {
+        if (_queue[i].id === s.lid) { lead = _queue[i]; break; }
+      }
+      if (!lead) { clearState(); return; }
+      _lid = s.lid; _qi = s.qi;
+      _si  = typeof s.si === 'number' ? s.si : 0;
+      _callsDone = s.callsDone || 0;
+      _steps = s.steps;
+      document.getElementById('cpLeadName').textContent   = lead.name;
+      document.getElementById('cpLeadPhone').textContent  = lead.phone;
+      document.getElementById('cpDialBtn').href           = 'tel:' + lead.phone;
+      document.getElementById('cpOutcomeMsg').textContent = '';
+      document.getElementById('cpOutcomeMsg').className   = 'cp-outcome-msg text-muted';
+      document.querySelectorAll('.cp-act-btn').forEach(function(b){ b.classList.remove('active'); b.disabled = false; });
+      document.getElementById('callPanelBackdrop').classList.remove('d-none');
+      document.getElementById('callPanel').classList.add('open');
+      document.body.style.overflow = 'hidden';
+      updateCounter(); updateQueuePos(); renderStep();
+    } catch(e) {}
+  }
+  document.addEventListener('DOMContentLoaded', function() {
+    updateCounter();   /* always init counter correctly on load */
+    restoreState();    /* only restores+opens if queue non-empty */
+  });
+
+  /* ── HTML escape ── */
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  /* ── Render one script line ── */
+  function renderLine(line) {
+    var t = line.trim();
+    if (!t) return '<div class="cp-line-gap"></div>';
+    if (t.startsWith('YOU:'))  return '<div class="cp-line-you"><span class="cp-label-you">YOU</span>'  + esc(t.slice(4).trim())  + '</div>';
+    if (t.startsWith('LEAD:')) return '<div class="cp-line-lead"><span class="cp-label-lead">LEAD</span><em>' + esc(t.slice(5).trim()) + '</em></div>';
+    if (t.startsWith('👉'))    return '<div class="cp-line-cue">'   + esc(t) + '</div>';
+    if (/^\(.*\)$/.test(t))    return '<div class="cp-line-pause">' + esc(t) + '</div>';
+    if (t.startsWith('•') || t.startsWith('-')) return '<div class="cp-line-bullet">' + esc(t) + '</div>';
+    return '<div class="cp-line-text">' + esc(t) + '</div>';
+  }
+
+  /* ── Update counter badge ── */
+  function updateCounter() {
+    var el = document.getElementById('cpCallCounter');
+    if (_queue.length === 0) { el.style.display = 'none'; return; }
+    el.style.display = '';
+    el.textContent = '📞 ' + _callsDone + ' / ' + _queue.length;
+  }
+
+  /* ── Update queue position label ── */
+  function updateQueuePos() {
+    var el = document.getElementById('cpQueuePos');
+    if (_qi >= 0 && _queue.length > 0) {
+      el.textContent = 'Lead ' + (_qi + 1) + ' of ' + _queue.length;
+    } else {
+      el.textContent = '';
+    }
+  }
+
+  /* ── Render current script step ── */
+  function renderStep() {
+    var step    = _steps[_si];
+    var total   = _steps.length;
+    var isFinal = (_si === total - 1);
+
+    document.getElementById('cpStepLabel').textContent   = step.icon + ' ' + step.label;
+    document.getElementById('cpStepCounter').textContent = 'Step ' + (_si + 1) + ' / ' + total;
+    document.getElementById('cpPrevBtn').disabled        = (_si === 0);
+    document.getElementById('cpNextBtn').disabled        = isFinal;
+    document.getElementById('cpActionsWrap').style.display = isFinal ? '' : 'none';
+
+    var area = document.getElementById('cpScriptArea');
+    area.innerHTML = step.content
+      ? step.content.split('\n').map(renderLine).join('')
+      : '<p class="text-muted small text-center py-4">Script not configured — ask an admin to set it up.</p>';
+  }
+
+  /* ── Navigate script steps ── */
+  window.cpNav = function(dir) {
+    var next = _si + dir;
+    if (next < 0 || next >= _steps.length) return;
+    _si = next;
+    renderStep();
+    saveState();
+  };
+
+  /* ── Tag badge on lead card ── */
+  function tagCard(leadId, outcome) {
+    var card = document.getElementById('wcard-' + leadId);
+    if (!card) return;
+    var badge = card.querySelector('.cp-call-badge');
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'cp-call-badge badge rounded-pill ms-1';
+      badge.style.cssText = 'font-size:.6rem;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;vertical-align:middle;';
+      var nameEl = card.querySelector('.wl-name');
+      if (nameEl) nameEl.appendChild(badge);
+    }
+    badge.textContent = '📞 ' + outcome;
+  }
+
+  /* ── Load next lead (skip processed) or close if done ── */
+  function loadNext() {
+    markProcessed(_lid);            // mark current lead done
+    var nextIdx = _qi + 1;
+    while (nextIdx < _queue.length && _processed[_queue[nextIdx].id]) {
+      nextIdx++;                    // skip already-called leads
+    }
+    if (nextIdx >= _queue.length) {
+      document.getElementById('cpScriptArea').innerHTML =
+        '<div class="text-center py-5"><div style="font-size:2rem">🎉</div>' +
+        '<div class="fw-bold mt-2">All leads done!</div>' +
+        '<div class="text-muted small mt-1">Calls completed: ' + _callsDone + '</div></div>';
+      document.getElementById('cpStepLabel').textContent    = 'Done';
+      document.getElementById('cpStepCounter').textContent  = '';
+      document.getElementById('cpActionsWrap').style.display = 'none';
+      document.getElementById('cpPrevBtn').disabled = true;
+      document.getElementById('cpNextBtn').disabled = true;
+      setTimeout(function() { window.closeCallPanel(); clearState(); }, 800);
+      return;
+    }
+    _qi = nextIdx;
+    var lead = _queue[nextIdx];
+    window.openCallPanel(lead.id, lead.name, lead.phone);
+  }
+
+  /* ── Save outcome + auto-advance ── */
+  window.cpSaveOutcome = function(btn) {
+    if (!_lid) return;
+    /* Disable all buttons immediately to prevent double-tap */
+    document.querySelectorAll('.cp-act-btn').forEach(function(b){ b.disabled = true; b.classList.remove('active'); });
+    btn.classList.add('active');
+
+    var outcome = btn.dataset.outcome;
+    var msg = document.getElementById('cpOutcomeMsg');
+    msg.textContent = '⏳ Saving…';
+    msg.className   = 'cp-outcome-msg text-muted';
+
+    var fd = new URLSearchParams();
+    fd.append('call_result', outcome);
+    fd.append('csrf_token',  _csrf);
+
+    fetch('/leads/' + _lid + '/call-result', {
+      method:  'POST',
+      headers: {'X-CSRF-Token': _csrf, 'Content-Type': 'application/x-www-form-urlencoded'},
+      body:    fd.toString()
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d) {
+      if (d.ok) {
+        tagCard(_lid, outcome);
+        _callsDone++;
+        updateCounter();
+        saveState();
+        msg.textContent = '✅ Saved — Loading next lead…';
+        msg.className   = 'cp-outcome-msg text-success';
+        setTimeout(loadNext, 150);
+      } else {
+        msg.textContent = '⚠️ ' + (d.error || 'Error');
+        msg.className   = 'cp-outcome-msg text-danger';
+        document.querySelectorAll('.cp-act-btn').forEach(function(b){ b.disabled = false; });
+      }
+    })
+    .catch(function() {
+      msg.textContent = '⚠️ Network error';
+      msg.className   = 'cp-outcome-msg text-danger';
+      document.querySelectorAll('.cp-act-btn').forEach(function(b){ b.disabled = false; });
+    });
+  };
+
+  /* ── Open panel ── */
+  window.openCallPanel = function(leadId, name, phone) {
+    var _hasContent = _steps.some(function(st) { return st.content && st.content.trim(); });
+    var resuming = (leadId === _lid && _steps.length > 0 && _hasContent);
+    if (!resuming) _si = 0;
+    _lid = leadId;
+
+    /* Find position in queue */
+    _qi = -1;
+    for (var i = 0; i < _queue.length; i++) {
+      if (_queue[i].id === leadId) { _qi = i; break; }
+    }
+
+    /* Reset UI */
+    document.getElementById('cpLeadName').textContent    = name;
+    document.getElementById('cpLeadPhone').textContent   = phone;
+    document.getElementById('cpDialBtn').href            = 'tel:' + phone;
+    document.getElementById('cpOutcomeMsg').textContent  = '';
+    document.getElementById('cpOutcomeMsg').className    = 'cp-outcome-msg text-muted';
+    document.querySelectorAll('.cp-act-btn').forEach(function(b){ b.classList.remove('active'); b.disabled = false; });
+    document.getElementById('cpScriptArea').innerHTML    =
+      '<div class="text-center text-muted py-4 small"><div class="spinner-border spinner-border-sm me-2"></div>Loading script…</div>';
+    document.getElementById('cpStepLabel').textContent   = '…';
+    document.getElementById('cpStepCounter').textContent = '';
+    document.getElementById('cpActionsWrap').style.display = 'none';
+    document.getElementById('callPanelBackdrop').classList.remove('d-none');
+    document.getElementById('callPanel').classList.add('open');
+    document.body.style.overflow = 'hidden';
+    updateCounter();
+    updateQueuePos();
+
+    if (resuming) {
+      /* Same lead reopened — restore from cache, no fetch needed */
+      renderStep();
+      saveState();
+    } else {
+      /* New lead — fetch script from server */
+      fetch('/leads/' + leadId + '/call-script', { headers: {'X-CSRF-Token': _csrf} })
+        .then(function(r){ return r.json(); })
+        .then(function(d) {
+          if (!d.ok) { document.getElementById('cpScriptArea').innerHTML = '<p class="text-danger small py-3 text-center">⚠️ Script load failed.</p>'; return; }
+          _steps = d.steps;
+          renderStep();
+          saveState();
+        })
+        .catch(function() {
+          document.getElementById('cpScriptArea').innerHTML = '<p class="text-danger small py-3 text-center">⚠️ Network error.</p>';
+        });
+      /* Mark called (fire & forget) */
+      fetch('/leads/' + leadId + '/mark-called', {
+        method: 'POST',
+        headers: {'X-CSRF-Token': _csrf, 'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'csrf_token=' + _csrf
+      });
+    }
+  };
+
+  /* ── Close panel (state preserved — panel can be resumed) ── */
+  window.closeCallPanel = function() {
+    document.getElementById('callPanel').classList.remove('open');
+    document.getElementById('callPanelBackdrop').classList.add('d-none');
+    document.body.style.overflow = '';
+    /* Do NOT clearState() here — user can resume by clicking Call again */
+  };
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') window.closeCallPanel();
+  });
+})();
+</script>
+<script src="{{ url_for('static', filename='js/working.js') }}?v=20260409mlp2" defer></script>
+
+{% endblock %}

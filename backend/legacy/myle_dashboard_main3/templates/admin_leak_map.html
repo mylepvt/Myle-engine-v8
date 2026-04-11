@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Leak map · Admin{% endblock %}
+{% block page_title %}Leak map{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <a href="{{ url_for('admin_dashboard') }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Back
+  </a>
+</div>
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-transparent py-2 fw-semibold small">Volume by status</div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead class="table-light"><tr><th>Status</th><th class="text-end">Count</th></tr></thead>
+            <tbody>
+              {% for h in histogram %}
+              <tr>
+                <td>{{ h.status }}</td>
+                <td class="text-end fw-semibold">{{ h.count }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="2" class="text-muted text-center py-3">No data</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-transparent py-2 fw-semibold small">Enrollment path — step drop %</div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead class="table-light">
+              <tr><th>From → To</th><th class="text-end">From #</th><th class="text-end">To #</th><th class="text-end">Drop %</th></tr>
+            </thead>
+            <tbody>
+              {% for d in funnel_drops %}
+              <tr>
+                <td class="small">{{ d.from_status }} → {{ d.to_status }}</td>
+                <td class="text-end">{{ d.from_count }}</td>
+                <td class="text-end">{{ d.to_count }}</td>
+                <td class="text-end {% if d.drop_pct > 50 %}text-danger fw-bold{% elif d.drop_pct > 25 %}text-warning{% endif %}">{{ d.drop_pct }}%</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="4" class="text-muted text-center py-3">No funnel rows</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

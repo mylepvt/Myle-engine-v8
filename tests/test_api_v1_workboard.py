@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import delete
 
+from app.core.lead_status import WORKBOARD_COLUMNS
 from app.models.lead import Lead
 from main import app
 
@@ -64,7 +65,7 @@ def test_workboard_empty(monkeypatch: pytest.MonkeyPatch) -> None:
     assert res.status_code == 200
     body = res.json()
     assert body["max_rows_fetched"] == 300
-    assert len(body["columns"]) == 5
+    assert len(body["columns"]) == len(WORKBOARD_COLUMNS)
     for col in body["columns"]:
         assert col["total"] == 0
         assert col["items"] == []
@@ -73,9 +74,9 @@ def test_workboard_empty(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_workboard_groups_and_scopes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    asyncio.run(_seed_lead(user_id=2, name="L1", lead_status="new"))
-    asyncio.run(_seed_lead(user_id=2, name="L2", lead_status="won"))
-    asyncio.run(_seed_lead(user_id=1, name="Admin only", lead_status="new"))
+    asyncio.run(_seed_lead(user_id=2, name="L1", lead_status="new_lead"))
+    asyncio.run(_seed_lead(user_id=2, name="L2", lead_status="converted"))
+    asyncio.run(_seed_lead(user_id=1, name="Admin only", lead_status="new_lead"))
     try:
         c = _authed_client(monkeypatch)
         assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
@@ -83,16 +84,16 @@ def test_workboard_groups_and_scopes(
         assert res.status_code == 200
         body = res.json()
         by_status = {c["status"]: c for c in body["columns"]}
-        assert by_status["new"]["total"] == 1
-        assert by_status["won"]["total"] == 1
-        assert len(by_status["new"]["items"]) == 1
-        assert by_status["new"]["items"][0]["name"] == "L1"
+        assert by_status["new_lead"]["total"] == 1
+        assert by_status["converted"]["total"] == 1
+        assert len(by_status["new_lead"]["items"]) == 1
+        assert by_status["new_lead"]["items"][0]["name"] == "L1"
 
         c2 = _authed_client(monkeypatch)
         assert c2.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
         res2 = c2.get("/api/v1/workboard")
         by2 = {c["status"]: c for c in res2.json()["columns"]}
-        assert by2["new"]["total"] == 2
+        assert by2["new_lead"]["total"] == 2
     finally:
         asyncio.run(_clear_leads())
 
@@ -100,24 +101,44 @@ def test_workboard_groups_and_scopes(
 def test_workboard_excludes_pool_and_soft_deleted(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    asyncio.run(_seed_lead(user_id=2, name="Pooled", lead_status="new", in_pool=True))
+    asyncio.run(_seed_lead(user_id=2, name="Pooled", lead_status="new_lead", in_pool=True))
     asyncio.run(
         _seed_lead(
             user_id=2,
             name="Deleted",
-            lead_status="new",
+            lead_status="new_lead",
             deleted_at=datetime.now(timezone.utc),
         )
     )
-    asyncio.run(_seed_lead(user_id=2, name="Active", lead_status="new"))
+    asyncio.run(_seed_lead(user_id=2, name="Active", lead_status="new_lead"))
     try:
         c = _authed_client(monkeypatch)
         assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
         res = c.get("/api/v1/workboard")
         by_status = {col["status"]: col for col in res.json()["columns"]}
-        assert by_status["new"]["total"] == 1
-        assert len(by_status["new"]["items"]) == 1
-        assert by_status["new"]["items"][0]["name"] == "Active"
+        assert by_status["new_lead"]["total"] == 1
+        assert len(by_status["new_lead"]["items"]) == 1
+        assert by_status["new_lead"]["items"][0]["name"] == "Active"
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_leader_sees_downline_created_leads(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Leader visibility includes leads created by team members under them (upline tree)."""
+    asyncio.run(
+        _seed_lead(user_id=3, name="FromTeamMember", lead_status="new_lead")
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        res = c.get("/api/v1/workboard")
+        assert res.status_code == 200
+        by_status = {col["status"]: col for col in res.json()["columns"]}
+        assert by_status["new_lead"]["total"] == 1
+        assert len(by_status["new_lead"]["items"]) == 1
+        assert by_status["new_lead"]["items"][0]["name"] == "FromTeamMember"
     finally:
         asyncio.run(_clear_leads())
 
@@ -125,12 +146,12 @@ def test_workboard_excludes_pool_and_soft_deleted(
 def test_workboard_excludes_archived_leads(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    asyncio.run(_seed_lead(user_id=2, name="Active", lead_status="new"))
+    asyncio.run(_seed_lead(user_id=2, name="Active", lead_status="new_lead"))
     asyncio.run(
         _seed_lead(
             user_id=2,
             name="Archived",
-            lead_status="new",
+            lead_status="new_lead",
             archived_at=datetime.now(timezone.utc),
         )
     )
@@ -139,8 +160,8 @@ def test_workboard_excludes_archived_leads(
         assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
         res = c.get("/api/v1/workboard")
         by_status = {col["status"]: col for col in res.json()["columns"]}
-        assert by_status["new"]["total"] == 1
-        assert len(by_status["new"]["items"]) == 1
-        assert by_status["new"]["items"][0]["name"] == "Active"
+        assert by_status["new_lead"]["total"] == 1
+        assert len(by_status["new_lead"]["items"]) == 1
+        assert by_status["new_lead"]["items"][0]["name"] == "Active"
     finally:
         asyncio.run(_clear_leads())

@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block title %}₹196 Enrollment Approvals — Myle Community{% endblock %}
+{% block page_title %}₹196 Approval Queue{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+  <div class="small text-muted">
+    Screenshot manually check karke approve/reject karo.
+    {% if role == 'leader' %}
+    <span class="d-block mt-1">
+      Aap apni <strong>poori downline / team</strong> ka ₹196 yahan approve kar sakte hain.
+      Jo lead <strong>khud aapko assign</strong> ho uska proof <strong>sirf admin</strong> approve karega.
+    </span>
+    {% endif %}
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <span class="badge bg-warning text-dark">{{ pending_proofs|length }} pending</span>
+    <a href="{{ url_for('admin_dashboard') if role == 'admin' else url_for('leader_team_reports') }}"
+       class="btn btn-sm btn-outline-secondary">Back</a>
+  </div>
+</div>
+
+{# ── History: pick any calendar day (IST date on stored review timestamp) ── #}
+<div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #6366f1!important;">
+  <div class="card-body py-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-2">
+      <div>
+        <h6 class="fw-bold mb-1 text-primary"><i class="bi bi-calendar3 me-2"></i>Approval history</h6>
+        <p class="small text-muted mb-0">Kisi bhi din ka approve / reject dekhne ke liye date chuno.</p>
+      </div>
+      <form method="get" action="{{ url_for('enrollment_approvals') }}" class="d-flex align-items-center gap-2 flex-wrap">
+        <label class="small text-muted mb-0">Day</label>
+        <input type="date" name="history_date" class="form-control form-control-sm" style="width:auto;min-width:11rem;"
+               value="{{ history_date }}" max="{{ today_iso }}">
+        <button type="submit" class="btn btn-sm btn-primary">Load</button>
+        <a href="{{ url_for('enrollment_approvals', history_date=today_iso) }}" class="btn btn-sm btn-outline-secondary">Today</a>
+      </form>
+    </div>
+    <div class="d-flex flex-wrap gap-2 mb-3">
+      <span class="badge rounded-pill bg-success-subtle text-success border">{{ history_approved_n }} approved</span>
+      <span class="badge rounded-pill bg-danger-subtle text-danger border">{{ history_rejected_n }} rejected</span>
+      <span class="badge rounded-pill bg-light text-secondary border">{{ proof_history|length }} total rows</span>
+    </div>
+    {% if proof_history %}
+    <div class="table-responsive rounded border" style="max-height:420px;overflow-y:auto;">
+      <table class="table table-sm align-middle mb-0 small">
+        <thead class="table-light sticky-top shadow-sm">
+          <tr>
+            <th>When</th>
+            <th>Lead</th>
+            <th>Team</th>
+            <th>Leader</th>
+            <th>Result</th>
+            <th>Reviewer</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for h in proof_history %}
+          <tr>
+            <td class="text-muted text-nowrap" style="font-size:.72rem;">
+              {{ (h.payment_proof_reviewed_at or '')[:16] }}
+            </td>
+            <td>
+              <span class="fw-semibold">{{ h.name }}</span>
+              <div class="text-muted" style="font-size:.68rem;">{{ h.phone }}</div>
+            </td>
+            <td>
+              <span class="badge bg-success-subtle text-success">@{{ h.assigned_to or '—' }}</span>
+              {% if h.assigned_role %}
+              <span class="badge bg-light text-muted border text-uppercase" style="font-size:.6rem;">{{ h.assigned_role }}</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if h.leader_username or h.leader_name %}
+              <div class="fw-semibold text-secondary" style="font-size:.78rem;">
+                {% if h.leader_name %}{{ h.leader_name }}{% else %}{{ h.leader_username }}{% endif %}
+              </div>
+              {% if h.leader_username %}
+              <div class="text-muted" style="font-size:.68rem;">@{{ h.leader_username }}</div>
+              {% endif %}
+              {% else %}
+              <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if (h.appr_status or '')|lower == 'approved' %}
+              <span class="badge bg-success">Approved</span>
+              {% else %}
+              <span class="badge bg-danger">Rejected</span>
+              {% if h.payment_proof_reject_note %}
+              <div class="text-muted mt-1" style="font-size:.65rem;">{{ h.payment_proof_reject_note[:80] }}{% if h.payment_proof_reject_note|length > 80 %}…{% endif %}</div>
+              {% endif %}
+              {% endif %}
+            </td>
+            <td class="text-muted" style="font-size:.72rem;">{{ h.payment_proof_reviewed_by or '—' }}</td>
+            <td class="text-nowrap">
+              {% if h.payment_proof_path %}
+              <a href="{{ h.payment_proof_path }}" target="_blank" class="btn btn-xs btn-outline-secondary py-0 px-1">SS</a>
+              {% endif %}
+              <a href="{{ url_for('edit_lead', lead_id=h.id) }}" class="btn btn-xs btn-outline-primary py-0 px-1">Lead</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center text-muted small py-4 border rounded bg-light">
+      <i class="bi bi-calendar-x d-block mb-1 opacity-50"></i>
+      Is date par koi ₹196 approve/reject record nahi (ya <code>payment_proof_reviewed_at</code> abhi khali tha — migrate ke baad dubara check karo).
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% if pending_proofs %}
+<div class="card border-0 shadow-sm" style="border-left:4px solid #f59e0b!important;">
+  <div class="card-header py-2 d-flex align-items-center gap-2"
+       style="background:rgba(245,158,11,.08);border-bottom:1px solid rgba(245,158,11,.2);">
+    <i class="bi bi-receipt-cutoff text-warning"></i>
+    <span class="fw-semibold small">Pending ₹196 Screenshots</span>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0 small">
+        <thead class="table-light">
+          <tr>
+            <th>Lead</th>
+            <th>Assigned To</th>
+            <th>Screenshot</th>
+            <th>Uploaded</th>
+            <th class="text-center">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in pending_proofs %}
+          <tr>
+            <td>
+              <span class="fw-semibold">{{ p.name }}</span>
+              <div class="text-muted" style="font-size:.7rem;">{{ p.phone }}</div>
+            </td>
+            <td>
+              <span class="badge bg-success-subtle text-success">@{{ p.assigned_to }}</span>
+              {% if p.assigned_role %}
+              <span class="badge bg-light text-muted border text-uppercase">{{ p.assigned_role }}</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if p.payment_proof_path %}
+              <a href="{{ p.payment_proof_path }}" target="_blank" class="btn btn-xs btn-outline-primary">
+                <i class="bi bi-image me-1"></i>View SS
+              </a>
+              {% else %}
+              <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td class="text-muted" style="font-size:.72rem;">
+              {{ p.updated_at[:16] if p.updated_at else '—' }}
+            </td>
+            <td class="text-center">
+              <form method="POST"
+                    action="{{ url_for('review_payment_proof', lead_id=p.id) }}"
+                    class="d-inline-flex gap-1 align-items-center flex-wrap justify-content-center">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="next" value="{{ url_for('enrollment_approvals', history_date=history_date) }}">
+                <input type="hidden" name="review_action" value="">
+                <button type="submit"
+                        class="btn btn-xs btn-success"
+                        onclick="this.form.querySelector('[name=review_action]').value='approve';return confirm('₹196 proof approve karo — @{{ p.assigned_to }}?')">
+                  <i class="bi bi-check-lg"></i> Approve
+                </button>
+                <button type="submit"
+                        class="btn btn-xs btn-danger"
+                        onclick="this.form.querySelector('[name=review_action]').value='reject';let n=prompt('Reject reason (optional):');if(n===null)return false;this.form.querySelector('[name=note]').value=n;return true;">
+                  <i class="bi bi-x-lg"></i> Reject
+                </button>
+                <input type="hidden" name="note" value="">
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="card border-0 shadow-sm">
+  <div class="card-body text-center py-5 text-muted">
+    <i class="bi bi-check2-circle d-block mb-2" style="font-size:1.6rem;"></i>
+    No pending ₹196 screenshot approvals.
+  </div>
+</div>
+{% endif %}
+{% endblock %}
