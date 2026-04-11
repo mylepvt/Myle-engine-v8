@@ -21,7 +21,7 @@ def test_execution_at_risk_admin(monkeypatch: pytest.MonkeyPatch) -> None:
     c = _admin(monkeypatch)
     r = c.get("/api/v1/execution/at-risk-leads")
     assert r.status_code == 200
-    assert r.json()["note"]
+    assert isinstance(r.json(), list)
 
 
 def test_settings_app_admin(monkeypatch: pytest.MonkeyPatch) -> None:

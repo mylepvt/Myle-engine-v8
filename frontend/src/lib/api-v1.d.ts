@@ -437,6 +437,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/execution/personal-funnel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Execution Personal Funnel
+         * @description Team: assigned-lead funnel counts (vl2 status + payment fields).
+         */
+        get: operations["execution_personal_funnel_api_v1_execution_personal_funnel_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/execution/follow-up-attack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Execution Follow Up Attack
+         * @description Team: open follow-ups due by end of `today` (IST), newest due first.
+         */
+        get: operations["execution_follow_up_attack_api_v1_execution_follow_up_attack_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/execution/downline-stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Execution Downline Stats
+         * @description Leader: per–team-member execution aggregates + bottleneck tags.
+         */
+        get: operations["execution_downline_stats_api_v1_execution_downline_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/execution/at-risk-leads": {
         parameters: {
             query?: never;
@@ -444,10 +504,73 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Execution At Risk */
+        /**
+         * Execution At Risk
+         * @description Admin: leads with ``updated_at`` older than ``stale_hours`` (working-set filters).
+         */
         get: operations["execution_at_risk_api_v1_execution_at_risk_leads_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/execution/weak-members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Execution Weak Members
+         * @description Admin: team + leader load vs enrollment + follow-up debt.
+         */
+        get: operations["execution_weak_members_api_v1_execution_weak_members_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/execution/leak-map": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Execution Leak Map
+         * @description Admin: status histogram + ordered funnel drop hints (vl2 status names).
+         */
+        get: operations["execution_leak_map_api_v1_execution_leak_map_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/execution/stale-redistribute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Execution Stale Redistribute
+         * @description Admin: legacy auto-assign stale_worker — not enabled until schema supports it.
+         */
+        post: operations["execution_stale_redistribute_api_v1_execution_stale_redistribute_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -461,7 +584,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Execution Lead Ledger */
+        /**
+         * Execution Lead Ledger
+         * @description Placeholder — wallet + ledger tie-in later.
+         */
         get: operations["execution_lead_ledger_api_v1_execution_lead_ledger_get"];
         put?: never;
         post?: never;
@@ -970,6 +1096,38 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AtRiskLeadRow */
+        AtRiskLeadRow: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Phone */
+            phone?: string | null;
+            /** Status */
+            status: string;
+            /** Updated At */
+            updated_at?: string | null;
+            /** Assignee */
+            assignee?: string | null;
+            /**
+             * Team Member Display
+             * @default
+             */
+            team_member_display: string;
+            /** Leader Username */
+            leader_username?: string | null;
+            /**
+             * Days Stuck
+             * @default 0
+             */
+            days_stuck: number;
+            /**
+             * Proof State
+             * @default none
+             */
+            proof_state: string;
+        };
         /** CallEventCreate */
         CallEventCreate: {
             /** Outcome */
@@ -1035,6 +1193,35 @@ export interface components {
              */
             ok: boolean;
         };
+        /**
+         * DownlineExecutionStatsOut
+         * @description Map assignee user_id → aggregates + bottleneck tags.
+         */
+        DownlineExecutionStatsOut: {
+            /** Stats */
+            stats?: {
+                [key: string]: components["schemas"]["MemberExecutionStats"];
+            };
+            /** Bottleneck Tags */
+            bottleneck_tags?: {
+                [key: string]: string[];
+            };
+        };
+        /** FollowUpAttackRow */
+        FollowUpAttackRow: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Phone */
+            phone?: string | null;
+            /** Follow Up Date */
+            follow_up_date?: string | null;
+            /** Status */
+            status: string;
+            /** Call Result */
+            call_result?: string | null;
+        };
         /** FollowUpCreate */
         FollowUpCreate: {
             /** Lead Id */
@@ -1094,6 +1281,19 @@ export interface components {
              * @description True = mark done now; False = reopen
              */
             completed?: boolean | null;
+        };
+        /** FunnelDropRow */
+        FunnelDropRow: {
+            /** From Status */
+            from_status: string;
+            /** To Status */
+            to_status: string;
+            /** From Count */
+            from_count: number;
+            /** To Count */
+            to_count: number;
+            /** Drop Pct */
+            drop_pct: number;
         };
         /** GateAssistantResponse */
         GateAssistantResponse: {
@@ -1363,6 +1563,13 @@ export interface components {
              */
             day3_completed?: boolean | null;
         };
+        /** LeakMapOut */
+        LeakMapOut: {
+            /** Histogram */
+            histogram: components["schemas"]["StatusHistogramRow"][];
+            /** Funnel Drops */
+            funnel_drops: components["schemas"]["FunnelDropRow"][];
+        };
         /**
          * LoginRequest
          * @description Password login: **FBO ID** (unique) + password. Stored FBO IDs are case-insensitive.
@@ -1419,6 +1626,19 @@ export interface components {
              */
             auth_version?: number | null;
         };
+        /** MemberExecutionStats */
+        MemberExecutionStats: {
+            /** Total Active */
+            total_active: number;
+            /** Enrollments */
+            enrollments: number;
+            /** Proof Pend */
+            proof_pend: number;
+            /** Fu Due */
+            fu_due: number;
+            /** Conv Pct */
+            conv_pct: number;
+        };
         /** MetaResponse */
         MetaResponse: {
             /** Name */
@@ -1443,6 +1663,42 @@ export interface components {
          * @enum {string}
          */
         Role: "admin" | "leader" | "team";
+        /** StaleRedistributeOut */
+        StaleRedistributeOut: {
+            /**
+             * Implemented
+             * @default false
+             */
+            implemented: boolean;
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+            /**
+             * Assigned
+             * @default 0
+             */
+            assigned: number;
+            /**
+             * Skipped
+             * @default 0
+             */
+            skipped: number;
+            /** Assignments */
+            assignments?: unknown[][];
+            /** Worker Counts */
+            worker_counts?: {
+                [key: string]: number;
+            };
+        };
+        /** StatusHistogramRow */
+        StatusHistogramRow: {
+            /** Status */
+            status: string;
+            /** Count */
+            count: number;
+        };
         /** SystemStubResponse */
         SystemStubResponse: {
             /** Items */
@@ -1535,6 +1791,30 @@ export interface components {
             items: components["schemas"]["TeamMemberPublic"][];
             /** Total */
             total: number;
+        };
+        /**
+         * TeamPersonalFunnelOut
+         * @description Team enrollment funnel — vl2-adapted buckets (see service docstring).
+         */
+        TeamPersonalFunnelOut: {
+            /** Claimed */
+            claimed: number;
+            /** Video Reached */
+            video_reached: number;
+            /** Proof Pending */
+            proof_pending: number;
+            /** Paid 196 */
+            paid_196: number;
+            /** Enrolled Total */
+            enrolled_total: number;
+            /** Pct Video Vs Claimed */
+            pct_video_vs_claimed: number;
+            /** Pct Proof Vs Video */
+            pct_proof_vs_video: number;
+            /** Pct Enrolled Vs Video */
+            pct_enrolled_vs_video: number;
+            /** Pct Enrolled Vs Claimed */
+            pct_enrolled_vs_claimed: number;
         };
         /** ValidationError */
         ValidationError: {
@@ -1652,6 +1932,21 @@ export interface components {
             currency: string;
             /** Recent Entries */
             recent_entries: components["schemas"]["WalletLedgerEntryPublic"][];
+        };
+        /** WeakMemberRow */
+        WeakMemberRow: {
+            /** Username */
+            username?: string | null;
+            /** Role */
+            role: string;
+            /** Total Leads */
+            total_leads: number;
+            /** Enrollments */
+            enrollments: number;
+            /** Fu Pending */
+            fu_pending: number;
+            /** Conv Pct */
+            conv_pct: number;
         };
         /** WorkboardColumnOut */
         WorkboardColumnOut: {
@@ -2403,7 +2698,7 @@ export interface operations {
             };
         };
     };
-    execution_at_risk_api_v1_execution_at_risk_leads_get: {
+    execution_personal_funnel_api_v1_execution_personal_funnel_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -2418,7 +2713,190 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SystemStubResponse"];
+                    "application/json": components["schemas"]["TeamPersonalFunnelOut"];
+                };
+            };
+        };
+    };
+    execution_follow_up_attack_api_v1_execution_follow_up_attack_get: {
+        parameters: {
+            query?: {
+                /** @description Calendar day ISO (YYYY-MM-DD), IST; default: today IST */
+                today?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FollowUpAttackRow"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    execution_downline_stats_api_v1_execution_downline_stats_get: {
+        parameters: {
+            query?: {
+                today?: string | null;
+                /** @description Comma-separated assignee user ids; default: all users with role team */
+                user_ids?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DownlineExecutionStatsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    execution_at_risk_api_v1_execution_at_risk_leads_get: {
+        parameters: {
+            query?: {
+                stale_hours?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AtRiskLeadRow"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    execution_weak_members_api_v1_execution_weak_members_get: {
+        parameters: {
+            query?: {
+                today?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeakMemberRow"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    execution_leak_map_api_v1_execution_leak_map_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeakMapOut"];
+                };
+            };
+        };
+    };
+    execution_stale_redistribute_api_v1_execution_stale_redistribute_post: {
+        parameters: {
+            query?: {
+                stale_hours?: number;
+                top_n?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaleRedistributeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2438,7 +2916,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SystemStubResponse"];
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

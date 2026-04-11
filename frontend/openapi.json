@@ -992,20 +992,377 @@
         }
       }
     },
-    "/api/v1/execution/at-risk-leads": {
+    "/api/v1/execution/personal-funnel": {
       "get": {
         "tags": [
           "execution"
         ],
-        "summary": "Execution At Risk",
-        "operationId": "execution_at_risk_api_v1_execution_at_risk_leads_get",
+        "summary": "Execution Personal Funnel",
+        "description": "Team: assigned-lead funnel counts (vl2 status + payment fields).",
+        "operationId": "execution_personal_funnel_api_v1_execution_personal_funnel_get",
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SystemStubResponse"
+                  "$ref": "#/components/schemas/TeamPersonalFunnelOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/execution/follow-up-attack": {
+      "get": {
+        "tags": [
+          "execution"
+        ],
+        "summary": "Execution Follow Up Attack",
+        "description": "Team: open follow-ups due by end of `today` (IST), newest due first.",
+        "operationId": "execution_follow_up_attack_api_v1_execution_follow_up_attack_get",
+        "parameters": [
+          {
+            "name": "today",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Calendar day ISO (YYYY-MM-DD), IST; default: today IST",
+              "title": "Today"
+            },
+            "description": "Calendar day ISO (YYYY-MM-DD), IST; default: today IST"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 15,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FollowUpAttackRow"
+                  },
+                  "title": "Response Execution Follow Up Attack Api V1 Execution Follow Up Attack Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/execution/downline-stats": {
+      "get": {
+        "tags": [
+          "execution"
+        ],
+        "summary": "Execution Downline Stats",
+        "description": "Leader: per\u2013team-member execution aggregates + bottleneck tags.",
+        "operationId": "execution_downline_stats_api_v1_execution_downline_stats_get",
+        "parameters": [
+          {
+            "name": "today",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Today"
+            }
+          },
+          {
+            "name": "user_ids",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma-separated assignee user ids; default: all users with role team",
+              "title": "User Ids"
+            },
+            "description": "Comma-separated assignee user ids; default: all users with role team"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownlineExecutionStatsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/execution/at-risk-leads": {
+      "get": {
+        "tags": [
+          "execution"
+        ],
+        "summary": "Execution At Risk",
+        "description": "Admin: leads with ``updated_at`` older than ``stale_hours`` (working-set filters).",
+        "operationId": "execution_at_risk_api_v1_execution_at_risk_leads_get",
+        "parameters": [
+          {
+            "name": "stale_hours",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 720,
+              "minimum": 1,
+              "default": 48,
+              "title": "Stale Hours"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2000,
+              "minimum": 1,
+              "default": 500,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AtRiskLeadRow"
+                  },
+                  "title": "Response Execution At Risk Api V1 Execution At Risk Leads Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/execution/weak-members": {
+      "get": {
+        "tags": [
+          "execution"
+        ],
+        "summary": "Execution Weak Members",
+        "description": "Admin: team + leader load vs enrollment + follow-up debt.",
+        "operationId": "execution_weak_members_api_v1_execution_weak_members_get",
+        "parameters": [
+          {
+            "name": "today",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Today"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 200,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WeakMemberRow"
+                  },
+                  "title": "Response Execution Weak Members Api V1 Execution Weak Members Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/execution/leak-map": {
+      "get": {
+        "tags": [
+          "execution"
+        ],
+        "summary": "Execution Leak Map",
+        "description": "Admin: status histogram + ordered funnel drop hints (vl2 status names).",
+        "operationId": "execution_leak_map_api_v1_execution_leak_map_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeakMapOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/execution/stale-redistribute": {
+      "post": {
+        "tags": [
+          "execution"
+        ],
+        "summary": "Execution Stale Redistribute",
+        "description": "Admin: legacy auto-assign stale_worker \u2014 not enabled until schema supports it.",
+        "operationId": "execution_stale_redistribute_api_v1_execution_stale_redistribute_post",
+        "parameters": [
+          {
+            "name": "stale_hours",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 720,
+              "minimum": 1,
+              "default": 48,
+              "title": "Stale Hours"
+            }
+          },
+          {
+            "name": "top_n",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 5,
+              "title": "Top N"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaleRedistributeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -1019,6 +1376,7 @@
           "execution"
         ],
         "summary": "Execution Lead Ledger",
+        "description": "Placeholder \u2014 wallet + ledger tie-in later.",
         "operationId": "execution_lead_ledger_api_v1_execution_lead_ledger_get",
         "responses": {
           "200": {
@@ -1026,7 +1384,9 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SystemStubResponse"
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Execution Lead Ledger Api V1 Execution Lead Ledger Get"
                 }
               }
             }
@@ -2074,6 +2434,89 @@
   },
   "components": {
     "schemas": {
+      "AtRiskLeadRow": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "assignee": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assignee"
+          },
+          "team_member_display": {
+            "type": "string",
+            "title": "Team Member Display",
+            "default": ""
+          },
+          "leader_username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Leader Username"
+          },
+          "days_stuck": {
+            "type": "number",
+            "title": "Days Stuck",
+            "default": 0.0
+          },
+          "proof_state": {
+            "type": "string",
+            "title": "Proof State",
+            "default": "none"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "status"
+        ],
+        "title": "AtRiskLeadRow"
+      },
       "CallEventCreate": {
         "properties": {
           "outcome": {
@@ -2232,6 +2675,86 @@
         },
         "type": "object",
         "title": "DevLoginResponse"
+      },
+      "DownlineExecutionStatsOut": {
+        "properties": {
+          "stats": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/MemberExecutionStats"
+            },
+            "type": "object",
+            "title": "Stats"
+          },
+          "bottleneck_tags": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Bottleneck Tags"
+          }
+        },
+        "type": "object",
+        "title": "DownlineExecutionStatsOut",
+        "description": "Map assignee user_id \u2192 aggregates + bottleneck tags."
+      },
+      "FollowUpAttackRow": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "follow_up_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Follow Up Date"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "call_result": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Call Result"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "status"
+        ],
+        "title": "FollowUpAttackRow"
       },
       "FollowUpCreate": {
         "properties": {
@@ -2404,6 +2927,39 @@
         },
         "type": "object",
         "title": "FollowUpUpdate"
+      },
+      "FunnelDropRow": {
+        "properties": {
+          "from_status": {
+            "type": "string",
+            "title": "From Status"
+          },
+          "to_status": {
+            "type": "string",
+            "title": "To Status"
+          },
+          "from_count": {
+            "type": "integer",
+            "title": "From Count"
+          },
+          "to_count": {
+            "type": "integer",
+            "title": "To Count"
+          },
+          "drop_pct": {
+            "type": "number",
+            "title": "Drop Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "from_status",
+          "to_status",
+          "from_count",
+          "to_count",
+          "drop_pct"
+        ],
+        "title": "FunnelDropRow"
       },
       "GateAssistantResponse": {
         "properties": {
@@ -3343,6 +3899,30 @@
         "type": "object",
         "title": "LeadUpdate"
       },
+      "LeakMapOut": {
+        "properties": {
+          "histogram": {
+            "items": {
+              "$ref": "#/components/schemas/StatusHistogramRow"
+            },
+            "type": "array",
+            "title": "Histogram"
+          },
+          "funnel_drops": {
+            "items": {
+              "$ref": "#/components/schemas/FunnelDropRow"
+            },
+            "type": "array",
+            "title": "Funnel Drops"
+          }
+        },
+        "type": "object",
+        "required": [
+          "histogram",
+          "funnel_drops"
+        ],
+        "title": "LeakMapOut"
+      },
       "LoginRequest": {
         "properties": {
           "fbo_id": {
@@ -3462,6 +4042,39 @@
         "title": "MeResponse",
         "description": "Current session \u2014 populated from cookie JWT when present."
       },
+      "MemberExecutionStats": {
+        "properties": {
+          "total_active": {
+            "type": "integer",
+            "title": "Total Active"
+          },
+          "enrollments": {
+            "type": "integer",
+            "title": "Enrollments"
+          },
+          "proof_pend": {
+            "type": "integer",
+            "title": "Proof Pend"
+          },
+          "fu_due": {
+            "type": "integer",
+            "title": "Fu Due"
+          },
+          "conv_pct": {
+            "type": "number",
+            "title": "Conv Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_active",
+          "enrollments",
+          "proof_pend",
+          "fu_due",
+          "conv_pct"
+        ],
+        "title": "MemberExecutionStats"
+      },
       "MetaResponse": {
         "properties": {
           "name": {
@@ -3505,6 +4118,65 @@
         ],
         "title": "Role",
         "description": "Stored in ``users.role`` and JWT ``role`` claim \u2014 values are stable API strings."
+      },
+      "StaleRedistributeOut": {
+        "properties": {
+          "implemented": {
+            "type": "boolean",
+            "title": "Implemented",
+            "default": false
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": ""
+          },
+          "assigned": {
+            "type": "integer",
+            "title": "Assigned",
+            "default": 0
+          },
+          "skipped": {
+            "type": "integer",
+            "title": "Skipped",
+            "default": 0
+          },
+          "assignments": {
+            "items": {
+              "items": {},
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Assignments"
+          },
+          "worker_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Worker Counts"
+          }
+        },
+        "type": "object",
+        "title": "StaleRedistributeOut"
+      },
+      "StatusHistogramRow": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "count"
+        ],
+        "title": "StatusHistogramRow"
       },
       "SystemStubResponse": {
         "properties": {
@@ -3713,6 +4385,60 @@
         ],
         "title": "TeamMyTeamResponse",
         "description": "V1: only the authenticated user until org / reporting lines exist."
+      },
+      "TeamPersonalFunnelOut": {
+        "properties": {
+          "claimed": {
+            "type": "integer",
+            "title": "Claimed"
+          },
+          "video_reached": {
+            "type": "integer",
+            "title": "Video Reached"
+          },
+          "proof_pending": {
+            "type": "integer",
+            "title": "Proof Pending"
+          },
+          "paid_196": {
+            "type": "integer",
+            "title": "Paid 196"
+          },
+          "enrolled_total": {
+            "type": "integer",
+            "title": "Enrolled Total"
+          },
+          "pct_video_vs_claimed": {
+            "type": "number",
+            "title": "Pct Video Vs Claimed"
+          },
+          "pct_proof_vs_video": {
+            "type": "number",
+            "title": "Pct Proof Vs Video"
+          },
+          "pct_enrolled_vs_video": {
+            "type": "number",
+            "title": "Pct Enrolled Vs Video"
+          },
+          "pct_enrolled_vs_claimed": {
+            "type": "number",
+            "title": "Pct Enrolled Vs Claimed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "claimed",
+          "video_reached",
+          "proof_pending",
+          "paid_196",
+          "enrolled_total",
+          "pct_video_vs_claimed",
+          "pct_proof_vs_video",
+          "pct_enrolled_vs_video",
+          "pct_enrolled_vs_claimed"
+        ],
+        "title": "TeamPersonalFunnelOut",
+        "description": "Team enrollment funnel \u2014 vl2-adapted buckets (see service docstring)."
       },
       "ValidationError": {
         "properties": {
@@ -4094,6 +4820,50 @@
           "recent_entries"
         ],
         "title": "WalletSummaryResponse"
+      },
+      "WeakMemberRow": {
+        "properties": {
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "total_leads": {
+            "type": "integer",
+            "title": "Total Leads"
+          },
+          "enrollments": {
+            "type": "integer",
+            "title": "Enrollments"
+          },
+          "fu_pending": {
+            "type": "integer",
+            "title": "Fu Pending"
+          },
+          "conv_pct": {
+            "type": "number",
+            "title": "Conv Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role",
+          "total_leads",
+          "enrollments",
+          "fu_pending",
+          "conv_pct"
+        ],
+        "title": "WeakMemberRow"
       },
       "WorkboardColumnOut": {
         "properties": {
