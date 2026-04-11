@@ -1042,6 +1042,11 @@ export interface components {
              * @description From APP_ENV — for badges, support, client logging.
              */
             environment: string;
+            /**
+             * Auth Dev Login Enabled
+             * @description When true, SPA may show dev quick-login UI; production should be false.
+             */
+            auth_dev_login_enabled: boolean;
             features: components["schemas"]["ClientFeatures"];
         };
         /** SystemStubResponse */

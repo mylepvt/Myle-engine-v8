@@ -2138,6 +2138,11 @@
             "title": "Environment",
             "description": "From APP_ENV \u2014 for badges, support, client logging."
           },
+          "auth_dev_login_enabled": {
+            "type": "boolean",
+            "title": "Auth Dev Login Enabled",
+            "description": "When true, SPA may show dev quick-login UI; production should be false."
+          },
           "features": {
             "$ref": "#/components/schemas/ClientFeatures"
           }
@@ -2147,6 +2152,7 @@
           "name",
           "api_version",
           "environment",
+          "auth_dev_login_enabled",
           "features"
         ],
         "title": "MetaResponse"

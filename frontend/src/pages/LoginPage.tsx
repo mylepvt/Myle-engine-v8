@@ -5,11 +5,14 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { authDevLogin, authPasswordLogin, DEV_SEED_PASSWORD } from '@/lib/auth-api'
 import { fetchAuthMe } from '@/hooks/use-auth-me-query'
+import { DEFAULT_META, useMetaQuery } from '@/hooks/use-meta-query'
 import { useAuthStore } from '@/stores/auth-store'
 import { useRoleStore } from '@/stores/role-store'
 import { ROLES, type Role } from '@/types/role'
 
 export function LoginPage() {
+  const { data: meta } = useMetaQuery()
+  const devLoginAllowed = (meta ?? DEFAULT_META).auth_dev_login_enabled === true
   const login = useAuthStore((s) => s.login)
   const navigate = useNavigate()
   const location = useLocation()
@@ -28,7 +31,11 @@ export function LoginPage() {
   async function handlePasswordLogin() {
     setError(null)
     if (!password.trim()) {
-      setError(`Password required — dev seed: ${DEV_SEED_PASSWORD}`)
+      setError(
+        devLoginAllowed
+          ? `Password required — dev seed: ${DEV_SEED_PASSWORD}`
+          : 'Password required',
+      )
       return
     }
     setPwPending(true)
@@ -95,39 +102,44 @@ export function LoginPage() {
         <h1 className="bg-gradient-to-br from-foreground via-foreground to-primary/90 bg-clip-text text-center text-2xl font-semibold tracking-tight text-transparent">
           Myle vl2
         </h1>
-        <label className="sr-only" htmlFor="login-role">
-          Role
-        </label>
-        <select
-          id="login-role"
-          value={role}
-          onChange={(e) => setRole(e.target.value as Role)}
-          disabled={pending}
-          className="w-full rounded-md border border-white/10 bg-card/80 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-        >
-          {ROLES.map((r) => (
-            <option key={r} value={r}>
-              {r}
-            </option>
-          ))}
-        </select>
+        {devLoginAllowed ? (
+          <>
+            <label className="sr-only" htmlFor="login-role">
+              Role
+            </label>
+            <select
+              id="login-role"
+              value={role}
+              onChange={(e) => setRole(e.target.value as Role)}
+              disabled={pending}
+              className="w-full rounded-md border border-white/10 bg-card/80 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            >
+              {ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+            <Button
+              type="button"
+              className="w-full"
+              disabled={pending}
+              onClick={() => void handleContinue()}
+            >
+              {pending ? '…' : 'Continue (dev role)'}
+            </Button>
+          </>
+        ) : null}
+
         {error ? (
           <p className="text-center text-xs text-destructive" role="alert">
             {error}
           </p>
         ) : null}
-        <Button
-          type="button"
-          className="w-full"
-          disabled={pending}
-          onClick={() => void handleContinue()}
-        >
-          {pending ? '…' : 'Continue (dev role)'}
-        </Button>
 
-        <div className="border-t border-white/10 pt-6">
+        <div className={devLoginAllowed ? 'border-t border-white/10 pt-6' : 'pt-1'}>
           <p className="mb-3 text-center text-xs font-medium text-muted-foreground">
-            Or sign in with email + password
+            {devLoginAllowed ? 'Or sign in with email + password' : 'Sign in with email + password'}
           </p>
           <label className="sr-only" htmlFor="login-email">
             Email
@@ -150,7 +162,7 @@ export function LoginPage() {
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder={`Dev default: ${DEV_SEED_PASSWORD}`}
+            placeholder={devLoginAllowed ? `Dev default: ${DEV_SEED_PASSWORD}` : 'Password'}
             disabled={pwPending}
             className="mb-3 w-full rounded-md border border-white/10 bg-card/80 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/40"
           />

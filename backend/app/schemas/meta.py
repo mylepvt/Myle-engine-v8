@@ -14,4 +14,7 @@ class MetaResponse(BaseModel):
     name: str
     api_version: int
     environment: str = Field(description="From APP_ENV — for badges, support, client logging.")
+    auth_dev_login_enabled: bool = Field(
+        description="When true, SPA may show dev quick-login UI; production should be false.",
+    )
     features: ClientFeatures
