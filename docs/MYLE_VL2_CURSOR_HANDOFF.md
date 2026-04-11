@@ -1,75 +1,202 @@
-# Claude → Cursor handoff — Myle vl2
+# Claude → Cursor Handoff — Myle vl2
 
-Last updated: 2026-04-11
+**Last updated: 2026-04-11 (Session 2)**
 
-## Kya kiya gaya (deploy + stack)
+---
 
-1. **Render / Docker**
-   - Monorepo root **`Dockerfile`**: Vite build (`VITE_API_URL` empty = same-origin) + FastAPI + `FRONTEND_DIST`.
-   - Optional **`render.yaml`** Blueprint (Postgres + web service).
-   - Live URL example: `https://new-myle-community.onrender.com` (exact hostname Render assigns).
+## ✅ Ab kya kaam kar raha hai (fully working)
 
-2. **Git**
-   - Primary dev remote: **`Mylecommunity/Myle-community`** (`origin`) — yahi par feature commits push ho rahe hain.
-   - Agar Render **`mylepvt/New-Myle-Community`** use karta hai: wahan bhi **`main` sync** chahiye (HTTPS token push ya collaborator access), **ya** Render repo **`Mylecommunity/Myle-community`** pe switch.
+### Auto-Deploy Pipeline — END TO END ✅
 
-3. **Auth**
-   - Cookie JWT: **`myle_access`**, **`myle_refresh`**; `POST /api/v1/auth/login` (seeded users + `myle-dev-login`).
-   - Login UX: session verify + query cache reset (`LoginPage`); `ProtectedRoute` = server **`GET /api/v1/auth/me`** source of truth.
+```
+git push origin main          (Mylecommunity/Myle-community)
+        ↓
+GitHub Actions: CI #14 ✅     (backend pytest + frontend lint/test/build)
+        ↓
+GitHub Actions: Sync ✅        (mirrors to mylepvt/New-Myle-Community)
+        ↓
+Render Auto-Deploy ✅          (watches mylepvt/New-Myle-Community main)
+        ↓
+https://new-myle-community.onrender.com  🚀 LIVE
+```
 
-4. **Realtime (WebSocket)**
-   - **`wss://<host>/api/v1/ws`** — cookie auth (**no** `/ws/{user_id}` in URL).
-   - Backend: `realtime_hub.py`, `realtime_ws.py`; mutations call `notify_topics(...)`.
-   - Frontend: `useRealtimeInvalidation` in **`DashboardLayout.tsx`**.
+**Render pe jo dikh raha hai:**
+- "Deploy live for 64b6ac6" ✅ — 9:16 AM (latest)
+- "New commit via Auto-Deploy" — matlab sync → render chain complete hai
 
-## Key paths
+---
+
+## 🔧 Session 2 mein kya fix hua
+
+### 1. Sync Workflow Fix — `github-actions[bot]` 403 Error
+
+**Problem:** GitHub Actions ka credential helper `http.extraheader` inject karta hai
+`Authorization: basic base64(x-access-token:GITHUB_TOKEN)` jo PAT ko override kar
+deta tha. Git push fail hoti thi "denied to github-actions[bot]" se.
+
+**Fix:** `.github/workflows/sync-to-mylepvt.yml` mein push se pehle header unset karo:
+
+```yaml
+- name: Push to mylepvt
+  env:
+    PAT: ${{ secrets.MYLEPVT_SYNC_PAT }}
+    MYLEPVT_TARGET: mylepvt/New-Myle-Community
+  run: |
+    set -euo pipefail
+    if [ -z "${PAT}" ]; then
+      echo "::error::Add repository secret MYLEPVT_SYNC_PAT"
+      exit 1
+    fi
+    # Remove GitHub Actions credential helper so PAT is used
+    git config --unset-all http.https://github.com/.extraheader || true
+    git remote add mylepvt "https://x-access-token:${PAT}@github.com/${MYLEPVT_TARGET}.git"
+    git push mylepvt "HEAD:refs/heads/main"
+```
+
+**Secret setup (already done):**
+- Repo: `Mylecommunity/Myle-community` → Settings → Secrets → Actions
+- Secret name: `MYLEPVT_SYNC_PAT`
+- Token: Classic PAT with `repo` + `workflow` scopes from `mylepvt` GitHub account
+  (ya woh account jo `mylepvt/New-Myle-Community` mein push kar sakta hai)
+
+---
+
+### 2. CI Backend Fix — `No module named 'sqlalchemy'`
+
+**Problem:** `pip install -r backend/requirements-dev.txt` root se run hota tha.
+Andar ka `-r requirements.txt` relative to CWD (root) resolve hota tha, jahan
+`requirements.txt` exist nahi karta. Isliye sqlalchemy, fastapi etc. install
+nahi hote the (silently skip).
+
+**Fix:** `--no-cache-dir` + `working-directory: backend` dono kaam nahi aaye.
+Final fix = explicit `python -m pip install` with full package list:
+
+```yaml
+- uses: actions/setup-python@v5
+  with:
+    python-version: "3.12"
+
+- name: Install Python dependencies
+  run: |
+    python -m pip install --upgrade pip
+    python -m pip install \
+      "fastapi>=0.115.0,<1.0.0" \
+      "uvicorn[standard]>=0.32.0,<1.0.0" \
+      "sqlalchemy[asyncio]>=2.0.36,<3.0.0" \
+      "asyncpg>=0.29.0,<1.0.0" \
+      "psycopg2-binary>=2.9.9,<3.0.0" \
+      "alembic>=1.14.0,<2.0.0" \
+      "pydantic-settings>=2.0.0,<3.0.0" \
+      "PyJWT>=2.8.0,<3.0.0" \
+      "aiosqlite>=0.20.0,<1.0.0" \
+      "bcrypt>=4.1.0,<5.0.0" \
+      "pytest>=8.0.0" \
+      "httpx>=0.27.0" \
+      "anyio[trio]"
+
+- name: Pytest
+  run: python -m pytest tests/ -q
+```
+
+**Why `python -m pip` instead of `pip`:** ensures exact same Python binary used
+for both install and test.
+
+---
+
+## 📁 Repo Structure
+
+| Remote | Repo | Purpose |
+|--------|------|---------|
+| `origin` | `Mylecommunity/Myle-community` | **Canonical** — sab commits yahan |
+| (mirror) | `mylepvt/New-Myle-Community` | Render watches this (auto-synced via GH Actions) |
+
+**Daily workflow:**
+```bash
+cd "/Users/karanveersingh/myle vl2"
+# ... code changes ...
+git add .
+git commit -m "feat: ..."
+git push origin main        # triggers CI → sync → Render auto-deploy
+```
+
+⚠️ **Worktree paths** (e.g. `.claude/worktrees/admiring-moore`) se confuse mat hona —
+actual editing repo root mein hoti hai.
+
+---
+
+## 🔑 Key Files
 
 | Area | Path |
 |------|------|
+| CI workflow | `.github/workflows/ci.yml` |
+| Sync workflow | `.github/workflows/sync-to-mylepvt.yml` |
 | WS endpoint | `backend/app/api/v1/realtime_ws.py` |
-| Hub / broadcast | `backend/app/core/realtime_hub.py` |
-| FE hook | `frontend/src/hooks/use-realtime-invalidation.ts` |
+| WS hub/broadcast | `backend/app/core/realtime_hub.py` |
+| Frontend WS hook | `frontend/src/hooks/use-realtime-invalidation.ts` |
 | Hook mount | `frontend/src/components/layout/DashboardLayout.tsx` |
-| Settings | `backend/app/core/config.py` |
-| Router | `backend/app/api/v1/router.py` |
+| App config | `backend/app/core/config.py` |
+| API router | `backend/app/api/v1/router.py` |
+| Dockerfile | `./Dockerfile` (monorepo root) |
 
-## Local workflow
+---
 
+## 🌐 Stack Summary
+
+- **Backend:** FastAPI (async) + SQLAlchemy 2.0 + PostgreSQL (Render) / SQLite (tests)
+- **Frontend:** React 19 + TypeScript + Vite + TailwindCSS + TanStack Query
+- **Auth:** Cookie JWT (`myle_access` + `myle_refresh`)
+- **Realtime:** WebSocket at `wss://<host>/api/v1/ws` (cookie auth, no user_id in URL)
+- **Deploy:** Docker monorepo image — FastAPI serves React SPA from same origin
+
+---
+
+## 🔴 Render Environment Variables (production mein zaroori)
+
+| Var | Value | Note |
+|-----|-------|------|
+| `DATABASE_URL` | Render internal Postgres URL | Already set |
+| `SECRET_KEY` | 32+ random chars | `NEW_SECRET` alias bhi kaam karta hai |
+| `AUTH_DEV_LOGIN_ENABLED` | `false` | Dev login disable karo production mein |
+| `BACKEND_CORS_ORIGINS` | `https://new-myle-community.onrender.com` | Same-origin deploy |
+| `PORT` | `10000` | Render default |
+
+**Alembic migrations** (first deploy ya schema change ke baad):
 ```bash
-cd "/Users/karanveersingh/myle vl2"
-git status
-git push origin main
+# Render → Shell tab mein:
+alembic upgrade head
 ```
 
-**Worktree paths** (e.g. `admiring-moore`) se confuse mat karo — daily edit is repo root par.
+---
 
-## Render checklist (production hygiene)
+## ✅ Verify Karna (next step)
 
-1. **`SECRET_KEY`** (or **`NEW_SECRET`** on Render — app accepts both since config alias)
-   - 32+ random chars. Default dev string production mein unsafe.
-2. **`AUTH_DEV_LOGIN_ENABLED`**
-   - Production: **`false`**. `POST /api/v1/auth/dev-login` → 404.
-   - UI: “Continue (dev role)” button **ab bhi dikh sakta hai**; dabane par error aayega — optional follow-up: env se button hide karna.
-3. **`BACKEND_CORS_ORIGINS`**
-   - Same-origin deploy: public app URL (no trailing slash), e.g. `https://new-myle-community.onrender.com`.
-4. **`DATABASE_URL`**
-   - Render Postgres internal URL; container start: `alembic upgrade head` (see root `Dockerfile` `CMD`).
-5. **WebSocket verify**
-   - Chrome → DevTools → Network → **WS** → `api/v1/ws` → **101 Switching Protocols** after login on dashboard.
+1. **WebSocket live test:**
+   - `https://new-myle-community.onrender.com` → login karo
+   - Chrome DevTools → Network → WS filter
+   - `api/v1/ws` entry → Status **101 Switching Protocols** ✅
 
-## Tests
+2. **CI green check:**
+   - `https://github.com/Mylecommunity/Myle-community/actions`
+   - Latest run: CI ✅ + Sync ✅ dono green
 
-- Backend: `python -m pytest tests/` (includes `test_api_v1_ws.py`).
-- Frontend: `cd frontend && npm run test && npm run build`.
+---
 
-## Roadmap / next
+## 🛣️ Roadmap (baaki kaam)
 
-- Production **`SECRET_KEY`** + env audit on Render.
-- Real users / admin tooling (beyond seeded `dev-*@myle.local`).
-- Multi-instance Render: in-memory `RealtimeHub` **does not** fan-out across replicas → later **Redis pub/sub** (or single replica).
-- Optional: hide dev-role login UI when `AUTH_DEV_LOGIN_ENABLED=false`.
+- [ ] `SECRET_KEY` production value set karo Render pe (not dev default)
+- [ ] `AUTH_DEV_LOGIN_ENABLED=false` confirm karo Render pe
+- [ ] Real users create karo (admin panel ya seeding script)
+- [ ] Alembic migrations run karo on live DB
+- [ ] WebSocket multi-instance future: in-memory `RealtimeHub` single-replica only →
+      Redis pub/sub needed if Render scaling > 1 instance
+- [ ] Hide dev-login UI when `AUTH_DEV_LOGIN_ENABLED=false`
 
-## Repo strategy (long-term)
+---
 
-- **Single source of truth:** either always **`Mylecommunity/Myle-community`** + Render connected to it, **or** keep **`mylepvt`** in sync with automated push/CI.
-- Avoid zip-upload-only history on production branch; prefer normal **`git push`**.
+## 🐛 Known Gotchas
+
+1. **`github-actions[bot]` 403 push error** → already fixed (extraheader unset)
+2. **`No module named X` in CI** → already fixed (explicit `python -m pip install`)
+3. **Render repo list mein `Mylecommunity` nahi dikh raha** → by design, `mylepvt` account se connected; sync workflow handle karta hai
+4. **`.venv` local mein hai backend mein** → gitignored, CI pe affect nahi karta
+5. **`cache: pip` in setup-python** → removed from CI; it was causing stale cache issues
