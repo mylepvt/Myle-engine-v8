@@ -17,8 +17,8 @@ class Lead(Base):
     status: Mapped[str] = mapped_column(
         String(32),
         nullable=False,
-        server_default=text("'new'"),
-        default="new",
+        server_default=text("'new_lead'"),
+        default="new_lead",
     )
     created_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -39,6 +39,11 @@ class Lead(Base):
         nullable=False,
         server_default=text("false"),
         default=False,
+    )
+    pool_price_cents: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        nullable=True,
+        comment="Cost in paise (INR) to claim from pool; NULL = free",
     )
 
     # Contact info

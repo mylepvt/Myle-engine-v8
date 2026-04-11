@@ -31,6 +31,7 @@ class LeadPublic(BaseModel):
     archived_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
     in_pool: bool = False
+    pool_price_cents: Optional[int] = None
 
     # Contact info
     phone: Optional[str] = None
@@ -105,6 +106,11 @@ class LeadUpdate(BaseModel):
         default=None,
         description="Admin only: release to shared pool (true) or remove from pool without assigning (false)",
     )
+    pool_price_cents: Optional[int] = Field(
+        default=None,
+        ge=0,
+        description="Admin only: price in paise to claim from pool; 0 or null = free",
+    )
     restored: Optional[bool] = Field(
         default=None,
         description="Admin only: true = undo soft-delete (clears deleted_at)",
@@ -160,6 +166,7 @@ class LeadUpdate(BaseModel):
             self.day1_completed,
             self.day2_completed,
             self.day3_completed,
+            self.pool_price_cents,
         ]
         if all(f is None for f in fields_with_values):
             raise ValueError("At least one field must be provided for update")

@@ -1,7 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
-import type { LeadListResponse } from '@/hooks/use-leads-query'
+import type { LeadPublic, LeadListResponse } from '@/hooks/use-leads-query'
+
+// LeadPublic already includes pool_price_cents — alias for clarity
+export type PoolLead = LeadPublic
+
+export type PoolLeadListResponse = LeadListResponse
 
 async function parseError(res: Response): Promise<never> {
   const err = await res.json().catch(() => ({}))
@@ -12,7 +17,7 @@ async function parseError(res: Response): Promise<never> {
   throw new Error(msg || `HTTP ${res.status}`)
 }
 
-async function fetchLeadPool(): Promise<LeadListResponse> {
+async function fetchLeadPool(): Promise<PoolLeadListResponse> {
   const res = await apiFetch('/api/v1/lead-pool')
   if (!res.ok) {
     await parseError(res)

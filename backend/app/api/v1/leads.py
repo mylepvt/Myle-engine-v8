@@ -12,6 +12,7 @@ from app.core.realtime_hub import notify_topics
 from app.models.activity_log import ActivityLog
 from app.models.call_event import CallEvent
 from app.models.lead import Lead
+from app.models.wallet_ledger import WalletLedgerEntry
 from app.schemas.call_events import CallEventCreate, CallEventListResponse, CallEventPublic
 from app.schemas.leads import LeadCreate, LeadDetailPublic, LeadListResponse, LeadPublic, LeadUpdate
 from app.services.lead_scope import lead_visibility_where
@@ -166,7 +167,11 @@ async def claim_lead(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Take ownership of a lead in the shared pool (sets creator to you, clears in_pool)."""
+    """Take ownership of a lead from the shared pool.
+
+    If pool_price_cents > 0, atomically debits the user's wallet.
+    Raises 402 if wallet balance is insufficient.
+    """
     lead = await _get_lead_or_404(session, lead_id)
     if lead.deleted_at is not None:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
@@ -175,11 +180,49 @@ async def claim_lead(
             status_code=http_status.HTTP_400_BAD_REQUEST,
             detail="Lead is not available in the pool",
         )
+
+    price = lead.pool_price_cents or 0
+
+    if price > 0:
+        # Check current wallet balance
+        bal_stmt = select(func.coalesce(func.sum(WalletLedgerEntry.amount_cents), 0)).where(
+            WalletLedgerEntry.user_id == user.user_id
+        )
+        balance = int((await session.execute(bal_stmt)).scalar_one())
+        if balance < price:
+            raise HTTPException(
+                status_code=http_status.HTTP_402_PAYMENT_REQUIRED,
+                detail=f"Insufficient wallet balance. Need ₹{price / 100:.0f}, have ₹{balance / 100:.0f}.",
+            )
+
+        # Debit wallet atomically in same transaction
+        debit = WalletLedgerEntry(
+            user_id=user.user_id,
+            amount_cents=-price,
+            currency="INR",
+            idempotency_key=f"pool_claim_{lead_id}_{user.user_id}",
+            note=f"Lead pool claim — #{lead_id} {lead.name}",
+            created_by_user_id=user.user_id,
+        )
+        session.add(debit)
+
+    # Transfer ownership
     lead.created_by_user_id = user.user_id
+    lead.assigned_to_user_id = user.user_id
     lead.in_pool = False
+
+    # Activity log
+    session.add(ActivityLog(
+        user_id=user.user_id,
+        action="lead.claimed",
+        entity_type="lead",
+        entity_id=lead_id,
+        meta={"price_cents": price},
+    ))
+
     await session.commit()
     await session.refresh(lead)
-    await notify_topics("leads")
+    await notify_topics("leads", "wallet")
     return lead
 
 
@@ -230,6 +273,11 @@ async def update_lead(
                     detail="Unarchive before adding to pool",
                 )
         lead.in_pool = body.in_pool
+
+    if body.pool_price_cents is not None:
+        if user.role != "admin":
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        lead.pool_price_cents = body.pool_price_cents if body.pool_price_cents > 0 else None
 
     if body.name is not None:
         lead.name = body.name.strip()

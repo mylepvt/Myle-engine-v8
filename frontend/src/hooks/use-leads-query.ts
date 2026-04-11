@@ -66,6 +66,29 @@ export type LeadPublic = {
   archived_at: string | null
   deleted_at: string | null
   in_pool: boolean
+  pool_price_cents: number | null
+  // Contact
+  phone: string | null
+  email: string | null
+  city: string | null
+  source: string | null
+  notes: string | null
+  // Assignment
+  assigned_to_user_id: number | null
+  // Call tracking
+  call_status: string | null
+  call_count: number
+  last_called_at: string | null
+  whatsapp_sent_at: string | null
+  // Payment
+  payment_status: string | null
+  payment_amount_cents: number | null
+  payment_proof_url: string | null
+  payment_proof_uploaded_at: string | null
+  // Day completion
+  day1_completed_at: string | null
+  day2_completed_at: string | null
+  day3_completed_at: string | null
 }
 
 export type LeadListResponse = {
@@ -142,6 +165,18 @@ export async function patchLead(
     archived?: boolean
     in_pool?: boolean
     restored?: boolean
+    pool_price_cents?: number
+    phone?: string
+    email?: string
+    city?: string
+    source?: string
+    notes?: string
+    call_status?: string
+    payment_status?: string
+    whatsapp_sent?: boolean
+    day1_completed?: boolean
+    day2_completed?: boolean
+    day3_completed?: boolean
   },
 ): Promise<LeadPublic> {
   const res = await apiFetch(`/api/v1/leads/${id}`, {
@@ -206,13 +241,7 @@ export function usePatchLeadMutation() {
       body,
     }: {
       id: number
-      body: {
-        name?: string
-        status?: LeadStatus
-        archived?: boolean
-        in_pool?: boolean
-        restored?: boolean
-      }
+      body: Parameters<typeof patchLead>[1]
     }) => patchLead(id, body),
     onSuccess: () => invalidateLeadRelated(qc),
   })
