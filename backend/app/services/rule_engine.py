@@ -24,6 +24,7 @@ from app.core.pipeline_rules import (
     is_valid_forward_status_transition,
     normalize_flow_status,
     validate_lead_business_rules,
+    validate_vl2_status_transition_for_role,
 )
 
 __all__ = [
@@ -44,4 +45,5 @@ __all__ = [
     "is_valid_forward_status_transition",
     "normalize_flow_status",
     "validate_lead_business_rules",
+    "validate_vl2_status_transition_for_role",
 ]

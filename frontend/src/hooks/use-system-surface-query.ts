@@ -10,6 +10,13 @@ export type SystemStubResponse = {
   note: string | null
 }
 
+/** DB-backed training home (differs from stub shape). */
+export type TrainingSurfacePayload = {
+  videos: { day_number: number; title: string; youtube_url?: string | null }[]
+  progress: { day_number: number; completed: boolean; completed_at?: string | null }[]
+  note?: string | null
+}
+
 const PATHS: Record<SystemSurface, string> = {
   training: '/api/v1/system/training',
   'decision-engine': '/api/v1/system/decision-engine',
@@ -25,7 +32,9 @@ async function parseError(res: Response): Promise<never> {
   throw new Error(msg || `HTTP ${res.status}`)
 }
 
-async function fetchSystemSurface(surface: SystemSurface): Promise<SystemStubResponse> {
+async function fetchSystemSurface(
+  surface: SystemSurface,
+): Promise<SystemStubResponse | TrainingSurfacePayload> {
   const res = await apiFetch(PATHS[surface])
   if (!res.ok) await parseError(res)
   return res.json()

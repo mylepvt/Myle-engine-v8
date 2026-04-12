@@ -25,6 +25,7 @@ async def _seed_lead(
     archived_at: datetime | None = None,
     in_pool: bool = False,
     deleted_at: datetime | None = None,
+    call_status: str | None = None,
 ) -> None:
     fac = test_conftest.get_test_session_factory()
     async with fac() as session:
@@ -36,6 +37,7 @@ async def _seed_lead(
                 archived_at=archived_at,
                 in_pool=in_pool,
                 deleted_at=deleted_at,
+                call_status=call_status,
             )
         )
         await session.commit()
@@ -66,6 +68,8 @@ def test_workboard_empty(monkeypatch: pytest.MonkeyPatch) -> None:
     body = res.json()
     assert body["max_rows_fetched"] == 300
     assert len(body["columns"]) == len(WORKBOARD_COLUMNS)
+    assert body["action_counts"]["pending_calls"] == 0
+    assert body["action_counts"]["videos_to_send"] == 0
     for col in body["columns"]:
         assert col["total"] == 0
         assert col["items"] == []
@@ -119,6 +123,36 @@ def test_workboard_excludes_pool_and_soft_deleted(
         assert by_status["new_lead"]["total"] == 1
         assert len(by_status["new_lead"]["items"]) == 1
         assert by_status["new_lead"]["items"][0]["name"] == "Active"
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_workboard_action_counts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _seed_lead(
+            user_id=2,
+            name="NeedCall",
+            lead_status="new_lead",
+            call_status="not_called",
+        )
+    )
+    asyncio.run(
+        _seed_lead(
+            user_id=2,
+            name="ShareVid",
+            lead_status="invited",
+            call_status="interested",
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        res = c.get("/api/v1/workboard")
+        ac = res.json()["action_counts"]
+        assert ac["pending_calls"] == 1
+        assert ac["videos_to_send"] == 1
     finally:
         asyncio.run(_clear_leads())
 

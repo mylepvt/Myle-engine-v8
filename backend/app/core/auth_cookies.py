@@ -12,7 +12,9 @@ from app.models.user import User
 
 
 def display_name_from_user(user: User) -> str:
-    """Legacy ``users.name`` / session ``display_name`` — vl2 has no ``name`` column; derive a label."""
+    """Legacy ``users.name`` / session ``display_name``."""
+    if getattr(user, "name", None) and str(user.name).strip():
+        return str(user.name).strip()
     if user.username and str(user.username).strip():
         return str(user.username).strip()
     em = (user.email or "").strip()
@@ -41,6 +43,8 @@ def issue_session_cookies(response: Response, user: User) -> None:
         fbo_id=user.fbo_id,
         username=user.username,
         display_name=dn,
+        training_status=user.training_status,
+        registration_status=user.registration_status,
         ver=AUTH_SESSION_VERSION,
         minutes=settings.jwt_access_minutes,
     )

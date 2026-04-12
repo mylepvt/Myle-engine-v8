@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -13,7 +13,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     # Globally unique — primary sign-in identifier (case-insensitive; stored lowercase).
     fbo_id: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
-    # Display / social handle — not unique; optional.
+    # Display / social handle — optional; case-insensitive uniqueness when set (enforced in DB + register).
     username: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True, nullable=False)
     role: Mapped[str] = mapped_column(String(32), nullable=False)
@@ -25,6 +25,42 @@ class User(Base):
         nullable=True,
         index=True,
     )
+    # Legacy ``users.status`` — pending until admin approves self-serve registration.
+    registration_status: Mapped[str] = mapped_column(
+        "status",
+        String(32),
+        nullable=False,
+        server_default=text("'approved'"),
+        default="approved",
+    )
+    phone: Mapped[Optional[str]] = mapped_column(String(32), unique=True, nullable=True)
+    training_required: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+        default=False,
+    )
+    training_status: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        server_default=text("'not_required'"),
+        default="not_required",
+    )
+    access_blocked: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+        default=False,
+    )
+    discipline_status: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        server_default=text("'active'"),
+        default="active",
+    )
+    name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    joining_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

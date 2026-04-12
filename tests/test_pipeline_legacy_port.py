@@ -11,6 +11,7 @@ from app.core.pipeline_legacy import (
     team_status_option_selected,
 )
 from app.core.pipeline_rules import (
+    TEAM_FORBIDDEN_STATUSES,
     is_valid_forward_status_transition,
     normalize_flow_status,
 )
@@ -20,6 +21,15 @@ def test_normalize_flow_status_aliases() -> None:
     assert normalize_flow_status("New") == "New Lead"
     assert normalize_flow_status("Converted") == "Fully Converted"
     assert normalize_flow_status("  Video Watched  ") == "Video Watched"
+
+
+def test_team_forbidden_statuses_include_pipeline_stages() -> None:
+    """Team must not set post-enrollment funnel statuses (blueprint § role gates)."""
+    assert "Day 1" in TEAM_FORBIDDEN_STATUSES
+    assert "Day 2" in TEAM_FORBIDDEN_STATUSES
+    assert "Interview" in TEAM_FORBIDDEN_STATUSES
+    assert "Fully Converted" in TEAM_FORBIDDEN_STATUSES
+    assert "New Lead" not in TEAM_FORBIDDEN_STATUSES
 
 
 def test_team_forward_jump_before_paid() -> None:

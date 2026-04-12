@@ -9,9 +9,15 @@ export type WorkboardColumn = {
   items: LeadPublic[]
 }
 
+export type WorkboardActionCounts = {
+  pending_calls: number
+  videos_to_send: number
+}
+
 export type WorkboardResponse = {
   columns: WorkboardColumn[]
   max_rows_fetched: number
+  action_counts?: WorkboardActionCounts
 }
 
 async function parseError(res: Response): Promise<never> {

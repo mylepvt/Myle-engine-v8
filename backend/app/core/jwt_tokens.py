@@ -19,6 +19,8 @@ def create_access_token(
     fbo_id: Optional[str] = None,
     username: Optional[str] = None,
     display_name: Optional[str] = None,
+    training_status: Optional[str] = None,
+    registration_status: Optional[str] = None,
     ver: Optional[int] = None,
     minutes: int = 60,
 ) -> str:
@@ -39,6 +41,10 @@ def create_access_token(
         payload["username"] = username
     if display_name is not None:
         payload["display_name"] = display_name
+    if training_status:
+        payload["training_status"] = training_status
+    if registration_status:
+        payload["registration_status"] = registration_status
     if ver is not None:
         payload["ver"] = ver
     return jwt.encode(payload, secret, algorithm=JWT_ALG)

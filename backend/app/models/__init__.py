@@ -7,6 +7,12 @@ from app.models.legacy_row_snapshot import LegacyRowSnapshot
 from app.models.user import User
 from app.models.wallet_ledger import WalletLedgerEntry
 from app.models.wallet_recharge import WalletRecharge
+from app.models.password_reset_token import PasswordResetToken
+from app.models.training_video import TrainingVideo
+from app.models.training_progress import TrainingProgress
+from app.models.daily_report import DailyReport
+from app.models.daily_score import DailyScore
+from app.models.app_setting import AppSetting
 
 __all__ = [
     "Announcement",
@@ -18,4 +24,10 @@ __all__ = [
     "User",
     "WalletLedgerEntry",
     "WalletRecharge",
+    "PasswordResetToken",
+    "TrainingVideo",
+    "TrainingProgress",
+    "DailyReport",
+    "DailyScore",
+    "AppSetting",
 ]

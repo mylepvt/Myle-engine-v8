@@ -30,13 +30,38 @@ export function SystemSurfacePage({ title, surface }: Props) {
           </button>
         </div>
       ) : null}
-      {data ? (
+      {data && surface === 'training' && 'videos' in data ? (
         <div className="surface-elevated space-y-4 p-4 text-sm text-muted-foreground">
           {data.note ? <p className="text-foreground/90">{data.note}</p> : null}
+          {data.videos.length === 0 ? (
+            <p>No training days configured yet.</p>
+          ) : (
+            <ul className="list-inside list-disc space-y-2 text-foreground/90">
+              {data.videos.map((v) => (
+                <li key={v.day_number}>
+                  Day {v.day_number}: {v.title}
+                </li>
+              ))}
+            </ul>
+          )}
+          {data.progress.length > 0 ? (
+            <p className="text-ds-caption">
+              Progress rows:{' '}
+              <span className="font-medium text-foreground">{data.progress.length}</span>
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+      {data && surface !== 'training' ? (
+        <div className="surface-elevated space-y-4 p-4 text-sm text-muted-foreground">
+          {'note' in data && data.note ? <p className="text-foreground/90">{data.note}</p> : null}
           <p className="text-ds-caption">
-            Signals: <span className="font-medium text-foreground">{data.total}</span>
+            Signals:{' '}
+            <span className="font-medium text-foreground">
+              {'total' in data ? data.total : 0}
+            </span>
           </p>
-          <InsightList items={data.items} />
+          <InsightList items={'items' in data ? data.items : []} />
         </div>
       ) : null}
     </div>

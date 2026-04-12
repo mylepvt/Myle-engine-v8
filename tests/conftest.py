@@ -19,6 +19,12 @@ from app.models.follow_up import FollowUp  # noqa: F401
 from app.models.lead import Lead  # noqa: F401
 from app.models.user import User
 from app.models.wallet_ledger import WalletLedgerEntry  # noqa: F401
+from app.models.password_reset_token import PasswordResetToken  # noqa: F401
+from app.models.training_video import TrainingVideo  # noqa: F401
+from app.models.training_progress import TrainingProgress  # noqa: F401
+from app.models.daily_report import DailyReport  # noqa: F401
+from app.models.daily_score import DailyScore  # noqa: F401
+from app.models.app_setting import AppSetting  # noqa: F401
 from app.constants.roles import DEV_FBO_BY_ROLE
 from app.services.dev_users import DEV_EMAIL_BY_ROLE
 
@@ -36,6 +42,7 @@ async def _setup_sqlite() -> tuple[object, async_sessionmaker[AsyncSession]]:
                     email=DEV_EMAIL_BY_ROLE["admin"],
                     role="admin",
                     hashed_password=DEV_LOGIN_BCRYPT_HASH,
+                    registration_status="approved",
                 ),
                 User(
                     fbo_id=DEV_FBO_BY_ROLE["leader"],
@@ -43,6 +50,7 @@ async def _setup_sqlite() -> tuple[object, async_sessionmaker[AsyncSession]]:
                     email=DEV_EMAIL_BY_ROLE["leader"],
                     role="leader",
                     hashed_password=DEV_LOGIN_BCRYPT_HASH,
+                    registration_status="approved",
                 ),
                 User(
                     fbo_id=DEV_FBO_BY_ROLE["team"],
@@ -50,6 +58,7 @@ async def _setup_sqlite() -> tuple[object, async_sessionmaker[AsyncSession]]:
                     role="team",
                     hashed_password=DEV_LOGIN_BCRYPT_HASH,
                     upline_user_id=2,
+                    registration_status="approved",
                 ),
             ]
         )

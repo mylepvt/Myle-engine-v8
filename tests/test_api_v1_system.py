@@ -25,15 +25,18 @@ def test_system_training_admin_ok(monkeypatch: pytest.MonkeyPatch) -> None:
     r = c.get("/api/v1/system/training")
     assert r.status_code == 200
     body = r.json()
-    assert body["items"] == []
-    assert body["total"] == 0
-    assert body["note"]
+    assert body["videos"] == []
+    assert body["progress"] == []
+    assert body.get("note")
 
 
-def test_system_training_forbidden_leader(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_system_training_ok_for_leader(monkeypatch: pytest.MonkeyPatch) -> None:
     c = _authed(monkeypatch)
     assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
-    assert c.get("/api/v1/system/training").status_code == 403
+    r = c.get("/api/v1/system/training")
+    assert r.status_code == 200
+    assert r.json()["videos"] == []
+    assert r.json()["progress"] == []
 
 
 def test_system_decision_engine_admin_only(monkeypatch: pytest.MonkeyPatch) -> None:

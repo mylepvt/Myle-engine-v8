@@ -187,11 +187,13 @@ def is_valid_forward_status_transition(
     target_status: str,
     *,
     for_team: bool = False,
+    admin_may_skip_fsm: bool = False,
 ) -> bool:
     """
     Canonical FSM flow rules (legacy semantics).
     - Backward / same / statuses outside STATUS_FLOW_ORDER: allowed (legacy/admin fixes).
-    - Default (leader/admin): forward exactly +1 step.
+    - Admin (admin_may_skip_fsm=True): any forward jump within the ordered flow.
+    - Leader (default): forward exactly +1 step.
     - Team (for_team=True): any forward jump before Paid ₹196;
       Paid ₹196 only from Video Watched or already Paid ₹196.
     """
@@ -204,6 +206,8 @@ def is_valid_forward_status_transition(
         return True
     if flow_idx[tgt] <= flow_idx[cur]:
         return True
+    if admin_may_skip_fsm:
+        return True
     if for_team:
         paid_i = flow_idx.get("Paid ₹196")
         if tgt == "Paid ₹196":
@@ -212,6 +216,40 @@ def is_valid_forward_status_transition(
             return flow_idx[tgt] > flow_idx[cur]
         return False
     return flow_idx[tgt] == flow_idx[cur] + 1
+
+
+def validate_vl2_status_transition_for_role(
+    *,
+    current_slug: str,
+    target_slug: str,
+    role: str,
+) -> tuple[bool, str]:
+    """
+    Validate a ``Lead.status`` change (vl2 slug) using legacy FSM + team forbidden set.
+
+    - Admin: any forward jump within ``STATUS_FLOW_ORDER`` (and backward/same as before).
+    - Leader: forward +1 only (unless backward/outside flow).
+    - Team: jump rules before ``Paid ₹196``; cannot set ``TEAM_FORBIDDEN_STATUS_SLUGS``.
+    """
+    from app.core.lead_status import LEAD_STATUS_LABELS, TEAM_FORBIDDEN_STATUS_SLUGS
+
+    if current_slug == target_slug:
+        return True, ""
+    if role == "team" and target_slug in TEAM_FORBIDDEN_STATUS_SLUGS:
+        return False, "Team cannot set this pipeline status"
+    cur_label = LEAD_STATUS_LABELS.get(current_slug, current_slug)
+    tgt_label = LEAD_STATUS_LABELS.get(target_slug, target_slug)
+    cur_h = normalize_flow_status(cur_label)
+    tgt_h = normalize_flow_status(tgt_label)
+    ok = is_valid_forward_status_transition(
+        cur_h,
+        tgt_h,
+        for_team=(role == "team"),
+        admin_may_skip_fsm=(role == "admin"),
+    )
+    if not ok:
+        return False, "Invalid status transition for your role"
+    return True, ""
 
 
 def validate_lead_business_rules(

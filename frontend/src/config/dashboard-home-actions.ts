@@ -5,11 +5,13 @@
  */
 import type { LucideIcon } from 'lucide-react'
 import {
+  Archive,
   ClipboardCheck,
   GraduationCap,
   Kanban,
   ListTodo,
   Sparkles,
+  Target,
   Trash2,
   UserPlus,
   Users,
@@ -34,13 +36,15 @@ export const DASHBOARD_HOME_OVERVIEW_TITLE: Record<Role, string> = {
 /** Display order — filtered by server role + `routeDefAccessible` (same rules as sidebar). */
 const HOME_QUICK_ACTION_PATHS: readonly string[] = [
   'work/leads',
-  'work/add-lead',
-  'work/recycle-bin',
   'work/workboard',
   'work/follow-ups',
-  'work/lead-flow',
+  'work/retarget',
+  'work/archived',
+  'work/add-lead',
   'work/lead-pool',
   'work/lead-pool-admin',
+  'work/recycle-bin',
+  'work/lead-flow',
   'team/enrollment-approvals',
   'team/my-team',
   'finance/wallet',
@@ -55,6 +59,8 @@ const PATH_ICONS: Partial<Record<string, LucideIcon>> = {
   'work/recycle-bin': Trash2,
   'work/workboard': Kanban,
   'work/follow-ups': ListTodo,
+  'work/retarget': Target,
+  'work/archived': Archive,
   'work/lead-flow': Waypoints,
   'work/lead-pool': Users,
   'work/lead-pool-admin': Users,

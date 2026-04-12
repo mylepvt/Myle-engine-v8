@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth_constants import AUTH_SESSION_VERSION
 from app.core.auth_cookies import issue_session_cookies
+from app.core.auth_login_guards import ensure_may_issue_session_cookies
 from app.models.user import User
 
 if TYPE_CHECKING:
@@ -95,5 +96,6 @@ async def refresh_session_identity(
     user = result.scalar_one_or_none()
     if user is None:
         return False
+    ensure_may_issue_session_cookies(user)
     issue_session_cookies(response, user)
     return True

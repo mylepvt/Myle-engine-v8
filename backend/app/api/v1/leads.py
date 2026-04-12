@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.core.lead_status import LEAD_STATUS_SET
+from app.core.pipeline_rules import validate_vl2_status_transition_for_role
 from app.core.realtime_hub import notify_topics
 from app.models.activity_log import ActivityLog
 from app.models.call_event import CallEvent
@@ -132,6 +133,7 @@ async def create_lead(
         name=body.name.strip(),
         status=body.status,
         created_by_user_id=user.user_id,
+        assigned_to_user_id=user.user_id,
         phone=body.phone,
         email=body.email,
         city=body.city,
@@ -171,8 +173,15 @@ async def claim_lead(
 
     If pool_price_cents > 0, atomically debits the user's wallet.
     Raises 402 if wallet balance is insufficient.
+
+    Locks the lead row (``SELECT ... FOR UPDATE``) for the duration of the
+    transaction so concurrent claims cannot double-assign the same pool lead.
     """
-    lead = await _get_lead_or_404(session, lead_id)
+    lock_stmt = select(Lead).where(Lead.id == lead_id).with_for_update()
+    locked = (await session.execute(lock_stmt)).scalar_one_or_none()
+    if locked is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    lead = locked
     if lead.deleted_at is not None:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
     if not lead.in_pool or lead.archived_at is not None:
@@ -282,6 +291,13 @@ async def update_lead(
     if body.name is not None:
         lead.name = body.name.strip()
     if body.status is not None:
+        ok, msg = validate_vl2_status_transition_for_role(
+            current_slug=lead.status,
+            target_slug=body.status,
+            role=user.role,
+        )
+        if not ok:
+            raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
         lead.status = body.status
     if body.archived is True:
         lead.archived_at = datetime.now(timezone.utc)

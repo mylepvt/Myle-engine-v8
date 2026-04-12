@@ -31,6 +31,22 @@ LEAD_STATUS_SEQUENCE: tuple[str, ...] = (
 
 LEAD_STATUS_SET: frozenset[str] = frozenset(LEAD_STATUS_SEQUENCE)
 
+# Team role cannot PATCH these statuses (legacy ``TEAM_FORBIDDEN_STATUSES`` — vl2 slugs).
+TEAM_FORBIDDEN_STATUS_SLUGS: frozenset[str] = frozenset(
+    {
+        "day1",
+        "day2",
+        "interview",
+        "track_selected",
+        "seat_hold",
+        "converted",
+        "level_up",
+        "training",
+        "pending",
+        "plan_2cc",
+    }
+)
+
 # Human-readable labels for API consumers / frontend
 LEAD_STATUS_LABELS: dict[str, str] = {
     "new_lead":       "New Lead",

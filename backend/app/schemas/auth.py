@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -28,6 +29,14 @@ class MeResponse(BaseModel):
         default=None,
         description="JWT claim ver — same idea as legacy AUTH_SESSION_VERSION",
     )
+    training_status: Optional[str] = Field(
+        default=None,
+        description="Legacy training_status: not_required | pending | completed | unlocked",
+    )
+    registration_status: Optional[str] = Field(
+        default=None,
+        description="pending | approved | rejected — account approval gate",
+    )
 
 
 class DevLoginRequest(BaseModel):
@@ -46,4 +55,47 @@ class LoginRequest(BaseModel):
 
 
 class DevLoginResponse(BaseModel):
+    ok: bool = True
+
+
+class RegisterRequest(BaseModel):
+    username: str = Field(min_length=2, max_length=128)
+    password: str = Field(min_length=1, max_length=512)
+    email: str = Field(min_length=3, max_length=320)
+    fbo_id: str = Field(min_length=1, max_length=128)
+    upline_fbo_id: str = Field(min_length=1, max_length=128)
+    phone: str = Field(min_length=10, max_length=32)
+    is_new_joining: bool = False
+    joining_date: Optional[date] = None
+
+
+class RegisterResponse(BaseModel):
+    ok: bool = True
+    message: str = "Registration submitted! Your account is pending admin approval."
+
+
+class UplineLookupResponse(BaseModel):
+    found: bool
+    is_leader: bool = False
+    is_valid_upline: bool = False
+    upline_role: Optional[str] = None
+    name: Optional[str] = None
+    message: str = ""
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=320)
+
+
+class ForgotPasswordResponse(BaseModel):
+    ok: bool = True
+    message: str = "If an account exists for this email, a reset link has been sent."
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(min_length=10, max_length=256)
+    password: str = Field(min_length=1, max_length=512)
+
+
+class ResetPasswordResponse(BaseModel):
     ok: bool = True
