@@ -78,6 +78,9 @@ export default function SettingsPage() {
     key: '',
     value: '',
   })
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [settingError, setSettingError] = useState<string | null>(null)
+  const [deleteConfirmKey, setDeleteConfirmKey] = useState<string | null>(null)
 
   const isAdmin = (authData?.role ?? '').toLowerCase() === 'admin'
 
@@ -95,11 +98,26 @@ export default function SettingsPage() {
   }
 
   const handlePasswordChange = () => {
-    if (passwordForm.new_password !== passwordForm.confirm_password) {
-      alert('Passwords do not match')
+    setPasswordError(null)
+    if (!passwordForm.current_password.trim()) {
+      setPasswordError('Current password is required.')
       return
     }
-    changePassword.mutate(passwordForm)
+    if (!passwordForm.new_password.trim()) {
+      setPasswordError('New password is required.')
+      return
+    }
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      setPasswordError('New passwords do not match.')
+      return
+    }
+    changePassword.mutate(passwordForm, {
+      onSuccess: () => {
+        setPasswordForm({ current_password: '', new_password: '', confirm_password: '' })
+        setPasswordError(null)
+      },
+      onError: (e) => setPasswordError(e instanceof Error ? e.message : 'Password change failed'),
+    })
   }
 
   const handleEmailChange = () => {
@@ -111,20 +129,25 @@ export default function SettingsPage() {
   }
 
   const handleAppSettingUpdate = () => {
-    if (!newSetting.key || !newSetting.value) {
-      alert('Key and value are required')
+    setSettingError(null)
+    if (!newSetting.key.trim() || !newSetting.value.trim()) {
+      setSettingError('Both key and value are required.')
       return
     }
     updateAppSetting.mutate(newSetting, {
       onSuccess: () => {
         setNewSetting({ key: '', value: '' })
-      }
+        setSettingError(null)
+      },
+      onError: (e) => setSettingError(e instanceof Error ? e.message : 'Failed to save setting'),
     })
   }
 
   const handleAppSettingDelete = (key: string) => {
-    if (confirm(`Delete setting "${key}"?`)) {
-      deleteAppSetting.mutate(key)
+    if (deleteConfirmKey === key) {
+      deleteAppSetting.mutate(key, { onSettled: () => setDeleteConfirmKey(null) })
+    } else {
+      setDeleteConfirmKey(key)
     }
   }
 
@@ -454,6 +477,12 @@ export default function SettingsPage() {
                     onChange={(e) => setPasswordForm(prev => ({ ...prev, confirm_password: e.target.value }))}
                   />
                 </div>
+                {passwordError ? (
+                  <p className="text-sm text-destructive" role="alert">{passwordError}</p>
+                ) : null}
+                {changePassword.isSuccess ? (
+                  <p className="text-sm text-green-600" role="status">Password changed successfully.</p>
+                ) : null}
                 <Button onClick={handlePasswordChange} disabled={changePassword.isPending}>
                   {changePassword.isPending ? 'Changing...' : 'Change Password'}
                 </Button>
@@ -590,17 +619,20 @@ export default function SettingsPage() {
                     <Input
                       placeholder="Key"
                       value={newSetting.key}
-                      onChange={(e) => setNewSetting(prev => ({ ...prev, key: e.target.value }))}
+                      onChange={(e) => { setNewSetting(prev => ({ ...prev, key: e.target.value })); setSettingError(null) }}
                     />
                     <Input
                       placeholder="Value"
                       value={newSetting.value}
-                      onChange={(e) => setNewSetting(prev => ({ ...prev, value: e.target.value }))}
+                      onChange={(e) => { setNewSetting(prev => ({ ...prev, value: e.target.value })); setSettingError(null) }}
                     />
                     <Button onClick={handleAppSettingUpdate} disabled={updateAppSetting.isPending}>
                       Add
                     </Button>
                   </div>
+                  {settingError ? (
+                    <p className="text-sm text-destructive" role="alert">{settingError}</p>
+                  ) : null}
                 </div>
 
                 {/* Existing Settings */}
@@ -612,16 +644,40 @@ export default function SettingsPage() {
                         <div key={key} className="flex items-center justify-between p-2 border rounded">
                           <div>
                             <div className="font-medium">{key}</div>
-                            <div className="text-sm text-gray-600">{value}</div>
+                            <div className="text-sm text-gray-600">{String(value)}</div>
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleAppSettingDelete(key)}
-                            disabled={deleteAppSetting.isPending}
-                          >
-                            Delete
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            {deleteConfirmKey === key ? (
+                              <>
+                                <span className="text-xs text-muted-foreground">Sure?</span>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => handleAppSettingDelete(key)}
+                                  disabled={deleteAppSetting.isPending}
+                                >
+                                  Yes, delete
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setDeleteConfirmKey(null)}
+                                >
+                                  Cancel
+                                </Button>
+                              </>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-destructive hover:bg-destructive/10"
+                                onClick={() => handleAppSettingDelete(key)}
+                                disabled={deleteAppSetting.isPending}
+                              >
+                                Delete
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>

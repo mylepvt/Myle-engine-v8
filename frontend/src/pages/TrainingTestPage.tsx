@@ -24,6 +24,7 @@ export default function TrainingTestPage() {
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [showResults, setShowResults] = useState(false)
   const [results, setResults] = useState<TestResult | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const canTakeTest = authData?.training_status === 'completed' || !authData?.training_required
 
@@ -35,8 +36,9 @@ export default function TrainingTestPage() {
   }
 
   const handleSubmitTest = async () => {
+    setSubmitError(null)
     if (Object.keys(answers).length !== questions?.length) {
-      alert('Please answer all questions before submitting.')
+      setSubmitError('Please answer all questions before submitting.')
       return
     }
 
@@ -45,7 +47,7 @@ export default function TrainingTestPage() {
       setResults(result)
       setShowResults(true)
     } catch (error) {
-      console.error('Failed to submit test:', error)
+      setSubmitError(error instanceof Error ? error.message : 'Failed to submit test.')
     }
   }
 
@@ -53,6 +55,7 @@ export default function TrainingTestPage() {
     setAnswers({})
     setShowResults(false)
     setResults(null)
+    setSubmitError(null)
   }
 
   if (questionsLoading) {
@@ -206,11 +209,16 @@ export default function TrainingTestPage() {
         ))}
       </div>
 
-      <div className="mt-8 flex justify-center">
-        <Button 
+      {submitError ? (
+        <Alert className="mt-4 border-destructive/50 bg-destructive/10">
+          <AlertDescription className="text-destructive">{submitError}</AlertDescription>
+        </Alert>
+      ) : null}
+      <div className="mt-4 flex justify-center">
+        <Button
           size="lg"
           onClick={handleSubmitTest}
-          disabled={submitMutation.isPending || Object.keys(answers).length !== questions?.length}
+          disabled={submitMutation.isPending}
         >
           {submitMutation.isPending ? 'Submitting...' : 'Submit Test'}
         </Button>
