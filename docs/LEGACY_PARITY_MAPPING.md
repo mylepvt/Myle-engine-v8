@@ -79,28 +79,69 @@ Roles: **`frontend/src/config/dashboard-route-roles.json`** (exact list per path
 
 ## Phase 0.1 — Legacy navigation export (paste here)
 
-Product: legacy app se export karke neeche table bharein (section → menu label → URL). Exact strings **guess mat karo** — purane app se copy.
+**Filled 2026-04-12 (repo-derived):** Sidebar **labels** and **role gating** from **`backend/legacy/myle_dashboard_main3/templates/base.html`**. **URL paths** from **`backend/legacy/myle_dashboard_main3/routes/*.py`** (`@app.route`) where registered there; for **`/dashboard`**, **`/working`**, **`/admin`**, **`/admin/*`** execution/settings/analytics/members paths, and **`/my/lead-flow`**, from **`backend/legacy/myle_dashboard/app.py`** (monolithic app — same Flask `url_for` names as `base.html`; **re-verify on deployed host** if your fork differs).
 
 | Section (legacy) | Menu label (legacy) | URL path (legacy) | Roles (legacy) | Notes |
 |------------------|----------------------|-------------------|----------------|-------|
-| | | | | |
+| *(top)* | Dashboard | `/admin` | admin | `url_for('admin_dashboard')` |
+| *(top)* | Dashboard | `/dashboard` | team, leader | `url_for('team_dashboard')` — shared home for non-admin |
+| Execution | At-risk leads | `/admin/at-risk-leads` | admin | |
+| Execution | Weak members | `/admin/weak-members` | admin | |
+| Execution | Leak map | `/admin/leak-map` | admin | |
+| Execution | Lead ledger | `/admin/lead-ledger` | admin | |
+| Work | All Leads | `/leads` | admin | Nav text: “All Leads” |
+| Work | My Leads | `/leads` | team, leader | Same path; nav text: “My Leads” |
+| Work | Workboard | `/working` | team, leader, admin | |
+| Work | Follow-ups | `/follow-up` | leader, admin | Hidden for `role == 'team'` in sidebar |
+| Work | Retarget | `/retarget` | team, leader, admin | |
+| Work | Lead Flow | `/my/lead-flow` | team, leader | |
+| Work | Archived Leads | `/old-leads` | team, leader, admin | |
+| Work | Add Lead | `/leads/add` | admin | |
+| Work | Lead Pool | `/admin/lead-pool` | admin | |
+| Work | Recycle Bin | `/leads/recycle-bin` | admin | |
+| Work | AI Intelligence | `/intelligence` | team, admin | Sidebar: `role != 'leader'` and `myle_ai_features_enabled`; vl2 nav uses **Intelligence** + `meta.features.intelligence` |
+| Team | Members | `/team` | admin | |
+| Team | Reports | `/reports` | admin | `reports_admin` — daily reports admin view |
+| Team | Approvals | `/admin/approvals` | admin | |
+| Team | ₹196 Approvals | `/enrollment-approvals` | admin, leader | |
+| Team | My Team | `/leader/team-reports` | leader | |
+| System | Training | `/admin/training` | admin | |
+| System | Decision Engine | `/admin/decision-engine` | admin | |
+| System | Coaching Panel | `/leader/coaching` | admin, leader | |
+| Analytics | Activity Log | `/admin/activity` | admin | |
+| Analytics | Day 2 Test Report | `/admin/day2-business-test-report` | admin | |
+| Finance | Recharges | `/admin/wallet-requests` | admin | |
+| Finance | Budget Export | `/admin/budget-export` | admin | |
+| Finance | Monthly Targets | `/admin/targets` | admin | |
+| Finance | My Wallet | `/wallet` | team, leader | |
+| Finance | Lead Pool | `/lead-pool` | team, leader | Non-admin pool browse/claim |
+| Other | Leaderboard | `/leaderboard` | team, leader, admin | |
+| Other | Notice Board | `/announcements` | team, leader, admin | |
+| Other | Live Session | `/live-session` | team, leader | |
+| Other | Live Session | `/admin/live-session` | admin | Admin edit UI for zoom/settings |
+| Other | Training *(nav)* | `/training` | team, leader | Badge variants: Done / Required — see template |
+| Other | Daily Report | `/reports/submit` | team, leader | |
+| Settings | Settings | `/admin/settings` | admin | |
+| Settings | Help | `/help` | admin | |
+| Settings | All Members | `/admin/members` | admin | |
+| Settings | Org Tree | `/admin/org-tree` | admin | |
 
-*Export id (for matrix Evidence column):* `NAV-EXPORT-001` — jab yeh table bhari ho, matrix rows mein Evidence mein `NAV-EXPORT-001` cite karo.
+*Export id (for matrix Evidence column):* `NAV-EXPORT-001` — matrix rows mein Evidence: **`NAV-EXPORT-001`** + (optional) screenshot from live legacy host.
 
 ---
 
 ## Parity matrix (legacy ↔ new) — fill with evidence
 
-**Minimum starter rows (2026-04):** New-path side is factual; **Legacy ref** = exact label/URL from Phase 0.1 table jab mile; tab tak **TBD** text + Evidence id reserve.
+**Starter rows (2026-04-12):** **Legacy ref** copied from Phase 0.1; behavior **TBD** until manual/API evidence.
 
 | Legacy ref (id + menu/path) | Evidence | New path | New wiring | Parity status | Owner / date |
 |-----------------------------|----------|----------|------------|---------------|--------------|
-| TBD — *replace with Phase 0.1 row for primary lead list* | `EVID-2026-001` — attach screenshot or spec when ready | `work/leads` | full | TBD | |
-| TBD — *pipeline / board view* | `EVID-2026-002` | `work/workboard` | full | TBD | |
-| TBD — *follow-up queue* | `EVID-2026-003` | `work/follow-ups` | full | TBD | |
-| TBD — *archived / closed list* | `EVID-2026-004` | `work/archived` | full | TBD | |
-| TBD — *shared pool* | `EVID-2026-005` | `work/lead-pool` or `work/lead-pool-admin` | full | TBD | |
-| TBD — *recycle / deleted* | `EVID-2026-006` | `work/recycle-bin` | full | TBD | |
+| My Leads / All Leads — `/leads` | `NAV-EXPORT-001`; `EVID-2026-001` | `work/leads` | full | TBD | |
+| Workboard — `/working` | `NAV-EXPORT-001`; `EVID-2026-002` | `work/workboard` | full | TBD | |
+| Follow-ups — `/follow-up` | `NAV-EXPORT-001`; `EVID-2026-003` | `work/follow-ups` | full | TBD | |
+| Archived Leads — `/old-leads` | `NAV-EXPORT-001`; `EVID-2026-004` | `work/archived` | full | TBD | |
+| Lead Pool — `/lead-pool` or `/admin/lead-pool` | `NAV-EXPORT-001`; `EVID-2026-005` | `work/lead-pool` / `work/lead-pool-admin` | full | TBD | |
+| Recycle Bin — `/leads/recycle-bin` | `NAV-EXPORT-001`; `EVID-2026-006` | `work/recycle-bin` | full | TBD | |
 
 **Evidence ids:** Repo-local reference slots — jab file/Notion/screenshot attach ho, yahi id matrix aur evidence store mein use karo. **“match”** sirf jab dono legacy + new documented hon.
 

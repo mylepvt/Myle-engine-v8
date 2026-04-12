@@ -23,6 +23,7 @@ from app.api.v1 import (
     realtime_ws,
     reports,
     retarget,
+    settings_enhanced,
     settings_pages,
     system,
     team,
@@ -43,6 +44,11 @@ api_router.include_router(execution.router, prefix="/execution", tags=["executio
 api_router.include_router(finance_surfaces.router, prefix="/finance", tags=["finance"])
 api_router.include_router(other_pages.router, prefix="/other", tags=["other"])
 api_router.include_router(settings_pages.router, prefix="/settings", tags=["settings"])
+api_router.include_router(
+    settings_enhanced.router,
+    prefix="/settings-enhanced",
+    tags=["settings-enhanced"],
+)
 api_router.include_router(wallet.router, prefix="/wallet", tags=["wallet"])
 api_router.include_router(lead_pool.router, prefix="/lead-pool", tags=["lead-pool"])
 api_router.include_router(retarget.router, prefix="/retarget", tags=["retarget"])

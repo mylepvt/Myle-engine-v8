@@ -1,26 +1,19 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+"""
+Shim for legacy commands that use ``uvicorn app.main:app`` (see ``deploy.sh`` / docs).
 
-from app.api.v1 import api_router
+Delegates to the real ASGI app in ``backend/main.py`` — same CORS allowlist, middleware,
+lifespan, health routes, and optional SPA — so this is **not** a second permissive app.
+"""
 
-app = FastAPI()
+from __future__ import annotations
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # dev ke liye
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+import sys
+from pathlib import Path
 
-# Include API v1 router
-app.include_router(api_router, prefix="/api/v1")
+_backend_root = Path(__file__).resolve().parents[1]
+if str(_backend_root) not in sys.path:
+    sys.path.insert(0, str(_backend_root))
 
-@app.get("/")
-def home():
-    return {"status": "running"}
+from main import app  # noqa: E402
 
-@app.get("/health")
-def health():
-    return {"ok": True, "service": "myle-api"}
+__all__ = ["app"]

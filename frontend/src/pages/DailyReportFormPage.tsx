@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { apiFetch } from '@/lib/api'
@@ -49,42 +49,41 @@ const INT_FIELDS: { key: keyof DailyReportPublic; label: string }[] = [
   { key: 'payments_actual', label: 'Payments (actual)' },
 ]
 
+function intsFromRow(row: DailyReportPublic | null): Record<string, number> {
+  if (!row) {
+    return Object.fromEntries(INT_FIELDS.map(({ key }) => [key, 0])) as Record<string, number>
+  }
+  const next: Record<string, number> = {}
+  for (const { key } of INT_FIELDS) {
+    next[key] = typeof row[key] === 'number' ? (row[key] as number) : 0
+  }
+  return next
+}
+
 type Props = { title: string }
 
-export function DailyReportFormPage({ title }: Props) {
+type DailyReportFormFieldsProps = {
+  title: string
+  dateIso: string
+  onDateIsoChange: (iso: string) => void
+  row: DailyReportPublic | null
+  queryPending: boolean
+  queryError: boolean
+  queryErr: unknown
+}
+
+function DailyReportFormFields({
+  title,
+  dateIso,
+  onDateIsoChange,
+  row,
+  queryPending,
+  queryError,
+  queryErr,
+}: DailyReportFormFieldsProps) {
   const qc = useQueryClient()
-  const [dateIso, setDateIso] = useState(todayIsoLocal)
-  const [remarks, setRemarks] = useState('')
-  const [ints, setInts] = useState<Record<string, number>>(() =>
-    Object.fromEntries(INT_FIELDS.map(({ key }) => [key, 0])),
-  )
-
-  const q = useQuery({
-    queryKey: ['daily-report-mine', dateIso],
-    queryFn: async () => {
-      const res = await apiFetch(`/api/v1/reports/daily/mine?report_date=${encodeURIComponent(dateIso)}`)
-      if (!res.ok) {
-        const t = await res.text()
-        throw new Error(t || res.statusText)
-      }
-      return res.json() as Promise<DailyReportPublic | null>
-    },
-  })
-
-  useEffect(() => {
-    const row = q.data
-    if (!row) {
-      setInts(Object.fromEntries(INT_FIELDS.map(({ key }) => [key, 0])))
-      setRemarks('')
-      return
-    }
-    const next: Record<string, number> = {}
-    for (const { key } of INT_FIELDS) {
-      next[key] = typeof row[key] === 'number' ? (row[key] as number) : 0
-    }
-    setInts(next)
-    setRemarks(row.remarks ?? '')
-  }, [q.data])
+  const [remarks, setRemarks] = useState(() => row?.remarks ?? '')
+  const [ints, setInts] = useState(() => intsFromRow(row))
 
   const mut = useMutation({
     mutationFn: async () => {
@@ -110,7 +109,7 @@ export function DailyReportFormPage({ title }: Props) {
   })
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <>
       <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
       <p className="text-sm text-muted-foreground">
         Submit numbers for a calendar day. First save awards +20 score points for that day (legacy rule); updates keep
@@ -123,15 +122,15 @@ export function DailyReportFormPage({ title }: Props) {
           <input
             type="date"
             value={dateIso}
-            onChange={(e) => setDateIso(e.target.value)}
+            onChange={(e) => onDateIsoChange(e.target.value)}
             className="rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-foreground"
           />
         </label>
       </div>
 
-      {q.isPending ? <Skeleton className="h-40 w-full rounded-xl" /> : null}
-      {q.isError ? (
-        <p className="text-sm text-destructive">{q.error instanceof Error ? q.error.message : 'Failed to load'}</p>
+      {queryPending ? <Skeleton className="h-40 w-full rounded-xl" /> : null}
+      {queryError ? (
+        <p className="text-sm text-destructive">{queryErr instanceof Error ? queryErr.message : 'Failed to load'}</p>
       ) : null}
 
       <form
@@ -186,6 +185,40 @@ export function DailyReportFormPage({ title }: Props) {
       {mut.isError ? (
         <p className="text-sm text-destructive">{mut.error instanceof Error ? mut.error.message : 'Save failed'}</p>
       ) : null}
+    </>
+  )
+}
+
+export function DailyReportFormPage({ title }: Props) {
+  const [dateIso, setDateIso] = useState(todayIsoLocal)
+
+  const q = useQuery({
+    queryKey: ['daily-report-mine', dateIso],
+    queryFn: async () => {
+      const res = await apiFetch(`/api/v1/reports/daily/mine?report_date=${encodeURIComponent(dateIso)}`)
+      if (!res.ok) {
+        const t = await res.text()
+        throw new Error(t || res.statusText)
+      }
+      return res.json() as Promise<DailyReportPublic | null>
+    },
+  })
+
+  const row = q.data ?? null
+  const formKey = `${dateIso}-${row?.id ?? 'none'}`
+
+  return (
+    <div className="max-w-3xl space-y-6">
+      <DailyReportFormFields
+        key={formKey}
+        title={title}
+        dateIso={dateIso}
+        onDateIsoChange={setDateIso}
+        row={row}
+        queryPending={q.isPending}
+        queryError={q.isError}
+        queryErr={q.error}
+      />
     </div>
   )
 }

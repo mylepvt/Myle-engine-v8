@@ -21,7 +21,7 @@ interface PipelineColumnProps {
   onStatusTransition: (leadId: number, newStatus: string) => void
   selectedLead: number | null
   onSelectLead: (leadId: number | null) => void
-  userRole: string
+  isLoading?: boolean
 }
 
 const STATUS_COLORS = {
@@ -47,7 +47,7 @@ export default function PipelineColumn({
   onStatusTransition,
   selectedLead,
   onSelectLead,
-  userRole,
+  isLoading = false,
 }: PipelineColumnProps) {
   const [expandedLead, setExpandedLead] = useState<number | null>(null)
   
@@ -80,8 +80,14 @@ export default function PipelineColumn({
         <Card className={`${STATUS_COLORS[status as keyof typeof STATUS_COLORS] || 'bg-gray-50 border-gray-200'}`}>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium">{statusLabel}</CardTitle>
-              <Badge variant="outline" className="text-xs">
+              <CardTitle className="text-sm font-medium truncate" title={statusLabel}>
+                {statusLabel}
+              </CardTitle>
+              <Badge 
+                variant="outline" 
+                className="text-xs font-semibold"
+                aria-label={`${leads.length} leads in ${statusLabel}`}
+              >
                 {leads.length}
               </Badge>
             </div>
@@ -90,83 +96,113 @@ export default function PipelineColumn({
       </div>
 
       {/* Leads List */}
-      <div className="flex-1 space-y-2 overflow-y-auto">
+      <div className="flex-1 space-y-2 overflow-y-auto max-h-[600px] lg:max-h-[700px]">
         {leads.map((lead) => (
           <Card
             key={lead.id}
             className={`cursor-pointer transition-all duration-200 ${
               selectedLead === lead.id
                 ? 'ring-2 ring-blue-500 shadow-md'
-                : 'hover:shadow-md'
+                : 'hover:shadow-md hover:scale-[1.02]'
             } ${STATUS_COLORS[status as keyof typeof STATUS_COLORS] || 'bg-white'}`}
             onClick={() => handleLeadClick(lead.id)}
+            role="button"
+            tabIndex={0}
+            aria-pressed={selectedLead === lead.id}
+            aria-label={`Lead: ${lead.name}, Status: ${statusLabel}`}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                handleLeadClick(lead.id)
+              }
+            }}
           >
             <CardContent className="p-3">
               {/* Lead Header */}
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center space-x-2">
                   <User className="w-4 h-4 text-gray-500" />
-                  <span className="font-medium text-sm truncate">{lead.name}</span>
+                  <span className="font-medium text-sm truncate" title={lead.name}>
+                    {lead.name}
+                  </span>
                 </div>
-                {lead.payment_status && (
-                  <Badge variant="outline" className="text-xs">
-                    <DollarSign className="w-3 h-3 mr-1" />
-                    {lead.payment_status}
-                  </Badge>
-                )}
+                <div className="flex items-center space-x-1">
+                  {lead.payment_status && (
+                    <Badge variant="outline" className="text-xs">
+                      <DollarSign className="w-3 h-3 mr-1" />
+                      {lead.payment_status}
+                    </Badge>
+                  )}
+                  {selectedLead === lead.id && (
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                  )}
+                </div>
               </div>
 
               {/* Contact Info */}
               <div className="space-y-1 text-xs text-gray-600">
                 {lead.phone && (
-                  <div className="flex items-center space-x-1">
-                    <Phone className="w-3 h-3" />
-                    <span>{lead.phone}</span>
+                  <div className="flex items-center space-x-1" title={lead.phone}>
+                    <Phone className="w-3 h-3 flex-shrink-0" />
+                    <span className="truncate">{lead.phone}</span>
                   </div>
                 )}
                 {lead.email && (
-                  <div className="flex items-center space-x-1">
-                    <Mail className="w-3 h-3" />
+                  <div className="flex items-center space-x-1" title={lead.email}>
+                    <Mail className="w-3 h-3 flex-shrink-0" />
                     <span className="truncate">{lead.email}</span>
                   </div>
                 )}
                 {lead.city && (
-                  <div className="flex items-center space-x-1">
-                    <MapPin className="w-3 h-3" />
-                    <span>{lead.city}</span>
+                  <div className="flex items-center space-x-1" title={lead.city}>
+                    <MapPin className="w-3 h-3 flex-shrink-0" />
+                    <span className="truncate">{lead.city}</span>
                   </div>
                 )}
               </div>
 
               {/* Created At */}
-              <div className="flex items-center space-x-1 mt-2 text-xs text-gray-500">
-                <Clock className="w-3 h-3" />
+              <div className="flex items-center space-x-1 mt-2 text-xs text-gray-500" title={new Date(lead.created_at).toLocaleString()}>
+                <Clock className="w-3 h-3 flex-shrink-0" />
                 <span>{new Date(lead.created_at).toLocaleDateString()}</span>
               </div>
 
               {/* Expanded View */}
-              {expandedLead === lead.id && transitions && (
+              {expandedLead === lead.id && (
                 <div className="mt-3 pt-3 border-t border-gray-200">
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-gray-700">Move to:</p>
-                    <div className="grid grid-cols-1 gap-1">
+                  {isLoading ? (
+                    <div className="flex items-center justify-center py-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                      <span className="text-xs text-gray-600">Processing...</span>
+                    </div>
+                  ) : transitions && transitions.length > 0 ? (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-gray-700">Move to:</p>
+                      <div className="grid grid-cols-1 gap-1">
                       {transitions.map((transition) => (
                         <Button
                           key={transition}
                           size="sm"
                           variant="outline"
-                          className="text-xs h-7 justify-start"
+                          className="text-xs h-7 justify-start hover:bg-gray-100 transition-colors"
                           onClick={(e) => {
                             e.stopPropagation()
                             handleTransition(transition)
                           }}
+                          disabled={isLoading}
+                          aria-label={`Move lead to ${transition.replace('_', ' ').toUpperCase()}`}
                         >
                           <ChevronDown className="w-3 h-3 mr-1" />
                           {transition.replace('_', ' ').toUpperCase()}
                         </Button>
                       ))}
                     </div>
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-2">
+                      <p className="text-xs text-gray-500">No available transitions</p>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -176,10 +212,11 @@ export default function PipelineColumn({
 
       {/* Empty State */}
       {leads.length === 0 && (
-        <div className="flex-1 flex items-center justify-center">
+        <div className="flex-1 flex items-center justify-center min-h-[200px]">
           <div className="text-center text-gray-500">
             <User className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p className="text-xs">No leads</p>
+            <p className="text-xs font-medium">No leads</p>
+            <p className="text-xs mt-1 text-gray-400">in {statusLabel}</p>
           </div>
         </div>
       )}

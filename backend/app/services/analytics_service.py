@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.daily_report import DailyReport
@@ -56,8 +56,8 @@ class AnalyticsService:
         leads_q = await self.session.execute(
             select(
                 func.count(Lead.id).label("total_leads"),
-                func.sum(func.case((Lead.status == "converted", 1), else_=0)).label("converted_leads"),
-                func.sum(func.case((Lead.status == "paid", 1), else_=0)).label("paid_leads"),
+                func.sum(case((Lead.status == "converted", 1), else_=0)).label("converted_leads"),
+                func.sum(case((Lead.status == "paid", 1), else_=0)).label("paid_leads"),
             )
             .where(
                 and_(
@@ -148,8 +148,8 @@ class AnalyticsService:
         leads_q = await self.session.execute(
             select(
                 func.count(Lead.id).label("total_leads"),
-                func.sum(func.case((Lead.status == "converted", 1), else_=0)).label("converted_leads"),
-                func.sum(func.case((Lead.status == "paid", 1), else_=0)).label("paid_leads"),
+                func.sum(case((Lead.status == "converted", 1), else_=0)).label("converted_leads"),
+                func.sum(case((Lead.status == "paid", 1), else_=0)).label("paid_leads"),
             )
             .where(
                 and_(
@@ -177,6 +177,14 @@ class AnalyticsService:
         )
         scores_data = scores_q.first()
 
+        lead_row = leads_data
+        score_row = scores_data
+        total_leads = int(lead_row.total_leads or 0) if lead_row is not None else 0
+        converted_leads = int(lead_row.converted_leads or 0) if lead_row is not None else 0
+        paid_leads = int(lead_row.paid_leads or 0) if lead_row is not None else 0
+        total_points = int(score_row.total_points or 0) if score_row is not None else 0
+        days_with_reports = int(score_row.days_with_reports or 0) if score_row is not None else 0
+
         # Calculate daily trends
         daily_data = []
         for i in range(days):
@@ -201,13 +209,13 @@ class AnalyticsService:
                 "avg_daily_calls": round(sum(r.total_calling for r in reports) / len(reports), 1) if reports else 0,
             },
             "leads": {
-                "total_leads": leads_data.total_leads or 0,
-                "converted_leads": leads_data.converted_leads or 0,
-                "paid_leads": leads_data.paid_leads or 0,
+                "total_leads": total_leads,
+                "converted_leads": converted_leads,
+                "paid_leads": paid_leads,
             },
             "scores": {
-                "total_points": scores_data.total_points or 0,
-                "days_with_reports": scores_data.days_with_reports or 0,
+                "total_points": total_points,
+                "days_with_reports": days_with_reports,
             },
             "daily_trends": daily_data,
         }
@@ -255,7 +263,7 @@ class AnalyticsService:
             leads_q = await self.session.execute(
                 select(
                     func.count(Lead.id).label("total_leads"),
-                    func.sum(func.case((Lead.status == "converted", 1), else_=0)).label("converted_leads"),
+                    func.sum(case((Lead.status == "converted", 1), else_=0)).label("converted_leads"),
                 )
                 .where(
                     and_(
@@ -319,8 +327,8 @@ class AnalyticsService:
         leads_q = await self.session.execute(
             select(
                 func.count(Lead.id).label("total_leads"),
-                func.sum(func.case((Lead.status == "converted", 1), else_=0)).label("converted_leads"),
-                func.sum(func.case((Lead.status == "paid", 1), else_=0)).label("paid_leads"),
+                func.sum(case((Lead.status == "converted", 1), else_=0)).label("converted_leads"),
+                func.sum(case((Lead.status == "paid", 1), else_=0)).label("paid_leads"),
             )
             .where(
                 and_(
@@ -335,8 +343,8 @@ class AnalyticsService:
         wallet_q = await self.session.execute(
             select(
                 func.count(func.distinct(WalletLedgerEntry.user_id)).label("active_wallets"),
-                func.sum(func.case((WalletLedgerEntry.amount_cents > 0, WalletLedgerEntry.amount_cents), else_=0)).label("total_credits"),
-                func.sum(func.case((WalletLedgerEntry.amount_cents < 0, abs(WalletLedgerEntry.amount_cents)), else_=0)).label("total_debits"),
+                func.sum(case((WalletLedgerEntry.amount_cents > 0, WalletLedgerEntry.amount_cents), else_=0)).label("total_credits"),
+                func.sum(case((WalletLedgerEntry.amount_cents < 0, abs(WalletLedgerEntry.amount_cents)), else_=0)).label("total_debits"),
             )
             .where(
                 WalletLedgerEntry.created_at >= datetime.combine(start_date, datetime.min.time())

@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import Optional
 
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, func, text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
@@ -66,3 +66,6 @@ class User(Base):
         server_default=func.now(),
         nullable=False,
     )
+
+    # Relationships
+    payments_initiated: Mapped[list["Payment"]] = relationship("Payment", foreign_keys="Payment.user_id", back_populates="user", lazy="dynamic")

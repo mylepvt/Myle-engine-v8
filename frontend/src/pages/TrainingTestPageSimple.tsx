@@ -3,7 +3,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { CheckCircle, XCircle, Clock, Award } from 'lucide-react'
-import { useTrainingTestQuestionsQuery, useSubmitTrainingTestMutation } from '@/hooks/use-training-query'
+import {
+  useTrainingTestQuestionsQuery,
+  useSubmitTrainingTestMutation,
+  type TrainingTestResult,
+} from '@/hooks/use-training-query'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 
 export default function TrainingTestPage() {
@@ -12,7 +16,7 @@ export default function TrainingTestPage() {
   const submitMutation = useSubmitTrainingTestMutation()
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [showResults, setShowResults] = useState(false)
-  const [results, setResults] = useState<any>(null)
+  const [results, setResults] = useState<TrainingTestResult | null>(null)
 
   const canTakeTest = authData?.training_status === 'completed' || !authData?.training_required
 

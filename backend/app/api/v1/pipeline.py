@@ -21,7 +21,7 @@ from app.services.pipeline_service import PipelineService
 router = APIRouter()
 
 
-@router.get("/pipeline/view", response_model=PipelineViewResponse)
+@router.get("/view", response_model=PipelineViewResponse)
 async def get_pipeline_view(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
@@ -62,7 +62,7 @@ async def get_pipeline_view(
         )
 
 
-@router.post("/pipeline/transition", response_model=StatusTransitionResponse)
+@router.post("/transition", response_model=StatusTransitionResponse)
 async def transition_lead_status(
     request: PipelineTransitionRequest,
     user: Annotated[AuthUser, Depends(require_auth_user)],
@@ -99,7 +99,7 @@ async def transition_lead_status(
         )
 
 
-@router.get("/pipeline/leads/{lead_id}/transitions", response_model=List[str])
+@router.get("/leads/{lead_id}/transitions", response_model=List[str])
 async def get_available_transitions(
     lead_id: int,
     user: Annotated[AuthUser, Depends(require_auth_user)],
@@ -121,7 +121,7 @@ async def get_available_transitions(
         )
 
 
-@router.get("/pipeline/metrics", response_model=PipelineMetricsResponse)
+@router.get("/metrics", response_model=PipelineMetricsResponse)
 async def get_pipeline_metrics(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
@@ -148,7 +148,7 @@ async def get_pipeline_metrics(
         )
 
 
-@router.post("/pipeline/auto-expire")
+@router.post("/auto-expire")
 async def auto_expire_stale_leads(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
@@ -171,13 +171,13 @@ async def auto_expire_stale_leads(
         )
 
 
-@router.get("/pipeline/statuses")
+@router.get("/statuses")
 async def get_pipeline_statuses() -> Dict[str, str]:
     """Get all available pipeline statuses with labels."""
     return LEAD_STATUS_LABELS
 
 
-@router.get("/pipeline/columns")
+@router.get("/columns")
 async def get_pipeline_columns() -> List[str]:
     """Get workboard column order."""
     return WORKBOARD_COLUMNS

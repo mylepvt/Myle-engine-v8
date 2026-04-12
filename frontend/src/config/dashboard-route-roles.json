@@ -33,7 +33,6 @@
   "settings/profile": ["admin", "leader", "team"],
   "finance/recharge-request": ["admin", "leader", "team"],
   "finance/recharge-admin": ["admin"],
-  "training": ["admin", "leader", "team"],
   "pipeline": ["admin", "leader", "team"],
   "analytics": ["admin", "leader", "team"]
 }

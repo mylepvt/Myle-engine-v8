@@ -76,12 +76,13 @@ Stub = contract only; **Done** = backed by DB + rules.
 - [x] **Execution APIs (backend):** **`GET /api/v1/execution/*`** (e.g. at-risk, lead-ledger) — **no dashboard nav**; shell IA locked in **`docs/CORE_APP_STRUCTURE.md`**
 - [x] **Lead pool** + **recycle bin** — `leads.in_pool`, `leads.deleted_at` (soft delete); `GET /api/v1/lead-pool`; `POST /api/v1/leads/{id}/claim`; `GET /api/v1/leads?deleted_only=true` (admin); `PATCH` **`in_pool`** / **`restored`** (admin); main list + workboard + retarget exclude pool & deleted; Work → **Lead pool** (leader/team), **Admin lead pool** (same API), **Recycle bin**
 - [x] Work → **Intelligence** — placeholder page + **hard redirect** if `GET /api/v1/meta` → `features.intelligence` is false (env `FEATURE_INTELLIGENCE`); product-only, no third-party AI
-- [x] **Team:** **`GET /api/v1/team/members`**, **`POST /api/v1/team/members`** (admin — create user, bcrypt); **`my-team`**, **`enrollment-requests`**, **`reports`**, **`approvals`** — list + enrollment real/empty as before; reports/approvals stubs; **Team → All members** includes admin **Add user** form; all Team nav items wired in FE
+- [x] **Team:** **`GET /api/v1/team/members`**, **`POST /api/v1/team/members`** (admin — create user, bcrypt); **`my-team`**, **`enrollment-requests`**, **`reports`**, **`approvals`** — **Team → Approvals** uses **`GET/POST /api/v1/team/pending-registrations`** (approve/reject); legacy short list still at **`GET /api/v1/team/approvals`**; **`reports`** live metrics; **Team → All members** includes admin **Add user** form; all Team nav items wired in FE
 - [x] **System (V1 stubs):** **`GET /api/v1/system/training`**, **`/system/decision-engine`** (admin); **`/system/coaching`** (admin + leader); JSON **`items`/`total`/`note`** — empty until product models data; System → **Training**, **Decision engine**, **Coaching** wired
 - [x] **Analytics:** **`GET /api/v1/analytics/activity-log`**, **`GET /api/v1/analytics/day-2-report`** (admin); **`/dashboard/analytics/*`** under sidebar **System**
 - [x] **Finance / wallet:** **`GET /api/v1/wallet/me`**, ledger, adjustments; recharge flows in nav — **`GET /api/v1/finance/budget-export`** etc. remain **API-only** (no shell route)
 - [x] **Other / community:** **`GET /api/v1/other/*`** (leaderboard, notice-board, live-session, daily-report) — mixed full + stub pages
 - [x] **Settings:** **`GET /api/v1/settings/*`** (`app`, `help`, `org-tree`) — stubs + FE; **`all-members`** API without duplicate dashboard path (**use Team → Members**)
+- [x] **Settings (enhanced):** **`/api/v1/settings-enhanced/*`** — mounted in **`router.py`** (profile, preferences, system config, app-settings, users-summary); matches **`use-settings-query.ts`**; unauthenticated → **401** (not **404**)
 
 ## Frontend — shell & UX
 
@@ -124,6 +125,8 @@ Stub = contract only; **Done** = backed by DB + rules.
 - [x] Pytest: wallet + shell stub routers + broader domain coverage (**~87+** tests in CI)
 - [x] Frontend tests — **Vitest + Testing Library** (`npm run test`); **LoginPage** + **`ProtectedRoute`** (CI)
 - [x] **OpenAPI → TS types** — `scripts/export_openapi.py` writes `frontend/openapi.json`; **`npm run generate-api-types`** (in `frontend/`) refreshes `src/lib/api-v1.d.ts` via `npx openapi-typescript@7.13.0` (run after API contract changes; commit both JSON + `.d.ts`)
+- [x] **Audit documentation**: Complete shell/thin/full inventory in [`AUDIT_SHELL_THIN_FULL.md`](./AUDIT_SHELL_THIN_FULL.md); deep stack audit in [`AUDIT_DEEP_FULL.md`](./AUDIT_DEEP_FULL.md); priority gaps in [`GAP_PRIORITY_P0_P1.md`](./GAP_PRIORITY_P0_P1.md)
+- [x] **Gap / audit docs** — [`GAP_PRIORITY_P0_P1.md`](./GAP_PRIORITY_P0_P1.md), [`AUDIT_SHELL_THIN_FULL.md`](./AUDIT_SHELL_THIN_FULL.md), [`AUDIT_DEEP_FULL.md`](./AUDIT_DEEP_FULL.md) (multi-perspective deep pass)
 
 ## Phase 7 — Testing & safety
 
@@ -152,7 +155,7 @@ Stub = contract only; **Done** = backed by DB + rules.
 **Runbook:** `docs/PARITY_SPRINT_1.md` (Week 1) · `docs/PARITY_ROLLOUT_PLAN.md` (waves) · `docs/LEGACY_PARITY_MAPPING.md` (matrix).
 
 - [x] **Sprint 1 — Matrix starter:** ≥5 rows + `EVID-2026-00x` ids + Phase 0.1 paste table (`LEGACY_PARITY_MAPPING.md`)
-- [ ] **Sprint 1 — Product:** Phase 0.1 legacy **nav export** pasted (exact labels/URLs from old app)
+- [x] **Sprint 1 — Product:** Phase 0.1 **nav export** in [`LEGACY_PARITY_MAPPING.md`](./LEGACY_PARITY_MAPPING.md) — labels from `myle_dashboard_main3/templates/base.html`, paths from route modules + `myle_dashboard/app.py` (2026-04-12); optional: live-host screenshot set for Evidence
 - [x] **Sprint 1 — Eng (automated):** `pytest` + `npm run build` + `npm test` + `npm run lint` + `bash scripts/verify_wave_a.sh` (`PARITY_SPRINT_1.md`)
 - [ ] **Sprint 1 — Eng (browser):** Wave A manual rows M1–M6 (`PARITY_SPRINT_1.md`)
 - [x] **Sprint 1 — Playbook structure:** pilot + support **table** in `TEAM_MIGRATION_PLAYBOOK.md` (assign names + channel when ready)

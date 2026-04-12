@@ -34,7 +34,6 @@ import { WalletRechargeAdminPage } from '@/pages/WalletRechargeAdminPage'
 import { NoticeBoardPage } from '@/pages/NoticeBoardPage'
 import { TeamReportsPage } from '@/pages/TeamReportsPage'
 import { DailyReportFormPage } from '@/pages/DailyReportFormPage'
-import TrainingPage from '@/pages/TrainingPage'
 import PipelinePage from '@/pages/PipelinePage'
 import AnalyticsPage from '@/pages/AnalyticsPage'
 import SettingsPage from '@/pages/SettingsPage'
@@ -68,7 +67,11 @@ function renderFullUi(ui: FullUiSurface, title: string) {
     case 'system':
       return <SystemSurfacePage title={title} surface={ui.surface} />
     case 'analytics':
-      return <AnalyticsSurfacePage title={title} surface={ui.surface} />
+      return 'surface' in ui ? (
+        <AnalyticsSurfacePage title={title} surface={ui.surface} />
+      ) : (
+        <AnalyticsPage />
+      )
     case 'wallet':
       return <WalletPage title={title} />
     case 'finance-recharges':
@@ -83,12 +86,8 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <TeamReportsPage title={title} />
     case 'daily-report-form':
       return <DailyReportFormPage title={title} />
-    case 'training':
-      return <TrainingPage />
     case 'pipeline':
       return <PipelinePage />
-    case 'analytics':
-      return <AnalyticsPage />
     case 'settings':
       return <SettingsPage />
     case 'shell-api':

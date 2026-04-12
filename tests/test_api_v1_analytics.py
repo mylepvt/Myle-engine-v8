@@ -40,3 +40,23 @@ def test_analytics_day_2_report_admin_ok(monkeypatch: pytest.MonkeyPatch) -> Non
     c = _authed(monkeypatch)
     assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
     assert c.get("/api/v1/analytics/day-2-report").status_code == 200
+
+
+def test_analytics_export_csv_ok(monkeypatch: pytest.MonkeyPatch) -> None:
+    c = _authed(monkeypatch)
+    assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+    r = c.post("/api/v1/analytics/export?format=csv&days=7")
+    assert r.status_code == 200, r.text
+    assert "text/csv" in r.headers.get("content-type", "")
+    assert "analytics-7days.csv" in (r.headers.get("content-disposition") or "")
+    assert b"Analytics Export" in r.content
+
+
+def test_analytics_export_excel_ok(monkeypatch: pytest.MonkeyPatch) -> None:
+    c = _authed(monkeypatch)
+    assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+    r = c.post("/api/v1/analytics/export?format=excel&days=7")
+    assert r.status_code == 200
+    assert "spreadsheetml" in r.headers.get("content-type", "")
+    assert ".xlsx" in (r.headers.get("content-disposition") or "")
+    assert r.content[:2] == b"PK"  # ZIP / OOXML

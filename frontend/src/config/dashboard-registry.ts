@@ -84,7 +84,6 @@ export type FullUiSurface =
   | { kind: 'notice-board' }
   | { kind: 'team-reports' }
   | { kind: 'daily-report-form' }
-  | { kind: 'training' }
   | { kind: 'pipeline' }
   | { kind: 'analytics' }
   | { kind: 'settings' }
@@ -386,15 +385,7 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     surface: 'full',
     ui: { kind: 'shell-api', apiPath: '/api/v1/settings/org-tree' },
   },
-  {
-    path: 'training',
-    section: { id: 'system', label: 'System' },
-    label: 'Training',
-    roles: routeRoles('training'),
-    surface: 'full',
-    ui: { kind: 'training' },
-  },
-  {
+    {
     path: 'pipeline',
     section: { id: 'work', label: '' },
     label: 'Pipeline',

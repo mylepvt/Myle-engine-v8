@@ -5,7 +5,6 @@ import {
   Users, 
   DollarSign, 
   Calendar,
-  Target,
   Activity
 } from 'lucide-react'
 import type { PipelineMetrics } from '@/hooks/use-pipeline-query'
@@ -14,6 +13,8 @@ interface PipelineMetricsProps {
   metrics: PipelineMetrics
 }
 
+type RateBadgeVariant = 'success' | 'warning' | 'danger'
+
 export default function PipelineMetrics({ metrics }: PipelineMetricsProps) {
   const getRateColor = (rate: number) => {
     if (rate >= 70) return 'text-green-600'
@@ -21,7 +22,7 @@ export default function PipelineMetrics({ metrics }: PipelineMetricsProps) {
     return 'text-red-600'
   }
 
-  const getRateBadgeVariant = (rate: number) => {
+  const getRateBadgeVariant = (rate: number): RateBadgeVariant => {
     if (rate >= 70) return 'success'
     if (rate >= 50) return 'warning'
     return 'danger'
@@ -54,7 +55,7 @@ export default function PipelineMetrics({ metrics }: PipelineMetricsProps) {
             {metrics.conversion_rate}%
           </div>
           <p className="text-xs text-muted-foreground">
-            <Badge variant={getRateBadgeVariant(metrics.conversion_rate) as any}>
+            <Badge variant={getRateBadgeVariant(metrics.conversion_rate)}>
               {metrics.conversion_rate >= 70 ? 'Excellent' : 
                metrics.conversion_rate >= 50 ? 'Good' : 'Needs Work'}
             </Badge>

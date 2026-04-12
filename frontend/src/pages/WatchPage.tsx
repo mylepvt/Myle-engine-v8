@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 
 import { Skeleton } from '@/components/ui/skeleton'
@@ -37,41 +37,31 @@ function extractYouTubeId(url: string): string | null {
   return null
 }
 
+async function fetchWatchPage(token: string): Promise<WatchPageData> {
+  const res = await fetch(`/api/v1/watch/${token}`)
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    const detail =
+      typeof body === 'object' && body !== null && 'detail' in body
+        ? String((body as { detail?: string }).detail)
+        : `HTTP ${res.status}`
+    throw new Error(detail)
+  }
+  return res.json() as Promise<WatchPageData>
+}
+
 export function WatchPage() {
   const { token } = useParams<{ token: string }>()
-  const [data, setData] = useState<WatchPageData | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const q = useQuery({
+    queryKey: ['watch', token],
+    queryFn: () => fetchWatchPage(token!),
+    enabled: Boolean(token),
+  })
 
-  useEffect(() => {
-    if (!token) {
-      setError('Invalid link.')
-      setLoading(false)
-      return
-    }
-
-    // Plain fetch — no auth headers needed (public endpoint)
-    fetch(`/api/v1/watch/${token}`)
-      .then(async (res) => {
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}))
-          const detail =
-            typeof body === 'object' && body !== null && 'detail' in body
-              ? String((body as { detail?: string }).detail)
-              : `HTTP ${res.status}`
-          throw new Error(detail)
-        }
-        return res.json() as Promise<WatchPageData>
-      })
-      .then((d) => {
-        setData(d)
-        setLoading(false)
-      })
-      .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : 'Could not load video.')
-        setLoading(false)
-      })
-  }, [token])
+  const error =
+    !token ? 'Invalid link.' : q.isError ? (q.error instanceof Error ? q.error.message : 'Could not load video.') : null
+  const loading = Boolean(token) && q.isPending
+  const data = q.data ?? null
 
   const videoId = data?.youtube_url ? extractYouTubeId(data.youtube_url) : null
 

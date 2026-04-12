@@ -158,7 +158,7 @@ async function fetchSystemConfiguration(): Promise<SystemConfigurationResponse> 
   return res.json()
 }
 
-async function updateSystemConfiguration(request: Record<string, any>): Promise<{ message: string }> {
+async function updateSystemConfiguration(request: Record<string, unknown>): Promise<{ message: string }> {
   const res = await apiFetch('/api/v1/settings-enhanced/system/configuration', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },

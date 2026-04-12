@@ -17,6 +17,7 @@ from app.core.passwords import DEV_LOGIN_BCRYPT_HASH
 from app.models.announcement import Announcement  # noqa: F401
 from app.models.follow_up import FollowUp  # noqa: F401
 from app.models.lead import Lead  # noqa: F401
+from app.models.payment import Payment, PaymentWebhookEvent  # noqa: F401 — register before Lead mapper
 from app.models.user import User
 from app.models.wallet_ledger import WalletLedgerEntry  # noqa: F401
 from app.models.password_reset_token import PasswordResetToken  # noqa: F401

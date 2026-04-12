@@ -184,6 +184,41 @@ function AdminLeadCard({ lead, dayKey, pm, onMoveNext, nextLabel }: {
   )
 }
 
+function DayGrid({
+  leads,
+  dayKey,
+  nextStatus,
+  nextLabel,
+  pm,
+}: {
+  leads: LeadPublic[]
+  dayKey: 1 | 2 | 3
+  nextStatus?: LeadStatus
+  nextLabel?: string
+  pm: PM
+}) {
+  return leads.length === 0 ? (
+    <p className="rounded-lg border border-dashed border-white/12 px-3 py-8 text-center text-xs text-muted-foreground">
+      No leads
+    </p>
+  ) : (
+    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      {leads.map((l) => (
+        <AdminLeadCard
+          key={l.id}
+          lead={l}
+          dayKey={dayKey}
+          pm={pm}
+          nextLabel={nextLabel}
+          onMoveNext={
+            nextStatus ? () => void pm.mutateAsync({ id: l.id, body: { status: nextStatus } }) : undefined
+          }
+        />
+      ))}
+    </div>
+  )
+}
+
 // ── Grid section helper ────────────────────────────────────────────────────────
 function Grid({ leads, pm, empty }: { leads: LeadPublic[]; pm: PM; empty?: string }) {
   if (leads.length === 0)
@@ -292,21 +327,12 @@ function AdminView({ cols, pm, search }: { cols: Col[]; pm: PM; search: string }
   const day1 = f(['day1']), day2 = f(['day2']), day3 = f(DAY3), closing = f(CLOSE)
   const tabs = [{id:'day1',label:'Day 1',count:day1.length},{id:'day2',label:'Day 2',count:day2.length},{id:'day3',label:'Day 3',count:day3.length},{id:'closing',label:'Closing',count:closing.length}]
 
-  const DayGrid = ({ leads, dayKey, nextStatus, nextLabel }: { leads: LeadPublic[]; dayKey: 1|2|3; nextStatus?: LeadStatus; nextLabel?: string }) => (
-    leads.length === 0
-      ? <p className="rounded-lg border border-dashed border-white/12 px-3 py-8 text-center text-xs text-muted-foreground">No leads</p>
-      : <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {leads.map((l) =>
-            <AdminLeadCard key={l.id} lead={l} dayKey={dayKey} pm={pm}
-              nextLabel={nextLabel}
-              onMoveNext={nextStatus ? () => void pm.mutateAsync({ id: l.id, body: { status: nextStatus } }) : undefined}/>)}
-        </div>
-  )
-
   return (
     <div className="space-y-4">
       <Tabs tabs={tabs} active={tab} onChange={(id) => setTab(id as ATab)}/>
-      {tab === 'day1' && <DayGrid leads={day1} dayKey={1} nextStatus="day2" nextLabel="Move to Day 2 →"/>}
+      {tab === 'day1' && (
+        <DayGrid leads={day1} dayKey={1} nextStatus="day2" nextLabel="Move to Day 2 →" pm={pm} />
+      )}
       {tab === 'day2' && (
         <div className="space-y-3">
           {/* Day 2 summary chips */}
@@ -317,7 +343,7 @@ function AdminView({ cols, pm, search }: { cols: Col[]; pm: PM; search: string }
             ].map(([label, count, cls]) =>
               <span key={label as string} className={cn('rounded-full border px-2.5 py-0.5 text-xs font-medium', cls as string)}>{label}: {count}</span>)}
           </div>
-          <DayGrid leads={day2} dayKey={2} nextStatus="interview" nextLabel="Move to Day 3 →"/>
+          <DayGrid leads={day2} dayKey={2} nextStatus="interview" nextLabel="Move to Day 3 →" pm={pm} />
         </div>
       )}
       {tab === 'day3' && (

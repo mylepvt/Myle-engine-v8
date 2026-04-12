@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class UserProfileResponse(BaseModel):
@@ -101,9 +101,8 @@ class SystemConfigurationResponse(BaseModel):
 
 class SystemConfigurationUpdateRequest(BaseModel):
     """Request for updating system configuration."""
-    # Dynamic fields - any key-value pairs
-    class Config:
-        extra = "allow"
+
+    model_config = ConfigDict(extra="allow")
 
 
 class AppSettingsResponse(BaseModel):
@@ -134,7 +133,7 @@ class AuditLogEntry(BaseModel):
     action: str
     resource_type: str
     resource_id: Optional[str]
-    details: dict[str, any]
+    details: dict[str, Any]
     ip_address: Optional[str]
     user_agent: Optional[str]
     created_at: str
@@ -188,7 +187,7 @@ class PasswordChangeResponse(BaseModel):
 
 class EmailChangeRequest(BaseModel):
     """Request for email change."""
-    new_email: str = Field(..., regex=r'^[^@]+@[^@]+\.[^@]+$')
+    new_email: str = Field(..., pattern=r'^[^@]+@[^@]+\.[^@]+$')
     current_password: str = Field(..., min_length=1)
 
 

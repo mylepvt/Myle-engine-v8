@@ -29,6 +29,13 @@ def test_settings_app_admin(monkeypatch: pytest.MonkeyPatch) -> None:
     assert c.get("/api/v1/settings/app").status_code == 200
 
 
+def test_settings_enhanced_mounted_unauthenticated_is_401_not_404() -> None:
+    """Regression: router must include settings_enhanced — missing mount was 404 for all FE calls."""
+    c = TestClient(app)
+    r = c.get("/api/v1/settings-enhanced/profile")
+    assert r.status_code == 401
+
+
 def test_other_leaderboard_any_role(monkeypatch: pytest.MonkeyPatch) -> None:
     patch_jwt_settings(monkeypatch, auth_dev_login_enabled=True)
     c = TestClient(app)

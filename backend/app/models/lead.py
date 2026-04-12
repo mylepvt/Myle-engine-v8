@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func, text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
@@ -117,3 +117,6 @@ class Lead(Base):
         server_default=text("0"),
         default=0,
     )
+
+    # Relationships
+    payments: Mapped[list["Payment"]] = relationship("Payment", back_populates="lead", lazy="dynamic")

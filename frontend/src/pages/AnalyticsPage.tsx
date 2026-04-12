@@ -1,19 +1,10 @@
 import { useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { 
-  BarChart3, 
-  TrendingUp, 
-  Users, 
-  Phone, 
-  Target,
-  Award,
-  Activity,
-  Calendar,
-  Download
-} from 'lucide-react'
+import { Activity, Calendar, Download, Loader2 } from 'lucide-react'
+import { apiFetch } from '@/lib/api'
 import { 
   useTeamPerformanceQuery,
   useIndividualPerformanceQuery,
@@ -31,6 +22,7 @@ import DailyTrendsChart from '@/components/analytics/DailyTrendsChart'
 export default function AnalyticsPage() {
   const [selectedDays, setSelectedDays] = useState(30)
   const [activeTab, setActiveTab] = useState('overview')
+  const [isExporting, setIsExporting] = useState<string | null>(null)
   const { data: authData } = useAuthMeQuery()
   
   const teamPerformance = useTeamPerformanceQuery(selectedDays)
@@ -42,6 +34,46 @@ export default function AnalyticsPage() {
   const isAdmin = authData?.role === 'admin'
   const isLeader = authData?.role === 'leader'
   const canViewTeam = isAdmin || isLeader
+
+  const handleExport = async (format: 'csv' | 'excel') => {
+    setIsExporting(format)
+    try {
+      const response = await apiFetch(`/api/v1/analytics/export?format=${format}&days=${selectedDays}`, {
+        method: 'POST',
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Export failed: ${response.status}`)
+      }
+      
+      // Get filename from header or create default
+      const contentDisposition = response.headers.get('content-disposition')
+      let filename = `analytics-${selectedDays}days.${format}`
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?([^";]+)"?/)
+        if (filenameMatch) {
+          filename = filenameMatch[1]
+        }
+      }
+      
+      // Download the file
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error('Export error:', error)
+      // You could show a toast notification here
+      alert('Export failed. Please try again.')
+    } finally {
+      setIsExporting(null)
+    }
+  }
 
   return (
     <div className="container mx-auto p-6">
@@ -175,12 +207,30 @@ export default function AnalyticsPage() {
             <p className="text-sm text-gray-600">Download analytics data for offline analysis</p>
           </div>
           <div className="flex space-x-2">
-            <Button variant="outline" size="sm">
-              <Download className="w-4 h-4 mr-2" />
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => handleExport('csv')}
+              disabled={isExporting === 'csv'}
+            >
+              {isExporting === 'csv' ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4 mr-2" />
+              )}
               Export CSV
             </Button>
-            <Button variant="outline" size="sm">
-              <Download className="w-4 h-4 mr-2" />
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => handleExport('excel')}
+              disabled={isExporting === 'excel'}
+            >
+              {isExporting === 'excel' ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4 mr-2" />
+              )}
               Export Excel
             </Button>
           </div>

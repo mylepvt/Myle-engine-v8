@@ -11,15 +11,10 @@ import {
   Bell, 
   Shield, 
   Settings as SettingsIcon,
-  Globe,
   Lock,
-  Smartphone,
   Mail,
-  Phone,
-  Calendar,
   Users,
   Database,
-  AlertTriangle
 } from 'lucide-react'
 import { 
   useUserProfileQuery,
@@ -33,9 +28,88 @@ import {
   useAppSettingUpdateMutation,
   useAppSettingDeleteMutation,
   usePasswordChangeMutation,
-  useEmailChangeMutation
+  useEmailChangeMutation,
+  type UserProfileResponse,
+  type UserProfileUpdateRequest,
 } from '@/hooks/use-settings-query'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
+
+function ProfileBasicInfoCard({
+  profile,
+  isPending,
+  onSave,
+}: {
+  profile: UserProfileResponse | undefined
+  isPending: boolean
+  onSave: (data: UserProfileUpdateRequest) => void
+}) {
+  const [form, setForm] = useState({
+    username: profile?.username ?? '',
+    phone: profile?.phone ?? '',
+    name: profile?.name ?? '',
+  })
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg flex items-center">
+          <User className="w-5 h-5 mr-2" />
+          Basic Information
+        </CardTitle>
+        <CardDescription>
+          Update your personal information
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div>
+          <Label htmlFor="fbo_id">FBO ID</Label>
+          <Input
+            id="fbo_id"
+            value={profile?.fbo_id || ''}
+            disabled
+            className="bg-gray-50"
+          />
+        </div>
+        <div>
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            value={profile?.email || ''}
+            disabled
+            className="bg-gray-50"
+          />
+        </div>
+        <div>
+          <Label htmlFor="username">Username</Label>
+          <Input
+            id="username"
+            value={form.username}
+            onChange={(e) => setForm((prev) => ({ ...prev, username: e.target.value }))}
+          />
+        </div>
+        <div>
+          <Label htmlFor="name">Full Name</Label>
+          <Input
+            id="name"
+            value={form.name}
+            onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+          />
+        </div>
+        <div>
+          <Label htmlFor="phone">Phone</Label>
+          <Input
+            id="phone"
+            value={form.phone}
+            onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
+          />
+        </div>
+        <Button onClick={() => onSave(form)} disabled={isPending}>
+          {isPending ? 'Updating...' : 'Update Profile'}
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile')
@@ -58,12 +132,6 @@ export default function SettingsPage() {
   const changeEmail = useEmailChangeMutation()
   
   // Form states
-  const [profileForm, setProfileForm] = useState({
-    username: '',
-    phone: '',
-    name: '',
-  })
-  
   const [passwordForm, setPasswordForm] = useState({
     current_password: '',
     new_password: '',
@@ -81,20 +149,6 @@ export default function SettingsPage() {
   })
 
   const isAdmin = authData?.role === 'admin'
-  const isLeader = authData?.role === 'leader'
-
-  // Initialize form when profile data loads
-  if (userProfile.data && !profileForm.username) {
-    setProfileForm({
-      username: userProfile.data.username || '',
-      phone: userProfile.data.phone || '',
-      name: userProfile.data.name || '',
-    })
-  }
-
-  const handleProfileUpdate = () => {
-    updateProfile.mutate(profileForm)
-  }
 
   const handlePasswordChange = () => {
     if (passwordForm.new_password !== passwordForm.confirm_password) {
@@ -154,71 +208,18 @@ export default function SettingsPage() {
           <TabsTrigger value="preferences">Preferences</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           {isAdmin && <TabsTrigger value="system">System</TabsTrigger>}
-          {isAdmin && <TabsTrigger value="advanced">Advanced</TabsTrigger>
+          {isAdmin && <TabsTrigger value="advanced">Advanced</TabsTrigger>}
         </TabsList>
 
         {/* Profile Tab */}
         <TabsContent value="profile" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Basic Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center">
-                  <User className="w-5 h-5 mr-2" />
-                  Basic Information
-                </CardTitle>
-                <CardDescription>
-                  Update your personal information
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="fbo_id">FBO ID</Label>
-                  <Input
-                    id="fbo_id"
-                    value={userProfile.data?.fbo_id || ''}
-                    disabled
-                    className="bg-gray-50"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    value={userProfile.data?.email || ''}
-                    disabled
-                    className="bg-gray-50"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="username">Username</Label>
-                  <Input
-                    id="username"
-                    value={profileForm.username}
-                    onChange={(e) => setProfileForm(prev => ({ ...prev, username: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    value={profileForm.name}
-                    onChange={(e) => setProfileForm(prev => ({ ...prev, name: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input
-                    id="phone"
-                    value={profileForm.phone}
-                    onChange={(e) => setProfileForm(prev => ({ ...prev, phone: e.target.value }))}
-                  />
-                </div>
-                <Button onClick={handleProfileUpdate} disabled={updateProfile.isPending}>
-                  {updateProfile.isPending ? 'Updating...' : 'Update Profile'}
-                </Button>
-              </CardContent>
-            </Card>
+            <ProfileBasicInfoCard
+              key={userProfile.data?.id ?? 'profile-loading'}
+              profile={userProfile.data}
+              isPending={updateProfile.isPending}
+              onSave={(data) => updateProfile.mutate(data)}
+            />
 
             {/* Account Status */}
             <Card>
