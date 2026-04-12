@@ -8,7 +8,7 @@ import {
   shouldOfferWhatsAppForTransition,
 } from '@/lib/lead-next-action'
 import { hapticError, hapticTapHeavy } from '@/lib/haptics'
-import { playUiCoinSound, playUiErrorSound, primeAudioContextSync } from '@/lib/ui-sounds'
+import { playUiErrorSound, playUiPaymentCashSound, primeAudioContextSync } from '@/lib/ui-sounds'
 import { useAvailableTransitionsQuery, useTransitionLeadMutation } from '@/hooks/use-pipeline-query'
 import { LEAD_STATUS_OPTIONS } from '@/hooks/use-leads-query'
 import { cn } from '@/lib/utils'
@@ -46,7 +46,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
     try {
       const res = await mut.mutateAsync({ leadId: lead.id, targetStatus: target })
       if (res.new_status === 'converted') {
-        void playUiCoinSound()
+        void playUiPaymentCashSound()
         if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
           try {
             navigator.vibrate(80)

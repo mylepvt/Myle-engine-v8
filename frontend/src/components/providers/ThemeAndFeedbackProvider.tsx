@@ -16,7 +16,7 @@ import {
 } from '@/lib/haptics'
 import {
   playUiClickSound,
-  playUiCoinSound,
+  playUiPaymentCashSound,
   playUiDeleteSound,
   playUiErrorSound,
   playUiLevelUpSound,
@@ -146,7 +146,7 @@ export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) 
             break
 
           case 'coin':
-            if (soundEnabled) await playUiCoinSound()
+            if (soundEnabled) await playUiPaymentCashSound()
             if (hapticsEnabled) hapticCoin()
             useUiFeedbackStore.getState().addSatisfactionPoints(15)
             break

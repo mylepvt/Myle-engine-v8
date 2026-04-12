@@ -1,12 +1,18 @@
 /**
  * Haptic feedback library.
  *
- * Uses navigator.vibrate (Vibration API) — works on Android Chrome and some
- * other browsers. iOS Safari does not support this API but the calls are
- * silently ignored, so it's safe to call everywhere.
+ * Uses navigator.vibrate (Vibration API). **iPhone Safari does not expose
+ * vibration from web pages** (API missing / no-op) — only native apps get
+ * Taptic. Android Chrome works. Calls remain safe everywhere.
  *
  * Pattern notation: [on, off, on, off…] in milliseconds.
  */
+
+/** True when the browser can actually vibrate (typically Android/desktop Chrome). */
+export function browserSupportsVibration(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return typeof navigator.vibrate === 'function'
+}
 
 function vibe(pattern: number | number[]): void {
   if (typeof navigator === 'undefined') return

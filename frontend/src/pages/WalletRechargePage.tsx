@@ -6,6 +6,9 @@ import {
   useCreateRechargeRequestMutation,
   useWalletRechargeRequestsQuery,
 } from '@/hooks/use-wallet-recharge-query'
+import { hapticCoin } from '@/lib/haptics'
+import { playUiPaymentCashSound, primeAudioContextSync } from '@/lib/ui-sounds'
+import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
 
 type Props = {
   title: string
@@ -59,6 +62,11 @@ export function WalletRechargePage({ title }: Props) {
         proof_url: proofUrl.trim() || undefined,
         idempotency_key,
       })
+      primeAudioContextSync()
+      const { soundEnabled, hapticsEnabled } = useUiFeedbackStore.getState()
+      if (soundEnabled) void playUiPaymentCashSound()
+      if (hapticsEnabled) hapticCoin()
+      useUiFeedbackStore.getState().addSatisfactionPoints(15)
       setAmount('')
       setUtr('')
       setProofUrl('')
@@ -148,7 +156,7 @@ export function WalletRechargePage({ title }: Props) {
           </p>
         ) : null}
 
-        <Button type="submit" disabled={createMut.isPending || !amount} data-ui-sound="coin">
+        <Button type="submit" disabled={createMut.isPending || !amount} data-ui-sound="click">
           {createMut.isPending ? 'Submitting…' : 'Submit request'}
         </Button>
       </form>

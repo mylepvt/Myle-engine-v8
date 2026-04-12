@@ -1,6 +1,7 @@
 import { Layers2, Monitor, Moon, Sparkles, Sun, Vibrate, Volume2, VolumeX } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { browserSupportsVibration } from '@/lib/haptics'
 import { primeAudioContextSync } from '@/lib/ui-sounds'
 import { cn } from '@/lib/utils'
 import { useUiFeedbackStore, type ThemePreference } from '@/stores/ui-feedback-store'
@@ -83,7 +84,13 @@ export function ShellHeaderFeedbackControls() {
         className="size-9 md:size-8"
         aria-pressed={hapticsEnabled}
         aria-label={hapticsEnabled ? 'Disable haptics' : 'Enable haptics'}
-        title={hapticsEnabled ? 'Haptics on' : 'Haptics off'}
+        title={
+          !browserSupportsVibration()
+            ? 'Vibration not available in this browser (iPhone Safari has no web haptics — use sound)'
+            : hapticsEnabled
+              ? 'Haptics on'
+              : 'Haptics off'
+        }
         data-ui-sound="none"
         onClick={() => toggleHaptics()}
       >

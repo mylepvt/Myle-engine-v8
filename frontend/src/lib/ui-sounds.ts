@@ -1,12 +1,8 @@
 /**
- * Full synthesized UI sound library — Web Audio API only, zero deps.
+ * UI sounds — Web Audio API only, zero deps.
  *
- * Architecture:
- *   - Single shared AudioContext with a master DynamicsCompressor (prevents clipping)
- *   - Every sound function returns a Promise so callers can await sequencing
- *   - Sounds are layered (multiple oscillators + noise) for richness
- *   - Subtle reverb via comb-filter delay network on most sounds
- *   - All frequencies are based on real musical intervals / equal temperament
+ * Design: ASMR-style taps (short, dry, percussive) — avoid long triangle/sine chords
+ * that read as “harmonium”. Payment moments use a soft cash-drawer “ka-chink”.
  */
 
 // ─── Note frequency table (A4 = 440 Hz) ──────────────────────────────────────
@@ -35,7 +31,7 @@ function getCtx(): AudioContext | null {
       _master.release.value = 0.15
 
       _masterGain = _ctx.createGain()
-      _masterGain.gain.value = 0.72
+      _masterGain.gain.value = 0.62
 
       _master.connect(_masterGain)
       _masterGain.connect(_ctx.destination)
@@ -150,55 +146,43 @@ function playArpeggio(
 //  SOUND LIBRARY
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/** 1. CLICK — crisp double-layered tap. Used for buttons, tabs, links. */
+/** 1. CLICK — ASMR micro-tap (keyboard cap). No sustained harmonics. */
 export async function playUiClickSound(): Promise<void> {
   primeAudioContextSync()
   const ac = getCtx(); if (!ac) return
   await resume(ac)
   const t = ac.currentTime
-  // Primary: bright sine
-  makeOsc(ac, 'sine', 680, t, 0.055, 0.055, 0.005, 0.015, 0.4, 0.03)
-  // Layer: slightly detuned triangle for warmth
-  makeOsc(ac, 'triangle', 694, t, 0.05, 0.028, 0.006, 0.02, 0.3, 0.025)
+  makeOsc(ac, 'sine', 2650, t, 0.02, 0.038, 0.0008, 0.004, 0.25, 0.012)
+  makeNoise(ac, t, 0.006, 0.018, 4200, 'highpass')
 }
 
-/** 2. SATISFACTION — warm rewarding chime for gamified interactions. */
+/** 2. SATISFACTION — two tiny ticks (not a held chord). */
 export async function playUiSatisfactionSound(): Promise<void> {
   primeAudioContextSync()
   const ac = getCtx(); if (!ac) return
   await resume(ac)
   const t = ac.currentTime
-  // Root note: E5
-  makeOsc(ac, 'triangle', NOTE.E5, t, 0.16, 0.07, 0.01, 0.03, 0.65, 0.1)
-  // Third harmonic shimmer: B5
-  makeOsc(ac, 'sine', NOTE.B5, t + 0.01, 0.14, 0.025, 0.012, 0.04, 0.5, 0.09)
-  // Subtle sub: E4
-  makeOsc(ac, 'sine', NOTE.E4, t, 0.12, 0.02, 0.008, 0.03, 0.4, 0.07)
+  makeOsc(ac, 'sine', 1400, t, 0.018, 0.032, 0.001, 0.005, 0.3, 0.01)
+  makeOsc(ac, 'sine', 2100, t + 0.032, 0.018, 0.03, 0.001, 0.005, 0.28, 0.01)
 }
 
-/** 3. SUCCESS — ascending major triad arpeggio. Save / form submit / create. */
+/** 3. SUCCESS — quick dry blips. */
 export async function playUiSuccessSound(): Promise<void> {
   primeAudioContextSync()
   const ac = getCtx(); if (!ac) return
   await resume(ac)
   const t = ac.currentTime
-  // C5 → E5 → G5 (major triad, ascending)
-  playArpeggio(ac, t, [NOTE.C5, NOTE.E5, NOTE.G5], 0.10, 0.02, 'sine', 0.07, 0.008, 0.07)
-  // Add shimmer on E5 for richness
-  makeOsc(ac, 'triangle', NOTE.E5 * 2, t + 0.12, 0.12, 0.018, 0.01, 0.04, 0.4, 0.08)
+  playArpeggio(ac, t, [NOTE.C5, NOTE.E5, NOTE.G5], 0.055, 0.018, 'sine', 0.045, 0.004, 0.045)
 }
 
-/** 4. STAGE ADVANCE — perfect 4th leap. Pipeline status move. */
+/** 4. STAGE ADVANCE — two fast taps (pipeline move). */
 export async function playUiStageAdvanceSound(): Promise<void> {
   primeAudioContextSync()
   const ac = getCtx(); if (!ac) return
   await resume(ac)
   const t = ac.currentTime
-  // A4 → D5 (perfect 4th up)
-  makeOsc(ac, 'triangle', NOTE.A4, t, 0.10, 0.07, 0.008, 0.03, 0.55, 0.065)
-  makeOsc(ac, 'sine', NOTE.D5, t + 0.09, 0.14, 0.075, 0.01, 0.03, 0.6, 0.09)
-  // Harmonic overtone
-  makeOsc(ac, 'sine', NOTE.A5, t + 0.09, 0.12, 0.02, 0.01, 0.04, 0.35, 0.08)
+  makeOsc(ac, 'sine', 880, t, 0.022, 0.04, 0.001, 0.006, 0.3, 0.014)
+  makeOsc(ac, 'sine', 1180, t + 0.038, 0.022, 0.038, 0.001, 0.006, 0.32, 0.014)
 }
 
 /** 5. ERROR — descending minor 3rd, slightly rough tone. */
@@ -222,21 +206,27 @@ export async function playUiWarningSound(): Promise<void> {
   const t = ac.currentTime
   // E4 + Eb4 (minor 2nd — dissonant but not harsh)
   makeOsc(ac, 'sine', NOTE.E4, t, 0.18, 0.06, 0.01, 0.04, 0.55, 0.1)
-  makeOsc(ac, 'triangle', NOTE.E4 * Math.pow(2, -1 / 12), t + 0.06, 0.15, 0.04, 0.01, 0.04, 0.45, 0.1)
+  makeOsc(ac, 'sine', NOTE.E4 * Math.pow(2, -1 / 12), t + 0.06, 0.15, 0.04, 0.01, 0.04, 0.45, 0.1)
 }
 
-/** 7. COIN — bright metallic ping for points / wallet credits. */
-export async function playUiCoinSound(): Promise<void> {
+/**
+ * Soft cash-register / drawer “ka-chink” — wallet, payment submit, converted lead.
+ * Kept intentionally quiet; no long metallic ring.
+ */
+export async function playUiPaymentCashSound(): Promise<void> {
   primeAudioContextSync()
   const ac = getCtx(); if (!ac) return
   await resume(ac)
   const t = ac.currentTime
-  // High frequency metallic ping
-  makeOsc(ac, 'sine', 1760, t, 0.18, 0.065, 0.004, 0.01, 0.7, 0.14)
-  // 2nd harmonic
-  makeOsc(ac, 'sine', 3520, t, 0.14, 0.025, 0.004, 0.01, 0.55, 0.12)
-  // Bright attack transient
-  makeOsc(ac, 'triangle', 2200, t, 0.04, 0.04, 0.003, 0.015, 0.2, 0.02)
+  makeNoise(ac, t, 0.022, 0.028, 900, 'bandpass')
+  makeOsc(ac, 'sine', 1240, t + 0.018, 0.026, 0.042, 0.002, 0.008, 0.45, 0.018)
+  makeOsc(ac, 'sine', 1880, t + 0.052, 0.024, 0.038, 0.002, 0.008, 0.4, 0.016)
+  makeNoise(ac, t + 0.045, 0.012, 0.015, 2400, 'highpass')
+}
+
+/** Alias: coin / money moments use the same soft cash register. */
+export async function playUiCoinSound(): Promise<void> {
+  return playUiPaymentCashSound()
 }
 
 /** 8. LEVEL UP — 5-note pentatonic ascending arpeggio. Milestone / achievement. */
@@ -247,11 +237,8 @@ export async function playUiLevelUpSound(): Promise<void> {
   const t = ac.currentTime
   // C4-D4-E4-G4-A4 pentatonic scale
   const scale = [NOTE.C4, NOTE.D4, NOTE.E4, NOTE.G4, NOTE.A4]
-  playArpeggio(ac, t, scale, 0.09, 0.01, 'triangle', 0.07, 0.007, 0.08)
-  // Crowning high note: C5 with linger
-  makeOsc(ac, 'sine', NOTE.C5, t + scale.length * 0.10, 0.25, 0.075, 0.01, 0.04, 0.65, 0.15)
-  // Shimmer on root
-  makeOsc(ac, 'sine', NOTE.C4 * 2, t, 0.22, 0.02, 0.01, 0.05, 0.35, 0.12)
+  playArpeggio(ac, t, scale, 0.09, 0.01, 'sine', 0.055, 0.007, 0.08)
+  makeOsc(ac, 'sine', NOTE.C5, t + scale.length * 0.1, 0.2, 0.055, 0.01, 0.04, 0.55, 0.12)
 }
 
 /** 9. WHOOSH — filtered noise sweep for navigation / page transitions. */
@@ -331,8 +318,7 @@ export async function playUiNotificationSound(): Promise<void> {
   // C5 then E5 (major 3rd) — friendly notification
   makeOsc(ac, 'sine', NOTE.C5, t, 0.09, 0.06, 0.008, 0.02, 0.55, 0.065)
   makeOsc(ac, 'sine', NOTE.E5, t + 0.10, 0.14, 0.065, 0.009, 0.025, 0.6, 0.1)
-  // Gentle shimmer on second note
-  makeOsc(ac, 'triangle', NOTE.G5, t + 0.12, 0.11, 0.018, 0.01, 0.03, 0.35, 0.08)
+  makeOsc(ac, 'sine', NOTE.G5, t + 0.12, 0.09, 0.022, 0.008, 0.02, 0.35, 0.06)
 }
 
 /** 13. STREAK — escalating single note per combo level (C→D→E→G→A→C5+).
@@ -348,7 +334,7 @@ export async function playUiStreakSound(streak: number): Promise<void> {
   const gain = 0.055 + idx * 0.007
   const dur = 0.10 + idx * 0.015
 
-  makeOsc(ac, 'triangle', freq, t, dur, gain, 0.006, 0.025, 0.6, dur * 0.5)
+  makeOsc(ac, 'sine', freq, t, dur, gain, 0.006, 0.025, 0.6, dur * 0.5)
   if (streak >= 3) {
     // Add a 5th above for harmony on higher streaks
     makeOsc(ac, 'sine', freq * 1.5, t + 0.01, dur * 0.9, gain * 0.4, 0.008, 0.03, 0.45, dur * 0.45)
