@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Users } from 'lucide-react'
 import {
   usePipelineViewQuery,
@@ -66,12 +65,16 @@ export default function PipelinePage() {
 
       {/* Transition error */}
       {transitionError ? (
-        <Alert className="mb-6 border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+        <Alert className="mb-4 border-destructive/50 bg-destructive/10">
+          <AlertDescription className="flex items-center justify-between text-destructive">
             <span>{transitionError}</span>
-            <Button type="button" variant="ghost" size="sm" className="shrink-0" onClick={() => setTransitionError(null)}>
+            <button
+              type="button"
+              className="ml-3 text-xs underline underline-offset-2"
+              onClick={() => setTransitionError(null)}
+            >
               Dismiss
-            </Button>
+            </button>
           </AlertDescription>
         </Alert>
       ) : null}

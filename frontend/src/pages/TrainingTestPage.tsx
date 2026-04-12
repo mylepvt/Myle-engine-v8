@@ -24,25 +24,21 @@ export default function TrainingTestPage() {
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [showResults, setShowResults] = useState(false)
   const [results, setResults] = useState<TestResult | null>(null)
-  const [validationError, setValidationError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   const canTakeTest = authData?.training_status === 'completed' || !authData?.training_required
 
   const handleAnswerChange = (questionId: string, answer: string) => {
-    setValidationError(null)
-    setSubmitError(null)
-    setAnswers((prev) => ({
+    setAnswers(prev => ({
       ...prev,
-      [questionId]: answer,
+      [questionId]: answer
     }))
   }
 
   const handleSubmitTest = async () => {
-    setValidationError(null)
     setSubmitError(null)
     if (Object.keys(answers).length !== questions?.length) {
-      setValidationError('Please answer all questions before submitting.')
+      setSubmitError('Please answer all questions before submitting.')
       return
     }
 
@@ -60,7 +56,6 @@ export default function TrainingTestPage() {
     setShowResults(false)
     setResults(null)
     setSubmitError(null)
-    setValidationError(null)
   }
 
   if (questionsLoading) {
@@ -214,17 +209,16 @@ export default function TrainingTestPage() {
         ))}
       </div>
 
-      {(validationError || submitError) && (
-        <Alert className="mt-6 border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription>{validationError ?? submitError}</AlertDescription>
+      {submitError ? (
+        <Alert className="mt-4 border-destructive/50 bg-destructive/10">
+          <AlertDescription className="text-destructive">{submitError}</AlertDescription>
         </Alert>
-      )}
-
-      <div className="mt-8 flex justify-center">
+      ) : null}
+      <div className="mt-4 flex justify-center">
         <Button
           size="lg"
           onClick={handleSubmitTest}
-          disabled={submitMutation.isPending || Object.keys(answers).length !== questions?.length}
+          disabled={submitMutation.isPending}
         >
           {submitMutation.isPending ? 'Submitting...' : 'Submit Test'}
         </Button>

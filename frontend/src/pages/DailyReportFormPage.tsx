@@ -3,9 +3,6 @@ import { useEffect, useState } from 'react'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { apiFetch } from '@/lib/api'
-import { getApiErrorMessage } from '@/lib/api-error'
-import { hapticSuccess } from '@/lib/haptics'
-import { playUiSuccessSound } from '@/lib/ui-sounds'
 import { cn } from '@/lib/utils'
 
 type DailyReportPublic = {
@@ -67,7 +64,8 @@ export function DailyReportFormPage({ title }: Props) {
     queryFn: async () => {
       const res = await apiFetch(`/api/v1/reports/daily/mine?report_date=${encodeURIComponent(dateIso)}`)
       if (!res.ok) {
-        throw new Error(await getApiErrorMessage(res))
+        const t = await res.text()
+        throw new Error(t || res.statusText)
       }
       return res.json() as Promise<DailyReportPublic | null>
     },
@@ -103,13 +101,12 @@ export function DailyReportFormPage({ title }: Props) {
         body: JSON.stringify(body),
       })
       if (!res.ok) {
-        throw new Error(await getApiErrorMessage(res))
+        const t = await res.text()
+        throw new Error(t || res.statusText)
       }
       return res.json() as Promise<DailyReportPublic>
     },
     onSuccess: () => {
-      void playUiSuccessSound()
-      hapticSuccess()
       void qc.invalidateQueries({ queryKey: ['daily-report-mine'] })
     },
   })
@@ -176,6 +173,7 @@ export function DailyReportFormPage({ title }: Props) {
         <button
           type="submit"
           disabled={mut.isPending}
+          data-ui-sound="success"
           className="rounded-lg border border-primary/40 bg-primary/15 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary/25 disabled:opacity-50"
         >
           {mut.isPending ? 'Saving…' : 'Save report'}

@@ -83,7 +83,7 @@ export function NoticeBoardPage({ title }: Props) {
               {formError}
             </p>
           ) : null}
-          <Button type="submit" disabled={create.isPending}>
+          <Button type="submit" disabled={create.isPending} data-ui-sound="success">
             {create.isPending ? 'Posting…' : 'Post'}
           </Button>
         </form>
@@ -142,33 +142,30 @@ export function NoticeBoardPage({ title }: Props) {
                       {row.pin ? 'Unpin' : 'Pin'}
                     </Button>
                     {deleteConfirmId === row.id ? (
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-xs text-muted-foreground">Sure? This cannot be undone.</span>
+                      <>
+                        <span className="self-center text-xs text-muted-foreground">Sure?</span>
                         <Button
                           type="button"
-                          variant="outline"
+                          variant="default"
                           size="sm"
-                          className="border-destructive/50 text-destructive hover:bg-destructive/10"
+                          className="bg-destructive text-white hover:bg-destructive/90"
                           disabled={remove.isPending}
+                          data-ui-sound="delete"
                           onClick={() => {
-                            void remove
-                              .mutateAsync(row.id)
-                              .then(() => setDeleteConfirmId(null))
-                              .catch(() => {})
+                            void remove.mutateAsync(row.id).finally(() => setDeleteConfirmId(null))
                           }}
                         >
                           Yes, delete
                         </Button>
                         <Button
                           type="button"
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          disabled={remove.isPending}
                           onClick={() => setDeleteConfirmId(null)}
                         >
                           Cancel
                         </Button>
-                      </div>
+                      </>
                     ) : (
                       <Button
                         type="button"

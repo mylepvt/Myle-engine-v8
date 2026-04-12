@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { CheckCircle, XCircle, Clock, Award } from 'lucide-react'
 import { useTrainingTestQuestionsQuery, useSubmitTrainingTestMutation } from '@/hooks/use-training-query'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
@@ -15,32 +14,28 @@ type TestResult = {
   pass_mark_percent: number
 }
 
-export default function TrainingTestPageSimple() {
+export default function TrainingTestPage() {
   const { data: questions, isLoading: questionsLoading } = useTrainingTestQuestionsQuery()
   const { data: authData } = useAuthMeQuery()
   const submitMutation = useSubmitTrainingTestMutation()
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [showResults, setShowResults] = useState(false)
   const [results, setResults] = useState<TestResult | null>(null)
-  const [validationError, setValidationError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   const canTakeTest = authData?.training_status === 'completed' || !authData?.training_required
 
   const handleAnswerChange = (questionId: string, answer: string) => {
-    setValidationError(null)
-    setSubmitError(null)
-    setAnswers((prev) => ({
+    setAnswers(prev => ({
       ...prev,
-      [questionId]: answer,
+      [questionId]: answer
     }))
   }
 
   const handleSubmitTest = async () => {
-    setValidationError(null)
     setSubmitError(null)
     if (Object.keys(answers).length !== questions?.length) {
-      setValidationError('Please answer all questions before submitting.')
+      setSubmitError('Please answer all questions before submitting.')
       return
     }
 
@@ -58,7 +53,6 @@ export default function TrainingTestPageSimple() {
     setShowResults(false)
     setResults(null)
     setSubmitError(null)
-    setValidationError(null)
   }
 
   if (questionsLoading) {
@@ -218,17 +212,16 @@ export default function TrainingTestPageSimple() {
         ))}
       </div>
 
-      {(validationError || submitError) && (
-        <Alert className="mt-6 border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription>{validationError ?? submitError}</AlertDescription>
-        </Alert>
-      )}
-
-      <div className="mt-8 flex justify-center">
+      {submitError ? (
+        <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/[0.1] px-4 py-3 text-sm text-destructive" role="alert">
+          {submitError}
+        </div>
+      ) : null}
+      <div className="mt-4 flex justify-center">
         <Button
           size="lg"
           onClick={handleSubmitTest}
-          disabled={submitMutation.isPending || Object.keys(answers).length !== questions?.length}
+          disabled={submitMutation.isPending}
         >
           {submitMutation.isPending ? 'Submitting...' : 'Submit Test'}
         </Button>

@@ -148,7 +148,7 @@ export function WalletRechargePage({ title }: Props) {
           </p>
         ) : null}
 
-        <Button type="submit" disabled={createMut.isPending || !amount}>
+        <Button type="submit" disabled={createMut.isPending || !amount} data-ui-sound="coin">
           {createMut.isPending ? 'Submitting…' : 'Submit request'}
         </Button>
       </form>
