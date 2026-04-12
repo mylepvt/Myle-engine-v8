@@ -24,7 +24,7 @@ export const IconInput = React.forwardRef<HTMLInputElement, IconInputProps>(
       <div
         className={cn(
           'flex min-h-[44px] w-full overflow-hidden rounded-xl border border-white/[0.1] bg-muted/35 transition-[border-color,box-shadow]',
-          'focus-within:border-primary/55 focus-within:shadow-[0_0_0_3px_hsl(var(--primary)/0.18)]',
+          'focus-within:border-primary/55 focus-within:shadow-focus-ring-primary',
           wrapperClassName,
         )}
       >

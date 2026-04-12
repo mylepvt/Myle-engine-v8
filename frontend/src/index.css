@@ -3,70 +3,81 @@
 @tailwind utilities;
 
 /*
- * Myle — iOS Human Interface Guidelines (dark) inspired shell for mobile web (iPhone / Android).
- * System typography, grouped surfaces, iOS system blue tint, safe-area friendly.
+ * Myle — mobile-first dashboard shell (safe-area friendly).
+ */
+/*
+ * Theme tokens — aligned with shadcn v0 export (Downloads/b_qgx5RzC9x3G), dark mode.
+ * oklch() via CSS variables; Tailwind maps colors to var(--token) in tailwind.config.js
  */
 @layer base {
   :root {
-    /* iOS dark mode system colors (approximate) */
-    --background: 0 0% 0%;
-    --foreground: 0 0% 100%;
-    --surface: 0 0% 7%;
-    --card: 0 0% 11%;
-    --card-foreground: 0 0% 100%;
-    --popover: 0 0% 11%;
-    --popover-foreground: 0 0% 100%;
-    /* System blue (dark) — Apple tint */
-    --primary: 211 100% 52%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 16%;
-    --secondary-foreground: 0 0% 100%;
-    --muted: 0 0% 17%;
-    --muted-foreground: 240 5% 65%;
-    --accent: 0 0% 18%;
-    --accent-foreground: 0 0% 100%;
-    /* iOS system red (dark) */
-    --destructive: 4 100% 61%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 22%;
-    --input: 0 0% 18%;
-    --ring: 211 100% 52%;
-    --radius: 0.75rem;
-    /* iOS system green */
-    --success: 134 61% 51%;
-    --success-foreground: 144 100% 97%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 48 100% 97%;
-    --subtle: 240 5% 50%;
-    --glass-base: 0 0% 0%;
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.145 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.145 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.985 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.396 0.141 25.723);
+    --destructive-foreground: oklch(0.637 0.237 25.331);
+    --border: oklch(0.269 0 0);
+    --input: oklch(0.269 0 0);
+    --ring: oklch(0.439 0 0);
+    --radius: 0.625rem;
+    --chart-1: oklch(0.488 0.243 264.376);
+    --chart-2: oklch(0.696 0.17 162.48);
+    --chart-3: oklch(0.769 0.188 70.08);
+    --chart-4: oklch(0.627 0.265 303.9);
+    --chart-5: oklch(0.645 0.246 16.439);
+    /* App shell: sidebar-adjacent surface + semantics not in export */
+    --surface: oklch(0.205 0 0);
+    --subtle: oklch(0.55 0 0);
+    --success: oklch(0.696 0.17 162.48);
+    --success-foreground: oklch(0.985 0 0);
+    --warning: oklch(0.769 0.188 70.08);
+    --warning-foreground: oklch(0.205 0 0);
+    --glass-base: oklch(0.12 0 0);
   }
 
   .dark {
-    --background: 0 0% 0%;
-    --foreground: 0 0% 100%;
-    --surface: 0 0% 7%;
-    --card: 0 0% 11%;
-    --card-foreground: 0 0% 100%;
-    --popover: 0 0% 11%;
-    --popover-foreground: 0 0% 100%;
-    --primary: 211 100% 52%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 16%;
-    --secondary-foreground: 0 0% 100%;
-    --muted: 0 0% 17%;
-    --muted-foreground: 240 5% 65%;
-    --accent: 0 0% 18%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 4 100% 61%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 22%;
-    --input: 0 0% 18%;
-    --ring: 211 100% 52%;
-    --success: 134 61% 51%;
-    --success-foreground: 144 100% 97%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 48 100% 97%;
-    --subtle: 240 5% 50%;
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.145 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.145 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.985 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.396 0.141 25.723);
+    --destructive-foreground: oklch(0.637 0.237 25.331);
+    --border: oklch(0.269 0 0);
+    --input: oklch(0.269 0 0);
+    --ring: oklch(0.439 0 0);
+    --chart-1: oklch(0.488 0.243 264.376);
+    --chart-2: oklch(0.696 0.17 162.48);
+    --chart-3: oklch(0.769 0.188 70.08);
+    --chart-4: oklch(0.627 0.265 303.9);
+    --chart-5: oklch(0.645 0.246 16.439);
+    --surface: oklch(0.205 0 0);
+    --subtle: oklch(0.55 0 0);
+    --success: oklch(0.696 0.17 162.48);
+    --success-foreground: oklch(0.985 0 0);
+    --warning: oklch(0.769 0.188 70.08);
+    --warning-foreground: oklch(0.205 0 0);
+    --glass-base: oklch(0.12 0 0);
   }
 }
 
@@ -87,7 +98,7 @@
   body {
     @apply min-h-dvh bg-background font-sans text-ds-body text-foreground antialiased;
     font-feature-settings: 'kern' 1;
-    -webkit-tap-highlight-color: hsl(var(--primary) / 0.15);
+    -webkit-tap-highlight-color: color-mix(in oklch, var(--primary) 15%, transparent);
     max-width: 100%;
     overflow-x: clip;
     /* App-like feel: no double-tap zoom; still allows pinch-zoom for a11y users who need it */
@@ -112,8 +123,14 @@
   }
 
   ::selection {
-    background-color: hsl(var(--primary) / 0.35);
-    color: hsl(var(--primary-foreground));
+    background-color: color-mix(in oklch, var(--primary) 35%, transparent);
+    color: var(--primary-foreground);
+  }
+}
+
+@layer utilities {
+  .shadow-focus-ring-primary {
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 18%, transparent);
   }
 }
 
@@ -123,7 +140,9 @@
   }
 
   .surface-inset {
-    @apply rounded-[0.625rem] border border-border/80 bg-muted/50;
+    @apply rounded-[0.625rem] border;
+    border-color: color-mix(in oklch, var(--border) 80%, transparent);
+    background-color: color-mix(in oklch, var(--muted) 50%, transparent);
   }
 
   .field-label {
@@ -131,6 +150,15 @@
   }
 
   .field-input {
-    @apply h-11 min-h-[44px] w-full rounded-[0.625rem] border border-border bg-input px-3 py-0 text-ds-body text-foreground transition-[border-color,box-shadow] placeholder:text-muted-foreground focus:border-primary/70 focus:outline-none focus:ring-2 focus:ring-primary/35 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply h-11 min-h-[44px] w-full rounded-[0.625rem] border border-border bg-input px-3 py-0 text-ds-body text-foreground transition-[border-color,box-shadow] placeholder:text-muted-foreground focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .field-input:focus {
+    border-color: color-mix(in oklch, var(--primary) 70%, var(--border));
+    --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width)
+      var(--tw-ring-offset-color);
+    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width))
+      color-mix(in oklch, var(--primary) 35%, transparent);
+    box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
   }
 }

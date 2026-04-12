@@ -23,7 +23,7 @@
 
     <!-- Android / Chrome -->
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#252525" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
@@ -33,10 +33,16 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Myle" />
 
-    <!-- System UI fonts (SF / Roboto / Segoe) — iOS/Android native feel -->
+    <!-- Inter — matches tailwind fontFamily.sans (shadcn / v0 export stack) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+      rel="stylesheet"
+    />
 
-    <!-- Prevent flash — iOS dark system background -->
-    <style>html { background: #000000; }</style>
+    <!-- Prevent flash — match --background oklch(0.145 0 0) -->
+    <style>html { background: #252525; }</style>
   </head>
   <body>
     <div id="root"></div>
