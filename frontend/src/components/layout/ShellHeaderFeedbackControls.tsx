@@ -1,4 +1,4 @@
-import { Monitor, Moon, Sparkles, Sun, Volume2, VolumeX } from 'lucide-react'
+import { Layers2, Monitor, Moon, Sparkles, Sun, Volume2, VolumeX } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -8,6 +8,7 @@ const themes: { value: ThemePreference; label: string; Icon: typeof Sun }[] = [
   { value: 'light', label: 'Light mode', Icon: Sun },
   { value: 'dark', label: 'Dark mode', Icon: Moon },
   { value: 'system', label: 'Match system', Icon: Monitor },
+  { value: 'transparent', label: 'Transparent (glass)', Icon: Layers2 },
 ]
 
 export function ShellHeaderFeedbackControls() {
@@ -21,7 +22,7 @@ export function ShellHeaderFeedbackControls() {
   return (
     <div
       data-ui-silent
-      className="flex shrink-0 items-center gap-0.5 rounded-lg border border-border/60 bg-muted/30 p-0.5"
+      className="flex shrink-0 items-center gap-0.5 overflow-x-auto rounded-lg border border-border/60 bg-muted/30 p-0.5"
     >
       <div className="flex md:hidden" role="group" aria-label="Theme">
         <Button
@@ -30,13 +31,15 @@ export function ShellHeaderFeedbackControls() {
           size="icon"
           className="size-8"
           aria-label={`Theme: ${theme}. Tap to switch`}
-          title="Switch light / dark / system"
+          title="Cycle light → dark → system → transparent"
           onClick={() => cycleTheme()}
         >
           {theme === 'light' ? (
             <Sun className="size-4" aria-hidden />
           ) : theme === 'dark' ? (
             <Moon className="size-4" aria-hidden />
+          ) : theme === 'transparent' ? (
+            <Layers2 className="size-4" aria-hidden />
           ) : (
             <Monitor className="size-4" aria-hidden />
           )}

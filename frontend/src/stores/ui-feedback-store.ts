@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-export type ThemePreference = 'light' | 'dark' | 'system'
+export type ThemePreference = 'light' | 'dark' | 'system' | 'transparent'
 
 type UiFeedbackState = {
   theme: ThemePreference
@@ -23,7 +23,7 @@ export const useUiFeedbackStore = create<UiFeedbackState>()(
       satisfactionPoints: 0,
       setTheme: (theme) => set({ theme }),
       cycleTheme: () => {
-        const order: ThemePreference[] = ['light', 'dark', 'system']
+        const order: ThemePreference[] = ['light', 'dark', 'system', 'transparent']
         const i = order.indexOf(get().theme)
         set({ theme: order[(i + 1) % order.length] })
       },

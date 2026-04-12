@@ -24,6 +24,8 @@ Examples (run from ``backend/`` so ``app`` package resolves):
   After users are inserted, ``upline_user_id`` is backfilled from legacy
   ``upline_id`` / ``upline_username`` / ``upline_name`` / ``upline_fbo_id`` (leader downline).
 
+  CSV-only upline edits (existing users): ``scripts/import_org_tree_csv.py``.
+
   # Save legacy→new id maps for debugging
   python scripts/import_legacy_sqlite.py --dry-run --legacy-db ./leads.db --write-mapping /tmp/legacy_maps.json
 

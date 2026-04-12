@@ -4,15 +4,20 @@ import { playUiSatisfactionSound } from '@/lib/ui-sounds'
 import { useUiFeedbackStore, type ThemePreference } from '@/stores/ui-feedback-store'
 
 function resolveDark(theme: ThemePreference): boolean {
+  if (theme === 'transparent') return true
   if (theme === 'dark') return true
   if (theme === 'light') return false
   return window.matchMedia('(prefers-color-scheme: dark)').matches
 }
 
-function applyThemeColorMeta(isDark: boolean) {
+function applyThemeColorMeta(theme: ThemePreference, isDark: boolean) {
   const meta = document.querySelector('meta[name="theme-color"]')
   if (!meta) return
-  meta.setAttribute('content', isDark ? '#252525' : '#fafafa')
+  if (theme === 'transparent') {
+    meta.setAttribute('content', '#050208')
+    return
+  }
+  meta.setAttribute('content', isDark ? '#050208' : '#e8ecf8')
 }
 
 export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) {
@@ -24,7 +29,8 @@ export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) 
   useEffect(() => {
     const isDark = resolveDark(theme)
     document.documentElement.classList.toggle('dark', isDark)
-    applyThemeColorMeta(isDark)
+    document.documentElement.classList.toggle('theme-transparent', theme === 'transparent')
+    applyThemeColorMeta(theme, isDark)
   }, [theme])
 
   useEffect(() => {
@@ -34,7 +40,7 @@ export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) 
       if (t !== 'system') return
       const dark = mq.matches
       document.documentElement.classList.toggle('dark', dark)
-      applyThemeColorMeta(dark)
+      applyThemeColorMeta('system', dark)
     }
     mq.addEventListener('change', onChange)
     return () => mq.removeEventListener('change', onChange)

@@ -11,10 +11,16 @@
             var j = JSON.parse(raw)
             var st = j.state !== undefined ? j.state : j
             var th = st.theme || 'dark'
-            if (th === 'light') dark = false
-            else if (th === 'system')
-              dark = window.matchMedia('(prefers-color-scheme: dark)').matches
-            else dark = true
+            if (th === 'transparent') {
+              document.documentElement.classList.add('theme-transparent')
+              dark = true
+            } else {
+              document.documentElement.classList.remove('theme-transparent')
+              if (th === 'light') dark = false
+              else if (th === 'system')
+                dark = window.matchMedia('(prefers-color-scheme: dark)').matches
+              else dark = true
+            }
           }
           document.documentElement.classList.toggle('dark', dark)
         } catch (e) {
@@ -43,7 +49,7 @@
 
     <!-- Android / Chrome -->
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="theme-color" content="#fafafa" />
+    <meta name="theme-color" content="#050208" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />

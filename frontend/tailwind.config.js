@@ -122,10 +122,9 @@ export default {
         'label-wide': '0.06em',
       },
       boxShadow: {
-        'ios-bar':
-          '0 0.5px 0 0 hsl(0 0% 100% / 0.12), 0 8px 24px -12px rgba(0,0,0,0.45)',
-        'ios-card': '0 4px 24px -8px rgba(0,0,0,0.55)',
-        'glass-inset': 'inset 0 1px 1px rgba(0,0,0,0.35)',
+        'ios-bar': 'var(--shadow-ios-bar)',
+        'ios-card': 'var(--shadow-card)',
+        'glass-inset': 'inset 0 1px 1px color-mix(in srgb, var(--palette-ink) 35%, transparent)',
       },
     },
   },

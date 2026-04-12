@@ -3,81 +3,123 @@
 @tailwind utilities;
 
 /*
- * Myle — mobile-first dashboard shell (safe-area friendly).
- */
-/*
- * Theme tokens — shadcn-style light (:root) + dark (.dark). oklch via CSS variables.
+ * Myle — COLOR COMBO 05 (app-wide)
+ * Ink #050208 · Blue #5465FF · Mist #D2DDFF · Cyan #00FFD4 dulled via color-mix
  */
 @layer base {
   :root {
+    /* Raw palette */
+    --palette-ink: #050208;
+    --palette-blue: #5465ff;
+    --palette-mist: #d2ddff;
+    --palette-cyan-neon: #00ffd4;
+    /* Dull neon cyan: blend with slate so it’s not harsh on UI */
+    --palette-cyan-dull: color-mix(in srgb, var(--palette-cyan-neon) 52%, #64748b 48%);
+
     color-scheme: light;
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --destructive-foreground: oklch(0.985 0 0);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
+    --background: color-mix(in srgb, var(--palette-mist) 38%, white 62%);
+    --foreground: var(--palette-ink);
+    --card: #ffffff;
+    --card-foreground: var(--palette-ink);
+    --popover: #ffffff;
+    --popover-foreground: var(--palette-ink);
+    --primary: var(--palette-blue);
+    --primary-foreground: #f8fafc;
+    --secondary: color-mix(in srgb, var(--palette-mist) 50%, #f1f5f9 50%);
+    --secondary-foreground: var(--palette-ink);
+    --muted: color-mix(in srgb, var(--palette-mist) 42%, #f8fafc 58%);
+    --muted-foreground: color-mix(in srgb, var(--palette-ink) 62%, #64748b 38%);
+    --accent: color-mix(in srgb, var(--palette-cyan-dull) 18%, var(--palette-mist) 82%);
+    --accent-foreground: var(--palette-ink);
+    --destructive: #dc2626;
+    --destructive-foreground: #fef2f2;
+    --border: color-mix(in srgb, var(--palette-blue) 22%, var(--palette-mist) 78%);
+    --input: color-mix(in srgb, var(--palette-mist) 48%, white 52%);
+    --ring: var(--palette-blue);
     --radius: 0.625rem;
-    --chart-1: oklch(0.646 0.222 41.116);
-    --chart-2: oklch(0.6 0.118 184.704);
-    --chart-3: oklch(0.398 0.07 227.392);
-    --chart-4: oklch(0.828 0.189 84.429);
-    --chart-5: oklch(0.769 0.188 70.08);
-    --surface: oklch(0.985 0 0);
-    --subtle: oklch(0.45 0 0);
-    --success: oklch(0.627 0.194 145.2);
-    --success-foreground: oklch(0.985 0 0);
-    --warning: oklch(0.75 0.15 75);
-    --warning-foreground: oklch(0.2 0 0);
-    --glass-base: oklch(0.99 0 0);
+    --chart-1: var(--palette-blue);
+    --chart-2: var(--palette-cyan-dull);
+    --chart-3: color-mix(in srgb, var(--palette-blue) 55%, var(--palette-mist) 45%);
+    --chart-4: color-mix(in srgb, var(--palette-mist) 70%, var(--palette-blue) 30%);
+    --chart-5: color-mix(in srgb, var(--palette-ink) 40%, var(--palette-mist) 60%);
+    --surface: color-mix(in srgb, var(--palette-mist) 35%, white 65%);
+    --subtle: color-mix(in srgb, var(--palette-ink) 48%, var(--palette-mist) 52%);
+    --success: color-mix(in srgb, var(--palette-cyan-dull) 88%, var(--palette-ink) 12%);
+    --success-foreground: var(--palette-ink);
+    --warning: #d97706;
+    --warning-foreground: var(--palette-ink);
+    --glass-base: color-mix(in srgb, var(--palette-mist) 55%, white 45%);
+    --shadow-card: 0 16px 48px -20px color-mix(in srgb, var(--palette-blue) 22%, transparent);
+    --shadow-ios-bar: 0 0.5px 0 0 color-mix(in srgb, var(--palette-mist) 55%, transparent),
+      0 8px 24px -12px color-mix(in srgb, var(--palette-ink) 18%, transparent);
   }
 
   .dark {
     color-scheme: dark;
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.145 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.145 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.985 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.396 0.141 25.723);
-    --destructive-foreground: oklch(0.637 0.237 25.331);
-    --border: oklch(0.269 0 0);
-    --input: oklch(0.269 0 0);
-    --ring: oklch(0.439 0 0);
-    --chart-1: oklch(0.488 0.243 264.376);
-    --chart-2: oklch(0.696 0.17 162.48);
-    --chart-3: oklch(0.769 0.188 70.08);
-    --chart-4: oklch(0.627 0.265 303.9);
-    --chart-5: oklch(0.645 0.246 16.439);
-    --surface: oklch(0.205 0 0);
-    --subtle: oklch(0.55 0 0);
-    --success: oklch(0.696 0.17 162.48);
-    --success-foreground: oklch(0.985 0 0);
-    --warning: oklch(0.769 0.188 70.08);
-    --warning-foreground: oklch(0.205 0 0);
-    --glass-base: oklch(0.12 0 0);
+    --background: var(--palette-ink);
+    --foreground: var(--palette-mist);
+    --card: color-mix(in srgb, white 7%, var(--palette-ink));
+    --card-foreground: var(--palette-mist);
+    --popover: color-mix(in srgb, white 9%, var(--palette-ink));
+    --popover-foreground: var(--palette-mist);
+    --primary: var(--palette-blue);
+    --primary-foreground: #f1f5f9;
+    --secondary: color-mix(in srgb, white 11%, var(--palette-ink));
+    --secondary-foreground: var(--palette-mist);
+    --muted: color-mix(in srgb, white 9%, var(--palette-ink));
+    --muted-foreground: color-mix(in srgb, var(--palette-mist) 68%, var(--palette-ink) 32%);
+    --accent: color-mix(in srgb, var(--palette-blue) 32%, transparent);
+    --accent-foreground: var(--palette-mist);
+    --destructive: #f87171;
+    --destructive-foreground: var(--palette-ink);
+    --border: color-mix(in srgb, var(--palette-mist) 16%, transparent);
+    --input: color-mix(in srgb, white 10%, var(--palette-ink));
+    --ring: var(--palette-cyan-dull);
+    --chart-1: var(--palette-blue);
+    --chart-2: var(--palette-cyan-dull);
+    --chart-3: color-mix(in srgb, var(--palette-blue) 72%, var(--palette-mist) 28%);
+    --chart-4: color-mix(in srgb, var(--palette-mist) 55%, var(--palette-blue) 45%);
+    --chart-5: color-mix(in srgb, var(--palette-cyan-dull) 65%, var(--palette-mist) 35%);
+    --surface: color-mix(in srgb, white 10%, var(--palette-ink));
+    --subtle: color-mix(in srgb, var(--palette-mist) 58%, var(--palette-ink) 42%);
+    --success: var(--palette-cyan-dull);
+    --success-foreground: var(--palette-ink);
+    --warning: #fbbf24;
+    --warning-foreground: var(--palette-ink);
+    --glass-base: color-mix(in srgb, white 6%, var(--palette-ink));
+    --shadow-card: 0 16px 48px -22px color-mix(in srgb, var(--palette-blue) 35%, black 65%);
+    --shadow-ios-bar: 0 0.5px 0 0 color-mix(in srgb, var(--palette-mist) 14%, transparent),
+      0 8px 24px -12px rgba(0, 0, 0, 0.5);
+  }
+
+  /*
+   * Glass / transparent — same palette, translucent layers over ink + blue glow
+   */
+  .dark.theme-transparent {
+    --background: color-mix(in srgb, var(--palette-ink) 78%, transparent);
+    --foreground: var(--palette-mist);
+    --card: color-mix(in srgb, var(--palette-blue) 14%, color-mix(in srgb, white 8%, var(--palette-ink)) 86%);
+    --card-foreground: var(--palette-mist);
+    --popover: color-mix(in srgb, var(--palette-blue) 12%, color-mix(in srgb, white 10%, var(--palette-ink)) 88%);
+    --popover-foreground: var(--palette-mist);
+    --secondary: color-mix(in srgb, white 12%, transparent);
+    --muted: color-mix(in srgb, white 9%, transparent);
+    --muted-foreground: color-mix(in srgb, var(--palette-mist) 72%, transparent);
+    --accent: color-mix(in srgb, var(--palette-cyan-dull) 22%, transparent);
+    --border: color-mix(in srgb, var(--palette-mist) 18%, transparent);
+    --input: color-mix(in srgb, white 11%, transparent);
+    --surface: color-mix(in srgb, var(--palette-blue) 10%, color-mix(in srgb, white 8%, var(--palette-ink)) 82%);
+    --glass-base: color-mix(in srgb, var(--palette-cyan-dull) 8%, var(--palette-ink) 92%);
+  }
+
+  html.dark.theme-transparent {
+    background-color: transparent;
+    background-image:
+      radial-gradient(1000px 700px at 0% 0%, color-mix(in srgb, var(--palette-blue) 45%, transparent), transparent 58%),
+      radial-gradient(900px 600px at 100% 8%, color-mix(in srgb, var(--palette-cyan-dull) 28%, transparent), transparent 52%),
+      radial-gradient(800px 500px at 50% 100%, color-mix(in srgb, var(--palette-mist) 12%, transparent), transparent 55%),
+      var(--palette-ink);
+    background-attachment: fixed;
   }
 }
 
@@ -93,6 +135,10 @@
     max-width: 100%;
     overflow-x: clip;
     overscroll-behavior-x: none;
+  }
+
+  html.dark.theme-transparent body {
+    @apply bg-transparent;
   }
 
   body {
@@ -143,6 +189,12 @@
     @apply rounded-[0.625rem] border;
     border-color: color-mix(in oklch, var(--border) 80%, transparent);
     background-color: color-mix(in oklch, var(--muted) 50%, transparent);
+  }
+
+  html.dark.theme-transparent .surface-elevated,
+  html.dark.theme-transparent .surface-inset {
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
   }
 
   .field-label {
