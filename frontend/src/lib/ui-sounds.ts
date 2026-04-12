@@ -1,5 +1,16 @@
 let audioCtx: AudioContext | null = null
 
+/** Call from a user gesture (click/touch) so Android/iOS allow audio (especially first play). */
+export function primeAudioContextSync(): void {
+  if (typeof window === 'undefined') return
+  try {
+    const ac = ctx()
+    if (ac?.state === 'suspended') void ac.resume()
+  } catch {
+    /* ignore */
+  }
+}
+
 function ctx(): AudioContext | null {
   if (typeof window === 'undefined') return null
   if (!audioCtx) {
@@ -24,6 +35,7 @@ async function ensureRunning(ac: AudioContext) {
 
 /** Short neutral click — buttons, links. */
 export async function playUiClickSound() {
+  primeAudioContextSync()
   const ac = ctx()
   if (!ac) return
   await ensureRunning(ac)
@@ -43,6 +55,7 @@ export async function playUiClickSound() {
 
 /** Soft “satisfaction” chime — legacy default for gamified clicks. */
 export async function playUiSatisfactionSound() {
+  primeAudioContextSync()
   const ac = ctx()
   if (!ac) return
   await ensureRunning(ac)
@@ -63,6 +76,7 @@ export async function playUiSatisfactionSound() {
 
 /** Save / create / positive outcome. */
 export async function playUiSuccessSound() {
+  primeAudioContextSync()
   const ac = ctx()
   if (!ac) return
   await ensureRunning(ac)
@@ -83,6 +97,7 @@ export async function playUiSuccessSound() {
 
 /** Pipeline stage advance (status change). */
 export async function playUiStageAdvanceSound() {
+  primeAudioContextSync()
   const ac = ctx()
   if (!ac) return
   await ensureRunning(ac)

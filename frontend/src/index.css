@@ -255,3 +255,8 @@ html.perf-low-end.dark.theme-transparent .surface-inset {
 html.perf-low-end .shadow-ios-bar {
   box-shadow: 0 1px 0 0 color-mix(in srgb, var(--border) 45%, transparent);
 }
+
+html.perf-low-end .watch-gauge-hue,
+html.perf-low-end .watch-gauge-needle {
+  animation: none !important;
+}

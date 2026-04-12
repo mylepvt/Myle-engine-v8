@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Phone, MessageCircle, Video, Pencil, RefreshCw, Search, CheckSquare } from 'lucide-react'
+import { Phone, MessageCircle, Video, Pencil, Search, CheckSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -8,6 +8,7 @@ import {
 } from '@/hooks/use-leads-query'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
+import { telHref, whatsAppChatHref } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -45,7 +46,6 @@ const ONHOLD: LeadStatus[] = ['paid','day1','day2','interview','track_selected',
 const DAY3:   LeadStatus[] = ['interview','track_selected','seat_hold']
 const CLOSE:  LeadStatus[] = ['converted','lost']
 const slabel  = (s: string) => LEAD_STATUS_OPTIONS.find((o) => o.value === s)?.label ?? s
-const waLink  = (ph: string | null) => ph ? `https://wa.me/${ph.replace(/\D/g,'')}` : '#'
 
 // ── Tiny shared primitives ─────────────────────────────────────────────────────
 type PM = ReturnType<typeof usePatchLeadMutation>
@@ -100,8 +100,24 @@ function LeadCard({ lead, pm }: { lead: LeadPublic; pm: PM }) {
         {CALL_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
       <div className="flex items-center gap-1.5">
-        {lead.phone && <IconBtn href={`tel:${lead.phone}`} title="Call" colorHover="hover:border-primary/40 hover:text-primary"><Phone className="h-3.5 w-3.5"/></IconBtn>}
-        {lead.phone && <IconBtn href={waLink(lead.phone)} title="WhatsApp" colorHover="hover:border-green-400/40 hover:text-green-400"><MessageCircle className="h-3.5 w-3.5"/></IconBtn>}
+        {lead.phone && (
+          <IconBtn
+            href={telHref(lead.phone)}
+            title="Phone call"
+            colorHover="hover:border-primary/40 hover:text-primary"
+          >
+            <Phone className="h-3.5 w-3.5" />
+          </IconBtn>
+        )}
+        {lead.phone && (
+          <IconBtn
+            href={whatsAppChatHref(lead.phone)}
+            title="WhatsApp message — opens WhatsApp or WhatsApp Business on this number"
+            colorHover="hover:border-green-400/40 hover:text-green-400"
+          >
+            <MessageCircle className="h-3.5 w-3.5" />
+          </IconBtn>
+        )}
         <IconBtn title="Send Video" colorHover="hover:border-indigo-400/40 hover:text-indigo-400 disabled:opacity-50"
           onClick={() => void pm.mutateAsync({ id: lead.id, body: { call_status: 'video_sent', status: 'video_sent' as LeadStatus } })}>
           <Video className="h-3.5 w-3.5"/>
@@ -141,8 +157,24 @@ function AdminLeadCard({ lead, dayKey, pm, onMoveNext, nextLabel }: {
           {lead.city && <p className="mt-0.5 text-[0.7rem] text-muted-foreground">{lead.city}</p>}
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {lead.phone && <IconBtn href={`tel:${lead.phone}`} title="Call" colorHover="hover:border-primary/40 hover:text-primary"><Phone className="h-3.5 w-3.5"/></IconBtn>}
-          {lead.phone && <IconBtn href={waLink(lead.phone)} title="WhatsApp" colorHover="hover:border-green-400/40 hover:text-green-400"><MessageCircle className="h-3.5 w-3.5"/></IconBtn>}
+          {lead.phone && (
+            <IconBtn
+              href={telHref(lead.phone)}
+              title="Phone call"
+              colorHover="hover:border-primary/40 hover:text-primary"
+            >
+              <Phone className="h-3.5 w-3.5" />
+            </IconBtn>
+          )}
+          {lead.phone && (
+            <IconBtn
+              href={whatsAppChatHref(lead.phone)}
+              title="WhatsApp message — WhatsApp or WhatsApp Business"
+              colorHover="hover:border-green-400/40 hover:text-green-400"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+            </IconBtn>
+          )}
           <Link to={`/dashboard/work/leads/${lead.id}`} title="Edit"
             className="flex h-7 w-7 items-center justify-center rounded-md border border-white/12 bg-white/[0.05] transition hover:border-primary/40 hover:text-primary">
             <Pencil className="h-3.5 w-3.5"/>
@@ -364,7 +396,7 @@ function AdminView({ cols, pm, search }: { cols: Col[]; pm: PM; search: string }
 // ── Page ───────────────────────────────────────────────────────────────────────
 export function WorkboardPage({ title }: Props) {
   const { role } = useDashboardShellRole()
-  const { data, isPending, isError, error, refetch, isFetching } = useWorkboardQuery(true)
+  const { data, isPending, isError, error, refetch } = useWorkboardQuery(true)
   const pm = usePatchLeadMutation()
   const [qInput, setQInput] = useState('')
   const [search, setSearch] = useState('')
@@ -393,11 +425,6 @@ export function WorkboardPage({ title }: Props) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" size="sm" className="gap-1.5"
-            disabled={isPending || isFetching} onClick={() => void refetch()}>
-            <RefreshCw className={cn('h-3.5 w-3.5', isFetching && 'animate-spin')} aria-hidden/>
-            Refresh
-          </Button>
           <Button type="button" size="sm" asChild>
             <Link to="/dashboard/work/add-lead">Add Lead</Link>
           </Button>

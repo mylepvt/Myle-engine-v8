@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 
 import { Skeleton } from '@/components/ui/skeleton'
+import { WatchLiveGauge } from '@/components/watch/WatchLiveGauge'
 
 type WatchPageData = {
   token: string
@@ -78,10 +79,17 @@ export function WatchPage() {
   const videoId = data?.youtube_url ? extractYouTubeId(data.youtube_url) : null
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center">
+    <div className="min-h-screen bg-gradient-to-b from-zinc-950 via-black to-zinc-950 text-white flex flex-col items-center">
       {/* Header */}
-      <header className="w-full px-4 py-4 flex items-center justify-center border-b border-white/10">
-        <span className="text-xl font-bold tracking-tight">Myle</span>
+      <header className="w-full border-b border-white/10 bg-black/40 px-4 py-3 backdrop-blur-md">
+        <div className="mx-auto flex max-w-2xl items-center justify-between">
+          <span className="bg-gradient-to-r from-cyan-200 via-white to-violet-200 bg-clip-text text-lg font-semibold tracking-tight text-transparent">
+            Myle
+          </span>
+          <span className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[0.6rem] font-medium uppercase tracking-wider text-white/50">
+            Watch
+          </span>
+        </div>
       </header>
 
       <main className="w-full max-w-2xl flex flex-col items-center gap-6 px-4 py-8">
@@ -100,6 +108,8 @@ export function WatchPage() {
           </div>
         ) : data ? (
           <>
+            <WatchLiveGauge />
+
             {/* Title */}
             <h1 className="text-lg font-semibold text-center text-white/90">
               {data.title}

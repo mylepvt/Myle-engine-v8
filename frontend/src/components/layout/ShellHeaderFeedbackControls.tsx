@@ -1,6 +1,7 @@
 import { Layers2, Monitor, Moon, Sparkles, Sun, Volume2, VolumeX } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { primeAudioContextSync } from '@/lib/ui-sounds'
 import { cn } from '@/lib/utils'
 import { useUiFeedbackStore, type ThemePreference } from '@/stores/ui-feedback-store'
 
@@ -24,46 +25,60 @@ export function ShellHeaderFeedbackControls() {
   const { label, Icon } = themeMeta[theme] ?? themeMeta.dark
 
   return (
-    <div className="flex shrink-0 items-center gap-0.5 overflow-x-auto rounded-lg border border-border/60 bg-muted/30 p-0.5">
+    <div
+      className={cn(
+        'flex shrink-0 items-center gap-0.5',
+        /* Phone: icon row only — no “card” chrome (less clutter, less blur work) */
+        'max-md:gap-0',
+        'md:gap-0.5 md:rounded-lg md:border md:border-border/50 md:bg-muted/25 md:p-0.5',
+      )}
+    >
       <div role="group" aria-label="Theme">
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="size-8"
+          className="size-9 md:size-8"
           aria-label={`Theme: ${label}. Tap to cycle light → dark → system → glass`}
           title={`${label} · tap for next`}
           onClick={() => cycleTheme()}
         >
-          <Icon className="size-4" aria-hidden />
+          <Icon className="size-[1.05rem] md:size-4" aria-hidden />
         </Button>
       </div>
-      <div className="hidden max-w-[4rem] truncate text-[0.65rem] leading-tight text-muted-foreground lg:block">
+      <div className="hidden max-w-[4rem] truncate text-[0.65rem] leading-tight text-muted-foreground xl:block">
         <span className="font-medium text-foreground/90">{label}</span>
         <span className="block text-[0.58rem] opacity-75">Tap · cycle</span>
       </div>
-      <div className="mx-0.5 h-6 w-px bg-border/80" aria-hidden />
+      <div className="mx-0 hidden h-6 w-px bg-border/70 md:mx-0.5 md:block" aria-hidden />
       <Button
         type="button"
         variant="ghost"
         size="icon"
-        className="size-8"
+        className="size-9 md:size-8"
         aria-pressed={soundEnabled}
         aria-label={soundEnabled ? 'Mute UI sounds' : 'Enable UI sounds'}
         title={soundEnabled ? 'Mute UI sounds' : 'Enable UI sounds'}
-        onClick={() => toggleSound()}
+        onClick={() => {
+          primeAudioContextSync()
+          toggleSound()
+        }}
       >
-        {soundEnabled ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
+        {soundEnabled ? (
+          <Volume2 className="size-[1.05rem] md:size-4" />
+        ) : (
+          <VolumeX className="size-[1.05rem] md:size-4" />
+        )}
       </Button>
       <div
         className={cn(
-          'flex min-w-0 max-w-[5.5rem] items-center gap-1 rounded-md px-1.5 py-0.5 text-ds-caption tabular-nums text-muted-foreground',
+          'hidden min-w-0 max-w-[5.25rem] items-center gap-1 rounded-md px-1.5 py-0.5 text-ds-caption tabular-nums text-muted-foreground sm:flex',
         )}
         title="Points from UI clicks (local only)"
       >
         <Sparkles className="size-3.5 shrink-0 text-chart-4" aria-hidden />
         <span className="truncate font-medium text-foreground">{satisfactionPoints}</span>
-        <span className="hidden sm:inline">pts</span>
+        <span className="hidden md:inline">pts</span>
       </div>
     </div>
   )

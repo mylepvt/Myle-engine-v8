@@ -230,21 +230,49 @@ export function DashboardLayout() {
       </aside>
 
       <div className="flex min-w-0 max-w-full flex-1 flex-col overflow-x-hidden pt-[env(safe-area-inset-top)]">
-        <header className="relative z-20 flex h-[52px] shrink-0 items-center gap-2 border-b border-border bg-background/90 px-2 shadow-ios-bar backdrop-blur-xl supports-[backdrop-filter]:bg-background/75 md:px-3">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="shrink-0"
-            onClick={toggleSidebar}
-            aria-label="Toggle sidebar"
-          >
-            {sidebarOpen ? <PanelLeftClose /> : <Menu />}
-          </Button>
+        <header className="relative z-20 flex h-[52px] shrink-0 items-center gap-2 border-b border-border bg-background/95 px-2 shadow-ios-bar backdrop-blur-md supports-[backdrop-filter]:bg-background/80 md:gap-3 md:px-3">
+          {/* Left: menu + compact admin preview (no stacked label on small screens) */}
+          <div className="flex min-w-0 shrink-0 items-center gap-1.5">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-9 shrink-0"
+              onClick={toggleSidebar}
+              aria-label="Toggle sidebar"
+            >
+              {sidebarOpen ? <PanelLeftClose className="size-5" /> : <Menu className="size-5" />}
+            </Button>
+
+            {serverRole === 'admin' ? (
+              <>
+                <label htmlFor="header-view-as" className="sr-only">
+                  Preview dashboard as role
+                </label>
+                <select
+                  id="header-view-as"
+                  className={cn(
+                    'h-9 max-w-[6.25rem] shrink-0 truncate rounded-lg border border-border bg-muted/40 py-0 pl-2 pr-7 text-[0.7rem] font-medium text-foreground',
+                    'focus:outline-none focus:ring-2 focus:ring-primary/30 md:max-w-[11rem] md:text-xs',
+                  )}
+                  value={viewAsRole ?? 'admin'}
+                  title="UI preview only — your account stays admin"
+                  onChange={(e) => {
+                    const v = e.target.value as Role | 'admin'
+                    setViewAsRole(v === 'admin' ? null : v)
+                  }}
+                >
+                  <option value="admin">Admin</option>
+                  <option value="leader">Leader</option>
+                  <option value="team">Team</option>
+                </select>
+              </>
+            ) : null}
+          </div>
 
           <form
             className={cn(
-              'relative mx-auto hidden max-w-xl flex-1 sm:block',
+              'relative mx-auto hidden min-w-0 max-w-xl flex-1 sm:block',
               trainingLocked && 'sm:hidden',
             )}
             onSubmit={submitHeaderSearch}
@@ -260,45 +288,25 @@ export function DashboardLayout() {
               value={headerSearch}
               onChange={(e) => setHeaderSearch(e.target.value)}
               placeholder="Search leads"
-              className="h-10 w-full rounded-[0.625rem] border border-border bg-muted/50 pl-10 pr-4 text-ds-body text-foreground placeholder:text-muted-foreground focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="h-9 w-full rounded-[0.625rem] border border-border bg-muted/50 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/30"
               aria-label="Search leads"
               autoComplete="off"
             />
           </form>
 
-          <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5 sm:flex-initial sm:gap-2">
-            {serverRole === 'admin' ? (
-              <label className="flex max-w-[6.5rem] min-w-0 flex-col sm:max-w-[10rem]">
-                <span className="text-[0.58rem] font-semibold uppercase tracking-wide text-muted-foreground">
-                  View as
-                </span>
-                <select
-                  className="mt-0.5 max-w-full rounded-md border border-border bg-muted/50 py-1 pl-2 pr-6 text-[0.7rem] font-medium text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
-                  value={viewAsRole ?? 'admin'}
-                  aria-label="Preview dashboard navigation as role"
-                  title="UI preview only — your account stays admin"
-                  onChange={(e) => {
-                    const v = e.target.value as Role | 'admin'
-                    setViewAsRole(v === 'admin' ? null : v)
-                  }}
-                >
-                  <option value="admin">Admin (full)</option>
-                  <option value="leader">Leader</option>
-                  <option value="team">Team</option>
-                </select>
-              </label>
-            ) : null}
+          {/* Right: tools — single row, no horizontal scroll strip on phone */}
+          <div className="ml-auto flex shrink-0 items-center gap-0.5 md:gap-1">
             <ShellHeaderFeedbackControls />
-            <Button variant="ghost" size="icon" className="shrink-0" asChild aria-label="Settings">
+            <Button variant="ghost" size="icon" className="size-9 shrink-0" asChild aria-label="Settings">
               <Link to="/dashboard/settings/profile">
-                <Settings className="size-[1.25rem]" aria-hidden />
+                <Settings className="size-[1.15rem] md:size-[1.25rem]" aria-hidden />
               </Link>
             </Button>
-            <Button variant="ghost" size="icon" className="relative shrink-0" asChild aria-label="Notice board">
+            <Button variant="ghost" size="icon" className="relative size-9 shrink-0" asChild aria-label="Notice board">
               <Link to="/dashboard/other/notice-board" title="Notice board & announcements">
-                <Bell className="size-[1.35rem]" aria-hidden />
+                <Bell className="size-[1.2rem] md:size-[1.35rem]" aria-hidden />
                 <span
-                  className="pointer-events-none absolute right-2 top-2 size-2 rounded-full bg-primary ring-2 ring-background"
+                  className="pointer-events-none absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary ring-2 ring-background"
                   aria-hidden
                 />
               </Link>
@@ -306,7 +314,7 @@ export function DashboardLayout() {
 
             {shellRole != null ? (
               <span
-                className="max-w-[7rem] truncate rounded-[0.5rem] border border-border bg-muted/40 px-2 py-1.5 text-center text-ds-caption font-medium text-foreground sm:max-w-[11rem]"
+                className="hidden max-w-[10rem] truncate rounded-md border border-border bg-muted/35 px-2 py-1 text-center text-[0.7rem] font-medium text-foreground md:inline-flex"
                 title={
                   isAdminPreviewing && serverRole === 'admin'
                     ? `Nav as ${roleShortLabel(shellRole)} · signed in as Admin`
@@ -318,7 +326,7 @@ export function DashboardLayout() {
                   : roleShortLabel(shellRole)}
               </span>
             ) : rolePending ? (
-              <span className="inline-block h-8 w-16 animate-pulse rounded-md bg-muted/60" />
+              <span className="hidden h-8 w-14 animate-pulse rounded-md bg-muted/60 md:inline-block" />
             ) : null}
 
             <Link
@@ -344,7 +352,7 @@ export function DashboardLayout() {
               )}
             </Link>
 
-            <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
+            <Button variant="ghost" size="sm" asChild className="hidden lg:inline-flex">
               <Link to="/" className="gap-1.5 text-muted-foreground">
                 <Home className="size-4" />
                 Home

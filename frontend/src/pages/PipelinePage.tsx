@@ -1,23 +1,18 @@
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Users, RefreshCw } from 'lucide-react'
-import { 
+import { Users } from 'lucide-react'
+import {
   usePipelineViewQuery,
   usePipelineMetricsQuery,
   useTransitionLeadMutation,
-  useAutoExpireMutation
 } from '@/hooks/use-pipeline-query'
-import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import PipelineColumn from '@/components/pipeline/PipelineColumn'
 import PipelineMetrics from '@/components/pipeline/PipelineMetrics'
 
 export default function PipelinePage() {
   const { data: pipelineData, isLoading, error } = usePipelineViewQuery()
   const { data: metrics } = usePipelineMetricsQuery()
-  const { data: authData } = useAuthMeQuery()
   const transitionMutation = useTransitionLeadMutation()
-  const autoExpireMutation = useAutoExpireMutation()
   const [selectedLead, setSelectedLead] = useState<number | null>(null)
 
   const handleStatusTransition = async (leadId: number, newStatus: string) => {
@@ -25,14 +20,6 @@ export default function PipelinePage() {
       await transitionMutation.mutateAsync({ leadId, targetStatus: newStatus })
     } catch (error) {
       console.error('Failed to transition lead:', error)
-    }
-  }
-
-  const handleAutoExpire = async () => {
-    try {
-      await autoExpireMutation.mutateAsync()
-    } catch (error) {
-      console.error('Failed to auto-expire leads:', error)
     }
   }
 
@@ -54,8 +41,6 @@ export default function PipelinePage() {
     )
   }
 
-  const isAdminOrLeader = authData?.role === 'admin' || authData?.role === 'leader'
-
   return (
     <div className="container mx-auto p-6">
       {/* Header */}
@@ -68,16 +53,6 @@ export default function PipelinePage() {
             </p>
           </div>
           <div className="flex items-center space-x-4">
-            {isAdminOrLeader && (
-              <Button 
-                onClick={handleAutoExpire}
-                disabled={autoExpireMutation.isPending}
-                variant="outline"
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Auto-Expire
-              </Button>
-            )}
             <Badge variant="outline" className="text-sm">
               {pipelineData.user_role.toUpperCase()}
             </Badge>

@@ -6,6 +6,7 @@ import {
   playUiSatisfactionSound,
   playUiStageAdvanceSound,
   playUiSuccessSound,
+  primeAudioContextSync,
 } from '@/lib/ui-sounds'
 import { useUiFeedbackStore, type ThemePreference } from '@/stores/ui-feedback-store'
 
@@ -56,6 +57,7 @@ export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) 
     if (!soundEnabled) return
 
     const handler = (e: MouseEvent) => {
+      primeAudioContextSync()
       const target = e.target
       if (!(target instanceof Element)) return
       if (target.closest('[data-ui-silent]')) return
