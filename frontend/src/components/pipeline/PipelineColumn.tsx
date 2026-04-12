@@ -1,27 +1,16 @@
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { 
-  Phone, 
-  Mail, 
-  MapPin, 
-  Clock, 
-  DollarSign,
-  ChevronDown,
-  User
-} from 'lucide-react'
-import { useAvailableTransitionsQuery } from '@/hooks/use-pipeline-query'
+import { Phone, Mail, MapPin, Clock, DollarSign, User } from 'lucide-react'
 import type { PipelineLead } from '@/hooks/use-pipeline-query'
+import { LeadNextStepPanel } from '@/components/leads/LeadNextStepPanel'
 
 interface PipelineColumnProps {
   status: string
   statusLabel: string
   leads: PipelineLead[]
-  onStatusTransition: (leadId: number, newStatus: string) => void
   selectedLead: number | null
   onSelectLead: (leadId: number | null) => void
-  userRole?: string
 }
 
 /** Pastel column surfaces: always pair with dark text (readable in dark app theme). */
@@ -45,16 +34,10 @@ export default function PipelineColumn({
   status,
   statusLabel,
   leads,
-  onStatusTransition,
   selectedLead,
   onSelectLead,
 }: PipelineColumnProps) {
   const [expandedLead, setExpandedLead] = useState<number | null>(null)
-  
-  // Get available transitions for expanded lead
-  const { data: transitions } = useAvailableTransitionsQuery(
-    expandedLead || 0
-  )
 
   const handleLeadClick = (leadId: number) => {
     if (selectedLead === leadId) {
@@ -66,15 +49,8 @@ export default function PipelineColumn({
     }
   }
 
-  const handleTransition = (newStatus: string) => {
-    if (expandedLead) {
-      onStatusTransition(expandedLead, newStatus)
-      setExpandedLead(null)
-    }
-  }
-
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full flex-col">
       {/* Column Header */}
       <div className="mb-4">
         <Card
@@ -152,31 +128,15 @@ export default function PipelineColumn({
                 <span>{new Date(lead.created_at).toLocaleDateString()}</span>
               </div>
 
-              {/* Expanded View */}
-              {expandedLead === lead.id && transitions && (
-                <div className="mt-3 border-t border-slate-300/80 pt-3">
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold text-slate-800">Move to:</p>
-                    <div className="grid grid-cols-1 gap-1">
-                      {transitions.map((transition) => (
-                        <Button
-                          key={transition}
-                          size="sm"
-                          variant="outline"
-                          className="text-xs h-7 justify-start"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleTransition(transition)
-                          }}
-                        >
-                          <ChevronDown className="w-3 h-3 mr-1" />
-                          {transition.replace('_', ' ').toUpperCase()}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
+              {expandedLead === lead.id ? (
+                <div
+                  className="mt-3 border-t border-slate-300/80 pt-3"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                >
+                  <LeadNextStepPanel lead={{ id: lead.id, name: lead.name, phone: lead.phone, status: lead.status }} />
                 </div>
-              )}
+              ) : null}
             </CardContent>
           </Card>
         ))}

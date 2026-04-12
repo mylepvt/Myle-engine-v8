@@ -11,6 +11,7 @@ import {
   usePatchLeadDetailMutation,
 } from '@/hooks/use-lead-detail-query'
 import { EnrollmentCard } from '@/components/leads/EnrollmentCard'
+import { LeadNextStepPanel } from '@/components/leads/LeadNextStepPanel'
 
 type Props = {
   leadId: number
@@ -304,9 +305,14 @@ export function LeadDetailPage({ leadId }: Props) {
             </div>
           </div>
 
+          <LeadNextStepPanel
+            className="surface-elevated p-4"
+            lead={{ id: lead.id, name: lead.name, phone: lead.phone, status: lead.status }}
+          />
+
           {/* Pipeline card */}
           <div className="surface-elevated p-4 space-y-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Pipeline</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Pipeline (full control)</p>
             <div className="space-y-3">
               <div>
                 <label

@@ -1,30 +1,14 @@
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Users } from 'lucide-react'
-import {
-  usePipelineViewQuery,
-  usePipelineMetricsQuery,
-  useTransitionLeadMutation,
-} from '@/hooks/use-pipeline-query'
+import { usePipelineViewQuery, usePipelineMetricsQuery } from '@/hooks/use-pipeline-query'
 import PipelineColumn from '@/components/pipeline/PipelineColumn'
 import PipelineMetrics from '@/components/pipeline/PipelineMetrics'
 
 export default function PipelinePage() {
   const { data: pipelineData, isLoading, error } = usePipelineViewQuery()
   const { data: metrics } = usePipelineMetricsQuery()
-  const transitionMutation = useTransitionLeadMutation()
   const [selectedLead, setSelectedLead] = useState<number | null>(null)
-  const [transitionError, setTransitionError] = useState<string | null>(null)
-
-  const handleStatusTransition = async (leadId: number, newStatus: string) => {
-    setTransitionError(null)
-    try {
-      await transitionMutation.mutateAsync({ leadId, targetStatus: newStatus })
-    } catch (err) {
-      setTransitionError(err instanceof Error ? err.message : 'Failed to move lead. Please try again.')
-    }
-  }
 
   if (isLoading) {
     return (
@@ -52,7 +36,7 @@ export default function PipelinePage() {
           <div>
             <h1 className="mb-2 text-3xl font-bold text-foreground">Lead Pipeline</h1>
             <p className="text-muted-foreground">
-              Manage leads through the conversion funnel
+              Tap a card → one primary next step (legacy rules). Expand “Other steps” if your role allows more.
             </p>
           </div>
           <div className="flex items-center space-x-4">
@@ -63,22 +47,6 @@ export default function PipelinePage() {
         </div>
       </div>
 
-      {/* Transition error */}
-      {transitionError ? (
-        <Alert className="mb-4 border-destructive/50 bg-destructive/10">
-          <AlertDescription className="flex items-center justify-between text-destructive">
-            <span>{transitionError}</span>
-            <button
-              type="button"
-              className="ml-3 text-xs underline underline-offset-2"
-              onClick={() => setTransitionError(null)}
-            >
-              Dismiss
-            </button>
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
       {/* Metrics Overview */}
       {metrics && (
         <div className="mb-8">
@@ -87,21 +55,19 @@ export default function PipelinePage() {
       )}
 
       {/* Pipeline Columns */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {pipelineData.columns.map((status) => {
           const leads = pipelineData.leads_by_status[status] || []
           const statusLabel = pipelineData.status_labels[status] || status
-          
+
           return (
             <PipelineColumn
               key={status}
               status={status}
               statusLabel={statusLabel}
               leads={leads}
-              onStatusTransition={handleStatusTransition}
               selectedLead={selectedLead}
               onSelectLead={setSelectedLead}
-              userRole={pipelineData.user_role}
             />
           )
         })}

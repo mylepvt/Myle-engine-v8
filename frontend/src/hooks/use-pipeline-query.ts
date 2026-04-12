@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
+import { getApiErrorMessage } from '@/lib/api-error'
 
 export type PipelineLead = {
   id: number
@@ -61,7 +62,7 @@ export async function fetchPipelineMetrics(days = 30): Promise<PipelineMetrics> 
 export async function fetchAvailableTransitions(leadId: number): Promise<string[]> {
   const res = await apiFetch(`/api/v1/pipeline/leads/${leadId}/transitions`)
   if (!res.ok) {
-    throw new Error(`Available transitions HTTP ${res.status}`)
+    throw new Error(await getApiErrorMessage(res))
   }
   return res.json()
 }
@@ -81,7 +82,7 @@ export async function transitionLeadStatus(
     }),
   })
   if (!res.ok) {
-    throw new Error(`Lead transition HTTP ${res.status}`)
+    throw new Error(await getApiErrorMessage(res))
   }
   return res.json()
 }
