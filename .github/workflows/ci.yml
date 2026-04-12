@@ -34,7 +34,8 @@ jobs:
             "openpyxl>=3.1.0,<4.0.0" \
             "pytest>=8.0.0" \
             "httpx>=0.27.0" \
-            "anyio[trio]"
+            "anyio[trio]" \
+            "werkzeug>=3.0.0,<4.0.0"
 
       - name: Pytest
         run: python -m pytest tests/ -q

@@ -1,9 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { 
-  TrendingUp, 
-  Users, 
-  DollarSign, 
+import {
+  TrendingUp,
+  Users,
+  DollarSign,
   Calendar,
   Activity
 } from 'lucide-react'
@@ -13,8 +13,6 @@ interface PipelineMetricsProps {
   metrics: PipelineMetrics
 }
 
-type RateBadgeVariant = 'success' | 'warning' | 'danger'
-
 export default function PipelineMetrics({ metrics }: PipelineMetricsProps) {
   const getRateColor = (rate: number) => {
     if (rate >= 70) return 'text-green-600'
@@ -22,7 +20,7 @@ export default function PipelineMetrics({ metrics }: PipelineMetricsProps) {
     return 'text-red-600'
   }
 
-  const getRateBadgeVariant = (rate: number): RateBadgeVariant => {
+  const getRateBadgeVariant = (rate: number) => {
     if (rate >= 70) return 'success'
     if (rate >= 50) return 'warning'
     return 'danger'
@@ -55,7 +53,7 @@ export default function PipelineMetrics({ metrics }: PipelineMetricsProps) {
             {metrics.conversion_rate}%
           </div>
           <p className="text-xs text-muted-foreground">
-            <Badge variant={getRateBadgeVariant(metrics.conversion_rate)}>
+            <Badge variant={getRateBadgeVariant(metrics.conversion_rate) as 'default' | 'secondary' | 'destructive' | 'outline'}>
               {metrics.conversion_rate >= 70 ? 'Excellent' : 
                metrics.conversion_rate >= 50 ? 'Good' : 'Needs Work'}
             </Badge>

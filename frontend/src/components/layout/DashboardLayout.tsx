@@ -47,8 +47,10 @@ export function DashboardLayout() {
     }
   }
 
-  const intelligenceFlag = meta?.features.intelligence ?? true
-  const navFlags = { intelligence: intelligenceFlag }
+  const navFlags = useMemo(
+    () => ({ intelligence: meta?.features.intelligence ?? true }),
+    [meta?.features.intelligence],
+  )
 
   const trainingStatusLc = (me?.training_status ?? '').toLowerCase()
   const trainingLocked =
@@ -59,7 +61,7 @@ export function DashboardLayout() {
 
   const sections = useMemo(() => {
     if (shellRole == null) return []
-    const full = filterDashboardNav(shellRole, { intelligence: intelligenceFlag })
+    const full = filterDashboardNav(shellRole, navFlags)
     if (!trainingLocked) return full
     const flat = full.flatMap((s) => s.items)
     const tr = flat.find((i) => i.path === 'system/training')
@@ -67,7 +69,7 @@ export function DashboardLayout() {
       return [{ id: 'training-only', label: '', items: [tr] }]
     }
     return full
-  }, [shellRole, trainingLocked, intelligenceFlag])
+  }, [shellRole, trainingLocked, navFlags])
 
   if (trainingLocked && !onTrainingRoute) {
     return <Navigate to="/dashboard/system/training" replace />

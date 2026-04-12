@@ -99,7 +99,7 @@
   }
 
   h3 {
-    @apply font-heading text-ds-h3 font-medium tracking-tight text-foreground;
+    @apply font-heading text-ds-h3 tracking-tight text-foreground;
   }
 
   ::selection {
