@@ -221,7 +221,7 @@ export function DashboardLayout() {
       </aside>
 
       <div className="flex min-w-0 max-w-full flex-1 flex-col overflow-x-hidden pt-[env(safe-area-inset-top)]">
-        <header className="flex h-[52px] shrink-0 items-center gap-2 border-b border-border bg-background/90 px-2 shadow-ios-bar backdrop-blur-xl supports-[backdrop-filter]:bg-background/75 md:px-3">
+        <header className="relative z-20 flex h-[52px] shrink-0 items-center gap-2 border-b border-border bg-background/90 px-2 shadow-ios-bar backdrop-blur-xl supports-[backdrop-filter]:bg-background/75 md:px-3">
           <Button
             type="button"
             variant="ghost"
@@ -263,15 +263,14 @@ export function DashboardLayout() {
                 <Settings className="size-[1.25rem]" aria-hidden />
               </Link>
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="relative hidden sm:inline-flex"
-              aria-label="Notifications"
-            >
-              <Bell className="size-[1.35rem]" />
-              <span className="absolute right-2 top-2 size-2 rounded-full bg-primary ring-2 ring-background" />
+            <Button variant="ghost" size="icon" className="relative shrink-0" asChild aria-label="Notice board">
+              <Link to="/dashboard/other/notice-board" title="Notice board & announcements">
+                <Bell className="size-[1.35rem]" aria-hidden />
+                <span
+                  className="pointer-events-none absolute right-2 top-2 size-2 rounded-full bg-primary ring-2 ring-background"
+                  aria-hidden
+                />
+              </Link>
             </Button>
 
             {shellRole != null ? (
@@ -285,16 +284,18 @@ export function DashboardLayout() {
               <span className="inline-block h-8 w-16 animate-pulse rounded-md bg-muted/60" />
             ) : null}
 
-            <div
-              className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-xs font-semibold text-foreground"
+            <Link
+              to="/dashboard/settings/profile"
+              className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-xs font-semibold text-foreground transition-opacity hover:opacity-90 active:opacity-80"
               title={
                 me?.fbo_id
                   ? `${me.fbo_id}${me.username ? ` · ${me.username}` : ''}${me.email ? ` · ${me.email}` : ''}`
                   : (me?.email ?? shellRole ?? '')
               }
+              aria-label="Open profile settings"
             >
               {displayInitial}
-            </div>
+            </Link>
 
             <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
               <Link to="/" className="gap-1.5 text-muted-foreground">
