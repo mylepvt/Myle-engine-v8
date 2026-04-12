@@ -31,6 +31,7 @@ import {
   useEmailChangeMutation
 } from '@/hooks/use-settings-query'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
+import { cn } from '@/lib/utils'
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile')
@@ -75,7 +76,7 @@ export default function SettingsPage() {
     value: '',
   })
 
-  const isAdmin = authData?.role === 'admin'
+  const isAdmin = (authData?.role ?? '').toLowerCase() === 'admin'
 
   // Initialize form when profile data loads
   if (userProfile.data && !profileForm.username) {
@@ -143,12 +144,31 @@ export default function SettingsPage() {
 
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="preferences">Preferences</TabsTrigger>
-          <TabsTrigger value="security">Security</TabsTrigger>
-          {isAdmin && <TabsTrigger value="system">System</TabsTrigger>}
-          {isAdmin && <TabsTrigger value="advanced">Advanced</TabsTrigger>}
+        <TabsList
+          className={cn(
+            'flex h-auto w-full flex-wrap gap-1 p-1',
+            isAdmin ? 'sm:grid sm:grid-cols-5' : 'sm:grid sm:grid-cols-3',
+          )}
+        >
+          <TabsTrigger value="profile" className="min-h-9 flex-1 sm:flex-none">
+            Profile
+          </TabsTrigger>
+          <TabsTrigger value="preferences" className="min-h-9 flex-1 sm:flex-none">
+            Preferences
+          </TabsTrigger>
+          <TabsTrigger value="security" className="min-h-9 flex-1 sm:flex-none">
+            Security
+          </TabsTrigger>
+          {isAdmin ? (
+            <>
+              <TabsTrigger value="system" className="min-h-9 flex-1 sm:flex-none">
+                System
+              </TabsTrigger>
+              <TabsTrigger value="advanced" className="min-h-9 flex-1 sm:flex-none">
+                Advanced
+              </TabsTrigger>
+            </>
+          ) : null}
         </TabsList>
 
         {/* Profile Tab */}

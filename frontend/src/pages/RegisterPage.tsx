@@ -7,6 +7,7 @@ import {
   EyeOff,
   IdCard,
   Info,
+  Loader2,
   Lock,
   Mail,
   Phone,
@@ -19,6 +20,7 @@ import {
 import { AuthCard } from '@/components/auth/AuthCard'
 import { IconInput } from '@/components/auth/IconInput'
 import { Button } from '@/components/ui/button'
+import { authRegister } from '@/lib/auth-api'
 
 function RequiredMark() {
   return (
@@ -51,10 +53,55 @@ export function RegisterPage() {
   const [phone, setPhone] = useState('')
   const [newJoining, setNewJoining] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
-  function handleSubmit(e: FormEvent) {
+  /** Backend requires username length ≥2 and safe chars; derive from email if user skips. */
+  function effectiveUsername(raw: string, emailAddr: string): string {
+    const t = raw.trim()
+    if (t.length >= 2) return t
+    const local = (emailAddr.split('@')[0] ?? '').replace(/[^a-zA-Z0-9._-]/g, '')
+    if (local.length >= 2) return local
+    return ''
+  }
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    setSubmitted(true)
+    setFormError(null)
+    const emailTrim = email.trim()
+    const uname = effectiveUsername(username, emailTrim)
+    if (!uname) {
+      setFormError('Enter a username (at least 2 characters), or use an email with a longer part before @.')
+      return
+    }
+    const phoneDigits = phone.replace(/\s/g, '').trim()
+    if (phoneDigits.length < 10) {
+      setFormError('Enter a valid phone number (at least 10 digits).')
+      return
+    }
+    if (!fboId.trim() || !uplineFboId.trim() || !password || !emailTrim) {
+      setFormError('Please fill all required fields.')
+      return
+    }
+    setSubmitting(true)
+    try {
+      const res = await authRegister({
+        username: uname,
+        password,
+        email: emailTrim,
+        fbo_id: fboId.trim(),
+        upline_fbo_id: uplineFboId.trim(),
+        phone: phoneDigits,
+        is_new_joining: newJoining,
+      })
+      setSuccessMessage(res.message ?? 'Registration submitted! Your account is pending admin approval.')
+      setSubmitted(true)
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Registration failed.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -96,11 +143,28 @@ export function RegisterPage() {
               className="rounded-xl border border-primary/35 bg-primary/[0.08] px-3 py-3 text-center text-sm text-foreground"
               role="status"
             >
-              Self-service registration is not enabled for this workspace yet.
-              Please contact your administrator.
+              <p className="font-medium text-foreground">{successMessage}</p>
+              <p className="mt-2 text-muted-foreground">
+                You can sign in after an admin approves your account.
+              </p>
+              <Link
+                to="/login"
+                className="mt-3 inline-flex items-center justify-center gap-1 font-semibold text-primary hover:underline"
+              >
+                Back to sign in
+                <ArrowRight className="size-3.5" aria-hidden />
+              </Link>
             </div>
           ) : (
-          <form className="space-y-6" onSubmit={handleSubmit} noValidate>
+          <form className="space-y-6" onSubmit={(e) => void handleSubmit(e)} noValidate>
+            {formError ? (
+              <div
+                className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-center text-sm text-destructive"
+                role="alert"
+              >
+                {formError}
+              </div>
+            ) : null}
             <div className="space-y-3.5">
               <SectionTitle>Account</SectionTitle>
               <p className="text-xs leading-relaxed text-muted-foreground">
@@ -224,10 +288,11 @@ export function RegisterPage() {
               <SectionTitle>Joining info</SectionTitle>
               <div>
                 <label
-                  className="mb-1.5 block text-sm font-semibold text-foreground"
+                  className="mb-1.5 flex flex-wrap items-baseline gap-1 text-sm font-semibold text-foreground"
                   htmlFor="reg-phone"
                 >
-                  Phone <span className="font-normal text-muted-foreground">(optional)</span>
+                  Phone
+                  <RequiredMark />
                 </label>
                 <IconInput
                   id="reg-phone"
@@ -236,7 +301,7 @@ export function RegisterPage() {
                   inputMode="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+1 …"
+                  placeholder="10+ digit mobile number"
                   icon={Phone}
                 />
               </div>
@@ -266,10 +331,15 @@ export function RegisterPage() {
             <Button
               type="submit"
               variant="default"
+              disabled={submitting}
               className="h-11 w-full gap-2 text-base font-semibold shadow-lg shadow-primary/20"
             >
-              <Send className="size-4" aria-hidden />
-              Submit registration request
+              {submitting ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+              ) : (
+                <Send className="size-4" aria-hidden />
+              )}
+              {submitting ? 'Submitting…' : 'Submit registration request'}
             </Button>
           </form>
           )}

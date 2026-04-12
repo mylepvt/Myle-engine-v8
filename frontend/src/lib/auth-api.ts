@@ -54,6 +54,34 @@ export async function authLogout(): Promise<void> {
   }
 }
 
+export type RegisterPayload = {
+  username: string
+  password: string
+  email: string
+  fbo_id: string
+  upline_fbo_id: string
+  phone: string
+  is_new_joining: boolean
+}
+
+/** Self-serve signup — account stays pending until admin approves (Team role). */
+export async function authRegister(body: RegisterPayload): Promise<{ message?: string }> {
+  const res = await apiFetch('/api/v1/auth/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const data = (await res.json().catch(() => ({}))) as { message?: string; error?: { message?: string } }
+  if (!res.ok) {
+    const msg =
+      typeof data.error?.message === 'string'
+        ? data.error.message
+        : res.statusText
+    throw new Error(msg || `HTTP ${res.status}`)
+  }
+  return data
+}
+
 /** Reload JWT claims from DB (training completion, registration status, etc.). */
 export async function authSyncIdentity(): Promise<void> {
   const res = await apiFetch('/api/v1/auth/sync-identity', { method: 'POST' })

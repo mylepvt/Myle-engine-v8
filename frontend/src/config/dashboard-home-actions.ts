@@ -11,6 +11,7 @@ import {
   GraduationCap,
   Kanban,
   Megaphone,
+  Settings,
   Sparkles,
   Users,
   Wallet,
@@ -44,6 +45,7 @@ const HOME_QUICK_ACTION_PATHS: readonly string[] = [
   'team/reports',
   'other/notice-board',
   'intelligence',
+  'settings/profile',
 ]
 
 const PATH_ICONS: Partial<Record<string, LucideIcon>> = {
@@ -59,6 +61,7 @@ const PATH_ICONS: Partial<Record<string, LucideIcon>> = {
   'team/reports': FileBarChart,
   'other/notice-board': Megaphone,
   intelligence: Sparkles,
+  'settings/profile': Settings,
 }
 
 export type HomeQuickAction = {
@@ -82,7 +85,10 @@ export function getHomeQuickActions(
     if (!routeDefAccessible(def, role, flags)) continue
     const Icon = PATH_ICONS[path]
     if (!Icon) continue
-    const label = resolveTitleForPath(path, role) ?? def.label
+    const label =
+      path === 'settings/profile'
+        ? 'Settings'
+        : resolveTitleForPath(path, role) ?? def.label
     const poolPaths = new Set(['work/lead-pool', 'work/lead-pool-admin'])
     const badgeCount =
       poolPaths.has(path) && opts.poolTotal > 0 ? opts.poolTotal : undefined
