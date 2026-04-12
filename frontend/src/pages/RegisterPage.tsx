@@ -1,5 +1,5 @@
-import { type FormEvent, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { type FormEvent, useEffect, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
   ArrowRight,
@@ -20,6 +20,7 @@ import {
 import { AuthCard } from '@/components/auth/AuthCard'
 import { IconInput } from '@/components/auth/IconInput'
 import { Button } from '@/components/ui/button'
+import { apiFetch } from '@/lib/api'
 import { authRegister } from '@/lib/auth-api'
 
 function RequiredMark() {
@@ -41,10 +42,18 @@ function SectionTitle({ children }: { children: string }) {
   )
 }
 
+type UplineLookup = {
+  found: boolean
+  is_valid_upline?: boolean
+  message?: string
+  name?: string | null
+}
+
 export function RegisterPage() {
+  const [searchParams] = useSearchParams()
   /** Requested unique FBO ID (primary account identifier). */
   const [fboId, setFboId] = useState('')
-  /** Optional display name — may match others. */
+  /** Display name — required; shown in the app (not the same as FBO). */
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -55,24 +64,47 @@ export function RegisterPage() {
   const [submitted, setSubmitted] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
+  const [uplineLookup, setUplineLookup] = useState<UplineLookup | null>(null)
+  const [uplineLookupPending, setUplineLookupPending] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
-  /** Backend requires username length ≥2 and safe chars; derive from email if user skips. */
-  function effectiveUsername(raw: string, emailAddr: string): string {
-    const t = raw.trim()
-    if (t.length >= 2) return t
-    const local = (emailAddr.split('@')[0] ?? '').replace(/[^a-zA-Z0-9._-]/g, '')
-    if (local.length >= 2) return local
-    return ''
+  useEffect(() => {
+    const fromUrl =
+      searchParams.get('upline')?.trim() ||
+      searchParams.get('ref')?.trim() ||
+      ''
+    if (fromUrl) {
+      setUplineFboId(fromUrl)
+    }
+  }, [searchParams])
+
+  async function refreshUplineLookup(raw: string) {
+    const s = raw.trim()
+    if (!s) {
+      setUplineLookup(null)
+      return
+    }
+    setUplineLookupPending(true)
+    try {
+      const r = await apiFetch(
+        `/api/v1/auth/lookup-upline-fbo?fbo_id=${encodeURIComponent(s)}`,
+      )
+      const data = (await r.json()) as UplineLookup
+      setUplineLookup(data)
+    } catch {
+      setUplineLookup({ found: false, message: 'Could not verify upline. Try again.' })
+    } finally {
+      setUplineLookupPending(false)
+    }
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setFormError(null)
     const emailTrim = email.trim()
-    const uname = effectiveUsername(username, emailTrim)
-    if (!uname) {
-      setFormError('Enter a username (at least 2 characters), or use an email with a longer part before @.')
+    const uname = username.trim()
+    if (uname.length < 2) {
+      setFormError('Enter your display name (at least 2 characters).')
       return
     }
     const phoneDigits = phone.replace(/\s/g, '').trim()
@@ -168,7 +200,8 @@ export function RegisterPage() {
             <div className="space-y-3.5">
               <SectionTitle>Account</SectionTitle>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                FBO ID is your unique login across Myle. Username is optional and can match other members.
+                Sign in with your <strong className="font-semibold text-foreground">FBO ID</strong> and password.
+                Display name is how you appear in the app (can match other members).
               </p>
               <div>
                 <label
@@ -189,17 +222,18 @@ export function RegisterPage() {
               </div>
               <div>
                 <label
-                  className="mb-1.5 block text-sm font-semibold text-foreground"
+                  className="mb-1.5 flex flex-wrap items-baseline gap-1 text-sm font-semibold text-foreground"
                   htmlFor="reg-username"
                 >
-                  Username <span className="font-normal text-muted-foreground">(optional)</span>
+                  Display name
+                  <RequiredMark />
                 </label>
                 <IconInput
                   id="reg-username"
                   autoComplete="nickname"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Display name"
+                  placeholder="Your name as it should appear"
                   icon={User}
                 />
               </div>
@@ -270,17 +304,40 @@ export function RegisterPage() {
                 <IconInput
                   id="reg-upline"
                   value={uplineFboId}
-                  onChange={(e) => setUplineFboId(e.target.value)}
+                  onChange={(e) => {
+                    setUplineFboId(e.target.value)
+                    setUplineLookup(null)
+                  }}
+                  onBlur={() => void refreshUplineLookup(uplineFboId)}
                   placeholder="e.g. FBO-12345"
                   icon={IdCard}
                 />
-                <p className="mt-2 flex items-start gap-2 text-xs italic leading-relaxed text-muted-foreground">
-                  <Info
-                    className="mt-0.5 size-3.5 shrink-0 text-primary/90"
-                    aria-hidden
-                  />
-                  <span>Approved leader or admin FBO ID is accepted.</span>
-                </p>
+                {uplineLookupPending ? (
+                  <p className="mt-2 text-xs text-muted-foreground">Checking upline…</p>
+                ) : uplineLookup?.message ? (
+                  <p
+                    className={`mt-2 flex items-start gap-2 text-xs leading-relaxed ${
+                      uplineLookup.is_valid_upline
+                        ? 'text-emerald-400/95'
+                        : 'text-amber-200/90'
+                    }`}
+                  >
+                    <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                    <span>{uplineLookup.message}</span>
+                  </p>
+                ) : (
+                  <p className="mt-2 flex items-start gap-2 text-xs italic leading-relaxed text-muted-foreground">
+                    <Info
+                      className="mt-0.5 size-3.5 shrink-0 text-primary/90"
+                      aria-hidden
+                    />
+                    <span>
+                      Pre-filled from invite link when opened with{' '}
+                      <code className="rounded bg-muted/50 px-1 py-0.5 text-[0.7rem]">?upline=</code>.
+                      Approved leader or admin FBO ID.
+                    </span>
+                  </p>
+                )}
               </div>
             </div>
 

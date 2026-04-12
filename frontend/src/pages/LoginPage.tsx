@@ -82,7 +82,7 @@ export function LoginPage() {
       return
     }
     if (!fboId.trim()) {
-      setError('Please enter your FBO ID or username.')
+      setError('Please enter your FBO ID (or your saved username).')
       return
     }
     setPwPending(true)
@@ -260,8 +260,8 @@ export function LoginPage() {
             >
               <p className="mb-4 text-center text-xs font-medium leading-relaxed text-muted-foreground sm:text-left">
                 {devLoginAllowed
-                  ? 'Or sign in with FBO ID or username and password'
-                  : 'Use your FBO ID or username and password (same as the previous app).'}
+                  ? 'Or sign in with your FBO ID and password (username still works if you have one).'
+                  : 'Primary login is your FBO ID and password. Username from the old app still works if set.'}
               </p>
 
               <div className="space-y-3.5">
@@ -270,7 +270,7 @@ export function LoginPage() {
                     className="mb-1.5 flex flex-wrap items-baseline gap-1 text-sm font-semibold text-foreground"
                     htmlFor="login-fbo-id"
                   >
-                    FBO ID or username
+                    FBO ID
                     <RequiredMark />
                   </label>
                   <IconInput
@@ -279,9 +279,12 @@ export function LoginPage() {
                     value={fboId}
                     onChange={(e) => setFboId(e.target.value)}
                     disabled={pwPending}
-                    placeholder="e.g. 910900367506 or your name"
+                    placeholder="Your FBO ID"
                     icon={IdCard}
                   />
+                  <p className="mt-1.5 text-[0.7rem] leading-relaxed text-muted-foreground/90">
+                    Password is required. If you used a username before, enter it in this field instead of FBO.
+                  </p>
                 </div>
 
                 <div>

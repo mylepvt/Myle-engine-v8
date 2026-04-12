@@ -44,6 +44,9 @@ class LeadPublic(BaseModel):
     phone: Optional[str] = None
     email: Optional[str] = None
     city: Optional[str] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    ad_name: Optional[str] = None
     source: Optional[str] = None
     notes: Optional[str] = None
 
@@ -246,6 +249,14 @@ class LeadUpdate(BaseModel):
         if s not in _SOURCE_SET:
             raise ValueError(f"Invalid source; must be one of {sorted(_SOURCE_SET)}")
         return s
+
+
+class LeadPoolImportResponse(BaseModel):
+    """Admin bulk import into shared lead pool from Excel."""
+
+    ok: bool = True
+    created: int = 0
+    warnings: list[str] = Field(default_factory=list)
 
 
 class LeadListResponse(BaseModel):

@@ -33,3 +33,12 @@ class TrainingSurfaceResponse(BaseModel):
     progress: list[TrainingProgressRow] = Field(default_factory=list)
     note: Optional[str] = None
     unlock_dates: Optional[dict[int, str]] = Field(default=None, description="Calendar unlock dates for days 2-7")
+
+
+class TestDeliveryResponse(BaseModel):
+    """Smoke-test for realtime invalidation + delivery pipeline notes."""
+
+    ok: bool = True
+    realtime: str = ""
+    email: str = ""
+    web_push: str = ""

@@ -2,15 +2,24 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
+from app.core.realtime_hub import notify_topics
+from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
-from app.schemas.leads import LeadListResponse, LeadPublic
+from app.schemas.leads import LeadListResponse, LeadPoolImportResponse, LeadPublic
+from app.services.lead_pool_import import parse_pool_xlsx_rows
 
 router = APIRouter()
+
+
+def _require_admin(user: AuthUser) -> None:
+    if user.role != "admin":
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
 _MAX_LIMIT = 100
 _DEFAULT_LIMIT = 50
@@ -40,3 +49,67 @@ async def list_lead_pool(
     rows = (await session.execute(list_q)).scalars().all()
     items = [LeadPublic.model_validate(r) for r in rows]
     return LeadListResponse(items=items, total=total, limit=limit, offset=offset)
+
+
+_MAX_IMPORT_BYTES = 12 * 1024 * 1024
+
+
+@router.post("/import", response_model=LeadPoolImportResponse)
+async def import_lead_pool_xlsx(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    file: UploadFile = File(..., description="Excel .xlsx with headers (Full Name required)"),
+) -> LeadPoolImportResponse:
+    """Admin: bulk-add rows to the shared pool from an Excel file.
+
+    Expected columns (flexible header text): Submit Time, Full Name, Age, Gender,
+    Phone Number (Calling Number), Your City Name, AD Name.
+    """
+    _require_admin(user)
+    content = await file.read()
+    if len(content) > _MAX_IMPORT_BYTES:
+        raise HTTPException(
+            status_code=http_status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="File too large (max 12 MB)",
+        )
+    if not content:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Empty file")
+
+    rows, warnings = parse_pool_xlsx_rows(content)
+    if not rows:
+        return LeadPoolImportResponse(created=0, warnings=warnings or ["No rows imported"])
+
+    created = 0
+    for r in rows:
+        st = r.get("submit_time")
+        lead = Lead(
+            name=r["name"],
+            status="new_lead",
+            created_by_user_id=user.user_id,
+            assigned_to_user_id=None,
+            phone=r.get("phone"),
+            city=r.get("city"),
+            age=r.get("age"),
+            gender=r.get("gender"),
+            ad_name=r.get("ad_name"),
+            source="other",
+            notes=None,
+            in_pool=True,
+        )
+        if st is not None:
+            lead.created_at = st
+        session.add(lead)
+        created += 1
+
+    session.add(
+        ActivityLog(
+            user_id=user.user_id,
+            action="lead.pool_import",
+            entity_type="lead_pool",
+            entity_id=None,
+            meta={"created": created, "filename": file.filename},
+        )
+    )
+    await session.commit()
+    await notify_topics("leads")
+    return LeadPoolImportResponse(created=created, warnings=warnings)

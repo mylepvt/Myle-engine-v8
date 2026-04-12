@@ -71,7 +71,7 @@ describe('LoginPage', () => {
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument()
     expect(
       screen.getByText(
-        /use your fbo id or username and password \(same as the previous app\)/i,
+        /primary login is your fbo id and password/i,
       ),
     ).toBeInTheDocument()
   })

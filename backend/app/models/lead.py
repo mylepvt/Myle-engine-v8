@@ -50,6 +50,9 @@ class Lead(Base):
     phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     email: Mapped[Optional[str]] = mapped_column(String(320), nullable=True)
     city: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    age: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    gender: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    ad_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 

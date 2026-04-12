@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -11,6 +12,7 @@ import {
 import { useLeadPoolQuery, type PoolLead } from '@/hooks/use-lead-pool-query'
 import { useWalletMeQuery } from '@/hooks/use-wallet-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
+import { apiFetch } from '@/lib/api'
 
 type Props = {
   title: string
@@ -25,6 +27,7 @@ function formatRupees(cents: number): string {
 }
 
 export function LeadPoolWorkPage({ title }: Props) {
+  const qc = useQueryClient()
   const { role } = useDashboardShellRole()
   const { data, isPending, isError, error, refetch } = useLeadPoolQuery()
   const { data: walletData } = useWalletMeQuery(true)
@@ -35,6 +38,11 @@ export function LeadPoolWorkPage({ title }: Props) {
   const [confirmId, setConfirmId] = useState<number | null>(null)
   // Admin: price input per lead
   const [priceInputs, setPriceInputs] = useState<Record<number, string>>({})
+  const [poolFile, setPoolFile] = useState<File | null>(null)
+  const [importBusy, setImportBusy] = useState(false)
+  const [importNote, setImportNote] = useState<string | null>(null)
+  const [testBusy, setTestBusy] = useState(false)
+  const [testNote, setTestNote] = useState<string | null>(null)
 
   const walletBalance = walletData?.balance_cents ?? 0
 
@@ -68,6 +76,58 @@ export function LeadPoolWorkPage({ title }: Props) {
     }
   }
 
+  async function handlePoolImport() {
+    if (!poolFile) return
+    setImportBusy(true)
+    setImportNote(null)
+    try {
+      const fd = new FormData()
+      fd.append('file', poolFile)
+      const res = await apiFetch('/api/v1/lead-pool/import', { method: 'POST', body: fd })
+      const body = (await res.json().catch(() => ({}))) as {
+        created?: number
+        warnings?: string[]
+        error?: { message?: string }
+      }
+      if (!res.ok) {
+        throw new Error(body.error?.message ?? res.statusText)
+      }
+      const w = body.warnings?.length ? ` ${body.warnings.join(' ')}` : ''
+      setImportNote(`Imported ${body.created ?? 0} lead(s).${w}`)
+      setPoolFile(null)
+      await qc.invalidateQueries({ queryKey: ['lead-pool'] })
+    } catch (e) {
+      setImportNote(e instanceof Error ? e.message : 'Import failed')
+    } finally {
+      setImportBusy(false)
+    }
+  }
+
+  async function handleTestDelivery() {
+    setTestBusy(true)
+    setTestNote(null)
+    try {
+      const res = await apiFetch('/api/v1/system/test-delivery', { method: 'POST' })
+      const body = (await res.json().catch(() => ({}))) as {
+        realtime?: string
+        email?: string
+        web_push?: string
+        error?: { message?: string }
+      }
+      if (!res.ok) {
+        throw new Error(body.error?.message ?? res.statusText)
+      }
+      setTestNote(
+        [body.realtime, body.email, body.web_push].filter(Boolean).join(' — ') ||
+          'OK',
+      )
+    } catch (e) {
+      setTestNote(e instanceof Error ? e.message : 'Request failed')
+    } finally {
+      setTestBusy(false)
+    }
+  }
+
   return (
     <div className="max-w-2xl space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -84,6 +144,49 @@ export function LeadPoolWorkPage({ title }: Props) {
         Leads an admin has released into the shared pool. Claim one to assign it to yourself —
         paid leads will be debited from your wallet.
       </p>
+
+      {role === 'admin' ? (
+        <div className="surface-inset space-y-3 p-4 text-sm">
+          <p className="font-medium text-foreground">Admin: import pool leads (Excel)</p>
+          <p className="text-ds-caption text-muted-foreground">
+            Use <strong className="font-medium text-foreground">.xlsx</strong> with a header row.
+            Columns (flexible names): Submit Time, Full Name, Age, Gender, Phone Number (Calling
+            Number), Your City Name, AD Name.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="file"
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              className="max-w-full text-xs file:mr-2 file:rounded-md file:border-0 file:bg-primary file:px-2 file:py-1 file:text-xs file:font-medium file:text-primary-foreground"
+              onChange={(e) => setPoolFile(e.target.files?.[0] ?? null)}
+            />
+            <Button
+              type="button"
+              size="sm"
+              disabled={!poolFile || importBusy}
+              onClick={() => void handlePoolImport()}
+            >
+              {importBusy ? 'Importing…' : 'Import to pool'}
+            </Button>
+          </div>
+          {importNote ? (
+            <p className="text-xs text-muted-foreground" role="status">
+              {importNote}
+            </p>
+          ) : null}
+          <div className="border-t border-border/80 pt-3">
+            <p className="mb-2 font-medium text-foreground">Test realtime / delivery notes</p>
+            <Button type="button" variant="outline" size="sm" disabled={testBusy} onClick={() => void handleTestDelivery()}>
+              {testBusy ? 'Sending…' : 'Ping dashboards (WS) + show email/push status'}
+            </Button>
+            {testNote ? (
+              <p className="mt-2 text-xs text-muted-foreground" role="status">
+                {testNote}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       {/* Wallet balance chip */}
       {role !== 'admin' && walletData !== undefined ? (
@@ -137,6 +240,9 @@ export function LeadPoolWorkPage({ title }: Props) {
                           #{l.id} · {statusLabel(l.status)}
                           {l.phone ? ` · ${l.phone}` : ''}
                           {l.city ? ` · ${l.city}` : ''}
+                          {l.age != null ? ` · Age ${l.age}` : ''}
+                          {l.gender ? ` · ${l.gender}` : ''}
+                          {l.ad_name ? ` · AD: ${l.ad_name}` : ''}
                         </p>
                       </div>
 

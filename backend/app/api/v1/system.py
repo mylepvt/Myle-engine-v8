@@ -18,6 +18,7 @@ from app.models.training_video import TrainingVideo
 from app.models.user import User
 from app.schemas.system_surface import (
     SystemStubResponse,
+    TestDeliveryResponse,
     TrainingSurfaceResponse,
 )
 from app.schemas.training_test import (
@@ -26,6 +27,7 @@ from app.schemas.training_test import (
     TrainingTestResultPublic,
     TrainingTestSubmitBody,
 )
+from app.core.realtime_hub import notify_topics
 from app.services.shell_insights import build_decision_engine_snapshot
 from app.services.training_surface import build_training_surface
 
@@ -245,4 +247,22 @@ async def system_coaching(
     _require_admin_or_leader(user)
     return SystemStubResponse(
         note="Coaching tasks and metrics will be API-driven; V1 returns an empty list.",
+    )
+
+
+@router.post("/test-delivery", response_model=TestDeliveryResponse)
+async def system_test_delivery(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+) -> TestDeliveryResponse:
+    """Admin: trigger a realtime cache invalidation (WebSocket) and report email/push status.
+
+    Browser clients subscribed to ``/api/v1/ws`` should refetch data. Email and web push
+    require separate SMTP/VAPID configuration in production.
+    """
+    _require_admin(user)
+    await notify_topics("leads")
+    return TestDeliveryResponse(
+        realtime="Broadcast invalidate topic “leads” to connected dashboards.",
+        email="SMTP not wired in API — use ops mailer or connect provider when ready.",
+        web_push="Service worker is install-only; add VAPID + push handler for browser push.",
     )

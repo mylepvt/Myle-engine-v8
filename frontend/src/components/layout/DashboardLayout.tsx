@@ -13,6 +13,7 @@ import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { useMetaQuery } from '@/hooks/use-meta-query'
 import { useRealtimeInvalidation } from '@/hooks/use-realtime-invalidation'
 import { useSyncRoleFromMe } from '@/hooks/use-sync-role-from-me'
+import { MyleSidebarMark } from '@/components/brand/MyleSidebarMark'
 import { cn } from '@/lib/utils'
 import { authLogout } from '@/lib/auth-api'
 import { useAuthStore } from '@/stores/auth-store'
@@ -117,11 +118,8 @@ export function DashboardLayout() {
         )}
       >
         <div className="flex h-[52px] shrink-0 items-center border-b border-border px-4">
-          <Link
-            to="/dashboard"
-            className="font-heading text-[1.0625rem] font-semibold tracking-tight text-foreground"
-          >
-            Myle
+          <Link to="/dashboard" className="min-w-0">
+            <MyleSidebarMark />
           </Link>
           {envLabel && envLabel !== 'production' ? (
             <span

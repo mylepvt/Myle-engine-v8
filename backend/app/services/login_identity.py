@@ -68,7 +68,12 @@ async def find_upline_user(session: AsyncSession, raw: str) -> User | None:
             if (cand.registration_status or "").strip().lower() != "approved":
                 continue
             return cand
-    r3 = await session.execute(select(User).where(User.username == s))
+    r3 = await session.execute(
+        select(User).where(
+            User.username.isnot(None),
+            func.lower(func.trim(User.username)) == s.lower(),
+        )
+    )
     return r3.scalar_one_or_none()
 
 
