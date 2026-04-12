@@ -1,8 +1,9 @@
-# One-way mirror: Mylecommunity (canonical) -> mylepvt (Render watches this repo).
-# Setup (once):
-# 1. GitHub (mylepvt): Fine-grained PAT or classic token with repo push to mylepvt/New-Myle-Community
-# 2. Repo Mylecommunity/Myle-community -> Settings -> Secrets -> Actions -> MYLEPVT_SYNC_PAT
-# 3. Edit env MYLEPVT_TARGET below if your mirror repo path differs.
+# One-way mirror: Mylecommunity/Myle-community (canonical) -> mylepvt/New-Myle-Community (optional copy).
+# If you only use the canonical repo, leave MYLEPVT_SYNC_PAT unset — job skips (green), no confusion.
+# To enable mirror push (e.g. Render tied to mylepvt):
+# 1. PAT with push to mylepvt/New-Myle-Community
+# 2. Canonical repo → Settings → Secrets → Actions → MYLEPVT_SYNC_PAT
+# 3. Adjust MYLEPVT_TARGET if the mirror path differs.
 
 name: Sync to mylepvt mirror
 
@@ -32,8 +33,8 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${PAT}" ]; then
-            echo "::error::Add repository secret MYLEPVT_SYNC_PAT (PAT with push access to ${MYLEPVT_TARGET})."
-            exit 1
+            echo "::notice::MYLEPVT_SYNC_PAT not set — skipping mirror push (use Mylecommunity/Myle-community as single source of truth)."
+            exit 0
           fi
           # Remove the GitHub Actions credential helper so our PAT is used instead
           git config --unset-all http.https://github.com/.extraheader || true
