@@ -105,6 +105,7 @@ export function TeamApprovalsPage({ title }: Props) {
                           size="sm"
                           variant="secondary"
                           disabled={decide.isPending}
+                          data-ui-sound="error"
                           onClick={() => decide.mutate({ id: row.id, action: 'reject' })}
                         >
                           Reject
@@ -113,6 +114,7 @@ export function TeamApprovalsPage({ title }: Props) {
                           type="button"
                           size="sm"
                           disabled={decide.isPending}
+                          data-ui-sound="success"
                           onClick={() => decide.mutate({ id: row.id, action: 'approve' })}
                         >
                           Approve

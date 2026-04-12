@@ -295,7 +295,7 @@ export default function SettingsPage() {
                     onChange={(e) => setProfileForm(prev => ({ ...prev, phone: e.target.value }))}
                   />
                 </div>
-                <Button onClick={handleProfileUpdate} disabled={updateProfile.isPending}>
+                <Button onClick={handleProfileUpdate} disabled={updateProfile.isPending} data-ui-sound="success">
                   {updateProfile.isPending ? 'Updating...' : 'Update Profile'}
                 </Button>
               </CardContent>
@@ -483,7 +483,7 @@ export default function SettingsPage() {
                 {changePassword.isSuccess ? (
                   <p className="text-sm text-green-600" role="status">Password changed successfully.</p>
                 ) : null}
-                <Button onClick={handlePasswordChange} disabled={changePassword.isPending}>
+                <Button onClick={handlePasswordChange} disabled={changePassword.isPending} data-ui-sound="success">
                   {changePassword.isPending ? 'Changing...' : 'Change Password'}
                 </Button>
               </CardContent>
@@ -626,7 +626,7 @@ export default function SettingsPage() {
                       value={newSetting.value}
                       onChange={(e) => { setNewSetting(prev => ({ ...prev, value: e.target.value })); setSettingError(null) }}
                     />
-                    <Button onClick={handleAppSettingUpdate} disabled={updateAppSetting.isPending}>
+                    <Button onClick={handleAppSettingUpdate} disabled={updateAppSetting.isPending} data-ui-sound="satisfaction">
                       Add
                     </Button>
                   </div>
@@ -656,6 +656,7 @@ export default function SettingsPage() {
                                   className="bg-destructive text-white hover:bg-destructive/90"
                                   onClick={() => handleAppSettingDelete(key)}
                                   disabled={deleteAppSetting.isPending}
+                                  data-ui-sound="delete"
                                 >
                                   Yes, delete
                                 </Button>

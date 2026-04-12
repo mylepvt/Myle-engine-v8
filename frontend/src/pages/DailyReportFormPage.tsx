@@ -173,6 +173,7 @@ export function DailyReportFormPage({ title }: Props) {
         <button
           type="submit"
           disabled={mut.isPending}
+          data-ui-sound="success"
           className="rounded-lg border border-primary/40 bg-primary/15 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary/25 disabled:opacity-50"
         >
           {mut.isPending ? 'Saving…' : 'Save report'}

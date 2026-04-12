@@ -83,7 +83,7 @@ export function NoticeBoardPage({ title }: Props) {
               {formError}
             </p>
           ) : null}
-          <Button type="submit" disabled={create.isPending}>
+          <Button type="submit" disabled={create.isPending} data-ui-sound="success">
             {create.isPending ? 'Posting…' : 'Post'}
           </Button>
         </form>
@@ -150,6 +150,7 @@ export function NoticeBoardPage({ title }: Props) {
                           size="sm"
                           className="bg-destructive text-white hover:bg-destructive/90"
                           disabled={remove.isPending}
+                          data-ui-sound="delete"
                           onClick={() => {
                             void remove.mutateAsync(row.id).finally(() => setDeleteConfirmId(null))
                           }}
