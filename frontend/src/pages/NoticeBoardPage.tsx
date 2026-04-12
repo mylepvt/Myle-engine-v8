@@ -146,8 +146,9 @@ export function NoticeBoardPage({ title }: Props) {
                         <span className="self-center text-xs text-muted-foreground">Sure?</span>
                         <Button
                           type="button"
-                          variant="destructive"
+                          variant="default"
                           size="sm"
+                          className="bg-destructive text-white hover:bg-destructive/90"
                           disabled={remove.isPending}
                           onClick={() => {
                             void remove.mutateAsync(row.id).finally(() => setDeleteConfirmId(null))

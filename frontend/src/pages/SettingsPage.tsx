@@ -651,8 +651,9 @@ export default function SettingsPage() {
                               <>
                                 <span className="text-xs text-muted-foreground">Sure?</span>
                                 <Button
-                                  variant="destructive"
+                                  variant="default"
                                   size="sm"
+                                  className="bg-destructive text-white hover:bg-destructive/90"
                                   onClick={() => handleAppSettingDelete(key)}
                                   disabled={deleteAppSetting.isPending}
                                 >
