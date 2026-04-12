@@ -3,6 +3,9 @@ import { useEffect, useState } from 'react'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { apiFetch } from '@/lib/api'
+import { getApiErrorMessage } from '@/lib/api-error'
+import { hapticSuccess } from '@/lib/haptics'
+import { playUiSuccessSound } from '@/lib/ui-sounds'
 import { cn } from '@/lib/utils'
 
 type DailyReportPublic = {
@@ -64,8 +67,7 @@ export function DailyReportFormPage({ title }: Props) {
     queryFn: async () => {
       const res = await apiFetch(`/api/v1/reports/daily/mine?report_date=${encodeURIComponent(dateIso)}`)
       if (!res.ok) {
-        const t = await res.text()
-        throw new Error(t || res.statusText)
+        throw new Error(await getApiErrorMessage(res))
       }
       return res.json() as Promise<DailyReportPublic | null>
     },
@@ -101,12 +103,13 @@ export function DailyReportFormPage({ title }: Props) {
         body: JSON.stringify(body),
       })
       if (!res.ok) {
-        const t = await res.text()
-        throw new Error(t || res.statusText)
+        throw new Error(await getApiErrorMessage(res))
       }
       return res.json() as Promise<DailyReportPublic>
     },
     onSuccess: () => {
+      void playUiSuccessSound()
+      hapticSuccess()
       void qc.invalidateQueries({ queryKey: ['daily-report-mine'] })
     },
   })

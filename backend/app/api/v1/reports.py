@@ -20,9 +20,13 @@ router = APIRouter()
 _REPORT_POINTS = 20
 
 
-def _require_team_or_leader(user: AuthUser) -> None:
-    if user.role not in ("team", "leader"):
-        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+def _require_report_actor(user: AuthUser) -> None:
+    """Team/leader submit daily reports; admin allowed so dashboard works when signed in as admin (incl. nav preview)."""
+    if user.role not in ("team", "leader", "admin"):
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail="Daily report is only for team, leader, or admin accounts.",
+        )
 
 
 def _report_to_public(row: DailyReport, *, points_awarded: int = 0) -> DailyReportPublic:
@@ -57,7 +61,7 @@ async def get_my_daily_report(
     report_date: date = Query(..., description="Calendar day YYYY-MM-DD"),
 ) -> Optional[DailyReportPublic]:
     """Load a single saved report for the caller (team/leader)."""
-    _require_team_or_leader(user)
+    _require_report_actor(user)
     r = await session.execute(
         select(DailyReport).where(
             DailyReport.user_id == user.user_id,
@@ -77,7 +81,7 @@ async def submit_daily_report(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> DailyReportPublic:
     """Upsert daily report for ``report_date``; award points once per calendar day (resubmit updates fields only)."""
-    _require_team_or_leader(user)
+    _require_report_actor(user)
 
     r = await session.execute(
         select(DailyReport).where(

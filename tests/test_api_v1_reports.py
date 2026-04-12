@@ -24,8 +24,11 @@ def test_reports_daily_mine_missing_returns_null(monkeypatch: pytest.MonkeyPatch
     assert r.json() is None
 
 
-def test_reports_daily_mine_requires_team_or_leader(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_reports_daily_mine_allows_admin(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Admin may open the daily report form (same JWT when previewing nav as leader)."""
     patch_jwt_settings(monkeypatch, auth_dev_login_enabled=True)
     c = TestClient(app)
     assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
-    assert c.get("/api/v1/reports/daily/mine?report_date=2030-01-01").status_code == 403
+    r = c.get("/api/v1/reports/daily/mine?report_date=2030-01-01")
+    assert r.status_code == 200
+    assert r.json() is None
