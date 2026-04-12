@@ -1,7 +1,27 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      (function () {
+        try {
+          var raw = localStorage.getItem('myle-ui-feedback')
+          var dark = true
+          if (raw) {
+            var j = JSON.parse(raw)
+            var st = j.state !== undefined ? j.state : j
+            var th = st.theme || 'dark'
+            if (th === 'light') dark = false
+            else if (th === 'system')
+              dark = window.matchMedia('(prefers-color-scheme: dark)').matches
+            else dark = true
+          }
+          document.documentElement.classList.toggle('dark', dark)
+        } catch (e) {
+          document.documentElement.classList.add('dark')
+        }
+      })()
+    </script>
 
     <!-- Viewport — iOS viewport-fit covers notch / Dynamic Island -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -23,7 +43,7 @@
 
     <!-- Android / Chrome -->
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="theme-color" content="#252525" />
+    <meta name="theme-color" content="#fafafa" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
@@ -41,8 +61,6 @@
       rel="stylesheet"
     />
 
-    <!-- Prevent flash — match --background oklch(0.145 0 0) -->
-    <style>html { background: #252525; }</style>
   </head>
   <body>
     <div id="root"></div>

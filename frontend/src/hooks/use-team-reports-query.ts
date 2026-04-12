@@ -6,6 +6,8 @@ export type TeamReportsLiveSummary = {
   leads_claimed_today: number
   calls_made_today: number
   enrolled_today: number
+  /** ₹196 payment proofs approved today (Asia/Kolkata calendar day). */
+  payment_proofs_approved_today: number
   day1_total: number
   day2_total: number
   converted_total: number
@@ -35,9 +37,10 @@ async function fetchTeamReports(dateIso: string): Promise<TeamReportsPayload> {
   return res.json() as Promise<TeamReportsPayload>
 }
 
-export function useTeamReportsQuery(dateIso: string) {
+export function useTeamReportsQuery(dateIso: string, enabled = true) {
   return useQuery({
     queryKey: ['team', 'reports', dateIso],
     queryFn: () => fetchTeamReports(dateIso),
+    enabled,
   })
 }

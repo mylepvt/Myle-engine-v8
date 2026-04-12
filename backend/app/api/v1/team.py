@@ -174,7 +174,8 @@ async def team_reports(
         date=d.isoformat(),
         live_summary=TeamReportsLiveSummary(**live),
         note=(
-            "Tiles use pool claims, call events, payment proof timestamps, and active pipeline counts. "
+            "Tiles use pool claims (activity_log), call events, payment proof upload timestamps, "
+            "payment proof approvals (activity_log payment_proof_approved), and active pipeline counts. "
             "Per-user daily report lines also exist (POST /api/v1/reports/daily) and feed leaderboard scoring."
         ),
     )

@@ -63,6 +63,7 @@ class TeamReportsLiveSummary(BaseModel):
     leads_claimed_today: int
     calls_made_today: int
     enrolled_today: int
+    payment_proofs_approved_today: int
     day1_total: int
     day2_total: int
     converted_total: int

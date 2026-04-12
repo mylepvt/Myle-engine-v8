@@ -18,6 +18,11 @@ const TILES: { key: keyof TeamReportsLiveSummary; label: string; color: string }
   { key: 'leads_claimed_today', label: 'Claimed (day)', color: 'text-primary' },
   { key: 'calls_made_today', label: 'Calls (day)', color: 'text-emerald-400' },
   { key: 'enrolled_today', label: 'Proof uploaded (day)', color: 'text-amber-400' },
+  {
+    key: 'payment_proofs_approved_today',
+    label: '₹196 proof approved (day)',
+    color: 'text-teal-400',
+  },
   { key: 'day1_total', label: 'In Day 1', color: 'text-sky-400' },
   { key: 'day2_total', label: 'In Day 2', color: 'text-violet-400' },
   { key: 'converted_total', label: 'Converted', color: 'text-muted-foreground' },
@@ -52,8 +57,8 @@ export function TeamReportsPage({ title }: Props) {
       </div>
 
       {isPending ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
-          {Array.from({ length: 6 }).map((_, i) => (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
+          {Array.from({ length: 7 }).map((_, i) => (
             <Skeleton key={i} className="h-24 rounded-xl" />
           ))}
         </div>
@@ -73,7 +78,7 @@ export function TeamReportsPage({ title }: Props) {
             <p className="mb-2 text-[0.68rem] font-semibold uppercase tracking-wider text-muted-foreground">
               Live data (from system)
             </p>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-6">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
               {TILES.map((t) => (
                 <div
                   key={t.key}

@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 
 import { App } from '@/App'
+import { ThemeAndFeedbackProvider } from '@/components/providers/ThemeAndFeedbackProvider'
 import './index.css'
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
@@ -27,7 +28,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <App />
+        <ThemeAndFeedbackProvider>
+          <App />
+        </ThemeAndFeedbackProvider>
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>,

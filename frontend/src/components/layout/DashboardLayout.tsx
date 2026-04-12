@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Bell, Home, LogOut, Menu, PanelLeftClose, Search, Settings } from 'lucide-react'
 
+import { ShellHeaderFeedbackControls } from '@/components/layout/ShellHeaderFeedbackControls'
 import { DashboardMobileTabBar } from '@/components/layout/DashboardMobileTabBar'
 import { Button } from '@/components/ui/button'
 import { DashboardOutletErrorBoundary } from '@/components/routing/DashboardOutletErrorBoundary'
@@ -257,7 +258,8 @@ export function DashboardLayout() {
             />
           </form>
 
-          <div className="flex min-w-0 flex-1 items-center justify-end gap-2 sm:flex-initial sm:gap-2">
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5 sm:flex-initial sm:gap-2">
+            <ShellHeaderFeedbackControls />
             <Button variant="ghost" size="icon" className="shrink-0" asChild aria-label="Settings">
               <Link to="/dashboard/settings/profile">
                 <Settings className="size-[1.25rem]" aria-hidden />

@@ -9,6 +9,7 @@ from fastapi import UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
 
 
@@ -54,9 +55,7 @@ class PaymentService:
         lead.payment_proof_url = proof_url
         lead.payment_proof_uploaded_at = datetime.utcnow()
         lead.payment_status = "pending_approval"
-        lead.updated_at = datetime.utcnow()
 
-        # Log activity (implement based on your activity logging system)
         await self._log_payment_activity(
             lead_id, uploaded_by_user_id, "payment_proof_uploaded", notes
         )
@@ -77,7 +76,6 @@ class PaymentService:
 
         # Update payment status
         lead.payment_status = "approved"
-        lead.updated_at = datetime.utcnow()
 
         # Transition lead to paid status if not already
         if lead.status != "paid":
@@ -104,7 +102,6 @@ class PaymentService:
 
         # Update payment status
         lead.payment_status = "rejected"
-        lead.updated_at = datetime.utcnow()
 
         # Log activity
         await self._log_payment_activity(
@@ -147,10 +144,17 @@ class PaymentService:
     async def _log_payment_activity(
         self, lead_id: int, user_id: int, action: str, notes: str | None = None
     ) -> None:
-        """Log payment-related activity."""
-        # This would create an activity log entry
-        # Implement based on your activity logging system
-        pass
+        """Audit trail + admin dashboard counts (IST day buckets)."""
+        meta = {"notes": notes} if notes else None
+        self.session.add(
+            ActivityLog(
+                user_id=user_id,
+                action=action,
+                entity_type="lead",
+                entity_id=lead_id,
+                meta=meta,
+            ),
+        )
 
     async def validate_payment_amount(
         self, lead_id: int, payment_amount_cents: int

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, TrendingUp } from 'lucide-react'
+import { ArrowRight, ClipboardCheck, TrendingUp, UserPlus } from 'lucide-react'
 
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
 import { PipelineByStageChart } from '@/components/dashboard/PipelineByStageChart'
@@ -24,6 +24,7 @@ import { useFollowUpsQuery } from '@/hooks/use-follow-ups-query'
 import { useLeadPoolQuery } from '@/hooks/use-lead-pool-query'
 import { LEAD_STATUS_OPTIONS, type LeadPublic } from '@/hooks/use-leads-query'
 import { DEFAULT_META, useMetaQuery } from '@/hooks/use-meta-query'
+import { useTeamReportsQuery } from '@/hooks/use-team-reports-query'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
 import { cn } from '@/lib/utils'
 
@@ -69,6 +70,7 @@ export function DashboardHomePage() {
   const wb = useWorkboardQuery(sessionReady)
   const fu = useFollowUpsQuery(true, sessionReady)
   const pool = useLeadPoolQuery(sessionReady)
+  const adminReports = useTeamReportsQuery('', sessionReady && role === 'admin')
 
   const firstName =
     (me?.username?.trim() && me.username.split(/\s+/)[0]) ||
@@ -150,7 +152,86 @@ export function DashboardHomePage() {
         </CardHeader>
       </Card>
 
-      <GateAssistantCard sessionReady={sessionReady} />
+      {role === 'admin' && sessionReady ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {adminReports.isPending ? (
+            <>
+              <Card className="border-primary/20">
+                <CardContent className="pt-6">
+                  <Skeleton className="mb-2 h-3 w-40" />
+                  <Skeleton className="h-9 w-20" />
+                </CardContent>
+              </Card>
+              <Card className="border-primary/20">
+                <CardContent className="pt-6">
+                  <Skeleton className="mb-2 h-3 w-44" />
+                  <Skeleton className="h-9 w-16" />
+                </CardContent>
+              </Card>
+            </>
+          ) : adminReports.isError ? (
+            <Card className="border-destructive/30 sm:col-span-2">
+              <CardContent className="pt-6 text-sm text-destructive">
+                Could not load today&apos;s metrics.{' '}
+                <button
+                  type="button"
+                  className="font-medium underline underline-offset-2"
+                  onClick={() => void adminReports.refetch()}
+                >
+                  Retry
+                </button>
+              </CardContent>
+            </Card>
+          ) : adminReports.data ? (
+            <>
+              <Link
+                to="/dashboard/team/reports"
+                className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+              >
+                <Card className="h-full border-primary/20 transition-colors hover:border-primary/35">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
+                        Today&apos;s claimed leads
+                      </p>
+                      <UserPlus className="size-5 shrink-0 text-primary" aria-hidden />
+                    </div>
+                    <p className="mt-2 font-heading text-3xl font-semibold tabular-nums text-foreground">
+                      {adminReports.data.live_summary.leads_claimed_today}
+                    </p>
+                    <p className="mt-1 text-ds-caption text-subtle">
+                      Pool / ledger claims (Asia/Kolkata day) — Team reports
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+              <Link
+                to="/dashboard/team/enrollment-approvals"
+                className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+              >
+                <Card className="h-full border-primary/20 transition-colors hover:border-primary/35">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
+                        Today&apos;s ₹196 approvals
+                      </p>
+                      <ClipboardCheck className="size-5 shrink-0 text-primary" aria-hidden />
+                    </div>
+                    <p className="mt-2 font-heading text-3xl font-semibold tabular-nums text-foreground">
+                      {adminReports.data.live_summary.payment_proofs_approved_today}
+                    </p>
+                    <p className="mt-1 text-ds-caption text-subtle">
+                      Payment proofs approved today (IST) — open approvals queue
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+            </>
+          ) : null}
+        </div>
+      ) : null}
+
+      {role !== 'admin' ? <GateAssistantCard sessionReady={sessionReady} /> : null}
 
       {wb.isError ? (
         <ErrorState
@@ -275,77 +356,40 @@ export function DashboardHomePage() {
         )}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-5">
-        <Card className="border-primary/20 lg:col-span-3">
-          <CardHeader>
-            <CardTitle className="text-ds-h3">Pipeline by stage</CardTitle>
-            <CardDescription>
-              Counts from workboard (same rules as your lead visibility)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {wb.isPending && sessionReady ? (
-              <LoadingState label="Loading pipeline…" />
-            ) : metrics.bars.length > 0 && metrics.bars.every((b) => b.total === 0) ? (
-              <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
-                <p className="text-ds-body text-muted-foreground">No pipeline activity yet.</p>
-                <Button variant="outline" size="sm" asChild>
-                  <Link to="/dashboard/work/leads">Add lead</Link>
-                </Button>
-              </div>
-            ) : (
-              <>
-                {metrics.bars.length === 0 ? (
-                  <p className="py-6 text-center text-ds-body text-muted-foreground">
-                    No pipeline data yet — add leads from Work or Leads.
-                  </p>
-                ) : (
-                  <PipelineByStageChart
-                    bars={metrics.bars}
-                    chartMax={metrics.chartMax}
-                    pipelineTotal={metrics.pipelineTotal}
-                  />
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="border-primary/20 lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-ds-h3">Quick actions</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-2">
-            {quickActions.map((action) => {
-              const Icon = action.Icon
-              return (
-                <Button
-                  key={action.path}
-                  variant="outline"
-                  className="h-auto w-full p-0 font-normal"
-                  asChild
+      <Card className="border-primary/20">
+        <CardHeader>
+          <CardTitle className="text-ds-h3">Quick actions</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-2 lg:grid-cols-3">
+          {quickActions.map((action) => {
+            const Icon = action.Icon
+            return (
+              <Button
+                key={action.path}
+                variant="outline"
+                className="h-auto w-full p-0 font-normal"
+                asChild
+              >
+                <Link
+                  to={action.to}
+                  className="inline-flex w-full items-center justify-between gap-3 px-4 py-3 no-underline"
                 >
-                  <Link
-                    to={action.to}
-                    className="inline-flex w-full items-center justify-between gap-3 px-4 py-3 no-underline"
-                  >
-                    <span className="flex min-w-0 items-center gap-2">
-                      <Icon className="size-4 shrink-0 text-primary" aria-hidden />
-                      <span className="truncate font-medium text-foreground">{action.label}</span>
-                      {action.badgeCount != null ? (
-                        <Badge variant="primary" className="ml-1 shrink-0">
-                          {action.badgeCount}
-                        </Badge>
-                      ) : null}
-                    </span>
-                    <ArrowRight className="size-4 shrink-0 opacity-60" aria-hidden />
-                  </Link>
-                </Button>
-              )
-            })}
-          </CardContent>
-        </Card>
-      </div>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <Icon className="size-4 shrink-0 text-primary" aria-hidden />
+                    <span className="truncate font-medium text-foreground">{action.label}</span>
+                    {action.badgeCount != null ? (
+                      <Badge variant="primary" className="ml-1 shrink-0">
+                        {action.badgeCount}
+                      </Badge>
+                    ) : null}
+                  </span>
+                  <ArrowRight className="size-4 shrink-0 opacity-60" aria-hidden />
+                </Link>
+              </Button>
+            )
+          })}
+        </CardContent>
+      </Card>
 
       <Card className="border-primary/20">
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
@@ -404,6 +448,41 @@ export function DashboardHomePage() {
                 ))}
               </TableBody>
             </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-primary/20">
+        <CardHeader>
+          <CardTitle className="text-ds-h3">Pipeline by stage</CardTitle>
+          <CardDescription>
+            Counts from workboard (same rules as your lead visibility)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {wb.isPending && sessionReady ? (
+            <LoadingState label="Loading pipeline…" />
+          ) : metrics.bars.length > 0 && metrics.bars.every((b) => b.total === 0) ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+              <p className="text-ds-body text-muted-foreground">No pipeline activity yet.</p>
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/dashboard/work/leads">Add lead</Link>
+              </Button>
+            </div>
+          ) : (
+            <>
+              {metrics.bars.length === 0 ? (
+                <p className="py-6 text-center text-ds-body text-muted-foreground">
+                  No pipeline data yet — add leads from Work or Leads.
+                </p>
+              ) : (
+                <PipelineByStageChart
+                  bars={metrics.bars}
+                  chartMax={metrics.chartMax}
+                  pipelineTotal={metrics.pipelineTotal}
+                />
+              )}
+            </>
           )}
         </CardContent>
       </Card>

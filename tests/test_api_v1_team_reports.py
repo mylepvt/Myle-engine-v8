@@ -40,6 +40,7 @@ def test_team_reports_admin_json_shape(monkeypatch: pytest.MonkeyPatch) -> None:
         "leads_claimed_today",
         "calls_made_today",
         "enrolled_today",
+        "payment_proofs_approved_today",
         "day1_total",
         "day2_total",
         "converted_total",

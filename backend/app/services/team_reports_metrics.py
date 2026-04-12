@@ -66,6 +66,17 @@ async def compute_live_summary(session: AsyncSession, report_date: date) -> dict
     )
     enrolled_today = int(enrolled_q.scalar_one())
 
+    proofs_approved_q = await session.execute(
+        select(func.count())
+        .select_from(ActivityLog)
+        .where(
+            ActivityLog.action == "payment_proof_approved",
+            ActivityLog.created_at >= start,
+            ActivityLog.created_at < end,
+        ),
+    )
+    payment_proofs_approved_today = int(proofs_approved_q.scalar_one())
+
     base = _active_pipeline_filter()
 
     async def _count_status(status: str) -> int:
@@ -82,6 +93,7 @@ async def compute_live_summary(session: AsyncSession, report_date: date) -> dict
         "leads_claimed_today": leads_claimed_today,
         "calls_made_today": calls_made_today,
         "enrolled_today": enrolled_today,
+        "payment_proofs_approved_today": payment_proofs_approved_today,
         "day1_total": day1_total,
         "day2_total": day2_total,
         "converted_total": converted_total,

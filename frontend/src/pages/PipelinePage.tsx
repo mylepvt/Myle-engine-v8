@@ -37,15 +37,21 @@ export default function PipelinePage() {
   }
 
   if (isLoading) {
-    return <div className="flex justify-center p-8">Loading pipeline...</div>
+    return (
+      <div className="flex justify-center p-8 text-muted-foreground">Loading pipeline…</div>
+    )
   }
 
   if (error) {
-    return <div className="flex justify-center p-8 text-red-600">Error loading pipeline</div>
+    return (
+      <div className="flex justify-center p-8 text-destructive">Error loading pipeline</div>
+    )
   }
 
   if (!pipelineData) {
-    return <div className="flex justify-center p-8">No pipeline data available</div>
+    return (
+      <div className="flex justify-center p-8 text-muted-foreground">No pipeline data available</div>
+    )
   }
 
   const isAdminOrLeader = authData?.role === 'admin' || authData?.role === 'leader'
@@ -56,8 +62,8 @@ export default function PipelinePage() {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Lead Pipeline</h1>
-            <p className="text-gray-600">
+            <h1 className="mb-2 text-3xl font-bold text-foreground">Lead Pipeline</h1>
+            <p className="text-muted-foreground">
               Manage leads through the conversion funnel
             </p>
           </div>
@@ -109,10 +115,10 @@ export default function PipelinePage() {
 
       {/* Empty State */}
       {pipelineData.total_leads === 0 && (
-        <div className="text-center py-12">
-          <Users className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No leads in pipeline</h3>
-          <p className="text-gray-600">
+        <div className="py-12 text-center">
+          <Users className="mx-auto mb-4 h-16 w-16 text-muted-foreground" />
+          <h3 className="mb-2 text-lg font-medium text-foreground">No leads in pipeline</h3>
+          <p className="text-muted-foreground">
             Start adding leads to see them in the pipeline view.
           </p>
         </div>

@@ -15,9 +15,9 @@ interface PipelineMetricsProps {
 
 export default function PipelineMetrics({ metrics }: PipelineMetricsProps) {
   const getRateColor = (rate: number) => {
-    if (rate >= 70) return 'text-green-600'
-    if (rate >= 50) return 'text-yellow-600'
-    return 'text-red-600'
+    if (rate >= 70) return 'text-emerald-600 dark:text-emerald-400'
+    if (rate >= 50) return 'text-amber-600 dark:text-amber-400'
+    return 'text-red-600 dark:text-red-400'
   }
 
   const getRateBadgeVariant = (rate: number) => {
@@ -107,40 +107,40 @@ export default function PipelineMetrics({ metrics }: PipelineMetricsProps) {
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <div className="text-center">
-              <div className="text-lg font-semibold text-blue-600">
+              <div className="text-lg font-semibold tabular-nums text-blue-600 dark:text-blue-400">
                 {metrics.funnel.new_leads}
               </div>
-              <div className="text-xs text-gray-600">New Leads</div>
+              <div className="text-xs text-muted-foreground">New Leads</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-semibold text-yellow-600">
+              <div className="text-lg font-semibold tabular-nums text-amber-600 dark:text-amber-400">
                 {metrics.funnel.contacted}
               </div>
-              <div className="text-xs text-gray-600">Contacted</div>
+              <div className="text-xs text-muted-foreground">Contacted</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-semibold text-green-600">
+              <div className="text-lg font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
                 {metrics.funnel.paid}
               </div>
-              <div className="text-xs text-gray-600">Paid</div>
+              <div className="text-xs text-muted-foreground">Paid</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-semibold text-orange-600">
+              <div className="text-lg font-semibold tabular-nums text-orange-600 dark:text-orange-400">
                 {metrics.funnel.day1}
               </div>
-              <div className="text-xs text-gray-600">Day 1</div>
+              <div className="text-xs text-muted-foreground">Day 1</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-semibold text-red-600">
+              <div className="text-lg font-semibold tabular-nums text-red-600 dark:text-red-400">
                 {metrics.funnel.day2}
               </div>
-              <div className="text-xs text-gray-600">Day 2</div>
+              <div className="text-xs text-muted-foreground">Day 2</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-semibold text-emerald-600">
+              <div className="text-lg font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
                 {metrics.funnel.converted}
               </div>
-              <div className="text-xs text-gray-600">Converted</div>
+              <div className="text-xs text-muted-foreground">Converted</div>
             </div>
           </div>
         </CardContent>
