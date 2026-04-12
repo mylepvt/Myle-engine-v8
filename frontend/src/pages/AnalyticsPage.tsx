@@ -4,19 +4,121 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Activity, Calendar, Download } from 'lucide-react'
-import { 
+import {
   useTeamPerformanceQuery,
   useIndividualPerformanceQuery,
   useLeaderboardQuery,
   useSystemOverviewQuery,
-  useDailyTrendsQuery
+  useDailyTrendsQuery,
+  type IndividualPerformanceResponse,
+  type LeaderboardResponse,
+  type TeamPerformanceResponse,
+  type SystemOverviewResponse,
 } from '@/hooks/use-analytics-query'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
+import { cn } from '@/lib/utils'
 import TeamPerformanceCard from '@/components/analytics/TeamPerformanceCard'
 import IndividualPerformanceCard from '@/components/analytics/IndividualPerformanceCard'
 import LeaderboardTable from '@/components/analytics/LeaderboardTable'
 import SystemOverviewCard from '@/components/analytics/SystemOverviewCard'
 import DailyTrendsChart from '@/components/analytics/DailyTrendsChart'
+
+function escapeCsvCell(v: string | number | undefined | null): string {
+  const s = v === undefined || v === null ? '' : String(v)
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`
+  return s
+}
+
+function downloadTextFile(filename: string, content: string, mime: string) {
+  const blob = new Blob([content], { type: mime })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.rel = 'noopener'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
+function buildAnalyticsRows(
+  days: number,
+  individual: IndividualPerformanceResponse | undefined,
+  leaderboard: LeaderboardResponse | undefined,
+  team: TeamPerformanceResponse | undefined,
+  system: SystemOverviewResponse | undefined,
+  includeTeam: boolean,
+  includeSystem: boolean,
+): string[][] {
+  const rows: string[][] = []
+  rows.push(['section', 'field', 'value'])
+  rows.push(['meta', 'generated_at', new Date().toISOString()])
+  rows.push(['meta', 'window_days', String(days)])
+
+  if (individual) {
+    rows.push(['individual', 'period', individual.period])
+    rows.push(['individual', 'total_reports', String(individual.reports.total_reports)])
+    rows.push(['individual', 'total_calls', String(individual.reports.total_calls)])
+    rows.push(['individual', 'total_enrollments', String(individual.reports.total_enrollments)])
+    rows.push(['individual', 'total_payments', String(individual.reports.total_payments)])
+    rows.push(['individual', 'total_points', String(individual.scores.total_points)])
+    rows.push(['individual', 'total_leads', String(individual.leads.total_leads)])
+    rows.push(['individual', 'converted_leads', String(individual.leads.converted_leads)])
+    for (const d of individual.daily_trends.slice(0, 60)) {
+      rows.push(['individual_daily', d.date, `${d.calls} calls, ${d.enrollments} enroll, ${d.points} pts`])
+    }
+  }
+
+  if (includeTeam && team) {
+    rows.push(['team', 'period', team.period])
+    rows.push(['team', 'team_size', String(team.team_size)])
+    rows.push(['team', 'reports_total', String(team.reports.total_reports)])
+    rows.push(['team', 'calls_total', String(team.reports.total_calls)])
+    rows.push(['team', 'enrollments', String(team.reports.enrollments)])
+    rows.push(['team', 'leads_total', String(team.leads.total_leads)])
+    rows.push(['team', 'points_total', String(team.scores.total_points)])
+  }
+
+  if (leaderboard?.leaderboard?.length) {
+    rows.push(['leaderboard', 'period', leaderboard.period])
+    rows.push([
+      'leaderboard_header',
+      'rank',
+      'user_id',
+      'username',
+      'total_points',
+      'days_with_reports',
+      'avg_daily_points',
+      'total_leads',
+      'converted_leads',
+    ])
+    for (const L of leaderboard.leaderboard) {
+      rows.push([
+        'leaderboard_row',
+        String(L.rank),
+        String(L.user_id),
+        L.username,
+        String(L.total_points),
+        String(L.days_with_reports),
+        String(L.avg_daily_points),
+        String(L.total_leads),
+        String(L.converted_leads),
+      ])
+    }
+  }
+
+  if (includeSystem && system) {
+    rows.push(['system', 'period', system.period])
+    rows.push(['system', 'active_users', String(system.users.active_users)])
+    rows.push(['system', 'reports_total', String(system.reports.total_reports)])
+    rows.push(['system', 'total_leads', String(system.leads.total_leads)])
+    rows.push(['system', 'conversion_rate', String(system.leads.conversion_rate)])
+    rows.push(['system', 'wallet_net_volume', String(system.wallet.net_volume)])
+  }
+
+  return rows
+}
 
 export default function AnalyticsPage() {
   const [selectedDays, setSelectedDays] = useState(30)
@@ -32,6 +134,33 @@ export default function AnalyticsPage() {
   const isAdmin = authData?.role === 'admin'
   const isLeader = authData?.role === 'leader'
   const canViewTeam = isAdmin || isLeader
+
+  const tabCount = 2 + (canViewTeam ? 1 : 0) + (isAdmin ? 1 : 0)
+  const tabListClass = cn(
+    'grid w-full gap-1',
+    tabCount === 2 && 'grid-cols-2',
+    tabCount === 3 && 'grid-cols-3',
+    tabCount === 4 && 'grid-cols-4',
+  )
+
+  function runExport(kind: 'csv' | 'excel') {
+    const rows = buildAnalyticsRows(
+      selectedDays,
+      individualPerformance.data,
+      leaderboard.data,
+      teamPerformance.data,
+      systemOverview.data,
+      canViewTeam,
+      isAdmin,
+    )
+    const sep = kind === 'csv' ? ',' : '\t'
+    const lineJoin = '\r\n'
+    const body = rows.map((r) => r.map((c) => (kind === 'csv' ? escapeCsvCell(c) : String(c))).join(sep)).join(lineJoin)
+    const payload = kind === 'csv' ? '\uFEFF' + body : body
+    const ext = kind === 'csv' ? 'csv' : 'tsv'
+    const mime = kind === 'csv' ? 'text/csv;charset=utf-8' : 'text/tab-separated-values;charset=utf-8'
+    downloadTextFile(`myle-analytics-${selectedDays}d.${ext}`, payload, mime)
+  }
 
   return (
     <div className="container mx-auto p-6">
@@ -66,7 +195,7 @@ export default function AnalyticsPage() {
 
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-4' : canViewTeam ? 'grid-cols-3' : 'grid-cols-2'}`}>
+        <TabsList className={tabListClass}>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           {canViewTeam && <TabsTrigger value="team">Team</TabsTrigger>}
           <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
@@ -165,48 +294,12 @@ export default function AnalyticsPage() {
             <p className="text-sm text-gray-600">Download analytics data for offline analysis</p>
           </div>
           <div className="flex space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const trends = dailyTrends.data?.trends ?? []
-                if (!trends.length) return
-                const header = Object.keys(trends[0]).join(',')
-                const rows = trends.map((r) => Object.values(r).join(','))
-                const csv = [header, ...rows].join('\n')
-                const blob = new Blob([csv], { type: 'text/csv' })
-                const url = URL.createObjectURL(blob)
-                const a = document.createElement('a')
-                a.href = url
-                a.download = `analytics-${selectedDays}d.csv`
-                a.click()
-                URL.revokeObjectURL(url)
-              }}
-              disabled={!dailyTrends.data?.trends?.length}
-            >
-              <Download className="mr-2 w-4 h-4" />
+            <Button variant="outline" size="sm" type="button" onClick={() => runExport('csv')}>
+              <Download className="mr-2 h-4 w-4" />
               Export CSV
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const trends = dailyTrends.data?.trends ?? []
-                if (!trends.length) return
-                const header = Object.keys(trends[0]).join('\t')
-                const rows = trends.map((r) => Object.values(r).join('\t'))
-                const tsv = [header, ...rows].join('\n')
-                const blob = new Blob([tsv], { type: 'application/vnd.ms-excel' })
-                const url = URL.createObjectURL(blob)
-                const a = document.createElement('a')
-                a.href = url
-                a.download = `analytics-${selectedDays}d.xls`
-                a.click()
-                URL.revokeObjectURL(url)
-              }}
-              disabled={!dailyTrends.data?.trends?.length}
-            >
-              <Download className="mr-2 w-4 h-4" />
+            <Button variant="outline" size="sm" type="button" onClick={() => runExport('excel')}>
+              <Download className="mr-2 h-4 w-4" />
               Export Excel
             </Button>
           </div>

@@ -142,28 +142,33 @@ export function NoticeBoardPage({ title }: Props) {
                       {row.pin ? 'Unpin' : 'Pin'}
                     </Button>
                     {deleteConfirmId === row.id ? (
-                      <>
-                        <span className="self-center text-xs text-muted-foreground">Sure?</span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Sure? This cannot be undone.</span>
                         <Button
                           type="button"
-                          variant="destructive"
+                          variant="outline"
                           size="sm"
+                          className="border-destructive/50 text-destructive hover:bg-destructive/10"
                           disabled={remove.isPending}
                           onClick={() => {
-                            void remove.mutateAsync(row.id).finally(() => setDeleteConfirmId(null))
+                            void remove
+                              .mutateAsync(row.id)
+                              .then(() => setDeleteConfirmId(null))
+                              .catch(() => {})
                           }}
                         >
                           Yes, delete
                         </Button>
                         <Button
                           type="button"
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
+                          disabled={remove.isPending}
                           onClick={() => setDeleteConfirmId(null)}
                         >
                           Cancel
                         </Button>
-                      </>
+                      </div>
                     ) : (
                       <Button
                         type="button"

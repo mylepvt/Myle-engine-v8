@@ -456,7 +456,10 @@ export default function SettingsPage() {
                     id="current_password"
                     type="password"
                     value={passwordForm.current_password}
-                    onChange={(e) => setPasswordForm(prev => ({ ...prev, current_password: e.target.value }))}
+                    onChange={(e) => {
+                      setPasswordError(null)
+                      setPasswordForm((prev) => ({ ...prev, current_password: e.target.value }))
+                    }}
                   />
                 </div>
                 <div>
@@ -465,7 +468,10 @@ export default function SettingsPage() {
                     id="new_password"
                     type="password"
                     value={passwordForm.new_password}
-                    onChange={(e) => setPasswordForm(prev => ({ ...prev, new_password: e.target.value }))}
+                    onChange={(e) => {
+                      setPasswordError(null)
+                      setPasswordForm((prev) => ({ ...prev, new_password: e.target.value }))
+                    }}
                   />
                 </div>
                 <div>
@@ -474,14 +480,21 @@ export default function SettingsPage() {
                     id="confirm_password"
                     type="password"
                     value={passwordForm.confirm_password}
-                    onChange={(e) => setPasswordForm(prev => ({ ...prev, confirm_password: e.target.value }))}
+                    onChange={(e) => {
+                      setPasswordError(null)
+                      setPasswordForm((prev) => ({ ...prev, confirm_password: e.target.value }))
+                    }}
                   />
                 </div>
                 {passwordError ? (
-                  <p className="text-sm text-destructive" role="alert">{passwordError}</p>
+                  <p className="text-sm text-destructive" role="alert">
+                    {passwordError}
+                  </p>
                 ) : null}
-                {changePassword.isSuccess ? (
-                  <p className="text-sm text-green-600" role="status">Password changed successfully.</p>
+                {changePassword.isSuccess && !passwordError ? (
+                  <p className="text-sm text-emerald-600 dark:text-emerald-400" role="status">
+                    Password changed successfully.
+                  </p>
                 ) : null}
                 <Button onClick={handlePasswordChange} disabled={changePassword.isPending}>
                   {changePassword.isPending ? 'Changing...' : 'Change Password'}
@@ -619,19 +632,27 @@ export default function SettingsPage() {
                     <Input
                       placeholder="Key"
                       value={newSetting.key}
-                      onChange={(e) => { setNewSetting(prev => ({ ...prev, key: e.target.value })); setSettingError(null) }}
+                      onChange={(e) => {
+                        setSettingError(null)
+                        setNewSetting((prev) => ({ ...prev, key: e.target.value }))
+                      }}
                     />
                     <Input
                       placeholder="Value"
                       value={newSetting.value}
-                      onChange={(e) => { setNewSetting(prev => ({ ...prev, value: e.target.value })); setSettingError(null) }}
+                      onChange={(e) => {
+                        setSettingError(null)
+                        setNewSetting((prev) => ({ ...prev, value: e.target.value }))
+                      }}
                     />
                     <Button onClick={handleAppSettingUpdate} disabled={updateAppSetting.isPending}>
                       Add
                     </Button>
                   </div>
                   {settingError ? (
-                    <p className="text-sm text-destructive" role="alert">{settingError}</p>
+                    <p className="text-sm text-destructive" role="alert">
+                      {settingError}
+                    </p>
                   ) : null}
                 </div>
 
@@ -641,7 +662,7 @@ export default function SettingsPage() {
                     <h4 className="font-medium">Current Settings</h4>
                     <div className="space-y-2">
                       {Object.entries(appSettings.data.settings).map(([key, value]) => (
-                        <div key={key} className="flex items-center justify-between p-2 border rounded">
+                        <div key={key} className="flex flex-col gap-2 border rounded p-2 sm:flex-row sm:items-center sm:justify-between">
                           <div>
                             <div className="font-medium">{key}</div>
                             <div className="text-sm text-gray-600">{String(value)}</div>
@@ -651,8 +672,9 @@ export default function SettingsPage() {
                               <>
                                 <span className="text-xs text-muted-foreground">Sure?</span>
                                 <Button
-                                  variant="destructive"
+                                  variant="outline"
                                   size="sm"
+                                  className="border-destructive/50 text-destructive hover:bg-destructive/10"
                                   onClick={() => handleAppSettingDelete(key)}
                                   disabled={deleteAppSetting.isPending}
                                 >

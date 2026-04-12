@@ -120,6 +120,15 @@ export function LeadDetailPage({ leadId }: Props) {
   }, [lead])
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  useEffect(() => {
+    return () => {
+      if (notesTimer.current) {
+        clearTimeout(notesTimer.current)
+        notesTimer.current = null
+      }
+    }
+  }, [])
+
   async function savePipeline() {
     if (!lead) return
     setPipelineError('')
