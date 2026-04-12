@@ -101,6 +101,13 @@ export function LeadDetailPage({ leadId }: Props) {
   const [proofUrl, setProofUrl] = useState('')
   const [proofError, setProofError] = useState('')
 
+  // Clear autosave timer on unmount to prevent memory leaks.
+  useEffect(() => {
+    return () => {
+      if (notesTimer.current) clearTimeout(notesTimer.current)
+    }
+  }, [])
+
   // Keep local editors in sync when `lead` updates (route change or query refetch after save).
   /* eslint-disable react-hooks/set-state-in-effect -- intentional sync from server record to form state */
   useEffect(() => {

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Users } from 'lucide-react'
 import {
   usePipelineViewQuery,
@@ -14,12 +15,14 @@ export default function PipelinePage() {
   const { data: metrics } = usePipelineMetricsQuery()
   const transitionMutation = useTransitionLeadMutation()
   const [selectedLead, setSelectedLead] = useState<number | null>(null)
+  const [transitionError, setTransitionError] = useState<string | null>(null)
 
   const handleStatusTransition = async (leadId: number, newStatus: string) => {
+    setTransitionError(null)
     try {
       await transitionMutation.mutateAsync({ leadId, targetStatus: newStatus })
-    } catch (error) {
-      console.error('Failed to transition lead:', error)
+    } catch (err) {
+      setTransitionError(err instanceof Error ? err.message : 'Failed to move lead. Please try again.')
     }
   }
 
@@ -59,6 +62,22 @@ export default function PipelinePage() {
           </div>
         </div>
       </div>
+
+      {/* Transition error */}
+      {transitionError ? (
+        <Alert className="mb-4 border-destructive/50 bg-destructive/10">
+          <AlertDescription className="flex items-center justify-between text-destructive">
+            <span>{transitionError}</span>
+            <button
+              type="button"
+              className="ml-3 text-xs underline underline-offset-2"
+              onClick={() => setTransitionError(null)}
+            >
+              Dismiss
+            </button>
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {/* Metrics Overview */}
       {metrics && (

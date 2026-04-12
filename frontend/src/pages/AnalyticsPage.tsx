@@ -66,7 +66,7 @@ export default function AnalyticsPage() {
 
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-4' : canViewTeam ? 'grid-cols-3' : 'grid-cols-2'}`}>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           {canViewTeam && <TabsTrigger value="team">Team</TabsTrigger>}
           <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
@@ -158,19 +158,55 @@ export default function AnalyticsPage() {
       </Tabs>
 
       {/* Export Options */}
-      <div className="mt-8 p-4 bg-gray-50 rounded-lg">
+      <div className="mt-8 rounded-lg bg-gray-50 p-4 dark:bg-white/[0.03]">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-medium">Export Data</h3>
             <p className="text-sm text-gray-600">Download analytics data for offline analysis</p>
           </div>
           <div className="flex space-x-2">
-            <Button variant="outline" size="sm">
-              <Download className="w-4 h-4 mr-2" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const trends = dailyTrends.data?.trends ?? []
+                if (!trends.length) return
+                const header = Object.keys(trends[0]).join(',')
+                const rows = trends.map((r) => Object.values(r).join(','))
+                const csv = [header, ...rows].join('\n')
+                const blob = new Blob([csv], { type: 'text/csv' })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `analytics-${selectedDays}d.csv`
+                a.click()
+                URL.revokeObjectURL(url)
+              }}
+              disabled={!dailyTrends.data?.trends?.length}
+            >
+              <Download className="mr-2 w-4 h-4" />
               Export CSV
             </Button>
-            <Button variant="outline" size="sm">
-              <Download className="w-4 h-4 mr-2" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const trends = dailyTrends.data?.trends ?? []
+                if (!trends.length) return
+                const header = Object.keys(trends[0]).join('\t')
+                const rows = trends.map((r) => Object.values(r).join('\t'))
+                const tsv = [header, ...rows].join('\n')
+                const blob = new Blob([tsv], { type: 'application/vnd.ms-excel' })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `analytics-${selectedDays}d.xls`
+                a.click()
+                URL.revokeObjectURL(url)
+              }}
+              disabled={!dailyTrends.data?.trends?.length}
+            >
+              <Download className="mr-2 w-4 h-4" />
               Export Excel
             </Button>
           </div>

@@ -28,6 +28,7 @@ export function NoticeBoardPage({ title }: Props) {
   const [message, setMessage] = useState('')
   const [pinNew, setPinNew] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null)
 
   async function handlePost(e: React.FormEvent) {
     e.preventDefault()
@@ -140,20 +141,41 @@ export function NoticeBoardPage({ title }: Props) {
                     >
                       {row.pin ? 'Unpin' : 'Pin'}
                     </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="text-destructive hover:bg-destructive/10"
-                      disabled={remove.isPending}
-                      onClick={() => {
-                        if (window.confirm('Delete this announcement?')) {
-                          void remove.mutateAsync(row.id)
-                        }
-                      }}
-                    >
-                      Delete
-                    </Button>
+                    {deleteConfirmId === row.id ? (
+                      <>
+                        <span className="self-center text-xs text-muted-foreground">Sure?</span>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          disabled={remove.isPending}
+                          onClick={() => {
+                            void remove.mutateAsync(row.id).finally(() => setDeleteConfirmId(null))
+                          }}
+                        >
+                          Yes, delete
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDeleteConfirmId(null)}
+                        >
+                          Cancel
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive hover:bg-destructive/10"
+                        disabled={remove.isPending}
+                        onClick={() => setDeleteConfirmId(row.id)}
+                      >
+                        Delete
+                      </Button>
+                    )}
                   </div>
                 ) : null}
               </li>
