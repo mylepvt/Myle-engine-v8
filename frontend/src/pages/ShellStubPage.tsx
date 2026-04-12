@@ -1,3 +1,4 @@
+import { InsightList } from '@/components/dashboard/InsightList'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useShellStubQuery } from '@/hooks/use-shell-stub-query'
 
@@ -32,6 +33,11 @@ export function ShellStubPage({ title, apiPath }: Props) {
           <p>
             Items: <span className="font-medium text-foreground">{data.total}</span>
           </p>
+          {data.items.length > 0 ? (
+            <InsightList items={data.items} />
+          ) : (
+            <p className="text-ds-caption text-muted-foreground">No list rows for this surface.</p>
+          )}
         </div>
       ) : null}
     </div>

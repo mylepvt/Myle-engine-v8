@@ -2,17 +2,24 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from datetime import date, datetime
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.models.announcement import Announcement
+from app.models.app_setting import AppSetting
+from app.models.daily_report import DailyReport
+from app.models.daily_score import DailyScore
+from app.models.user import User
 from app.schemas.notice_board import AnnouncementCreate, AnnouncementOut, NoticeBoardResponse
-from app.schemas.system_surface import SystemStubResponse
+from app.schemas.system_surface import SystemStubResponse, TrainingSurfaceResponse
+from app.services.team_reports_metrics import IST
+from app.services.training_surface import build_training_surface
 
 router = APIRouter()
 
@@ -40,9 +47,41 @@ def _acting_label(user: AuthUser) -> str:
 @router.get("/leaderboard", response_model=SystemStubResponse)
 async def other_leaderboard(
     user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
 ) -> SystemStubResponse:
     _ = user
-    return SystemStubResponse(note="Leaderboard rankings are not computed in v1.")
+    stmt = (
+        select(
+            User.id,
+            User.fbo_id,
+            User.username,
+            User.email,
+            User.role,
+            func.coalesce(func.sum(DailyScore.points), 0).label("pts"),
+        )
+        .select_from(User)
+        .outerjoin(DailyScore, DailyScore.user_id == User.id)
+        .group_by(User.id, User.fbo_id, User.username, User.email, User.role)
+        .order_by(desc("pts"))
+        .limit(50)
+    )
+    rows = (await session.execute(stmt)).all()
+    items: list[dict] = []
+    for rank, r in enumerate(rows, start=1):
+        _uid, fbo, uname, email, role, pts = r
+        label = (uname or "").strip() or (email.split("@", 1)[0] if email else "") or fbo
+        items.append(
+            {
+                "title": f"#{rank} {label}",
+                "detail": f"{role} · {email} · total points: {int(pts)}",
+                "count": rank,
+            }
+        )
+    return SystemStubResponse(
+        items=items,
+        total=len(items),
+        note="Rankings use summed `daily_scores.points` across all submitted report days.",
+    )
 
 
 @router.get("/notice-board", response_model=NoticeBoardResponse)
@@ -123,24 +162,85 @@ async def other_notice_board_toggle_pin(
 @router.get("/live-session", response_model=SystemStubResponse)
 async def other_live_session(
     user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
 ) -> SystemStubResponse:
     _ = user
-    return SystemStubResponse(note="Live session scheduling / links are not integrated in v1.")
+
+    async def _get(key: str) -> str | None:
+        row = await session.get(AppSetting, key)
+        return row.value if row and row.value else None
+
+    title = (await _get("live_session_title")) or "Live session"
+    url = (await _get("live_session_url")) or ""
+    sched = (
+        (await _get("live_session_schedule"))
+        or "Set `live_session_title`, `live_session_url`, and `live_session_schedule` in admin → General (app_settings) to publish meeting links here."
+    )
+    items: list[dict] = []
+    if url.strip():
+        items.append(
+            {
+                "title": title,
+                "detail": sched,
+                "external_href": url.strip(),
+            }
+        )
+    else:
+        items.append(
+            {
+                "title": title,
+                "detail": sched,
+            }
+        )
+    return SystemStubResponse(
+        items=items,
+        total=len(items),
+        note="Meeting link and copy are driven from `app_settings` keys.",
+    )
 
 
-@router.get("/training", response_model=SystemStubResponse)
+@router.get("/training", response_model=TrainingSurfaceResponse)
 async def other_training(
     user: Annotated[AuthUser, Depends(require_auth_user)],
-) -> SystemStubResponse:
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> TrainingSurfaceResponse:
     _require_leader_or_team(user)
-    return SystemStubResponse(
-        note="Member training progress will appear here; see System → Training (admin) for admin stub.",
-    )
+    return await build_training_surface(session, user.user_id)
 
 
 @router.get("/daily-report", response_model=SystemStubResponse)
 async def other_daily_report(
     user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    report_date: Optional[date] = Query(
+        default=None,
+        description="Calendar day (defaults to today IST; form uses local date picker)",
+    ),
 ) -> SystemStubResponse:
+    """Surface copy + hint for last saved row (full form uses POST /reports/daily)."""
     _require_leader_or_team(user)
-    return SystemStubResponse(note="Daily report generation is not scheduled in v1.")
+    rd = report_date or datetime.now(IST).date()
+    r = await session.execute(
+        select(DailyReport).where(
+            DailyReport.user_id == user.user_id,
+            DailyReport.report_date == rd,
+        )
+    )
+    row = r.scalar_one_or_none()
+    items: list[dict] = []
+    if row:
+        items.append(
+            {
+                "title": f"Saved report · {row.report_date.isoformat()}",
+                "detail": (
+                    f"Total calling: {row.total_calling}; remarks: "
+                    f"{(row.remarks or '')[:120]}"
+                    f"{'…' if row.remarks and len(row.remarks) > 120 else ''}"
+                ),
+            }
+        )
+    return SystemStubResponse(
+        items=items,
+        total=len(items),
+        note="Submit or update your numbers via the daily report form (POST /api/v1/reports/daily).",
+    )

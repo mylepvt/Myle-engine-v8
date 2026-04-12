@@ -103,3 +103,17 @@ class Lead(Base):
         DateTime(timezone=True),
         nullable=True,
     )
+
+    # Workboard batch slots (M/A/E per day — leader/admin Day 1; team Day 2 per blueprint)
+    d1_morning: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    d1_afternoon: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    d1_evening: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    d2_morning: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    d2_afternoon: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    d2_evening: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    no_response_attempt_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        server_default=text("0"),
+        default=0,
+    )

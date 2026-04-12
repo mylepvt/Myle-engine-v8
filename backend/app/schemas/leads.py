@@ -67,6 +67,15 @@ class LeadPublic(BaseModel):
     day2_completed_at: Optional[datetime] = None
     day3_completed_at: Optional[datetime] = None
 
+    # Batch slots (M/A/E)
+    d1_morning: bool = False
+    d1_afternoon: bool = False
+    d1_evening: bool = False
+    d2_morning: bool = False
+    d2_afternoon: bool = False
+    d2_evening: bool = False
+    no_response_attempt_count: int = 0
+
 
 class LeadDetailPublic(LeadPublic):
     """Extended lead detail — same fields as LeadPublic (all included)."""
@@ -154,6 +163,14 @@ class LeadUpdate(BaseModel):
         description="True = set day3_completed_at to now; False = clear it",
     )
 
+    d1_morning: Optional[bool] = Field(default=None, description="Day 1 morning batch (leader/admin)")
+    d1_afternoon: Optional[bool] = Field(default=None, description="Day 1 afternoon batch (leader/admin)")
+    d1_evening: Optional[bool] = Field(default=None, description="Day 1 evening batch (leader/admin)")
+    d2_morning: Optional[bool] = Field(default=None, description="Day 2 morning batch")
+    d2_afternoon: Optional[bool] = Field(default=None, description="Day 2 afternoon batch")
+    d2_evening: Optional[bool] = Field(default=None, description="Day 2 evening batch")
+    no_response_attempt_count: Optional[int] = Field(default=None, ge=0, description="Optional counter")
+
     @model_validator(mode="after")
     def at_least_one_field(self) -> LeadUpdate:
         fields_with_values = [
@@ -174,6 +191,13 @@ class LeadUpdate(BaseModel):
             self.day2_completed,
             self.day3_completed,
             self.pool_price_cents,
+            self.d1_morning,
+            self.d1_afternoon,
+            self.d1_evening,
+            self.d2_morning,
+            self.d2_afternoon,
+            self.d2_evening,
+            self.no_response_attempt_count,
         ]
         if all(f is None for f in fields_with_values):
             raise ValueError("At least one field must be provided for update")

@@ -13,6 +13,8 @@ from app.models.training_progress import TrainingProgress
 from app.models.daily_report import DailyReport
 from app.models.daily_score import DailyScore
 from app.models.app_setting import AppSetting
+from app.models.training_question import TrainingQuestion
+from app.models.training_test_attempt import TrainingTestAttempt
 
 __all__ = [
     "Announcement",
@@ -30,4 +32,6 @@ __all__ = [
     "DailyReport",
     "DailyScore",
     "AppSetting",
+    "TrainingQuestion",
+    "TrainingTestAttempt",
 ]

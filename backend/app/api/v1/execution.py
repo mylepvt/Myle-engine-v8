@@ -11,6 +11,7 @@ from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.models.user import User
+from app.models.wallet_ledger import WalletLedgerEntry
 from app.schemas.execution_enforcement import (
     AtRiskLeadRow,
     DownlineExecutionStatsOut,
@@ -21,6 +22,7 @@ from app.schemas.execution_enforcement import (
     TeamPersonalFunnelOut,
     WeakMemberRow,
 )
+from app.schemas.system_surface import SystemStubResponse
 from app.services import execution_enforcement as enf
 
 router = APIRouter()
@@ -150,14 +152,26 @@ async def execution_stale_redistribute(
     )
 
 
-@router.get("/lead-ledger", response_model=dict)
+@router.get("/lead-ledger", response_model=SystemStubResponse)
 async def execution_lead_ledger(
     user: Annotated[AuthUser, Depends(require_auth_user)],
-) -> dict:
-    """Placeholder — wallet + ledger tie-in later."""
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> SystemStubResponse:
+    """Recent wallet lines — lead-scoped billing hooks up via product rules + ledger notes."""
     _require_admin(user)
-    return {
-        "items": [],
-        "total": 0,
-        "note": "Lead ledger aggregation is still out of scope; use GET /wallet/ledger.",
-    }
+    q = await session.execute(
+        select(WalletLedgerEntry).order_by(WalletLedgerEntry.created_at.desc()).limit(50)
+    )
+    rows = q.scalars().all()
+    items = [
+        {
+            "title": f"Ledger #{e.id} · user {e.user_id}",
+            "detail": f"₹{e.amount_cents / 100:,.2f} — {e.note or 'wallet line'}",
+        }
+        for e in rows
+    ]
+    return SystemStubResponse(
+        items=items,
+        total=len(items),
+        note="Per-user history also available via GET /api/v1/wallet/ledger; this is an admin-wide slice.",
+    )

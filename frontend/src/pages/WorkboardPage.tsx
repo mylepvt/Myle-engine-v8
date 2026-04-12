@@ -119,9 +119,20 @@ function LeadCard({ lead, pm }: { lead: LeadPublic; pm: PM }) {
 function AdminLeadCard({ lead, dayKey, pm, onMoveNext, nextLabel }: {
   lead: LeadPublic; dayKey: 1|2|3; pm: PM; onMoveNext?: () => void; nextLabel?: string
 }) {
-  const doneAt = lead[`day${dayKey}_completed_at` as keyof LeadPublic]
-  const done   = !!doneAt
-  const patchKey = `day${dayKey}_completed` as 'day1_completed'|'day2_completed'|'day3_completed'
+  const batchSlots = dayKey === 1
+    ? (['d1_morning', 'd1_afternoon', 'd1_evening'] as const)
+    : dayKey === 2
+    ? (['d2_morning', 'd2_afternoon', 'd2_evening'] as const)
+    : null
+
+  const done = batchSlots
+    ? batchSlots.every((k) => lead[k])
+    : !!lead.day3_completed_at
+
+  const patchKey = dayKey === 3
+    ? ('day3_completed' as const)
+    : null
+
   return (
     <article className="surface-inset flex flex-col gap-2 rounded-lg px-2.5 py-2">
       <div className="flex items-center justify-between gap-2">
@@ -140,15 +151,29 @@ function AdminLeadCard({ lead, dayKey, pm, onMoveNext, nextLabel }: {
       </div>
       <div className="flex items-center gap-2">
         <span className="text-[0.7rem] text-muted-foreground">Batches:</span>
-        {(['M','A','E'] as const).map((slot) => (
-          <button key={slot} type="button" disabled={pm.isPending || done}
-            onClick={() => void pm.mutateAsync({ id: lead.id, body: { [patchKey]: true } })}
-            className={cn('flex h-6 w-6 items-center justify-center rounded text-[0.65rem] font-semibold transition',
-              done ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-400'
-                   : 'border border-white/12 bg-white/[0.05] text-muted-foreground hover:border-primary/40 hover:text-primary')}>
-            {done ? <CheckSquare className="h-3 w-3"/> : <span>{slot}</span>}
-          </button>
-        ))}
+        {batchSlots
+          ? batchSlots.map((slotKey, i) => {
+              const slot = (['M', 'A', 'E'] as const)[i]
+              const slotDone = lead[slotKey]
+              return (
+                <button key={slotKey} type="button" disabled={pm.isPending || done}
+                  onClick={() => void pm.mutateAsync({ id: lead.id, body: { [slotKey]: true } })}
+                  className={cn('flex h-6 w-6 items-center justify-center rounded text-[0.65rem] font-semibold transition',
+                    slotDone || done ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-400'
+                      : 'border border-white/12 bg-white/[0.05] text-muted-foreground hover:border-primary/40 hover:text-primary')}>
+                  {slotDone || done ? <CheckSquare className="h-3 w-3"/> : <span>{slot}</span>}
+                </button>
+              )
+            })
+          : (['M','A','E'] as const).map((slot) => (
+              <button key={slot} type="button" disabled={pm.isPending || done || !patchKey}
+                onClick={() => void pm.mutateAsync({ id: lead.id, body: { [patchKey!]: true } })}
+                className={cn('flex h-6 w-6 items-center justify-center rounded text-[0.65rem] font-semibold transition',
+                  done ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-400'
+                    : 'border border-white/12 bg-white/[0.05] text-muted-foreground hover:border-primary/40 hover:text-primary')}>
+                {done ? <CheckSquare className="h-3 w-3"/> : <span>{slot}</span>}
+              </button>
+            ))}
       </div>
       {done && onMoveNext &&
         <button type="button" disabled={pm.isPending} onClick={onMoveNext}
@@ -344,7 +369,15 @@ export function WorkboardPage({ title }: Props) {
     const id = window.setTimeout(() => setSearch(qInput), 350)
     return () => window.clearTimeout(id)
   }, [qInput])
-  const cols: Col[] = useMemo(() => data?.columns ?? [], [data])
+  const cols: Col[] = useMemo(() => {
+    const raw = data?.columns
+    if (!raw?.length) return []
+    return raw.map((c) => ({
+      status: c.status,
+      total: typeof c.total === 'number' ? c.total : 0,
+      items: Array.isArray(c.items) ? c.items : [],
+    }))
+  }, [data])
 
   return (
     <div className="space-y-6">

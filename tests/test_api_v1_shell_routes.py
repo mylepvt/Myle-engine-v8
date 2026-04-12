@@ -43,3 +43,21 @@ def test_team_reports_admin(monkeypatch: pytest.MonkeyPatch) -> None:
     b = r.json()
     assert "live_summary" in b
     assert b["live_summary"]["day1_total"] == 0
+
+
+def test_execution_lead_ledger_stub_shape(monkeypatch: pytest.MonkeyPatch) -> None:
+    c = _admin(monkeypatch)
+    r = c.get("/api/v1/execution/lead-ledger")
+    assert r.status_code == 200
+    b = r.json()
+    assert "items" in b and "total" in b and "note" in b
+
+
+def test_other_training_matches_system_shape(monkeypatch: pytest.MonkeyPatch) -> None:
+    patch_jwt_settings(monkeypatch, auth_dev_login_enabled=True)
+    c = TestClient(app)
+    assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+    r = c.get("/api/v1/other/training")
+    assert r.status_code == 200
+    b = r.json()
+    assert "videos" in b and "progress" in b

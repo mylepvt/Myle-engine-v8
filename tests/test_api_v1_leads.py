@@ -447,3 +447,36 @@ def test_api_flow_create_then_workboard_then_status_then_archive(
         assert arch["items"][0]["name"] == "Karanveer Singh Flow"
     finally:
         asyncio.run(_clear_leads())
+
+
+def test_team_cannot_patch_day1_batches(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_clear_leads())
+    asyncio.run(_seed_one_lead(user_id=3, name="Team Owned", lead_status="day1"))
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+        assert c.patch("/api/v1/leads/1", json={"d1_morning": True}).status_code == 403
+        assert c.patch("/api/v1/leads/1", json={"day1_completed": True}).status_code == 403
+        ok = c.patch("/api/v1/leads/1", json={"d2_morning": True})
+        assert ok.status_code == 200
+        assert ok.json()["d2_morning"] is True
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_leader_can_patch_day1_batches(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_clear_leads())
+    asyncio.run(_seed_one_lead(user_id=2, name="Leader Lead", lead_status="day1"))
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        r = c.patch(
+            "/api/v1/leads/1",
+            json={"d1_morning": True, "d1_afternoon": True, "d1_evening": True},
+        )
+        assert r.status_code == 200
+        b = r.json()
+        assert b["d1_morning"] is True
+        assert b["day1_completed_at"] is not None
+    finally:
+        asyncio.run(_clear_leads())

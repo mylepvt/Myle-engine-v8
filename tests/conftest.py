@@ -25,6 +25,8 @@ from app.models.training_progress import TrainingProgress  # noqa: F401
 from app.models.daily_report import DailyReport  # noqa: F401
 from app.models.daily_score import DailyScore  # noqa: F401
 from app.models.app_setting import AppSetting  # noqa: F401
+from app.models.training_question import TrainingQuestion  # noqa: F401
+from app.models.training_test_attempt import TrainingTestAttempt  # noqa: F401
 from app.constants.roles import DEV_FBO_BY_ROLE
 from app.services.dev_users import DEV_EMAIL_BY_ROLE
 

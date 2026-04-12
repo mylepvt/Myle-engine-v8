@@ -1,8 +1,14 @@
 from __future__ import annotations
 
+import asyncio
+
+import conftest as test_conftest
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import delete
 
+from app.models.training_question import TrainingQuestion
+from app.models.training_test_attempt import TrainingTestAttempt
 from main import app
 
 from util_jwt_patch import patch_jwt_settings
@@ -60,3 +66,63 @@ def test_system_coaching_admin_and_leader(monkeypatch: pytest.MonkeyPatch) -> No
     c3 = _authed(monkeypatch)
     assert c3.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
     assert c3.get("/api/v1/system/coaching").status_code == 200
+
+
+async def _clear_training_tables() -> None:
+    fac = test_conftest.get_test_session_factory()
+    async with fac() as session:
+        await session.execute(delete(TrainingTestAttempt))
+        await session.execute(delete(TrainingQuestion))
+        await session.commit()
+
+
+async def _seed_one_training_question() -> None:
+    fac = test_conftest.get_test_session_factory()
+    async with fac() as session:
+        session.add(
+            TrainingQuestion(
+                question="Pick B",
+                option_a="A",
+                option_b="B",
+                option_c="C",
+                option_d="D",
+                correct_answer="b",
+                sort_order=1,
+            )
+        )
+        await session.commit()
+
+
+def test_training_test_questions_and_submit(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_clear_training_tables())
+    asyncio.run(_seed_one_training_question())
+    try:
+        c = _authed(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+        qs = c.get("/api/v1/system/training-test/questions").json()
+        assert len(qs) == 1
+        assert "a" in qs[0]["options"]
+        qid = qs[0]["id"]
+        sub = c.post(
+            "/api/v1/system/training-test/submit",
+            json={"answers": {str(qid): "b"}},
+        )
+        assert sub.status_code == 200
+        body = sub.json()
+        assert body["score"] == 1
+        assert body["passed"] is True
+        assert body["percent"] == 100
+    finally:
+        asyncio.run(_clear_training_tables())
+
+
+def test_training_test_submit_errors_when_empty_bank(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_clear_training_tables())
+    try:
+        c = _authed(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        assert c.get("/api/v1/system/training-test/questions").json() == []
+        r = c.post("/api/v1/system/training-test/submit", json={"answers": {}})
+        assert r.status_code == 400
+    finally:
+        asyncio.run(_clear_training_tables())

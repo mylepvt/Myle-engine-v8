@@ -94,6 +94,13 @@ export type LeadPublic = {
   day1_completed_at: string | null
   day2_completed_at: string | null
   day3_completed_at: string | null
+  d1_morning: boolean
+  d1_afternoon: boolean
+  d1_evening: boolean
+  d2_morning: boolean
+  d2_afternoon: boolean
+  d2_evening: boolean
+  no_response_attempt_count: number
 }
 
 export type LeadListResponse = {
@@ -197,6 +204,13 @@ export async function patchLead(
     day1_completed?: boolean
     day2_completed?: boolean
     day3_completed?: boolean
+    d1_morning?: boolean
+    d1_afternoon?: boolean
+    d1_evening?: boolean
+    d2_morning?: boolean
+    d2_afternoon?: boolean
+    d2_evening?: boolean
+    no_response_attempt_count?: number
   },
 ): Promise<LeadPublic> {
   const res = await apiFetch(`/api/v1/leads/${id}`, {

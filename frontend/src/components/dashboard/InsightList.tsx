@@ -31,6 +31,16 @@ export function InsightList({ items }: { items: Record<string, unknown>[] }) {
               {typeof row.count === 'number' ? (
                 <p className="mt-2 text-ds-caption text-subtle">Count: {row.count}</p>
               ) : null}
+              {typeof row.external_href === 'string' ? (
+                <a
+                  href={row.external_href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-2 inline-flex text-sm font-medium text-primary underline-offset-2 hover:underline"
+                >
+                  Open link →
+                </a>
+              ) : null}
               {typeof row.href === 'string' ? (
                 <Link
                   to={`/dashboard/${row.href}`}

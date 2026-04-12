@@ -34,12 +34,13 @@ function statusLabel(status: string): string {
   return LEAD_STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status
 }
 
-function recentFromWorkboard(columns: { items: LeadPublic[] }[] | undefined): LeadPublic[] {
+function recentFromWorkboard(columns: { items?: LeadPublic[] }[] | undefined): LeadPublic[] {
   if (!columns?.length) return []
   const seen = new Set<number>()
   const out: LeadPublic[] = []
   for (const col of columns) {
-    for (const item of col.items) {
+    const rowItems = col.items ?? []
+    for (const item of rowItems) {
       if (!seen.has(item.id)) {
         seen.add(item.id)
         out.push(item)
@@ -96,13 +97,14 @@ export function DashboardHomePage() {
     let newLeads = 0
     const bars: { status: string; total: number; label: string }[] = []
     for (const c of columns) {
-      pipelineTotal += c.total
-      if (c.status === 'converted' || c.status === 'won') won = c.total
-      if (c.status === 'lost') lost = c.total
-      if (c.status === 'new_lead' || c.status === 'new') newLeads = c.total
+      const t = typeof c.total === 'number' ? c.total : 0
+      pipelineTotal += t
+      if (c.status === 'converted' || c.status === 'won') won = t
+      if (c.status === 'lost') lost = t
+      if (c.status === 'new_lead' || c.status === 'new') newLeads = t
       bars.push({
         status: c.status,
-        total: c.total,
+        total: t,
         label: statusLabel(c.status),
       })
     }

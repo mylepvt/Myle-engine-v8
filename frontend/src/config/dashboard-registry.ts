@@ -55,7 +55,7 @@ export type DashboardNavSection = {
   items: DashboardNavItem[]
 }
 
-/** What to render for “full” product surfaces (non-stub). */
+/** What to render for product surfaces (includes `shell-api` list pages backed by `SystemStubResponse`). */
 export type FullUiSurface =
   | { kind: 'leads'; listMode: 'active' | 'archived' }
   | { kind: 'workboard' }
@@ -82,6 +82,10 @@ export type FullUiSurface =
   | { kind: 'wallet-recharge-admin' }
   | { kind: 'notice-board' }
   | { kind: 'team-reports' }
+  | { kind: 'daily-report-form' }
+  | { kind: 'execution-at-risk' }
+  /** Loads `ShellStubPage` with a GET that returns `SystemStubResponse` (items + note). */
+  | { kind: 'shell-api'; apiPath: string }
 
 export type DashboardRouteDef = {
   path: string
@@ -94,7 +98,6 @@ export type DashboardRouteDef = {
 } & (
   | { surface: 'dashboard-home' }
   | { surface: 'full'; ui: FullUiSurface }
-  | { surface: 'stub'; stubApiPath: string }
   | { surface: 'placeholder' }
 )
 
@@ -234,8 +237,8 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     section: { id: 'team', label: 'Team' },
     label: 'Approvals',
     roles: routeRoles('team/approvals'),
-    surface: 'stub',
-    stubApiPath: '/api/v1/team/approvals',
+    surface: 'full',
+    ui: { kind: 'shell-api', apiPath: '/api/v1/team/approvals' },
   },
   {
     path: 'team/enrollment-approvals',
@@ -306,16 +309,16 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     section: { id: 'finance', label: 'Finance' },
     label: 'Budget export',
     roles: routeRoles('finance/budget-export'),
-    surface: 'stub',
-    stubApiPath: '/api/v1/finance/budget-export',
+    surface: 'full',
+    ui: { kind: 'shell-api', apiPath: '/api/v1/finance/budget-export' },
   },
   {
     path: 'finance/monthly-targets',
     section: { id: 'finance', label: 'Finance' },
     label: 'Monthly targets',
     roles: routeRoles('finance/monthly-targets'),
-    surface: 'stub',
-    stubApiPath: '/api/v1/finance/monthly-targets',
+    surface: 'full',
+    ui: { kind: 'shell-api', apiPath: '/api/v1/finance/monthly-targets' },
   },
   {
     path: 'finance/wallet',
@@ -330,8 +333,8 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     section: { id: 'finance', label: 'Finance' },
     label: 'Lead pool',
     roles: routeRoles('finance/lead-pool'),
-    surface: 'stub',
-    stubApiPath: '/api/v1/finance/lead-pool',
+    surface: 'full',
+    ui: { kind: 'shell-api', apiPath: '/api/v1/finance/lead-pool' },
   },
   {
     path: 'finance/recharge-request',
@@ -354,8 +357,8 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     section: { id: 'other', label: 'Other' },
     label: 'Leaderboard',
     roles: routeRoles('other/leaderboard'),
-    surface: 'stub',
-    stubApiPath: '/api/v1/other/leaderboard',
+    surface: 'full',
+    ui: { kind: 'shell-api', apiPath: '/api/v1/other/leaderboard' },
   },
   {
     path: 'other/notice-board',
@@ -370,72 +373,72 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     section: { id: 'other', label: 'Other' },
     label: 'Live session',
     roles: routeRoles('other/live-session'),
-    surface: 'stub',
-    stubApiPath: '/api/v1/other/live-session',
+    surface: 'full',
+    ui: { kind: 'shell-api', apiPath: '/api/v1/other/live-session' },
   },
   {
     path: 'other/training',
     section: { id: 'other', label: 'Other' },
     label: 'My training',
     roles: routeRoles('other/training'),
-    surface: 'stub',
-    stubApiPath: '/api/v1/other/training',
+    surface: 'full',
+    ui: { kind: 'system', surface: 'training' },
   },
   {
     path: 'other/daily-report',
     section: { id: 'other', label: 'Other' },
     label: 'Daily report',
     roles: routeRoles('other/daily-report'),
-    surface: 'stub',
-    stubApiPath: '/api/v1/other/daily-report',
+    surface: 'full',
+    ui: { kind: 'daily-report-form' },
   },
   {
     path: 'execution/at-risk-leads',
     section: { id: 'execution', label: 'Execution' },
     label: 'At-risk leads',
     roles: routeRoles('execution/at-risk-leads'),
-    surface: 'stub',
-    stubApiPath: '/api/v1/execution/at-risk-leads',
+    surface: 'full',
+    ui: { kind: 'execution-at-risk' },
   },
   {
     path: 'execution/lead-ledger',
     section: { id: 'execution', label: 'Execution' },
     label: 'Lead ledger',
     roles: routeRoles('execution/lead-ledger'),
-    surface: 'stub',
-    stubApiPath: '/api/v1/execution/lead-ledger',
+    surface: 'full',
+    ui: { kind: 'shell-api', apiPath: '/api/v1/execution/lead-ledger' },
   },
   {
     path: 'settings/app',
     section: { id: 'settings', label: 'Settings' },
     label: 'General',
     roles: routeRoles('settings/app'),
-    surface: 'stub',
-    stubApiPath: '/api/v1/settings/app',
+    surface: 'full',
+    ui: { kind: 'shell-api', apiPath: '/api/v1/settings/app' },
   },
   {
     path: 'settings/help',
     section: { id: 'settings', label: 'Settings' },
     label: 'Help',
     roles: routeRoles('settings/help'),
-    surface: 'stub',
-    stubApiPath: '/api/v1/settings/help',
+    surface: 'full',
+    ui: { kind: 'shell-api', apiPath: '/api/v1/settings/help' },
   },
   {
     path: 'settings/all-members',
     section: { id: 'settings', label: 'Settings' },
     label: 'All members',
     roles: routeRoles('settings/all-members'),
-    surface: 'stub',
-    stubApiPath: '/api/v1/settings/all-members',
+    surface: 'full',
+    ui: { kind: 'team-members' },
   },
   {
     path: 'settings/org-tree',
     section: { id: 'settings', label: 'Settings' },
     label: 'Org tree',
     roles: routeRoles('settings/org-tree'),
-    surface: 'stub',
-    stubApiPath: '/api/v1/settings/org-tree',
+    surface: 'full',
+    ui: { kind: 'shell-api', apiPath: '/api/v1/settings/org-tree' },
   },
 ]
 
@@ -543,12 +546,12 @@ export function resolveTitleForPath(path: string, role: Role): string | undefine
   return def.labelByRole?.[role] ?? def.label
 }
 
-/** Stub GET paths for `ShellStubPage` — derived from registry (no second list). */
+/** Shell GET paths for `ShellStubPage` — derived from `shell-api` full surfaces. */
 export const SHELL_STUB_API_PATHS: Record<string, string> = Object.fromEntries(
   DASHBOARD_ROUTE_DEFS.filter(
-    (d): d is DashboardRouteDef & { surface: 'stub'; stubApiPath: string } =>
-      d.surface === 'stub',
-  ).map((d) => [d.path, d.stubApiPath]),
+    (d): d is DashboardRouteDef & { surface: 'full'; ui: { kind: 'shell-api'; apiPath: string } } =>
+      d.surface === 'full' && d.ui.kind === 'shell-api',
+  ).map((d) => [d.path, d.ui.apiPath]),
 )
 
 export function isShellStubDashboardPath(path: string): boolean {

@@ -28,6 +28,21 @@ _MAX_LIMIT = 100
 _DEFAULT_LIMIT = 50
 
 
+def _sync_batch_completion_timestamps(lead: Lead, now: datetime) -> None:
+    """Keep ``day*_completed_at`` aligned with M/A/E batch booleans."""
+    if lead.d1_morning and lead.d1_afternoon and lead.d1_evening:
+        if lead.day1_completed_at is None:
+            lead.day1_completed_at = now
+    else:
+        lead.day1_completed_at = None
+
+    if lead.d2_morning and lead.d2_afternoon and lead.d2_evening:
+        if lead.day2_completed_at is None:
+            lead.day2_completed_at = now
+    else:
+        lead.day2_completed_at = None
+
+
 def _escape_ilike(term: str) -> str:
     return term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
@@ -267,6 +282,21 @@ async def update_lead(
     if not await user_can_mutate_lead(session, user, lead):
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
+    if user.role == "team":
+        if body.day1_completed is not None:
+            raise HTTPException(
+                status_code=http_status.HTTP_403_FORBIDDEN,
+                detail="Team cannot update Day 1 completion",
+            )
+        if any(
+            x is not None
+            for x in (body.d1_morning, body.d1_afternoon, body.d1_evening)
+        ):
+            raise HTTPException(
+                status_code=http_status.HTTP_403_FORBIDDEN,
+                detail="Team cannot update Day 1 batches",
+            )
+
     if body.in_pool is not None:
         if user.role != "admin":
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
@@ -331,19 +361,52 @@ async def update_lead(
     if body.payment_status is not None:
         lead.payment_status = body.payment_status
 
-    # Day completion flags
-    if body.day1_completed is True:
-        lead.day1_completed_at = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc)
+
+    if body.no_response_attempt_count is not None:
+        lead.no_response_attempt_count = body.no_response_attempt_count
+
+    # Day 1 / Day 2 batches + legacy day*_completed booleans
+    explicit_d1 = (body.d1_morning, body.d1_afternoon, body.d1_evening)
+    if any(x is not None for x in explicit_d1):
+        if body.d1_morning is not None:
+            lead.d1_morning = body.d1_morning
+        if body.d1_afternoon is not None:
+            lead.d1_afternoon = body.d1_afternoon
+        if body.d1_evening is not None:
+            lead.d1_evening = body.d1_evening
+    elif body.day1_completed is True:
+        lead.d1_morning = True
+        lead.d1_afternoon = True
+        lead.d1_evening = True
     elif body.day1_completed is False:
-        lead.day1_completed_at = None
-    if body.day2_completed is True:
-        lead.day2_completed_at = datetime.now(timezone.utc)
+        lead.d1_morning = False
+        lead.d1_afternoon = False
+        lead.d1_evening = False
+
+    explicit_d2 = (body.d2_morning, body.d2_afternoon, body.d2_evening)
+    if any(x is not None for x in explicit_d2):
+        if body.d2_morning is not None:
+            lead.d2_morning = body.d2_morning
+        if body.d2_afternoon is not None:
+            lead.d2_afternoon = body.d2_afternoon
+        if body.d2_evening is not None:
+            lead.d2_evening = body.d2_evening
+    elif body.day2_completed is True:
+        lead.d2_morning = True
+        lead.d2_afternoon = True
+        lead.d2_evening = True
     elif body.day2_completed is False:
-        lead.day2_completed_at = None
+        lead.d2_morning = False
+        lead.d2_afternoon = False
+        lead.d2_evening = False
+
     if body.day3_completed is True:
-        lead.day3_completed_at = datetime.now(timezone.utc)
+        lead.day3_completed_at = now
     elif body.day3_completed is False:
         lead.day3_completed_at = None
+
+    _sync_batch_completion_timestamps(lead, now)
 
     await session.commit()
     await session.refresh(lead)

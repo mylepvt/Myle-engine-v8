@@ -32,6 +32,8 @@ import { WalletRechargePage } from '@/pages/WalletRechargePage'
 import { WalletRechargeAdminPage } from '@/pages/WalletRechargeAdminPage'
 import { NoticeBoardPage } from '@/pages/NoticeBoardPage'
 import { TeamReportsPage } from '@/pages/TeamReportsPage'
+import { DailyReportFormPage } from '@/pages/DailyReportFormPage'
+import { ExecutionAtRiskPage } from '@/pages/ExecutionAtRiskPage'
 
 function renderFullUi(ui: FullUiSurface, title: string) {
   switch (ui.kind) {
@@ -73,6 +75,12 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <NoticeBoardPage title={title} />
     case 'team-reports':
       return <TeamReportsPage title={title} />
+    case 'daily-report-form':
+      return <DailyReportFormPage title={title} />
+    case 'execution-at-risk':
+      return <ExecutionAtRiskPage title={title} />
+    case 'shell-api':
+      return <ShellStubPage title={title} apiPath={ui.apiPath} />
     default: {
       const _exhaustive: never = ui
       return _exhaustive
@@ -124,8 +132,6 @@ export function DashboardNestedPage() {
   const title = resolveTitleForPath(path, serverRole) ?? path
 
   switch (def.surface) {
-    case 'stub':
-      return <ShellStubPage title={title} apiPath={def.stubApiPath} />
     case 'placeholder':
       return <DashboardPlaceholderPage title={title} />
     case 'dashboard-home':

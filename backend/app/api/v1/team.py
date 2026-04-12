@@ -171,8 +171,8 @@ async def team_reports(
         date=d.isoformat(),
         live_summary=TeamReportsLiveSummary(**live),
         note=(
-            "Per-member daily report submissions (legacy daily_reports) are not in v2 yet; "
-            "tiles use pool claims, call events, payment proof timestamps, and active pipeline counts."
+            "Tiles use pool claims, call events, payment proof timestamps, and active pipeline counts. "
+            "Per-user daily report lines also exist (POST /api/v1/reports/daily) and feed leaderboard scoring."
         ),
     )
 
@@ -183,5 +183,13 @@ async def team_approvals(
 ) -> SystemStubResponse:
     _require_admin(user)
     return SystemStubResponse(
-        note="Generic approvals queue is not persisted yet; use enrollment-requests for the INR 196 enrollment stub.",
+        items=[
+            {
+                "title": "₹196 enrollment queue",
+                "detail": "Enrollment proof + approvals are handled under Team → ₹196 Approvals.",
+                "href": "team/enrollment-approvals",
+            }
+        ],
+        total=1,
+        note="Additional approval queues can be added as persisted models; v1 routes here to enrollment tooling.",
     )

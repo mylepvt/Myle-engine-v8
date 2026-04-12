@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from 'react'
 
+import { InsightList } from '@/components/dashboard/InsightList'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useShellStubQuery } from '@/hooks/use-shell-stub-query'
@@ -48,6 +49,12 @@ export function FinanceRechargesPage({ title }: Props) {
         <p className="surface-elevated p-3 text-sm text-muted-foreground">
           {stub.data.note}
         </p>
+      ) : null}
+      {stub.data && stub.data.items.length > 0 ? (
+        <div className="surface-elevated p-3">
+          <p className="mb-2 text-ds-caption text-muted-foreground">Recent ledger lines</p>
+          <InsightList items={stub.data.items} />
+        </div>
       ) : null}
 
       <form onSubmit={(e) => void onSubmit(e)} className="surface-elevated space-y-4 p-4">
