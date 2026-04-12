@@ -35,7 +35,6 @@ import { NoticeBoardPage } from '@/pages/NoticeBoardPage'
 import { TeamReportsPage } from '@/pages/TeamReportsPage'
 import { DailyReportFormPage } from '@/pages/DailyReportFormPage'
 import PipelinePage from '@/pages/PipelinePage'
-import AnalyticsPage from '@/pages/AnalyticsPage'
 import SettingsPage from '@/pages/SettingsPage'
 
 function renderFullUi(ui: FullUiSurface, title: string) {
