@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, TrendingUp } from 'lucide-react'
 
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
+import { PipelineByStageChart } from '@/components/dashboard/PipelineByStageChart'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -294,34 +295,17 @@ export function DashboardHomePage() {
               </div>
             ) : (
               <>
-                <div className="flex h-44 items-end justify-between gap-1.5 border-b border-border/60 px-0.5 pb-0 sm:gap-2">
-                  {metrics.bars.map((b) => {
-                    const h = Math.round((b.total / metrics.chartMax) * 100)
-                    return (
-                      <div
-                        key={b.status}
-                        className="flex min-w-0 flex-1 flex-col items-center gap-2"
-                      >
-                        <span className="text-center text-ds-caption font-medium tabular-nums text-foreground">
-                          {b.total}
-                        </span>
-                        <div
-                          className="w-full max-w-[3rem] rounded-t-md bg-gradient-to-t from-primary/85 to-primary/35"
-                          style={{ height: `${Math.max(h, 4)}%` }}
-                          title={`${b.label}: ${b.total}`}
-                        />
-                        <span className="line-clamp-2 text-center text-[0.65rem] leading-tight text-subtle">
-                          {b.label}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
                 {metrics.bars.length === 0 ? (
-                  <p className="mt-4 text-center text-ds-body text-muted-foreground">
+                  <p className="py-6 text-center text-ds-body text-muted-foreground">
                     No pipeline data yet — add leads from Work or Leads.
                   </p>
-                ) : null}
+                ) : (
+                  <PipelineByStageChart
+                    bars={metrics.bars}
+                    chartMax={metrics.chartMax}
+                    pipelineTotal={metrics.pipelineTotal}
+                  />
+                )}
               </>
             )}
           </CardContent>
