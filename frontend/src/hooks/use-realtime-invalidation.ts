@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react'
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 
 import { apiBase } from '@/lib/api'
+import { isLowEndDevice } from '@/lib/device-performance'
 
 type InvalidateMsg = { v: number; type: 'invalidate'; topics: string[] }
 
@@ -62,6 +63,20 @@ export function useRealtimeInvalidation(enabled: boolean) {
 
     let closed = false
     let reconnectTimer: number | undefined
+    let debounceTimer: number | undefined
+    const reconnectMs = isLowEndDevice() ? 8_000 : 3_000
+
+    const scheduleTopics = (topics: string[]) => {
+      if (!isLowEndDevice()) {
+        applyTopics(qc, topics)
+        return
+      }
+      if (debounceTimer !== undefined) window.clearTimeout(debounceTimer)
+      debounceTimer = window.setTimeout(() => {
+        debounceTimer = undefined
+        applyTopics(qc, topics)
+      }, 450)
+    }
 
     const connect = () => {
       const url = buildWsUrl()
@@ -72,7 +87,7 @@ export function useRealtimeInvalidation(enabled: boolean) {
         try {
           const raw = JSON.parse(String(ev.data)) as InvalidateMsg
           if (raw?.type === 'invalidate' && Array.isArray(raw.topics)) {
-            applyTopics(qc, raw.topics)
+            scheduleTopics(raw.topics)
           }
         } catch {
           /* ignore malformed */
@@ -82,7 +97,7 @@ export function useRealtimeInvalidation(enabled: boolean) {
       ws.onclose = () => {
         wsRef.current = null
         if (closed) return
-        reconnectTimer = window.setTimeout(connect, 3_000)
+        reconnectTimer = window.setTimeout(connect, reconnectMs)
       }
 
       ws.onerror = () => {
@@ -95,6 +110,7 @@ export function useRealtimeInvalidation(enabled: boolean) {
     return () => {
       closed = true
       if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer)
+      if (debounceTimer !== undefined) window.clearTimeout(debounceTimer)
       wsRef.current?.close()
       wsRef.current = null
     }

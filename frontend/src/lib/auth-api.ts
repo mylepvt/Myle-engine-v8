@@ -18,11 +18,15 @@ export async function authDevLogin(role: Role): Promise<void> {
 /** Matches backend `DEV_LOGIN_PASSWORD_PLAIN` for seeded dev users after migrations. */
 export const DEV_SEED_PASSWORD = 'myle-dev-login'
 
-export async function authPasswordLogin(fboId: string, password: string): Promise<void> {
+export async function authPasswordLogin(
+  fboId: string,
+  password: string,
+  rememberMe = false,
+): Promise<void> {
   const res = await apiFetch('/api/v1/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fbo_id: fboId.trim(), password }),
+    body: JSON.stringify({ fbo_id: fboId.trim(), password, remember_me: rememberMe }),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))

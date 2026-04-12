@@ -49,7 +49,10 @@ router = APIRouter()
 
 
 @router.get("/me", response_model=MeResponse)
-async def read_me(request: Request) -> MeResponse:
+async def read_me(
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> MeResponse:
     token = request.cookies.get(MYLE_ACCESS_COOKIE)
     if not token:
         return MeResponse()
@@ -85,6 +88,11 @@ async def read_me(request: Request) -> MeResponse:
     tr_b: bool | None = None
     if isinstance(tr_raw, bool):
         tr_b = tr_raw
+    avatar_url_s: str | None = None
+    if user_id is not None:
+        row = await session.get(User, user_id)
+        if row is not None:
+            avatar_url_s = row.avatar_url
     return MeResponse(
         authenticated=True,
         role=role,
@@ -97,6 +105,7 @@ async def read_me(request: Request) -> MeResponse:
         training_status=ts_s,
         training_required=tr_b,
         registration_status=rs_s,
+        avatar_url=avatar_url_s,
     )
 
 
@@ -334,7 +343,7 @@ async def login_with_password(
         await session.commit()
         await session.refresh(user)
     ensure_may_issue_session_cookies(user)
-    issue_session_cookies(response, user)
+    issue_session_cookies(response, user, remember_me=body.remember_me)
     return DevLoginResponse()
 
 
@@ -370,19 +379,29 @@ async def refresh_session(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
         )
+    remember = bool(payload.get("remember", False))
     ensure_may_issue_session_cookies(user)
-    issue_session_cookies(response, user)
+    issue_session_cookies(response, user, remember_me=remember)
     return DevLoginResponse()
 
 
 @router.post("/sync-identity", response_model=DevLoginResponse)
 async def sync_identity(
+    request: Request,
     response: Response,
     session: Annotated[AsyncSession, Depends(get_db)],
     auth: CurrentUser,
 ) -> DevLoginResponse:
     """Reload the signed-in user from the database and re-issue JWT cookies."""
-    ok = await refresh_session_identity(session, user_id=auth.user_id, response=response)
+    remember = False
+    raw_prev = request.cookies.get(MYLE_REFRESH_COOKIE)
+    if raw_prev:
+        prev = decode_refresh_token(raw_prev, settings.secret_key)
+        if prev:
+            remember = bool(prev.get("remember", False))
+    ok = await refresh_session_identity(
+        session, user_id=auth.user_id, response=response, remember_me=remember
+    )
     if not ok:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

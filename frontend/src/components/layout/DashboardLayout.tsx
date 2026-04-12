@@ -16,9 +16,11 @@ import { useSyncRoleFromMe } from '@/hooks/use-sync-role-from-me'
 import { MyleSidebarMark } from '@/components/brand/MyleSidebarMark'
 import { cn } from '@/lib/utils'
 import { authLogout } from '@/lib/auth-api'
+import { apiUrl } from '@/lib/api'
 import { useAuthStore } from '@/stores/auth-store'
+import { useShellPreviewStore } from '@/stores/shell-preview-store'
 import { useShellStore } from '@/stores/shell-store'
-import { roleShortLabel } from '@/types/role'
+import { roleShortLabel, type Role } from '@/types/role'
 
 export function DashboardLayout() {
   useSyncRoleFromMe()
@@ -26,7 +28,14 @@ export function DashboardLayout() {
   const location = useLocation()
   const { data: meta } = useMetaQuery()
   const { data: me } = useAuthMeQuery()
-  const { role: shellRole, isPending: rolePending } = useDashboardShellRole()
+  const {
+    role: shellRole,
+    serverRole,
+    isPending: rolePending,
+    isAdminPreviewing,
+    setViewAsRole,
+  } = useDashboardShellRole()
+  const viewAsRole = useShellPreviewStore((s) => s.viewAsRole)
   const navigate = useNavigate()
   const { sidebarOpen, toggleSidebar, setSidebarOpen } = useShellStore()
   const logout = useAuthStore((s) => s.logout)
@@ -92,6 +101,7 @@ export function DashboardLayout() {
     } catch {
       /* still clear local session */
     }
+    useShellPreviewStore.getState().setViewAsRole(null)
     logout()
     navigate('/login', { replace: true })
   }
@@ -257,6 +267,27 @@ export function DashboardLayout() {
           </form>
 
           <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5 sm:flex-initial sm:gap-2">
+            {serverRole === 'admin' ? (
+              <label className="flex max-w-[6.5rem] min-w-0 flex-col sm:max-w-[10rem]">
+                <span className="text-[0.58rem] font-semibold uppercase tracking-wide text-muted-foreground">
+                  View as
+                </span>
+                <select
+                  className="mt-0.5 max-w-full rounded-md border border-border bg-muted/50 py-1 pl-2 pr-6 text-[0.7rem] font-medium text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                  value={viewAsRole ?? 'admin'}
+                  aria-label="Preview dashboard navigation as role"
+                  title="UI preview only — your account stays admin"
+                  onChange={(e) => {
+                    const v = e.target.value as Role | 'admin'
+                    setViewAsRole(v === 'admin' ? null : v)
+                  }}
+                >
+                  <option value="admin">Admin (full)</option>
+                  <option value="leader">Leader</option>
+                  <option value="team">Team</option>
+                </select>
+              </label>
+            ) : null}
             <ShellHeaderFeedbackControls />
             <Button variant="ghost" size="icon" className="shrink-0" asChild aria-label="Settings">
               <Link to="/dashboard/settings/profile">
@@ -275,10 +306,16 @@ export function DashboardLayout() {
 
             {shellRole != null ? (
               <span
-                className="max-w-[7rem] truncate rounded-[0.5rem] border border-border bg-muted/40 px-2 py-1.5 text-center text-ds-caption font-medium text-foreground sm:max-w-[9rem]"
-                title="Your role from the signed-in account"
+                className="max-w-[7rem] truncate rounded-[0.5rem] border border-border bg-muted/40 px-2 py-1.5 text-center text-ds-caption font-medium text-foreground sm:max-w-[11rem]"
+                title={
+                  isAdminPreviewing && serverRole === 'admin'
+                    ? `Nav as ${roleShortLabel(shellRole)} · signed in as Admin`
+                    : 'Your role from the signed-in account'
+                }
               >
-                {roleShortLabel(shellRole)}
+                {isAdminPreviewing && serverRole === 'admin'
+                  ? `${roleShortLabel(shellRole)} (view)`
+                  : roleShortLabel(shellRole)}
               </span>
             ) : rolePending ? (
               <span className="inline-block h-8 w-16 animate-pulse rounded-md bg-muted/60" />
@@ -286,7 +323,7 @@ export function DashboardLayout() {
 
             <Link
               to="/dashboard/settings/profile"
-              className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-xs font-semibold text-foreground transition-opacity hover:opacity-90 active:opacity-80"
+              className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted text-xs font-semibold text-foreground transition-opacity hover:opacity-90 active:opacity-80"
               title={
                 me?.fbo_id
                   ? `${me.fbo_id}${me.username ? ` · ${me.username}` : ''}${me.email ? ` · ${me.email}` : ''}`
@@ -294,7 +331,17 @@ export function DashboardLayout() {
               }
               aria-label="Open profile settings"
             >
-              {displayInitial}
+              {me?.avatar_url ? (
+                <img
+                  src={apiUrl(me.avatar_url)}
+                  alt=""
+                  className="size-full object-cover"
+                  width={36}
+                  height={36}
+                />
+              ) : (
+                displayInitial
+              )}
             </Link>
 
             <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">

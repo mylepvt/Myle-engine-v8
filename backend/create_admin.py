@@ -64,7 +64,8 @@ async def create_admin_user():
                 "default_language": "en",
                 "default_timezone": "UTC",
                 "session_timeout": "3600",
-                "max_upload_size": "10485760"
+                "max_upload_size": "10485760",
+                "lead_pool_default_price_cents": "0",
             }
             
             for key, value in default_settings.items():

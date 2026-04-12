@@ -28,10 +28,12 @@ import {
   useAppSettingUpdateMutation,
   useAppSettingDeleteMutation,
   usePasswordChangeMutation,
-  useEmailChangeMutation
+  useEmailChangeMutation,
+  useAvatarUploadMutation,
 } from '@/hooks/use-settings-query'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { cn } from '@/lib/utils'
+import { apiUrl } from '@/lib/api'
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile')
@@ -52,6 +54,7 @@ export default function SettingsPage() {
   const deleteAppSetting = useAppSettingDeleteMutation()
   const changePassword = usePasswordChangeMutation()
   const changeEmail = useEmailChangeMutation()
+  const avatarUpload = useAvatarUploadMutation()
   
   // Form states
   const [profileForm, setProfileForm] = useState({
@@ -186,6 +189,47 @@ export default function SettingsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <div className="relative size-24 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-100 dark:border-border dark:bg-muted">
+                    {userProfile.data?.avatar_url ? (
+                      <img
+                        src={apiUrl(userProfile.data.avatar_url)}
+                        alt=""
+                        className="size-full object-cover"
+                        width={96}
+                        height={96}
+                      />
+                    ) : (
+                      <div className="flex size-full items-center justify-center text-2xl text-gray-400">
+                        {(userProfile.data?.username?.[0] ?? userProfile.data?.email?.[0] ?? '?').toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <Label htmlFor="avatar-file">Profile photo (DP)</Label>
+                    <input
+                      id="avatar-file"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      aria-label="Upload profile photo"
+                      className="mt-1 block w-full max-w-sm text-sm file:mr-2 file:rounded-md file:border-0 file:bg-primary file:px-2 file:py-1 file:text-xs file:font-medium file:text-primary-foreground"
+                      disabled={avatarUpload.isPending}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0]
+                        if (f) avatarUpload.mutate(f)
+                        e.target.value = ''
+                      }}
+                    />
+                    <p className="mt-1 text-xs text-gray-600 dark:text-muted-foreground">
+                      JPEG, PNG, or WebP — max 2 MB. Shown in the header after save.
+                    </p>
+                    {avatarUpload.isError ? (
+                      <p className="mt-1 text-xs text-red-600" role="alert">
+                        {avatarUpload.error instanceof Error ? avatarUpload.error.message : 'Upload failed'}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
                 <div>
                   <Label htmlFor="fbo_id">FBO ID</Label>
                   <Input

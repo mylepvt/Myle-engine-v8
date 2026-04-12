@@ -98,8 +98,10 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
+      <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+        <h1 className="min-w-0 max-w-full truncate text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+          {title}
+        </h1>
         {archivedOnly ? (
           <Link
             to="/dashboard/work/leads"
@@ -143,13 +145,14 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
           <select
             id="lead-filter-status"
             value={filters.status}
+            data-ui-silent
             onChange={(e) =>
               setFilters((f) => ({
                 ...f,
                 status: e.target.value === '' ? '' : (e.target.value as LeadStatus),
               }))
             }
-            className="w-full rounded-md border border-white/12 bg-white/[0.05] backdrop-blur-sm px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+            className="w-full max-w-full rounded-md border border-white/12 bg-white/[0.05] backdrop-blur-sm px-2 py-2 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 sm:px-3 sm:text-sm"
           >
             <option value="">All statuses</option>
             {LEAD_STATUS_GROUPS.map((g) => (
@@ -206,7 +209,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                 ))}
               </select>
             </div>
-            <Button type="submit" disabled={createMut.isPending || !name.trim()}>
+            <Button type="submit" data-ui-silent disabled={createMut.isPending || !name.trim()}>
               {createMut.isPending ? 'Adding…' : 'Add lead'}
             </Button>
           </form>
@@ -240,7 +243,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
       ) : null}
       {data ? (
         <div className="surface-elevated p-4 text-sm text-muted-foreground">
-          <p className="mb-3 font-medium text-foreground">
+          <p className="mb-3 break-words font-medium text-foreground">
             Total: {total}
             {total > items.length ? (
               <span className="ml-2 font-normal text-muted-foreground">
@@ -251,7 +254,8 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
           {items.length === 0 ? (
             <p>{emptyListHint(role ?? null, archivedOnly)}</p>
           ) : (
-            <Table className="table-fixed">
+            <div className="-mx-1 max-w-full overflow-x-auto">
+            <Table className="min-w-[720px] table-fixed">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-[4.5rem] text-right tabular-nums text-muted-foreground">
@@ -284,6 +288,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                       {!archivedOnly ? (
                         <select
                           aria-label={`Status for ${l.name}`}
+                          data-ui-silent
                           value={l.status}
                           disabled={patchMut.isPending}
                           onChange={(e) => {
@@ -369,6 +374,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
           {items.length > 0 && leadsQ.hasNextPage ? (
             <div className="mt-4 flex justify-center">

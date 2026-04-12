@@ -41,6 +41,10 @@ class MeResponse(BaseModel):
         default=None,
         description="pending | approved | rejected — account approval gate",
     )
+    avatar_url: Optional[str] = Field(
+        default=None,
+        description="Profile image URL path when set (same-origin /api/v1/media/avatar/…)",
+    )
 
 
 class DevLoginRequest(BaseModel):
@@ -56,6 +60,10 @@ class LoginRequest(BaseModel):
         description="FBO ID (normalized) or exact username, same as legacy first field",
     )
     password: str = Field(min_length=1, max_length=512)
+    remember_me: bool = Field(
+        default=False,
+        description="When true, issue a longer-lived refresh cookie (see JWT_REFRESH_DAYS_REMEMBER).",
+    )
 
 
 class DevLoginResponse(BaseModel):

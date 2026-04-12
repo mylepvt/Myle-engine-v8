@@ -15,3 +15,6 @@ cookies.txt
 **/cookies.txt
 *.cookies
 backend/.env
+
+# User uploads (profile photos, etc.)
+backend/data/uploads/

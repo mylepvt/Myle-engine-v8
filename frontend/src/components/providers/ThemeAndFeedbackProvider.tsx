@@ -1,6 +1,12 @@
 import { type ReactNode, useEffect, useRef } from 'react'
 
-import { playUiSatisfactionSound } from '@/lib/ui-sounds'
+import { hapticSuccess, hapticTapLight } from '@/lib/haptics'
+import {
+  playUiClickSound,
+  playUiSatisfactionSound,
+  playUiStageAdvanceSound,
+  playUiSuccessSound,
+} from '@/lib/ui-sounds'
 import { useUiFeedbackStore, type ThemePreference } from '@/stores/ui-feedback-store'
 
 function resolveDark(theme: ThemePreference): boolean {
@@ -55,16 +61,39 @@ export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) 
       if (target.closest('[data-ui-silent]')) return
 
       const interactive = target.closest(
-        'button, a[href], [role="button"], [role="tab"], [role="menuitem"], input[type="submit"], input[type="checkbox"], input[type="radio"], summary',
+        'button, a[href], [role="button"], [role="tab"], [role="menuitem"], input[type="submit"], input[type="checkbox"], input[type="radio"], summary, select',
       )
       if (!interactive) return
 
       const now = Date.now()
-      if (now - lastSoundAt.current < 160) return
+      if (now - lastSoundAt.current < 140) return
       lastSoundAt.current = now
 
+      const raw =
+        interactive.getAttribute('data-ui-sound') ??
+        interactive.closest('[data-ui-sound]')?.getAttribute('data-ui-sound') ??
+        'click'
+
       void (async () => {
-        await playUiSatisfactionSound()
+        switch (raw) {
+          case 'none':
+            return
+          case 'success':
+            await playUiSuccessSound()
+            hapticSuccess()
+            break
+          case 'stage':
+            await playUiStageAdvanceSound()
+            hapticSuccess()
+            break
+          case 'satisfaction':
+            await playUiSatisfactionSound()
+            hapticTapLight()
+            break
+          default:
+            await playUiClickSound()
+            hapticTapLight()
+        }
         useUiFeedbackStore.getState().addSatisfactionPoints(1)
       })()
     }

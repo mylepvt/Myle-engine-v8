@@ -20,6 +20,8 @@ export type MeResponse = {
   training_required: boolean | null
   /** pending | approved | rejected */
   registration_status: string | null
+  /** Profile image path (use with `apiUrl()`). */
+  avatar_url: string | null
 }
 
 export async function fetchAuthMe(): Promise<MeResponse> {
@@ -45,6 +47,10 @@ export async function fetchAuthMe(): Promise<MeResponse> {
     registration_status:
       typeof raw.registration_status === 'string'
         ? raw.registration_status
+        : null,
+    avatar_url:
+      typeof raw.avatar_url === 'string' && raw.avatar_url.length > 0
+        ? raw.avatar_url
         : null,
   }
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 
@@ -9,7 +9,12 @@ import {
   useClaimLeadMutation,
   usePatchLeadMutation,
 } from '@/hooks/use-leads-query'
-import { useLeadPoolQuery, type PoolLead } from '@/hooks/use-lead-pool-query'
+import {
+  useLeadPoolDefaultsMutation,
+  useLeadPoolDefaultsQuery,
+  useLeadPoolQuery,
+  type PoolLead,
+} from '@/hooks/use-lead-pool-query'
 import { useWalletMeQuery } from '@/hooks/use-wallet-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { apiFetch } from '@/lib/api'
@@ -30,6 +35,8 @@ export function LeadPoolWorkPage({ title }: Props) {
   const qc = useQueryClient()
   const { role } = useDashboardShellRole()
   const { data, isPending, isError, error, refetch } = useLeadPoolQuery()
+  const { data: poolDefaults } = useLeadPoolDefaultsQuery(role === 'admin')
+  const poolDefaultsMut = useLeadPoolDefaultsMutation()
   const { data: walletData } = useWalletMeQuery(true)
   const claimMut = useClaimLeadMutation()
   const patchMut = usePatchLeadMutation()
@@ -43,8 +50,28 @@ export function LeadPoolWorkPage({ title }: Props) {
   const [importNote, setImportNote] = useState<string | null>(null)
   const [testBusy, setTestBusy] = useState(false)
   const [testNote, setTestNote] = useState<string | null>(null)
+  const [defaultRupees, setDefaultRupees] = useState('')
+  const [defaultPriceHydrated, setDefaultPriceHydrated] = useState(false)
 
   const walletBalance = walletData?.balance_cents ?? 0
+
+  useEffect(() => {
+    if (!poolDefaults || defaultPriceHydrated) return
+    setDefaultRupees(String((poolDefaults.default_pool_price_cents ?? 0) / 100))
+    setDefaultPriceHydrated(true)
+  }, [poolDefaults, defaultPriceHydrated])
+
+  async function handleSaveDefaultPoolPrice() {
+    const rupees = parseFloat(defaultRupees)
+    if (isNaN(rupees) || rupees < 0) return
+    try {
+      await poolDefaultsMut.mutateAsync({
+        default_pool_price_cents: Math.round(rupees * 100),
+      })
+    } catch {
+      /* surfaced below */
+    }
+  }
 
   async function handleClaim(leadId: number) {
     try {
@@ -147,14 +174,62 @@ export function LeadPoolWorkPage({ title }: Props) {
 
       {role === 'admin' ? (
         <div className="surface-inset space-y-3 p-4 text-sm">
-          <p className="font-medium text-foreground">Admin: import pool leads (Excel)</p>
+          <p className="font-medium text-foreground">Default claim price (new pool leads)</p>
+          <p className="text-ds-caption text-muted-foreground">
+            Set once here — it stays until you change it again. Every Excel import uses this price for new rows.
+            You can still override individual leads below.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="sr-only" htmlFor="lead-pool-default-price">
+              Default price in rupees
+            </label>
+            <input
+              id="lead-pool-default-price"
+              type="number"
+              min="0"
+              step="1"
+              placeholder="₹ per claim"
+              value={defaultRupees}
+              onChange={(e) => setDefaultRupees(e.target.value)}
+              className="w-40 rounded-md border border-white/12 bg-white/[0.05] px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+            />
+            <Button
+              type="button"
+              size="sm"
+              disabled={poolDefaultsMut.isPending || defaultRupees === ''}
+              onClick={() => void handleSaveDefaultPoolPrice()}
+            >
+              {poolDefaultsMut.isPending ? 'Saving…' : 'Save default price'}
+            </Button>
+          </div>
+          {poolDefaults != null ? (
+            <p className="text-xs text-muted-foreground" aria-live="polite">
+              Saved:{' '}
+              {poolDefaults.default_pool_price_cents === 0
+                ? 'Free (₹0)'
+                : formatRupees(poolDefaults.default_pool_price_cents)}
+            </p>
+          ) : null}
+          {poolDefaultsMut.isError ? (
+            <p className="text-xs text-destructive" role="alert">
+              {poolDefaultsMut.error instanceof Error
+                ? poolDefaultsMut.error.message
+                : 'Could not save default price'}
+            </p>
+          ) : null}
+
+          <p className="pt-2 font-medium text-foreground">Admin: import pool leads (Excel)</p>
           <p className="text-ds-caption text-muted-foreground">
             Use <strong className="font-medium text-foreground">.xlsx</strong> with a header row.
             Columns (flexible names): Submit Time, Full Name, Age, Gender, Phone Number (Calling
             Number), Your City Name, AD Name.
           </p>
           <div className="flex flex-wrap items-center gap-2">
+            <label htmlFor="lead-pool-import-file" className="sr-only">
+              Choose Excel file to import into pool
+            </label>
             <input
+              id="lead-pool-import-file"
               type="file"
               accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               className="max-w-full text-xs file:mr-2 file:rounded-md file:border-0 file:bg-primary file:px-2 file:py-1 file:text-xs file:font-medium file:text-primary-foreground"
@@ -263,7 +338,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                           type="number"
                           min="0"
                           step="1"
-                          placeholder={`Price ₹ (current: ${isFree ? 'free' : (price / 100).toFixed(0)})`}
+                          placeholder={`Override ₹ — row ${isFree ? 'free' : (price / 100).toFixed(0)} · saved default ₹${((poolDefaults?.default_pool_price_cents ?? 0) / 100).toFixed(0)}`}
                           value={priceInputs[l.id] ?? ''}
                           onChange={(e) => setPriceInputs((p) => ({ ...p, [l.id]: e.target.value }))}
                           className="w-40 rounded-md border border-white/12 bg-white/[0.05] px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"

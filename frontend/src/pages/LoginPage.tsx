@@ -87,7 +87,7 @@ export function LoginPage() {
     }
     setPwPending(true)
     try {
-      await authPasswordLogin(fboId, password)
+      await authPasswordLogin(fboId, password, rememberMe)
       await queryClient.resetQueries({ queryKey: ['auth', 'me'] })
       let me = await queryClient.fetchQuery({
         queryKey: ['auth', 'me'],

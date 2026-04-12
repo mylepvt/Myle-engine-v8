@@ -53,7 +53,9 @@ def create_access_token(
     return jwt.encode(payload, secret, algorithm=JWT_ALG)
 
 
-def create_refresh_token(*, sub: str, secret: str, days: int = 14) -> str:
+def create_refresh_token(
+    *, sub: str, secret: str, days: int = 14, remember: bool = False
+) -> str:
     now = dt.datetime.now(dt.timezone.utc)
     exp = now + dt.timedelta(days=days)
     payload: dict[str, Any] = {
@@ -61,6 +63,7 @@ def create_refresh_token(*, sub: str, secret: str, days: int = 14) -> str:
         "sub": sub,
         "iat": int(now.timestamp()),
         "exp": int(exp.timestamp()),
+        "remember": remember,
     }
     return jwt.encode(payload, secret, algorithm=JWT_ALG)
 

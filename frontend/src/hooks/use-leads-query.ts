@@ -6,6 +6,8 @@ import {
 } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
+import { playUiStageAdvanceSound, playUiSuccessSound } from '@/lib/ui-sounds'
+import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
 
 export type LeadStatus =
   | 'new_lead'
@@ -289,7 +291,12 @@ export function useCreateLeadMutation() {
   return useMutation({
     mutationFn: ({ name, status }: { name: string; status?: LeadStatus }) =>
       createLead(name, status ?? 'new'),
-    onSuccess: () => invalidateLeadRelated(qc),
+    onSuccess: () => {
+      invalidateLeadRelated(qc)
+      if (useUiFeedbackStore.getState().soundEnabled) {
+        void playUiSuccessSound()
+      }
+    },
   })
 }
 
@@ -303,7 +310,15 @@ export function usePatchLeadMutation() {
       id: number
       body: Parameters<typeof patchLead>[1]
     }) => patchLead(id, body),
-    onSuccess: () => invalidateLeadRelated(qc),
+    onSuccess: (_data, variables) => {
+      invalidateLeadRelated(qc)
+      if (!useUiFeedbackStore.getState().soundEnabled) return
+      if (variables.body.status) {
+        void playUiStageAdvanceSound()
+      } else {
+        void playUiSuccessSound()
+      }
+    },
   })
 }
 

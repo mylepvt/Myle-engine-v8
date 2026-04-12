@@ -56,37 +56,39 @@
 
   .dark {
     color-scheme: dark;
-    --background: var(--palette-ink);
-    --foreground: var(--palette-mist);
-    --card: color-mix(in srgb, white 7%, var(--palette-ink));
-    --card-foreground: var(--palette-mist);
-    --popover: color-mix(in srgb, white 9%, var(--palette-ink));
-    --popover-foreground: var(--palette-mist);
+    /* Velvet black — deeper than default ink for a true OLED-style dark */
+    --palette-ink: #020105;
+    --background: #010004;
+    --foreground: #e8e4f5;
+    --card: #0a0714;
+    --card-foreground: #e8e4f5;
+    --popover: #0c0818;
+    --popover-foreground: #e8e4f5;
     --primary: var(--palette-blue);
-    --primary-foreground: #f1f5f9;
-    --secondary: color-mix(in srgb, white 11%, var(--palette-ink));
-    --secondary-foreground: var(--palette-mist);
-    --muted: color-mix(in srgb, white 9%, var(--palette-ink));
-    --muted-foreground: color-mix(in srgb, var(--palette-mist) 68%, var(--palette-ink) 32%);
-    --accent: color-mix(in srgb, var(--palette-blue) 32%, transparent);
-    --accent-foreground: var(--palette-mist);
+    --primary-foreground: #f4f2fb;
+    --secondary: #14101f;
+    --secondary-foreground: #e0dcf0;
+    --muted: #120e1a;
+    --muted-foreground: #a39ab8;
+    --accent: color-mix(in srgb, var(--palette-blue) 28%, #0f0b18 72%);
+    --accent-foreground: #e8e4f5;
     --destructive: #f87171;
-    --destructive-foreground: var(--palette-ink);
-    --border: color-mix(in srgb, var(--palette-mist) 16%, transparent);
-    --input: color-mix(in srgb, white 10%, var(--palette-ink));
+    --destructive-foreground: #0a0508;
+    --border: color-mix(in srgb, #6b6390 22%, #0f0a14 78%);
+    --input: #14101f;
     --ring: var(--palette-cyan-dull);
     --chart-1: var(--palette-blue);
     --chart-2: var(--palette-cyan-dull);
     --chart-3: color-mix(in srgb, var(--palette-blue) 72%, var(--palette-mist) 28%);
     --chart-4: color-mix(in srgb, var(--palette-mist) 55%, var(--palette-blue) 45%);
     --chart-5: color-mix(in srgb, var(--palette-cyan-dull) 65%, var(--palette-mist) 35%);
-    --surface: color-mix(in srgb, white 10%, var(--palette-ink));
-    --subtle: color-mix(in srgb, var(--palette-mist) 58%, var(--palette-ink) 42%);
+    --surface: #0d0915;
+    --subtle: #9d94b3;
     --success: var(--palette-cyan-dull);
     --success-foreground: var(--palette-ink);
     --warning: #fbbf24;
     --warning-foreground: var(--palette-ink);
-    --glass-base: color-mix(in srgb, white 6%, var(--palette-ink));
+    --glass-base: #0f0b16;
     --shadow-card: 0 16px 48px -22px color-mix(in srgb, var(--palette-blue) 35%, black 65%);
     --shadow-ios-bar: 0 0.5px 0 0 color-mix(in srgb, var(--palette-mist) 14%, transparent),
       0 8px 24px -12px rgba(0, 0, 0, 0.5);
@@ -143,6 +145,7 @@
 
   body {
     @apply min-h-dvh bg-background font-sans text-ds-body text-foreground antialiased;
+    transition: background-color 0.28s ease, color 0.22s ease;
     font-feature-settings: 'kern' 1;
     -webkit-tap-highlight-color: color-mix(in oklch, var(--primary) 15%, transparent);
     max-width: 100%;
@@ -213,4 +216,42 @@
       color-mix(in oklch, var(--primary) 35%, transparent);
     box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
   }
+}
+
+/*
+ * Low-end / Save-Data: cheaper compositing (no backdrop blur), fewer animations,
+ * lighter transitions. Class set in `initPerformanceProfile()` (device-performance.ts).
+ */
+html.perf-low-end body {
+  transition: none;
+}
+
+html.perf-low-end [class*='backdrop-blur'] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html.perf-low-end [class*='blur-3xl'] {
+  filter: none !important;
+  opacity: 0.12;
+}
+
+html.perf-low-end .animate-pulse {
+  animation: none !important;
+  opacity: 0.55;
+}
+
+html.perf-low-end .transition-all {
+  transition-property: opacity, transform, border-color;
+  transition-duration: 0.12s;
+}
+
+html.perf-low-end.dark.theme-transparent .surface-elevated,
+html.perf-low-end.dark.theme-transparent .surface-inset {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html.perf-low-end .shadow-ios-bar {
+  box-shadow: 0 1px 0 0 color-mix(in srgb, var(--border) 45%, transparent);
 }

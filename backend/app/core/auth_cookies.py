@@ -32,9 +32,14 @@ def _cookie_kwargs() -> dict:
     }
 
 
-def issue_session_cookies(response: Response, user: User) -> None:
+def issue_session_cookies(
+    response: Response, user: User, *, remember_me: bool = False
+) -> None:
     """Set short-lived access + long-lived refresh cookies from a ``User`` row."""
     dn = display_name_from_user(user)
+    refresh_days = (
+        settings.jwt_refresh_days_remember if remember_me else settings.jwt_refresh_days
+    )
     access = create_access_token(
         sub=str(user.id),
         role=user.role,
@@ -52,7 +57,8 @@ def issue_session_cookies(response: Response, user: User) -> None:
     refresh = create_refresh_token(
         sub=str(user.id),
         secret=settings.secret_key,
-        days=settings.jwt_refresh_days,
+        days=refresh_days,
+        remember=remember_me,
     )
     kw = _cookie_kwargs()
     response.set_cookie(
@@ -64,7 +70,7 @@ def issue_session_cookies(response: Response, user: User) -> None:
     response.set_cookie(
         key=MYLE_REFRESH_COOKIE,
         value=refresh,
-        max_age=settings.jwt_refresh_days * 24 * 3600,
+        max_age=refresh_days * 24 * 3600,
         **kw,
     )
 

@@ -7,6 +7,7 @@ from fastapi import APIRouter
 from app.api.v1 import (
     analytics,
     auth,
+    media,
     certificate,
     enroll,
     execution,
@@ -35,6 +36,7 @@ from app.api.v1 import (
 api_router = APIRouter()
 api_router.include_router(meta.router, prefix="/meta", tags=["meta"])
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
+api_router.include_router(media.router, prefix="/media", tags=["media"])
 api_router.include_router(hello.router, prefix="/hello", tags=["hello"])
 api_router.include_router(leads.router, prefix="/leads", tags=["leads"])
 api_router.include_router(team.router, prefix="/team", tags=["team"])

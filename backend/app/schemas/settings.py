@@ -16,6 +16,7 @@ class UserProfileResponse(BaseModel):
     role: str
     phone: Optional[str]
     name: Optional[str]
+    avatar_url: Optional[str] = None
     upline_user_id: Optional[int]
     registration_status: str
     training_required: bool

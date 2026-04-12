@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 
+import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { apiFetch } from '@/lib/api'
 import type { LeadListResponse } from '@/hooks/use-leads-query'
 
@@ -19,8 +20,11 @@ export async function fetchRetargetLeads(): Promise<LeadListResponse> {
 }
 
 export function useRetargetQuery() {
+  const { data: me } = useAuthMeQuery()
+  const sessionReady = me?.authenticated === true
   return useQuery({
     queryKey: ['retarget', 'leads'],
     queryFn: fetchRetargetLeads,
+    enabled: sessionReady,
   })
 }

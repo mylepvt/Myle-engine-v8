@@ -264,3 +264,13 @@ class LeadListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class LeadPoolDefaultsResponse(BaseModel):
+    """Admin-configured default claim price for new pool leads (import + future rows)."""
+
+    default_pool_price_cents: int
+
+
+class LeadPoolDefaultsUpdateRequest(BaseModel):
+    default_pool_price_cents: int = Field(ge=0, le=999_999_999)

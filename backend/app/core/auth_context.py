@@ -86,6 +86,7 @@ async def refresh_session_identity(
     *,
     user_id: int,
     response: Response,
+    remember_me: bool = False,
 ) -> bool:
     """Reload ``User`` from the database and re-issue access + refresh cookies.
 
@@ -97,5 +98,5 @@ async def refresh_session_identity(
     if user is None:
         return False
     ensure_may_issue_session_cookies(user)
-    issue_session_cookies(response, user)
+    issue_session_cookies(response, user, remember_me=remember_me)
     return True

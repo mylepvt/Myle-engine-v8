@@ -11,8 +11,19 @@ from app.api.deps import AuthUser, get_db, require_auth_user
 from app.core.realtime_hub import notify_topics
 from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
-from app.schemas.leads import LeadListResponse, LeadPoolImportResponse, LeadPublic
+from app.schemas.leads import (
+    LeadListResponse,
+    LeadPoolDefaultsResponse,
+    LeadPoolDefaultsUpdateRequest,
+    LeadPoolImportResponse,
+    LeadPublic,
+)
+from app.services.lead_pool_defaults import (
+    APP_KEY_LEAD_POOL_DEFAULT_PRICE_CENTS,
+    get_default_pool_price_cents,
+)
 from app.services.lead_pool_import import parse_pool_xlsx_rows
+from app.services.settings_service import SettingsService
 
 router = APIRouter()
 
@@ -23,6 +34,35 @@ def _require_admin(user: AuthUser) -> None:
 
 _MAX_LIMIT = 100
 _DEFAULT_LIMIT = 50
+
+
+@router.get("/defaults", response_model=LeadPoolDefaultsResponse)
+async def get_lead_pool_defaults(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> LeadPoolDefaultsResponse:
+    _ = user
+    cents = await get_default_pool_price_cents(session)
+    return LeadPoolDefaultsResponse(default_pool_price_cents=cents)
+
+
+@router.put("/defaults", response_model=LeadPoolDefaultsResponse)
+async def put_lead_pool_defaults(
+    body: LeadPoolDefaultsUpdateRequest,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> LeadPoolDefaultsResponse:
+    _require_admin(user)
+    svc = SettingsService(session)
+    ok, msg = await svc.update_app_setting(
+        APP_KEY_LEAD_POOL_DEFAULT_PRICE_CENTS,
+        str(body.default_pool_price_cents),
+        user.user_id,
+    )
+    if not ok:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
+    await notify_topics("leads")
+    return LeadPoolDefaultsResponse(default_pool_price_cents=body.default_pool_price_cents)
 
 
 @router.get("", response_model=LeadListResponse)
@@ -79,6 +119,7 @@ async def import_lead_pool_xlsx(
     if not rows:
         return LeadPoolImportResponse(created=0, warnings=warnings or ["No rows imported"])
 
+    default_cents = await get_default_pool_price_cents(session)
     created = 0
     for r in rows:
         st = r.get("submit_time")
@@ -95,6 +136,7 @@ async def import_lead_pool_xlsx(
             source="other",
             notes=None,
             in_pool=True,
+            pool_price_cents=default_cents if default_cents > 0 else None,
         )
         if st is not None:
             lead.created_at = st

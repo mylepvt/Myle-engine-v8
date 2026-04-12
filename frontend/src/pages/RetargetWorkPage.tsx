@@ -22,7 +22,9 @@ export function RetargetWorkPage({ title }: Props) {
 
   return (
     <div className="max-w-2xl space-y-4">
-      <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
+      <h1 className="min-w-0 max-w-full truncate text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+        {title}
+      </h1>
       <p className="text-sm text-muted-foreground">
         Shows active leads in <strong>Lost</strong> or <strong>Contacted</strong> — good candidates to re-engage.
         Change status from{' '}
@@ -68,6 +70,7 @@ export function RetargetWorkPage({ title }: Props) {
                   <div className="flex flex-wrap items-center gap-2">
                     <select
                       aria-label={`Status for ${l.name}`}
+                      data-ui-silent
                       value={l.status}
                       disabled={patchMut.isPending}
                       onChange={(e) => {

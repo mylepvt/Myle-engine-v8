@@ -22,7 +22,26 @@ async function ensureRunning(ac: AudioContext) {
   }
 }
 
-/** Soft “satisfaction” chime on interactive clicks + points. */
+/** Short neutral click — buttons, links. */
+export async function playUiClickSound() {
+  const ac = ctx()
+  if (!ac) return
+  await ensureRunning(ac)
+  const t = ac.currentTime
+  const osc = ac.createOscillator()
+  const gain = ac.createGain()
+  osc.type = 'sine'
+  osc.frequency.setValueAtTime(620, t)
+  gain.gain.setValueAtTime(0.0001, t)
+  gain.gain.exponentialRampToValueAtTime(0.045, t + 0.01)
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.055)
+  osc.connect(gain)
+  gain.connect(ac.destination)
+  osc.start(t)
+  osc.stop(t + 0.06)
+}
+
+/** Soft “satisfaction” chime — legacy default for gamified clicks. */
 export async function playUiSatisfactionSound() {
   const ac = ctx()
   if (!ac) return
@@ -40,4 +59,49 @@ export async function playUiSatisfactionSound() {
   gain.connect(ac.destination)
   osc.start(t)
   osc.stop(t + 0.13)
+}
+
+/** Save / create / positive outcome. */
+export async function playUiSuccessSound() {
+  const ac = ctx()
+  if (!ac) return
+  await ensureRunning(ac)
+  const t = ac.currentTime
+  const osc = ac.createOscillator()
+  const gain = ac.createGain()
+  osc.type = 'sine'
+  osc.frequency.setValueAtTime(523.25, t)
+  osc.frequency.exponentialRampToValueAtTime(783.99, t + 0.12)
+  gain.gain.setValueAtTime(0.0001, t)
+  gain.gain.exponentialRampToValueAtTime(0.08, t + 0.02)
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.2)
+  osc.connect(gain)
+  gain.connect(ac.destination)
+  osc.start(t)
+  osc.stop(t + 0.22)
+}
+
+/** Pipeline stage advance (status change). */
+export async function playUiStageAdvanceSound() {
+  const ac = ctx()
+  if (!ac) return
+  await ensureRunning(ac)
+  const t = ac.currentTime
+  const o1 = ac.createOscillator()
+  const o2 = ac.createOscillator()
+  const gain = ac.createGain()
+  o1.type = 'triangle'
+  o2.type = 'triangle'
+  o1.frequency.setValueAtTime(440, t)
+  o2.frequency.setValueAtTime(554, t + 0.08)
+  gain.gain.setValueAtTime(0.0001, t)
+  gain.gain.exponentialRampToValueAtTime(0.065, t + 0.02)
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.2)
+  o1.connect(gain)
+  o2.connect(gain)
+  gain.connect(ac.destination)
+  o1.start(t)
+  o1.stop(t + 0.12)
+  o2.start(t + 0.08)
+  o2.stop(t + 0.2)
 }

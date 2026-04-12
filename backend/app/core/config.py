@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Literal, Optional
 
 from pydantic import AliasChoices, Field, field_validator, model_validator
@@ -61,6 +62,11 @@ class Settings(BaseSettings):
         validation_alias="JWT_REFRESH_DAYS",
         description="Refresh JWT lifetime (days).",
     )
+    jwt_refresh_days_remember: int = Field(
+        default=60,
+        validation_alias="JWT_REFRESH_DAYS_REMEMBER",
+        description="Refresh JWT lifetime when “remember me” is checked (days).",
+    )
     auth_login_rate_limit_per_minute: int = Field(
         default=30,
         validation_alias="AUTH_LOGIN_RATE_LIMIT_PER_MINUTE",
@@ -80,6 +86,13 @@ class Settings(BaseSettings):
         default=None,
         validation_alias="FRONTEND_DIST",
         description="If set to a directory containing index.html, serve the Vite SPA from the API (same-origin auth).",
+    )
+    upload_dir: str = Field(
+        default_factory=lambda: str(
+            (Path(__file__).resolve().parents[2] / "data" / "uploads")
+        ),
+        validation_alias="MYLE_UPLOAD_DIR",
+        description="Local directory for user uploads (e.g. profile photos).",
     )
 
     @field_validator("database_url", mode="before")

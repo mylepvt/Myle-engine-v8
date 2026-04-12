@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from typing import Annotated, Dict
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from starlette import status as http_status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthUser, get_db, require_auth_user
+from app.models.user import User
+from app.services.avatar_storage import save_user_avatar_file
 from app.schemas.settings import (
     UserProfileResponse,
     UserProfileUpdateRequest,
@@ -80,6 +82,24 @@ async def update_user_profile(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update user profile: {str(e)}",
         )
+
+
+@router.post("/profile/avatar", response_model=Dict[str, str])
+async def upload_profile_avatar(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    file: UploadFile = File(..., description="JPEG, PNG, or WebP (max 2 MB)"),
+) -> Dict[str, str]:
+    """Set or replace the signed-in user's profile picture."""
+    ok, msg = await save_user_avatar_file(user_id=user.user_id, file=file)
+    if not ok:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
+    u = await session.get(User, user.user_id)
+    if u is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    u.avatar_url = msg
+    await session.commit()
+    return {"avatar_url": msg, "message": "Profile photo updated"}
 
 
 @router.get("/preferences", response_model=UserPreferencesResponse)

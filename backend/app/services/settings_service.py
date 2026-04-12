@@ -94,6 +94,7 @@ class SettingsService:
             "role": user.role,
             "phone": user.phone,
             "name": user.name,
+            "avatar_url": user.avatar_url,
             "upline_user_id": user.upline_user_id,
             "registration_status": user.registration_status,
             "training_required": user.training_required,

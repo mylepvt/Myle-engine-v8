@@ -5,7 +5,10 @@ import { BrowserRouter } from 'react-router-dom'
 
 import { App } from '@/App'
 import { ThemeAndFeedbackProvider } from '@/components/providers/ThemeAndFeedbackProvider'
+import { initPerformanceProfile, isLowEndDevice } from '@/lib/device-performance'
 import './index.css'
+
+initPerformanceProfile()
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -15,11 +18,15 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   })
 }
 
+const low = isLowEndDevice()
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30_000,
-      retry: 1,
+      staleTime: low ? 90_000 : 30_000,
+      gcTime: low ? 1_200_000 : 600_000,
+      retry: low ? 0 : 1,
+      refetchOnWindowFocus: !low,
+      refetchOnReconnect: true,
     },
   },
 })

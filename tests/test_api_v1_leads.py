@@ -449,6 +449,37 @@ def test_api_flow_create_then_workboard_then_status_then_archive(
         asyncio.run(_clear_leads())
 
 
+def test_lead_pool_defaults_get_ok_for_authenticated(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    c = _authed_client(monkeypatch)
+    assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+    r = c.get("/api/v1/lead-pool/defaults")
+    assert r.status_code == 200
+    assert r.json() == {"default_pool_price_cents": 0}
+
+
+def test_lead_pool_defaults_put_forbidden_for_non_admin(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    c = _authed_client(monkeypatch)
+    assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+    r = c.put("/api/v1/lead-pool/defaults", json={"default_pool_price_cents": 500_00})
+    assert r.status_code == 403
+
+
+def test_lead_pool_defaults_put_admin_persists(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    c = _authed_client(monkeypatch)
+    assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+    r = c.put("/api/v1/lead-pool/defaults", json={"default_pool_price_cents": 25_000})
+    assert r.status_code == 200
+    assert r.json()["default_pool_price_cents"] == 25_000
+    assert c.get("/api/v1/lead-pool/defaults").json()["default_pool_price_cents"] == 25_000
+    assert c.put("/api/v1/lead-pool/defaults", json={"default_pool_price_cents": 0}).status_code == 200
+
+
 def test_team_cannot_patch_day1_batches(monkeypatch: pytest.MonkeyPatch) -> None:
     asyncio.run(_clear_leads())
     asyncio.run(_seed_one_lead(user_id=3, name="Team Owned", lead_status="day1"))

@@ -10,6 +10,7 @@ export type UserProfileResponse = {
   role: string
   phone?: string
   name?: string
+  avatar_url?: string | null
   upline_user_id?: number
   registration_status: string
   training_required: boolean
@@ -130,6 +131,20 @@ async function updateUserProfile(request: UserProfileUpdateRequest): Promise<{ m
   return res.json()
 }
 
+async function uploadUserAvatar(file: File): Promise<{ avatar_url: string; message: string }> {
+  const fd = new FormData()
+  fd.append('file', file)
+  const res = await apiFetch('/api/v1/settings-enhanced/profile/avatar', {
+    method: 'POST',
+    body: fd,
+  })
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { detail?: string }
+    throw new Error(err.detail ?? `Upload HTTP ${res.status}`)
+  }
+  return res.json() as Promise<{ avatar_url: string; message: string }>
+}
+
 async function fetchUserPreferences(): Promise<UserPreferencesResponse> {
   const res = await apiFetch('/api/v1/settings-enhanced/preferences')
   if (!res.ok) {
@@ -246,6 +261,17 @@ export function useUserProfileUpdateMutation() {
   
   return useMutation({
     mutationFn: updateUserProfile,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings', 'profile'] })
+      queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
+    },
+  })
+}
+
+export function useAvatarUploadMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: uploadUserAvatar,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings', 'profile'] })
       queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })

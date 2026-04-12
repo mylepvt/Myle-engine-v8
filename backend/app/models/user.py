@@ -59,6 +59,8 @@ class User(Base):
         default="active",
     )
     name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    # Public URL path served by GET /api/v1/media/avatar/{id} (set after upload).
+    avatar_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     joining_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
