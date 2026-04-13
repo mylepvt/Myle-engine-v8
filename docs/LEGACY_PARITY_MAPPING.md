@@ -15,6 +15,17 @@ This document is the **only** place where we claim **“matches legacy app”** 
 
 If **Legacy ref** or **Evidence** is missing, status = **TBD — not parity-claimed**.
 
+### Automated regression (new app — not a legacy “match” claim)
+
+| Check | What it proves |
+|--------|----------------|
+| `tests/` (pytest) | API behavior vs FastAPI routes (auth, leads, wallet, team, …). |
+| `frontend` Vitest (`src/**/*.test.tsx`) | UI units: login shell, protected route, **dashboard registry** titles/surfaces, **`apiUrl` + `VITE_API_URL`**. |
+| Playwright `frontend/e2e/` | **Smoke:** `/login` renders. **Happy path (mocked `fetch`):** dev login → dashboard → **All Leads** → change lead stage. **Axe:** login route structural a11y (see `a11y.spec.ts` — `color-contrast` excluded until palette hits WCAG AA). |
+| CI | Same as above + `npm audit` + `pip-audit` (Python 3.10+). |
+
+Prod validation (real devices, throttling, WebSocket load) is still manual / staging — not encoded here.
+
 ---
 
 ## Cross-cutting behavior (new app — factual, code pointers)

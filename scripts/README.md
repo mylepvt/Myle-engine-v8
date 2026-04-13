@@ -15,7 +15,7 @@ bash scripts/verify_phase7.sh
 bash scripts/verify_full_stack.sh
 ```
 
-Full suite: `python3 -m pytest` from repo root (see `requirements-dev.txt` / CI). CI also runs **`npm audit`**, **`pip-audit`**, and **`npm run test:e2e`** (see `.github/workflows/ci.yml`).
+Full suite: `python3 -m pytest` from repo root (see `requirements-dev.txt` / CI). CI also runs **`npm audit`**, **`pip-audit`**, and **`npm run test:e2e`** (see `.github/workflows/ci.yml`). The frontend **production build used before Playwright** sets **`VITE_API_URL=`** (empty) so the SPA calls **`/api/v1/...` on the preview origin** and tests can **`route()`** mock APIs (see `frontend/e2e/api-mocks.ts`).
 
 ## Migrations
 

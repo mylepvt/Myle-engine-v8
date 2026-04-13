@@ -52,7 +52,9 @@ jobs:
       - name: Test
         run: npm run test
 
-      - name: Build
+      - name: Build (same-origin API for Playwright route mocks)
+        env:
+          VITE_API_URL: ""
         run: npm run build
 
       - name: npm audit (high severity+)

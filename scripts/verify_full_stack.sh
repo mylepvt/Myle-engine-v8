@@ -20,8 +20,8 @@ echo "== 4/10 frontend lint =="
 echo "== 5/10 frontend unit tests (Vitest) =="
 ( cd frontend && npm run test )
 
-echo "== 6/10 frontend production build =="
-( cd frontend && npm run build )
+echo "== 6/10 frontend production build (VITE_API_URL= for Playwright mocks) =="
+( cd frontend && VITE_API_URL= npm run build )
 
 echo "== 7/10 npm audit (high+) =="
 ( cd frontend && npm audit --audit-level=high )
