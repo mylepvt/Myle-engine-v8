@@ -43,7 +43,6 @@ export function DashboardLayout() {
     sidebarOpen,
     mobileMenuOpen,
     toggleSidebar,
-    setSidebarOpen,
     setMobileMenuOpen,
     syncForViewport,
   } = useShellStore()
