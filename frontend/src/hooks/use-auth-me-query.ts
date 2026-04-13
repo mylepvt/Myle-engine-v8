@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
+import { authRefresh } from '@/lib/auth-api'
 
 export type MeResponse = {
   authenticated: boolean
@@ -25,10 +26,18 @@ export type MeResponse = {
 }
 
 export async function fetchAuthMe(): Promise<MeResponse> {
-  const res = await apiFetch('/api/v1/auth/me')
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status}`)
+  const readMe = async (): Promise<Response> => apiFetch('/api/v1/auth/me')
+  let res = await readMe()
+  if (res.status === 401) {
+    // Access cookie can expire while refresh is still valid ("remember me" path).
+    try {
+      await authRefresh()
+      res = await readMe()
+    } catch {
+      // Keep the original 401 semantics below.
+    }
   }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const raw = (await res.json()) as Partial<MeResponse>
   return {
     authenticated: Boolean(raw.authenticated),

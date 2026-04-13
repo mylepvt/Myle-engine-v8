@@ -14,10 +14,11 @@ export function ProtectedRoute() {
   const location = useLocation()
   const login = useAuthStore((s) => s.login)
   const logout = useAuthStore((s) => s.logout)
-  const { data, isPending, isError, refetch, isRefetching } = useAuthMeQuery({
+  const { data, error, isPending, isError, refetch, isRefetching } = useAuthMeQuery({
     staleTime: 0,
     refetchOnMount: 'always',
   })
+  const authErrorCode = isError ? /HTTP\s+(\d+)/.exec(String(error))?.[1] : null
 
   useEffect(() => {
     if (data?.authenticated) {
@@ -44,8 +45,13 @@ export function ProtectedRoute() {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
         <p className="text-sm text-destructive" role="alert">
-          Could not verify your session. Check the API URL and network, then retry.
+          Could not verify your session. Check API URL/network and retry.
         </p>
+        {authErrorCode === '401' ? (
+          <p className="text-xs text-muted-foreground">
+            Session expired. If Remember Me was enabled, refresh should restore it automatically.
+          </p>
+        ) : null}
         <Button
           type="button"
           variant="secondary"

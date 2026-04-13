@@ -46,3 +46,24 @@ def test_refresh_without_cookie_401(
     res = client.post("/api/v1/auth/refresh")
     assert res.status_code == 401
     assert res.json()["error"]["code"] == "unauthorized"
+
+
+def test_refresh_preserves_remember_me_cookie_ttl(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    patch_jwt_settings(monkeypatch)
+    client = TestClient(app)
+    login = client.post(
+        "/api/v1/auth/login",
+        json={
+            "fbo_id": "fbo-leader-001",
+            "password": DEV_LOGIN_PASSWORD_PLAIN,
+            "remember_me": True,
+        },
+    )
+    assert login.status_code == 200
+    ref = client.post("/api/v1/auth/refresh")
+    assert ref.status_code == 200
+    set_cookie = ",".join(ref.headers.get_list("set-cookie"))
+    assert "myle_refresh=" in set_cookie
+    assert "Max-Age=5184000" in set_cookie

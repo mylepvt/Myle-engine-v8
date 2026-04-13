@@ -92,9 +92,7 @@ export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) 
   useEffect(() => {
     if (!soundEnabled && !hapticsEnabled) return
 
-    /** Microtask deferral: keeps taps snappy vs one full rAF frame of latency. */
-    const handler = (e: MouseEvent) => {
-      const target = e.target
+    const runClickFeedbackForTarget = (target: EventTarget | null) => {
       if (!(target instanceof Element)) return
       if (target.closest('[data-ui-silent]')) return
 
@@ -117,90 +115,77 @@ export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) 
       if (raw === 'none') return
 
       primeAudioContextSync()
+      void unlockUiAudioFromUserGesture()
 
       void Promise.resolve().then(() => {
         void (async () => {
-          await unlockUiAudioFromUserGesture()
-
           try {
             switch (raw) {
-          case 'success':
-            if (soundEnabled) await playUiSuccessSound({ delaySec: sec(UI_SOUND_DELAY_MS.success) })
-            if (hapticsEnabled) hapticSuccess()
-            useUiFeedbackStore.getState().addSatisfactionPoints(5)
-            break
-
-          case 'stage':
-            if (soundEnabled) await playUiStageAdvanceSound({ delaySec: sec(UI_SOUND_DELAY_MS.stage) })
-            if (hapticsEnabled) hapticImpact()
-            useUiFeedbackStore.getState().addSatisfactionPoints(10)
-            break
-
-          case 'satisfaction':
-            if (soundEnabled) await playUiSatisfactionSound({ delaySec: sec(UI_SOUND_DELAY_MS.satisfaction) })
-            if (hapticsEnabled) hapticTapMedium()
-            useUiFeedbackStore.getState().addSatisfactionPoints(2)
-            break
-
-          case 'coin':
-            if (soundEnabled) await playUiPaymentCashSound({ delaySec: sec(UI_SOUND_DELAY_MS.payment) })
-            if (hapticsEnabled) hapticCoin()
-            useUiFeedbackStore.getState().addSatisfactionPoints(15)
-            break
-
-          case 'levelup':
-            if (soundEnabled) await playUiLevelUpSound({ delaySec: sec(UI_SOUND_DELAY_MS.success) })
-            if (hapticsEnabled) hapticSuccessStrong()
-            useUiFeedbackStore.getState().addSatisfactionPoints(50)
-            break
-
-          case 'whoosh':
-            if (soundEnabled) await playUiWhooshSound({ delaySec: sec(UI_SOUND_DELAY_MS.nav) })
-            if (hapticsEnabled) hapticTapLight()
-            break
-
-          case 'tick':
-            if (soundEnabled) await playUiTickSound()
-            if (hapticsEnabled) hapticSelection()
-            useUiFeedbackStore.getState().addSatisfactionPoints(1)
-            await iosNoVibrateAudioFallback(hapticsEnabled, soundEnabled, playUiTickSound)
-            break
-
-          case 'delete':
-            if (soundEnabled) await playUiDeleteSound()
-            if (hapticsEnabled) hapticDelete()
-            break
-
-          case 'error':
-            if (soundEnabled) await playUiErrorSound()
-            if (hapticsEnabled) hapticError()
-            break
-
-          case 'warning':
-            if (soundEnabled) await playUiWarningSound()
-            if (hapticsEnabled) hapticWarning()
-            break
-
-          case 'notification':
-            if (soundEnabled) await playUiNotificationSound({ delaySec: sec(UI_SOUND_DELAY_MS.notification) })
-            if (hapticsEnabled) hapticNotification()
-            break
-
-          case 'streak': {
-            const s = useUiFeedbackStore.getState().incrementStreak()
-            if (soundEnabled) await playUiStreakSound(s)
-            if (hapticsEnabled) hapticStreak(s)
-            useUiFeedbackStore.getState().addSatisfactionPoints(s)
-            break
-          }
-
-          case 'click': {
-            if (soundEnabled) await playUiClickSound()
-            if (hapticsEnabled) hapticTapLight()
-            useUiFeedbackStore.getState().addSatisfactionPoints(1)
-            await iosNoVibrateAudioFallback(hapticsEnabled, soundEnabled, playUiTickSound)
-            break
-          }
+            case 'success':
+              if (soundEnabled) await playUiSuccessSound({ delaySec: sec(UI_SOUND_DELAY_MS.success) })
+              if (hapticsEnabled) hapticSuccess()
+              useUiFeedbackStore.getState().addSatisfactionPoints(5)
+              break
+            case 'stage':
+              if (soundEnabled) await playUiStageAdvanceSound({ delaySec: sec(UI_SOUND_DELAY_MS.stage) })
+              if (hapticsEnabled) hapticImpact()
+              useUiFeedbackStore.getState().addSatisfactionPoints(10)
+              break
+            case 'satisfaction':
+              if (soundEnabled) await playUiSatisfactionSound({ delaySec: sec(UI_SOUND_DELAY_MS.satisfaction) })
+              if (hapticsEnabled) hapticTapMedium()
+              useUiFeedbackStore.getState().addSatisfactionPoints(2)
+              break
+            case 'coin':
+              if (soundEnabled) await playUiPaymentCashSound({ delaySec: sec(UI_SOUND_DELAY_MS.payment) })
+              if (hapticsEnabled) hapticCoin()
+              useUiFeedbackStore.getState().addSatisfactionPoints(15)
+              break
+            case 'levelup':
+              if (soundEnabled) await playUiLevelUpSound({ delaySec: sec(UI_SOUND_DELAY_MS.success) })
+              if (hapticsEnabled) hapticSuccessStrong()
+              useUiFeedbackStore.getState().addSatisfactionPoints(50)
+              break
+            case 'whoosh':
+              if (soundEnabled) await playUiWhooshSound({ delaySec: sec(UI_SOUND_DELAY_MS.nav) })
+              if (hapticsEnabled) hapticTapLight()
+              break
+            case 'tick':
+              if (soundEnabled) await playUiTickSound()
+              if (hapticsEnabled) hapticSelection()
+              useUiFeedbackStore.getState().addSatisfactionPoints(1)
+              await iosNoVibrateAudioFallback(hapticsEnabled, soundEnabled, playUiTickSound)
+              break
+            case 'delete':
+              if (soundEnabled) await playUiDeleteSound()
+              if (hapticsEnabled) hapticDelete()
+              break
+            case 'error':
+              if (soundEnabled) await playUiErrorSound()
+              if (hapticsEnabled) hapticError()
+              break
+            case 'warning':
+              if (soundEnabled) await playUiWarningSound()
+              if (hapticsEnabled) hapticWarning()
+              break
+            case 'notification':
+              if (soundEnabled) await playUiNotificationSound({ delaySec: sec(UI_SOUND_DELAY_MS.notification) })
+              if (hapticsEnabled) hapticNotification()
+              break
+            case 'streak': {
+              const s = useUiFeedbackStore.getState().incrementStreak()
+              if (soundEnabled) await playUiStreakSound(s)
+              if (hapticsEnabled) hapticStreak(s)
+              useUiFeedbackStore.getState().addSatisfactionPoints(s)
+              break
+            }
+            case 'click':
+            default:
+              if (soundEnabled) await playUiClickSound()
+              if (hapticsEnabled) hapticTapLight()
+              useUiFeedbackStore.getState().addSatisfactionPoints(1)
+              await iosNoVibrateAudioFallback(hapticsEnabled, soundEnabled, playUiTickSound)
+              break
             }
           } catch {
             /* ignore */
@@ -209,8 +194,21 @@ export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) 
       })
     }
 
+    /** Microtask deferral: keeps taps snappy vs one full rAF frame of latency. */
+    const handler = (e: MouseEvent) => {
+      runClickFeedbackForTarget(e.target)
+    }
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return
+      runClickFeedbackForTarget(e.target)
+    }
+
     document.addEventListener('click', handler, true)
-    return () => document.removeEventListener('click', handler, true)
+    document.addEventListener('keydown', keyHandler, true)
+    return () => {
+      document.removeEventListener('click', handler, true)
+      document.removeEventListener('keydown', keyHandler, true)
+    }
   }, [soundEnabled, hapticsEnabled])
 
   return <>{children}</>

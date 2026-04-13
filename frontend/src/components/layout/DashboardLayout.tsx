@@ -21,6 +21,7 @@ import { apiUrl } from '@/lib/api'
 import { useAuthStore } from '@/stores/auth-store'
 import { useShellPreviewStore } from '@/stores/shell-preview-store'
 import { useShellStore } from '@/stores/shell-store'
+import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
 import { roleShortLabel, type Role } from '@/types/role'
 
 export function DashboardLayout() {
@@ -38,16 +39,37 @@ export function DashboardLayout() {
   } = useDashboardShellRole()
   const viewAsRole = useShellPreviewStore((s) => s.viewAsRole)
   const navigate = useNavigate()
-  const { sidebarOpen, toggleSidebar, setSidebarOpen } = useShellStore()
+  const {
+    sidebarOpen,
+    mobileMenuOpen,
+    toggleSidebar,
+    setSidebarOpen,
+    setMobileMenuOpen,
+    syncForViewport,
+  } = useShellStore()
+  const theme = useUiFeedbackStore((s) => s.theme)
   const logout = useAuthStore((s) => s.logout)
   const [headerSearch, setHeaderSearch] = useState('')
+  const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    if (window.matchMedia('(max-width: 767px)').matches) {
-      setSidebarOpen(false)
+    const mq = window.matchMedia('(max-width: 767px)')
+    const sync = () => {
+      const mobile = mq.matches
+      setIsMobile(mobile)
+      syncForViewport(mobile)
     }
-  }, [setSidebarOpen])
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [syncForViewport])
+
+  useEffect(() => {
+    if (!isMobile) return
+    // Prevent "stuck overlay" reports after heavy global repaint (theme switch).
+    setMobileMenuOpen(false)
+  }, [theme, isMobile, setMobileMenuOpen])
 
   function submitHeaderSearch(e: FormEvent) {
     e.preventDefault()
@@ -82,6 +104,15 @@ export function DashboardLayout() {
     }
     return full
   }, [shellRole, trainingLocked, navFlags])
+  const currentPageLabel = useMemo(() => {
+    const rel = location.pathname.replace('/dashboard/', '')
+    const all = sections.flatMap((s) => s.items)
+    const hit = all.find((item) => {
+      if (item.path === '') return location.pathname === '/dashboard'
+      return rel === item.path || rel.startsWith(`${item.path}/`)
+    })
+    return hit ? resolveItemLabel(hit, shellRole ?? 'team') : 'Dashboard'
+  }, [location.pathname, sections, shellRole])
 
   if (trainingLocked && !onTrainingRoute) {
     return <Navigate to="/dashboard/system/training" replace />
@@ -109,12 +140,12 @@ export function DashboardLayout() {
 
   return (
     <div className="flex min-h-dvh w-full min-w-0 max-w-full overflow-x-hidden bg-background">
-      {sidebarOpen ? (
+      {isMobile && mobileMenuOpen ? (
         <button
           type="button"
           className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-all duration-300 md:hidden"
           aria-label="Close menu"
-          onClick={() => setSidebarOpen(false)}
+          onClick={() => setMobileMenuOpen(false)}
         />
       ) : null}
 
@@ -125,7 +156,7 @@ export function DashboardLayout() {
           sidebarOpen ? 'md:w-[18rem]' : 'md:w-0 md:overflow-hidden md:border-0',
           'max-md:fixed max-md:left-0 max-md:top-0 max-md:z-50 max-md:h-dvh max-md:w-[min(20rem,85vw)] max-md:pt-[env(safe-area-inset-top)]',
           'max-md:shadow-[0_0_60px_rgba(0,0,0,0.4)]',
-          sidebarOpen
+          mobileMenuOpen
             ? 'max-md:translate-x-0'
             : 'max-md:pointer-events-none max-md:-translate-x-full',
         )}
@@ -176,8 +207,8 @@ export function DashboardLayout() {
                             to={to}
                             end={item.end ?? false}
                             onClick={() => {
-                              if (window.matchMedia('(max-width: 767px)').matches) {
-                                setSidebarOpen(false)
+                              if (isMobile) {
+                                setMobileMenuOpen(false)
                               }
                             }}
                             className={({ isActive }) =>
@@ -259,10 +290,20 @@ export function DashboardLayout() {
             variant="ghost"
             size="icon"
             className="size-9 shrink-0"
-            onClick={toggleSidebar}
+            onClick={() => {
+              if (isMobile) {
+                setMobileMenuOpen(!mobileMenuOpen)
+              } else {
+                toggleSidebar()
+              }
+            }}
             aria-label="Toggle sidebar"
           >
-            {sidebarOpen ? <PanelLeftClose className="size-5" /> : <Menu className="size-5" />}
+            {(isMobile ? mobileMenuOpen : sidebarOpen) ? (
+              <PanelLeftClose className="size-5" />
+            ) : (
+              <Menu className="size-5" />
+            )}
           </Button>
 
             {serverRole === 'admin' ? (
@@ -314,6 +355,9 @@ export function DashboardLayout() {
               autoComplete="off"
             />
           </form>
+          <div className="hidden min-w-0 flex-1 sm:flex md:hidden">
+            <p className="truncate text-sm font-semibold text-foreground">{currentPageLabel}</p>
+          </div>
 
           {/* Right: tools — single row, no horizontal scroll strip on phone */}
           <div className="ml-auto flex shrink-0 items-center gap-0.5 md:gap-1">
@@ -404,7 +448,7 @@ export function DashboardLayout() {
             role={shellRole}
             flags={navFlags}
             trainingLocked={trainingLocked}
-            onOpenMenu={() => setSidebarOpen(true)}
+            onOpenMenu={() => setMobileMenuOpen(true)}
           />
         ) : null}
       </div>

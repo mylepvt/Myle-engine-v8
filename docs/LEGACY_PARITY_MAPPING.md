@@ -153,6 +153,7 @@ Roles: **`frontend/src/config/dashboard-route-roles.json`** (exact list per path
 | Archived Leads — `/old-leads` | `NAV-EXPORT-001`; `EVID-2026-004` | `work/archived` | full | TBD | |
 | Lead Pool — `/lead-pool` or `/admin/lead-pool` | `NAV-EXPORT-001`; `EVID-2026-005` | `work/lead-pool` / `work/lead-pool-admin` | full | TBD | |
 | Recycle Bin — `/leads/recycle-bin` | `NAV-EXPORT-001`; `EVID-2026-006` | `work/recycle-bin` | full | TBD | |
+| Login session persistence (remember me/session restore) | `EVID-2026-007` | `/login` + protected `/dashboard/*` | full | TBD | |
 
 **Evidence ids:** Repo-local reference slots — jab file/Notion/screenshot attach ho, yahi id matrix aur evidence store mein use karo. **“match”** sirf jab dono legacy + new documented hon.
 

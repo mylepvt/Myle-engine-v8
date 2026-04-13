@@ -123,3 +123,21 @@ def test_lookup_upline_fbo_admin_verified(monkeypatch: pytest.MonkeyPatch) -> No
     assert body["found"] is True
     assert body["is_valid_upline"] is True
     assert body["is_leader"] is True
+
+
+def test_password_login_remember_me_extends_refresh_cookie(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    patch_jwt_settings(monkeypatch)
+    res = client.post(
+        "/api/v1/auth/login",
+        json={
+            "fbo_id": "fbo-leader-001",
+            "password": DEV_LOGIN_PASSWORD_PLAIN,
+            "remember_me": True,
+        },
+    )
+    assert res.status_code == 200
+    set_cookie = ",".join(res.headers.get_list("set-cookie"))
+    assert "myle_refresh=" in set_cookie
+    assert "Max-Age=5184000" in set_cookie  # 60 days

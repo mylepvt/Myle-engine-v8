@@ -211,6 +211,8 @@ async def import_users_phase(
     legacy: sqlite3.Connection,
     dry_run: bool,
     default_pw_hash: str,
+    *,
+    fail_on_skip: bool = False,
 ) -> dict[int, int]:
     """legacy user id -> new users.id"""
     mapping: dict[int, int] = {}
@@ -258,6 +260,10 @@ async def import_users_phase(
                 print(f"    SKIP legacy user id={lid} ({e.orig})")
 
     print(f"  [users] imported {len(mapping)}, skipped {skipped}")
+    if fail_on_skip and skipped > 0:
+        raise RuntimeError(
+            "User import skipped rows and --fail-on-skip is enabled; fix conflicts then re-run.",
+        )
     return mapping
 
 
@@ -715,6 +721,11 @@ async def main() -> int:
         help="Write JSON file with legacy→new id maps (users + leads)",
     )
     p.add_argument("--users-only", action="store_true")
+    p.add_argument(
+        "--fail-on-skip",
+        action="store_true",
+        help="Fail import if any user row is skipped (idempotency/conflict safety gate).",
+    )
     p.add_argument("--skip-wallet", action="store_true")
     p.add_argument("--skip-activity", action="store_true")
     p.add_argument(
@@ -796,7 +807,12 @@ async def main() -> int:
                 )
                 print(f"import_run_id={import_run_id} (save for audit; rows={n_snap})")
         else:
-            user_map = await import_users_phase(legacy, dry_run, default_pw_hash)
+            user_map = await import_users_phase(
+                legacy,
+                dry_run,
+                default_pw_hash,
+                fail_on_skip=args.fail_on_skip,
+            )
             if not dry_run and user_map:
                 await apply_upline_user_ids_phase(legacy, user_map)
             if args.users_only:
