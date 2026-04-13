@@ -4,6 +4,7 @@ import {
   getReadyAudioContext,
   resumeAudioContext,
 } from '@/lib/ui-audio-engine'
+import { UI_SOUND_GAIN } from '@/lib/ui-sound-config'
 
 export type UiSampleId = 'tap' | 'success' | 'pop' | 'notify'
 
@@ -53,7 +54,7 @@ export function playHtmlOneShot(sample: UiSampleId, volume = 0.85): void {
   if (typeof window === 'undefined') return
   try {
     const el = new Audio(assetUrl(sample))
-    el.volume = volume
+    el.volume = Math.min(1, Math.max(0, volume))
     void el.play().catch(() => {
       /* ignore */
     })
@@ -63,7 +64,7 @@ export function playHtmlOneShot(sample: UiSampleId, volume = 0.85): void {
 }
 
 /**
- * Snappy one-shot from decoded buffer (trim attack, optional rate / slice).
+ * Snappy one-shot: soft attack, no long tail — safe for 15–35 ms slices.
  */
 export function playBufferSlice(
   ac: AudioContext,
@@ -77,9 +78,9 @@ export function playBufferSlice(
   },
 ): void {
   const gain = opts?.gain ?? 1
-  const trim = Math.max(0, opts?.trimStart ?? 0.004)
+  const trim = Math.max(0, opts?.trimStart ?? 0.002)
   const rate = opts?.playbackRate ?? 1
-  const maxDur = buffer.duration - trim
+  const maxDur = Math.max(0.001, buffer.duration - trim)
   const dur = Math.min(opts?.duration ?? maxDur, maxDur)
 
   const src = ac.createBufferSource()
@@ -87,10 +88,10 @@ export function playBufferSlice(
   src.playbackRate.value = rate
 
   const g = ac.createGain()
+  const attack = Math.min(0.0025, dur * 0.32)
   g.gain.setValueAtTime(0.0001, when)
-  g.gain.linearRampToValueAtTime(gain, when + 0.006)
-  g.gain.setValueAtTime(gain, when + dur - 0.02)
-  g.gain.linearRampToValueAtTime(0.0001, when + dur)
+  g.gain.linearRampToValueAtTime(gain, when + attack)
+  g.gain.exponentialRampToValueAtTime(0.0001, when + dur)
 
   src.connect(g)
   g.connect(getDestination(ac))
@@ -103,79 +104,111 @@ async function playSampleOrHtml(
 ): Promise<void> {
   const ac = await getReadyAudioContext()
   if (!ac) {
-    playHtmlOneShot(id)
+    playHtmlOneShot(id, slice.gain ?? 0.25)
     return
   }
-  let buf = await loadBuffer(id)
+  const buf = await loadBuffer(id)
   if (!buf) {
-    playHtmlOneShot(id)
+    playHtmlOneShot(id, slice.gain ?? 0.25)
     return
   }
   const t = ac.currentTime
   playBufferSlice(ac, buf, t, slice)
 }
 
+/** Main tap — trimmed ~22 ms, system tap level. */
 export async function playTapSample(): Promise<void> {
-  await playSampleOrHtml('tap', { gain: 0.95, trimStart: 0.002, duration: 0.09 })
+  await playSampleOrHtml('tap', {
+    gain: UI_SOUND_GAIN.tap,
+    trimStart: 0.002,
+    duration: 0.022,
+  })
 }
 
-/** Checkbox / counter tick — shorter than full tap. */
+/** Counter / checkbox — slightly shorter. */
 export async function playTapMicro(): Promise<void> {
-  await playSampleOrHtml('tap', { gain: 0.72, trimStart: 0.002, duration: 0.042 })
+  await playSampleOrHtml('tap', {
+    gain: UI_SOUND_GAIN.tap * 0.88,
+    trimStart: 0.002,
+    duration: 0.016,
+  })
 }
 
-/** Nav / transition — one soft dry tap (no noise sweep). */
+/** Nav “whoosh” — airy micro slice from same tap pack (consistency). */
 export async function playWhooshTap(): Promise<void> {
-  await playSampleOrHtml('tap', { gain: 0.52, trimStart: 0.001, duration: 0.1 })
+  await playSampleOrHtml('tap', {
+    gain: UI_SOUND_GAIN.nav,
+    trimStart: 0.001,
+    duration: 0.03,
+    playbackRate: 1.12,
+  })
 }
 
 export async function playSuccessSample(): Promise<void> {
-  await playSampleOrHtml('success', { gain: 0.88, trimStart: 0.004, duration: 0.45 })
+  await playSampleOrHtml('success', {
+    gain: UI_SOUND_GAIN.success,
+    trimStart: 0.004,
+    duration: 0.14,
+  })
 }
 
 export async function playPopSample(rate = 1): Promise<void> {
-  await playSampleOrHtml('pop', { gain: 0.82, trimStart: 0.002, duration: 0.2, playbackRate: rate })
+  await playSampleOrHtml('pop', {
+    gain: UI_SOUND_GAIN.success * 0.72,
+    trimStart: 0.002,
+    duration: 0.09,
+    playbackRate: rate,
+  })
 }
 
 export async function playNotifySample(): Promise<void> {
-  await playSampleOrHtml('notify', { gain: 0.55, trimStart: 0.01, duration: 0.35 })
+  await playSampleOrHtml('notify', {
+    gain: UI_SOUND_GAIN.nav * 1.1,
+    trimStart: 0.008,
+    duration: 0.2,
+  })
 }
 
-/** Double tap using tap sample twice (satisfaction / stage). */
+/** Two micro hits — same tap asset, very tight. */
 export async function playDoubleTapSample(): Promise<void> {
+  const g = UI_SOUND_GAIN.tap * 0.55
+  const d = 0.016
   const ac = await getReadyAudioContext()
   if (!ac) {
-    playHtmlOneShot('tap', 0.7)
-    window.setTimeout(() => playHtmlOneShot('tap', 0.65), 45)
+    playHtmlOneShot('tap', g)
+    window.setTimeout(() => playHtmlOneShot('tap', g * 0.92), 36)
     return
   }
   const buf = await loadBuffer('tap')
   if (!buf) {
-    playHtmlOneShot('tap', 0.7)
-    window.setTimeout(() => playHtmlOneShot('tap', 0.65), 45)
+    playHtmlOneShot('tap', g)
+    window.setTimeout(() => playHtmlOneShot('tap', g * 0.92), 36)
     return
   }
   await resumeAudioContext(ac)
   const t = ac.currentTime
-  playBufferSlice(ac, buf, t, { gain: 0.85, trimStart: 0.002, duration: 0.07 })
-  playBufferSlice(ac, buf, t + 0.045, { gain: 0.8, trimStart: 0.002, duration: 0.07 })
+  playBufferSlice(ac, buf, t, { gain: g, trimStart: 0.002, duration: d })
+  playBufferSlice(ac, buf, t + 0.038, { gain: g * 0.92, trimStart: 0.002, duration: d })
 }
 
+/** Very low “cash” bed + louder success chime — same two files, tuned. */
 export async function playPaymentLayeredSample(): Promise<void> {
+  const bed = UI_SOUND_GAIN.paymentCashBed
+  const ch = UI_SOUND_GAIN.paymentChime
   const ac = await getReadyAudioContext()
   if (!ac) {
-    playHtmlOneShot('tap', 0.55)
-    window.setTimeout(() => playHtmlOneShot('success', 0.75), 28)
+    playHtmlOneShot('tap', bed * 4)
+    window.setTimeout(() => playHtmlOneShot('success', ch), 32)
     return
   }
   const tapBuf = await loadBuffer('tap')
   const okBuf = await loadBuffer('success')
   if (!tapBuf || !okBuf) {
-    playHtmlOneShot('tap', 0.55)
-    window.setTimeout(() => playHtmlOneShot('success', 0.75), 28)
+    playHtmlOneShot('tap', bed * 4)
+    window.setTimeout(() => playHtmlOneShot('success', ch), 32)
     return
   }
   const t = ac.currentTime
-  playBufferSlice(ac, tapBuf, t, { gain: 0.42, trimStart: 0.003, duration: 0.06, playbackRate: 1.05 })
-  playBufferSlice(ac, okBuf, t + 0.03, { gain: 0.72, trimStart: 0.006, duration: 0.38 })
+  playBufferSlice(ac, tapBuf, t, { gain: bed, trimStart: 0.003, duration: 0.018, playbackRate: 1.04 })
+  playBufferSlice(ac, okBuf, t + 0.028, { gain: ch * 0.95, trimStart: 0.006, duration: 0.2 })
 }

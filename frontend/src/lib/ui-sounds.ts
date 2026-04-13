@@ -1,7 +1,6 @@
 /**
- * UI sounds — Web Audio + short MP3 one-shots (`public/sounds/*.mp3`), zero deps.
- *
- * Samples first; synth fallbacks for error/warning/delete and offline edge cases.
+ * UI sounds — Web Audio + short MP3 slices where they help (success / payment / notify).
+ * Taps, nav, and errors are **designed** here (ultra-short, consistent) — not long MP3 tails.
  */
 
 import {
@@ -10,6 +9,7 @@ import {
   primeAudioContextSync as primeEngine,
   resumeAudioContext,
 } from '@/lib/ui-audio-engine'
+import { UI_SOUND_GAIN } from '@/lib/ui-sound-config'
 import {
   playDoubleTapSample,
   playNotifySample,
@@ -17,8 +17,6 @@ import {
   playPopSample,
   playSuccessSample,
   playTapMicro,
-  playTapSample,
-  playWhooshTap,
 } from '@/lib/ui-sound-samples'
 
 export { unlockUiAudioFromUserGesture } from '@/lib/ui-audio-engine'
@@ -28,7 +26,6 @@ export function primeAudioContextSync(): void {
   primeEngine()
 }
 
-// ─── Note frequency table (A4 = 440 Hz) — synth fallbacks ─────────────────────
 const NOTE: Record<string, number> = {
   C3: 130.81, D3: 146.83, E3: 164.81, F3: 174.61, G3: 196.0, A3: 220.0, B3: 246.94,
   C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.0, A4: 440.0, B4: 493.88,
@@ -118,26 +115,74 @@ function playArpeggio(
   })
 }
 
-async function synthClickFallback(): Promise<void> {
+/** 18–22 ms warm body + 10–12 ms digital tick — same recipe everywhere. */
+function playDesignedDigitalTap(ac: AudioContext, t: number, scale = 1): void {
+  const peak = UI_SOUND_GAIN.tap * scale
+  const bodyMs = 0.02
+  const o1 = ac.createOscillator()
+  o1.type = 'triangle'
+  o1.frequency.setValueAtTime(168, t)
+  const g1 = ac.createGain()
+  g1.gain.setValueAtTime(0.0001, t)
+  g1.gain.linearRampToValueAtTime(peak * 0.52, t + 0.002)
+  g1.gain.exponentialRampToValueAtTime(0.0001, t + bodyMs)
+  o1.connect(g1)
+  g1.connect(dest(ac))
+  o1.start(t)
+  o1.stop(t + bodyMs + 0.004)
+
+  const o2 = ac.createOscillator()
+  o2.type = 'sine'
+  o2.frequency.setValueAtTime(2480, t)
+  const g2 = ac.createGain()
+  g2.gain.setValueAtTime(0.0001, t)
+  g2.gain.linearRampToValueAtTime(peak * 0.4, t + 0.001)
+  g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.011)
+  o2.connect(g2)
+  g2.connect(dest(ac))
+  o2.start(t)
+  o2.stop(t + 0.014)
+}
+
+/** ~32 ms airy band-pass noise — no long sweep. */
+function playMicroWhoosh(ac: AudioContext, t: number): void {
+  const peak = UI_SOUND_GAIN.nav
+  const dur = 0.034
+  const bufLen = Math.ceil(ac.sampleRate * (dur + 0.02))
+  const buf = ac.createBuffer(1, bufLen, ac.sampleRate)
+  const data = buf.getChannelData(0)
+  for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1
+
+  const src = ac.createBufferSource()
+  src.buffer = buf
+  const f = ac.createBiquadFilter()
+  f.type = 'bandpass'
+  f.frequency.setValueAtTime(900, t)
+  f.frequency.exponentialRampToValueAtTime(5200, t + dur * 0.85)
+  f.Q.value = 0.85
+
+  const g = ac.createGain()
+  g.gain.setValueAtTime(0.0001, t)
+  g.gain.linearRampToValueAtTime(peak * 0.55, t + 0.008)
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
+
+  src.connect(f)
+  f.connect(g)
+  g.connect(dest(ac))
+  src.start(t)
+  src.stop(t + dur + 0.01)
+}
+
+/** 1. CLICK — designed tap (no long sample = no “harmonium”). */
+export async function playUiClickSound(): Promise<void> {
   primeEngine()
   const ac = getAudioContext()
   if (!ac) return
   await resumeAudioContext(ac)
-  const t = ac.currentTime
-  makeOsc(ac, 'sine', 2650, t, 0.02, 0.038, 0.0008, 0.004, 0.25, 0.012)
-  makeNoise(ac, t, 0.006, 0.018, 4200, 'highpass')
+  playDesignedDigitalTap(ac, ac.currentTime, 1)
 }
 
-/** 1. CLICK — screen-tap sample (ASMR). */
-export async function playUiClickSound(): Promise<void> {
-  try {
-    await playTapSample()
-  } catch {
-    await synthClickFallback()
-  }
-}
-
-/** 2. SATISFACTION — two quick taps. */
+/** 2. SATISFACTION — two tight taps from the same pack / synth. */
 export async function playUiSatisfactionSound(): Promise<void> {
   try {
     await playDoubleTapSample()
@@ -147,12 +192,12 @@ export async function playUiSatisfactionSound(): Promise<void> {
     if (!ac) return
     await resumeAudioContext(ac)
     const t = ac.currentTime
-    makeOsc(ac, 'sine', 1400, t, 0.018, 0.032, 0.001, 0.005, 0.3, 0.01)
-    makeOsc(ac, 'sine', 2100, t + 0.032, 0.018, 0.03, 0.001, 0.005, 0.28, 0.01)
+    playDesignedDigitalTap(ac, t, 0.92)
+    playDesignedDigitalTap(ac, t + 0.036, 0.85)
   }
 }
 
-/** 3. SUCCESS — Apple-style success chime sample. */
+/** 3. SUCCESS — short success slice from one file. */
 export async function playUiSuccessSound(): Promise<void> {
   try {
     await playSuccessSample()
@@ -162,11 +207,12 @@ export async function playUiSuccessSound(): Promise<void> {
     if (!ac) return
     await resumeAudioContext(ac)
     const t = ac.currentTime
-    playArpeggio(ac, t, [NOTE.C5, NOTE.E5, NOTE.G5], 0.055, 0.018, 'sine', 0.045, 0.004, 0.045)
+    const g = UI_SOUND_GAIN.success * 0.55
+    playArpeggio(ac, t, [NOTE.C5, NOTE.E5], 0.04, 0.012, 'sine', g, 0.003, 0.028)
   }
 }
 
-/** 4. STAGE ADVANCE — two fast taps. */
+/** 4. STAGE — two micro hits. */
 export async function playUiStageAdvanceSound(): Promise<void> {
   try {
     await playDoubleTapSample()
@@ -176,35 +222,61 @@ export async function playUiStageAdvanceSound(): Promise<void> {
     if (!ac) return
     await resumeAudioContext(ac)
     const t = ac.currentTime
-    makeOsc(ac, 'sine', 880, t, 0.022, 0.04, 0.001, 0.006, 0.3, 0.014)
-    makeOsc(ac, 'sine', 1180, t + 0.038, 0.022, 0.038, 0.001, 0.006, 0.32, 0.014)
+    playDesignedDigitalTap(ac, t, 0.88)
+    playDesignedDigitalTap(ac, t + 0.042, 0.82)
   }
 }
 
-/** 5. ERROR — synth (intentionally harsh). */
+/** 5. ERROR — dull, low, instant — not a harsh alarm. */
 export async function playUiErrorSound(): Promise<void> {
   primeEngine()
   const ac = getAudioContext()
   if (!ac) return
   await resumeAudioContext(ac)
   const t = ac.currentTime
-  makeOsc(ac, 'sawtooth', NOTE.B3, t, 0.08, 0.055, 0.005, 0.02, 0.6, 0.055)
-  makeOsc(ac, 'sawtooth', NOTE.G3, t + 0.07, 0.12, 0.05, 0.006, 0.03, 0.5, 0.08)
-  makeNoise(ac, t, 0.05, 0.035, 300, 'lowpass')
+  const peak = UI_SOUND_GAIN.error
+  const f1 = 185
+  const f2 = 198
+  const o1 = ac.createOscillator()
+  o1.type = 'sine'
+  o1.frequency.setValueAtTime(f1, t)
+  const g1 = ac.createGain()
+  g1.gain.setValueAtTime(0.0001, t)
+  g1.gain.linearRampToValueAtTime(peak * 0.55, t + 0.004)
+  g1.gain.exponentialRampToValueAtTime(0.0001, t + 0.095)
+  o1.connect(g1)
+  g1.connect(dest(ac))
+  o1.start(t)
+  o1.stop(t + 0.1)
+
+  const o2 = ac.createOscillator()
+  o2.type = 'sine'
+  o2.frequency.setValueAtTime(f2, t)
+  const g2 = ac.createGain()
+  g2.gain.setValueAtTime(0.0001, t)
+  g2.gain.linearRampToValueAtTime(peak * 0.42, t + 0.005)
+  g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.088)
+  o2.connect(g2)
+  g2.connect(dest(ac))
+  o2.start(t)
+  o2.stop(t + 0.095)
+
+  makeNoise(ac, t, 0.055, peak * 0.22, 420, 'bandpass')
 }
 
-/** 6. WARNING — synth. */
+/** 6. WARNING — soft dissonant pair, low level. */
 export async function playUiWarningSound(): Promise<void> {
   primeEngine()
   const ac = getAudioContext()
   if (!ac) return
   await resumeAudioContext(ac)
   const t = ac.currentTime
-  makeOsc(ac, 'sine', NOTE.E4, t, 0.18, 0.06, 0.01, 0.04, 0.55, 0.1)
-  makeOsc(ac, 'sine', NOTE.E4 * Math.pow(2, -1 / 12), t + 0.06, 0.15, 0.04, 0.01, 0.04, 0.45, 0.1)
+  const p = UI_SOUND_GAIN.warning
+  makeOsc(ac, 'sine', NOTE.E4, t, 0.14, p * 0.5, 0.008, 0.03, 0.5, 0.08)
+  makeOsc(ac, 'sine', NOTE.E4 * Math.pow(2, -1 / 12), t + 0.04, 0.12, p * 0.38, 0.008, 0.03, 0.45, 0.08)
 }
 
-/** Soft cash moment — tap + success layers. */
+/** Payment — quiet cash bed + chime (same two samples, tuned in samples module). */
 export async function playUiPaymentCashSound(): Promise<void> {
   try {
     await playPaymentLayeredSample()
@@ -214,10 +286,9 @@ export async function playUiPaymentCashSound(): Promise<void> {
     if (!ac) return
     await resumeAudioContext(ac)
     const t = ac.currentTime
-    makeNoise(ac, t, 0.022, 0.028, 900, 'bandpass')
-    makeOsc(ac, 'sine', 1240, t + 0.018, 0.026, 0.042, 0.002, 0.008, 0.45, 0.018)
-    makeOsc(ac, 'sine', 1880, t + 0.052, 0.024, 0.038, 0.002, 0.008, 0.4, 0.016)
-    makeNoise(ac, t + 0.045, 0.012, 0.015, 2400, 'highpass')
+    const bed = UI_SOUND_GAIN.paymentCashBed
+    makeNoise(ac, t, 0.018, bed * 2.2, 700, 'bandpass')
+    makeOsc(ac, 'sine', 1320, t + 0.02, 0.08, UI_SOUND_GAIN.paymentChime * 0.45, 0.002, 0.02, 0.5, 0.05)
   }
 }
 
@@ -225,61 +296,33 @@ export async function playUiCoinSound(): Promise<void> {
   return playUiPaymentCashSound()
 }
 
-/** 8. LEVEL UP — pop sample. */
+/** 8. LEVEL UP — short pop slice. */
 export async function playUiLevelUpSound(): Promise<void> {
   try {
-    await playPopSample(1.06)
+    await playPopSample(1.04)
   } catch {
     primeEngine()
     const ac = getAudioContext()
     if (!ac) return
     await resumeAudioContext(ac)
     const t = ac.currentTime
-    const scale = [NOTE.C4, NOTE.D4, NOTE.E4, NOTE.G4, NOTE.A4]
-    playArpeggio(ac, t, scale, 0.09, 0.01, 'sine', 0.055, 0.007, 0.08)
-    makeOsc(ac, 'sine', NOTE.C5, t + scale.length * 0.1, 0.2, 0.055, 0.01, 0.04, 0.55, 0.12)
+    const scale = [NOTE.C4, NOTE.D4, NOTE.E4, NOTE.G4]
+    const g = UI_SOUND_GAIN.success * 0.45
+    playArpeggio(ac, t, scale, 0.06, 0.008, 'sine', g, 0.004, 0.04)
   }
 }
 
-/** 9. WHOOSH — soft tap (no noise sweep). */
+/** 9. NAV / WHOOSH — micro airy burst (caller may delay 10 ms for motion sync). */
 export async function playUiWhooshSound(): Promise<void> {
-  try {
-    await playWhooshTap()
-  } catch {
-    primeEngine()
-    const ac = getAudioContext()
-    if (!ac) return
-    await resumeAudioContext(ac)
-    const t = ac.currentTime
-    const bufLen = Math.ceil(ac.sampleRate * 0.22)
-    const buf = ac.createBuffer(1, bufLen, ac.sampleRate)
-    const data = buf.getChannelData(0)
-    for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1
-
-    const src = ac.createBufferSource()
-    src.buffer = buf
-
-    const filter = ac.createBiquadFilter()
-    filter.type = 'bandpass'
-    filter.frequency.setValueAtTime(200, t)
-    filter.frequency.exponentialRampToValueAtTime(3200, t + 0.18)
-    filter.Q.value = 2.5
-
-    const gain = ac.createGain()
-    gain.gain.setValueAtTime(0.0001, t)
-    gain.gain.linearRampToValueAtTime(0.045, t + 0.04)
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.2)
-
-    src.connect(filter)
-    filter.connect(gain)
-    gain.connect(dest(ac))
-    src.start(t)
-    src.stop(t + 0.22)
-    makeOsc(ac, 'sine', 1200, t + 0.12, 0.08, 0.015, 0.01, 0.04, 0.3, 0.06)
-  }
+  primeEngine()
+  const ac = getAudioContext()
+  if (!ac) return
+  await resumeAudioContext(ac)
+  const t = ac.currentTime
+  playMicroWhoosh(ac, t)
 }
 
-/** 10. TICK — micro tap. */
+/** 10. TICK — sample micro-slice or designed tap. */
 export async function playUiTickSound(): Promise<void> {
   try {
     await playTapMicro()
@@ -288,35 +331,34 @@ export async function playUiTickSound(): Promise<void> {
     const ac = getAudioContext()
     if (!ac) return
     await resumeAudioContext(ac)
-    const t = ac.currentTime
-    makeOsc(ac, 'sine', 820, t, 0.028, 0.038, 0.003, 0.008, 0.3, 0.016)
-    makeNoise(ac, t, 0.018, 0.012, 3500, 'highpass')
+    playDesignedDigitalTap(ac, ac.currentTime, 0.82)
   }
 }
 
-/** 11. DELETE — synth thud. */
+/** 11. DELETE — soft thud. */
 export async function playUiDeleteSound(): Promise<void> {
   primeEngine()
   const ac = getAudioContext()
   if (!ac) return
   await resumeAudioContext(ac)
   const t = ac.currentTime
+  const p = UI_SOUND_GAIN.delete
   const osc = ac.createOscillator()
   const gain = ac.createGain()
   osc.type = 'sine'
-  osc.frequency.setValueAtTime(260, t)
-  osc.frequency.exponentialRampToValueAtTime(80, t + 0.13)
+  osc.frequency.setValueAtTime(220, t)
+  osc.frequency.exponentialRampToValueAtTime(75, t + 0.1)
   gain.gain.setValueAtTime(0.0001, t)
-  gain.gain.linearRampToValueAtTime(0.065, t + 0.006)
-  gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.14)
+  gain.gain.linearRampToValueAtTime(p * 0.9, t + 0.004)
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.11)
   osc.connect(gain)
   gain.connect(dest(ac))
   osc.start(t)
-  osc.stop(t + 0.15)
-  makeNoise(ac, t, 0.07, 0.03, 180, 'lowpass')
+  osc.stop(t + 0.12)
+  makeNoise(ac, t, 0.05, p * 0.35, 200, 'lowpass')
 }
 
-/** 12. NOTIFICATION — iPhone-style notify sample. */
+/** 12. NOTIFICATION — one pack, short slice. */
 export async function playUiNotificationSound(): Promise<void> {
   try {
     await playNotifySample()
@@ -326,15 +368,15 @@ export async function playUiNotificationSound(): Promise<void> {
     if (!ac) return
     await resumeAudioContext(ac)
     const t = ac.currentTime
-    makeOsc(ac, 'sine', NOTE.C5, t, 0.09, 0.06, 0.008, 0.02, 0.55, 0.065)
-    makeOsc(ac, 'sine', NOTE.E5, t + 0.1, 0.14, 0.065, 0.009, 0.025, 0.6, 0.1)
-    makeOsc(ac, 'sine', NOTE.G5, t + 0.12, 0.09, 0.022, 0.008, 0.02, 0.35, 0.06)
+    const g = UI_SOUND_GAIN.nav * 0.9
+    makeOsc(ac, 'sine', NOTE.C5, t, 0.07, g, 0.006, 0.02, 0.5, 0.05)
+    makeOsc(ac, 'sine', NOTE.E5, t + 0.06, 0.08, g * 0.85, 0.006, 0.02, 0.5, 0.055)
   }
 }
 
-/** 13. STREAK — pop pitch rises with combo (explicit `data-ui-sound="streak"` only). */
+/** 13. STREAK — short pop, pitch by level. */
 export async function playUiStreakSound(streak: number): Promise<void> {
-  const rate = 1 + Math.min(Math.max(streak - 1, 0), 7) * 0.028
+  const rate = 1 + Math.min(Math.max(streak - 1, 0), 7) * 0.022
   try {
     await playPopSample(rate)
   } catch {
@@ -343,18 +385,6 @@ export async function playUiStreakSound(streak: number): Promise<void> {
     if (!ac) return
     await resumeAudioContext(ac)
     const t = ac.currentTime
-    const scale = [NOTE.C4, NOTE.D4, NOTE.E4, NOTE.G4, NOTE.A4, NOTE.C5, NOTE.E5]
-    const idx = Math.min(streak - 1, scale.length - 1)
-    const freq = scale[idx]
-    const gain = 0.055 + idx * 0.007
-    const dur = 0.1 + idx * 0.015
-
-    makeOsc(ac, 'sine', freq, t, dur, gain, 0.006, 0.025, 0.6, dur * 0.5)
-    if (streak >= 3) {
-      makeOsc(ac, 'sine', freq * 1.5, t + 0.01, dur * 0.9, gain * 0.4, 0.008, 0.03, 0.45, dur * 0.45)
-    }
-    if (streak >= 6) {
-      makeOsc(ac, 'sine', freq * 2, t + 0.02, dur * 0.8, gain * 0.25, 0.01, 0.04, 0.4, dur * 0.4)
-    }
+    playDesignedDigitalTap(ac, t, 0.95 + (streak - 1) * 0.04)
   }
 }

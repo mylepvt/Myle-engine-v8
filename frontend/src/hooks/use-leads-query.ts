@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
+import { UI_SOUND_DELAY_MS } from '@/lib/ui-sound-config'
 import { playUiStageAdvanceSound, playUiSuccessSound } from '@/lib/ui-sounds'
 import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
 
@@ -294,7 +295,7 @@ export function useCreateLeadMutation() {
     onSuccess: () => {
       invalidateLeadRelated(qc)
       if (useUiFeedbackStore.getState().soundEnabled) {
-        void playUiSuccessSound()
+        window.setTimeout(() => void playUiSuccessSound(), UI_SOUND_DELAY_MS.success)
       }
     },
   })
@@ -314,9 +315,9 @@ export function usePatchLeadMutation() {
       invalidateLeadRelated(qc)
       if (!useUiFeedbackStore.getState().soundEnabled) return
       if (variables.body.status) {
-        void playUiStageAdvanceSound()
+        window.setTimeout(() => void playUiStageAdvanceSound(), UI_SOUND_DELAY_MS.stage)
       } else {
-        void playUiSuccessSound()
+        window.setTimeout(() => void playUiSuccessSound(), UI_SOUND_DELAY_MS.success)
       }
     },
   })

@@ -2,6 +2,7 @@ import { Layers2, Monitor, Moon, Sparkles, Sun, Vibrate, Volume2, VolumeX } from
 
 import { Button } from '@/components/ui/button'
 import { browserSupportsVibration } from '@/lib/haptics'
+import { primeAudioContextSync } from '@/lib/ui-sounds'
 import { cn } from '@/lib/utils'
 import { useUiFeedbackStore, type ThemePreference } from '@/stores/ui-feedback-store'
 
@@ -62,7 +63,10 @@ export function ShellHeaderFeedbackControls() {
         aria-pressed={soundEnabled}
         aria-label={soundEnabled ? 'Mute UI sounds' : 'Enable UI sounds'}
         title={soundEnabled ? 'Mute UI sounds' : 'Enable UI sounds'}
-        onClick={() => toggleSound()}
+        onClick={() => {
+          primeAudioContextSync()
+          toggleSound()
+        }}
       >
         {soundEnabled ? (
           <Volume2 className="size-[1.05rem] md:size-4" />
