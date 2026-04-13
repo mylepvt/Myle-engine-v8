@@ -4,7 +4,8 @@ import { Bell, Home, LogOut, Menu, PanelLeftClose, Search, Settings } from 'luci
 
 import { ShellHeaderFeedbackControls } from '@/components/layout/ShellHeaderFeedbackControls'
 import { DashboardMobileTabBar } from '@/components/layout/DashboardMobileTabBar'
-import { Button } from '@/components/ui/button'
+import { PremiumButton, IconButton } from '@/components/ui/button-premium'
+import { SidebarSkeleton } from '@/components/ui/skeleton-premium'
 import { DashboardOutletErrorBoundary } from '@/components/routing/DashboardOutletErrorBoundary'
 import { getDashboardNavIcon } from '@/config/dashboard-nav-icons'
 import { filterDashboardNav, resolveItemLabel } from '@/config/dashboard-nav'
@@ -111,7 +112,7 @@ export function DashboardLayout() {
       {sidebarOpen ? (
         <button
           type="button"
-          className="fixed inset-0 z-40 bg-black/50 transition-opacity md:hidden"
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-all duration-300 md:hidden"
           aria-label="Close menu"
           onClick={() => setSidebarOpen(false)}
         />
@@ -119,9 +120,11 @@ export function DashboardLayout() {
 
       <aside
         className={cn(
-          'flex min-h-dvh shrink-0 flex-col border-r border-border bg-surface transition-[width,transform] duration-300 ease-out',
-          sidebarOpen ? 'md:w-[17rem]' : 'md:w-0 md:overflow-hidden md:border-0',
-          'max-md:fixed max-md:left-0 max-md:top-0 max-md:z-50 max-md:h-dvh max-md:w-[min(19rem,88vw)] max-md:pt-[env(safe-area-inset-top)] max-md:shadow-[0_0_48px_rgba(0,0,0,0.65)]',
+          'flex min-h-dvh shrink-0 flex-col border-r border-border/80 bg-surface/95 backdrop-blur-xl',
+          'transition-all duration-300 ease-out',
+          sidebarOpen ? 'md:w-[18rem]' : 'md:w-0 md:overflow-hidden md:border-0',
+          'max-md:fixed max-md:left-0 max-md:top-0 max-md:z-50 max-md:h-dvh max-md:w-[min(20rem,85vw)] max-md:pt-[env(safe-area-inset-top)]',
+          'max-md:shadow-[0_0_60px_rgba(0,0,0,0.4)]',
           sidebarOpen
             ? 'max-md:translate-x-0'
             : 'max-md:pointer-events-none max-md:-translate-x-full',
@@ -141,29 +144,22 @@ export function DashboardLayout() {
           ) : null}
         </div>
 
-        <nav className="flex flex-1 flex-col gap-2 overflow-y-auto overflow-x-hidden px-2 py-3 pb-2">
+        <nav className="flex flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden px-3 py-4 pb-2">
           {rolePending && shellRole == null ? (
-            <div className="space-y-2 px-2" aria-busy="true" aria-label="Loading navigation">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-11 animate-pulse rounded-[0.625rem] bg-muted/60"
-                />
-              ))}
-            </div>
+            <SidebarSkeleton />
           ) : null}
           {shellRole != null
             ? sections.map((section) => (
                 <div key={section.id}>
                   {section.label ? (
-                    <p className="mb-1.5 px-3 text-[0.6875rem] font-semibold uppercase tracking-label-wide text-muted-foreground">
+                    <p className="mb-2 px-3 text-[0.65rem] font-bold uppercase tracking-[0.08em] text-muted-foreground/70">
                       {section.label}
                     </p>
                   ) : null}
                   <ul
                     className={cn(
-                      'flex flex-col overflow-hidden rounded-[0.625rem] border border-border/90 bg-card/40',
-                      section.label ? '' : '',
+                      'flex flex-col overflow-hidden rounded-xl border border-border/60 bg-card/30',
+                      'shadow-sm',
                     )}
                   >
                     {section.items.map((item) => {
@@ -174,7 +170,7 @@ export function DashboardLayout() {
                       return (
                         <li
                           key={item.path || 'index'}
-                          className="border-b border-border/80 last:border-b-0"
+                          className="border-b border-border/40 last:border-b-0"
                         >
                           <NavLink
                             to={to}
@@ -186,23 +182,48 @@ export function DashboardLayout() {
                             }}
                             className={({ isActive }) =>
                               cn(
-                                'flex min-h-[44px] items-center gap-3 px-3 py-2.5 text-ds-body transition-colors active:opacity-80',
+                                'group flex min-h-[48px] items-center gap-3 px-4 py-3 text-sm font-medium',
+                                'transition-all duration-200 ease-out',
+                                'active:scale-[0.98]',
                                 isActive
-                                  ? 'bg-primary font-semibold text-primary-foreground'
-                                  : 'text-foreground/90 hover:bg-muted/50',
+                                  ? [
+                                      'bg-gradient-to-r from-primary to-primary/90',
+                                      'text-primary-foreground font-semibold',
+                                      'shadow-lg shadow-primary/25',
+                                      'relative overflow-hidden',
+                                    ]
+                                  : [
+                                      'text-foreground/80 hover:text-foreground',
+                                      'hover:bg-muted/60',
+                                      'hover:translate-x-0.5',
+                                    ],
                               )
                             }
                           >
                             {({ isActive }) => (
                               <>
-                                <Icon
+                                <div
                                   className={cn(
-                                    'size-[1.25rem] shrink-0',
-                                    isActive ? 'text-primary-foreground' : 'text-muted-foreground',
+                                    'flex items-center justify-center rounded-lg p-1.5 transition-all duration-200',
+                                    isActive
+                                      ? 'bg-white/20'
+                                      : 'bg-muted/50 group-hover:bg-muted'
                                   )}
-                                  aria-hidden
-                                />
+                                >
+                                  <Icon
+                                    className={cn(
+                                      'size-[1.1rem] shrink-0 transition-all duration-200',
+                                      isActive
+                                        ? 'text-primary-foreground'
+                                        : 'text-muted-foreground group-hover:text-foreground',
+                                    )}
+                                    aria-hidden
+                                  />
+                                </div>
                                 <span className="min-w-0 flex-1 truncate">{label}</span>
+                                {isActive && (
+                                  <span className="absolute inset-y-0 left-0 w-1 bg-white/50 rounded-r-full" />
+                                )}
                               </>
                             )}
                           </NavLink>
@@ -216,33 +237,29 @@ export function DashboardLayout() {
         </nav>
 
         <div className="mt-auto shrink-0 border-t border-border p-3">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="w-full gap-2 text-muted-foreground hover:text-foreground"
-            onClick={() => void handleLogout()}
-          >
-            <LogOut className="size-4" aria-hidden />
-            Log out
-          </Button>
-        </div>
-      </aside>
+        <PremiumButton
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="w-full gap-2 text-muted-foreground hover:text-foreground transition-all duration-200 hover:bg-muted/60"
+          onClick={() => void handleLogout()}
+        >
+          <LogOut className="size-4" aria-hidden />
+          Sign Out
+        </PremiumButton>
+      </div>
+    </aside>
 
-      <div className="flex min-w-0 max-w-full flex-1 flex-col overflow-x-hidden pt-[env(safe-area-inset-top)]">
-        <header className="relative z-20 flex h-[52px] shrink-0 items-center gap-2 border-b border-border bg-background/95 px-2 shadow-ios-bar backdrop-blur-md supports-[backdrop-filter]:bg-background/80 md:gap-3 md:px-3">
-          {/* Left: menu + compact admin preview (no stacked label on small screens) */}
-          <div className="flex min-w-0 shrink-0 items-center gap-1.5">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-9 shrink-0"
-              onClick={toggleSidebar}
-              aria-label="Toggle sidebar"
-            >
-              {sidebarOpen ? <PanelLeftClose className="size-5" /> : <Menu className="size-5" />}
-            </Button>
+    <div className="flex min-w-0 max-w-full flex-1 flex-col overflow-x-hidden pt-[env(safe-area-inset-top)]">
+      <header className="relative z-20 flex h-[56px] shrink-0 items-center gap-2 border-b border-border/60 bg-background/90 px-3 shadow-ios-bar backdrop-blur-xl supports-[backdrop-filter]:bg-background/85 md:gap-3 md:px-4">
+        {/* Left: menu + compact admin preview (no stacked label on small screens) */}
+        <div className="flex min-w-0 shrink-0 items-center gap-1.5">
+          <IconButton
+            icon={sidebarOpen ? <PanelLeftClose className="size-5" /> : <Menu className="size-5" />}
+            label="Toggle sidebar"
+            onClick={toggleSidebar}
+            className="transition-transform duration-200 active:scale-95"
+          />
 
             {serverRole === 'admin' ? (
               <>
@@ -297,20 +314,26 @@ export function DashboardLayout() {
           {/* Right: tools — single row, no horizontal scroll strip on phone */}
           <div className="ml-auto flex shrink-0 items-center gap-0.5 md:gap-1">
             <ShellHeaderFeedbackControls />
-            <Button variant="ghost" size="icon" className="size-9 shrink-0" asChild aria-label="Settings">
-              <Link to="/dashboard/settings/profile">
-                <Settings className="size-[1.15rem] md:size-[1.25rem]" aria-hidden />
+            <Link
+              to="/dashboard/settings/profile"
+              className="hidden sm:flex relative size-10 items-center justify-center rounded-full transition-all duration-200 hover:bg-muted hover:scale-105 active:scale-95"
+              aria-label="Settings"
+            >
+              <Settings className="size-[1.15rem] md:size-[1.25rem]" />
+            </Link>
+            <div className="relative">
+              <Link
+                to="/dashboard/other/notice-board"
+                className="relative flex size-10 items-center justify-center rounded-full transition-all duration-200 hover:bg-muted hover:scale-105 active:scale-95"
+                aria-label="Notice board"
+              >
+                <Bell className="size-[1.2rem] md:size-[1.35rem]" />
               </Link>
-            </Button>
-            <Button variant="ghost" size="icon" className="relative size-9 shrink-0" asChild aria-label="Notice board">
-              <Link to="/dashboard/other/notice-board" title="Notice board & announcements">
-                <Bell className="size-[1.2rem] md:size-[1.35rem]" aria-hidden />
-                <span
-                  className="pointer-events-none absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary ring-2 ring-background"
-                  aria-hidden
-                />
-              </Link>
-            </Button>
+              <span
+                className="pointer-events-none absolute right-1 top-1 size-2 rounded-full bg-primary shadow-[0_0_8px_rgba(84,101,255,0.6)] animate-pulse"
+                aria-hidden
+              />
+            </div>
 
             {shellRole != null ? (
               <span
@@ -352,12 +375,12 @@ export function DashboardLayout() {
               )}
             </Link>
 
-            <Button variant="ghost" size="sm" asChild className="hidden lg:inline-flex">
-              <Link to="/" className="gap-1.5 text-muted-foreground">
+            <PremiumButton variant="ghost" size="sm" asChild className="hidden lg:inline-flex">
+              <Link to="/" className="gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
                 <Home className="size-4" />
                 Home
               </Link>
-            </Button>
+            </PremiumButton>
           </div>
         </header>
 

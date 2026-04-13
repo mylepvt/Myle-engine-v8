@@ -150,6 +150,29 @@ Stub = contract only; **Done** = backed by DB + rules.
 
 ---
 
+## Premium UI/UX (Apple-level polish)
+
+**Design system:** Modern, smooth, addictive interactions — not just functional, but delightful.
+
+- [x] **Global Motion System** — Page transitions (fade + slide up), tap interactions (scale 0.96), consistent 180-220ms duration with ease-out
+- [x] **Premium Button System** — Loading states with spinner, ripple effects, gradient variants, hover glow, active press states (`button-premium.tsx`)
+- [x] **Premium Card System** — 14-16px border radius, lift animation on hover (-4px translateY), premium shadows, gradient borders (`card-premium.tsx`)
+- [x] **Enhanced Skeleton Loaders** — Shimmer animation, multiple skeleton types (card, metric, list, page, sidebar) (`skeleton-premium.tsx`)
+- [x] **Premium Empty States** — 9 variants (leads, search, notifications, analytics, wallet, etc.), icons with gradient backgrounds, clear CTAs (`empty-state-premium.tsx`)
+- [x] **Motion Components** — AnimatedNumber (count-up), AnimatedProgress, PageTransition, StaggerContainer, HoverLift, Pressable, Spotlight (`motion.tsx`)
+- [x] **Enhanced Sidebar** — Smooth slide + fade animations, backdrop blur overlay, gradient active states with glow, improved spacing, active indicator bars
+- [x] **Header Upgrades** — Backdrop blur header, premium IconButton interactions, enhanced notification badge with pulse animation
+- [x] **CSS Animation System** — Custom keyframes (fadeIn, slideUp, scaleIn, shimmer, countUp, ripple, pulse-glow), utility classes for common animations
+
+**Components created:**
+- `frontend/src/components/ui/button-premium.tsx` — PremiumButton, GradientButton, GhostButton, IconButton
+- `frontend/src/components/ui/card-premium.tsx` — PremiumCard, MetricCard, ActionCard
+- `frontend/src/components/ui/skeleton-premium.tsx` — All skeleton variants + LoadingStatePremium
+- `frontend/src/components/ui/empty-state-premium.tsx` — EmptyStatePremium + specialized variants
+- `frontend/src/components/ui/motion.tsx` — Animation primitives
+
+---
+
 ## Parity rollout (old app → vl2 — tick in PRs)
 
 **Runbook:** `docs/PARITY_SPRINT_1.md` (Week 1) · `docs/PARITY_ROLLOUT_PLAN.md` (waves) · `docs/LEGACY_PARITY_MAPPING.md` (matrix).
