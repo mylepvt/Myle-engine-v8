@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useRef } from 'react'
 
+import { iosNoVibrateAudioFallback } from '@/lib/haptic-audio-fallback'
 import {
   hapticCoin,
   hapticDelete,
@@ -30,6 +31,7 @@ import {
   playUiWhooshSound,
   primeAudioContextSync,
 } from '@/lib/ui-sounds'
+import { preloadUiSoundSamples } from '@/lib/ui-sound-samples'
 import { useUiFeedbackStore, type ThemePreference } from '@/stores/ui-feedback-store'
 
 function resolveDark(theme: ThemePreference): boolean {
@@ -93,11 +95,16 @@ export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) 
     return () => mq.removeEventListener('change', onChange)
   }, [])
 
+  useEffect(() => {
+    if (!soundEnabled) return
+    void preloadUiSoundSamples()
+  }, [soundEnabled])
+
   // ── Sound + haptic dispatch ───────────────────────────────────────────────
   useEffect(() => {
     if (!soundEnabled && !hapticsEnabled) return
 
-    const handler = (e: MouseEvent) => {
+    const handler = async (e: MouseEvent) => {
       primeAudioContextSync()
       const target = e.target
       if (!(target instanceof Element)) return
@@ -122,91 +129,102 @@ export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) 
 
       if (raw === 'none') return
 
-      // Increment streak for every non-silent interaction
+      // Increment streak for every non-silent interaction (used by explicit `streak` only)
       const streak = useUiFeedbackStore.getState().incrementStreak()
 
-      void (async () => {
+      try {
         switch (raw) {
           case 'success':
             if (soundEnabled) await playUiSuccessSound()
             if (hapticsEnabled) hapticSuccess()
             useUiFeedbackStore.getState().addSatisfactionPoints(5)
+            await iosNoVibrateAudioFallback(hapticsEnabled, soundEnabled, playUiTickSound)
             break
 
           case 'stage':
             if (soundEnabled) await playUiStageAdvanceSound()
             if (hapticsEnabled) hapticImpact()
             useUiFeedbackStore.getState().addSatisfactionPoints(10)
+            await iosNoVibrateAudioFallback(hapticsEnabled, soundEnabled, playUiTickSound)
             break
 
           case 'satisfaction':
             if (soundEnabled) await playUiSatisfactionSound()
             if (hapticsEnabled) hapticTapMedium()
             useUiFeedbackStore.getState().addSatisfactionPoints(2)
+            await iosNoVibrateAudioFallback(hapticsEnabled, soundEnabled, playUiTickSound)
             break
 
           case 'coin':
             if (soundEnabled) await playUiPaymentCashSound()
             if (hapticsEnabled) hapticCoin()
             useUiFeedbackStore.getState().addSatisfactionPoints(15)
+            await iosNoVibrateAudioFallback(hapticsEnabled, soundEnabled, playUiTickSound)
             break
 
           case 'levelup':
             if (soundEnabled) await playUiLevelUpSound()
             if (hapticsEnabled) hapticSuccessStrong()
             useUiFeedbackStore.getState().addSatisfactionPoints(50)
+            await iosNoVibrateAudioFallback(hapticsEnabled, soundEnabled, playUiTickSound)
             break
 
           case 'whoosh':
             if (soundEnabled) await playUiWhooshSound()
             if (hapticsEnabled) hapticTapLight()
+            await iosNoVibrateAudioFallback(hapticsEnabled, soundEnabled, playUiTickSound)
             break
 
           case 'tick':
             if (soundEnabled) await playUiTickSound()
             if (hapticsEnabled) hapticSelection()
             useUiFeedbackStore.getState().addSatisfactionPoints(1)
+            await iosNoVibrateAudioFallback(hapticsEnabled, soundEnabled, playUiTickSound)
             break
 
           case 'delete':
             if (soundEnabled) await playUiDeleteSound()
             if (hapticsEnabled) hapticDelete()
+            await iosNoVibrateAudioFallback(hapticsEnabled, soundEnabled, playUiTickSound)
             break
 
           case 'error':
             if (soundEnabled) await playUiErrorSound()
             if (hapticsEnabled) hapticError()
+            await iosNoVibrateAudioFallback(hapticsEnabled, soundEnabled, playUiTickSound)
             break
 
           case 'warning':
             if (soundEnabled) await playUiWarningSound()
             if (hapticsEnabled) hapticWarning()
+            await iosNoVibrateAudioFallback(hapticsEnabled, soundEnabled, playUiTickSound)
             break
 
           case 'notification':
             if (soundEnabled) await playUiNotificationSound()
             if (hapticsEnabled) hapticNotification()
+            await iosNoVibrateAudioFallback(hapticsEnabled, soundEnabled, playUiTickSound)
             break
 
           case 'streak':
             if (soundEnabled) await playUiStreakSound(streak)
             if (hapticsEnabled) hapticStreak(streak)
             useUiFeedbackStore.getState().addSatisfactionPoints(streak)
+            await iosNoVibrateAudioFallback(hapticsEnabled, soundEnabled, playUiTickSound)
             break
 
-          default: // 'click'
-            // On streaks of 5+, reward with a richer satisfaction sound
-            if (streak >= 5) {
-              if (soundEnabled) await playUiStreakSound(streak)
-              if (hapticsEnabled) hapticStreak(streak)
-              useUiFeedbackStore.getState().addSatisfactionPoints(streak)
-            } else {
-              if (soundEnabled) await playUiClickSound()
-              if (hapticsEnabled) hapticTapLight()
-              useUiFeedbackStore.getState().addSatisfactionPoints(1)
-            }
+          default: {
+            // Default nav / buttons: always soft tap — no streak escalation on sidebar
+            if (soundEnabled) await playUiClickSound()
+            if (hapticsEnabled) hapticTapLight()
+            useUiFeedbackStore.getState().addSatisfactionPoints(1)
+            await iosNoVibrateAudioFallback(hapticsEnabled, soundEnabled, playUiTickSound)
+            break
+          }
         }
-      })()
+      } catch {
+        /* ignore */
+      }
     }
 
     document.addEventListener('click', handler, true)

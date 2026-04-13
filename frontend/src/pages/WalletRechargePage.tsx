@@ -6,8 +6,9 @@ import {
   useCreateRechargeRequestMutation,
   useWalletRechargeRequestsQuery,
 } from '@/hooks/use-wallet-recharge-query'
+import { iosNoVibrateAudioFallback } from '@/lib/haptic-audio-fallback'
 import { hapticCoin } from '@/lib/haptics'
-import { playUiPaymentCashSound, primeAudioContextSync } from '@/lib/ui-sounds'
+import { playUiPaymentCashSound, playUiTickSound, unlockUiAudioFromUserGesture } from '@/lib/ui-sounds'
 import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
 
 type Props = {
@@ -56,16 +57,17 @@ export function WalletRechargePage({ title }: Props) {
         ? crypto.randomUUID()
         : `recharge-${Date.now()}-${Math.random().toString(36).slice(2)}`
     try {
+      await unlockUiAudioFromUserGesture()
       await createMut.mutateAsync({
         amount_cents,
         utr_number: utr.trim() || undefined,
         proof_url: proofUrl.trim() || undefined,
         idempotency_key,
       })
-      primeAudioContextSync()
       const { soundEnabled, hapticsEnabled } = useUiFeedbackStore.getState()
       if (soundEnabled) void playUiPaymentCashSound()
       if (hapticsEnabled) hapticCoin()
+      await iosNoVibrateAudioFallback(hapticsEnabled, soundEnabled, playUiTickSound)
       useUiFeedbackStore.getState().addSatisfactionPoints(15)
       setAmount('')
       setUtr('')

@@ -17,9 +17,11 @@ if (typeof window !== 'undefined') {
     primeAudioContextSync()
     window.removeEventListener('touchstart', unlock, true)
     window.removeEventListener('pointerdown', unlock, true)
+    window.removeEventListener('click', unlock, true)
   }
   window.addEventListener('touchstart', unlock, { passive: true, capture: true })
   window.addEventListener('pointerdown', unlock, { passive: true, capture: true })
+  window.addEventListener('click', unlock, { passive: true, capture: true })
 }
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {

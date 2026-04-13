@@ -7,8 +7,10 @@ import {
   buildWhatsAppVideoUrl,
   shouldOfferWhatsAppForTransition,
 } from '@/lib/lead-next-action'
-import { hapticError, hapticTapHeavy } from '@/lib/haptics'
-import { playUiErrorSound, playUiPaymentCashSound, primeAudioContextSync } from '@/lib/ui-sounds'
+import { iosNoVibrateAudioFallback } from '@/lib/haptic-audio-fallback'
+import { hapticCoin, hapticError, hapticTapHeavy } from '@/lib/haptics'
+import { playUiErrorSound, playUiPaymentCashSound, playUiTickSound, unlockUiAudioFromUserGesture } from '@/lib/ui-sounds'
+import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
 import { useAvailableTransitionsQuery, useTransitionLeadMutation } from '@/hooks/use-pipeline-query'
 import { LEAD_STATUS_OPTIONS } from '@/hooks/use-leads-query'
 import { cn } from '@/lib/utils'
@@ -41,19 +43,15 @@ export function LeadNextStepPanel({ lead, className }: Props) {
 
   async function runTransition(target: string) {
     setLocalError(null)
-    primeAudioContextSync()
+    await unlockUiAudioFromUserGesture()
     hapticTapHeavy()
     try {
       const res = await mut.mutateAsync({ leadId: lead.id, targetStatus: target })
       if (res.new_status === 'converted') {
-        void playUiPaymentCashSound()
-        if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
-          try {
-            navigator.vibrate(80)
-          } catch {
-            /* ignore */
-          }
-        }
+        const { soundEnabled, hapticsEnabled } = useUiFeedbackStore.getState()
+        if (soundEnabled) void playUiPaymentCashSound()
+        if (hapticsEnabled) hapticCoin()
+        await iosNoVibrateAudioFallback(hapticsEnabled, soundEnabled, playUiTickSound)
       }
     } catch (e) {
       void playUiErrorSound()
