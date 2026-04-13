@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
+import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -255,13 +256,14 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
             <p>{emptyListHint(role ?? null, archivedOnly)}</p>
           ) : (
             <div className="-mx-1 max-w-full overflow-x-auto">
-            <Table className="min-w-[720px] table-fixed">
+            <Table className="min-w-[880px] table-fixed">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-[4.5rem] text-right tabular-nums text-muted-foreground">
                     ID
                   </TableHead>
                   <TableHead className="min-w-[10rem] text-foreground">Name</TableHead>
+                  <TableHead className="w-[min(13rem,28vw)] text-foreground">Phone</TableHead>
                   <TableHead className="w-[min(14rem,26vw)] text-foreground">Stage</TableHead>
                   <TableHead className="w-[10rem] text-right text-foreground">Created</TableHead>
                   {archivedOnly ? (
@@ -283,6 +285,16 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                       >
                         {l.name}
                       </Link>
+                    </TableCell>
+                    <TableCell className="min-w-0 align-middle">
+                      {l.phone?.trim() ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="min-w-0 truncate text-xs tabular-nums text-foreground">{l.phone}</span>
+                          <LeadContactActions phone={l.phone} className="shrink-0" />
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="min-w-0">
                       {!archivedOnly ? (

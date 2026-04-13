@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, ClipboardCheck, TrendingUp, UserPlus } from 'lucide-react'
 
+import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
 import { PipelineByStageChart } from '@/components/dashboard/PipelineByStageChart'
 import { Badge } from '@/components/ui/badge'
@@ -426,6 +427,7 @@ export function DashboardHomePage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
+                  <TableHead>Contact</TableHead>
                   <TableHead>Stage</TableHead>
                   <TableHead className="text-right">Created</TableHead>
                 </TableRow>
@@ -434,6 +436,16 @@ export function DashboardHomePage() {
                 {recentLeads.map((lead) => (
                   <TableRow key={lead.id}>
                     <TableCell className="font-medium">{lead.name}</TableCell>
+                    <TableCell>
+                      {lead.phone?.trim() ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-ds-caption tabular-nums text-muted-foreground">{lead.phone}</span>
+                          <LeadContactActions phone={lead.phone} />
+                        </div>
+                      ) : (
+                        <span className="text-ds-caption text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Badge variant="outline">{statusLabel(lead.status)}</Badge>
                     </TableCell>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Phone, MessageCircle, Video, Pencil, Search, CheckSquare } from 'lucide-react'
+import { Video, Pencil, Search, CheckSquare } from 'lucide-react'
+import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -8,7 +9,6 @@ import {
 } from '@/hooks/use-leads-query'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
-import { telHref, whatsAppChatHref } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -100,24 +100,7 @@ function LeadCard({ lead, pm }: { lead: LeadPublic; pm: PM }) {
         {CALL_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
       <div className="flex items-center gap-1.5">
-        {lead.phone && (
-          <IconBtn
-            href={telHref(lead.phone)}
-            title="Phone call"
-            colorHover="hover:border-primary/40 hover:text-primary"
-          >
-            <Phone className="h-3.5 w-3.5" />
-          </IconBtn>
-        )}
-        {lead.phone && (
-          <IconBtn
-            href={whatsAppChatHref(lead.phone)}
-            title="WhatsApp message — opens WhatsApp or WhatsApp Business on this number"
-            colorHover="hover:border-green-400/40 hover:text-green-400"
-          >
-            <MessageCircle className="h-3.5 w-3.5" />
-          </IconBtn>
-        )}
+        <LeadContactActions phone={lead.phone} />
         <IconBtn title="Send Video" colorHover="hover:border-indigo-400/40 hover:text-indigo-400 disabled:opacity-50"
           onClick={() => void pm.mutateAsync({ id: lead.id, body: { call_status: 'video_sent', status: 'video_sent' as LeadStatus } })}>
           <Video className="h-3.5 w-3.5"/>
@@ -157,24 +140,7 @@ function AdminLeadCard({ lead, dayKey, pm, onMoveNext, nextLabel }: {
           {lead.city && <p className="mt-0.5 text-[0.7rem] text-muted-foreground">{lead.city}</p>}
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {lead.phone && (
-            <IconBtn
-              href={telHref(lead.phone)}
-              title="Phone call"
-              colorHover="hover:border-primary/40 hover:text-primary"
-            >
-              <Phone className="h-3.5 w-3.5" />
-            </IconBtn>
-          )}
-          {lead.phone && (
-            <IconBtn
-              href={whatsAppChatHref(lead.phone)}
-              title="WhatsApp message — WhatsApp or WhatsApp Business"
-              colorHover="hover:border-green-400/40 hover:text-green-400"
-            >
-              <MessageCircle className="h-3.5 w-3.5" />
-            </IconBtn>
-          )}
+          <LeadContactActions phone={lead.phone} />
           <Link to={`/dashboard/work/leads/${lead.id}`} title="Edit"
             className="flex h-7 w-7 items-center justify-center rounded-md border border-white/12 bg-white/[0.05] transition hover:border-primary/40 hover:text-primary">
             <Pencil className="h-3.5 w-3.5"/>

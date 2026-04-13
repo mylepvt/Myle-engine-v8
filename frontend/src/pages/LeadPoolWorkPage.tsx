@@ -15,6 +15,7 @@ import {
   useLeadPoolQuery,
   type PoolLead,
 } from '@/hooks/use-lead-pool-query'
+import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { useWalletMeQuery } from '@/hooks/use-wallet-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { apiFetch } from '@/lib/api'
@@ -313,12 +314,17 @@ export function LeadPoolWorkPage({ title }: Props) {
                         <p className="font-medium text-foreground">{l.name}</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">
                           #{l.id} · {statusLabel(l.status)}
-                          {l.phone ? ` · ${l.phone}` : ''}
                           {l.city ? ` · ${l.city}` : ''}
                           {l.age != null ? ` · Age ${l.age}` : ''}
                           {l.gender ? ` · ${l.gender}` : ''}
                           {l.ad_name ? ` · AD: ${l.ad_name}` : ''}
                         </p>
+                        {l.phone?.trim() ? (
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <span className="text-xs tabular-nums text-foreground">{l.phone}</span>
+                            <LeadContactActions phone={l.phone} />
+                          </div>
+                        ) : null}
                       </div>
 
                       {/* Price badge */}

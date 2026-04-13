@@ -83,7 +83,7 @@ _index = _spa_dir / "index.html" if _spa_dir is not None else None
 _SPA_INDEX_CACHE_HEADERS = {"Cache-Control": "no-cache, no-store, must-revalidate"}
 
 
-@app.get("/{full_path:path}", include_in_schema=False)
+@app.api_route("/{full_path:path}", methods=["GET", "HEAD"], include_in_schema=False)
 async def spa_fallback(full_path: str) -> FileResponse:
     """Serve Vite assets from disk; unknown paths → ``index.html`` (client router). Registered last."""
     if _spa_dir is None or _index is None or not _index.is_file():

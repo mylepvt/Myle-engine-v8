@@ -11,6 +11,7 @@ import {
   usePatchLeadDetailMutation,
 } from '@/hooks/use-lead-detail-query'
 import { EnrollmentCard } from '@/components/leads/EnrollmentCard'
+import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LeadNextStepPanel } from '@/components/leads/LeadNextStepPanel'
 
 type Props = {
@@ -269,11 +270,12 @@ export function LeadDetailPage({ leadId }: Props) {
           <div className="surface-elevated p-4 space-y-3">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Contact</p>
             <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-muted-foreground w-14 shrink-0">Phone</span>
                 {lead.phone ? (
                   <>
-                    <span className="text-foreground">{lead.phone}</span>
+                    <span className="min-w-0 text-foreground">{lead.phone}</span>
+                    <LeadContactActions phone={lead.phone} className="shrink-0" />
                     <button
                       type="button"
                       className="text-xs text-primary underline-offset-2 hover:underline"

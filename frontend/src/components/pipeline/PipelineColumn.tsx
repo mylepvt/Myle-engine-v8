@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Phone, Mail, MapPin, Clock, DollarSign, User } from 'lucide-react'
 import type { PipelineLead } from '@/hooks/use-pipeline-query'
+import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LeadNextStepPanel } from '@/components/leads/LeadNextStepPanel'
 
 interface PipelineColumnProps {
@@ -119,9 +120,12 @@ export default function PipelineColumn({
               {/* Contact Info */}
               <div className="space-y-1 text-xs text-foreground/70">
                 {lead.phone && (
-                  <div className="flex items-center space-x-1">
-                    <Phone className="h-3 w-3 shrink-0 text-foreground/50" />
-                    <span>{lead.phone}</span>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center space-x-1">
+                      <Phone className="h-3 w-3 shrink-0 text-foreground/50" />
+                      <span className="truncate">{lead.phone}</span>
+                    </div>
+                    <LeadContactActions phone={lead.phone} stopPropagation className="shrink-0" />
                   </div>
                 )}
                 {lead.email && (

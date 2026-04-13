@@ -1,5 +1,6 @@
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useMemo, useState } from 'react'
 
+import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -23,6 +24,13 @@ export function FollowUpsWorkPage({ title }: Props) {
   const [dueLocal, setDueLocal] = useState('')
 
   const leadsQ = useLeadsQuery(true, emptyLeadFilters, 'active')
+  const leadPhoneById = useMemo(() => {
+    const m = new Map<number, string | null>()
+    for (const row of leadsQ.data?.items ?? []) {
+      m.set(row.id, row.phone)
+    }
+    return m
+  }, [leadsQ.data?.items])
   const fuQ = useFollowUpsQuery(openOnly)
   const createMut = useCreateFollowUpMutation()
   const patchMut = usePatchFollowUpMutation()
@@ -157,7 +165,8 @@ export function FollowUpsWorkPage({ title }: Props) {
                     {f.lead_name} · #{f.lead_id}
                     {f.due_at ? ` · due ${new Date(f.due_at).toLocaleString()}` : ''}
                   </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <LeadContactActions phone={leadPhoneById.get(f.lead_id) ?? undefined} />
                     {f.completed_at ? (
                       <Button
                         type="button"

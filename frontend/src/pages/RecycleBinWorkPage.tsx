@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 
+import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useLeadsQuery, usePatchLeadMutation, type LeadListFilters } from '@/hooks/use-leads-query'
@@ -67,6 +68,7 @@ export function RecycleBinWorkPage({ title }: Props) {
                       {l.deleted_at ? new Date(l.deleted_at).toLocaleString() : '—'}
                     </span>
                   </div>
+                  <LeadContactActions phone={l.phone} className="shrink-0" />
                   <Button
                     type="button"
                     variant="secondary"

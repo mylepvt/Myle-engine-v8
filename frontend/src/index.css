@@ -130,6 +130,10 @@
     @apply border-border;
   }
 
+  #root {
+    min-height: 100dvh;
+  }
+
   html {
     background-color: var(--background);
     /* Stop horizontal rubber-band / sideways “slide” on iOS/Android */
