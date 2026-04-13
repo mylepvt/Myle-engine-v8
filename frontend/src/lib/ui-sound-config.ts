@@ -18,16 +18,16 @@ export const UI_SOUND_GAIN = {
 
 /** ms from user gesture before playing (stack with CSS press / route transition). */
 export const UI_SOUND_DELAY_MS = {
-  nav: 10,
-  success: 80,
-  payment: 90,
-  stage: 40,
-  satisfaction: 15,
-  notification: 45,
+  nav: 4,
+  success: 28,
+  payment: 38,
+  stage: 18,
+  satisfaction: 6,
+  notification: 20,
 } as const
 
 /** Max one global UI sound per this window (prevents machine-gun on fast taps). */
-export const UI_SOUND_THROTTLE_MS = 100
+export const UI_SOUND_THROTTLE_MS = 55
 
 export function delayUiSound(ms: number): Promise<void> {
   if (ms <= 0) return Promise.resolve()

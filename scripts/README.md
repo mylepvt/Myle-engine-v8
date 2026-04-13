@@ -8,12 +8,14 @@ Small **operators’ helpers** and **test subsets**. Heavy migration / import lo
 |--------|---------|
 | **`verify_phase7.sh`** | Pytest: **auth** (`login`, `me`, `refresh`, `dev-login`, rate limit) + **leads flow** (`leads`, `workboard`, `follow-ups`, `retarget`) + **wallet**. |
 | **`verify_wave_a.sh`** | Narrower Wave A smoke (leads subset + gate assistant + meta + `auth/me`). |
+| **`verify_full_stack.sh`** | **All checks in one go:** Wave A + Phase 7 + full `pytest` + frontend **lint / Vitest / build** + **`npm audit --audit-level=high`** + **`pip-audit`** on `backend/requirements.txt` + **Playwright** smoke (`frontend/e2e/`). |
 
 ```bash
 bash scripts/verify_phase7.sh
+bash scripts/verify_full_stack.sh
 ```
 
-Full suite: `python3 -m pytest` from repo root (see `requirements-dev.txt` / CI).
+Full suite: `python3 -m pytest` from repo root (see `requirements-dev.txt` / CI). CI also runs **`npm audit`**, **`pip-audit`**, and **`npm run test:e2e`** (see `.github/workflows/ci.yml`).
 
 ## Migrations
 

@@ -92,7 +92,7 @@ export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) 
   useEffect(() => {
     if (!soundEnabled && !hapticsEnabled) return
 
-    /** Runs after the next frame so click → paint/navigation isn’t blocked by audio work. */
+    /** Microtask deferral: keeps taps snappy vs one full rAF frame of latency. */
     const handler = (e: MouseEvent) => {
       const target = e.target
       if (!(target instanceof Element)) return
@@ -118,7 +118,7 @@ export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) 
 
       primeAudioContextSync()
 
-      requestAnimationFrame(() => {
+      void Promise.resolve().then(() => {
         void (async () => {
           await unlockUiAudioFromUserGesture()
 

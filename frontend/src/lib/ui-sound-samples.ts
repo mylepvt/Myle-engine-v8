@@ -91,7 +91,7 @@ export function playBufferSlice(
   src.playbackRate.value = rate
 
   const g = ac.createGain()
-  const attack = Math.min(0.0025, dur * 0.32)
+  const attack = Math.min(0.0018, dur * 0.28)
   g.gain.setValueAtTime(0.0001, when)
   g.gain.linearRampToValueAtTime(gain, when + attack)
   g.gain.exponentialRampToValueAtTime(0.0001, when + dur)
@@ -120,12 +120,13 @@ async function playSampleOrHtml(
   playBufferSlice(ac, buf, t, slice)
 }
 
-/** Main tap — trimmed ~22 ms, system tap level. */
+/** Main tap — short slice + fast attack so taps feel immediate. */
 export async function playTapSample(): Promise<void> {
   await playSampleOrHtml('tap', {
     gain: UI_SOUND_GAIN.tap,
-    trimStart: 0.002,
-    duration: 0.022,
+    trimStart: 0.0015,
+    duration: 0.018,
+    playbackRate: 1.04,
   })
 }
 

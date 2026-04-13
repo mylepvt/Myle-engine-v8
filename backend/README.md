@@ -5,7 +5,7 @@ Async **FastAPI** + **SQLAlchemy 2** + **Alembic** + **PostgreSQL** (`asyncpg`).
 ## Setup
 
 1. Copy **`.env.example`** → **`.env`** and set **`DATABASE_URL`** (must use `postgresql+asyncpg://…`).
-2. Install: `pip install -r requirements.txt` (or `pip install -r requirements-dev.txt` for tests).
+2. **Python 3.10+** (3.12 recommended; matches Docker/CI). Install: `pip install -r requirements.txt` (or `pip install -r requirements-dev.txt` for tests).
 3. Migrations: `alembic upgrade head`.
 4. Run API: `uvicorn main:app --reload` (from this directory).
 

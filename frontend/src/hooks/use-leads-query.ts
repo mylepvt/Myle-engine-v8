@@ -295,7 +295,7 @@ export function useCreateLeadMutation() {
     onSuccess: () => {
       invalidateLeadRelated(qc)
       if (useUiFeedbackStore.getState().soundEnabled) {
-        window.setTimeout(() => void playUiSuccessSound(), UI_SOUND_DELAY_MS.success)
+        void playUiSuccessSound({ delaySec: UI_SOUND_DELAY_MS.success / 1000 })
       }
     },
   })
@@ -315,9 +315,9 @@ export function usePatchLeadMutation() {
       invalidateLeadRelated(qc)
       if (!useUiFeedbackStore.getState().soundEnabled) return
       if (variables.body.status) {
-        window.setTimeout(() => void playUiStageAdvanceSound(), UI_SOUND_DELAY_MS.stage)
+        void playUiStageAdvanceSound({ delaySec: UI_SOUND_DELAY_MS.stage / 1000 })
       } else {
-        window.setTimeout(() => void playUiSuccessSound(), UI_SOUND_DELAY_MS.success)
+        void playUiSuccessSound({ delaySec: UI_SOUND_DELAY_MS.success / 1000 })
       }
     },
   })

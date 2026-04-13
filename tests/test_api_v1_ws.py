@@ -39,10 +39,9 @@ def test_ws_accepts_cookie_and_receives_broadcast(
         json={"fbo_id": "fbo-leader-001", "password": DEV_LOGIN_PASSWORD_PLAIN},
     )
     assert login.status_code == 200
-    cookie = login.cookies.get("myle_access")
-    assert cookie
-
-    with client.websocket_connect("/api/v1/ws", cookies={"myle_access": cookie}) as ws:
+    assert login.cookies.get("myle_access")
+    # Same TestClient session carries Set-Cookie from login (avoid per-request cookies= deprecation).
+    with client.websocket_connect("/api/v1/ws") as ws:
         import asyncio
 
         from app.core.realtime_hub import notify_topics

@@ -131,12 +131,25 @@
   }
 
   html {
-    @apply scroll-smooth;
     background-color: var(--background);
     /* Stop horizontal rubber-band / sideways “slide” on iOS/Android */
     max-width: 100%;
     overflow-x: clip;
     overscroll-behavior-x: none;
+    /* Double-tap zoom delay removed; pinch still respects maximum-scale in index.html */
+    touch-action: manipulation;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+  @media (pointer: coarse) {
+    html {
+      scroll-behavior: auto;
+    }
   }
 
   html.dark.theme-transparent body {
@@ -150,13 +163,38 @@
     -webkit-tap-highlight-color: color-mix(in oklch, var(--primary) 15%, transparent);
     max-width: 100%;
     overflow-x: clip;
-    /* App-like feel: no double-tap zoom; still allows pinch-zoom for a11y users who need it */
     touch-action: manipulation;
+    /* App chrome: no accidental text selection on taps; form fields opt back in */
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  input:not([type='checkbox']):not([type='radio']),
+  textarea,
+  select,
+  [contenteditable='true'],
+  [data-allow-select],
+  .select-text,
+  .select-text * {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
+  }
+
+  /* iOS: sub-16px inputs trigger page zoom on focus — keep fields readable without zooming */
+  @media (pointer: coarse) {
+    input:not([type='checkbox']):not([type='radio']),
+    textarea,
+    select {
+      font-size: 1rem;
+    }
   }
 
   #root {
     @apply min-h-dvh min-w-0 max-w-full;
     overflow-x: clip;
+    touch-action: manipulation;
   }
 
   h1 {

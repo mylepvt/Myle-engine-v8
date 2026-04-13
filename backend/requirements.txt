@@ -1,5 +1,6 @@
+# Python 3.10+ required (security pins: multipart 0.0.22+, Pillow 12+, requests 2.33+). Docker/CI use 3.12.
 fastapi>=0.115.0,<1.0.0
-python-multipart>=0.0.9,<1.0.0
+python-multipart>=0.0.22,<1.0.0
 uvicorn[standard]>=0.32.0,<1.0.0
 gunicorn>=22.0.0,<24.0.0
 sqlalchemy[asyncio]>=2.0.36,<3.0.0
@@ -15,3 +16,6 @@ werkzeug>=3.0.0,<4.0.0
 reportlab>=4.0.0,<5.0.0
 openpyxl>=3.1.0,<4.0.0
 razorpay>=1.4.0,<2.0.0
+# pip-audit / transitive pins (reportlab → pillow; razorpay → requests)
+pillow>=12.1.1
+requests>=2.33.0
