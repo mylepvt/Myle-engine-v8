@@ -97,14 +97,15 @@ export function ShellHeaderFeedbackControls() {
 
       {/* Satisfaction points */}
       <div
-        className={cn(
-          'hidden min-w-0 max-w-[5.25rem] items-center gap-1 rounded-md px-1.5 py-0.5 text-ds-caption tabular-nums text-muted-foreground sm:flex',
-        )}
+        className="hidden items-center gap-1 rounded-md px-1.5 py-0.5 tabular-nums text-muted-foreground sm:flex"
         title="Points from UI interactions (local only)"
       >
-        <Sparkles className="size-3.5 shrink-0 text-chart-4" aria-hidden />
-        <span className="truncate font-medium text-foreground">{satisfactionPoints}</span>
-        <span className="hidden md:inline">pts</span>
+        <Sparkles className="size-3 shrink-0 text-chart-4" aria-hidden />
+        <span className="text-[0.68rem] font-semibold text-foreground/80">
+          {satisfactionPoints > 999
+            ? `${(satisfactionPoints / 1000).toFixed(1)}k`
+            : satisfactionPoints}
+        </span>
       </div>
     </div>
   )

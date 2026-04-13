@@ -13,21 +13,37 @@ interface PipelineColumnProps {
   onSelectLead: (leadId: number | null) => void
 }
 
-/** Pastel column surfaces: always pair with dark text (readable in dark app theme). */
+/** Subtle tinted borders — readable in both light and dark themes. */
 const STATUS_COLORS = {
-  new_lead: 'border-blue-300/80 bg-blue-100',
-  contacted: 'border-amber-300/80 bg-amber-100',
-  invited: 'border-violet-300/80 bg-violet-100',
-  video_sent: 'border-indigo-300/80 bg-indigo-100',
-  video_watched: 'border-pink-300/80 bg-pink-100',
-  paid: 'border-emerald-300/80 bg-emerald-100',
-  day1: 'border-orange-300/80 bg-orange-100',
-  day2: 'border-orange-300/80 bg-orange-100',
-  interview: 'border-red-300/80 bg-red-100',
-  track_selected: 'border-teal-300/80 bg-teal-100',
-  seat_hold: 'border-cyan-300/80 bg-cyan-100',
-  converted: 'border-emerald-300/80 bg-emerald-100',
-  lost: 'border-zinc-300/80 bg-zinc-100',
+  new_lead:       'border-blue-500/35 bg-blue-500/[0.07]',
+  contacted:      'border-amber-500/35 bg-amber-500/[0.07]',
+  invited:        'border-violet-500/35 bg-violet-500/[0.07]',
+  video_sent:     'border-indigo-500/35 bg-indigo-500/[0.07]',
+  video_watched:  'border-pink-500/35 bg-pink-500/[0.07]',
+  paid:           'border-emerald-500/35 bg-emerald-500/[0.07]',
+  day1:           'border-orange-500/35 bg-orange-500/[0.07]',
+  day2:           'border-orange-500/35 bg-orange-500/[0.07]',
+  interview:      'border-red-500/35 bg-red-500/[0.07]',
+  track_selected: 'border-teal-500/35 bg-teal-500/[0.07]',
+  seat_hold:      'border-cyan-500/35 bg-cyan-500/[0.07]',
+  converted:      'border-emerald-500/35 bg-emerald-500/[0.07]',
+  lost:           'border-zinc-500/25 bg-zinc-500/[0.05]',
+}
+
+const STATUS_LABEL_COLORS: Record<string, string> = {
+  new_lead:       'text-blue-400',
+  contacted:      'text-amber-400',
+  invited:        'text-violet-400',
+  video_sent:     'text-indigo-400',
+  video_watched:  'text-pink-400',
+  paid:           'text-emerald-400',
+  day1:           'text-orange-400',
+  day2:           'text-orange-400',
+  interview:      'text-red-400',
+  track_selected: 'text-teal-400',
+  seat_hold:      'text-cyan-400',
+  converted:      'text-emerald-400',
+  lost:           'text-zinc-400',
 }
 
 export default function PipelineColumn({
@@ -54,14 +70,14 @@ export default function PipelineColumn({
       {/* Column Header */}
       <div className="mb-4">
         <Card
-          className={`border shadow-sm !shadow-black/10 ${STATUS_COLORS[status as keyof typeof STATUS_COLORS] || 'border-zinc-300/80 bg-zinc-100'} !text-slate-950`}
+          className={`border shadow-sm ${STATUS_COLORS[status as keyof typeof STATUS_COLORS] ?? 'border-zinc-500/25 bg-zinc-500/[0.05]'}`}
         >
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between gap-2">
-              <CardTitle className="!text-slate-950 text-sm font-semibold">{statusLabel}</CardTitle>
+              <CardTitle className={`text-sm font-semibold ${STATUS_LABEL_COLORS[status] ?? 'text-foreground'}`}>{statusLabel}</CardTitle>
               <Badge
                 variant="outline"
-                className="border-slate-500/35 bg-white/60 text-xs font-semibold text-slate-800"
+                className="border-border/60 bg-background/40 text-xs font-semibold text-foreground/70"
               >
                 {leads.length}
               </Badge>
@@ -75,19 +91,19 @@ export default function PipelineColumn({
         {leads.map((lead) => (
           <Card
             key={lead.id}
-            className={`cursor-pointer border shadow-sm !shadow-black/10 transition-all duration-200 !text-slate-950 ${
+            className={`cursor-pointer border shadow-sm transition-all duration-200 ${
               selectedLead === lead.id
-                ? 'ring-2 ring-blue-600 ring-offset-2 ring-offset-transparent'
-                : 'hover:brightness-[0.99]'
-            } ${STATUS_COLORS[status as keyof typeof STATUS_COLORS] || 'border-zinc-300/80 bg-zinc-50'}`}
+                ? 'ring-2 ring-primary/60 ring-offset-1 ring-offset-background'
+                : 'hover:brightness-[1.06]'
+            } ${STATUS_COLORS[status as keyof typeof STATUS_COLORS] ?? 'border-zinc-500/25 bg-zinc-500/[0.05]'}`}
             onClick={() => handleLeadClick(lead.id)}
           >
             <CardContent className="p-3">
               {/* Lead Header */}
               <div className="mb-2 flex items-center justify-between gap-2">
                 <div className="flex min-w-0 items-center space-x-2">
-                  <User className="h-4 w-4 shrink-0 text-slate-600" />
-                  <span className="truncate text-sm font-semibold text-slate-950">{lead.name}</span>
+                  <User className="h-4 w-4 shrink-0 text-foreground/50" />
+                  <span className="truncate text-sm font-semibold text-foreground">{lead.name}</span>
                 </div>
                 {lead.payment_status && (
                   <Badge
@@ -101,29 +117,29 @@ export default function PipelineColumn({
               </div>
 
               {/* Contact Info */}
-              <div className="space-y-1 text-xs text-slate-700">
+              <div className="space-y-1 text-xs text-foreground/70">
                 {lead.phone && (
                   <div className="flex items-center space-x-1">
-                    <Phone className="h-3 w-3 shrink-0 text-slate-600" />
+                    <Phone className="h-3 w-3 shrink-0 text-foreground/50" />
                     <span>{lead.phone}</span>
                   </div>
                 )}
                 {lead.email && (
                   <div className="flex items-center space-x-1">
-                    <Mail className="h-3 w-3 shrink-0 text-slate-600" />
+                    <Mail className="h-3 w-3 shrink-0 text-foreground/50" />
                     <span className="truncate">{lead.email}</span>
                   </div>
                 )}
                 {lead.city && (
                   <div className="flex items-center space-x-1">
-                    <MapPin className="h-3 w-3 shrink-0 text-slate-600" />
+                    <MapPin className="h-3 w-3 shrink-0 text-foreground/50" />
                     <span>{lead.city}</span>
                   </div>
                 )}
               </div>
 
               {/* Created At */}
-              <div className="mt-2 flex items-center space-x-1 text-xs text-slate-600">
+              <div className="mt-2 flex items-center space-x-1 text-xs text-foreground/50">
                 <Clock className="h-3 w-3 shrink-0" />
                 <span>{new Date(lead.created_at).toLocaleDateString()}</span>
               </div>

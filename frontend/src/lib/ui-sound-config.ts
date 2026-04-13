@@ -1,32 +1,29 @@
 /**
- * Single place for UI sound **taste**: perceived level + when to fire (vs animation).
- * Values are linear gain (0–1) on top of the shared master chain.
+ * Perceived loudness (linear gain into the master chain).
+ *
+ * Values ~0.01 were inaudible on laptop/phone speakers (tab still showed “playing”
+ * because Web Audio woke up). Keep in a range that is clearly audible but not harsh.
+ * With masterGain ≈ 0.78, effective peak ≈ gain × 0.78.
  */
 export const UI_SOUND_GAIN = {
-  tap: 0.2,
-  nav: 0.15,
-  success: 0.4,
-  error: 0.25,
-  warning: 0.22,
-  delete: 0.2,
-  /** Payment / wallet: chime leads; “cash” layer stays very low */
-  paymentChime: 0.4,
-  paymentCashBed: 0.06,
+  tap: 0.22,
+  nav: 0.16,
+  success: 0.38,
+  error: 0.24,
+  warning: 0.2,
+  delete: 0.18,
+  paymentChime: 0.42,
+  paymentCashBed: 0.08,
 } as const
 
 /** ms from user gesture before playing (stack with CSS press / route transition). */
 export const UI_SOUND_DELAY_MS = {
-  /** Navigation / whoosh */
   nav: 10,
-  /** Save / approve / payment chime — after short button / sheet motion */
-  success: 100,
-  /** Wallet credit / converted lead */
-  payment: 120,
-  /** Pipeline stage change */
-  stage: 45,
-  /** Light reward double-tick */
-  satisfaction: 20,
-  notification: 55,
+  success: 80,
+  payment: 90,
+  stage: 40,
+  satisfaction: 15,
+  notification: 45,
 } as const
 
 /** Max one global UI sound per this window (prevents machine-gun on fast taps). */
