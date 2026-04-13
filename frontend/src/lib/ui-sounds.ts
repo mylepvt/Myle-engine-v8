@@ -88,7 +88,7 @@ function htmlLater(sample: Parameters<typeof playHtmlOneShot>[0], vol: number, d
   window.setTimeout(() => playHtmlOneShot(sample, vol), Math.max(0, delaySec) * 1000)
 }
 
-export async function playUiClickSound(_opts?: UiSoundScheduleOpts): Promise<void> {
+export async function playUiClickSound(): Promise<void> {
   await playTapSample()
 }
 
