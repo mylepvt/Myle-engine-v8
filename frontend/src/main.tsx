@@ -6,23 +6,9 @@ import { BrowserRouter } from 'react-router-dom'
 import { App } from '@/App'
 import { ThemeAndFeedbackProvider } from '@/components/providers/ThemeAndFeedbackProvider'
 import { initPerformanceProfile, isLowEndDevice } from '@/lib/device-performance'
-import { primeAudioContextSync } from '@/lib/ui-sounds'
 import './index.css'
 
 initPerformanceProfile()
-
-/** First touch unlocks Web Audio on Android/iOS (browser autoplay policy). */
-if (typeof window !== 'undefined') {
-  const unlock = () => {
-    primeAudioContextSync()
-    window.removeEventListener('touchstart', unlock, true)
-    window.removeEventListener('pointerdown', unlock, true)
-    window.removeEventListener('click', unlock, true)
-  }
-  window.addEventListener('touchstart', unlock, { passive: true, capture: true })
-  window.addEventListener('pointerdown', unlock, { passive: true, capture: true })
-  window.addEventListener('click', unlock, { passive: true, capture: true })
-}
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
