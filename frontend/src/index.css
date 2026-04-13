@@ -214,12 +214,11 @@
     color: var(--primary-foreground);
   }
 
+  /* Do not set animation-duration on * — sub-1ms can skip keyframes in WebKit/Chromium (invisible UI). */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
     *::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
@@ -382,6 +381,18 @@
   to {
     transform: scale(4);
     opacity: 0;
+  }
+}
+
+/* Entrance utilities: if user prefers reduced motion, show final state (no invisible stuck frames). */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-slide-up,
+  .animate-scale-in,
+  .animate-count-up {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
   }
 }
 

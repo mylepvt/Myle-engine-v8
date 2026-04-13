@@ -79,6 +79,9 @@ async def health_migrations(
 _spa_dir = Path(settings.frontend_dist).resolve() if settings.frontend_dist else None
 _index = _spa_dir / "index.html" if _spa_dir is not None else None
 
+# Avoid stale ``index.html`` referencing deleted hashed chunks after deploy (blank / black screen).
+_SPA_INDEX_CACHE_HEADERS = {"Cache-Control": "no-cache, no-store, must-revalidate"}
+
 
 @app.get("/{full_path:path}", include_in_schema=False)
 async def spa_fallback(full_path: str) -> FileResponse:
@@ -92,7 +95,9 @@ async def spa_fallback(full_path: str) -> FileResponse:
     try:
         safe.relative_to(root)
     except ValueError:
-        return FileResponse(_index)
+        return FileResponse(_index, headers=_SPA_INDEX_CACHE_HEADERS)
     if safe.is_file():
+        if safe.name == "index.html":
+            return FileResponse(safe, headers=_SPA_INDEX_CACHE_HEADERS)
         return FileResponse(safe)
-    return FileResponse(_index)
+    return FileResponse(_index, headers=_SPA_INDEX_CACHE_HEADERS)
