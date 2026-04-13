@@ -29,13 +29,17 @@ const N: Record<string, number> = {
   C6: 1046.5,
 }
 
+const ctxRunning = (ac: AudioContext) => ac.state === 'running'
+
 async function ready(): Promise<AudioContext | null> {
   primeEngine()
   const ac = getAudioContext()
   if (!ac) return null
-  for (let i = 0; i < 8; i++) {
+  if (ctxRunning(ac)) return ac
+  const maxFrames = 3
+  for (let i = 0; i < maxFrames; i++) {
     await resumeAudioContext(ac)
-    if (ac.state === 'running') return ac
+    if (ctxRunning(ac)) return ac
     await new Promise<void>((r) => requestAnimationFrame(() => r()))
   }
   return null

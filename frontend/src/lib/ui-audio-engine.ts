@@ -47,12 +47,14 @@ export async function resumeAudioContext(ac: AudioContext): Promise<void> {
 const running = (ac: AudioContext) => ac.state === 'running'
 
 /**
- * Resume + several rAF retries (Safari / first-tap quirks).
+ * Resume + a few rAF retries (Safari / first-tap). Fast-path when already running.
  */
 export async function getReadyAudioContext(): Promise<AudioContext | null> {
   const ac = getAudioContext()
   if (!ac) return null
-  for (let i = 0; i < 8; i++) {
+  if (running(ac)) return ac
+  const maxFrames = 3
+  for (let i = 0; i < maxFrames; i++) {
     await resumeAudioContext(ac)
     if (running(ac)) return ac
     await new Promise<void>((r) => requestAnimationFrame(() => r()))

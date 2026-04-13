@@ -92,8 +92,8 @@ export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) 
   useEffect(() => {
     if (!soundEnabled && !hapticsEnabled) return
 
-    const handler = async (e: MouseEvent) => {
-      primeAudioContextSync()
+    /** Runs after the next frame so click → paint/navigation isn’t blocked by audio work. */
+    const handler = (e: MouseEvent) => {
       const target = e.target
       if (!(target instanceof Element)) return
       if (target.closest('[data-ui-silent]')) return
@@ -116,10 +116,14 @@ export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) 
 
       if (raw === 'none') return
 
-      await unlockUiAudioFromUserGesture()
+      primeAudioContextSync()
 
-      try {
-        switch (raw) {
+      requestAnimationFrame(() => {
+        void (async () => {
+          await unlockUiAudioFromUserGesture()
+
+          try {
+            switch (raw) {
           case 'success':
             if (soundEnabled) await playUiSuccessSound({ delaySec: sec(UI_SOUND_DELAY_MS.success) })
             if (hapticsEnabled) hapticSuccess()
@@ -197,10 +201,12 @@ export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) 
             await iosNoVibrateAudioFallback(hapticsEnabled, soundEnabled, playUiTickSound)
             break
           }
-        }
-      } catch {
-        /* ignore */
-      }
+            }
+          } catch {
+            /* ignore */
+          }
+        })()
+      })
     }
 
     document.addEventListener('click', handler, true)

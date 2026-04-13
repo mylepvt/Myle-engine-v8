@@ -111,7 +111,7 @@ export function DashboardLayout() {
       {sidebarOpen ? (
         <button
           type="button"
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[1px] transition-opacity md:hidden"
+          className="fixed inset-0 z-40 bg-black/50 transition-opacity md:hidden"
           aria-label="Close menu"
           onClick={() => setSidebarOpen(false)}
         />
