@@ -16,6 +16,7 @@ import {
   resumeAudioContext,
 } from '@/lib/ui-audio-engine'
 import { UI_SOUND_GAIN } from '@/lib/ui-sound-config'
+import { playTapSample } from '@/lib/ui-sound-samples'
 
 export { unlockUiAudioFromUserGesture } from '@/lib/ui-audio-engine'
 export type { UiSampleId } from '@/lib/ui-sound-samples'
@@ -81,12 +82,11 @@ async function ready(): Promise<AudioContext | null> {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * CLICK — single pure sine, 1050 Hz, 40 ms.
- * Inspired by macOS click: barely perceptible, crisp, clean.
+ * CLICK — uses tap.mp3 sample (22 ms trim).
+ * Real recorded tap for max naturalness on generic button/link clicks.
  */
 export async function playUiClickSound(): Promise<void> {
-  const ac = await ready(); if (!ac) return
-  sine(ac, 1050, ac.currentTime, 0.040, UI_SOUND_GAIN.tap)
+  await playTapSample()
 }
 
 /**
