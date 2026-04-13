@@ -4,7 +4,7 @@ import { Bell, Home, LogOut, Menu, PanelLeftClose, Search, Settings } from 'luci
 
 import { ShellHeaderFeedbackControls } from '@/components/layout/ShellHeaderFeedbackControls'
 import { DashboardMobileTabBar } from '@/components/layout/DashboardMobileTabBar'
-import { PremiumButton, IconButton } from '@/components/ui/button-premium'
+import { Button } from '@/components/ui/button'
 import { SidebarSkeleton } from '@/components/ui/skeleton-premium'
 import { DashboardOutletErrorBoundary } from '@/components/routing/DashboardOutletErrorBoundary'
 import { getDashboardNavIcon } from '@/config/dashboard-nav-icons'
@@ -237,16 +237,16 @@ export function DashboardLayout() {
         </nav>
 
         <div className="mt-auto shrink-0 border-t border-border p-3">
-        <PremiumButton
+        <Button
           type="button"
           variant="ghost"
           size="sm"
-          className="w-full gap-2 text-muted-foreground hover:text-foreground transition-all duration-200 hover:bg-muted/60"
+          className="w-full gap-2 text-muted-foreground hover:text-foreground"
           onClick={() => void handleLogout()}
         >
           <LogOut className="size-4" aria-hidden />
-          Sign Out
-        </PremiumButton>
+          Log out
+        </Button>
       </div>
     </aside>
 
@@ -254,12 +254,16 @@ export function DashboardLayout() {
       <header className="relative z-20 flex h-[56px] shrink-0 items-center gap-2 border-b border-border/60 bg-background/90 px-3 shadow-ios-bar backdrop-blur-xl supports-[backdrop-filter]:bg-background/85 md:gap-3 md:px-4">
         {/* Left: menu + compact admin preview (no stacked label on small screens) */}
         <div className="flex min-w-0 shrink-0 items-center gap-1.5">
-          <IconButton
-            icon={sidebarOpen ? <PanelLeftClose className="size-5" /> : <Menu className="size-5" />}
-            label="Toggle sidebar"
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-9 shrink-0"
             onClick={toggleSidebar}
-            className="transition-transform duration-200 active:scale-95"
-          />
+            aria-label="Toggle sidebar"
+          >
+            {sidebarOpen ? <PanelLeftClose className="size-5" /> : <Menu className="size-5" />}
+          </Button>
 
             {serverRole === 'admin' ? (
               <>
@@ -375,12 +379,12 @@ export function DashboardLayout() {
               )}
             </Link>
 
-            <PremiumButton variant="ghost" size="sm" asChild className="hidden lg:inline-flex">
-              <Link to="/" className="gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
+            <Button variant="ghost" size="sm" asChild className="hidden lg:inline-flex">
+              <Link to="/" className="gap-1.5 text-muted-foreground">
                 <Home className="size-4" />
                 Home
               </Link>
-            </PremiumButton>
+            </Button>
           </div>
         </header>
 
