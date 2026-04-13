@@ -20,7 +20,7 @@ export function getAudioContext(): AudioContext | null {
       _master.release.value = 0.15
 
       _masterGain = _ctx.createGain()
-      _masterGain.gain.value = 0.72
+      _masterGain.gain.value = 0.78
 
       _master.connect(_masterGain)
       _masterGain.connect(_ctx.destination)
@@ -47,14 +47,20 @@ export async function resumeAudioContext(ac: AudioContext): Promise<void> {
 }
 
 /**
- * Returns the context only once it is `running` (after resume from a gesture).
- * Avoid scheduling one-shots while still suspended — they may be silent on mobile.
+ * Resume from a gesture, then return a usable context for scheduling.
+ * Retries once on the next frame — some browsers flip to `running` one tick late.
  */
 export async function getReadyAudioContext(): Promise<AudioContext | null> {
   const ac = getAudioContext()
   if (!ac) return null
+  const running = () => ac!.state === 'running'
   await resumeAudioContext(ac)
-  return ac.state === 'running' ? ac : null
+  if (running()) return ac
+  await new Promise<void>((r) => requestAnimationFrame(() => r()))
+  await resumeAudioContext(ac)
+  if (running()) return ac
+  // Still not running — scheduling would often be silent; use HTMLAudio fallback upstream.
+  return null
 }
 
 /** Fire-and-forget resume from sync handlers (e.g. first pointerdown). */

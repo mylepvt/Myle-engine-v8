@@ -50,11 +50,14 @@ export async function preloadUiSoundSamples(): Promise<void> {
   await Promise.all(SAMPLE_IDS.map((id) => loadBuffer(id)))
 }
 
+/** HTMLAudio `volume` is a different curve than WebAudio gain — floor so clips aren’t silent. */
+const HTML_VOL_MIN = 0.32
+
 export function playHtmlOneShot(sample: UiSampleId, volume = 0.85): void {
   if (typeof window === 'undefined') return
   try {
     const el = new Audio(assetUrl(sample))
-    el.volume = Math.min(1, Math.max(0, volume))
+    el.volume = Math.min(1, Math.max(HTML_VOL_MIN, volume))
     void el.play().catch(() => {
       /* ignore */
     })
@@ -103,13 +106,14 @@ async function playSampleOrHtml(
   slice: { gain?: number; trimStart?: number; duration?: number; playbackRate?: number },
 ): Promise<void> {
   const ac = await getReadyAudioContext()
+  const htmlVol = Math.min(1, Math.max(HTML_VOL_MIN, (slice.gain ?? 0.45) * 1.35))
   if (!ac) {
-    playHtmlOneShot(id, slice.gain ?? 0.25)
+    playHtmlOneShot(id, htmlVol)
     return
   }
   const buf = await loadBuffer(id)
   if (!buf) {
-    playHtmlOneShot(id, slice.gain ?? 0.25)
+    playHtmlOneShot(id, htmlVol)
     return
   }
   const t = ac.currentTime
