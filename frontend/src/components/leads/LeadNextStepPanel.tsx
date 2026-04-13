@@ -9,7 +9,7 @@ import {
 } from '@/lib/lead-next-action'
 import { iosNoVibrateAudioFallback } from '@/lib/haptic-audio-fallback'
 import { hapticCoin, hapticError, hapticTapHeavy } from '@/lib/haptics'
-import { delayUiSound, UI_SOUND_DELAY_MS } from '@/lib/ui-sound-config'
+import { UI_SOUND_DELAY_MS } from '@/lib/ui-sound-config'
 import { playUiErrorSound, playUiPaymentCashSound, playUiTickSound, unlockUiAudioFromUserGesture } from '@/lib/ui-sounds'
 import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
 import { useAvailableTransitionsQuery, useTransitionLeadMutation } from '@/hooks/use-pipeline-query'
@@ -50,11 +50,12 @@ export function LeadNextStepPanel({ lead, className }: Props) {
       const res = await mut.mutateAsync({ leadId: lead.id, targetStatus: target })
       if (res.new_status === 'converted') {
         const { soundEnabled, hapticsEnabled } = useUiFeedbackStore.getState()
-        if (soundEnabled || hapticsEnabled) {
-          await delayUiSound(UI_SOUND_DELAY_MS.payment)
+        if (soundEnabled) {
+          void playUiPaymentCashSound({ delaySec: UI_SOUND_DELAY_MS.payment / 1000 })
         }
-        if (soundEnabled) void playUiPaymentCashSound()
-        if (hapticsEnabled) hapticCoin()
+        if (hapticsEnabled) {
+          window.setTimeout(() => hapticCoin(), UI_SOUND_DELAY_MS.payment)
+        }
         await iosNoVibrateAudioFallback(hapticsEnabled, soundEnabled, playUiTickSound)
       }
     } catch (e) {

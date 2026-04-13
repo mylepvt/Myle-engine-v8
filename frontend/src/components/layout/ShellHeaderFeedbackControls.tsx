@@ -43,6 +43,7 @@ export function ShellHeaderFeedbackControls() {
           className="size-9 md:size-8"
           aria-label={`Theme: ${label}. Tap to cycle light → dark → system → glass`}
           title={`${label} · tap for next`}
+          data-ui-sound="none"
           onClick={() => cycleTheme()}
         >
           <Icon className="size-[1.05rem] md:size-4" aria-hidden />
@@ -63,6 +64,7 @@ export function ShellHeaderFeedbackControls() {
         aria-pressed={soundEnabled}
         aria-label={soundEnabled ? 'Mute UI sounds' : 'Enable UI sounds'}
         title={soundEnabled ? 'Mute UI sounds' : 'Enable UI sounds'}
+        data-ui-sound="none"
         onClick={() => {
           primeAudioContextSync()
           toggleSound()
@@ -90,6 +92,7 @@ export function ShellHeaderFeedbackControls() {
               ? 'Haptics on'
               : 'Haptics off'
         }
+        data-ui-sound="none"
         onClick={() => toggleHaptics()}
       >
         <Vibrate className={cn('size-[1.05rem] md:size-4', !hapticsEnabled && 'opacity-40')} />

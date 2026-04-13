@@ -1,6 +1,5 @@
 /**
  * Shared Web Audio graph: one AudioContext, compressor + master gain → destination.
- * UI samples and synth one-shots both route through here for consistent levels.
  */
 
 let _ctx: AudioContext | null = null
@@ -31,13 +30,12 @@ export function getAudioContext(): AudioContext | null {
   }
 }
 
-/** Output node for oscillators / buffer sources (same chain as legacy ui-sounds). */
 export function getDestination(ac: AudioContext): AudioNode {
   return _master ?? ac.destination
 }
 
 export async function resumeAudioContext(ac: AudioContext): Promise<void> {
-  if (ac.state === 'suspended') {
+  if (ac.state === 'suspended' || ac.state === 'interrupted') {
     try {
       await ac.resume()
     } catch {
@@ -46,37 +44,32 @@ export async function resumeAudioContext(ac: AudioContext): Promise<void> {
   }
 }
 
+const running = (ac: AudioContext) => ac.state === 'running'
+
 /**
- * Resume from a gesture, then return a usable context for scheduling.
- * Retries once on the next frame — some browsers flip to `running` one tick late.
+ * Resume + several rAF retries (Safari / first-tap quirks).
  */
 export async function getReadyAudioContext(): Promise<AudioContext | null> {
   const ac = getAudioContext()
   if (!ac) return null
-  const running = () => ac!.state === 'running'
-  await resumeAudioContext(ac)
-  if (running()) return ac
-  await new Promise<void>((r) => requestAnimationFrame(() => r()))
-  await resumeAudioContext(ac)
-  if (running()) return ac
-  // Still not running — scheduling would often be silent; use HTMLAudio fallback upstream.
+  for (let i = 0; i < 8; i++) {
+    await resumeAudioContext(ac)
+    if (running(ac)) return ac
+    await new Promise<void>((r) => requestAnimationFrame(() => r()))
+  }
   return null
 }
 
-/** Fire-and-forget resume from sync handlers (e.g. first pointerdown). */
 export function primeAudioContextSync(): void {
   if (typeof window === 'undefined') return
   try {
     const ac = getAudioContext()
-    if (ac?.state === 'suspended') void ac.resume()
+    if (ac?.state === 'suspended' || ac?.state === 'interrupted') void ac.resume()
   } catch {
     /* ignore */
   }
 }
 
-/**
- * Await from click/submit handlers so iOS treats the chain as user-initiated.
- */
 export async function unlockUiAudioFromUserGesture(): Promise<void> {
   const ac = getAudioContext()
   if (!ac) return

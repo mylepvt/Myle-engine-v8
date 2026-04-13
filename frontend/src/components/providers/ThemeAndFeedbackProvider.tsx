@@ -15,11 +15,7 @@ import {
   hapticTapMedium,
   hapticWarning,
 } from '@/lib/haptics'
-import {
-  delayUiSound,
-  UI_SOUND_DELAY_MS,
-  UI_SOUND_THROTTLE_MS,
-} from '@/lib/ui-sound-config'
+import { UI_SOUND_DELAY_MS, UI_SOUND_THROTTLE_MS } from '@/lib/ui-sound-config'
 import {
   playUiClickSound,
   playUiDeleteSound,
@@ -40,6 +36,10 @@ import {
 import { preloadUiSoundSamples } from '@/lib/ui-sound-samples'
 import { useUiFeedbackStore, type ThemePreference } from '@/stores/ui-feedback-store'
 
+function sec(ms: number): number {
+  return ms / 1000
+}
+
 function resolveDark(theme: ThemePreference): boolean {
   if (theme === 'transparent') return true
   if (theme === 'dark') return true
@@ -54,8 +54,9 @@ function applyThemeColorMeta(theme: ThemePreference, isDark: boolean) {
 }
 
 /**
- * Theme + **opt-in** UI feedback: only elements with `data-ui-sound` play audio/haptics
- * (no sound on every bare `<button>`). Timing follows `ui-sound-config` delays.
+ * Theme + UI feedback. Default tap on interactive controls; override with `data-ui-sound`
+ * or silence with `data-ui-sound="none"`. Delays use the **audio timeline** (not wall sleep
+ * before resume) so sound still works after `await` in the handler.
  */
 export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) {
   const theme = useUiFeedbackStore((s) => s.theme)
@@ -110,52 +111,47 @@ export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) 
 
       const raw =
         interactive.getAttribute('data-ui-sound') ??
-        interactive.closest('[data-ui-sound]')?.getAttribute('data-ui-sound')
+        interactive.closest('[data-ui-sound]')?.getAttribute('data-ui-sound') ??
+        'click'
 
-      if (!raw || raw === 'none') return
+      if (raw === 'none') return
 
       await unlockUiAudioFromUserGesture()
 
       try {
         switch (raw) {
           case 'success':
-            await delayUiSound(UI_SOUND_DELAY_MS.success)
-            if (soundEnabled) await playUiSuccessSound()
+            if (soundEnabled) await playUiSuccessSound({ delaySec: sec(UI_SOUND_DELAY_MS.success) })
             if (hapticsEnabled) hapticSuccess()
             useUiFeedbackStore.getState().addSatisfactionPoints(5)
             break
 
           case 'stage':
-            await delayUiSound(UI_SOUND_DELAY_MS.stage)
-            if (soundEnabled) await playUiStageAdvanceSound()
+            if (soundEnabled) await playUiStageAdvanceSound({ delaySec: sec(UI_SOUND_DELAY_MS.stage) })
             if (hapticsEnabled) hapticImpact()
             useUiFeedbackStore.getState().addSatisfactionPoints(10)
             break
 
           case 'satisfaction':
-            await delayUiSound(UI_SOUND_DELAY_MS.satisfaction)
-            if (soundEnabled) await playUiSatisfactionSound()
+            if (soundEnabled) await playUiSatisfactionSound({ delaySec: sec(UI_SOUND_DELAY_MS.satisfaction) })
             if (hapticsEnabled) hapticTapMedium()
             useUiFeedbackStore.getState().addSatisfactionPoints(2)
             break
 
           case 'coin':
-            await delayUiSound(UI_SOUND_DELAY_MS.payment)
-            if (soundEnabled) await playUiPaymentCashSound()
+            if (soundEnabled) await playUiPaymentCashSound({ delaySec: sec(UI_SOUND_DELAY_MS.payment) })
             if (hapticsEnabled) hapticCoin()
             useUiFeedbackStore.getState().addSatisfactionPoints(15)
             break
 
           case 'levelup':
-            await delayUiSound(UI_SOUND_DELAY_MS.success)
-            if (soundEnabled) await playUiLevelUpSound()
+            if (soundEnabled) await playUiLevelUpSound({ delaySec: sec(UI_SOUND_DELAY_MS.success) })
             if (hapticsEnabled) hapticSuccessStrong()
             useUiFeedbackStore.getState().addSatisfactionPoints(50)
             break
 
           case 'whoosh':
-            await delayUiSound(UI_SOUND_DELAY_MS.nav)
-            if (soundEnabled) await playUiWhooshSound()
+            if (soundEnabled) await playUiWhooshSound({ delaySec: sec(UI_SOUND_DELAY_MS.nav) })
             if (hapticsEnabled) hapticTapLight()
             break
 
@@ -182,8 +178,7 @@ export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) 
             break
 
           case 'notification':
-            await delayUiSound(UI_SOUND_DELAY_MS.notification)
-            if (soundEnabled) await playUiNotificationSound()
+            if (soundEnabled) await playUiNotificationSound({ delaySec: sec(UI_SOUND_DELAY_MS.notification) })
             if (hapticsEnabled) hapticNotification()
             break
 

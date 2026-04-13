@@ -8,7 +8,7 @@ import {
 } from '@/hooks/use-wallet-recharge-query'
 import { iosNoVibrateAudioFallback } from '@/lib/haptic-audio-fallback'
 import { hapticCoin } from '@/lib/haptics'
-import { delayUiSound, UI_SOUND_DELAY_MS } from '@/lib/ui-sound-config'
+import { UI_SOUND_DELAY_MS } from '@/lib/ui-sound-config'
 import { playUiPaymentCashSound, playUiTickSound, unlockUiAudioFromUserGesture } from '@/lib/ui-sounds'
 import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
 
@@ -66,11 +66,12 @@ export function WalletRechargePage({ title }: Props) {
         idempotency_key,
       })
       const { soundEnabled, hapticsEnabled } = useUiFeedbackStore.getState()
-      if (soundEnabled || hapticsEnabled) {
-        await delayUiSound(UI_SOUND_DELAY_MS.payment)
+      if (soundEnabled) {
+        void playUiPaymentCashSound({ delaySec: UI_SOUND_DELAY_MS.payment / 1000 })
       }
-      if (soundEnabled) void playUiPaymentCashSound()
-      if (hapticsEnabled) hapticCoin()
+      if (hapticsEnabled) {
+        window.setTimeout(() => hapticCoin(), UI_SOUND_DELAY_MS.payment)
+      }
       await iosNoVibrateAudioFallback(hapticsEnabled, soundEnabled, playUiTickSound)
       useUiFeedbackStore.getState().addSatisfactionPoints(15)
       setAmount('')
