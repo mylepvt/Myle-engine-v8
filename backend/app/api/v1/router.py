@@ -18,6 +18,7 @@ from app.api.v1 import (
     lead_pool,
     leads,
     meta,
+    org,
     other_pages,
     payments,
     realtime_ws,
@@ -42,6 +43,7 @@ api_router.include_router(team.router, prefix="/team", tags=["team"])
 api_router.include_router(system.router, prefix="/system", tags=["system"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 api_router.include_router(execution.router, prefix="/execution", tags=["execution"])
+api_router.include_router(org.router, prefix="/org", tags=["org"])
 api_router.include_router(finance_surfaces.router, prefix="/finance", tags=["finance"])
 api_router.include_router(other_pages.router, prefix="/other", tags=["other"])
 api_router.include_router(settings_pages.router, prefix="/settings", tags=["settings"])
