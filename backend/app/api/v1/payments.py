@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.models.lead import Lead
-from app.schemas.pipeline import PaymentProofRequest, PaymentProofResponse
+from app.schemas.payments import PaymentProofResponse
 from app.services.payment_service import PaymentService
 
 router = APIRouter()

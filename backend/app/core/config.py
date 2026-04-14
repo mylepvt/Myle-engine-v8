@@ -77,11 +77,6 @@ class Settings(BaseSettings):
         validation_alias="APP_ENV",
         description="Label for clients (development | staging | production).",
     )
-    feature_intelligence: bool = Field(
-        default=True,
-        validation_alias=AliasChoices("FEATURE_INTELLIGENCE", "FEATURE_AI_INTELLIGENCE"),
-        description="Gates Work → Intelligence nav via GET /meta. No bundled third-party AI (e.g. Maya); product-only.",
-    )
     frontend_dist: Optional[str] = Field(
         default=None,
         validation_alias="FRONTEND_DIST",

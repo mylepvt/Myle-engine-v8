@@ -13,7 +13,15 @@ from app.core.realtime_hub import notify_topics
 from app.models.lead import Lead
 from app.repositories.leads_repository import SqlAlchemyLeadsRepository
 from app.schemas.call_events import CallEventCreate, CallEventListResponse, CallEventPublic
-from app.schemas.leads import LeadCreate, LeadDetailPublic, LeadListResponse, LeadPublic, LeadUpdate
+from app.schemas.leads import (
+    LeadCreate,
+    LeadDetailPublic,
+    LeadListResponse,
+    LeadPublic,
+    LeadTransitionRequest,
+    LeadTransitionResponse,
+    LeadUpdate,
+)
 from app.services.lead_scope import user_can_access_lead, user_can_mutate_lead
 from app.services.leads_contracts import LeadsRepositoryContract, TopicNotifierContract
 from app.validators.leads_validator import lead_list_conditions, parse_status_query, validate_list_flags
@@ -310,6 +318,55 @@ class LeadsService:
         total = await self._repository.count_calls(lead_id)
         rows = await self._repository.list_calls(lead_id=lead_id, limit=limit, offset=offset)
         return CallEventListResponse(items=[CallEventPublic.model_validate(r) for r in rows], total=total)
+
+    async def get_available_transitions(self, *, lead_id: int, user: AuthUser) -> list[str]:
+        lead = await self._get_lead_or_404(lead_id)
+        if lead.deleted_at is not None:
+            raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
+        if not await user_can_access_lead(self._session, user, lead):
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        from app.core.lead_status import LEAD_STATUS_SEQUENCE, TEAM_FORBIDDEN_STATUS_SLUGS
+
+        available: list[str] = []
+        for status in LEAD_STATUS_SEQUENCE:
+            if user.role == "team" and status in TEAM_FORBIDDEN_STATUS_SLUGS:
+                continue
+            is_valid, _ = validate_vl2_status_transition_for_role(
+                current_slug=lead.status,
+                target_slug=status,
+                role=user.role,
+            )
+            if is_valid:
+                available.append(status)
+        return available
+
+    async def transition_lead_status(
+        self,
+        *,
+        lead_id: int,
+        body: LeadTransitionRequest,
+        user: AuthUser,
+    ) -> LeadTransitionResponse:
+        lead = await self._get_lead_or_404(lead_id)
+        if lead.deleted_at is not None:
+            raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
+        if not await user_can_mutate_lead(self._session, user, lead):
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        ok, msg = validate_vl2_status_transition_for_role(
+            current_slug=lead.status,
+            target_slug=body.target_status,
+            role=user.role,
+        )
+        if not ok:
+            raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
+        lead.status = body.target_status
+        lead = await self._repository.persist_lead(lead)
+        await self._notifier("leads")
+        return LeadTransitionResponse(
+            success=True,
+            message="Status updated successfully",
+            new_status=lead.status,
+        )
 
 
 def get_leads_service(session: AsyncSession = Depends(get_db)) -> LeadsService:

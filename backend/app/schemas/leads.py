@@ -259,6 +259,25 @@ class LeadPoolImportResponse(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+class LeadTransitionRequest(BaseModel):
+    target_status: str = Field(..., max_length=32)
+    notes: Optional[str] = Field(default=None, max_length=2000)
+
+    @field_validator("target_status")
+    @classmethod
+    def target_status_allowed(cls, v: str) -> str:
+        s = v.strip()
+        if s not in LEAD_STATUS_SET:
+            raise ValueError("Invalid lead status")
+        return s
+
+
+class LeadTransitionResponse(BaseModel):
+    success: bool
+    message: str
+    new_status: str
+
+
 class LeadListResponse(BaseModel):
     items: list[LeadPublic]
     total: int

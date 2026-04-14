@@ -5,7 +5,15 @@ from starlette import status as http_status
 
 from app.api.deps import AuthUser, require_auth_user
 from app.schemas.call_events import CallEventCreate, CallEventListResponse, CallEventPublic
-from app.schemas.leads import LeadCreate, LeadDetailPublic, LeadListResponse, LeadPublic, LeadUpdate
+from app.schemas.leads import (
+    LeadCreate,
+    LeadDetailPublic,
+    LeadListResponse,
+    LeadPublic,
+    LeadTransitionRequest,
+    LeadTransitionResponse,
+    LeadUpdate,
+)
 from app.services.leads_service import LeadsService, get_leads_service
 
 router = APIRouter()
@@ -116,3 +124,22 @@ async def list_calls(
         limit=limit,
         offset=offset,
     )
+
+
+@router.get("/{lead_id}/transitions", response_model=list[str])
+async def get_available_transitions(
+    lead_id: int,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    service: Annotated[LeadsService, Depends(get_leads_service)],
+) -> list[str]:
+    return await service.get_available_transitions(lead_id=lead_id, user=user)
+
+
+@router.post("/{lead_id}/transition", response_model=LeadTransitionResponse)
+async def transition_lead_status(
+    lead_id: int,
+    body: LeadTransitionRequest,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    service: Annotated[LeadsService, Depends(get_leads_service)],
+) -> LeadTransitionResponse:
+    return await service.transition_lead_status(lead_id=lead_id, body=body, user=user)
