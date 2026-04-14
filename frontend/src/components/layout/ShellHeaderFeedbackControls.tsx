@@ -1,8 +1,6 @@
-import { Layers2, Monitor, Moon, Sparkles, Sun, Vibrate, Volume2, VolumeX } from 'lucide-react'
+import { Layers2, Monitor, Moon, Sparkles, Sun } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { browserSupportsVibration } from '@/lib/haptics'
-import { primeAudioContextSync } from '@/lib/ui-sounds'
 import { cn } from '@/lib/utils'
 import { useUiFeedbackStore, type ThemePreference } from '@/stores/ui-feedback-store'
 
@@ -19,10 +17,6 @@ const themeMeta: Record<
 export function ShellHeaderFeedbackControls() {
   const theme = useUiFeedbackStore((s) => s.theme)
   const cycleTheme = useUiFeedbackStore((s) => s.cycleTheme)
-  const soundEnabled = useUiFeedbackStore((s) => s.soundEnabled)
-  const toggleSound = useUiFeedbackStore((s) => s.toggleSound)
-  const hapticsEnabled = useUiFeedbackStore((s) => s.hapticsEnabled)
-  const toggleHaptics = useUiFeedbackStore((s) => s.toggleHaptics)
   const satisfactionPoints = useUiFeedbackStore((s) => s.satisfactionPoints)
 
   const { label, Icon } = themeMeta[theme] ?? themeMeta.dark
@@ -43,7 +37,6 @@ export function ShellHeaderFeedbackControls() {
           className="size-9 md:size-8"
           aria-label={`Theme: ${label}. Tap to cycle light → dark → system → glass`}
           title={`${label} · tap for next`}
-          data-ui-sound="none"
           onClick={() => cycleTheme()}
         >
           <Icon className="size-[1.05rem] md:size-4" aria-hidden />
@@ -54,49 +47,6 @@ export function ShellHeaderFeedbackControls() {
         <span className="block text-[0.58rem] opacity-75">Tap · cycle</span>
       </div>
       <div className="mx-0 hidden h-6 w-px bg-border/70 md:mx-0.5 md:block" aria-hidden />
-
-      {/* Sound toggle */}
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="size-9 md:size-8"
-        aria-pressed={soundEnabled}
-        aria-label={soundEnabled ? 'Mute UI sounds' : 'Enable UI sounds'}
-        title={soundEnabled ? 'Mute UI sounds' : 'Enable UI sounds'}
-        data-ui-sound="none"
-        onClick={() => {
-          primeAudioContextSync()
-          toggleSound()
-        }}
-      >
-        {soundEnabled ? (
-          <Volume2 className="size-[1.05rem] md:size-4" />
-        ) : (
-          <VolumeX className="size-[1.05rem] md:size-4 opacity-50" />
-        )}
-      </Button>
-
-      {/* Haptics toggle */}
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="size-9 md:size-8"
-        aria-pressed={hapticsEnabled}
-        aria-label={hapticsEnabled ? 'Disable haptics' : 'Enable haptics'}
-        title={
-          !browserSupportsVibration()
-            ? 'Vibration not available in this browser (iPhone Safari has no web haptics — use sound)'
-            : hapticsEnabled
-              ? 'Haptics on'
-              : 'Haptics off'
-        }
-        data-ui-sound="none"
-        onClick={() => toggleHaptics()}
-      >
-        <Vibrate className={cn('size-[1.05rem] md:size-4', !hapticsEnabled && 'opacity-40')} />
-      </Button>
 
       {/* Satisfaction points */}
       <div

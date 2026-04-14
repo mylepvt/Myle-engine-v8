@@ -6,10 +6,6 @@ import {
   useCreateRechargeRequestMutation,
   useWalletRechargeRequestsQuery,
 } from '@/hooks/use-wallet-recharge-query'
-import { iosNoVibrateAudioFallback } from '@/lib/haptic-audio-fallback'
-import { hapticCoin } from '@/lib/haptics'
-import { UI_SOUND_DELAY_MS } from '@/lib/ui-sound-config'
-import { playUiPaymentCashSound, playUiTickSound, unlockUiAudioFromUserGesture } from '@/lib/ui-sounds'
 import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
 
 type Props = {
@@ -58,21 +54,12 @@ export function WalletRechargePage({ title }: Props) {
         ? crypto.randomUUID()
         : `recharge-${Date.now()}-${Math.random().toString(36).slice(2)}`
     try {
-      await unlockUiAudioFromUserGesture()
       await createMut.mutateAsync({
         amount_cents,
         utr_number: utr.trim() || undefined,
         proof_url: proofUrl.trim() || undefined,
         idempotency_key,
       })
-      const { soundEnabled, hapticsEnabled } = useUiFeedbackStore.getState()
-      if (soundEnabled) {
-        void playUiPaymentCashSound({ delaySec: UI_SOUND_DELAY_MS.payment / 1000 })
-      }
-      if (hapticsEnabled) {
-        window.setTimeout(() => hapticCoin(), UI_SOUND_DELAY_MS.payment)
-      }
-      await iosNoVibrateAudioFallback(hapticsEnabled, soundEnabled, playUiTickSound)
       useUiFeedbackStore.getState().addSatisfactionPoints(15)
       setAmount('')
       setUtr('')
@@ -163,7 +150,7 @@ export function WalletRechargePage({ title }: Props) {
           </p>
         ) : null}
 
-        <Button type="submit" disabled={createMut.isPending || !amount} data-ui-sound="click">
+        <Button type="submit" disabled={createMut.isPending || !amount}>
           {createMut.isPending ? 'Submitting…' : 'Submit request'}
         </Button>
       </form>
