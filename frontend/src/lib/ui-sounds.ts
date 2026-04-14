@@ -105,6 +105,7 @@ export async function playUiSatisfactionSound(opts?: UiSoundScheduleOpts): Promi
   sine(ac, N.E5, t + 0.058, 0.062, p * 0.92)
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function playUiSuccessSound(_opts?: UiSoundScheduleOpts): Promise<void> {
   // Prefer professional MP3 success sound
   await playSuccessSample()
@@ -233,6 +234,7 @@ export async function playUiDeleteSound(opts?: UiSoundScheduleOpts): Promise<voi
   osc.stop(t + 0.09)
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function playUiNotificationSound(_opts?: UiSoundScheduleOpts): Promise<void> {
   // Prefer professional notification sound
   await playNotifySample()
