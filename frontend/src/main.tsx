@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 
 import { App } from '@/App'
+import { Snd01SineUiSoundBootstrap } from '@/components/providers/Snd01SineUiSoundBootstrap'
 import { ThemeAndFeedbackProvider } from '@/components/providers/ThemeAndFeedbackProvider'
 import { AppErrorBoundary } from '@/components/routing/AppErrorBoundary'
 import { initPerformanceProfile, isLowEndDevice } from '@/lib/device-performance'
@@ -43,6 +44,7 @@ createRoot(rootEl).render(
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <ThemeAndFeedbackProvider>
+            <Snd01SineUiSoundBootstrap />
             <App />
           </ThemeAndFeedbackProvider>
         </BrowserRouter>

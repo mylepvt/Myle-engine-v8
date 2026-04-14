@@ -1,6 +1,7 @@
 import { Layers2, Monitor, Moon, Sparkles, Sun } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { playSnd01SineTap } from '@/lib/snd01-sine-ui-sound'
 import { cn } from '@/lib/utils'
 import { useUiFeedbackStore, type ThemePreference } from '@/stores/ui-feedback-store'
 
@@ -37,7 +38,10 @@ export function ShellHeaderFeedbackControls() {
           className="size-9 md:size-8"
           aria-label={`Theme: ${label}. Tap to cycle light → dark → system → glass`}
           title={`${label} · tap for next`}
-          onClick={() => cycleTheme()}
+          onClick={() => {
+            playSnd01SineTap()
+            cycleTheme()
+          }}
         >
           <Icon className="size-[1.05rem] md:size-4" aria-hidden />
         </Button>
