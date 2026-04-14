@@ -64,6 +64,7 @@ export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) 
   const hapticsEnabled = useUiFeedbackStore((s) => s.hapticsEnabled)
 
   const lastSoundAt = useRef(0)
+  const audioUnlocked = useRef(false)
 
   useEffect(() => {
     const isDark = resolveDark(theme)
@@ -114,10 +115,17 @@ export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) 
 
       if (raw === 'none') return
 
-      primeAudioContextSync()
+      if (!audioUnlocked.current) {
+        audioUnlocked.current = true
+        primeAudioContextSync()
+        void unlockUiAudioFromUserGesture()
+        void preloadUiSoundSamples()
+      }
+      if (!soundEnabled) {
+        primeAudioContextSync()
+      }
 
       void (async () => {
-        await unlockUiAudioFromUserGesture()
         try {
           switch (raw) {
             case 'success':

@@ -18,6 +18,9 @@ function assetUrl(name: UiSampleId): string {
 
 const buffers: Partial<Record<UiSampleId, AudioBuffer>> = {}
 const inflight = new Map<UiSampleId, Promise<AudioBuffer | null>>()
+const HTML_POOL_SIZE = 3
+const htmlPools = new Map<UiSampleId, HTMLAudioElement[]>()
+const htmlPoolIdx = new Map<UiSampleId, number>()
 
 async function loadBuffer(id: UiSampleId): Promise<AudioBuffer | null> {
   const ac = getAudioContext()
@@ -46,8 +49,8 @@ async function loadBuffer(id: UiSampleId): Promise<AudioBuffer | null> {
 /** Warm decode after first user gesture (optional). */
 export async function preloadUiSoundSamples(): Promise<void> {
   const ac = await getReadyAudioContext()
-  if (!ac) return
-  await Promise.all(SAMPLE_IDS.map((id) => loadBuffer(id)))
+  if (ac) await Promise.all(SAMPLE_IDS.map((id) => loadBuffer(id)))
+  preloadHtmlPools()
 }
 
 /** HTMLAudio `volume` is a different curve than WebAudio gain — floor so clips aren’t silent. */
@@ -56,13 +59,43 @@ const HTML_VOL_MIN = 0.32
 export function playHtmlOneShot(sample: UiSampleId, volume = 0.85): void {
   if (typeof window === 'undefined') return
   try {
-    const el = new Audio(assetUrl(sample))
+    const pool = getHtmlPool(sample)
+    const idx = htmlPoolIdx.get(sample) ?? 0
+    const el = pool[idx] ?? new Audio(assetUrl(sample))
+    htmlPoolIdx.set(sample, (idx + 1) % Math.max(pool.length, 1))
     el.volume = Math.min(1, Math.max(HTML_VOL_MIN, volume))
+    el.currentTime = 0
     void el.play().catch(() => {
       /* ignore */
     })
   } catch {
     /* ignore */
+  }
+}
+
+function getHtmlPool(sample: UiSampleId): HTMLAudioElement[] {
+  let pool = htmlPools.get(sample)
+  if (pool) return pool
+  pool = Array.from({ length: HTML_POOL_SIZE }, () => {
+    const el = new Audio(assetUrl(sample))
+    el.preload = 'auto'
+    return el
+  })
+  htmlPools.set(sample, pool)
+  htmlPoolIdx.set(sample, 0)
+  return pool
+}
+
+function preloadHtmlPools(): void {
+  for (const id of SAMPLE_IDS) {
+    const pool = getHtmlPool(id)
+    for (const el of pool) {
+      try {
+        el.load()
+      } catch {
+        /* ignore */
+      }
+    }
   }
 }
 

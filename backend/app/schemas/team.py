@@ -48,10 +48,22 @@ class TeamMyTeamResponse(BaseModel):
     total: int
 
 
-class TeamEnrollmentListResponse(BaseModel):
-    """Stub for future INR 196 enrollment workflow — always empty in V1."""
+class TeamEnrollmentRequestItem(BaseModel):
+    lead_id: int
+    lead_name: str
+    lead_phone: Optional[str] = None
+    payment_amount_cents: Optional[int] = None
+    payment_proof_url: Optional[str] = None
+    payment_proof_uploaded_at: Optional[datetime] = None
+    uploaded_by_user_id: Optional[int] = None
+    uploaded_by_username: Optional[str] = None
+    status: str = "pending"
 
-    items: list[dict[str, Any]] = Field(default_factory=list)
+
+class TeamEnrollmentListResponse(BaseModel):
+    """₹196 proof approval queue for admin / leader review."""
+
+    items: list[TeamEnrollmentRequestItem] = Field(default_factory=list)
     total: int = 0
     limit: int
     offset: int
@@ -89,6 +101,11 @@ class PendingRegistrationsResponse(BaseModel):
 
 class RegistrationDecisionBody(BaseModel):
     action: Literal["approve", "reject"]
+
+
+class EnrollmentDecisionBody(BaseModel):
+    action: Literal["approve", "reject"]
+    reason: Optional[str] = None
 
 
 class TeamReportsResponse(BaseModel):

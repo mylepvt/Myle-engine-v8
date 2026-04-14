@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, UploadFile, File, Form
 from starlette import status as http_status
@@ -37,25 +37,32 @@ async def upload_payment_proof(
     service = PaymentService(session)
 
     try:
-        proof_url = await service.upload_payment_proof(proof_file)
-
+        proof_url = await service.upload_payment_proof(proof_file, lead_id=lead_id)
         success, message = await service.process_payment_proof(
             lead_id=lead_id,
             payment_amount_cents=payment_amount_cents,
             proof_url=proof_url,
             notes=notes,
             uploaded_by_user_id=user.user_id,
+            uploaded_by_role=user.role,
         )
 
         if not success:
-            raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=message)
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail=message,
+            )
 
         return PaymentProofResponse(
             success=True,
             message=message,
-            payment_status="pending_approval",
+            payment_status="proof_uploaded",
         )
-
+    except ValueError as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
     except HTTPException:
         raise
     except Exception as e:
@@ -79,13 +86,20 @@ async def approve_payment_proof(
         success, message = await service.approve_payment_proof(
             lead_id=lead_id,
             approved_by_user_id=user.user_id,
+            approved_by_role=user.role,
         )
 
         if not success:
-            raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=message)
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail=message,
+            )
 
-        return PaymentProofResponse(success=True, message=message, payment_status="approved")
-
+        return PaymentProofResponse(
+            success=True,
+            message=message,
+            payment_status="approved",
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -98,9 +112,9 @@ async def approve_payment_proof(
 @router.post("/payments/proof/reject")
 async def reject_payment_proof(
     lead_id: int,
-    rejection_reason: str,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    rejection_reason: Optional[str] = None,
 ) -> PaymentProofResponse:
     """Reject payment proof (leader/admin only)."""
     require_approver_role(user)
@@ -109,15 +123,22 @@ async def reject_payment_proof(
     try:
         success, message = await service.reject_payment_proof(
             lead_id=lead_id,
-            rejection_reason=rejection_reason,
+            rejection_reason=(rejection_reason or "").strip() or "Rejected by reviewer",
             rejected_by_user_id=user.user_id,
+            rejected_by_role=user.role,
         )
 
         if not success:
-            raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=message)
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail=message,
+            )
 
-        return PaymentProofResponse(success=True, message=message, payment_status="rejected")
-
+        return PaymentProofResponse(
+            success=True,
+            message=message,
+            payment_status="rejected",
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -360,4 +381,8 @@ async def razorpay_webhook(
     except Exception as e:
         logger = logging.getLogger(__name__)
         logger.error(f"Webhook processing error: {str(e)}")
-        return {"success": False, "error": "Processing failed (logged)", "retry": False}
+        return {
+            "success": False,
+            "error": "Processing failed (logged)",
+            "retry": False,  # Don't retry - manual intervention needed
+        }

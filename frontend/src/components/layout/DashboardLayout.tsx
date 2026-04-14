@@ -151,7 +151,7 @@ export function DashboardLayout() {
       <aside
         className={cn(
           'flex min-h-dvh shrink-0 flex-col border-r border-border/80 bg-surface/95 backdrop-blur-xl',
-          'transition-all duration-300 ease-out',
+          'transition-[transform,width,border-color] duration-300 ease-out',
           sidebarOpen ? 'md:w-[18rem]' : 'md:w-0 md:overflow-hidden md:border-0',
           'max-md:fixed max-md:left-0 max-md:top-0 max-md:z-50 max-md:h-dvh max-md:w-[min(20rem,85vw)] max-md:pt-[env(safe-area-inset-top)]',
           'max-md:shadow-[0_0_60px_rgba(0,0,0,0.4)]',
@@ -213,7 +213,7 @@ export function DashboardLayout() {
                             className={({ isActive }) =>
                               cn(
                                 'group flex min-h-[48px] items-center gap-3 px-4 py-3 text-sm font-medium',
-                                'transition-all duration-200 ease-out',
+                                'transition-[background-color,color,transform] duration-200 ease-out',
                                 'active:scale-[0.98]',
                                 isActive
                                   ? [
@@ -234,7 +234,7 @@ export function DashboardLayout() {
                               <>
                                 <div
                                   className={cn(
-                                    'flex items-center justify-center rounded-lg p-1.5 transition-all duration-200',
+                                    'flex items-center justify-center rounded-lg p-1.5 transition-[background-color,transform] duration-200',
                                     isActive
                                       ? 'bg-white/20'
                                       : 'bg-muted/50 group-hover:bg-muted'
@@ -242,7 +242,7 @@ export function DashboardLayout() {
                                 >
                                   <Icon
                                     className={cn(
-                                      'size-[1.1rem] shrink-0 transition-all duration-200',
+                                      'size-[1.1rem] shrink-0 transition-[color,transform] duration-200',
                                       isActive
                                         ? 'text-primary-foreground'
                                         : 'text-muted-foreground group-hover:text-foreground',
@@ -363,7 +363,7 @@ export function DashboardLayout() {
             <ShellHeaderFeedbackControls />
             <Link
               to="/dashboard/settings/profile"
-              className="hidden sm:flex relative size-10 items-center justify-center rounded-full transition-all duration-200 hover:bg-muted hover:scale-105 active:scale-95"
+              className="hidden sm:flex relative size-10 items-center justify-center rounded-full transition-[background-color,transform] duration-200 hover:bg-muted hover:scale-105 active:scale-95"
               aria-label="Settings"
             >
               <Settings className="size-[1.15rem] md:size-[1.25rem]" />
@@ -371,7 +371,7 @@ export function DashboardLayout() {
             <div className="relative">
               <Link
                 to="/dashboard/other/notice-board"
-                className="relative flex size-10 items-center justify-center rounded-full transition-all duration-200 hover:bg-muted hover:scale-105 active:scale-95"
+                className="relative flex size-10 items-center justify-center rounded-full transition-[background-color,transform] duration-200 hover:bg-muted hover:scale-105 active:scale-95"
                 aria-label="Notice board"
               >
                 <Bell className="size-[1.2rem] md:size-[1.35rem]" />

@@ -3,10 +3,10 @@
 #   docker build -t myle-vl2 .
 # Render: Root Directory = (repo root), Dockerfile Path = Dockerfile
 
-FROM node:20-alpine AS vite
+FROM node:22-bookworm-slim AS vite
 WORKDIR /src
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
+RUN npm ci --no-audit --no-fund
 COPY frontend/ ./
 ENV VITE_API_URL=
 RUN npm run build
