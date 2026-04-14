@@ -10,7 +10,7 @@ export function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null
   try {
     if (!_ctx) {
-      _ctx = new AudioContext()
+      _ctx = new AudioContext({ latencyHint: 'interactive' })
       _master = _ctx.createDynamicsCompressor()
       _master.threshold.value = -18
       _master.knee.value = 8

@@ -1,13 +1,31 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useEnrollmentRequestsQuery } from '@/hooks/use-team-query'
-import { ClipboardList } from 'lucide-react'
+import {
+  useEnrollmentDecisionMutation,
+  useEnrollmentRequestsQuery,
+} from '@/hooks/use-team-query'
+import { ClipboardList, ExternalLink } from 'lucide-react'
 
 type Props = { title: string }
 
 export function EnrollmentApprovalsPage({ title }: Props) {
+  const decide = useEnrollmentDecisionMutation()
   const { data, isPending, isError, error, refetch } = useEnrollmentRequestsQuery()
+
+  async function handleApprove(leadId: number) {
+    await decide.mutateAsync({ leadId, action: 'approve' })
+  }
+
+  async function handleReject(leadId: number) {
+    const reason = window.prompt('Why are you rejecting this proof?', 'Proof is unclear or incomplete')
+    if (reason === null) return
+    await decide.mutateAsync({
+      leadId,
+      action: 'reject',
+      reason: reason.trim() || 'Proof is unclear or incomplete',
+    })
+  }
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -32,6 +50,12 @@ export function EnrollmentApprovalsPage({ title }: Props) {
         </div>
       ) : null}
 
+      {decide.isError ? (
+        <div className="text-sm text-destructive" role="alert">
+          {decide.error instanceof Error ? decide.error.message : 'Could not update request'}
+        </div>
+      ) : null}
+
       {data && data.total === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-white/[0.12] py-14 text-center">
           <ClipboardList className="size-10 text-muted-foreground/50" />
@@ -46,38 +70,75 @@ export function EnrollmentApprovalsPage({ title }: Props) {
             {data.total} pending request{data.total === 1 ? '' : 's'}
           </p>
           <ul className="space-y-3">
-            {data.items.map((row, i) => {
-              const r = row as Record<string, unknown>
-              const name = (r['name'] ?? r['username'] ?? r['fbo_id'] ?? `Request #${i + 1}`) as string
-              const tier = r['tier'] ?? r['amount'] ?? r['plan']
-              const status = (r['status'] ?? 'pending') as string
-              const createdAt = r['created_at'] as string | undefined
+            {data.items.map((row) => {
+              const amount =
+                typeof row.payment_amount_cents === 'number'
+                  ? new Intl.NumberFormat('en-IN', {
+                      style: 'currency',
+                      currency: 'INR',
+                      maximumFractionDigits: 2,
+                    }).format(row.payment_amount_cents / 100)
+                  : null
               return (
                 <li
-                  key={(r['id'] as number | undefined) ?? i}
+                  key={row.lead_id}
                   className="surface-elevated flex items-start justify-between gap-4 rounded-xl border border-white/[0.08] p-4 text-sm"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-foreground">{String(name)}</p>
-                    {tier ? (
+                    <p className="font-medium text-foreground">{row.lead_name}</p>
+                    {amount ? (
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        Tier: {String(tier)}
+                        Amount: {amount}
                       </p>
                     ) : null}
-                    {createdAt ? (
+                    {row.uploaded_by_username ? (
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        {new Date(createdAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                        Uploaded by: {row.uploaded_by_username}
+                      </p>
+                    ) : null}
+                    {row.payment_proof_uploaded_at ? (
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {new Date(row.payment_proof_uploaded_at).toLocaleString(undefined, {
+                          dateStyle: 'medium',
+                          timeStyle: 'short',
+                        })}
                       </p>
                     ) : null}
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Badge variant={status === 'approved' ? 'default' : status === 'rejected' ? 'destructive' : 'outline'}>
-                      {String(status)}
+                  <div className="flex shrink-0 items-center gap-2 self-center">
+                    {row.payment_proof_url ? (
+                      <a
+                        href={row.payment_proof_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-primary underline underline-offset-2"
+                      >
+                        View proof
+                        <ExternalLink className="size-3.5" />
+                      </a>
+                    ) : null}
+                    <Badge variant={row.status === 'approved' ? 'default' : row.status === 'rejected' ? 'destructive' : 'outline'}>
+                      {row.status}
                     </Badge>
-                    {status === 'pending' ? (
+                    {row.status === 'pending' ? (
                       <>
-                        <Button size="sm" variant="default">Approve</Button>
-                        <Button size="sm" variant="outline" className="text-destructive hover:bg-destructive/10">Reject</Button>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          disabled={decide.isPending}
+                          onClick={() => void handleApprove(row.lead_id)}
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-destructive hover:bg-destructive/10"
+                          disabled={decide.isPending}
+                          onClick={() => void handleReject(row.lead_id)}
+                        >
+                          Reject
+                        </Button>
                       </>
                     ) : null}
                   </div>

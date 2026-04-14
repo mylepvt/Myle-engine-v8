@@ -27,39 +27,34 @@ async def upload_payment_proof(
 ) -> PaymentProofResponse:
     """Upload payment proof for a lead."""
     service = PaymentService(session)
-    
+
     try:
-        # Validate file
-        if not proof_file.content_type.startswith('image/'):
-            raise HTTPException(
-                status_code=http_status.HTTP_400_BAD_REQUEST,
-                detail="Only image files are allowed",
-            )
-        
-        # Upload file and get URL
-        proof_url = await service.upload_payment_proof(proof_file)
-        
-        # Update lead with payment proof
+        proof_url = await service.upload_payment_proof(proof_file, lead_id=lead_id)
         success, message = await service.process_payment_proof(
             lead_id=lead_id,
             payment_amount_cents=payment_amount_cents,
             proof_url=proof_url,
             notes=notes,
             uploaded_by_user_id=user.user_id,
+            uploaded_by_role=user.role,
         )
-        
+
         if not success:
             raise HTTPException(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail=message,
             )
-        
+
         return PaymentProofResponse(
             success=True,
             message=message,
-            payment_status="pending_approval",
+            payment_status="proof_uploaded",
         )
-        
+    except ValueError as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
     except HTTPException:
         raise
     except Exception as e:
@@ -83,25 +78,25 @@ async def approve_payment_proof(
         )
     
     service = PaymentService(session)
-    
+
     try:
         success, message = await service.approve_payment_proof(
             lead_id=lead_id,
             approved_by_user_id=user.user_id,
+            approved_by_role=user.role,
         )
-        
+
         if not success:
             raise HTTPException(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail=message,
             )
-        
+
         return PaymentProofResponse(
             success=True,
             message=message,
             payment_status="approved",
         )
-        
     except HTTPException:
         raise
     except Exception as e:
@@ -114,7 +109,7 @@ async def approve_payment_proof(
 @router.post("/payments/proof/reject")
 async def reject_payment_proof(
     lead_id: int,
-    rejection_reason: str,
+    rejection_reason: str | None = None,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> PaymentProofResponse:
@@ -124,28 +119,28 @@ async def reject_payment_proof(
             status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Only leader and admin can reject payments",
         )
-    
+
     service = PaymentService(session)
-    
+
     try:
         success, message = await service.reject_payment_proof(
             lead_id=lead_id,
-            rejection_reason=rejection_reason,
+            rejection_reason=(rejection_reason or "").strip() or "Rejected by reviewer",
             rejected_by_user_id=user.user_id,
+            rejected_by_role=user.role,
         )
-        
+
         if not success:
             raise HTTPException(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail=message,
             )
-        
+
         return PaymentProofResponse(
             success=True,
             message=message,
             payment_status="rejected",
         )
-        
     except HTTPException:
         raise
     except Exception as e:

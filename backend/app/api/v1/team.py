@@ -17,6 +17,7 @@ from app.core.passwords import hash_password
 from app.models.user import User
 from app.schemas.system_surface import SystemStubResponse
 from app.schemas.team import (
+    EnrollmentDecisionBody,
     PendingRegistrationsResponse,
     PendingRegistrationItem,
     RegistrationDecisionBody,
@@ -28,6 +29,7 @@ from app.schemas.team import (
     TeamReportsLiveSummary,
     TeamReportsResponse,
 )
+from app.services.payment_service import PaymentService
 from app.services.team_reports_metrics import IST, compute_live_summary
 
 router = APIRouter()
@@ -136,12 +138,46 @@ async def my_team(
 @router.get("/enrollment-requests", response_model=TeamEnrollmentListResponse)
 async def list_enrollment_requests(
     user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
     limit: int = Query(default=_DEFAULT_LIMIT, ge=1, le=_MAX_LIMIT),
     offset: int = Query(default=0, ge=0),
 ) -> TeamEnrollmentListResponse:
-    """Placeholder for INR 196 enrollment queue — empty until product adds persistence."""
+    """₹196 proof approval queue for admin/leader review."""
     _require_admin_or_leader(user)
-    return TeamEnrollmentListResponse(items=[], total=0, limit=limit, offset=offset)
+    service = PaymentService(session)
+    items = await service.get_pending_payment_proofs(user.user_id, user.role)
+    total = len(items)
+    page = items[offset : offset + limit]
+    return TeamEnrollmentListResponse(items=page, total=total, limit=limit, offset=offset)
+
+
+@router.post("/enrollment-requests/{lead_id}/decision")
+async def decide_enrollment_request(
+    lead_id: int,
+    body: EnrollmentDecisionBody,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    _require_admin_or_leader(user)
+    service = PaymentService(session)
+    if body.action == "approve":
+        ok, message = await service.approve_payment_proof(
+            lead_id=lead_id,
+            approved_by_user_id=user.user_id,
+            approved_by_role=user.role,
+        )
+        payment_status = "approved"
+    else:
+        ok, message = await service.reject_payment_proof(
+            lead_id=lead_id,
+            rejection_reason=(body.reason or "").strip() or "Rejected by reviewer",
+            rejected_by_user_id=user.user_id,
+            rejected_by_role=user.role,
+        )
+        payment_status = "rejected"
+    if not ok:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=message)
+    return {"ok": True, "payment_status": payment_status, "message": message}
 
 
 def _parse_report_date_param(raw: Optional[str]) -> date:
