@@ -149,7 +149,7 @@ export function RegisterPage() {
           className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="size-4 shrink-0 opacity-80" aria-hidden />
-          Back to sign in
+          Back
         </Link>
 
         <AuthCard
@@ -159,12 +159,12 @@ export function RegisterPage() {
           subtitle="Submit your registration request"
           footer={
             <p className="text-sm text-muted-foreground">
-              Already have an account?{' '}
+              Already in?{' '}
               <Link
                 to="/login"
                 className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
               >
-                Sign In
+                Continue
                 <ArrowRight className="size-3.5" aria-hidden />
               </Link>
             </p>
@@ -177,13 +177,13 @@ export function RegisterPage() {
             >
               <p className="font-medium text-foreground">{successMessage}</p>
               <p className="mt-2 text-muted-foreground">
-                You can sign in after an admin approves your account.
+                We&apos;ll notify you when you can continue.
               </p>
               <Link
                 to="/login"
                 className="mt-3 inline-flex items-center justify-center gap-1 font-semibold text-primary hover:underline"
               >
-                Back to sign in
+                Back to entry
                 <ArrowRight className="size-3.5" aria-hidden />
               </Link>
             </div>
@@ -191,7 +191,8 @@ export function RegisterPage() {
           <form className="space-y-6" onSubmit={(e) => void handleSubmit(e)} noValidate>
             {formError ? (
               <div
-                className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-center text-sm text-destructive"
+                key={formError}
+                className="animate-shake rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-center text-sm text-destructive"
                 role="alert"
               >
                 {formError}
@@ -200,8 +201,8 @@ export function RegisterPage() {
             <div className="space-y-3.5">
               <SectionTitle>Account</SectionTitle>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                Sign in with your <strong className="font-semibold text-foreground">FBO ID</strong> and password.
-                Display name is how you appear in the app (can match other members).
+                You&apos;ll use <strong className="font-semibold text-foreground">FBO ID</strong> and password to
+                continue. Display name is how you show up in the app.
               </p>
               <div>
                 <label
