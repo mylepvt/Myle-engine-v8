@@ -115,12 +115,11 @@ export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) 
       if (raw === 'none') return
 
       primeAudioContextSync()
-      void unlockUiAudioFromUserGesture()
 
-      void Promise.resolve().then(() => {
-        void (async () => {
-          try {
-            switch (raw) {
+      void (async () => {
+        await unlockUiAudioFromUserGesture()
+        try {
+          switch (raw) {
             case 'success':
               if (soundEnabled) await playUiSuccessSound({ delaySec: sec(UI_SOUND_DELAY_MS.success) })
               if (hapticsEnabled) hapticSuccess()
@@ -191,7 +190,6 @@ export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) 
             /* ignore */
           }
         })()
-      })
     }
 
     /** Microtask deferral: keeps taps snappy vs one full rAF frame of latency. */
