@@ -7,11 +7,6 @@ import {
   buildWhatsAppVideoUrl,
   shouldOfferWhatsAppForTransition,
 } from '@/lib/lead-next-action'
-import { iosNoVibrateAudioFallback } from '@/lib/haptic-audio-fallback'
-import { hapticCoin, hapticError, hapticTapHeavy } from '@/lib/haptics'
-import { UI_SOUND_DELAY_MS } from '@/lib/ui-sound-config'
-import { playUiErrorSound, playUiPaymentCashSound, playUiTickSound, unlockUiAudioFromUserGesture } from '@/lib/ui-sounds'
-import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
 import { useAvailableTransitionsQuery, useTransitionLeadMutation } from '@/hooks/use-leads-query'
 import { LEAD_STATUS_OPTIONS } from '@/hooks/use-leads-query'
 import { cn } from '@/lib/utils'
@@ -44,23 +39,9 @@ export function LeadNextStepPanel({ lead, className }: Props) {
 
   async function runTransition(target: string) {
     setLocalError(null)
-    await unlockUiAudioFromUserGesture()
-    hapticTapHeavy()
     try {
-      const res = await mut.mutateAsync({ leadId: lead.id, targetStatus: target })
-      if (res.new_status === 'converted') {
-        const { soundEnabled, hapticsEnabled } = useUiFeedbackStore.getState()
-        if (soundEnabled) {
-          void playUiPaymentCashSound({ delaySec: UI_SOUND_DELAY_MS.payment / 1000 })
-        }
-        if (hapticsEnabled) {
-          window.setTimeout(() => hapticCoin(), UI_SOUND_DELAY_MS.payment)
-        }
-        await iosNoVibrateAudioFallback(hapticsEnabled, soundEnabled, playUiTickSound)
-      }
+      await mut.mutateAsync({ leadId: lead.id, targetStatus: target })
     } catch (e) {
-      void playUiErrorSound()
-      hapticError()
       setLocalError(e instanceof Error ? e.message : 'Could not update stage')
     }
   }

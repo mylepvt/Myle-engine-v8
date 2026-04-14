@@ -9,9 +9,12 @@ from starlette import status as http_status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthUser, get_db, require_auth_user
-from app.schemas.payments import (
-    PaymentProofResponse,
+from app.core.payment_validator import (
+    require_approver_role,
+    validate_payment_amount,
+    validate_image_upload,
 )
+from app.schemas.payments import PaymentProofResponse
 from app.services.payment_service import PaymentService
 
 router = APIRouter()
@@ -27,6 +30,9 @@ async def upload_payment_proof(
     notes: str = Form(None),
 ) -> PaymentProofResponse:
     """Upload payment proof for a lead."""
+    validate_image_upload(proof_file.content_type)
+    validate_payment_amount(payment_amount_cents)
+
     service = PaymentService(session)
 
     try:
@@ -72,12 +78,7 @@ async def approve_payment_proof(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> PaymentProofResponse:
     """Approve payment proof (leader/admin only)."""
-    if user.role not in ["leader", "admin"]:
-        raise HTTPException(
-            status_code=http_status.HTTP_403_FORBIDDEN,
-            detail="Only leader and admin can approve payments",
-        )
-    
+    require_approver_role(user)
     service = PaymentService(session)
 
     try:
@@ -115,12 +116,7 @@ async def reject_payment_proof(
     rejection_reason: Optional[str] = None,
 ) -> PaymentProofResponse:
     """Reject payment proof (leader/admin only)."""
-    if user.role not in ["leader", "admin"]:
-        raise HTTPException(
-            status_code=http_status.HTTP_403_FORBIDDEN,
-            detail="Only leader and admin can reject payments",
-        )
-
+    require_approver_role(user)
     service = PaymentService(session)
 
     try:
@@ -157,17 +153,11 @@ async def get_pending_payment_proofs(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[dict]:
     """Get pending payment proofs for approval (leader/admin only)."""
-    if user.role not in ["leader", "admin"]:
-        raise HTTPException(
-            status_code=http_status.HTTP_403_FORBIDDEN,
-            detail="Only leader and admin can view pending payments",
-        )
-    
+    require_approver_role(user)
     service = PaymentService(session)
-    
+
     try:
-        pending_proofs = await service.get_pending_payment_proofs(user.user_id, user.role)
-        return pending_proofs
+        return await service.get_pending_payment_proofs(user.user_id, user.role)
     except Exception as e:
         raise HTTPException(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,

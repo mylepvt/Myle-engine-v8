@@ -89,6 +89,16 @@ class Settings(BaseSettings):
         validation_alias="MYLE_UPLOAD_DIR",
         description="Local directory for user uploads (e.g. profile photos).",
     )
+    recharge_upi_id: str = Field(
+        default="",
+        validation_alias="RECHARGE_UPI_ID",
+        description="UPI ID shown to team/leader for wallet recharge transfers.",
+    )
+    recharge_qr_image_url: str = Field(
+        default="",
+        validation_alias="RECHARGE_QR_IMAGE_URL",
+        description="Public QR image URL shown on wallet recharge page.",
+    )
 
     @field_validator("database_url", mode="before")
     @classmethod

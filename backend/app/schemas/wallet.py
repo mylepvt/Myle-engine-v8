@@ -44,7 +44,7 @@ _RECHARGE_STATUS_SET = {"pending", "approved", "rejected"}
 
 class WalletRechargeCreate(BaseModel):
     amount_cents: int = Field(ge=1)
-    utr_number: Optional[str] = Field(default=None, max_length=50)
+    utr_number: str = Field(min_length=4, max_length=50)
     proof_url: Optional[str] = Field(default=None, max_length=500)
     idempotency_key: Optional[str] = Field(default=None, max_length=128)
 
@@ -82,3 +82,8 @@ class WalletRechargeListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class WalletRechargeInstructionsResponse(BaseModel):
+    upi_id: str
+    qr_image_url: Optional[str] = None

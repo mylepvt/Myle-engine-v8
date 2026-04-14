@@ -29,6 +29,20 @@ jobs:
       - name: pip-audit (backend/requirements.txt)
         run: python -m pip_audit -r backend/requirements.txt
 
+      - name: Start backend for perf check
+        env:
+          DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+          SECRET_KEY: "ci-perf-test-key"
+        run: |
+          cd backend
+          python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          for i in $(seq 1 15); do
+            curl -sf http://localhost:8000/health && break || sleep 1
+          done
+
+      - name: Perf check (p95 < 300ms)
+        run: python scripts/perf_check.py
+
   frontend:
     runs-on: ubuntu-latest
     defaults:

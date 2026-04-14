@@ -360,7 +360,7 @@ export function LeadDetailPage({ leadId }: Props) {
                 type="button"
                 size="sm"
                 disabled={patchMut.isPending}
-                data-ui-sound="stage"
+               
                 onClick={() => void savePipeline()}
               >
                 {patchMut.isPending ? 'Saving…' : 'Save pipeline'}
@@ -550,7 +550,7 @@ export function LeadDetailPage({ leadId }: Props) {
                 type="button"
                 size="sm"
                 disabled={patchMut.isPending}
-                data-ui-sound="satisfaction"
+               
                 onClick={() => void saveNotes(notes)}
               >
                 {patchMut.isPending ? 'Saving…' : 'Save notes'}

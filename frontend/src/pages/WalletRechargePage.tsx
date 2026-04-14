@@ -4,12 +4,9 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   useCreateRechargeRequestMutation,
+  useWalletRechargeInstructionsQuery,
   useWalletRechargeRequestsQuery,
 } from '@/hooks/use-wallet-recharge-query'
-import { iosNoVibrateAudioFallback } from '@/lib/haptic-audio-fallback'
-import { hapticCoin } from '@/lib/haptics'
-import { UI_SOUND_DELAY_MS } from '@/lib/ui-sound-config'
-import { playUiPaymentCashSound, playUiTickSound, unlockUiAudioFromUserGesture } from '@/lib/ui-sounds'
 import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
 
 type Props = {
@@ -37,6 +34,7 @@ function RechargeStatusBadge({ status }: { status: string }) {
 
 export function WalletRechargePage({ title }: Props) {
   const requestsQuery = useWalletRechargeRequestsQuery()
+  const instructionsQuery = useWalletRechargeInstructionsQuery()
   const createMut = useCreateRechargeRequestMutation()
 
   const [amount, setAmount] = useState('')
@@ -53,26 +51,22 @@ export function WalletRechargePage({ title }: Props) {
       return
     }
     const amount_cents = Math.round(amountRupees * 100)
+    const utrValue = utr.trim()
+    if (!utrValue) {
+      setFormError('UTR number is required')
+      return
+    }
     const idempotency_key =
       typeof crypto !== 'undefined' && 'randomUUID' in crypto
         ? crypto.randomUUID()
         : `recharge-${Date.now()}-${Math.random().toString(36).slice(2)}`
     try {
-      await unlockUiAudioFromUserGesture()
       await createMut.mutateAsync({
         amount_cents,
-        utr_number: utr.trim() || undefined,
+        utr_number: utrValue,
         proof_url: proofUrl.trim() || undefined,
         idempotency_key,
       })
-      const { soundEnabled, hapticsEnabled } = useUiFeedbackStore.getState()
-      if (soundEnabled) {
-        void playUiPaymentCashSound({ delaySec: UI_SOUND_DELAY_MS.payment / 1000 })
-      }
-      if (hapticsEnabled) {
-        window.setTimeout(() => hapticCoin(), UI_SOUND_DELAY_MS.payment)
-      }
-      await iosNoVibrateAudioFallback(hapticsEnabled, soundEnabled, playUiTickSound)
       useUiFeedbackStore.getState().addSatisfactionPoints(15)
       setAmount('')
       setUtr('')
@@ -88,6 +82,38 @@ export function WalletRechargePage({ title }: Props) {
       <p className="text-sm text-muted-foreground">
         Submit your wallet recharge request below. An admin will review and credit your balance.
       </p>
+
+      <div className="surface-elevated space-y-3 p-4">
+        <p className="text-sm font-medium text-foreground">Pay via UPI</p>
+        {instructionsQuery.isPending ? (
+          <Skeleton className="h-24 w-full" />
+        ) : instructionsQuery.isError ? (
+          <p className="text-xs text-destructive">
+            {instructionsQuery.error instanceof Error
+              ? instructionsQuery.error.message
+              : 'Could not load UPI details'}
+          </p>
+        ) : (
+          <>
+            <p className="text-sm text-muted-foreground">
+              UPI ID:{' '}
+              <span className="font-medium text-foreground">
+                {instructionsQuery.data?.upi_id || 'Not configured'}
+              </span>
+            </p>
+            {instructionsQuery.data?.qr_image_url ? (
+              <img
+                src={instructionsQuery.data.qr_image_url}
+                alt="Recharge UPI QR code"
+                className="max-h-64 w-full max-w-xs rounded-md border border-white/12 object-contain"
+              />
+            ) : null}
+            <p className="text-xs text-muted-foreground">
+              After payment, enter UTR below and submit request for admin approval.
+            </p>
+          </>
+        )}
+      </div>
 
       {/* Request form */}
       <form onSubmit={(e) => void handleSubmit(e)} className="surface-elevated space-y-4 p-4">
@@ -118,7 +144,7 @@ export function WalletRechargePage({ title }: Props) {
             htmlFor="recharge-utr"
             className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground"
           >
-            UTR number (optional)
+            UTR number
           </label>
           <input
             id="recharge-utr"
@@ -126,6 +152,7 @@ export function WalletRechargePage({ title }: Props) {
             value={utr}
             onChange={(e) => setUtr(e.target.value)}
             placeholder="Bank reference number"
+            required
             className="w-full rounded-md border border-white/12 bg-white/[0.05] px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
           />
         </div>
@@ -163,7 +190,7 @@ export function WalletRechargePage({ title }: Props) {
           </p>
         ) : null}
 
-        <Button type="submit" disabled={createMut.isPending || !amount} data-ui-sound="click">
+        <Button type="submit" disabled={createMut.isPending || !amount}>
           {createMut.isPending ? 'Submitting…' : 'Submit request'}
         </Button>
       </form>

@@ -6,9 +6,6 @@ import {
 } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
-import { UI_SOUND_DELAY_MS } from '@/lib/ui-sound-config'
-import { playUiStageAdvanceSound, playUiSuccessSound } from '@/lib/ui-sounds'
-import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
 
 export type LeadStatus =
   | 'new_lead'
@@ -315,9 +312,6 @@ export function useCreateLeadMutation() {
       createLead(name, status ?? 'new'),
     onSuccess: () => {
       invalidateLeadRelated(qc)
-      if (useUiFeedbackStore.getState().soundEnabled) {
-        void playUiSuccessSound({ delaySec: UI_SOUND_DELAY_MS.success / 1000 })
-      }
     },
   })
 }
@@ -332,14 +326,8 @@ export function usePatchLeadMutation() {
       id: number
       body: Parameters<typeof patchLead>[1]
     }) => patchLead(id, body),
-    onSuccess: (_data, variables) => {
+    onSuccess: () => {
       invalidateLeadRelated(qc)
-      if (!useUiFeedbackStore.getState().soundEnabled) return
-      if (variables.body.status) {
-        void playUiStageAdvanceSound({ delaySec: UI_SOUND_DELAY_MS.stage / 1000 })
-      } else {
-        void playUiSuccessSound({ delaySec: UI_SOUND_DELAY_MS.success / 1000 })
-      }
     },
   })
 }

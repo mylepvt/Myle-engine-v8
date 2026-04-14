@@ -147,7 +147,6 @@ class PaymentService:
         await self._log_payment_activity(
             lead_id, rejected_by_user_id, "payment_proof_rejected", rejection_reason
         )
-
         await self.session.commit()
         return True, "Payment proof rejected"
 
@@ -209,21 +208,3 @@ class PaymentService:
                 meta=meta,
             ),
         )
-
-    async def validate_payment_amount(
-        self, lead_id: int, payment_amount_cents: int
-    ) -> Tuple[bool, str]:
-        """Validate payment amount against expected amount."""
-        # Standard enrollment fee is 19600 cents (196 rupees)
-        standard_amount = 19600
-        
-        if payment_amount_cents < standard_amount:
-            return False, f"Payment amount must be at least {standard_amount // 100} rupees"
-        
-        # You could add more complex validation here
-        # - Check for overpayment
-        # - Validate against specific track pricing
-        # - Check for duplicate payments
-        
-        return True, "Payment amount is valid"
-
