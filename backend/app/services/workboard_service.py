@@ -24,7 +24,7 @@ from app.schemas.workboard import (
 from app.services.lead_scope import lead_execution_visibility_where
 
 _SUMMARY_CACHE_TTL_SECONDS = 10
-_summary_cache: dict[tuple[int, str], tuple[float, WorkboardSummaryResponse]] = {}
+_summary_cache: dict[tuple[int, str, int], tuple[float, WorkboardSummaryResponse]] = {}
 
 
 class WorkboardService:
@@ -90,21 +90,52 @@ class WorkboardService:
         stale_hours: int,
         use_cache: bool = True,
     ) -> WorkboardSummaryResponse:
-        cache_key = (user.user_id, user.role)
+        cache_key = (user.user_id, user.role, stale_hours)
         cached = _summary_cache.get(cache_key) if use_cache else None
         now = monotonic()
         if use_cache and cached is not None and now - cached[0] <= _SUMMARY_CACHE_TTL_SECONDS:
             return cached[1]
 
         scope = self._active_scope(user)
-        pending_calls = await self._repository.count_leads(
+        # Legacy parity: leader workboard hides pending/video action counters (they execute via leads views).
+        if user.role == "leader":
+            pending_calls = 0
+            videos_to_send = 0
+        else:
+            pending_calls = await self._repository.count_leads(
+                and_(
+                    scope,
+                    or_(Lead.call_status.is_(None), Lead.call_status.in_(("not_called", "no_answer"))),
+                )
+            )
+            videos_to_send = await self._repository.count_leads(
+                and_(scope, Lead.status.in_(("new_lead", "new", "contacted", "invited")))
+            )
+        batches_due = await self._repository.count_leads(
             and_(
                 scope,
-                or_(Lead.call_status.is_(None), Lead.call_status.in_(("not_called", "no_answer"))),
+                or_(
+                    and_(
+                        Lead.status == "day1",
+                        or_(
+                            Lead.d1_morning.is_(False),
+                            Lead.d1_afternoon.is_(False),
+                            Lead.d1_evening.is_(False),
+                        ),
+                    ),
+                    and_(
+                        Lead.status == "day2",
+                        or_(
+                            Lead.d2_morning.is_(False),
+                            Lead.d2_afternoon.is_(False),
+                            Lead.d2_evening.is_(False),
+                        ),
+                    ),
+                ),
             )
         )
-        videos_to_send = await self._repository.count_leads(
-            and_(scope, Lead.status.in_(("invited", "video_sent")))
+        closings_due = await self._repository.count_leads(
+            and_(scope, Lead.status.in_(("interview", "track_selected", "seat_hold")))
         )
         stale_before = datetime.now(timezone.utc) - timedelta(hours=stale_hours)
         stale_total = await self._repository.count_leads(
@@ -120,6 +151,8 @@ class WorkboardService:
             action_counts=WorkboardActionCounts(
                 pending_calls=pending_calls,
                 videos_to_send=videos_to_send,
+                batches_due=batches_due,
+                closings_due=closings_due,
             ),
             stale_total=stale_total,
         )

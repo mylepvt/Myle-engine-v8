@@ -133,7 +133,7 @@ def test_workboard_action_counts(
 ) -> None:
     asyncio.run(
         _seed_lead(
-            user_id=2,
+            user_id=3,
             name="NeedCall",
             lead_status="new_lead",
             call_status="not_called",
@@ -141,7 +141,7 @@ def test_workboard_action_counts(
     )
     asyncio.run(
         _seed_lead(
-            user_id=2,
+            user_id=3,
             name="ShareVid",
             lead_status="invited",
             call_status="interested",
@@ -149,11 +149,13 @@ def test_workboard_action_counts(
     )
     try:
         c = _authed_client(monkeypatch)
-        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
         res = c.get("/api/v1/workboard")
         ac = res.json()["action_counts"]
         assert ac["pending_calls"] == 1
-        assert ac["videos_to_send"] == 1
+        assert ac["videos_to_send"] == 2
+        assert "batches_due" in ac
+        assert "closings_due" in ac
     finally:
         asyncio.run(_clear_leads())
 
@@ -255,5 +257,18 @@ def test_workboard_leads_endpoint_shape(monkeypatch: pytest.MonkeyPatch) -> None
         assert "max_rows_fetched" in body
         by_status = {col["status"]: col for col in body["columns"]}
         assert by_status["new_lead"]["total"] == 1
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_leader_workboard_hides_pending_and_video_actions(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_seed_lead(user_id=2, name="NeedCall", lead_status="new_lead", call_status="not_called"))
+    asyncio.run(_seed_lead(user_id=2, name="Invite", lead_status="invited", call_status="interested"))
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        body = c.get("/api/v1/workboard").json()
+        assert body["action_counts"]["pending_calls"] == 0
+        assert body["action_counts"]["videos_to_send"] == 0
     finally:
         asyncio.run(_clear_leads())

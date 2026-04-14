@@ -16,6 +16,14 @@ class WorkboardActionCounts(BaseModel):
         0,
         description="Scoped leads in invited or video_sent (share / follow up on enrollment video)",
     )
+    batches_due: int = Field(
+        0,
+        description="Legacy parity: pending Day1/Day2 batch completions in scoped workboard",
+    )
+    closings_due: int = Field(
+        0,
+        description="Legacy parity: scoped interview/track-selected/seat-hold workload",
+    )
 
 
 class WorkboardColumnOut(BaseModel):
