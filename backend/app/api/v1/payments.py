@@ -109,9 +109,11 @@ async def approve_payment_proof(
 @router.post("/payments/proof/reject")
 async def reject_payment_proof(
     lead_id: int,
-    rejection_reason: str | None = None,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    rejected_by_user_id: int,
+    rejected_by_role: str,
+    rejection_reason: str | None = None,
 ) -> PaymentProofResponse:
     """Reject payment proof (leader/admin only)."""
     if user.role not in ["leader", "admin"]:
