@@ -9,7 +9,7 @@ test.describe('happy path (mocked API)', () => {
 
   test('dev login → dashboard home → leads → change stage', async ({ page }) => {
     await page.goto('/login')
-    await expect(page.getByText(/Sign in to your account/i)).toBeVisible()
+    await expect(page.getByRole('heading', { name: /Myle Community/i })).toBeVisible()
 
     await page.getByRole('button', { name: /Continue with preview role/i }).click()
 

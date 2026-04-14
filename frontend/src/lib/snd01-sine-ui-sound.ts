@@ -1,8 +1,22 @@
-import Snd from 'snd-lib'
+import SndImport from 'snd-lib'
 
 import { isLowEndDevice } from '@/lib/device-performance'
 
-let _snd: Snd | null = null
+type SndConstructor = typeof import('snd-lib').default
+type SndInstance = InstanceType<SndConstructor>
+
+/** CJS `module.exports` interop: production bundle may expose `{ default: Snd }` instead of `Snd`. */
+function resolveSndConstructor(): SndConstructor {
+  const mod: unknown = SndImport
+  if (typeof mod === 'function') return mod as SndConstructor
+  const d = mod && typeof (mod as { default: unknown }).default === 'function'
+    ? (mod as { default: SndConstructor }).default
+    : null
+  if (d) return d
+  throw new Error('snd-lib: Snd constructor not found (check default export interop)')
+}
+
+let _snd: SndInstance | null = null
 let _loadPromise: Promise<void> | null = null
 
 /** Clears cached client + load promise (Vitest only; safe no-op pattern for callers). */
@@ -11,8 +25,9 @@ export function resetSnd01SineUiSoundStateForTests(): void {
   _loadPromise = null
 }
 
-function getSnd(): Snd {
+function getSnd(): SndInstance {
   if (!_snd) {
+    const Snd = resolveSndConstructor()
     _snd = new Snd({ muteOnWindowBlur: true, easySetup: false })
   }
   return _snd
@@ -39,7 +54,7 @@ export function preloadSnd01SineKit(): Promise<void> {
   if (_loadPromise) return _loadPromise
 
   _loadPromise = getSnd()
-    .load(Snd.KITS.SND01)
+    .load(resolveSndConstructor().KITS.SND01)
     .then(() => undefined)
     .catch((err) => {
       _loadPromise = null
