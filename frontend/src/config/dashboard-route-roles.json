@@ -19,7 +19,6 @@
   "system/decision-engine": ["admin"],
   "system/coaching": ["admin", "leader"],
   "analytics/activity-log": ["admin"],
-  "analytics/day-2-report": ["admin"],
   "finance/recharges": ["admin"],
   "finance/wallet": ["leader", "team"],
   "other/leaderboard": ["admin", "leader", "team"],

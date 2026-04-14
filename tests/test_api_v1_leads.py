@@ -67,6 +67,7 @@ async def _seed_one_lead(
                 name=name,
                 status=lead_status,
                 created_by_user_id=user_id,
+                assigned_to_user_id=user_id,
                 archived_at=archived_at,
                 deleted_at=deleted_at,
                 in_pool=in_pool,
@@ -509,5 +510,45 @@ def test_leader_can_patch_day1_batches(monkeypatch: pytest.MonkeyPatch) -> None:
         b = r.json()
         assert b["d1_morning"] is True
         assert b["day1_completed_at"] is not None
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_all_leads_response_shape(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_clear_leads())
+    asyncio.run(_seed_one_lead(user_id=2, name="Today Lead", lead_status="new_lead"))
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        res = c.get("/api/v1/leads/all")
+        assert res.status_code == 200
+        body = res.json()
+        assert "today_items" in body
+        assert "history_items" in body
+        assert "today_total" in body
+        assert "history_total" in body
+        assert body["total"] == body["today_total"] + body["history_total"]
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_all_leads_filters_status_and_query(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_clear_leads())
+    asyncio.run(_seed_one_lead(user_id=2, name="Alpha Deal", lead_status="converted"))
+    asyncio.run(_seed_one_lead(user_id=2, name="Beta Deal", lead_status="new_lead"))
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        by_status = c.get("/api/v1/leads/all", params={"status": "converted"})
+        assert by_status.status_code == 200
+        items = by_status.json()["today_items"] + by_status.json()["history_items"]
+        assert len(items) == 1
+        assert items[0]["name"] == "Alpha Deal"
+
+        by_q = c.get("/api/v1/leads/all", params={"q": "beta"})
+        assert by_q.status_code == 200
+        q_items = by_q.json()["today_items"] + by_q.json()["history_items"]
+        assert len(q_items) == 1
+        assert q_items[0]["name"] == "Beta Deal"
     finally:
         asyncio.run(_clear_leads())

@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
 
-export type AnalyticsSurface = 'activity-log' | 'day-2-report'
+export type AnalyticsSurface = 'activity-log'
 
 export type AnalyticsStubResponse = {
   items: Record<string, unknown>[]
@@ -12,7 +12,6 @@ export type AnalyticsStubResponse = {
 
 const PATHS: Record<AnalyticsSurface, string> = {
   'activity-log': '/api/v1/analytics/activity-log',
-  'day-2-report': '/api/v1/analytics/day-2-report',
 }
 
 async function parseError(res: Response): Promise<never> {

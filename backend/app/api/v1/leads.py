@@ -6,6 +6,7 @@ from starlette import status as http_status
 from app.api.deps import AuthUser, require_auth_user
 from app.schemas.call_events import CallEventCreate, CallEventListResponse, CallEventPublic
 from app.schemas.leads import (
+    AllLeadsResponse,
     LeadCreate,
     LeadDetailPublic,
     LeadListResponse,
@@ -14,12 +15,35 @@ from app.schemas.leads import (
     LeadTransitionResponse,
     LeadUpdate,
 )
+from app.services.all_leads_service import AllLeadsService, get_all_leads_service
 from app.services.leads_service import LeadsService, get_leads_service
 
 router = APIRouter()
 
 _MAX_LIMIT = 100
 _DEFAULT_LIMIT = 50
+
+
+@router.get("/all", response_model=AllLeadsResponse)
+async def list_all_leads(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    service: Annotated[AllLeadsService, Depends(get_all_leads_service)],
+    limit: int = Query(default=_DEFAULT_LIMIT, ge=1, le=_MAX_LIMIT),
+    offset: int = Query(default=0, ge=0),
+    q: Optional[str] = Query(default=None, max_length=200, description="Case-insensitive name substring"),
+    status: Optional[str] = Query(default=None, max_length=32, description="Exact status"),
+    archived_only: bool = Query(default=False),
+    deleted_only: bool = Query(default=False),
+) -> AllLeadsResponse:
+    return await service.get_all(
+        user=user,
+        limit=limit,
+        offset=offset,
+        q=q,
+        status=status,
+        archived_only=archived_only,
+        deleted_only=deleted_only,
+    )
 
 
 @router.get("", response_model=LeadListResponse)

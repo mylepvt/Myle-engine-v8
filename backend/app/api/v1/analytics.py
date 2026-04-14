@@ -22,7 +22,6 @@ from app.schemas.analytics import (
 )
 from app.services.shell_insights import (
     build_activity_log_snapshot,
-    build_status_funnel_report,
 )
 from app.services.analytics_service import AnalyticsService
 
@@ -93,16 +92,6 @@ async def analytics_activity_log(
     """Admin — recent lead creations (scoped); replace with audit store when added."""
     _require_admin(user)
     return await build_activity_log_snapshot(session, user)
-
-
-@router.get("/day-2-report", response_model=SystemStubResponse)
-async def analytics_day_2_report(
-    user: Annotated[AuthUser, Depends(require_auth_user)],
-    session: Annotated[AsyncSession, Depends(get_db)],
-) -> SystemStubResponse:
-    """Admin — funnel by lead status (scoped); extend when Day 2 test entities exist."""
-    _require_admin(user)
-    return await build_status_funnel_report(session, user)
 
 
 @router.get("/team-performance", response_model=TeamPerformanceResponse)
