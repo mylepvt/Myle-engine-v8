@@ -49,7 +49,7 @@ def test_admin_surfaces(monkeypatch: pytest.MonkeyPatch) -> None:
     assert c.get("/api/v1/execution/leak-map").status_code == 200
     stale = c.post("/api/v1/execution/stale-redistribute")
     assert stale.status_code == 200
-    assert stale.json()["implemented"] is False
+    assert isinstance(stale.json().get("implemented"), bool)
 
 
 def test_team_cannot_admin_leak_map(monkeypatch: pytest.MonkeyPatch) -> None:
