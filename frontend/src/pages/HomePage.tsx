@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight, CheckCircle2, Shield } from 'lucide-react'
@@ -10,10 +11,7 @@ import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { useHelloQuery } from '@/hooks/use-hello-query'
 import { authLogout } from '@/lib/auth-api'
 import { t } from '@/lib/i18n'
-import {
-  playUiTap,
-  playUiTransitionUp,
-} from '@/lib/ui-sound'
+import { playUiNotification } from '@/lib/ui-sound'
 import { useAuthStore } from '@/stores/auth-store'
 
 function displayFirstName(me: {
@@ -45,6 +43,16 @@ export function HomePage() {
 
   const systemsLoading = isPending || metaPending
   const systemsOk = !systemsLoading && !error && !metaError && Boolean(data)
+
+  const prevSystemsOk = useRef<boolean | null>(null)
+  useEffect(() => {
+    if (systemsLoading) return
+    const was = prevSystemsOk.current
+    prevSystemsOk.current = systemsOk
+    if (was === false && systemsOk) {
+      playUiNotification()
+    }
+  }, [systemsLoading, systemsOk])
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))]">
@@ -89,17 +97,19 @@ export function HomePage() {
                 asChild
                 size="lg"
                 className="w-full max-w-sm gap-2 sm:w-auto sm:min-w-[16rem]"
+                data-ui-sound="transition_up"
               >
-                <Link to="/dashboard" onClick={() => playUiTransitionUp()}>
+                <Link to="/dashboard">
                   Enter Dashboard
                   <ArrowRight className="size-4" aria-hidden />
                 </Link>
               </Button>
-              <button
+              <Button
                 type="button"
-                className="text-sm font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+                variant="ghost"
+                data-ui-sound="tap"
+                className="h-auto px-2 py-1 text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                 onClick={async () => {
-                  playUiTap()
                   try {
                     await authLogout()
                   } catch {
@@ -111,15 +121,16 @@ export function HomePage() {
                 }}
               >
                 Sign out
-              </button>
+              </Button>
             </>
           ) : (
             <Button
               asChild
               size="lg"
               className="w-full max-w-sm gap-2 sm:w-auto sm:min-w-[14rem]"
+              data-ui-sound="tap"
             >
-              <Link to="/login" onClick={() => playUiTap()}>
+              <Link to="/login">
                 Continue
                 <ArrowRight className="size-4" aria-hidden />
               </Link>

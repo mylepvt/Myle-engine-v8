@@ -23,9 +23,12 @@ import { Button } from '@/components/ui/button'
 import { apiFetch } from '@/lib/api'
 import { authRegister } from '@/lib/auth-api'
 import {
-  playUiButton,
+  playUiCaution,
   playUiCelebration,
-  playUiTap,
+  playUiDisabled,
+  playUiProgressLoop,
+  playUiTransitionDown,
+  stopUiProgressLoop,
 } from '@/lib/ui-sound'
 
 function RequiredMark() {
@@ -83,6 +86,17 @@ export function RegisterPage() {
     }
   }, [searchParams])
 
+  useEffect(() => {
+    if (!submitting) {
+      stopUiProgressLoop()
+      return
+    }
+    playUiProgressLoop()
+    return () => {
+      stopUiProgressLoop()
+    }
+  }, [submitting])
+
   async function refreshUplineLookup(raw: string) {
     const s = raw.trim()
     if (!s) {
@@ -109,20 +123,22 @@ export function RegisterPage() {
     const emailTrim = email.trim()
     const uname = username.trim()
     if (uname.length < 2) {
+      playUiCaution()
       setFormError('Enter your display name (at least 2 characters).')
       return
     }
     const phoneDigits = phone.replace(/\s/g, '').trim()
     if (phoneDigits.length < 10) {
+      playUiCaution()
       setFormError('Enter a valid phone number (at least 10 digits).')
       return
     }
     if (!fboId.trim() || !uplineFboId.trim() || !password || !emailTrim) {
+      playUiDisabled()
       setFormError('Please fill all required fields.')
       return
     }
     setSubmitting(true)
-    playUiButton()
     try {
       const res = await authRegister({
         username: uname,
@@ -137,6 +153,7 @@ export function RegisterPage() {
       setSubmitted(true)
       playUiCelebration()
     } catch (err) {
+      playUiCaution()
       setFormError(err instanceof Error ? err.message : 'Registration failed.')
     } finally {
       setSubmitting(false)
@@ -154,7 +171,7 @@ export function RegisterPage() {
         <Link
           to="/login"
           className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          onClick={() => playUiTap()}
+          onPointerDown={() => playUiTransitionDown()}
         >
           <ArrowLeft className="size-4 shrink-0 opacity-80" aria-hidden />
           Back
@@ -171,6 +188,7 @@ export function RegisterPage() {
               <Link
                 to="/login"
                 className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
+                onPointerDown={() => playUiTransitionDown()}
               >
                 Continue
                 <ArrowRight className="size-3.5" aria-hidden />

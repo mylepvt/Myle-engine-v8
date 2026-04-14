@@ -12,6 +12,7 @@ import { RegisterPage } from '@/pages/RegisterPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { WatchPage } from '@/pages/WatchPage'
 import { t } from '@/lib/i18n'
+import { mountUiSoundGlobals } from '@/lib/ui-sound-globals'
 import { preloadUiSounds } from '@/lib/ui-sound'
 import { cn } from '@/lib/utils'
 
@@ -39,6 +40,7 @@ export function App() {
   useEffect(() => {
     document.title = t('appTitle')
     preloadUiSounds()
+    return mountUiSoundGlobals()
   }, [])
 
   return (

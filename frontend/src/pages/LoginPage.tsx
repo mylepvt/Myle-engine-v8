@@ -20,8 +20,14 @@ import { authDevLogin, authPasswordLogin, DEV_SEED_PASSWORD } from '@/lib/auth-a
 import { fetchAuthMe } from '@/hooks/use-auth-me-query'
 import { DEFAULT_META, useMetaQuery } from '@/hooks/use-meta-query'
 import {
-  playUiButton,
+  playUiCaution,
+  playUiCelebration,
+  playUiDisabled,
+  playUiProgressLoop,
   playUiTap,
+  playUiTransitionDown,
+  playUiTransitionUp,
+  stopUiProgressLoop,
 } from '@/lib/ui-sound'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
@@ -64,9 +70,22 @@ export function LoginPage() {
     }
   }, [meta?.auth_dev_login_enabled])
 
+  useEffect(() => {
+    const busy = pwPending || pending
+    if (!busy) {
+      stopUiProgressLoop()
+      return
+    }
+    playUiProgressLoop()
+    return () => {
+      stopUiProgressLoop()
+    }
+  }, [pwPending, pending])
+
   async function handlePasswordLogin() {
     setError(null)
     if (!password.trim()) {
+      playUiCaution()
       setError(
         devLoginAllowed
           ? `Enter password (dev: ${DEV_SEED_PASSWORD})`
@@ -75,11 +94,11 @@ export function LoginPage() {
       return
     }
     if (!fboId.trim()) {
+      playUiCaution()
       setError('Enter your FBO ID or username.')
       return
     }
     setPwPending(true)
-    playUiButton()
     try {
       await authPasswordLogin(fboId, password, rememberMe)
       await queryClient.resetQueries({ queryKey: ['auth', 'me'] })
@@ -98,9 +117,11 @@ export function LoginPage() {
         window.location.assign(from)
         return
       }
+      playUiCelebration()
       login()
       navigate(from, { replace: true })
     } catch (e) {
+      playUiCaution()
       setError(e instanceof Error ? e.message : 'Could not continue')
     } finally {
       setPwPending(false)
@@ -110,7 +131,6 @@ export function LoginPage() {
   async function handleContinue() {
     setError(null)
     setPending(true)
-    playUiButton()
     try {
       await authDevLogin(role)
       await queryClient.resetQueries({ queryKey: ['auth', 'me'] })
@@ -129,9 +149,11 @@ export function LoginPage() {
         window.location.assign(from)
         return
       }
+      playUiCelebration()
       login()
       navigate(from, { replace: true })
     } catch (e) {
+      playUiCaution()
       setError(e instanceof Error ? e.message : 'Could not continue')
     } finally {
       setPending(false)
@@ -149,7 +171,7 @@ export function LoginPage() {
         <Link
           to="/"
           className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          onClick={() => playUiTap()}
+          onPointerDown={() => playUiTransitionDown()}
         >
           <ArrowLeft className="size-4 shrink-0 opacity-80" aria-hidden />
           Home
@@ -166,7 +188,7 @@ export function LoginPage() {
               <Link
                 to="/register"
                 className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
-                onClick={() => playUiTap()}
+                onPointerDown={() => playUiTransitionUp()}
               >
                 Register
                 <ArrowRight className="size-3.5" aria-hidden />
@@ -183,7 +205,10 @@ export function LoginPage() {
               <button
                 type="button"
                 className="shrink-0 rounded-md p-1 text-amber-200/90 transition-colors hover:bg-amber-500/20 hover:text-amber-50"
-                onClick={() => setShowGateBanner(false)}
+                onClick={() => {
+                  playUiTap()
+                  setShowGateBanner(false)
+                }}
                 aria-label="Dismiss"
               >
                 <X className="size-4" />
@@ -290,7 +315,10 @@ export function LoginPage() {
                       <button
                         type="button"
                         tabIndex={-1}
-                        onClick={() => setShowPassword((s) => !s)}
+                        onClick={() => {
+                          playUiTap()
+                          setShowPassword((s) => !s)
+                        }}
                         className="flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
                         aria-label={showPassword ? 'Hide password' : 'Show password'}
                       >
@@ -318,7 +346,10 @@ export function LoginPage() {
                 <button
                   type="button"
                   className="text-sm font-semibold text-primary/90 hover:underline"
-                  onClick={(e) => e.preventDefault()}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    playUiDisabled()
+                  }}
                 >
                   Forgot?
                 </button>

@@ -15,6 +15,11 @@ import { useMetaQuery } from '@/hooks/use-meta-query'
 import { useRealtimeInvalidation } from '@/hooks/use-realtime-invalidation'
 import { useSyncRoleFromMe } from '@/hooks/use-sync-role-from-me'
 import { MyleSidebarMark } from '@/components/brand/MyleSidebarMark'
+import {
+  playUiSwipe,
+  playUiTransitionDown,
+  playUiTransitionUp,
+} from '@/lib/ui-sound'
 import { cn } from '@/lib/utils'
 import { authLogout } from '@/lib/auth-api'
 import { apiUrl } from '@/lib/api'
@@ -286,8 +291,14 @@ export function DashboardLayout() {
             className="size-9 shrink-0"
             onClick={() => {
               if (isMobile) {
+                if (mobileMenuOpen) {
+                  playUiTransitionDown()
+                } else {
+                  playUiTransitionUp()
+                }
                 setMobileMenuOpen(!mobileMenuOpen)
               } else {
+                playUiSwipe()
                 toggleSidebar()
               }
             }}
