@@ -9,9 +9,12 @@ test.describe('happy path (mocked API)', () => {
 
   test('dev login → dashboard home → leads → change stage', async ({ page }) => {
     await page.goto('/login')
-    await expect(page.getByText(/Sign in to your account/i)).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: /Welcome back/i }),
+    ).toBeVisible()
 
-    await page.getByRole('button', { name: /Continue with preview role/i }).click()
+    // Dev preview block is above the password form; both use "Continue".
+    await page.getByRole('button', { name: /Continue/i }).first().click()
 
     await expect(page).toHaveURL(/\/dashboard\/?$/)
     await expect(page.getByRole('heading', { name: /welcome, e2e/i })).toBeVisible()

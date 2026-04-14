@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect } from 'react'
-import { Route, Routes } from 'react-router-dom'
+import { Route, Routes, useLocation } from 'react-router-dom'
 
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { InstallAppBanner } from '@/components/pwa/InstallAppBanner'
@@ -12,6 +12,9 @@ import { RegisterPage } from '@/pages/RegisterPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { WatchPage } from '@/pages/WatchPage'
 import { t } from '@/lib/i18n'
+import { mountUiSoundGlobals } from '@/lib/ui-sound-globals'
+import { preloadUiSounds } from '@/lib/ui-sound'
+import { cn } from '@/lib/utils'
 
 const DashboardNestedPage = lazy(async () => {
   const m = await import('@/pages/DashboardNestedPage')
@@ -28,12 +31,24 @@ function DashboardRouteFallback() {
 }
 
 export function App() {
+  const location = useLocation()
+  const publicEntry =
+    location.pathname === '/' ||
+    location.pathname === '/login' ||
+    location.pathname === '/register'
+
   useEffect(() => {
     document.title = t('appTitle')
+    preloadUiSounds()
+    return mountUiSoundGlobals()
   }, [])
 
   return (
     <>
+      <div
+        key={publicEntry ? location.pathname : 'app-shell'}
+        className={cn(publicEntry && 'min-h-dvh motion-safe:animate-slide-up')}
+      >
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
@@ -56,6 +71,7 @@ export function App() {
 
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
+      </div>
       <InstallAppBanner />
     </>
   )

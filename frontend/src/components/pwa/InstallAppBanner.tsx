@@ -1,7 +1,9 @@
+import { useEffect } from 'react'
 import { Download, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { usePwaInstall } from '@/hooks/use-pwa-install'
+import { playUiNotification } from '@/lib/ui-sound'
 import { cn } from '@/lib/utils'
 
 /**
@@ -10,6 +12,11 @@ import { cn } from '@/lib/utils'
  */
 export function InstallAppBanner() {
   const { showBanner, promptInstall, dismiss, standalone } = usePwaInstall()
+
+  useEffect(() => {
+    if (standalone || !showBanner) return
+    playUiNotification()
+  }, [standalone, showBanner])
 
   if (standalone || !showBanner) return null
 

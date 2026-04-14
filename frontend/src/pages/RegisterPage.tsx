@@ -22,6 +22,14 @@ import { IconInput } from '@/components/auth/IconInput'
 import { Button } from '@/components/ui/button'
 import { apiFetch } from '@/lib/api'
 import { authRegister } from '@/lib/auth-api'
+import {
+  playUiCaution,
+  playUiCelebration,
+  playUiDisabled,
+  playUiProgressLoop,
+  playUiTransitionDown,
+  stopUiProgressLoop,
+} from '@/lib/ui-sound'
 
 function RequiredMark() {
   return (
@@ -78,6 +86,17 @@ export function RegisterPage() {
     }
   }, [searchParams])
 
+  useEffect(() => {
+    if (!submitting) {
+      stopUiProgressLoop()
+      return
+    }
+    playUiProgressLoop()
+    return () => {
+      stopUiProgressLoop()
+    }
+  }, [submitting])
+
   async function refreshUplineLookup(raw: string) {
     const s = raw.trim()
     if (!s) {
@@ -104,15 +123,18 @@ export function RegisterPage() {
     const emailTrim = email.trim()
     const uname = username.trim()
     if (uname.length < 2) {
+      playUiCaution()
       setFormError('Enter your display name (at least 2 characters).')
       return
     }
     const phoneDigits = phone.replace(/\s/g, '').trim()
     if (phoneDigits.length < 10) {
+      playUiCaution()
       setFormError('Enter a valid phone number (at least 10 digits).')
       return
     }
     if (!fboId.trim() || !uplineFboId.trim() || !password || !emailTrim) {
+      playUiDisabled()
       setFormError('Please fill all required fields.')
       return
     }
@@ -129,7 +151,9 @@ export function RegisterPage() {
       })
       setSuccessMessage(res.message ?? 'Registration submitted! Your account is pending admin approval.')
       setSubmitted(true)
+      playUiCelebration()
     } catch (err) {
+      playUiCaution()
       setFormError(err instanceof Error ? err.message : 'Registration failed.')
     } finally {
       setSubmitting(false)
@@ -147,9 +171,10 @@ export function RegisterPage() {
         <Link
           to="/login"
           className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          onPointerDown={() => playUiTransitionDown()}
         >
           <ArrowLeft className="size-4 shrink-0 opacity-80" aria-hidden />
-          Back to sign in
+          Back
         </Link>
 
         <AuthCard
@@ -159,12 +184,13 @@ export function RegisterPage() {
           subtitle="Submit your registration request"
           footer={
             <p className="text-sm text-muted-foreground">
-              Already have an account?{' '}
+              Already in?{' '}
               <Link
                 to="/login"
                 className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
+                onPointerDown={() => playUiTransitionDown()}
               >
-                Sign In
+                Continue
                 <ArrowRight className="size-3.5" aria-hidden />
               </Link>
             </p>
@@ -177,13 +203,13 @@ export function RegisterPage() {
             >
               <p className="font-medium text-foreground">{successMessage}</p>
               <p className="mt-2 text-muted-foreground">
-                You can sign in after an admin approves your account.
+                We&apos;ll notify you when you can continue.
               </p>
               <Link
                 to="/login"
                 className="mt-3 inline-flex items-center justify-center gap-1 font-semibold text-primary hover:underline"
               >
-                Back to sign in
+                Back to entry
                 <ArrowRight className="size-3.5" aria-hidden />
               </Link>
             </div>
@@ -191,7 +217,8 @@ export function RegisterPage() {
           <form className="space-y-6" onSubmit={(e) => void handleSubmit(e)} noValidate>
             {formError ? (
               <div
-                className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-center text-sm text-destructive"
+                key={formError}
+                className="animate-shake rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-center text-sm text-destructive"
                 role="alert"
               >
                 {formError}
@@ -200,8 +227,8 @@ export function RegisterPage() {
             <div className="space-y-3.5">
               <SectionTitle>Account</SectionTitle>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                Sign in with your <strong className="font-semibold text-foreground">FBO ID</strong> and password.
-                Display name is how you appear in the app (can match other members).
+                You&apos;ll use <strong className="font-semibold text-foreground">FBO ID</strong> and password to
+                continue. Display name is how you show up in the app.
               </p>
               <div>
                 <label

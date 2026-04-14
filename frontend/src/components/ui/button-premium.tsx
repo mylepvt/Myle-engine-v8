@@ -3,6 +3,7 @@ import { Slot } from '@radix-ui/react-slot'
 import * as React from 'react'
 
 import { type ButtonVariantProps, buttonVariants } from '@/components/ui/button-variants'
+import { emitUiSound, resolveButtonPointerSound } from '@/lib/ui-sound'
 import { cn } from '@/lib/utils'
 
 export type PremiumButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
@@ -12,6 +13,8 @@ export type PremiumButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
     loadingText?: string
     showRipple?: boolean
     glowOnHover?: boolean
+    'data-ui-sound'?: string
+    'data-ui-silent'?: boolean | ''
   }
 
 const PremiumButton = React.forwardRef<HTMLButtonElement, PremiumButtonProps>(
@@ -28,6 +31,9 @@ const PremiumButton = React.forwardRef<HTMLButtonElement, PremiumButtonProps>(
       children,
       disabled,
       onClick,
+      type = 'button',
+      'data-ui-sound': dataUiSound,
+      'data-ui-silent': dataUiSilent,
       ...props
     },
     ref
@@ -38,6 +44,16 @@ const PremiumButton = React.forwardRef<HTMLButtonElement, PremiumButtonProps>(
     >([])
 
     const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+      if (!isLoading && !disabled) {
+        const sk = resolveButtonPointerSound({
+          variant,
+          type,
+          disabled: Boolean(disabled),
+          'data-ui-sound': dataUiSound,
+          'data-ui-silent': dataUiSilent,
+        })
+        if (sk) emitUiSound(sk)
+      }
       if (showRipple && !isLoading && !disabled) {
         const rect = e.currentTarget.getBoundingClientRect()
         const x = e.clientX - rect.left
@@ -66,8 +82,11 @@ const PremiumButton = React.forwardRef<HTMLButtonElement, PremiumButtonProps>(
           'disabled:pointer-events-none disabled:opacity-50'
         )}
         ref={ref}
+        type={asChild ? undefined : type}
         disabled={disabled || isLoading}
         onClick={handleClick}
+        data-ui-sound={dataUiSound}
+        data-ui-silent={dataUiSilent}
         {...props}
       >
         {/* Ripple effects */}

@@ -4,6 +4,8 @@ test.describe('smoke', () => {
   test('login route renders and document has app title', async ({ page }) => {
     await page.goto('/login')
     await expect(page).toHaveTitle(/Myle/i)
-    await expect(page.getByText(/Sign in to your account/i)).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: /Welcome back/i }),
+    ).toBeVisible()
   })
 })
