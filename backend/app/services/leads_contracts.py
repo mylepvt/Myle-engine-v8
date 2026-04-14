@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
+from app.api.deps import AuthUser
 from app.models.call_event import CallEvent
 from app.models.lead import Lead
 from app.schemas.call_events import CallEventCreate
@@ -9,6 +10,8 @@ from app.schemas.leads import LeadCreate
 
 
 class LeadsRepositoryContract(Protocol):
+    async def can_access_lead(self, user: AuthUser, lead: Lead) -> bool: ...
+    async def can_mutate_lead(self, user: AuthUser, lead: Lead) -> bool: ...
     async def get_lead(self, lead_id: int) -> Lead | None: ...
     async def get_lead_for_update(self, lead_id: int) -> Lead | None: ...
     async def count_leads(self, condition: Any) -> int: ...

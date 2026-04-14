@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
@@ -18,6 +19,15 @@ from app.schemas.payments import PaymentProofResponse
 from app.services.payment_service import PaymentService
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+
+def _internal_server_error(message: str, exc: Exception) -> HTTPException:
+    logger.exception(message, exc_info=exc)
+    return HTTPException(
+        status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail="Internal server error",
+    )
 
 
 @router.post("/payments/proof/upload", response_model=PaymentProofResponse)
@@ -65,10 +75,7 @@ async def upload_payment_proof(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to upload payment proof: {str(e)}",
-        )
+        raise _internal_server_error("Failed to upload payment proof", e)
 
 
 @router.post("/payments/proof/approve")
@@ -102,10 +109,7 @@ async def approve_payment_proof(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to approve payment proof: {str(e)}",
-        )
+        raise _internal_server_error("Failed to approve payment proof", e)
 
 
 @router.post("/payments/proof/reject")
@@ -141,10 +145,7 @@ async def reject_payment_proof(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to reject payment proof: {str(e)}",
-        )
+        raise _internal_server_error("Failed to reject payment proof", e)
 
 
 @router.get("/payments/proof/pending")
@@ -159,8 +160,5 @@ async def get_pending_payment_proofs(
     try:
         return await service.get_pending_payment_proofs(user.user_id, user.role)
     except Exception as e:
-        raise HTTPException(
-            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get pending payments: {str(e)}",
-        )
+        raise _internal_server_error("Failed to fetch pending payment proofs", e)
 
