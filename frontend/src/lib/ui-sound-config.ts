@@ -5,14 +5,19 @@
  * because Web Audio woke up). Keep in a range that is clearly audible but not harsh.
  * With masterGain ≈ 0.78, effective peak ≈ gain × 0.78.
  */
+/**
+ * Audio gains tuned for professional MP3 samples.
+ * MP3s are pre-mastered, so gains can be lower while sounding louder.
+ * Master gain is 0.78, effective peak = gain × 0.78.
+ */
 export const UI_SOUND_GAIN = {
-  tap: 0.22,
-  nav: 0.16,
-  success: 0.38,
-  error: 0.24,
-  warning: 0.2,
-  delete: 0.18,
-  paymentChime: 0.42,
+  tap: 0.18,        // Reduced - MP3 tap is naturally loud
+  nav: 0.14,        // Reduced - professional sample
+  success: 0.32,    // Reduced - pre-mastered sounds louder
+  error: 0.20,      // Reduced - MP3 is punchy
+  warning: 0.18,    // Reduced 
+  delete: 0.16,     // Reduced - nice pop already in MP3
+  paymentChime: 0.36, // Reduced - professional chime
   paymentCashBed: 0.08,
 } as const
 

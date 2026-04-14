@@ -1,3 +1,4 @@
+import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
@@ -8,7 +9,7 @@ interface LeaderboardTableProps {
   isLoading: boolean
 }
 
-export default function LeaderboardTable({ leaderboard, isLoading }: LeaderboardTableProps) {
+function LeaderboardTableContent({ leaderboard, isLoading }: LeaderboardTableProps) {
   if (isLoading) {
     return (
       <Card>
@@ -65,3 +66,5 @@ export default function LeaderboardTable({ leaderboard, isLoading }: Leaderboard
     </Card>
   )
 }
+
+export default React.memo(LeaderboardTableContent)

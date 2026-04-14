@@ -107,6 +107,11 @@ export async function playUiSatisfactionSound(opts?: UiSoundScheduleOpts): Promi
 
 export async function playUiSuccessSound(opts?: UiSoundScheduleOpts): Promise<void> {
   const d = lag(opts)
+  // MP3 provides much better audio quality than sine synthesis
+  await playSuccessSample()
+  return
+  
+  // Fallback to synthesis if MP3 unavailable:
   const ac = await ready()
   if (!ac) {
     htmlLater('success', 0.48, d)
@@ -243,6 +248,11 @@ export async function playUiDeleteSound(opts?: UiSoundScheduleOpts): Promise<voi
 
 export async function playUiNotificationSound(opts?: UiSoundScheduleOpts): Promise<void> {
   const d = lag(opts)
+  // Use professional notification sound
+  await playNotifySample()
+  return
+  
+  // Fallback to synthesis:
   const ac = await ready()
   if (!ac) {
     htmlLater('notify', 0.45, d)
