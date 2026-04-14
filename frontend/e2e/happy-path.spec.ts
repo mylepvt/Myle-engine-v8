@@ -20,8 +20,9 @@ test.describe('happy path (mocked API)', () => {
     await expect(page.getByRole('heading', { name: /^All Leads$/i })).toBeVisible()
     await expect(page.getByRole('link', { name: 'E2E Lead' })).toBeVisible()
 
-    const statusSelect = page.getByLabel(/Status for E2E Lead/i)
-    await statusSelect.selectOption('contacted')
-    await expect(statusSelect).toHaveValue('contacted')
+    const stageBtn = page.getByRole('button', { name: /Stage for E2E Lead/i })
+    await stageBtn.click()
+    await page.getByRole('listbox', { name: /Status for E2E Lead/i }).getByRole('option', { name: /^Contacted$/ }).click()
+    await expect(stageBtn).toContainText('Contacted')
   })
 })

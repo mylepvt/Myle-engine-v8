@@ -42,5 +42,8 @@ export function useWorkboardQuery(enabled: boolean) {
     queryKey: ['workboard'],
     queryFn: fetchWorkboard,
     enabled,
+    // Board payloads can be large; avoid refetch churn competing with scroll/interaction.
+    staleTime: 45_000,
+    refetchOnWindowFocus: false,
   })
 }

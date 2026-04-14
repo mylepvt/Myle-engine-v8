@@ -35,6 +35,12 @@ export function FollowUpsWorkPage({ title }: Props) {
   const createMut = useCreateFollowUpMutation()
   const patchMut = usePatchFollowUpMutation()
   const delMut = useDeleteFollowUpMutation()
+  const patchBusyFollowUpId =
+    patchMut.isPending && patchMut.variables && typeof patchMut.variables.id === 'number'
+      ? patchMut.variables.id
+      : null
+  const deleteBusyFollowUpId =
+    delMut.isPending && typeof delMut.variables === 'number' ? delMut.variables : null
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault()
@@ -172,7 +178,7 @@ export function FollowUpsWorkPage({ title }: Props) {
                         type="button"
                         size="sm"
                         variant="secondary"
-                        disabled={patchMut.isPending}
+                        disabled={patchBusyFollowUpId === f.id}
                         onClick={() => void patchMut.mutateAsync({ id: f.id, body: { completed: false } })}
                       >
                         Reopen
@@ -182,7 +188,7 @@ export function FollowUpsWorkPage({ title }: Props) {
                         type="button"
                         size="sm"
                         variant="outline"
-                        disabled={patchMut.isPending}
+                        disabled={patchBusyFollowUpId === f.id}
                         onClick={() => void patchMut.mutateAsync({ id: f.id, body: { completed: true } })}
                       >
                         Done
@@ -193,7 +199,7 @@ export function FollowUpsWorkPage({ title }: Props) {
                       size="sm"
                       variant="ghost"
                       className="text-destructive"
-                      disabled={delMut.isPending}
+                      disabled={deleteBusyFollowUpId === f.id}
                       onClick={() => void delMut.mutateAsync(f.id)}
                     >
                       Delete

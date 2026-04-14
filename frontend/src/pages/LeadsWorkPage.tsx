@@ -1,17 +1,9 @@
-import { type FormEvent, useEffect, useState } from 'react'
+import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
-import { LeadContactActions } from '@/components/leads/LeadContactActions'
+import { LeadsVirtualizedBody } from '@/components/leads/LeadsVirtualizedBody'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import {
   LEAD_STATUS_GROUPS,
   LEAD_STATUS_OPTIONS,
@@ -32,10 +24,6 @@ type Props = {
 }
 
 const emptyFilters: LeadListFilters = { q: '', status: '' }
-
-function statusLabel(value: string): string {
-  return LEAD_STATUS_OPTIONS.find((o) => o.value === value)?.label ?? value
-}
 
 function emptyListHint(role: Role | null, archivedOnly: boolean): string {
   if (archivedOnly) {
@@ -84,6 +72,29 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const createMut = useCreateLeadMutation()
   const deleteMut = useDeleteLeadMutation()
   const patchMut = usePatchLeadMutation()
+  const patchBusyLeadId =
+    patchMut.isPending && patchMut.variables && typeof patchMut.variables.id === 'number'
+      ? patchMut.variables.id
+      : null
+  const deleteBusyLeadId =
+    deleteMut.isPending && typeof deleteMut.variables === 'number' ? deleteMut.variables : null
+
+  const onPatchStatus = useCallback(
+    (id: number, status: LeadStatus) => void patchMut.mutateAsync({ id, body: { status } }),
+    [patchMut.mutateAsync],
+  )
+  const onPatchPool = useCallback(
+    (id: number) => void patchMut.mutateAsync({ id, body: { in_pool: true } }),
+    [patchMut.mutateAsync],
+  )
+  const onPatchArchive = useCallback(
+    (id: number, archived: boolean) => void patchMut.mutateAsync({ id, body: { archived } }),
+    [patchMut.mutateAsync],
+  )
+  const onDeleteLead = useCallback(
+    (id: number) => void deleteMut.mutateAsync(id),
+    [deleteMut.mutateAsync],
+  )
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault()
@@ -136,7 +147,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
             value={qInput}
             onChange={(e) => setQInput(e.target.value)}
             placeholder="Substring match…"
-            className="w-full rounded-md border border-white/12 bg-white/[0.05] backdrop-blur-sm px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+            className="w-full rounded-md border border-white/12 bg-white/[0.08] px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
           />
         </div>
         <div className="min-w-[10rem]">
@@ -153,7 +164,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                 status: e.target.value === '' ? '' : (e.target.value as LeadStatus),
               }))
             }
-            className="w-full max-w-full rounded-md border border-white/12 bg-white/[0.05] backdrop-blur-sm px-2 py-2 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 sm:px-3 sm:text-sm"
+            className="w-full max-w-full rounded-md border border-white/12 bg-white/[0.08] px-2 py-2 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 sm:px-3 sm:text-sm"
           >
             <option value="">All statuses</option>
             {LEAD_STATUS_GROUPS.map((g) => (
@@ -189,7 +200,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Acme Corp"
                 disabled={createMut.isPending}
-                className="w-full rounded-md border border-white/12 bg-white/[0.05] backdrop-blur-sm px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+                className="w-full rounded-md border border-white/12 bg-white/[0.08] px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
               />
             </div>
             <div className="min-w-[10rem]">
@@ -201,7 +212,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                 value={newStatus}
                 onChange={(e) => setNewStatus(e.target.value as LeadStatus)}
                 disabled={createMut.isPending}
-                className="w-full rounded-md border border-white/12 bg-white/[0.05] backdrop-blur-sm px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+                className="w-full rounded-md border border-white/12 bg-white/[0.08] px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
               >
                 {LEAD_STATUS_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -255,137 +266,18 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
           {items.length === 0 ? (
             <p>{emptyListHint(role ?? null, archivedOnly)}</p>
           ) : (
-            <div className="-mx-1 max-w-full overflow-x-auto">
-            <Table className="min-w-[880px] table-fixed">
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-[4.5rem] text-right tabular-nums text-muted-foreground">
-                    ID
-                  </TableHead>
-                  <TableHead className="min-w-[10rem] text-foreground">Name</TableHead>
-                  <TableHead className="w-[min(13rem,28vw)] text-foreground">Phone</TableHead>
-                  <TableHead className="w-[min(14rem,26vw)] text-foreground">Stage</TableHead>
-                  <TableHead className="w-[10rem] text-right text-foreground">Created</TableHead>
-                  {archivedOnly ? (
-                    <TableHead className="w-[10rem] text-right text-foreground">Archived</TableHead>
-                  ) : null}
-                  <TableHead className="w-[min(18rem,40%)] text-right text-foreground">
-                    Actions
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map((l) => (
-                  <TableRow key={l.id} className="align-middle">
-                    <TableCell className="text-right tabular-nums text-muted-foreground">{l.id}</TableCell>
-                    <TableCell className="min-w-0 font-medium text-foreground">
-                      <Link
-                        to={`/dashboard/work/leads/${l.id}`}
-                        className="block truncate text-foreground hover:text-primary hover:underline underline-offset-2"
-                      >
-                        {l.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="min-w-0 align-middle">
-                      {l.phone?.trim() ? (
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="min-w-0 truncate text-xs tabular-nums text-foreground">{l.phone}</span>
-                          <LeadContactActions phone={l.phone} className="shrink-0" />
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="min-w-0">
-                      {!archivedOnly ? (
-                        <select
-                          aria-label={`Status for ${l.name}`}
-                          data-ui-silent
-                          value={l.status}
-                          disabled={patchMut.isPending}
-                          onChange={(e) => {
-                            const v = e.target.value as LeadStatus
-                            void patchMut.mutateAsync({ id: l.id, body: { status: v } })
-                          }}
-                          className="w-full max-w-full rounded-md border border-white/12 bg-white/[0.05] px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
-                        >
-                          {LEAD_STATUS_OPTIONS.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span className="text-sm text-foreground">{statusLabel(l.status)}</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-right text-xs text-muted-foreground">
-                      {new Date(l.created_at).toLocaleString(undefined, {
-                        dateStyle: 'short',
-                        timeStyle: 'short',
-                      })}
-                    </TableCell>
-                    {archivedOnly ? (
-                      <TableCell className="whitespace-nowrap text-right text-xs text-muted-foreground">
-                        {l.archived_at
-                          ? new Date(l.archived_at).toLocaleString(undefined, {
-                              dateStyle: 'short',
-                              timeStyle: 'short',
-                            })
-                          : '—'}
-                      </TableCell>
-                    ) : null}
-                    <TableCell className="text-right">
-                      <div className="flex flex-wrap items-center justify-end gap-1.5">
-                        {!archivedOnly && role === 'admin' ? (
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            disabled={patchMut.isPending}
-                            title="Move to shared pool for members to claim"
-                            onClick={() => void patchMut.mutateAsync({ id: l.id, body: { in_pool: true } })}
-                          >
-                            To pool
-                          </Button>
-                        ) : null}
-                        {archivedOnly ? (
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            disabled={patchMut.isPending}
-                            onClick={() => void patchMut.mutateAsync({ id: l.id, body: { archived: false } })}
-                          >
-                            Restore
-                          </Button>
-                        ) : (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            disabled={patchMut.isPending}
-                            onClick={() => void patchMut.mutateAsync({ id: l.id, body: { archived: true } })}
-                          >
-                            Archive
-                          </Button>
-                        )}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:text-destructive"
-                          disabled={deleteMut.isPending}
-                          onClick={() => void deleteMut.mutateAsync(l.id)}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <div className="-mx-1 max-w-full overflow-x-auto rounded-md border border-border/50">
+              <LeadsVirtualizedBody
+                items={items}
+                archivedOnly={archivedOnly}
+                role={role ?? null}
+                patchBusyLeadId={patchBusyLeadId}
+                deleteBusyLeadId={deleteBusyLeadId}
+                onPatchStatus={onPatchStatus}
+                onPatchPool={onPatchPool}
+                onPatchArchive={onPatchArchive}
+                onDelete={onDeleteLead}
+              />
             </div>
           )}
           {items.length > 0 && leadsQ.hasNextPage ? (

@@ -4,6 +4,11 @@ import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 
 import { apiBase } from '@/lib/api'
 import { isLowEndDevice } from '@/lib/device-performance'
+import {
+  clearScrollGatePolling,
+  flushRealtimeTopicsOrDefer,
+} from '@/lib/main-scroll-gate'
+import { mergeTopicBatches } from '@/lib/merge-topic-batches'
 
 type InvalidateMsg = { v: number; type: 'invalidate'; topics: string[] }
 
@@ -64,18 +69,25 @@ export function useRealtimeInvalidation(enabled: boolean) {
     let closed = false
     let reconnectTimer: number | undefined
     let debounceTimer: number | undefined
+    const lowEndPending: string[][] = []
     const reconnectMs = isLowEndDevice() ? 8_000 : 3_000
 
     const scheduleTopics = (topics: string[]) => {
-      if (!isLowEndDevice()) {
-        applyTopics(qc, topics)
-        return
+      const deliver = (merged: string[]) => {
+        if (!isLowEndDevice()) {
+          applyTopics(qc, merged)
+          return
+        }
+        lowEndPending.push(merged)
+        if (debounceTimer !== undefined) window.clearTimeout(debounceTimer)
+        debounceTimer = window.setTimeout(() => {
+          debounceTimer = undefined
+          const batch = mergeTopicBatches(lowEndPending)
+          lowEndPending.length = 0
+          applyTopics(qc, batch)
+        }, 450)
       }
-      if (debounceTimer !== undefined) window.clearTimeout(debounceTimer)
-      debounceTimer = window.setTimeout(() => {
-        debounceTimer = undefined
-        applyTopics(qc, topics)
-      }, 450)
+      flushRealtimeTopicsOrDefer(topics, deliver)
     }
 
     const connect = () => {
@@ -111,6 +123,8 @@ export function useRealtimeInvalidation(enabled: boolean) {
       closed = true
       if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer)
       if (debounceTimer !== undefined) window.clearTimeout(debounceTimer)
+      lowEndPending.length = 0
+      clearScrollGatePolling()
       wsRef.current?.close()
       wsRef.current = null
     }

@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { type ReactElement, memo, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Video, Pencil, Search, CheckSquare } from 'lucide-react'
+import { List, type RowComponentProps } from 'react-window'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -95,7 +96,7 @@ function IconBtn({ href, onClick, title, colorHover, children }: {
 }
 
 // ── LeadCard (team / leader / closing tab) ─────────────────────────────────────
-function LeadCard({ lead, pm }: { lead: LeadPublic; pm: PM }) {
+const LeadCard = memo(function LeadCard({ lead, pm, leadPatchBusy }: { lead: LeadPublic; pm: PM; leadPatchBusy: boolean }) {
   const badge = BADGE[lead.status] ?? 'bg-muted/30 text-muted-foreground border-white/10'
   const isWatched = lead.status === 'video_watched' || lead.call_status === 'video_watched'
   const isSent    = !isWatched && (lead.status === 'video_sent' || lead.call_status === 'video_sent')
@@ -110,9 +111,13 @@ function LeadCard({ lead, pm }: { lead: LeadPublic; pm: PM }) {
       </div>
       {isWatched && <div className="rounded-md bg-blue-400/10 px-2 py-1 text-[0.7rem] font-medium text-blue-300">👀 Prospect watched the video — call now!</div>}
       {isSent    && <div className="rounded-md bg-indigo-400/10 px-2 py-1 text-[0.7rem] font-medium text-indigo-300">📤 Video sent — waiting for response</div>}
-      <select value={lead.call_status ?? 'not_called'} disabled={pm.isPending}
+      <select
+        value={lead.call_status ?? 'not_called'}
+        disabled={leadPatchBusy}
+        aria-label={`Call status for ${lead.name}`}
         onChange={(e) => void pm.mutateAsync({ id: lead.id, body: { call_status: e.target.value } })}
-        className="min-w-0 flex-1 rounded-md border border-white/12 bg-white/[0.05] px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35">
+        className="min-w-0 flex-1 rounded-md border border-white/12 bg-white/[0.05] px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+      >
         {CALL_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
       <div className="flex items-center gap-1.5">
@@ -128,11 +133,11 @@ function LeadCard({ lead, pm }: { lead: LeadPublic; pm: PM }) {
       </div>
     </article>
   )
-}
+})
 
 // ── AdminLeadCard (day tabs) ───────────────────────────────────────────────────
-function AdminLeadCard({ lead, dayKey, pm, onMoveNext, nextLabel }: {
-  lead: LeadPublic; dayKey: 1|2|3; pm: PM; onMoveNext?: () => void; nextLabel?: string
+const AdminLeadCard = memo(function AdminLeadCard({ lead, dayKey, pm, leadPatchBusy, onMoveNext, nextLabel }: {
+  lead: LeadPublic; dayKey: 1|2|3; pm: PM; leadPatchBusy: boolean; onMoveNext?: () => void; nextLabel?: string
 }) {
   const batchSlots = dayKey === 1
     ? (['d1_morning', 'd1_afternoon', 'd1_evening'] as const)
@@ -178,7 +183,7 @@ function AdminLeadCard({ lead, dayKey, pm, onMoveNext, nextLabel }: {
               const slot = (['M', 'A', 'E'] as const)[i]
               const slotDone = lead[slotKey]
               return (
-                <button key={slotKey} type="button" disabled={pm.isPending || done}
+                <button key={slotKey} type="button" disabled={leadPatchBusy || done}
                   onClick={() => void pm.mutateAsync({ id: lead.id, body: { [slotKey]: true } })}
                   className={cn('flex h-6 w-6 items-center justify-center rounded text-[0.65rem] font-semibold transition',
                     slotDone || done ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-400'
@@ -188,7 +193,7 @@ function AdminLeadCard({ lead, dayKey, pm, onMoveNext, nextLabel }: {
               )
             })
           : (['M','A','E'] as const).map((slot) => (
-              <button key={slot} type="button" disabled={pm.isPending || done || !patchKey}
+              <button key={slot} type="button" disabled={leadPatchBusy || done || !patchKey}
                 onClick={() => void pm.mutateAsync({ id: lead.id, body: { [patchKey!]: true } })}
                 className={cn('flex h-6 w-6 items-center justify-center rounded text-[0.65rem] font-semibold transition',
                   done ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-400'
@@ -200,7 +205,7 @@ function AdminLeadCard({ lead, dayKey, pm, onMoveNext, nextLabel }: {
       {showDay2TestSend && (
         <button
           type="button"
-          disabled={pm.isPending}
+          disabled={leadPatchBusy}
           onClick={() => void handleSendDay2Test()}
           className="mt-0.5 rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-[0.7rem] font-semibold text-emerald-300 transition hover:bg-emerald-400/20 disabled:opacity-50"
         >
@@ -208,27 +213,253 @@ function AdminLeadCard({ lead, dayKey, pm, onMoveNext, nextLabel }: {
         </button>
       )}
       {done && onMoveNext &&
-        <button type="button" disabled={pm.isPending} onClick={onMoveNext}
+        <button type="button" disabled={leadPatchBusy} onClick={onMoveNext}
           className="mt-0.5 rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-[0.7rem] font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50">
           {nextLabel ?? 'Move to next stage →'}
         </button>}
     </article>
   )
+})
+
+const LEAD_CARD_ROW = 138
+const ADMIN_CARD_ROW = 198
+
+function leadsForColumn<T>(items: T[], colIndex: number, columnCount: number): T[] {
+  const out: T[] = []
+  for (let i = colIndex; i < items.length; i += columnCount) {
+    out.push(items[i])
+  }
+  return out
 }
 
-// ── Grid section helper ────────────────────────────────────────────────────────
-function Grid({ leads, pm, empty }: { leads: LeadPublic[]; pm: PM; empty?: string }) {
-  if (leads.length === 0)
-    return <p className="rounded-lg border border-dashed border-white/12 px-3 py-8 text-center text-xs text-muted-foreground">{empty ?? 'No leads'}</p>
+function useBoardColumnCount(): number {
+  const [n, setN] = useState(() => {
+    if (typeof window === 'undefined') return 3
+    const w = window.innerWidth
+    if (w < 640) return 1
+    if (w < 1024) return 2
+    return 3
+  })
+  useEffect(() => {
+    const q = () => {
+      const w = window.innerWidth
+      if (w < 640) setN(1)
+      else if (w < 1024) setN(2)
+      else setN(3)
+    }
+    window.addEventListener('resize', q)
+    return () => window.removeEventListener('resize', q)
+  }, [])
+  return n
+}
+
+type LeadColData = { colLeads: LeadPublic[]; pm: PM; patchBusyLeadId: number | null }
+
+function LeadColRow(props: RowComponentProps<LeadColData>): ReactElement | null {
+  const { index, style, ariaAttributes, colLeads, pm, patchBusyLeadId } = props
+  const lead = colLeads[index]
+  if (!lead) return null
   return (
-    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-      {leads.map((l) => <LeadCard key={l.id} lead={l} pm={pm}/>)}
+    <div {...ariaAttributes} style={style} className="box-border px-0.5 pb-2">
+      <LeadCard lead={lead} pm={pm} leadPatchBusy={patchBusyLeadId === lead.id} />
     </div>
   )
 }
 
+const VirtualLeadColumn = memo(function VirtualLeadColumn({
+  colLeads,
+  height,
+  pm,
+  patchBusyLeadId,
+}: {
+  colLeads: LeadPublic[]
+  height: number
+  pm: PM
+  patchBusyLeadId: number | null
+}) {
+  const itemData = useMemo(
+    () => ({ colLeads, pm, patchBusyLeadId }),
+    [colLeads, pm, patchBusyLeadId],
+  )
+  if (colLeads.length === 0) return <div className="min-h-0 min-w-0 flex-1" />
+  return (
+    <div className="min-h-0 min-w-0 flex-1">
+      <List<LeadColData>
+        rowCount={colLeads.length}
+        rowHeight={LEAD_CARD_ROW}
+        rowComponent={LeadColRow}
+        rowProps={itemData}
+        overscanCount={4}
+        style={{ height, width: '100%' }}
+      />
+    </div>
+  )
+})
+
+function VirtualLeadGrid({
+  leads,
+  pm,
+  patchBusyLeadId,
+  empty,
+}: {
+  leads: LeadPublic[]
+  pm: PM
+  patchBusyLeadId: number | null
+  empty?: string
+}) {
+  const cols = useBoardColumnCount()
+  const colArrays = useMemo(
+    () => Array.from({ length: cols }, (_, c) => leadsForColumn(leads, c, cols)),
+    [leads, cols],
+  )
+  const maxCol = Math.max(1, ...colArrays.map((c) => c.length))
+  const listHeight = Math.min(520, Math.max(LEAD_CARD_ROW, maxCol * LEAD_CARD_ROW))
+
+  if (leads.length === 0) {
+    return (
+      <p className="rounded-lg border border-dashed border-white/12 px-3 py-8 text-center text-xs text-muted-foreground">
+        {empty ?? 'No leads'}
+      </p>
+    )
+  }
+
+  return (
+    <div className="flex w-full gap-2" style={{ height: listHeight }}>
+      {colArrays.map((colLeads, ci) => (
+        <VirtualLeadColumn
+          key={ci}
+          colLeads={colLeads}
+          height={listHeight}
+          pm={pm}
+          patchBusyLeadId={patchBusyLeadId}
+        />
+      ))}
+    </div>
+  )
+}
+
+type AdminColData = {
+  colLeads: LeadPublic[]
+  dayKey: 1 | 2 | 3
+  nextStatus?: LeadStatus
+  nextLabel?: string
+  pm: PM
+  patchBusyLeadId: number | null
+}
+
+function AdminColRow(props: RowComponentProps<AdminColData>): ReactElement | null {
+  const { index, style, ariaAttributes, colLeads, dayKey, nextStatus, nextLabel, pm, patchBusyLeadId } = props
+  const lead = colLeads[index]
+  if (!lead) return null
+  const onMoveNext = nextStatus
+    ? () => void pm.mutateAsync({ id: lead.id, body: { status: nextStatus } })
+    : undefined
+  return (
+    <div {...ariaAttributes} style={style} className="box-border px-0.5 pb-2">
+      <AdminLeadCard
+        lead={lead}
+        dayKey={dayKey}
+        pm={pm}
+        leadPatchBusy={patchBusyLeadId === lead.id}
+        onMoveNext={onMoveNext}
+        nextLabel={nextLabel}
+      />
+    </div>
+  )
+}
+
+const VirtualAdminColumn = memo(function VirtualAdminColumn({
+  colLeads,
+  height,
+  dayKey,
+  nextStatus,
+  nextLabel,
+  pm,
+  patchBusyLeadId,
+}: {
+  colLeads: LeadPublic[]
+  height: number
+  dayKey: 1 | 2 | 3
+  nextStatus?: LeadStatus
+  nextLabel?: string
+  pm: PM
+  patchBusyLeadId: number | null
+}) {
+  const itemData = useMemo(
+    () => ({ colLeads, dayKey, nextStatus, nextLabel, pm, patchBusyLeadId }),
+    [colLeads, dayKey, nextStatus, nextLabel, pm, patchBusyLeadId],
+  )
+  if (colLeads.length === 0) return <div className="min-h-0 min-w-0 flex-1" />
+  return (
+    <div className="min-h-0 min-w-0 flex-1">
+      <List<AdminColData>
+        rowCount={colLeads.length}
+        rowHeight={ADMIN_CARD_ROW}
+        rowComponent={AdminColRow}
+        rowProps={itemData}
+        overscanCount={3}
+        style={{ height, width: '100%' }}
+      />
+    </div>
+  )
+})
+
+function VirtualAdminLeadGrid({
+  leads,
+  dayKey,
+  nextStatus,
+  nextLabel,
+  pm,
+  patchBusyLeadId,
+}: {
+  leads: LeadPublic[]
+  dayKey: 1 | 2 | 3
+  nextStatus?: LeadStatus
+  nextLabel?: string
+  pm: PM
+  patchBusyLeadId: number | null
+}) {
+  const cols = useBoardColumnCount()
+  const colArrays = useMemo(
+    () => Array.from({ length: cols }, (_, c) => leadsForColumn(leads, c, cols)),
+    [leads, cols],
+  )
+  const maxCol = Math.max(1, ...colArrays.map((c) => c.length))
+  const listHeight = Math.min(520, Math.max(ADMIN_CARD_ROW, maxCol * ADMIN_CARD_ROW))
+
+  if (leads.length === 0) {
+    return (
+      <p className="rounded-lg border border-dashed border-white/12 px-3 py-8 text-center text-xs text-muted-foreground">
+        No leads
+      </p>
+    )
+  }
+
+  return (
+    <div className="flex w-full gap-2" style={{ height: listHeight }}>
+      {colArrays.map((colLeads, ci) => (
+        <VirtualAdminColumn
+          key={ci}
+          colLeads={colLeads}
+          height={listHeight}
+          dayKey={dayKey}
+          nextStatus={nextStatus}
+          nextLabel={nextLabel}
+          pm={pm}
+          patchBusyLeadId={patchBusyLeadId}
+        />
+      ))}
+    </div>
+  )
+}
+
+// ── Grid section helper ────────────────────────────────────────────────────────
+function Grid({ leads, pm, patchBusyLeadId, empty }: { leads: LeadPublic[]; pm: PM; patchBusyLeadId: number | null; empty?: string }) {
+  return <VirtualLeadGrid leads={leads} pm={pm} patchBusyLeadId={patchBusyLeadId} empty={empty} />
+}
+
 // ── TeamView ───────────────────────────────────────────────────────────────────
-function TeamView({ cols, pm, search }: { cols: Col[]; pm: PM; search: string }) {
+function TeamView({ cols, pm, patchBusyLeadId, search }: { cols: Col[]; pm: PM; patchBusyLeadId: number | null; search: string }) {
   const [tab, setTab] = useState<'enrollment'|'onhold'>('enrollment')
   const callsRef = useRef<HTMLDivElement>(null)
   const videosRef = useRef<HTMLDivElement>(null)
@@ -289,7 +520,7 @@ function TeamView({ cols, pm, search }: { cols: Col[]; pm: PM; search: string })
             return (
               <div key={s} className="space-y-2" ref={ref as React.RefObject<HTMLDivElement>|undefined}>
                 <h3 className="text-sm font-semibold text-muted-foreground">{slabel(s)}</h3>
-                <Grid leads={items} pm={pm}/>
+                <Grid leads={items} pm={pm} patchBusyLeadId={patchBusyLeadId} />
               </div>
             )
           })}
@@ -301,7 +532,7 @@ function TeamView({ cols, pm, search }: { cols: Col[]; pm: PM; search: string })
             return (
               <div key={s} className="space-y-2">
                 <h3 className="text-sm font-semibold text-muted-foreground">{slabel(s)}</h3>
-                <Grid leads={items} pm={pm}/>
+                <Grid leads={items} pm={pm} patchBusyLeadId={patchBusyLeadId} />
               </div>
             )
           })}
@@ -312,22 +543,24 @@ function TeamView({ cols, pm, search }: { cols: Col[]; pm: PM; search: string })
 }
 
 // ── DayGrid (hoisted outside AdminView to avoid component-in-render) ──────────
-function DayGrid({ leads, dayKey, nextStatus, nextLabel, pm }: {
-  leads: LeadPublic[]; dayKey: 1|2|3; nextStatus?: LeadStatus; nextLabel?: string; pm: PM
+function DayGrid({ leads, dayKey, nextStatus, nextLabel, pm, patchBusyLeadId }: {
+  leads: LeadPublic[]; dayKey: 1|2|3; nextStatus?: LeadStatus; nextLabel?: string; pm: PM; patchBusyLeadId: number | null
 }) {
-  return leads.length === 0
-    ? <p className="rounded-lg border border-dashed border-white/12 px-3 py-8 text-center text-xs text-muted-foreground">No leads</p>
-    : <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {leads.map((l) =>
-          <AdminLeadCard key={l.id} lead={l} dayKey={dayKey} pm={pm}
-            nextLabel={nextLabel}
-            onMoveNext={nextStatus ? () => void pm.mutateAsync({ id: l.id, body: { status: nextStatus } }) : undefined}/>)}
-      </div>
+  return (
+    <VirtualAdminLeadGrid
+      leads={leads}
+      dayKey={dayKey}
+      nextStatus={nextStatus}
+      nextLabel={nextLabel}
+      pm={pm}
+      patchBusyLeadId={patchBusyLeadId}
+    />
+  )
 }
 
 // ── AdminView ──────────────────────────────────────────────────────────────────
 type ATab = 'day1'|'day2'|'day3'|'closing'
-function AdminView({ cols, pm, search }: { cols: Col[]; pm: PM; search: string }) {
+function AdminView({ cols, pm, patchBusyLeadId, search }: { cols: Col[]; pm: PM; patchBusyLeadId: number | null; search: string }) {
   const [tab, setTab] = useState<ATab>('day1')
   const byS = Object.fromEntries(cols.map((c) => [c.status, c]))
   const needle = search.trim().toLowerCase()
@@ -341,7 +574,7 @@ function AdminView({ cols, pm, search }: { cols: Col[]; pm: PM; search: string }
   return (
     <div className="space-y-4">
       <Tabs tabs={tabs} active={tab} onChange={(id) => setTab(id as ATab)}/>
-      {tab === 'day1' && <DayGrid leads={day1} dayKey={1} nextStatus="day2" nextLabel="Move to Day 2 →" pm={pm}/>}
+      {tab === 'day1' && <DayGrid leads={day1} dayKey={1} nextStatus="day2" nextLabel="Move to Day 2 →" pm={pm} patchBusyLeadId={patchBusyLeadId} />}
       {tab === 'day2' && (
         <div className="space-y-3">
           {/* Day 2 summary chips */}
@@ -352,7 +585,7 @@ function AdminView({ cols, pm, search }: { cols: Col[]; pm: PM; search: string }
             ].map(([label, count, cls]) =>
               <span key={label as string} className={cn('rounded-full border px-2.5 py-0.5 text-xs font-medium', cls as string)}>{label}: {count}</span>)}
           </div>
-          <DayGrid leads={day2} dayKey={2} nextStatus="interview" nextLabel="Move to Day 3 →" pm={pm}/>
+          <DayGrid leads={day2} dayKey={2} nextStatus="interview" nextLabel="Move to Day 3 →" pm={pm} patchBusyLeadId={patchBusyLeadId} />
         </div>
       )}
       {tab === 'day3' && (
@@ -362,11 +595,18 @@ function AdminView({ cols, pm, search }: { cols: Col[]; pm: PM; search: string }
             return (
               <div key={s} className="space-y-2">
                 <h3 className="text-sm font-semibold text-muted-foreground">{slabel(s)}</h3>
-                {items.length === 0
-                  ? <p className="rounded-lg border border-dashed border-white/12 px-3 py-6 text-center text-xs text-muted-foreground">No leads</p>
-                  : <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                      {items.map((l) => <AdminLeadCard key={l.id} lead={l} dayKey={3} pm={pm}/>)}
-                    </div>}
+                {items.length === 0 ? (
+                  <p className="rounded-lg border border-dashed border-white/12 px-3 py-6 text-center text-xs text-muted-foreground">
+                    No leads
+                  </p>
+                ) : (
+                  <VirtualAdminLeadGrid
+                    leads={items}
+                    dayKey={3}
+                    pm={pm}
+                    patchBusyLeadId={patchBusyLeadId}
+                  />
+                )}
               </div>
             )
           })}
@@ -383,7 +623,7 @@ function AdminView({ cols, pm, search }: { cols: Col[]; pm: PM; search: string }
                   <h3 className="text-sm font-semibold text-muted-foreground">{slabel(s)}</h3>
                   <span className={cn('rounded-full border px-2 py-0.5 text-[0.65rem] font-semibold', badge)}>{items.length}</span>
                 </div>
-                <Grid leads={items} pm={pm} empty="No leads"/>
+                <Grid leads={items} pm={pm} patchBusyLeadId={patchBusyLeadId} empty="No leads" />
               </div>
             )
           })}
@@ -398,6 +638,8 @@ export function WorkboardPage({ title }: Props) {
   const { role } = useDashboardShellRole()
   const { data, isPending, isError, error, refetch } = useWorkboardQuery(true)
   const pm = usePatchLeadMutation()
+  const patchBusyLeadId =
+    pm.isPending && pm.variables && typeof pm.variables.id === 'number' ? pm.variables.id : null
   const [qInput, setQInput] = useState('')
   const [search, setSearch] = useState('')
   useEffect(() => {
@@ -466,8 +708,8 @@ export function WorkboardPage({ title }: Props) {
       {/* Main content */}
       {data && !isPending && (
         role === 'admin'
-          ? <AdminView cols={cols} pm={pm} search={search}/>
-          : <TeamView  cols={cols} pm={pm} search={search}/>
+          ? <AdminView cols={cols} pm={pm} patchBusyLeadId={patchBusyLeadId} search={search} />
+          : <TeamView cols={cols} pm={pm} patchBusyLeadId={patchBusyLeadId} search={search} />
       )}
     </div>
   )

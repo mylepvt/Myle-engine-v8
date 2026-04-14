@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Bell, Home, LogOut, Menu, PanelLeftClose, Search, Settings } from 'lucide-react'
+import { useShallow } from 'zustand/react/shallow'
 
 import { ShellHeaderFeedbackControls } from '@/components/layout/ShellHeaderFeedbackControls'
 import { DashboardMobileTabBar } from '@/components/layout/DashboardMobileTabBar'
@@ -18,6 +19,7 @@ import { MyleSidebarMark } from '@/components/brand/MyleSidebarMark'
 import { cn } from '@/lib/utils'
 import { authLogout } from '@/lib/auth-api'
 import { apiUrl } from '@/lib/api'
+import { notifyDashboardMainScrolled } from '@/lib/main-scroll-gate'
 import { useAuthStore } from '@/stores/auth-store'
 import { useShellPreviewStore } from '@/stores/shell-preview-store'
 import { useShellStore } from '@/stores/shell-store'
@@ -45,7 +47,15 @@ export function DashboardLayout() {
     toggleSidebar,
     setMobileMenuOpen,
     syncForViewport,
-  } = useShellStore()
+  } = useShellStore(
+    useShallow((s) => ({
+      sidebarOpen: s.sidebarOpen,
+      mobileMenuOpen: s.mobileMenuOpen,
+      toggleSidebar: s.toggleSidebar,
+      setMobileMenuOpen: s.setMobileMenuOpen,
+      syncForViewport: s.syncForViewport,
+    })),
+  )
   const theme = useUiFeedbackStore((s) => s.theme)
   const logout = useAuthStore((s) => s.logout)
   const [headerSearch, setHeaderSearch] = useState('')
@@ -145,7 +155,7 @@ export function DashboardLayout() {
 
       <aside
         className={cn(
-          'flex min-h-dvh shrink-0 flex-col border-r border-border/80 bg-surface/95 backdrop-blur-xl',
+          'flex min-h-dvh shrink-0 flex-col border-r border-border/80 bg-surface',
           'transition-[transform,width,border-color] duration-300 ease-out',
           sidebarOpen ? 'md:w-[18rem]' : 'md:w-0 md:overflow-hidden md:border-0',
           'max-md:fixed max-md:left-0 max-md:top-0 max-md:z-50 max-md:h-dvh max-md:w-[min(20rem,85vw)] max-md:pt-[env(safe-area-inset-top)]',
@@ -276,7 +286,7 @@ export function DashboardLayout() {
     </aside>
 
     <div className="flex min-w-0 max-w-full flex-1 flex-col overflow-x-hidden pt-[env(safe-area-inset-top)]">
-      <header className="relative z-20 flex h-[56px] shrink-0 items-center gap-2 border-b border-border/60 bg-background/90 px-3 shadow-ios-bar backdrop-blur-xl supports-[backdrop-filter]:bg-background/85 md:gap-3 md:px-4">
+      <header className="relative z-20 flex h-[56px] shrink-0 items-center gap-2 border-b border-border/60 bg-background/95 px-3 shadow-ios-bar md:gap-3 md:px-4 supports-[backdrop-filter]:bg-background/92 supports-[backdrop-filter]:backdrop-blur-md">
         {/* Left: menu + compact admin preview (no stacked label on small screens) */}
         <div className="flex min-w-0 shrink-0 items-center gap-1.5">
           <Button
@@ -428,9 +438,10 @@ export function DashboardLayout() {
 
         <main
           className={cn(
-            'relative min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-background p-4 md:p-6 lg:p-8',
+            'content-dashboard-main relative min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-background p-4 md:p-6 lg:p-8',
             'pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-6 lg:pb-8',
           )}
+          onScroll={notifyDashboardMainScrolled}
         >
           <DashboardOutletErrorBoundary>
             <Outlet />
