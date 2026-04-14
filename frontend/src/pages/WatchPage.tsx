@@ -1,14 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 
 import { Skeleton } from '@/components/ui/skeleton'
-import {
-  playUiCaution,
-  playUiProgressLoop,
-  playUiRingtoneLoop,
-  stopUiProgressLoop,
-  stopUiRingtoneLoop,
-} from '@/lib/ui-sound'
 import { WatchLiveGauge } from '@/components/watch/WatchLiveGauge'
 
 type WatchPageData = {
@@ -50,37 +43,6 @@ export function WatchPage() {
   const [data, setData] = useState<WatchPageData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const playedErrorSound = useRef(false)
-
-  useEffect(() => {
-    if (!loading) {
-      stopUiProgressLoop()
-      return
-    }
-    playUiProgressLoop()
-    return () => {
-      stopUiProgressLoop()
-    }
-  }, [loading])
-
-  useEffect(() => {
-    if (!error) {
-      playedErrorSound.current = false
-      stopUiRingtoneLoop()
-      return
-    }
-    if (playedErrorSound.current) return
-    playedErrorSound.current = true
-    playUiCaution()
-    playUiRingtoneLoop()
-    const t = window.setTimeout(() => {
-      stopUiRingtoneLoop()
-    }, 2800)
-    return () => {
-      window.clearTimeout(t)
-      stopUiRingtoneLoop()
-    }
-  }, [error])
 
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */

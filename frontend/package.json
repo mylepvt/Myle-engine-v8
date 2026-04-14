@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:e2e": "npm run build && playwright test",
+    "test:e2e": "playwright test",
     "test:watch": "vitest",
     "generate-api-types": "python3 ../scripts/export_openapi.py && npx --yes openapi-typescript@7.13.0 ./openapi.json -o ./src/lib/api-v1.d.ts"
   },
@@ -23,7 +23,6 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.14.0",
-    "snd-lib": "^1.2.4",
     "tailwind-merge": "^3.5.0",
     "zustand": "^5.0.12"
   },

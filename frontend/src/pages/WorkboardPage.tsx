@@ -9,7 +9,6 @@ import {
 } from '@/hooks/use-leads-query'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
-import { playUiButton, playUiSwipe, playUiTap } from '@/lib/ui-sound'
 import { cn } from '@/lib/utils'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -75,7 +74,7 @@ function Tabs({ tabs, active, onChange }: {
   return (
     <div className="flex gap-1 overflow-x-auto border-b border-white/10">
       {tabs.map((t) => (
-        <button key={t.id} type="button" onClick={() => { playUiSwipe(); onChange(t.id) }}
+        <button key={t.id} type="button" onClick={() => onChange(t.id)}
           className={cn('shrink-0 -mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition',
             active === t.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground')}>
           {t.label}
@@ -91,8 +90,8 @@ function IconBtn({ href, onClick, title, colorHover, children }: {
   href?: string; onClick?: () => void; title: string; colorHover: string; children: React.ReactNode
 }) {
   const cls = cn('flex h-7 w-7 items-center justify-center rounded-md border border-white/12 bg-white/[0.05] text-foreground transition', colorHover)
-  if (href) return <a href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" title={title} className={cls} onPointerDown={() => playUiTap()}>{children}</a>
-  return <button type="button" title={title} onClick={() => { playUiButton(); void onClick?.() }} className={cls}>{children}</button>
+  if (href) return <a href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" title={title} className={cls}>{children}</a>
+  return <button type="button" title={title} onClick={onClick} className={cls}>{children}</button>
 }
 
 // ── LeadCard (team / leader / closing tab) ─────────────────────────────────────

@@ -1,10 +1,9 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
-import { playUiCaution } from '@/lib/ui-sound'
 import { useAuthStore } from '@/stores/auth-store'
 
 /**
@@ -20,17 +19,6 @@ export function ProtectedRoute() {
     refetchOnMount: 'always',
   })
   const authErrorCode = isError ? /HTTP\s+(\d+)/.exec(String(error))?.[1] : null
-  const playedAuthErrorSound = useRef(false)
-
-  useEffect(() => {
-    if (!isError) {
-      playedAuthErrorSound.current = false
-      return
-    }
-    if (playedAuthErrorSound.current) return
-    playedAuthErrorSound.current = true
-    playUiCaution()
-  }, [isError])
 
   useEffect(() => {
     if (data?.authenticated) {

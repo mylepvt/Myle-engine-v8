@@ -23,8 +23,8 @@ export const IconInput = React.forwardRef<HTMLInputElement, IconInputProps>(
     return (
       <div
         className={cn(
-          'flex min-h-[44px] w-full overflow-hidden rounded-xl border border-white/[0.1] bg-muted/35 transition-[border-color,box-shadow] duration-200 ease-out',
-          'focus-within:border-primary/50 focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--primary)_22%,transparent),0_0_20px_-4px_color-mix(in_srgb,var(--primary)_35%,transparent)]',
+          'flex min-h-[44px] w-full overflow-hidden rounded-xl border border-white/[0.1] bg-muted/35 transition-[border-color,box-shadow]',
+          'focus-within:border-primary/55 focus-within:shadow-focus-ring-primary',
           wrapperClassName,
         )}
       >

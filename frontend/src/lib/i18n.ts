@@ -9,7 +9,7 @@ export const DEFAULT_LOCALE: Locale = 'en'
 const STRINGS = {
   en: {
     appTitle: 'Myle',
-    appTagline: 'Manage. Track. Close.',
+    appTagline: 'Pipeline, follow-ups, and team leads in one place.',
   },
 } as const
 

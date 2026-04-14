@@ -118,7 +118,6 @@ export default {
         'scale-up': 'scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
         'bounce-in': 'bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards',
         'pulse-soft': 'pulseSoft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        shake: 'shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both',
       },
       keyframes: {
         fadeIn: {
@@ -145,13 +144,6 @@ export default {
         pulseSoft: {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.8' },
-        },
-        shake: {
-          '0%, 100%': { transform: 'translateX(0)' },
-          '20%': { transform: 'translateX(-6px)' },
-          '40%': { transform: 'translateX(6px)' },
-          '60%': { transform: 'translateX(-4px)' },
-          '80%': { transform: 'translateX(4px)' },
         },
       },
       transitionDuration: {
