@@ -36,10 +36,10 @@ def test_analytics_activity_log_forbidden_leader(monkeypatch: pytest.MonkeyPatch
     assert c.get("/api/v1/analytics/activity-log").status_code == 403
 
 
-def test_analytics_day_2_report_admin_ok(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_analytics_day_2_report_removed(monkeypatch: pytest.MonkeyPatch) -> None:
     c = _authed(monkeypatch)
     assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
-    assert c.get("/api/v1/analytics/day-2-report").status_code == 200
+    assert c.get("/api/v1/analytics/day-2-report").status_code == 404
 
 
 def test_analytics_export_csv_ok(monkeypatch: pytest.MonkeyPatch) -> None:

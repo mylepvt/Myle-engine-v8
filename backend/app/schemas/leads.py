@@ -285,6 +285,16 @@ class LeadListResponse(BaseModel):
     offset: int
 
 
+class AllLeadsResponse(BaseModel):
+    today_items: list[LeadPublic]
+    history_items: list[LeadPublic]
+    today_total: int
+    history_total: int
+    total: int
+    limit: int
+    offset: int
+
+
 class LeadPoolDefaultsResponse(BaseModel):
     """Admin-configured default claim price for new pool leads (import + future rows)."""
 

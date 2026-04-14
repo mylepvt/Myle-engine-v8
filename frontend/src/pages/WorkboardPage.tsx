@@ -47,6 +47,22 @@ const DAY3:   LeadStatus[] = ['interview','track_selected','seat_hold']
 const CLOSE:  LeadStatus[] = ['converted','lost']
 const slabel  = (s: string) => LEAD_STATUS_OPTIONS.find((o) => o.value === s)?.label ?? s
 
+function whatsappDigits(phone: string | null | undefined): string {
+  return (phone ?? '').replace(/\D+/g, '')
+}
+
+function day2TestWhatsAppUrl(lead: LeadPublic): string | null {
+  const digits = whatsappDigits(lead.phone)
+  if (!digits) return null
+  const testPath = '/dashboard/system/training'
+  const testUrl = `${window.location.origin}${testPath}`
+  const name = (lead.name || 'Participant').trim()
+  const msg =
+    `Hi ${name}, your Day 2 batches are complete.\n` +
+    `Please take the test from this link:\n${testUrl}`
+  return `https://wa.me/${digits}?text=${encodeURIComponent(msg)}`
+}
+
 // ── Tiny shared primitives ─────────────────────────────────────────────────────
 type PM = ReturnType<typeof usePatchLeadMutation>
 
@@ -131,6 +147,14 @@ function AdminLeadCard({ lead, dayKey, pm, onMoveNext, nextLabel }: {
   const patchKey = dayKey === 3
     ? ('day3_completed' as const)
     : null
+  const showDay2TestSend = dayKey === 2 && done
+
+  const handleSendDay2Test = async () => {
+    const waUrl = day2TestWhatsAppUrl(lead)
+    if (!waUrl) return
+    window.open(waUrl, '_blank', 'noopener,noreferrer')
+    await pm.mutateAsync({ id: lead.id, body: { whatsapp_sent: true } })
+  }
 
   return (
     <article className="surface-inset flex flex-col gap-2 rounded-lg px-2.5 py-2">
@@ -173,6 +197,16 @@ function AdminLeadCard({ lead, dayKey, pm, onMoveNext, nextLabel }: {
               </button>
             ))}
       </div>
+      {showDay2TestSend && (
+        <button
+          type="button"
+          disabled={pm.isPending}
+          onClick={() => void handleSendDay2Test()}
+          className="mt-0.5 rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-[0.7rem] font-semibold text-emerald-300 transition hover:bg-emerald-400/20 disabled:opacity-50"
+        >
+          Send Test on WhatsApp
+        </button>
+      )}
       {done && onMoveNext &&
         <button type="button" disabled={pm.isPending} onClick={onMoveNext}
           className="mt-0.5 rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-[0.7rem] font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50">

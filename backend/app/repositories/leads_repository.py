@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthUser
@@ -44,6 +44,54 @@ class SqlAlchemyLeadsRepository:
         if condition is not None:
             stmt = stmt.where(condition)
         return (await self._session.execute(stmt)).scalars().all()
+
+    async def get_workboard_counts(self, *, condition: Any) -> dict[str, int]:
+        stmt = select(Lead.status, func.count()).select_from(Lead).group_by(Lead.status)
+        if condition is not None:
+            stmt = stmt.where(condition)
+        rows = (await self._session.execute(stmt)).all()
+        return {str(status): int(total) for status, total in rows}
+
+    async def get_workboard_leads(self, *, condition: Any, limit: int) -> list[Lead]:
+        stmt = select(Lead).order_by(Lead.created_at.desc()).limit(limit)
+        if condition is not None:
+            stmt = stmt.where(condition)
+        return (await self._session.execute(stmt)).scalars().all()
+
+    async def get_stale_leads(self, *, condition: Any, stale_before: datetime, limit: int) -> list[Lead]:
+        stale_condition = or_(
+            and_(Lead.last_called_at.is_(None), Lead.created_at <= stale_before),
+            Lead.last_called_at <= stale_before,
+        )
+        stmt = select(Lead).where(stale_condition).order_by(Lead.created_at.asc()).limit(limit)
+        if condition is not None:
+            stmt = stmt.where(condition)
+        return (await self._session.execute(stmt)).scalars().all()
+
+    async def list_all_leads_split(
+        self,
+        *,
+        condition: Any,
+        day_start: datetime,
+        limit: int,
+        offset: int,
+    ) -> tuple[list[Lead], int, int]:
+        base = select(Lead).order_by(Lead.created_at.desc()).limit(limit).offset(offset)
+        if condition is not None:
+            base = base.where(condition)
+        rows = (await self._session.execute(base)).scalars().all()
+
+        count_stmt = select(
+            func.count().label("total"),
+            func.coalesce(
+                func.sum(case((Lead.created_at >= day_start, 1), else_=0)),
+                0,
+            ).label("today_total"),
+        ).select_from(Lead)
+        if condition is not None:
+            count_stmt = count_stmt.where(condition)
+        total, today_total = (await self._session.execute(count_stmt)).one()
+        return rows, int(total), int(today_total)
 
     async def wallet_balance_cents(self, user_id: int) -> int:
         stmt = select(func.coalesce(func.sum(WalletLedgerEntry.amount_cents), 0)).where(

@@ -34,6 +34,7 @@ async def _seed_lead(
                 name=name,
                 status=lead_status,
                 created_by_user_id=user_id,
+                assigned_to_user_id=user_id,
                 archived_at=archived_at,
                 in_pool=in_pool,
                 deleted_at=deleted_at,
@@ -197,5 +198,62 @@ def test_workboard_excludes_archived_leads(
         assert by_status["new_lead"]["total"] == 1
         assert len(by_status["new_lead"]["items"]) == 1
         assert by_status["new_lead"]["items"][0]["name"] == "Active"
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_workboard_summary_and_stale_shape(monkeypatch: pytest.MonkeyPatch) -> None:
+    old_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    asyncio.run(
+        _seed_lead(
+            user_id=2,
+            name="OldNeedCall",
+            lead_status="new_lead",
+            call_status="not_called",
+        )
+    )
+    fac = test_conftest.get_test_session_factory()
+
+    async def _touch_old() -> None:
+        async with fac() as session:
+            row = await session.get(Lead, 1)
+            assert row is not None
+            row.created_at = old_time
+            row.last_called_at = old_time
+            await session.commit()
+
+    asyncio.run(_touch_old())
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        summary = c.get("/api/v1/workboard/summary", params={"stale_hours": 1})
+        assert summary.status_code == 200
+        sb = summary.json()
+        assert "action_counts" in sb
+        assert "stale_total" in sb
+        assert sb["stale_total"] == 1
+
+        stale = c.get("/api/v1/workboard/stale", params={"stale_hours": 1, "limit": 20})
+        assert stale.status_code == 200
+        body = stale.json()
+        assert body["total"] == 1
+        assert body["stale_hours"] == 1
+        assert body["items"][0]["name"] == "OldNeedCall"
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_workboard_leads_endpoint_shape(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_seed_lead(user_id=2, name="LeadA", lead_status="new_lead"))
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        res = c.get("/api/v1/workboard/leads")
+        assert res.status_code == 200
+        body = res.json()
+        assert "columns" in body
+        assert "max_rows_fetched" in body
+        by_status = {col["status"]: col for col in body["columns"]}
+        assert by_status["new_lead"]["total"] == 1
     finally:
         asyncio.run(_clear_leads())

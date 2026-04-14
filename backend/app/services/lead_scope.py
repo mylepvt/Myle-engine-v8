@@ -8,7 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthUser
 from app.models.lead import Lead
-from app.services.downline import is_user_in_downline_of, lead_visible_to_leader_clause
+from app.services.downline import (
+    is_user_in_downline_of,
+    lead_execution_visible_to_leader_clause,
+    lead_visible_to_leader_clause,
+)
 
 
 def lead_visibility_where(user: AuthUser) -> Optional[Any]:
@@ -23,6 +27,15 @@ def lead_visibility_where(user: AuthUser) -> Optional[Any]:
     if user.role == "leader":
         return lead_visible_to_leader_clause(user.user_id)
     return Lead.created_by_user_id == user.user_id
+
+
+def lead_execution_visibility_where(user: AuthUser) -> Optional[Any]:
+    """Execution scope uses assignment ownership, not creator ownership."""
+    if user.role == "admin":
+        return None
+    if user.role == "leader":
+        return lead_execution_visible_to_leader_clause(user.user_id)
+    return Lead.assigned_to_user_id == user.user_id
 
 
 async def user_can_access_lead(session: AsyncSession, user: AuthUser, lead: Lead) -> bool:

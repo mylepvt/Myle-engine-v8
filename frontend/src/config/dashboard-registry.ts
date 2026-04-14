@@ -69,7 +69,7 @@ export type FullUiSurface =
     }
   | {
       kind: 'analytics'
-      surface: 'activity-log' | 'day-2-report'
+      surface: 'activity-log'
     }
   | { kind: 'wallet' }
   | { kind: 'finance-recharges' }
@@ -271,14 +271,6 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('analytics/activity-log'),
     surface: 'full',
     ui: { kind: 'analytics', surface: 'activity-log' },
-  },
-  {
-    path: 'analytics/day-2-report',
-    section: { id: 'system', label: 'System' },
-    label: 'Day 2 test report',
-    roles: routeRoles('analytics/day-2-report'),
-    surface: 'full',
-    ui: { kind: 'analytics', surface: 'day-2-report' },
   },
   {
     path: 'finance/recharges',

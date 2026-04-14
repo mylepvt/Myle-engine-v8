@@ -31,3 +31,19 @@ class WorkboardResponse(BaseModel):
         default_factory=WorkboardActionCounts,
         description="Summary counts for today's priorities bar",
     )
+
+
+class WorkboardSummaryResponse(BaseModel):
+    action_counts: WorkboardActionCounts = Field(default_factory=WorkboardActionCounts)
+    stale_total: int = Field(0, description="Scoped leads currently considered stale")
+
+
+class WorkboardLeadsResponse(BaseModel):
+    columns: list[WorkboardColumnOut]
+    max_rows_fetched: int
+
+
+class WorkboardStaleResponse(BaseModel):
+    items: list[LeadPublic]
+    total: int
+    stale_hours: int
