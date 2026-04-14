@@ -52,12 +52,6 @@ export const LEAD_STATUS_OPTIONS: { value: LeadStatus; label: string }[] = [
   { value: 'new',            label: 'New (Legacy)' },
 ]
 
-/** Statuses that count as "active pipeline" — shown in workboard kanban */
-export const PIPELINE_STATUS_OPTIONS = LEAD_STATUS_OPTIONS.filter((o) =>
-  ['new_lead','contacted','invited','video_sent','video_watched','paid',
-   'day1','day2','interview','track_selected','seat_hold','converted','lost'].includes(o.value)
-)
-
 /** Won/closed statuses for metrics */
 export const CLOSED_WON_STATUSES: LeadStatus[] = ['converted', 'seat_hold']
 export const CLOSED_LOST_STATUSES: LeadStatus[] = ['lost', 'inactive']
@@ -242,6 +236,33 @@ export async function claimLead(id: number): Promise<LeadPublic> {
   return res.json()
 }
 
+export async function fetchAvailableTransitions(leadId: number): Promise<string[]> {
+  const res = await apiFetch(`/api/v1/leads/${leadId}/transitions`)
+  if (!res.ok) {
+    await parseError(res)
+  }
+  return res.json()
+}
+
+export async function transitionLeadStatus(
+  leadId: number,
+  targetStatus: string,
+  notes?: string,
+): Promise<{ success: boolean; message: string; new_status: string }> {
+  const res = await apiFetch(`/api/v1/leads/${leadId}/transition`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      target_status: targetStatus,
+      notes,
+    }),
+  })
+  if (!res.ok) {
+    await parseError(res)
+  }
+  return res.json()
+}
+
 export function useLeadsQuery(
   enabled: boolean,
   filters: LeadListFilters,
@@ -323,6 +344,31 @@ export function useClaimLeadMutation() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: claimLead,
+    onSuccess: () => invalidateLeadRelated(qc),
+  })
+}
+
+export function useAvailableTransitionsQuery(leadId: number) {
+  return useQuery({
+    queryKey: ['leads', 'transitions', leadId],
+    queryFn: () => fetchAvailableTransitions(leadId),
+    staleTime: 30_000,
+    enabled: leadId > 0,
+  })
+}
+
+export function useTransitionLeadMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      leadId,
+      targetStatus,
+      notes,
+    }: {
+      leadId: number
+      targetStatus: string
+      notes?: string
+    }) => transitionLeadStatus(leadId, targetStatus, notes),
     onSuccess: () => invalidateLeadRelated(qc),
   })
 }

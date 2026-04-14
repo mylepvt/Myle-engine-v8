@@ -8,12 +8,10 @@ import {
   type FullUiSurface,
 } from '@/config/dashboard-registry'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
-import { DEFAULT_META, useMetaQuery } from '@/hooks/use-meta-query'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DashboardPlaceholderPage } from '@/pages/DashboardPlaceholderPage'
 import { LeadsWorkPage } from '@/pages/LeadsWorkPage'
 import { FollowUpsWorkPage } from '@/pages/FollowUpsWorkPage'
-import { IntelligenceWorkPage } from '@/pages/IntelligenceWorkPage'
 import { LeadFlowPage } from '@/pages/LeadFlowPage'
 import { LeadPoolWorkPage } from '@/pages/LeadPoolWorkPage'
 import { RecycleBinWorkPage } from '@/pages/RecycleBinWorkPage'
@@ -35,7 +33,6 @@ import { NoticeBoardPage } from '@/pages/NoticeBoardPage'
 import { TeamReportsPage } from '@/pages/TeamReportsPage'
 import { DailyReportFormPage } from '@/pages/DailyReportFormPage'
 import AnalyticsPage from '@/pages/AnalyticsPage'
-import PipelinePage from '@/pages/PipelinePage'
 import SettingsPage from '@/pages/SettingsPage'
 
 function renderFullUi(ui: FullUiSurface, title: string) {
@@ -54,8 +51,6 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <LeadPoolWorkPage title={title} />
     case 'recycle-bin':
       return <RecycleBinWorkPage title={title} />
-    case 'intelligence':
-      return <IntelligenceWorkPage title={title} />
     case 'team-members':
       return <TeamMembersPage title={title} />
     case 'team-approvals':
@@ -86,8 +81,6 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <TeamReportsPage title={title} />
     case 'daily-report-form':
       return <DailyReportFormPage title={title} />
-    case 'pipeline':
-      return <PipelinePage />
     case 'settings':
       return <SettingsPage />
     case 'shell-api':
@@ -106,10 +99,6 @@ export function DashboardNestedPage() {
   const { '*': splat } = useParams()
   const path = (splat ?? '').replace(/^\/+|\/+$/g, '')
   const { role: serverRole, isPending: rolePending } = useDashboardShellRole()
-  const { data: meta } = useMetaQuery()
-  const navFlags = {
-    intelligence: meta?.features.intelligence ?? DEFAULT_META.features.intelligence,
-  }
 
   const leadDetailMatch = /^work\/leads\/(\d+)$/.exec(path)
   if (leadDetailMatch) {
@@ -136,7 +125,7 @@ export function DashboardNestedPage() {
     )
   }
 
-  if (!serverRole || !routeDefAccessible(def, serverRole, navFlags)) {
+  if (!serverRole || !routeDefAccessible(def, serverRole)) {
     return <Navigate to="/dashboard" replace />
   }
 

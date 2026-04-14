@@ -121,5 +121,3 @@ class Lead(Base):
         default=0,
     )
 
-    # Relationships
-    payments: Mapped[list["Payment"]] = relationship("Payment", back_populates="lead", lazy="dynamic")

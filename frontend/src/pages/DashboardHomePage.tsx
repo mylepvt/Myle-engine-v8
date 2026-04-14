@@ -4,7 +4,6 @@ import { ArrowRight, ClipboardCheck, TrendingUp, UserPlus } from 'lucide-react'
 
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
-import { PipelineByStageChart } from '@/components/dashboard/PipelineByStageChart'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -24,7 +23,6 @@ import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { useFollowUpsQuery } from '@/hooks/use-follow-ups-query'
 import { useLeadPoolQuery } from '@/hooks/use-lead-pool-query'
 import { LEAD_STATUS_OPTIONS, type LeadPublic } from '@/hooks/use-leads-query'
-import { DEFAULT_META, useMetaQuery } from '@/hooks/use-meta-query'
 import { useTeamReportsQuery } from '@/hooks/use-team-reports-query'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
 import { cn } from '@/lib/utils'
@@ -58,14 +56,6 @@ function recentFromWorkboard(columns: { items?: LeadPublic[] }[] | undefined): L
 export function DashboardHomePage() {
   const { role } = useDashboardShellRole()
   const { data: me, isPending: mePending } = useAuthMeQuery()
-  const { data: meta } = useMetaQuery()
-  const navFlags = useMemo(
-    () => ({
-      intelligence:
-        meta?.features.intelligence ?? DEFAULT_META.features.intelligence,
-    }),
-    [meta?.features.intelligence],
-  )
   const sessionReady = Boolean(me?.authenticated)
 
   const wb = useWorkboardQuery(sessionReady)
@@ -83,7 +73,7 @@ export function DashboardHomePage() {
     const columns = wb.data?.columns
     if (!columns) {
       return {
-        pipelineTotal: 0,
+        activeTotal: 0,
         won: 0,
         lost: 0,
         newLeads: 0,
@@ -92,14 +82,14 @@ export function DashboardHomePage() {
         bars: [] as { status: string; total: number; label: string }[],
       }
     }
-    let pipelineTotal = 0
+    let activeTotal = 0
     let won = 0
     let lost = 0
     let newLeads = 0
     const bars: { status: string; total: number; label: string }[] = []
     for (const c of columns) {
       const t = typeof c.total === 'number' ? c.total : 0
-      pipelineTotal += t
+      activeTotal += t
       if (c.status === 'converted' || c.status === 'won') won = t
       if (c.status === 'lost') lost = t
       if (c.status === 'new_lead' || c.status === 'new') newLeads = t
@@ -113,7 +103,7 @@ export function DashboardHomePage() {
     const winRatePct = closed > 0 ? Math.round((won / closed) * 100) : null
     const chartMax = Math.max(...bars.map((b) => b.total), 1)
     return {
-      pipelineTotal,
+      activeTotal,
       won,
       lost,
       newLeads,
@@ -135,8 +125,8 @@ export function DashboardHomePage() {
 
   const quickActions = useMemo(() => {
     if (role == null) return []
-    return getHomeQuickActions(role, navFlags, { poolTotal })
-  }, [role, navFlags, poolTotal])
+    return getHomeQuickActions(role, { poolTotal })
+  }, [role, poolTotal])
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -239,7 +229,7 @@ export function DashboardHomePage() {
           message={
             wb.error instanceof Error
               ? wb.error.message
-              : 'Could not load pipeline data.'
+              : 'Could not load overview data.'
           }
           onRetry={() => void wb.refetch()}
         />
@@ -270,10 +260,10 @@ export function DashboardHomePage() {
               <Card className="h-full border-primary/20 transition-colors hover:border-primary/35">
                 <CardContent className="pt-6">
                   <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
-                    Active pipeline
+                    Active leads
                   </p>
                   <p className="mt-2 font-heading text-3xl font-semibold tabular-nums text-foreground">
-                    {metrics.pipelineTotal}
+                    {metrics.activeTotal}
                   </p>
                   <p className="mt-1 text-ds-caption text-subtle">
                     Leads in your scope (excl. pool / archive) — open workboard
@@ -460,41 +450,6 @@ export function DashboardHomePage() {
                 ))}
               </TableBody>
             </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="border-primary/20">
-        <CardHeader>
-          <CardTitle className="text-ds-h3">Pipeline by stage</CardTitle>
-          <CardDescription>
-            Counts from workboard (same rules as your lead visibility)
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {wb.isPending && sessionReady ? (
-            <LoadingState label="Loading pipeline…" />
-          ) : metrics.bars.length > 0 && metrics.bars.every((b) => b.total === 0) ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
-              <p className="text-ds-body text-muted-foreground">No pipeline activity yet.</p>
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/dashboard/work/leads">Add lead</Link>
-              </Button>
-            </div>
-          ) : (
-            <>
-              {metrics.bars.length === 0 ? (
-                <p className="py-6 text-center text-ds-body text-muted-foreground">
-                  No pipeline data yet — add leads from Work or Leads.
-                </p>
-              ) : (
-                <PipelineByStageChart
-                  bars={metrics.bars}
-                  chartMax={metrics.chartMax}
-                  pipelineTotal={metrics.pipelineTotal}
-                />
-              )}
-            </>
           )}
         </CardContent>
       </Card>

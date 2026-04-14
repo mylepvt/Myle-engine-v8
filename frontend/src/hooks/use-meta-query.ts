@@ -8,9 +8,7 @@ export type MetaResponse = {
   environment: string
   /** Server flag; default false until `/meta` loads so production never flashes dev-only UI. */
   auth_dev_login_enabled: boolean
-  features: {
-    intelligence: boolean
-  }
+  features: Record<string, never>
 }
 
 /** Placeholder before `/meta` loads — `auth_dev_login_enabled: false` avoids flashing dev UI in prod. */
@@ -19,7 +17,7 @@ export const DEFAULT_META: MetaResponse = {
   api_version: 1,
   environment: 'development',
   auth_dev_login_enabled: false,
-  features: { intelligence: true },
+  features: {},
 }
 
 export async function fetchMeta(): Promise<MetaResponse> {

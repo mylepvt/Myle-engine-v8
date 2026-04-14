@@ -15,7 +15,6 @@ bcrypt>=4.1.0,<5.0.0
 werkzeug>=3.0.0,<4.0.0
 reportlab>=4.0.0,<5.0.0
 openpyxl>=3.1.0,<4.0.0
-razorpay>=1.4.0,<2.0.0
-# pip-audit / transitive pins (reportlab → pillow; razorpay → requests)
+# pip-audit / transitive pins (reportlab → pillow)
 pillow>=12.1.1
 requests>=2.33.0

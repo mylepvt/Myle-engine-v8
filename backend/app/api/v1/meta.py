@@ -20,5 +20,5 @@ async def meta() -> MetaResponse:
         api_version=1,
         environment=settings.app_environment,
         auth_dev_login_enabled=settings.auth_dev_login_enabled,
-        features=ClientFeatures(intelligence=settings.feature_intelligence),
+        features=ClientFeatures(),
     )

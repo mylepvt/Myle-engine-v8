@@ -20,7 +20,6 @@ from app.api.v1 import (
     meta,
     other_pages,
     payments,
-    pipeline,
     realtime_ws,
     reports,
     retarget,
@@ -65,6 +64,5 @@ api_router.include_router(enroll.router, prefix="/enroll", tags=["enroll"])
 # Public watch route — no /enroll prefix so the URL is /api/v1/watch/{token}
 api_router.include_router(enroll.watch_router, tags=["watch"])
 api_router.include_router(certificate.router, tags=["certificate"])
-api_router.include_router(pipeline.router, prefix="/pipeline", tags=["pipeline"])
 api_router.include_router(payments.router, prefix="/payments", tags=["payments"])
 api_router.include_router(wallet_enhanced.router, prefix="/wallet", tags=["wallet-enhanced"])

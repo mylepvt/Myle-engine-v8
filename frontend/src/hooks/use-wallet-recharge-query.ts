@@ -17,7 +17,7 @@ export type WalletRecharge = {
 
 export type WalletRechargeCreate = {
   amount_cents: number
-  utr_number?: string
+  utr_number: string
   proof_url?: string
   idempotency_key?: string
 }
@@ -27,6 +27,11 @@ export type WalletRechargeListResponse = {
   total: number
   limit: number
   offset: number
+}
+
+export type WalletRechargeInstructions = {
+  upi_id: string
+  qr_image_url: string | null
 }
 
 async function parseError(res: Response): Promise<never> {
@@ -40,6 +45,12 @@ async function parseError(res: Response): Promise<never> {
 
 async function fetchRechargeRequests(): Promise<WalletRechargeListResponse> {
   const res = await apiFetch('/api/v1/wallet/recharge-requests')
+  if (!res.ok) await parseError(res)
+  return res.json()
+}
+
+async function fetchRechargeInstructions(): Promise<WalletRechargeInstructions> {
+  const res = await apiFetch('/api/v1/wallet/recharge-instructions')
   if (!res.ok) await parseError(res)
   return res.json()
 }
@@ -76,6 +87,13 @@ export function useWalletRechargeRequestsQuery() {
   return useQuery({
     queryKey: ['wallet-recharge-requests'],
     queryFn: fetchRechargeRequests,
+  })
+}
+
+export function useWalletRechargeInstructionsQuery() {
+  return useQuery({
+    queryKey: ['wallet-recharge-instructions'],
+    queryFn: fetchRechargeInstructions,
   })
 }
 

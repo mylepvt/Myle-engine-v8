@@ -12,13 +12,11 @@ import {
   Kanban,
   Megaphone,
   Settings,
-  Sparkles,
   Users,
   Wallet,
 } from 'lucide-react'
 
 import {
-  type ClientNavFlags,
   getDashboardChildRoute,
   resolveTitleForPath,
   routeDefAccessible,
@@ -31,7 +29,7 @@ export const DASHBOARD_HOME_OVERVIEW_TITLE: Record<Role, string> = {
   team: 'Your workspace',
 }
 
-/** Display order — spine: leads → workboard → pool → wallet → recharge → training → report → approvals → team reports → notice → intelligence (if enabled). */
+/** Display order — spine: leads → workboard → pool → wallet → recharge → training → report → approvals → team reports → notice. */
 const HOME_QUICK_ACTION_PATHS: readonly string[] = [
   'work/leads',
   'work/workboard',
@@ -44,7 +42,6 @@ const HOME_QUICK_ACTION_PATHS: readonly string[] = [
   'team/enrollment-approvals',
   'team/reports',
   'other/notice-board',
-  'intelligence',
   'settings/profile',
 ]
 
@@ -60,7 +57,6 @@ const PATH_ICONS: Partial<Record<string, LucideIcon>> = {
   'team/enrollment-approvals': ClipboardCheck,
   'team/reports': FileBarChart,
   'other/notice-board': Megaphone,
-  intelligence: Sparkles,
   'settings/profile': Settings,
 }
 
@@ -75,14 +71,13 @@ export type HomeQuickAction = {
 
 export function getHomeQuickActions(
   role: Role,
-  flags: ClientNavFlags,
   opts: { poolTotal: number },
 ): HomeQuickAction[] {
   const out: HomeQuickAction[] = []
   for (const path of HOME_QUICK_ACTION_PATHS) {
     const def = getDashboardChildRoute(path)
     if (!def) continue
-    if (!routeDefAccessible(def, role, flags)) continue
+    if (!routeDefAccessible(def, role)) continue
     const Icon = PATH_ICONS[path]
     if (!Icon) continue
     const label =

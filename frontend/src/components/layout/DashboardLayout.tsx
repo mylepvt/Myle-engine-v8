@@ -80,11 +80,6 @@ export function DashboardLayout() {
     }
   }
 
-  const navFlags = useMemo(
-    () => ({ intelligence: meta?.features.intelligence ?? true }),
-    [meta?.features.intelligence],
-  )
-
   const trainingStatusLc = (me?.training_status ?? '').toLowerCase()
   const trainingLocked =
     me?.training_required === true && trainingStatusLc !== 'completed'
@@ -94,7 +89,7 @@ export function DashboardLayout() {
 
   const sections = useMemo(() => {
     if (shellRole == null) return []
-    const full = filterDashboardNav(shellRole, navFlags)
+    const full = filterDashboardNav(shellRole)
     if (!trainingLocked) return full
     const flat = full.flatMap((s) => s.items)
     const tr = flat.find((i) => i.path === 'system/training')
@@ -102,7 +97,7 @@ export function DashboardLayout() {
       return [{ id: 'training-only', label: '', items: [tr] }]
     }
     return full
-  }, [shellRole, trainingLocked, navFlags])
+  }, [shellRole, trainingLocked])
   const currentPageLabel = useMemo(() => {
     const rel = location.pathname.replace('/dashboard/', '')
     const all = sections.flatMap((s) => s.items)
@@ -445,7 +440,6 @@ export function DashboardLayout() {
         {shellRole != null ? (
           <DashboardMobileTabBar
             role={shellRole}
-            flags={navFlags}
             trainingLocked={trainingLocked}
             onOpenMenu={() => setMobileMenuOpen(true)}
           />

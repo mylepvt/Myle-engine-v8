@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
+from app.core.config import settings
 from app.core.realtime_hub import notify_topics
 from app.models.user import User
 from app.models.wallet_ledger import WalletLedgerEntry
@@ -21,6 +22,7 @@ from app.schemas.wallet import (
     WalletLedgerEntryPublic,
     WalletLedgerListResponse,
     WalletRechargeCreate,
+    WalletRechargeInstructionsResponse,
     WalletRechargeListResponse,
     WalletRechargePublic,
     WalletRechargeReview,
@@ -74,6 +76,17 @@ async def wallet_me(
         balance_cents=bal,
         currency=currency,
         recent_entries=[WalletLedgerEntryPublic.model_validate(r) for r in rows],
+    )
+
+
+@router.get("/recharge-instructions", response_model=WalletRechargeInstructionsResponse)
+async def wallet_recharge_instructions(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+) -> WalletRechargeInstructionsResponse:
+    """Return UPI/QR instructions for manual recharge requests."""
+    return WalletRechargeInstructionsResponse(
+        upi_id=settings.recharge_upi_id.strip(),
+        qr_image_url=settings.recharge_qr_image_url.strip() or None,
     )
 
 

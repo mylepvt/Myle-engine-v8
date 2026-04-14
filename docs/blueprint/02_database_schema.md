@@ -422,7 +422,6 @@ Typical keys:
 - `lead_pool_default_price` — ₹
 - `wallet_min_recharge` — ₹
 - `enroll_video_url_day1` … `enroll_video_url_day7`
-- `razorpay_enabled` — `0/1`
 - `push_enabled` — `0/1`
 - `daily_call_target` — int
 - `intelligence_enabled` — `0/1`

@@ -77,11 +77,6 @@ class Settings(BaseSettings):
         validation_alias="APP_ENV",
         description="Label for clients (development | staging | production).",
     )
-    feature_intelligence: bool = Field(
-        default=True,
-        validation_alias=AliasChoices("FEATURE_INTELLIGENCE", "FEATURE_AI_INTELLIGENCE"),
-        description="Gates Work → Intelligence nav via GET /meta. No bundled third-party AI (e.g. Maya); product-only.",
-    )
     frontend_dist: Optional[str] = Field(
         default=None,
         validation_alias="FRONTEND_DIST",
@@ -93,6 +88,16 @@ class Settings(BaseSettings):
         ),
         validation_alias="MYLE_UPLOAD_DIR",
         description="Local directory for user uploads (e.g. profile photos).",
+    )
+    recharge_upi_id: str = Field(
+        default="",
+        validation_alias="RECHARGE_UPI_ID",
+        description="UPI ID shown to team/leader for wallet recharge transfers.",
+    )
+    recharge_qr_image_url: str = Field(
+        default="",
+        validation_alias="RECHARGE_QR_IMAGE_URL",
+        description="Public QR image URL shown on wallet recharge page.",
     )
 
     @field_validator("database_url", mode="before")
@@ -119,23 +124,5 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.backend_cors_origins.split(",") if o.strip()]
-
-    # ==================== RAZORPAY PAYMENT CONFIGURATION ====================
-    razorpay_key_id: str = Field(
-        default="rzp_test_key",
-        validation_alias="RAZORPAY_KEY_ID",
-        description="Razorpay API Key ID (public)",
-    )
-    razorpay_key_secret: str = Field(
-        default="rzp_test_secret",
-        validation_alias="RAZORPAY_KEY_SECRET",
-        description="Razorpay API Key Secret (private)",
-    )
-    razorpay_webhook_secret: str = Field(
-        default="whsec_test_secret",
-        validation_alias="RAZORPAY_WEBHOOK_SECRET",
-        description="Razorpay Webhook Secret for signature validation",
-    )
-
 
 settings = Settings()

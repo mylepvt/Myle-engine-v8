@@ -2,7 +2,6 @@
  * Sidebar nav + path titles — re-exported from `dashboard-registry.ts` (single source of truth).
  */
 export type {
-  ClientNavFlags,
   DashboardNavItem,
   DashboardNavSection,
 } from './dashboard-registry'

@@ -69,5 +69,3 @@ class User(Base):
         nullable=False,
     )
 
-    # Relationships
-    payments_initiated: Mapped[list["Payment"]] = relationship("Payment", foreign_keys="Payment.user_id", back_populates="user", lazy="dynamic")

@@ -12,7 +12,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
 from app.models.user import User
-from app.repositories.payment_repository import PaymentRepository
 from app.services.downline import is_user_in_downline_of, lead_visible_to_leader_clause
 from app.services.payment_proof_storage import save_payment_proof_file
 
@@ -22,7 +21,6 @@ class PaymentService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
-        self.repo = PaymentRepository(session)
 
     async def upload_payment_proof(self, file: UploadFile, *, lead_id: int) -> str:
         """Upload payment proof file and return URL."""
@@ -60,7 +58,7 @@ class PaymentService:
         uploaded_by_role: str,
     ) -> Tuple[bool, str]:
         """Process uploaded payment proof."""
-        lead = await self.repo.get_lead_by_id(lead_id)
+        lead = await self.session.get(Lead, lead_id)
         if not lead:
             return False, "Lead not found"
         if not await self._can_access_lead(
@@ -96,7 +94,7 @@ class PaymentService:
         approved_by_role: str,
     ) -> Tuple[bool, str]:
         """Approve payment proof."""
-        lead = await self.repo.get_lead_by_id(lead_id)
+        lead = await self.session.get(Lead, lead_id)
         if not lead:
             return False, "Lead not found"
         if not await self._can_access_lead(
@@ -131,7 +129,7 @@ class PaymentService:
         rejected_by_role: str,
     ) -> Tuple[bool, str]:
         """Reject payment proof."""
-        lead = await self.repo.get_lead_by_id(lead_id)
+        lead = await self.session.get(Lead, lead_id)
         if not lead:
             return False, "Lead not found"
         if not await self._can_access_lead(
