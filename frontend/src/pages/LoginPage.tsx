@@ -19,7 +19,10 @@ import { Button } from '@/components/ui/button'
 import { authDevLogin, authPasswordLogin, DEV_SEED_PASSWORD } from '@/lib/auth-api'
 import { fetchAuthMe } from '@/hooks/use-auth-me-query'
 import { DEFAULT_META, useMetaQuery } from '@/hooks/use-meta-query'
-import { hapticLight } from '@/lib/haptics'
+import {
+  playUiButton,
+  playUiTap,
+} from '@/lib/ui-sound'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 import { useRoleStore } from '@/stores/role-store'
@@ -62,7 +65,6 @@ export function LoginPage() {
   }, [meta?.auth_dev_login_enabled])
 
   async function handlePasswordLogin() {
-    hapticLight()
     setError(null)
     if (!password.trim()) {
       setError(
@@ -77,6 +79,7 @@ export function LoginPage() {
       return
     }
     setPwPending(true)
+    playUiButton()
     try {
       await authPasswordLogin(fboId, password, rememberMe)
       await queryClient.resetQueries({ queryKey: ['auth', 'me'] })
@@ -105,9 +108,9 @@ export function LoginPage() {
   }
 
   async function handleContinue() {
-    hapticLight()
     setError(null)
     setPending(true)
+    playUiButton()
     try {
       await authDevLogin(role)
       await queryClient.resetQueries({ queryKey: ['auth', 'me'] })
@@ -146,7 +149,7 @@ export function LoginPage() {
         <Link
           to="/"
           className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          onClick={() => hapticLight(6)}
+          onClick={() => playUiTap()}
         >
           <ArrowLeft className="size-4 shrink-0 opacity-80" aria-hidden />
           Home
@@ -163,6 +166,7 @@ export function LoginPage() {
               <Link
                 to="/register"
                 className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
+                onClick={() => playUiTap()}
               >
                 Register
                 <ArrowRight className="size-3.5" aria-hidden />
@@ -325,7 +329,6 @@ export function LoginPage() {
                 variant="default"
                 className="mt-6 h-11 w-full gap-2 text-base font-semibold shadow-lg shadow-primary/20"
                 disabled={pwPending}
-                onPointerDown={() => hapticLight(6)}
               >
                 {pwPending ? (
                   <>

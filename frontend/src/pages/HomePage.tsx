@@ -9,8 +9,11 @@ import { useApiMetaQuery } from '@/hooks/use-api-meta-query'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { useHelloQuery } from '@/hooks/use-hello-query'
 import { authLogout } from '@/lib/auth-api'
-import { hapticLight } from '@/lib/haptics'
 import { t } from '@/lib/i18n'
+import {
+  playUiTap,
+  playUiTransitionUp,
+} from '@/lib/ui-sound'
 import { useAuthStore } from '@/stores/auth-store'
 
 function displayFirstName(me: {
@@ -86,9 +89,8 @@ export function HomePage() {
                 asChild
                 size="lg"
                 className="w-full max-w-sm gap-2 sm:w-auto sm:min-w-[16rem]"
-                onPointerDown={() => hapticLight(8)}
               >
-                <Link to="/dashboard">
+                <Link to="/dashboard" onClick={() => playUiTransitionUp()}>
                   Enter Dashboard
                   <ArrowRight className="size-4" aria-hidden />
                 </Link>
@@ -97,7 +99,7 @@ export function HomePage() {
                 type="button"
                 className="text-sm font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
                 onClick={async () => {
-                  hapticLight(6)
+                  playUiTap()
                   try {
                     await authLogout()
                   } catch {
@@ -116,9 +118,8 @@ export function HomePage() {
               asChild
               size="lg"
               className="w-full max-w-sm gap-2 sm:w-auto sm:min-w-[14rem]"
-              onPointerDown={() => hapticLight(8)}
             >
-              <Link to="/login">
+              <Link to="/login" onClick={() => playUiTap()}>
                 Continue
                 <ArrowRight className="size-4" aria-hidden />
               </Link>

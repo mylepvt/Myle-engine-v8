@@ -22,6 +22,11 @@ import { IconInput } from '@/components/auth/IconInput'
 import { Button } from '@/components/ui/button'
 import { apiFetch } from '@/lib/api'
 import { authRegister } from '@/lib/auth-api'
+import {
+  playUiButton,
+  playUiCelebration,
+  playUiTap,
+} from '@/lib/ui-sound'
 
 function RequiredMark() {
   return (
@@ -117,6 +122,7 @@ export function RegisterPage() {
       return
     }
     setSubmitting(true)
+    playUiButton()
     try {
       const res = await authRegister({
         username: uname,
@@ -129,6 +135,7 @@ export function RegisterPage() {
       })
       setSuccessMessage(res.message ?? 'Registration submitted! Your account is pending admin approval.')
       setSubmitted(true)
+      playUiCelebration()
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Registration failed.')
     } finally {
@@ -147,6 +154,7 @@ export function RegisterPage() {
         <Link
           to="/login"
           className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          onClick={() => playUiTap()}
         >
           <ArrowLeft className="size-4 shrink-0 opacity-80" aria-hidden />
           Back

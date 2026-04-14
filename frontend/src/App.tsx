@@ -12,6 +12,7 @@ import { RegisterPage } from '@/pages/RegisterPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { WatchPage } from '@/pages/WatchPage'
 import { t } from '@/lib/i18n'
+import { preloadUiSounds } from '@/lib/ui-sound'
 import { cn } from '@/lib/utils'
 
 const DashboardNestedPage = lazy(async () => {
@@ -37,6 +38,7 @@ export function App() {
 
   useEffect(() => {
     document.title = t('appTitle')
+    preloadUiSounds()
   }, [])
 
   return (
