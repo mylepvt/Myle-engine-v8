@@ -22,7 +22,6 @@ from app.schemas.leads import (
     LeadTransitionResponse,
     LeadUpdate,
 )
-from app.services.lead_scope import user_can_access_lead, user_can_mutate_lead
 from app.services.leads_contracts import LeadsRepositoryContract, TopicNotifierContract
 from app.validators.leads_validator import lead_list_conditions, parse_status_query, validate_list_flags
 
@@ -45,11 +44,9 @@ class LeadsService:
         self,
         *,
         repository: LeadsRepositoryContract,
-        session: AsyncSession,
         notifier: TopicNotifierContract,
     ) -> None:
         self._repository = repository
-        self._session = session
         self._notifier = notifier
 
     async def _get_lead_or_404(self, lead_id: int) -> Lead:
@@ -148,7 +145,7 @@ class LeadsService:
             lead = await self._repository.persist_lead(lead)
             await self._notifier("leads")
             return lead
-        if not await user_can_mutate_lead(self._session, user, lead):
+        if not await self._repository.can_mutate_lead(user, lead):
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
         if user.role == "team":
             if body.day1_completed is not None:
@@ -259,7 +256,7 @@ class LeadsService:
 
     async def delete_lead(self, *, lead_id: int, user: AuthUser) -> None:
         lead = await self._get_lead_or_404(lead_id)
-        if not await user_can_mutate_lead(self._session, user, lead):
+        if not await self._repository.can_mutate_lead(user, lead):
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
         if lead.deleted_at is not None:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
@@ -270,7 +267,7 @@ class LeadsService:
         lead = await self._get_lead_or_404(lead_id)
         if lead.deleted_at is not None:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
-        if not await user_can_access_lead(self._session, user, lead):
+        if not await self._repository.can_access_lead(user, lead):
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
         return LeadDetailPublic.model_validate(lead)
 
@@ -278,7 +275,7 @@ class LeadsService:
         lead = await self._get_lead_or_404(lead_id)
         if lead.deleted_at is not None:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
-        if not await user_can_mutate_lead(self._session, user, lead) and lead.assigned_to_user_id != user.user_id:
+        if not await self._repository.can_mutate_lead(user, lead) and lead.assigned_to_user_id != user.user_id:
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
         event = await self._repository.create_call_event(lead_id=lead_id, user_id=user.user_id, body=body)
         now = event.called_at
@@ -313,7 +310,7 @@ class LeadsService:
         lead = await self._get_lead_or_404(lead_id)
         if lead.deleted_at is not None:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
-        if not await user_can_access_lead(self._session, user, lead):
+        if not await self._repository.can_access_lead(user, lead):
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
         total = await self._repository.count_calls(lead_id)
         rows = await self._repository.list_calls(lead_id=lead_id, limit=limit, offset=offset)
@@ -323,7 +320,7 @@ class LeadsService:
         lead = await self._get_lead_or_404(lead_id)
         if lead.deleted_at is not None:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
-        if not await user_can_access_lead(self._session, user, lead):
+        if not await self._repository.can_access_lead(user, lead):
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
         from app.core.lead_status import LEAD_STATUS_SEQUENCE, TEAM_FORBIDDEN_STATUS_SLUGS
 
@@ -350,7 +347,7 @@ class LeadsService:
         lead = await self._get_lead_or_404(lead_id)
         if lead.deleted_at is not None:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
-        if not await user_can_mutate_lead(self._session, user, lead):
+        if not await self._repository.can_mutate_lead(user, lead):
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
         ok, msg = validate_vl2_status_transition_for_role(
             current_slug=lead.status,
@@ -372,6 +369,5 @@ class LeadsService:
 def get_leads_service(session: AsyncSession = Depends(get_db)) -> LeadsService:
     return LeadsService(
         repository=SqlAlchemyLeadsRepository(session),
-        session=session,
         notifier=notify_topics,
     )

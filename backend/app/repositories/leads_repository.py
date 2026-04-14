@@ -6,17 +6,25 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import AuthUser
 from app.models.activity_log import ActivityLog
 from app.models.call_event import CallEvent
 from app.models.lead import Lead
 from app.models.wallet_ledger import WalletLedgerEntry
 from app.schemas.call_events import CallEventCreate
 from app.schemas.leads import LeadCreate
+from app.services.lead_scope import user_can_access_lead, user_can_mutate_lead
 
 
 class SqlAlchemyLeadsRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def can_access_lead(self, user: AuthUser, lead: Lead) -> bool:
+        return await user_can_access_lead(self._session, user, lead)
+
+    async def can_mutate_lead(self, user: AuthUser, lead: Lead) -> bool:
+        return await user_can_mutate_lead(self._session, user, lead)
 
     async def get_lead(self, lead_id: int) -> Lead | None:
         return await self._session.get(Lead, lead_id)
