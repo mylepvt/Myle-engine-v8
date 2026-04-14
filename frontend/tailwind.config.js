@@ -111,7 +111,50 @@ export default {
           5: 'var(--chart-5)',
         },
       },
-      borderRadius: {
+      animation: {
+        'fade-in': 'fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+        'slide-up': 'slideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+        'slide-down': 'slideDown 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+        'scale-up': 'scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+        'bounce-in': 'bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards',
+        'pulse-soft': 'pulseSoft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        slideUp: {
+          '0%': { transform: 'translateY(8px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        slideDown: {
+          '0%': { transform: 'translateY(-8px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        scaleUp: {
+          '0%': { transform: 'scale(0.95)', opacity: '0' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+        bounceIn: {
+          '0%': { transform: 'scale(0.9)', opacity: '0' },
+          '50%': { transform: 'scale(1.02)' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+        pulseSoft: {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.8' },
+        },
+      },
+      transitionDuration: {
+        '250': '250ms',
+        '350': '350ms',
+      },
+      transitionTimingFunction: {
+        'smooth': 'cubic-bezier(0.4, 0, 0.2, 1)',
+        'smooth-bounce': 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+      },
+            borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
