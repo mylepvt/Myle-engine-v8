@@ -25,8 +25,8 @@ def measure(url: str) -> list[float]:
         t0 = time.perf_counter()
         try:
             urllib.request.urlopen(url, timeout=5)
-        except urllib.error.HTTPError:
-            pass  # 4xx/5xx still measures latency
+        except (urllib.error.HTTPError, urllib.error.URLError):
+            pass  # 4xx/5xx counts; URLError = connection refused → skip
         times.append((time.perf_counter() - t0) * 1000)
     return times
 
