@@ -13,10 +13,12 @@ columns (``follow_up_date`` on leads, ``pipeline_entered_at``, ``stale_worker``,
 from __future__ import annotations
 
 from datetime import datetime, time, timedelta, timezone
+import logging
 from typing import Any, Optional
 
 from sqlalchemy import and_, case, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.elements import ColumnElement
 
 from app.core.time_ist import IST, today_ist
 from app.models.follow_up import FollowUp
@@ -34,9 +36,15 @@ from app.schemas.execution_enforcement import (
     FollowUpAttackRow,
 )
 
+logger = logging.getLogger(__name__)
+
 # Legacy PRE_VIDEO → vl2 coarse buckets (short status set).
 PRE_VIDEO_STATUSES_VL2 = frozenset({"new", "contacted"})
 _FUNNEL_EXCLUDE_TERMINAL = frozenset({"won", "lost"})
+# Redistribution-specific terminal states that must not be reassigned.
+_REDISTRIBUTION_TERMINAL_STATUSES = frozenset(
+    {"paid", "converted", "lost", "inactive"}
+)
 # ₹196 in paise/cents as stored (rupees × 100).
 RUPEES_196_CENTS = 196 * 100
 
@@ -60,6 +68,16 @@ def _active_lead_filters():
         Lead.deleted_at.is_(None),
         Lead.archived_at.is_(None),
         Lead.status.notin_(_FUNNEL_EXCLUDE_TERMINAL),
+    )
+
+
+def _redistribution_eligible_filters() -> ColumnElement[bool]:
+    """Eligible leads for stale redistribution only."""
+    return and_(
+        Lead.in_pool.is_(False),
+        Lead.deleted_at.is_(None),
+        Lead.archived_at.is_(None),
+        Lead.status.notin_(_REDISTRIBUTION_TERMINAL_STATUSES),
     )
 
 
@@ -347,27 +365,186 @@ async def admin_at_risk_leads(
     return out
 
 
+def _lead_last_activity_value(lead: Lead) -> datetime:
+    """Python-side mirror of `_lead_last_activity_ts()` for runtime guards."""
+    return (
+        lead.last_called_at
+        or lead.payment_proof_uploaded_at
+        or lead.whatsapp_sent_at
+        or lead.day3_completed_at
+        or lead.day2_completed_at
+        or lead.day1_completed_at
+        or lead.created_at
+        or datetime.now(timezone.utc)
+    )
+
+
+async def _get_workers(session: AsyncSession) -> list[tuple[int, str]]:
+    rows = await session.execute(
+        select(User.id, User.username, User.fbo_id)
+        .where(
+            User.role == "team",
+            User.access_blocked.is_(False),
+            User.registration_status == "approved",
+        )
+        .order_by(User.id.asc())
+    )
+    workers: list[tuple[int, str]] = []
+    for uid, uname, fbo in rows.all():
+        label = (uname or fbo or f"user_{int(uid)}")
+        workers.append((int(uid), label))
+    return workers
+
+
+async def _get_worker_load(
+    session: AsyncSession,
+    worker_ids: list[int],
+) -> dict[int, int]:
+    if not worker_ids:
+        return {}
+    rows = await session.execute(
+        select(
+            Lead.assigned_to_user_id.label("uid"),
+            func.count(Lead.id).label("cnt"),
+        )
+        .where(
+            Lead.assigned_to_user_id.in_(worker_ids),
+            _active_lead_filters(),
+        )
+        .group_by(Lead.assigned_to_user_id)
+    )
+    load_map = {int(r.uid): int(r.cnt or 0) for r in rows.mappings().all()}
+    for wid in worker_ids:
+        load_map.setdefault(wid, 0)
+    return load_map
+
+
+async def _get_stale_leads(
+    session: AsyncSession,
+    *,
+    cutoff: datetime,
+    limit: int,
+) -> list[Lead]:
+    activity_ts = _lead_last_activity_ts()
+    rows = await session.execute(
+        select(Lead)
+        .where(
+            _redistribution_eligible_filters(),
+            activity_ts <= cutoff,
+        )
+        .order_by(activity_ts.asc(), Lead.id.asc())
+        .limit(limit)
+    )
+    return rows.scalars().all()
+
+
+def _assign_leads(
+    *,
+    leads: list[Lead],
+    workers: list[int],
+    load_map: dict[int, int],
+    cutoff: datetime,
+) -> tuple[int, int, list[list[Any]]]:
+    assigned = 0
+    skipped = 0
+    assignments: list[list[Any]] = []
+    worker_cursor = 0
+
+    for lead in leads:
+        # Guard: skip if lead appears recently active at runtime.
+        if _lead_last_activity_value(lead) > cutoff:
+            skipped += 1
+            continue
+
+        from_uid = int(lead.assigned_to_user_id) if lead.assigned_to_user_id is not None else None
+        to_uid = workers[worker_cursor % len(workers)]
+        worker_cursor += 1
+
+        # Guard: no-op reassignment should not be counted.
+        if from_uid == to_uid:
+            skipped += 1
+            continue
+
+        # Ownership safety: only assignee can change.
+        lead.assigned_to_user_id = to_uid
+
+        assigned += 1
+        load_map[to_uid] = load_map.get(to_uid, 0) + 1
+        if from_uid is not None and from_uid in load_map and load_map[from_uid] > 0:
+            load_map[from_uid] -= 1
+        assignments.append([int(lead.id), from_uid, to_uid])
+    return assigned, skipped, assignments
+
+
 async def stale_redistribute(
-    _session: AsyncSession,
+    session: AsyncSession,
     *,
     stale_hours: int = 48,
     top_n: int = 5,
-    actor: str = "auto",
     limit: int = 50,
 ) -> StaleRedistributeOut:
     """
-    Legacy mutates ``stale_worker`` columns — not present on vl2 ``Lead``.
+    Reassign stale active leads to least-loaded active team members.
 
-    Returns a structured not-implemented payload until a migration adds those fields
-    (or a new assignment table).
+    Uses existing ``leads.assigned_to_user_id`` to avoid schema changes.
     """
-    _ = (stale_hours, top_n, actor, limit)
+    sh = max(1, int(stale_hours))
+    n_workers = max(1, int(top_n))
+    max_rows = max(1, int(limit))
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=sh)
+
+    workers = await _get_workers(session)
+    if not workers:
+        return StaleRedistributeOut(
+            implemented=True,
+            message="No eligible team members found for redistribution.",
+        )
+
+    worker_ids = [wid for wid, _label in workers]
+    worker_meta = {wid: label for wid, label in workers}
+    load_map = await _get_worker_load(session, worker_ids)
+    sorted_workers = sorted(worker_ids, key=lambda wid: (load_map[wid], wid))[:n_workers]
+    if not sorted_workers:
+        return StaleRedistributeOut(
+            implemented=True,
+            message="No workers selected for redistribution.",
+        )
+
+    stale_leads = await _get_stale_leads(
+        session,
+        cutoff=cutoff,
+        limit=max_rows,
+    )
+    if not stale_leads:
+        return StaleRedistributeOut(
+            implemented=True,
+            message="No stale leads matched the given threshold.",
+            worker_counts={worker_meta[wid]: load_map[wid] for wid in sorted_workers},
+        )
+
+    assigned, skipped, assignments = _assign_leads(
+        leads=stale_leads,
+        workers=sorted_workers,
+        load_map=load_map,
+        cutoff=cutoff,
+    )
+
+    await session.commit()
+    logger.info(
+        "stale_redistribute assigned=%s skipped=%s workers=%s stale_hours=%s limit=%s",
+        assigned,
+        skipped,
+        len(sorted_workers),
+        sh,
+        max_rows,
+    )
     return StaleRedistributeOut(
-        implemented=False,
-        message=(
-            "stale_worker / lead_assignments are not in vl2 schema; "
-            "run a migration before enabling auto redistribution."
-        ),
+        implemented=True,
+        message=f"Redistributed {assigned} stale lead(s); skipped {skipped}.",
+        assigned=assigned,
+        skipped=skipped,
+        assignments=assignments,
+        worker_counts={worker_meta[wid]: int(load_map.get(wid, 0)) for wid in sorted_workers},
     )
 
 
