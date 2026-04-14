@@ -10,6 +10,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
 logger = logging.getLogger("myle.access")
+logger_perf = logging.getLogger("myle.perf")
+
+SLOW_REQUEST_THRESHOLD_MS = 300
 
 
 class AccessLogMiddleware(BaseHTTPMiddleware):
@@ -27,4 +30,11 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
             "duration_ms": duration_ms,
         }
         logger.info(json.dumps(line))
+        if duration_ms > SLOW_REQUEST_THRESHOLD_MS:
+            logger_perf.warning(json.dumps({
+                "msg": "slow_request",
+                "method": request.method,
+                "path": request.url.path,
+                "duration_ms": duration_ms,
+            }))
         return response
