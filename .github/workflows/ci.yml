@@ -9,6 +9,17 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: test_db
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test_user -d test_db" --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
@@ -23,7 +34,23 @@ jobs:
           python -m pip install -r backend/requirements.txt
           python -m pip install "pytest>=8.0.0" "httpx>=0.27.0" "anyio[trio]" "pip-audit>=2.7"
 
+      - name: Wait for PostgreSQL
+        run: |
+          for i in $(seq 1 30); do
+            pg_isready -h localhost -p 5432 -U test_user -d test_db && exit 0
+            sleep 2
+          done
+          echo "PostgreSQL is not ready"
+          exit 1
+
+      - name: Run database migrations
+        env:
+          DATABASE_URL: "postgresql+asyncpg://test_user:test_pass@localhost:5432/test_db"
+        run: cd backend && alembic upgrade head
+
       - name: Pytest
+        env:
+          DATABASE_URL: "postgresql+asyncpg://test_user:test_pass@localhost:5432/test_db"
         run: python -m pytest tests/ -q
 
       - name: pip-audit (backend/requirements.txt)
