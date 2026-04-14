@@ -18,7 +18,7 @@
 -- Payment truth table (immutable record)
 CREATE TABLE payment_verifications (
     id SERIAL PRIMARY KEY,
-    payment_id VARCHAR(255) UNIQUE NOT NULL,  -- Razorpay/Stripe ID
+    payment_id VARCHAR(255) UNIQUE NOT NULL,  -- gateway transaction ID
     lead_id INTEGER NOT NULL REFERENCES leads(id),
     user_id INTEGER NOT NULL REFERENCES users(id),  -- Who initiated
     amount DECIMAL(10,2) NOT NULL,
@@ -68,9 +68,9 @@ CREATE INDEX idx_payment_gateway_id ON payment_verifications(payment_id);
 
 ```python
 # POST /api/v1/payments/initiate
-# Initiates payment, returns Razorpay order ID
+# Initiates payment, returns gateway order ID
 
-# POST /api/v1/payments/webhook/razorpay  
+# POST /api/v1/payments/webhook/gateway  
 # Webhook handler - updates status based on gateway response
 
 # GET /api/v1/payments/{payment_id}/status

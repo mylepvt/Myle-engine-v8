@@ -22,17 +22,12 @@ describe('dashboard-registry', () => {
     expect(resolveTitleForPath('work/leads', 'team')).toBe('My Leads')
   })
 
-  it('routeDefAccessible matches intelligence flag for intelligence surface', () => {
-    const def = getDashboardChildRoute('intelligence')
+  it('routeDefAccessible allows valid route for allowed role', () => {
+    const def = getDashboardChildRoute('work/leads')
     expect(def).toBeDefined()
-    if (!def || def.surface !== 'full' || def.ui.kind !== 'intelligence') {
-      throw new Error('expected intelligence full surface')
+    if (!def || def.surface !== 'full') {
+      throw new Error('expected full surface')
     }
-    expect(
-      routeDefAccessible(def, 'admin', { intelligence: false }),
-    ).toBe(false)
-    expect(
-      routeDefAccessible(def, 'admin', { intelligence: true }),
-    ).toBe(true)
+    expect(routeDefAccessible(def, 'admin')).toBe(true)
   })
 })

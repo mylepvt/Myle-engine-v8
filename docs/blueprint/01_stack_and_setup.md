@@ -72,12 +72,6 @@ SMTP_PASS
 SMTP_FROM
 ```
 
-### Razorpay (wallet recharge — optional, manual UTR is the fallback)
-```
-RAZORPAY_KEY_ID
-RAZORPAY_KEY_SECRET
-```
-
 ## 4. Project Layout (old Flask app)
 
 ```

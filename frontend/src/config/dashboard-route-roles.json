@@ -10,7 +10,6 @@
   "work/lead-pool": ["leader", "team"],
   "work/lead-pool-admin": ["admin"],
   "work/recycle-bin": ["admin"],
-  "intelligence": ["admin", "team"],
   "team/members": ["admin"],
   "team/reports": ["admin"],
   "team/approvals": ["admin"],
@@ -33,6 +32,5 @@
   "settings/profile": ["admin", "leader", "team"],
   "finance/recharge-request": ["admin", "leader", "team"],
   "finance/recharge-admin": ["admin"],
-  "pipeline": ["admin", "leader", "team"],
   "analytics": ["admin", "leader", "team"]
 }

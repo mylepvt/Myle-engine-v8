@@ -115,22 +115,4 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.backend_cors_origins.split(",") if o.strip()]
 
-    # ==================== RAZORPAY PAYMENT CONFIGURATION ====================
-    razorpay_key_id: str = Field(
-        default="rzp_test_key",
-        validation_alias="RAZORPAY_KEY_ID",
-        description="Razorpay API Key ID (public)",
-    )
-    razorpay_key_secret: str = Field(
-        default="rzp_test_secret",
-        validation_alias="RAZORPAY_KEY_SECRET",
-        description="Razorpay API Key Secret (private)",
-    )
-    razorpay_webhook_secret: str = Field(
-        default="whsec_test_secret",
-        validation_alias="RAZORPAY_WEBHOOK_SECRET",
-        description="Razorpay Webhook Secret for signature validation",
-    )
-
-
 settings = Settings()

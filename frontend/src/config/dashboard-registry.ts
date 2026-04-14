@@ -35,10 +35,6 @@ function routeRoles(path: string): Role[] {
   return r
 }
 
-export type ClientNavFlags = {
-  intelligence: boolean
-}
-
 /** Legacy nav item shape (sidebar). */
 export type DashboardNavItem = {
   path: string
@@ -46,7 +42,6 @@ export type DashboardNavItem = {
   roles: Role[]
   end?: boolean
   labelByRole?: Partial<Record<Role, string>>
-  requiresIntelligence?: boolean
 }
 
 export type DashboardNavSection = {
@@ -64,7 +59,6 @@ export type FullUiSurface =
   | { kind: 'lead-flow' }
   | { kind: 'lead-pool' }
   | { kind: 'recycle-bin' }
-  | { kind: 'intelligence' }
   | { kind: 'team-members' }
   | { kind: 'my-team' }
   | { kind: 'team-approvals' }
@@ -84,7 +78,6 @@ export type FullUiSurface =
   | { kind: 'notice-board' }
   | { kind: 'team-reports' }
   | { kind: 'daily-report-form' }
-  | { kind: 'pipeline' }
   | { kind: 'analytics' }
   | { kind: 'settings' }
   /** Loads `ShellStubPage` with a GET that returns `SystemStubResponse` (items + note). */
@@ -97,7 +90,6 @@ export type DashboardRouteDef = {
   roles: Role[]
   end?: boolean
   labelByRole?: Partial<Record<Role, string>>
-  requiresIntelligence?: boolean
 } & (
   | { surface: 'dashboard-home' }
   | { surface: 'full'; ui: FullUiSurface }
@@ -207,15 +199,6 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('work/lead-flow'),
     surface: 'full',
     ui: { kind: 'lead-flow' },
-  },
-  {
-    path: 'intelligence',
-    section: { id: 'work', label: '' },
-    label: 'Intelligence',
-    roles: routeRoles('intelligence'),
-    requiresIntelligence: true,
-    surface: 'full',
-    ui: { kind: 'intelligence' },
   },
   {
     path: 'team/members',
@@ -385,14 +368,6 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     surface: 'full',
     ui: { kind: 'shell-api', apiPath: '/api/v1/settings/org-tree' },
   },
-    {
-    path: 'pipeline',
-    section: { id: 'work', label: '' },
-    label: 'Pipeline',
-    roles: routeRoles('pipeline'),
-    surface: 'full',
-    ui: { kind: 'pipeline' },
-  },
   {
     path: 'analytics',
     section: { id: 'system', label: 'System' },
@@ -442,9 +417,6 @@ function defToNavItem(def: DashboardRouteDef): DashboardNavItem {
   }
   if (def.end !== undefined) base.end = def.end
   if (def.labelByRole) base.labelByRole = def.labelByRole
-  if (def.requiresIntelligence !== undefined) {
-    base.requiresIntelligence = def.requiresIntelligence
-  }
   return base
 }
 
@@ -473,12 +445,8 @@ export function getDashboardChildRoute(
 export function itemVisible(
   item: DashboardNavItem,
   role: Role,
-  flags: ClientNavFlags,
 ): boolean {
   if (!item.roles.includes(role)) {
-    return false
-  }
-  if (item.requiresIntelligence && !flags.intelligence) {
     return false
   }
   return true
@@ -488,19 +456,15 @@ export function itemVisible(
 export function routeDefAccessible(
   def: DashboardRouteDef,
   role: Role,
-  flags: ClientNavFlags,
 ): boolean {
-  return itemVisible(defToNavItem(def), role, flags)
+  return itemVisible(defToNavItem(def), role)
 }
 
-export function filterDashboardNav(
-  role: Role,
-  flags: ClientNavFlags,
-): DashboardNavSection[] {
+export function filterDashboardNav(role: Role): DashboardNavSection[] {
   return dashboardNavSections
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => itemVisible(item, role, flags)),
+      items: section.items.filter((item) => itemVisible(item, role)),
     }))
     .filter((section) => section.items.length > 0)
 }

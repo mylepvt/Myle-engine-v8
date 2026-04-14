@@ -12,7 +12,7 @@ import { hapticCoin, hapticError, hapticTapHeavy } from '@/lib/haptics'
 import { UI_SOUND_DELAY_MS } from '@/lib/ui-sound-config'
 import { playUiErrorSound, playUiPaymentCashSound, playUiTickSound, unlockUiAudioFromUserGesture } from '@/lib/ui-sounds'
 import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
-import { useAvailableTransitionsQuery, useTransitionLeadMutation } from '@/hooks/use-pipeline-query'
+import { useAvailableTransitionsQuery, useTransitionLeadMutation } from '@/hooks/use-leads-query'
 import { LEAD_STATUS_OPTIONS } from '@/hooks/use-leads-query'
 import { cn } from '@/lib/utils'
 import { ChevronDown, ChevronUp, MessageCircle } from 'lucide-react'
@@ -96,7 +96,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
   if (!transitions?.length || !primary) {
     return (
       <div className={cn('rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 text-xs text-muted-foreground', className)}>
-        No pipeline move available for your role from this stage (or lead is terminal). Use full status controls if your
+        No next move available for your role from this stage (or lead is terminal). Use full status controls if your
         role allows.
       </div>
     )

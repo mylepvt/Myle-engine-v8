@@ -15,7 +15,7 @@ def test_meta_public_shape() -> None:
     assert "environment" in body
     assert "auth_dev_login_enabled" in body
     assert body["auth_dev_login_enabled"] in (True, False)
-    assert body["features"]["intelligence"] in (True, False)
+    assert body["features"] == {}
 
 
 def test_meta_auth_dev_login_flag_respects_settings(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -31,13 +31,12 @@ def test_meta_auth_dev_login_flag_respects_settings(monkeypatch: pytest.MonkeyPa
     assert res.json()["auth_dev_login_enabled"] is True
 
 
-def test_meta_intelligence_flag_respects_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_meta_environment_flag_respects_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     import app.api.v1.meta as meta_mod
     from app.core.config import settings as real_settings
 
     fake = real_settings.model_copy(
         update={
-            "feature_intelligence": False,
             "app_environment": "test",
             "auth_dev_login_enabled": False,
         },
@@ -45,5 +44,5 @@ def test_meta_intelligence_flag_respects_settings(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(meta_mod, "settings", fake)
     res = client.get("/api/v1/meta")
     assert res.status_code == 200
-    assert res.json()["features"]["intelligence"] is False
+    assert res.json()["features"] == {}
     assert res.json()["environment"] == "test"

@@ -1,4 +1,4 @@
-"""Payment system production - Razorpay integration
+"""Payment system production - legacy gateway integration
 
 Revision ID: 20260412_0021
 Revises: 20260413_0020
@@ -61,8 +61,8 @@ def upgrade():
             ),
             sa.Column("lead_id", sa.Integer(), sa.ForeignKey("leads.id", ondelete="CASCADE"), nullable=False),
             sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("razorpay_order_id", sa.String(255), nullable=False),
-            sa.Column("razorpay_payment_id", sa.String(255), nullable=True),
+            sa.Column("gateway_order_id", sa.String(255), nullable=False),
+            sa.Column("gateway_payment_id", sa.String(255), nullable=True),
             sa.Column("amount", sa.Numeric(10, 2), nullable=False),
             sa.Column("currency", sa.String(3), nullable=False, server_default="INR"),
             sa.Column("status", payment_status_type, nullable=False),
@@ -79,8 +79,8 @@ def upgrade():
         op.create_index("idx_payments_lead_id", "payments", ["lead_id"])
         op.create_index("idx_payments_user_id", "payments", ["user_id"])
         op.create_index("idx_payments_status", "payments", ["status"])
-        op.create_index("idx_payments_order_id", "payments", ["razorpay_order_id"])
-        op.create_index("idx_payments_payment_id", "payments", ["razorpay_payment_id"], unique=True)
+        op.create_index("idx_payments_order_id", "payments", ["gateway_order_id"])
+        op.create_index("idx_payments_payment_id", "payments", ["gateway_payment_id"], unique=True)
         op.create_index("idx_payments_created_at", "payments", ["created_at"])
         op.create_index("idx_payments_idempotency", "payments", ["idempotency_key"], unique=True)
 

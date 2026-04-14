@@ -4,7 +4,6 @@ import { MoreHorizontal } from 'lucide-react'
 import { getDashboardNavIcon } from '@/config/dashboard-nav-icons'
 import {
   DASHBOARD_ROUTE_DEFS,
-  type ClientNavFlags,
   type DashboardRouteDef,
   resolveTitleForPath,
   routeDefAccessible,
@@ -20,12 +19,10 @@ const SHORT_LABEL: Record<string, string> = {
   'work/leads': 'Leads',
   'work/workboard': 'Board',
   'work/follow-ups': 'Tasks',
-  intelligence: 'Intel',
 }
 
 type Props = {
   role: Role
-  flags: ClientNavFlags
   /** Legacy-style gate: only Training until completed */
   trainingLocked?: boolean
   onOpenMenu: () => void
@@ -35,26 +32,20 @@ function defForPath(path: string) {
   return DASHBOARD_ROUTE_DEFS.find((d) => d.path === path)
 }
 
-function fourthTabDef(
-  role: Role,
-  flags: ClientNavFlags,
-): DashboardRouteDef | undefined {
-  const intel = defForPath('intelligence')
-  if (intel && routeDefAccessible(intel, role, flags)) return intel
+function fourthTabDef(role: Role): DashboardRouteDef | undefined {
   const followUps = defForPath('work/follow-ups')
-  if (followUps && routeDefAccessible(followUps, role, flags)) return followUps
+  if (followUps && routeDefAccessible(followUps, role)) return followUps
   return undefined
 }
 
 export function DashboardMobileTabBar({
   role,
-  flags,
   trainingLocked = false,
   onOpenMenu,
 }: Props) {
   if (trainingLocked) {
     const def = defForPath('system/training')
-    if (!def || !routeDefAccessible(def, role, flags)) return null
+    if (!def || !routeDefAccessible(def, role)) return null
     const Icon = getDashboardNavIcon('system/training')
     const label =
       resolveTitleForPath('system/training', role) ?? def.label
@@ -103,13 +94,13 @@ export function DashboardMobileTabBar({
     )
   }
 
-  const fourth = fourthTabDef(role, flags)
+  const fourth = fourthTabDef(role)
   const defs: DashboardRouteDef[] = [
     ...TAB_ORDER.map((p) => defForPath(p)).filter(
       (d): d is DashboardRouteDef => d != null,
     ),
     fourth,
-  ].filter((d): d is DashboardRouteDef => d != null && routeDefAccessible(d, role, flags))
+  ].filter((d): d is DashboardRouteDef => d != null && routeDefAccessible(d, role))
 
   return (
     <nav
