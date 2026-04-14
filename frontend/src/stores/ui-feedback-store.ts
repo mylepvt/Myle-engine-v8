@@ -63,12 +63,13 @@ export const useUiFeedbackStore = create<UiFeedbackState>()(
     }),
     {
       name: 'myle-ui-feedback',
-      // Don't persist transient streak state
       partialize: (s) => ({
         theme: s.theme,
         soundEnabled: s.soundEnabled,
         hapticsEnabled: s.hapticsEnabled,
         satisfactionPoints: s.satisfactionPoints,
+        streakCount: s.streakCount,
+        _lastInteractionAt: s._lastInteractionAt,
       }),
     },
   ),
