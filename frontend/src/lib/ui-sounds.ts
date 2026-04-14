@@ -10,7 +10,7 @@ import {
   resumeAudioContext,
 } from '@/lib/ui-audio-engine'
 import { UI_SOUND_GAIN } from '@/lib/ui-sound-config'
-import { playHtmlOneShot, playTapSample } from '@/lib/ui-sound-samples'
+import { playHtmlOneShot, playTapSample, playSuccessSample, playNotifySample } from '@/lib/ui-sound-samples'
 
 export { unlockUiAudioFromUserGesture } from '@/lib/ui-audio-engine'
 export type { UiSampleId } from '@/lib/ui-sound-samples'
@@ -105,17 +105,10 @@ export async function playUiSatisfactionSound(opts?: UiSoundScheduleOpts): Promi
   sine(ac, N.E5, t + 0.058, 0.062, p * 0.92)
 }
 
-export async function playUiSuccessSound(opts?: UiSoundScheduleOpts): Promise<void> {
-  const d = lag(opts)
-  const ac = await ready()
-  if (!ac) {
-    htmlLater('success', 0.48, d)
-    return
-  }
-  const t = ac.currentTime + d
-  const p = UI_SOUND_GAIN.success
-  sine(ac, N.E5, t, 0.075, p)
-  sine(ac, N.B5, t + 0.08, 0.095, p * 0.88)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function playUiSuccessSound(_opts?: UiSoundScheduleOpts): Promise<void> {
+  // Prefer professional MP3 success sound
+  await playSuccessSample()
 }
 
 export async function playUiStageAdvanceSound(opts?: UiSoundScheduleOpts): Promise<void> {
@@ -241,17 +234,10 @@ export async function playUiDeleteSound(opts?: UiSoundScheduleOpts): Promise<voi
   osc.stop(t + 0.09)
 }
 
-export async function playUiNotificationSound(opts?: UiSoundScheduleOpts): Promise<void> {
-  const d = lag(opts)
-  const ac = await ready()
-  if (!ac) {
-    htmlLater('notify', 0.45, d)
-    return
-  }
-  const t = ac.currentTime + d
-  const p = UI_SOUND_GAIN.nav * 1.4
-  sine(ac, N.G5, t, 0.065, p)
-  sine(ac, N.E5, t + 0.075, 0.085, p * 0.86)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function playUiNotificationSound(_opts?: UiSoundScheduleOpts): Promise<void> {
+  // Prefer professional notification sound
+  await playNotifySample()
 }
 
 export async function playUiStreakSound(streak: number, opts?: UiSoundScheduleOpts): Promise<void> {

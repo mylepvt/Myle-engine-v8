@@ -486,3 +486,52 @@ html.perf-low-end .watch-gauge-hue,
 html.perf-low-end .watch-gauge-needle {
   animation: none !important;
 }
+
+/* Premium smooth interactions */
+@layer components {
+  /* Smooth transitions on all interactive elements */
+  button,
+  a,
+  [role="button"],
+  [role="tab"],
+  input,
+  select,
+  textarea {
+    @apply transition-all duration-200 ease-smooth;
+  }
+
+  /* Hover lift effect for buttons */
+  button:not([disabled]),
+  [role="button"]:not([disabled]) {
+    @apply hover:shadow-md hover:-translate-y-0.5;
+  }
+
+  /* Smooth focus states */
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  [role="button"]:focus-visible {
+    @apply ring-2 ring-offset-2 ring-offset-background;
+  }
+
+  /* Card elevation on hover */
+  .card {
+    @apply transition-all duration-300;
+  }
+
+  .card:hover {
+    @apply shadow-lg;
+  }
+
+  /* Input smooth focus */
+  input:focus,
+  textarea:focus,
+  select:focus {
+    @apply outline-none ring-2 ring-primary ring-opacity-20;
+  }
+
+  /* Smooth skeleton loading */
+  .animate-pulse {
+    @apply animate-pulse-soft;
+  }
+}
