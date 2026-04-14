@@ -23,6 +23,7 @@ from app.schemas.leads import (
     LeadUpdate,
 )
 from app.services.leads_contracts import LeadsRepositoryContract, TopicNotifierContract
+from app.services.auto_handoff import AutoHandoffService
 from app.validators.leads_validator import lead_list_conditions, parse_status_query, validate_list_flags
 
 
@@ -45,9 +46,11 @@ class LeadsService:
         *,
         repository: LeadsRepositoryContract,
         notifier: TopicNotifierContract,
+        session: AsyncSession,
     ) -> None:
         self._repository = repository
         self._notifier = notifier
+        self._session = session
 
     async def _get_lead_or_404(self, lead_id: int) -> Lead:
         lead = await self._repository.get_lead(lead_id)
@@ -85,6 +88,8 @@ class LeadsService:
 
     async def create_lead(self, *, body: LeadCreate, user: AuthUser) -> Lead:
         lead = await self._repository.create_lead(body, user.user_id)
+        handoff = AutoHandoffService(self._session)
+        await handoff.on_lead_created(lead=lead, actor_user_id=user.user_id)
         await self._repository.add_lead_activity(
             user_id=user.user_id,
             action="lead.created",
@@ -295,6 +300,8 @@ class LeadsService:
             outcome=body.outcome,
             duration_seconds=body.duration_seconds,
         )
+        handoff = AutoHandoffService(self._session)
+        await handoff.on_call_logged(lead=lead, outcome=body.outcome, actor_user_id=user.user_id)
         await self._repository.commit()
         await self._notifier("leads")
         return CallEventPublic.model_validate(event)
@@ -370,4 +377,5 @@ def get_leads_service(session: AsyncSession = Depends(get_db)) -> LeadsService:
     return LeadsService(
         repository=SqlAlchemyLeadsRepository(session),
         notifier=notify_topics,
+        session=session,
     )
