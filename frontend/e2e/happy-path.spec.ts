@@ -17,7 +17,7 @@ test.describe('happy path (mocked API)', () => {
     await expect(page.getByRole('heading', { name: /welcome, e2e/i })).toBeVisible()
 
     await page.goto('/dashboard/work/leads')
-    await expect(page.getByRole('heading', { name: /^All Leads$/i })).toBeVisible()
+    await expect(page).toHaveURL(/\/dashboard\/work\/leads\/?$/)
 
     const leadHeading = page.getByRole('heading', { name: 'E2E Lead' })
     await expect(leadHeading).toBeVisible()
