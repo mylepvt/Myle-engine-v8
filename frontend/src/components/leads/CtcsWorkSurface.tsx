@@ -49,7 +49,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   )
 
   const leadsQ = useLeadsInfiniteQuery(true, filters, 'active', 50, ctcsOpts)
-  const items = leadsQ.data?.pages.flatMap((p) => p.items) ?? []
+  const items = useMemo(() => leadsQ.data?.pages.flatMap((p) => p.items) ?? [], [leadsQ.data])
   const total = leadsQ.data?.pages[0]?.total ?? 0
 
   const patchMut = usePatchLeadMutation()
@@ -192,6 +192,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
       ) : null}
 
       <CtcsOutcomeModal
+        key={outcomeLeadId ?? 'closed'}
         open={outcomeLeadId != null}
         leadName={outcomeLead?.name ?? ''}
         busy={ctcsMut.isPending}

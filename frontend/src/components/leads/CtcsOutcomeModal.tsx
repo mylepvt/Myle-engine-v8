@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useState } from 'react'
 
 import type { CtcsAction } from '@/hooks/use-leads-query'
 
@@ -29,19 +29,11 @@ export function CtcsOutcomeModal({ open, leadName, busy, onClose, onPick }: Prop
   const [step, setStep] = useState<'outcomes' | 'call_later_time'>('outcomes')
   const [localFollowup, setLocalFollowup] = useState(defaultCallLaterLocalInput)
 
-  useEffect(() => {
-    if (!open) {
-      setStep('outcomes')
-    }
-  }, [open])
-
-  const minLocal = useMemo(() => {
-    const d = new Date()
-    const pad = (n: number) => String(n).padStart(2, '0')
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-  }, [open, step])
-
   if (!open) return null
+
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const minLocal = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 
   return (
     <div

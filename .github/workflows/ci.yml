@@ -34,6 +34,9 @@ jobs:
           python -m pip install -r backend/requirements.txt
           python -m pip install "pytest>=8.0.0" "httpx>=0.27.0" "anyio[trio]" "pip-audit>=2.7"
 
+      - name: Install PostgreSQL client (pg_isready)
+        run: sudo apt-get update -y && sudo apt-get install -y postgresql-client
+
       - name: Wait for PostgreSQL
         run: |
           for i in $(seq 1 30); do
@@ -62,10 +65,19 @@ jobs:
           SECRET_KEY: "ci-perf-test-key"
         run: |
           cd backend
-          python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
-          for i in $(seq 1 15); do
-            curl -sf http://localhost:8000/health && break || sleep 1
+          python -m uvicorn main:app --host 0.0.0.0 --port 8000 &
+          ok=0
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8000/health; then
+              ok=1
+              break
+            fi
+            sleep 1
           done
+          if [ "$ok" != 1 ]; then
+            echo "Backend failed to become healthy on /health"
+            exit 1
+          fi
 
       - name: Perf check (p95 < 300ms)
         run: python scripts/perf_check.py

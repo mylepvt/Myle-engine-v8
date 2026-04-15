@@ -88,19 +88,19 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
 
   const onPatchStatus = useCallback(
     (id: number, status: LeadStatus) => void patchMut.mutateAsync({ id, body: { status } }),
-    [patchMut.mutateAsync],
+    [patchMut],
   )
   const onPatchPool = useCallback(
     (id: number) => void patchMut.mutateAsync({ id, body: { in_pool: true } }),
-    [patchMut.mutateAsync],
+    [patchMut],
   )
   const onPatchArchive = useCallback(
     (id: number, archived: boolean) => void patchMut.mutateAsync({ id, body: { archived } }),
-    [patchMut.mutateAsync],
+    [patchMut],
   )
   const onDeleteLead = useCallback(
     (id: number) => void deleteMut.mutateAsync(id),
-    [deleteMut.mutateAsync],
+    [deleteMut],
   )
 
   async function handleCreate(e: FormEvent) {
