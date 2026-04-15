@@ -10,6 +10,14 @@ export type TeamTodayStats = {
 
 async function fetchTeamTodayStats(): Promise<TeamTodayStats> {
   const res = await apiFetch('/api/v1/execution/team-today-stats')
+  if (res.status === 404) {
+    // Backward compatibility: older backend builds may not expose this endpoint yet.
+    return {
+      claimed_today: 0,
+      calls_today: 0,
+      enrolled_today: 0,
+    }
+  }
   if (!res.ok) {
     const t = await res.text().catch(() => '')
     throw new Error(t || `HTTP ${res.status}`)
@@ -23,5 +31,6 @@ export function useTeamTodayStatsQuery(enabled: boolean) {
     queryFn: fetchTeamTodayStats,
     enabled,
     staleTime: 60_000,
+    retry: false,
   })
 }
