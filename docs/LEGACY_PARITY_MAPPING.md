@@ -74,7 +74,7 @@ Roles: **`frontend/src/config/dashboard-route-roles.json`** (exact list per path
 | `finance/wallet` | full | `WalletPage` |
 | `finance/recharge-request` | full | `WalletRechargePage` |
 | `finance/recharge-admin` | full | `WalletRechargeAdminPage` |
-| `finance/budget-export` | full | `BudgetExportPage` + `GET /api/v1/finance/budget-export` |
+| `finance/budget-export` | full | `BudgetExportPage` + `GET /api/v1/finance/budget-export` (per-member wallet rows; legacy ``/admin/budget-export`` intent — pool spend/date CSV still differs) |
 | `other/leaderboard` | full | `LeaderboardPage` + `GET /api/v1/other/leaderboard` |
 | `other/notice-board` | full | `NoticeBoardPage` + `GET/POST/DELETE` `/api/v1/other/notice-board` |
 | `other/training` | full | `CommunityTrainingPage` + `GET /api/v1/other/training` |

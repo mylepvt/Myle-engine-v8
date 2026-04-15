@@ -18,8 +18,9 @@ export function LeaderboardPage({ title }: Props) {
     <div className="max-w-4xl space-y-6">
       <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
       <p className="text-sm text-muted-foreground">
-        Rankings from summed daily report points (`daily_scores`). Same ordering rules for every role
-        that can open this page.
+        Top 20 approved team members by lifetime-style sum of `daily_scores.points` (when the org has
+        team accounts); otherwise all approved users, matching the legacy empty-team fallback on
+        `/leaderboard`.
       </p>
 
       {isPending ? (

@@ -6,7 +6,7 @@ from datetime import date, datetime
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import desc, func, select
+from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
@@ -49,7 +49,27 @@ async def other_leaderboard(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> SystemStubResponse:
+    """Public leaderboard — mirrors legacy ``/leaderboard`` *points board* section.
+
+    Legacy (``social_routes.leaderboard``): approved ``team`` rows only, top 20 by
+    ``users.total_points`` (with empty-DB fallback to all approved users). vl2 has no
+    ``total_points`` column; ranking uses **sum of** ``daily_scores.points`` (lifetime-style).
+    """
     _ = user
+    team_approved_ct = int(
+        (
+            await session.execute(
+                select(func.count())
+                .select_from(User)
+                .where(User.role == "team", User.registration_status == "approved")
+            )
+        ).scalar_one()
+    )
+    # Legacy: if no approved team members, show all approved users so the board is not blank.
+    lb_conds = [User.registration_status == "approved"]
+    if team_approved_ct > 0:
+        lb_conds.append(User.role == "team")
+
     stmt = (
         select(
             User.id,
@@ -61,9 +81,10 @@ async def other_leaderboard(
         )
         .select_from(User)
         .outerjoin(DailyScore, DailyScore.user_id == User.id)
+        .where(and_(*lb_conds))
         .group_by(User.id, User.fbo_id, User.username, User.email, User.role)
         .order_by(desc("pts"))
-        .limit(50)
+        .limit(20)
     )
     rows = (await session.execute(stmt)).all()
     items: list[dict] = []
@@ -77,10 +98,15 @@ async def other_leaderboard(
                 "count": rank,
             }
         )
+    scope = "approved team" if team_approved_ct > 0 else "all approved users (legacy empty-team fallback)"
     return SystemStubResponse(
         items=items,
         total=len(items),
-        note="Rankings use summed `daily_scores.points` across all submitted report days.",
+        note=(
+            f"Top 20 by summed `daily_scores.points` ({scope}). "
+            "Legacy Flask used `users.total_points` + `daily_scores` for today only; "
+            "see `backend/legacy/myle_dashboard_main3/routes/social_routes.py` leaderboard()."
+        ),
     )
 
 
@@ -164,18 +190,42 @@ async def other_live_session(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> SystemStubResponse:
+    """Live / Zoom card — reads vl2 keys first, then legacy Flask ``_get_setting`` keys.
+
+    Legacy ``social_routes.live_session``: ``zoom_link``, ``zoom_title``, ``zoom_time``,
+    ``paper_plan_link`` (see ``myle_dashboard_main3/routes/social_routes.py``).
+    """
     _ = user
 
     async def _get(key: str) -> str | None:
         row = await session.get(AppSetting, key)
         return row.value if row and row.value else None
 
-    title = (await _get("live_session_title")) or "Live session"
-    url = (await _get("live_session_url")) or ""
-    sched = (
-        (await _get("live_session_schedule"))
-        or "Set `live_session_title`, `live_session_url`, and `live_session_schedule` in admin → General (app_settings) to publish meeting links here."
+    title = (
+        (await _get("live_session_title"))
+        or (await _get("zoom_title"))
+        or "Today's Live Session"
     )
+    url = ((await _get("live_session_url")) or (await _get("zoom_link")) or "").strip()
+    sched_custom = (await _get("live_session_schedule")) or ""
+    if sched_custom.strip():
+        sched = sched_custom.strip()
+    else:
+        parts: list[str] = []
+        zt = (await _get("zoom_time")) or ""
+        if zt.strip():
+            parts.append(zt.strip() if zt.strip().lower().startswith("scheduled") else f"Scheduled: {zt.strip()}")
+        pp = (await _get("paper_plan_link")) or ""
+        if pp.strip():
+            parts.append(f"Paper plan: {pp.strip()}")
+        sched = (
+            " · ".join(parts)
+            if parts
+            else (
+                "Set `zoom_link` + `zoom_title` + `zoom_time` (legacy keys) or "
+                "`live_session_url` / `live_session_title` / `live_session_schedule` in app_settings."
+            )
+        )
     items: list[dict] = []
     if url.strip():
         items.append(
@@ -195,7 +245,11 @@ async def other_live_session(
     return SystemStubResponse(
         items=items,
         total=len(items),
-        note="Meeting link and copy are driven from `app_settings` keys.",
+        note=(
+            "Reads `app_settings`: vl2 keys `live_session_*` or legacy Flask keys "
+            "`zoom_link`, `zoom_title`, `zoom_time`, `paper_plan_link` "
+            "(``social_routes.live_session``)."
+        ),
     )
 
 

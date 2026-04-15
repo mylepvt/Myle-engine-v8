@@ -13,7 +13,7 @@ export function BudgetExportPage({ title }: Props) {
   const tableRows = useMemo(
     () =>
       (data?.items ?? []).map((row) => ({
-        month: typeof row.title === 'string' ? row.title : '—',
+        member: typeof row.title === 'string' ? row.title : '—',
         detail: typeof row.detail === 'string' ? row.detail : '',
       })),
     [data],
@@ -21,8 +21,8 @@ export function BudgetExportPage({ title }: Props) {
 
   const downloadCsv = useCallback(() => {
     const csv = buildCsv(
-      ['Month', 'Summary'],
-      tableRows.map((r) => [r.month, r.detail]),
+      ['Member', 'Summary'],
+      tableRows.map((r) => [r.member, r.detail]),
     )
     let url: string | undefined
     try {
@@ -30,7 +30,7 @@ export function BudgetExportPage({ title }: Props) {
       url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `budget-ledger-by-month-${new Date().toISOString().slice(0, 10)}.csv`
+      a.download = `budget-member-summary-${new Date().toISOString().slice(0, 10)}.csv`
       a.rel = 'noopener'
       a.click()
     } finally {
@@ -42,8 +42,9 @@ export function BudgetExportPage({ title }: Props) {
     <div className="max-w-3xl space-y-6">
       <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
       <p className="text-sm text-muted-foreground">
-        Net wallet ledger movement grouped by calendar month (UTC bucket). Use CSV for finance
-        reconciliation.
+        One row per member (legacy admin budget export shape): balance from the wallet ledger,
+        approved recharges (excluding ADMIN-ADJUST UTRs), admin adjustment lines, and active assigned
+        lead counts. CSV uses the same columns as the table.
       </p>
 
       {isPending ? (
@@ -74,21 +75,21 @@ export function BudgetExportPage({ title }: Props) {
             <table className="w-full min-w-[24rem] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-white/10 text-ds-caption text-muted-foreground">
-                  <th className="py-2 pr-4 font-medium">Month</th>
+                  <th className="py-2 pr-4 font-medium">Member</th>
                   <th className="py-2 font-medium">Summary</th>
                 </tr>
               </thead>
               <tbody>
                 {tableRows.map((r, i) => (
                   <tr key={i} className="border-b border-white/[0.06]">
-                    <td className="py-2.5 pr-4 font-medium text-foreground">{r.month}</td>
+                    <td className="py-2.5 pr-4 font-medium text-foreground">{r.member}</td>
                     <td className="py-2.5 text-muted-foreground">{r.detail || '—'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
             {tableRows.length === 0 ? (
-              <p className="mt-3 text-muted-foreground">No ledger rows in range.</p>
+              <p className="mt-3 text-muted-foreground">No approved members to list.</p>
             ) : null}
           </div>
         </div>
