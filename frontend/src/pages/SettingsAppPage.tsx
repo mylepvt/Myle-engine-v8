@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { useShellStubQuery } from '@/hooks/use-shell-stub-query'
@@ -46,17 +46,11 @@ export function SettingsAppPage({ title }: Props) {
   const updateAppSetting = useAppSettingUpdateMutation()
 
   const [q, setQ] = useState('')
-  const [batchValues, setBatchValues] = useState<Record<string, string>>({})
+  const [batchEdits, setBatchEdits] = useState<Record<string, string>>({})
   const [saveMsg, setSaveMsg] = useState<string | null>(null)
-
-  useEffect(() => {
-    const next: Record<string, string> = {}
-    const src = appSettingsData?.settings ?? {}
-    for (const key of BATCH_SETTING_KEYS) {
-      next[key] = src[key] ?? ''
-    }
-    setBatchValues(next)
-  }, [appSettingsData])
+  const batchSource = appSettingsData?.settings ?? {}
+  const resolvedBatchValue = (key: string): string =>
+    Object.prototype.hasOwnProperty.call(batchEdits, key) ? (batchEdits[key] ?? '') : (batchSource[key] ?? '')
 
   const rows = useMemo(() => {
     const items = data?.items ?? []
@@ -76,9 +70,10 @@ export function SettingsAppPage({ title }: Props) {
   const handleSaveBatchLinks = async () => {
     setSaveMsg(null)
     for (const key of BATCH_SETTING_KEYS) {
-      const value = (batchValues[key] ?? '').trim()
+      const value = resolvedBatchValue(key).trim()
       await updateAppSetting.mutateAsync({ key, value })
     }
+    setBatchEdits({})
     setSaveMsg('Batch links updated successfully.')
     void refetch()
     void refetchAppSettings()
@@ -112,9 +107,9 @@ export function SettingsAppPage({ title }: Props) {
               <label key={key} className="block text-xs">
                 <span className="mb-1 block text-muted-foreground">{batchSettingLabel(key)}</span>
                 <input
-                  value={batchValues[key] ?? ''}
+                  value={resolvedBatchValue(key)}
                   onChange={(e) =>
-                    setBatchValues((prev) => ({
+                    setBatchEdits((prev) => ({
                       ...prev,
                       [key]: e.target.value,
                     }))
