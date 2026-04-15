@@ -25,8 +25,6 @@ def test_validate_list_flags_rejects_combination() -> None:
     assert exc.value.status_code == 422
 
 
-def test_validate_list_flags_rejects_deleted_only_for_non_admin() -> None:
+def test_validate_list_flags_allows_deleted_only_for_non_admin() -> None:
     user = AuthUser(user_id=2, role="leader", email="leader@example.com")
-    with pytest.raises(HTTPException) as exc:
-        validate_list_flags(archived_only=False, deleted_only=True, user=user)
-    assert exc.value.status_code == 403
+    validate_list_flags(archived_only=False, deleted_only=True, user=user)

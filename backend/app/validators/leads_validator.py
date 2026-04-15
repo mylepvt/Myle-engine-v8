@@ -34,11 +34,6 @@ def validate_list_flags(*, archived_only: bool, deleted_only: bool, user: AuthUs
             status_code=http_status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Cannot combine archived_only and deleted_only",
         )
-    if deleted_only and user.role != "admin":
-        raise HTTPException(
-            status_code=http_status.HTTP_403_FORBIDDEN,
-            detail="Only admin can view recycle bin",
-        )
 
 
 def lead_list_conditions(
