@@ -1,14 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 
+import { normalizeShellStubResponse, type ShellStubResponse } from '@/hooks/use-shell-stub-query'
 import { apiFetch } from '@/lib/api'
+import { messageFromApiErrorPayload } from '@/lib/http-error-message'
+import { normalizeTrainingSurfacePayload } from '@/lib/training-surface'
 
 export type SystemSurface = 'training' | 'decision-engine' | 'coaching'
-
-export type SystemStubResponse = {
-  items: Record<string, unknown>[]
-  total: number
-  note: string | null
-}
 
 /** DB-backed training home (differs from stub shape). */
 export type TrainingSurfacePayload = {
@@ -23,21 +20,19 @@ const PATHS: Record<SystemSurface, string> = {
   coaching: '/api/v1/system/coaching',
 }
 
-async function parseError(res: Response): Promise<never> {
-  const err = await res.json().catch(() => ({}))
-  const msg =
-    typeof err === 'object' && err !== null && 'error' in err
-      ? String((err as { error?: { message?: string } }).error?.message ?? res.statusText)
-      : res.statusText
-  throw new Error(msg || `HTTP ${res.status}`)
-}
-
 async function fetchSystemSurface(
   surface: SystemSurface,
-): Promise<SystemStubResponse | TrainingSurfacePayload> {
+): Promise<ShellStubResponse | TrainingSurfacePayload> {
   const res = await apiFetch(PATHS[surface])
-  if (!res.ok) await parseError(res)
-  return res.json()
+  const raw: unknown = await res.json().catch(() => null)
+  if (!res.ok) {
+    const msg = messageFromApiErrorPayload(raw, res.statusText)
+    throw new Error(msg || `HTTP ${res.status}`)
+  }
+  if (surface === 'training') {
+    return normalizeTrainingSurfacePayload(raw)
+  }
+  return normalizeShellStubResponse(raw)
 }
 
 export function useSystemSurfaceQuery(surface: SystemSurface, enabled = true) {
@@ -45,5 +40,8 @@ export function useSystemSurfaceQuery(surface: SystemSurface, enabled = true) {
     queryKey: ['system', surface],
     queryFn: () => fetchSystemSurface(surface),
     enabled,
+    staleTime: surface === 'training' ? 30_000 : 45_000,
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8_000),
   })
 }

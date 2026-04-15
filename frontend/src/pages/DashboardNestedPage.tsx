@@ -34,6 +34,14 @@ import { TeamReportsPage } from '@/pages/TeamReportsPage'
 import { DailyReportFormPage } from '@/pages/DailyReportFormPage'
 import AnalyticsPage from '@/pages/AnalyticsPage'
 import SettingsPage from '@/pages/SettingsPage'
+import { LeaderboardPage } from '@/pages/LeaderboardPage'
+import { LiveSessionPage } from '@/pages/LiveSessionPage'
+import { CommunityTrainingPage } from '@/pages/CommunityTrainingPage'
+import { BudgetExportPage } from '@/pages/BudgetExportPage'
+import { SettingsAppPage } from '@/pages/SettingsAppPage'
+import { SettingsHelpPage } from '@/pages/SettingsHelpPage'
+import { SettingsOrgTreePage } from '@/pages/SettingsOrgTreePage'
+import { AllMembersPage } from '@/pages/AllMembersPage'
 
 function renderFullUi(ui: FullUiSurface, title: string) {
   switch (ui.kind) {
@@ -83,6 +91,22 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <DailyReportFormPage title={title} />
     case 'settings':
       return <SettingsPage />
+    case 'leaderboard':
+      return <LeaderboardPage title={title} />
+    case 'live-session':
+      return <LiveSessionPage title={title} />
+    case 'community-training':
+      return <CommunityTrainingPage title={title} />
+    case 'budget-export':
+      return <BudgetExportPage title={title} />
+    case 'settings-app':
+      return <SettingsAppPage title={title} />
+    case 'settings-help':
+      return <SettingsHelpPage title={title} />
+    case 'settings-org-tree':
+      return <SettingsOrgTreePage title={title} />
+    case 'all-members':
+      return <AllMembersPage title={title} />
     case 'shell-api':
       return <ShellStubPage title={title} apiPath={ui.apiPath} />
     default: {

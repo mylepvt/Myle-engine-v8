@@ -74,13 +74,16 @@ Roles: **`frontend/src/config/dashboard-route-roles.json`** (exact list per path
 | `finance/wallet` | full | `WalletPage` |
 | `finance/recharge-request` | full | `WalletRechargePage` |
 | `finance/recharge-admin` | full | `WalletRechargeAdminPage` |
-| `other/leaderboard` | stub | `GET /api/v1/other/leaderboard` |
+| `finance/budget-export` | full | `BudgetExportPage` + `GET /api/v1/finance/budget-export` |
+| `other/leaderboard` | full | `LeaderboardPage` + `GET /api/v1/other/leaderboard` |
 | `other/notice-board` | full | `NoticeBoardPage` + `GET/POST/DELETE` `/api/v1/other/notice-board` |
-| `other/live-session` | stub | `GET /api/v1/other/live-session` |
+| `other/training` | full | `CommunityTrainingPage` + `GET /api/v1/other/training` |
+| `other/live-session` | full | `LiveSessionPage` + `GET /api/v1/other/live-session` |
 | `other/daily-report` | full | `DailyReportFormPage` + `GET /api/v1/other/daily-report` |
-| `settings/app` | stub | `GET /api/v1/settings/app` |
-| `settings/help` | stub | `GET /api/v1/settings/help` |
-| `settings/org-tree` | stub | `GET /api/v1/settings/org-tree` |
+| `settings/app` | full | `SettingsAppPage` + `GET /api/v1/settings/app` |
+| `settings/help` | full | `SettingsHelpPage` + `GET /api/v1/settings/help` |
+| `settings/all-members` | full | `AllMembersPage` → `TeamMembersPage` + `GET/POST /api/v1/team/members` |
+| `settings/org-tree` | full | `SettingsOrgTreePage` + `GET /api/v1/settings/org-tree` |
 
 **Stub map derivation:** `SHELL_STUB_API_PATHS` in `dashboard-registry.ts` — do not duplicate.
 

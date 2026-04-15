@@ -80,6 +80,15 @@ export type FullUiSurface =
   | { kind: 'daily-report-form' }
   | { kind: 'analytics' }
   | { kind: 'settings' }
+  | { kind: 'leaderboard' }
+  | { kind: 'live-session' }
+  /** Legacy Other → Training (`/training`) — leader/team; same catalog as system training. */
+  | { kind: 'community-training' }
+  | { kind: 'budget-export' }
+  | { kind: 'settings-app' }
+  | { kind: 'settings-help' }
+  | { kind: 'settings-org-tree' }
+  | { kind: 'all-members' }
   /** Loads `ShellStubPage` with a GET that returns `SystemStubResponse` (items + note). */
   | { kind: 'shell-api'; apiPath: string }
 
@@ -281,6 +290,14 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     ui: { kind: 'finance-recharges' },
   },
   {
+    path: 'finance/budget-export',
+    section: { id: 'finance', label: 'Wallet' },
+    label: 'Budget export',
+    roles: routeRoles('finance/budget-export'),
+    surface: 'full',
+    ui: { kind: 'budget-export' },
+  },
+  {
     path: 'finance/wallet',
     section: { id: 'finance', label: 'Wallet' },
     label: 'My wallet',
@@ -310,7 +327,7 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     label: 'Leaderboard',
     roles: routeRoles('other/leaderboard'),
     surface: 'full',
-    ui: { kind: 'shell-api', apiPath: '/api/v1/other/leaderboard' },
+    ui: { kind: 'leaderboard' },
   },
   {
     path: 'other/notice-board',
@@ -321,12 +338,20 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     ui: { kind: 'notice-board' },
   },
   {
+    path: 'other/training',
+    section: { id: 'other', label: 'Community' },
+    label: 'Training',
+    roles: routeRoles('other/training'),
+    surface: 'full',
+    ui: { kind: 'community-training' },
+  },
+  {
     path: 'other/live-session',
     section: { id: 'other', label: 'Community' },
     label: 'Live session',
     roles: routeRoles('other/live-session'),
     surface: 'full',
-    ui: { kind: 'shell-api', apiPath: '/api/v1/other/live-session' },
+    ui: { kind: 'live-session' },
   },
   {
     path: 'other/daily-report',
@@ -342,7 +367,7 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     label: 'General',
     roles: routeRoles('settings/app'),
     surface: 'full',
-    ui: { kind: 'shell-api', apiPath: '/api/v1/settings/app' },
+    ui: { kind: 'settings-app' },
   },
   {
     path: 'settings/help',
@@ -350,7 +375,15 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     label: 'Help',
     roles: routeRoles('settings/help'),
     surface: 'full',
-    ui: { kind: 'shell-api', apiPath: '/api/v1/settings/help' },
+    ui: { kind: 'settings-help' },
+  },
+  {
+    path: 'settings/all-members',
+    section: { id: 'settings', label: 'Settings' },
+    label: 'All members',
+    roles: routeRoles('settings/all-members'),
+    surface: 'full',
+    ui: { kind: 'all-members' },
   },
   {
     path: 'settings/org-tree',
@@ -358,7 +391,7 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     label: 'Org tree',
     roles: routeRoles('settings/org-tree'),
     surface: 'full',
-    ui: { kind: 'shell-api', apiPath: '/api/v1/settings/org-tree' },
+    ui: { kind: 'settings-org-tree' },
   },
   {
     path: 'analytics',
