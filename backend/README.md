@@ -15,6 +15,7 @@ Run from **`backend/`** so `DATABASE_URL` and `app.*` imports match production.
 
 | Script | Purpose |
 |--------|---------|
+| `scripts/run_ctcs_maintenance.py` | CTCS heat decay: subtract `CTCS_HEAT_DECAY_POINTS` for leads not decayed in `CTCS_HEAT_DECAY_INTERVAL_HOURS` (same `DATABASE_URL` as API). Schedule daily via cron or a job runner. |
 | `scripts/create_user.py` | Bootstrap / reset a user (bcrypt; same as `POST /api/v1/auth/login`). |
 | `scripts/legacy_sqlite_inspect.py` | Read-only: list legacy SQLite tables + row counts (`LEGACY_SQLITE_PATH`). |
 | `scripts/import_legacy_sqlite.py` | Copy **legacy Flask `leads.db`** → vl2 PostgreSQL (users → leads → wallet → activity) **and** optional **100% row snapshot** (`legacy_row_snapshots` JSON — default on; use `--no-full-snapshot` to skip). |

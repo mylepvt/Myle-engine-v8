@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import delete
 
+from app.models.follow_up import FollowUp
 from app.models.lead import Lead
 from main import app
 
@@ -19,6 +20,7 @@ client = TestClient(app)
 async def _clear_leads() -> None:
     fac = test_conftest.get_test_session_factory()
     async with fac() as session:
+        await session.execute(delete(FollowUp))
         await session.execute(delete(Lead))
         await session.commit()
 

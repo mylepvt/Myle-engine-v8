@@ -40,6 +40,7 @@ def test_follow_ups_requires_auth() -> None:
 
 
 def test_create_and_list_follow_up(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_clear())
     asyncio.run(_seed_lead(user_id=2))
     try:
         c = _client(monkeypatch)
@@ -64,6 +65,7 @@ def test_create_and_list_follow_up(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_leader_cannot_create_on_others_lead(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_clear())
     asyncio.run(_seed_lead(user_id=1, name="Admin lead"))
     try:
         c = _client(monkeypatch)
@@ -75,6 +77,7 @@ def test_leader_cannot_create_on_others_lead(monkeypatch: pytest.MonkeyPatch) ->
 
 
 def test_complete_and_reopen_follow_up(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_clear())
     asyncio.run(_seed_lead(user_id=2))
     try:
         c = _client(monkeypatch)

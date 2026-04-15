@@ -38,6 +38,7 @@ These apply everywhere; legacy comparison rows belong in the **matrix** only aft
 | Workboard buckets | Same visibility as `GET /leads`, grouped by `status`, capped | `backend/app/api/v1/workboard.py` |
 | Dashboard routes & roles | Single registry + JSON roles | `frontend/src/config/dashboard-registry.ts`, `frontend/src/config/dashboard-route-roles.json` |
 | Feature flag (Intelligence nav) | `GET /api/v1/meta` → `features.intelligence` | `backend` meta router + `frontend` `useMetaQuery` |
+| Call-to-close (CTCS) | `POST /api/v1/leads/{id}/action` maps outcomes to canonical `Lead.status` via `advance_lead_status_toward` (legacy FSM); `ctcs_heat` + status chain apply +10 on first `contacted`; optional `followup_at` on `call_later`; WhatsApp/webhook via `whatsapp_ctcs.py`, queued after HTTP when `CTCS_WHATSAPP_ASYNC=true`. UI: optimistic patch `frontend/src/lib/ctcs-optimistic.ts`. Regression: `tests/test_api_v1_ctcs.py`. | `backend/app/services/leads_service.py`, `ctcs_status_chain.py`, `ctcs_heat.py`, `whatsapp_ctcs.py`; `frontend/src/components/leads/CtcsWorkSurface.tsx` |
 
 ---
 
@@ -157,7 +158,7 @@ Roles: **`frontend/src/config/dashboard-route-roles.json`** (exact list per path
 | Lead Pool — `/lead-pool` or `/admin/lead-pool` | `NAV-EXPORT-001`; `EVID-2026-005` | `work/lead-pool` / `work/lead-pool-admin` | full | TBD | |
 | Recycle Bin — `/leads/recycle-bin` | `NAV-EXPORT-001`; `EVID-2026-006` | `work/recycle-bin` | full | TBD | |
 | Login session persistence (remember me/session restore) | `EVID-2026-007` | `/login` + protected `/dashboard/*` | full | TBD | |
-| **Call-to-close (CTCS)** — fast loop + list filters + actions | `NAV-EXPORT-001`; **`EVID-CTCS-2026-001`** — `backend/app/api/v1/leads.py`, `leads_service.py`, `ctcs_status_chain.py`, `whatsapp_ctcs.py`; `frontend` `LeadsWorkPage.tsx`, `CtcsWorkSurface.tsx` | `work/leads` | full | **partial** — action-first vs legacy table-first; statuses = `lead_status.py`; WhatsApp = env webhook or stub | 2026-04-15 |
+| **Call-to-close (CTCS)** — fast loop + list filters + actions | `NAV-EXPORT-001`; **`EVID-CTCS-2026-001`** — `tests/test_api_v1_ctcs.py`; `backend/app/api/v1/leads.py`, `leads_service.py`, `ctcs_status_chain.py`, `ctcs_heat.py`, `whatsapp_ctcs.py`; `frontend` `LeadsWorkPage.tsx`, `CtcsWorkSurface.tsx`, `ctcs-optimistic.ts` | `work/leads` | full | **partial** — action-first vs legacy table-first; statuses = `lead_status.py`; WhatsApp = env webhook or stub (async when `CTCS_WHATSAPP_ASYNC=true`) | 2026-04-15 |
 
 **Evidence ids:** Repo-local reference slots — jab file/Notion/screenshot attach ho, yahi id matrix aur evidence store mein use karo. **“match”** sirf jab dono legacy + new documented hon.
 

@@ -18,11 +18,13 @@ test.describe('happy path (mocked API)', () => {
 
     await page.goto('/dashboard/work/leads')
     await expect(page.getByRole('heading', { name: /^All Leads$/i })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'E2E Lead' })).toBeVisible()
 
-    const stageBtn = page.getByRole('button', { name: /Stage for E2E Lead/i })
-    await stageBtn.click()
-    await page.getByRole('listbox', { name: /Status for E2E Lead/i }).getByRole('option', { name: /^Contacted$/ }).click()
-    await expect(stageBtn).toContainText('Contacted')
+    // CTCS cards use a heading for the name (no row link to lead detail).
+    const leadHeading = page.getByRole('heading', { name: 'E2E Lead' })
+    await expect(leadHeading).toBeVisible()
+    const card = page.getByRole('article').filter({ has: leadHeading })
+    const contacted = card.getByRole('button', { name: 'Contacted' })
+    await contacted.click()
+    await expect(contacted).toHaveClass(/border-primary/)
   })
 })

@@ -15,6 +15,7 @@ import {
   useLeadsInfiniteQuery,
   usePatchLeadMutation,
 } from '@/hooks/use-leads-query'
+import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { useCallToCloseStore } from '@/stores/call-to-close-store'
 
 function nextLeadId(items: LeadPublic[], current: number | null): number | null {
@@ -40,6 +41,7 @@ type Props = {
 }
 
 export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
+  const { role } = useDashboardShellRole()
   const [tab, setTab] = useState<CtcsTab>('today')
   const ctcsOpts = useMemo(
     () => ({ ctcsFilter: tab, ctcsPrioritySort: true as const }),
@@ -78,15 +80,22 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   )
 
   const onCtcsAction = useCallback(
-    async (id: number, action: CtcsAction) => {
-      await ctcsMut.mutateAsync({ id, action })
+    async (id: number, action: CtcsAction, opts?: { followupAt?: string | null }) => {
+      const paidStatus = role === 'team' ? ('paid' as const) : ('day1' as const)
+      await ctcsMut.mutateAsync({
+        id,
+        action,
+        followupAt: opts?.followupAt,
+        paidStatus,
+      })
+      const ref = await leadsQ.refetch()
+      const fresh = ref.data?.pages.flatMap((p) => p.items) ?? []
       if (callMode) {
-        const next = nextLeadId(items, id)
-        setActiveLeadId(next)
+        setActiveLeadId(nextLeadId(fresh, id))
       }
       setOutcomeLeadId(null)
     },
-    [ctcsMut, callMode, items, setActiveLeadId, setOutcomeLeadId],
+    [ctcsMut, callMode, setActiveLeadId, setOutcomeLeadId, leadsQ, role],
   )
 
   const onCall = useCallback(
@@ -187,9 +196,9 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
         leadName={outcomeLead?.name ?? ''}
         busy={ctcsMut.isPending}
         onClose={() => setOutcomeLeadId(null)}
-        onPick={(action) => {
+        onPick={(action, followupAt) => {
           if (outcomeLeadId == null) return
-          void onCtcsAction(outcomeLeadId, action)
+          void onCtcsAction(outcomeLeadId, action, { followupAt })
         }}
       />
     </div>

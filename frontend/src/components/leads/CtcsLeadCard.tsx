@@ -44,7 +44,7 @@ type Props = {
   patchBusy: boolean
   actionBusy: boolean
   onPatchStatus: (id: number, status: LeadStatus) => void
-  onCtcsAction: (id: number, action: CtcsAction) => void
+  onCtcsAction: (id: number, action: CtcsAction, opts?: { followupAt?: string | null }) => void
   onCall: (lead: LeadPublic) => void
   onFollowUp: (id: number) => void
 }

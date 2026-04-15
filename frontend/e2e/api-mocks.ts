@@ -42,6 +42,9 @@ function mockLead(overrides: Partial<Record<string, unknown>> = {}) {
     d2_afternoon: false,
     d2_evening: false,
     no_response_attempt_count: 0,
+    last_action_at: null,
+    next_followup_at: null,
+    heat_score: 0,
   }
   return { ...base, ...overrides }
 }

@@ -453,7 +453,7 @@ class LeadsService:
             lead.whatsapp_sent_at = now
             if settings.ctcs_whatsapp_async and background_tasks is not None:
                 background_tasks.add_task(_deliver_ctcs_interested_whatsapp, lead.id, lead.phone)
-                wa_meta: dict[str, object] = {"queued": True, "channel": "whatsapp"}
+                wa_meta: dict[str, Any] = {"queued": True, "channel": "whatsapp"}
             else:
                 wa_meta = await send_interested_enrollment_assets(lead_id=lead.id, phone=lead.phone)
             await self._repository.add_lead_activity(

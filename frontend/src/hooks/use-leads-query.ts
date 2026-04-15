@@ -1,4 +1,5 @@
 import {
+  type InfiniteData,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -6,6 +7,7 @@ import {
 } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
+import { applyCtcsOptimisticToLead } from '@/lib/ctcs-optimistic'
 
 export type LeadStatus =
   | 'new_lead'
@@ -245,11 +247,23 @@ export async function patchLead(
   return res.json()
 }
 
-export async function postLeadCtcsAction(id: number, action: CtcsAction): Promise<LeadPublic> {
+export type PostLeadCtcsActionOpts = {
+  followupAt?: string | null
+}
+
+export async function postLeadCtcsAction(
+  id: number,
+  action: CtcsAction,
+  opts?: PostLeadCtcsActionOpts,
+): Promise<LeadPublic> {
+  const body: Record<string, unknown> = { action }
+  if (opts?.followupAt != null && opts.followupAt.trim() !== '') {
+    body.followup_at = opts.followupAt
+  }
   const res = await apiFetch(`/api/v1/leads/${id}/action`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action }),
+    body: JSON.stringify(body),
   })
   if (!res.ok) {
     await parseError(res)
@@ -363,6 +377,15 @@ function invalidateLeadRelated(qc: ReturnType<typeof useQueryClient>) {
   void qc.invalidateQueries({ queryKey: ['follow-ups'] })
 }
 
+function isLeadsInfiniteData(data: unknown): data is InfiniteData<LeadListResponse> {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'pages' in data &&
+    Array.isArray((data as InfiniteData<LeadListResponse>).pages)
+  )
+}
+
 export function useCreateLeadMutation() {
   const qc = useQueryClient()
   return useMutation({
@@ -431,11 +454,49 @@ export function useTransitionLeadMutation() {
   })
 }
 
+export type LeadCtcsActionMutationVars = {
+  id: number
+  action: CtcsAction
+  followupAt?: string | null
+  paidStatus?: 'paid' | 'day1'
+}
+
 export function useLeadCtcsActionMutation() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, action }: { id: number; action: CtcsAction }) => postLeadCtcsAction(id, action),
-    onSuccess: () => invalidateLeadRelated(qc),
+    mutationFn: ({ id, action, followupAt }: LeadCtcsActionMutationVars) =>
+      postLeadCtcsAction(id, action, { followupAt }),
+    onMutate: async (variables) => {
+      await qc.cancelQueries({ queryKey: ['leads', 'list', 'paged'], exact: false })
+      const previous = qc.getQueriesData({ queryKey: ['leads', 'list', 'paged'], exact: false })
+      const optimisticOpts = {
+        followupAt: variables.followupAt,
+        paidStatus: variables.paidStatus,
+      }
+      previous.forEach(([queryKey, data]) => {
+        if (!isLeadsInfiniteData(data)) return
+        qc.setQueryData(queryKey, {
+          ...data,
+          pages: data.pages.map((page) => ({
+            ...page,
+            items: page.items.map((item) =>
+              item.id === variables.id
+                ? applyCtcsOptimisticToLead(item, variables.action, optimisticOpts)
+                : item,
+            ),
+          })),
+        })
+      })
+      return { previous }
+    },
+    onError: (_err, _variables, context) => {
+      context?.previous?.forEach(([queryKey, data]) => {
+        qc.setQueryData(queryKey, data)
+      })
+    },
+    onSettled: () => {
+      invalidateLeadRelated(qc)
+    },
   })
 }
 
