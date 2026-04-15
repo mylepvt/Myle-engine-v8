@@ -79,6 +79,7 @@ export type LeadPublic = {
   notes: string | null
   // Assignment
   assigned_to_user_id: number | null
+  assigned_to_name?: string | null
   // Call tracking
   call_status: string | null
   call_count: number
@@ -89,6 +90,9 @@ export type LeadPublic = {
   payment_amount_cents: number | null
   payment_proof_url: string | null
   payment_proof_uploaded_at: string | null
+  mindset_started_at?: string | null
+  mindset_completed_at?: string | null
+  mindset_lock_state?: 'mindset_lock' | 'leader_assigned' | null
   // Day completion
   day1_completed_at: string | null
   day2_completed_at: string | null
@@ -194,11 +198,28 @@ async function fetchLeads(
   return res.json()
 }
 
-export async function createLead(name: string, status: LeadStatus = 'new'): Promise<LeadPublic> {
+export type CreateLeadBody = {
+  name: string
+  status?: LeadStatus
+  phone?: string | null
+  email?: string | null
+  city?: string | null
+  source?: string | null
+  notes?: string | null
+}
+
+export async function createLead(body: CreateLeadBody): Promise<LeadPublic> {
+  const { name, status = 'new_lead', phone, email, city, source, notes } = body
+  const payload: Record<string, unknown> = { name, status }
+  if (phone != null && String(phone).trim() !== '') payload.phone = String(phone).trim()
+  if (email != null && String(email).trim() !== '') payload.email = String(email).trim()
+  if (city != null && String(city).trim() !== '') payload.city = String(city).trim()
+  if (source != null && String(source).trim() !== '') payload.source = String(source).trim()
+  if (notes != null && String(notes).trim() !== '') payload.notes = String(notes).trim()
   const res = await apiFetch('/api/v1/leads', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, status }),
+    body: JSON.stringify(payload),
   })
   if (!res.ok) {
     await parseError(res)
@@ -286,8 +307,50 @@ export async function deleteLead(id: number): Promise<void> {
   }
 }
 
+export async function permanentDeleteLead(id: number): Promise<void> {
+  const res = await apiFetch(`/api/v1/leads/${id}/permanent-delete`, { method: 'DELETE' })
+  if (!res.ok) {
+    await parseError(res)
+  }
+}
+
 export async function claimLead(id: number): Promise<LeadPublic> {
   const res = await apiFetch(`/api/v1/leads/${id}/claim`, { method: 'POST' })
+  if (!res.ok) {
+    await parseError(res)
+  }
+  return res.json()
+}
+
+export type MindsetLockPreviewResponse = {
+  eligible: boolean
+  minimum_seconds: number
+  elapsed_seconds: number
+  remaining_seconds: number
+  mindset_started_at: string | null
+  leader_user_id: number | null
+  leader_name: string | null
+}
+
+export type MindsetLockCompleteResponse = {
+  status: 'assigned'
+  leader_name: string
+  leader_user_id: number
+  duration_seconds: number
+  mindset_started_at: string
+  mindset_completed_at: string
+}
+
+export async function fetchMindsetLockPreview(id: number): Promise<MindsetLockPreviewResponse> {
+  const res = await apiFetch(`/api/v1/leads/${id}/mindset-lock-preview`)
+  if (!res.ok) {
+    await parseError(res)
+  }
+  return res.json()
+}
+
+export async function postMindsetLockComplete(id: number): Promise<MindsetLockCompleteResponse> {
+  const res = await apiFetch(`/api/v1/leads/${id}/mindset-lock-complete`, { method: 'POST' })
   if (!res.ok) {
     await parseError(res)
   }
@@ -389,8 +452,7 @@ function isLeadsInfiniteData(data: unknown): data is InfiniteData<LeadListRespon
 export function useCreateLeadMutation() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ name, status }: { name: string; status?: LeadStatus }) =>
-      createLead(name, status ?? 'new'),
+    mutationFn: (body: CreateLeadBody) => createLead(body),
     onSuccess: () => {
       invalidateLeadRelated(qc)
     },
@@ -418,6 +480,19 @@ export function useDeleteLeadMutation() {
   return useMutation({
     mutationFn: deleteLead,
     onSuccess: () => invalidateLeadRelated(qc),
+  })
+}
+
+export function usePermanentDeleteLeadMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: permanentDeleteLead,
+    onSuccess: () => {
+      void Promise.all([
+        qc.invalidateQueries({ queryKey: ['leads'] }),
+        qc.invalidateQueries({ queryKey: ['workboard'] }),
+      ])
+    },
   })
 }
 

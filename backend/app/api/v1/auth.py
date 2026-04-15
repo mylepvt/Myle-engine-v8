@@ -14,6 +14,7 @@ from app.core.config import settings
 from app.core.fbo_id import normalize_fbo_id, normalize_registration_fbo_id
 from app.core.jwt_tokens import decode_access_token, decode_refresh_token
 from app.core.passwords import (
+    DEV_LOGIN_PASSWORD_PLAIN,
     hash_password,
     should_upgrade_stored_password_to_bcrypt,
     verify_password_legacy_compatible,
@@ -33,7 +34,7 @@ from app.schemas.auth import (
     ResetPasswordResponse,
     UplineLookupResponse,
 )
-from app.services.dev_users import dev_email_for_role
+from app.services.dev_users import dev_email_for_role, dev_fbo_for_role
 from app.services.login_identity import (
     assert_safe_username,
     find_upline_user,
@@ -309,13 +310,27 @@ async def dev_login(
     if not settings.auth_dev_login_enabled:
         raise HTTPException(status_code=404, detail="Not found")
     email = dev_email_for_role(body.role)
+    fbo_id = dev_fbo_for_role(body.role)
     result = await session.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
     if user is None:
-        raise HTTPException(
-            status_code=500,
-            detail="Dev user missing; run database migrations",
+        by_fbo = await session.execute(select(User).where(User.fbo_id == fbo_id))
+        user = by_fbo.scalar_one_or_none()
+    if user is None:
+        role = body.role.value if hasattr(body.role, "value") else str(body.role)
+        user = User(
+            email=email,
+            fbo_id=fbo_id,
+            role=role,
+            hashed_password=hash_password(DEV_LOGIN_PASSWORD_PLAIN),
         )
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+    elif user.email != email:
+        user.email = email
+        await session.commit()
+        await session.refresh(user)
     issue_session_cookies(response, user)
     return DevLoginResponse()
 

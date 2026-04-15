@@ -3,12 +3,14 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from sqlalchemy import and_, case, func, or_, select
+from sqlalchemy import and_, case, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthUser
 from app.models.activity_log import ActivityLog
 from app.models.call_event import CallEvent
+from app.models.enroll_share_link import EnrollShareLink
+from app.models.follow_up import FollowUp
 from app.models.lead import Lead
 from app.models.wallet_ledger import WalletLedgerEntry
 from app.schemas.call_events import CallEventCreate
@@ -196,6 +198,14 @@ class SqlAlchemyLeadsRepository:
     async def soft_delete_lead(self, lead: Lead) -> None:
         lead.deleted_at = datetime.now(timezone.utc)
         lead.in_pool = False
+        await self._session.commit()
+
+    async def hard_delete_lead(self, lead_id: int) -> None:
+        # Explicit child cleanup because FK rows do not use ON DELETE CASCADE.
+        await self._session.execute(delete(FollowUp).where(FollowUp.lead_id == lead_id))
+        await self._session.execute(delete(CallEvent).where(CallEvent.lead_id == lead_id))
+        await self._session.execute(delete(EnrollShareLink).where(EnrollShareLink.lead_id == lead_id))
+        await self._session.execute(delete(Lead).where(Lead.id == lead_id))
         await self._session.commit()
 
     async def create_call_event(self, *, lead_id: int, user_id: int, body: CallEventCreate) -> CallEvent:

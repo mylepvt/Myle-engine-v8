@@ -12,7 +12,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
 from app.models.user import User
-from app.services.auto_handoff import AutoHandoffService
 from app.services.downline import is_user_in_downline_of, lead_visible_to_leader_clause
 from app.services.payment_proof_storage import save_payment_proof_file
 
@@ -114,9 +113,13 @@ class PaymentService:
 
         if lead.status == "video_watched":
             lead.status = "paid"
-
-        handoff = AutoHandoffService(self.session)
-        await handoff.on_payment_approved(lead=lead, actor_user_id=approved_by_user_id)
+        if lead.status == "paid":
+            lead.mindset_lock_state = "mindset_lock"
+            if lead.mindset_started_at is None:
+                lead.mindset_started_at = datetime.now(timezone.utc)
+            lead.mindset_completed_at = None
+            lead.mindset_completed_by_user_id = None
+            lead.mindset_leader_user_id = None
 
         await self._log_payment_activity(
             lead_id, approved_by_user_id, "payment_proof_approved"

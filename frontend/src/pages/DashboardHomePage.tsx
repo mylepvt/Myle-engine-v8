@@ -4,6 +4,7 @@ import { ArrowRight, ClipboardCheck, TrendingUp, UserPlus } from 'lucide-react'
 
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
+import { TeamDashboardHomeModern } from '@/components/dashboard/TeamDashboardHomeModern'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -21,6 +22,8 @@ import { getHomeQuickActions } from '@/config/dashboard-home-actions'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { useFollowUpsQuery } from '@/hooks/use-follow-ups-query'
+import { useTeamPersonalFunnelQuery } from '@/hooks/use-team-personal-funnel-query'
+import { useTeamTodayStatsQuery } from '@/hooks/use-team-today-stats-query'
 import { useLeadPoolQuery } from '@/hooks/use-lead-pool-query'
 import { LEAD_STATUS_OPTIONS, type LeadPublic } from '@/hooks/use-leads-query'
 import { useTeamReportsQuery } from '@/hooks/use-team-reports-query'
@@ -59,7 +62,10 @@ export function DashboardHomePage() {
   const sessionReady = Boolean(me?.authenticated)
 
   const wb = useWorkboardQuery(sessionReady)
-  const fu = useFollowUpsQuery(true, sessionReady)
+  /** Legacy team dashboard had no follow-up queue in nav; skip API for team. */
+  const fu = useFollowUpsQuery(true, sessionReady && role !== 'team')
+  const teamFunnel = useTeamPersonalFunnelQuery(sessionReady && role === 'team')
+  const teamToday = useTeamTodayStatsQuery(sessionReady && role === 'team')
   const pool = useLeadPoolQuery(sessionReady)
   const adminReports = useTeamReportsQuery('', sessionReady && role === 'admin')
 
@@ -121,12 +127,31 @@ export function DashboardHomePage() {
   const openFollowUps = fu.data?.total ?? 0
   const poolTotal = pool.data?.total ?? 0
 
-  const kpiLoading = sessionReady && (wb.isPending || fu.isPending)
+  const kpiLoading =
+    sessionReady &&
+    (wb.isPending ||
+      (role !== 'team' && fu.isPending) ||
+      (role === 'team' && teamFunnel.isPending))
 
   const quickActions = useMemo(() => {
     if (role == null) return []
     return getHomeQuickActions(role, { poolTotal })
   }, [role, poolTotal])
+
+  if (role === 'team' && sessionReady) {
+    return (
+      <TeamDashboardHomeModern
+        sessionReady={sessionReady}
+        firstName={firstName}
+        funnel={teamFunnel.data}
+        funnelPending={teamFunnel.isPending || teamFunnel.isError}
+        today={teamToday.data}
+        todayPending={teamToday.isPending}
+        recentLeads={recentLeads}
+        quickActions={quickActions}
+      />
+    )
+  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -290,18 +315,30 @@ export function DashboardHomePage() {
                   </CardContent>
                 </Card>
               </Link>
+            ) : role === 'team' ? (
+              <Link
+                to="/dashboard/other/live-session"
+                className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+              >
+                <Card className="h-full border-primary/20 transition-colors hover:border-primary/35">
+                  <CardContent className="pt-6">
+                    <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
+                      Live session
+                    </p>
+                    <p className="mt-2 font-heading text-lg font-semibold text-foreground">Join link and schedule</p>
+                    <p className="mt-1 text-ds-caption text-subtle">
+                      Same as legacy zoom block — opens Live Session page
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
             ) : (
               <Card className="border-primary/20">
                 <CardContent className="pt-6">
                   <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
                     Open follow-ups
                   </p>
-                  <p className={cn('mt-2 font-heading text-3xl font-semibold tabular-nums', openFollowUps > 0 ? 'text-primary' : 'text-muted-foreground')}>
-                    {openFollowUps}
-                  </p>
-                  <p className="mt-1 text-ds-caption text-subtle">
-                    Not completed (follow-ups queue is for admin / leader)
-                  </p>
+                  <p className="mt-1 text-ds-caption text-subtle">Sign in to see your workspace.</p>
                 </CardContent>
               </Card>
             )}

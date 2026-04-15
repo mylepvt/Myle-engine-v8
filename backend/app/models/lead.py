@@ -92,6 +92,23 @@ class Lead(Base):
         DateTime(timezone=True),
         nullable=True,
     )
+    mindset_started_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    mindset_completed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    mindset_lock_state: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    mindset_completed_by_user_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=True,
+    )
+    mindset_leader_user_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=True,
+    )
 
     # Day completion tracking
     day1_completed_at: Mapped[Optional[datetime]] = mapped_column(

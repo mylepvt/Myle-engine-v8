@@ -3,7 +3,13 @@ import { Link } from 'react-router-dom'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useLeadsQuery, usePatchLeadMutation, type LeadListFilters } from '@/hooks/use-leads-query'
+import {
+  useLeadsQuery,
+  usePatchLeadMutation,
+  usePermanentDeleteLeadMutation,
+  type LeadListFilters,
+} from '@/hooks/use-leads-query'
+import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 
 type Props = {
   title: string
@@ -13,7 +19,10 @@ const emptyFilters: LeadListFilters = { q: '', status: '' }
 
 export function RecycleBinWorkPage({ title }: Props) {
   const { data, isPending, isError, error, refetch } = useLeadsQuery(true, emptyFilters, 'recycle')
+  const { serverRole } = useDashboardShellRole()
+  const canPermanentlyDelete = serverRole === 'admin'
   const patchMut = usePatchLeadMutation()
+  const permanentDeleteMut = usePermanentDeleteLeadMutation()
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -27,8 +36,8 @@ export function RecycleBinWorkPage({ title }: Props) {
         </Link>
       </div>
       <p className="text-sm text-muted-foreground">
-        Soft-deleted leads (admin only). Restoring clears trash and returns the lead to the normal list if it was not
-        in the pool.
+        Soft-deleted leads from your execution scope. Restoring clears trash and returns the lead to the normal list
+        if it was not in the pool.
       </p>
 
       {isPending ? (
@@ -78,13 +87,29 @@ export function RecycleBinWorkPage({ title }: Props) {
                   >
                     Restore
                   </Button>
+                  {canPermanentlyDelete ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive"
+                      disabled={permanentDeleteMut.isPending}
+                      onClick={() => void permanentDeleteMut.mutateAsync(l.id)}
+                    >
+                      Permanent delete
+                    </Button>
+                  ) : null}
                 </li>
               ))}
             </ul>
           )}
-          {patchMut.isError ? (
+          {patchMut.isError || permanentDeleteMut.isError ? (
             <p className="mt-2 text-xs text-destructive" role="alert">
-              {patchMut.error instanceof Error ? patchMut.error.message : 'Restore failed'}
+              {patchMut.error instanceof Error
+                ? patchMut.error.message
+                : permanentDeleteMut.error instanceof Error
+                  ? permanentDeleteMut.error.message
+                  : 'Recycle action failed'}
             </p>
           ) : null}
         </div>

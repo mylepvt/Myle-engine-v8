@@ -19,7 +19,7 @@ describe('dashboard-registry', () => {
 
   it('resolveTitleForPath uses labelByRole for admin on work/leads', () => {
     expect(resolveTitleForPath('work/leads', 'admin')).toBe('All Leads')
-    expect(resolveTitleForPath('work/leads', 'team')).toBe('My Leads')
+    expect(resolveTitleForPath('work/leads', 'team')).toBe('Calling Board')
   })
 
   it('routeDefAccessible allows valid route for allowed role', () => {

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
@@ -23,7 +23,6 @@ _CALL_STATUS_SET = {
 }
 
 _PAYMENT_STATUS_SET = {"pending", "proof_uploaded", "approved", "rejected"}
-
 _SOURCE_SET = {"facebook", "instagram", "referral", "walk_in", "other"}
 
 
@@ -52,6 +51,7 @@ class LeadPublic(BaseModel):
 
     # Assignment
     assigned_to_user_id: Optional[int] = None
+    assigned_to_name: Optional[str] = None
 
     # Call tracking
     call_status: Optional[str] = None
@@ -64,6 +64,9 @@ class LeadPublic(BaseModel):
     payment_amount_cents: Optional[int] = None
     payment_proof_url: Optional[str] = None
     payment_proof_uploaded_at: Optional[datetime] = None
+    mindset_started_at: Optional[datetime] = None
+    mindset_completed_at: Optional[datetime] = None
+    mindset_lock_state: Optional[str] = None
 
     # Day completion
     day1_completed_at: Optional[datetime] = None
@@ -245,6 +248,7 @@ class LeadUpdate(BaseModel):
             raise ValueError("Invalid lead status")
         return s
 
+
     @field_validator("call_status")
     @classmethod
     def call_status_allowed(cls, v: Optional[str]) -> Optional[str]:
@@ -276,6 +280,26 @@ class LeadUpdate(BaseModel):
         if s not in _SOURCE_SET:
             raise ValueError(f"Invalid source; must be one of {sorted(_SOURCE_SET)}")
         return s
+
+
+BatchSlot = Literal[
+    "d1_morning",
+    "d1_afternoon",
+    "d1_evening",
+    "d2_morning",
+    "d2_afternoon",
+    "d2_evening",
+]
+
+
+class BatchShareUrlRequest(BaseModel):
+    slot: BatchSlot
+
+
+class BatchShareUrlResponse(BaseModel):
+    ok: bool = True
+    watch_url_v1: str
+    watch_url_v2: str
 
 
 _CTCS_ACTIONS = frozenset(
@@ -323,6 +347,25 @@ class LeadCtcsActionRequest(BaseModel):
             raise ValueError("followup_at is too far in the future")
         self.followup_at = fu_utc
         return self
+
+
+class MindsetLockPreviewResponse(BaseModel):
+    eligible: bool
+    minimum_seconds: int = 300
+    elapsed_seconds: int
+    remaining_seconds: int
+    mindset_started_at: Optional[datetime] = None
+    leader_user_id: Optional[int] = None
+    leader_name: Optional[str] = None
+
+
+class MindsetLockCompleteResponse(BaseModel):
+    status: Literal["assigned"]
+    leader_name: str
+    leader_user_id: int
+    duration_seconds: int
+    mindset_started_at: datetime
+    mindset_completed_at: datetime
 
 
 class LeadPoolImportResponse(BaseModel):

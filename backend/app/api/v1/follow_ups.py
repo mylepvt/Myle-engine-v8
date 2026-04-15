@@ -23,6 +23,11 @@ _MAX_LIMIT = 100
 _DEFAULT_LIMIT = 50
 
 
+def _ensure_follow_up_access(user: AuthUser) -> None:
+    if user.role == "team":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+
 def _to_public(fu: FollowUp, lead_name: str) -> FollowUpPublic:
     return FollowUpPublic(
         id=fu.id,
@@ -56,6 +61,7 @@ async def list_follow_ups(
         description="If true, only rows with completed_at IS NULL",
     ),
 ) -> FollowUpListResponse:
+    _ensure_follow_up_access(user)
     filters = _list_filters(user, open_only)
 
     count_q = select(func.count()).select_from(FollowUp).join(Lead, FollowUp.lead_id == Lead.id)
@@ -82,6 +88,7 @@ async def create_follow_up(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ):
+    _ensure_follow_up_access(user)
     lead = await require_visible_lead(session, user, body.lead_id)
     fu = FollowUp(
         lead_id=body.lead_id,
@@ -99,6 +106,7 @@ async def create_follow_up(
 async def _get_follow_up_for_user(
     session: AsyncSession, user: AuthUser, follow_up_id: int
 ) -> tuple[FollowUp, Lead]:
+    _ensure_follow_up_access(user)
     q = select(FollowUp, Lead).join(Lead, FollowUp.lead_id == Lead.id).where(FollowUp.id == follow_up_id)
     if user.role != "admin":
         q = q.where(Lead.created_by_user_id == user.user_id)

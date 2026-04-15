@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from fastapi import BackgroundTasks, Depends, HTTPException
-from sqlalchemy import and_
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
@@ -14,6 +14,8 @@ from app.core.pipeline_rules import validate_vl2_status_transition_for_role
 from app.core.realtime_hub import notify_topics
 from app.models.follow_up import FollowUp
 from app.models.lead import Lead
+from app.models.user import User
+from app.models.user import User
 from app.repositories.leads_repository import SqlAlchemyLeadsRepository
 from app.schemas.call_events import CallEventCreate, CallEventListResponse, CallEventPublic
 from app.schemas.leads import (
@@ -21,6 +23,8 @@ from app.schemas.leads import (
     LeadCtcsActionRequest,
     LeadDetailPublic,
     LeadListResponse,
+    MindsetLockCompleteResponse,
+    MindsetLockPreviewResponse,
     LeadPublic,
     LeadTransitionRequest,
     LeadTransitionResponse,
@@ -36,6 +40,25 @@ from app.validators.leads_validator import lead_list_conditions, parse_status_qu
 
 async def _deliver_ctcs_interested_whatsapp(lead_id: int, phone: str | None) -> None:
     await send_interested_enrollment_assets(lead_id=lead_id, phone=phone)
+
+
+def _display_name_for_user(row: tuple[int, str | None, str | None, str]) -> str:
+    _, name, username, email = row
+    if name and name.strip():
+        return name.strip()
+    if username and username.strip():
+        return username.strip()
+    local = (email or "").split("@", 1)[0].strip()
+    return local or "Assigned"
+
+
+def _display_name_from_fields(name: str | None, username: str | None, email: str | None) -> str:
+    if name and name.strip():
+        return name.strip()
+    if username and username.strip():
+        return username.strip()
+    local = (email or "").split("@", 1)[0].strip()
+    return local or "Leader"
 
 
 def _ctcs_filter_clause(ctcs_filter: Optional[str]) -> Any:
@@ -93,6 +116,37 @@ class LeadsService:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
         return lead
 
+    async def _nearest_leader(self, start_user_id: int) -> tuple[int, str] | None:
+        current = int(start_user_id)
+        seen: set[int] = set()
+        while current not in seen:
+            seen.add(current)
+            row = (
+                await self._session.execute(
+                    select(User.upline_user_id).where(User.id == current).limit(1)
+                )
+            ).scalar_one_or_none()
+            if row is None:
+                return None
+            parent_id = int(row)
+            parent = (
+                await self._session.execute(
+                    select(User.id, User.role, User.upline_user_id, User.name, User.username, User.email)
+                    .where(User.id == parent_id)
+                    .limit(1)
+                )
+            ).one_or_none()
+            if parent is None:
+                return None
+            pid, role, _, name, username, email = parent
+            role_key = (role or "").strip().lower()
+            if role_key == "leader":
+                return int(pid), _display_name_from_fields(name, username, email)
+            if role_key == "admin":
+                return None
+            current = int(pid)
+        return None
+
     async def list_leads(
         self,
         *,
@@ -125,8 +179,28 @@ class LeadsService:
             ctcs_priority_sort=ctcs_priority_sort,
             now_utc=datetime.now(timezone.utc),
         )
+        assigned_ids = {
+            int(r.assigned_to_user_id)
+            for r in rows
+            if getattr(r, "assigned_to_user_id", None) is not None
+        }
+        assigned_name_by_id: dict[int, str] = {}
+        if assigned_ids:
+            assigned_rows = (
+                await self._session.execute(
+                    select(User.id, User.name, User.username, User.email).where(User.id.in_(assigned_ids))
+                )
+            ).all()
+            assigned_name_by_id = {int(uid): _display_name_for_user((uid, name, username, email)) for uid, name, username, email in assigned_rows}
+
+        items: list[LeadPublic] = []
+        for r in rows:
+            item = LeadPublic.model_validate(r)
+            uid = item.assigned_to_user_id
+            item.assigned_to_name = assigned_name_by_id.get(uid) if uid is not None else None
+            items.append(item)
         return LeadListResponse(
-            items=[LeadPublic.model_validate(r) for r in rows],
+            items=items,
             total=total,
             limit=limit,
             offset=offset,
@@ -147,6 +221,8 @@ class LeadsService:
         return lead
 
     async def claim_lead(self, *, lead_id: int, user: AuthUser) -> Lead:
+        if user.role not in {"team", "leader"}:
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
         lead = await self._repository.get_lead_for_update(lead_id)
         if lead is None or lead.deleted_at is not None:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
@@ -180,6 +256,129 @@ class LeadsService:
         await self._notifier("leads", "wallet")
         return lead
 
+    async def preview_mindset_lock(self, *, lead_id: int, user: AuthUser) -> MindsetLockPreviewResponse:
+        if user.role != "team":
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Only team can preview mindset lock")
+        lead = await self._get_lead_or_404(lead_id)
+        if lead.assigned_to_user_id != user.user_id:
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        started_at = lead.mindset_started_at
+        if started_at is None:
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="Mindset session has not started for this lead",
+            )
+        leader = await self._nearest_leader(user.user_id)
+        now = datetime.now(timezone.utc)
+        elapsed_seconds = max(0, int((now - started_at).total_seconds()))
+        remaining_seconds = max(0, 300 - elapsed_seconds)
+        return MindsetLockPreviewResponse(
+            eligible=remaining_seconds == 0,
+            elapsed_seconds=elapsed_seconds,
+            remaining_seconds=remaining_seconds,
+            mindset_started_at=started_at,
+            leader_user_id=leader[0] if leader else None,
+            leader_name=leader[1] if leader else None,
+        )
+
+    async def complete_mindset_lock(
+        self,
+        *,
+        lead_id: int,
+        user: AuthUser,
+    ) -> MindsetLockCompleteResponse:
+        if user.role != "team":
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Only team can complete mindset lock")
+        lead = await self._repository.get_lead_for_update(lead_id)
+        if lead is None:
+            raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
+        if lead.mindset_lock_state == "leader_assigned" and lead.mindset_completed_at is not None and lead.mindset_started_at is not None:
+            if lead.mindset_completed_by_user_id is not None and lead.mindset_completed_by_user_id != user.user_id:
+                raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+            leader_id = int(lead.mindset_leader_user_id or lead.assigned_to_user_id or 0)
+            if leader_id <= 0:
+                raise HTTPException(
+                    status_code=http_status.HTTP_409_CONFLICT,
+                    detail="Lead already handed off but leader reference is missing",
+                )
+            leader_name = "Leader"
+            row = (
+                await self._session.execute(
+                    select(User.name, User.username, User.email)
+                    .where(User.id == leader_id)
+                    .limit(1)
+                )
+            ).one_or_none()
+            if row is not None:
+                leader_name = _display_name_from_fields(row[0], row[1], row[2])
+            duration_seconds = max(0, int((lead.mindset_completed_at - lead.mindset_started_at).total_seconds()))
+            return MindsetLockCompleteResponse(
+                status="assigned",
+                leader_name=leader_name,
+                leader_user_id=leader_id,
+                duration_seconds=duration_seconds,
+                mindset_started_at=lead.mindset_started_at,
+                mindset_completed_at=lead.mindset_completed_at,
+            )
+        if lead.assigned_to_user_id != user.user_id:
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        if lead.payment_status != "approved":
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="Payment proof must be approved before leader handoff",
+            )
+        started_at = lead.mindset_started_at
+        if started_at is None:
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="Mindset session has not started for this lead",
+            )
+        now = datetime.now(timezone.utc)
+        duration_seconds = max(0, int((now - started_at).total_seconds()))
+        if duration_seconds < 300:
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="Minimum 5 minutes required before sending to leader",
+            )
+        leader = await self._nearest_leader(user.user_id)
+        if leader is None:
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="No leader found in upline",
+            )
+        leader_id, leader_name = leader
+        from_uid = lead.assigned_to_user_id
+        lead.assigned_to_user_id = leader_id
+        lead.last_action_at = now
+        lead.mindset_completed_at = now
+        lead.mindset_lock_state = "leader_assigned"
+        lead.mindset_completed_by_user_id = user.user_id
+        lead.mindset_leader_user_id = leader_id
+        await self._repository.add_lead_activity(
+            user_id=user.user_id,
+            action="manual_handoff_triggered",
+            lead_id=lead.id,
+            meta={
+                "from_user_id": from_uid,
+                "to_user_id": leader_id,
+                "team_user_id": user.user_id,
+                "leader_id": leader_id,
+                "mindset_started_at": started_at.isoformat(),
+                "mindset_completed_at": now.isoformat(),
+                "duration_seconds": duration_seconds,
+            },
+        )
+        await self._repository.persist_lead(lead)
+        await self._notifier("leads", "workboard")
+        return MindsetLockCompleteResponse(
+            status="assigned",
+            leader_name=leader_name,
+            leader_user_id=leader_id,
+            duration_seconds=duration_seconds,
+            mindset_started_at=started_at,
+            mindset_completed_at=now,
+        )
+
     async def update_lead(self, *, lead_id: int, body: LeadUpdate, user: AuthUser) -> Lead:
         lead = await self._get_lead_or_404(lead_id)
         if lead.deleted_at is not None and body.restored is not True:
@@ -188,10 +387,10 @@ class LeadsService:
                 detail="Lead is deleted — restore from recycle bin first (admin only)",
             )
         if body.restored is True:
-            if user.role != "admin":
-                raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
             if lead.deleted_at is None:
                 raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Lead is not deleted")
+            if user.role != "admin" and lead.assigned_to_user_id != user.user_id:
+                raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
             lead.deleted_at = None
             lead = await self._repository.persist_lead(lead)
             await self._notifier("leads")
@@ -317,6 +516,18 @@ class LeadsService:
         if lead.deleted_at is not None:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
         await self._repository.soft_delete_lead(lead)
+        await self._notifier("leads")
+
+    async def permanent_delete_lead(self, *, lead_id: int, user: AuthUser) -> None:
+        if user.role != "admin":
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        lead = await self._get_lead_or_404(lead_id)
+        if lead.deleted_at is None:
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="Lead is not in recycle bin",
+            )
+        await self._repository.hard_delete_lead(lead_id)
         await self._notifier("leads")
 
     async def get_lead_detail(self, *, lead_id: int, user: AuthUser) -> LeadDetailPublic:

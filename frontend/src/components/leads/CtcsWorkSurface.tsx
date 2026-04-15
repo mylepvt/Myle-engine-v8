@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { CtcsLeadCard } from '@/components/leads/CtcsLeadCard'
 import { CtcsOutcomeModal } from '@/components/leads/CtcsOutcomeModal'
-import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   type CtcsAction,
@@ -28,10 +28,10 @@ function nextLeadId(items: LeadPublic[], current: number | null): number | null 
 }
 
 const TABS: { id: CtcsTab; label: string }[] = [
-  { id: 'today', label: '⚡ Today' },
-  { id: 'followups', label: '📞 Follow-ups' },
-  { id: 'hot', label: '🔥 Hot' },
-  { id: 'converted', label: '💰 Converted' },
+  { id: 'today', label: 'Today' },
+  { id: 'followups', label: 'Follow-ups' },
+  { id: 'hot', label: 'Hot' },
+  { id: 'converted', label: 'Converted' },
   { id: 'all', label: 'All' },
 ]
 
@@ -79,6 +79,11 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
     [patchMut],
   )
 
+  const onPatchCallStatus = useCallback(
+    (id: number, call_status: string) => void patchMut.mutateAsync({ id, body: { call_status } }),
+    [patchMut],
+  )
+
   const onCtcsAction = useCallback(
     async (id: number, action: CtcsAction, opts?: { followupAt?: string | null }) => {
       const paidStatus = role === 'team' ? ('paid' as const) : ('day1' as const)
@@ -123,42 +128,51 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={`min-h-11 rounded-full border px-4 text-sm font-medium ${
-              tab === t.id
-                ? 'border-primary bg-primary/15 text-foreground'
-                : 'border-white/12 bg-white/[0.05] text-muted-foreground'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div className="flex items-center gap-5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {TABS.map((t) => {
+          const active = tab === t.id
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={cn(
+                'flex shrink-0 items-center gap-1.5 pb-2 text-sm font-medium transition-colors',
+                active
+                  ? 'border-b-2 border-primary text-foreground'
+                  : 'border-b-2 border-transparent text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <span>{t.label}</span>
+              {active && total > 0 ? (
+                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{total}</span>
+              ) : null}
+            </button>
+          )
+        })}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <Button
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <button
           type="button"
-          variant={callMode ? 'default' : 'secondary'}
-          className="min-h-12 px-5 text-base"
           onClick={() => toggleCallMode()}
+          className={cn(
+            'text-xs font-semibold transition active:opacity-80',
+            callMode ? 'text-[var(--palette-cyan-dull)]' : 'text-primary',
+          )}
         >
-          {callMode ? 'Calling mode ON' : 'Start Calling Mode'}
-        </Button>
-        <p className="text-xs text-muted-foreground">
-          Total in tab: {total}
-          {items.length < total ? ` · loaded ${items.length}` : null}
+          {callMode ? 'Calling mode ON' : 'Start calling mode'}
+        </button>
+        <p className="text-[11px] text-muted-foreground">
+          {items.length < total ? `Loaded ${items.length} · ` : null}
+          tab total {total}
         </p>
       </div>
 
       {leadsQ.isPending ? (
         <div className="space-y-2">
-          <Skeleton className="h-40 w-full rounded-2xl" />
-          <Skeleton className="h-40 w-full rounded-2xl" />
+          <Skeleton className="h-36 w-full rounded-xl bg-muted" />
+          <Skeleton className="h-36 w-full rounded-xl bg-muted" />
         </div>
       ) : null}
       {leadsQ.isError ? (
@@ -167,7 +181,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
         </p>
       ) : null}
 
-      <div className="grid gap-3">
+      <div className="space-y-3">
         {items.map((l) => (
           <CtcsLeadCard
             key={l.id}
@@ -176,7 +190,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
             patchBusy={patchBusyLeadId === l.id || patchMut.isPending}
             actionBusy={actionBusy}
             onPatchStatus={onPatchStatus}
-            onCtcsAction={onCtcsAction}
+            onPatchCallStatus={onPatchCallStatus}
             onCall={onCall}
             onFollowUp={onFollowUp}
           />
@@ -185,9 +199,14 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
 
       {items.length > 0 && leadsQ.hasNextPage ? (
         <div className="flex justify-center pt-2">
-          <Button type="button" variant="secondary" disabled={leadsQ.isFetchingNextPage} onClick={() => void leadsQ.fetchNextPage()}>
+          <button
+            type="button"
+            disabled={leadsQ.isFetchingNextPage}
+            className="min-h-10 rounded-xl border border-border bg-card px-4 text-sm font-medium text-foreground transition hover:bg-muted disabled:opacity-50"
+            onClick={() => void leadsQ.fetchNextPage()}
+          >
             {leadsQ.isFetchingNextPage ? 'Loading…' : 'Load more'}
-          </Button>
+          </button>
         </div>
       ) : null}
 
@@ -195,6 +214,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
         key={outcomeLeadId ?? 'closed'}
         open={outcomeLeadId != null}
         leadName={outcomeLead?.name ?? ''}
+        phone={outcomeLead?.phone}
         busy={ctcsMut.isPending}
         onClose={() => setOutcomeLeadId(null)}
         onPick={(action, followupAt) => {

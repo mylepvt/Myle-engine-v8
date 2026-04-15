@@ -131,7 +131,7 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
   {
     path: 'work/leads',
     section: { id: 'work', label: '' },
-    label: 'My Leads',
+    label: 'Calling Board',
     labelByRole: { admin: 'All Leads', leader: 'All Leads' },
     roles: routeRoles('work/leads'),
     surface: 'full',
@@ -141,6 +141,7 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     path: 'work/workboard',
     section: { id: 'work', label: '' },
     label: 'Workboard',
+    labelByRole: { team: 'Mindset Lock' },
     roles: routeRoles('work/workboard'),
     surface: 'full',
     ui: { kind: 'workboard' },

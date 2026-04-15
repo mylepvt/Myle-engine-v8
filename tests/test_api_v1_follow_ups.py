@@ -39,6 +39,19 @@ def test_follow_ups_requires_auth() -> None:
     assert r.status_code == 401
 
 
+def test_slice3_team_forbidden_for_follow_up_queue_api(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Legacy `/follow-up` redirects team users; vl2 API enforces same restriction via 403."""
+    asyncio.run(_clear())
+    asyncio.run(_seed_lead(user_id=3, name="Team lead"))
+    try:
+        c = _client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+        assert c.get("/api/v1/follow-ups").status_code == 403
+        assert c.post("/api/v1/follow-ups", json={"lead_id": 1, "note": "x"}).status_code == 403
+    finally:
+        asyncio.run(_clear())
+
+
 def test_create_and_list_follow_up(monkeypatch: pytest.MonkeyPatch) -> None:
     asyncio.run(_clear())
     asyncio.run(_seed_lead(user_id=2))

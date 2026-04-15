@@ -30,7 +30,7 @@ export function RetargetWorkPage({ title }: Props) {
         Shows active leads in <strong>Lost</strong> or <strong>Contacted</strong> — good candidates to re-engage.
         Change status from{' '}
         <Link to="/dashboard/work/leads" className="text-primary underline-offset-2 hover:underline">
-          My Leads
+          Calling Board
         </Link>{' '}
         or here.
       </p>

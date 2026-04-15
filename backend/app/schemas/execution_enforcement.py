@@ -22,6 +22,14 @@ class TeamPersonalFunnelOut(BaseModel):
     pct_enrolled_vs_claimed: float
 
 
+class TeamTodayStatsOut(BaseModel):
+    """Legacy-style team dashboard day counters (IST day window)."""
+
+    claimed_today: int
+    calls_today: int
+    enrolled_today: int
+
+
 class FollowUpAttackRow(BaseModel):
     id: int
     name: str

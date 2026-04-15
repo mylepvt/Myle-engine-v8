@@ -164,7 +164,7 @@ export function LeadPoolWorkPage({ title }: Props) {
           to="/dashboard/work/leads"
           className="text-sm text-primary underline-offset-2 hover:underline"
         >
-          ← My leads
+          ← Calling Board
         </Link>
       </div>
 

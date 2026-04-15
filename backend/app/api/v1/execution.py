@@ -20,6 +20,7 @@ from app.schemas.execution_enforcement import (
     MemberExecutionStats,
     StaleRedistributeOut,
     TeamPersonalFunnelOut,
+    TeamTodayStatsOut,
     WeakMemberRow,
 )
 from app.schemas.system_surface import SystemStubResponse
@@ -51,6 +52,18 @@ async def execution_personal_funnel(
     """Team: assigned-lead funnel counts (vl2 status + payment fields)."""
     _require_team(user)
     return await enf.team_personal_funnel(session, user.user_id)
+
+
+@router.get("/team-today-stats", response_model=TeamTodayStatsOut)
+async def execution_team_today_stats(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    today: Optional[str] = Query(default=None, description="Calendar day ISO (YYYY-MM-DD), IST"),
+) -> TeamTodayStatsOut:
+    """Team: legacy dashboard-style day stats (claimed/calls/enrolled)."""
+    _require_team(user)
+    day = today or enf.default_today_iso()
+    return await enf.team_today_stats(session, user.user_id, day)
 
 
 @router.get("/follow-up-attack", response_model=list[FollowUpAttackRow])

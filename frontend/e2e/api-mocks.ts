@@ -15,7 +15,7 @@ function mockLead(overrides: Partial<Record<string, unknown>> = {}) {
     deleted_at: null,
     in_pool: false,
     pool_price_cents: null,
-    phone: null,
+    phone: '9876543210',
     email: null,
     city: null,
     age: null,

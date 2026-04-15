@@ -22,6 +22,7 @@ from sqlalchemy.sql.elements import ColumnElement
 
 from app.core.time_ist import IST, today_ist
 from app.models.follow_up import FollowUp
+from app.models.call_event import CallEvent
 from app.models.lead import Lead
 from app.models.user import User
 from app.schemas.execution_enforcement import (
@@ -30,6 +31,7 @@ from app.schemas.execution_enforcement import (
     MemberExecutionStats,
     StatusHistogramRow,
     StaleRedistributeOut,
+    TeamTodayStatsOut,
     TeamPersonalFunnelOut,
     WeakMemberRow,
     FunnelDropRow,
@@ -115,6 +117,11 @@ def _end_of_day_ist(day_iso: str) -> datetime:
     return datetime.combine(d, time(23, 59, 59), tzinfo=IST)
 
 
+def _start_of_day_ist(day_iso: str) -> datetime:
+    d = datetime.strptime(day_iso, "%Y-%m-%d").date()
+    return datetime.combine(d, time(0, 0, 0), tzinfo=IST)
+
+
 async def nearest_leader_username_for_assignee(
     _session: AsyncSession,
     _assignee_username: str,
@@ -177,6 +184,78 @@ async def team_personal_funnel(session: AsyncSession, user_id: int) -> TeamPerso
         pct_proof_vs_video=_pct(proof, video),
         pct_enrolled_vs_video=_pct(paid, video),
         pct_enrolled_vs_claimed=_pct(paid, claimed),
+    )
+
+
+async def team_today_stats(
+    session: AsyncSession,
+    user_id: int,
+    today_iso: str,
+) -> TeamTodayStatsOut:
+    """Legacy-like team day counters for dashboard cards."""
+    start = _start_of_day_ist(today_iso)
+    end = _end_of_day_ist(today_iso)
+    base = and_(Lead.assigned_to_user_id == user_id, _active_lead_filters())
+
+    claimed_today = int(
+        (
+            await session.execute(
+                select(func.count())
+                .select_from(Lead)
+                .where(
+                    base,
+                    Lead.created_at >= start,
+                    Lead.created_at <= end,
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+
+    calls_today = int(
+        (
+            await session.execute(
+                select(func.count())
+                .select_from(CallEvent)
+                .where(
+                    CallEvent.user_id == user_id,
+                    CallEvent.called_at >= start,
+                    CallEvent.called_at <= end,
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+
+    enrolled_today = int(
+        (
+            await session.execute(
+                select(func.count())
+                .select_from(Lead)
+                .where(
+                    base,
+                    or_(
+                        and_(
+                            Lead.payment_proof_uploaded_at.isnot(None),
+                            Lead.payment_proof_uploaded_at >= start,
+                            Lead.payment_proof_uploaded_at <= end,
+                        ),
+                        and_(
+                            Lead.payment_amount_cents >= RUPEES_196_CENTS,
+                            Lead.created_at >= start,
+                            Lead.created_at <= end,
+                        ),
+                    ),
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+
+    return TeamTodayStatsOut(
+        claimed_today=claimed_today,
+        calls_today=calls_today,
+        enrolled_today=enrolled_today,
     )
 
 

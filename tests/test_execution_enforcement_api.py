@@ -31,6 +31,23 @@ def test_team_funnel_ok(monkeypatch: pytest.MonkeyPatch) -> None:
     assert body["claimed"] == 0
 
 
+def test_team_today_stats_requires_team_role(monkeypatch: pytest.MonkeyPatch) -> None:
+    c = _client(monkeypatch)
+    assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+    assert c.get("/api/v1/execution/team-today-stats").status_code == 403
+
+
+def test_team_today_stats_ok(monkeypatch: pytest.MonkeyPatch) -> None:
+    c = _client(monkeypatch)
+    assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+    r = c.get("/api/v1/execution/team-today-stats")
+    assert r.status_code == 200
+    body = r.json()
+    assert "claimed_today" in body
+    assert "calls_today" in body
+    assert "enrolled_today" in body
+
+
 def test_leader_downline_ok(monkeypatch: pytest.MonkeyPatch) -> None:
     c = _client(monkeypatch)
     assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200

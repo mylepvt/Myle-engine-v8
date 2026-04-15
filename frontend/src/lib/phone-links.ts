@@ -3,13 +3,18 @@
  * on the same number — there is no separate URL scheme for Business vs personal.
  */
 
-/** Digits only, with a sensible default country code when the UI stores 10-digit local numbers. */
+/**
+ * Digits for `wa.me/{digits}` — matches legacy Jinja `wa_phone` filter
+ * (`backend/legacy/myle_dashboard/app.py` `wa_phone_filter`).
+ */
 export function whatsappDigits(phone: string): string {
   const d = phone.replace(/\D/g, '')
   if (!d) return ''
-  // 10-digit local (common in IN) → assume +91; already includes country if 11+ digits
-  if (d.length === 10 && !phone.trim().startsWith('+')) {
+  if (d.length === 10 && /^[6789]/.test(d)) {
     return `91${d}`
+  }
+  if (d.startsWith('0') && d.length === 11) {
+    return `91${d.slice(1)}`
   }
   return d
 }

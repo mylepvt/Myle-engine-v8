@@ -34,8 +34,7 @@ def validate_list_flags(*, archived_only: bool, deleted_only: bool, user: AuthUs
             status_code=http_status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Cannot combine archived_only and deleted_only",
         )
-    if deleted_only and user.role != "admin":
-        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    _ = user
 
 
 def lead_list_conditions(
@@ -47,7 +46,12 @@ def lead_list_conditions(
     deleted_only: bool,
 ):
     parts: list = []
-    visibility = lead_visibility_where(user)
+    # Legacy parity slice 4: archived (`/old-leads`) and recycle (`/leads/recycle-bin`)
+    # list rows are scoped to exact assignee for non-admin users (not leader downline expansion).
+    if archived_only or deleted_only:
+        visibility = None if user.role == "admin" else Lead.assigned_to_user_id == user.user_id
+    else:
+        visibility = lead_visibility_where(user)
     if visibility is not None:
         parts.append(visibility)
 

@@ -166,5 +166,6 @@ Jab product ne priority na di ho, pehla promote candidate pick karte waqt: **chh
 | `PARITY_ROLLOUT_PLAN.md` | **This file** — order + checklist |
 | `TEAM_MIGRATION_PLAYBOOK.md` | **Existing team** — smooth shift (pilot, parallel run, training, support) |
 | `PARITY_SPRINT_1.md` | **Week 1** — start execution (product + eng parallel) |
+| `APP_RESTRUCTURE_MICRO_PLAN.md` | **Master map:** legacy folders ↔ vl2 layers + **micro-slice PR template** + 12-slice starter queue |
 
 Is plan ko **living doc** maano: jab naya dashboard path add ho, Wave table mein nayi line daalo.

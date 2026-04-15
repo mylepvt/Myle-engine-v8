@@ -16,7 +16,7 @@ const TAB_ORDER = ['', 'work/leads', 'work/workboard'] as const
 /** Short labels for tab bar (iOS-style compact). */
 const SHORT_LABEL: Record<string, string> = {
   '': 'Home',
-  'work/leads': 'Leads',
+  'work/leads': 'Calls',
   'work/workboard': 'Board',
   'work/follow-ups': 'Tasks',
 }
@@ -51,18 +51,20 @@ export function DashboardMobileTabBar({
       resolveTitleForPath('system/training', role) ?? def.label
     return (
       <nav
-        className="fixed bottom-0 left-0 right-0 z-30 border-t border-border/80 bg-background/95 md:hidden supports-[backdrop-filter]:bg-background/92 supports-[backdrop-filter]:backdrop-blur-md"
+        className="fixed bottom-0 left-0 right-0 z-30 border-t border-border/70 bg-background/95 shadow-[0_-8px_20px_-14px_rgba(2,6,23,0.35)] md:hidden supports-[backdrop-filter]:bg-background/82 supports-[backdrop-filter]:backdrop-blur-xl"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         role="navigation"
         aria-label="Training"
       >
-        <div className="mx-auto flex max-w-lg items-stretch justify-around gap-0 px-1 pt-1">
+        <div className="mx-auto flex max-w-lg items-stretch justify-around gap-1 px-2 pt-1.5">
           <NavLink
             to="/dashboard/system/training"
             className={({ isActive }) =>
               cn(
-                'flex min-h-[48px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[0.65rem] font-medium leading-none transition-colors active:opacity-70',
-                isActive ? 'text-primary' : 'text-muted-foreground',
+                'flex min-h-[50px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[0.65rem] font-medium leading-none transition-colors active:opacity-70',
+                isActive
+                  ? 'bg-primary/12 text-primary'
+                  : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground',
               )
             }
           >
@@ -83,7 +85,7 @@ export function DashboardMobileTabBar({
           <button
             type="button"
             onClick={onOpenMenu}
-            className="flex min-h-[48px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[0.65rem] font-medium leading-none text-muted-foreground transition-colors active:opacity-70"
+            className="flex min-h-[50px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[0.65rem] font-medium leading-none text-muted-foreground transition-colors active:opacity-70 hover:bg-muted/70 hover:text-foreground"
             aria-label="Open menu"
           >
             <MoreHorizontal className="size-[22px] shrink-0" strokeWidth={1.75} aria-hidden />
@@ -104,12 +106,12 @@ export function DashboardMobileTabBar({
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-30 border-t border-border/80 bg-background/95 md:hidden supports-[backdrop-filter]:bg-background/92 supports-[backdrop-filter]:backdrop-blur-md"
+      className="fixed bottom-0 left-0 right-0 z-30 border-t border-border/70 bg-background/95 shadow-[0_-8px_20px_-14px_rgba(2,6,23,0.35)] md:hidden supports-[backdrop-filter]:bg-background/82 supports-[backdrop-filter]:backdrop-blur-xl"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       role="navigation"
       aria-label="Main tabs"
     >
-      <div className="mx-auto flex max-w-lg items-stretch justify-around gap-0 px-1 pt-1">
+      <div className="mx-auto flex max-w-lg items-stretch justify-around gap-1 px-2 pt-1.5">
         {defs.map((def) => {
           const to = def.path === '' ? '/dashboard' : `/dashboard/${def.path}`
           const Icon = getDashboardNavIcon(def.path)
@@ -124,10 +126,10 @@ export function DashboardMobileTabBar({
               end={def.end ?? false}
               className={({ isActive }) =>
                 cn(
-                  'flex min-h-[48px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[0.65rem] font-medium leading-none transition-colors active:opacity-70',
+                  'flex min-h-[50px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[0.65rem] font-medium leading-none transition-colors active:opacity-70',
                   isActive
-                    ? 'text-primary'
-                    : 'text-muted-foreground',
+                    ? 'bg-primary/12 text-primary'
+                    : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground',
                 )
               }
             >
@@ -151,7 +153,7 @@ export function DashboardMobileTabBar({
         <button
           type="button"
           onClick={onOpenMenu}
-          className="flex min-h-[48px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[0.65rem] font-medium leading-none text-muted-foreground transition-colors active:opacity-70"
+          className="flex min-h-[50px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[0.65rem] font-medium leading-none text-muted-foreground transition-colors active:opacity-70 hover:bg-muted/70 hover:text-foreground"
           aria-label="Open full menu"
         >
           <MoreHorizontal className="size-[22px] shrink-0" strokeWidth={1.75} aria-hidden />

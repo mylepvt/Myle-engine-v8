@@ -1,6 +1,9 @@
 import { useState } from 'react'
+import { MessageCircle, Phone } from 'lucide-react'
 
 import type { CtcsAction } from '@/hooks/use-leads-query'
+import { telHref, whatsAppChatHref } from '@/lib/phone-links'
+import { cn } from '@/lib/utils'
 
 const OPTIONS: { action: CtcsAction; label: string }[] = [
   { action: 'not_picked', label: 'Not Picked' },
@@ -19,17 +22,24 @@ function defaultCallLaterLocalInput(): string {
 type Props = {
   open: boolean
   leadName: string
+  /** Same as legacy call panel — show dial + WhatsApp next to outcome picks. */
+  phone?: string | null
   busy: boolean
   onClose: () => void
   /** For ``call_later``, optional ISO follow-up time; omit for server default (+24h). */
   onPick: (action: CtcsAction, followupAt?: string | null) => void
 }
 
-export function CtcsOutcomeModal({ open, leadName, busy, onClose, onPick }: Props) {
+export function CtcsOutcomeModal({ open, leadName, phone, busy, onClose, onPick }: Props) {
   const [step, setStep] = useState<'outcomes' | 'call_later_time'>('outcomes')
   const [localFollowup, setLocalFollowup] = useState(defaultCallLaterLocalInput)
 
   if (!open) return null
+
+  const tel = telHref(phone)
+  const wa = whatsAppChatHref(phone ?? '')
+  const canDial = tel !== '#'
+  const canWa = wa !== '#'
 
   const d = new Date()
   const pad = (n: number) => String(n).padStart(2, '0')
@@ -37,16 +47,52 @@ export function CtcsOutcomeModal({ open, leadName, busy, onClose, onPick }: Prop
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-3 sm:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-background/75 p-3 backdrop-blur-sm sm:items-center dark:bg-black/55"
       role="dialog"
       aria-modal="true"
       aria-labelledby="ctcs-outcome-title"
     >
-      <div className="w-full max-w-md rounded-2xl border border-white/12 bg-zinc-950 p-4 shadow-xl">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-xl backdrop-blur-md">
         <h2 id="ctcs-outcome-title" className="text-lg font-semibold text-foreground">
           Call outcome
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">{leadName}</p>
+
+        {phone?.trim() ? (
+          <div className="mt-3 rounded-xl border border-border bg-muted/40 p-3">
+            <p className="font-mono text-sm text-foreground">{phone.trim()}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {canDial ? (
+                <a
+                  href={tel}
+                  className={cn(
+                    'inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold transition',
+                    'border-2 border-emerald-600/45 bg-emerald-500/15 text-emerald-900 shadow-[0_0_12px_rgba(52,211,153,0.28)] hover:bg-emerald-500/25',
+                    'dark:border-emerald-400/70 dark:bg-emerald-500/20 dark:text-emerald-100 dark:shadow-[0_0_12px_rgba(52,211,153,0.35)] dark:hover:bg-emerald-500/30',
+                  )}
+                >
+                  <Phone className="size-4 shrink-0" aria-hidden />
+                  Dial
+                </a>
+              ) : null}
+              {canWa ? (
+                <a
+                  href={wa}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    'inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold transition',
+                    'border-2 border-[#128C7E]/55 bg-[#25D366]/14 text-[#065f46] shadow-[0_0_12px_rgba(37,211,102,0.28)] hover:bg-[#25D366]/22',
+                    'dark:border-[#25D366]/75 dark:bg-[#25D366]/20 dark:text-[#e8ffe8] dark:shadow-[0_0_12px_rgba(37,211,102,0.35)] dark:hover:bg-[#25D366]/30',
+                  )}
+                >
+                  <MessageCircle className="size-4 shrink-0" aria-hidden />
+                  WhatsApp
+                </a>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
 
         {step === 'outcomes' ? (
           <div className="mt-4 grid grid-cols-1 gap-2">
@@ -63,7 +109,7 @@ export function CtcsOutcomeModal({ open, leadName, busy, onClose, onPick }: Prop
                   }
                   onPick(o.action)
                 }}
-                className="min-h-12 rounded-xl border border-white/15 bg-white/[0.06] px-4 py-3 text-left text-base font-medium text-foreground transition hover:border-primary/40 hover:bg-white/[0.1] disabled:opacity-50"
+                className="min-h-12 rounded-xl border border-border bg-muted/50 px-4 py-3 text-left text-base font-medium text-foreground transition hover:border-primary/40 hover:bg-muted disabled:opacity-50"
               >
                 {o.label}
               </button>
@@ -76,7 +122,7 @@ export function CtcsOutcomeModal({ open, leadName, busy, onClose, onPick }: Prop
               type="datetime-local"
               aria-label="Follow-up date and time"
               title="Follow-up date and time"
-              className="min-h-12 w-full rounded-xl border border-white/15 bg-white/[0.06] px-3 text-base text-foreground"
+              className="field-input min-h-12 w-full rounded-xl px-3 text-base"
               min={minLocal}
               value={localFollowup}
               onChange={(e) => setLocalFollowup(e.target.value)}
@@ -97,7 +143,7 @@ export function CtcsOutcomeModal({ open, leadName, busy, onClose, onPick }: Prop
               type="button"
               disabled={busy}
               onClick={() => onPick('call_later')}
-              className="min-h-11 w-full rounded-xl border border-white/15 py-2 text-sm font-medium text-foreground disabled:opacity-50"
+              className="min-h-11 w-full rounded-xl border border-border bg-muted/30 py-2 text-sm font-medium text-foreground hover:bg-muted/50 disabled:opacity-50"
             >
               Use default (24h)
             </button>
@@ -105,13 +151,13 @@ export function CtcsOutcomeModal({ open, leadName, busy, onClose, onPick }: Prop
               type="button"
               disabled={busy}
               onClick={() => setStep('outcomes')}
-              className="min-h-11 w-full rounded-xl border border-white/10 py-2 text-sm text-muted-foreground disabled:opacity-50"
+              className="min-h-11 w-full rounded-xl border border-border py-2 text-sm text-muted-foreground hover:bg-muted/40 disabled:opacity-50"
             >
               Back
             </button>
             <button
               type="button"
-              className="mt-1 w-full min-h-11 rounded-xl border border-white/10 py-2 text-sm text-muted-foreground"
+              className="mt-1 w-full min-h-11 rounded-xl border border-border py-2 text-sm text-muted-foreground hover:bg-muted/40"
               onClick={onClose}
               disabled={busy}
             >
@@ -123,7 +169,7 @@ export function CtcsOutcomeModal({ open, leadName, busy, onClose, onPick }: Prop
         {step === 'outcomes' ? (
           <button
             type="button"
-            className="mt-3 w-full min-h-11 rounded-xl border border-white/10 py-2 text-sm text-muted-foreground"
+            className="mt-3 w-full min-h-11 rounded-xl border border-border py-2 text-sm text-muted-foreground hover:bg-muted/40"
             onClick={onClose}
             disabled={busy}
           >

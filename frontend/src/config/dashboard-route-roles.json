@@ -9,7 +9,7 @@
   "work/add-lead": ["admin"],
   "work/lead-pool": ["leader", "team"],
   "work/lead-pool-admin": ["admin"],
-  "work/recycle-bin": ["admin"],
+  "work/recycle-bin": ["admin", "leader", "team"],
   "team/members": ["admin"],
   "team/reports": ["admin"],
   "team/approvals": ["admin"],

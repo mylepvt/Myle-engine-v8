@@ -34,11 +34,12 @@ These apply everywhere; legacy comparison rows belong in the **matrix** only aft
 
 | Topic | New app behavior | Source |
 |--------|------------------|--------|
-| Lead visibility | `admin`: all; `leader`: self + downline (`upline_user_id` tree); `team`: own created | `backend/app/services/lead_scope.py` |
+| Lead visibility | **vl2 `GET /leads` list:** `admin` all; `leader` self + downline-created (`lead_visible_to_leader_clause`); `team` **only `created_by_user_id=self`** (`lead_visibility_where`). **Legacy `/leads` (Flask):** `team` rows match **assignee / stale_worker** (and `current_owner` post-filter), not creator-only — see `backend/legacy/myle_dashboard_main3/routes/lead_routes.py` (`_leads_inner`). **Gap:** team “My Leads” list scope differs until explicitly ported + matrix row updated. Regression: `tests/test_api_v1_leads.py` (`test_slice1_*`). | `lead_scope.py`, `leads_validator.lead_list_conditions`, legacy `lead_routes.py` |
 | Workboard buckets | Same visibility as `GET /leads`, grouped by `status`, capped | `backend/app/api/v1/workboard.py` |
 | Dashboard routes & roles | Single registry + JSON roles | `frontend/src/config/dashboard-registry.ts`, `frontend/src/config/dashboard-route-roles.json` |
 | Feature flag (Intelligence nav) | `GET /api/v1/meta` → `features.intelligence` | `backend` meta router + `frontend` `useMetaQuery` |
 | Call-to-close (CTCS) | `POST /api/v1/leads/{id}/action` maps outcomes to canonical `Lead.status` via `advance_lead_status_toward` (legacy FSM); `ctcs_heat` + status chain apply +10 on first `contacted`; optional `followup_at` on `call_later`; WhatsApp/webhook via `whatsapp_ctcs.py`, queued after HTTP when `CTCS_WHATSAPP_ASYNC=true`. UI: optimistic patch `frontend/src/lib/ctcs-optimistic.ts`. Regression: `tests/test_api_v1_ctcs.py`. | `backend/app/services/leads_service.py`, `ctcs_status_chain.py`, `ctcs_heat.py`, `whatsapp_ctcs.py`; `frontend/src/components/leads/CtcsWorkSurface.tsx` |
+| Team dashboard home (legacy `/dashboard`) | **Team** role: enrollment funnel strip from `GET /api/v1/execution/personal-funnel` (same service idea as legacy `team_personal_funnel`); no `GET /follow-ups` prefetch (legacy had empty follow-ups list for team); **Live session** KPI card links to `other/live-session` (legacy `zoom_*` settings block). **Not yet 1:1:** legacy “today claimed / calls / enrolled” micro-stats + wallet block layout still differ. | `frontend/src/pages/DashboardHomePage.tsx`, `frontend/src/hooks/use-team-personal-funnel-query.ts`, `backend/app/services/execution_enforcement.py` |
 
 ---
 
@@ -105,7 +106,7 @@ Roles: **`frontend/src/config/dashboard-route-roles.json`** (exact list per path
 | Execution | Leak map | `/admin/leak-map` | admin | |
 | Execution | Lead ledger | `/admin/lead-ledger` | admin | |
 | Work | All Leads | `/leads` | admin | Nav text: “All Leads” |
-| Work | My Leads | `/leads` | team, leader | Same path; nav text: “My Leads” |
+| Work | My Leads | `/leads` | team, leader | Same path; **vl2** team nav label: **Calling Board** (legacy sidebar: “My Leads”) |
 | Work | Workboard | `/working` | team, leader, admin | |
 | Work | Follow-ups | `/follow-up` | leader, admin | Hidden for `role == 'team'` in sidebar |
 | Work | Retarget | `/retarget` | team, leader, admin | |
@@ -151,14 +152,14 @@ Roles: **`frontend/src/config/dashboard-route-roles.json`** (exact list per path
 
 | Legacy ref (id + menu/path) | Evidence | New path | New wiring | Parity status | Owner / date |
 |-----------------------------|----------|----------|------------|---------------|--------------|
-| My Leads / All Leads — `/leads` | `NAV-EXPORT-001`; `EVID-2026-001` | `work/leads` | full | TBD | |
+| My Leads / All Leads — `/leads` | `NAV-EXPORT-001`; `EVID-2026-001` | `work/leads` | full | partial — team menu label **Calling Board** vs legacy “My Leads” (`dashboard-registry.ts`, 2026-04-15) | |
 | Workboard — `/working` | `NAV-EXPORT-001`; `EVID-2026-002` | `work/workboard` | full | TBD | |
-| Follow-ups — `/follow-up` | `NAV-EXPORT-001`; `EVID-2026-003` | `work/follow-ups` | full | TBD | |
-| Archived Leads — `/old-leads` | `NAV-EXPORT-001`; `EVID-2026-004` | `work/archived` | full | TBD | |
-| Lead Pool — `/lead-pool` or `/admin/lead-pool` | `NAV-EXPORT-001`; `EVID-2026-005` | `work/lead-pool` / `work/lead-pool-admin` | full | TBD | |
+| Follow-ups — `/follow-up` | `NAV-EXPORT-001`; `EVID-2026-003`; `EVID-2026-SLICE3-001` (`tests/test_api_v1_follow_ups.py::test_slice3_team_forbidden_for_follow_up_queue_api`) | `work/follow-ups` | full | partial — team forbidden (403 API + FE role gating) now matches legacy intent; due-date/overdue queue ordering parity still pending | 2026-04-15 |
+| Archived Leads — `/old-leads` | `NAV-EXPORT-001`; `EVID-2026-004`; `EVID-2026-SLICE4-001` (`tests/test_api_v1_leads.py::test_slice4_archived_*`, `test_slice4_deleted_only_*`, `test_slice4_team_*restore*`, `test_slice4_permanent_delete_*`) | `work/archived` | full | partial — archived + recycle list scope now assignee/execution-style for non-admin, restore from recycle allowed for assigned non-admin leads, and admin-only hard delete available (`DELETE /api/v1/leads/{id}/permanent-delete`); remaining parity is mostly UI/wording polish vs legacy template | 2026-04-15 |
+| Lead Pool — `/lead-pool` or `/admin/lead-pool` | `NAV-EXPORT-001`; `EVID-2026-005`; `EVID-2026-SLICE5-001` (`tests/test_api_v1_leads.py::test_slice5_*`) | `work/lead-pool` / `work/lead-pool-admin` | full | partial — claim edge guards now locked: admin claim forbidden, insufficient wallet returns 402 without removing pool row, and already-claimed lead cannot be re-claimed; legacy-only cooldown/daily-cap rules still pending | 2026-04-15 |
 | Recycle Bin — `/leads/recycle-bin` | `NAV-EXPORT-001`; `EVID-2026-006` | `work/recycle-bin` | full | TBD | |
 | Login session persistence (remember me/session restore) | `EVID-2026-007` | `/login` + protected `/dashboard/*` | full | TBD | |
-| **Call-to-close (CTCS)** — fast loop + list filters + actions | `NAV-EXPORT-001`; **`EVID-CTCS-2026-001`** — `tests/test_api_v1_ctcs.py`; `backend/app/api/v1/leads.py`, `leads_service.py`, `ctcs_status_chain.py`, `ctcs_heat.py`, `whatsapp_ctcs.py`; `frontend` `LeadsWorkPage.tsx`, `CtcsWorkSurface.tsx`, `ctcs-optimistic.ts` | `work/leads` | full | **partial** — action-first vs legacy table-first; statuses = `lead_status.py`; WhatsApp = env webhook or stub (async when `CTCS_WHATSAPP_ASYNC=true`) | 2026-04-15 |
+| **Call-to-close (CTCS)** — fast loop + list filters + actions | `NAV-EXPORT-001`; **`EVID-CTCS-2026-001`** — `tests/test_api_v1_ctcs.py`; `backend/app/api/v1/leads.py`, `leads_service.py`, `ctcs_status_chain.py`, `ctcs_heat.py`, `whatsapp_ctcs.py`; `frontend` `LeadsWorkPage.tsx`, `CtcsWorkSurface.tsx`, `CtcsLeadCard.tsx`, `CtcsOutcomeModal.tsx`, `phone-links.ts` (`whatsappDigits` ≡ legacy `wa_phone`), `ctcs-optimistic.ts` | `work/leads` | full | **partial** — action-first vs legacy table-first; card **Phone** = `tel:` (legacy dial) + `POST /call-log` + outcome modal; modal repeats **Dial** + **WhatsApp** like `leads.html` call panel header; `wa.me` digits match `myle_dashboard` `wa_phone_filter`; WhatsApp enrollment assets = env webhook or stub (async when `CTCS_WHATSAPP_ASYNC=true`) | 2026-04-15 |
 
 **Evidence ids:** Repo-local reference slots — jab file/Notion/screenshot attach ho, yahi id matrix aur evidence store mein use karo. **“match”** sirf jab dono legacy + new documented hon.
 
@@ -179,4 +180,5 @@ When mapping a legacy feature, point the **new** row to the concrete router modu
 - When adding a dashboard screen: update **`DASHBOARD_ROUTE_DEFS`** first, then add or adjust a row in the **inventory** table above.
 - When legacy parity is agreed: fill **Parity matrix** — never claim parity in chat or PR description without updating this file.
 - **Implementation order (waves, stub→full checklist):** **`docs/PARITY_ROLLOUT_PLAN.md`**.
+- **Legacy-aligned restructure + micro-slice template (layers + file index):** **`docs/APP_RESTRUCTURE_MICRO_PLAN.md`**.
 - **Full behavior port (backend + frontend, lossless rules):** **`docs/LOSSLESS_FULLSTACK_PORT.md`**.

@@ -46,7 +46,7 @@ export function LeadFlowPage({ title }: Props) {
       <p className="text-sm text-muted-foreground">
         Full Myle lead pipeline — from first contact to conversion. Moves are done on{' '}
         <Link to="/dashboard/work/leads" className="text-primary underline-offset-2 hover:underline">
-          My Leads
+          Calling Board
         </Link>{' '}
         or the{' '}
         <Link to="/dashboard/work/workboard" className="text-primary underline-offset-2 hover:underline">

@@ -26,15 +26,19 @@ async def _seed_lead(
     in_pool: bool = False,
     deleted_at: datetime | None = None,
     call_status: str | None = None,
+    created_by_user_id: int | None = None,
+    assigned_to_user_id: int | None = None,
 ) -> None:
     fac = test_conftest.get_test_session_factory()
+    cb = created_by_user_id if created_by_user_id is not None else user_id
+    at = assigned_to_user_id if assigned_to_user_id is not None else user_id
     async with fac() as session:
         session.add(
             Lead(
                 name=name,
                 status=lead_status,
-                created_by_user_id=user_id,
-                assigned_to_user_id=user_id,
+                created_by_user_id=cb,
+                assigned_to_user_id=at,
                 archived_at=archived_at,
                 in_pool=in_pool,
                 deleted_at=deleted_at,
@@ -176,6 +180,53 @@ def test_leader_sees_downline_created_leads(
         assert by_status["new_lead"]["total"] == 1
         assert len(by_status["new_lead"]["items"]) == 1
         assert by_status["new_lead"]["items"][0]["name"] == "FromTeamMember"
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_slice2_team_workboard_uses_assignment_not_creator(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Legacy `/working` scopes team by assignee; vl2 mirrors via execution visibility."""
+    asyncio.run(
+        _seed_lead(
+            user_id=2,
+            name="LeaderCreatedAssignedToTeam",
+            lead_status="new_lead",
+            created_by_user_id=2,
+            assigned_to_user_id=3,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+        body = c.get("/api/v1/workboard/leads").json()
+        by_status = {col["status"]: col for col in body["columns"]}
+        assert by_status["new_lead"]["total"] == 1
+        assert by_status["new_lead"]["items"][0]["name"] == "LeaderCreatedAssignedToTeam"
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_slice2_team_workboard_hides_unassigned_self_created_lead(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """If team created a lead but assignment moved away, `/working` should not show it."""
+    asyncio.run(
+        _seed_lead(
+            user_id=3,
+            name="TeamCreatedButAssignedToLeader",
+            lead_status="new_lead",
+            created_by_user_id=3,
+            assigned_to_user_id=2,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+        body = c.get("/api/v1/workboard/leads").json()
+        by_status = {col["status"]: col for col in body["columns"]}
+        assert by_status["new_lead"]["total"] == 0
     finally:
         asyncio.run(_clear_leads())
 
