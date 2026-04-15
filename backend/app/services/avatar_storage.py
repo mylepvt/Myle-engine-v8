@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 from fastapi import UploadFile
@@ -54,4 +55,6 @@ async def save_user_avatar_file(*, user_id: int, file: UploadFile) -> tuple[bool
 
     dest = avatar_disk_path(user_id, sfx)
     dest.write_bytes(data)
-    return True, f"/api/v1/media/avatar/{user_id}"
+    # Bust browser/CDN caches: URL changes on every successful upload.
+    bust = int(time.time())
+    return True, f"/api/v1/media/avatar/{user_id}?t={bust}"

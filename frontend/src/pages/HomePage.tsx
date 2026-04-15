@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight, Shield } from 'lucide-react'
@@ -22,6 +23,12 @@ export function HomePage() {
   const logout = useAuthStore((s) => s.logout)
   const sessionKnown = !mePending || me !== undefined
   const sessionActive = Boolean(me?.authenticated)
+
+  useEffect(() => {
+    if (me?.authenticated) {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [me?.authenticated, navigate])
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))]">

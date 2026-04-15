@@ -95,7 +95,9 @@ export function DashboardLayout() {
     me?.training_required === true && trainingStatusLc !== 'completed'
   const onTrainingRoute =
     location.pathname === '/dashboard/system/training' ||
-    location.pathname.startsWith('/dashboard/system/training/')
+    location.pathname.startsWith('/dashboard/system/training/') ||
+    location.pathname === '/dashboard/other/training' ||
+    location.pathname.startsWith('/dashboard/other/training/')
 
   const sections = useMemo(() => {
     if (shellRole == null) return []

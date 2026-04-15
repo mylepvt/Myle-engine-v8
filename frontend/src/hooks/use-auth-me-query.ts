@@ -25,6 +25,21 @@ export type MeResponse = {
   avatar_url: string | null
 }
 
+const UNAUTH: MeResponse = {
+  authenticated: false,
+  role: null,
+  user_id: null,
+  fbo_id: null,
+  username: null,
+  email: null,
+  display_name: null,
+  auth_version: null,
+  training_status: null,
+  training_required: null,
+  registration_status: null,
+  avatar_url: null,
+}
+
 export async function fetchAuthMe(): Promise<MeResponse> {
   const readMe = async (): Promise<Response> => apiFetch('/api/v1/auth/me')
   let res = await readMe()
@@ -34,8 +49,11 @@ export async function fetchAuthMe(): Promise<MeResponse> {
       await authRefresh()
       res = await readMe()
     } catch {
-      // Keep the original 401 semantics below.
+      return UNAUTH
     }
+  }
+  if (res.status === 401) {
+    return UNAUTH
   }
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const raw = (await res.json()) as Partial<MeResponse>

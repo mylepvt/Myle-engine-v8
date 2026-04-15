@@ -24,7 +24,7 @@
   "finance/wallet": ["leader", "team"],
   "other/leaderboard": ["admin", "leader", "team"],
   "other/notice-board": ["admin", "leader", "team"],
-  "other/training": ["leader", "team"],
+  "other/training": ["admin", "leader", "team"],
   "other/live-session": ["admin", "leader", "team"],
   "other/daily-report": ["leader", "team"],
   "settings/app": ["admin"],

@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { Link, Navigate, Outlet, useLocation } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -42,24 +42,24 @@ export function ProtectedRoute() {
   }
 
   if (isError) {
+    if (authErrorCode === '401') {
+      return <Navigate to="/login" replace state={{ from: location.pathname }} />
+    }
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
         <p className="text-sm text-destructive" role="alert">
           Could not verify your session. Check API URL/network and retry.
         </p>
-        {authErrorCode === '401' ? (
-          <p className="text-xs text-muted-foreground">
-            Session expired. If Remember Me was enabled, refresh should restore it automatically.
-          </p>
-        ) : null}
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={isRefetching}
-          onClick={() => void refetch()}
-        >
-          {isRefetching ? 'Retrying…' : 'Retry'}
-        </Button>
+        <div className="flex flex-wrap justify-center gap-2">
+          <Button type="button" variant="secondary" disabled={isRefetching} onClick={() => void refetch()}>
+            {isRefetching ? 'Retrying…' : 'Retry'}
+          </Button>
+          <Button type="button" variant="outline" asChild>
+            <Link to="/login" state={{ from: location.pathname }}>
+              Sign in
+            </Link>
+          </Button>
+        </div>
       </div>
     )
   }

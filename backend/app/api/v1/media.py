@@ -38,7 +38,7 @@ async def get_user_avatar(user_id: int) -> FileResponse:
             return FileResponse(
                 path=str(p),
                 media_type=_guess_media_type(sfx),
-                headers={"Cache-Control": "public, max-age=86400"},
+                headers={"Cache-Control": "private, no-store"},
             )
     raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Not found")
 

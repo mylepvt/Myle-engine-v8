@@ -29,6 +29,12 @@ def _require_leader_or_team(user: AuthUser) -> None:
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
 
+def _require_leader_team_or_admin(user: AuthUser) -> None:
+    """Legacy ``/training`` is team/leader; admins use the same catalog in practice."""
+    if user.role not in ("leader", "team", "admin"):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+
 def _require_admin(user: AuthUser) -> None:
     if user.role != "admin":
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
@@ -258,7 +264,7 @@ async def other_training(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> TrainingSurfaceResponse:
-    _require_leader_or_team(user)
+    _require_leader_team_or_admin(user)
     return await build_training_surface(session, user.user_id)
 
 

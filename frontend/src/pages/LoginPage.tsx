@@ -32,6 +32,9 @@ import {
   type Role,
 } from '@/types/role'
 
+/** Persists only the checkbox preference (server still controls cookie lifetime via `remember_me`). */
+const REMEMBER_ME_PREF_KEY = 'myle_login_remember_me_pref'
+
 function RequiredMark() {
   return (
     <span className="font-semibold text-primary" aria-hidden>
@@ -66,6 +69,16 @@ export function LoginPage() {
   const [showGateBanner, setShowGateBanner] = useState(fromProtected)
 
   useEffect(() => {
+    try {
+      const v = localStorage.getItem(REMEMBER_ME_PREF_KEY)
+      if (v === '1') setRememberMe(true)
+      if (v === '0') setRememberMe(false)
+    } catch {
+      /* private mode / blocked storage */
+    }
+  }, [])
+
+  useEffect(() => {
     if (meta?.auth_dev_login_enabled) {
       setFboId((v) => (v === '' ? devFboIdForRole('leader') : v))
     }
@@ -88,6 +101,11 @@ export function LoginPage() {
     setPwPending(true)
     try {
       await authPasswordLogin(fboId, password, rememberMe)
+      try {
+        localStorage.setItem(REMEMBER_ME_PREF_KEY, rememberMe ? '1' : '0')
+      } catch {
+        /* ignore */
+      }
       await queryClient.resetQueries({ queryKey: ['auth', 'me'] })
       let me = await queryClient.fetchQuery({
         queryKey: ['auth', 'me'],
@@ -332,7 +350,15 @@ export function LoginPage() {
                   <input
                     type="checkbox"
                     checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
+                    onChange={(e) => {
+                      const next = e.target.checked
+                      setRememberMe(next)
+                      try {
+                        localStorage.setItem(REMEMBER_ME_PREF_KEY, next ? '1' : '0')
+                      } catch {
+                        /* ignore */
+                      }
+                    }}
                     className="size-4 rounded border-white/25 bg-muted/40 text-primary accent-primary focus:ring-2 focus:ring-primary/40"
                   />
                   <span className="select-none">Remember me</span>

@@ -29,4 +29,29 @@ describe('fetchAuthMe', () => {
     expect(me.authenticated).toBe(true)
     expect(fetchMock).toHaveBeenCalledTimes(3)
   })
+
+  it('returns unauthenticated when refresh fails after 401 on /me', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('', { status: 401 }))
+      .mockResolvedValueOnce(new Response('', { status: 401 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const me = await fetchAuthMe()
+    expect(me.authenticated).toBe(false)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('returns unauthenticated when /me is still 401 after successful refresh', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('', { status: 401 }))
+      .mockResolvedValueOnce(new Response('', { status: 200 }))
+      .mockResolvedValueOnce(new Response('', { status: 401 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const me = await fetchAuthMe()
+    expect(me.authenticated).toBe(false)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+  })
 })
