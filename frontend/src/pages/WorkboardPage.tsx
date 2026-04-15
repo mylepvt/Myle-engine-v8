@@ -1,6 +1,6 @@
 import { type ReactElement, memo, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Video, Pencil, Search, CheckSquare } from 'lucide-react'
+import { CheckSquare, Eye, Pencil, Search, Send, Video } from 'lucide-react'
 import { List, type RowComponentProps } from 'react-window'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { Button } from '@/components/ui/button'
@@ -18,14 +18,14 @@ type Col = { status: string; total: number; items: LeadPublic[] }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const CALL_OPTS = [
-  { value: 'not_called',     label: '📞 Not Called' },
-  { value: 'no_answer',      label: '📵 No Answer' },
-  { value: 'interested',     label: '✅ Interested' },
-  { value: 'not_interested', label: '❌ Not Interested' },
-  { value: 'follow_up',      label: '🔄 Follow Up' },
-  { value: 'video_sent',     label: '📤 Video Sent' },
-  { value: 'video_watched',  label: '👀 Video Watched' },
-  { value: 'payment_done',   label: '💰 Payment Done' },
+  { value: 'not_called', label: 'Not Called' },
+  { value: 'no_answer', label: 'No Answer' },
+  { value: 'interested', label: 'Interested' },
+  { value: 'not_interested', label: 'Not Interested' },
+  { value: 'follow_up', label: 'Follow Up' },
+  { value: 'video_sent', label: 'Video Sent' },
+  { value: 'video_watched', label: 'Video Watched' },
+  { value: 'payment_done', label: 'Payment Done' },
 ]
 const BADGE: Record<string, string> = {
   new_lead:       'bg-primary/15 text-primary border-primary/25',
@@ -109,8 +109,18 @@ const LeadCard = memo(function LeadCard({ lead, pm, leadPatchBusy }: { lead: Lea
         </div>
         <span className={cn('shrink-0 rounded-full border px-2 py-0.5 text-[0.65rem] font-semibold', badge)}>{slabel(lead.status)}</span>
       </div>
-      {isWatched && <div className="rounded-md bg-blue-400/10 px-2 py-1 text-[0.7rem] font-medium text-blue-300">👀 Prospect watched the video — call now!</div>}
-      {isSent    && <div className="rounded-md bg-indigo-400/10 px-2 py-1 text-[0.7rem] font-medium text-indigo-300">📤 Video sent — waiting for response</div>}
+      {isWatched ? (
+        <div className="flex items-center gap-1.5 rounded-md bg-blue-400/10 px-2 py-1 text-[0.7rem] font-medium text-blue-300">
+          <Eye className="size-3.5 shrink-0" aria-hidden />
+          <span>Prospect watched the video — call now!</span>
+        </div>
+      ) : null}
+      {isSent ? (
+        <div className="flex items-center gap-1.5 rounded-md bg-indigo-400/10 px-2 py-1 text-[0.7rem] font-medium text-indigo-300">
+          <Send className="size-3.5 shrink-0" aria-hidden />
+          <span>Video sent — waiting for response</span>
+        </div>
+      ) : null}
       <select
         value={lead.call_status ?? 'not_called'}
         disabled={leadPatchBusy}

@@ -71,7 +71,9 @@ export function EnrollmentCard({ leadId }: Props) {
           className="w-full rounded-md border border-white/12 bg-white/[0.05] px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
         />
         {enrollError ? (
-          <p className="text-xs text-destructive">{enrollError}</p>
+          <p className="text-xs text-destructive" role="alert">
+            {enrollError}
+          </p>
         ) : null}
         <Button type="submit" size="sm" disabled={generateLinkMut.isPending}>
           {generateLinkMut.isPending ? 'Generating…' : 'Generate share link'}

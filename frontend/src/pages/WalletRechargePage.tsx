@@ -88,7 +88,7 @@ export function WalletRechargePage({ title }: Props) {
         {instructionsQuery.isPending ? (
           <Skeleton className="h-24 w-full" />
         ) : instructionsQuery.isError ? (
-          <p className="text-xs text-destructive">
+          <p className="text-xs text-destructive" role="alert">
             {instructionsQuery.error instanceof Error
               ? instructionsQuery.error.message
               : 'Could not load UPI details'}
@@ -134,8 +134,9 @@ export function WalletRechargePage({ title }: Props) {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             required
+            disabled={createMut.isPending}
             placeholder="e.g. 500"
-            className="w-full rounded-md border border-white/12 bg-white/[0.05] px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+            className="w-full rounded-md border border-white/12 bg-white/[0.05] px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 disabled:opacity-50"
           />
         </div>
 
@@ -153,7 +154,8 @@ export function WalletRechargePage({ title }: Props) {
             onChange={(e) => setUtr(e.target.value)}
             placeholder="Bank reference number"
             required
-            className="w-full rounded-md border border-white/12 bg-white/[0.05] px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+            disabled={createMut.isPending}
+            className="w-full rounded-md border border-white/12 bg-white/[0.05] px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 disabled:opacity-50"
           />
         </div>
 
@@ -170,16 +172,19 @@ export function WalletRechargePage({ title }: Props) {
             value={proofUrl}
             onChange={(e) => setProofUrl(e.target.value)}
             placeholder="https://…"
-            className="w-full rounded-md border border-white/12 bg-white/[0.05] px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+            disabled={createMut.isPending}
+            className="w-full rounded-md border border-white/12 bg-white/[0.05] px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 disabled:opacity-50"
           />
         </div>
 
         {formError ? (
-          <p className="text-xs text-destructive">{formError}</p>
+          <p className="text-xs text-destructive" role="alert">
+            {formError}
+          </p>
         ) : null}
 
         {createMut.isError && !formError ? (
-          <p className="text-xs text-destructive">
+          <p className="text-xs text-destructive" role="alert">
             {createMut.error instanceof Error ? createMut.error.message : 'Request failed'}
           </p>
         ) : null}
@@ -209,7 +214,7 @@ export function WalletRechargePage({ title }: Props) {
         ) : null}
 
         {requestsQuery.isError ? (
-          <p className="text-xs text-destructive">
+          <p className="text-xs text-destructive" role="alert">
             {requestsQuery.error instanceof Error
               ? requestsQuery.error.message
               : 'Could not load requests'}

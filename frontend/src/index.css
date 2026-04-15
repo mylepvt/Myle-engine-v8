@@ -398,6 +398,12 @@
     opacity: 1 !important;
     transform: none !important;
   }
+
+  .animate-pulse,
+  .animate-pulse-soft {
+    animation: none !important;
+    opacity: 0.65;
+  }
 }
 
 @keyframes pulse-glow {
@@ -508,10 +514,10 @@ html.perf-low-end .watch-gauge-needle {
     @apply transition-all duration-200 ease-smooth;
   }
 
-  /* Hover lift effect for buttons */
+  /* Hover feedback without vertical shift (dense tables/toolbars) */
   button:not([disabled]),
   [role="button"]:not([disabled]) {
-    @apply hover:shadow-md hover:-translate-y-0.5;
+    @apply hover:shadow-md;
   }
 
   /* Smooth focus states */

@@ -60,7 +60,7 @@ const defaultMessages: Record<EmptyStateVariant, { title: string; description: s
   },
   leads: {
     title: 'No leads yet',
-    description: 'Start building your pipeline by adding your first lead 🚀',
+    description: 'Start building your pipeline by adding your first lead.',
   },
   search: {
     title: 'No results found',
@@ -88,7 +88,7 @@ const defaultMessages: Record<EmptyStateVariant, { title: string; description: s
   },
   tasks: {
     title: 'No pending tasks',
-    description: 'You\'re all caught up! Great job ✨',
+    description: "You're all caught up. Great job.",
   },
 }
 
@@ -122,7 +122,7 @@ const EmptyStatePremium = ({
         className={cn(
           'mb-6 flex h-20 w-20 items-center justify-center rounded-2xl',
           'bg-gradient-to-br from-primary/20 to-accent/10',
-          'transition-transform duration-300 hover:scale-105'
+          'transition-[box-shadow,opacity] duration-200 hover:opacity-95 hover:shadow-md'
         )}
       >
         <Icon className="h-10 w-10 text-primary" strokeWidth={1.5} />

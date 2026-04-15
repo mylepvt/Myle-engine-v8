@@ -370,7 +370,7 @@ export function DashboardLayout() {
             <ShellHeaderFeedbackControls />
             <Link
               to="/dashboard/settings/profile"
-              className="hidden sm:flex relative size-10 items-center justify-center rounded-full transition-[background-color,transform] duration-200 hover:bg-muted hover:scale-105 active:scale-95"
+              className="relative hidden size-10 items-center justify-center rounded-full transition-colors duration-200 hover:bg-muted active:opacity-80"
               aria-label="Settings"
             >
               <Settings className="size-[1.15rem] md:size-[1.25rem]" />
@@ -378,7 +378,7 @@ export function DashboardLayout() {
             <div className="relative">
               <Link
                 to="/dashboard/other/notice-board"
-                className="relative flex size-10 items-center justify-center rounded-full transition-[background-color,transform] duration-200 hover:bg-muted hover:scale-105 active:scale-95"
+                className="relative flex size-10 items-center justify-center rounded-full transition-colors duration-200 hover:bg-muted active:opacity-80"
                 aria-label="Notice board"
               >
                 <Bell className="size-[1.2rem] md:size-[1.35rem]" />
@@ -419,7 +419,13 @@ export function DashboardLayout() {
               {me?.avatar_url ? (
                 <img
                   src={apiUrl(me.avatar_url)}
-                  alt=""
+                  alt={
+                    me.username
+                      ? `Profile photo for ${me.username}`
+                      : me.email
+                        ? `Profile photo for ${me.email}`
+                        : 'Your profile photo'
+                  }
                   className="size-full object-cover"
                   width={36}
                   height={36}

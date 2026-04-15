@@ -20,7 +20,10 @@ export class DashboardOutletErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.error) {
       return (
-        <div className="max-w-lg space-y-3 rounded-xl border border-destructive/30 bg-destructive/10 p-6 text-sm">
+        <div
+          className="max-w-lg space-y-3 rounded-xl border border-destructive/30 bg-destructive/10 p-6 text-sm"
+          role="alert"
+        >
           <p className="font-semibold text-destructive">This view crashed</p>
           <p className="text-muted-foreground">
             {this.state.error.message || 'Unexpected error'}

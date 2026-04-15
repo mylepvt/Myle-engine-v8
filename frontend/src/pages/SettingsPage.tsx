@@ -217,7 +217,13 @@ export default function SettingsPage() {
                     {userProfile.data?.avatar_url ? (
                       <img
                         src={apiUrl(userProfile.data.avatar_url)}
-                        alt=""
+                        alt={
+                          userProfile.data.username
+                            ? `Profile photo for ${userProfile.data.username}`
+                            : userProfile.data.email
+                              ? `Profile photo for ${userProfile.data.email}`
+                              : 'Your profile photo'
+                        }
                         className="size-full object-cover"
                         width={96}
                         height={96}

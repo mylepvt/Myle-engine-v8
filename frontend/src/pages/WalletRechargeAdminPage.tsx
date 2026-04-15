@@ -175,7 +175,11 @@ function RechargeRow({
         </div>
       ) : null}
 
-      {rowError ? <p className="text-xs text-destructive">{rowError}</p> : null}
+      {rowError ? (
+        <p className="text-xs text-destructive" role="alert">
+          {rowError}
+        </p>
+      ) : null}
     </li>
   )
 }
@@ -241,7 +245,7 @@ export function WalletRechargeAdminPage({ title }: Props) {
       ) : null}
 
       {requestsQuery.isError ? (
-        <p className="text-sm text-destructive">
+        <p className="text-sm text-destructive" role="alert">
           {requestsQuery.error instanceof Error
             ? requestsQuery.error.message
             : 'Could not load requests'}

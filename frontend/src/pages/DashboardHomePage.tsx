@@ -162,7 +162,7 @@ export function DashboardHomePage() {
             </>
           ) : adminReports.isError ? (
             <Card className="border-destructive/30 sm:col-span-2">
-              <CardContent className="pt-6 text-sm text-destructive">
+              <CardContent className="pt-6 text-sm text-destructive" role="alert">
                 Could not load today&apos;s metrics.{' '}
                 <button
                   type="button"

@@ -303,7 +303,7 @@ const Spotlight = ({ children, className }: SpotlightProps) => {
   return (
     <div className={cn('relative overflow-hidden group', className)}>
       <div className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+        <div className="absolute inset-0 translate-x-[-100%] bg-gradient-to-r from-transparent via-white/5 to-transparent transition-transform duration-300 ease-out group-hover:translate-x-[100%]" />
       </div>
       {children}
     </div>

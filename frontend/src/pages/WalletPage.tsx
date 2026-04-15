@@ -22,7 +22,9 @@ export function WalletPage({ title }: Props) {
 
       {me.isPending ? <Skeleton className="h-16 w-full" /> : null}
       {me.isError ? (
-        <p className="text-sm text-destructive">{me.error instanceof Error ? me.error.message : 'Error'}</p>
+        <p className="text-sm text-destructive" role="alert">
+          {me.error instanceof Error ? me.error.message : 'Error'}
+        </p>
       ) : null}
       {me.data ? (
         <div className="surface-elevated p-4">
@@ -62,7 +64,9 @@ export function WalletPage({ title }: Props) {
         <h2 className="mb-2 text-sm font-medium text-foreground">Ledger (paged)</h2>
         {ledger.isPending ? <Skeleton className="h-20 w-full" /> : null}
         {ledger.isError ? (
-          <p className="text-sm text-destructive">{ledger.error instanceof Error ? ledger.error.message : 'Error'}</p>
+          <p className="text-sm text-destructive" role="alert">
+            {ledger.error instanceof Error ? ledger.error.message : 'Error'}
+          </p>
         ) : null}
         {ledger.data ? (
           <p className="text-xs text-muted-foreground">

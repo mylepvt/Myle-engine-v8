@@ -366,7 +366,9 @@ export function LeadDetailPage({ leadId }: Props) {
                 {patchMut.isPending ? 'Saving…' : 'Save pipeline'}
               </Button>
               {pipelineError ? (
-                <p className="text-xs text-destructive">{pipelineError}</p>
+                <p className="text-xs text-destructive" role="alert">
+                  {pipelineError}
+                </p>
               ) : null}
             </div>
           </div>
@@ -494,7 +496,9 @@ export function LeadDetailPage({ leadId }: Props) {
                   />
                 </div>
                 {callError ? (
-                  <p className="text-xs text-destructive">{callError}</p>
+                  <p className="text-xs text-destructive" role="alert">
+                    {callError}
+                  </p>
                 ) : null}
                 <Button type="submit" size="sm" disabled={logCallMut.isPending}>
                   {logCallMut.isPending ? 'Logging…' : 'Log call'}
@@ -556,7 +560,9 @@ export function LeadDetailPage({ leadId }: Props) {
                 {patchMut.isPending ? 'Saving…' : 'Save notes'}
               </Button>
               {notesError ? (
-                <p className="text-xs text-destructive">{notesError}</p>
+                <p className="text-xs text-destructive" role="alert">
+                  {notesError}
+                </p>
               ) : null}
             </div>
           </div>
@@ -623,7 +629,9 @@ export function LeadDetailPage({ leadId }: Props) {
                   className="w-full rounded-md border border-white/12 bg-white/[0.05] px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
                 />
                 {proofError ? (
-                  <p className="text-xs text-destructive">{proofError}</p>
+                  <p className="text-xs text-destructive" role="alert">
+                    {proofError}
+                  </p>
                 ) : null}
                 <div className="flex gap-2">
                   <Button type="submit" size="sm" disabled={patchMut.isPending}>

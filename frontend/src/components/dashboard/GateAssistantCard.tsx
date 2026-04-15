@@ -59,7 +59,7 @@ export function GateAssistantCard({ sessionReady }: Props) {
       <Card className="border-destructive/30">
         <CardHeader>
           <CardTitle className="text-ds-h3">Gate Assistant</CardTitle>
-          <CardDescription className="text-destructive">
+          <CardDescription className="text-destructive" role="alert">
             {error instanceof Error ? error.message : 'Could not load'}{' '}
             <button
               type="button"

@@ -126,14 +126,17 @@ export function DailyReportFormPage({ title }: Props) {
             type="date"
             value={dateIso}
             onChange={(e) => setDateIso(e.target.value)}
-            className="rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-foreground"
+            disabled={mut.isPending}
+            className="rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-foreground disabled:opacity-50"
           />
         </label>
       </div>
 
       {q.isPending ? <Skeleton className="h-40 w-full rounded-xl" /> : null}
       {q.isError ? (
-        <p className="text-sm text-destructive">{q.error instanceof Error ? q.error.message : 'Failed to load'}</p>
+        <p className="text-sm text-destructive" role="alert">
+          {q.error instanceof Error ? q.error.message : 'Failed to load'}
+        </p>
       ) : null}
 
       <form
@@ -151,11 +154,12 @@ export function DailyReportFormPage({ title }: Props) {
                 type="number"
                 min={0}
                 value={ints[key] ?? 0}
+                disabled={mut.isPending}
                 onChange={(e) =>
                   setInts((prev) => ({ ...prev, [key]: Math.max(0, parseInt(e.target.value, 10) || 0) }))
                 }
                 className={cn(
-                  'rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 tabular-nums text-foreground',
+                  'rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 tabular-nums text-foreground disabled:opacity-50',
                 )}
               />
             </label>
@@ -167,7 +171,8 @@ export function DailyReportFormPage({ title }: Props) {
             value={remarks}
             onChange={(e) => setRemarks(e.target.value)}
             rows={3}
-            className="rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-foreground"
+            disabled={mut.isPending}
+            className="rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-foreground disabled:opacity-50"
           />
         </label>
         <button
@@ -187,7 +192,9 @@ export function DailyReportFormPage({ title }: Props) {
         </p>
       ) : null}
       {mut.isError ? (
-        <p className="text-sm text-destructive">{mut.error instanceof Error ? mut.error.message : 'Save failed'}</p>
+        <p className="text-sm text-destructive" role="alert">
+          {mut.error instanceof Error ? mut.error.message : 'Save failed'}
+        </p>
       ) : null}
     </div>
   )

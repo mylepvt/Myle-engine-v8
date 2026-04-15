@@ -100,7 +100,7 @@ export function WatchPage() {
             <Skeleton className="h-4 w-80 bg-white/10" />
           </>
         ) : error ? (
-          <div className="text-center space-y-2 pt-8">
+          <div className="text-center space-y-2 pt-8" role="alert">
             <p className="text-destructive text-sm">{error}</p>
             <p className="text-white/50 text-xs">
               This link may have expired or is invalid.

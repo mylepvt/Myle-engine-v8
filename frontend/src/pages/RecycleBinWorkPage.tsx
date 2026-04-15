@@ -83,7 +83,7 @@ export function RecycleBinWorkPage({ title }: Props) {
             </ul>
           )}
           {patchMut.isError ? (
-            <p className="mt-2 text-xs text-destructive">
+            <p className="mt-2 text-xs text-destructive" role="alert">
               {patchMut.error instanceof Error ? patchMut.error.message : 'Restore failed'}
             </p>
           ) : null}

@@ -187,8 +187,8 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
           className={cn(
             'relative size-10 rounded-full',
             'transition-all duration-200',
-            'hover:bg-muted hover:scale-105',
-            'active:scale-95',
+            'hover:bg-muted',
+            'active:opacity-80',
             className
           )}
           aria-label={label}
@@ -206,8 +206,8 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
         className={cn(
           'relative size-10 rounded-full',
           'transition-all duration-200',
-          'hover:bg-muted hover:scale-105',
-          'active:scale-95',
+          'hover:bg-muted',
+          'active:opacity-80',
           className
         )}
         aria-label={label}

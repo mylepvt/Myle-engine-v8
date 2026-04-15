@@ -73,7 +73,8 @@ export function FinanceRechargesPage({ title }: Props) {
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
               required
-              className="w-full rounded-md border border-white/12 bg-white/[0.05] backdrop-blur-sm px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+              disabled={mut.isPending}
+              className="w-full rounded-md border border-white/12 bg-white/[0.05] backdrop-blur-sm px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 disabled:opacity-50"
             >
               <option value="">Select…</option>
               {members.data.items.map((m) => (
@@ -85,7 +86,9 @@ export function FinanceRechargesPage({ title }: Props) {
           </div>
         ) : null}
         {members.isError ? (
-          <p className="text-xs text-destructive">Could not load members (admin only).</p>
+          <p className="text-xs text-destructive" role="alert">
+            Could not load members (admin only).
+          </p>
         ) : null}
         <div>
           <label htmlFor="recharge-cents" className="mb-1 block text-xs text-muted-foreground">
@@ -97,7 +100,8 @@ export function FinanceRechargesPage({ title }: Props) {
             value={amountCents}
             onChange={(e) => setAmountCents(e.target.value)}
             required
-            className="w-full rounded-md border border-white/12 bg-white/[0.05] backdrop-blur-sm px-3 py-2 text-sm text-foreground"
+            disabled={mut.isPending}
+            className="w-full rounded-md border border-white/12 bg-white/[0.05] backdrop-blur-sm px-3 py-2 text-sm text-foreground disabled:opacity-50"
           />
         </div>
         <div>
@@ -108,14 +112,15 @@ export function FinanceRechargesPage({ title }: Props) {
             id="recharge-note"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            className="w-full rounded-md border border-white/12 bg-white/[0.05] backdrop-blur-sm px-3 py-2 text-sm text-foreground"
+            disabled={mut.isPending}
+            className="w-full rounded-md border border-white/12 bg-white/[0.05] backdrop-blur-sm px-3 py-2 text-sm text-foreground disabled:opacity-50"
           />
         </div>
         <Button type="submit" disabled={mut.isPending || !userId}>
           {mut.isPending ? 'Applying…' : 'Apply adjustment'}
         </Button>
         {mut.isError ? (
-          <p className="text-xs text-destructive">
+          <p className="text-xs text-destructive" role="alert">
             {mut.error instanceof Error ? mut.error.message : 'Request failed'}
           </p>
         ) : null}

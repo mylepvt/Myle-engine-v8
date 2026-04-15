@@ -195,24 +195,25 @@ const ActionCard = ({
   className,
 }: ActionCardProps) => {
   return (
-    <PremiumCard className={cn('group cursor-pointer', className)}>
-      <div className="flex items-start gap-4">
-        {icon && (
-          <div className="shrink-0 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 p-3 text-primary transition-transform group-hover:scale-110">
+    <PremiumCard className={cn('group', className)}>
+      <button
+        type="button"
+        onClick={onAction}
+        className="flex w-full cursor-pointer items-start gap-4 rounded-[inherit] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      >
+        {icon ? (
+          <div className="shrink-0 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 p-3 text-primary transition-[box-shadow,opacity] duration-200 group-hover:opacity-95 group-hover:shadow-md">
             {icon}
           </div>
-        )}
-        <div className="flex-1 space-y-2">
+        ) : null}
+        <div className="min-w-0 flex-1 space-y-2">
           <h4 className="font-medium text-foreground">{title}</h4>
           <p className="text-sm text-muted-foreground">{description}</p>
-          <button
-            onClick={onAction}
-            className="text-sm font-medium text-primary transition-colors hover:text-primary/80"
-          >
+          <span className="inline-block text-sm font-medium text-primary transition-colors group-hover:text-primary/85">
             {actionLabel} →
-          </button>
+          </span>
         </div>
-      </div>
+      </button>
     </PremiumCard>
   )
 }

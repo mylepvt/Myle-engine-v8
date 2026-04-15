@@ -80,7 +80,7 @@ export function buildWhatsAppVideoUrl(phone: string | null | undefined, leadName
   const digits = phone.replace(/\D/g, '')
   if (digits.length < 10) return null
   const n = leadName.trim() || 'there'
-  const text = `Hi ${n}, watch this 15-min video 👇 [your enrollment link]`
+  const text = `Hi ${n}, watch this 15-min video — link below.\n[your enrollment link]`
   return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`
 }
 

@@ -293,12 +293,12 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
             </div>
           ) : null}
           {deleteMut.isError ? (
-            <p className="mt-2 text-xs text-destructive">
+            <p className="mt-2 text-xs text-destructive" role="alert">
               {deleteMut.error instanceof Error ? deleteMut.error.message : 'Delete failed'}
             </p>
           ) : null}
           {patchMut.isError ? (
-            <p className="mt-2 text-xs text-destructive">
+            <p className="mt-2 text-xs text-destructive" role="alert">
               {patchMut.error instanceof Error ? patchMut.error.message : 'Update failed'}
             </p>
           ) : null}
