@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.models.activity_log import ActivityLog
 from app.models.follow_up import FollowUp
 from app.models.lead import Lead
+from app.services.ctcs_heat import bump_heat_on_entering_contacted
 
 _TERMINAL_STATUSES = {"lost", "converted", "inactive"}
 _FOLLOW_UP_COMPLETION_KEY = "auto_handoff_followup_completed"
@@ -39,8 +40,10 @@ class AutoHandoffService:
         )
 
     async def on_call_logged(self, *, lead: Lead, outcome: str, actor_user_id: int) -> None:
+        prev_status = lead.status
         if lead.status in {"new_lead", "new"}:
             lead.status = "contacted"
+        bump_heat_on_entering_contacted(lead, prev_status)
         if lead.assigned_to_user_id is None:
             lead.assigned_to_user_id = lead.created_by_user_id or actor_user_id
         if outcome in {"no_answer", "busy", "callback_requested"} and lead.status not in _TERMINAL_STATUSES:
@@ -107,8 +110,10 @@ def _apply_follow_up_completion_handoff(session: Session, follow_up: FollowUp) -
     if lead is None:
         return
 
+    prev_status = lead.status
     if lead.status in {"new_lead", "new"}:
         lead.status = "contacted"
+    bump_heat_on_entering_contacted(lead, prev_status)
     if lead.assigned_to_user_id is None:
         lead.assigned_to_user_id = lead.created_by_user_id
 

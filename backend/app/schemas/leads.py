@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
 from app.core.lead_status import LEAD_STATUS_SET
 
@@ -78,6 +78,28 @@ class LeadPublic(BaseModel):
     d2_afternoon: bool = False
     d2_evening: bool = False
     no_response_attempt_count: int = 0
+
+    # CTCS fields (nullable for legacy rows until touched)
+    last_action_at: Optional[datetime] = None
+    next_followup_at: Optional[datetime] = None
+    heat_score: int = 0
+
+    @computed_field
+    @property
+    def is_archived(self) -> bool:
+        return self.archived_at is not None
+
+    @computed_field
+    @property
+    def stage_day(self) -> str:
+        """Pipeline day bucket for CTCS UI (maps canonical ``Lead.status``)."""
+        if self.status == "day1":
+            return "DAY1"
+        if self.status == "day2":
+            return "DAY2"
+        if self.status in ("interview", "track_selected", "seat_hold", "converted"):
+            return "DAY3"
+        return "NONE"
 
 
 class LeadDetailPublic(LeadPublic):
@@ -173,6 +195,10 @@ class LeadUpdate(BaseModel):
     d2_afternoon: Optional[bool] = Field(default=None, description="Day 2 afternoon batch")
     d2_evening: Optional[bool] = Field(default=None, description="Day 2 evening batch")
     no_response_attempt_count: Optional[int] = Field(default=None, ge=0, description="Optional counter")
+    next_followup_at: Optional[datetime] = Field(
+        default=None,
+        description="When to call again (CTCS / follow-up queue)",
+    )
 
     @model_validator(mode="after")
     def at_least_one_field(self) -> LeadUpdate:
@@ -201,6 +227,7 @@ class LeadUpdate(BaseModel):
             self.d2_afternoon,
             self.d2_evening,
             self.no_response_attempt_count,
+            self.next_followup_at,
         ]
         if all(f is None for f in fields_with_values):
             raise ValueError("At least one field must be provided for update")
@@ -249,6 +276,53 @@ class LeadUpdate(BaseModel):
         if s not in _SOURCE_SET:
             raise ValueError(f"Invalid source; must be one of {sorted(_SOURCE_SET)}")
         return s
+
+
+_CTCS_ACTIONS = frozenset(
+    {
+        "not_picked",
+        "interested",
+        "call_later",
+        "not_interested",
+        "paid",
+    },
+)
+
+
+class LeadCtcsActionRequest(BaseModel):
+    """Call-to-close outcome (maps to canonical ``Lead.status`` + side effects)."""
+
+    action: str = Field(..., max_length=32)
+    followup_at: Optional[datetime] = Field(
+        default=None,
+        description="When action is call_later, optional explicit follow-up time (timezone-aware). Omit for +24h default.",
+    )
+
+    @field_validator("action")
+    @classmethod
+    def action_allowed(cls, v: str) -> str:
+        s = v.strip()
+        if s not in _CTCS_ACTIONS:
+            raise ValueError(f"Invalid action; must be one of {sorted(_CTCS_ACTIONS)}")
+        return s
+
+    @model_validator(mode="after")
+    def followup_at_rules(self) -> "LeadCtcsActionRequest":
+        if self.followup_at is not None and self.action != "call_later":
+            raise ValueError("followup_at is only allowed when action is call_later")
+        if self.followup_at is None:
+            return self
+        fu = self.followup_at
+        if fu.tzinfo is None:
+            raise ValueError("followup_at must be timezone-aware (include offset or Z)")
+        now = datetime.now(timezone.utc)
+        fu_utc = fu.astimezone(timezone.utc)
+        if fu_utc < now - timedelta(seconds=30):
+            raise ValueError("followup_at must be in the future")
+        if fu_utc > now + timedelta(days=60):
+            raise ValueError("followup_at is too far in the future")
+        self.followup_at = fu_utc
+        return self
 
 
 class LeadPoolImportResponse(BaseModel):

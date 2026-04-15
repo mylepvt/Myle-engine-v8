@@ -14,7 +14,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.db.base import Base
 from app.core.passwords import DEV_LOGIN_BCRYPT_HASH
+from app.models.activity_log import ActivityLog  # noqa: F401
 from app.models.announcement import Announcement  # noqa: F401
+from app.models.call_event import CallEvent  # noqa: F401
 from app.models.follow_up import FollowUp  # noqa: F401
 from app.models.lead import Lead  # noqa: F401
 from app.models.user import User

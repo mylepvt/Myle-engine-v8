@@ -1,6 +1,7 @@
 import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
+import { CtcsWorkSurface } from '@/components/leads/CtcsWorkSurface'
 import { LeadsVirtualizedBody } from '@/components/leads/LeadsVirtualizedBody'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -48,6 +49,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const [filters, setFilters] = useState<LeadListFilters>({ ...emptyFilters, q: qParam })
   const [newStatus, setNewStatus] = useState<LeadStatus>('new_lead')
   const [name, setName] = useState('')
+  const [advancedTableOpen, setAdvancedTableOpen] = useState(false)
 
   useEffect(() => {
     setQInput(qParam)
@@ -60,13 +62,18 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
     return () => window.clearTimeout(id)
   }, [qInput])
 
-  const leadsQ = useLeadsInfiniteQuery(true, filters, leadsListMode)
+  const leadsQ = useLeadsInfiniteQuery(archivedOnly, filters, leadsListMode)
+  const classicLeadsQ = useLeadsInfiniteQuery(
+    !archivedOnly && advancedTableOpen,
+    filters,
+    'active',
+  )
   const data = leadsQ.data
   const items = data?.pages.flatMap((p) => p.items) ?? []
   const total = data?.pages[0]?.total ?? 0
   const limit = data?.pages[0]?.limit ?? 50
-  const isPending = leadsQ.isPending
-  const isError = leadsQ.isError
+  const isPending = archivedOnly && leadsQ.isPending
+  const isError = archivedOnly && leadsQ.isError
   const error = leadsQ.error
   const refetch = leadsQ.refetch
   const createMut = useCreateLeadMutation()
@@ -253,10 +260,99 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
           </button>
         </div>
       ) : null}
-      {data ? (
+      {!archivedOnly ? (
+        <div className="surface-elevated p-4 text-sm text-muted-foreground">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Call-to-close</p>
+          <CtcsWorkSurface filters={filters} patchBusyLeadId={patchBusyLeadId} />
+          <details
+            className="mt-6 rounded-xl border border-white/10 bg-black/15"
+            onToggle={(e) => setAdvancedTableOpen((e.currentTarget as HTMLDetailsElement).open)}
+          >
+            <summary className="cursor-pointer select-none list-none px-4 py-3 text-sm font-medium text-foreground marker:content-none [&::-webkit-details-marker]:hidden">
+              Advanced — classic table (newest first, same filters)
+            </summary>
+            <div className="border-t border-white/10 px-2 pb-4 pt-2">
+              {advancedTableOpen ? (
+                <>
+                  {classicLeadsQ.isPending ? (
+                    <div className="space-y-2 px-2">
+                      <Skeleton className="h-9 w-full" />
+                      <Skeleton className="h-9 w-full" />
+                    </div>
+                  ) : null}
+                  {classicLeadsQ.isError ? (
+                    <p className="px-2 text-sm text-destructive">
+                      {classicLeadsQ.error instanceof Error
+                        ? classicLeadsQ.error.message
+                        : 'Could not load table'}
+                    </p>
+                  ) : null}
+                  {classicLeadsQ.data ? (
+                    <>
+                      <p className="mb-2 px-2 text-xs text-muted-foreground">
+                        Total: {classicLeadsQ.data.pages[0]?.total ?? 0}
+                        {(classicLeadsQ.data.pages[0]?.total ?? 0) >
+                        classicLeadsQ.data.pages.flatMap((p) => p.items).length ? (
+                          <span className="ml-1">
+                            (showing {classicLeadsQ.data.pages.flatMap((p) => p.items).length} loaded)
+                          </span>
+                        ) : null}
+                      </p>
+                      {classicLeadsQ.data.pages.flatMap((p) => p.items).length === 0 ? (
+                        <p className="px-2">{emptyListHint(role ?? null, false)}</p>
+                      ) : (
+                        <div className="-mx-1 max-w-full overflow-x-auto rounded-md border border-border/50">
+                          <LeadsVirtualizedBody
+                            items={classicLeadsQ.data.pages.flatMap((p) => p.items)}
+                            archivedOnly={false}
+                            role={role ?? null}
+                            patchBusyLeadId={patchBusyLeadId}
+                            deleteBusyLeadId={deleteBusyLeadId}
+                            onPatchStatus={onPatchStatus}
+                            onPatchPool={onPatchPool}
+                            onPatchArchive={onPatchArchive}
+                            onDelete={onDeleteLead}
+                          />
+                        </div>
+                      )}
+                      {classicLeadsQ.data.pages.flatMap((p) => p.items).length > 0 &&
+                      classicLeadsQ.hasNextPage ? (
+                        <div className="mt-3 flex justify-center">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={classicLeadsQ.isFetchingNextPage}
+                            onClick={() => void classicLeadsQ.fetchNextPage()}
+                          >
+                            {classicLeadsQ.isFetchingNextPage ? 'Loading…' : 'Load more'}
+                          </Button>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : null}
+                </>
+              ) : (
+                <p className="px-2 text-xs text-muted-foreground">Open to load the spreadsheet-style list.</p>
+              )}
+            </div>
+          </details>
+          {deleteMut.isError ? (
+            <p className="mt-2 text-xs text-destructive" role="alert">
+              {deleteMut.error instanceof Error ? deleteMut.error.message : 'Delete failed'}
+            </p>
+          ) : null}
+          {patchMut.isError ? (
+            <p className="mt-2 text-xs text-destructive" role="alert">
+              {patchMut.error instanceof Error ? patchMut.error.message : 'Update failed'}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {archivedOnly && data ? (
         <div className="surface-elevated p-4 text-sm text-muted-foreground">
           <p className="mb-3 break-words font-medium text-foreground">
-            Total: {total}
+            Archived list — Total: {total}
             {total > items.length ? (
               <span className="ml-2 font-normal text-muted-foreground">
                 (showing {items.length} loaded · {limit} per page)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Optional
 
 from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -39,10 +39,48 @@ class SqlAlchemyLeadsRepository:
             stmt = stmt.where(condition)
         return int((await self._session.execute(stmt)).scalar_one())
 
-    async def list_leads(self, *, condition: Any, limit: int, offset: int) -> list[Lead]:
-        stmt = select(Lead).order_by(Lead.created_at.desc()).limit(limit).offset(offset)
+    async def list_leads(
+        self,
+        *,
+        condition: Any,
+        limit: int,
+        offset: int,
+        ctcs_priority_sort: bool = False,
+        now_utc: Optional[datetime] = None,
+    ) -> list[Lead]:
+        stmt = select(Lead).limit(limit).offset(offset)
         if condition is not None:
             stmt = stmt.where(condition)
+        if ctcs_priority_sort:
+            now = now_utc or datetime.now(timezone.utc)
+            new_first = case(
+                (and_(Lead.call_count == 0, Lead.status == "new_lead"), 0),
+                else_=1,
+            )
+            due_follow = case(
+                (
+                    and_(
+                        Lead.next_followup_at.is_not(None),
+                        Lead.next_followup_at <= now,
+                    ),
+                    0,
+                ),
+                else_=1,
+            )
+            hotish = case(
+                (Lead.status.in_(("invited", "video_sent", "video_watched")), 0),
+                else_=1,
+            )
+            stmt = stmt.order_by(
+                new_first.asc(),
+                due_follow.asc(),
+                Lead.next_followup_at.asc().nulls_last(),
+                hotish.asc(),
+                Lead.heat_score.desc(),
+                Lead.created_at.asc(),
+            )
+        else:
+            stmt = stmt.order_by(Lead.created_at.desc())
         return (await self._session.execute(stmt)).scalars().all()
 
     async def get_workboard_counts(self, *, condition: Any) -> dict[str, int]:

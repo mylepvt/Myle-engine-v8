@@ -1,20 +1,24 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import datetime, timedelta, timezone
+from typing import Any, Optional
 
-from fastapi import Depends, HTTPException
+from fastapi import BackgroundTasks, Depends, HTTPException
+from sqlalchemy import and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db
+from app.core.config import settings
 from app.core.pipeline_rules import validate_vl2_status_transition_for_role
 from app.core.realtime_hub import notify_topics
+from app.models.follow_up import FollowUp
 from app.models.lead import Lead
 from app.repositories.leads_repository import SqlAlchemyLeadsRepository
 from app.schemas.call_events import CallEventCreate, CallEventListResponse, CallEventPublic
 from app.schemas.leads import (
     LeadCreate,
+    LeadCtcsActionRequest,
     LeadDetailPublic,
     LeadListResponse,
     LeadPublic,
@@ -24,7 +28,38 @@ from app.schemas.leads import (
 )
 from app.services.leads_contracts import LeadsRepositoryContract, TopicNotifierContract
 from app.services.auto_handoff import AutoHandoffService
+from app.services.ctcs_heat import bump_heat_on_entering_contacted, clamp_ctcs_heat
+from app.services.ctcs_status_chain import advance_lead_status_toward
+from app.services.whatsapp_ctcs import send_interested_enrollment_assets
 from app.validators.leads_validator import lead_list_conditions, parse_status_query, validate_list_flags
+
+
+async def _deliver_ctcs_interested_whatsapp(lead_id: int, phone: str | None) -> None:
+    await send_interested_enrollment_assets(lead_id=lead_id, phone=phone)
+
+
+def _ctcs_filter_clause(ctcs_filter: Optional[str]) -> Any:
+    if ctcs_filter is None:
+        return None
+    now = datetime.now(timezone.utc)
+    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    key = ctcs_filter.strip().lower()
+    if key in ("", "all"):
+        return None
+    if key == "today":
+        return Lead.created_at >= day_start
+    if key in ("followups", "follow_ups"):
+        return Lead.next_followup_at.is_not(None)
+    if key == "hot":
+        return Lead.heat_score >= settings.ctcs_heat_hot_threshold
+    if key == "converted":
+        return Lead.status.in_(
+            ("converted", "seat_hold", "paid", "day1", "day2", "interview", "track_selected"),
+        )
+    raise HTTPException(
+        status_code=http_status.HTTP_422_UNPROCESSABLE_CONTENT,
+        detail="Invalid ctcs_filter (use: all|today|followups|hot|converted)",
+    )
 
 
 def _sync_batch_completion_timestamps(lead: Lead, now: datetime) -> None:
@@ -68,6 +103,8 @@ class LeadsService:
         status: Optional[str],
         archived_only: bool,
         deleted_only: bool,
+        ctcs_filter: Optional[str] = None,
+        ctcs_priority_sort: bool = False,
     ) -> LeadListResponse:
         validate_list_flags(archived_only=archived_only, deleted_only=deleted_only, user=user)
         condition = lead_list_conditions(
@@ -77,8 +114,17 @@ class LeadsService:
             archived_only=archived_only,
             deleted_only=deleted_only,
         )
+        extra = _ctcs_filter_clause(ctcs_filter)
+        if extra is not None:
+            condition = and_(condition, extra) if condition is not None else extra
         total = await self._repository.count_leads(condition)
-        rows = await self._repository.list_leads(condition=condition, limit=limit, offset=offset)
+        rows = await self._repository.list_leads(
+            condition=condition,
+            limit=limit,
+            offset=offset,
+            ctcs_priority_sort=ctcs_priority_sort,
+            now_utc=datetime.now(timezone.utc),
+        )
         return LeadListResponse(
             items=[LeadPublic.model_validate(r) for r in rows],
             total=total,
@@ -191,7 +237,9 @@ class LeadsService:
             )
             if not ok:
                 raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
+            prev_status = lead.status
             lead.status = body.status
+            bump_heat_on_entering_contacted(lead, prev_status)
         if body.archived is True:
             lead.archived_at = datetime.now(timezone.utc)
             lead.in_pool = False
@@ -207,6 +255,9 @@ class LeadsService:
             lead.source = body.source
         if body.notes is not None:
             lead.notes = body.notes
+        if body.next_followup_at is not None:
+            lead.next_followup_at = body.next_followup_at
+            lead.last_action_at = datetime.now(timezone.utc)
         if body.call_status is not None:
             lead.call_status = body.call_status
         if body.whatsapp_sent is True:
@@ -363,13 +414,112 @@ class LeadsService:
         )
         if not ok:
             raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
+        prev_status = lead.status
         lead.status = body.target_status
+        bump_heat_on_entering_contacted(lead, prev_status)
         lead = await self._repository.persist_lead(lead)
         await self._notifier("leads")
         return LeadTransitionResponse(
             success=True,
             message="Status updated successfully",
             new_status=lead.status,
+        )
+
+    async def apply_ctcs_action(
+        self,
+        *,
+        lead_id: int,
+        body: LeadCtcsActionRequest,
+        user: AuthUser,
+        background_tasks: BackgroundTasks | None = None,
+    ) -> Lead:
+        lead = await self._repository.get_lead_for_update(lead_id)
+        if lead is None or lead.deleted_at is not None:
+            raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
+        if not await self._repository.can_mutate_lead(user, lead):
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        if lead.archived_at is not None:
+            raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Lead is archived")
+
+        now = datetime.now(timezone.utc)
+        action = body.action
+
+        if action == "interested":
+            advance_lead_status_toward(lead=lead, target_slug="video_sent", role=user.role)
+            lead.heat_score = clamp_ctcs_heat(
+                int(lead.heat_score or 0) + settings.ctcs_heat_interested_bonus,
+            )
+            lead.call_status = "video_sent"
+            lead.whatsapp_sent_at = now
+            if settings.ctcs_whatsapp_async and background_tasks is not None:
+                background_tasks.add_task(_deliver_ctcs_interested_whatsapp, lead.id, lead.phone)
+                wa_meta: dict[str, object] = {"queued": True, "channel": "whatsapp"}
+            else:
+                wa_meta = await send_interested_enrollment_assets(lead_id=lead.id, phone=lead.phone)
+            await self._repository.add_lead_activity(
+                user_id=user.user_id,
+                action="ctcs.interested",
+                lead_id=lead.id,
+                meta={"whatsapp": wa_meta},
+            )
+        elif action == "not_picked":
+            advance_lead_status_toward(lead=lead, target_slug="contacted", role=user.role)
+            lead.next_followup_at = now + timedelta(hours=2)
+            lead.heat_score = clamp_ctcs_heat(
+                int(lead.heat_score or 0) - settings.ctcs_heat_not_picked_penalty,
+            )
+            lead.call_status = "no_answer"
+            self._session.add(
+                FollowUp(
+                    lead_id=lead.id,
+                    note="CTCS: not picked — retry after 2h",
+                    due_at=lead.next_followup_at,
+                    created_by_user_id=user.user_id,
+                ),
+            )
+        elif action == "call_later":
+            advance_lead_status_toward(lead=lead, target_slug="contacted", role=user.role)
+            if body.followup_at is not None:
+                lead.next_followup_at = body.followup_at
+            else:
+                lead.next_followup_at = now + timedelta(hours=24)
+            self._session.add(
+                FollowUp(
+                    lead_id=lead.id,
+                    note="CTCS: call later",
+                    due_at=lead.next_followup_at,
+                    created_by_user_id=user.user_id,
+                ),
+            )
+        elif action == "not_interested":
+            advance_lead_status_toward(lead=lead, target_slug="lost", role=user.role)
+            lead.heat_score = 0
+            lead.archived_at = now
+            lead.in_pool = False
+        elif action == "paid":
+            if user.role == "team":
+                advance_lead_status_toward(lead=lead, target_slug="paid", role=user.role)
+            else:
+                advance_lead_status_toward(lead=lead, target_slug="day1", role=user.role)
+            lead.payment_status = "approved"
+            lead.heat_score = clamp_ctcs_heat(int(lead.heat_score or 0) + settings.ctcs_heat_paid_bonus)
+
+        lead.last_action_at = now
+        lead = await self._repository.persist_lead(lead)
+        await self._notifier("leads")
+        return lead
+
+    async def log_call_attempt(
+        self,
+        *,
+        lead_id: int,
+        user: AuthUser,
+    ) -> CallEventPublic:
+        """Record a dial attempt (CTCS) — maps to ``no_answer`` call event."""
+        return await self.log_call(
+            lead_id=lead_id,
+            body=CallEventCreate(outcome="no_answer"),
+            user=user,
         )
 
 

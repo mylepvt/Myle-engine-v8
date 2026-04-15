@@ -100,6 +100,71 @@ class Settings(BaseSettings):
         description="Public QR image URL shown on wallet recharge page.",
     )
 
+    # --- Call-to-close (CTCS) ---
+    ctcs_whatsapp_webhook_url: str = Field(
+        default="",
+        validation_alias="CTCS_WHATSAPP_WEBHOOK_URL",
+        description="If set, POST JSON on CTCS “interested” (worker / BSP / n8n). Empty = log-only stub.",
+    )
+    ctcs_whatsapp_webhook_secret: str = Field(
+        default="",
+        validation_alias="CTCS_WHATSAPP_WEBHOOK_SECRET",
+        description="Optional Bearer token for CTCS WhatsApp webhook.",
+    )
+    ctcs_whatsapp_template: str = Field(
+        default="enrollment_video_v1",
+        validation_alias="CTCS_WHATSAPP_TEMPLATE",
+        description="Template id/name included in webhook payload for downstream routing.",
+    )
+    ctcs_whatsapp_timeout_seconds: float = Field(
+        default=10.0,
+        ge=1.0,
+        le=120.0,
+        validation_alias="CTCS_WHATSAPP_TIMEOUT_SECONDS",
+    )
+    ctcs_whatsapp_async: bool = Field(
+        default=True,
+        validation_alias="CTCS_WHATSAPP_ASYNC",
+        description="When true, CTCS “interested” WhatsApp/webhook runs after HTTP response (BackgroundTasks). When false, await inline (debug / scripts).",
+    )
+    ctcs_heat_hot_threshold: int = Field(
+        default=40,
+        ge=0,
+        le=100,
+        validation_alias="CTCS_HEAT_HOT_THRESHOLD",
+        description="Minimum heat_score for GET /leads?ctcs_filter=hot",
+    )
+    ctcs_heat_decay_points: int = Field(
+        default=3,
+        ge=0,
+        le=50,
+        validation_alias="CTCS_HEAT_DECAY_POINTS",
+    )
+    ctcs_heat_decay_interval_hours: int = Field(
+        default=24,
+        ge=1,
+        le=168,
+        validation_alias="CTCS_HEAT_DECAY_INTERVAL_HOURS",
+    )
+    ctcs_heat_interested_bonus: int = Field(
+        default=20,
+        ge=0,
+        le=100,
+        validation_alias="CTCS_HEAT_INTERESTED_BONUS",
+    )
+    ctcs_heat_not_picked_penalty: int = Field(
+        default=5,
+        ge=0,
+        le=100,
+        validation_alias="CTCS_HEAT_NOT_PICKED_PENALTY",
+    )
+    ctcs_heat_paid_bonus: int = Field(
+        default=25,
+        ge=0,
+        le=100,
+        validation_alias="CTCS_HEAT_PAID_BONUS",
+    )
+
     @field_validator("database_url", mode="before")
     @classmethod
     def coerce_database_url(cls, v: object) -> object:

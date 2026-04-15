@@ -49,7 +49,7 @@ Roles: **`frontend/src/config/dashboard-route-roles.json`** (exact list per path
 | Path | `surface` | Renders / API |
 |------|------------|----------------|
 | *(home)* | `dashboard-home` | `DashboardHomePage` |
-| `work/leads` | full | `LeadsWorkPage` (active) |
+| `work/leads` | full | `LeadsWorkPage` (active) — **Call-to-close** cards + tabs + `GET/POST` CTCS APIs; optional **Advanced** classic table |
 | `work/workboard` | full | `WorkboardPage` |
 | `work/follow-ups` | full | `FollowUpsWorkPage` |
 | `work/retarget` | full | `RetargetWorkPage` |
@@ -157,6 +157,7 @@ Roles: **`frontend/src/config/dashboard-route-roles.json`** (exact list per path
 | Lead Pool — `/lead-pool` or `/admin/lead-pool` | `NAV-EXPORT-001`; `EVID-2026-005` | `work/lead-pool` / `work/lead-pool-admin` | full | TBD | |
 | Recycle Bin — `/leads/recycle-bin` | `NAV-EXPORT-001`; `EVID-2026-006` | `work/recycle-bin` | full | TBD | |
 | Login session persistence (remember me/session restore) | `EVID-2026-007` | `/login` + protected `/dashboard/*` | full | TBD | |
+| **Call-to-close (CTCS)** — fast loop + list filters + actions | `NAV-EXPORT-001`; **`EVID-CTCS-2026-001`** — `backend/app/api/v1/leads.py`, `leads_service.py`, `ctcs_status_chain.py`, `whatsapp_ctcs.py`; `frontend` `LeadsWorkPage.tsx`, `CtcsWorkSurface.tsx` | `work/leads` | full | **partial** — action-first vs legacy table-first; statuses = `lead_status.py`; WhatsApp = env webhook or stub | 2026-04-15 |
 
 **Evidence ids:** Repo-local reference slots — jab file/Notion/screenshot attach ho, yahi id matrix aur evidence store mein use karo. **“match”** sirf jab dono legacy + new documented hon.
 

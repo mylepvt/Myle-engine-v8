@@ -18,6 +18,7 @@ Run from **`backend/`** so `DATABASE_URL` and `app.*` imports match production.
 | `scripts/create_user.py` | Bootstrap / reset a user (bcrypt; same as `POST /api/v1/auth/login`). |
 | `scripts/legacy_sqlite_inspect.py` | Read-only: list legacy SQLite tables + row counts (`LEGACY_SQLITE_PATH`). |
 | `scripts/import_legacy_sqlite.py` | Copy **legacy Flask `leads.db`** → vl2 PostgreSQL (users → leads → wallet → activity) **and** optional **100% row snapshot** (`legacy_row_snapshots` JSON — default on; use `--no-full-snapshot` to skip). |
+| `scripts/run_ctcs_maintenance.py` | CTCS cron helper: decay lead heat scores (`CTCS_HEAT_DECAY_*` in `.env`). |
 
 **Auth (JWT cookies):** after DB changes to the signed-in user (profile / admin), call **`POST /api/v1/auth/sync-identity`** so access-token claims match `users` — see `app/core/auth_context.py` (parity with legacy Flask `auth_context.refresh_session_user`).
 

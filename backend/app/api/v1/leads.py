@@ -1,6 +1,6 @@
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, require_auth_user
@@ -8,6 +8,7 @@ from app.schemas.call_events import CallEventCreate, CallEventListResponse, Call
 from app.schemas.leads import (
     AllLeadsResponse,
     LeadCreate,
+    LeadCtcsActionRequest,
     LeadDetailPublic,
     LeadListResponse,
     LeadPublic,
@@ -62,6 +63,14 @@ async def list_leads(
         default=False,
         description="If true, soft-deleted leads (recycle bin) — admin only",
     ),
+    ctcs_filter: str | None = Query(
+        default=None,
+        description="Call-to-close tab filter: all|today|followups|hot|converted",
+    ),
+    ctcs_priority_sort: bool = Query(
+        default=False,
+        description="When true, order leads for calling (new → follow-ups → hot → old).",
+    ),
 ) -> LeadListResponse:
     return await service.list_leads(
         user=user,
@@ -71,6 +80,8 @@ async def list_leads(
         status=status,
         archived_only=archived_only,
         deleted_only=deleted_only,
+        ctcs_filter=ctcs_filter,
+        ctcs_priority_sort=ctcs_priority_sort,
     )
 
 
@@ -109,6 +120,36 @@ async def delete_lead(
     service: Annotated[LeadsService, Depends(get_leads_service)],
 ) -> None:
     await service.delete_lead(lead_id=lead_id, user=user)
+
+
+@router.post("/{lead_id}/action", response_model=LeadPublic)
+async def ctcs_lead_action(
+    lead_id: int,
+    body: LeadCtcsActionRequest,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    service: Annotated[LeadsService, Depends(get_leads_service)],
+    background_tasks: BackgroundTasks,
+) -> LeadPublic:
+    lead = await service.apply_ctcs_action(
+        lead_id=lead_id,
+        body=body,
+        user=user,
+        background_tasks=background_tasks,
+    )
+    return LeadPublic.model_validate(lead)
+
+
+@router.post(
+    "/{lead_id}/call-log",
+    response_model=CallEventPublic,
+    status_code=http_status.HTTP_201_CREATED,
+)
+async def ctcs_call_log(
+    lead_id: int,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    service: Annotated[LeadsService, Depends(get_leads_service)],
+) -> CallEventPublic:
+    return await service.log_call_attempt(lead_id=lead_id, user=user)
 
 
 @router.get("/{lead_id}", response_model=LeadDetailPublic)

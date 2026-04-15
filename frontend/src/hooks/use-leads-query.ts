@@ -98,6 +98,12 @@ export type LeadPublic = {
   d2_afternoon: boolean
   d2_evening: boolean
   no_response_attempt_count: number
+  /** Call-to-close (optional until backend touched / migration). */
+  last_action_at?: string | null
+  next_followup_at?: string | null
+  heat_score?: number
+  is_archived?: boolean
+  stage_day?: string
 }
 
 export type LeadListResponse = {
@@ -138,11 +144,21 @@ async function parseError(res: Response): Promise<never> {
 
 export type LeadsListMode = 'active' | 'archived' | 'recycle'
 
+export type CtcsTab = 'all' | 'today' | 'followups' | 'hot' | 'converted'
+
+export type CtcsAction = 'not_picked' | 'interested' | 'call_later' | 'not_interested' | 'paid'
+
+export type CtcsListOptions = {
+  ctcsFilter?: CtcsTab | null
+  ctcsPrioritySort?: boolean
+}
+
 const DEFAULT_PAGE_SIZE = 50
 
 function buildLeadsQueryString(
   filters: LeadListFetchParams,
   listMode: LeadsListMode,
+  ctcs?: CtcsListOptions,
 ): string {
   const p = new URLSearchParams()
   const t = filters.q.trim()
@@ -154,6 +170,12 @@ function buildLeadsQueryString(
   if (filters.offset != null && filters.offset > 0) {
     p.set('offset', String(filters.offset))
   }
+  if (ctcs?.ctcsFilter && ctcs.ctcsFilter !== 'all') {
+    p.set('ctcs_filter', ctcs.ctcsFilter)
+  }
+  if (ctcs?.ctcsPrioritySort) {
+    p.set('ctcs_priority_sort', 'true')
+  }
   const qs = p.toString()
   return qs ? `?${qs}` : ''
 }
@@ -161,8 +183,9 @@ function buildLeadsQueryString(
 async function fetchLeads(
   filters: LeadListFetchParams,
   listMode: LeadsListMode,
+  ctcs?: CtcsListOptions,
 ): Promise<LeadListResponse> {
-  const res = await apiFetch(`/api/v1/leads${buildLeadsQueryString(filters, listMode)}`)
+  const res = await apiFetch(`/api/v1/leads${buildLeadsQueryString(filters, listMode, ctcs)}`)
   if (!res.ok) {
     await parseError(res)
   }
@@ -208,6 +231,7 @@ export async function patchLead(
     d2_afternoon?: boolean
     d2_evening?: boolean
     no_response_attempt_count?: number
+    next_followup_at?: string | null
   },
 ): Promise<LeadPublic> {
   const res = await apiFetch(`/api/v1/leads/${id}`, {
@@ -215,6 +239,26 @@ export async function patchLead(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
+  if (!res.ok) {
+    await parseError(res)
+  }
+  return res.json()
+}
+
+export async function postLeadCtcsAction(id: number, action: CtcsAction): Promise<LeadPublic> {
+  const res = await apiFetch(`/api/v1/leads/${id}/action`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action }),
+  })
+  if (!res.ok) {
+    await parseError(res)
+  }
+  return res.json()
+}
+
+export async function postLeadCallLog(id: number): Promise<Record<string, unknown>> {
+  const res = await apiFetch(`/api/v1/leads/${id}/call-log`, { method: 'POST' })
   if (!res.ok) {
     await parseError(res)
   }
@@ -267,10 +311,11 @@ export function useLeadsQuery(
   enabled: boolean,
   filters: LeadListFilters,
   listMode: LeadsListMode = 'active',
+  ctcs?: CtcsListOptions,
 ) {
   return useQuery({
-    queryKey: ['leads', 'list', listMode, filters.q.trim(), filters.status],
-    queryFn: () => fetchLeads(filters, listMode),
+    queryKey: ['leads', 'list', listMode, filters.q.trim(), filters.status, ctcs],
+    queryFn: () => fetchLeads(filters, listMode, ctcs),
     enabled,
   })
 }
@@ -281,14 +326,26 @@ export function useLeadsInfiniteQuery(
   filters: LeadListFilters,
   listMode: LeadsListMode = 'active',
   pageSize: number = DEFAULT_PAGE_SIZE,
+  ctcs?: CtcsListOptions,
 ) {
   return useInfiniteQuery({
-    queryKey: ['leads', 'list', 'paged', listMode, filters.q.trim(), filters.status, pageSize],
+    queryKey: [
+      'leads',
+      'list',
+      'paged',
+      listMode,
+      filters.q.trim(),
+      filters.status,
+      pageSize,
+      ctcs?.ctcsFilter,
+      ctcs?.ctcsPrioritySort,
+    ],
     initialPageParam: 0,
     queryFn: ({ pageParam }) =>
       fetchLeads(
         { ...filters, limit: pageSize, offset: pageParam as number },
         listMode,
+        ctcs,
       ),
     getNextPageParam: (lastPage, allPages) => {
       const loaded = allPages.reduce((sum, p) => sum + p.items.length, 0)
@@ -303,6 +360,7 @@ function invalidateLeadRelated(qc: ReturnType<typeof useQueryClient>) {
   void qc.invalidateQueries({ queryKey: ['lead-pool'] })
   void qc.invalidateQueries({ queryKey: ['workboard'] })
   void qc.invalidateQueries({ queryKey: ['retarget'] })
+  void qc.invalidateQueries({ queryKey: ['follow-ups'] })
 }
 
 export function useCreateLeadMutation() {
@@ -369,6 +427,22 @@ export function useTransitionLeadMutation() {
       targetStatus: string
       notes?: string
     }) => transitionLeadStatus(leadId, targetStatus, notes),
+    onSuccess: () => invalidateLeadRelated(qc),
+  })
+}
+
+export function useLeadCtcsActionMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, action }: { id: number; action: CtcsAction }) => postLeadCtcsAction(id, action),
+    onSuccess: () => invalidateLeadRelated(qc),
+  })
+}
+
+export function useLeadCallLogMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => postLeadCallLog(id),
     onSuccess: () => invalidateLeadRelated(qc),
   })
 }
