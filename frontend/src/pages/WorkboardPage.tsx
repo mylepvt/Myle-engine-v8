@@ -143,12 +143,11 @@ const LeadCard = memo(function LeadCard({
   mindsetPreview?: MindsetLockPreviewResponse | null
   onRequestMindsetSend?: (lead: LeadPublic) => void
 }) {
-  const [tick, setTick] = useState(0)
+  const [nowMs, setNowMs] = useState(() => Date.now())
   useEffect(() => {
-    const id = window.setInterval(() => setTick((t) => t + 1), 1000)
+    const id = window.setInterval(() => setNowMs(Date.now()), 1000)
     return () => window.clearInterval(id)
   }, [])
-  void tick
 
   const badge = BADGE[lead.status] ?? 'bg-muted/30 text-muted-foreground border-white/10'
   const isWatched = lead.status === 'video_watched' || lead.call_status === 'video_watched'
@@ -159,7 +158,7 @@ const LeadCard = memo(function LeadCard({
     lead.payment_status === 'approved' &&
     lead.mindset_lock_state !== 'leader_assigned'
   const startedAtMs = lead.mindset_started_at ? new Date(lead.mindset_started_at).getTime() : null
-  const elapsedSeconds = startedAtMs ? Math.max(0, Math.floor((Date.now() - startedAtMs) / 1000)) : 0
+  const elapsedSeconds = startedAtMs ? Math.max(0, Math.floor((nowMs - startedAtMs) / 1000)) : 0
   const remainingSeconds = Math.max(0, MIN_MINDSET_SECONDS - elapsedSeconds)
   const unlocked = remainingSeconds === 0
   const lockLineClass = unlocked ? 'text-emerald-300' : 'text-red-300'
