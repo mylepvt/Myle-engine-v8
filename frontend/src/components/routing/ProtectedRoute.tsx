@@ -48,7 +48,7 @@ export function ProtectedRoute() {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
         <p className="text-sm text-destructive" role="alert">
-          Could not verify your session. Check API URL/network and retry.
+          We could not verify your session right now. Please check your connection and try again.
         </p>
         <div className="flex flex-wrap justify-center gap-2">
           <Button type="button" variant="secondary" disabled={isRefetching} onClick={() => void refetch()}>

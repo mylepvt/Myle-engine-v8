@@ -11,7 +11,7 @@ test.describe('happy path (mocked API)', () => {
     await page.goto('/login')
     await expect(page.getByRole('heading', { name: /Myle Community/i })).toBeVisible()
 
-    await page.getByRole('button', { name: /Continue with preview role/i }).click()
+    await page.getByRole('button', { name: /^Continue$/i }).click()
 
     await expect(page).toHaveURL(/\/dashboard\/?$/)
     await expect(page.getByRole('heading', { name: /welcome, e2e/i })).toBeVisible()
@@ -31,7 +31,7 @@ test.describe('happy path (mocked API)', () => {
 
   test('CTCS: dial + WhatsApp links; light / dark / glass screenshots', async ({ page }) => {
     await page.goto('/login')
-    await page.getByRole('button', { name: /Continue with preview role/i }).click()
+    await page.getByRole('button', { name: /^Continue$/i }).click()
     await page.goto('/dashboard/work/leads')
     await expect(page.getByRole('heading', { name: 'E2E Lead' })).toBeVisible()
 

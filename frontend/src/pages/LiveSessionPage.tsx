@@ -18,7 +18,7 @@ export function LiveSessionPage({ title }: Props) {
     <div className="max-w-2xl space-y-6">
       <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
       <div className="surface-elevated space-y-2 p-4 text-xs text-muted-foreground">
-        <p className="font-medium text-foreground/90">Link / copy kahan set karein (admin)</p>
+        <p className="font-medium text-foreground/90">Where to configure session links (admin)</p>
         <ul className="list-inside list-disc space-y-1">
           <li>
             <strong>Settings → General</strong> (table): keys{' '}
@@ -27,10 +27,10 @@ export function LiveSessionPage({ title }: Props) {
             <code className="rounded bg-white/10 px-1">live_session_schedule</code>
           </li>
           <li>
-            Purane app se import: <code className="rounded bg-white/10 px-1">zoom_link</code>,{' '}
+            Legacy import keys: <code className="rounded bg-white/10 px-1">zoom_link</code>,{' '}
             <code className="rounded bg-white/10 px-1">zoom_title</code>,{' '}
             <code className="rounded bg-white/10 px-1">zoom_time</code>,{' '}
-            <code className="rounded bg-white/10 px-1">paper_plan_link</code> — ye bhi API read karti hai.
+            <code className="rounded bg-white/10 px-1">paper_plan_link</code> (also read by the API).
           </li>
         </ul>
       </div>
