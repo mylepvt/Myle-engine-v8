@@ -86,4 +86,6 @@ services:
     dockerContext: ./frontend
     envVars:
       - key: VITE_API_URL
+        value: ""
+      - key: BACKEND_URL
         value: "https://myle-vl2-api.onrender.com"
