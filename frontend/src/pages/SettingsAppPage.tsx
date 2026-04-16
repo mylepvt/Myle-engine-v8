@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 
 import { Skeleton } from '@/components/ui/skeleton'
-import { useShellStubQuery } from '@/hooks/use-shell-stub-query'
 import { useAppSettingUpdateMutation, useAppSettingsQuery } from '@/hooks/use-settings-query'
 
 type Props = { title: string }
@@ -35,7 +34,6 @@ function batchSettingLabel(key: string): string {
 }
 
 export function SettingsAppPage({ title }: Props) {
-  const { data, isPending, isError, error, refetch } = useShellStubQuery('/api/v1/settings/app')
   const {
     data: appSettingsData,
     isPending: appSettingsPending,
@@ -53,19 +51,16 @@ export function SettingsAppPage({ title }: Props) {
     Object.prototype.hasOwnProperty.call(batchEdits, key) ? (batchEdits[key] ?? '') : (batchSource[key] ?? '')
 
   const rows = useMemo(() => {
-    const items = data?.items ?? []
-    const mapped = items
-      .map((row) => ({
-        key: typeof row.key === 'string' ? row.key : '',
-        value: typeof row.value === 'string' ? row.value : JSON.stringify(row),
-      }))
-      .filter((r) => r.key || r.value)
+    const settings = appSettingsData?.settings ?? {}
+    const mapped = Object.entries(settings)
+      .map(([k, v]) => ({ key: k, value: v }))
+      .sort((a, b) => a.key.localeCompare(b.key))
     const needle = q.trim().toLowerCase()
     if (!needle) return mapped
     return mapped.filter(
       (r) => r.key.toLowerCase().includes(needle) || r.value.toLowerCase().includes(needle),
     )
-  }, [data, q])
+  }, [appSettingsData, q])
 
   const handleSaveBatchLinks = async () => {
     setSaveMsg(null)
@@ -75,13 +70,12 @@ export function SettingsAppPage({ title }: Props) {
     }
     setBatchEdits({})
     setSaveMsg('Batch links updated successfully.')
-    void refetch()
     void refetchAppSettings()
   }
 
   return (
     <div className="max-w-4xl space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+      <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
       <p className="text-sm text-muted-foreground">
         All rows from <code className="rounded bg-white/10 px-1 text-xs">app_settings</code>. Sensitive
         secrets should stay in server environment variables — this table is for product toggles and
@@ -141,22 +135,19 @@ export function SettingsAppPage({ title }: Props) {
         </div>
       </section>
 
-      {isPending ? (
-        <div className="space-y-2">
-          <Skeleton className="h-9 w-full" />
-        </div>
-      ) : null}
-      {isError ? (
-        <div className="text-sm text-destructive" role="alert">
-          <span>{error instanceof Error ? error.message : 'Could not load'} </span>
-          <button type="button" className="underline underline-offset-2" onClick={() => void refetch()}>
-            Retry
-          </button>
-        </div>
-      ) : null}
-      {data ? (
+      {appSettingsData ? (
         <div className="space-y-4">
-          {data.note ? <p className="text-sm text-muted-foreground">{data.note}</p> : null}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold text-foreground">All Settings</h2>
+            <button
+              type="button"
+              disabled={appSettingsPending}
+              onClick={() => void refetchAppSettings()}
+              className="rounded-md bg-white/[0.05] px-2.5 py-1 text-xs text-muted-foreground hover:bg-white/[0.08] disabled:opacity-50"
+            >
+              {appSettingsPending ? 'Refreshing…' : 'Refresh'}
+            </button>
+          </div>
           <label className="block max-w-md text-sm">
             <span className="mb-1 block text-ds-caption text-muted-foreground">Filter keys / values</span>
             <input
@@ -183,8 +174,18 @@ export function SettingsAppPage({ title }: Props) {
                 ))}
               </tbody>
             </table>
-            {rows.length === 0 ? <p className="p-3 text-muted-foreground">No matching rows.</p> : null}
+            {rows.length === 0 ? (
+              <p className="p-3 text-muted-foreground">
+                {q ? 'No matching keys.' : 'No settings stored yet.'}
+              </p>
+            ) : null}
           </div>
+          {Object.keys(appSettingsData.settings).length > 0 ? (
+            <p className="text-xs text-muted-foreground">
+              {rows.length} of {Object.keys(appSettingsData.settings).length} keys
+              {q ? ' (filtered)' : ''}
+            </p>
+          ) : null}
         </div>
       ) : null}
     </div>
