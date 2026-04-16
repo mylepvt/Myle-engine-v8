@@ -21,7 +21,7 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 
 # nginx template — $BACKEND_URL substituted at startup via envsubst
 COPY --from=builder /app/dist /usr/share/nginx/html
-RUN printf 'server {\n\
+RUN mkdir -p /etc/nginx/templates && printf 'server {\n\
     listen 80;\n\
     root /usr/share/nginx/html;\n\
     index index.html;\n\
