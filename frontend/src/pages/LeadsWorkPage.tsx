@@ -440,7 +440,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
           onClick={() => setQuickAddOpen(false)}
         >
           <div
-            className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-border bg-card text-card-foreground shadow-2xl sm:rounded-2xl"
+            className="overscroll-contain max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-border bg-card text-card-foreground shadow-2xl sm:rounded-2xl"
             role="dialog"
             aria-modal="true"
             aria-labelledby="quick-add-title"

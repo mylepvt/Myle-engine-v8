@@ -205,18 +205,18 @@ export function DashboardHomePage() {
                 className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
               >
                 <Card className="h-full border-primary/20 transition-colors hover:border-primary/35">
-                  <CardContent className="pt-6">
+                  <CardContent className="pt-5 pb-5">
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
                         Today&apos;s claimed leads
                       </p>
                       <UserPlus className="size-5 shrink-0 text-primary" aria-hidden />
                     </div>
-                    <p className="mt-2 font-heading text-3xl font-semibold tabular-nums text-foreground">
+                    <p className="mt-2 font-heading text-3xl font-bold tabular-nums text-foreground">
                       {adminReports.data.live_summary.leads_claimed_today}
                     </p>
                     <p className="mt-1 text-ds-caption text-subtle">
-                      Pool / ledger claims (Asia/Kolkata day) — Team reports
+                      Pool / ledger claims (IST day)
                     </p>
                   </CardContent>
                 </Card>
@@ -226,18 +226,18 @@ export function DashboardHomePage() {
                 className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
               >
                 <Card className="h-full border-primary/20 transition-colors hover:border-primary/35">
-                  <CardContent className="pt-6">
+                  <CardContent className="pt-5 pb-5">
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
                         Today&apos;s ₹196 approvals
                       </p>
                       <ClipboardCheck className="size-5 shrink-0 text-primary" aria-hidden />
                     </div>
-                    <p className="mt-2 font-heading text-3xl font-semibold tabular-nums text-foreground">
+                    <p className="mt-2 font-heading text-3xl font-bold tabular-nums text-foreground">
                       {adminReports.data.live_summary.payment_proofs_approved_today}
                     </p>
                     <p className="mt-1 text-ds-caption text-subtle">
-                      Payment proofs approved today (IST) — open approvals queue
+                      Payment proofs approved today (IST)
                     </p>
                   </CardContent>
                 </Card>
@@ -283,15 +283,18 @@ export function DashboardHomePage() {
               className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
             >
               <Card className="h-full border-primary/20 transition-colors hover:border-primary/35">
-                <CardContent className="pt-6">
-                  <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
-                    Active leads
-                  </p>
-                  <p className="mt-2 font-heading text-3xl font-semibold tabular-nums text-foreground">
+                <CardContent className="pt-5 pb-5">
+                  <div className="flex items-center justify-between gap-1">
+                    <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
+                      Active leads
+                    </p>
+                    <TrendingUp className="size-4 shrink-0 text-primary/60" aria-hidden />
+                  </div>
+                  <p className="mt-2 font-heading text-3xl font-bold tabular-nums text-foreground">
                     {metrics.activeTotal}
                   </p>
                   <p className="mt-1 text-ds-caption text-subtle">
-                    Leads in your scope (excl. pool / archive) — open workboard
+                    In your scope · open workboard
                   </p>
                 </CardContent>
               </Card>
@@ -302,15 +305,20 @@ export function DashboardHomePage() {
                 className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
               >
                 <Card className="h-full border-primary/20 transition-colors hover:border-primary/35">
-                  <CardContent className="pt-6">
-                    <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
-                      Open follow-ups
-                    </p>
-                    <p className={cn('mt-2 font-heading text-3xl font-semibold tabular-nums', openFollowUps > 0 ? 'text-primary' : 'text-muted-foreground')}>
+                  <CardContent className="pt-5 pb-5">
+                    <div className="flex items-center justify-between gap-1">
+                      <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
+                        Open follow-ups
+                      </p>
+                      {openFollowUps > 0 && (
+                        <span className="text-xs font-semibold text-primary" aria-hidden>↑</span>
+                      )}
+                    </div>
+                    <p className={cn('mt-2 font-heading text-3xl font-bold tabular-nums', openFollowUps > 0 ? 'text-primary' : 'text-muted-foreground')}>
                       {openFollowUps}
                     </p>
                     <p className="mt-1 text-ds-caption text-subtle">
-                      Not completed — open queue
+                      Not completed · open queue
                     </p>
                   </CardContent>
                 </Card>
@@ -347,17 +355,22 @@ export function DashboardHomePage() {
               className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
             >
               <Card className="h-full border-primary/20 transition-colors hover:border-primary/35">
-                <CardContent className="pt-6">
-                  <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
-                    Converted
-                  </p>
-                  <p className={cn('mt-2 font-heading text-3xl font-semibold tabular-nums', metrics.won > 0 ? 'text-success' : 'text-muted-foreground')}>
+                <CardContent className="pt-5 pb-5">
+                  <div className="flex items-center justify-between gap-1">
+                    <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
+                      Converted
+                    </p>
+                    {metrics.winRatePct !== null && (
+                      <span className={cn('text-xs font-semibold', metrics.won > 0 ? 'text-success' : 'text-muted-foreground')} aria-hidden>
+                        {metrics.won > 0 ? '↑' : '—'} {metrics.winRatePct}%
+                      </span>
+                    )}
+                  </div>
+                  <p className={cn('mt-2 font-heading text-3xl font-bold tabular-nums', metrics.won > 0 ? 'text-success' : 'text-muted-foreground')}>
                     {metrics.won}
                   </p>
                   <p className="mt-1 text-ds-caption text-subtle">
-                    {metrics.winRatePct !== null
-                      ? `Win rate ${metrics.winRatePct}% (converted / converted+lost) — open leads`
-                      : 'No closed outcomes yet — open leads'}
+                    {metrics.winRatePct !== null ? `Win rate ${metrics.winRatePct}%` : 'No closed outcomes yet'}
                   </p>
                 </CardContent>
               </Card>
@@ -367,15 +380,20 @@ export function DashboardHomePage() {
               className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
             >
               <Card className="h-full border-primary/20 transition-colors hover:border-primary/35">
-                <CardContent className="pt-6">
-                  <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
-                    New leads
-                  </p>
-                  <p className="mt-2 font-heading text-3xl font-semibold tabular-nums text-foreground">
+                <CardContent className="pt-5 pb-5">
+                  <div className="flex items-center justify-between gap-1">
+                    <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
+                      New leads
+                    </p>
+                    {metrics.newLeads > 0 && (
+                      <span className="text-xs font-semibold text-foreground/60" aria-hidden>↑</span>
+                    )}
+                  </div>
+                  <p className="mt-2 font-heading text-3xl font-bold tabular-nums text-foreground">
                     {metrics.newLeads}
                   </p>
                   <p className="mt-1 text-ds-caption text-subtle">
-                    New lead stage — open list
+                    New lead stage · open list
                   </p>
                 </CardContent>
               </Card>

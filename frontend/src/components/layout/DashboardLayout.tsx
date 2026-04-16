@@ -1,6 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Home, LogOut, Menu, PanelLeftClose, Search, Settings } from 'lucide-react'
+import { Bell, Home, LogOut, Menu, Moon, PanelLeftClose, Search, Settings, Sun } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 
 import { ShellHeaderFeedbackControls } from '@/components/layout/ShellHeaderFeedbackControls'
@@ -60,6 +60,19 @@ export function DashboardLayout() {
   const logout = useAuthStore((s) => s.logout)
   const [headerSearch, setHeaderSearch] = useState('')
   const [isMobile, setIsMobile] = useState(false)
+  const [isDark, setIsDark] = useState(() =>
+    typeof document !== 'undefined' && document.documentElement.classList.contains('dark'),
+  )
+
+  function toggleDarkMode() {
+    const html = document.documentElement
+    const next = !html.classList.contains('dark')
+    html.classList.toggle('dark', next)
+    setIsDark(next)
+    try {
+      localStorage.setItem('myle_theme_dark', next ? '1' : '0')
+    } catch { /* ignore */ }
+  }
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -181,7 +194,7 @@ export function DashboardLayout() {
           ) : null}
         </div>
 
-        <nav className="flex flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden px-3 py-4 pb-2">
+        <nav className="scroll-ios flex flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden px-3 py-4 pb-2">
           {rolePending && shellRole == null ? (
             <SidebarSkeleton />
           ) : null}
@@ -367,6 +380,18 @@ export function DashboardLayout() {
 
           {/* Right: tools — single row, no horizontal scroll strip on phone */}
           <div className="ml-auto flex shrink-0 items-center gap-0.5 md:gap-1">
+            <button
+              type="button"
+              onClick={toggleDarkMode}
+              className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:opacity-80"
+              aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {isDark ? (
+                <Sun className="size-[1.15rem]" aria-hidden />
+              ) : (
+                <Moon className="size-[1.15rem]" aria-hidden />
+              )}
+            </button>
             <ShellHeaderFeedbackControls />
             <Link
               to="/dashboard/settings/profile"
@@ -447,7 +472,8 @@ export function DashboardLayout() {
         <main
           className={cn(
             'content-dashboard-main relative min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-background p-4 md:p-6 lg:p-8',
-            'pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-6 lg:pb-8',
+            'pb-[calc(5rem+env(safe-area-inset-bottom,0px))] md:pb-6 lg:pb-8',
+            'scroll-ios',
           )}
           onScroll={notifyDashboardMainScrolled}
         >
