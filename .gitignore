@@ -16,5 +16,20 @@ cookies.txt
 *.cookies
 backend/.env
 
+# Node / Lead Execution CRM (apps/crm-api, apps/crm-web)
+node_modules/
+apps/*/node_modules/
+.next/
+dist/
+*.tsbuildinfo
+apps/crm-api/.env
+apps/crm-web/.env.local
+
+# Accidental tsc output next to prisma seed
+apps/crm-api/prisma/seed.js
+apps/crm-api/prisma/seed.js.map
+apps/crm-api/prisma/seed.d.ts
+apps/crm-api/prisma/seed.d.ts.map
+
 # User uploads (profile photos, etc.)
 backend/data/uploads/
