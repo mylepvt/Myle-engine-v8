@@ -4,7 +4,7 @@ FROM node:22-bookworm-slim AS builder
 WORKDIR /repo
 
 # Root workspace files for layer caching
-COPY package.json package-lock.json* ./
+COPY package.json package-lock.json* tsconfig.base.json ./
 COPY apps/crm-api/package.json ./apps/crm-api/
 
 RUN npm ci --no-audit --no-fund

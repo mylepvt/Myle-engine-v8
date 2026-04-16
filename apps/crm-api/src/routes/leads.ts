@@ -13,9 +13,9 @@ import {
 import { FSM_EVENT_VALUES, type FsmEvent } from "../domain/fsm.js";
 
 const createBody = z.object({
-  name: z.string().min(1),
+  name: z.string().min(1).optional().default(""),
   phone: z.string().optional(),
-  pipelineKind: z.nativeEnum(PipelineKind),
+  pipelineKind: z.nativeEnum(PipelineKind).optional().default(PipelineKind.PERSONAL),
   /** Optional FastAPI lead ID — set when creating a CRM shadow record for an existing FastAPI lead. */
   legacyId: z.number().int().positive().optional(),
 });
