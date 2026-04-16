@@ -30,4 +30,12 @@ COPY --from=builder /repo/apps/crm-api/prisma ./prisma
 
 EXPOSE 4000
 
-CMD ["/bin/sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+CMD ["/bin/sh", "-c", "\
+  npx prisma migrate resolve --applied 20260416000000_init 2>/dev/null || true && \
+  npx prisma migrate resolve --applied 20260416120000_alive_flags 2>/dev/null || true && \
+  npx prisma migrate resolve --applied 20260416200000_team_escalation_fields 2>/dev/null || true && \
+  npx prisma migrate resolve --applied 20260417000000_audit_log 2>/dev/null || true && \
+  npx prisma migrate resolve --applied 20260417120000_lead_escalation_level 2>/dev/null || true && \
+  npx prisma migrate resolve --applied 20260418000000_lead_legacy_id 2>/dev/null || true && \
+  npx prisma migrate resolve --applied 20260418120000_legacy_lead_view 2>/dev/null || true && \
+  npx prisma migrate deploy && node dist/index.js"]
