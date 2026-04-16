@@ -60,7 +60,19 @@ export async function leadRoutes(fastify: FastifyInstance) {
 
   fastify.get("/leads", async (req) => {
     const user = requireAuth(req);
-    const q = z.object({ pipelineKind: z.nativeEnum(PipelineKind).optional() }).parse(req.query);
+    const q = z
+      .object({
+        pipelineKind: z.nativeEnum(PipelineKind).optional(),
+        legacyId: z.coerce.number().int().positive().optional(),
+      })
+      .parse(req.query);
+    if (q.legacyId !== undefined) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const lead = await prisma.lead.findFirst({
+        where: { legacyId: q.legacyId } as any,
+      });
+      return lead ? [lead] : [];
+    }
     return listLeads(user, q.pipelineKind);
   });
 

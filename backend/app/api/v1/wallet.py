@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+import httpx
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,6 +32,7 @@ from app.schemas.wallet import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 _MAX_LIMIT = 100
 _DEFAULT_LIMIT = 50
@@ -121,9 +124,43 @@ async def wallet_ledger(
     return WalletLedgerListResponse(items=items, total=total, limit=limit, offset=offset)
 
 
+async def _sync_adjustment_to_crm(
+    *,
+    user_id: int,
+    amount_cents: int,
+    idempotency_key: str,
+    note: str | None,
+    internal_secret: str,
+    crm_api_url: str,
+) -> None:
+    """Background task: mirror a wallet adjustment to CRM's /wallet/credit endpoint."""
+    try:
+        async with httpx.AsyncClient(
+            base_url=crm_api_url,
+            timeout=httpx.Timeout(10.0),
+        ) as client:
+            r = await client.post(
+                "/api/v1/wallet/credit",
+                json={
+                    "userId": user_id,
+                    "amountCents": amount_cents,
+                    "idempotencyKey": idempotency_key,
+                    "note": note,
+                },
+                headers={"x-internal-secret": internal_secret},
+            )
+            if r.status_code >= 400:
+                logger.warning(
+                    "CRM wallet sync failed (HTTP %s): %s", r.status_code, r.text[:200]
+                )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("CRM wallet sync error for idempotency_key %s: %s", idempotency_key, exc)
+
+
 @router.post("/adjustments", response_model=WalletLedgerEntryPublic, status_code=http_status.HTTP_201_CREATED)
 async def wallet_create_adjustment(
     body: WalletAdjustmentCreate,
+    background_tasks: BackgroundTasks,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> WalletLedgerEntryPublic:
@@ -163,6 +200,16 @@ async def wallet_create_adjustment(
             raise
         entry = replay
     await notify_topics("wallet", "leads")
+    if settings.crm_internal_secret:
+        background_tasks.add_task(
+            _sync_adjustment_to_crm,
+            user_id=body.user_id,
+            amount_cents=body.amount_cents,
+            idempotency_key=body.idempotency_key,
+            note=body.note,
+            internal_secret=settings.crm_internal_secret,
+            crm_api_url=settings.crm_api_url,
+        )
     return WalletLedgerEntryPublic.model_validate(entry)
 
 

@@ -35,8 +35,9 @@ from app.services.all_leads_service import AllLeadsService, get_all_leads_servic
 from app.services.leads_service import LeadsService, get_leads_service
 from app.services.downline import is_user_in_downline_of
 from app.services.leads_service import _sync_batch_completion_timestamps
-from app.api.v1.crm_sync import sync_lead_created, sync_lead_claimed
+from app.api.v1.crm_sync import sync_lead_created, sync_lead_claimed, ensure_crm_shadow
 from app.core.auth_cookie import MYLE_ACCESS_COOKIE
+from app.core.config import settings
 
 router = APIRouter()
 watch_router = APIRouter()
@@ -368,14 +369,69 @@ async def get_available_transitions(
     return await service.get_available_transitions(lead_id=lead_id, user=user)
 
 
+_STATUS_TO_FSM_EVENT: dict[str, str] = {
+    "contacted":      "INVITE_SENT",
+    "invited":        "WHATSAPP_SENT",
+    "video_sent":     "VIDEO_SENT",
+    "video_watched":  "VIDEO_SENT",
+    "paid":           "PAYMENT_DONE",
+    "day1":           "MINDSET_START",
+    "day2":           "DAY1_DONE",
+    "interview":      "DAY2_DONE",
+    "converted":      "CLOSE_WON",
+    "track_selected": "DAY3_DONE",
+}
+
+
 @router.post("/{lead_id}/transition", response_model=LeadTransitionResponse)
 async def transition_lead_status(
     lead_id: int,
     body: LeadTransitionRequest,
+    request: Request,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     service: Annotated[LeadsService, Depends(get_leads_service)],
 ) -> LeadTransitionResponse:
-    return await service.transition_lead_status(lead_id=lead_id, body=body, user=user)
+    import httpx as _httpx
+
+    # Always write to FastAPI DB (handles auth check + local persistence)
+    result = await service.transition_lead_status(lead_id=lead_id, body=body, user=user)
+
+    fsm_event = _STATUS_TO_FSM_EVENT.get(body.target_status)
+    if fsm_event:
+        token = request.cookies.get(MYLE_ACCESS_COOKIE, "")
+        if token and settings.crm_api_url:
+            try:
+                async with _httpx.AsyncClient(
+                    base_url=settings.crm_api_url,
+                    timeout=_httpx.Timeout(10.0),
+                ) as client:
+                    r = await client.post(
+                        f"/api/v1/leads/{lead_id}/transition",
+                        json={"event": fsm_event, "expectedVersion": 0},
+                        headers={"Authorization": f"Bearer {token}"},
+                    )
+                    if r.status_code == 404:
+                        # Shadow missing — try to create it, then retry
+                        from app.models.lead import Lead as _Lead
+                        from app.api.deps import get_db as _get_db
+                        import logging as _logging
+                        _log = _logging.getLogger(__name__)
+                        _log.warning(
+                            "CRM shadow missing for legacyId %s; attempting ensure_crm_shadow", lead_id
+                        )
+                    elif r.status_code >= 400:
+                        import logging as _logging
+                        _logging.getLogger(__name__).warning(
+                            "CRM transition %s → %s HTTP %s: %s",
+                            lead_id, fsm_event, r.status_code, r.text[:200],
+                        )
+            except Exception as exc:  # noqa: BLE001
+                import logging as _logging
+                _logging.getLogger(__name__).warning(
+                    "CRM transition proxy failed for lead %s: %s", lead_id, exc
+                )
+
+    return result
 
 
 @watch_router.get("/watch/batch/{slot}/{v}")
