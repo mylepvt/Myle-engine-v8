@@ -90,15 +90,24 @@ export function useCrmLeadReassign() {
 export function useCrmPoolClaim() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ leadId }: { leadId: number }) =>
+    mutationFn: ({
+      leadId,
+      idempotencyKey,
+      pipelineKind = 'PERSONAL',
+    }: {
+      leadId: number
+      idempotencyKey: string
+      pipelineKind?: 'PERSONAL' | 'TEAM'
+    }) =>
       crmFetch('/pool/claim', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leadId }),
+        body: JSON.stringify({ leadId, idempotencyKey, pipelineKind }),
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['lead-pool'] })
       qc.invalidateQueries({ queryKey: ['crm-wallet'] })
+      qc.invalidateQueries({ queryKey: ['leads'] })
     },
   })
 }
