@@ -7,13 +7,14 @@ from datetime import datetime, timezone
 from typing import Annotated, Optional
 
 import httpx
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
+from app.core.auth_cookie import MYLE_ACCESS_COOKIE
 from app.core.config import settings
 from app.core.realtime_hub import notify_topics
 from app.models.user import User
@@ -157,16 +158,13 @@ async def _sync_adjustment_to_crm(
         logger.warning("CRM wallet sync error for idempotency_key %s: %s", idempotency_key, exc)
 
 
-@router.post("/adjustments", response_model=WalletLedgerEntryPublic, status_code=http_status.HTTP_201_CREATED)
-async def wallet_create_adjustment(
+async def _fastapi_wallet_adjustment(
+    *,
     body: WalletAdjustmentCreate,
-    background_tasks: BackgroundTasks,
-    user: Annotated[AuthUser, Depends(require_auth_user)],
-    session: Annotated[AsyncSession, Depends(get_db)],
+    user: AuthUser,
+    session: AsyncSession,
 ) -> WalletLedgerEntryPublic:
-    """Admin-only credit/debit (signed amount_cents). Idempotent via idempotency_key."""
-    _require_admin(user)
-
+    """Fallback: write adjustment directly to FastAPI DB when CRM is unreachable."""
     existing = await session.execute(
         select(WalletLedgerEntry).where(WalletLedgerEntry.idempotency_key == body.idempotency_key),
     )
@@ -200,17 +198,54 @@ async def wallet_create_adjustment(
             raise
         entry = replay
     await notify_topics("wallet", "leads")
-    if settings.crm_internal_secret:
-        background_tasks.add_task(
-            _sync_adjustment_to_crm,
-            user_id=body.user_id,
-            amount_cents=body.amount_cents,
-            idempotency_key=body.idempotency_key,
-            note=body.note,
-            internal_secret=settings.crm_internal_secret,
-            crm_api_url=settings.crm_api_url,
-        )
     return WalletLedgerEntryPublic.model_validate(entry)
+
+
+@router.post("/adjustments", response_model=WalletLedgerEntryPublic, status_code=http_status.HTTP_201_CREATED)
+async def wallet_create_adjustment(
+    body: WalletAdjustmentCreate,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> WalletLedgerEntryPublic:
+    """Admin-only wallet adjustment — single writer is CRM."""
+    _require_admin(user)
+    token = request.cookies.get(MYLE_ACCESS_COOKIE, "")
+
+    if token and settings.crm_api_url and settings.crm_internal_secret:
+        try:
+            async with httpx.AsyncClient(
+                base_url=settings.crm_api_url,
+                timeout=httpx.Timeout(10.0),
+            ) as client:
+                r = await client.post(
+                    "/api/v1/wallet/credit",
+                    json={
+                        "amountCents": body.amount_cents,
+                        "idempotencyKey": body.idempotency_key,
+                        "note": body.note,
+                    },
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "x-internal-secret": settings.crm_internal_secret,
+                    },
+                )
+                if r.status_code < 400:
+                    crm_data = r.json()
+                    return WalletLedgerEntryPublic(
+                        id=crm_data.get("id", 0),
+                        user_id=body.user_id,
+                        amount_cents=body.amount_cents,
+                        currency="INR",
+                        note=body.note,
+                        created_at=crm_data.get("createdAt", ""),
+                    )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("CRM wallet adjustment failed: %s", exc)
+
+    # Fallback: write to FastAPI DB (CRM unreachable)
+    return await _fastapi_wallet_adjustment(body=body, user=user, session=session)
 
 
 # ── Wallet Recharge Requests ─────────────────────────────────────────────────
