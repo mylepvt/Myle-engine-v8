@@ -31,6 +31,7 @@ from app.api.v1 import (
     wallet,
     wallet_enhanced,
     workboard,
+    crm_proxy,
 )
 
 api_router = APIRouter()
@@ -69,3 +70,4 @@ api_router.include_router(enroll.watch_router, tags=["watch"])
 api_router.include_router(certificate.router, tags=["certificate"])
 api_router.include_router(payments.router, prefix="/payments", tags=["payments"])
 api_router.include_router(wallet_enhanced.router, prefix="/wallet", tags=["wallet-enhanced"])
+api_router.include_router(crm_proxy.router, tags=["crm"])

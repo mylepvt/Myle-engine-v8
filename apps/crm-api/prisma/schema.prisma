@@ -65,6 +65,9 @@ model User {
 
 model Lead {
   id        String @id @default(cuid())
+  /// Foreign key to FastAPI `leads.id` (integer PK) — bridge for proxy routing.
+  /// Null for leads created natively in CRM; set when synced from FastAPI.
+  legacyId  Int?   @unique
   name      String
   phone     String?
 
