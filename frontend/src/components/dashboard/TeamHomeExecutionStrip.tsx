@@ -108,7 +108,7 @@ export function TeamHomeExecutionStrip({
               >
                 Workboard
               </Link>{' '}
-              for Day 1+ batches (legacy workboard path was /working).
+              for Day 1+ batch actions.
             </p>
           </div>
         ) : null}

@@ -12,15 +12,14 @@ export function CommunityTrainingPage({ title }: Props) {
       <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
       <p className="text-sm text-muted-foreground">
         Required training track for field partners (same catalog as System → Training; progress is
-        shared). Agar videos list khali hai to DB mein{' '}
-        <code className="rounded bg-white/10 px-1">training_videos</code> seed karein — Alembic:{' '}
+        shared). If the video list is empty, populate the{' '}
+        <code className="rounded bg-white/10 px-1">training_videos</code> table via migration{' '}
         <code className="rounded bg-white/10 px-1">20260413_0020_seed_seven_training_videos</code>{' '}
-        (<code className="rounded bg-white/10 px-1">backend/alembic/versions/</code>).
+        in <code className="rounded bg-white/10 px-1">backend/alembic/versions/</code>.
       </p>
       <p className="text-xs text-muted-foreground">
-        Workboard par Day 1/2/3 <strong>batch slots</strong> (Morning / Afternoon / Evening) har lead card
-        par hi mark hote hain — alag “admin batch link” URL legacy ki tarah yahan ek hi workboard flow
-        mein hai.
+        Day 1/2/3 <strong>batch slots</strong> (Morning / Afternoon / Evening) are updated directly on
+        each lead card in Workboard. This uses a single unified Workboard flow.
       </p>
 
       {isPending ? (
