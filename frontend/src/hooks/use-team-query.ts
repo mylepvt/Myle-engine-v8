@@ -128,6 +128,29 @@ export function useEnrollmentRequestsQuery(enabled = true) {
   })
 }
 
+export async function resetMemberPassword(body: {
+  userId: number
+  newPassword: string
+}): Promise<{ ok: boolean }> {
+  const res = await apiFetch(`/api/v1/team/members/${body.userId}/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ new_password: body.newPassword }),
+  })
+  if (!res.ok) await parseError(res)
+  return res.json()
+}
+
+export function useResetMemberPasswordMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: resetMemberPassword,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['team', 'members'] })
+    },
+  })
+}
+
 export function useEnrollmentDecisionMutation() {
   const queryClient = useQueryClient()
   return useMutation({

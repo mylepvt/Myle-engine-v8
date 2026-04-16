@@ -259,6 +259,29 @@ async def decide_pending_registration(
     return {"ok": True, "registration_status": row.registration_status}
 
 
+@router.post("/members/{target_user_id}/reset-password")
+async def reset_member_password(
+    target_user_id: int,
+    body: dict,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Reset a user's password. Admin/leader only."""
+    _require_admin_or_leader(user)
+    new_password = body.get("new_password", "")
+    if not isinstance(new_password, str) or len(new_password) < 8:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="new_password must be at least 8 characters",
+        )
+    row = await session.get(User, target_user_id)
+    if row is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    row.hashed_password = hash_password(new_password)
+    await session.commit()
+    return {"ok": True}
+
+
 @router.get("/approvals", response_model=SystemStubResponse)
 async def team_approvals(
     user: Annotated[AuthUser, Depends(require_auth_user)],
