@@ -86,4 +86,4 @@ services:
     dockerContext: ./frontend
     envVars:
       - key: VITE_API_URL
-        sync: false               # set to https://myle-vl2-api.onrender.com after deploy
+        value: "https://myle-vl2-api.onrender.com"
