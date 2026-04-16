@@ -35,6 +35,8 @@ from app.services.all_leads_service import AllLeadsService, get_all_leads_servic
 from app.services.leads_service import LeadsService, get_leads_service
 from app.services.downline import is_user_in_downline_of
 from app.services.leads_service import _sync_batch_completion_timestamps
+from app.api.v1.crm_sync import sync_lead_created, sync_lead_claimed
+from app.core.auth_cookie import MYLE_ACCESS_COOKIE
 
 router = APIRouter()
 watch_router = APIRouter()
@@ -154,19 +156,45 @@ async def list_leads(
 @router.post("", response_model=LeadPublic, status_code=http_status.HTTP_201_CREATED)
 async def create_lead(
     body: LeadCreate,
+    request: Request,
+    background_tasks: BackgroundTasks,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     service: Annotated[LeadsService, Depends(get_leads_service)],
 ):
-    return await service.create_lead(body=body, user=user)
+    lead = await service.create_lead(body=body, user=user)
+    token = request.cookies.get(MYLE_ACCESS_COOKIE, "")
+    if token:
+        background_tasks.add_task(
+            sync_lead_created,
+            legacy_id=lead.id,
+            name=lead.name,
+            phone=getattr(lead, "phone", None),
+            pipeline_kind="PERSONAL",
+            token=token,
+        )
+    return lead
 
 
 @router.post("/{lead_id}/claim", response_model=LeadPublic)
 async def claim_lead(
     lead_id: int,
+    request: Request,
+    background_tasks: BackgroundTasks,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     service: Annotated[LeadsService, Depends(get_leads_service)],
 ):
-    return await service.claim_lead(lead_id=lead_id, user=user)
+    lead = await service.claim_lead(lead_id=lead_id, user=user)
+    token = request.cookies.get(MYLE_ACCESS_COOKIE, "")
+    if token:
+        import secrets as _secrets
+        background_tasks.add_task(
+            sync_lead_claimed,
+            legacy_id=lead_id,
+            idempotency_key=f"claim-{lead_id}-{user.user_id}-{_secrets.token_hex(6)}",
+            pipeline_kind="PERSONAL",
+            token=token,
+        )
+    return lead
 
 
 @router.get("/{lead_id}/mindset-lock-preview", response_model=MindsetLockPreviewResponse)

@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { PipelineKind } from "@prisma/client";
+import { prisma } from "../db.js";
 import { requireAuth } from "../lib/auth-context.js";
 import {
   closeLead,
@@ -15,6 +16,8 @@ const createBody = z.object({
   name: z.string().min(1),
   phone: z.string().optional(),
   pipelineKind: z.nativeEnum(PipelineKind),
+  /** Optional FastAPI lead ID — set when creating a CRM shadow record for an existing FastAPI lead. */
+  legacyId: z.number().int().positive().optional(),
 });
 
 const transitionBody = z.object({
@@ -26,6 +29,26 @@ const reassignBody = z.object({
   toUserId: z.string().min(1),
   reason: z.string().optional(),
 });
+
+/** Resolve CRM lead.id from either a cuid string OR a numeric legacyId string. */
+async function resolveCrmLeadId(leadIdParam: string): Promise<string> {
+  const asInt = parseInt(leadIdParam, 10);
+  if (!isNaN(asInt) && String(asInt) === leadIdParam) {
+    // Numeric → look up by legacyId
+    const found = await prisma.lead.findUnique({
+      where: { legacyId: asInt },
+      select: { id: true },
+    });
+    if (!found) {
+      const err = new Error(`No CRM lead found for legacyId ${asInt}`);
+      (err as { statusCode?: number }).statusCode = 404;
+      throw err;
+    }
+    return found.id;
+  }
+  // Already a cuid
+  return leadIdParam;
+}
 
 export async function leadRoutes(fastify: FastifyInstance) {
   fastify.post("/leads", async (req, reply) => {
@@ -45,19 +68,22 @@ export async function leadRoutes(fastify: FastifyInstance) {
     const user = requireAuth(req);
     const { leadId } = z.object({ leadId: z.string() }).parse(req.params);
     const body = transitionBody.parse(req.body);
-    return transitionLead(user, leadId, { event: body.event as FsmEvent, expectedVersion: body.expectedVersion }, fastify.io);
+    const crmLeadId = await resolveCrmLeadId(leadId);
+    return transitionLead(user, crmLeadId, { event: body.event as FsmEvent, expectedVersion: body.expectedVersion }, fastify.io);
   });
 
   fastify.post("/leads/:leadId/reassign", async (req) => {
     const user = requireAuth(req);
     const { leadId } = z.object({ leadId: z.string() }).parse(req.params);
     const body = reassignBody.parse(req.body);
-    return reassignLead(user, leadId, body.toUserId, body.reason, fastify.io);
+    const crmLeadId = await resolveCrmLeadId(leadId);
+    return reassignLead(user, crmLeadId, body.toUserId, body.reason, fastify.io);
   });
 
   fastify.post("/leads/:leadId/close", async (req) => {
     const user = requireAuth(req);
     const { leadId } = z.object({ leadId: z.string() }).parse(req.params);
-    return closeLead(user, leadId, fastify.io);
+    const crmLeadId = await resolveCrmLeadId(leadId);
+    return closeLead(user, crmLeadId, fastify.io);
   });
 }

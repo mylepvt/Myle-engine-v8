@@ -46,7 +46,7 @@ async function emitLeadChange(
 
 export async function createLead(
   user: AuthUser,
-  body: { name: string; phone?: string; pipelineKind: PipelineKind },
+  body: { name: string; phone?: string; pipelineKind: PipelineKind; legacyId?: number },
   io?: Server,
 ) {
   const lead = await prisma.lead.create({
@@ -58,6 +58,7 @@ export async function createLead(
       inPool: true,
       handlerId: null,
       stage: LeadStage.NEW,
+      ...(body.legacyId !== undefined ? { legacyId: body.legacyId } : {}),
     },
   });
   await prisma.leadActivity.create({

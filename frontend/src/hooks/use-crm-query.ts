@@ -22,14 +22,18 @@ async function crmFetch<T>(path: string, init?: RequestInit): Promise<T> {
 // Lead FSM transition
 // ---------------------------------------------------------------------------
 
+/** CRM FSM events — must match apps/crm-api/src/domain/fsm.ts FSM_EVENT_VALUES */
 export type FsmEvent =
-  | 'CONTACT'
-  | 'INTERESTED'
-  | 'NOT_INTERESTED'
-  | 'CALLBACK'
-  | 'CLOSE'
-  | 'REASSIGN'
-  | 'ARCHIVE'
+  | 'INVITE_SENT'
+  | 'WHATSAPP_SENT'
+  | 'VIDEO_SENT'
+  | 'PAYMENT_DONE'
+  | 'MINDSET_START'
+  | 'MINDSET_COMPLETE'
+  | 'DAY1_DONE'
+  | 'DAY2_DONE'
+  | 'DAY3_DONE'
+  | 'CLOSE_WON'
 
 export interface LeadTransitionPayload {
   event: FsmEvent
