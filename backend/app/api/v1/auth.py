@@ -34,7 +34,7 @@ from app.schemas.auth import (
     ResetPasswordResponse,
     UplineLookupResponse,
 )
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, field_validator
 from app.services.dev_users import dev_email_for_role, dev_fbo_for_role
 from app.services.login_identity import (
     assert_safe_username,
@@ -443,8 +443,16 @@ class ChangePasswordRequest(BaseModel):
 
 
 class ChangeEmailRequest(BaseModel):
-    new_email: EmailStr
+    new_email: str
     current_password: str
+
+    @field_validator("new_email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        v = v.strip().lower()
+        if "@" not in v or "." not in v.split("@")[-1]:
+            raise ValueError("Invalid email address")
+        return v
 
 
 class ChangeCredentialResponse(BaseModel):
@@ -487,7 +495,7 @@ async def change_email(
     if not db_user.hashed_password or not verify_password_legacy_compatible(body.current_password, db_user.hashed_password):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
 
-    new_email = body.new_email.lower().strip()
+    new_email = body.new_email  # already normalized by validator
     if new_email == db_user.email:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="New email is the same as current email")
 
