@@ -37,7 +37,8 @@ services:
 
   crm-api:
     build:
-      context: ./apps/crm-api
+      context: .
+      dockerfile: apps/crm-api/Dockerfile
     ports:
       - "${CRM_PUBLISH_PORT:-4000}:4000"
     environment:

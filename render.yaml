@@ -23,7 +23,7 @@ services:
     plan: free
     region: oregon
     dockerfilePath: ./apps/crm-api/Dockerfile
-    dockerContext: ./apps/crm-api
+    dockerContext: .
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
