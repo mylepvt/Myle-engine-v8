@@ -1,0 +1,258 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PipelineKind {
+  PERSONAL
+  TEAM
+}
+
+enum LeadStage {
+  NEW
+  INVITED
+  WHATSAPP_SENT
+  VIDEO_SENT
+  PAYMENT_DONE
+  MINDSET_LOCK
+  DAY1_UPLINE
+  DAY2_ADMIN
+  DAY3_CLOSER
+  CLOSED
+}
+
+enum EscalationLevel {
+  HANDLER
+  LEADER
+  ADMIN
+}
+
+enum EscalationState {
+  OPEN
+  ACKNOWLEDGED
+  SNOOZED
+  RESOLVED
+  ESCALATED_NEXT
+}
+
+enum LedgerDirection {
+  CREDIT
+  DEBIT
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      String // admin | leader | team
+  /// Optional team scope for Socket.io `team:{teamId}` (JWT claim `team_id` or default)
+  teamId    String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ownedLeads          Lead[]                    @relation("LeadOwner")
+  handledLeads        Lead[]                    @relation("LeadHandler")
+  closedLeads         Lead[]                    @relation("LeadCloser")
+  walletLines         WalletLedger[]
+  performanceRows     UserPerformanceSnapshot[]
+  escalationsAssigned Escalation[]              @relation("EscalationAssignee")
+}
+
+model Lead {
+  id        String @id @default(cuid())
+  name      String
+  phone     String?
+
+  pipelineKind PipelineKind
+  stage        LeadStage    @default(NEW)
+  stageVersion Int          @default(0)
+
+  ownerId   String
+  owner     User   @relation("LeadOwner", fields: [ownerId], references: [id])
+
+  handlerId String?
+  handler   User?   @relation("LeadHandler", fields: [handlerId], references: [id])
+
+  inPool           Boolean       @default(true)
+  reassignedCount  Int           @default(0)
+  lastActivityAt   DateTime?
+  leadScore        Int           @default(0)
+  highIntent       Boolean       @default(false)
+  videoWatchPct    Float?
+
+  mindsetLockStartedAt   DateTime?
+  mindsetLockCompletedAt DateTime?
+  mindsetLockBlocked     Boolean   @default(false)
+
+  /// NONE | WARNING | REASSIGNED | ADMIN — worker-driven; never auto-CLOSED
+  escalationLevel String @default("NONE")
+
+  /// Alive engine — cleared on full journey reset / successful reassign
+  aliveWarnedAt           DateTime?
+  aliveLeaderNotifiedAt   DateTime?
+  aliveAdminEscalatedAt   DateTime?
+
+  closedAt     DateTime?
+  closedById   String?
+  closedBy     User?     @relation("LeadCloser", fields: [closedById], references: [id])
+
+  poolPriceCents Int @default(19600)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignments   LeadAssignment[]
+  activities      LeadActivity[]
+  callSessions    CallSession[]
+  whatsappEvents  WhatsappEvent[]
+  videoSessions   VideoSession[]
+  walletLines     WalletLedger[]
+  escalations     Escalation[]
+
+  @@index([pipelineKind, inPool])
+  @@index([handlerId, lastActivityAt])
+  @@index([ownerId])
+}
+
+model LeadAssignment {
+  id              String   @id @default(cuid())
+  leadId          String
+  lead            Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  fromHandlerId   String?
+  toHandlerId     String?
+  kind            String // pool_claim | reassign | auto
+  reason          String?
+  createdAt       DateTime @default(now())
+}
+
+model LeadActivity {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  actorId   String?
+  action    String
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([leadId, createdAt])
+}
+
+model WalletLedger {
+  id              String          @id @default(cuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leadId          String?
+  lead            Lead?           @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  direction       LedgerDirection
+  amountCents     Int
+  currency        String          @default("INR")
+  idempotencyKey  String          @unique
+  note            String?
+  createdAt       DateTime        @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model CallSession {
+  id         String    @id @default(cuid())
+  leadId     String
+  lead       Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  startedAt  DateTime
+  endedAt    DateTime?
+  durationSec Int?
+  outcome    String?
+}
+
+model WhatsappEvent {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  kind      String // click | sent | outcome
+  outcome   String?
+  createdAt DateTime @default(now())
+}
+
+model VideoSession {
+  id          String   @id @default(cuid())
+  leadId      String
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  openedAt    DateTime @default(now())
+  watchPct    Float    @default(0)
+  dropPointSec Int?
+}
+
+model UserPerformanceSnapshot {
+  id             String       @id @default(cuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pipelineKind   PipelineKind
+  windowLabel    String // e.g. rolling_7d
+  conversionRate Float        @default(0)
+  avgResponseSec Float        @default(0)
+  activityScore  Float        @default(0)
+  compositeScore Float        @default(0)
+  breakdown      Json?
+  computedAt     DateTime     @default(now())
+
+  @@unique([userId, pipelineKind, windowLabel])
+}
+
+model Escalation {
+  id          String            @id @default(cuid())
+  leadId      String
+  lead        Lead              @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  level       EscalationLevel
+  state       EscalationState   @default(OPEN)
+  /// alive_engine | manual — alive rows require leader/admin to acknowledge (not dismissable by team)
+  source      String            @default("manual")
+  mandatoryReview Boolean       @default(false)
+  assigneeId  String?
+  assignee    User?             @relation("EscalationAssignee", fields: [assigneeId], references: [id])
+  dueAt       DateTime?
+  snoozedUntil DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  events EscalationEvent[]
+}
+
+model EscalationEvent {
+  id            String     @id @default(cuid())
+  escalationId  String
+  escalation    Escalation @relation(fields: [escalationId], references: [id], onDelete: Cascade)
+  kind          String // created | ack | snooze | resolve | escalate
+  note          String?
+  actorId       String?
+  createdAt     DateTime   @default(now())
+}
+
+model ScoringConfig {
+  id        Int      @id @default(1)
+  version   Int      @default(1)
+  config    Json
+  updatedAt DateTime @updatedAt
+}
+
+/// Append-only audit trail (API + workers). Optional idempotencyKey dedupes retries.
+model AuditLog {
+  id              String   @id @default(cuid())
+  source          String /// api | worker
+  action          String /// claim | reassign | wallet.debit | wallet.credit | close | fsm.transition | ...
+  leadId          String?
+  actorId         String?
+  targetUserId    String?
+  amountCents     Int?
+  currency        String   @default("INR")
+  idempotencyKey  String?  @unique
+  meta            Json?
+  createdAt       DateTime @default(now())
+
+  @@index([leadId, createdAt])
+  @@index([action, createdAt])
+  @@index([actorId, createdAt])
+}

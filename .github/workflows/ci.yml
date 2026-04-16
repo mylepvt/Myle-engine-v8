@@ -82,6 +82,62 @@ jobs:
       - name: Perf check (p95 < 300ms)
         run: python scripts/perf_check.py
 
+  # Lead Execution CRM (Fastify + Prisma) — integration tests require DB + env (never skip in CI)
+  crm-api:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://crm_ci:crm_ci_pass@localhost:5432/crm_ci?schema=public
+      CRM_INTEGRATION_DATABASE_URL: postgresql://crm_ci:crm_ci_pass@localhost:5432/crm_ci?schema=public
+      CRM_REDIS_URL: redis://127.0.0.1:6379
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: crm_ci
+          POSTGRES_PASSWORD: crm_ci_pass
+          POSTGRES_DB: crm_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U crm_ci -d crm_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install (workspaces)
+        run: npm ci --no-audit --no-fund
+
+      - name: Prisma migrate + generate
+        working-directory: apps/crm-api
+        run: |
+          npx prisma migrate deploy
+          npx prisma generate
+
+      - name: Build crm-api
+        working-directory: apps/crm-api
+        run: npm run build
+
+      - name: Test crm-api (unit + integration — DB env set so Vitest does not skip)
+        working-directory: apps/crm-api
+        run: npm run test
+
   frontend:
     runs-on: ubuntu-latest
     defaults:

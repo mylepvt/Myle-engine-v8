@@ -1,0 +1,18 @@
+{
+  "name": "myle-vl2",
+  "private": true,
+  "workspaces": [
+    "apps/crm-api",
+    "apps/crm-web"
+  ],
+  "scripts": {
+    "crm:dev": "npm run dev --workspace=crm-api",
+    "crm:web": "npm run dev --workspace=crm-web",
+    "crm:build": "npm run build --workspace=crm-api && npm run build --workspace=crm-web",
+    "crm:worker": "npm run worker --workspace=crm-api",
+    "crm:seed:qa": "npm run seed:qa --workspace=crm-api"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

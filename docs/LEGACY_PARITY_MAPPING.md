@@ -167,6 +167,23 @@ Roles: **`frontend/src/config/dashboard-route-roles.json`** (exact list per path
 
 ---
 
+## New product — Lead Execution CRM (Node) — **won’t match** legacy (deliberate)
+
+This surface is a **separate** product module (`apps/crm-api` Fastify + Prisma, `apps/crm-web` Next.js). It is **not** claimed as legacy parity. Rows record intentional divergence.
+
+| Topic | Status | Evidence / pointer | Notes |
+|--------|--------|-------------------|--------|
+| HTTP API & auth | **won’t match** | `apps/crm-api/src/` | Fastify routes under `/api/v1/*`, dev auth via `x-user-id` / JWT — not Flask session. |
+| Lead stages & FSM | **won’t match** | `apps/crm-api/src/domain/fsm.ts`, Prisma `LeadStage` | Strict linear FSM (`INVITE_SENT`, …, `CLOSE_WON`) + mindset / day stages — not `LEAD_STATUS_OPTIONS` / legacy CTCS chain. |
+| Wallet & pool | **won’t match** | `apps/crm-api/prisma/schema.prisma`, `pool-claim.service.ts` | Append-only `WalletLedger` + **idempotency keys** at claim; legacy uses computed balance + `current_owner` rules in `docs/blueprint/07_lead_pool.md`. |
+| Reassign | **won’t match** | `lead-execution.service.ts` `reassignLead` / `systemReassignStaleLead` | Handler-only change, **stage reset** to `INVITED` (configurable), **no** wallet movement — verify against legacy handoff if ever unified. |
+| UI shell | **won’t match** | `apps/crm-web/` | Next.js 14 App Router + Tailwind 4 + Zustand/React Query — not `frontend/` Vite dashboard registry. |
+| Realtime | **won’t match** | `apps/crm-api/src/realtime/`, `docs/SOCKET_ROOMS.md` (in crm-api) | Socket.io room contract; legacy `realtime_ws` differs. |
+
+**Owner / date:** engineering / 2026-04-16 — update this table when the Node CRM is intentionally aligned or bridged to legacy data.
+
+---
+
 ## Backend v1 routers (new app — for wiring checks)
 
 Aggregate: `backend/app/api/v1/router.py`. Domains include: `meta`, `auth`, `leads`, `team`, `system`, `analytics`, `execution`, `finance`, `other`, `settings`, `wallet`, `lead-pool`, `retarget`, `follow-ups`, `workboard`, `gate-assistant`, `realtime_ws` (WebSocket).
