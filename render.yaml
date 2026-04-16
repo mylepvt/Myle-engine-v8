@@ -13,7 +13,7 @@ services:
   - type: redis
     name: myle-vl2-redis
     plan: free
-    region: oregon
+    region: singapore
     ipAllowList: []           # internal only
 
   # ── CRM Fastify microservice ─────────────────────────────────────────────
@@ -21,7 +21,7 @@ services:
     name: myle-crm-api
     runtime: docker
     plan: free
-    region: oregon
+    region: singapore
     dockerfilePath: ./apps/crm-api/Dockerfile
     dockerContext: .
     healthCheckPath: /health
@@ -45,7 +45,7 @@ services:
     name: myle-vl2-api
     runtime: docker
     plan: free
-    region: oregon
+    region: singapore
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /health
@@ -81,7 +81,7 @@ services:
     name: myle-vl2-frontend
     runtime: docker
     plan: free
-    region: oregon
+    region: singapore
     dockerfilePath: ./frontend/Dockerfile.prod
     dockerContext: ./frontend
     envVars:
