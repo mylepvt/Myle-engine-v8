@@ -23,7 +23,6 @@ def upgrade() -> None:
             sa.Integer(),
             sa.ForeignKey("leads.id", ondelete="CASCADE"),
             nullable=False,
-            index=True,
         ),
         sa.Column(
             "user_id",
@@ -39,7 +38,7 @@ def upgrade() -> None:
             server_default=sa.func.now(),
         ),
     )
-    op.create_index("ix_lead_notes_lead_id", "lead_notes", ["lead_id"])
+    op.create_index("ix_lead_notes_lead_id", "lead_notes", ["lead_id"], if_not_exists=True)
 
 
 def downgrade() -> None:

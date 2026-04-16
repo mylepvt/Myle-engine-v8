@@ -18,28 +18,6 @@ type BudgetRow = {
   leads: string
 }
 
-/** Parse the structured detail string from the backend budget-export endpoint.
- * Format: "email · FBO 123 · phone 555 · balance ₹X · recharged ₹X · admin adj ₹X · assigned active leads N"
- */
-function parseDetailString(detail: string): Omit<BudgetRow, 'member'> {
-  const extract = (prefix: string, fallback = '—'): string => {
-    const i = detail.indexOf(prefix)
-    if (i === -1) return fallback
-    const start = i + prefix.length
-    const end = detail.indexOf(' ·', start)
-    return (end === -1 ? detail.slice(start) : detail.slice(start, end)).trim() || fallback
-  }
-  return {
-    email: extract(''),
-    fbo: extract('FBO '),
-    phone: extract('phone '),
-    balance: extract('balance '),
-    recharged: extract('recharged '),
-    adminAdj: extract('admin adj '),
-    leads: extract('assigned active leads '),
-  }
-}
-
 function parseRow(row: Record<string, unknown>): BudgetRow {
   const member = typeof row.title === 'string' ? row.title : '—'
   const detail = typeof row.detail === 'string' ? row.detail : ''
