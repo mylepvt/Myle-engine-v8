@@ -82,12 +82,17 @@ export function EnrollmentApprovalsPage({ title }: Props) {
               return (
                 <li
                   key={row.lead_id}
-                  className="surface-elevated flex items-start justify-between gap-4 rounded-xl border border-white/[0.08] p-4 text-sm"
+                  className="surface-elevated flex flex-col gap-3 rounded-xl border border-white/[0.08] p-4 text-sm sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-foreground">{row.lead_name}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold text-foreground">{row.lead_name}</p>
+                      <Badge variant={row.status === 'approved' ? 'default' : row.status === 'rejected' ? 'destructive' : 'outline'}>
+                        {row.status}
+                      </Badge>
+                    </div>
                     {amount ? (
-                      <p className="mt-0.5 text-xs text-muted-foreground">
+                      <p className="mt-1 text-xs font-medium text-muted-foreground">
                         Amount: {amount}
                       </p>
                     ) : null}
@@ -104,44 +109,40 @@ export function EnrollmentApprovalsPage({ title }: Props) {
                         })}
                       </p>
                     ) : null}
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2 self-center">
                     {row.payment_proof_url ? (
                       <a
                         href={row.payment_proof_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-primary underline underline-offset-2"
+                        className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary underline underline-offset-2"
                       >
                         View proof
                         <ExternalLink className="size-3.5" />
                       </a>
                     ) : null}
-                    <Badge variant={row.status === 'approved' ? 'default' : row.status === 'rejected' ? 'destructive' : 'outline'}>
-                      {row.status}
-                    </Badge>
-                    {row.status === 'pending' ? (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="default"
-                          disabled={decide.isPending}
-                          onClick={() => void handleApprove(row.lead_id)}
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-destructive hover:bg-destructive/10"
-                          disabled={decide.isPending}
-                          onClick={() => void handleReject(row.lead_id)}
-                        >
-                          Reject
-                        </Button>
-                      </>
-                    ) : null}
                   </div>
+                  {row.status === 'pending' ? (
+                    <div className="flex shrink-0 gap-2">
+                      <Button
+                        size="default"
+                        variant="default"
+                        disabled={decide.isPending}
+                        className="h-11 min-w-[5.5rem] flex-1 bg-emerald-600 font-semibold text-white hover:bg-emerald-700 sm:flex-none"
+                        onClick={() => void handleApprove(row.lead_id)}
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        size="default"
+                        variant="outline"
+                        disabled={decide.isPending}
+                        className="h-11 min-w-[5rem] flex-1 border-destructive/50 font-semibold text-destructive hover:bg-destructive/10 sm:flex-none"
+                        onClick={() => void handleReject(row.lead_id)}
+                      >
+                        Reject
+                      </Button>
+                    </div>
+                  ) : null}
                 </li>
               )
             })}

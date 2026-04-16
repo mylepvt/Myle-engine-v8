@@ -1,4 +1,4 @@
-import jwt from "jsonwebtoken";
+import * as jwt from "jsonwebtoken";
 import type { JwtPayload } from "jsonwebtoken";
 import type { Server } from "socket.io";
 import { SOCKET_ROOMS, leadRoom, teamRoom, userRoom } from "./rooms.js";

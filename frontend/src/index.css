@@ -238,6 +238,17 @@
     box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 18%, transparent);
   }
 
+  /* iOS momentum scrolling for scroll containers */
+  .scroll-ios {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* Modal / drawer overscroll containment */
+  .overscroll-contain {
+    overscroll-behavior: contain;
+  }
+
   /* PREMIUM ANIMATION SYSTEM */
   .animate-fade-in {
     animation: fadeIn 0.2s ease-out forwards;

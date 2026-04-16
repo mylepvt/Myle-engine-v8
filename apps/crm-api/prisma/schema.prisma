@@ -241,6 +241,16 @@ model ScoringConfig {
   updatedAt DateTime @updatedAt
 }
 
+/// FastAPI-owned leads table. CRM writes `status` back here after FSM transitions
+/// so FastAPI reads remain accurate without polling CRM.
+/// Schema is owned by FastAPI/Alembic — never run `prisma migrate` on this model.
+model LegacyLead {
+  id     Int    @id
+  status String @default("new_lead")
+
+  @@map("leads")
+}
+
 /// Append-only audit trail (API + workers). Optional idempotencyKey dedupes retries.
 model AuditLog {
   id              String   @id @default(cuid())

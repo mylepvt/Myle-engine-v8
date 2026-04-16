@@ -61,7 +61,7 @@ export function DashboardMobileTabBar({
             to="/dashboard/system/training"
             className={({ isActive }) =>
               cn(
-                'flex min-h-[50px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[0.65rem] font-medium leading-none transition-colors active:opacity-70',
+                'flex min-h-[60px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[0.65rem] font-medium leading-none transition-colors active:opacity-70',
                 isActive
                   ? 'bg-primary/12 text-primary'
                   : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground',
@@ -85,7 +85,7 @@ export function DashboardMobileTabBar({
           <button
             type="button"
             onClick={onOpenMenu}
-            className="flex min-h-[50px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[0.65rem] font-medium leading-none text-muted-foreground transition-colors active:opacity-70 hover:bg-muted/70 hover:text-foreground"
+            className="flex min-h-[60px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[0.65rem] font-medium leading-none text-muted-foreground transition-colors active:opacity-70 hover:bg-muted/70 hover:text-foreground"
             aria-label="Open menu"
           >
             <MoreHorizontal className="size-[22px] shrink-0" strokeWidth={1.75} aria-hidden />
@@ -126,7 +126,7 @@ export function DashboardMobileTabBar({
               end={def.end ?? false}
               className={({ isActive }) =>
                 cn(
-                  'flex min-h-[50px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[0.65rem] font-medium leading-none transition-colors active:opacity-70',
+                  'flex min-h-[60px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[0.65rem] font-medium leading-none transition-colors active:opacity-70',
                   isActive
                     ? 'bg-primary/12 text-primary'
                     : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground',
@@ -153,7 +153,7 @@ export function DashboardMobileTabBar({
         <button
           type="button"
           onClick={onOpenMenu}
-          className="flex min-h-[50px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[0.65rem] font-medium leading-none text-muted-foreground transition-colors active:opacity-70 hover:bg-muted/70 hover:text-foreground"
+          className="flex min-h-[60px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[0.65rem] font-medium leading-none text-muted-foreground transition-colors active:opacity-70 hover:bg-muted/70 hover:text-foreground"
           aria-label="Open full menu"
         >
           <MoreHorizontal className="size-[22px] shrink-0" strokeWidth={1.75} aria-hidden />

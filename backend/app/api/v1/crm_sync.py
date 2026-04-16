@@ -66,6 +66,36 @@ async def sync_lead_created(
     )
 
 
+async def ensure_crm_shadow(
+    *,
+    legacy_id: int,
+    name: str,
+    phone: str | None,
+    pipeline_kind: str,
+    token: str,
+) -> bool:
+    """Check if CRM shadow exists for legacyId; create if missing. Returns True if exists/created."""
+    try:
+        client = _get_client()
+        r = await client.get(
+            f"/api/v1/leads?legacyId={legacy_id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        if r.status_code == 200:
+            data = r.json()
+            if isinstance(data, list) and len(data) > 0:
+                return True
+            if isinstance(data, dict) and data.get("items"):
+                return True
+        # Create shadow
+        await sync_lead_created(legacy_id=legacy_id, name=name, phone=phone,
+                                  pipeline_kind=pipeline_kind, token=token)
+        return True
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("ensure_crm_shadow failed for legacyId %s: %s", legacy_id, exc)
+        return False
+
+
 async def sync_lead_claimed(
     *,
     legacy_id: int,

@@ -1,6 +1,6 @@
 # From repo root: docker compose up --build
-# Frontend: http://localhost:5173  |  API docs: http://localhost:8000/docs
-# Migrations run on backend container start (alembic upgrade head).
+# Frontend: http://localhost:5173  |  API docs: http://localhost:8000/docs  |  CRM: http://localhost:4000
+# Migrations run on container start (alembic upgrade head / prisma migrate deploy).
 
 services:
   db:
@@ -19,6 +19,35 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  crm-api:
+    build:
+      context: .
+      dockerfile: apps/crm-api/Dockerfile
+    ports:
+      - "4000:4000"
+    environment:
+      DATABASE_URL: "postgresql://myle:myle@db:5432/myle"
+      REDIS_URL: "redis://redis:6379"
+      CRM_API_PORT: "4000"
+      CRM_INTERNAL_SECRET: "dev-internal-secret-change-in-prod"
+      NODE_ENV: "development"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
   backend:
     build:
       context: ./backend
@@ -29,9 +58,13 @@ services:
       DATABASE_URL: "postgresql+asyncpg://myle:myle@db:5432/myle"
       SECRET_KEY: "docker-compose-dev-secret-replace-in-real-deploy"
       AUTH_DEV_LOGIN_ENABLED: "true"
+      CRM_API_URL: "http://crm-api:4000"
+      CRM_INTERNAL_SECRET: "dev-internal-secret-change-in-prod"
     depends_on:
       db:
         condition: service_healthy
+      crm-api:
+        condition: service_started
 
   frontend:
     build:

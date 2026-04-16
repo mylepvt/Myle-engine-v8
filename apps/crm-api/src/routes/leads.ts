@@ -13,9 +13,9 @@ import {
 import { FSM_EVENT_VALUES, type FsmEvent } from "../domain/fsm.js";
 
 const createBody = z.object({
-  name: z.string().min(1),
+  name: z.string().min(1).optional().default(""),
   phone: z.string().optional(),
-  pipelineKind: z.nativeEnum(PipelineKind),
+  pipelineKind: z.nativeEnum(PipelineKind).optional().default(PipelineKind.PERSONAL),
   /** Optional FastAPI lead ID — set when creating a CRM shadow record for an existing FastAPI lead. */
   legacyId: z.number().int().positive().optional(),
 });
@@ -60,7 +60,19 @@ export async function leadRoutes(fastify: FastifyInstance) {
 
   fastify.get("/leads", async (req) => {
     const user = requireAuth(req);
-    const q = z.object({ pipelineKind: z.nativeEnum(PipelineKind).optional() }).parse(req.query);
+    const q = z
+      .object({
+        pipelineKind: z.nativeEnum(PipelineKind).optional(),
+        legacyId: z.coerce.number().int().positive().optional(),
+      })
+      .parse(req.query);
+    if (q.legacyId !== undefined) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const lead = await prisma.lead.findFirst({
+        where: { legacyId: q.legacyId } as any,
+      });
+      return lead ? [lead] : [];
+    }
     return listLeads(user, q.pipelineKind);
   });
 

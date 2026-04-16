@@ -171,6 +171,11 @@ class Settings(BaseSettings):
         validation_alias="CRM_API_URL",
         description="Base URL of the CRM Fastify microservice (e.g. http://crm-api:4000 in Docker).",
     )
+    crm_internal_secret: str = Field(
+        default="",
+        validation_alias="CRM_INTERNAL_SECRET",
+        description="Shared secret for CRM internal endpoints (x-internal-secret header).",
+    )
 
     @field_validator("database_url", mode="before")
     @classmethod
