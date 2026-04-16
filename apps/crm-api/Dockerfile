@@ -26,9 +26,6 @@ ENV NODE_ENV=production
 # Copy hoisted node_modules + workspace node_modules
 COPY --from=builder /repo/node_modules ./node_modules
 COPY --from=builder /repo/apps/crm-api/dist ./dist
-COPY --from=builder /repo/apps/crm-api/node_modules ./node_modules_ws
-# Merge workspace node_modules (they override hoisted ones)
-RUN cp -rn ./node_modules_ws/. ./node_modules/ 2>/dev/null || true && rm -rf ./node_modules_ws
 COPY --from=builder /repo/apps/crm-api/prisma ./prisma
 
 EXPOSE 4000
