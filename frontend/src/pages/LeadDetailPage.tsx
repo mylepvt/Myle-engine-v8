@@ -13,6 +13,7 @@ import {
 import { EnrollmentCard } from '@/components/leads/EnrollmentCard'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LeadNextStepPanel } from '@/components/leads/LeadNextStepPanel'
+import { LeadNotesPanel } from '@/components/leads/LeadNotesPanel'
 
 type Props = {
   leadId: number
@@ -566,6 +567,9 @@ export function LeadDetailPage({ leadId }: Props) {
               ) : null}
             </div>
           </div>
+
+          {/* Lead Notes */}
+          <LeadNotesPanel leadId={leadId} />
 
           {/* Enrollment card */}
           <EnrollmentCard leadId={leadId} />

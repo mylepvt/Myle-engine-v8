@@ -15,6 +15,7 @@ from app.api.v1 import (
     follow_ups,
     gate_assistant,
     hello,
+    lead_notes,
     lead_pool,
     leads,
     meta,
@@ -58,6 +59,7 @@ api_router.include_router(wallet.router, prefix="/wallet", tags=["wallet"])
 api_router.include_router(lead_pool.router, prefix="/lead-pool", tags=["lead-pool"])
 api_router.include_router(retarget.router, prefix="/retarget", tags=["retarget"])
 api_router.include_router(follow_ups.router, prefix="/follow-ups", tags=["follow-ups"])
+api_router.include_router(lead_notes.router, prefix="/leads", tags=["lead-notes"])
 api_router.include_router(workboard.router, prefix="/workboard", tags=["workboard"])
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
 api_router.include_router(

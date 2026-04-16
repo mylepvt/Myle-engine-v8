@@ -16,6 +16,7 @@ from app.models.daily_score import DailyScore
 from app.models.app_setting import AppSetting
 from app.models.training_question import TrainingQuestion
 from app.models.training_test_attempt import TrainingTestAttempt
+from app.models.lead_note import LeadNote
 
 __all__ = [
     "Announcement",
@@ -36,4 +37,5 @@ __all__ = [
     "AppSetting",
     "TrainingQuestion",
     "TrainingTestAttempt",
+    "LeadNote",
 ]
