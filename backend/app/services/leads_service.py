@@ -629,6 +629,20 @@ class LeadsService:
         lead.status = body.target_status
         bump_heat_on_entering_contacted(lead, prev_status)
         lead = await self._repository.persist_lead(lead)
+
+        # XP hooks — fire-and-forget; never block transition on XP errors
+        try:
+            from app.services.xp_service import grant_xp, revoke_won_xp
+            if body.target_status == "contacted":
+                await grant_xp(self._session, user.user_id, "lead_contacted", lead.id)
+            elif body.target_status == "won":
+                await grant_xp(self._session, user.user_id, "lead_won", lead.id)
+            if prev_status == "won" and body.target_status != "won":
+                await revoke_won_xp(self._session, user.user_id, lead.id)
+            await self._session.commit()
+        except Exception:
+            pass
+
         await self._notifier("leads")
         return LeadTransitionResponse(
             success=True,

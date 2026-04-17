@@ -69,3 +69,9 @@ class User(Base):
         nullable=False,
     )
 
+    # XP / gamification columns (added in migration 0031)
+    xp_total: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"), default=0)
+    xp_level: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'rookie'"), default="rookie")
+    login_streak: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"), default=0)
+    last_login_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+

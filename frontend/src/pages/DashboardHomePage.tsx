@@ -1,8 +1,10 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, ClipboardCheck, TrendingUp, UserPlus } from 'lucide-react'
 
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
+import { XpBadge } from '@/components/xp/XpBadge'
+import { XpLeaderboard } from '@/components/xp/XpLeaderboard'
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
 import { TeamDashboardHomeModern } from '@/components/dashboard/TeamDashboardHomeModern'
 import { Badge } from '@/components/ui/badge'
@@ -28,6 +30,7 @@ import { useLeadPoolQuery } from '@/hooks/use-lead-pool-query'
 import { LEAD_STATUS_OPTIONS, type LeadPublic } from '@/hooks/use-leads-query'
 import { useTeamReportsQuery } from '@/hooks/use-team-reports-query'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
+import { usePingLoginMutation } from '@/hooks/use-xp-query'
 import { cn } from '@/lib/utils'
 
 /** Canonical stage labels — same source as leads/workboard (legacy parity; all roles). */
@@ -68,6 +71,15 @@ export function DashboardHomePage() {
   const teamToday = useTeamTodayStatsQuery(sessionReady && role === 'team')
   const pool = useLeadPoolQuery(sessionReady)
   const adminReports = useTeamReportsQuery('', sessionReady && role === 'admin')
+  const pingLogin = usePingLoginMutation()
+
+  useEffect(() => {
+    if (sessionReady) {
+      pingLogin.mutate()
+    }
+    // fire once on mount when session is ready
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionReady])
 
   const firstName =
     (me?.username?.trim() && me.username.split(/\s+/)[0]) ||
@@ -401,6 +413,9 @@ export function DashboardHomePage() {
           </div>
         )}
       </div>
+
+      <XpBadge />
+      <XpLeaderboard role={role} />
 
       <Card className="border-primary/20">
         <CardHeader>

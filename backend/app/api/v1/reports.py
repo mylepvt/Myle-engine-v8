@@ -116,6 +116,13 @@ async def submit_daily_report(
         session.add(row)
         await session.flush()
 
+        # XP for new report submission
+        try:
+            from app.services.xp_service import grant_xp
+            await grant_xp(session, user.user_id, "report_submitted")
+        except Exception:
+            pass
+
         sr = await session.execute(
             select(DailyScore).where(
                 DailyScore.user_id == user.user_id,
