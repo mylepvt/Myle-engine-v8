@@ -7,7 +7,6 @@ import { App } from '@/App'
 import { ThemeAndFeedbackProvider } from '@/components/providers/ThemeAndFeedbackProvider'
 import { AppErrorBoundary } from '@/components/routing/AppErrorBoundary'
 import { initPerformanceProfile, isLowEndDevice } from '@/lib/device-performance'
-import { scheduleAppShellViewportSync, syncAppShellViewportHeight } from '@/lib/app-shell-viewport'
 import './index.css'
 
 initPerformanceProfile()
@@ -50,17 +49,14 @@ function setupIosViewportLock() {
   const shouldLockShell = isIos && !supportsLvh
   rootEl.classList.toggle('ios-shell-lock', shouldLockShell)
   if (!shouldLockShell) {
-    const applyDynamicVh = () => {
-      syncAppShellViewportHeight()
-    }
-
-    scheduleAppShellViewportSync()
-    window.addEventListener('resize', applyDynamicVh, { passive: true })
-    window.visualViewport?.addEventListener('resize', applyDynamicVh, { passive: true })
-    window.addEventListener('orientationchange', () => window.setTimeout(scheduleAppShellViewportSync, 120), {
-      passive: true,
-    })
-    window.addEventListener('pageshow', () => scheduleAppShellViewportSync(), { passive: true })
+    /*
+     * Modern iOS/Android: let pure CSS drive the shell height.
+     * --app-shell-vh falls back to 100vh and upgrades to 100dvh via @supports,
+     * which naturally follows browser chrome collapse/expand without a stale
+     * pixel snapshot. JS pixel locking is only used for the iOS legacy path
+     * below (no 100lvh support) where dvh cannot be trusted.
+     */
+    rootStyle.removeProperty('--app-shell-vh')
     return
   }
 
