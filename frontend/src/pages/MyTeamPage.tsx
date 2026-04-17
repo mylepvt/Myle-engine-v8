@@ -20,8 +20,7 @@ export function MyTeamPage({ title }: Props) {
         </Link>
       </div>
       <p className="text-sm text-muted-foreground">
-        V1 shows only your own profile. When the product adds reporting lines or downlines, this view will list people
-        under you without duplicating rules in the UI.
+        Your team members under your downline. Contact admin to update team structure.
       </p>
 
       {isPending ? (

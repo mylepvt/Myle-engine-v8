@@ -61,7 +61,7 @@ export function WalletPage({ title }: Props) {
       </div>
 
       <div>
-        <h2 className="mb-2 text-sm font-medium text-foreground">Ledger (paged)</h2>
+        <h2 className="mb-2 text-sm font-medium text-foreground">Transaction History</h2>
         {ledger.isPending ? <Skeleton className="h-20 w-full" /> : null}
         {ledger.isError ? (
           <p className="text-sm text-destructive" role="alert">

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
-  ArrowLeft,
   ArrowRight,
   Eye,
   EyeOff,
@@ -67,6 +66,7 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
   const [showGateBanner, setShowGateBanner] = useState(fromProtected)
+  const [showForgotHint, setShowForgotHint] = useState(false)
 
   useEffect(() => {
     try {
@@ -169,19 +169,19 @@ export function LoginPage() {
       </div>
 
       <div className="relative z-[1] w-full max-w-[min(100%,26rem)]">
-        <Link
-          to="/"
-          className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="size-4 shrink-0 opacity-80" aria-hidden />
-          Back to home
-        </Link>
+        {/* Brand mark above card */}
+        <div className="mb-8 flex flex-col items-center gap-2">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-primary shadow-lg shadow-primary/40">
+            <Network className="size-7 text-white" aria-hidden />
+          </div>
+          <span className="font-heading text-xl font-bold tracking-tight text-foreground">Myle</span>
+        </div>
 
         <AuthCard
           variant="center"
           icon={Network}
-          title="Myle Community"
-          subtitle="Sign in to your account"
+          title="Welcome back"
+          subtitle="Sign in to Myle Community"
           footer={
             <p className="text-sm text-muted-foreground">
               New team member?{' '}
@@ -276,11 +276,15 @@ export function LoginPage() {
                 devLoginAllowed ? 'border-t border-white/[0.08] pt-5' : '',
               )}
             >
-              <p className="mb-4 text-center text-xs font-medium leading-relaxed text-muted-foreground sm:text-left">
-                {devLoginAllowed
-                  ? 'Sign in with your FBO ID and password. Username login is also supported.'
-                  : 'Primary login is your FBO ID and password. Username login is also supported.'}
-              </p>
+              {devLoginAllowed ? (
+                <p className="mb-4 text-center text-xs font-medium leading-relaxed text-muted-foreground sm:text-left">
+                  Or sign in with your FBO ID and password (username still works if you have one).
+                </p>
+              ) : (
+                <p className="mb-4 text-center text-xs text-muted-foreground">
+                  Use your FBO ID and password to sign in.
+                </p>
+              )}
 
               <div className="space-y-3.5">
                 <div>
@@ -366,11 +370,16 @@ export function LoginPage() {
                 <button
                   type="button"
                   className="text-sm font-semibold text-primary hover:underline"
-                  onClick={(e) => e.preventDefault()}
+                  onClick={() => setShowForgotHint(s => !s)}
                 >
                   Forgot password?
                 </button>
               </div>
+              {showForgotHint && (
+                <p className="mt-2 rounded-xl border border-primary/25 bg-primary/[0.08] px-3 py-2.5 text-center text-xs text-muted-foreground">
+                  Contact your leader or admin to reset your password.
+                </p>
+              )}
 
               <Button
                 type="submit"

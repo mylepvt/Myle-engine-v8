@@ -32,6 +32,7 @@ import {
   useAvatarUploadMutation,
 } from '@/hooks/use-settings-query'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
+import { type Role } from '@/types/role'
 import { cn } from '@/lib/utils'
 import { apiUrl } from '@/lib/api'
 
@@ -82,7 +83,8 @@ export default function SettingsPage() {
   const [settingError, setSettingError] = useState<string | null>(null)
   const [deleteConfirmKey, setDeleteConfirmKey] = useState<string | null>(null)
 
-  const isAdmin = (authData?.role ?? '').toLowerCase() === 'admin'
+  const userRole = authData?.role as Role | undefined
+  const isAdmin = userRole === 'admin'
 
   // Initialize form when profile data loads
   if (userProfile.data && !profileForm.username) {

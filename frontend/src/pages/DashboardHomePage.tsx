@@ -442,7 +442,7 @@ export function DashboardHomePage() {
           <div>
             <CardTitle className="text-ds-h3">Recent leads</CardTitle>
             <CardDescription>
-              Newest leads loaded in the workboard snapshot (up to 8)
+              Your 8 most recent leads
             </CardDescription>
           </div>
           <Button variant="secondary" size="sm" asChild>
@@ -458,7 +458,7 @@ export function DashboardHomePage() {
             </div>
           ) : recentLeads.length === 0 ? (
             <p className="text-ds-body text-muted-foreground">
-              No leads in the current workboard window yet. Open{' '}
+              No leads yet. Open{' '}
               <Link
                 to="/dashboard/work/leads"
                 className="font-medium text-primary underline-offset-2 hover:underline"
