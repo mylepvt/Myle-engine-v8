@@ -17,7 +17,7 @@ import {
 import { AuthCard } from '@/components/auth/AuthCard'
 import { IconInput } from '@/components/auth/IconInput'
 import { Button } from '@/components/ui/button'
-import { authDevLogin, authPasswordLogin, DEV_SEED_PASSWORD } from '@/lib/auth-api'
+import { authDevLogin, authPasswordLogin } from '@/lib/auth-api'
 import { fetchAuthMe } from '@/hooks/use-auth-me-query'
 import { DEFAULT_META, useMetaQuery } from '@/hooks/use-meta-query'
 import { t } from '@/lib/i18n'
@@ -89,7 +89,7 @@ export function LoginPage() {
     if (!password.trim()) {
       setError(
         devLoginAllowed
-          ? `Password required — dev seed: ${DEV_SEED_PASSWORD}`
+          ? `Password is required. Use your assigned password.`
           : 'Please enter your password.',
       )
       return
@@ -217,10 +217,10 @@ export function LoginPage() {
           {devLoginAllowed ? (
             <div className="space-y-3 rounded-2xl border border-amber-500/30 bg-amber-500/[0.07] p-4">
               <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-amber-200/90">
-                Development
+                Quick Access
               </p>
               <label className="field-label" htmlFor="login-role">
-                Preview role
+                Select role
               </label>
               <select
                 id="login-role"
@@ -248,7 +248,7 @@ export function LoginPage() {
                     Signing in…
                   </>
                 ) : (
-                  'Continue with preview role'
+                  'Continue'
                 )}
               </Button>
             </div>
@@ -325,8 +325,8 @@ export function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={
                       devLoginAllowed
-                        ? `Dev default: ${DEV_SEED_PASSWORD}`
-                        : 'Enter password'
+                        ? 'Enter your password'
+                        : 'Enter your password'
                     }
                     disabled={pwPending}
                     icon={Lock}

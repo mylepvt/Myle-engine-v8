@@ -13,7 +13,7 @@ export function FunnelShell() {
     queryKey: ["crm-health"],
     queryFn: async () => {
       const r = await fetch(`${API}/health`);
-      if (!r.ok) throw new Error("API down");
+      if (!r.ok) throw new Error("Service unavailable");
       return r.json() as Promise<{ ok: boolean; service: string }>;
     },
   });
@@ -34,12 +34,12 @@ export function FunnelShell() {
   return (
     <section className="flex flex-col gap-4">
       <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-        <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">API</p>
+        <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">System Status</p>
         {health.isLoading && <p className="text-sm">Checking…</p>}
-        {health.isError && <p className="text-sm text-red-600">Offline — start crm-api on :4000</p>}
+        {health.isError && <p className="text-sm text-red-600">Service temporarily unavailable. Please try again.</p>}
         {health.data && (
           <p className="text-sm text-emerald-700">
-            {health.data.service} · {health.data.ok ? "ok" : "degraded"}
+            {health.data.service} · {health.data.ok ? "Online" : "Limited"}
           </p>
         )}
       </div>
@@ -61,7 +61,7 @@ export function FunnelShell() {
         ))}
       </div>
       <p className="text-xs text-neutral-500">
-        Active (Zustand): <span className="font-mono">{activeStep}</span> — server lists use React Query.
+        Current stage: <span className="font-mono">{activeStep}</span>
       </p>
     </section>
   );

@@ -942,9 +942,8 @@ export function WorkboardPage({ title }: Props) {
 
       {/* Main content */}
       {data && !isPending && (
-        role === 'admin'
-          ? <AdminView cols={cols} pm={pm} patchBusyLeadId={patchBusyLeadId} search={search} />
-          : (
+        role === 'team'
+          ? (
             <TeamView
               cols={cols}
               pm={pm}
@@ -956,6 +955,7 @@ export function WorkboardPage({ title }: Props) {
               search={search}
             />
           )
+          : <AdminView cols={cols} pm={pm} patchBusyLeadId={patchBusyLeadId} search={search} />
       )}
       {confirmLead ? (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4">
