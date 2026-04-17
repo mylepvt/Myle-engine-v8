@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { PushNotificationToggle } from '@/components/notifications/PushNotificationToggle'
 import { playSuccess } from '@/lib/click-sound'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -401,14 +402,10 @@ export default function SettingsPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label htmlFor="push_notifications">Push Notifications</Label>
+                      <Label>Push Notifications</Label>
                       <p className="text-sm text-gray-600">Receive browser push notifications</p>
                     </div>
-                    <Switch
-                      id="push_notifications"
-                      checked={userPreferences.data.push_notifications}
-                      onCheckedChange={(checked) => handlePreferencesUpdate('push_notifications', checked)}
-                    />
+                    <PushNotificationToggle />
                   </div>
                   <div className="flex items-center justify-between">
                     <div>

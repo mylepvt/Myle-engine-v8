@@ -38,6 +38,8 @@ from app.services.leads_service import _sync_batch_completion_timestamps
 from app.api.v1.crm_sync import ensure_crm_shadow
 from app.core.auth_cookie import MYLE_ACCESS_COOKIE
 from app.core.config import settings
+from app.db.session import AsyncSessionLocal
+from app.services.push_service import send_push_to_user_bg
 
 router = APIRouter()
 watch_router = APIRouter()
@@ -247,10 +249,27 @@ async def generate_batch_share_url(
 async def update_lead(
     lead_id: int,
     body: LeadUpdate,
+    background_tasks: BackgroundTasks,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     service: Annotated[LeadsService, Depends(get_leads_service)],
 ):
-    return await service.update_lead(lead_id=lead_id, body=body, user=user)
+    lead = await service.update_lead(lead_id=lead_id, body=body, user=user)
+    # Notify newly assigned user (skip if assigning to self)
+    assigned_uid = getattr(lead, "assigned_to_user_id", None)
+    if (
+        body.assigned_to_user_id is not None
+        and assigned_uid is not None
+        and assigned_uid != user.user_id
+    ):
+        background_tasks.add_task(
+            send_push_to_user_bg,
+            AsyncSessionLocal,
+            assigned_uid,
+            title="New Lead Assigned",
+            body=f"Lead '{lead.name}' has been assigned to you",
+            url="/dashboard/work/leads",
+        )
+    return lead
 
 
 @router.delete("/{lead_id}", status_code=http_status.HTTP_204_NO_CONTENT)

@@ -99,3 +99,8 @@ export function playTap(): void {
 export function playSuccess(): void {
   playBuffer('success')
 }
+
+// On desktop (non-touch), prime audio immediately — no gesture required
+if (typeof window !== 'undefined' && !('ontouchstart' in window)) {
+  setTimeout(() => primeAudio(), 100)
+}

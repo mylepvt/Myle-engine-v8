@@ -2,7 +2,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,8 +19,10 @@ from app.core.passwords import (
     should_upgrade_stored_password_to_bcrypt,
     verify_password_legacy_compatible,
 )
+from app.db.session import AsyncSessionLocal
 from app.models.password_reset_token import PasswordResetToken
 from app.models.user import User
+from app.services.push_service import send_push_to_role_bg
 from app.schemas.auth import (
     DevLoginRequest,
     DevLoginResponse,
@@ -170,6 +172,7 @@ async def lookup_upline_fbo(
 @router.post("/register", response_model=RegisterResponse)
 async def register(
     body: RegisterRequest,
+    background_tasks: BackgroundTasks,
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> RegisterResponse:
     """Self-serve registration — team role, pending until admin approves (legacy ``/register``)."""
@@ -247,6 +250,17 @@ async def register(
     )
     session.add(user)
     await session.commit()
+    # Notify admins and leaders of new pending registration
+    username_display = body.username.strip()
+    for role in ("admin", "leader"):
+        background_tasks.add_task(
+            send_push_to_role_bg,
+            AsyncSessionLocal,
+            role,
+            title="New Registration Pending",
+            body=f"{username_display} has registered and is awaiting approval",
+            url="/dashboard/team/pending-registrations",
+        )
     return RegisterResponse()
 
 
