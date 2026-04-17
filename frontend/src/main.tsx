@@ -44,17 +44,53 @@ function setupIosViewportLock() {
     /iPad|iPhone|iPod/.test(ua) ||
     (navigator.platform === 'MacIntel' && (navigator as Navigator & { maxTouchPoints?: number }).maxTouchPoints! > 1)
   if (!isIos) return
+  if (typeof CSS !== 'undefined' && CSS.supports('height', '100lvh')) return
 
-  const updateVh = () => {
-    const vv = window.visualViewport
-    const vh = Math.round((vv?.height ?? window.innerHeight))
-    document.documentElement.style.setProperty('--app-vh', `${vh}px`)
+  const rootStyle = document.documentElement.style
+  let lockedVh = 0
+
+  const readStableVh = () => {
+    const vv = window.visualViewport?.height ?? 0
+    return Math.round(Math.max(window.innerHeight, vv))
   }
 
-  updateVh()
-  window.addEventListener('resize', updateVh, { passive: true })
-  window.addEventListener('orientationchange', updateVh, { passive: true })
-  window.visualViewport?.addEventListener('resize', updateVh, { passive: true })
+  const applyStableVh = () => {
+    lockedVh = readStableVh()
+    rootStyle.setProperty('--app-shell-vh', `${lockedVh}px`)
+  }
+
+  const refreshStableVh = () => {
+    const active = document.activeElement
+    const editing =
+      active instanceof HTMLElement &&
+      (active.isContentEditable ||
+        active.matches('input, textarea, select, [contenteditable="true"]'))
+    if (editing) return
+
+    const next = readStableVh()
+    if (next > lockedVh || Math.abs(next - lockedVh) >= 120) {
+      lockedVh = next
+      rootStyle.setProperty('--app-shell-vh', `${next}px`)
+    }
+  }
+
+  applyStableVh()
+
+  // Avoid tracking every visualViewport frame on iOS — it can desync taps from painted pixels.
+  window.addEventListener('resize', refreshStableVh, { passive: true })
+  window.addEventListener('pageshow', refreshStableVh, { passive: true })
+  window.addEventListener(
+    'orientationchange',
+    () => {
+      window.setTimeout(applyStableVh, 160)
+    },
+    { passive: true },
+  )
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      window.setTimeout(refreshStableVh, 0)
+    }
+  })
 }
 
 setupIosViewportLock()
