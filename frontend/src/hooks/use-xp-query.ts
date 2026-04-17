@@ -8,8 +8,17 @@ export type XpMe = {
   daily_xp: number
   daily_cap: number
   streak: number
-  next_level_xp: number
+  next_level_xp: number | null
   progress_pct: number
+  season_year: number | null
+  season_month: number | null
+}
+
+export type XpHistoryEntry = {
+  year: number
+  month: number
+  final_xp: number
+  final_level: string
 }
 
 export type XpLeaderboardEntry = {
@@ -49,6 +58,18 @@ export function useXpLeaderboardQuery() {
       return res.json()
     },
     staleTime: 30_000,
+  })
+}
+
+export function useXpHistoryQuery() {
+  return useQuery<XpHistoryEntry[]>({
+    queryKey: ['xp', 'history'],
+    queryFn: async () => {
+      const res = await apiFetch('/api/v1/xp/me/history')
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      return res.json()
+    },
+    staleTime: 300_000,
   })
 }
 

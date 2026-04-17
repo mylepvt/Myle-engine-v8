@@ -1,4 +1,16 @@
-"""Anti-cheat XP service for Myle Community."""
+"""Anti-cheat XP service for Myle Community.
+
+Monthly season reset
+────────────────────
+Every user's XP belongs to a "season" (year + month).  On the first XP-related
+action in a new calendar month we:
+  1. Archive the previous season's final XP + level into xp_monthly_archive.
+  2. Reset xp_total → 0, xp_level → 'rookie', clear xp_events for that user.
+  3. Update xp_season_year / xp_season_month to the current month.
+
+This is a lazy reset — no cron job needed.  Admins can also trigger a manual
+reset via the admin endpoint.
+"""
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
@@ -10,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.lead import Lead
 from app.models.user import User
 from app.models.xp_event import XpEvent
+from app.models.xp_monthly_archive import XpMonthlyArchive
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -43,6 +56,10 @@ NEXT_LEVEL_XP = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
 def _calculate_level(xp_total: int) -> str:
     for threshold, label in LEVEL_THRESHOLDS:
         if xp_total >= threshold:
@@ -50,8 +67,12 @@ def _calculate_level(xp_total: int) -> str:
     return "rookie"
 
 
+def _now_utc() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 def _today_utc() -> date:
-    return datetime.now(timezone.utc).date()
+    return _now_utc().date()
 
 
 async def _today_xp(session: AsyncSession, user_id: int) -> int:
@@ -83,6 +104,70 @@ async def _already_granted_today(
     return count > 0
 
 
+# ---------------------------------------------------------------------------
+# Monthly season reset
+# ---------------------------------------------------------------------------
+
+async def _maybe_reset_season(session: AsyncSession, user: User) -> None:
+    """If the user's stored season != current month, archive + reset."""
+    now = _now_utc()
+    current_year = now.year
+    current_month = now.month
+
+    season_year = user.xp_season_year
+    season_month = user.xp_season_month
+
+    # First ever XP action — just stamp the season, no archive needed
+    if season_year is None or season_month is None:
+        user.xp_season_year = current_year
+        user.xp_season_month = current_month
+        return
+
+    # Same month — nothing to do
+    if season_year == current_year and season_month == current_month:
+        return
+
+    # New month → archive previous season
+    prev_xp = user.xp_total or 0
+    prev_level = _calculate_level(prev_xp)
+
+    # Upsert archive row (ignore if already archived by a concurrent reset)
+    existing = (await session.execute(
+        select(XpMonthlyArchive).where(
+            XpMonthlyArchive.user_id == user.id,
+            XpMonthlyArchive.year == season_year,
+            XpMonthlyArchive.month == season_month,
+        )
+    )).scalar_one_or_none()
+
+    if existing is None:
+        archive = XpMonthlyArchive(
+            user_id=user.id,
+            year=season_year,
+            month=season_month,
+            final_xp=prev_xp,
+            final_level=prev_level,
+        )
+        session.add(archive)
+
+    # Delete all xp_events for this user (clean slate for new season)
+    await session.execute(
+        delete(XpEvent).where(XpEvent.user_id == user.id)
+    )
+
+    # Reset user XP
+    user.xp_total = 0
+    user.xp_level = "rookie"
+    user.xp_season_year = current_year
+    user.xp_season_month = current_month
+
+    await session.flush()
+
+
+# ---------------------------------------------------------------------------
+# Core XP operations
+# ---------------------------------------------------------------------------
+
 async def grant_xp(
     session: AsyncSession,
     user_id: int,
@@ -94,7 +179,6 @@ async def grant_xp(
     if xp_amount is None:
         return None
 
-    # Load user
     user = (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     if user is None:
         return None
@@ -103,6 +187,9 @@ async def grant_xp(
     if user.role == "admin":
         return None
 
+    # Monthly season check — reset if new month
+    await _maybe_reset_season(session, user)
+
     # lead_won anti-cheat: lead must be >24h old
     if action == "lead_won":
         if lead_id is None:
@@ -110,28 +197,25 @@ async def grant_xp(
         lead = (await session.execute(select(Lead).where(Lead.id == lead_id))).scalar_one_or_none()
         if lead is None:
             return None
-        age = datetime.now(timezone.utc) - lead.created_at.replace(tzinfo=timezone.utc)
+        age = _now_utc() - lead.created_at.replace(tzinfo=timezone.utc)
         if age < timedelta(hours=24):
             return None
 
-    # Per-lead per-day cap for certain actions
+    # Per-lead per-day cap
     if action in PER_LEAD_ACTIONS and lead_id is not None:
         if await _already_granted_today(session, user_id, action, lead_id):
             return None
 
-    # Daily cap check
+    # Daily cap
     daily_xp = await _today_xp(session, user_id)
     if daily_xp >= DAILY_CAP:
         return None
 
-    # Cap the actual grant so we don't exceed DAILY_CAP
     actual_xp = min(xp_amount, DAILY_CAP - daily_xp)
 
-    # Write XP event
     event = XpEvent(user_id=user_id, action=action, xp=actual_xp, lead_id=lead_id)
     session.add(event)
 
-    # Update user totals
     user.xp_total = (user.xp_total or 0) + actual_xp
     user.xp_level = _calculate_level(user.xp_total)
 
@@ -141,7 +225,6 @@ async def grant_xp(
 
 async def revoke_won_xp(session: AsyncSession, user_id: int, lead_id: int) -> None:
     """Delete lead_won XP events for a lead and deduct from user total."""
-    # Find all lead_won events for this lead/user
     rows = (
         await session.execute(
             select(XpEvent).where(
@@ -173,10 +256,62 @@ async def revoke_won_xp(session: AsyncSession, user_id: int, lead_id: int) -> No
     await session.flush()
 
 
+# ---------------------------------------------------------------------------
+# Admin manual reset (for testing or emergency)
+# ---------------------------------------------------------------------------
+
+async def admin_force_reset_all(session: AsyncSession) -> int:
+    """Archive + reset XP for ALL users. Returns count of users reset."""
+    now = _now_utc()
+    users = (await session.execute(
+        select(User).where(User.role != "admin")
+    )).scalars().all()
+
+    reset_count = 0
+    for user in users:
+        if (user.xp_total or 0) == 0:
+            continue  # nothing to archive
+
+        existing = (await session.execute(
+            select(XpMonthlyArchive).where(
+                XpMonthlyArchive.user_id == user.id,
+                XpMonthlyArchive.year == now.year,
+                XpMonthlyArchive.month == now.month,
+            )
+        )).scalar_one_or_none()
+
+        if existing is None:
+            archive = XpMonthlyArchive(
+                user_id=user.id,
+                year=now.year,
+                month=now.month,
+                final_xp=user.xp_total or 0,
+                final_level=_calculate_level(user.xp_total or 0),
+            )
+            session.add(archive)
+
+        await session.execute(delete(XpEvent).where(XpEvent.user_id == user.id))
+        user.xp_total = 0
+        user.xp_level = "rookie"
+        user.xp_season_year = now.year
+        user.xp_season_month = now.month
+        reset_count += 1
+
+    await session.flush()
+    return reset_count
+
+
+# ---------------------------------------------------------------------------
+# Read queries
+# ---------------------------------------------------------------------------
+
 async def get_user_xp_summary(session: AsyncSession, user_id: int) -> dict:
     user = (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     if user is None:
         return {}
+
+    # Lazy season check on read too (so dashboard is always fresh)
+    await _maybe_reset_season(session, user)
 
     daily_xp = await _today_xp(session, user_id)
     xp_total = user.xp_total or 0
@@ -198,10 +333,28 @@ async def get_user_xp_summary(session: AsyncSession, user_id: int) -> dict:
         "xp_total": xp_total,
         "level": level,
         "daily_xp": daily_xp,
+        "daily_cap": DAILY_CAP,
         "streak": user.login_streak or 0,
         "next_level_xp": next_xp,
         "progress_pct": progress_pct,
+        "season_year": user.xp_season_year,
+        "season_month": user.xp_season_month,
     }
+
+
+async def get_user_xp_history(session: AsyncSession, user_id: int) -> list[dict]:
+    """Past monthly archive for a user, newest first."""
+    rows = (
+        await session.execute(
+            select(XpMonthlyArchive)
+            .where(XpMonthlyArchive.user_id == user_id)
+            .order_by(XpMonthlyArchive.year.desc(), XpMonthlyArchive.month.desc())
+        )
+    ).scalars().all()
+    return [
+        {"year": r.year, "month": r.month, "final_xp": r.final_xp, "final_level": r.final_level}
+        for r in rows
+    ]
 
 
 async def get_leaderboard(session: AsyncSession, limit: int = 10) -> list[dict]:
@@ -220,7 +373,7 @@ async def get_leaderboard(session: AsyncSession, limit: int = 10) -> list[dict]:
             {
                 "rank": rank,
                 "user_id": user.id,
-                "name": user.username or user.fbo_id,
+                "name": user.name or user.username or user.fbo_id,
                 "fbo_id": user.fbo_id,
                 "level": _calculate_level(user.xp_total or 0),
                 "xp_total": user.xp_total or 0,

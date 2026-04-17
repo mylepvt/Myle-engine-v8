@@ -74,4 +74,7 @@ class User(Base):
     xp_level: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'rookie'"), default="rookie")
     login_streak: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"), default=0)
     last_login_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    # Season tracking — which year/month this user's xp_total belongs to (migration 0032)
+    xp_season_year: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    xp_season_month: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
