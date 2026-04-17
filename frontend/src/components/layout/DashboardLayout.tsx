@@ -646,8 +646,6 @@ export function DashboardLayout() {
           <DashboardMobileTabBar
             role={shellRole}
             trainingLocked={trainingLocked}
-            isMainScrolled={isMainScrolled}
-            keyboardOpen={keyboardOpen}
             onOpenMenu={() => setMobileMenuOpen(true)}
           />
         ) : null}

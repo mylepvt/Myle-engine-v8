@@ -25,8 +25,6 @@ type Props = {
   role: Role
   /** Legacy-style gate: only Training until completed */
   trainingLocked?: boolean
-  isMainScrolled?: boolean
-  keyboardOpen?: boolean
   onOpenMenu: () => void
 }
 
@@ -43,16 +41,8 @@ function fourthTabDef(role: Role): DashboardRouteDef | undefined {
 export function DashboardMobileTabBar({
   role,
   trainingLocked = false,
-  isMainScrolled = false,
-  keyboardOpen = false,
   onOpenMenu,
 }: Props) {
-  const navClassName = cn(
-    'dashboard-mobile-tabbar shrink-0 border-t border-border/60 pb-[max(0.35rem,env(safe-area-inset-bottom))] md:hidden',
-    isMainScrolled && 'dashboard-mobile-tabbar--scrolled',
-    keyboardOpen && 'dashboard-mobile-tabbar--keyboard-open',
-  )
-
   if (trainingLocked) {
     const def = defForPath('system/training')
     if (!def || !routeDefAccessible(def, role)) return null
@@ -61,19 +51,19 @@ export function DashboardMobileTabBar({
       resolveTitleForPath('system/training', role) ?? def.label
     return (
       <nav
-        className={navClassName}
+        className="h-16 shrink-0 border-t border-border/70 bg-background shadow-[0_-8px_20px_-14px_rgba(2,6,23,0.35)] md:hidden"
         role="navigation"
         aria-label="Training"
       >
-        <div className="dashboard-mobile-tabbar__inner mx-auto flex h-16 max-w-lg items-stretch justify-around gap-1 px-2">
+        <div className="mx-auto flex h-full max-w-lg items-stretch justify-around gap-1 px-2">
           <NavLink
             to="/dashboard/system/training"
             className={({ isActive }) =>
               cn(
-                'dashboard-mobile-tabbar__tab flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 text-ds-caption font-medium leading-none transition-colors active:opacity-70',
+                'flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 text-[0.65rem] font-medium leading-none transition-colors active:opacity-70',
                 isActive
-                  ? 'dashboard-mobile-tabbar__tab--active text-primary'
-                  : 'dashboard-mobile-tabbar__tab--idle text-muted-foreground hover:text-foreground',
+                  ? 'bg-primary/12 text-primary'
+                  : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground',
               )
             }
           >
@@ -94,7 +84,7 @@ export function DashboardMobileTabBar({
           <button
             type="button"
             onClick={onOpenMenu}
-            className="dashboard-mobile-tabbar__tab dashboard-mobile-tabbar__tab--idle flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 text-ds-caption font-medium leading-none text-muted-foreground transition-colors active:opacity-70 hover:text-foreground"
+            className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 text-[0.65rem] font-medium leading-none text-muted-foreground transition-colors active:opacity-70 hover:bg-muted/70 hover:text-foreground"
             aria-label="Open menu"
           >
             <MoreHorizontal className="size-[22px] shrink-0" strokeWidth={1.75} aria-hidden />
@@ -115,11 +105,11 @@ export function DashboardMobileTabBar({
 
   return (
     <nav
-      className={navClassName}
+      className="h-16 shrink-0 border-t border-border/70 bg-background shadow-[0_-8px_20px_-14px_rgba(2,6,23,0.35)] md:hidden"
       role="navigation"
       aria-label="Main tabs"
     >
-      <div className="dashboard-mobile-tabbar__inner mx-auto flex h-16 max-w-lg items-stretch justify-around gap-1 px-2">
+      <div className="mx-auto flex h-full max-w-lg items-stretch justify-around gap-1 px-2">
         {defs.map((def) => {
           const to = def.path === '' ? '/dashboard' : `/dashboard/${def.path}`
           const Icon = getDashboardNavIcon(def.path)
@@ -134,10 +124,10 @@ export function DashboardMobileTabBar({
               end={def.end ?? false}
               className={({ isActive }) =>
                 cn(
-                  'dashboard-mobile-tabbar__tab flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 text-ds-caption font-medium leading-none transition-colors active:opacity-70',
+                  'flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 text-[0.65rem] font-medium leading-none transition-colors active:opacity-70',
                   isActive
-                    ? 'dashboard-mobile-tabbar__tab--active text-primary'
-                    : 'dashboard-mobile-tabbar__tab--idle text-muted-foreground hover:text-foreground',
+                    ? 'bg-primary/12 text-primary'
+                    : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground',
                 )
               }
             >
@@ -161,7 +151,7 @@ export function DashboardMobileTabBar({
         <button
           type="button"
           onClick={onOpenMenu}
-          className="dashboard-mobile-tabbar__tab dashboard-mobile-tabbar__tab--idle flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 text-ds-caption font-medium leading-none text-muted-foreground transition-colors active:opacity-70 hover:text-foreground"
+          className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 text-[0.65rem] font-medium leading-none text-muted-foreground transition-colors active:opacity-70 hover:bg-muted/70 hover:text-foreground"
           aria-label="Open full menu"
         >
           <MoreHorizontal className="size-[22px] shrink-0" strokeWidth={1.75} aria-hidden />
