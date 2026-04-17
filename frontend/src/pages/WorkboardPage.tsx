@@ -1,6 +1,6 @@
-import { type ReactElement, memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { type ReactElement, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CheckSquare, Eye, Pencil, Search, Send, Video } from 'lucide-react'
+import { CheckCircle2, CheckSquare, Eye, Pencil, Search, Send, Upload, Video } from 'lucide-react'
 import { List, type RowComponentProps } from 'react-window'
 import { useQueryClient } from '@tanstack/react-query'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
@@ -149,6 +149,35 @@ const LeadCard = memo(function LeadCard({
     return () => window.clearInterval(id)
   }, [])
 
+  // ── Proof upload ──────────────────────────────────────────────────────────────
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadDone, setUploadDone] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const qc = useQueryClient()
+
+  const proofAlreadyUploaded =
+    lead.payment_status === 'proof_uploaded' ||
+    lead.payment_status === 'approved'
+
+  async function handleProofFile(file: File) {
+    setUploading(true)
+    setUploadError(null)
+    try {
+      const fd = new FormData()
+      fd.append('proof_file', file)
+      fd.append('lead_id', String(lead.id))
+      fd.append('payment_amount_cents', '19600')
+      await apiFetch('/api/v1/payments/proof/upload', { method: 'POST', body: fd })
+      setUploadDone(true)
+      void qc.invalidateQueries({ queryKey: ['workboard'] })
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setUploading(false)
+    }
+  }
+
   const badge = BADGE[lead.status] ?? 'bg-muted/30 text-muted-foreground border-white/10'
   const isWatched = lead.status === 'video_watched' || lead.call_status === 'video_watched'
   const isSent    = !isWatched && (lead.status === 'video_sent' || lead.call_status === 'video_sent')
@@ -200,6 +229,38 @@ const LeadCard = memo(function LeadCard({
           onClick={() => void pm.mutateAsync({ id: lead.id, body: { call_status: 'video_sent', status: 'video_sent' as LeadStatus } })}>
           <Video className="h-3.5 w-3.5"/>
         </IconBtn>
+        {/* ₹196 proof upload */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file) void handleProofFile(file)
+            e.target.value = ''
+          }}
+        />
+        {proofAlreadyUploaded || uploadDone ? (
+          <span title="Proof uploaded" className="flex h-8 w-8 items-center justify-center rounded-md border border-emerald-400/30 bg-emerald-400/12 text-emerald-300">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+          </span>
+        ) : (
+          <button
+            type="button"
+            title={uploading ? 'Uploading…' : uploadError ? `Retry — ${uploadError}` : 'Upload ₹196 proof'}
+            disabled={uploading}
+            onClick={() => fileInputRef.current?.click()}
+            className={cn(
+              'flex h-8 w-8 items-center justify-center rounded-md border bg-muted/30 transition disabled:opacity-50',
+              uploadError
+                ? 'border-red-400/40 text-red-400 hover:bg-red-400/10'
+                : 'border-border text-foreground hover:border-amber-400/40 hover:text-amber-400',
+            )}
+          >
+            <Upload className="h-3.5 w-3.5" />
+          </button>
+        )}
         <Link to={`/dashboard/work/leads/${lead.id}`} title="Edit"
           className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted/30 transition hover:border-primary/40 hover:text-primary">
           <Pencil className="h-3.5 w-3.5"/>
