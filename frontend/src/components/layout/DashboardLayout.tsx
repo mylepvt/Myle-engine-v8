@@ -62,6 +62,17 @@ export function DashboardLayout() {
   const { unread: noticeBoardUnread } = useNoticeBoardUnread()
   const [headerSearch, setHeaderSearch] = useState('')
   const [isMobile, setIsMobile] = useState(false)
+  const [viewportDebug, setViewportDebug] = useState<{
+    innerH: number
+    vvH: number
+    clientH: number
+    shellH: number
+    mainH: number
+    navH: number
+    navBottomGap: number
+    safeBottom: number
+  } | null>(null)
+  const debugViewport = new URLSearchParams(location.search).get('debugViewport') === '1'
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -81,6 +92,53 @@ export function DashboardLayout() {
     // Prevent "stuck overlay" reports after heavy global repaint (theme switch).
     setMobileMenuOpen(false)
   }, [theme, isMobile, setMobileMenuOpen])
+
+  useEffect(() => {
+    if (!debugViewport) {
+      setViewportDebug(null)
+      return
+    }
+
+    const readSafeInsetBottom = () => {
+      const probe = document.createElement('div')
+      probe.style.position = 'fixed'
+      probe.style.bottom = '0'
+      probe.style.left = '0'
+      probe.style.paddingBottom = 'env(safe-area-inset-bottom)'
+      probe.style.visibility = 'hidden'
+      document.body.appendChild(probe)
+      const px = parseFloat(window.getComputedStyle(probe).paddingBottom || '0')
+      probe.remove()
+      return Number.isFinite(px) ? Math.round(px) : 0
+    }
+
+    const collect = () => {
+      const shell = document.querySelector('.dashboard-shell') as HTMLElement | null
+      const main = document.querySelector('.content-dashboard-main') as HTMLElement | null
+      const nav = document.querySelector('nav[aria-label="Main tabs"]') as HTMLElement | null
+      const navBottomGap = nav ? Math.max(0, Math.round(window.innerHeight - nav.getBoundingClientRect().bottom)) : 0
+      setViewportDebug({
+        innerH: Math.round(window.innerHeight),
+        vvH: Math.round(window.visualViewport?.height ?? 0),
+        clientH: Math.round(document.documentElement.clientHeight),
+        shellH: Math.round(shell?.getBoundingClientRect().height ?? 0),
+        mainH: Math.round(main?.getBoundingClientRect().height ?? 0),
+        navH: Math.round(nav?.getBoundingClientRect().height ?? 0),
+        navBottomGap,
+        safeBottom: readSafeInsetBottom(),
+      })
+    }
+
+    collect()
+    window.addEventListener('resize', collect, { passive: true })
+    window.addEventListener('orientationchange', collect, { passive: true })
+    window.visualViewport?.addEventListener('resize', collect, { passive: true })
+    return () => {
+      window.removeEventListener('resize', collect)
+      window.removeEventListener('orientationchange', collect)
+      window.visualViewport?.removeEventListener('resize', collect)
+    }
+  }, [debugViewport, location.pathname, location.search])
 
   function submitHeaderSearch(e: FormEvent) {
     e.preventDefault()
@@ -468,6 +526,13 @@ export function DashboardLayout() {
             trainingLocked={trainingLocked}
             onOpenMenu={() => setMobileMenuOpen(true)}
           />
+        ) : null}
+        {debugViewport && viewportDebug ? (
+          <div className="fixed left-2 top-[60px] z-[120] rounded-md border border-amber-300/60 bg-black/80 px-2 py-1 text-[10px] leading-tight text-amber-200 md:hidden">
+            <div>inner:{viewportDebug.innerH} vv:{viewportDebug.vvH} client:{viewportDebug.clientH}</div>
+            <div>shell:{viewportDebug.shellH} main:{viewportDebug.mainH} nav:{viewportDebug.navH}</div>
+            <div>gap:{viewportDebug.navBottomGap} safeB:{viewportDebug.safeBottom}</div>
+          </div>
         ) : null}
       </div>
     </div>
