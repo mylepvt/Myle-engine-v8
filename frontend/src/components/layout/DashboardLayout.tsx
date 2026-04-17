@@ -220,7 +220,7 @@ export function DashboardLayout() {
           'flex h-full shrink-0 flex-col border-r border-border/80 bg-surface overflow-y-auto',
           'transition-[transform,width,border-color] duration-300 ease-out',
           sidebarOpen ? 'md:w-[18rem]' : 'md:w-0 md:overflow-hidden md:border-0',
-          'max-md:fixed max-md:left-0 max-md:top-0 max-md:z-50 max-md:h-dvh max-md:w-[min(20rem,85vw)] max-md:pt-[env(safe-area-inset-top)]',
+          'max-md:fixed max-md:left-0 max-md:top-0 max-md:z-50 max-md:h-[var(--app-shell-vh)] max-md:w-[min(20rem,85vw)] max-md:pt-[env(safe-area-inset-top)]',
           'max-md:shadow-[0_0_60px_rgba(0,0,0,0.4)]',
           mobileMenuOpen
             ? 'max-md:translate-x-0'

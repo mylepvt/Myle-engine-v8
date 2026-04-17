@@ -48,6 +48,7 @@
     --success-foreground: var(--palette-ink);
     --warning: #d97706;
     --warning-foreground: var(--palette-ink);
+    --app-shell-vh: 100dvh;
     --glass-base: color-mix(in srgb, var(--palette-mist) 55%, white 45%);
     --shadow-card: 0 16px 48px -20px color-mix(in srgb, var(--palette-blue) 22%, transparent);
     --shadow-ios-bar: 0 0.5px 0 0 color-mix(in srgb, var(--palette-mist) 55%, transparent),
@@ -122,6 +123,14 @@
       radial-gradient(800px 500px at 50% 100%, color-mix(in srgb, var(--palette-mist) 12%, transparent), transparent 55%),
       var(--palette-ink);
     background-attachment: fixed;
+  }
+}
+
+@supports (height: 100lvh) {
+  @layer base {
+    :root {
+      --app-shell-vh: 100lvh;
+    }
   }
 }
 
@@ -445,7 +454,9 @@
     /* vh fallback for older browsers; dvh is the source of truth for modern iOS/Android */
     height: 100vh;
     height: 100dvh;
+    height: var(--app-shell-vh);
     max-height: 100dvh;
+    max-height: var(--app-shell-vh);
     overflow: hidden;
     position: relative;
   }
@@ -457,8 +468,8 @@
       top: 0;
       right: 0;
       left: 0;
-      height: var(--app-vh, 100dvh);
-      max-height: var(--app-vh, 100dvh);
+      height: var(--app-shell-vh);
+      max-height: var(--app-shell-vh);
     }
   }
 
@@ -590,5 +601,29 @@ html.perf-low-end .watch-gauge-needle {
   /* Smooth skeleton loading */
   .animate-pulse {
     @apply animate-pulse-soft;
+  }
+
+  @media (pointer: coarse) {
+    button,
+    a,
+    [role="button"],
+    [role="tab"],
+    input,
+    select,
+    textarea {
+      transition-property: background-color, border-color, color, opacity, transform;
+      transition-duration: 120ms;
+    }
+
+    button:not([disabled]):hover,
+    a:hover,
+    [role="button"]:not([disabled]):hover,
+    [role="tab"]:hover,
+    .card:hover,
+    .animate-lift:hover,
+    .animate-glow:hover {
+      box-shadow: none !important;
+      transform: none !important;
+    }
   }
 }
