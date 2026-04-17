@@ -19,9 +19,13 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+  },
+  // Rule overrides — must be a separate entry so they run AFTER extends
+  {
+    files: ['**/*.{ts,tsx}'],
     rules: {
-      // react-hooks v5 added this rule but it's too strict for the common
-      // "initialise local form state from async server data" pattern.
+      // react-hooks v5 added set-state-in-effect but it's too strict for the
+      // standard "initialise local form state from async server data" pattern.
       'react-hooks/set-state-in-effect': 'off',
     },
   },

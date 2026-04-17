@@ -93,8 +93,6 @@ export default function SettingsPage() {
   // Sync form fields when profile data first arrives from the server.
   useEffect(() => {
     if (userProfile.data) {
-      // Intentional: initialising local form state from async server data.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setProfileForm({
         username: userProfile.data.username || '',
         phone: userProfile.data.phone || '',
