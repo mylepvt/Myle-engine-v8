@@ -72,7 +72,6 @@ export function DailyReportFormPage({ title }: Props) {
   })
 
   useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect */
     const row = q.data
     if (!row) {
       setInts(Object.fromEntries(INT_FIELDS.map(({ key }) => [key, 0])))
@@ -85,7 +84,6 @@ export function DailyReportFormPage({ title }: Props) {
     }
     setInts(next)
     setRemarks(row.remarks ?? '')
-    /* eslint-enable react-hooks/set-state-in-effect */
   }, [q.data])
 
   const mut = useMutation({

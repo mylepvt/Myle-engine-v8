@@ -21,7 +21,7 @@ const PremiumButton = React.forwardRef<HTMLButtonElement, PremiumButtonProps>(
       className,
       isLoading = false,
       loadingText,
-      showRipple: _showRipple = true,
+      showRipple = true,
       glowOnHover = false,
       disabled,
       children,
@@ -33,6 +33,7 @@ const PremiumButton = React.forwardRef<HTMLButtonElement, PremiumButtonProps>(
       ref={ref}
       className={cn(
         'relative overflow-hidden',
+        showRipple && 'ripple-container',
         glowOnHover && 'hover:shadow-md',
         className,
       )}
