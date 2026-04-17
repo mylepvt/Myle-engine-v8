@@ -7,6 +7,7 @@ import { App } from '@/App'
 import { ThemeAndFeedbackProvider } from '@/components/providers/ThemeAndFeedbackProvider'
 import { AppErrorBoundary } from '@/components/routing/AppErrorBoundary'
 import { initPerformanceProfile, isLowEndDevice } from '@/lib/device-performance'
+import { scheduleAppShellViewportSync, syncAppShellViewportHeight } from '@/lib/app-shell-viewport'
 import './index.css'
 
 initPerformanceProfile()
@@ -50,20 +51,16 @@ function setupIosViewportLock() {
   rootEl.classList.toggle('ios-shell-lock', shouldLockShell)
   if (!shouldLockShell) {
     const applyDynamicVh = () => {
-      const vv = window.visualViewport?.height
-      const next = Math.round(Math.max(vv ?? 0, window.innerHeight))
-      if (next > 0) {
-        rootStyle.setProperty('--app-shell-vh', `${next}px`)
-      }
+      syncAppShellViewportHeight()
     }
 
-    applyDynamicVh()
+    scheduleAppShellViewportSync()
     window.addEventListener('resize', applyDynamicVh, { passive: true })
     window.visualViewport?.addEventListener('resize', applyDynamicVh, { passive: true })
-    window.addEventListener('orientationchange', () => window.setTimeout(applyDynamicVh, 120), {
+    window.addEventListener('orientationchange', () => window.setTimeout(scheduleAppShellViewportSync, 120), {
       passive: true,
     })
-    window.addEventListener('pageshow', applyDynamicVh, { passive: true })
+    window.addEventListener('pageshow', () => scheduleAppShellViewportSync(), { passive: true })
     return
   }
 

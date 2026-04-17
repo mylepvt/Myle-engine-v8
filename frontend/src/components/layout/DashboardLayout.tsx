@@ -19,6 +19,7 @@ import { MyleSidebarMark } from '@/components/brand/MyleSidebarMark'
 import { cn } from '@/lib/utils'
 import { authLogout } from '@/lib/auth-api'
 import { apiUrl } from '@/lib/api'
+import { scheduleAppShellViewportSync } from '@/lib/app-shell-viewport'
 import { notifyDashboardMainScrolled } from '@/lib/main-scroll-gate'
 import { useNoticeBoardUnread } from '@/hooks/use-notice-board-unread'
 import { useAuthStore } from '@/stores/auth-store'
@@ -163,6 +164,12 @@ export function DashboardLayout() {
   useEffect(() => {
     setIsMainScrolled(false)
   }, [location.pathname])
+
+  /** Android Chrome: first paint can leave `--app-shell-vh` wrong until a resize/navigation reflow. */
+  useEffect(() => {
+    if (!isMobile) return
+    scheduleAppShellViewportSync()
+  }, [isMobile, location.pathname])
 
   useEffect(() => {
     if (!debugViewport) {
