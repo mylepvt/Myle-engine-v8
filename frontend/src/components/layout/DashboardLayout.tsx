@@ -313,7 +313,7 @@ export function DashboardLayout() {
 
   return (
     <div
-      className="dashboard-shell flex w-full min-w-0 max-w-full overflow-hidden bg-background"
+      className="dashboard-shell flex min-h-0 w-full min-w-0 max-w-full flex-1 overflow-hidden bg-background"
       style={shellStyle}
     >
       {isMobile && mobileMenuOpen ? (

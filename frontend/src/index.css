@@ -48,11 +48,6 @@
     --success-foreground: var(--palette-ink);
     --warning: #d97706;
     --warning-foreground: var(--palette-ink);
-    /*
-     * Keep var fallback-safe on browsers without dvh support.
-     * Upgraded to 100dvh in @supports below.
-     */
-    --app-shell-vh: 100vh;
     --glass-base: color-mix(in srgb, var(--palette-mist) 55%, white 45%);
     --shadow-card: 0 16px 48px -20px color-mix(in srgb, var(--palette-blue) 22%, transparent);
     --shadow-ios-bar: 0 0.5px 0 0 color-mix(in srgb, var(--palette-mist) 55%, transparent),
@@ -130,12 +125,6 @@
   }
 }
 
-@supports (height: 100dvh) {
-  :root {
-    --app-shell-vh: 100dvh;
-  }
-}
-
 @layer base {
   * {
     @apply border-border;
@@ -209,10 +198,13 @@
   }
 
   #root {
-    /* dvh fallback: 100vh for browsers without dvh support (Chrome < 108, Firefox < 101) */
+    /* Full viewport via CSS only — no JS height locks on documentElement */
     min-height: 100vh;
     min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
     @apply min-w-0 max-w-full;
+    overflow: hidden;
     overflow-x: clip;
     touch-action: manipulation;
   }
@@ -454,22 +446,14 @@
    */
   .dashboard-shell {
     /*
-     * Adaptive fallback chain:
-     * 1) 100vh base for very old browsers
-     * 2) 100dvh on modern engines
-     * 3) var(--app-shell-vh) for runtime pixel sync from JS (visualViewport)
-     *
-     * --app-shell-vh is defaulted to 100vh and upgraded to 100dvh via @supports,
-     * so the var substitution always stays valid. JS can then refine it per
-     * browser + screen state (address bar collapse/expand, orientation).
+     * Pure CSS viewport height — no documentElement / visualViewport px locks.
+     * 100vh then 100dvh: old iOS/Safari vs modern dynamic viewport.
      */
-    height: 100vh;   /* universal fallback */
-    height: 100dvh;  /* overrides on browsers with dvh support (Chrome 108+, FF 101+, Safari 15.4+) */
-    height: var(--app-shell-vh); /* runtime-updated px value (or 100vh/100dvh fallback var) */
-    min-height: 0;   /* keep flex children from forcing shell growth */
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
     max-height: 100vh;
     max-height: 100dvh;
-    max-height: var(--app-shell-vh);
     overflow: hidden;
     position: relative;
   }
@@ -480,21 +464,6 @@
       max-height: 100vh;
       height: 100dvh;
       max-height: 100dvh;
-    }
-
-    /* iOS legacy viewport lock only (Safari without 100lvh). */
-    html.ios-shell-lock .dashboard-shell {
-      position: fixed;
-      top: 0;
-      right: 0;
-      left: 0;
-      height: var(--app-shell-vh);
-      max-height: var(--app-shell-vh);
-    }
-
-    html.ios-shell-lock .dashboard-mobile-drawer {
-      height: var(--app-shell-vh);
-      max-height: var(--app-shell-vh);
     }
   }
 
