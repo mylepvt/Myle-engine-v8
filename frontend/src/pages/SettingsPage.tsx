@@ -90,7 +90,10 @@ export default function SettingsPage() {
   const [profileSuccess, setProfileSuccess] = useState<string | null>(null)
   const [profileError, setProfileError] = useState<string | null>(null)
 
-  // Initialize form when profile data loads — useEffect prevents render-time state updates
+  // Sync form fields when profile data first arrives from the server.
+  // We intentionally call setState inside an effect here — this is the
+  // recommended pattern for deriving local form state from async server data.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (userProfile.data) {
       setProfileForm({
