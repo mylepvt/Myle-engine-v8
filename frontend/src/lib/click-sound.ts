@@ -1,77 +1,85 @@
 /**
- * Sound system using Web Audio API + fetch/decodeAudioData.
- * Much more reliable than HTMLAudioElement on mobile (no autoplay issues).
+ * Zero-latency click sounds — MP3 data embedded inline (no network fetch).
  *
- * Sounds are loaded lazily on first user gesture, then cached in memory.
- * click.mp3  → buttons, tabs, links
- * tap.mp3    → checkbox, radio, select
- * success.mp3 → login, save success
+ * Strategy:
+ *  1. Base64 → ArrayBuffer decoded on module import (synchronous, instant)
+ *  2. AudioContext created + ArrayBuffers decoded to AudioBuffers on first gesture
+ *  3. Every subsequent play: createBufferSource().start() — <1ms latency
+ *
+ * On desktop: AudioContext auto-resumed after 100ms (no gesture needed).
+ * On mobile: AudioContext resumed on first pointerdown gesture.
  */
+
+import { clickB64, tapB64, successB64 } from './sound-data'
 
 type SoundName = 'click' | 'tap' | 'success'
 
-let ctx: AudioContext | null = null
-const buffers = new Map<SoundName, AudioBuffer>()
-let loading = false
-let loaded = false
+// ─── Step 1: base64 → ArrayBuffer (runs synchronously on module load) ──────
+function b64ToArrayBuffer(b64: string): ArrayBuffer {
+  const bin = atob(b64)
+  const buf = new ArrayBuffer(bin.length)
+  const view = new Uint8Array(buf)
+  for (let i = 0; i < bin.length; i++) view[i] = bin.charCodeAt(i)
+  return buf
+}
+
+const RAW: Record<SoundName, ArrayBuffer> = {
+  click:   b64ToArrayBuffer(clickB64),
+  tap:     b64ToArrayBuffer(tapB64),
+  success: b64ToArrayBuffer(successB64),
+}
 
 const VOLUMES: Record<SoundName, number> = {
-  click: 0.4,
-  tap: 0.35,
+  click:   0.4,
+  tap:     0.35,
   success: 0.55,
 }
+
+// ─── Step 2: AudioContext + AudioBuffers ─────────────────────────────────────
+let ctx: AudioContext | null = null
+const audioBuffers = new Map<SoundName, AudioBuffer>()
+let decoding = false
+let decoded = false
 
 function getCtx(): AudioContext | null {
   if (ctx) return ctx
   try {
-    ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
+    ctx = new (window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
     return ctx
   } catch {
     return null
   }
 }
 
-async function loadAll(): Promise<void> {
-  if (loaded || loading) return
-  loading = true
+async function decodeAll(): Promise<void> {
+  if (decoded || decoding) return
+  decoding = true
   const ac = getCtx()
-  if (!ac) { loading = false; return }
+  if (!ac) { decoding = false; return }
 
-  const names: SoundName[] = ['click', 'tap', 'success']
-  await Promise.all(
-    names.map(async (name) => {
-      try {
-        const res = await fetch(`/sounds/${name}.mp3`)
-        const arr = await res.arrayBuffer()
-        const buf = await ac.decodeAudioData(arr)
-        buffers.set(name, buf)
-      } catch {
-        /* sound unavailable — silent fail */
-      }
-    })
-  )
-  loaded = true
-  loading = false
-}
-
-// Kick off preload on first user gesture
-let preloadStarted = false
-export function primeAudio(): void {
-  if (preloadStarted) return
-  preloadStarted = true
-  const ac = getCtx()
-  if (!ac) return
-  // Resume suspended context (required on mobile)
+  // Resume suspended context (mobile requires user gesture first)
   if (ac.state === 'suspended') {
-    void ac.resume().then(() => void loadAll())
-  } else {
-    void loadAll()
+    try { await ac.resume() } catch { /* ignore */ }
   }
+
+  await Promise.all(
+    (Object.keys(RAW) as SoundName[]).map(async (name) => {
+      try {
+        // slice() so each decodeAudioData gets its own copy of the buffer
+        const buf = await ac.decodeAudioData(RAW[name].slice(0))
+        audioBuffers.set(name, buf)
+      } catch { /* sound unavailable — degrade silently */ }
+    }),
+  )
+  decoded = true
+  decoding = false
 }
 
+// ─── Step 3: Play ─────────────────────────────────────────────────────────────
 function playBuffer(name: SoundName): void {
   const ac = getCtx()
-  const buf = buffers.get(name)
+  const buf = audioBuffers.get(name)
   if (!ac || !buf) return
   if (ac.state === 'suspended') { void ac.resume(); return }
 
@@ -82,25 +90,25 @@ function playBuffer(name: SoundName): void {
   const src = ac.createBufferSource()
   src.buffer = buf
   src.connect(gain)
-  src.start()
+  src.start(0)
 }
 
-/** Light click — buttons, tabs, links */
-export function playClick(): void {
-  playBuffer('click')
+// ─── Public API ───────────────────────────────────────────────────────────────
+
+let primed = false
+
+/** Call once inside a user-gesture handler to unlock AudioContext + pre-decode. */
+export function primeAudio(): void {
+  if (primed) return
+  primed = true
+  void decodeAll()
 }
 
-/** Tap — checkboxes, radios, selects */
-export function playTap(): void {
-  playBuffer('tap')
-}
-
-/** Success chime — login, saves */
-export function playSuccess(): void {
-  playBuffer('success')
-}
-
-// On desktop (non-touch), prime audio immediately — no gesture required
+/** On desktop (no touch) prime immediately — AudioContext doesn't need a gesture. */
 if (typeof window !== 'undefined' && !('ontouchstart' in window)) {
-  setTimeout(() => primeAudio(), 100)
+  setTimeout(() => { primed = true; void decodeAll() }, 50)
 }
+
+export function playClick(): void  { playBuffer('click') }
+export function playTap(): void    { playBuffer('tap') }
+export function playSuccess(): void { playBuffer('success') }
