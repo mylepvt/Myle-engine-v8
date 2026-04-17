@@ -131,12 +131,35 @@ async function updateUserProfile(request: UserProfileUpdateRequest): Promise<{ m
   return res.json()
 }
 
+/** Resize image to max 200×200 and return a JPEG data URL */
+async function resizeToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const MAX = 200
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height))
+      const w = Math.round(img.width * scale)
+      const h = Math.round(img.height * scale)
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(img, 0, 0, w, h)
+      resolve(canvas.toDataURL('image/jpeg', 0.82))
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read image')) }
+    img.src = url
+  })
+}
+
 async function uploadUserAvatar(file: File): Promise<{ avatar_url: string; message: string }> {
-  const fd = new FormData()
-  fd.append('file', file)
+  const dataUrl = await resizeToDataUrl(file)
   const res = await apiFetch('/api/v1/settings-enhanced/profile/avatar', {
     method: 'POST',
-    body: fd,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data_url: dataUrl }),
   })
   if (!res.ok) {
     const err = (await res.json().catch(() => ({}))) as { detail?: string }

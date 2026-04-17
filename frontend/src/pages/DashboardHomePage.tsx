@@ -1,8 +1,10 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, ClipboardCheck, TrendingUp, UserPlus } from 'lucide-react'
 
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
+import { XpBadge } from '@/components/xp/XpBadge'
+import { XpLeaderboard } from '@/components/xp/XpLeaderboard'
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
 import { TeamDashboardHomeModern } from '@/components/dashboard/TeamDashboardHomeModern'
 import { Badge } from '@/components/ui/badge'
@@ -28,6 +30,7 @@ import { useLeadPoolQuery } from '@/hooks/use-lead-pool-query'
 import { LEAD_STATUS_OPTIONS, type LeadPublic } from '@/hooks/use-leads-query'
 import { useTeamReportsQuery } from '@/hooks/use-team-reports-query'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
+import { usePingLoginMutation } from '@/hooks/use-xp-query'
 import { cn } from '@/lib/utils'
 
 /** Canonical stage labels — same source as leads/workboard (legacy parity; all roles). */
@@ -68,6 +71,15 @@ export function DashboardHomePage() {
   const teamToday = useTeamTodayStatsQuery(sessionReady && role === 'team')
   const pool = useLeadPoolQuery(sessionReady)
   const adminReports = useTeamReportsQuery('', sessionReady && role === 'admin')
+  const pingLogin = usePingLoginMutation()
+
+  useEffect(() => {
+    if (sessionReady) {
+      pingLogin.mutate()
+    }
+    // fire once on mount when session is ready
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionReady])
 
   const firstName =
     (me?.username?.trim() && me.username.split(/\s+/)[0]) ||
@@ -204,19 +216,19 @@ export function DashboardHomePage() {
                 to="/dashboard/team/reports"
                 className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
               >
-                <Card className="h-full border-primary/20 transition-colors hover:border-primary/35">
-                  <CardContent className="pt-6">
+                <Card className="h-full border-amber-500/20 bg-gradient-to-br from-amber-500/[0.08] to-transparent transition-colors hover:border-amber-500/35">
+                  <CardContent className="pt-5 pb-5">
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
                         Today&apos;s claimed leads
                       </p>
-                      <UserPlus className="size-5 shrink-0 text-primary" aria-hidden />
+                      <UserPlus className="size-5 shrink-0 text-amber-400" aria-hidden />
                     </div>
-                    <p className="mt-2 font-heading text-3xl font-semibold tabular-nums text-foreground">
+                    <p className="mt-2 font-heading text-3xl font-bold tabular-nums text-amber-400">
                       {adminReports.data.live_summary.leads_claimed_today}
                     </p>
                     <p className="mt-1 text-ds-caption text-subtle">
-                      Pool / ledger claims (Asia/Kolkata day) — Team reports
+                      Pool / ledger claims (IST day)
                     </p>
                   </CardContent>
                 </Card>
@@ -225,19 +237,19 @@ export function DashboardHomePage() {
                 to="/dashboard/team/enrollment-approvals"
                 className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
               >
-                <Card className="h-full border-primary/20 transition-colors hover:border-primary/35">
-                  <CardContent className="pt-6">
+                <Card className="h-full border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.08] to-transparent transition-colors hover:border-emerald-500/35">
+                  <CardContent className="pt-5 pb-5">
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
                         Today&apos;s ₹196 approvals
                       </p>
-                      <ClipboardCheck className="size-5 shrink-0 text-primary" aria-hidden />
+                      <ClipboardCheck className="size-5 shrink-0 text-emerald-400" aria-hidden />
                     </div>
-                    <p className="mt-2 font-heading text-3xl font-semibold tabular-nums text-foreground">
+                    <p className="mt-2 font-heading text-3xl font-bold tabular-nums text-emerald-400">
                       {adminReports.data.live_summary.payment_proofs_approved_today}
                     </p>
                     <p className="mt-1 text-ds-caption text-subtle">
-                      Payment proofs approved today (IST) — open approvals queue
+                      Payment proofs approved today (IST)
                     </p>
                   </CardContent>
                 </Card>
@@ -280,18 +292,21 @@ export function DashboardHomePage() {
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Link
               to="/dashboard/work/workboard"
-              className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+              className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2"
             >
-              <Card className="h-full border-primary/20 transition-colors hover:border-primary/35">
-                <CardContent className="pt-6">
-                  <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
-                    Active leads
-                  </p>
-                  <p className="mt-2 font-heading text-3xl font-semibold tabular-nums text-foreground">
+              <Card className="h-full border-blue-500/20 bg-gradient-to-br from-blue-500/[0.08] to-transparent transition-colors hover:border-blue-500/35">
+                <CardContent className="pt-5 pb-5">
+                  <div className="flex items-center justify-between gap-1">
+                    <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
+                      Active leads
+                    </p>
+                    <TrendingUp className="size-4 shrink-0 text-blue-400/70" aria-hidden />
+                  </div>
+                  <p className="mt-2 font-heading text-3xl font-bold tabular-nums text-blue-400">
                     {metrics.activeTotal}
                   </p>
                   <p className="mt-1 text-ds-caption text-subtle">
-                    Leads in your scope (excl. pool / archive) — open workboard
+                    In your scope · open workboard
                   </p>
                 </CardContent>
               </Card>
@@ -299,18 +314,23 @@ export function DashboardHomePage() {
             {role === 'admin' || role === 'leader' ? (
               <Link
                 to="/dashboard/work/follow-ups"
-                className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+                className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-amber-500/40 focus-visible:ring-offset-2"
               >
-                <Card className="h-full border-primary/20 transition-colors hover:border-primary/35">
-                  <CardContent className="pt-6">
-                    <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
-                      Open follow-ups
-                    </p>
-                    <p className={cn('mt-2 font-heading text-3xl font-semibold tabular-nums', openFollowUps > 0 ? 'text-primary' : 'text-muted-foreground')}>
+                <Card className="h-full border-amber-500/20 bg-gradient-to-br from-amber-500/[0.08] to-transparent transition-colors hover:border-amber-500/35">
+                  <CardContent className="pt-5 pb-5">
+                    <div className="flex items-center justify-between gap-1">
+                      <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
+                        Open follow-ups
+                      </p>
+                      {openFollowUps > 0 && (
+                        <span className="text-xs font-semibold text-amber-400" aria-hidden>↑</span>
+                      )}
+                    </div>
+                    <p className={cn('mt-2 font-heading text-3xl font-bold tabular-nums', openFollowUps > 0 ? 'text-amber-400' : 'text-muted-foreground')}>
                       {openFollowUps}
                     </p>
                     <p className="mt-1 text-ds-caption text-subtle">
-                      Not completed — open queue
+                      Not completed · open queue
                     </p>
                   </CardContent>
                 </Card>
@@ -344,38 +364,48 @@ export function DashboardHomePage() {
             )}
             <Link
               to="/dashboard/work/leads"
-              className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+              className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2"
             >
-              <Card className="h-full border-primary/20 transition-colors hover:border-primary/35">
-                <CardContent className="pt-6">
-                  <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
-                    Converted
-                  </p>
-                  <p className={cn('mt-2 font-heading text-3xl font-semibold tabular-nums', metrics.won > 0 ? 'text-success' : 'text-muted-foreground')}>
+              <Card className="h-full border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.08] to-transparent transition-colors hover:border-emerald-500/35">
+                <CardContent className="pt-5 pb-5">
+                  <div className="flex items-center justify-between gap-1">
+                    <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
+                      Converted
+                    </p>
+                    {metrics.winRatePct !== null && (
+                      <span className={cn('text-xs font-semibold', metrics.won > 0 ? 'text-emerald-400' : 'text-muted-foreground')} aria-hidden>
+                        {metrics.won > 0 ? '↑' : '—'} {metrics.winRatePct}%
+                      </span>
+                    )}
+                  </div>
+                  <p className={cn('mt-2 font-heading text-3xl font-bold tabular-nums', metrics.won > 0 ? 'text-emerald-400' : 'text-muted-foreground')}>
                     {metrics.won}
                   </p>
                   <p className="mt-1 text-ds-caption text-subtle">
-                    {metrics.winRatePct !== null
-                      ? `Win rate ${metrics.winRatePct}% (converted / converted+lost) — open leads`
-                      : 'No closed outcomes yet — open leads'}
+                    {metrics.winRatePct !== null ? `Win rate ${metrics.winRatePct}%` : 'No closed outcomes yet'}
                   </p>
                 </CardContent>
               </Card>
             </Link>
             <Link
               to="/dashboard/work/leads"
-              className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+              className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-2"
             >
-              <Card className="h-full border-primary/20 transition-colors hover:border-primary/35">
-                <CardContent className="pt-6">
-                  <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
-                    New leads
-                  </p>
-                  <p className="mt-2 font-heading text-3xl font-semibold tabular-nums text-foreground">
+              <Card className="h-full border-violet-500/20 bg-gradient-to-br from-violet-500/[0.08] to-transparent transition-colors hover:border-violet-500/35">
+                <CardContent className="pt-5 pb-5">
+                  <div className="flex items-center justify-between gap-1">
+                    <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
+                      New leads
+                    </p>
+                    {metrics.newLeads > 0 && (
+                      <span className="text-xs font-semibold text-violet-400/70" aria-hidden>↑</span>
+                    )}
+                  </div>
+                  <p className="mt-2 font-heading text-3xl font-bold tabular-nums text-violet-400">
                     {metrics.newLeads}
                   </p>
                   <p className="mt-1 text-ds-caption text-subtle">
-                    New lead stage — open list
+                    New lead stage · open list
                   </p>
                 </CardContent>
               </Card>
@@ -383,6 +413,9 @@ export function DashboardHomePage() {
           </div>
         )}
       </div>
+
+      <XpBadge />
+      <XpLeaderboard role={role} />
 
       <Card className="border-primary/20">
         <CardHeader>
@@ -424,7 +457,7 @@ export function DashboardHomePage() {
           <div>
             <CardTitle className="text-ds-h3">Recent leads</CardTitle>
             <CardDescription>
-              Newest leads loaded in the workboard snapshot (up to 8)
+              Your 8 most recent leads
             </CardDescription>
           </div>
           <Button variant="secondary" size="sm" asChild>
@@ -440,7 +473,7 @@ export function DashboardHomePage() {
             </div>
           ) : recentLeads.length === 0 ? (
             <p className="text-ds-body text-muted-foreground">
-              No leads in the current workboard window yet. Open{' '}
+              No leads yet. Open{' '}
               <Link
                 to="/dashboard/work/leads"
                 className="font-medium text-primary underline-offset-2 hover:underline"

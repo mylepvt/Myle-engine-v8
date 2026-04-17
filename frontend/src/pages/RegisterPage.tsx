@@ -1,7 +1,6 @@
 import { type FormEvent, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
-  ArrowLeft,
   ArrowRight,
   Eye,
   EyeOff,
@@ -102,9 +101,10 @@ export function RegisterPage() {
     e.preventDefault()
     setFormError(null)
     const emailTrim = email.trim()
-    const uname = username.trim()
+    // Sanitize: replace spaces with underscores, strip chars not in [a-zA-Z0-9._-]
+    const uname = username.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '')
     if (uname.length < 2) {
-      setFormError('Enter your display name (at least 2 characters).')
+      setFormError('Enter your display name (at least 2 characters). Use letters, numbers, spaces.')
       return
     }
     const phoneDigits = phone.replace(/\s/g, '').trim()
@@ -144,19 +144,19 @@ export function RegisterPage() {
       </div>
 
       <div className="relative z-[1] w-full max-w-[min(100%,26rem)]">
-        <Link
-          to="/login"
-          className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="size-4 shrink-0 opacity-80" aria-hidden />
-          Back to sign in
-        </Link>
+        {/* Brand mark above card */}
+        <div className="mb-8 flex flex-col items-center gap-2">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-primary shadow-lg shadow-primary/40">
+            <UserPlus className="size-7 text-white" aria-hidden />
+          </div>
+          <span className="font-heading text-xl font-bold tracking-tight text-foreground">Myle</span>
+        </div>
 
         <AuthCard
-          variant="split"
+          variant="center"
           icon={UserPlus}
-          title="Join Myle Community"
-          subtitle="Submit your registration request"
+          title="Create account"
+          subtitle="Join your team on Myle Community"
           footer={
             <p className="text-sm text-muted-foreground">
               Already have an account?{' '}
@@ -216,7 +216,7 @@ export function RegisterPage() {
                   autoComplete="off"
                   value={fboId}
                   onChange={(e) => setFboId(e.target.value)}
-                  placeholder="e.g. FBO-12345"
+                  placeholder="Your FBO ID"
                   icon={IdCard}
                 />
               </div>
@@ -236,6 +236,9 @@ export function RegisterPage() {
                   placeholder="Your name as it should appear"
                   icon={User}
                 />
+                <p className="mt-1.5 text-[0.7rem] text-muted-foreground/80">
+                  Spaces allowed — special characters will be auto-removed.
+                </p>
               </div>
               <div>
                 <label
@@ -326,16 +329,8 @@ export function RegisterPage() {
                     <span>{uplineLookup.message}</span>
                   </p>
                 ) : (
-                  <p className="mt-2 flex items-start gap-2 text-xs italic leading-relaxed text-muted-foreground">
-                    <Info
-                      className="mt-0.5 size-3.5 shrink-0 text-primary/90"
-                      aria-hidden
-                    />
-                    <span>
-                      Pre-filled from invite link when opened with{' '}
-                      <code className="rounded bg-muted/50 px-1 py-0.5 text-[0.7rem]">?upline=</code>.
-                      Approved leader or admin FBO ID.
-                    </span>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Ask your leader for their FBO ID.
                   </p>
                 )}
               </div>

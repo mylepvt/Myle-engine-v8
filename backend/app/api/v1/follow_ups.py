@@ -134,13 +134,22 @@ async def update_follow_up(
         fu.note = str(patch["note"]).strip()
     if "due_at" in patch:
         fu.due_at = patch["due_at"]
+    was_completed = fu.completed_at is not None
     if "completed" in patch:
         if patch["completed"] is True:
             fu.completed_at = datetime.now(timezone.utc)
         else:
             fu.completed_at = None
+    newly_completed = (not was_completed) and fu.completed_at is not None
     await session.commit()
     await session.refresh(fu)
+    if newly_completed:
+        try:
+            from app.services.xp_service import grant_xp
+            await grant_xp(session, user.user_id, "followup_completed", fu.lead_id)
+            await session.commit()
+        except Exception:
+            pass
     await notify_topics("follow_ups", "leads")
     return _to_public(fu, lead.name)
 

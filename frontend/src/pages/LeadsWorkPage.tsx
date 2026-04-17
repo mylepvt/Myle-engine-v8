@@ -268,7 +268,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   }
 
   return (
-    <div className="-mt-4 mx-auto max-w-6xl md:mt-0">
+    <div className="mx-auto max-w-6xl">
       <div className="mx-auto min-h-[50dvh] max-w-[430px] bg-background pb-8 text-foreground transition-colors md:max-w-[480px]">
         <div className="border-b border-border/60 bg-card/55 px-4 pb-2 pt-2 supports-[backdrop-filter]:bg-card/40">
           <div className="flex items-center gap-2">
@@ -440,7 +440,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
           onClick={() => setQuickAddOpen(false)}
         >
           <div
-            className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-border bg-card text-card-foreground shadow-2xl sm:rounded-2xl"
+            className="overscroll-contain max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-border bg-card text-card-foreground shadow-2xl sm:rounded-2xl"
             role="dialog"
             aria-modal="true"
             aria-labelledby="quick-add-title"

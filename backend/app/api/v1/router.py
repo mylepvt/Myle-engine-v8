@@ -15,9 +15,11 @@ from app.api.v1 import (
     follow_ups,
     gate_assistant,
     hello,
+    lead_notes,
     lead_pool,
     leads,
     meta,
+    notifications,
     org,
     other_pages,
     payments,
@@ -31,6 +33,8 @@ from app.api.v1 import (
     wallet,
     wallet_enhanced,
     workboard,
+    crm_proxy,
+    xp,
 )
 
 api_router = APIRouter()
@@ -57,6 +61,7 @@ api_router.include_router(wallet.router, prefix="/wallet", tags=["wallet"])
 api_router.include_router(lead_pool.router, prefix="/lead-pool", tags=["lead-pool"])
 api_router.include_router(retarget.router, prefix="/retarget", tags=["retarget"])
 api_router.include_router(follow_ups.router, prefix="/follow-ups", tags=["follow-ups"])
+api_router.include_router(lead_notes.router, prefix="/leads", tags=["lead-notes"])
 api_router.include_router(workboard.router, prefix="/workboard", tags=["workboard"])
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
 api_router.include_router(
@@ -69,3 +74,6 @@ api_router.include_router(enroll.watch_router, tags=["watch"])
 api_router.include_router(certificate.router, tags=["certificate"])
 api_router.include_router(payments.router, prefix="/payments", tags=["payments"])
 api_router.include_router(wallet_enhanced.router, prefix="/wallet", tags=["wallet-enhanced"])
+api_router.include_router(crm_proxy.router, tags=["crm"])
+api_router.include_router(xp.router, prefix="/xp", tags=["xp"])
+api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])

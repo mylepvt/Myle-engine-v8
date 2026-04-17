@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
-  ArrowLeft,
   ArrowRight,
   Eye,
   EyeOff,
@@ -19,6 +18,7 @@ import { AuthCard } from '@/components/auth/AuthCard'
 import { IconInput } from '@/components/auth/IconInput'
 import { Button } from '@/components/ui/button'
 import { authDevLogin, authPasswordLogin } from '@/lib/auth-api'
+import { playSuccess } from '@/lib/click-sound'
 import { fetchAuthMe } from '@/hooks/use-auth-me-query'
 import { DEFAULT_META, useMetaQuery } from '@/hooks/use-meta-query'
 import { t } from '@/lib/i18n'
@@ -67,6 +67,7 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
   const [showGateBanner, setShowGateBanner] = useState(fromProtected)
+  const [showForgotHint, setShowForgotHint] = useState(false)
 
   useEffect(() => {
     try {
@@ -123,6 +124,7 @@ export function LoginPage() {
         return
       }
       login()
+      playSuccess()
       navigate(from, { replace: true })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sign-in failed')
@@ -153,6 +155,7 @@ export function LoginPage() {
         return
       }
       login()
+      playSuccess()
       navigate(from, { replace: true })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sign-in failed')
@@ -169,19 +172,27 @@ export function LoginPage() {
       </div>
 
       <div className="relative z-[1] w-full max-w-[min(100%,26rem)]">
-        <Link
-          to="/"
-          className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="size-4 shrink-0 opacity-80" aria-hidden />
-          Back to home
-        </Link>
-
         <AuthCard
           variant="center"
           icon={Network}
-          title="Myle Community"
-          subtitle="Sign in to your account"
+          iconNode={
+            <div className="flex size-[3.25rem] items-center justify-center rounded-2xl shadow-lg"
+              style={{ background: 'linear-gradient(145deg, #1a1008 0%, #0d0904 100%)', boxShadow: '0 4px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(212,175,55,0.15)' }}
+              aria-hidden>
+              <svg width="30" height="28" viewBox="0 0 30 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M2 26V4L15 20L28 4V26" stroke="url(#gold)" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
+                <defs>
+                  <linearGradient id="gold" x1="2" y1="4" x2="28" y2="26" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#F5D060"/>
+                    <stop offset="50%" stopColor="#D4AF37"/>
+                    <stop offset="100%" stopColor="#A07820"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+          }
+          title="Welcome back"
+          subtitle="Sign in to Myle Community"
           footer={
             <p className="text-sm text-muted-foreground">
               New team member?{' '}
@@ -276,11 +287,15 @@ export function LoginPage() {
                 devLoginAllowed ? 'border-t border-white/[0.08] pt-5' : '',
               )}
             >
-              <p className="mb-4 text-center text-xs font-medium leading-relaxed text-muted-foreground sm:text-left">
-                {devLoginAllowed
-                  ? 'Sign in with your FBO ID and password. Username login is also supported.'
-                  : 'Primary login is your FBO ID and password. Username login is also supported.'}
-              </p>
+              {devLoginAllowed ? (
+                <p className="mb-4 text-center text-xs font-medium leading-relaxed text-muted-foreground sm:text-left">
+                  Or sign in with your FBO ID and password (username still works if you have one).
+                </p>
+              ) : (
+                <p className="mb-4 text-center text-xs text-muted-foreground">
+                  Use your FBO ID and password to sign in.
+                </p>
+              )}
 
               <div className="space-y-3.5">
                 <div>
@@ -366,11 +381,16 @@ export function LoginPage() {
                 <button
                   type="button"
                   className="text-sm font-semibold text-primary hover:underline"
-                  onClick={(e) => e.preventDefault()}
+                  onClick={() => setShowForgotHint(s => !s)}
                 >
                   Forgot password?
                 </button>
               </div>
+              {showForgotHint && (
+                <p className="mt-2 rounded-xl border border-primary/25 bg-primary/[0.08] px-3 py-2.5 text-center text-xs text-muted-foreground">
+                  Contact your leader or admin to reset your password.
+                </p>
+              )}
 
               <Button
                 type="submit"

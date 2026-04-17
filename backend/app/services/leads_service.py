@@ -426,6 +426,13 @@ class LeadsService:
             if user.role != "admin":
                 raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
             lead.pool_price_cents = body.pool_price_cents if body.pool_price_cents > 0 else None
+        if body.assigned_to_user_id is not None:
+            if user.role not in ("admin", "leader"):
+                raise HTTPException(
+                    status_code=http_status.HTTP_403_FORBIDDEN,
+                    detail="Only admin or leader can re-assign leads",
+                )
+            lead.assigned_to_user_id = body.assigned_to_user_id
         if body.name is not None:
             lead.name = body.name.strip()
         if body.status is not None:
@@ -629,6 +636,20 @@ class LeadsService:
         lead.status = body.target_status
         bump_heat_on_entering_contacted(lead, prev_status)
         lead = await self._repository.persist_lead(lead)
+
+        # XP hooks — fire-and-forget; never block transition on XP errors
+        try:
+            from app.services.xp_service import grant_xp, revoke_won_xp
+            if body.target_status == "contacted":
+                await grant_xp(self._session, user.user_id, "lead_contacted", lead.id)
+            elif body.target_status == "won":
+                await grant_xp(self._session, user.user_id, "lead_won", lead.id)
+            if prev_status == "won" and body.target_status != "won":
+                await revoke_won_xp(self._session, user.user_id, lead.id)
+            await self._session.commit()
+        except Exception:
+            pass
+
         await self._notifier("leads")
         return LeadTransitionResponse(
             success=True,

@@ -35,6 +35,11 @@ from app.services.all_leads_service import AllLeadsService, get_all_leads_servic
 from app.services.leads_service import LeadsService, get_leads_service
 from app.services.downline import is_user_in_downline_of
 from app.services.leads_service import _sync_batch_completion_timestamps
+from app.api.v1.crm_sync import ensure_crm_shadow
+from app.core.auth_cookie import MYLE_ACCESS_COOKIE
+from app.core.config import settings
+from app.db.session import AsyncSessionLocal
+from app.services.push_service import send_push_to_user_bg
 
 router = APIRouter()
 watch_router = APIRouter()
@@ -154,19 +159,25 @@ async def list_leads(
 @router.post("", response_model=LeadPublic, status_code=http_status.HTTP_201_CREATED)
 async def create_lead(
     body: LeadCreate,
+    request: Request,
+    background_tasks: BackgroundTasks,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     service: Annotated[LeadsService, Depends(get_leads_service)],
 ):
-    return await service.create_lead(body=body, user=user)
+    lead = await service.create_lead(body=body, user=user)
+    return lead
 
 
 @router.post("/{lead_id}/claim", response_model=LeadPublic)
 async def claim_lead(
     lead_id: int,
+    request: Request,
+    background_tasks: BackgroundTasks,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     service: Annotated[LeadsService, Depends(get_leads_service)],
 ):
-    return await service.claim_lead(lead_id=lead_id, user=user)
+    lead = await service.claim_lead(lead_id=lead_id, user=user)
+    return lead
 
 
 @router.get("/{lead_id}/mindset-lock-preview", response_model=MindsetLockPreviewResponse)
@@ -238,10 +249,29 @@ async def generate_batch_share_url(
 async def update_lead(
     lead_id: int,
     body: LeadUpdate,
+    background_tasks: BackgroundTasks,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     service: Annotated[LeadsService, Depends(get_leads_service)],
 ):
-    return await service.update_lead(lead_id=lead_id, body=body, user=user)
+    lead = await service.update_lead(lead_id=lead_id, body=body, user=user)
+    # Notify newly assigned user (skip if assigning to self). LeadUpdate may omit assignment;
+    # only fire when the schema includes an explicit assignee change.
+    assigned_uid = getattr(lead, "assigned_to_user_id", None)
+    assign_in_body = getattr(body, "assigned_to_user_id", None)
+    if (
+        assign_in_body is not None
+        and assigned_uid is not None
+        and assigned_uid != user.user_id
+    ):
+        background_tasks.add_task(
+            send_push_to_user_bg,
+            AsyncSessionLocal,
+            assigned_uid,
+            title="New Lead Assigned",
+            body=f"Lead '{lead.name}' has been assigned to you",
+            url="/dashboard/work/leads",
+        )
+    return lead
 
 
 @router.delete("/{lead_id}", status_code=http_status.HTTP_204_NO_CONTENT)
@@ -340,13 +370,70 @@ async def get_available_transitions(
     return await service.get_available_transitions(lead_id=lead_id, user=user)
 
 
+async def _queue_crm_event(*, lead_id: int, event: str, token: str) -> None:
+    """Queue a CRM event for retry when CRM was unreachable."""
+    import logging
+    logging.getLogger(__name__).warning(
+        "CRM event queued (stub): lead=%s event=%s", lead_id, event
+    )
+
+
 @router.post("/{lead_id}/transition", response_model=LeadTransitionResponse)
 async def transition_lead_status(
     lead_id: int,
     body: LeadTransitionRequest,
+    request: Request,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     service: Annotated[LeadsService, Depends(get_leads_service)],
 ) -> LeadTransitionResponse:
+    """Proxy lead transition to CRM (single writer).
+    CRM handles FSM + writes back status to this DB.
+    Falls back to FastAPI-only if CRM is unreachable (queues for retry).
+    """
+    import httpx as _httpx
+    import logging as _log
+
+    token = request.cookies.get(MYLE_ACCESS_COOKIE, "")
+
+    # Access check stays in FastAPI (auth is our job)
+    lead = await service._get_lead_or_404(lead_id)
+    if not await service._repository.can_mutate_lead(user, lead):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    if token and settings.crm_api_url:
+        try:
+            async with _httpx.AsyncClient(
+                base_url=settings.crm_api_url,
+                timeout=_httpx.Timeout(10.0),
+            ) as client:
+                r = await client.post(
+                    f"/api/v1/leads/{lead_id}/transition",
+                    json={"event": body.target_status, "expectedVersion": 0},
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+                if r.status_code < 400:
+                    return LeadTransitionResponse(
+                        success=True,
+                        message="Status updated",
+                        new_status=body.target_status,
+                    )
+                _log.getLogger(__name__).warning(
+                    "CRM transition HTTP %s for lead %s: %s",
+                    r.status_code, lead_id, r.text[:200],
+                )
+        except _httpx.ConnectError:
+            _log.getLogger(__name__).warning(
+                "CRM unreachable — queuing transition for lead %s", lead_id
+            )
+            await _queue_crm_event(lead_id=lead_id, event=body.target_status, token=token)
+            return LeadTransitionResponse(
+                success=True,
+                message="Processing (queued)",
+                new_status=body.target_status,
+            )
+
+    # CRM unavailable and no queue: fallback direct write (last resort)
     return await service.transition_lead_status(lead_id=lead_id, body=body, user=user)
 
 

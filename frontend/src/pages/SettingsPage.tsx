@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { PushNotificationToggle } from '@/components/notifications/PushNotificationToggle'
+import { playSuccess } from '@/lib/click-sound'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -32,6 +34,7 @@ import {
   useAvatarUploadMutation,
 } from '@/hooks/use-settings-query'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
+import { type Role } from '@/types/role'
 import { cn } from '@/lib/utils'
 import { apiUrl } from '@/lib/api'
 
@@ -82,19 +85,30 @@ export default function SettingsPage() {
   const [settingError, setSettingError] = useState<string | null>(null)
   const [deleteConfirmKey, setDeleteConfirmKey] = useState<string | null>(null)
 
-  const isAdmin = (authData?.role ?? '').toLowerCase() === 'admin'
+  const userRole = authData?.role as Role | undefined
+  const isAdmin = userRole === 'admin'
 
-  // Initialize form when profile data loads
-  if (userProfile.data && !profileForm.username) {
-    setProfileForm({
-      username: userProfile.data.username || '',
-      phone: userProfile.data.phone || '',
-      name: userProfile.data.name || '',
-    })
-  }
+  const [profileSuccess, setProfileSuccess] = useState<string | null>(null)
+  const [profileError, setProfileError] = useState<string | null>(null)
+
+  // Sync form fields when profile data first arrives from the server.
+  useEffect(() => {
+    if (userProfile.data) {
+      setProfileForm({
+        username: userProfile.data.username || '',
+        phone: userProfile.data.phone || '',
+        name: userProfile.data.name || '',
+      })
+    }
+  }, [userProfile.data])
 
   const handleProfileUpdate = () => {
-    updateProfile.mutate(profileForm)
+    setProfileSuccess(null)
+    setProfileError(null)
+    updateProfile.mutate(profileForm, {
+      onSuccess: () => { playSuccess(); setProfileSuccess('Profile updated successfully.') },
+      onError: (e) => setProfileError(e instanceof Error ? e.message : 'Update failed.'),
+    })
   }
 
   const handlePasswordChange = () => {
@@ -152,23 +166,22 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="max-w-5xl space-y-6">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Settings</h1>
-            <p className="text-gray-600">
-              Manage your profile, preferences, and system configuration
-            </p>
-          </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Settings</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage your profile, preferences, and system configuration
+          </p>
+        </div>
+        <div>
           <Badge variant="outline" className="text-sm">
             {authData?.role?.toUpperCase()}
           </Badge>
         </div>
       </div>
 
-      {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList
           className={cn(
@@ -263,18 +276,18 @@ export default function SettingsPage() {
                   <Label htmlFor="fbo_id">FBO ID</Label>
                   <Input
                     id="fbo_id"
-                    value={userProfile.data?.fbo_id || ''}
+                    value={userProfile.data?.fbo_id || '—'}
                     disabled
-                    className="bg-gray-50"
+                    className="bg-muted/40 text-muted-foreground"
                   />
                 </div>
                 <div>
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
-                    value={userProfile.data?.email || ''}
+                    value={userProfile.data?.email || '—'}
                     disabled
-                    className="bg-gray-50"
+                    className="bg-muted/40 text-muted-foreground"
                   />
                 </div>
                 <div>
@@ -302,8 +315,14 @@ export default function SettingsPage() {
                   />
                 </div>
                 <Button onClick={handleProfileUpdate} disabled={updateProfile.isPending}>
-                  {updateProfile.isPending ? 'Updating...' : 'Update Profile'}
+                  {updateProfile.isPending ? 'Saving…' : 'Save Profile'}
                 </Button>
+                {profileSuccess ? (
+                  <p className="text-sm text-emerald-500" role="status">{profileSuccess}</p>
+                ) : null}
+                {profileError ? (
+                  <p className="text-sm text-destructive" role="alert">{profileError}</p>
+                ) : null}
               </CardContent>
             </Card>
 
@@ -382,14 +401,10 @@ export default function SettingsPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label htmlFor="push_notifications">Push Notifications</Label>
+                      <Label>Push Notifications</Label>
                       <p className="text-sm text-gray-600">Receive browser push notifications</p>
                     </div>
-                    <Switch
-                      id="push_notifications"
-                      checked={userPreferences.data.push_notifications}
-                      onCheckedChange={(checked) => handlePreferencesUpdate('push_notifications', checked)}
-                    />
+                    <PushNotificationToggle />
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
@@ -662,7 +677,6 @@ export default function SettingsPage() {
                                   className="bg-destructive text-white hover:bg-destructive/90"
                                   onClick={() => handleAppSettingDelete(key)}
                                   disabled={deleteAppSetting.isPending}
-                                 
                                 >
                                   Yes, delete
                                 </Button>

@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils'
 import { authLogout } from '@/lib/auth-api'
 import { apiUrl } from '@/lib/api'
 import { notifyDashboardMainScrolled } from '@/lib/main-scroll-gate'
+import { useNoticeBoardUnread } from '@/hooks/use-notice-board-unread'
 import { useAuthStore } from '@/stores/auth-store'
 import { useShellPreviewStore } from '@/stores/shell-preview-store'
 import { useShellStore } from '@/stores/shell-store'
@@ -58,6 +59,7 @@ export function DashboardLayout() {
   )
   const theme = useUiFeedbackStore((s) => s.theme)
   const logout = useAuthStore((s) => s.logout)
+  const { unread: noticeBoardUnread } = useNoticeBoardUnread()
   const [headerSearch, setHeaderSearch] = useState('')
   const [isMobile, setIsMobile] = useState(false)
 
@@ -145,7 +147,7 @@ export function DashboardLayout() {
   }
 
   return (
-    <div className="flex min-h-dvh w-full min-w-0 max-w-full overflow-x-hidden bg-background">
+    <div className="dashboard-shell flex w-full min-w-0 max-w-full overflow-hidden bg-background">
       {isMobile && mobileMenuOpen ? (
         <button
           type="button"
@@ -157,7 +159,7 @@ export function DashboardLayout() {
 
       <aside
         className={cn(
-          'flex min-h-dvh shrink-0 flex-col border-r border-border/80 bg-surface',
+          'flex h-full shrink-0 flex-col border-r border-border/80 bg-surface overflow-y-auto',
           'transition-[transform,width,border-color] duration-300 ease-out',
           sidebarOpen ? 'md:w-[18rem]' : 'md:w-0 md:overflow-hidden md:border-0',
           'max-md:fixed max-md:left-0 max-md:top-0 max-md:z-50 max-md:h-dvh max-md:w-[min(20rem,85vw)] max-md:pt-[env(safe-area-inset-top)]',
@@ -181,7 +183,7 @@ export function DashboardLayout() {
           ) : null}
         </div>
 
-        <nav className="flex flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden px-3 py-4 pb-2">
+        <nav className="scroll-ios flex flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden px-3 py-4 pb-2">
           {rolePending && shellRole == null ? (
             <SidebarSkeleton />
           ) : null}
@@ -287,7 +289,7 @@ export function DashboardLayout() {
       </div>
     </aside>
 
-    <div className="flex min-w-0 max-w-full flex-1 flex-col overflow-x-hidden pt-[env(safe-area-inset-top)]">
+    <div className="flex h-full min-w-0 max-w-full flex-1 flex-col overflow-hidden pt-[env(safe-area-inset-top,0px)]">
       <header className="relative z-20 flex h-[56px] shrink-0 items-center gap-2 border-b border-border/60 bg-background/95 px-3 shadow-ios-bar md:gap-3 md:px-4 supports-[backdrop-filter]:bg-background/92 supports-[backdrop-filter]:backdrop-blur-md">
         {/* Left: menu + compact admin preview (no stacked label on small screens) */}
         <div className="flex min-w-0 shrink-0 items-center gap-1.5">
@@ -379,14 +381,18 @@ export function DashboardLayout() {
               <Link
                 to="/dashboard/other/notice-board"
                 className="relative flex size-10 items-center justify-center rounded-full transition-colors duration-200 hover:bg-muted active:opacity-80"
-                aria-label="Notice board"
+                aria-label={noticeBoardUnread > 0 ? `Notice board — ${noticeBoardUnread} new` : 'Notice board'}
               >
                 <Bell className="size-[1.2rem] md:size-[1.35rem]" />
               </Link>
-              <span
-                className="pointer-events-none absolute right-1 top-1 size-2 rounded-full bg-primary shadow-[0_0_8px_rgba(84,101,255,0.6)] animate-pulse"
-                aria-hidden
-              />
+              {noticeBoardUnread > 0 ? (
+                <span
+                  className="pointer-events-none absolute right-0.5 top-0.5 flex min-w-[1rem] items-center justify-center rounded-full bg-primary px-0.5 text-[0.55rem] font-bold leading-none text-primary-foreground shadow-[0_0_8px_rgba(84,101,255,0.6)] animate-pulse"
+                  aria-hidden
+                >
+                  {noticeBoardUnread > 9 ? '9+' : noticeBoardUnread}
+                </span>
+              ) : null}
             </div>
 
             {shellRole != null ? (
@@ -446,8 +452,8 @@ export function DashboardLayout() {
 
         <main
           className={cn(
-            'content-dashboard-main relative min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-background p-4 md:p-6 lg:p-8',
-            'pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-6 lg:pb-8',
+            'content-dashboard-main relative min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-background p-4 md:p-6 lg:p-8',
+            'scroll-ios',
           )}
           onScroll={notifyDashboardMainScrolled}
         >

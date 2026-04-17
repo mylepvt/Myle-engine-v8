@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, func, text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -60,7 +60,7 @@ class User(Base):
     )
     name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     # Public URL path served by GET /api/v1/media/avatar/{id} (set after upload).
-    avatar_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    avatar_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # base64 data URL or legacy path
     joining_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
@@ -68,4 +68,13 @@ class User(Base):
         server_default=func.now(),
         nullable=False,
     )
+
+    # XP / gamification columns (added in migration 0031)
+    xp_total: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"), default=0)
+    xp_level: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'rookie'"), default="rookie")
+    login_streak: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"), default=0)
+    last_login_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    # Season tracking — which year/month this user's xp_total belongs to (migration 0032)
+    xp_season_year: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    xp_season_month: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 

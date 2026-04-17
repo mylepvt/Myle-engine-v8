@@ -13,6 +13,8 @@ function resolveApiBase(): string {
 export const apiBase = resolveApiBase()
 
 export function apiUrl(path: string): string {
+  // base64 data URLs must be used as-is — don't prepend the API base
+  if (path.startsWith('data:')) return path
   const base = apiBase.replace(/\/$/, '')
   const p = path.startsWith('/') ? path : `/${path}`
   return `${base}${p}`

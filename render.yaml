@@ -1,34 +1,57 @@
-# Render Blueprint — Postgres + single Web Service (root Dockerfile: API + Vite SPA same origin).
+# Render Blueprint — Postgres + Redis + CRM API + Backend API + Frontend.
 # Docs: https://render.com/docs/blueprint-spec
 #
 # Apply: Dashboard → New → Blueprint → connect this repo → apply.
-# After first deploy: set BACKEND_CORS_ORIGINS to your service URL exactly, e.g.
-#   https://myle-vl2-api.onrender.com
-# (same URL users open in the browser; no trailing slash.)
 #
-# Monolith reference (Flask + gunicorn sync): see backend/legacy/myle_dashboard_main3/render.monolith.yaml
-# — vl2 uses Docker + uvicorn ASGI; optional gunicorn+UvicornWorker via backend/gunicorn.conf.py + asgi:app.
-
-databases:
-  - name: myle-vl2-db
-    databaseName: myle
-    user: myle
-    plan: free
+# After first deploy, set these manually in Render dashboard:
+#   myle-vl2-api   → BACKEND_CORS_ORIGINS = https://<your-frontend-url>
+#   myle-vl2-api   → CRM_API_URL          = https://myle-crm-api.onrender.com
+#   myle-crm-api   → (no extra manual vars needed — all wired below)
 
 services:
+  # ── Redis ────────────────────────────────────────────────────────────────
+  - type: redis
+    name: myle-vl2-redis
+    plan: free
+    region: singapore
+    ipAllowList: []           # internal only
+
+  # ── CRM Fastify microservice ─────────────────────────────────────────────
+  - type: web
+    name: myle-crm-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./apps/crm-api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        value: "postgresql://myle_db_v2_user:WTmYywzxEuVT2v30OKWZdgkZg0obtPDy@dpg-d7chigpj2pic73btjldg-a.singapore-postgres.render.com/myle_db_v2"
+      - key: REDIS_URL
+        fromService:
+          name: myle-vl2-redis
+          type: redis
+          property: connectionString
+      - key: CRM_INTERNAL_SECRET
+        generateValue: true
+      - key: NODE_ENV
+        value: production
+      - key: CRM_API_PORT
+        value: "4000"
+
+  # ── FastAPI backend (gateway + auth) ─────────────────────────────────────
   - type: web
     name: myle-vl2-api
     runtime: docker
     plan: free
-    region: oregon
+    region: singapore
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: myle-vl2-db
-          property: connectionString
+        value: "postgresql+asyncpg://myle_db_v2_user:WTmYywzxEuVT2v30OKWZdgkZg0obtPDy@dpg-d7chigpj2pic73btjldg-a.singapore-postgres.render.com/myle_db_v2"
       - key: SECRET_KEY
         generateValue: true
       - key: APP_ENV
@@ -40,12 +63,29 @@ services:
       - key: AUTH_COOKIE_SAMESITE
         value: lax
       - key: BACKEND_CORS_ORIGINS
-        sync: false
-      - key: FEATURE_INTELLIGENCE
-        value: "false"
-      # Render injects PORT (mapped in Dockerfile CMD). Optional: raise after RAM upgrade.
+        sync: false               # set manually after deploy
+      - key: CRM_API_URL
+        sync: false               # set to https://myle-crm-api.onrender.com after deploy
+      - key: CRM_INTERNAL_SECRET
+        fromService:
+          name: myle-crm-api
+          type: web
+          envVarKey: CRM_INTERNAL_SECRET
       - key: WEB_CONCURRENCY
         value: "1"
-      # Set by Render on managed services — used by gunicorn.conf.py if you switch start command.
       - key: RENDER
         value: "true"
+
+  # ── React frontend (nginx) ────────────────────────────────────────────────
+  - type: web
+    name: myle-vl2-frontend
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./frontend/Dockerfile.prod
+    dockerContext: ./frontend
+    envVars:
+      - key: VITE_API_URL
+        value: ""
+      - key: BACKEND_URL
+        value: "https://myle-vl2-api.onrender.com"

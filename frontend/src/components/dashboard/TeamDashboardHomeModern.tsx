@@ -23,21 +23,25 @@ type Props = {
 function statCards(
   funnel: TeamPersonalFunnel | undefined,
   today: TeamTodayStats | undefined,
-): { label: string; value: number; sub: string; Icon: typeof Briefcase; accent: string }[] {
+): { label: string; value: number; sub: string; Icon: typeof Briefcase; accent: string; cardClass: string; iconClass: string }[] {
   return [
     {
       label: 'Claimed',
       value: today?.claimed_today ?? 0,
       sub: 'Today',
       Icon: Briefcase,
-      accent: 'text-foreground',
+      accent: 'text-blue-400',
+      cardClass: 'min-w-[140px] border-blue-500/20 bg-gradient-to-br from-blue-500/[0.08] to-transparent shadow-sm transition hover:border-blue-500/35',
+      iconClass: 'text-blue-400/70',
     },
     {
       label: 'Calls',
       value: today?.calls_today ?? 0,
       sub: 'Today',
       Icon: Phone,
-      accent: 'text-primary',
+      accent: 'text-amber-400',
+      cardClass: 'min-w-[140px] border-amber-500/20 bg-gradient-to-br from-amber-500/[0.08] to-transparent shadow-sm transition hover:border-amber-500/35',
+      iconClass: 'text-amber-400/70',
     },
     {
       label: 'Video Reached',
@@ -45,13 +49,17 @@ function statCards(
       sub: 'From assigned',
       Icon: Video,
       accent: 'text-indigo-400',
+      cardClass: 'min-w-[140px] border-indigo-500/20 bg-gradient-to-br from-indigo-500/[0.08] to-transparent shadow-sm transition hover:border-indigo-500/35',
+      iconClass: 'text-indigo-400/70',
     },
     {
       label: 'Proof Pending',
       value: funnel?.proof_pending ?? 0,
       sub: 'Awaiting review',
       Icon: FileCheck,
-      accent: 'text-muted-foreground',
+      accent: 'text-violet-400',
+      cardClass: 'min-w-[140px] border-violet-500/20 bg-gradient-to-br from-violet-500/[0.08] to-transparent shadow-sm transition hover:border-violet-500/35',
+      iconClass: 'text-violet-400/70',
     },
     {
       label: 'Paid 196',
@@ -59,6 +67,8 @@ function statCards(
       sub: 'Enrolled',
       Icon: IndianRupee,
       accent: 'text-emerald-400',
+      cardClass: 'min-w-[140px] border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.08] to-transparent shadow-sm transition hover:border-emerald-500/35',
+      iconClass: 'text-emerald-400/70',
     },
   ]
 }
@@ -106,11 +116,11 @@ export function TeamDashboardHomeModern({
             {cards.map((c) => (
               <Card
                 key={c.label}
-                className="min-w-[140px] border-border/70 bg-card/95 shadow-sm transition hover:border-primary/35"
+                className={c.cardClass}
               >
                 <CardContent className="px-4 py-3">
                   <div className="mb-2 flex items-center justify-between">
-                    <c.Icon className="size-4 text-muted-foreground" aria-hidden />
+                    <c.Icon className={`size-4 ${c.iconClass}`} aria-hidden />
                     <span className="text-[10px] font-semibold text-muted-foreground">{c.sub}</span>
                   </div>
                   <p className={`text-3xl font-semibold tabular-nums ${c.accent}`}>{c.value}</p>

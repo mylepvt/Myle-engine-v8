@@ -2,11 +2,11 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, get_db
+from app.api.deps import AuthUser, CurrentUser, get_db, require_auth_user
 from app.core.auth_context import refresh_session_identity
 from app.core.auth_cookies import clear_session_cookies, issue_session_cookies
 from app.core.auth_cookie import MYLE_ACCESS_COOKIE, MYLE_REFRESH_COOKIE
@@ -19,8 +19,10 @@ from app.core.passwords import (
     should_upgrade_stored_password_to_bcrypt,
     verify_password_legacy_compatible,
 )
+from app.db.session import AsyncSessionLocal
 from app.models.password_reset_token import PasswordResetToken
 from app.models.user import User
+from app.services.push_service import send_push_to_role_bg
 from app.schemas.auth import (
     DevLoginRequest,
     DevLoginResponse,
@@ -34,6 +36,7 @@ from app.schemas.auth import (
     ResetPasswordResponse,
     UplineLookupResponse,
 )
+from pydantic import BaseModel, field_validator
 from app.services.dev_users import dev_email_for_role, dev_fbo_for_role
 from app.services.login_identity import (
     assert_safe_username,
@@ -169,6 +172,7 @@ async def lookup_upline_fbo(
 @router.post("/register", response_model=RegisterResponse)
 async def register(
     body: RegisterRequest,
+    background_tasks: BackgroundTasks,
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> RegisterResponse:
     """Self-serve registration — team role, pending until admin approves (legacy ``/register``)."""
@@ -246,6 +250,17 @@ async def register(
     )
     session.add(user)
     await session.commit()
+    # Notify admins and leaders of new pending registration
+    username_display = body.username.strip()
+    for role in ("admin", "leader"):
+        background_tasks.add_task(
+            send_push_to_role_bg,
+            AsyncSessionLocal,
+            role,
+            title="New Registration Pending",
+            body=f"{username_display} has registered and is awaiting approval",
+            url="/dashboard/team/pending-registrations",
+        )
     return RegisterResponse()
 
 
@@ -429,3 +444,81 @@ async def sync_identity(
 async def logout(response: Response) -> DevLoginResponse:
     clear_session_cookies(response)
     return DevLoginResponse()
+
+
+# ---------------------------------------------------------------------------
+# Change password / change email
+# ---------------------------------------------------------------------------
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+    confirm_password: str
+
+
+class ChangeEmailRequest(BaseModel):
+    new_email: str
+    current_password: str
+
+    @field_validator("new_email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        v = v.strip().lower()
+        if "@" not in v or "." not in v.split("@")[-1]:
+            raise ValueError("Invalid email address")
+        return v
+
+
+class ChangeCredentialResponse(BaseModel):
+    success: bool
+    message: str
+
+
+@router.post("/change-password", response_model=ChangeCredentialResponse)
+async def change_password(
+    body: ChangePasswordRequest,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    response: Response,
+) -> ChangeCredentialResponse:
+    if body.new_password != body.confirm_password:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Passwords do not match")
+    if len(body.new_password) < 8:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password must be at least 8 characters")
+
+    db_user = await session.get(User, user.user_id)
+    if db_user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if not db_user.hashed_password or not verify_password_legacy_compatible(body.current_password, db_user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
+
+    db_user.hashed_password = hash_password(body.new_password)
+    await session.commit()
+    return ChangeCredentialResponse(success=True, message="Password updated successfully")
+
+
+@router.post("/change-email", response_model=ChangeCredentialResponse)
+async def change_email(
+    body: ChangeEmailRequest,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ChangeCredentialResponse:
+    db_user = await session.get(User, user.user_id)
+    if db_user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if not db_user.hashed_password or not verify_password_legacy_compatible(body.current_password, db_user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
+
+    new_email = body.new_email  # already normalized by validator
+    if new_email == db_user.email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="New email is the same as current email")
+
+    existing = await session.execute(
+        select(User).where(User.email == new_email).limit(1)
+    )
+    if existing.scalar_one_or_none() is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already in use")
+
+    db_user.email = new_email
+    await session.commit()
+    return ChangeCredentialResponse(success=True, message="Email updated successfully")

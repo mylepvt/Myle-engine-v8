@@ -92,7 +92,7 @@ export function resolveFsmTransition(currentStage: LeadStage, event: FsmEvent): 
   assertMindsetLockGate(currentStage, event);
   assertDayRoutingNotBypassed(currentStage, event);
   const res = nextStage(currentStage, event);
-  if (!res.ok) throw fsmError(res.code, "Illegal transition", 409);
+  if (!res.ok) throw fsmError((res as { ok: false; code: string }).code, "Illegal transition", 409);
   if (!isValidTransition(currentStage, res.to)) {
     throw fsmError("INVALID_STAGE_JUMP", "Invalid stage transition", 400);
   }

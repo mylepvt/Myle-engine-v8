@@ -65,6 +65,9 @@ model User {
 
 model Lead {
   id        String @id @default(cuid())
+  /// Foreign key to FastAPI `leads.id` (integer PK) — bridge for proxy routing.
+  /// Null for leads created natively in CRM; set when synced from FastAPI.
+  legacyId  Int?   @unique
   name      String
   phone     String?
 
@@ -236,6 +239,16 @@ model ScoringConfig {
   version   Int      @default(1)
   config    Json
   updatedAt DateTime @updatedAt
+}
+
+/// FastAPI-owned leads table. CRM writes `status` back here after FSM transitions
+/// so FastAPI reads remain accurate without polling CRM.
+/// Schema is owned by FastAPI/Alembic — never run `prisma migrate` on this model.
+model LegacyLead {
+  id     Int    @id
+  status String @default("new_lead")
+
+  @@map("leads")
 }
 
 /// Append-only audit trail (API + workers). Optional idempotencyKey dedupes retries.

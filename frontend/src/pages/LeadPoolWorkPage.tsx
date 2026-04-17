@@ -6,9 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   LEAD_STATUS_OPTIONS,
-  useClaimLeadMutation,
   usePatchLeadMutation,
 } from '@/hooks/use-leads-query'
+import { useCrmPoolClaim } from '@/hooks/use-crm-query'
 import {
   useLeadPoolDefaultsMutation,
   useLeadPoolDefaultsQuery,
@@ -39,7 +39,7 @@ export function LeadPoolWorkPage({ title }: Props) {
   const { data: poolDefaults } = useLeadPoolDefaultsQuery(role === 'admin')
   const poolDefaultsMut = useLeadPoolDefaultsMutation()
   const { data: walletData } = useWalletMeQuery(true)
-  const claimMut = useClaimLeadMutation()
+  const claimMut = useCrmPoolClaim()
   const patchMut = usePatchLeadMutation()
 
   // Confirm dialog state: which lead is being claimed
@@ -76,7 +76,11 @@ export function LeadPoolWorkPage({ title }: Props) {
 
   async function handleClaim(leadId: number) {
     try {
-      await claimMut.mutateAsync(leadId)
+      await claimMut.mutateAsync({
+        leadId,
+        idempotencyKey: `claim-${leadId}-${Date.now()}`,
+        pipelineKind: 'PERSONAL',
+      })
       setConfirmId(null)
     } catch {
       /* error surfaced below */

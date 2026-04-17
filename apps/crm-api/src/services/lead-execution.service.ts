@@ -14,6 +14,20 @@ import { acquireLock, releaseLock } from "../lib/redis-lock.js";
 
 const INACTIVITY_REASSIGN_MS = 48 * 60 * 60 * 1000;
 
+/** CRM LeadStage → FastAPI leads.status string */
+const STAGE_TO_LEGACY_STATUS: Partial<Record<string, string>> = {
+  NEW:          "new_lead",
+  INVITED:      "invited",
+  WHATSAPP_SENT:"contacted",
+  VIDEO_SENT:   "video_sent",
+  PAYMENT_DONE: "paid",
+  MINDSET_LOCK: "day1",
+  DAY1_UPLINE:  "day2",
+  DAY2_ADMIN:   "interview",
+  DAY3_CLOSER:  "track_selected",
+  CLOSED:       "converted",
+};
+
 async function teamScopeForUser(userId: string): Promise<string> {
   const u = await prisma.user.findUnique({ where: { id: userId }, select: { teamId: true } });
   return u?.teamId ?? "default";
@@ -46,7 +60,7 @@ async function emitLeadChange(
 
 export async function createLead(
   user: AuthUser,
-  body: { name: string; phone?: string; pipelineKind: PipelineKind },
+  body: { name: string; phone?: string; pipelineKind: PipelineKind; legacyId?: number },
   io?: Server,
 ) {
   const lead = await prisma.lead.create({
@@ -58,6 +72,7 @@ export async function createLead(
       inPool: true,
       handlerId: null,
       stage: LeadStage.NEW,
+      ...(body.legacyId !== undefined ? { legacyId: body.legacyId } : {}),
     },
   });
   await prisma.leadActivity.create({
@@ -128,6 +143,22 @@ export async function transitionLead(
       meta: { from: lead.stage, to: next },
     },
   });
+
+  // Write status back to FastAPI's leads table for read consistency
+  const legacyLead = await prisma.lead.findUnique({ where: { id: leadId }, select: { legacyId: true, stage: true } });
+  if (legacyLead?.legacyId) {
+    const legacyStatus = STAGE_TO_LEGACY_STATUS[legacyLead.stage];
+    if (legacyStatus) {
+      await (prisma as any).legacyLead.update({
+        where: { id: legacyLead.legacyId },
+        data: { status: legacyStatus },
+      }).catch((e: unknown) => {
+        // Non-fatal: FastAPI read will be eventually consistent
+        console.warn("legacyLead status sync failed:", e);
+      });
+    }
+  }
+
   await bumpRealtimeScoreOnActivity(user.id, lead.pipelineKind, 0.35);
   await emitLeadChange(io, updated, { leadId, stage: updated.stage });
   await recordAudit({

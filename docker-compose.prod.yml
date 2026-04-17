@@ -1,14 +1,11 @@
-# Production-oriented compose (reference). Not for local hot-reload.
+# Production compose — single command deploy.
 #
 # Usage (from repo root):
 #   cp config/.env.production.example .env.production
-#   # edit .env.production — set SECRET_KEY, POSTGRES_PASSWORD, BACKEND_CORS_ORIGINS, VITE_API_URL
+#   # edit .env.production — fill all required vars marked with :?
 #   docker compose -f docker-compose.prod.yml --env-file .env.production up --build -d
 #
-# Notes:
-# - DB has no host port mapping; only reachable inside the compose network.
-# - AUTH_DEV_LOGIN_ENABLED=false — use real auth (Phase 2) before exposing publicly.
-# - Frontend image below still runs Vite dev server; for real prod, serve `frontend/dist` via nginx/CDN.
+# Services: db + redis + crm-api + backend + frontend (nginx)
 
 services:
   db:
@@ -20,11 +17,41 @@ services:
     volumes:
       - postgres_data_prod:/var/lib/postgresql/data
     healthcheck:
-      # If you change POSTGRES_USER / POSTGRES_DB, update this command to match.
-      test: ["CMD-SHELL", "pg_isready -U myle -d myle"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-myle} -d ${POSTGRES_DB:-myle}"]
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data_prod:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  crm-api:
+    build:
+      context: .
+      dockerfile: apps/crm-api/Dockerfile
+    ports:
+      - "${CRM_PUBLISH_PORT:-4000}:4000"
+    environment:
+      DATABASE_URL: ${CRM_DATABASE_URL:-postgresql://${POSTGRES_USER:-myle}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-myle}}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      CRM_API_PORT: "4000"
+      CRM_INTERNAL_SECRET: ${CRM_INTERNAL_SECRET:?CRM_INTERNAL_SECRET required}
+      NODE_ENV: "production"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
   backend:
@@ -33,26 +60,32 @@ services:
     ports:
       - "${BACKEND_PUBLISH_PORT:-8000}:8000"
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://myle:myle@db:5432/myle}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL required}
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY required}
       BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS:?BACKEND_CORS_ORIGINS required}
-      AUTH_DEV_LOGIN_ENABLED: ${AUTH_DEV_LOGIN_ENABLED:-false}
-      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
+      AUTH_DEV_LOGIN_ENABLED: "false"
+      SESSION_COOKIE_SECURE: "true"
+      AUTH_COOKIE_SAMESITE: ${AUTH_COOKIE_SAMESITE:-lax}
+      CRM_API_URL: ${CRM_API_URL:-http://crm-api:4000}
+      CRM_INTERNAL_SECRET: ${CRM_INTERNAL_SECRET:?CRM_INTERNAL_SECRET required}
+      APP_ENV: "production"
     depends_on:
       db:
         condition: service_healthy
+      crm-api:
+        condition: service_started
     restart: unless-stopped
 
   frontend:
     build:
       context: ./frontend
+      dockerfile: Dockerfile.prod
     ports:
-      - "${FRONTEND_PUBLISH_PORT:-5173}:5173"
-    environment:
-      VITE_API_URL: ${VITE_API_URL}
+      - "${FRONTEND_PUBLISH_PORT:-80}:80"
     depends_on:
       - backend
     restart: unless-stopped
 
 volumes:
   postgres_data_prod:
+  redis_data_prod:

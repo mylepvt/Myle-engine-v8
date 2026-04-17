@@ -264,6 +264,26 @@ async def import_users_phase(
         raise RuntimeError(
             "User import skipped rows and --fail-on-skip is enabled; fix conflicts then re-run.",
         )
+
+    # If all users were skipped (already imported), rebuild mapping from existing DB rows
+    if not mapping and skipped > 0:
+        print("  [users] rebuilding id-map from existing rows in PostgreSQL …")
+        rows2 = legacy.execute("SELECT id, email, fbo_id FROM users ORDER BY id").fetchall()
+        async with AsyncSessionLocal() as session:
+            for row in rows2:
+                lid = int(row["id"])
+                email = _norm_email(str(row["fbo_id"] or ""), lid, str(row["email"] or ""))
+                fbo = _norm_fbo(str(row["fbo_id"] or ""), lid)
+                # Try email lookup first, then fbo_id
+                from sqlalchemy import select as _select, or_ as _or
+                from app.models.user import User as _User
+                result = await session.execute(
+                    _select(_User).where(_or(_User.email == email, _User.fbo_id == fbo))
+                )
+                existing = result.scalars().first()
+                if existing:
+                    mapping[lid] = existing.id
+        print(f"  [users] rebuilt {len(mapping)} mappings from existing rows")
     return mapping
 
 
@@ -818,7 +838,7 @@ async def main() -> int:
             if args.users_only:
                 pass
             elif not dry_run and not user_map:
-                print("No users imported; skipping leads.", file=sys.stderr)
+                print("No users imported and no mapping rebuilt; skipping leads.", file=sys.stderr)
             else:
                 if dry_run:
                     await import_leads_phase(legacy, user_map, True)
