@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { parseLeaderboardStubItem } from '@/lib/leaderboard-row'
 
 describe('parseLeaderboardStubItem', () => {
-  it('parses canonical API shape', () => {
+  it('parses canonical API shape (no xp/level in detail)', () => {
     const r = parseLeaderboardStubItem(
       {
         title: '#1 alice',
@@ -18,6 +18,28 @@ describe('parseLeaderboardStubItem', () => {
       role: 'team',
       email: 'a@x.com',
       points: '42',
+      xp: '—',
+      level: '—',
+    })
+  })
+
+  it('parses canonical API shape with xp and level', () => {
+    const r = parseLeaderboardStubItem(
+      {
+        title: '#1 alice',
+        detail: 'team · a@x.com · total points: 42 · xp: 1250 · level: champion',
+        count: 1,
+      },
+      0,
+    )
+    expect(r).toEqual({
+      rank: 1,
+      name: 'alice',
+      role: 'team',
+      email: 'a@x.com',
+      points: '42',
+      xp: '1250',
+      level: 'champion',
     })
   })
 
