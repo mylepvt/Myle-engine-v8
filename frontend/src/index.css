@@ -452,14 +452,8 @@
     position: relative;
   }
 
-  /* Hint off-screen work: faster initial scroll in long dashboard pages */
-  /* content-visibility only on browsers that support it (Chrome 85+, Edge 85+) */
-  @supports (content-visibility: auto) {
-    .content-dashboard-main {
-      content-visibility: auto;
-      contain-intrinsic-size: auto 480px;
-    }
-  }
+  /* Avoid content-visibility on the dashboard <main> scroll container — it can leave
+     blank regions or odd scroll extents with flex + short pages (mobile shell). */
 }
 
 @layer components {

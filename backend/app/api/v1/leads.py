@@ -254,10 +254,12 @@ async def update_lead(
     service: Annotated[LeadsService, Depends(get_leads_service)],
 ):
     lead = await service.update_lead(lead_id=lead_id, body=body, user=user)
-    # Notify newly assigned user (skip if assigning to self)
+    # Notify newly assigned user (skip if assigning to self). LeadUpdate may omit assignment;
+    # only fire when the schema includes an explicit assignee change.
     assigned_uid = getattr(lead, "assigned_to_user_id", None)
+    assign_in_body = getattr(body, "assigned_to_user_id", None)
     if (
-        body.assigned_to_user_id is not None
+        assign_in_body is not None
         and assigned_uid is not None
         and assigned_uid != user.user_id
     ):
