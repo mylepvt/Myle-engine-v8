@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 
 import { App } from '@/App'
+import { playClick } from '@/lib/click-sound'
 import { Snd01SineUiSoundBootstrap } from '@/components/providers/Snd01SineUiSoundBootstrap'
 import { ThemeAndFeedbackProvider } from '@/components/providers/ThemeAndFeedbackProvider'
 import { AppErrorBoundary } from '@/components/routing/AppErrorBoundary'
@@ -37,6 +38,21 @@ const rootEl = document.getElementById('root')
 if (!rootEl) {
   throw new Error('Missing #root — index.html must define <div id="root">')
 }
+
+document.addEventListener('pointerdown', (e) => {
+  const t = e.target as HTMLElement
+  if (
+    t.closest('button') ||
+    t.closest('a') ||
+    t.closest('[role="button"]') ||
+    t.closest('[role="tab"]') ||
+    t.closest('select') ||
+    t.closest('input[type="checkbox"]') ||
+    t.closest('input[type="radio"]')
+  ) {
+    playClick()
+  }
+}, { passive: true })
 
 createRoot(rootEl).render(
   <StrictMode>

@@ -204,15 +204,15 @@ export function DashboardHomePage() {
                 to="/dashboard/team/reports"
                 className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
               >
-                <Card className="h-full border-primary/20 transition-colors hover:border-primary/35">
+                <Card className="h-full border-amber-500/20 bg-gradient-to-br from-amber-500/[0.08] to-transparent transition-colors hover:border-amber-500/35">
                   <CardContent className="pt-5 pb-5">
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
                         Today&apos;s claimed leads
                       </p>
-                      <UserPlus className="size-5 shrink-0 text-primary" aria-hidden />
+                      <UserPlus className="size-5 shrink-0 text-amber-400" aria-hidden />
                     </div>
-                    <p className="mt-2 font-heading text-3xl font-bold tabular-nums text-foreground">
+                    <p className="mt-2 font-heading text-3xl font-bold tabular-nums text-amber-400">
                       {adminReports.data.live_summary.leads_claimed_today}
                     </p>
                     <p className="mt-1 text-ds-caption text-subtle">
@@ -225,15 +225,15 @@ export function DashboardHomePage() {
                 to="/dashboard/team/enrollment-approvals"
                 className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
               >
-                <Card className="h-full border-primary/20 transition-colors hover:border-primary/35">
+                <Card className="h-full border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.08] to-transparent transition-colors hover:border-emerald-500/35">
                   <CardContent className="pt-5 pb-5">
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
                         Today&apos;s ₹196 approvals
                       </p>
-                      <ClipboardCheck className="size-5 shrink-0 text-primary" aria-hidden />
+                      <ClipboardCheck className="size-5 shrink-0 text-emerald-400" aria-hidden />
                     </div>
-                    <p className="mt-2 font-heading text-3xl font-bold tabular-nums text-foreground">
+                    <p className="mt-2 font-heading text-3xl font-bold tabular-nums text-emerald-400">
                       {adminReports.data.live_summary.payment_proofs_approved_today}
                     </p>
                     <p className="mt-1 text-ds-caption text-subtle">
@@ -280,17 +280,17 @@ export function DashboardHomePage() {
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Link
               to="/dashboard/work/workboard"
-              className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+              className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2"
             >
-              <Card className="h-full border-primary/20 transition-colors hover:border-primary/35">
+              <Card className="h-full border-blue-500/20 bg-gradient-to-br from-blue-500/[0.08] to-transparent transition-colors hover:border-blue-500/35">
                 <CardContent className="pt-5 pb-5">
                   <div className="flex items-center justify-between gap-1">
                     <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
                       Active leads
                     </p>
-                    <TrendingUp className="size-4 shrink-0 text-primary/60" aria-hidden />
+                    <TrendingUp className="size-4 shrink-0 text-blue-400/70" aria-hidden />
                   </div>
-                  <p className="mt-2 font-heading text-3xl font-bold tabular-nums text-foreground">
+                  <p className="mt-2 font-heading text-3xl font-bold tabular-nums text-blue-400">
                     {metrics.activeTotal}
                   </p>
                   <p className="mt-1 text-ds-caption text-subtle">
@@ -302,19 +302,19 @@ export function DashboardHomePage() {
             {role === 'admin' || role === 'leader' ? (
               <Link
                 to="/dashboard/work/follow-ups"
-                className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+                className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-amber-500/40 focus-visible:ring-offset-2"
               >
-                <Card className="h-full border-primary/20 transition-colors hover:border-primary/35">
+                <Card className="h-full border-amber-500/20 bg-gradient-to-br from-amber-500/[0.08] to-transparent transition-colors hover:border-amber-500/35">
                   <CardContent className="pt-5 pb-5">
                     <div className="flex items-center justify-between gap-1">
                       <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
                         Open follow-ups
                       </p>
                       {openFollowUps > 0 && (
-                        <span className="text-xs font-semibold text-primary" aria-hidden>↑</span>
+                        <span className="text-xs font-semibold text-amber-400" aria-hidden>↑</span>
                       )}
                     </div>
-                    <p className={cn('mt-2 font-heading text-3xl font-bold tabular-nums', openFollowUps > 0 ? 'text-primary' : 'text-muted-foreground')}>
+                    <p className={cn('mt-2 font-heading text-3xl font-bold tabular-nums', openFollowUps > 0 ? 'text-amber-400' : 'text-muted-foreground')}>
                       {openFollowUps}
                     </p>
                     <p className="mt-1 text-ds-caption text-subtle">
@@ -352,21 +352,21 @@ export function DashboardHomePage() {
             )}
             <Link
               to="/dashboard/work/leads"
-              className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+              className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2"
             >
-              <Card className="h-full border-primary/20 transition-colors hover:border-primary/35">
+              <Card className="h-full border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.08] to-transparent transition-colors hover:border-emerald-500/35">
                 <CardContent className="pt-5 pb-5">
                   <div className="flex items-center justify-between gap-1">
                     <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
                       Converted
                     </p>
                     {metrics.winRatePct !== null && (
-                      <span className={cn('text-xs font-semibold', metrics.won > 0 ? 'text-success' : 'text-muted-foreground')} aria-hidden>
+                      <span className={cn('text-xs font-semibold', metrics.won > 0 ? 'text-emerald-400' : 'text-muted-foreground')} aria-hidden>
                         {metrics.won > 0 ? '↑' : '—'} {metrics.winRatePct}%
                       </span>
                     )}
                   </div>
-                  <p className={cn('mt-2 font-heading text-3xl font-bold tabular-nums', metrics.won > 0 ? 'text-success' : 'text-muted-foreground')}>
+                  <p className={cn('mt-2 font-heading text-3xl font-bold tabular-nums', metrics.won > 0 ? 'text-emerald-400' : 'text-muted-foreground')}>
                     {metrics.won}
                   </p>
                   <p className="mt-1 text-ds-caption text-subtle">
@@ -377,19 +377,19 @@ export function DashboardHomePage() {
             </Link>
             <Link
               to="/dashboard/work/leads"
-              className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+              className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-2"
             >
-              <Card className="h-full border-primary/20 transition-colors hover:border-primary/35">
+              <Card className="h-full border-violet-500/20 bg-gradient-to-br from-violet-500/[0.08] to-transparent transition-colors hover:border-violet-500/35">
                 <CardContent className="pt-5 pb-5">
                   <div className="flex items-center justify-between gap-1">
                     <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
                       New leads
                     </p>
                     {metrics.newLeads > 0 && (
-                      <span className="text-xs font-semibold text-foreground/60" aria-hidden>↑</span>
+                      <span className="text-xs font-semibold text-violet-400/70" aria-hidden>↑</span>
                     )}
                   </div>
-                  <p className="mt-2 font-heading text-3xl font-bold tabular-nums text-foreground">
+                  <p className="mt-2 font-heading text-3xl font-bold tabular-nums text-violet-400">
                     {metrics.newLeads}
                   </p>
                   <p className="mt-1 text-ds-caption text-subtle">
