@@ -19,5 +19,10 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // react-hooks v5 added this rule but it's too strict for the common
+      // "initialise local form state from async server data" pattern.
+      'react-hooks/set-state-in-effect': 'off',
+    },
   },
 ])
