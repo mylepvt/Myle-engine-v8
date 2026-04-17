@@ -268,7 +268,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   }
 
   return (
-    <div className="-mt-4 mx-auto max-w-6xl md:mt-0">
+    <div className="mx-auto max-w-6xl">
       <div className="mx-auto min-h-[50dvh] max-w-[430px] bg-background pb-8 text-foreground transition-colors md:max-w-[480px]">
         <div className="border-b border-border/60 bg-card/55 px-4 pb-2 pt-2 supports-[backdrop-filter]:bg-card/40">
           <div className="flex items-center gap-2">
