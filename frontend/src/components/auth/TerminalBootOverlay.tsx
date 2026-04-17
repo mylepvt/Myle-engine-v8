@@ -11,40 +11,51 @@ function createTerminalAudio() {
 
   function getCtx(): AudioContext {
     if (!ctx) ctx = new AudioContext()
-    // Resume if suspended (browsers auto-suspend until user interaction)
     if (ctx.state === 'suspended') void ctx.resume()
     return ctx
   }
 
-  /** Soft key-click per typed character */
+  /**
+   * Key-click per typed character.
+   * Random gain + stereo pan = natural typing feel, no ear fatigue.
+   */
   function playTick() {
     try {
       const c = getCtx()
       const now = c.currentTime
       const osc = c.createOscillator()
       const gain = c.createGain()
+      const pan = c.createStereoPanner()
       osc.connect(gain)
-      gain.connect(c.destination)
+      gain.connect(pan)
+      pan.connect(c.destination)
       osc.type = 'square'
       osc.frequency.setValueAtTime(880 + Math.random() * 280, now)
-      gain.gain.setValueAtTime(0.028, now)
+      // Random volume → prevents monotone ear fatigue
+      gain.gain.setValueAtTime(0.02 + Math.random() * 0.012, now)
       gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.018)
+      // Subtle L/R drift → typing feels physical
+      pan.pan.value = Math.random() * 0.6 - 0.3
       osc.start(now)
       osc.stop(now + 0.018)
-    } catch {
-      /* audio blocked / not available */
-    }
+    } catch { /* audio blocked */ }
   }
 
-  /** Short noise burst for warnings / alert lines */
+  /**
+   * Glitch burst for alert lines.
+   * Layer 1: bandpass-filtered noise with hard transient spike.
+   * Layer 2: high-freq sine stab → sci-fi "impact" feel.
+   */
   function playGlitch() {
     try {
       const c = getCtx()
       const now = c.currentTime
       const dur = 0.09
+
+      // Layer 1 — noise
       const buf = c.createBuffer(1, Math.ceil(c.sampleRate * dur), c.sampleRate)
       const data = buf.getChannelData(0)
-      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1)
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1
       const src = c.createBufferSource()
       src.buffer = buf
       const filter = c.createBiquadFilter()
@@ -52,42 +63,68 @@ function createTerminalAudio() {
       filter.frequency.setValueAtTime(1400, now)
       filter.frequency.exponentialRampToValueAtTime(380, now + dur)
       filter.Q.value = 0.6
-      const gain = c.createGain()
-      gain.gain.setValueAtTime(0.18, now)
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + dur)
+      const gainN = c.createGain()
+      // Hard transient spike → then decay (more punch)
+      gainN.gain.setValueAtTime(0.25, now)
+      gainN.gain.exponentialRampToValueAtTime(0.0001, now + dur)
       src.connect(filter)
-      filter.connect(gain)
-      gain.connect(c.destination)
+      filter.connect(gainN)
+      gainN.connect(c.destination)
       src.start(now)
       src.stop(now + dur)
-    } catch {
-      /* audio blocked */
-    }
+
+      // Layer 2 — high-freq sine stab (~2200 Hz, 20ms)
+      const stab = c.createOscillator()
+      const gainS = c.createGain()
+      stab.connect(gainS)
+      gainS.connect(c.destination)
+      stab.type = 'sine'
+      stab.frequency.setValueAtTime(2200, now)
+      gainS.gain.setValueAtTime(0.12, now)
+      gainS.gain.exponentialRampToValueAtTime(0.0001, now + 0.02)
+      stab.start(now)
+      stab.stop(now + 0.02)
+    } catch { /* audio blocked */ }
   }
 
-  /** Rising chord sequence on "SYSTEM UNLOCKED" */
+  /**
+   * Rising chord on "SYSTEM UNLOCKED".
+   * 150ms silence → chord plays → echo repeat at +80ms and +160ms.
+   * Detune per note → cinematic richness.
+   */
   function playGranted() {
     try {
       const c = getCtx()
-      const now = c.currentTime
-      const notes = [330, 415, 523, 659, 880]
-      notes.forEach((freq, i) => {
-        const osc = c.createOscillator()
-        const gain = c.createGain()
-        osc.connect(gain)
-        gain.connect(c.destination)
-        osc.type = 'sine'
-        const t = now + i * 0.07
-        osc.frequency.setValueAtTime(freq, t)
-        gain.gain.setValueAtTime(0.0001, t)
-        gain.gain.exponentialRampToValueAtTime(0.07, t + 0.025)
-        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.22)
-        osc.start(t)
-        osc.stop(t + 0.25)
-      })
-    } catch {
-      /* audio blocked */
-    }
+      // 150ms silence before chord — impact 2×
+      const offset = 0.15
+
+      const playChord = (extraDelay: number) => {
+        const notes = [330, 415, 523, 659, 880]
+        notes.forEach((freq, i) => {
+          const osc = c.createOscillator()
+          const gain = c.createGain()
+          osc.connect(gain)
+          gain.connect(c.destination)
+          osc.type = 'sine'
+          // Slight detune → warm, not sterile
+          osc.detune.value = Math.random() * 10 - 5
+          const t = c.currentTime + offset + extraDelay + i * 0.07
+          osc.frequency.setValueAtTime(freq, t)
+          gain.gain.setValueAtTime(0.0001, t)
+          // Echo repeats are quieter
+          const vol = extraDelay === 0 ? 0.08 : extraDelay === 0.08 ? 0.04 : 0.02
+          gain.gain.exponentialRampToValueAtTime(vol, t + 0.025)
+          gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.22)
+          osc.start(t)
+          osc.stop(t + 0.28)
+        })
+      }
+
+      // Main chord + 2 echo repeats → reverb illusion
+      playChord(0)
+      playChord(0.08)
+      playChord(0.16)
+    } catch { /* audio blocked */ }
   }
 
   function destroy() {
