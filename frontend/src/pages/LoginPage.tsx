@@ -169,17 +169,25 @@ export function LoginPage() {
       </div>
 
       <div className="relative z-[1] w-full max-w-[min(100%,26rem)]">
-        {/* Brand mark above card */}
-        <div className="mb-8 flex flex-col items-center gap-2">
-          <div className="flex size-14 items-center justify-center rounded-2xl bg-primary shadow-lg shadow-primary/40">
-            <Network className="size-7 text-white" aria-hidden />
-          </div>
-          <span className="font-heading text-xl font-bold tracking-tight text-foreground">Myle</span>
-        </div>
-
         <AuthCard
           variant="center"
           icon={Network}
+          iconNode={
+            <div className="flex size-[3.25rem] items-center justify-center rounded-2xl shadow-lg"
+              style={{ background: 'linear-gradient(145deg, #1a1008 0%, #0d0904 100%)', boxShadow: '0 4px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(212,175,55,0.15)' }}
+              aria-hidden>
+              <svg width="30" height="28" viewBox="0 0 30 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M2 26V4L15 20L28 4V26" stroke="url(#gold)" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
+                <defs>
+                  <linearGradient id="gold" x1="2" y1="4" x2="28" y2="26" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#F5D060"/>
+                    <stop offset="50%" stopColor="#D4AF37"/>
+                    <stop offset="100%" stopColor="#A07820"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+          }
           title="Welcome back"
           subtitle="Sign in to Myle Community"
           footer={
