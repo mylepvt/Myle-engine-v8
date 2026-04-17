@@ -54,8 +54,7 @@ export function DashboardMobileTabBar({
       resolveTitleForPath('system/training', role) ?? def.label
     return (
       <nav
-        className="fixed bottom-0 left-0 right-0 z-30 border-t border-border/70 bg-background/95 shadow-[0_-8px_20px_-14px_rgba(2,6,23,0.35)] md:hidden supports-[backdrop-filter]:bg-background/82 supports-[backdrop-filter]:backdrop-blur-xl"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        className="shrink-0 border-t border-border/70 bg-background pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-8px_20px_-14px_rgba(2,6,23,0.35)] md:hidden"
         role="navigation"
         aria-label="Training"
       >
@@ -109,8 +108,7 @@ export function DashboardMobileTabBar({
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-30 border-t border-border/70 bg-background/95 shadow-[0_-8px_20px_-14px_rgba(2,6,23,0.35)] md:hidden supports-[backdrop-filter]:bg-background/82 supports-[backdrop-filter]:backdrop-blur-xl"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      className="shrink-0 border-t border-border/70 bg-background pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-8px_20px_-14px_rgba(2,6,23,0.35)] md:hidden"
       role="navigation"
       aria-label="Main tabs"
     >

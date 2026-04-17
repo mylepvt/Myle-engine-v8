@@ -453,8 +453,6 @@ export function DashboardLayout() {
         <main
           className={cn(
             'content-dashboard-main relative min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-background p-4 md:p-6 lg:p-8',
-            /* Reserve space for fixed mobile tab bar; keep tight on md+ where bar is hidden */
-            'pb-[max(4.25rem,calc(env(safe-area-inset-bottom,0px)+3.25rem))] md:pb-6 lg:pb-8',
             'scroll-ios',
           )}
           onScroll={notifyDashboardMainScrolled}
