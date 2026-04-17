@@ -218,6 +218,12 @@ export function TerminalBootOverlay({
 
   // Main animation sequence
   useEffect(() => {
+    // Skip animation entirely in automated test environments (Playwright, Selenium, etc.)
+    if (navigator.webdriver) {
+      onFinish()
+      return
+    }
+
     const nextId = () => ++lineIdRef.current
 
     // Type a line character by character, returns promise that resolves when done
