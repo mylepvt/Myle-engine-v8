@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { apiFetch } from '@/lib/api'
 
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
+function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
   const rawData = window.atob(base64)
-  const outputArray = new Uint8Array(rawData.length)
+  const outputArray = new Uint8Array(rawData.length) as Uint8Array<ArrayBuffer>
   for (let i = 0; i < rawData.length; ++i) {
     outputArray[i] = rawData.charCodeAt(i)
   }
@@ -24,9 +24,9 @@ export function usePushNotifications() {
   )
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const vapidKeyRef = useRef<Uint8Array | null>(null)
+  const vapidKeyRef = useRef<Uint8Array<ArrayBuffer> | null>(null)
 
-  const getVapidKey = useCallback(async (): Promise<Uint8Array | null> => {
+  const getVapidKey = useCallback(async (): Promise<Uint8Array<ArrayBuffer> | null> => {
     if (vapidKeyRef.current) return vapidKeyRef.current
     try {
       const res = await apiFetch('/api/v1/notifications/vapid-key')
