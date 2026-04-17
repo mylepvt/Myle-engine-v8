@@ -4,7 +4,6 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 
 import { App } from '@/App'
-import { playTap, primeAudio } from '@/lib/click-sound'
 import { ThemeAndFeedbackProvider } from '@/components/providers/ThemeAndFeedbackProvider'
 import { AppErrorBoundary } from '@/components/routing/AppErrorBoundary'
 import { initPerformanceProfile, isLowEndDevice } from '@/lib/device-performance'
@@ -38,29 +37,27 @@ if (!rootEl) {
   throw new Error('Missing #root — index.html must define <div id="root">')
 }
 
-document.addEventListener('pointerdown', (e) => {
-  const t = e.target as HTMLElement
-  // Prime AudioContext on first touch (required by browser autoplay policy)
-  primeAudio()
-  // Tap sound: checkbox, radio, select
-  if (
-    t.closest('input[type="checkbox"]') ||
-    t.closest('input[type="radio"]') ||
-    t.closest('select')
-  ) {
-    playTap()
-    return
+function setupIosViewportLock() {
+  if (typeof window === 'undefined') return
+  const ua = navigator.userAgent
+  const isIos =
+    /iPad|iPhone|iPod/.test(ua) ||
+    (navigator.platform === 'MacIntel' && (navigator as Navigator & { maxTouchPoints?: number }).maxTouchPoints! > 1)
+  if (!isIos) return
+
+  const updateVh = () => {
+    const vv = window.visualViewport
+    const vh = Math.round((vv?.height ?? window.innerHeight))
+    document.documentElement.style.setProperty('--app-vh', `${vh}px`)
   }
-  // Tap sound (tukk): buttons, tabs, nav links, role=button
-  if (
-    t.closest('button') ||
-    t.closest('a') ||
-    t.closest('[role="button"]') ||
-    t.closest('[role="tab"]')
-  ) {
-    playTap()
-  }
-}, { passive: true })
+
+  updateVh()
+  window.addEventListener('resize', updateVh, { passive: true })
+  window.addEventListener('orientationchange', updateVh, { passive: true })
+  window.visualViewport?.addEventListener('resize', updateVh, { passive: true })
+}
+
+setupIosViewportLock()
 
 createRoot(rootEl).render(
   <StrictMode>

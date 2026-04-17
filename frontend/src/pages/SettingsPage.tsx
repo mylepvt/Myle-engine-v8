@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { PushNotificationToggle } from '@/components/notifications/PushNotificationToggle'
-import { playSuccess } from '@/lib/click-sound'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -106,7 +105,7 @@ export default function SettingsPage() {
     setProfileSuccess(null)
     setProfileError(null)
     updateProfile.mutate(profileForm, {
-      onSuccess: () => { playSuccess(); setProfileSuccess('Profile updated successfully.') },
+      onSuccess: () => { setProfileSuccess('Profile updated successfully.') },
       onError: (e) => setProfileError(e instanceof Error ? e.message : 'Update failed.'),
     })
   }
