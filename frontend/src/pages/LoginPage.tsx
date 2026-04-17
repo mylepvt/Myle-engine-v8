@@ -18,6 +18,7 @@ import { AuthCard } from '@/components/auth/AuthCard'
 import { IconInput } from '@/components/auth/IconInput'
 import { Button } from '@/components/ui/button'
 import { authDevLogin, authPasswordLogin } from '@/lib/auth-api'
+import { playSuccess } from '@/lib/click-sound'
 import { fetchAuthMe } from '@/hooks/use-auth-me-query'
 import { DEFAULT_META, useMetaQuery } from '@/hooks/use-meta-query'
 import { t } from '@/lib/i18n'
@@ -123,6 +124,7 @@ export function LoginPage() {
         return
       }
       login()
+      playSuccess()
       navigate(from, { replace: true })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sign-in failed')
@@ -153,6 +155,7 @@ export function LoginPage() {
         return
       }
       login()
+      playSuccess()
       navigate(from, { replace: true })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sign-in failed')

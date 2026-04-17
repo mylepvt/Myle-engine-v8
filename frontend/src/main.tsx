@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 
 import { App } from '@/App'
-import { playClick } from '@/lib/click-sound'
+import { playClick, playTap } from '@/lib/click-sound'
 import { Snd01SineUiSoundBootstrap } from '@/components/providers/Snd01SineUiSoundBootstrap'
 import { ThemeAndFeedbackProvider } from '@/components/providers/ThemeAndFeedbackProvider'
 import { AppErrorBoundary } from '@/components/routing/AppErrorBoundary'
@@ -41,14 +41,21 @@ if (!rootEl) {
 
 document.addEventListener('pointerdown', (e) => {
   const t = e.target as HTMLElement
+  // Tap sound: checkbox, radio, select
+  if (
+    t.closest('input[type="checkbox"]') ||
+    t.closest('input[type="radio"]') ||
+    t.closest('select')
+  ) {
+    playTap()
+    return
+  }
+  // Click sound: buttons, tabs, nav links, role=button
   if (
     t.closest('button') ||
     t.closest('a') ||
     t.closest('[role="button"]') ||
-    t.closest('[role="tab"]') ||
-    t.closest('select') ||
-    t.closest('input[type="checkbox"]') ||
-    t.closest('input[type="radio"]')
+    t.closest('[role="tab"]')
   ) {
     playClick()
   }

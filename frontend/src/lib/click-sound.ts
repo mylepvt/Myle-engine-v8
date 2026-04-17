@@ -1,29 +1,64 @@
-let ctx: AudioContext | null = null
+/**
+ * Sound palette for UI interactions.
+ *
+ * click.mp3   — light UI click  → buttons, tabs, nav links, anchors
+ * tap.mp3     — screen tap      → checkboxes, radios, selects
+ * success.mp3 — Apple Pay chime → form saves, login success, confirmations
+ *
+ * Files live in /public/sounds/ and are streamed via HTMLAudioElement
+ * (no bundler involvement, zero JS overhead until first play).
+ */
 
-function getCtx(): AudioContext | null {
-  try {
-    if (!ctx) ctx = new AudioContext()
-    return ctx
-  } catch { return null }
+type SoundName = 'click' | 'tap' | 'success'
+
+const pool: Record<SoundName, HTMLAudioElement[]> = {
+  click: [],
+  tap: [],
+  success: [],
 }
 
-export function playClick() {
-  const ac = getCtx()
-  if (!ac) return
-  // Short noise burst — mechanical key feel
-  const bufLen = ac.sampleRate * 0.012 // 12ms
-  const buf = ac.createBuffer(1, bufLen, ac.sampleRate)
-  const data = buf.getChannelData(0)
-  for (let i = 0; i < bufLen; i++) {
-    data[i] = (Math.random() * 2 - 1) * Math.max(0, 1 - i / bufLen) * 0.18
+const POOL_SIZE = 4 // concurrent instances per sound
+
+function preload(name: SoundName) {
+  for (let i = 0; i < POOL_SIZE; i++) {
+    const a = new Audio(`/sounds/${name}.mp3`)
+    a.preload = 'auto'
+    a.volume = name === 'success' ? 0.55 : 0.35
+    pool[name].push(a)
   }
-  const src = ac.createBufferSource()
-  src.buffer = buf
-  // Highpass filter for crisp click
-  const filter = ac.createBiquadFilter()
-  filter.type = 'highpass'
-  filter.frequency.value = 1200
-  src.connect(filter)
-  filter.connect(ac.destination)
-  src.start()
+}
+
+let ready = false
+
+function ensureReady() {
+  if (ready) return
+  ready = true
+  preload('click')
+  preload('tap')
+  preload('success')
+}
+
+function play(name: SoundName) {
+  ensureReady()
+  // Round-robin through the pool so rapid taps don't cut each other off
+  const list = pool[name]
+  const a = list.find((x) => x.paused || x.ended) ?? list[0]
+  if (!a) return
+  a.currentTime = 0
+  a.play().catch(() => {/* autoplay policy — ignore */})
+}
+
+/** Light click — buttons, tabs, links */
+export function playClick() {
+  play('click')
+}
+
+/** Tap feedback — checkboxes, radios, selects */
+export function playTap() {
+  play('tap')
+}
+
+/** Success chime — form saves, login, confirmations */
+export function playSuccess() {
+  play('success')
 }
