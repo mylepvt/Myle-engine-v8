@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { useNoticeBoardMutations, useNoticeBoardQuery } from '@/hooks/use-notice-board-query'
+import { useNoticeBoardUnread } from '@/hooks/use-notice-board-unread'
 import { cn } from '@/lib/utils'
 
 type Props = { title: string }
@@ -24,6 +25,12 @@ export function NoticeBoardPage({ title }: Props) {
   const isAdmin = me?.authenticated && me.role === 'admin'
   const { data, isPending, isError, error, refetch } = useNoticeBoardQuery()
   const { create, remove, togglePin } = useNoticeBoardMutations()
+
+  const { markAllSeen } = useNoticeBoardUnread()
+
+  // Mark all notices as seen when this page is visited
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { markAllSeen() }, [])
 
   const [message, setMessage] = useState('')
   const [pinNew, setPinNew] = useState(false)

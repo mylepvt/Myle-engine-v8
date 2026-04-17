@@ -84,23 +84,25 @@ async def other_leaderboard(
             User.email,
             User.role,
             func.coalesce(func.sum(DailyScore.points), 0).label("pts"),
+            func.coalesce(User.xp_total, 0).label("xp"),
+            func.coalesce(User.xp_level, "rookie").label("lvl"),
         )
         .select_from(User)
         .outerjoin(DailyScore, DailyScore.user_id == User.id)
         .where(and_(*lb_conds))
-        .group_by(User.id, User.fbo_id, User.username, User.email, User.role)
+        .group_by(User.id, User.fbo_id, User.username, User.email, User.role, User.xp_total, User.xp_level)
         .order_by(desc("pts"))
         .limit(20)
     )
     rows = (await session.execute(stmt)).all()
     items: list[dict] = []
     for rank, r in enumerate(rows, start=1):
-        _uid, fbo, uname, email, role, pts = r
+        _uid, fbo, uname, email, role, pts, xp, lvl = r
         label = (uname or "").strip() or (email.split("@", 1)[0] if email else "") or fbo
         items.append(
             {
                 "title": f"#{rank} {label}",
-                "detail": f"{role} · {email} · total points: {int(pts)}",
+                "detail": f"{role} · {email} · total points: {int(pts)} · xp: {int(xp)} · level: {lvl or 'rookie'}",
                 "count": rank,
             }
         )

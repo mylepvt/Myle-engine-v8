@@ -14,6 +14,7 @@ import { EnrollmentCard } from '@/components/leads/EnrollmentCard'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LeadNextStepPanel } from '@/components/leads/LeadNextStepPanel'
 import { LeadNotesPanel } from '@/components/leads/LeadNotesPanel'
+import { playSuccess } from '@/lib/click-sound'
 
 type Props = {
   leadId: number
@@ -131,6 +132,7 @@ export function LeadDetailPage({ leadId }: Props) {
         leadId,
         body: { status: pipelineStatus, call_status: pipelineCallStatus || null },
       })
+      if (pipelineStatus === 'won') playSuccess()
     } catch (e) {
       setPipelineError(e instanceof Error ? e.message : 'Save failed')
     }

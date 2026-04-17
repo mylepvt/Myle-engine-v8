@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { MoreHorizontal } from 'lucide-react'
 
 import { getDashboardNavIcon } from '@/config/dashboard-nav-icons'
+import { useNoticeBoardUnread } from '@/hooks/use-notice-board-unread'
 import {
   DASHBOARD_ROUTE_DEFS,
   type DashboardRouteDef,
@@ -43,6 +44,8 @@ export function DashboardMobileTabBar({
   trainingLocked = false,
   onOpenMenu,
 }: Props) {
+  const { unread: noticeBoardUnread } = useNoticeBoardUnread()
+
   if (trainingLocked) {
     const def = defForPath('system/training')
     if (!def || !routeDefAccessible(def, role)) return null
@@ -154,9 +157,16 @@ export function DashboardMobileTabBar({
           type="button"
           onClick={onOpenMenu}
           className="flex min-h-[60px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[0.65rem] font-medium leading-none text-muted-foreground transition-colors active:opacity-70 hover:bg-muted/70 hover:text-foreground"
-          aria-label="Open full menu"
+          aria-label={noticeBoardUnread > 0 ? `Open full menu — ${noticeBoardUnread} new notices` : 'Open full menu'}
         >
-          <MoreHorizontal className="size-[22px] shrink-0" strokeWidth={1.75} aria-hidden />
+          <span className="relative">
+            <MoreHorizontal className="size-[22px] shrink-0" strokeWidth={1.75} aria-hidden />
+            {noticeBoardUnread > 0 ? (
+              <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-primary text-[0.5rem] font-bold text-primary-foreground shadow-sm" aria-hidden>
+                {noticeBoardUnread > 9 ? '9+' : noticeBoardUnread}
+              </span>
+            ) : null}
+          </span>
           <span className="truncate">More</span>
         </button>
       </div>

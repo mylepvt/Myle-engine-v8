@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils'
 import { authLogout } from '@/lib/auth-api'
 import { apiUrl } from '@/lib/api'
 import { notifyDashboardMainScrolled } from '@/lib/main-scroll-gate'
+import { useNoticeBoardUnread } from '@/hooks/use-notice-board-unread'
 import { useAuthStore } from '@/stores/auth-store'
 import { useShellPreviewStore } from '@/stores/shell-preview-store'
 import { useShellStore } from '@/stores/shell-store'
@@ -58,6 +59,7 @@ export function DashboardLayout() {
   )
   const theme = useUiFeedbackStore((s) => s.theme)
   const logout = useAuthStore((s) => s.logout)
+  const { unread: noticeBoardUnread } = useNoticeBoardUnread()
   const [headerSearch, setHeaderSearch] = useState('')
   const [isMobile, setIsMobile] = useState(false)
 
@@ -379,14 +381,18 @@ export function DashboardLayout() {
               <Link
                 to="/dashboard/other/notice-board"
                 className="relative flex size-10 items-center justify-center rounded-full transition-colors duration-200 hover:bg-muted active:opacity-80"
-                aria-label="Notice board"
+                aria-label={noticeBoardUnread > 0 ? `Notice board — ${noticeBoardUnread} new` : 'Notice board'}
               >
                 <Bell className="size-[1.2rem] md:size-[1.35rem]" />
               </Link>
-              <span
-                className="pointer-events-none absolute right-1 top-1 size-2 rounded-full bg-primary shadow-[0_0_8px_rgba(84,101,255,0.6)] animate-pulse"
-                aria-hidden
-              />
+              {noticeBoardUnread > 0 ? (
+                <span
+                  className="pointer-events-none absolute right-0.5 top-0.5 flex min-w-[1rem] items-center justify-center rounded-full bg-primary px-0.5 text-[0.55rem] font-bold leading-none text-primary-foreground shadow-[0_0_8px_rgba(84,101,255,0.6)] animate-pulse"
+                  aria-hidden
+                >
+                  {noticeBoardUnread > 9 ? '9+' : noticeBoardUnread}
+                </span>
+              ) : null}
             </div>
 
             {shellRole != null ? (

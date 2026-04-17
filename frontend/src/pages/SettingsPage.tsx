@@ -166,23 +166,22 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="max-w-5xl space-y-6">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Settings</h1>
-            <p className="text-gray-600">
-              Manage your profile, preferences, and system configuration
-            </p>
-          </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Settings</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage your profile, preferences, and system configuration
+          </p>
+        </div>
+        <div>
           <Badge variant="outline" className="text-sm">
             {authData?.role?.toUpperCase()}
           </Badge>
         </div>
       </div>
 
-      {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList
           className={cn(
