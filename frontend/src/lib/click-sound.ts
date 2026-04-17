@@ -17,6 +17,11 @@ import { clickB64, tapB64, successB64 } from './sound-data'
 
 type SoundName = 'click' | 'tap' | 'success'
 
+const IS_IOS =
+  typeof navigator !== 'undefined' &&
+  (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && (navigator as Navigator & { maxTouchPoints?: number }).maxTouchPoints! > 1))
+
 // ─── Step 1: base64 → ArrayBuffer (sync on module load) ──────────────────────
 function b64ToArrayBuffer(b64: string): ArrayBuffer {
   const bin = atob(b64)
@@ -50,14 +55,8 @@ function getCtx(): AudioContext | null {
     ctx = new (window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
 
-    // Watch for context interruption (iOS phone call, tab hidden, etc.)
-    // Reset decoded so next gesture re-decodes into the fresh context.
     ctx.addEventListener('statechange', () => {
-      if (ctx && (ctx.state === 'suspended' || ctx.state === 'interrupted' as AudioContextState)) {
-        // Don't reset decoded — buffers are still valid, just context needs resume
-      }
       if (ctx && ctx.state === 'closed') {
-        // Context was closed — full reset needed
         decoded = false
         decoding = false
         audioBuffers.clear()
@@ -68,6 +67,12 @@ function getCtx(): AudioContext | null {
   } catch {
     return null
   }
+}
+
+function isSuspendedLike(ac: AudioContext): boolean {
+  // iOS Safari adds an 'interrupted' state (phone call, silent switch toggle, PWA bg/fg).
+  const s = ac.state as AudioContextState | 'interrupted'
+  return s === 'suspended' || s === 'interrupted'
 }
 
 async function decodeAll(): Promise<void> {
@@ -90,8 +95,8 @@ async function decodeAll(): Promise<void> {
     return
   }
 
-  // Resume suspended context (required by mobile browsers)
-  if (ac.state === 'suspended') {
+  // Resume suspended / interrupted context (required by mobile browsers + iOS PWA)
+  if (isSuspendedLike(ac)) {
     try { await ac.resume() } catch { /* ignore */ }
   }
 
@@ -115,24 +120,73 @@ async function decodeAll(): Promise<void> {
 // ─── Step 3: Play ─────────────────────────────────────────────────────────────
 function playBuffer(name: SoundName): void {
   const ac = getCtx()
-  if (!ac) return
+  if (!ac) {
+    playFallback(name)
+    return
+  }
 
   const buf = audioBuffers.get(name)
-  if (!buf) return
+  if (!buf) {
+    // Decode may not be finished on first gesture — degrade to HTMLAudio.
+    playFallback(name)
+    return
+  }
 
-  // FIX: if suspended, resume FIRST then replay — don't just return silently
-  if (ac.state === 'suspended') {
+  // iOS PWA often parks context in 'interrupted' on background return — resume + play.
+  if (isSuspendedLike(ac)) {
     void ac.resume().then(() => {
-      // After resume, try to play — check state again to be safe
-      if (ac.state === 'running') {
-        _doPlay(ac, buf, name)
-      }
+      if (ac.state === 'running') _doPlay(ac, buf, name)
+      else playFallback(name)
     })
     return
   }
 
-  if (ac.state !== 'running') return
+  if (ac.state !== 'running') {
+    playFallback(name)
+    return
+  }
   _doPlay(ac, buf, name)
+}
+
+// ─── HTMLAudio fallback (iOS Safari + PWA reliability) ───────────────────────
+const fallbackPool = new Map<SoundName, HTMLAudioElement[]>()
+const FALLBACK_POOL_SIZE = 3
+
+function mimeFor(name: SoundName): string {
+  // sound-data base64 blobs are MP3 — keep as a single mime type.
+  void name
+  return 'audio/mpeg'
+}
+
+function ensureFallbackPool(name: SoundName): HTMLAudioElement[] {
+  let pool = fallbackPool.get(name)
+  if (pool) return pool
+  pool = []
+  const src = `data:${mimeFor(name)};base64,${
+    name === 'click' ? clickB64 : name === 'tap' ? tapB64 : successB64
+  }`
+  for (let i = 0; i < FALLBACK_POOL_SIZE; i++) {
+    const a = new Audio(src)
+    a.preload = 'auto'
+    a.volume = VOLUMES[name]
+    // iOS PWA / Safari: allow inline playback, never go fullscreen.
+    try { (a as HTMLAudioElement & { playsInline?: boolean }).playsInline = true } catch { /* ignore */ }
+    pool.push(a)
+  }
+  fallbackPool.set(name, pool)
+  return pool
+}
+
+function playFallback(name: SoundName): void {
+  if (typeof window === 'undefined') return
+  try {
+    const pool = ensureFallbackPool(name)
+    const a = pool.find((el) => el.paused || el.ended) ?? pool[0]
+    a.currentTime = 0
+    void a.play().catch(() => { /* autoplay / silent switch — ignore */ })
+  } catch {
+    /* no-op */
+  }
 }
 
 function _doPlay(ac: AudioContext, buf: AudioBuffer, name: SoundName): void {
@@ -165,8 +219,19 @@ let primed = false
 export function primeAudio(): void {
   // Always try to resume even if primed — handles iOS background/foreground cycle
   const ac = ctx
-  if (ac && ac.state === 'suspended') {
+  if (ac && isSuspendedLike(ac)) {
     void ac.resume()
+  }
+
+  // Warm up HTMLAudio pool inside gesture — needed on iOS so fallback plays later.
+  if (IS_IOS) {
+    ;(['click', 'tap', 'success'] as SoundName[]).forEach((n) => {
+      const pool = ensureFallbackPool(n)
+      pool.forEach((a) => {
+        // Touch .load / muted-play trick to unlock the element in the current gesture.
+        try { a.load() } catch { /* ignore */ }
+      })
+    })
   }
 
   if (primed && decoded) return

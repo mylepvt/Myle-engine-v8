@@ -54,16 +54,16 @@ export function DashboardMobileTabBar({
       resolveTitleForPath('system/training', role) ?? def.label
     return (
       <nav
-        className="shrink-0 border-t border-border/70 bg-background pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-8px_20px_-14px_rgba(2,6,23,0.35)] md:hidden"
+        className="h-16 shrink-0 border-t border-border/70 bg-background shadow-[0_-8px_20px_-14px_rgba(2,6,23,0.35)] md:hidden"
         role="navigation"
         aria-label="Training"
       >
-        <div className="mx-auto flex max-w-lg items-stretch justify-around gap-1 px-2 pt-1.5">
+        <div className="mx-auto flex h-full max-w-lg items-stretch justify-around gap-1 px-2">
           <NavLink
             to="/dashboard/system/training"
             className={({ isActive }) =>
               cn(
-                'flex min-h-[60px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[0.65rem] font-medium leading-none transition-colors active:opacity-70',
+                'flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 text-[0.65rem] font-medium leading-none transition-colors active:opacity-70',
                 isActive
                   ? 'bg-primary/12 text-primary'
                   : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground',
@@ -87,7 +87,7 @@ export function DashboardMobileTabBar({
           <button
             type="button"
             onClick={onOpenMenu}
-            className="flex min-h-[60px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[0.65rem] font-medium leading-none text-muted-foreground transition-colors active:opacity-70 hover:bg-muted/70 hover:text-foreground"
+            className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 text-[0.65rem] font-medium leading-none text-muted-foreground transition-colors active:opacity-70 hover:bg-muted/70 hover:text-foreground"
             aria-label="Open menu"
           >
             <MoreHorizontal className="size-[22px] shrink-0" strokeWidth={1.75} aria-hidden />
@@ -108,11 +108,11 @@ export function DashboardMobileTabBar({
 
   return (
     <nav
-      className="shrink-0 border-t border-border/70 bg-background pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-8px_20px_-14px_rgba(2,6,23,0.35)] md:hidden"
+      className="h-16 shrink-0 border-t border-border/70 bg-background shadow-[0_-8px_20px_-14px_rgba(2,6,23,0.35)] md:hidden"
       role="navigation"
       aria-label="Main tabs"
     >
-      <div className="mx-auto flex max-w-lg items-stretch justify-around gap-1 px-2 pt-1.5">
+      <div className="mx-auto flex h-full max-w-lg items-stretch justify-around gap-1 px-2">
         {defs.map((def) => {
           const to = def.path === '' ? '/dashboard' : `/dashboard/${def.path}`
           const Icon = getDashboardNavIcon(def.path)
@@ -127,7 +127,7 @@ export function DashboardMobileTabBar({
               end={def.end ?? false}
               className={({ isActive }) =>
                 cn(
-                  'flex min-h-[60px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[0.65rem] font-medium leading-none transition-colors active:opacity-70',
+                  'flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 text-[0.65rem] font-medium leading-none transition-colors active:opacity-70',
                   isActive
                     ? 'bg-primary/12 text-primary'
                     : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground',
@@ -154,7 +154,7 @@ export function DashboardMobileTabBar({
         <button
           type="button"
           onClick={onOpenMenu}
-          className="flex min-h-[60px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[0.65rem] font-medium leading-none text-muted-foreground transition-colors active:opacity-70 hover:bg-muted/70 hover:text-foreground"
+          className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 text-[0.65rem] font-medium leading-none text-muted-foreground transition-colors active:opacity-70 hover:bg-muted/70 hover:text-foreground"
           aria-label={noticeBoardUnread > 0 ? `Open full menu — ${noticeBoardUnread} new notices` : 'Open full menu'}
         >
           <span className="relative">
