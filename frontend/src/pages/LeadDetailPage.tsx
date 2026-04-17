@@ -361,9 +361,7 @@ export function LeadDetailPage({ leadId }: Props) {
                 type="button"
                 size="sm"
                 disabled={patchMut.isPending}
-               
                 onClick={() => void savePipeline()}
-              >
                 {patchMut.isPending ? 'Saving…' : 'Save pipeline'}
               </Button>
               {pipelineError ? (
