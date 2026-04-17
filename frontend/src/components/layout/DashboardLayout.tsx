@@ -287,7 +287,7 @@ export function DashboardLayout() {
       </div>
     </aside>
 
-    <div className="flex min-w-0 max-w-full flex-1 flex-col overflow-x-hidden pt-[env(safe-area-inset-top)]">
+    <div className="flex h-dvh min-w-0 max-w-full flex-1 flex-col overflow-x-hidden pt-[env(safe-area-inset-top)]">
       <header className="relative z-20 flex h-[56px] shrink-0 items-center gap-2 border-b border-border/60 bg-background/95 px-3 shadow-ios-bar md:gap-3 md:px-4 supports-[backdrop-filter]:bg-background/92 supports-[backdrop-filter]:backdrop-blur-md">
         {/* Left: menu + compact admin preview (no stacked label on small screens) */}
         <div className="flex min-w-0 shrink-0 items-center gap-1.5">

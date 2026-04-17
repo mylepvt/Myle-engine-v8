@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 
 import { App } from '@/App'
-import { playClick, playTap, primeAudio } from '@/lib/click-sound'
+import { playTap, primeAudio } from '@/lib/click-sound'
 import { ThemeAndFeedbackProvider } from '@/components/providers/ThemeAndFeedbackProvider'
 import { AppErrorBoundary } from '@/components/routing/AppErrorBoundary'
 import { initPerformanceProfile, isLowEndDevice } from '@/lib/device-performance'
@@ -51,14 +51,14 @@ document.addEventListener('pointerdown', (e) => {
     playTap()
     return
   }
-  // Click sound: buttons, tabs, nav links, role=button
+  // Tap sound (tukk): buttons, tabs, nav links, role=button
   if (
     t.closest('button') ||
     t.closest('a') ||
     t.closest('[role="button"]') ||
     t.closest('[role="tab"]')
   ) {
-    playClick()
+    playTap()
   }
 }, { passive: true })
 
