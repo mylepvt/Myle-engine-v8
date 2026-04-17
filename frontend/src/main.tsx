@@ -39,14 +39,34 @@ if (!rootEl) {
 
 function setupIosViewportLock() {
   if (typeof window === 'undefined') return
+  const rootEl = document.documentElement
+  const rootStyle = rootEl.style
   const ua = navigator.userAgent
   const isIos =
     /iPad|iPhone|iPod/.test(ua) ||
     (navigator.platform === 'MacIntel' && (navigator as Navigator & { maxTouchPoints?: number }).maxTouchPoints! > 1)
-  if (!isIos) return
-  if (typeof CSS !== 'undefined' && CSS.supports('height', '100lvh')) return
+  const supportsLvh = typeof CSS !== 'undefined' && CSS.supports('height', '100lvh')
+  const shouldLockShell = isIos && !supportsLvh
+  rootEl.classList.toggle('ios-shell-lock', shouldLockShell)
+  if (!shouldLockShell) {
+    const applyDynamicVh = () => {
+      const vv = window.visualViewport?.height
+      const next = Math.round(Math.max(vv ?? 0, window.innerHeight))
+      if (next > 0) {
+        rootStyle.setProperty('--app-shell-vh', `${next}px`)
+      }
+    }
 
-  const rootStyle = document.documentElement.style
+    applyDynamicVh()
+    window.addEventListener('resize', applyDynamicVh, { passive: true })
+    window.visualViewport?.addEventListener('resize', applyDynamicVh, { passive: true })
+    window.addEventListener('orientationchange', () => window.setTimeout(applyDynamicVh, 120), {
+      passive: true,
+    })
+    window.addEventListener('pageshow', applyDynamicVh, { passive: true })
+    return
+  }
+
   let lockedVh = 0
 
   const readStableVh = () => {
