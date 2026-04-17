@@ -112,7 +112,6 @@ export function LeadDetailPage({ leadId }: Props) {
   }, [])
 
   // Keep local editors in sync when `lead` updates (route change or query refetch after save).
-  /* eslint-disable react-hooks/set-state-in-effect -- intentional sync from server record to form state */
   useEffect(() => {
     if (lead) {
       setPipelineStatus(lead.status)
@@ -121,7 +120,6 @@ export function LeadDetailPage({ leadId }: Props) {
       setProofUrl(lead.payment_proof_url ?? '')
     }
   }, [lead])
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   async function savePipeline() {
     if (!lead) return

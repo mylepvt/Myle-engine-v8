@@ -89,7 +89,7 @@ const ASSIGNEE_PALETTE = ['bg-blue-500', 'bg-pink-500', 'bg-violet-500', 'bg-cya
 
 /** Native `<select>` — compact so Call + Lead sit one row beside Dial/WA. */
 const pillSelectInner =
-  'max-w-[min(9.5rem,34vw)] min-w-0 h-full flex-1 cursor-pointer appearance-none rounded-full border-0 bg-transparent py-0 pl-0.5 pr-5 text-left text-[11px] font-medium leading-none text-foreground outline-none focus:outline-none disabled:opacity-40'
+  'max-w-[min(9.5rem,34vw)] min-w-0 h-full flex-1 cursor-pointer appearance-none rounded-full border-0 bg-transparent py-0 pl-0.5 pr-5 text-left text-ds-caption font-medium leading-none text-foreground outline-none focus:outline-none disabled:opacity-40'
 
 function statusDotClass(status: string): string {
   if (status === 'contacted') return 'bg-yellow-500'
@@ -212,14 +212,14 @@ export function CtcsLeadCard({
                 >
                   {assigneeInitials}
                 </div>
-                <span className="max-w-[7.5rem] truncate text-[11px] text-muted-foreground" title={assigneeName}>
+                <span className="max-w-[7.5rem] truncate text-ds-caption text-muted-foreground" title={assigneeName}>
                   {assigneeName}
                 </span>
               </div>
             ) : null}
           </div>
           {phoneLine || cityLine ? (
-            <p className="mt-0.5 text-[11px] leading-tight text-muted-foreground">
+            <p className="mt-0.5 text-ds-caption leading-tight text-muted-foreground">
               {phoneLine ? <span className="font-mono">{phoneLine}</span> : null}
               {phoneLine && cityLine ? <span className="text-muted-foreground/70"> · </span> : null}
               {cityLine ? <span>{cityLine}</span> : null}
@@ -237,11 +237,11 @@ export function CtcsLeadCard({
           {pipelineReadonly ? (
             <div className="flex h-8 min-w-[6.5rem] max-w-[38%] shrink-0 items-center gap-1.5 rounded-full border border-border/50 bg-muted/60 px-2.5">
               <span className={cn('size-1.5 shrink-0 rounded-full', statusDotClass(lead.status))} aria-hidden />
-              <span className="truncate text-[11px] text-foreground">
+              <span className="truncate text-ds-caption text-foreground">
                 {LEAD_STATUS_OPTIONS.find((o) => o.value === lead.status)?.label ?? lead.status}
               </span>
-              <span className="text-[10px] text-muted-foreground">·</span>
-              <span className="text-[10px] text-muted-foreground">Leader</span>
+              <span className="text-ds-caption text-muted-foreground">·</span>
+              <span className="text-ds-caption text-muted-foreground">Leader</span>
             </div>
           ) : (
             <div className="relative flex h-8 min-w-[7rem] max-w-[40%] shrink-0 items-center gap-1.5 rounded-full border border-border/50 bg-muted/60 pl-2 pr-6">
@@ -337,10 +337,10 @@ export function CtcsLeadCard({
             </svg>
             </div>
             <div>
-              <p className={cn('text-xs font-semibold leading-tight', timeColors.text)}>
+              <p className={cn('text-ds-caption font-semibold leading-tight', timeColors.text)}>
                 {overdue ? formatCountdown(ms) : formatTime(remainingSec)}
               </p>
-              <p className="text-[10px] text-muted-foreground">{overdue ? 'SLA' : 'remaining'}</p>
+              <p className="text-ds-caption text-muted-foreground">{overdue ? 'SLA' : 'remaining'}</p>
             </div>
           </div>
 

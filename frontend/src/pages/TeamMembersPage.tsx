@@ -47,21 +47,21 @@ function ResetPasswordModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="keyboard-safe-modal fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="surface-elevated w-full max-w-sm rounded-xl p-6 text-sm shadow-xl"
+        className="keyboard-safe-sheet surface-elevated max-h-[90dvh] w-full max-w-sm overflow-y-auto rounded-xl p-6 text-sm shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="mb-1 font-semibold text-foreground">Reset Password</h2>
-        <p className="mb-4 text-xs text-muted-foreground">
+        <p className="mb-4 text-ds-caption text-muted-foreground">
           <span className="font-medium text-foreground">{target.fbo_id}</span>
           {' · '}
           {target.email}
         </p>
         <label className="block">
-          <span className="mb-1 block text-xs text-muted-foreground">New password (min 8 chars)</span>
+          <span className="mb-1 block text-ds-caption text-muted-foreground">New password (min 8 chars)</span>
           <div className="flex gap-2">
             <input
               type={showPw ? 'text' : 'password'}
@@ -69,19 +69,19 @@ function ResetPasswordModal({
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               disabled={resetMut.isPending}
-              className="flex-1 rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2.5 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+              className="field-input flex-1"
             />
             <button
               type="button"
               onClick={() => setShowPw((v) => !v)}
-              className="rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2.5 text-xs text-muted-foreground hover:text-foreground"
+              className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-ds-caption text-muted-foreground transition hover:bg-muted hover:text-foreground"
             >
               {showPw ? 'Hide' : 'Show'}
             </button>
           </div>
         </label>
         {resetError ? (
-          <p className="mt-2 text-xs text-destructive" role="alert">
+          <p className="mt-2 text-ds-caption text-destructive" role="alert">
             {resetError}
           </p>
         ) : null}
@@ -150,59 +150,59 @@ export function TeamMembersPage({ title }: Props) {
       {isAdmin ? (
         <div className="surface-elevated p-5 text-sm">
           <h2 className="mb-3 font-medium text-foreground">Add user</h2>
-          <p className="mb-3 text-xs text-muted-foreground">
+          <p className="mb-3 text-ds-caption text-muted-foreground">
             Creates a password-login account (min. 8 characters). Admin only.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
             <label className="block min-w-[10rem] flex-1">
-              <span className="mb-1 block text-xs text-muted-foreground">FBO ID (unique)</span>
+              <span className="mb-1 block text-ds-caption text-muted-foreground">FBO ID (unique)</span>
               <input
                 autoComplete="off"
                 value={fboId}
                 onChange={(e) => setFboId(e.target.value)}
                 disabled={createMut.isPending}
-                className="w-full rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2.5 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                className="field-input"
               />
             </label>
             <label className="block min-w-[10rem] flex-1">
-              <span className="mb-1 block text-xs text-muted-foreground">Username (optional)</span>
+              <span className="mb-1 block text-ds-caption text-muted-foreground">Username (optional)</span>
               <input
                 autoComplete="off"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 disabled={createMut.isPending}
-                className="w-full rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2.5 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                className="field-input"
               />
             </label>
             <label className="block min-w-[12rem] flex-1">
-              <span className="mb-1 block text-xs text-muted-foreground">Email</span>
+              <span className="mb-1 block text-ds-caption text-muted-foreground">Email</span>
               <input
                 type="email"
                 autoComplete="off"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={createMut.isPending}
-                className="w-full rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2.5 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                className="field-input"
               />
             </label>
             <label className="block min-w-[10rem] flex-1">
-              <span className="mb-1 block text-xs text-muted-foreground">Password</span>
+              <span className="mb-1 block text-ds-caption text-muted-foreground">Password</span>
               <input
                 type="password"
                 autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={createMut.isPending}
-                className="w-full rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2.5 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                className="field-input"
               />
             </label>
             <label className="block w-full min-w-[8rem] sm:w-auto">
-              <span className="mb-1 block text-xs text-muted-foreground">Role</span>
+              <span className="mb-1 block text-ds-caption text-muted-foreground">Role</span>
               <select
                 value={newRole}
                 onChange={(e) => setNewRole(e.target.value as Role)}
                 disabled={createMut.isPending}
-                className="w-full rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2.5 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35 sm:w-36"
+                className="field-input sm:w-36"
               >
                 {ROLES.map((r) => (
                   <option key={r} value={r}>
@@ -233,7 +233,7 @@ export function TeamMembersPage({ title }: Props) {
             </Button>
           </div>
           {createError ? (
-            <p className="mt-2 text-xs text-destructive" role="alert">
+            <p className="mt-2 text-ds-caption text-destructive" role="alert">
               {createError}
             </p>
           ) : null}
@@ -297,8 +297,8 @@ export function TeamMembersPage({ title }: Props) {
                   {m.username ? (
                     <span className="ml-1.5 text-muted-foreground">({m.username})</span>
                   ) : null}
-                  <span className="mt-0.5 block text-xs text-muted-foreground">{m.email}</span>
-                  <span className="mt-0.5 block text-xs">
+                  <span className="mt-0.5 block text-ds-caption text-muted-foreground">{m.email}</span>
+                  <span className="mt-0.5 block text-ds-caption">
                     {m.role} · joined {new Date(m.created_at).toLocaleString()}
                   </span>
                 </div>
@@ -306,7 +306,7 @@ export function TeamMembersPage({ title }: Props) {
                   <button
                     type="button"
                     onClick={() => setResetTarget({ id: m.id, fbo_id: m.fbo_id, email: m.email })}
-                    className="shrink-0 rounded-md border border-white/[0.12] bg-white/[0.04] px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                    className="shrink-0 rounded-md border border-border bg-muted/30 px-2 py-1 text-ds-caption text-muted-foreground transition hover:bg-muted hover:text-foreground"
                   >
                     Reset Password
                   </button>
@@ -326,7 +326,7 @@ export function TeamMembersPage({ title }: Props) {
       ) : null}
 
       {toastMsg ? (
-        <div className="fixed bottom-24 right-4 z-[85] rounded-md border border-emerald-400/35 bg-emerald-400/15 px-3 py-2 text-xs font-semibold text-emerald-200 shadow-lg">
+        <div className="fixed bottom-24 right-4 z-[85] rounded-md border border-emerald-400/35 bg-emerald-400/15 px-3 py-2 text-ds-caption font-semibold text-emerald-200 shadow-lg">
           {toastMsg}
         </div>
       ) : null}

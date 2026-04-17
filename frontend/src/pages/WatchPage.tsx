@@ -45,7 +45,6 @@ export function WatchPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect */
     if (!token) {
       setError('Invalid link.')
       setLoading(false)
@@ -73,7 +72,6 @@ export function WatchPage() {
         setError(err instanceof Error ? err.message : 'Could not load video.')
         setLoading(false)
       })
-    /* eslint-enable react-hooks/set-state-in-effect */
   }, [token])
 
   const videoId = data?.youtube_url ? extractYouTubeId(data.youtube_url) : null

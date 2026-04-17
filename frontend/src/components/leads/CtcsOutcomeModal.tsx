@@ -47,12 +47,12 @@ export function CtcsOutcomeModal({ open, leadName, phone, busy, onClose, onPick 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-background/75 p-3 backdrop-blur-sm sm:items-center dark:bg-black/55"
+      className="keyboard-safe-modal fixed inset-0 z-50 flex items-end justify-center bg-background/75 p-3 backdrop-blur-sm sm:items-center dark:bg-black/55"
       role="dialog"
       aria-modal="true"
       aria-labelledby="ctcs-outcome-title"
     >
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-xl backdrop-blur-md">
+      <div className="keyboard-safe-sheet w-full max-w-md overflow-y-auto rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-xl backdrop-blur-md">
         <h2 id="ctcs-outcome-title" className="text-lg font-semibold text-foreground">
           Call outcome
         </h2>

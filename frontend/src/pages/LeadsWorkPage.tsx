@@ -37,8 +37,7 @@ const SOURCE_OPTIONS: { value: string; label: string }[] = [
   { value: 'other', label: 'Other' },
 ]
 
-const fieldInputClass =
-  'w-full rounded-lg border border-border bg-input px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/35'
+const fieldInputClass = 'field-input'
 
 function emptyListHint(role: Role | null, archivedOnly: boolean): string {
   if (archivedOnly) {
@@ -279,7 +278,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                 value={qInput}
                 onChange={(e) => setQInput(e.target.value)}
                 placeholder="Search leads..."
-                className="min-w-0 flex-1 bg-transparent text-[13px] text-foreground outline-none placeholder:text-muted-foreground"
+                className="min-w-0 flex-1 bg-transparent text-ds-caption text-foreground outline-none placeholder:text-muted-foreground"
                 autoComplete="off"
               />
             </div>
@@ -304,7 +303,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
 
         {filterOpen ? (
           <div className="border-b border-border px-4 pb-3">
-            <label htmlFor="lead-filter-status-crm" className="mb-1 block text-[11px] font-medium text-muted-foreground">
+            <label htmlFor="lead-filter-status-crm" className="mb-1 block text-ds-caption font-medium text-muted-foreground">
               Status
             </label>
             <select
@@ -317,7 +316,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                   status: e.target.value === '' ? '' : (e.target.value as LeadStatus),
                 }))
               }
-              className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/35"
+              className="field-input"
             >
               <option value="">All statuses</option>
               {LEAD_STATUS_GROUPS.map((g) => (
@@ -435,12 +434,12 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
 
       {quickAddOpen ? (
         <div
-          className="fixed inset-0 z-[60] flex items-end justify-center bg-background/80 p-0 backdrop-blur-sm sm:items-center sm:p-4 dark:bg-black/60"
+          className="keyboard-safe-modal fixed inset-0 z-[60] flex items-end justify-center bg-background/80 p-0 backdrop-blur-sm sm:items-center sm:p-4 dark:bg-black/60"
           role="presentation"
           onClick={() => setQuickAddOpen(false)}
         >
           <div
-            className="overscroll-contain max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-border bg-card text-card-foreground shadow-2xl sm:rounded-2xl"
+            className="keyboard-safe-sheet overscroll-contain max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-border bg-card text-card-foreground shadow-2xl sm:rounded-2xl"
             role="dialog"
             aria-modal="true"
             aria-labelledby="quick-add-title"
@@ -463,7 +462,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
               </button>
             </div>
             <div className="p-4">
-              <p className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <p className="mb-3 flex items-center gap-2 text-ds-caption font-semibold uppercase tracking-wide text-muted-foreground">
                 <span className="inline-flex size-6 items-center justify-center rounded-md bg-muted text-[var(--palette-cyan-dull)]">
                   <Phone className="size-3.5" aria-hidden />
                 </span>
