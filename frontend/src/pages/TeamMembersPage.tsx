@@ -261,7 +261,7 @@ export function TeamMembersPage({ title }: Props) {
             {isAdmin ? (
               <Button
                 type="button"
-                variant="destructive"
+                variant="outline"
                 size="sm"
                 disabled={bulkResetMut.isPending}
                 onClick={() => {
