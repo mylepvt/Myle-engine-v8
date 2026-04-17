@@ -376,6 +376,7 @@ async def get_leaderboard(session: AsyncSession, limit: int = 10) -> list[dict]:
                 "name": user.name or user.username or user.fbo_id,
                 "fbo_id": user.fbo_id,
                 "level": _calculate_level(user.xp_total or 0),
+                "level_label": _calculate_level(user.xp_total or 0).title(),
                 "xp_total": user.xp_total or 0,
             }
         )

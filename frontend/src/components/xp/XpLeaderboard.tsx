@@ -69,7 +69,7 @@ export function XpLeaderboard({ role }: Props) {
                   colors.bg, colors.text, colors.border,
                 )}
               >
-                {entry.level_label.toUpperCase()}
+                {(entry.level_label ?? entry.level ?? 'rookie').toUpperCase()}
               </span>
               <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
                 {entry.xp_total.toLocaleString()} XP
