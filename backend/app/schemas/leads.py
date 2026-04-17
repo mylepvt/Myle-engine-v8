@@ -160,6 +160,12 @@ class LeadUpdate(BaseModel):
         description="Admin only: true = undo soft-delete (clears deleted_at)",
     )
 
+    # Assignment (admin / leader only)
+    assigned_to_user_id: Optional[int] = Field(
+        default=None,
+        description="Re-assign lead to another user (admin/leader only)",
+    )
+
     # Contact fields
     phone: Optional[str] = Field(default=None, max_length=20)
     email: Optional[str] = Field(default=None, max_length=320)
@@ -211,6 +217,7 @@ class LeadUpdate(BaseModel):
             self.archived,
             self.in_pool,
             self.restored,
+            self.assigned_to_user_id,
             self.phone,
             self.email,
             self.city,

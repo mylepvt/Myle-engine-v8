@@ -426,6 +426,13 @@ class LeadsService:
             if user.role != "admin":
                 raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
             lead.pool_price_cents = body.pool_price_cents if body.pool_price_cents > 0 else None
+        if body.assigned_to_user_id is not None:
+            if user.role not in ("admin", "leader"):
+                raise HTTPException(
+                    status_code=http_status.HTTP_403_FORBIDDEN,
+                    detail="Only admin or leader can re-assign leads",
+                )
+            lead.assigned_to_user_id = body.assigned_to_user_id
         if body.name is not None:
             lead.name = body.name.strip()
         if body.status is not None:
