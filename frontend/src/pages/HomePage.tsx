@@ -1,15 +1,10 @@
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowRight, Shield } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardTitle } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
-import { useApiMetaQuery } from '@/hooks/use-api-meta-query'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
-import { useHelloQuery } from '@/hooks/use-hello-query'
-import { apiBase } from '@/lib/api'
 import { authLogout } from '@/lib/auth-api'
 import { t } from '@/lib/i18n'
 import { useAuthStore } from '@/stores/auth-store'
@@ -17,8 +12,6 @@ import { useAuthStore } from '@/stores/auth-store'
 export function HomePage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const { data, error, isPending } = useHelloQuery()
-  const { data: meta } = useApiMetaQuery()
   const { data: me, isPending: mePending } = useAuthMeQuery()
   const logout = useAuthStore((s) => s.logout)
   const sessionKnown = !mePending || me !== undefined
@@ -27,8 +20,10 @@ export function HomePage() {
   useEffect(() => {
     if (me?.authenticated) {
       navigate('/dashboard', { replace: true })
+    } else if (sessionKnown && !me?.authenticated) {
+      navigate('/login', { replace: true })
     }
-  }, [me?.authenticated, navigate])
+  }, [me?.authenticated, sessionKnown, navigate])
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))]">
@@ -36,7 +31,7 @@ export function HomePage() {
         <div className="space-y-3 text-center">
           <p className="text-sm font-semibold text-primary">{t('appTitle')}</p>
           <h1 className="bg-gradient-to-br from-foreground via-foreground to-primary bg-clip-text font-heading text-3xl font-semibold tracking-tight text-transparent sm:text-4xl">
-            Your sales workspace
+            Your team workspace
           </h1>
           <p className="mx-auto max-w-md text-sm leading-relaxed text-muted-foreground">
             {t('appTagline')}
@@ -79,49 +74,12 @@ export function HomePage() {
           )}
         </div>
 
-        <Card className="shadow-sm">
-          <CardContent className="flex items-start gap-3">
-            <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
-              <Shield className="size-4" aria-hidden />
-            </div>
-            <div className="min-w-0 flex-1">
-              <CardTitle className="text-ds-body font-medium leading-snug">
-                Service status
-              </CardTitle>
-              <div className="mt-2 min-h-[1.25rem] text-ds-body" aria-live="polite">
-                {isPending && (
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-4 w-1/2" />
-                  </div>
-                )}
-                {error && (
-                  <p className="text-destructive" role="alert">
-                    {(error as Error).message}
-                  </p>
-                )}
-                {data && (
-                  <p className="text-muted-foreground">{data.message}</p>
-                )}
-              </div>
-              <p className="mt-3 text-ds-caption text-muted-foreground">
-                <code className="rounded-md border border-border bg-muted/50 px-2 py-1 font-mono text-ds-caption">
-                  {apiBase}/api/v1/hello
-                </code>
-              </p>
-              {meta ? (
-                <p className="mt-2 text-ds-caption text-muted-foreground">
-                  {meta.name} · API v{meta.api_version}
-                </p>
-              ) : null}
-              {me?.authenticated ? (
-                <p className="mt-2 text-ds-caption text-muted-foreground">
-                  Signed in as {me.role ?? 'member'}
-                </p>
-              ) : null}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Loading indicator while checking session */}
+        {!sessionKnown && (
+          <div className="flex justify-center py-4">
+            <div className="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          </div>
+        )}
       </header>
 
       <footer className="mt-auto border-t border-white/[0.06] py-6 text-center text-[0.65rem] text-muted-foreground/80">

@@ -3,7 +3,6 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
-  ArrowRight,
   Eye,
   EyeOff,
   IdCard,
@@ -184,14 +183,7 @@ export function LoginPage() {
           subtitle="Sign in to your account"
           footer={
             <p className="text-sm text-muted-foreground">
-              New team member?{' '}
-              <Link
-                to="/register"
-                className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
-              >
-                Register here
-                <ArrowRight className="size-3.5" aria-hidden />
-              </Link>
+              New member? Contact your leader to get access.
             </p>
           }
         >
