@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -86,17 +86,27 @@ export default function SettingsPage() {
   const userRole = authData?.role as Role | undefined
   const isAdmin = userRole === 'admin'
 
-  // Initialize form when profile data loads
-  if (userProfile.data && !profileForm.username) {
-    setProfileForm({
-      username: userProfile.data.username || '',
-      phone: userProfile.data.phone || '',
-      name: userProfile.data.name || '',
-    })
-  }
+  const [profileSuccess, setProfileSuccess] = useState<string | null>(null)
+  const [profileError, setProfileError] = useState<string | null>(null)
+
+  // Initialize form when profile data loads — useEffect prevents render-time state updates
+  useEffect(() => {
+    if (userProfile.data) {
+      setProfileForm({
+        username: userProfile.data.username || '',
+        phone: userProfile.data.phone || '',
+        name: userProfile.data.name || '',
+      })
+    }
+  }, [userProfile.data])
 
   const handleProfileUpdate = () => {
-    updateProfile.mutate(profileForm)
+    setProfileSuccess(null)
+    setProfileError(null)
+    updateProfile.mutate(profileForm, {
+      onSuccess: () => setProfileSuccess('Profile updated successfully.'),
+      onError: (e) => setProfileError(e instanceof Error ? e.message : 'Update failed.'),
+    })
   }
 
   const handlePasswordChange = () => {
@@ -265,18 +275,18 @@ export default function SettingsPage() {
                   <Label htmlFor="fbo_id">FBO ID</Label>
                   <Input
                     id="fbo_id"
-                    value={userProfile.data?.fbo_id || ''}
+                    value={userProfile.data?.fbo_id || '—'}
                     disabled
-                    className="bg-gray-50"
+                    className="bg-muted/40 text-muted-foreground"
                   />
                 </div>
                 <div>
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
-                    value={userProfile.data?.email || ''}
+                    value={userProfile.data?.email || '—'}
                     disabled
-                    className="bg-gray-50"
+                    className="bg-muted/40 text-muted-foreground"
                   />
                 </div>
                 <div>
@@ -304,8 +314,14 @@ export default function SettingsPage() {
                   />
                 </div>
                 <Button onClick={handleProfileUpdate} disabled={updateProfile.isPending}>
-                  {updateProfile.isPending ? 'Updating...' : 'Update Profile'}
+                  {updateProfile.isPending ? 'Saving…' : 'Save Profile'}
                 </Button>
+                {profileSuccess ? (
+                  <p className="text-sm text-emerald-500" role="status">{profileSuccess}</p>
+                ) : null}
+                {profileError ? (
+                  <p className="text-sm text-destructive" role="alert">{profileError}</p>
+                ) : null}
               </CardContent>
             </Card>
 
@@ -664,7 +680,6 @@ export default function SettingsPage() {
                                   className="bg-destructive text-white hover:bg-destructive/90"
                                   onClick={() => handleAppSettingDelete(key)}
                                   disabled={deleteAppSetting.isPending}
-                                 
                                 >
                                   Yes, delete
                                 </Button>
