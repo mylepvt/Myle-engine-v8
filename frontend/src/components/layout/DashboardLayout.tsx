@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useState } from 'react'
+import { type CSSProperties, type FormEvent, type UIEvent, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Bell, Home, LogOut, Menu, PanelLeftClose, Search, Settings } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
@@ -26,6 +26,11 @@ import { useShellPreviewStore } from '@/stores/shell-preview-store'
 import { useShellStore } from '@/stores/shell-store'
 import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
 import { roleShortLabel, type Role } from '@/types/role'
+
+function isEditableElement(node: Element | null): boolean {
+  if (!(node instanceof HTMLElement)) return false
+  return node.isContentEditable || node.matches('input, textarea, select, [contenteditable="true"]')
+}
 
 export function DashboardLayout() {
   useSyncRoleFromMe()
@@ -62,6 +67,9 @@ export function DashboardLayout() {
   const { unread: noticeBoardUnread } = useNoticeBoardUnread()
   const [headerSearch, setHeaderSearch] = useState('')
   const [isMobile, setIsMobile] = useState(false)
+  const [keyboardInset, setKeyboardInset] = useState(0)
+  const [keyboardOpen, setKeyboardOpen] = useState(false)
+  const [isMainScrolled, setIsMainScrolled] = useState(false)
   const [viewportDebug, setViewportDebug] = useState<{
     innerH: number
     vvH: number
@@ -73,6 +81,10 @@ export function DashboardLayout() {
     safeBottom: number
   } | null>(null)
   const debugViewport = new URLSearchParams(location.search).get('debugViewport') === '1'
+  const shellStyle = useMemo(
+    () => ({ '--keyboard-inset-height': `${keyboardInset}px` }) as CSSProperties,
+    [keyboardInset],
+  )
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -92,6 +104,58 @@ export function DashboardLayout() {
     // Prevent "stuck overlay" reports after heavy global repaint (theme switch).
     setMobileMenuOpen(false)
   }, [theme, isMobile, setMobileMenuOpen])
+
+  useEffect(() => {
+    if (!isMobile) {
+      setKeyboardInset(0)
+      setKeyboardOpen(false)
+      return
+    }
+
+    const syncKeyboardState = () => {
+      const vv = window.visualViewport
+      const active = document.activeElement
+      const editing = isEditableElement(active)
+      if (!vv || !editing) {
+        setKeyboardInset(0)
+        setKeyboardOpen(false)
+        return
+      }
+
+      const rawInset = Math.round(Math.max(0, window.innerHeight - vv.height - vv.offsetTop))
+      const nextInset = rawInset > 56 ? rawInset : 0
+      setKeyboardInset(nextInset)
+      setKeyboardOpen(nextInset > 0)
+    }
+
+    const onFocusIn = () => window.setTimeout(syncKeyboardState, 0)
+    const onFocusOut = () => window.setTimeout(syncKeyboardState, 36)
+
+    syncKeyboardState()
+    window.addEventListener('resize', syncKeyboardState, { passive: true })
+    window.visualViewport?.addEventListener('resize', syncKeyboardState, { passive: true })
+    window.visualViewport?.addEventListener('scroll', syncKeyboardState, { passive: true })
+    document.addEventListener('focusin', onFocusIn, true)
+    document.addEventListener('focusout', onFocusOut, true)
+
+    return () => {
+      window.removeEventListener('resize', syncKeyboardState)
+      window.visualViewport?.removeEventListener('resize', syncKeyboardState)
+      window.visualViewport?.removeEventListener('scroll', syncKeyboardState)
+      document.removeEventListener('focusin', onFocusIn, true)
+      document.removeEventListener('focusout', onFocusOut, true)
+    }
+  }, [isMobile])
+
+  useEffect(() => {
+    if (keyboardOpen) {
+      setMobileMenuOpen(false)
+    }
+  }, [keyboardOpen, setMobileMenuOpen])
+
+  useEffect(() => {
+    setIsMainScrolled(false)
+  }, [location.pathname])
 
   useEffect(() => {
     if (!debugViewport) {
@@ -150,6 +214,11 @@ export function DashboardLayout() {
     }
   }
 
+  function handleMainScroll(e: UIEvent<HTMLElement>) {
+    notifyDashboardMainScrolled()
+    setIsMainScrolled(e.currentTarget.scrollTop > 8)
+  }
+
   const trainingStatusLc = (me?.training_status ?? '').toLowerCase()
   const trainingLocked =
     me?.training_required === true && trainingStatusLc !== 'completed'
@@ -205,7 +274,10 @@ export function DashboardLayout() {
   }
 
   return (
-    <div className="dashboard-shell flex w-full min-w-0 max-w-full overflow-hidden bg-background">
+    <div
+      className="dashboard-shell flex w-full min-w-0 max-w-full overflow-hidden bg-background"
+      style={shellStyle}
+    >
       {isMobile && mobileMenuOpen ? (
         <button
           type="button"
@@ -249,7 +321,7 @@ export function DashboardLayout() {
             ? sections.map((section) => (
                 <div key={section.id}>
                   {section.label ? (
-                    <p className="mb-2 px-3 text-[0.65rem] font-bold uppercase tracking-[0.08em] text-muted-foreground/70">
+                    <p className="mb-2 px-3 text-ds-caption font-bold uppercase tracking-[0.08em] text-muted-foreground/70">
                       {section.label}
                     </p>
                   ) : null}
@@ -348,7 +420,12 @@ export function DashboardLayout() {
     </aside>
 
     <div className="flex h-full min-w-0 max-w-full flex-1 flex-col overflow-hidden pt-[env(safe-area-inset-top,0px)]">
-      <header className="relative z-20 flex h-[56px] shrink-0 items-center gap-2 border-b border-border/60 bg-background/95 px-3 shadow-ios-bar md:gap-3 md:px-4 supports-[backdrop-filter]:bg-background/92 supports-[backdrop-filter]:backdrop-blur-md">
+      <header
+        className={cn(
+          'dashboard-shell-header relative z-20 flex h-[56px] shrink-0 items-center gap-2 border-b border-border/60 bg-background/95 px-3 shadow-ios-bar md:gap-3 md:px-4 supports-[backdrop-filter]:bg-background/92 supports-[backdrop-filter]:backdrop-blur-md',
+          isMainScrolled && 'dashboard-shell-header--scrolled',
+        )}
+      >
         {/* Left: menu + compact admin preview (no stacked label on small screens) */}
         <div className="flex min-w-0 shrink-0 items-center gap-1.5">
           <Button
@@ -380,8 +457,8 @@ export function DashboardLayout() {
                 <select
                   id="header-view-as"
                   className={cn(
-                    'h-9 max-w-[6.25rem] shrink-0 truncate rounded-lg border border-border bg-muted/40 py-0 pl-2 pr-7 text-[0.7rem] font-medium text-foreground',
-                    'focus:outline-none focus:ring-2 focus:ring-primary/30 md:max-w-[11rem] md:text-xs',
+                    'h-9 max-w-[6.25rem] shrink-0 truncate rounded-lg border border-border bg-muted/40 py-0 pl-2 pr-7 text-ds-caption font-medium text-foreground',
+                    'focus:outline-none focus:ring-2 focus:ring-primary/30 md:max-w-[11rem]',
                   )}
                   value={viewAsRole ?? 'admin'}
                   title="UI preview only — your account stays admin"
@@ -455,7 +532,7 @@ export function DashboardLayout() {
 
             {shellRole != null ? (
               <span
-                className="hidden max-w-[10rem] truncate rounded-md border border-border bg-muted/35 px-2 py-1 text-center text-[0.7rem] font-medium text-foreground md:inline-flex"
+                className="hidden max-w-[10rem] truncate rounded-md border border-border bg-muted/35 px-2 py-1 text-center text-ds-caption font-medium text-foreground md:inline-flex"
                 title={
                   isAdminPreviewing && serverRole === 'admin'
                     ? `Nav as ${roleShortLabel(shellRole)} · signed in as Admin`
@@ -472,7 +549,7 @@ export function DashboardLayout() {
 
             <Link
               to="/dashboard/settings/profile"
-              className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted text-xs font-semibold text-foreground transition-opacity hover:opacity-90 active:opacity-80"
+              className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted text-ds-caption font-semibold text-foreground transition-opacity hover:opacity-90 active:opacity-80"
               title={
                 me?.fbo_id
                   ? `${me.fbo_id}${me.username ? ` · ${me.username}` : ''}${me.email ? ` · ${me.email}` : ''}`
@@ -513,7 +590,7 @@ export function DashboardLayout() {
             'content-dashboard-main relative min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-background p-4 md:p-6 lg:p-8',
             'scroll-ios',
           )}
-          onScroll={notifyDashboardMainScrolled}
+          onScroll={handleMainScroll}
         >
           <DashboardOutletErrorBoundary>
             <Outlet />
@@ -524,6 +601,8 @@ export function DashboardLayout() {
           <DashboardMobileTabBar
             role={shellRole}
             trainingLocked={trainingLocked}
+            isMainScrolled={isMainScrolled}
+            keyboardOpen={keyboardOpen}
             onOpenMenu={() => setMobileMenuOpen(true)}
           />
         ) : null}
@@ -531,7 +610,7 @@ export function DashboardLayout() {
           <div className="fixed left-2 top-[60px] z-[120] rounded-md border border-amber-300/60 bg-black/80 px-2 py-1 text-[10px] leading-tight text-amber-200 md:hidden">
             <div>inner:{viewportDebug.innerH} vv:{viewportDebug.vvH} client:{viewportDebug.clientH}</div>
             <div>shell:{viewportDebug.shellH} main:{viewportDebug.mainH} nav:{viewportDebug.navH}</div>
-            <div>gap:{viewportDebug.navBottomGap} safeB:{viewportDebug.safeBottom}</div>
+            <div>gap:{viewportDebug.navBottomGap} safeB:{viewportDebug.safeBottom} kb:{keyboardInset}</div>
           </div>
         ) : null}
       </div>

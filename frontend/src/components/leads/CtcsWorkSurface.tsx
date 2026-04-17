@@ -145,7 +145,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
             >
               <span>{t.label}</span>
               {active && total > 0 ? (
-                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{total}</span>
+                <span className="rounded bg-muted px-1.5 py-0.5 text-ds-caption text-muted-foreground">{total}</span>
               ) : null}
             </button>
           )
@@ -157,13 +157,13 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
           type="button"
           onClick={() => toggleCallMode()}
           className={cn(
-            'text-xs font-semibold transition active:opacity-80',
+            'text-ds-caption font-semibold transition active:opacity-80',
             callMode ? 'text-[var(--palette-cyan-dull)]' : 'text-primary',
           )}
         >
           {callMode ? 'Calling mode ON' : 'Start calling mode'}
         </button>
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-ds-caption text-muted-foreground">
           {items.length < total ? `Loaded ${items.length} · ` : null}
           tab total {total}
         </p>

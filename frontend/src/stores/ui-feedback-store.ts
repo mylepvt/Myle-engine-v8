@@ -3,6 +3,8 @@ import { persist } from 'zustand/middleware'
 
 export type ThemePreference = 'light' | 'dark' | 'system' | 'transparent'
 
+const THEME_CYCLE_ORDER: ThemePreference[] = ['dark', 'light', 'transparent', 'system']
+
 type UiFeedbackState = {
   theme: ThemePreference
   satisfactionPoints: number
@@ -20,9 +22,10 @@ export const useUiFeedbackStore = create<UiFeedbackState>()(
 
       setTheme: (theme) => set({ theme }),
       cycleTheme: () => {
-        const order: ThemePreference[] = ['light', 'dark', 'system', 'transparent']
-        const i = order.indexOf(get().theme)
-        set({ theme: order[(i + 1) % order.length] })
+        const current = get().theme
+        const safeCurrent = THEME_CYCLE_ORDER.includes(current) ? current : 'dark'
+        const i = THEME_CYCLE_ORDER.indexOf(safeCurrent)
+        set({ theme: THEME_CYCLE_ORDER[(i + 1 + THEME_CYCLE_ORDER.length) % THEME_CYCLE_ORDER.length] })
       },
       addSatisfactionPoints: (amount = 1) =>
         set((s) => ({

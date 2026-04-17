@@ -112,7 +112,7 @@ function Tabs({ tabs, active, onChange }: {
             active === t.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground')}>
           {t.label}
           {t.count !== undefined &&
-            <span className="ml-1.5 rounded-full bg-white/10 px-1.5 py-0.5 text-[0.65rem] tabular-nums">{t.count}</span>}
+            <span className="ml-1.5 rounded-full bg-white/10 px-1.5 py-0.5 text-ds-caption tabular-nums">{t.count}</span>}
         </button>
       ))}
     </div>
@@ -122,7 +122,7 @@ function Tabs({ tabs, active, onChange }: {
 function IconBtn({ href, onClick, title, colorHover, children }: {
   href?: string; onClick?: () => void; title: string; colorHover: string; children: React.ReactNode
 }) {
-  const cls = cn('flex h-7 w-7 items-center justify-center rounded-md border border-white/12 bg-white/[0.05] text-foreground transition', colorHover)
+  const cls = cn('flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted/30 text-foreground transition', colorHover)
   if (href) return <a href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" title={title} className={cls}>{children}</a>
   return <button type="button" title={title} onClick={onClick} className={cls}>{children}</button>
 }
@@ -169,18 +169,18 @@ const LeadCard = memo(function LeadCard({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium leading-tight text-foreground">{lead.name}</p>
-          {lead.city && <p className="mt-0.5 truncate text-[0.7rem] text-muted-foreground">{lead.city}</p>}
+          {lead.city && <p className="mt-0.5 truncate text-ds-caption text-muted-foreground">{lead.city}</p>}
         </div>
-        <span className={cn('shrink-0 rounded-full border px-2 py-0.5 text-[0.65rem] font-semibold', badge)}>{slabel(lead.status)}</span>
+        <span className={cn('shrink-0 rounded-full border px-2 py-0.5 text-ds-caption font-semibold', badge)}>{slabel(lead.status)}</span>
       </div>
       {isWatched ? (
-        <div className="flex items-center gap-1.5 rounded-md bg-blue-400/10 px-2 py-1 text-[0.7rem] font-medium text-blue-300">
+        <div className="flex items-center gap-1.5 rounded-md bg-blue-400/10 px-2 py-1 text-ds-caption font-medium text-blue-300">
           <Eye className="size-3.5 shrink-0" aria-hidden />
           <span>Prospect watched the video — call now!</span>
         </div>
       ) : null}
       {isSent ? (
-        <div className="flex items-center gap-1.5 rounded-md bg-indigo-400/10 px-2 py-1 text-[0.7rem] font-medium text-indigo-300">
+        <div className="flex items-center gap-1.5 rounded-md bg-indigo-400/10 px-2 py-1 text-ds-caption font-medium text-indigo-300">
           <Send className="size-3.5 shrink-0" aria-hidden />
           <span>Video sent — waiting for response</span>
         </div>
@@ -190,7 +190,7 @@ const LeadCard = memo(function LeadCard({
         disabled={leadPatchBusy}
         aria-label={`Call status for ${lead.name}`}
         onChange={(e) => void pm.mutateAsync({ id: lead.id, body: { call_status: e.target.value } })}
-        className="min-w-0 flex-1 rounded-md border border-white/12 bg-white/[0.05] px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+        className="min-w-0 flex-1 rounded-md border border-border bg-muted/30 px-2 py-1.5 text-ds-caption text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
       >
         {CALL_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
@@ -201,16 +201,16 @@ const LeadCard = memo(function LeadCard({
           <Video className="h-3.5 w-3.5"/>
         </IconBtn>
         <Link to={`/dashboard/work/leads/${lead.id}`} title="Edit"
-          className="flex h-7 w-7 items-center justify-center rounded-md border border-white/12 bg-white/[0.05] transition hover:border-primary/40 hover:text-primary">
+          className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted/30 transition hover:border-primary/40 hover:text-primary">
           <Pencil className="h-3.5 w-3.5"/>
         </Link>
       </div>
       {mindsetReady ? (
         <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 px-2 py-2">
-          <p className={cn('text-[11px] font-semibold', lockLineClass)}>
+          <p className={cn('text-ds-caption font-semibold', lockLineClass)}>
             Minimum call time: {mmss(remainingSeconds)}
           </p>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-ds-caption text-muted-foreground">
             Will be assigned to: <span className="font-semibold text-foreground">{previewName}</span>
           </p>
           <button
@@ -219,7 +219,7 @@ const LeadCard = memo(function LeadCard({
             disabled={!canSend || mindsetBusy}
             onClick={() => onRequestMindsetSend?.(lead)}
             className={cn(
-              'flex h-8 w-full items-center justify-center gap-1 rounded-md border px-2 text-[0.7rem] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50',
+              'flex h-8 w-full items-center justify-center gap-1 rounded-md border px-2 text-ds-caption font-semibold transition disabled:cursor-not-allowed disabled:opacity-50',
               canSend
                 ? 'border-emerald-400/40 bg-emerald-400/12 text-emerald-300 hover:bg-emerald-400/20'
                 : 'border-red-400/30 bg-red-400/10 text-red-300',
@@ -291,18 +291,18 @@ const AdminLeadCard = memo(function AdminLeadCard({ lead, dayKey, pm, leadPatchB
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium leading-tight text-foreground">{lead.name}</p>
-          {lead.city && <p className="mt-0.5 text-[0.7rem] text-muted-foreground">{lead.city}</p>}
+          {lead.city && <p className="mt-0.5 text-ds-caption text-muted-foreground">{lead.city}</p>}
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <LeadContactActions phone={lead.phone} />
           <Link to={`/dashboard/work/leads/${lead.id}`} title="Edit"
-            className="flex h-7 w-7 items-center justify-center rounded-md border border-white/12 bg-white/[0.05] transition hover:border-primary/40 hover:text-primary">
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted/30 transition hover:border-primary/40 hover:text-primary">
             <Pencil className="h-3.5 w-3.5"/>
           </Link>
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <span className="text-[0.7rem] text-muted-foreground">Batches:</span>
+        <span className="text-ds-caption text-muted-foreground">Batches:</span>
         {batchSlots
           ? batchSlots.map((slotKey, i) => {
               const slot = (['M', 'A', 'E'] as const)[i]
@@ -310,9 +310,9 @@ const AdminLeadCard = memo(function AdminLeadCard({ lead, dayKey, pm, leadPatchB
               return (
                 <button key={slotKey} type="button" disabled={leadPatchBusy || done}
                   onClick={() => void handleBatchClick(slot, slotKey)}
-                  className={cn('flex h-6 w-6 items-center justify-center rounded text-[0.65rem] font-semibold transition',
+                  className={cn('flex h-6 w-6 items-center justify-center rounded text-ds-caption font-semibold transition',
                     slotDone || done ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-400'
-                      : 'border border-white/12 bg-white/[0.05] text-muted-foreground hover:border-primary/40 hover:text-primary')}>
+                      : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary')}>
                   {slotDone || done ? <CheckSquare className="h-3 w-3"/> : <span>{slot}</span>}
                 </button>
               )
@@ -320,9 +320,9 @@ const AdminLeadCard = memo(function AdminLeadCard({ lead, dayKey, pm, leadPatchB
           : (['M','A','E'] as const).map((slot) => (
               <button key={slot} type="button" disabled={leadPatchBusy || done || !patchKey}
                 onClick={() => void handleBatchClick(slot)}
-                className={cn('flex h-6 w-6 items-center justify-center rounded text-[0.65rem] font-semibold transition',
+                className={cn('flex h-6 w-6 items-center justify-center rounded text-ds-caption font-semibold transition',
                   done ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-400'
-                    : 'border border-white/12 bg-white/[0.05] text-muted-foreground hover:border-primary/40 hover:text-primary')}>
+                    : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary')}>
                 {done ? <CheckSquare className="h-3 w-3"/> : <span>{slot}</span>}
               </button>
             ))}
@@ -332,14 +332,14 @@ const AdminLeadCard = memo(function AdminLeadCard({ lead, dayKey, pm, leadPatchB
           type="button"
           disabled={leadPatchBusy}
           onClick={() => void handleSendDay2Test()}
-          className="mt-0.5 rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-[0.7rem] font-semibold text-emerald-300 transition hover:bg-emerald-400/20 disabled:opacity-50"
+          className="mt-0.5 rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-ds-caption font-semibold text-emerald-300 transition hover:bg-emerald-400/20 disabled:opacity-50"
         >
           Send Test on WhatsApp
         </button>
       )}
       {done && onMoveNext &&
         <button type="button" disabled={leadPatchBusy} onClick={onMoveNext}
-          className="mt-0.5 rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-[0.7rem] font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50">
+          className="mt-0.5 rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50">
           {nextLabel ?? 'Move to next stage →'}
         </button>}
     </article>
@@ -485,7 +485,7 @@ function VirtualLeadGrid({
 
   if (leads.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed border-white/12 px-3 py-8 text-center text-xs text-muted-foreground">
+      <p className="rounded-lg border border-dashed border-border/70 px-3 py-8 text-center text-ds-caption text-muted-foreground">
         {empty ?? 'No leads'}
       </p>
     )
@@ -600,7 +600,7 @@ function VirtualAdminLeadGrid({
 
   if (leads.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed border-white/12 px-3 py-8 text-center text-xs text-muted-foreground">
+      <p className="rounded-lg border border-dashed border-border/70 px-3 py-8 text-center text-ds-caption text-muted-foreground">
         No leads
       </p>
     )
@@ -699,7 +699,7 @@ function TeamView({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-muted-foreground">Mindset Lock</h2>
-        <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
+        <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-ds-caption font-semibold tabular-nums text-muted-foreground">
           {mindsetLeads.length}
         </span>
       </div>
@@ -757,7 +757,7 @@ function AdminView({ cols, pm, patchBusyLeadId, search }: { cols: Col[]; pm: PM;
               ['In Progress', day2.filter((l) => !l.day2_completed_at && !!l.day1_completed_at).length, 'bg-amber-400/15 text-amber-300 border-amber-400/25'],
               ['Not Started', day2.filter((l) => !l.day1_completed_at).length, 'bg-muted/30 text-muted-foreground border-white/10'],
             ].map(([label, count, cls]) =>
-              <span key={label as string} className={cn('rounded-full border px-2.5 py-0.5 text-xs font-medium', cls as string)}>{label}: {count}</span>)}
+              <span key={label as string} className={cn('rounded-full border px-2.5 py-0.5 text-ds-caption font-medium', cls as string)}>{label}: {count}</span>)}
           </div>
           <DayGrid leads={day2} dayKey={2} nextStatus="interview" nextLabel="Move to Day 3 →" pm={pm} patchBusyLeadId={patchBusyLeadId} />
         </div>
@@ -770,7 +770,7 @@ function AdminView({ cols, pm, patchBusyLeadId, search }: { cols: Col[]; pm: PM;
               <div key={s} className="space-y-2">
                 <h3 className="text-sm font-semibold text-muted-foreground">{slabel(s)}</h3>
                 {items.length === 0 ? (
-                  <p className="rounded-lg border border-dashed border-white/12 px-3 py-6 text-center text-xs text-muted-foreground">
+                  <p className="rounded-lg border border-dashed border-border/70 px-3 py-6 text-center text-ds-caption text-muted-foreground">
                     No leads
                   </p>
                 ) : (
@@ -795,7 +795,7 @@ function AdminView({ cols, pm, patchBusyLeadId, search }: { cols: Col[]; pm: PM;
               <div key={s} className="space-y-2">
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-semibold text-muted-foreground">{slabel(s)}</h3>
-                  <span className={cn('rounded-full border px-2 py-0.5 text-[0.65rem] font-semibold', badge)}>{items.length}</span>
+                  <span className={cn('rounded-full border px-2 py-0.5 text-ds-caption font-semibold', badge)}>{items.length}</span>
                 </div>
                 <Grid leads={items} pm={pm} patchBusyLeadId={patchBusyLeadId} empty="No leads" />
               </div>
@@ -909,7 +909,7 @@ export function WorkboardPage({ title }: Props) {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden/>
           <input value={qInput} onChange={(e) => setQInput(e.target.value)}
             placeholder="Search by name or phone…"
-            className="w-full rounded-md border border-white/12 bg-white/[0.05] py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"/>
+            className="field-input w-full pl-9 pr-3"/>
         </div>
       </div>
 
@@ -930,12 +930,12 @@ export function WorkboardPage({ title }: Props) {
 
       {/* Mutation error */}
       {pm.isError && (
-        <p className="text-xs text-destructive" role="alert">
+        <p className="text-ds-caption text-destructive" role="alert">
           {pm.error instanceof Error ? pm.error.message : 'Could not update lead'}
         </p>
       )}
       {mindsetErr ? (
-        <p className="text-xs text-destructive" role="alert">
+        <p className="text-ds-caption text-destructive" role="alert">
           {mindsetErr}
         </p>
       ) : null}
@@ -958,8 +958,8 @@ export function WorkboardPage({ title }: Props) {
           : <AdminView cols={cols} pm={pm} patchBusyLeadId={patchBusyLeadId} search={search} />
       )}
       {confirmLead ? (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4">
-          <div className="w-full max-w-md rounded-xl border border-border bg-card p-4 shadow-2xl">
+        <div className="keyboard-safe-modal fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4">
+          <div className="keyboard-safe-sheet w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-4 shadow-2xl">
             <h3 className="text-base font-semibold text-foreground">Send to Leader?</h3>
             <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
               <li>You have completed mindset call (5–10 min)</li>
@@ -982,7 +982,7 @@ export function WorkboardPage({ title }: Props) {
         </div>
       ) : null}
       {toastMsg ? (
-        <div className="fixed bottom-24 right-4 z-[85] rounded-md border border-emerald-400/35 bg-emerald-400/15 px-3 py-2 text-xs font-semibold text-emerald-200 shadow-lg">
+        <div className="fixed bottom-24 right-4 z-[85] rounded-md border border-emerald-400/35 bg-emerald-400/15 px-3 py-2 text-ds-caption font-semibold text-emerald-200 shadow-lg">
           {toastMsg}
         </div>
       ) : null}

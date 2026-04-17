@@ -38,12 +38,16 @@ export function AuthCard({
       <div
         className={cn(
           'relative',
-          'bg-gradient-to-br from-primary via-primary to-primary/80',
+          'bg-gradient-to-br from-black via-[#020712] to-[#0a1328]',
           variant === 'center' ? 'px-6 pb-8 pt-9 text-center' : 'px-5 pb-6 pt-6 sm:px-6',
         )}
       >
         {/* subtle grid pattern */}
-        <div className="pointer-events-none absolute inset-0 opacity-[0.06]" style={{backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '20px 20px'}} aria-hidden />
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.04]"
+          style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '20px 20px' }}
+          aria-hidden
+        />
         {variant === 'center' ? (
           <>
             <div className="mx-auto mb-4 flex size-[4.25rem] items-center justify-center rounded-full border border-primary-foreground/25 bg-primary-foreground/15 shadow-inner backdrop-blur-sm">
