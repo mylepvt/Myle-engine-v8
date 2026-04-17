@@ -80,7 +80,14 @@ export function DashboardLayout() {
     navBottomGap: number
     safeBottom: number
   } | null>(null)
+  const [androidShellProbe, setAndroidShellProbe] = useState<{
+    shellH: number
+    navH: number
+    navBottomGap: number
+    innerH: number
+  } | null>(null)
   const debugViewport = new URLSearchParams(location.search).get('debugViewport') === '1'
+  const shellProbe = new URLSearchParams(location.search).get('shellProbe') === '1'
   const shellStyle = useMemo(
     () => ({ '--keyboard-inset-height': `${keyboardInset}px` }) as CSSProperties,
     [keyboardInset],
@@ -204,6 +211,37 @@ export function DashboardLayout() {
     }
   }, [debugViewport, location.pathname, location.search])
 
+  useEffect(() => {
+    if (!isMobile || !shellProbe) {
+      setAndroidShellProbe(null)
+      return
+    }
+    if (typeof navigator === 'undefined' || !/android/i.test(navigator.userAgent)) {
+      setAndroidShellProbe(null)
+      return
+    }
+
+    const collectProbe = () => {
+      const shell = document.querySelector('.dashboard-shell') as HTMLElement | null
+      const nav = document.querySelector('nav[aria-label="Main tabs"]') as HTMLElement | null
+      const navBottomGap = nav ? Math.max(0, Math.round(window.innerHeight - nav.getBoundingClientRect().bottom)) : 0
+      setAndroidShellProbe({
+        shellH: Math.round(shell?.getBoundingClientRect().height ?? 0),
+        navH: Math.round(nav?.getBoundingClientRect().height ?? 0),
+        navBottomGap,
+        innerH: Math.round(window.innerHeight),
+      })
+    }
+
+    collectProbe()
+    window.addEventListener('resize', collectProbe, { passive: true })
+    window.visualViewport?.addEventListener('resize', collectProbe, { passive: true })
+    return () => {
+      window.removeEventListener('resize', collectProbe)
+      window.visualViewport?.removeEventListener('resize', collectProbe)
+    }
+  }, [isMobile, location.pathname, shellProbe])
+
   function submitHeaderSearch(e: FormEvent) {
     e.preventDefault()
     const q = headerSearch.trim()
@@ -292,7 +330,7 @@ export function DashboardLayout() {
           'flex h-full shrink-0 flex-col border-r border-border/80 bg-surface overflow-y-auto',
           'transition-[transform,width,border-color] duration-300 ease-out',
           sidebarOpen ? 'md:w-[18rem]' : 'md:w-0 md:overflow-hidden md:border-0',
-          'max-md:fixed max-md:left-0 max-md:top-0 max-md:z-50 max-md:h-[var(--app-shell-vh)] max-md:w-[min(20rem,85vw)] max-md:pt-[env(safe-area-inset-top)]',
+          'dashboard-mobile-drawer max-md:fixed max-md:left-0 max-md:top-0 max-md:z-50 max-md:h-dvh max-md:w-[min(20rem,85vw)] max-md:pt-[env(safe-area-inset-top)]',
           'max-md:shadow-[0_0_60px_rgba(0,0,0,0.4)]',
           mobileMenuOpen
             ? 'max-md:translate-x-0'
@@ -611,6 +649,20 @@ export function DashboardLayout() {
             <div>inner:{viewportDebug.innerH} vv:{viewportDebug.vvH} client:{viewportDebug.clientH}</div>
             <div>shell:{viewportDebug.shellH} main:{viewportDebug.mainH} nav:{viewportDebug.navH}</div>
             <div>gap:{viewportDebug.navBottomGap} safeB:{viewportDebug.safeBottom} kb:{keyboardInset}</div>
+          </div>
+        ) : null}
+        {shellProbe && androidShellProbe ? (
+          <div
+            className={cn(
+              'fixed right-2 top-[60px] z-[120] rounded-md border px-2 py-1 text-[10px] leading-tight md:hidden',
+              androidShellProbe.navBottomGap > 0
+                ? 'border-rose-300/70 bg-rose-950/85 text-rose-100'
+                : 'border-emerald-300/70 bg-emerald-950/85 text-emerald-100',
+            )}
+          >
+            <div>Android shell probe</div>
+            <div>inner:{androidShellProbe.innerH} shell:{androidShellProbe.shellH}</div>
+            <div>nav:{androidShellProbe.navH} gap:{androidShellProbe.navBottomGap}</div>
           </div>
         ) : null}
       </div>
