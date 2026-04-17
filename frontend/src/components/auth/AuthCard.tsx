@@ -7,6 +7,8 @@ type AuthCardProps = {
   /** Header visual: centered icon (login) or split icon + titles (register). */
   variant: 'center' | 'split'
   icon: LucideIcon
+  /** Override the icon entirely with a custom node (e.g. branded SVG). */
+  iconNode?: ReactNode
   title: string
   subtitle: string
   children: ReactNode
@@ -18,6 +20,7 @@ type AuthCardProps = {
 export function AuthCard({
   variant,
   icon: Icon,
+  iconNode,
   title,
   subtitle,
   children,
@@ -44,7 +47,7 @@ export function AuthCard({
         {variant === 'center' ? (
           <>
             <div className="mx-auto mb-4 flex size-[4.25rem] items-center justify-center rounded-full border border-primary-foreground/25 bg-primary-foreground/15 shadow-inner backdrop-blur-sm">
-              <Icon className="size-9 text-primary-foreground" aria-hidden />
+              {iconNode ?? <Icon className="size-9 text-primary-foreground" aria-hidden />}
             </div>
             <h1 className="font-heading text-xl font-bold tracking-tight text-primary-foreground">
               {title}
