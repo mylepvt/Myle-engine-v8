@@ -149,6 +149,7 @@ export function TerminalBootOverlay({
   const statsReadyRef = useRef(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const audioRef = useRef<ReturnType<typeof createTerminalAudio> | null>(null)
+  const animationStartedRef = useRef(false)
 
   // Init + cleanup audio
   useEffect(() => {
@@ -223,6 +224,10 @@ export function TerminalBootOverlay({
       onFinish()
       return
     }
+
+    // React 18 StrictMode runs effects twice in dev — guard against double start
+    if (animationStartedRef.current) return
+    animationStartedRef.current = true
 
     const nextId = () => ++lineIdRef.current
 
