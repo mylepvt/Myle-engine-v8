@@ -33,7 +33,7 @@ export function App() {
   }, [])
 
   return (
-    <>
+    <div className="flex w-full min-h-0 flex-1 flex-col overflow-hidden">
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
@@ -57,6 +57,6 @@ export function App() {
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
       <InstallAppBanner />
-    </>
+    </div>
   )
 }
