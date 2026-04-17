@@ -147,7 +147,7 @@ export function DashboardLayout() {
   }
 
   return (
-    <div className="flex min-h-dvh w-full min-w-0 max-w-full overflow-x-hidden bg-background">
+    <div className="dashboard-shell flex w-full min-w-0 max-w-full overflow-hidden bg-background">
       {isMobile && mobileMenuOpen ? (
         <button
           type="button"
@@ -159,7 +159,7 @@ export function DashboardLayout() {
 
       <aside
         className={cn(
-          'flex min-h-dvh shrink-0 flex-col border-r border-border/80 bg-surface',
+          'flex h-full shrink-0 flex-col border-r border-border/80 bg-surface overflow-y-auto',
           'transition-[transform,width,border-color] duration-300 ease-out',
           sidebarOpen ? 'md:w-[18rem]' : 'md:w-0 md:overflow-hidden md:border-0',
           'max-md:fixed max-md:left-0 max-md:top-0 max-md:z-50 max-md:h-dvh max-md:w-[min(20rem,85vw)] max-md:pt-[env(safe-area-inset-top)]',
@@ -289,7 +289,7 @@ export function DashboardLayout() {
       </div>
     </aside>
 
-    <div className="flex h-dvh min-w-0 max-w-full flex-1 flex-col overflow-x-hidden pt-[env(safe-area-inset-top)]">
+    <div className="flex h-full min-w-0 max-w-full flex-1 flex-col overflow-hidden pt-[env(safe-area-inset-top,0px)]">
       <header className="relative z-20 flex h-[56px] shrink-0 items-center gap-2 border-b border-border/60 bg-background/95 px-3 shadow-ios-bar md:gap-3 md:px-4 supports-[backdrop-filter]:bg-background/92 supports-[backdrop-filter]:backdrop-blur-md">
         {/* Left: menu + compact admin preview (no stacked label on small screens) */}
         <div className="flex min-w-0 shrink-0 items-center gap-1.5">

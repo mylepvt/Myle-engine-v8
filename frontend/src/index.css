@@ -130,10 +130,6 @@
     @apply border-border;
   }
 
-  #root {
-    min-height: 100dvh;
-  }
-
   html {
     background-color: var(--background);
     /* Stop horizontal rubber-band / sideways “slide” on iOS/Android */
@@ -142,6 +138,8 @@
     overscroll-behavior-x: none;
     /* Double-tap zoom delay removed; pinch still respects maximum-scale in index.html */
     touch-action: manipulation;
+    /* Required so children can use h-full to fill the viewport */
+    height: 100%;
   }
 
   @media (prefers-reduced-motion: no-preference) {
@@ -161,7 +159,11 @@
   }
 
   body {
-    @apply min-h-dvh bg-background font-sans text-ds-body text-foreground antialiased;
+    @apply bg-background font-sans text-ds-body text-foreground antialiased;
+    /* height: 100% lets .dashboard-shell fill the viewport via h-full on the inner wrappers */
+    height: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
     transition: background-color 0.28s ease, color 0.22s ease;
     font-feature-settings: 'kern' 1;
     -webkit-tap-highlight-color: color-mix(in oklch, var(--primary) 15%, transparent);
@@ -196,7 +198,10 @@
   }
 
   #root {
-    @apply min-h-dvh min-w-0 max-w-full;
+    /* dvh fallback: 100vh for browsers without dvh support (Chrome < 108, Firefox < 101) */
+    min-height: 100vh;
+    min-height: 100dvh;
+    @apply min-w-0 max-w-full;
     overflow-x: clip;
     touch-action: manipulation;
   }
@@ -427,10 +432,33 @@
 }
 
 @layer utilities {
+  /**
+   * dashboard-shell — locks the entire shell to exactly the visible viewport.
+   *
+   * Uses dvh (dynamic viewport height) so the shell doesn't resize when the
+   * mobile browser address bar shows/hides.
+   * Falls back to 100vh for browsers without dvh (Chrome < 108, FF < 101, Safari < 15.4).
+   * The `overflow-hidden` here is critical — it prevents the outer wrapper from
+   * ever growing taller than the viewport; scrolling happens only in <main>.
+   */
+  .dashboard-shell {
+    /* Fallback for browsers without dvh */
+    height: 100vh;
+    max-height: 100vh;
+    /* Modern: dynamic viewport height accounts for mobile browser chrome */
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    position: relative;
+  }
+
   /* Hint off-screen work: faster initial scroll in long dashboard pages */
-  .content-dashboard-main {
-    content-visibility: auto;
-    contain-intrinsic-size: auto 480px;
+  /* content-visibility only on browsers that support it (Chrome 85+, Edge 85+) */
+  @supports (content-visibility: auto) {
+    .content-dashboard-main {
+      content-visibility: auto;
+      contain-intrinsic-size: auto 480px;
+    }
   }
 }
 
