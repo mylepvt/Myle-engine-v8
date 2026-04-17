@@ -446,13 +446,22 @@
    */
   .dashboard-shell {
     /*
-     * Pure CSS viewport height — no documentElement / visualViewport px locks.
-     * 100vh then 100dvh: old iOS/Safari vs modern dynamic viewport.
+     * Three-level height cascade (no JS, no custom properties needed):
+     *   1. 100vh         — universal fallback (Android Chrome < 108, very old browsers)
+     *   2. -webkit-fill-available — iOS Safari all versions (correct visible-area height
+     *                               in both browser and PWA/standalone mode)
+     *   3. 100dvh        — modern dynamic viewport (Chrome 108+, FF 101+, Safari 15.4+)
+     *
+     * Do NOT add `height: var(--app-shell-vh)` here — if the variable resolves to an
+     * unsupported unit (e.g. 100dvh on old Android Chrome) the declaration becomes
+     * "invalid at computed-value time" and CSS resets height to `auto`, overriding
+     * the valid 100vh fallback above it.
      */
     height: 100vh;
+    height: -webkit-fill-available; /* iOS Safari PWA + browser: always correct visible-area */
     height: 100dvh;
-    min-height: 0;
     max-height: 100vh;
+    max-height: -webkit-fill-available;
     max-height: 100dvh;
     overflow: hidden;
     position: relative;
@@ -461,7 +470,7 @@
   @media (max-width: 767px) {
     .dashboard-mobile-drawer {
       height: 100vh;
-      max-height: 100vh;
+      height: -webkit-fill-available;
       height: 100dvh;
       max-height: 100dvh;
     }
@@ -570,6 +579,67 @@
   .keyboard-safe-sheet {
     max-height: calc(100dvh - var(--keyboard-inset-height, 0px) - 0.5rem);
   }
+
+  /* ─── Mobile bottom tab bar ──────────────────────────────────────────────── */
+
+  .dashboard-mobile-tabbar {
+    position: relative;
+    isolation: isolate;
+    /* Dark mode: use --card (#070a12) so bar is visually distinct from
+       --background (#000000). Light mode: semi-transparent background. */
+    background-color: color-mix(in srgb, var(--card) 94%, transparent);
+    border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    box-shadow: var(--shadow-ios-bar);
+    backdrop-filter: saturate(145%) blur(16px);
+    -webkit-backdrop-filter: saturate(145%) blur(16px);
+    transition:
+      background-color 0.2s ease,
+      backdrop-filter 0.22s ease,
+      box-shadow 0.22s ease,
+      opacity 0.18s ease,
+      transform 0.18s ease;
+  }
+
+  /* Hide tab bar when software keyboard is open (keyboard inset > 0) */
+  .dashboard-mobile-tabbar--keyboard-open {
+    display: none;
+  }
+
+  .dashboard-mobile-tabbar--scrolled {
+    background-color: color-mix(in srgb, var(--card) 88%, transparent);
+    backdrop-filter: saturate(168%) blur(20px);
+    -webkit-backdrop-filter: saturate(168%) blur(20px);
+  }
+
+  .dashboard-mobile-tabbar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(180deg, color-mix(in srgb, white 10%, transparent), transparent 44%),
+      linear-gradient(90deg, color-mix(in srgb, var(--primary) 6%, transparent), transparent 58%);
+    opacity: 0.7;
+    z-index: -1;
+  }
+
+  .dashboard-mobile-tabbar__inner {
+    position: relative;
+  }
+
+  .dashboard-mobile-tabbar__tab {
+    border: 1px solid transparent;
+  }
+
+  .dashboard-mobile-tabbar__tab--active {
+    border-color: color-mix(in srgb, var(--primary) 30%, transparent);
+    background-color: color-mix(in srgb, var(--primary) 15%, transparent);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, white 24%, transparent);
+  }
+
+  .dashboard-mobile-tabbar__tab--idle:hover {
+    background-color: color-mix(in srgb, var(--muted) 72%, transparent);
+  }
 }
 
 /*
@@ -621,6 +691,12 @@ html.perf-low-end .dashboard-shell :is(
 
 html.perf-low-end .dashboard-shell-header,
 html.perf-low-end .dashboard-shell-header--scrolled {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html.perf-low-end .dashboard-mobile-tabbar,
+html.perf-low-end .dashboard-mobile-tabbar__tab {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
