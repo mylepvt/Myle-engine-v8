@@ -141,10 +141,32 @@ export async function resetMemberPassword(body: {
   return res.json()
 }
 
+export async function resetAllMembersPassword(body: {
+  newPassword: string
+}): Promise<{ ok: boolean; updated: number }> {
+  const res = await apiFetch('/api/v1/team/members/reset-password-bulk', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ new_password: body.newPassword }),
+  })
+  if (!res.ok) await parseError(res)
+  return res.json()
+}
+
 export function useResetMemberPasswordMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: resetMemberPassword,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['team', 'members'] })
+    },
+  })
+}
+
+export function useResetAllMembersPasswordMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: resetAllMembersPassword,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['team', 'members'] })
     },

@@ -7,6 +7,7 @@ import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import {
   createTeamMember,
   useTeamMembersQuery,
+  useResetAllMembersPasswordMutation,
   useResetMemberPasswordMutation,
   type TeamMemberPublic,
 } from '@/hooks/use-team-query'
@@ -118,6 +119,7 @@ export function TeamMembersPage({ title }: Props) {
 
   const [resetTarget, setResetTarget] = useState<ResetTarget | null>(null)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
+  const bulkResetMut = useResetAllMembersPasswordMutation()
 
   useEffect(() => {
     if (!toastMsg) return
@@ -254,7 +256,36 @@ export function TeamMembersPage({ title }: Props) {
       ) : null}
       {data ? (
         <div className="surface-elevated p-5 text-sm">
-          <p className="mb-3 font-medium text-foreground">Total: {data.total}</p>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="font-medium text-foreground">Total: {data.total}</p>
+            {isAdmin ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={bulkResetMut.isPending}
+                onClick={() => {
+                  const ok = window.confirm(
+                    'Reset password for ALL users to Myle@2323 ?',
+                  )
+                  if (!ok) return
+                  bulkResetMut.mutate(
+                    { newPassword: 'Myle@2323' },
+                    {
+                      onSuccess: (d) => {
+                        setToastMsg(`Password reset done for ${d.updated} users`)
+                      },
+                      onError: (e: Error) => {
+                        setToastMsg(`Bulk reset failed: ${e.message}`)
+                      },
+                    },
+                  )
+                }}
+              >
+                {bulkResetMut.isPending ? 'Resetting…' : 'Set all passwords: Myle@2323'}
+              </Button>
+            ) : null}
+          </div>
           <ul className="space-y-2">
             {data.items.map((m) => (
               <li
