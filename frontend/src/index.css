@@ -452,6 +452,36 @@
     position: relative;
   }
 
+  /**
+   * Installed PWA / iOS “Add to Home Screen”:
+   * 100dvh can be taller than the *visible* frame, leaving an empty band at the bottom
+   * above the home indicator. Lock the shell to the small/stable viewport + WebKit fill.
+   */
+  /* stylelint-disable order/properties-order -- webkit fill must win over %/vh for iOS PWA */
+  html.pwa-standalone {
+    height: 100%;
+    height: -webkit-fill-available;
+  }
+
+  html.pwa-standalone body {
+    /* Chain fill-available so #root / .dashboard-shell don’t float short of the glass */
+    min-height: 100%;
+    min-height: -webkit-fill-available;
+  }
+
+  html.pwa-standalone #root {
+    min-height: 100%;
+    min-height: -webkit-fill-available;
+  }
+  /* stylelint-enable order/properties-order */
+
+  @supports (height: 100svh) {
+    html.pwa-standalone .dashboard-shell {
+      height: 100svh;
+      max-height: 100svh;
+    }
+  }
+
   /* Avoid content-visibility on the dashboard <main> scroll container — it can leave
      blank regions or odd scroll extents with flex + short pages (mobile shell). */
 }
