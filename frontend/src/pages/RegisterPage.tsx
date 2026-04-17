@@ -101,9 +101,10 @@ export function RegisterPage() {
     e.preventDefault()
     setFormError(null)
     const emailTrim = email.trim()
-    const uname = username.trim()
+    // Sanitize: replace spaces with underscores, strip chars not in [a-zA-Z0-9._-]
+    const uname = username.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '')
     if (uname.length < 2) {
-      setFormError('Enter your display name (at least 2 characters).')
+      setFormError('Enter your display name (at least 2 characters). Use letters, numbers, spaces.')
       return
     }
     const phoneDigits = phone.replace(/\s/g, '').trim()
@@ -235,6 +236,9 @@ export function RegisterPage() {
                   placeholder="Your name as it should appear"
                   icon={User}
                 />
+                <p className="mt-1.5 text-[0.7rem] text-muted-foreground/80">
+                  Spaces allowed — special characters will be auto-removed.
+                </p>
               </div>
               <div>
                 <label

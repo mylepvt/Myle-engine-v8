@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Annotated, Dict
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from pydantic import BaseModel
 from starlette import status as http_status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -84,22 +85,30 @@ async def update_user_profile(
         )
 
 
+class AvatarBase64Request(BaseModel):
+    data_url: str  # "data:image/jpeg;base64,..."
+
+
 @router.post("/profile/avatar", response_model=Dict[str, str])
 async def upload_profile_avatar(
+    body: AvatarBase64Request,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
-    file: UploadFile = File(..., description="JPEG, PNG, or WebP (max 2 MB)"),
 ) -> Dict[str, str]:
-    """Set or replace the signed-in user's profile picture."""
-    ok, msg = await save_user_avatar_file(user_id=user.user_id, file=file)
-    if not ok:
-        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
+    """Set profile picture from a base64 data URL (stored in DB — no disk required)."""
+    data_url = body.data_url.strip()
+    # Basic validation
+    if not data_url.startswith("data:image/"):
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Invalid image data.")
+    # Max ~300 KB base64 (~225 KB raw) — covers 200x200 JPEG generously
+    if len(data_url) > 400_000:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Image too large (max ~300 KB).")
     u = await session.get(User, user.user_id)
     if u is None:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
-    u.avatar_url = msg
+    u.avatar_url = data_url
     await session.commit()
-    return {"avatar_url": msg, "message": "Profile photo updated"}
+    return {"avatar_url": data_url, "message": "Profile photo updated"}
 
 
 @router.get("/preferences", response_model=UserPreferencesResponse)

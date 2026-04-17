@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 
 import { App } from '@/App'
-import { playClick, playTap } from '@/lib/click-sound'
+import { playClick, playTap, primeAudio } from '@/lib/click-sound'
 import { Snd01SineUiSoundBootstrap } from '@/components/providers/Snd01SineUiSoundBootstrap'
 import { ThemeAndFeedbackProvider } from '@/components/providers/ThemeAndFeedbackProvider'
 import { AppErrorBoundary } from '@/components/routing/AppErrorBoundary'
@@ -41,6 +41,8 @@ if (!rootEl) {
 
 document.addEventListener('pointerdown', (e) => {
   const t = e.target as HTMLElement
+  // Prime AudioContext on first touch (required by browser autoplay policy)
+  primeAudio()
   // Tap sound: checkbox, radio, select
   if (
     t.closest('input[type="checkbox"]') ||

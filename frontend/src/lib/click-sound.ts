@@ -1,64 +1,101 @@
 /**
- * Sound palette for UI interactions.
+ * Sound system using Web Audio API + fetch/decodeAudioData.
+ * Much more reliable than HTMLAudioElement on mobile (no autoplay issues).
  *
- * click.mp3   — light UI click  → buttons, tabs, nav links, anchors
- * tap.mp3     — screen tap      → checkboxes, radios, selects
- * success.mp3 — Apple Pay chime → form saves, login success, confirmations
- *
- * Files live in /public/sounds/ and are streamed via HTMLAudioElement
- * (no bundler involvement, zero JS overhead until first play).
+ * Sounds are loaded lazily on first user gesture, then cached in memory.
+ * click.mp3  → buttons, tabs, links
+ * tap.mp3    → checkbox, radio, select
+ * success.mp3 → login, save success
  */
 
 type SoundName = 'click' | 'tap' | 'success'
 
-const pool: Record<SoundName, HTMLAudioElement[]> = {
-  click: [],
-  tap: [],
-  success: [],
+let ctx: AudioContext | null = null
+const buffers = new Map<SoundName, AudioBuffer>()
+let loading = false
+let loaded = false
+
+const VOLUMES: Record<SoundName, number> = {
+  click: 0.4,
+  tap: 0.35,
+  success: 0.55,
 }
 
-const POOL_SIZE = 4 // concurrent instances per sound
-
-function preload(name: SoundName) {
-  for (let i = 0; i < POOL_SIZE; i++) {
-    const a = new Audio(`/sounds/${name}.mp3`)
-    a.preload = 'auto'
-    a.volume = name === 'success' ? 0.55 : 0.35
-    pool[name].push(a)
+function getCtx(): AudioContext | null {
+  if (ctx) return ctx
+  try {
+    ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
+    return ctx
+  } catch {
+    return null
   }
 }
 
-let ready = false
+async function loadAll(): Promise<void> {
+  if (loaded || loading) return
+  loading = true
+  const ac = getCtx()
+  if (!ac) { loading = false; return }
 
-function ensureReady() {
-  if (ready) return
-  ready = true
-  preload('click')
-  preload('tap')
-  preload('success')
+  const names: SoundName[] = ['click', 'tap', 'success']
+  await Promise.all(
+    names.map(async (name) => {
+      try {
+        const res = await fetch(`/sounds/${name}.mp3`)
+        const arr = await res.arrayBuffer()
+        const buf = await ac.decodeAudioData(arr)
+        buffers.set(name, buf)
+      } catch {
+        /* sound unavailable — silent fail */
+      }
+    })
+  )
+  loaded = true
+  loading = false
 }
 
-function play(name: SoundName) {
-  ensureReady()
-  // Round-robin through the pool so rapid taps don't cut each other off
-  const list = pool[name]
-  const a = list.find((x) => x.paused || x.ended) ?? list[0]
-  if (!a) return
-  a.currentTime = 0
-  a.play().catch(() => {/* autoplay policy — ignore */})
+// Kick off preload on first user gesture
+let preloadStarted = false
+export function primeAudio(): void {
+  if (preloadStarted) return
+  preloadStarted = true
+  const ac = getCtx()
+  if (!ac) return
+  // Resume suspended context (required on mobile)
+  if (ac.state === 'suspended') {
+    void ac.resume().then(() => void loadAll())
+  } else {
+    void loadAll()
+  }
+}
+
+function playBuffer(name: SoundName): void {
+  const ac = getCtx()
+  const buf = buffers.get(name)
+  if (!ac || !buf) return
+  if (ac.state === 'suspended') { void ac.resume(); return }
+
+  const gain = ac.createGain()
+  gain.gain.value = VOLUMES[name]
+  gain.connect(ac.destination)
+
+  const src = ac.createBufferSource()
+  src.buffer = buf
+  src.connect(gain)
+  src.start()
 }
 
 /** Light click — buttons, tabs, links */
-export function playClick() {
-  play('click')
+export function playClick(): void {
+  playBuffer('click')
 }
 
-/** Tap feedback — checkboxes, radios, selects */
-export function playTap() {
-  play('tap')
+/** Tap — checkboxes, radios, selects */
+export function playTap(): void {
+  playBuffer('tap')
 }
 
-/** Success chime — form saves, login, confirmations */
-export function playSuccess() {
-  play('success')
+/** Success chime — login, saves */
+export function playSuccess(): void {
+  playBuffer('success')
 }
