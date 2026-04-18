@@ -167,11 +167,10 @@ export function DashboardHomePage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <div className="flex items-center justify-between gap-2 px-0.5">
+      <div className="flex items-center gap-2 px-0.5">
         <h1 className="font-heading text-ds-h2 font-semibold capitalize tracking-tight text-foreground">
           Welcome back, {firstName}
         </h1>
-        <XpBadge />
       </div>
 
       {role === 'admin' && sessionReady ? (
@@ -411,6 +410,8 @@ export function DashboardHomePage() {
           </div>
         )}
       </div>
+
+      <XpBadge />
 
       <XpLeaderboard role={role} />
 
