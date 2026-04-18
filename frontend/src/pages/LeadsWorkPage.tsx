@@ -1,6 +1,6 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { type ChangeEvent, type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Filter, Mail, MapPin, Phone, Plus, Search, Share2, UserPlus, X } from 'lucide-react'
+import { Filter, Mail, MapPin, Phone, Plus, Search, Share2, Upload, UserPlus, X } from 'lucide-react'
 
 import { CtcsWorkSurface } from '@/components/leads/CtcsWorkSurface'
 import { LeadsVirtualizedBody } from '@/components/leads/LeadsVirtualizedBody'
@@ -13,6 +13,7 @@ import {
   type LeadStatus,
   useCreateLeadMutation,
   useDeleteLeadMutation,
+  useImportLeadsFileMutation,
   useLeadsInfiniteQuery,
   usePatchLeadMutation,
 } from '@/hooks/use-leads-query'
@@ -70,6 +71,10 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const [advancedTableOpen, setAdvancedTableOpen] = useState(false)
   const [filterOpen, setFilterOpen] = useState(false)
   const [quickAddOpen, setQuickAddOpen] = useState(false)
+  const [importHint, setImportHint] = useState<string | null>(null)
+  const importFileRef = useRef<HTMLInputElement>(null)
+  const importMut = useImportLeadsFileMutation()
+  const canFileImport = role === 'leader' || role === 'team'
 
   useEffect(() => {
     setQInput(qParam)
@@ -136,6 +141,20 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
     (id: number) => void deleteMut.mutateAsync(id),
     [deleteMut],
   )
+
+  async function handleImportFilePick(e: ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]
+    e.target.value = ''
+    if (!f) return
+    setImportHint(null)
+    try {
+      const r = await importMut.mutateAsync({ file: f })
+      const extra = r.warnings?.length ? ` ${r.warnings.join(' ')}` : ''
+      setImportHint(`Imported ${r.imported}, skipped ${r.skipped}.${extra}`)
+    } catch (err) {
+      setImportHint(err instanceof Error ? err.message : 'Import failed')
+    }
+  }
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault()
@@ -290,6 +309,28 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
             >
               <Filter className="size-3.5" />
             </button>
+            {canFileImport ? (
+              <>
+                <input
+                  ref={importFileRef}
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  className="sr-only"
+                  aria-hidden
+                  tabIndex={-1}
+                  onChange={(ev) => void handleImportFilePick(ev)}
+                />
+                <button
+                  type="button"
+                  aria-label="Import leads from PDF"
+                  disabled={importMut.isPending}
+                  onClick={() => importFileRef.current?.click()}
+                  className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-sm transition hover:bg-muted hover:text-foreground disabled:opacity-50"
+                >
+                  <Upload className="size-3.5" />
+                </button>
+              </>
+            ) : null}
             <button
               type="button"
               aria-label="Add lead"
@@ -299,6 +340,11 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
               <Plus className="size-3.5" />
             </button>
           </div>
+          {importHint ? (
+            <p className="mt-1 px-1 text-ds-caption text-muted-foreground" role="status">
+              {importHint}
+            </p>
+          ) : null}
         </div>
 
         {filterOpen ? (

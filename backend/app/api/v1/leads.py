@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import Annotated, Optional
 import re
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +21,7 @@ from app.schemas.leads import (
     BatchShareUrlRequest,
     BatchShareUrlResponse,
     LeadCreate,
+    LeadFileImportResponse,
     LeadCtcsActionRequest,
     LeadDetailPublic,
     LeadListResponse,
@@ -32,6 +33,7 @@ from app.schemas.leads import (
     LeadUpdate,
 )
 from app.services.all_leads_service import AllLeadsService, get_all_leads_service
+from app.services.lead_file_import import run_personal_lead_import
 from app.services.leads_service import LeadsService, get_leads_service
 from app.services.downline import is_user_in_downline_of
 from app.services.leads_service import _sync_batch_completion_timestamps
@@ -166,6 +168,40 @@ async def create_lead(
 ):
     lead = await service.create_lead(body=body, user=user)
     return lead
+
+
+@router.post("/import-file", response_model=LeadFileImportResponse)
+async def import_leads_file(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    file: UploadFile = File(...),
+    source_tag: str = Form("Import"),
+) -> LeadFileImportResponse:
+    """Team / leader: bulk-create leads from a PDF (calling board; legacy table/text layout)."""
+    if user.role not in ("leader", "team"):
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail="Only team and leader can import leads from a file",
+        )
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="Empty file",
+        )
+    result = await run_personal_lead_import(
+        session,
+        user_id=user.user_id,
+        file_bytes=raw,
+        filename=file.filename or "upload",
+        source_tag=(source_tag or "").strip() or "Import",
+    )
+    await notify_topics("leads")
+    return LeadFileImportResponse(
+        imported=result.imported,
+        skipped=result.skipped,
+        warnings=result.warnings,
+    )
 
 
 @router.post("/{lead_id}/claim", response_model=LeadPublic)
