@@ -63,16 +63,14 @@ export function XpLeaderboard({ role }: Props) {
               <span className="flex-1 truncate font-medium text-foreground">
                 {entry.name}
               </span>
-              {rank <= 3 || entry.level !== 'rookie' ? (
-                <span
-                  className={cn(
-                    'rounded-full border px-2 py-0.5 text-xs font-semibold shrink-0',
-                    rank <= 3 ? `${colors.bg} ${colors.text} ${colors.border}` : 'border-border bg-muted/40 text-muted-foreground',
-                  )}
-                >
-                  {(entry.level_label ?? entry.level ?? 'rookie').toUpperCase()}
-                </span>
-              ) : null}
+              <span
+                className={cn(
+                  'rounded-full border px-2 py-0.5 text-xs font-semibold shrink-0',
+                  colors.bg, colors.text, colors.border,
+                )}
+              >
+                {(entry.level_label ?? entry.level ?? 'rookie').toUpperCase()}
+              </span>
               <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
                 {entry.xp_total.toLocaleString()} XP
               </span>
