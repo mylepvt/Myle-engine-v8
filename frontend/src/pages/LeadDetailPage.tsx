@@ -14,7 +14,6 @@ import { EnrollmentCard } from '@/components/leads/EnrollmentCard'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LeadNextStepPanel } from '@/components/leads/LeadNextStepPanel'
 import { LeadNotesPanel } from '@/components/leads/LeadNotesPanel'
-import { playSuccess } from '@/lib/click-sound'
 
 type Props = {
   leadId: number
@@ -113,7 +112,6 @@ export function LeadDetailPage({ leadId }: Props) {
   }, [])
 
   // Keep local editors in sync when `lead` updates (route change or query refetch after save).
-  /* eslint-disable react-hooks/set-state-in-effect -- intentional sync from server record to form state */
   useEffect(() => {
     if (lead) {
       setPipelineStatus(lead.status)
@@ -122,7 +120,6 @@ export function LeadDetailPage({ leadId }: Props) {
       setProofUrl(lead.payment_proof_url ?? '')
     }
   }, [lead])
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   async function savePipeline() {
     if (!lead) return
@@ -132,7 +129,6 @@ export function LeadDetailPage({ leadId }: Props) {
         leadId,
         body: { status: pipelineStatus, call_status: pipelineCallStatus || null },
       })
-      if (pipelineStatus === 'won') playSuccess()
     } catch (e) {
       setPipelineError(e instanceof Error ? e.message : 'Save failed')
     }

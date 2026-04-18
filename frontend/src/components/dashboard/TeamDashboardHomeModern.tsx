@@ -101,7 +101,7 @@ export function TeamDashboardHomeModern({
       <section className="space-y-3">
         <div className="flex items-center justify-between px-1">
           <h2 className="text-base font-semibold text-foreground">Enrollment Funnel</h2>
-          <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+          <span className="rounded-md bg-muted px-2 py-0.5 text-ds-caption font-medium text-muted-foreground">
             Assigned active
           </span>
         </div>
@@ -121,10 +121,10 @@ export function TeamDashboardHomeModern({
                 <CardContent className="px-4 py-3">
                   <div className="mb-2 flex items-center justify-between">
                     <c.Icon className={`size-4 ${c.iconClass}`} aria-hidden />
-                    <span className="text-[10px] font-semibold text-muted-foreground">{c.sub}</span>
+                    <span className="text-ds-caption font-semibold text-muted-foreground">{c.sub}</span>
                   </div>
                   <p className={`text-3xl font-semibold tabular-nums ${c.accent}`}>{c.value}</p>
-                  <p className="text-xs text-muted-foreground">{c.label}</p>
+                  <p className="text-ds-caption text-muted-foreground">{c.label}</p>
                 </CardContent>
               </Card>
             ))}
@@ -144,7 +144,7 @@ export function TeamDashboardHomeModern({
               <a.Icon className="size-4 shrink-0 text-primary" aria-hidden />
               <span>{a.label}</span>
               {a.badgeCount != null ? (
-                <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-ds-caption font-semibold text-primary">
                   {a.badgeCount}
                 </span>
               ) : null}
@@ -156,7 +156,7 @@ export function TeamDashboardHomeModern({
       <section className="space-y-2">
         <div className="flex items-center justify-between px-1">
           <h2 className="text-base font-semibold text-foreground">Recent Leads</h2>
-          <Link to="/dashboard/work/leads" className="text-xs font-semibold text-primary">
+          <Link to="/dashboard/work/leads" className="text-ds-caption font-semibold text-primary">
             View all
           </Link>
         </div>
@@ -173,7 +173,7 @@ export function TeamDashboardHomeModern({
                 >
                   <div className="min-w-0">
                     <p className="truncate font-medium text-foreground">{l.name}</p>
-                    <p className="text-xs text-muted-foreground">{l.status.replaceAll('_', ' ')}</p>
+                    <p className="text-ds-caption text-muted-foreground">{l.status.replaceAll('_', ' ')}</p>
                   </div>
                   <ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                 </Link>

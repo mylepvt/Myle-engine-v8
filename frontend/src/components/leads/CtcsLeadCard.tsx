@@ -12,69 +12,53 @@ import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 function ctcsGetTimeColor(totalSeconds: number) {
   const hours = totalSeconds / 3600
 
-  if (hours >= 24) {
-    return {
-      text: 'text-emerald-800 dark:text-green-400',
-      stroke: '#4ade80',
-      glow: 'shadow-[0_0_12px_rgba(34,197,94,0.6)]',
-      border: 'border-green-500/25',
-      cardGlow: 'shadow-[0_0_12px_rgba(34,197,94,0.15)]',
-      leftBorder:
-        'bg-gradient-to-b from-green-400 via-green-500 to-green-400 shadow-[0_0_12px_rgba(34,197,94,0.6)]',
-    }
+  if (hours >= 24) return {
+    text: 'text-emerald-800 dark:text-urgency-safe',
+    stroke: 'var(--urgency-safe)',
+    glow: 'shadow-urgency-safe',
+    border: 'border-urgency-safe/25',
+    cardGlow: 'shadow-urgency-safe-card',
+    leftBorder: 'bg-urgency-safe shadow-urgency-safe',
   }
-  if (hours >= 18) {
-    return {
-      text: 'text-blue-700 dark:text-blue-400',
-      stroke: '#60a5fa',
-      glow: 'shadow-[0_0_12px_rgba(96,165,250,0.6)]',
-      border: 'border-blue-500/25',
-      cardGlow: 'shadow-[0_0_12px_rgba(96,165,250,0.15)]',
-      leftBorder:
-        'bg-gradient-to-b from-blue-400 via-blue-500 to-blue-400 shadow-[0_0_12px_rgba(96,165,250,0.6)]',
-    }
+  if (hours >= 18) return {
+    text: 'text-blue-700 dark:text-urgency-watch',
+    stroke: 'var(--urgency-watch)',
+    glow: 'shadow-urgency-watch',
+    border: 'border-urgency-watch/25',
+    cardGlow: 'shadow-urgency-watch-card',
+    leftBorder: 'bg-urgency-watch shadow-urgency-watch',
   }
-  if (hours >= 12) {
-    return {
-      text: 'text-orange-700 dark:text-orange-400',
-      stroke: '#fb923c',
-      glow: 'shadow-[0_0_12px_rgba(251,146,60,0.6)]',
-      border: 'border-orange-500/25',
-      cardGlow: 'shadow-[0_0_12px_rgba(251,146,60,0.15)]',
-      leftBorder:
-        'bg-gradient-to-b from-orange-400 via-orange-500 to-orange-400 shadow-[0_0_12px_rgba(251,146,60,0.6)]',
-    }
+  if (hours >= 12) return {
+    text: 'text-orange-700 dark:text-urgency-caution',
+    stroke: 'var(--urgency-caution)',
+    glow: 'shadow-urgency-caution',
+    border: 'border-urgency-caution/25',
+    cardGlow: 'shadow-urgency-caution-card',
+    leftBorder: 'bg-urgency-caution shadow-urgency-caution',
   }
-  if (hours >= 6) {
-    return {
-      text: 'text-red-700 dark:text-red-400',
-      stroke: '#f87171',
-      glow: 'shadow-[0_0_12px_rgba(248,113,113,0.6)]',
-      border: 'border-red-500/25',
-      cardGlow: 'shadow-[0_0_12px_rgba(248,113,113,0.15)]',
-      leftBorder:
-        'bg-gradient-to-b from-red-400 via-red-500 to-red-400 shadow-[0_0_12px_rgba(248,113,113,0.6)]',
-    }
+  if (hours >= 6) return {
+    text: 'text-red-700 dark:text-urgency-warning',
+    stroke: 'var(--urgency-warning)',
+    glow: 'shadow-urgency-warning',
+    border: 'border-urgency-warning/25',
+    cardGlow: 'shadow-urgency-warning-card',
+    leftBorder: 'bg-urgency-warning shadow-urgency-warning',
   }
-  if (hours >= 2) {
-    return {
-      text: 'text-red-800 dark:text-red-600',
-      stroke: '#dc2626',
-      glow: 'shadow-[0_0_12px_rgba(220,38,38,0.7)]',
-      border: 'border-red-700/30',
-      cardGlow: 'shadow-[0_0_12px_rgba(220,38,38,0.2)]',
-      leftBorder:
-        'bg-gradient-to-b from-red-600 via-red-700 to-red-600 shadow-[0_0_12px_rgba(220,38,38,0.7)]',
-    }
+  if (hours >= 2) return {
+    text: 'text-red-800 dark:text-urgency-danger',
+    stroke: 'var(--urgency-danger)',
+    glow: 'shadow-urgency-danger',
+    border: 'border-urgency-danger/30',
+    cardGlow: 'shadow-urgency-danger-card',
+    leftBorder: 'bg-urgency-danger shadow-urgency-danger',
   }
   return {
-    text: 'text-red-900 dark:text-red-700',
-    stroke: '#b91c1c',
-    glow: 'shadow-[0_0_15px_rgba(185,28,28,0.8)]',
-    border: 'border-red-800/40',
-    cardGlow: 'shadow-[0_0_15px_rgba(185,28,28,0.25)]',
-    leftBorder:
-      'bg-gradient-to-b from-red-700 via-red-800 to-red-700 shadow-[0_0_15px_rgba(185,28,28,0.8)]',
+    text: 'text-red-900 dark:text-urgency-critical',
+    stroke: 'var(--urgency-critical)',
+    glow: 'shadow-urgency-critical',
+    border: 'border-urgency-critical/40',
+    cardGlow: 'shadow-urgency-critical-card',
+    leftBorder: 'bg-urgency-critical shadow-urgency-critical',
   }
 }
 
@@ -89,7 +73,7 @@ const ASSIGNEE_PALETTE = ['bg-blue-500', 'bg-pink-500', 'bg-violet-500', 'bg-cya
 
 /** Native `<select>` — compact so Call + Lead sit one row beside Dial/WA. */
 const pillSelectInner =
-  'max-w-[min(9.5rem,34vw)] min-w-0 h-full flex-1 cursor-pointer appearance-none rounded-full border-0 bg-transparent py-0 pl-0.5 pr-5 text-left text-[11px] font-medium leading-none text-foreground outline-none focus:outline-none disabled:opacity-40'
+  'max-w-[min(9.5rem,34vw)] min-w-0 h-full flex-1 cursor-pointer appearance-none rounded-full border-0 bg-transparent py-0 pl-0.5 pr-5 text-left text-ds-caption font-medium leading-none text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1 disabled:opacity-40'
 
 function statusDotClass(status: string): string {
   if (status === 'contacted') return 'bg-yellow-500'
@@ -212,14 +196,14 @@ export function CtcsLeadCard({
                 >
                   {assigneeInitials}
                 </div>
-                <span className="max-w-[7.5rem] truncate text-[11px] text-muted-foreground" title={assigneeName}>
+                <span className="max-w-[7.5rem] truncate text-ds-caption text-muted-foreground" title={assigneeName}>
                   {assigneeName}
                 </span>
               </div>
             ) : null}
           </div>
           {phoneLine || cityLine ? (
-            <p className="mt-0.5 text-[11px] leading-tight text-muted-foreground">
+            <p className="mt-0.5 text-ds-caption leading-tight text-muted-foreground">
               {phoneLine ? <span className="font-mono">{phoneLine}</span> : null}
               {phoneLine && cityLine ? <span className="text-muted-foreground/70"> · </span> : null}
               {cityLine ? <span>{cityLine}</span> : null}
@@ -237,11 +221,11 @@ export function CtcsLeadCard({
           {pipelineReadonly ? (
             <div className="flex h-8 min-w-[6.5rem] max-w-[38%] shrink-0 items-center gap-1.5 rounded-full border border-border/50 bg-muted/60 px-2.5">
               <span className={cn('size-1.5 shrink-0 rounded-full', statusDotClass(lead.status))} aria-hidden />
-              <span className="truncate text-[11px] text-foreground">
+              <span className="truncate text-ds-caption text-foreground">
                 {LEAD_STATUS_OPTIONS.find((o) => o.value === lead.status)?.label ?? lead.status}
               </span>
-              <span className="text-[10px] text-muted-foreground">·</span>
-              <span className="text-[10px] text-muted-foreground">Leader</span>
+              <span className="text-ds-caption text-muted-foreground">·</span>
+              <span className="text-ds-caption text-muted-foreground">Leader</span>
             </div>
           ) : (
             <div className="relative flex h-8 min-w-[7rem] max-w-[40%] shrink-0 items-center gap-1.5 rounded-full border border-border/50 bg-muted/60 pl-2 pr-6">
@@ -337,10 +321,10 @@ export function CtcsLeadCard({
             </svg>
             </div>
             <div>
-              <p className={cn('text-xs font-semibold leading-tight', timeColors.text)}>
+              <p className={cn('text-ds-caption font-semibold leading-tight', timeColors.text)}>
                 {overdue ? formatCountdown(ms) : formatTime(remainingSec)}
               </p>
-              <p className="text-[10px] text-muted-foreground">{overdue ? 'SLA' : 'remaining'}</p>
+              <p className="text-ds-caption text-muted-foreground">{overdue ? 'SLA' : 'remaining'}</p>
             </div>
           </div>
 

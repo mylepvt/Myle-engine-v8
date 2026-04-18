@@ -1,0 +1,521 @@
+import { useEffect, useRef, useState } from 'react'
+import { apiFetch } from '@/lib/api'
+
+const BOOT_SEEN_KEY = 'myle_boot_seen'
+
+// ── Web Audio Engine ──────────────────────────────────────────────────────────
+// All sounds generated via Web Audio API — no audio files required.
+
+function createTerminalAudio() {
+  let ctx: AudioContext | null = null
+
+  function getCtx(): AudioContext {
+    if (!ctx) ctx = new AudioContext()
+    if (ctx.state === 'suspended') void ctx.resume()
+    return ctx
+  }
+
+  /**
+   * Key-click per typed character.
+   * Random gain + stereo pan = natural typing feel, no ear fatigue.
+   */
+  function playTick() {
+    try {
+      const c = getCtx()
+      const now = c.currentTime
+      const osc = c.createOscillator()
+      const gain = c.createGain()
+      const pan = c.createStereoPanner()
+      osc.connect(gain)
+      gain.connect(pan)
+      pan.connect(c.destination)
+      osc.type = 'square'
+      osc.frequency.setValueAtTime(880 + Math.random() * 280, now)
+      // Random volume → prevents monotone ear fatigue
+      gain.gain.setValueAtTime(0.02 + Math.random() * 0.012, now)
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.018)
+      // Subtle L/R drift → typing feels physical
+      pan.pan.value = Math.random() * 0.6 - 0.3
+      osc.start(now)
+      osc.stop(now + 0.018)
+    } catch { /* audio blocked */ }
+  }
+
+  /**
+   * Glitch burst for alert lines.
+   * Layer 1: bandpass-filtered noise with hard transient spike.
+   * Layer 2: high-freq sine stab → sci-fi "impact" feel.
+   */
+  function playGlitch() {
+    try {
+      const c = getCtx()
+      const now = c.currentTime
+      const dur = 0.09
+
+      // Layer 1 — noise
+      const buf = c.createBuffer(1, Math.ceil(c.sampleRate * dur), c.sampleRate)
+      const data = buf.getChannelData(0)
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1
+      const src = c.createBufferSource()
+      src.buffer = buf
+      const filter = c.createBiquadFilter()
+      filter.type = 'bandpass'
+      filter.frequency.setValueAtTime(1400, now)
+      filter.frequency.exponentialRampToValueAtTime(380, now + dur)
+      filter.Q.value = 0.6
+      const gainN = c.createGain()
+      // Hard transient spike → then decay (more punch)
+      gainN.gain.setValueAtTime(0.25, now)
+      gainN.gain.exponentialRampToValueAtTime(0.0001, now + dur)
+      src.connect(filter)
+      filter.connect(gainN)
+      gainN.connect(c.destination)
+      src.start(now)
+      src.stop(now + dur)
+
+      // Layer 2 — high-freq sine stab (~2200 Hz, 20ms)
+      const stab = c.createOscillator()
+      const gainS = c.createGain()
+      stab.connect(gainS)
+      gainS.connect(c.destination)
+      stab.type = 'sine'
+      stab.frequency.setValueAtTime(2200, now)
+      gainS.gain.setValueAtTime(0.12, now)
+      gainS.gain.exponentialRampToValueAtTime(0.0001, now + 0.02)
+      stab.start(now)
+      stab.stop(now + 0.02)
+    } catch { /* audio blocked */ }
+  }
+
+  /**
+   * Rising chord on "SYSTEM UNLOCKED".
+   * 150ms silence → chord plays → echo repeat at +80ms and +160ms.
+   * Detune per note → cinematic richness.
+   */
+  function playGranted() {
+    try {
+      const c = getCtx()
+      // 150ms silence before chord — impact 2×
+      const offset = 0.15
+
+      const playChord = (extraDelay: number) => {
+        const notes = [330, 415, 523, 659, 880]
+        notes.forEach((freq, i) => {
+          const osc = c.createOscillator()
+          const gain = c.createGain()
+          osc.connect(gain)
+          gain.connect(c.destination)
+          osc.type = 'sine'
+          // Slight detune → warm, not sterile
+          osc.detune.value = Math.random() * 10 - 5
+          const t = c.currentTime + offset + extraDelay + i * 0.07
+          osc.frequency.setValueAtTime(freq, t)
+          gain.gain.setValueAtTime(0.0001, t)
+          // Echo repeats are quieter
+          const vol = extraDelay === 0 ? 0.08 : extraDelay === 0.08 ? 0.04 : 0.02
+          gain.gain.exponentialRampToValueAtTime(vol, t + 0.025)
+          gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.22)
+          osc.start(t)
+          osc.stop(t + 0.28)
+        })
+      }
+
+      // Main chord + 2 echo repeats → reverb illusion
+      playChord(0)
+      playChord(0.08)
+      playChord(0.16)
+    } catch { /* audio blocked */ }
+  }
+
+  function destroy() {
+    try { ctx?.close() } catch { /* ignore */ }
+    ctx = null
+  }
+
+  return { playTick, playGlitch, playGranted, destroy }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+type LineColor = 'green' | 'amber' | 'cyan' | 'red' | 'dim' | 'white'
+
+interface LineItem {
+  id: number
+  text: string
+  color: LineColor
+  complete: boolean
+}
+
+interface TerminalStats {
+  activeLeads: number
+  followUps: number
+  winRatePct: number | null
+}
+
+const COLOR_CLASS: Record<LineColor, string> = {
+  green: 'text-emerald-400',
+  amber: 'text-amber-400',
+  cyan: 'text-cyan-400',
+  red: 'text-red-400',
+  dim: 'text-zinc-500',
+  white: 'text-zinc-200',
+}
+
+const ROLE_LABEL: Record<string, string> = {
+  admin: 'SYSTEM ADMIN',
+  leader: 'TEAM LEADER',
+  team: 'TEAM MEMBER',
+}
+
+export interface TerminalBootOverlayProps {
+  userName: string
+  userRole: string
+  userFboId: string
+  onFinish: () => void
+}
+
+export function TerminalBootOverlay({
+  userName,
+  userRole,
+  userFboId,
+  onFinish,
+}: TerminalBootOverlayProps) {
+  const [lines, setLines] = useState<LineItem[]>([])
+  const [exiting, setExiting] = useState(false)
+  const lineIdRef = useRef(0)
+  const statsRef = useRef<TerminalStats | null>(null)
+  const statsReadyRef = useRef(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const audioRef = useRef<ReturnType<typeof createTerminalAudio> | null>(null)
+  const animationStartedRef = useRef(false)
+
+  // Init + cleanup audio
+  useEffect(() => {
+    audioRef.current = createTerminalAudio()
+    return () => {
+      audioRef.current?.destroy()
+      audioRef.current = null
+    }
+  }, [])
+
+  // Skip mode: fast animation on repeat logins
+  const isSkip = (() => {
+    try {
+      return localStorage.getItem(BOOT_SEEN_KEY) === '1'
+    } catch {
+      return false
+    }
+  })()
+
+  const charSpeed = isSkip ? 3 : 16   // ms per character
+  const lineGap = isSkip ? 12 : 70    // ms pause between lines
+  const stageGap = isSkip ? 25 : 180  // ms pause between stages
+  const endPause = isSkip ? 250 : 700 // ms hold on final screen
+
+  // Fetch workboard + follow-ups stats in background immediately
+  useEffect(() => {
+    const ctrl = new AbortController()
+    ;(async () => {
+      try {
+        const wbRes = await apiFetch('/api/v1/workboard', { signal: ctrl.signal })
+        if (!wbRes.ok) return
+        const wb: { columns?: { status: string; total: number }[] } = await wbRes.json()
+
+        let activeLeads = 0
+        let followUpLeads = 0
+        let won = 0
+        let lost = 0
+
+        if (wb?.columns) {
+          for (const col of wb.columns) {
+            const t = typeof col.total === 'number' ? col.total : 0
+            activeLeads += t
+            if (col.status === 'follow_up') followUpLeads = t
+            if (col.status === 'converted' || col.status === 'won') won = t
+            if (col.status === 'lost') lost = t
+          }
+        }
+
+        const closed = won + lost
+        const winRatePct = closed > 0 ? Math.round((won / closed) * 100) : null
+
+        statsRef.current = { activeLeads, followUps: followUpLeads, winRatePct }
+        statsReadyRef.current = true
+      } catch {
+        // ignore — stats are optional
+      }
+    })()
+    return () => ctrl.abort()
+  }, [])
+
+  // Auto-scroll terminal to bottom as lines are added
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [lines])
+
+  // Main animation sequence
+  useEffect(() => {
+    // Skip animation entirely in automated test environments (Playwright, Selenium, etc.)
+    if (navigator.webdriver) {
+      onFinish()
+      return
+    }
+
+    // React 18 StrictMode runs effects twice in dev — guard against double start
+    if (animationStartedRef.current) return
+    animationStartedRef.current = true
+
+    const nextId = () => ++lineIdRef.current
+
+    // Type a line character by character, returns promise that resolves when done
+    const typeLine = (text: string, color: LineColor): Promise<void> =>
+      new Promise<void>((resolve) => {
+        const id = nextId()
+        setLines((prev) => [...prev, { id, text: '', color, complete: false }])
+        let i = 0
+        const tick = () => {
+          i++
+          audioRef.current?.playTick()
+          setLines((prev) =>
+            prev.map((l) => (l.id === id ? { ...l, text: text.slice(0, i) } : l)),
+          )
+          if (i >= text.length) {
+            setLines((prev) =>
+              prev.map((l) => (l.id === id ? { ...l, complete: true } : l)),
+            )
+            resolve()
+          } else {
+            setTimeout(tick, charSpeed)
+          }
+        }
+        setTimeout(tick, charSpeed)
+      })
+
+    const blankLine = (): Promise<void> => {
+      const id = nextId()
+      setLines((prev) => [...prev, { id, text: '', color: 'dim', complete: true }])
+      return Promise.resolve()
+    }
+
+    const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
+
+    async function run() {
+      // ── BOOT ──
+      await typeLine('> INITIALIZING MYLE COMMAND SYSTEM...', 'dim')
+      await wait(lineGap)
+      await typeLine('> BOOT SEQUENCE INITIATED', 'green')
+      await wait(lineGap)
+      await typeLine('> SECURE CHANNEL ESTABLISHED  ✔', 'green')
+      await wait(stageGap)
+
+      // ── AUTH ──
+      await typeLine('> VERIFYING CREDENTIALS...', 'dim')
+      await wait(lineGap)
+      await typeLine('> ENCRYPTION KEY MATCH  ✔', 'cyan')
+      await wait(lineGap)
+      await typeLine('> AUTHENTICATION SUCCESS  ✔', 'cyan')
+      await wait(stageGap)
+
+      // ── USER IDENTITY ──
+      await blankLine()
+      await typeLine('> IDENTIFYING USER...', 'dim')
+      await wait(lineGap)
+      await typeLine(`> NAME  : ${userName.toUpperCase()}`, 'white')
+      await wait(lineGap)
+      await typeLine(`> ROLE  : ${ROLE_LABEL[userRole] ?? userRole.toUpperCase()}`, 'amber')
+      await wait(lineGap)
+      await typeLine(`> ID    : ${userFboId.toUpperCase()}`, 'amber')
+      await wait(stageGap)
+
+      // ── PERFORMANCE DATA ──
+      await blankLine()
+      await typeLine('> FETCHING PERFORMANCE DATA...', 'dim')
+
+      // Wait for stats, max ~2.5 s
+      const deadline = Date.now() + 2500
+      while (!statsReadyRef.current && Date.now() < deadline) {
+        await wait(80)
+      }
+
+      if (statsReadyRef.current && statsRef.current) {
+        const s = statsRef.current
+        await typeLine(`> ACTIVE LEADS      : ${s.activeLeads}`, 'amber')
+        await wait(lineGap)
+        await typeLine(
+          `> FOLLOW-UPS PENDING: ${s.followUps}`,
+          s.followUps > 0 ? 'amber' : 'dim',
+        )
+        await wait(lineGap)
+        if (s.winRatePct !== null) {
+          await typeLine(
+            `> CLOSING RATE      : ${s.winRatePct}%`,
+            s.winRatePct >= 30 ? 'green' : 'amber',
+          )
+          await wait(lineGap)
+        }
+        await wait(stageGap)
+
+        // ── BEHAVIORAL ALERT ──
+        if (s.followUps > 0) {
+          await blankLine()
+          audioRef.current?.playGlitch()
+          await typeLine(
+            `> ⚠  ALERT: ${s.followUps} LEAD${s.followUps !== 1 ? 'S' : ''} COOLING DOWN`,
+            'red',
+          )
+          await wait(lineGap)
+          await typeLine('> ACTION REQUIRED: OPEN FOLLOW-UPS NOW', 'amber')
+          await wait(stageGap)
+        }
+      } else {
+        await typeLine('> PERFORMANCE DATA UNAVAILABLE', 'dim')
+        await wait(stageGap)
+      }
+
+      // ── ACCESS GRANTED ──
+      await blankLine()
+      await typeLine('> ACCESS LEVEL  : ELITE', 'cyan')
+      await wait(lineGap)
+      audioRef.current?.playGranted()
+      await typeLine('> SYSTEM UNLOCKED  ✔', 'green')
+      await wait(endPause)
+
+      // Mark seen for skip mode on next login
+      try {
+        localStorage.setItem(BOOT_SEEN_KEY, '1')
+      } catch {
+        /* private mode */
+      }
+
+      // Exit
+      setExiting(true)
+      await wait(500)
+      onFinish()
+    }
+
+    void run()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  return (
+    <div
+      className="terminal-boot-overlay"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9999,
+        background: '#000',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        opacity: exiting ? 0 : 1,
+        transition: 'opacity 0.45s ease-out',
+      }}
+      role="status"
+      aria-label="System boot sequence"
+      aria-live="polite"
+    >
+      {/* Grid pattern background */}
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          inset: 0,
+          backgroundImage:
+            'linear-gradient(rgba(84,101,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(84,101,255,0.05) 1px, transparent 1px)',
+          backgroundSize: '48px 48px',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* Scanline overlay */}
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background:
+            'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px)',
+          pointerEvents: 'none',
+          zIndex: 1,
+        }}
+      />
+
+      {/* Terminal text area */}
+      <div
+        ref={scrollRef}
+        style={{
+          position: 'relative',
+          zIndex: 2,
+          flex: 1,
+          overflowY: 'auto',
+          padding: '2rem 1.5rem 1rem',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'flex-end',
+        }}
+      >
+        <div>
+          {lines.map((line) => (
+            <div
+              key={line.id}
+              className={COLOR_CLASS[line.color]}
+              style={{
+                fontFamily: '"JetBrains Mono", "Fira Code", "Courier New", monospace',
+                fontSize: 'clamp(0.72rem, 2vw, 0.9rem)',
+                lineHeight: '1.7',
+                marginBottom: '1px',
+                letterSpacing: '0.03em',
+              }}
+            >
+              {line.text || '\u00A0'}
+              {!line.complete && (
+                <span
+                  aria-hidden
+                  style={{
+                    display: 'inline-block',
+                    width: '0.5em',
+                    height: '1em',
+                    background: '#34d399',
+                    marginLeft: '2px',
+                    verticalAlign: 'middle',
+                    animation: 'myle-cursor-blink 0.8s step-end infinite',
+                  }}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Status bar */}
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 2,
+          borderTop: '1px solid #1c1c1c',
+          padding: '0.5rem 1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontFamily: '"JetBrains Mono", monospace',
+          fontSize: '0.6rem',
+          color: '#3f3f46',
+          letterSpacing: '0.08em',
+        }}
+      >
+        <span>MYLE COMMAND SYSTEM v3</span>
+        <span>SECURE BOOT · AES-256</span>
+      </div>
+
+      {/* Cursor blink keyframe — injected inline so no CSS file edit needed */}
+      <style>{`
+        @keyframes myle-cursor-blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
+      `}</style>
+    </div>
+  )
+}

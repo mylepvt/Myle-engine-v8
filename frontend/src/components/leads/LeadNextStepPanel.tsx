@@ -57,7 +57,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
 
   if (isPending) {
     return (
-      <div className={cn('rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 text-xs text-muted-foreground', className)}>
+      <div className={cn('rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 text-ds-caption text-muted-foreground', className)}>
         Loading next step…
       </div>
     )
@@ -65,7 +65,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
 
   if (isError) {
     return (
-      <div className={cn('rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive', className)} role="alert">
+      <div className={cn('rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-ds-caption text-destructive', className)} role="alert">
         {error instanceof Error ? error.message : 'Could not load transitions'}{' '}
         <button type="button" className="underline underline-offset-2" onClick={() => void refetch()}>
           Retry
@@ -76,7 +76,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
 
   if (!transitions?.length || !primary) {
     return (
-      <div className={cn('rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 text-xs text-muted-foreground', className)}>
+      <div className={cn('rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 text-ds-caption text-muted-foreground', className)}>
         No next move available for your role from this stage (or lead is terminal). Use full status controls if your
         role allows.
       </div>
@@ -85,7 +85,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
 
   return (
     <div className={cn('space-y-2', className)}>
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Next step</p>
+      <p className="text-ds-caption font-semibold uppercase tracking-wide text-muted-foreground">Next step</p>
       <Button
         type="button"
         className="h-11 w-full justify-center gap-2 rounded-xl border border-primary/35 bg-primary/15 text-sm font-semibold text-primary shadow-sm transition-transform active:scale-[0.98] hover:bg-primary/25"
@@ -99,7 +99,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
       </Button>
 
       {localError ? (
-        <p className="text-xs text-destructive" role="alert">
+        <p className="text-ds-caption text-destructive" role="alert">
           {localError}
         </p>
       ) : null}
@@ -108,7 +108,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
         <div className="pt-1">
           <button
             type="button"
-            className="flex w-full items-center justify-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+            className="flex w-full items-center justify-center gap-1 text-ds-caption text-muted-foreground hover:text-foreground"
             onClick={() => setShowAll((v) => !v)}
           >
             {showAll ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
@@ -122,7 +122,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-8 justify-start text-xs"
+                  className="h-8 justify-start text-ds-caption"
                   disabled={mut.isPending}
                   onClick={() => void runTransition(t)}
                 >

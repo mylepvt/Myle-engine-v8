@@ -6,7 +6,7 @@ from datetime import date, datetime
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
@@ -280,6 +280,27 @@ async def reset_member_password(
     row.hashed_password = hash_password(new_password)
     await session.commit()
     return {"ok": True}
+
+
+@router.post("/members/reset-password-bulk")
+async def reset_all_members_password(
+    body: dict,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Reset password for all users. Admin only."""
+    _require_admin(user)
+    new_password = body.get("new_password", "")
+    if not isinstance(new_password, str) or len(new_password) < 8:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="new_password must be at least 8 characters",
+        )
+    result = await session.execute(
+        update(User).values(hashed_password=hash_password(new_password))
+    )
+    await session.commit()
+    return {"ok": True, "updated": int(result.rowcount or 0)}
 
 
 @router.get("/approvals", response_model=SystemStubResponse)

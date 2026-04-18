@@ -25,8 +25,13 @@ def _calculate_unlock_dates(progress_rows: list[TrainingProgressRow]) -> Dict[in
         return {}
     
     try:
-        day1_date = datetime.fromisoformat(day1_completion.completed_at.replace('Z', '+00:00'))
-    except (ValueError, AttributeError):
+        completed_at_val = day1_completion.completed_at
+        if isinstance(completed_at_val, str):
+            day1_date = datetime.fromisoformat(completed_at_val.replace('Z', '+00:00'))
+        else:
+            # Pydantic v2 coerces ISO strings → datetime objects; use directly
+            day1_date = completed_at_val
+    except (ValueError, AttributeError, TypeError):
         return {}
     
     unlock_dates = {}

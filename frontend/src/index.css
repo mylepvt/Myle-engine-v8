@@ -52,74 +52,99 @@
     --shadow-card: 0 16px 48px -20px color-mix(in srgb, var(--palette-blue) 22%, transparent);
     --shadow-ios-bar: 0 0.5px 0 0 color-mix(in srgb, var(--palette-mist) 55%, transparent),
       0 8px 24px -12px color-mix(in srgb, var(--palette-ink) 18%, transparent);
+
+    /* Palette extensions */
+    --palette-blue-light: color-mix(in srgb, var(--palette-blue) 70%, white 30%);
+
+    /* Time-urgency stroke colors (CtcsLeadCard clock face) */
+    --urgency-safe: #4ade80;
+    --urgency-watch: #60a5fa;
+    --urgency-caution: #fb923c;
+    --urgency-warning: #f87171;
+    --urgency-danger: #dc2626;
+    --urgency-critical: #b91c1c;
+
+    /* Urgency glow shadows */
+    --urgency-safe-glow: 0 0 12px color-mix(in srgb, var(--urgency-safe) 60%, transparent);
+    --urgency-safe-card-glow: 0 0 12px color-mix(in srgb, var(--urgency-safe) 15%, transparent);
+    --urgency-watch-glow: 0 0 12px color-mix(in srgb, var(--urgency-watch) 60%, transparent);
+    --urgency-watch-card-glow: 0 0 12px color-mix(in srgb, var(--urgency-watch) 15%, transparent);
+    --urgency-caution-glow: 0 0 12px color-mix(in srgb, var(--urgency-caution) 60%, transparent);
+    --urgency-caution-card-glow: 0 0 12px color-mix(in srgb, var(--urgency-caution) 15%, transparent);
+    --urgency-warning-glow: 0 0 12px color-mix(in srgb, var(--urgency-warning) 60%, transparent);
+    --urgency-warning-card-glow: 0 0 12px color-mix(in srgb, var(--urgency-warning) 15%, transparent);
+    --urgency-danger-glow: 0 0 12px color-mix(in srgb, var(--urgency-danger) 70%, transparent);
+    --urgency-danger-card-glow: 0 0 12px color-mix(in srgb, var(--urgency-danger) 20%, transparent);
+    --urgency-critical-glow: 0 0 15px color-mix(in srgb, var(--urgency-critical) 80%, transparent);
+    --urgency-critical-card-glow: 0 0 15px color-mix(in srgb, var(--urgency-critical) 25%, transparent);
   }
 
   .dark {
     color-scheme: dark;
-    /* Velvet black — deeper than default ink for a true OLED-style dark */
-    --palette-ink: #020105;
-    --background: #010004;
-    --foreground: #e8e4f5;
-    --card: #0a0714;
-    --card-foreground: #e8e4f5;
-    --popover: #0c0818;
-    --popover-foreground: #e8e4f5;
+    /* True black mode: neutral OLED black base with subtle blue accenting. */
+    --palette-ink: #000000;
+    --background: #000000;
+    --foreground: #edf2ff;
+    --card: #070a12;
+    --card-foreground: #edf2ff;
+    --popover: #090d18;
+    --popover-foreground: #edf2ff;
     --primary: var(--palette-blue);
-    --primary-foreground: #f4f2fb;
-    --secondary: #14101f;
-    --secondary-foreground: #e0dcf0;
-    --muted: #120e1a;
-    --muted-foreground: #a39ab8;
-    --accent: color-mix(in srgb, var(--palette-blue) 28%, #0f0b18 72%);
-    --accent-foreground: #e8e4f5;
+    --primary-foreground: #f4f7ff;
+    --secondary: #0c111d;
+    --secondary-foreground: #dbe5fb;
+    --muted: #0a0f1a;
+    --muted-foreground: #8f9bbb;
+    --accent: color-mix(in srgb, var(--palette-blue) 24%, #070c18 76%);
+    --accent-foreground: #edf2ff;
     --destructive: #f87171;
-    --destructive-foreground: #0a0508;
-    --border: color-mix(in srgb, #6b6390 22%, #0f0a14 78%);
-    --input: #14101f;
+    --destructive-foreground: #12080c;
+    --border: color-mix(in srgb, #7a8fb8 20%, #070b12 80%);
+    --input: #0b111d;
     --ring: var(--palette-cyan-dull);
     --chart-1: var(--palette-blue);
     --chart-2: var(--palette-cyan-dull);
     --chart-3: color-mix(in srgb, var(--palette-blue) 72%, var(--palette-mist) 28%);
     --chart-4: color-mix(in srgb, var(--palette-mist) 55%, var(--palette-blue) 45%);
     --chart-5: color-mix(in srgb, var(--palette-cyan-dull) 65%, var(--palette-mist) 35%);
-    --surface: #0d0915;
-    --subtle: #9d94b3;
+    --surface: #050912;
+    --subtle: #94a1bf;
     --success: var(--palette-cyan-dull);
     --success-foreground: var(--palette-ink);
     --warning: #fbbf24;
     --warning-foreground: var(--palette-ink);
-    --glass-base: #0f0b16;
-    --shadow-card: 0 16px 48px -22px color-mix(in srgb, var(--palette-blue) 35%, black 65%);
-    --shadow-ios-bar: 0 0.5px 0 0 color-mix(in srgb, var(--palette-mist) 14%, transparent),
-      0 8px 24px -12px rgba(0, 0, 0, 0.5);
+    --glass-base: #070c14;
+    --shadow-card: 0 16px 48px -22px color-mix(in srgb, black 82%, var(--palette-blue) 18%);
+    --shadow-ios-bar: 0 0.5px 0 0 color-mix(in srgb, #9fb1d4 16%, transparent),
+      0 8px 24px -12px rgba(0, 0, 0, 0.65);
   }
 
   /*
    * Glass / transparent — same palette, translucent layers over ink + blue glow
    */
   .dark.theme-transparent {
-    --background: color-mix(in srgb, var(--palette-ink) 78%, transparent);
+    --background: color-mix(in srgb, #000000 88%, transparent);
     --foreground: var(--palette-mist);
-    --card: color-mix(in srgb, var(--palette-blue) 14%, color-mix(in srgb, white 8%, var(--palette-ink)) 86%);
+    --card: color-mix(in srgb, var(--palette-blue) 10%, color-mix(in srgb, white 4%, #000000) 90%);
     --card-foreground: var(--palette-mist);
-    --popover: color-mix(in srgb, var(--palette-blue) 12%, color-mix(in srgb, white 10%, var(--palette-ink)) 88%);
+    --popover: color-mix(in srgb, var(--palette-blue) 9%, color-mix(in srgb, white 4%, #000000) 91%);
     --popover-foreground: var(--palette-mist);
-    --secondary: color-mix(in srgb, white 12%, transparent);
-    --muted: color-mix(in srgb, white 9%, transparent);
-    --muted-foreground: color-mix(in srgb, var(--palette-mist) 72%, transparent);
-    --accent: color-mix(in srgb, var(--palette-cyan-dull) 22%, transparent);
-    --border: color-mix(in srgb, var(--palette-mist) 18%, transparent);
-    --input: color-mix(in srgb, white 11%, transparent);
-    --surface: color-mix(in srgb, var(--palette-blue) 10%, color-mix(in srgb, white 8%, var(--palette-ink)) 82%);
-    --glass-base: color-mix(in srgb, var(--palette-cyan-dull) 8%, var(--palette-ink) 92%);
+    --secondary: color-mix(in srgb, white 8%, transparent);
+    --muted: color-mix(in srgb, white 6%, transparent);
+    --muted-foreground: color-mix(in srgb, var(--palette-mist) 68%, transparent);
+    --accent: color-mix(in srgb, var(--palette-cyan-dull) 16%, transparent);
+    --border: color-mix(in srgb, var(--palette-mist) 14%, transparent);
+    --input: color-mix(in srgb, white 8%, transparent);
+    --surface: color-mix(in srgb, var(--palette-blue) 8%, color-mix(in srgb, white 4%, #000000) 88%);
+    --glass-base: color-mix(in srgb, var(--palette-cyan-dull) 6%, #000000 94%);
   }
 
   html.dark.theme-transparent {
     background-color: transparent;
     background-image:
-      radial-gradient(1000px 700px at 0% 0%, color-mix(in srgb, var(--palette-blue) 45%, transparent), transparent 58%),
-      radial-gradient(900px 600px at 100% 8%, color-mix(in srgb, var(--palette-cyan-dull) 28%, transparent), transparent 52%),
-      radial-gradient(800px 500px at 50% 100%, color-mix(in srgb, var(--palette-mist) 12%, transparent), transparent 55%),
+      radial-gradient(1000px 700px at 0% 0%, color-mix(in srgb, var(--palette-blue) 30%, transparent), transparent 58%),
+      radial-gradient(900px 600px at 100% 8%, color-mix(in srgb, var(--palette-cyan-dull) 18%, transparent), transparent 52%),
+      radial-gradient(800px 500px at 50% 100%, color-mix(in srgb, var(--palette-mist) 6%, transparent), transparent 55%),
       var(--palette-ink);
     background-attachment: fixed;
   }
@@ -198,10 +223,13 @@
   }
 
   #root {
-    /* dvh fallback: 100vh for browsers without dvh support (Chrome < 108, Firefox < 101) */
+    /* Full viewport via CSS only — no JS height locks on documentElement */
     min-height: 100vh;
     min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
     @apply min-w-0 max-w-full;
+    overflow: hidden;
     overflow-x: clip;
     touch-action: manipulation;
   }
@@ -308,11 +336,11 @@
 
   /* PREMIUM CARD SHADOWS */
   .shadow-premium {
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 10px 30px color-mix(in srgb, var(--palette-ink) 35%, transparent);
   }
 
   .shadow-premium-hover {
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 20px 40px color-mix(in srgb, var(--palette-ink) 40%, transparent);
   }
 
   /* RIPPLE EFFECT CONTAINER */
@@ -343,6 +371,15 @@
   .gradient-border-inner {
     background: var(--card);
     border-radius: calc(var(--radius) - 1px);
+  }
+
+  /* Auth card dark header — always dark regardless of theme */
+  .auth-header-banner {
+    background: linear-gradient(
+      135deg,
+      var(--palette-ink),
+      color-mix(in srgb, var(--palette-blue) 12%, var(--palette-ink) 88%)
+    );
   }
 }
 
@@ -442,12 +479,35 @@
    * ever growing taller than the viewport; scrolling happens only in <main>.
    */
   .dashboard-shell {
-    /* vh fallback for older browsers; dvh is the source of truth for modern iOS/Android */
+    /*
+     * Three-level height cascade (no JS, no custom properties needed):
+     *   1. 100vh         — universal fallback (Android Chrome < 108, very old browsers)
+     *   2. -webkit-fill-available — iOS Safari all versions (correct visible-area height
+     *                               in both browser and PWA/standalone mode)
+     *   3. 100dvh        — modern dynamic viewport (Chrome 108+, FF 101+, Safari 15.4+)
+     *
+     * Do NOT add `height: var(--app-shell-vh)` here — if the variable resolves to an
+     * unsupported unit (e.g. 100dvh on old Android Chrome) the declaration becomes
+     * "invalid at computed-value time" and CSS resets height to `auto`, overriding
+     * the valid 100vh fallback above it.
+     */
     height: 100vh;
+    height: -webkit-fill-available; /* iOS Safari PWA + browser: always correct visible-area */
     height: 100dvh;
+    max-height: 100vh;
+    max-height: -webkit-fill-available;
     max-height: 100dvh;
     overflow: hidden;
     position: relative;
+  }
+
+  @media (max-width: 767px) {
+    .dashboard-mobile-drawer {
+      height: 100vh;
+      height: -webkit-fill-available;
+      height: 100dvh;
+      max-height: 100dvh;
+    }
   }
 
   /* Avoid content-visibility on the dashboard <main> scroll container — it can leave
@@ -473,10 +533,14 @@
 
   .field-label {
     @apply mb-1.5 block text-left text-ds-caption font-medium text-muted-foreground;
+    letter-spacing: 0.01em;
   }
 
   .field-input {
     @apply h-11 min-h-[44px] w-full rounded-[0.625rem] border border-border bg-input px-3 py-0 text-ds-body text-foreground transition-[border-color,box-shadow] placeholder:text-muted-foreground focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50;
+    letter-spacing: 0.004em;
+    background-color: color-mix(in srgb, var(--input) 84%, transparent);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, white 8%, transparent);
   }
 
   .field-input:focus {
@@ -486,6 +550,129 @@
     --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width))
       color-mix(in oklch, var(--primary) 35%, transparent);
     box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+  }
+
+  .dashboard-shell-header {
+    transition: background-color 0.2s ease, backdrop-filter 0.24s ease, box-shadow 0.24s ease;
+    backdrop-filter: saturate(132%) blur(9px);
+    -webkit-backdrop-filter: saturate(132%) blur(9px);
+  }
+
+  .dashboard-shell-header--scrolled {
+    background-color: color-mix(in srgb, var(--background) 74%, transparent);
+    box-shadow:
+      0 1px 0 color-mix(in srgb, var(--border) 60%, transparent),
+      var(--shadow-ios-bar);
+    backdrop-filter: saturate(156%) blur(16px);
+    -webkit-backdrop-filter: saturate(156%) blur(16px);
+  }
+
+  .dashboard-shell :is(
+      input:not([type='checkbox']):not([type='radio']),
+      select,
+      textarea
+    ) {
+    border-color: color-mix(in srgb, var(--border) 84%, transparent);
+    background-color: color-mix(in srgb, var(--input) 78%, transparent);
+    color: var(--foreground);
+    font-size: 0.9375rem;
+    line-height: 1.45;
+    letter-spacing: 0.004em;
+    box-shadow: inset 0 1px 0 color-mix(in srgb, white 10%, transparent);
+    backdrop-filter: saturate(128%) blur(6px);
+    -webkit-backdrop-filter: saturate(128%) blur(6px);
+  }
+
+  .dashboard-shell :is(
+      input:not([type='checkbox']):not([type='radio']),
+      select,
+      textarea
+    )::placeholder {
+    color: color-mix(in srgb, var(--muted-foreground) 88%, transparent);
+  }
+
+  .dashboard-shell :is(
+      input:not([type='checkbox']):not([type='radio']),
+      select,
+      textarea
+    ):focus {
+    border-color: color-mix(in srgb, var(--primary) 66%, var(--border));
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent),
+      inset 0 1px 0 color-mix(in srgb, white 20%, transparent);
+  }
+
+  .dashboard-shell label {
+    letter-spacing: 0.01em;
+  }
+
+  .keyboard-safe-modal {
+    padding-bottom: calc(max(env(safe-area-inset-bottom), var(--keyboard-inset-height, 0px)) + 0.5rem);
+  }
+
+  .keyboard-safe-sheet {
+    max-height: calc(100dvh - var(--keyboard-inset-height, 0px) - 0.5rem);
+  }
+
+  /* ─── Mobile bottom tab bar ──────────────────────────────────────────────── */
+
+  .dashboard-mobile-tabbar {
+    position: relative;
+    isolation: isolate;
+    /* Dark mode: use --card (#070a12) so bar is visually distinct from
+       --background (#000000). Light mode: semi-transparent background. */
+    background-color: color-mix(in srgb, var(--card) 94%, transparent);
+    border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    box-shadow: var(--shadow-ios-bar);
+    backdrop-filter: saturate(145%) blur(16px);
+    -webkit-backdrop-filter: saturate(145%) blur(16px);
+    transition:
+      background-color 0.2s ease,
+      backdrop-filter 0.22s ease,
+      box-shadow 0.22s ease,
+      opacity 0.18s ease,
+      transform 0.18s ease;
+  }
+
+  /* Hide tab bar when software keyboard is open (keyboard inset > 0) */
+  .dashboard-mobile-tabbar--keyboard-open {
+    display: none;
+  }
+
+  .dashboard-mobile-tabbar--scrolled {
+    background-color: color-mix(in srgb, var(--card) 88%, transparent);
+    backdrop-filter: saturate(168%) blur(20px);
+    -webkit-backdrop-filter: saturate(168%) blur(20px);
+  }
+
+  .dashboard-mobile-tabbar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(180deg, color-mix(in srgb, white 10%, transparent), transparent 44%),
+      linear-gradient(90deg, color-mix(in srgb, var(--primary) 6%, transparent), transparent 58%);
+    opacity: 0.7;
+    z-index: -1;
+  }
+
+  .dashboard-mobile-tabbar__inner {
+    position: relative;
+  }
+
+  .dashboard-mobile-tabbar__tab {
+    border: 1px solid transparent;
+  }
+
+  .dashboard-mobile-tabbar__tab--active {
+    border-color: color-mix(in srgb, var(--primary) 30%, transparent);
+    background-color: color-mix(in srgb, var(--primary) 15%, transparent);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, white 24%, transparent);
+  }
+
+  .dashboard-mobile-tabbar__tab--idle:hover {
+    background-color: color-mix(in srgb, var(--muted) 72%, transparent);
   }
 }
 
@@ -525,6 +712,27 @@ html.perf-low-end.dark.theme-transparent .surface-inset {
 
 html.perf-low-end .shadow-ios-bar {
   box-shadow: 0 1px 0 0 color-mix(in srgb, var(--border) 45%, transparent);
+}
+
+html.perf-low-end .dashboard-shell :is(
+    input:not([type='checkbox']):not([type='radio']),
+    select,
+    textarea
+  ) {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html.perf-low-end .dashboard-shell-header,
+html.perf-low-end .dashboard-shell-header--scrolled {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html.perf-low-end .dashboard-mobile-tabbar,
+html.perf-low-end .dashboard-mobile-tabbar__tab {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 html.perf-low-end .watch-gauge-hue,
@@ -578,5 +786,29 @@ html.perf-low-end .watch-gauge-needle {
   /* Smooth skeleton loading */
   .animate-pulse {
     @apply animate-pulse-soft;
+  }
+
+  @media (pointer: coarse) {
+    button,
+    a,
+    [role="button"],
+    [role="tab"],
+    input,
+    select,
+    textarea {
+      transition-property: background-color, border-color, color, opacity, transform;
+      transition-duration: 120ms;
+    }
+
+    button:not([disabled]):hover,
+    a:hover,
+    [role="button"]:not([disabled]):hover,
+    [role="tab"]:hover,
+    .card:hover,
+    .animate-lift:hover,
+    .animate-glow:hover {
+      box-shadow: none !important;
+      transform: none !important;
+    }
   }
 }

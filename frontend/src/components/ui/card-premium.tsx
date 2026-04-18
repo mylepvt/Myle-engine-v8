@@ -1,124 +1,102 @@
 import * as React from 'react'
 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
-// Premium Card with lift animation and enhanced shadow
-const PremiumCard = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & {
-    hoverLift?: boolean
-    glowOnHover?: boolean
-    gradientBorder?: boolean
-  }
->(({ className, hoverLift = true, glowOnHover = false, gradientBorder = false, ...props }, ref) => {
-  if (gradientBorder) {
-    return (
-      <div
+type PremiumCardProps = React.HTMLAttributes<HTMLDivElement> & {
+  hoverLift?: boolean
+  glowOnHover?: boolean
+  gradientBorder?: boolean
+}
+
+/**
+ * Backward-compatible premium card API that now composes the canonical Card component.
+ * Keeps visual consistency and avoids maintaining two divergent card systems.
+ */
+const PremiumCard = React.forwardRef<HTMLDivElement, PremiumCardProps>(
+  (
+    {
+      className,
+      hoverLift = true,
+      glowOnHover = false,
+      gradientBorder = false,
+      children,
+      ...props
+    },
+    ref,
+  ) => {
+    const card = (
+      <Card
+        ref={ref}
         className={cn(
-          'rounded-[16px] p-[1px]',
-          'bg-gradient-to-br from-primary via-accent to-primary/50',
-          'transition-all duration-300',
-          hoverLift && 'hover:shadow-premium-hover',
-          className
+          hoverLift && 'transition-transform duration-200 hover:-translate-y-0.5',
+          glowOnHover && 'hover:shadow-md',
+          className,
         )}
+        {...props}
       >
-        <div
-          ref={ref}
-          className={cn(
-            'rounded-[15px] bg-card p-5',
-            'transition-all duration-200'
-          )}
-          {...props}
-        />
+        {children}
+      </Card>
+    )
+
+    if (!gradientBorder) return card
+
+    return (
+      <div className="rounded-2xl bg-gradient-to-br from-primary/50 via-accent/40 to-primary/20 p-px">
+        {card}
       </div>
     )
-  }
-
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        'rounded-[16px] border border-border bg-card p-5',
-        'shadow-premium',
-        'transition-all duration-200 ease-out',
-        hoverLift && [
-          'hover:-translate-y-1',
-          'hover:shadow-premium-hover',
-        ],
-        glowOnHover && 'hover:shadow-[0_0_30px_rgba(84,101,255,0.15)]',
-        className
-      )}
-      {...props}
-    />
-  )
-})
+  },
+)
 PremiumCard.displayName = 'PremiumCard'
 
-// Card Header with better spacing and typography
 const PremiumCardHeader = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn('flex flex-col space-y-1.5 pb-4', className)}
-    {...props}
-  />
+  <CardHeader ref={ref} className={cn(className)} {...props} />
 ))
 PremiumCardHeader.displayName = 'PremiumCardHeader'
 
-// Card Title with enhanced typography
 const PremiumCardTitle = React.forwardRef<
   HTMLHeadingElement,
   React.HTMLAttributes<HTMLHeadingElement>
 >(({ className, ...props }, ref) => (
-  <h3
-    ref={ref}
-    className={cn(
-      'font-heading text-lg font-semibold leading-tight tracking-tight text-foreground',
-      className
-    )}
-    {...props}
-  />
+  <CardTitle ref={ref} className={cn(className)} {...props} />
 ))
 PremiumCardTitle.displayName = 'PremiumCardTitle'
 
-// Card Description
 const PremiumCardDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
-  <p
-    ref={ref}
-    className={cn('text-sm text-muted-foreground', className)}
-    {...props}
-  />
+  <CardDescription ref={ref} className={cn(className)} {...props} />
 ))
 PremiumCardDescription.displayName = 'PremiumCardDescription'
 
-// Card Content with consistent padding
 const PremiumCardContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn('pt-0', className)} {...props} />
+  <CardContent ref={ref} className={cn(className)} {...props} />
 ))
 PremiumCardContent.displayName = 'PremiumCardContent'
 
-// Card Footer with action buttons
 const PremiumCardFooter = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn('flex items-center justify-between pt-4', className)}
-    {...props}
-  />
+  <CardFooter ref={ref} className={cn(className)} {...props} />
 ))
 PremiumCardFooter.displayName = 'PremiumCardFooter'
 
-// Metric Card for dashboards
 interface MetricCardProps {
   title: string
   value: string | number
@@ -142,13 +120,13 @@ const MetricCard = ({
     positive: 'text-emerald-500',
     negative: 'text-red-500',
     neutral: 'text-muted-foreground',
-  }
+  } as const
 
   const trendIcons = {
     up: '↑',
     down: '↓',
     flat: '→',
-  }
+  } as const
 
   return (
     <PremiumCard className={className}>
@@ -156,27 +134,22 @@ const MetricCard = ({
         <div className="space-y-2">
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
           <div className="flex items-baseline gap-2">
-            <span className="font-heading text-3xl font-bold tracking-tight text-foreground animate-count-up">
+            <span className="font-heading text-3xl font-bold tracking-tight text-foreground">
               {value}
             </span>
-            {change && (
+            {change ? (
               <span className={cn('text-sm font-medium', changeStyles[changeType])}>
-                {trend && trendIcons[trend]} {change}
+                {trend ? trendIcons[trend] : null} {change}
               </span>
-            )}
+            ) : null}
           </div>
         </div>
-        {icon && (
-          <div className="rounded-xl bg-primary/10 p-2.5 text-primary">
-            {icon}
-          </div>
-        )}
+        {icon ? <div className="rounded-xl bg-primary/10 p-2.5 text-primary">{icon}</div> : null}
       </div>
     </PremiumCard>
   )
 }
 
-// Action Card with CTA
 interface ActionCardProps {
   title: string
   description: string
@@ -193,30 +166,28 @@ const ActionCard = ({
   onAction,
   icon,
   className,
-}: ActionCardProps) => {
-  return (
-    <PremiumCard className={cn('group', className)}>
-      <button
-        type="button"
-        onClick={onAction}
-        className="flex w-full cursor-pointer items-start gap-4 rounded-[inherit] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-      >
-        {icon ? (
-          <div className="shrink-0 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 p-3 text-primary transition-[box-shadow,opacity] duration-200 group-hover:opacity-95 group-hover:shadow-md">
-            {icon}
-          </div>
-        ) : null}
-        <div className="min-w-0 flex-1 space-y-2">
-          <h4 className="font-medium text-foreground">{title}</h4>
-          <p className="text-sm text-muted-foreground">{description}</p>
-          <span className="inline-block text-sm font-medium text-primary transition-colors group-hover:text-primary/85">
-            {actionLabel} →
-          </span>
+}: ActionCardProps) => (
+  <PremiumCard className={cn('group', className)}>
+    <button
+      type="button"
+      onClick={onAction}
+      className="flex w-full cursor-pointer items-start gap-4 rounded-[inherit] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+    >
+      {icon ? (
+        <div className="shrink-0 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 p-3 text-primary">
+          {icon}
         </div>
-      </button>
-    </PremiumCard>
-  )
-}
+      ) : null}
+      <div className="min-w-0 flex-1 space-y-2">
+        <h4 className="font-medium text-foreground">{title}</h4>
+        <p className="text-sm text-muted-foreground">{description}</p>
+        <span className="inline-block text-sm font-medium text-primary transition-colors group-hover:text-primary/85">
+          {actionLabel} →
+        </span>
+      </div>
+    </button>
+  </PremiumCard>
+)
 
 export {
   PremiumCard,

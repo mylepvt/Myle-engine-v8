@@ -167,18 +167,12 @@ export function DashboardHomePage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <Card className="overflow-hidden border-primary/25 bg-gradient-to-br from-card via-card to-primary/[0.06]">
-        <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
-          <div>
-            <CardTitle className="font-heading text-ds-h1 capitalize tracking-tight">
-              Welcome, {firstName}!
-            </CardTitle>
-          </div>
-          <div className="hidden shrink-0 rounded-2xl border border-primary/20 bg-primary/10 p-3 text-primary sm:block">
-            <TrendingUp className="size-10" strokeWidth={1.25} aria-hidden />
-          </div>
-        </CardHeader>
-      </Card>
+      <div className="flex items-center justify-between gap-2 px-0.5">
+        <h1 className="font-heading text-ds-h2 font-semibold capitalize tracking-tight text-foreground">
+          Welcome back, {firstName}
+        </h1>
+        <XpBadge />
+      </div>
 
       {role === 'admin' && sessionReady ? (
         <div className="grid gap-4 sm:grid-cols-2">
@@ -216,7 +210,7 @@ export function DashboardHomePage() {
                 to="/dashboard/team/reports"
                 className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
               >
-                <Card className="h-full border-amber-500/20 bg-gradient-to-br from-amber-500/[0.08] to-transparent transition-colors hover:border-amber-500/35">
+                <Card className="h-full border-border transition-colors hover:border-primary/30">
                   <CardContent className="pt-5 pb-5">
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
@@ -224,8 +218,10 @@ export function DashboardHomePage() {
                       </p>
                       <UserPlus className="size-5 shrink-0 text-amber-400" aria-hidden />
                     </div>
-                    <p className="mt-2 font-heading text-3xl font-bold tabular-nums text-amber-400">
-                      {adminReports.data.live_summary.leads_claimed_today}
+                    <p className={cn('mt-2 font-heading text-3xl font-bold tabular-nums', adminReports.data.live_summary.leads_claimed_today > 0 ? 'text-amber-400' : 'text-muted-foreground')}>
+                      {adminReports.data.live_summary.leads_claimed_today > 0
+                        ? adminReports.data.live_summary.leads_claimed_today
+                        : 'None yet'}
                     </p>
                     <p className="mt-1 text-ds-caption text-subtle">
                       Pool / ledger claims (IST day)
@@ -237,7 +233,7 @@ export function DashboardHomePage() {
                 to="/dashboard/team/enrollment-approvals"
                 className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
               >
-                <Card className="h-full border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.08] to-transparent transition-colors hover:border-emerald-500/35">
+                <Card className="h-full border-border transition-colors hover:border-primary/30">
                   <CardContent className="pt-5 pb-5">
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
@@ -245,8 +241,10 @@ export function DashboardHomePage() {
                       </p>
                       <ClipboardCheck className="size-5 shrink-0 text-emerald-400" aria-hidden />
                     </div>
-                    <p className="mt-2 font-heading text-3xl font-bold tabular-nums text-emerald-400">
-                      {adminReports.data.live_summary.payment_proofs_approved_today}
+                    <p className={cn('mt-2 font-heading text-3xl font-bold tabular-nums', adminReports.data.live_summary.payment_proofs_approved_today > 0 ? 'text-emerald-400' : 'text-muted-foreground')}>
+                      {adminReports.data.live_summary.payment_proofs_approved_today > 0
+                        ? adminReports.data.live_summary.payment_proofs_approved_today
+                        : 'None yet'}
                     </p>
                     <p className="mt-1 text-ds-caption text-subtle">
                       Payment proofs approved today (IST)
@@ -414,7 +412,6 @@ export function DashboardHomePage() {
         )}
       </div>
 
-      <XpBadge />
       <XpLeaderboard role={role} />
 
       <Card className="border-primary/20">
@@ -495,7 +492,7 @@ export function DashboardHomePage() {
               <TableBody>
                 {recentLeads.map((lead) => (
                   <TableRow key={lead.id}>
-                    <TableCell className="font-medium">{lead.name}</TableCell>
+                    <TableCell className="font-medium capitalize">{lead.name?.toLowerCase()}</TableCell>
                     <TableCell>
                       {lead.phone?.trim() ? (
                         <div className="flex flex-wrap items-center gap-2">

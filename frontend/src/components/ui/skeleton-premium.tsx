@@ -1,6 +1,7 @@
+import type { CSSProperties, ReactNode } from 'react'
+
 import { cn } from '@/lib/utils'
 
-// Basic shimmer skeleton
 interface SkeletonPremiumProps {
   className?: string
   width?: string | number
@@ -16,64 +17,64 @@ const SkeletonPremium = ({
   variant = 'rounded',
   shimmer = true,
 }: SkeletonPremiumProps) => {
-  const baseStyles = cn(
-    'bg-muted',
-    shimmer && 'animate-shimmer',
-    variant === 'circular' && 'rounded-full',
-    variant === 'rounded' && 'rounded-lg',
-    variant === 'rectangular' && 'rounded-none',
-    variant === 'text' && 'rounded-md'
-  )
-
-  const style: React.CSSProperties = {
+  const style: CSSProperties = {
     width: width ?? (variant === 'text' ? '100%' : undefined),
     height: height ?? (variant === 'text' ? '1em' : undefined),
   }
 
-  return <div className={cn(baseStyles, className)} style={style} />
+  return (
+    <div
+      className={cn(
+        shimmer ? 'animate-pulse' : '',
+        'bg-muted/70',
+        variant === 'circular' && 'rounded-full',
+        variant === 'rounded' && 'rounded-lg',
+        variant === 'rectangular' && 'rounded-none',
+        variant === 'text' && 'rounded-md',
+        className,
+      )}
+      style={style}
+    />
+  )
 }
 
-// Card skeleton
 const CardSkeleton = () => (
-  <div className="rounded-[16px] border border-border bg-card p-5 shadow-premium">
+  <div className="rounded-2xl border border-border bg-card p-4 shadow-ios-card">
     <div className="flex items-start justify-between">
-      <div className="space-y-3 flex-1">
-        <SkeletonPremium width="40%" height={16} />
+      <div className="flex-1 space-y-3">
+        <SkeletonPremium width="40%" height={14} />
         <SkeletonPremium width="60%" height={32} />
-        <SkeletonPremium width="30%" height={16} />
+        <SkeletonPremium width="30%" height={14} />
       </div>
       <SkeletonPremium variant="circular" width={40} height={40} />
     </div>
   </div>
 )
 
-// Metric card skeleton
 const MetricCardSkeleton = () => (
-  <div className="rounded-[16px] border border-border bg-card p-5 shadow-premium">
+  <div className="rounded-2xl border border-border bg-card p-4 shadow-ios-card">
     <div className="flex items-start justify-between">
       <div className="space-y-2">
         <SkeletonPremium width={80} height={14} />
         <SkeletonPremium width={100} height={36} />
-        <SkeletonPremium width={60} height={16} />
+        <SkeletonPremium width={60} height={14} />
       </div>
       <SkeletonPremium variant="circular" width={44} height={44} />
     </div>
   </div>
 )
 
-// List item skeleton
 const ListItemSkeleton = () => (
   <div className="flex items-center gap-4 py-3">
     <SkeletonPremium variant="circular" width={40} height={40} />
     <div className="flex-1 space-y-2">
-      <SkeletonPremium width="60%" height={16} />
+      <SkeletonPremium width="60%" height={14} />
       <SkeletonPremium width="40%" height={12} />
     </div>
-    <SkeletonPremium width={80} height={32} />
+    <SkeletonPremium width={84} height={32} />
   </div>
 )
 
-// Table row skeleton
 const TableRowSkeleton = ({ columns = 4 }: { columns?: number }) => (
   <div className="flex items-center gap-4 py-4">
     {Array.from({ length: columns }).map((_, i) => (
@@ -87,20 +88,18 @@ const TableRowSkeleton = ({ columns = 4 }: { columns?: number }) => (
   </div>
 )
 
-// Page header skeleton
 const PageHeaderSkeleton = () => (
   <div className="mb-8 space-y-4">
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between gap-4">
       <div className="space-y-2">
         <SkeletonPremium width={200} height={32} />
-        <SkeletonPremium width={300} height={16} />
+        <SkeletonPremium width={280} height={16} />
       </div>
       <SkeletonPremium width={120} height={40} />
     </div>
   </div>
 )
 
-// Dashboard stats row skeleton
 const StatsRowSkeleton = ({ count = 4 }: { count?: number }) => (
   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
     {Array.from({ length: count }).map((_, i) => (
@@ -109,11 +108,10 @@ const StatsRowSkeleton = ({ count = 4 }: { count?: number }) => (
   </div>
 )
 
-// Content section skeleton
 const ContentSectionSkeleton = () => (
   <div className="space-y-4">
     <SkeletonPremium width="30%" height={24} />
-    <div className="rounded-[16px] border border-border bg-card p-5 shadow-premium space-y-4">
+    <div className="rounded-2xl border border-border bg-card p-4 shadow-ios-card">
       {Array.from({ length: 5 }).map((_, i) => (
         <ListItemSkeleton key={i} />
       ))}
@@ -121,9 +119,8 @@ const ContentSectionSkeleton = () => (
   </div>
 )
 
-// Full page loading state
 const FullPageSkeleton = () => (
-  <div className="space-y-8 animate-fade-in">
+  <div className="space-y-8">
     <PageHeaderSkeleton />
     <StatsRowSkeleton />
     <div className="grid gap-8 lg:grid-cols-2">
@@ -133,31 +130,23 @@ const FullPageSkeleton = () => (
   </div>
 )
 
-// Sidebar loading state
 const SidebarSkeleton = () => (
   <div className="space-y-2 px-2" aria-busy="true" aria-label="Loading navigation">
     {Array.from({ length: 8 }).map((_, i) => (
-      <div
-        key={i}
-        className="h-11 animate-shimmer rounded-[0.625rem] bg-muted/60"
-      />
+      <div key={i} className="h-11 animate-pulse rounded-[0.625rem] bg-muted/60" />
     ))}
   </div>
 )
 
-// Shimmer text for loading messages
 interface ShimmerTextProps {
-  children: React.ReactNode
+  children: ReactNode
   className?: string
 }
 
 const ShimmerText = ({ children, className }: ShimmerTextProps) => (
-  <p className={cn('animate-pulse text-muted-foreground', className)}>
-    {children}
-  </p>
+  <p className={cn('animate-pulse text-muted-foreground', className)}>{children}</p>
 )
 
-// Loading state with message
 interface LoadingStatePremiumProps {
   message?: string
   subMessage?: string
@@ -169,22 +158,14 @@ const LoadingStatePremium = ({
   subMessage = 'Almost ready',
   className,
 }: LoadingStatePremiumProps) => (
-  <div
-    className={cn(
-      'flex flex-col items-center justify-center min-h-[300px]',
-      'space-y-4',
-      className
-    )}
-  >
+  <div className={cn('flex min-h-[300px] flex-col items-center justify-center space-y-4', className)}>
     <div className="relative">
       <div className="h-12 w-12 rounded-full border-4 border-primary/20" />
-      <div className="absolute inset-0 h-12 w-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+      <div className="absolute inset-0 h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
     </div>
-    <div className="text-center space-y-1">
+    <div className="space-y-1 text-center">
       <ShimmerText className="font-medium">{message}</ShimmerText>
-      {subMessage && (
-        <p className="text-sm text-muted-foreground/60">{subMessage}</p>
-      )}
+      {subMessage ? <p className="text-sm text-muted-foreground/60">{subMessage}</p> : null}
     </div>
   </div>
 )

@@ -16,9 +16,9 @@ import {
 
 import { AuthCard } from '@/components/auth/AuthCard'
 import { IconInput } from '@/components/auth/IconInput'
+import { TerminalBootOverlay } from '@/components/auth/TerminalBootOverlay'
 import { Button } from '@/components/ui/button'
 import { authDevLogin, authPasswordLogin } from '@/lib/auth-api'
-import { playSuccess } from '@/lib/click-sound'
 import { fetchAuthMe } from '@/hooks/use-auth-me-query'
 import { DEFAULT_META, useMetaQuery } from '@/hooks/use-meta-query'
 import { t } from '@/lib/i18n'
@@ -68,6 +68,11 @@ export function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false)
   const [showGateBanner, setShowGateBanner] = useState(fromProtected)
   const [showForgotHint, setShowForgotHint] = useState(false)
+  const [bootUser, setBootUser] = useState<{
+    name: string
+    role: string
+    fboId: string
+  } | null>(null)
 
   useEffect(() => {
     try {
@@ -124,8 +129,16 @@ export function LoginPage() {
         return
       }
       login()
-      playSuccess()
-      navigate(from, { replace: true })
+      const displayName =
+        (me.username?.trim() && me.username.split(/\s+/)[0]) ||
+        me.fbo_id ||
+        me.email?.split('@')[0]?.split(/[._-]/)[0] ||
+        'USER'
+      setBootUser({
+        name: displayName,
+        role: me.role ?? 'team',
+        fboId: me.fbo_id ?? fboId,
+      })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sign-in failed')
     } finally {
@@ -155,13 +168,32 @@ export function LoginPage() {
         return
       }
       login()
-      playSuccess()
-      navigate(from, { replace: true })
+      const displayName =
+        (me.username?.trim() && me.username.split(/\s+/)[0]) ||
+        me.fbo_id ||
+        me.email?.split('@')[0]?.split(/[._-]/)[0] ||
+        'USER'
+      setBootUser({
+        name: displayName,
+        role: me.role ?? role,
+        fboId: me.fbo_id ?? '',
+      })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sign-in failed')
     } finally {
       setPending(false)
     }
+  }
+
+  if (bootUser) {
+    return (
+      <TerminalBootOverlay
+        userName={bootUser.name}
+        userRole={bootUser.role}
+        userFboId={bootUser.fboId}
+        onFinish={() => navigate(from, { replace: true })}
+      />
+    )
   }
 
   return (

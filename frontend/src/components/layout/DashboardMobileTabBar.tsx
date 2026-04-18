@@ -2,7 +2,6 @@ import { NavLink } from 'react-router-dom'
 import { MoreHorizontal } from 'lucide-react'
 
 import { getDashboardNavIcon } from '@/config/dashboard-nav-icons'
-import { useNoticeBoardUnread } from '@/hooks/use-notice-board-unread'
 import {
   DASHBOARD_ROUTE_DEFS,
   type DashboardRouteDef,
@@ -44,8 +43,6 @@ export function DashboardMobileTabBar({
   trainingLocked = false,
   onOpenMenu,
 }: Props) {
-  const { unread: noticeBoardUnread } = useNoticeBoardUnread()
-
   if (trainingLocked) {
     const def = defForPath('system/training')
     if (!def || !routeDefAccessible(def, role)) return null
@@ -54,11 +51,11 @@ export function DashboardMobileTabBar({
       resolveTitleForPath('system/training', role) ?? def.label
     return (
       <nav
-        className="h-16 shrink-0 border-t border-border/70 bg-background shadow-[0_-8px_20px_-14px_rgba(2,6,23,0.35)] md:hidden"
+        className="shrink-0 border-t border-border/70 bg-background pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_20px_-14px_rgba(2,6,23,0.35)] md:hidden"
         role="navigation"
         aria-label="Training"
       >
-        <div className="mx-auto flex h-full max-w-lg items-stretch justify-around gap-1 px-2">
+        <div className="mx-auto flex h-16 max-w-lg items-stretch justify-around gap-1 px-2">
           <NavLink
             to="/dashboard/system/training"
             className={({ isActive }) =>
@@ -108,11 +105,11 @@ export function DashboardMobileTabBar({
 
   return (
     <nav
-      className="h-16 shrink-0 border-t border-border/70 bg-background shadow-[0_-8px_20px_-14px_rgba(2,6,23,0.35)] md:hidden"
+      className="shrink-0 border-t border-border/70 bg-background pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_20px_-14px_rgba(2,6,23,0.35)] md:hidden"
       role="navigation"
       aria-label="Main tabs"
     >
-      <div className="mx-auto flex h-full max-w-lg items-stretch justify-around gap-1 px-2">
+      <div className="mx-auto flex h-16 max-w-lg items-stretch justify-around gap-1 px-2">
         {defs.map((def) => {
           const to = def.path === '' ? '/dashboard' : `/dashboard/${def.path}`
           const Icon = getDashboardNavIcon(def.path)
@@ -157,14 +154,7 @@ export function DashboardMobileTabBar({
           className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 text-[0.65rem] font-medium leading-none text-muted-foreground transition-colors active:opacity-70 hover:bg-muted/70 hover:text-foreground"
           aria-label={noticeBoardUnread > 0 ? `Open full menu — ${noticeBoardUnread} new notices` : 'Open full menu'}
         >
-          <span className="relative">
-            <MoreHorizontal className="size-[22px] shrink-0" strokeWidth={1.75} aria-hidden />
-            {noticeBoardUnread > 0 ? (
-              <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-primary text-[0.5rem] font-bold text-primary-foreground shadow-sm" aria-hidden>
-                {noticeBoardUnread > 9 ? '9+' : noticeBoardUnread}
-              </span>
-            ) : null}
-          </span>
+          <MoreHorizontal className="size-[22px] shrink-0" strokeWidth={1.75} aria-hidden />
           <span className="truncate">More</span>
         </button>
       </div>
