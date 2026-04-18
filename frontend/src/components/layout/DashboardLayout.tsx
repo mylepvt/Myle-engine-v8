@@ -1,6 +1,6 @@
 import { type CSSProperties, type FormEvent, type UIEvent, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Home, LogOut, Menu, PanelLeftClose, Search, Settings } from 'lucide-react'
+import { Bell, ClipboardCheck, Home, LogOut, Menu, PanelLeftClose, Search, Settings, X } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 
 import { ShellHeaderFeedbackControls } from '@/components/layout/ShellHeaderFeedbackControls'
@@ -20,7 +20,9 @@ import { cn } from '@/lib/utils'
 import { authLogout } from '@/lib/auth-api'
 import { apiUrl } from '@/lib/api'
 import { notifyDashboardMainScrolled } from '@/lib/main-scroll-gate'
+import { useEnrollmentApprovalsAlertBanner } from '@/hooks/use-enrollment-approvals-alert'
 import { useNoticeBoardUnread } from '@/hooks/use-notice-board-unread'
+import { useEnrollmentApprovalsPendingQuery } from '@/hooks/use-team-query'
 import { useAuthStore } from '@/stores/auth-store'
 import { useShellPreviewStore } from '@/stores/shell-preview-store'
 import { useShellStore } from '@/stores/shell-store'
@@ -65,6 +67,13 @@ export function DashboardLayout() {
   const theme = useUiFeedbackStore((s) => s.theme)
   const logout = useAuthStore((s) => s.logout)
   const { unread: noticeBoardUnread } = useNoticeBoardUnread()
+  const enrollmentPending = useEnrollmentApprovalsPendingQuery()
+  const pendingEnrollCount = enrollmentPending.data?.total ?? 0
+  const approverForEnroll =
+    Boolean(me?.authenticated) && (me?.role === 'admin' || me?.role === 'leader')
+  const enrollmentAlert = useEnrollmentApprovalsAlertBanner(pendingEnrollCount, {
+    enabled: approverForEnroll,
+  })
   const [headerSearch, setHeaderSearch] = useState('')
   const [isMobile, setIsMobile] = useState(false)
   const [keyboardInset, setKeyboardInset] = useState(0)
@@ -382,6 +391,11 @@ export function DashboardLayout() {
                           <NavLink
                             to={to}
                             end={item.end ?? false}
+                            aria-label={
+                              item.path === 'team/enrollment-approvals' && pendingEnrollCount > 0
+                                ? `${label}, ${pendingEnrollCount} pending`
+                                : undefined
+                            }
                             onClick={() => {
                               if (isMobile) {
                                 setMobileMenuOpen(false)
@@ -428,6 +442,19 @@ export function DashboardLayout() {
                                   />
                                 </div>
                                 <span className="min-w-0 flex-1 truncate">{label}</span>
+                                {item.path === 'team/enrollment-approvals' && pendingEnrollCount > 0 ? (
+                                  <span
+                                    className={cn(
+                                      'relative z-10 shrink-0 rounded-full px-1.5 py-0.5 text-[0.65rem] font-bold tabular-nums leading-none',
+                                      isActive
+                                        ? 'bg-white/25 text-primary-foreground'
+                                        : 'bg-primary text-primary-foreground shadow-sm',
+                                    )}
+                                    aria-hidden
+                                  >
+                                    {pendingEnrollCount > 99 ? '99+' : pendingEnrollCount}
+                                  </span>
+                                ) : null}
                                 {isActive && (
                                   <span className="absolute inset-y-0 left-0 w-1 bg-white/50 rounded-r-full" />
                                 )}
@@ -550,6 +577,23 @@ export function DashboardLayout() {
             >
               <Settings className="size-[1.15rem] md:size-[1.25rem]" />
             </Link>
+            {approverForEnroll && pendingEnrollCount > 0 ? (
+              <div className="relative">
+                <Link
+                  to="/dashboard/team/enrollment-approvals"
+                  className="relative flex size-10 items-center justify-center rounded-full transition-colors duration-200 hover:bg-muted active:opacity-80"
+                  aria-label={`₹196 approvals — ${pendingEnrollCount} pending`}
+                >
+                  <ClipboardCheck className="size-[1.15rem] md:size-[1.25rem] text-emerald-400" />
+                </Link>
+                <span
+                  className="pointer-events-none absolute right-0.5 top-0.5 flex min-w-[1rem] items-center justify-center rounded-full bg-emerald-600 px-0.5 text-[0.55rem] font-bold leading-none text-white shadow-[0_0_8px_rgba(22,163,74,0.55)]"
+                  aria-hidden
+                >
+                  {pendingEnrollCount > 9 ? '9+' : pendingEnrollCount}
+                </span>
+              </div>
+            ) : null}
             <div className="relative">
               <Link
                 to="/dashboard/other/notice-board"
@@ -622,6 +666,37 @@ export function DashboardLayout() {
             </Button>
           </div>
         </header>
+
+        {enrollmentAlert.open && approverForEnroll ? (
+          <div
+            role="status"
+            className="flex shrink-0 items-center justify-between gap-3 border-b border-amber-500/35 bg-amber-500/10 px-3 py-2.5 text-amber-950 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-50"
+          >
+            <p className="min-w-0 text-sm text-amber-950 dark:text-amber-50">
+              <span className="font-semibold">New ₹196 approval request</span>
+              {enrollmentAlert.delta === 1
+                ? ' — 1 payment proof needs review.'
+                : ` — ${enrollmentAlert.delta} payment proofs need review.`}
+            </p>
+            <div className="flex shrink-0 items-center gap-2">
+              <Link
+                to="/dashboard/team/enrollment-approvals"
+                className="text-sm font-semibold text-amber-950 underline underline-offset-2 dark:text-amber-50"
+                onClick={() => enrollmentAlert.dismiss()}
+              >
+                Open queue
+              </Link>
+              <button
+                type="button"
+                className="rounded-md p-1 text-amber-950/80 transition hover:bg-amber-500/20 dark:text-amber-100/90"
+                aria-label="Dismiss"
+                onClick={() => enrollmentAlert.dismiss()}
+              >
+                <X className="size-4" aria-hidden />
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         <main
           className={cn(

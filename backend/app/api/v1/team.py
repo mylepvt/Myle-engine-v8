@@ -3,17 +3,20 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Annotated, Optional
+from typing import Annotated, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select, update
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from pydantic import BaseModel
+from sqlalchemy import delete as sa_delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
+from app.core.realtime_hub import notify_topics
 from app.core.fbo_id import normalize_fbo_id
 from app.core.passwords import hash_password
+from app.models.lead import Lead
 from app.models.user import User
 from app.schemas.system_surface import SystemStubResponse
 from app.schemas.team import (
@@ -177,6 +180,7 @@ async def decide_enrollment_request(
         payment_status = "rejected"
     if not ok:
         raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=message)
+    await notify_topics("team", "leads")
     return {"ok": True, "payment_status": payment_status, "message": message}
 
 
@@ -301,6 +305,106 @@ async def reset_all_members_password(
     )
     await session.commit()
     return {"ok": True, "updated": int(result.rowcount or 0)}
+
+
+class MemberLeadSummary(BaseModel):
+    id: int
+    name: str
+    status: str
+    phone: Optional[str]
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class MemberLeadsResponse(BaseModel):
+    items: List[MemberLeadSummary]
+    total: int
+
+
+class UpdateRoleBody(BaseModel):
+    role: str
+
+
+@router.get("/members/{target_user_id}/leads", response_model=MemberLeadsResponse)
+async def get_member_leads(
+    target_user_id: int,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> MemberLeadsResponse:
+    """Leads created by or assigned to a specific user. Admin only."""
+    _require_admin(user)
+    target = await session.get(User, target_user_id)
+    if target is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    count_q = (
+        select(func.count())
+        .select_from(Lead)
+        .where(Lead.created_by_user_id == target_user_id)
+        .where(Lead.deleted_at.is_(None))
+    )
+    total = int((await session.execute(count_q)).scalar_one())
+    list_q = (
+        select(Lead)
+        .where(Lead.created_by_user_id == target_user_id)
+        .where(Lead.deleted_at.is_(None))
+        .order_by(Lead.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    rows = (await session.execute(list_q)).scalars().all()
+    items = [MemberLeadSummary.model_validate(r) for r in rows]
+    return MemberLeadsResponse(items=items, total=total)
+
+
+@router.patch("/members/{target_user_id}/role")
+async def update_member_role(
+    target_user_id: int,
+    body: UpdateRoleBody,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> TeamMemberPublic:
+    """Change a user's role. Admin only."""
+    _require_admin(user)
+    if body.role not in ("admin", "leader", "team"):
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="role must be admin, leader, or team",
+        )
+    target = await session.get(User, target_user_id)
+    if target is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    if target.id == user.user_id:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="Cannot change your own role",
+        )
+    target.role = body.role
+    await session.commit()
+    await session.refresh(target)
+    return TeamMemberPublic.model_validate(target)
+
+
+@router.delete("/members/{target_user_id}", status_code=http_status.HTTP_204_NO_CONTENT)
+async def delete_member(
+    target_user_id: int,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    """Delete a user account. Admin only. Cannot delete yourself."""
+    _require_admin(user)
+    target = await session.get(User, target_user_id)
+    if target is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    if target.id == user.user_id:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete your own account",
+        )
+    await session.delete(target)
+    await session.commit()
 
 
 @router.get("/approvals", response_model=SystemStubResponse)

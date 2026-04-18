@@ -1,0 +1,830 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Myle UI Audit Preview</title>
+    <style>
+      :root {
+        --bg: #0b1020;
+        --surface: #12182a;
+        --card: #161d31;
+        --card-strong: #1c2640;
+        --border: rgba(138, 154, 196, 0.18);
+        --border-strong: rgba(138, 154, 196, 0.26);
+        --text: #f4f7fb;
+        --muted: #a7b1c9;
+        --muted-soft: #7f8aa8;
+        --accent: #4c6fff;
+        --accent-soft: rgba(76, 111, 255, 0.18);
+        --success: #21a179;
+        --warning: #d8a445;
+        --danger: #d56f7c;
+        --radius-xl: 28px;
+        --radius-lg: 20px;
+        --radius-md: 16px;
+        --shadow-1: 0 20px 50px rgba(0, 0, 0, 0.34);
+        --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.22);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 40px;
+        color: var(--text);
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        background:
+          radial-gradient(circle at top left, rgba(76, 111, 255, 0.24), transparent 32%),
+          radial-gradient(circle at bottom right, rgba(33, 161, 121, 0.12), transparent 26%),
+          linear-gradient(180deg, #09101f 0%, #0b1020 100%);
+      }
+
+      .scene {
+        width: 1280px;
+        display: grid;
+        grid-template-columns: 340px minmax(0, 1fr);
+        gap: 28px;
+        align-items: stretch;
+      }
+
+      .phone {
+        position: relative;
+        width: 340px;
+        height: 740px;
+        overflow: hidden;
+        border-radius: 38px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: linear-gradient(180deg, rgba(17, 25, 46, 0.72), rgba(10, 16, 31, 0.7));
+        backdrop-filter: blur(12px) saturate(132%);
+        -webkit-backdrop-filter: blur(12px) saturate(132%);
+        box-shadow: 0 32px 80px rgba(0, 0, 0, 0.45);
+      }
+
+      .phone::before {
+        content: "";
+        position: absolute;
+        top: 14px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 118px;
+        height: 28px;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.56);
+        z-index: 6;
+      }
+
+      .shell {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        padding-top: 42px;
+        background:
+          radial-gradient(circle at 0% 0%, rgba(76, 111, 255, 0.22), transparent 44%),
+          linear-gradient(180deg, rgba(13, 21, 39, 0.74), rgba(9, 14, 28, 0.76));
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 18px 18px 16px;
+      }
+
+      .topbar h1 {
+        margin: 0;
+        font-size: 24px;
+        line-height: 32px;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+      }
+
+      .topbar p {
+        margin: 2px 0 0;
+        font-size: 13px;
+        line-height: 18px;
+        color: var(--muted);
+      }
+
+      .avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 14px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(180deg, rgba(76, 111, 255, 0.9), rgba(76, 111, 255, 0.62));
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .content {
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding: 0 18px 18px;
+      }
+
+      .search {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 48px;
+        padding: 0 14px;
+        border-radius: 16px;
+        border: 1px solid rgba(157, 175, 217, 0.32);
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px) saturate(138%);
+        -webkit-backdrop-filter: blur(10px) saturate(138%);
+        color: var(--muted);
+        box-shadow: var(--shadow-2);
+      }
+
+      .search .grow {
+        flex: 1;
+      }
+
+      .search .cta {
+        width: 34px;
+        height: 34px;
+        border-radius: 11px;
+        display: grid;
+        place-items: center;
+        background: var(--accent);
+        color: white;
+        font-weight: 700;
+      }
+
+      .hero {
+        padding: 18px;
+        border-radius: 22px;
+        border: 1px solid rgba(120, 144, 197, 0.34);
+        background:
+          linear-gradient(135deg, rgba(76, 111, 255, 0.3), rgba(76, 111, 255, 0.12)),
+          rgba(28, 38, 64, 0.62);
+        backdrop-filter: blur(11px) saturate(135%);
+        -webkit-backdrop-filter: blur(11px) saturate(135%);
+        box-shadow: var(--shadow-1);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 16px;
+        font-weight: 600;
+      }
+
+      .hero h2 {
+        margin: 14px 0 8px;
+        font-size: 20px;
+        line-height: 28px;
+        letter-spacing: -0.02em;
+      }
+
+      .hero p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 22px;
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .stat {
+        padding: 14px;
+        border-radius: 18px;
+        border: 1px solid rgba(157, 175, 217, 0.3);
+        background: rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(9px) saturate(130%);
+        -webkit-backdrop-filter: blur(9px) saturate(130%);
+      }
+
+      .stat .label {
+        font-size: 12px;
+        line-height: 16px;
+        color: var(--muted);
+      }
+
+      .stat .value {
+        margin-top: 8px;
+        font-size: 24px;
+        line-height: 28px;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+      }
+
+      .section-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .section-title h3 {
+        margin: 0;
+        font-size: 16px;
+        line-height: 24px;
+        font-weight: 600;
+      }
+
+      .section-title span {
+        font-size: 12px;
+        line-height: 16px;
+        color: var(--muted-soft);
+      }
+
+      .lead-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .lead {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        padding: 14px;
+        border-radius: 18px;
+        border: 1px solid rgba(157, 175, 217, 0.24);
+        background: rgba(18, 24, 42, 0.68);
+        backdrop-filter: blur(10px) saturate(128%);
+        -webkit-backdrop-filter: blur(10px) saturate(128%);
+      }
+
+      .lead h4 {
+        margin: 0 0 4px;
+        font-size: 14px;
+        line-height: 20px;
+        font-weight: 600;
+      }
+
+      .lead p {
+        margin: 0;
+        font-size: 12px;
+        line-height: 18px;
+        color: var(--muted);
+      }
+
+      .lead .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .pill {
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        line-height: 14px;
+        font-weight: 600;
+      }
+
+      .pill.blue {
+        background: rgba(76, 111, 255, 0.18);
+        color: #cdd8ff;
+      }
+
+      .pill.green {
+        background: rgba(33, 161, 121, 0.18);
+        color: #bcf1df;
+      }
+
+      .actions {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .icon-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: 13px;
+        border: 1px solid rgba(157, 175, 217, 0.28);
+        display: grid;
+        place-items: center;
+        background: rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        color: var(--text);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .tabbar {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 6px;
+        padding: 10px 16px calc(12px + env(safe-area-inset-bottom));
+        border-top: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(11, 16, 32, 0.44);
+        backdrop-filter: blur(16px) saturate(148%);
+        -webkit-backdrop-filter: blur(16px) saturate(148%);
+      }
+
+      .tab {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        min-height: 56px;
+        border-radius: 16px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 14px;
+        font-weight: 600;
+      }
+
+      .tab.active {
+        background: rgba(76, 111, 255, 0.3);
+        border: 1px solid rgba(138, 157, 212, 0.26);
+        color: #dce4ff;
+      }
+
+      .sheet {
+        position: absolute;
+        left: 10px;
+        right: 10px;
+        bottom: 92px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding: 18px;
+        border-radius: 24px 24px 20px 20px;
+        border: 1px solid rgba(157, 175, 217, 0.36);
+        background: rgba(18, 24, 42, 0.58);
+        backdrop-filter: blur(18px) saturate(146%);
+        -webkit-backdrop-filter: blur(18px) saturate(146%);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.42);
+      }
+
+      .sheet-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .sheet-head h3 {
+        margin: 0;
+        font-size: 18px;
+        line-height: 24px;
+        font-weight: 600;
+      }
+
+      .sheet-head p {
+        margin: 4px 0 0;
+        font-size: 12px;
+        line-height: 18px;
+        color: var(--muted);
+      }
+
+      .fields {
+        display: grid;
+        gap: 12px;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+
+      .field label {
+        font-size: 12px;
+        line-height: 16px;
+        font-weight: 600;
+        color: var(--muted);
+      }
+
+      .input {
+        min-height: 46px;
+        padding: 0 14px;
+        border-radius: 14px;
+        border: 1px solid rgba(157, 175, 217, 0.32);
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        display: flex;
+        align-items: center;
+        color: var(--text);
+        font-size: 14px;
+      }
+
+      .sheet-actions {
+        display: grid;
+        grid-template-columns: 1fr 1.4fr;
+        gap: 10px;
+      }
+
+      .btn {
+        min-height: 46px;
+        border-radius: 16px;
+        display: grid;
+        place-items: center;
+        font-size: 14px;
+        line-height: 20px;
+        font-weight: 600;
+      }
+
+      .btn.secondary {
+        border: 1px solid rgba(157, 175, 217, 0.34);
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        color: var(--text);
+      }
+
+      .btn.primary {
+        background: linear-gradient(180deg, #5b7bff, #4c6fff);
+        color: white;
+        box-shadow: 0 10px 24px rgba(76, 111, 255, 0.35);
+      }
+
+      .notes {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        padding: 24px;
+        border-radius: var(--radius-xl);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background:
+          linear-gradient(180deg, rgba(18, 24, 42, 0.72), rgba(13, 18, 35, 0.78));
+        backdrop-filter: blur(10px) saturate(132%);
+        -webkit-backdrop-filter: blur(10px) saturate(132%);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
+      }
+
+      .notes h2 {
+        margin: 0;
+        font-size: 28px;
+        line-height: 36px;
+        letter-spacing: -0.03em;
+      }
+
+      .notes p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 15px;
+        line-height: 24px;
+      }
+
+      .panel-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .panel {
+        padding: 18px;
+        border-radius: 22px;
+        border: 1px solid rgba(157, 175, 217, 0.24);
+        background: rgba(22, 29, 49, 0.66);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+      }
+
+      .panel h3 {
+        margin: 0 0 10px;
+        font-size: 18px;
+        line-height: 24px;
+      }
+
+      .spec {
+        display: grid;
+        gap: 10px;
+      }
+
+      .spec-row {
+        display: grid;
+        grid-template-columns: 150px minmax(0, 1fr);
+        gap: 14px;
+        align-items: start;
+      }
+
+      .spec-row strong {
+        font-size: 12px;
+        line-height: 16px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted-soft);
+      }
+
+      .spec-row span {
+        font-size: 14px;
+        line-height: 22px;
+        color: var(--text);
+      }
+
+      .swatches {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      .swatch {
+        width: calc(50% - 6px);
+        min-width: 160px;
+        padding: 12px;
+        border-radius: 16px;
+        border: 1px solid rgba(157, 175, 217, 0.24);
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .v2-chip {
+        display: inline-flex;
+        margin-top: 10px;
+        padding: 7px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(157, 175, 217, 0.35);
+        background: rgba(255, 255, 255, 0.12);
+        color: #d9e3ff;
+        font-size: 12px;
+        line-height: 16px;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+      }
+
+      .swatch-tone {
+        width: 100%;
+        height: 44px;
+        border-radius: 12px;
+        margin-bottom: 10px;
+      }
+
+      .swatch strong {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 13px;
+        line-height: 18px;
+      }
+
+      .swatch span {
+        font-size: 12px;
+        line-height: 16px;
+        color: var(--muted);
+      }
+
+      .caption {
+        font-size: 13px;
+        line-height: 18px;
+        color: var(--muted-soft);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="scene">
+      <div class="phone">
+        <div class="shell">
+          <div class="topbar">
+            <div>
+              <h1>Good evening</h1>
+              <p>Focus view for team lead execution</p>
+            </div>
+            <div class="avatar">KS</div>
+          </div>
+
+          <div class="content">
+            <div class="search">
+              <div>Search</div>
+              <div class="grow">Find leads, phone, note</div>
+              <div class="cta">+</div>
+            </div>
+
+            <div class="hero">
+              <div class="eyebrow">Priority Queue</div>
+              <h2>3 hot leads need action in the next 20 minutes</h2>
+              <p>One clear queue, fewer tabs, and a keyboard-safe bottom sheet for adding leads.</p>
+            </div>
+
+            <div class="stats">
+              <div class="stat">
+                <div class="label">Calls Today</div>
+                <div class="value">18</div>
+              </div>
+              <div class="stat">
+                <div class="label">Hot Leads</div>
+                <div class="value">7</div>
+              </div>
+            </div>
+
+            <div class="section-title">
+              <h3>Lead Queue</h3>
+              <span>Compact, one-hand friendly</span>
+            </div>
+
+            <div class="lead-list">
+              <div class="lead">
+                <div>
+                  <h4>Rahul Sharma</h4>
+                  <p>Mumbai · last action 12m ago</p>
+                  <div class="meta">
+                    <div class="pill blue">Video watched</div>
+                    <div class="pill green">Call now</div>
+                  </div>
+                </div>
+                <div class="actions">
+                  <div class="icon-btn">WA</div>
+                  <div class="icon-btn">Call</div>
+                </div>
+              </div>
+
+              <div class="lead">
+                <div>
+                  <h4>Simran Kaur</h4>
+                  <p>Ludhiana · follow-up due 5:40 PM</p>
+                  <div class="meta">
+                    <div class="pill blue">Interested</div>
+                  </div>
+                </div>
+                <div class="actions">
+                  <div class="icon-btn">WA</div>
+                  <div class="icon-btn">Call</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tabbar">
+            <div class="tab active">
+              <div>O</div>
+              <div>Home</div>
+            </div>
+            <div class="tab">
+              <div>Q</div>
+              <div>Leads</div>
+            </div>
+            <div class="tab">
+              <div>T</div>
+              <div>Tasks</div>
+            </div>
+            <div class="tab">
+              <div>M</div>
+              <div>More</div>
+            </div>
+          </div>
+
+          <div class="sheet">
+            <div class="sheet-head">
+              <div>
+                <h3>Quick Add Lead</h3>
+                <p>Scroll-safe sheet, no keyboard overlap</p>
+              </div>
+              <div class="icon-btn">x</div>
+            </div>
+
+            <div class="fields">
+              <div class="field">
+                <label>Full name</label>
+                <div class="input">Rahul Verma</div>
+              </div>
+              <div class="field">
+                <label>Phone number</label>
+                <div class="input">98765 43210</div>
+              </div>
+              <div class="field">
+                <label>Source</label>
+                <div class="input">Instagram</div>
+              </div>
+            </div>
+
+            <div class="sheet-actions">
+              <div class="btn secondary">Cancel</div>
+              <div class="btn primary">Save Lead</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="notes">
+        <div>
+          <h2>Proposed Premium Mobile Direction</h2>
+          <div class="v2-chip">V2 More Transparent</div>
+          <p>
+            This mock shows the target look: tighter hierarchy, calmer palette, one primary CTA,
+            simpler lead cards, and a keyboard-safe bottom sheet instead of a fragile fixed modal.
+          </p>
+        </div>
+
+        <div class="panel-grid">
+          <div class="panel">
+            <h3>Typography</h3>
+            <div class="spec">
+              <div class="spec-row">
+                <strong>Display</strong>
+                <span>28 / 36, 600, -0.03em</span>
+              </div>
+              <div class="spec-row">
+                <strong>H1</strong>
+                <span>24 / 32, 600</span>
+              </div>
+              <div class="spec-row">
+                <strong>Body</strong>
+                <span>14 / 22, 400</span>
+              </div>
+              <div class="spec-row">
+                <strong>Caption</strong>
+                <span>12 / 18, 500</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h3>Spacing and Cards</h3>
+            <div class="spec">
+              <div class="spec-row">
+                <strong>Grid</strong>
+                <span>4 / 8 / 12 / 16 / 24 / 32 scale only</span>
+              </div>
+              <div class="spec-row">
+                <strong>Card</strong>
+                <span>16 padding, 16 radius, one border system, two elevations max</span>
+              </div>
+              <div class="spec-row">
+                <strong>Buttons</strong>
+                <span>44px min height, primary / secondary / ghost only</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h3>Runtime Stability</h3>
+            <div class="spec">
+              <div class="spec-row">
+                <strong>Keyboard</strong>
+                <span>Bottom tab hides on input focus, content gets dynamic bottom inset</span>
+              </div>
+              <div class="spec-row">
+                <strong>Safe Area</strong>
+                <span>Top and bottom insets come from one shell variable, not per-page hacks</span>
+              </div>
+              <div class="spec-row">
+                <strong>Sheets</strong>
+                <span>Sticky header/footer, scrollable body, focus scroll rescue</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h3>Color Direction</h3>
+            <div class="swatches">
+              <div class="swatch">
+                <div class="swatch-tone" style="background:#0b1020"></div>
+                <strong>Canvas</strong>
+                <span>#0B1020</span>
+              </div>
+              <div class="swatch">
+                <div class="swatch-tone" style="background:#161d31"></div>
+                <strong>Card</strong>
+                <span>#161D31</span>
+              </div>
+              <div class="swatch">
+                <div class="swatch-tone" style="background:#4c6fff"></div>
+                <strong>Accent</strong>
+                <span>#4C6FFF</span>
+              </div>
+              <div class="swatch">
+                <div class="swatch-tone" style="background:#21a179"></div>
+                <strong>Success</strong>
+                <span>#21A179</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="caption">
+          If this direction feels right, I can turn this into the real app shell next without pushing.
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

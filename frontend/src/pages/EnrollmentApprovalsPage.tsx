@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import {
   useEnrollmentDecisionMutation,
   useEnrollmentRequestsQuery,
@@ -10,8 +11,10 @@ import { ClipboardList, ExternalLink } from 'lucide-react'
 type Props = { title: string }
 
 export function EnrollmentApprovalsPage({ title }: Props) {
+  const { data: me } = useAuthMeQuery()
   const decide = useEnrollmentDecisionMutation()
   const { data, isPending, isError, error, refetch } = useEnrollmentRequestsQuery()
+  const isAdmin = me?.authenticated && me.role === 'admin'
 
   async function handleApprove(leadId: number) {
     await decide.mutateAsync({ leadId, action: 'approve' })
@@ -31,7 +34,9 @@ export function EnrollmentApprovalsPage({ title }: Props) {
     <div className="max-w-2xl space-y-6">
       <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
       <p className="text-sm text-muted-foreground">
-        Review and approve paid enrollment requests (e.g. INR 196 tier).
+        {isAdmin
+          ? 'Pending ₹196 payment proofs from every leader and team member appear here for approval.'
+          : 'Review and approve paid enrollment requests (e.g. INR 196 tier) for your downline.'}
       </p>
 
       {isPending ? (

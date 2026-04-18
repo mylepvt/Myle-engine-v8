@@ -171,6 +171,7 @@ const LeadCard = memo(function LeadCard({
       await apiFetch('/api/v1/payments/proof/upload', { method: 'POST', body: fd })
       setUploadDone(true)
       void qc.invalidateQueries({ queryKey: ['workboard'] })
+      void qc.invalidateQueries({ queryKey: ['team', 'enrollment-requests'] })
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed')
     } finally {

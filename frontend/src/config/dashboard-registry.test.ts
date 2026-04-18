@@ -22,6 +22,11 @@ describe('dashboard-registry', () => {
     expect(resolveTitleForPath('work/leads', 'team')).toBe('Calling Board')
   })
 
+  it('resolveTitleForPath uses labelByRole for admin on team/enrollment-approvals', () => {
+    expect(resolveTitleForPath('team/enrollment-approvals', 'admin')).toBe('₹196 Approvals (all teams)')
+    expect(resolveTitleForPath('team/enrollment-approvals', 'leader')).toBe('₹196 Approvals')
+  })
+
   it('routeDefAccessible allows valid route for allowed role', () => {
     const def = getDashboardChildRoute('work/leads')
     expect(def).toBeDefined()

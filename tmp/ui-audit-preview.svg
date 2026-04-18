@@ -1,0 +1,169 @@
+<svg width="1400" height="900" viewBox="0 0 1400 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="700" y1="0" x2="700" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#09101F"/>
+      <stop offset="1" stop-color="#0B1020"/>
+    </linearGradient>
+    <linearGradient id="phoneBg" x1="170" y1="60" x2="170" y2="800" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#11192E"/>
+      <stop offset="1" stop-color="#09101F"/>
+    </linearGradient>
+    <linearGradient id="hero" x1="37" y1="0" x2="303" y2="194" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#304CC2" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#304CC2" stop-opacity="0.08"/>
+    </linearGradient>
+    <linearGradient id="btn" x1="0" y1="0" x2="0" y2="46" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5B7BFF"/>
+      <stop offset="1" stop-color="#4C6FFF"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="1400" height="900" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="24" stdDeviation="36" flood-color="#000000" flood-opacity="0.24"/>
+    </filter>
+  </defs>
+
+  <rect width="1400" height="900" rx="0" fill="url(#bg)"/>
+  <circle cx="176" cy="112" r="200" fill="#4C6FFF" fill-opacity="0.14"/>
+  <circle cx="1274" cy="706" r="180" fill="#21A179" fill-opacity="0.08"/>
+
+  <g filter="url(#shadow)">
+    <rect x="60" y="58" width="336" height="780" rx="38" fill="url(#phoneBg)" stroke="rgba(255,255,255,0.08)"/>
+  </g>
+  <rect x="169" y="72" width="118" height="28" rx="14" fill="black" fill-opacity="0.5"/>
+
+  <text x="90" y="146" fill="#F4F7FB" font-size="24" font-weight="600" font-family="Inter, Arial">Good evening</text>
+  <text x="90" y="170" fill="#A7B1C9" font-size="13" font-family="Inter, Arial">Focus view for team lead execution</text>
+  <rect x="324" y="116" width="42" height="42" rx="14" fill="#4C6FFF"/>
+  <text x="335" y="143" fill="white" font-size="14" font-weight="600" font-family="Inter, Arial">KS</text>
+
+  <rect x="78" y="196" width="300" height="48" rx="16" fill="rgba(255,255,255,0.04)" stroke="rgba(138,154,196,0.18)"/>
+  <text x="96" y="224" fill="#A7B1C9" font-size="14" font-family="Inter, Arial">Search leads, phone, note</text>
+  <rect x="334" y="203" width="30" height="30" rx="11" fill="#4C6FFF"/>
+  <text x="345" y="223" fill="white" font-size="18" font-weight="700" font-family="Inter, Arial">+</text>
+
+  <rect x="78" y="260" width="300" height="144" rx="22" fill="url(#hero)" stroke="rgba(120,144,197,0.18)"/>
+  <rect x="96" y="278" width="110" height="30" rx="15" fill="rgba(255,255,255,0.06)"/>
+  <text x="110" y="297" fill="#A7B1C9" font-size="12" font-weight="600" font-family="Inter, Arial">Priority Queue</text>
+  <text x="96" y="336" fill="#F4F7FB" font-size="20" font-weight="600" font-family="Inter, Arial">3 hot leads need action</text>
+  <text x="96" y="362" fill="#F4F7FB" font-size="20" font-weight="600" font-family="Inter, Arial">in the next 20 minutes</text>
+  <text x="96" y="390" fill="#A7B1C9" font-size="14" font-family="Inter, Arial">One clear queue, fewer tabs, and a</text>
+  <text x="96" y="412" fill="#A7B1C9" font-size="14" font-family="Inter, Arial">keyboard-safe bottom sheet.</text>
+
+  <rect x="78" y="420" width="144" height="92" rx="18" fill="rgba(255,255,255,0.045)" stroke="rgba(138,154,196,0.18)"/>
+  <rect x="234" y="420" width="144" height="92" rx="18" fill="rgba(255,255,255,0.045)" stroke="rgba(138,154,196,0.18)"/>
+  <text x="92" y="448" fill="#A7B1C9" font-size="12" font-family="Inter, Arial">Calls Today</text>
+  <text x="92" y="486" fill="#F4F7FB" font-size="24" font-weight="600" font-family="Inter, Arial">18</text>
+  <text x="248" y="448" fill="#A7B1C9" font-size="12" font-family="Inter, Arial">Hot Leads</text>
+  <text x="248" y="486" fill="#F4F7FB" font-size="24" font-weight="600" font-family="Inter, Arial">7</text>
+
+  <text x="78" y="544" fill="#F4F7FB" font-size="16" font-weight="600" font-family="Inter, Arial">Lead Queue</text>
+  <text x="271" y="544" fill="#7F8AA8" font-size="12" font-family="Inter, Arial">Compact, one-hand friendly</text>
+
+  <rect x="78" y="560" width="300" height="110" rx="18" fill="#12182A" stroke="rgba(138,154,196,0.18)"/>
+  <text x="94" y="588" fill="#F4F7FB" font-size="14" font-weight="600" font-family="Inter, Arial">Rahul Sharma</text>
+  <text x="94" y="608" fill="#A7B1C9" font-size="12" font-family="Inter, Arial">Mumbai · last action 12m ago</text>
+  <rect x="94" y="624" width="96" height="26" rx="13" fill="rgba(76,111,255,0.18)"/>
+  <rect x="198" y="624" width="70" height="26" rx="13" fill="rgba(33,161,121,0.18)"/>
+  <text x="108" y="641" fill="#CDD8FF" font-size="11" font-weight="600" font-family="Inter, Arial">Video watched</text>
+  <text x="216" y="641" fill="#BCF1DF" font-size="11" font-weight="600" font-family="Inter, Arial">Call now</text>
+  <rect x="322" y="576" width="40" height="40" rx="13" fill="rgba(255,255,255,0.04)" stroke="rgba(138,154,196,0.18)"/>
+  <rect x="322" y="624" width="40" height="40" rx="13" fill="rgba(255,255,255,0.04)" stroke="rgba(138,154,196,0.18)"/>
+  <text x="334" y="600" fill="#F4F7FB" font-size="12" font-weight="700" font-family="Inter, Arial">WA</text>
+  <text x="331" y="648" fill="#F4F7FB" font-size="12" font-weight="700" font-family="Inter, Arial">CALL</text>
+
+  <rect x="78" y="680" width="300" height="92" rx="18" fill="#12182A" stroke="rgba(138,154,196,0.18)"/>
+  <text x="94" y="708" fill="#F4F7FB" font-size="14" font-weight="600" font-family="Inter, Arial">Simran Kaur</text>
+  <text x="94" y="728" fill="#A7B1C9" font-size="12" font-family="Inter, Arial">Ludhiana · follow-up due 5:40 PM</text>
+  <rect x="94" y="742" width="74" height="24" rx="12" fill="rgba(76,111,255,0.18)"/>
+  <text x="112" y="758" fill="#CDD8FF" font-size="11" font-weight="600" font-family="Inter, Arial">Interested</text>
+
+  <rect x="74" y="746" width="308" height="16" rx="8" fill="#0B1020"/>
+
+  <rect x="74" y="758" width="308" height="80" rx="0" fill="#0B1020"/>
+  <line x1="76" y1="758" x2="380" y2="758" stroke="rgba(255,255,255,0.06)"/>
+  <rect x="90" y="772" width="64" height="50" rx="16" fill="rgba(76,111,255,0.18)"/>
+  <text x="112" y="792" fill="#DCE4FF" font-size="12" font-weight="600" font-family="Inter, Arial">O</text>
+  <text x="104" y="810" fill="#DCE4FF" font-size="11" font-weight="600" font-family="Inter, Arial">Home</text>
+  <text x="184" y="792" fill="#A7B1C9" font-size="12" font-weight="600" font-family="Inter, Arial">Q</text>
+  <text x="174" y="810" fill="#A7B1C9" font-size="11" font-weight="600" font-family="Inter, Arial">Leads</text>
+  <text x="256" y="792" fill="#A7B1C9" font-size="12" font-weight="600" font-family="Inter, Arial">T</text>
+  <text x="248" y="810" fill="#A7B1C9" font-size="11" font-weight="600" font-family="Inter, Arial">Tasks</text>
+  <text x="330" y="792" fill="#A7B1C9" font-size="12" font-weight="600" font-family="Inter, Arial">M</text>
+  <text x="321" y="810" fill="#A7B1C9" font-size="11" font-weight="600" font-family="Inter, Arial">More</text>
+
+  <rect x="70" y="458" width="316" height="268" rx="24" fill="#12182A" stroke="rgba(138,154,196,0.26)"/>
+  <text x="94" y="492" fill="#F4F7FB" font-size="18" font-weight="600" font-family="Inter, Arial">Quick Add Lead</text>
+  <text x="94" y="512" fill="#A7B1C9" font-size="12" font-family="Inter, Arial">Scroll-safe sheet, no keyboard overlap</text>
+  <rect x="334" y="476" width="34" height="34" rx="11" fill="rgba(255,255,255,0.04)" stroke="rgba(138,154,196,0.18)"/>
+  <text x="347" y="497" fill="#F4F7FB" font-size="14" font-weight="700" font-family="Inter, Arial">x</text>
+
+  <text x="94" y="548" fill="#A7B1C9" font-size="12" font-weight="600" font-family="Inter, Arial">Full name</text>
+  <rect x="94" y="558" width="268" height="46" rx="14" fill="rgba(255,255,255,0.04)" stroke="rgba(138,154,196,0.18)"/>
+  <text x="110" y="587" fill="#F4F7FB" font-size="14" font-family="Inter, Arial">Rahul Verma</text>
+
+  <text x="94" y="628" fill="#A7B1C9" font-size="12" font-weight="600" font-family="Inter, Arial">Phone number</text>
+  <rect x="94" y="638" width="268" height="46" rx="14" fill="rgba(255,255,255,0.04)" stroke="rgba(138,154,196,0.18)"/>
+  <text x="110" y="667" fill="#F4F7FB" font-size="14" font-family="Inter, Arial">98765 43210</text>
+
+  <rect x="94" y="694" width="112" height="46" rx="16" fill="rgba(255,255,255,0.04)" stroke="rgba(138,154,196,0.18)"/>
+  <text x="129" y="722" fill="#F4F7FB" font-size="14" font-weight="600" font-family="Inter, Arial">Cancel</text>
+  <rect x="214" y="694" width="148" height="46" rx="16" fill="url(#btn)"/>
+  <text x="257" y="722" fill="white" font-size="14" font-weight="600" font-family="Inter, Arial">Save Lead</text>
+
+  <text x="462" y="124" fill="#F4F7FB" font-size="28" font-weight="600" font-family="Inter, Arial">Proposed Premium Mobile Direction</text>
+  <text x="462" y="160" fill="#A7B1C9" font-size="15" font-family="Inter, Arial">This mock shows the target look: tighter hierarchy, calmer palette, one primary CTA,</text>
+  <text x="462" y="184" fill="#A7B1C9" font-size="15" font-family="Inter, Arial">simpler lead cards, and a keyboard-safe bottom sheet instead of a fragile fixed modal.</text>
+
+  <rect x="462" y="228" width="430" height="236" rx="22" fill="#161D31" stroke="rgba(138,154,196,0.18)"/>
+  <rect x="910" y="228" width="430" height="236" rx="22" fill="#161D31" stroke="rgba(138,154,196,0.18)"/>
+  <rect x="462" y="484" width="430" height="236" rx="22" fill="#161D31" stroke="rgba(138,154,196,0.18)"/>
+  <rect x="910" y="484" width="430" height="236" rx="22" fill="#161D31" stroke="rgba(138,154,196,0.18)"/>
+
+  <text x="486" y="266" fill="#F4F7FB" font-size="18" font-weight="600" font-family="Inter, Arial">Typography</text>
+  <text x="486" y="306" fill="#7F8AA8" font-size="12" font-weight="600" font-family="Inter, Arial" letter-spacing="1.2">DISPLAY</text>
+  <text x="626" y="306" fill="#F4F7FB" font-size="14" font-family="Inter, Arial">28 / 36, 600, -0.03em</text>
+  <text x="486" y="340" fill="#7F8AA8" font-size="12" font-weight="600" font-family="Inter, Arial" letter-spacing="1.2">H1</text>
+  <text x="626" y="340" fill="#F4F7FB" font-size="14" font-family="Inter, Arial">24 / 32, 600</text>
+  <text x="486" y="374" fill="#7F8AA8" font-size="12" font-weight="600" font-family="Inter, Arial" letter-spacing="1.2">BODY</text>
+  <text x="626" y="374" fill="#F4F7FB" font-size="14" font-family="Inter, Arial">14 / 22, 400</text>
+  <text x="486" y="408" fill="#7F8AA8" font-size="12" font-weight="600" font-family="Inter, Arial" letter-spacing="1.2">CAPTION</text>
+  <text x="626" y="408" fill="#F4F7FB" font-size="14" font-family="Inter, Arial">12 / 18, 500</text>
+
+  <text x="934" y="266" fill="#F4F7FB" font-size="18" font-weight="600" font-family="Inter, Arial">Spacing and Cards</text>
+  <text x="934" y="306" fill="#7F8AA8" font-size="12" font-weight="600" font-family="Inter, Arial" letter-spacing="1.2">GRID</text>
+  <text x="1074" y="306" fill="#F4F7FB" font-size="14" font-family="Inter, Arial">4 / 8 / 12 / 16 / 24 / 32 only</text>
+  <text x="934" y="340" fill="#7F8AA8" font-size="12" font-weight="600" font-family="Inter, Arial" letter-spacing="1.2">CARD</text>
+  <text x="1074" y="340" fill="#F4F7FB" font-size="14" font-family="Inter, Arial">16 padding, 16 radius, two elevations max</text>
+  <text x="934" y="374" fill="#7F8AA8" font-size="12" font-weight="600" font-family="Inter, Arial" letter-spacing="1.2">BUTTONS</text>
+  <text x="1074" y="374" fill="#F4F7FB" font-size="14" font-family="Inter, Arial">44px min height, 3 variants only</text>
+
+  <text x="486" y="522" fill="#F4F7FB" font-size="18" font-weight="600" font-family="Inter, Arial">Runtime Stability</text>
+  <text x="486" y="562" fill="#7F8AA8" font-size="12" font-weight="600" font-family="Inter, Arial" letter-spacing="1.2">KEYBOARD</text>
+  <text x="626" y="562" fill="#F4F7FB" font-size="14" font-family="Inter, Arial">Tab hides on input focus, content gets dynamic bottom inset</text>
+  <text x="486" y="596" fill="#7F8AA8" font-size="12" font-weight="600" font-family="Inter, Arial" letter-spacing="1.2">SAFE AREA</text>
+  <text x="626" y="596" fill="#F4F7FB" font-size="14" font-family="Inter, Arial">One shell variable, no per-page hacks</text>
+  <text x="486" y="630" fill="#7F8AA8" font-size="12" font-weight="600" font-family="Inter, Arial" letter-spacing="1.2">SHEETS</text>
+  <text x="626" y="630" fill="#F4F7FB" font-size="14" font-family="Inter, Arial">Sticky header/footer, scrollable body, focus scroll rescue</text>
+
+  <text x="934" y="522" fill="#F4F7FB" font-size="18" font-weight="600" font-family="Inter, Arial">Color Direction</text>
+  <rect x="934" y="552" width="178" height="66" rx="16" fill="rgba(255,255,255,0.03)" stroke="rgba(138,154,196,0.18)"/>
+  <rect x="950" y="566" width="146" height="18" rx="9" fill="#0B1020"/>
+  <text x="950" y="602" fill="#F4F7FB" font-size="13" font-weight="600" font-family="Inter, Arial">Canvas</text>
+  <text x="1015" y="602" fill="#A7B1C9" font-size="12" font-family="Inter, Arial">#0B1020</text>
+
+  <rect x="1126" y="552" width="178" height="66" rx="16" fill="rgba(255,255,255,0.03)" stroke="rgba(138,154,196,0.18)"/>
+  <rect x="1142" y="566" width="146" height="18" rx="9" fill="#161D31"/>
+  <text x="1142" y="602" fill="#F4F7FB" font-size="13" font-weight="600" font-family="Inter, Arial">Card</text>
+  <text x="1190" y="602" fill="#A7B1C9" font-size="12" font-family="Inter, Arial">#161D31</text>
+
+  <rect x="934" y="632" width="178" height="66" rx="16" fill="rgba(255,255,255,0.03)" stroke="rgba(138,154,196,0.18)"/>
+  <rect x="950" y="646" width="146" height="18" rx="9" fill="#4C6FFF"/>
+  <text x="950" y="682" fill="#F4F7FB" font-size="13" font-weight="600" font-family="Inter, Arial">Accent</text>
+  <text x="1005" y="682" fill="#A7B1C9" font-size="12" font-family="Inter, Arial">#4C6FFF</text>
+
+  <rect x="1126" y="632" width="178" height="66" rx="16" fill="rgba(255,255,255,0.03)" stroke="rgba(138,154,196,0.18)"/>
+  <rect x="1142" y="646" width="146" height="18" rx="9" fill="#21A179"/>
+  <text x="1142" y="682" fill="#F4F7FB" font-size="13" font-weight="600" font-family="Inter, Arial">Success</text>
+  <text x="1202" y="682" fill="#A7B1C9" font-size="12" font-family="Inter, Arial">#21A179</text>
+
+  <text x="462" y="772" fill="#7F8AA8" font-size="13" font-family="Inter, Arial">If this direction feels right, I can turn this into the real app shell next without pushing.</text>
+</svg>
