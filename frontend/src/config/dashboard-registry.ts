@@ -219,6 +219,17 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     ui: { kind: 'team-members' },
   },
   {
+    path: 'team/enrollment-approvals',
+    section: { id: 'team', label: 'Team' },
+    label: '₹196 Approvals',
+    labelByRole: {
+      admin: '₹196 Approvals (all teams)',
+    },
+    roles: routeRoles('team/enrollment-approvals'),
+    surface: 'full',
+    ui: { kind: 'enrollment-approvals' },
+  },
+  {
     path: 'team/reports',
     section: { id: 'team', label: 'Team' },
     label: 'Reports',
@@ -233,14 +244,6 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('team/approvals'),
     surface: 'full',
     ui: { kind: 'team-approvals' },
-  },
-  {
-    path: 'team/enrollment-approvals',
-    section: { id: 'team', label: 'Team' },
-    label: '₹196 Approvals',
-    roles: routeRoles('team/enrollment-approvals'),
-    surface: 'full',
-    ui: { kind: 'enrollment-approvals' },
   },
   {
     path: 'team/my-team',

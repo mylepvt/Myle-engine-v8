@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
+import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 
 export type TeamMemberPublic = {
   id: number
@@ -128,6 +129,21 @@ export function useEnrollmentRequestsQuery(enabled = true) {
   })
 }
 
+/** Admin / leader: shared cache with `useEnrollmentRequestsQuery` — for sidebar + header badges. */
+export function useEnrollmentApprovalsPendingQuery() {
+  const { data: me, isPending: mePending } = useAuthMeQuery()
+  const isApprover =
+    Boolean(me?.authenticated) && (me?.role === 'admin' || me?.role === 'leader')
+
+  return useQuery({
+    queryKey: ['team', 'enrollment-requests'],
+    queryFn: fetchEnrollmentRequests,
+    enabled: isApprover && !mePending,
+    staleTime: 15_000,
+    refetchInterval: isApprover ? 90_000 : false,
+  })
+}
+
 export async function resetMemberPassword(body: {
   userId: number
   newPassword: string
@@ -167,6 +183,71 @@ export function useResetAllMembersPasswordMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: resetAllMembersPassword,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['team', 'members'] })
+    },
+  })
+}
+
+export type MemberLeadSummary = {
+  id: number
+  name: string
+  status: string
+  phone: string | null
+  created_at: string
+}
+
+export type MemberLeadsResponse = {
+  items: MemberLeadSummary[]
+  total: number
+}
+
+export async function fetchMemberLeads(userId: number): Promise<MemberLeadsResponse> {
+  const res = await apiFetch(`/api/v1/team/members/${userId}/leads`)
+  if (!res.ok) await parseError(res)
+  return res.json()
+}
+
+export function useMemberLeadsQuery(userId: number | null) {
+  return useQuery({
+    queryKey: ['team', 'member-leads', userId],
+    queryFn: () => fetchMemberLeads(userId!),
+    enabled: userId !== null,
+  })
+}
+
+export async function updateMemberRole(body: {
+  userId: number
+  role: string
+}): Promise<TeamMemberPublic> {
+  const res = await apiFetch(`/api/v1/team/members/${body.userId}/role`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role: body.role }),
+  })
+  if (!res.ok) await parseError(res)
+  return res.json()
+}
+
+export function useUpdateMemberRoleMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: updateMemberRole,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['team', 'members'] })
+    },
+  })
+}
+
+export async function deleteMember(userId: number): Promise<void> {
+  const res = await apiFetch(`/api/v1/team/members/${userId}`, { method: 'DELETE' })
+  if (!res.ok && res.status !== 204) await parseError(res)
+}
+
+export function useDeleteMemberMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: deleteMember,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['team', 'members'] })
     },

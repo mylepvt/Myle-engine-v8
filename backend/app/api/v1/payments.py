@@ -10,6 +10,7 @@ from starlette import status as http_status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthUser, get_db, require_auth_user
+from app.core.realtime_hub import notify_topics
 from app.core.payment_validator import (
     require_approver_role,
     validate_payment_amount,
@@ -62,6 +63,8 @@ async def upload_payment_proof(
                 detail=message,
             )
 
+        await notify_topics("team", "leads")
+
         return PaymentProofResponse(
             success=True,
             message=message,
@@ -101,6 +104,8 @@ async def approve_payment_proof(
                 detail=message,
             )
 
+        await notify_topics("team", "leads")
+
         return PaymentProofResponse(
             success=True,
             message=message,
@@ -136,6 +141,8 @@ async def reject_payment_proof(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail=message,
             )
+
+        await notify_topics("team", "leads")
 
         return PaymentProofResponse(
             success=True,

@@ -122,7 +122,7 @@ function renderFullUi(ui: FullUiSurface, title: string) {
 export function DashboardNestedPage() {
   const { '*': splat } = useParams()
   const path = (splat ?? '').replace(/^\/+|\/+$/g, '')
-  const { role: serverRole, isPending: rolePending } = useDashboardShellRole()
+  const { role: navRole, isPending: rolePending } = useDashboardShellRole()
 
   const leadDetailMatch = /^work\/leads\/(\d+)$/.exec(path)
   if (leadDetailMatch) {
@@ -149,11 +149,11 @@ export function DashboardNestedPage() {
     )
   }
 
-  if (!serverRole || !routeDefAccessible(def, serverRole)) {
+  if (!navRole || !routeDefAccessible(def, navRole)) {
     return <Navigate to="/dashboard" replace />
   }
 
-  const title = resolveTitleForPath(path, serverRole) ?? path
+  const title = resolveTitleForPath(path, navRole) ?? path
 
   switch (def.surface) {
     case 'placeholder':
