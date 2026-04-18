@@ -47,6 +47,14 @@ export const LeadRowStatusDropdown = memo(function LeadRowStatusDropdown({
 
   const close = useCallback(() => setOpen(false), [])
 
+  const pick = useCallback(
+    (v: LeadStatus) => {
+      close()
+      if (v !== status) onSelect(v)
+    },
+    [close, onSelect, status],
+  )
+
   useEffect(() => {
     if (open) {
       const idx = allOptions.findIndex((o) => o.value === status)
@@ -76,6 +84,9 @@ export const LeadRowStatusDropdown = memo(function LeadRowStatusDropdown({
     el.style.width = `${menuW}px`
   }, [open])
 
+  const focusedIdxRef = useRef(focusedIdx)
+  useEffect(() => { focusedIdxRef.current = focusedIdx }, [focusedIdx])
+
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
@@ -88,11 +99,8 @@ export const LeadRowStatusDropdown = memo(function LeadRowStatusDropdown({
         setFocusedIdx((i) => (i - 1 + allOptions.length) % allOptions.length)
       } else if (e.key === 'Enter') {
         e.preventDefault()
-        setFocusedIdx((i) => {
-          const opt = allOptions[i]
-          if (opt) pick(opt.value)
-          return i
-        })
+        const opt = allOptions[focusedIdxRef.current]
+        if (opt) pick(opt.value)
       }
     }
     const onDown = (e: MouseEvent) => {
@@ -106,15 +114,7 @@ export const LeadRowStatusDropdown = memo(function LeadRowStatusDropdown({
       document.removeEventListener('keydown', onKey)
       document.removeEventListener('mousedown', onDown)
     }
-  }, [open, close, allOptions, focusedIdx, pick])
-
-  const pick = useCallback(
-    (v: LeadStatus) => {
-      close()
-      if (v !== status) onSelect(v)
-    },
-    [close, onSelect, status],
-  )
+  }, [open, close, allOptions, pick])
 
   const menu =
     open && typeof document !== 'undefined'
