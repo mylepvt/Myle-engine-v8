@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { MessageCircle, Phone } from 'lucide-react'
 
 import type { CtcsAction } from '@/hooks/use-leads-query'
@@ -33,6 +33,30 @@ type Props = {
 export function CtcsOutcomeModal({ open, leadName, phone, busy, onClose, onPick }: Props) {
   const [step, setStep] = useState<'outcomes' | 'call_later_time'>('outcomes')
   const [localFollowup, setLocalFollowup] = useState(defaultCallLaterLocalInput)
+  const innerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const el = innerRef.current
+    if (!el) return
+    const focusable = el.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    )
+    focusable[0]?.focus()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { onClose(); return }
+      if (e.key !== 'Tab' || !focusable.length) return
+      const first = focusable[0]!
+      const last = focusable[focusable.length - 1]!
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus() }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus() }
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, onClose, step])
 
   if (!open) return null
 
@@ -51,8 +75,9 @@ export function CtcsOutcomeModal({ open, leadName, phone, busy, onClose, onPick 
       role="dialog"
       aria-modal="true"
       aria-labelledby="ctcs-outcome-title"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="keyboard-safe-sheet w-full max-w-md overflow-y-auto rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-xl backdrop-blur-md">
+      <div ref={innerRef} className="keyboard-safe-sheet w-full max-w-md overflow-y-auto rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-xl backdrop-blur-md">
         <h2 id="ctcs-outcome-title" className="text-lg font-semibold text-foreground">
           Call outcome
         </h2>

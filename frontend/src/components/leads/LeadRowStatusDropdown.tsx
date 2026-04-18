@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronDown } from 'lucide-react'
 
@@ -25,6 +25,7 @@ export const LeadRowStatusDropdown = memo(function LeadRowStatusDropdown({
   onSelect,
 }: Props) {
   const [open, setOpen] = useState(false)
+  const [focusedIdx, setFocusedIdx] = useState(-1)
   const btnRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const uid = useId()
@@ -33,7 +34,27 @@ export const LeadRowStatusDropdown = memo(function LeadRowStatusDropdown({
   const currentLabel =
     LEAD_STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status
 
+  const allOptions = useMemo(
+    () =>
+      LEAD_STATUS_GROUPS.flatMap((g) =>
+        g.statuses.flatMap((v) => {
+          const o = LEAD_STATUS_OPTIONS.find((x) => x.value === v)
+          return o ? [o] : []
+        }),
+      ),
+    [],
+  )
+
   const close = useCallback(() => setOpen(false), [])
+
+  useEffect(() => {
+    if (open) {
+      const idx = allOptions.findIndex((o) => o.value === status)
+      setFocusedIdx(idx >= 0 ? idx : 0)
+    } else {
+      setFocusedIdx(-1)
+    }
+  }, [open, status, allOptions])
 
   useLayoutEffect(() => {
     if (!open || typeof document === 'undefined') return
@@ -58,7 +79,21 @@ export const LeadRowStatusDropdown = memo(function LeadRowStatusDropdown({
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close()
+      if (e.key === 'Escape') { close(); return }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setFocusedIdx((i) => (i + 1) % allOptions.length)
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setFocusedIdx((i) => (i - 1 + allOptions.length) % allOptions.length)
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        setFocusedIdx((i) => {
+          const opt = allOptions[i]
+          if (opt) pick(opt.value)
+          return i
+        })
+      }
     }
     const onDown = (e: MouseEvent) => {
       const t = e.target as Node
@@ -71,7 +106,7 @@ export const LeadRowStatusDropdown = memo(function LeadRowStatusDropdown({
       document.removeEventListener('keydown', onKey)
       document.removeEventListener('mousedown', onDown)
     }
-  }, [open, close])
+  }, [open, close, allOptions, focusedIdx, pick])
 
   const pick = useCallback(
     (v: LeadStatus) => {
@@ -89,6 +124,7 @@ export const LeadRowStatusDropdown = memo(function LeadRowStatusDropdown({
             id={listboxId}
             role="listbox"
             aria-label={`Status for ${leadName}`}
+            aria-activedescendant={focusedIdx >= 0 ? `${uid}-opt-${focusedIdx}` : undefined}
             className={cn(
               'fixed z-[100] max-h-[min(70vh,22rem)] overflow-y-auto overflow-x-hidden rounded-lg border border-border bg-popover py-1 text-popover-foreground shadow-lg',
             )}
@@ -102,15 +138,19 @@ export const LeadRowStatusDropdown = memo(function LeadRowStatusDropdown({
                   const o = LEAD_STATUS_OPTIONS.find((x) => x.value === value)
                   if (!o) return null
                   const active = o.value === status
+                  const optIdx = allOptions.findIndex((x) => x.value === o.value)
+                  const focused = optIdx === focusedIdx
                   return (
                     <button
                       key={o.value}
+                      id={`${uid}-opt-${optIdx}`}
                       type="button"
                       role="option"
                       aria-selected={active}
                       className={cn(
                         'flex w-full items-center rounded-md px-2 py-1.5 text-left text-xs transition-colors',
                         active ? 'bg-primary/15 font-semibold text-primary' : 'hover:bg-muted/80',
+                        focused && !active && 'bg-muted/80 ring-1 ring-inset ring-primary/30',
                       )}
                       onClick={() => pick(o.value)}
                     >
