@@ -495,8 +495,8 @@ export function DashboardLayout() {
                 <select
                   id="header-view-as"
                   className={cn(
-                    'h-9 max-w-[6.25rem] shrink-0 truncate rounded-lg border border-border bg-muted/40 py-0 pl-2 pr-7 text-ds-caption font-medium text-foreground',
-                    'focus:outline-none focus:ring-2 focus:ring-primary/30 md:max-w-[11rem]',
+                    'h-9 min-w-[5.5rem] max-w-[9rem] shrink-0 rounded-lg border border-border bg-muted/40 py-0 pl-2 pr-7 text-ds-caption font-medium text-foreground',
+                    'focus:outline-none focus:ring-2 focus:ring-primary/30',
                   )}
                   value={viewAsRole ?? 'admin'}
                   title="UI preview only — your account stays admin"
