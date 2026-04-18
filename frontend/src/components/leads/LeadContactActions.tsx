@@ -14,9 +14,9 @@ type Props = {
 }
 
 const boxSm =
-  'flex h-7 w-7 items-center justify-center rounded-md border border-white/12 bg-white/[0.05] text-foreground transition [&_svg]:h-3.5 [&_svg]:w-3.5'
+  'flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-white/12 bg-white/[0.05] text-foreground transition [&_svg]:h-3.5 [&_svg]:w-3.5'
 const boxMd =
-  'flex h-8 w-8 items-center justify-center rounded-md border border-white/12 bg-white/[0.05] text-foreground transition [&_svg]:h-4 [&_svg]:w-4'
+  'flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-white/12 bg-white/[0.05] text-foreground transition [&_svg]:h-4 [&_svg]:w-4'
 
 /**
  * Phone dial + WhatsApp chat — same deep links as legacy (`tel:` / `wa.me`).

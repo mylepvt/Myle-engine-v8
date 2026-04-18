@@ -57,6 +57,9 @@ export function EnrollmentCard({ leadId }: Props) {
       <form onSubmit={(e) => void handleGenerateLink(e)} className="space-y-2">
         <input
           type="url"
+          aria-label="YouTube URL (optional)"
+          aria-invalid={!!enrollError}
+          aria-describedby={enrollError ? 'enroll-error' : undefined}
           value={enrollYoutubeUrl}
           onChange={(e) => setEnrollYoutubeUrl(e.target.value)}
           placeholder="YouTube URL (optional)"
@@ -64,6 +67,7 @@ export function EnrollmentCard({ leadId }: Props) {
         />
         <input
           type="text"
+          aria-label="Video title (optional)"
           value={enrollTitle}
           onChange={(e) => setEnrollTitle(e.target.value)}
           placeholder="Video title (optional)"
@@ -71,7 +75,7 @@ export function EnrollmentCard({ leadId }: Props) {
           className="w-full rounded-md border border-white/12 bg-white/[0.05] px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
         />
         {enrollError ? (
-          <p className="text-xs text-destructive" role="alert">
+          <p id="enroll-error" className="text-xs text-destructive" role="alert">
             {enrollError}
           </p>
         ) : null}

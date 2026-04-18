@@ -68,7 +68,7 @@ export function LeadNotesPanel({ leadId }: Props) {
                 {(isAdmin || note.user_id === currentUserId) && (
                   <button
                     type="button"
-                    className="ml-2 shrink-0 text-xs text-destructive/70 hover:text-destructive underline-offset-2 hover:underline"
+                    className="ml-2 shrink-0 text-xs text-destructive hover:text-destructive/80 underline-offset-2 hover:underline"
                     disabled={deleteNote.isPending}
                     onClick={() => void handleDelete(note.id)}
                     aria-label="Delete note"
@@ -84,6 +84,10 @@ export function LeadNotesPanel({ leadId }: Props) {
 
       <form onSubmit={(e) => void handleAdd(e)} className="space-y-2">
         <textarea
+          id="lead-notes-input"
+          aria-label="Add a note"
+          aria-invalid={!!addError}
+          aria-describedby={addError ? 'lead-notes-error' : undefined}
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={2}
@@ -91,7 +95,7 @@ export function LeadNotesPanel({ leadId }: Props) {
           placeholder="Add a note (call notes, follow-up notes…)"
         />
         {addError ? (
-          <p className="text-xs text-destructive" role="alert">
+          <p id="lead-notes-error" className="text-xs text-destructive" role="alert">
             {addError}
           </p>
         ) : null}
