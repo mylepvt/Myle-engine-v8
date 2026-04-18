@@ -14,7 +14,7 @@ test.describe('happy path (mocked API)', () => {
     await page.getByRole('button', { name: /^Continue$/i }).click()
 
     await expect(page).toHaveURL(/\/dashboard\/?$/)
-    await expect(page.getByRole('heading', { name: /welcome, e2e/i })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /welcome back, e2e/i })).toBeVisible()
 
     await page.goto('/dashboard/work/leads')
     await expect(page).toHaveURL(/\/dashboard\/work\/leads\/?$/)
