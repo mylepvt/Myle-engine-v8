@@ -99,11 +99,6 @@ export function LeadDetailPage({ leadId }: Props) {
   const [callNotes, setCallNotes] = useState('')
   const [callError, setCallError] = useState('')
 
-  // Payment proof URL
-  const [showProofInput, setShowProofInput] = useState(false)
-  const [proofUrl, setProofUrl] = useState('')
-  const [proofError, setProofError] = useState('')
-
   // Clear autosave timer on unmount to prevent memory leaks.
   useEffect(() => {
     return () => {
@@ -117,7 +112,6 @@ export function LeadDetailPage({ leadId }: Props) {
       setPipelineStatus(lead.status)
       setPipelineCallStatus(lead.call_status ?? '')
       setNotes(lead.notes ?? '')
-      setProofUrl(lead.payment_proof_url ?? '')
     }
   }, [lead])
 
@@ -171,17 +165,6 @@ export function LeadDetailPage({ leadId }: Props) {
       setCallNotes('')
     } catch (e) {
       setCallError(e instanceof Error ? e.message : 'Could not log call')
-    }
-  }
-
-  async function handleSaveProof(e: FormEvent) {
-    e.preventDefault()
-    setProofError('')
-    try {
-      await patchMut.mutateAsync({ leadId, body: { payment_proof_url: proofUrl || null } })
-      setShowProofInput(false)
-    } catch (e) {
-      setProofError(e instanceof Error ? e.message : 'Save failed')
     }
   }
 
@@ -593,71 +576,33 @@ export function LeadDetailPage({ leadId }: Props) {
                   <span className="text-muted-foreground/60">—</span>
                 )}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-start gap-2">
                 <span className="text-muted-foreground w-20 shrink-0">Proof</span>
-                {lead.payment_proof_url ? (
-                  <a
-                    href={lead.payment_proof_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary underline-offset-2 hover:underline text-xs break-all"
-                  >
-                    View proof
-                  </a>
-                ) : (
-                  <span className="text-muted-foreground/60">—</span>
-                )}
+                <div className="min-w-0 flex-1 space-y-1">
+                  {lead.payment_proof_url ? (
+                    <a
+                      href={lead.payment_proof_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block text-primary underline-offset-2 hover:underline text-xs break-all"
+                    >
+                      View proof
+                    </a>
+                  ) : (
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      ₹196 proof is uploaded from the lead card on the{' '}
+                      <Link
+                        to="/dashboard/work/workboard"
+                        className="font-medium text-primary underline-offset-2 hover:underline"
+                      >
+                        Workboard
+                      </Link>{' '}
+                      (image upload), not here.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
-
-            {showProofInput ? (
-              <form
-                onSubmit={(e) => void handleSaveProof(e)}
-                className="surface-inset space-y-2 p-3"
-              >
-                <label
-                  htmlFor="proof-url"
-                  className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground"
-                >
-                  Proof URL
-                </label>
-                <input
-                  id="proof-url"
-                  type="url"
-                  value={proofUrl}
-                  onChange={(e) => setProofUrl(e.target.value)}
-                  placeholder="https://…"
-                  className="w-full rounded-md border border-white/12 bg-white/[0.05] px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
-                />
-                {proofError ? (
-                  <p className="text-xs text-destructive" role="alert">
-                    {proofError}
-                  </p>
-                ) : null}
-                <div className="flex gap-2">
-                  <Button type="submit" size="sm" disabled={patchMut.isPending}>
-                    {patchMut.isPending ? 'Saving…' : 'Save'}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setShowProofInput(false)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            ) : (
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                onClick={() => setShowProofInput(true)}
-              >
-                Upload proof URL
-              </Button>
-            )}
           </div>
         </div>
       </div>
