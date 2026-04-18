@@ -111,6 +111,14 @@ class LeadDetailPublic(LeadPublic):
     pass
 
 
+class LeadFileImportResponse(BaseModel):
+    """Result of POST ``/leads/import-file`` (team / leader PDF import)."""
+
+    imported: int = Field(..., ge=0)
+    skipped: int = Field(..., ge=0)
+    warnings: list[str] = Field(default_factory=list)
+
+
 class LeadCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     status: str = Field(default="new", max_length=32)

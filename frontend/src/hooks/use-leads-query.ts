@@ -449,10 +449,38 @@ function isLeadsInfiniteData(data: unknown): data is InfiniteData<LeadListRespon
   )
 }
 
+export type LeadFileImportResult = {
+  imported: number
+  skipped: number
+  warnings: string[]
+}
+
+export async function importLeadsFile(file: File, sourceTag?: string): Promise<LeadFileImportResult> {
+  const fd = new FormData()
+  fd.append('file', file)
+  fd.append('source_tag', (sourceTag ?? 'Import').trim() || 'Import')
+  const res = await apiFetch('/api/v1/leads/import-file', { method: 'POST', body: fd })
+  if (!res.ok) {
+    await parseError(res)
+  }
+  return res.json() as Promise<LeadFileImportResult>
+}
+
 export function useCreateLeadMutation() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (body: CreateLeadBody) => createLead(body),
+    onSuccess: () => {
+      invalidateLeadRelated(qc)
+    },
+  })
+}
+
+export function useImportLeadsFileMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ file, sourceTag }: { file: File; sourceTag?: string }) =>
+      importLeadsFile(file, sourceTag),
     onSuccess: () => {
       invalidateLeadRelated(qc)
     },

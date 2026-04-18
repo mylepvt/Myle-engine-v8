@@ -6,13 +6,17 @@ from datetime import datetime, timezone
 from typing import List, Tuple
 
 from fastapi import UploadFile
-from sqlalchemy import or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
 from app.models.user import User
-from app.services.downline import is_user_in_downline_of, lead_visible_to_leader_clause
+from app.services.downline import (
+    is_user_in_downline_of,
+    lead_execution_visible_to_leader_clause,
+    lead_visible_to_leader_clause,
+)
 from app.services.payment_proof_storage import save_payment_proof_file
 
 
@@ -41,11 +45,20 @@ class PaymentService:
         if lead.created_by_user_id == actor_user_id or lead.assigned_to_user_id == actor_user_id:
             return True
         if actor_role == "leader":
-            return await is_user_in_downline_of(
+            if await is_user_in_downline_of(
                 self.session,
                 lead.created_by_user_id,
                 actor_user_id,
-            )
+            ):
+                return True
+            assignee = lead.assigned_to_user_id
+            if assignee is not None and await is_user_in_downline_of(
+                self.session,
+                assignee,
+                actor_user_id,
+            ):
+                return True
+            return False
         return False
 
     async def process_payment_proof(
@@ -104,10 +117,13 @@ class PaymentService:
         ):
             return False, "Access denied"
 
-        if lead.payment_status != "proof_uploaded":
-            return False, "Payment proof is not pending approval"
         if not (lead.payment_proof_url or "").strip():
             return False, "Payment proof file is missing"
+        if lead.payment_status == "approved":
+            return False, "Payment proof is already approved"
+        if lead.payment_status != "proof_uploaded":
+            if approved_by_role != "admin":
+                return False, "Payment proof is not pending approval"
 
         lead.payment_status = "approved"
 
@@ -146,8 +162,11 @@ class PaymentService:
         ):
             return False, "Access denied"
 
+        if not (lead.payment_proof_url or "").strip():
+            return False, "Payment proof file is missing"
         if lead.payment_status != "proof_uploaded":
-            return False, "Payment proof is not pending approval"
+            if rejected_by_role != "admin":
+                return False, "Payment proof is not pending approval"
 
         lead.payment_status = "rejected"
 
@@ -162,27 +181,39 @@ class PaymentService:
     ) -> List[dict]:
         """Get pending payment proofs for approval."""
         if user_role == "admin":
-            where_clause = Lead.payment_status == "proof_uploaded"
+            # Any non-deleted lead with proof on file that is not yet approved (manual URL,
+            # pool, legacy pending, or standard proof_uploaded).
+            where_clause = and_(
+                Lead.deleted_at.is_(None),
+                Lead.payment_proof_url.isnot(None),
+                Lead.payment_proof_url != "",
+                or_(Lead.payment_status.is_(None), Lead.payment_status != "approved"),
+            )
         elif user_role == "leader":
-            where_clause = (
+            # Include leads assigned to anyone in the downline (e.g. admin/pool-created
+            # leads claimed by a team member), not only leads created within the tree.
+            where_parts = [
+                Lead.payment_proof_url.isnot(None),
+                Lead.payment_proof_url != "",
                 Lead.payment_status == "proof_uploaded",
                 or_(
-                    Lead.assigned_to_user_id == user_id,
                     lead_visible_to_leader_clause(user_id),
+                    lead_execution_visible_to_leader_clause(user_id),
                 ),
-            )
+            ]
         else:
             return []
 
+        if user_role == "admin":
+            where_parts = [where_clause]
         q = await self.session.execute(
             select(Lead, User.username)
             .outerjoin(User, User.id == Lead.assigned_to_user_id)
-            .where(
-                Lead.payment_proof_url.isnot(None),
-                Lead.payment_proof_url != "",
-                *([where_clause] if not isinstance(where_clause, tuple) else list(where_clause)),
+            .where(*where_parts)
+            .order_by(
+                func.coalesce(Lead.payment_proof_uploaded_at, Lead.created_at).desc(),
+                Lead.id.desc(),
             )
-            .order_by(Lead.payment_proof_uploaded_at.desc(), Lead.id.desc())
         )
         rows = q.all()
 
