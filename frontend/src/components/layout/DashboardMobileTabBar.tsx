@@ -152,7 +152,7 @@ export function DashboardMobileTabBar({
           type="button"
           onClick={onOpenMenu}
           className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 text-[0.65rem] font-medium leading-none text-muted-foreground transition-colors active:opacity-70 hover:bg-muted/70 hover:text-foreground"
-          aria-label={noticeBoardUnread > 0 ? `Open full menu — ${noticeBoardUnread} new notices` : 'Open full menu'}
+          aria-label="Open full menu"
         >
           <MoreHorizontal className="size-[22px] shrink-0" strokeWidth={1.75} aria-hidden />
           <span className="truncate">More</span>
