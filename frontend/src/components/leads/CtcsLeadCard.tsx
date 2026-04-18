@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
-import { ChevronRight, MessageCircle, MoreHorizontal, Phone } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { CheckCircle2, ChevronRight, MessageCircle, MoreHorizontal, Phone, Upload } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
 
 import { cn } from '@/lib/utils'
+import { apiFetch } from '@/lib/api'
 import { callStatusSelectOptions, type CallStatusApi } from '@/lib/call-status-options'
 import { teamLeadStatusSelectOptions, teamMayChangeLeadStatus } from '@/lib/team-lead-status'
 import { formatCountdown, timerRemainingMs } from '@/lib/ctcs-timer'
@@ -128,6 +130,34 @@ export function CtcsLeadCard({
 
   const selectBusy = patchBusy || actionBusy
   void tick
+
+  // ── Proof upload ───────────────────────────────────────────────────────────
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadDone, setUploadDone] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const qc = useQueryClient()
+
+  const proofAlreadyUploaded =
+    lead.payment_status === 'proof_uploaded' || lead.payment_status === 'approved'
+
+  async function handleProofFile(file: File) {
+    setUploading(true)
+    setUploadError(null)
+    try {
+      const fd = new FormData()
+      fd.append('proof_file', file)
+      fd.append('lead_id', String(lead.id))
+      fd.append('payment_amount_cents', '19600')
+      await apiFetch('/api/v1/payments/proof/upload', { method: 'POST', body: fd })
+      setUploadDone(true)
+      void qc.invalidateQueries({ queryKey: ['leads'] })
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const ms = timerRemainingMs(lead.last_action_at ?? null, lead.created_at)
   const overdue = ms < 0
@@ -390,6 +420,41 @@ export function CtcsLeadCard({
             >
               <MoreHorizontal className="size-3" aria-hidden />
             </button>
+            {/* ₹196 proof upload */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) void handleProofFile(file)
+                e.target.value = ''
+              }}
+            />
+            {proofAlreadyUploaded || uploadDone ? (
+              <span
+                title="Proof uploaded"
+                className="flex size-8 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-400/12 text-emerald-300"
+              >
+                <CheckCircle2 className="size-3.5" />
+              </span>
+            ) : (
+              <button
+                type="button"
+                title={uploading ? 'Uploading…' : uploadError ? `Retry — ${uploadError}` : 'Upload ₹196 proof'}
+                disabled={uploading}
+                onClick={() => fileInputRef.current?.click()}
+                className={cn(
+                  'flex size-8 items-center justify-center rounded-full border transition disabled:opacity-50 active:scale-95',
+                  uploadError
+                    ? 'border-red-400/40 bg-muted/30 text-red-400 hover:bg-red-400/10'
+                    : 'border-border bg-muted/30 text-muted-foreground hover:border-amber-400/40 hover:text-amber-400',
+                )}
+              >
+                <Upload className="size-3.5" />
+              </button>
+            )}
           </div>
         </div>
       </div>
