@@ -12,69 +12,53 @@ import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 function ctcsGetTimeColor(totalSeconds: number) {
   const hours = totalSeconds / 3600
 
-  if (hours >= 24) {
-    return {
-      text: 'text-emerald-800 dark:text-green-400',
-      stroke: '#4ade80',
-      glow: 'shadow-[0_0_12px_rgba(34,197,94,0.6)]',
-      border: 'border-green-500/25',
-      cardGlow: 'shadow-[0_0_12px_rgba(34,197,94,0.15)]',
-      leftBorder:
-        'bg-gradient-to-b from-green-400 via-green-500 to-green-400 shadow-[0_0_12px_rgba(34,197,94,0.6)]',
-    }
+  if (hours >= 24) return {
+    text: 'text-emerald-800 dark:text-urgency-safe',
+    stroke: 'var(--urgency-safe)',
+    glow: 'shadow-urgency-safe',
+    border: 'border-urgency-safe/25',
+    cardGlow: 'shadow-urgency-safe-card',
+    leftBorder: 'bg-urgency-safe shadow-urgency-safe',
   }
-  if (hours >= 18) {
-    return {
-      text: 'text-blue-700 dark:text-blue-400',
-      stroke: '#60a5fa',
-      glow: 'shadow-[0_0_12px_rgba(96,165,250,0.6)]',
-      border: 'border-blue-500/25',
-      cardGlow: 'shadow-[0_0_12px_rgba(96,165,250,0.15)]',
-      leftBorder:
-        'bg-gradient-to-b from-blue-400 via-blue-500 to-blue-400 shadow-[0_0_12px_rgba(96,165,250,0.6)]',
-    }
+  if (hours >= 18) return {
+    text: 'text-blue-700 dark:text-urgency-watch',
+    stroke: 'var(--urgency-watch)',
+    glow: 'shadow-urgency-watch',
+    border: 'border-urgency-watch/25',
+    cardGlow: 'shadow-urgency-watch-card',
+    leftBorder: 'bg-urgency-watch shadow-urgency-watch',
   }
-  if (hours >= 12) {
-    return {
-      text: 'text-orange-700 dark:text-orange-400',
-      stroke: '#fb923c',
-      glow: 'shadow-[0_0_12px_rgba(251,146,60,0.6)]',
-      border: 'border-orange-500/25',
-      cardGlow: 'shadow-[0_0_12px_rgba(251,146,60,0.15)]',
-      leftBorder:
-        'bg-gradient-to-b from-orange-400 via-orange-500 to-orange-400 shadow-[0_0_12px_rgba(251,146,60,0.6)]',
-    }
+  if (hours >= 12) return {
+    text: 'text-orange-700 dark:text-urgency-caution',
+    stroke: 'var(--urgency-caution)',
+    glow: 'shadow-urgency-caution',
+    border: 'border-urgency-caution/25',
+    cardGlow: 'shadow-urgency-caution-card',
+    leftBorder: 'bg-urgency-caution shadow-urgency-caution',
   }
-  if (hours >= 6) {
-    return {
-      text: 'text-red-700 dark:text-red-400',
-      stroke: '#f87171',
-      glow: 'shadow-[0_0_12px_rgba(248,113,113,0.6)]',
-      border: 'border-red-500/25',
-      cardGlow: 'shadow-[0_0_12px_rgba(248,113,113,0.15)]',
-      leftBorder:
-        'bg-gradient-to-b from-red-400 via-red-500 to-red-400 shadow-[0_0_12px_rgba(248,113,113,0.6)]',
-    }
+  if (hours >= 6) return {
+    text: 'text-red-700 dark:text-urgency-warning',
+    stroke: 'var(--urgency-warning)',
+    glow: 'shadow-urgency-warning',
+    border: 'border-urgency-warning/25',
+    cardGlow: 'shadow-urgency-warning-card',
+    leftBorder: 'bg-urgency-warning shadow-urgency-warning',
   }
-  if (hours >= 2) {
-    return {
-      text: 'text-red-800 dark:text-red-600',
-      stroke: '#dc2626',
-      glow: 'shadow-[0_0_12px_rgba(220,38,38,0.7)]',
-      border: 'border-red-700/30',
-      cardGlow: 'shadow-[0_0_12px_rgba(220,38,38,0.2)]',
-      leftBorder:
-        'bg-gradient-to-b from-red-600 via-red-700 to-red-600 shadow-[0_0_12px_rgba(220,38,38,0.7)]',
-    }
+  if (hours >= 2) return {
+    text: 'text-red-800 dark:text-urgency-danger',
+    stroke: 'var(--urgency-danger)',
+    glow: 'shadow-urgency-danger',
+    border: 'border-urgency-danger/30',
+    cardGlow: 'shadow-urgency-danger-card',
+    leftBorder: 'bg-urgency-danger shadow-urgency-danger',
   }
   return {
-    text: 'text-red-900 dark:text-red-700',
-    stroke: '#b91c1c',
-    glow: 'shadow-[0_0_15px_rgba(185,28,28,0.8)]',
-    border: 'border-red-800/40',
-    cardGlow: 'shadow-[0_0_15px_rgba(185,28,28,0.25)]',
-    leftBorder:
-      'bg-gradient-to-b from-red-700 via-red-800 to-red-700 shadow-[0_0_15px_rgba(185,28,28,0.8)]',
+    text: 'text-red-900 dark:text-urgency-critical',
+    stroke: 'var(--urgency-critical)',
+    glow: 'shadow-urgency-critical',
+    border: 'border-urgency-critical/40',
+    cardGlow: 'shadow-urgency-critical-card',
+    leftBorder: 'bg-urgency-critical shadow-urgency-critical',
   }
 }
 

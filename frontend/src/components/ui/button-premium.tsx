@@ -64,7 +64,7 @@ const GradientButton = React.forwardRef<HTMLButtonElement, GradientButtonProps>(
   ({ className, gradient = 'primary', ...props }, ref) => {
     const gradientStyles = {
       primary:
-        'border-transparent bg-gradient-to-r from-[#5465ff] to-[#7c8cff] text-white hover:opacity-90',
+        'border-transparent bg-gradient-to-r from-palette-blue to-palette-blue-light text-white hover:opacity-90',
       success:
         'border-transparent bg-gradient-to-r from-emerald-500 to-teal-400 text-white hover:opacity-90',
       warning:

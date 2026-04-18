@@ -52,6 +52,31 @@
     --shadow-card: 0 16px 48px -20px color-mix(in srgb, var(--palette-blue) 22%, transparent);
     --shadow-ios-bar: 0 0.5px 0 0 color-mix(in srgb, var(--palette-mist) 55%, transparent),
       0 8px 24px -12px color-mix(in srgb, var(--palette-ink) 18%, transparent);
+
+    /* Palette extensions */
+    --palette-blue-light: color-mix(in srgb, var(--palette-blue) 70%, white 30%);
+
+    /* Time-urgency stroke colors (CtcsLeadCard clock face) */
+    --urgency-safe: #4ade80;
+    --urgency-watch: #60a5fa;
+    --urgency-caution: #fb923c;
+    --urgency-warning: #f87171;
+    --urgency-danger: #dc2626;
+    --urgency-critical: #b91c1c;
+
+    /* Urgency glow shadows */
+    --urgency-safe-glow: 0 0 12px color-mix(in srgb, var(--urgency-safe) 60%, transparent);
+    --urgency-safe-card-glow: 0 0 12px color-mix(in srgb, var(--urgency-safe) 15%, transparent);
+    --urgency-watch-glow: 0 0 12px color-mix(in srgb, var(--urgency-watch) 60%, transparent);
+    --urgency-watch-card-glow: 0 0 12px color-mix(in srgb, var(--urgency-watch) 15%, transparent);
+    --urgency-caution-glow: 0 0 12px color-mix(in srgb, var(--urgency-caution) 60%, transparent);
+    --urgency-caution-card-glow: 0 0 12px color-mix(in srgb, var(--urgency-caution) 15%, transparent);
+    --urgency-warning-glow: 0 0 12px color-mix(in srgb, var(--urgency-warning) 60%, transparent);
+    --urgency-warning-card-glow: 0 0 12px color-mix(in srgb, var(--urgency-warning) 15%, transparent);
+    --urgency-danger-glow: 0 0 12px color-mix(in srgb, var(--urgency-danger) 70%, transparent);
+    --urgency-danger-card-glow: 0 0 12px color-mix(in srgb, var(--urgency-danger) 20%, transparent);
+    --urgency-critical-glow: 0 0 15px color-mix(in srgb, var(--urgency-critical) 80%, transparent);
+    --urgency-critical-card-glow: 0 0 15px color-mix(in srgb, var(--urgency-critical) 25%, transparent);
   }
 
   .dark {
@@ -311,11 +336,11 @@
 
   /* PREMIUM CARD SHADOWS */
   .shadow-premium {
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 10px 30px color-mix(in srgb, var(--palette-ink) 35%, transparent);
   }
 
   .shadow-premium-hover {
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 20px 40px color-mix(in srgb, var(--palette-ink) 40%, transparent);
   }
 
   /* RIPPLE EFFECT CONTAINER */
@@ -346,6 +371,15 @@
   .gradient-border-inner {
     background: var(--card);
     border-radius: calc(var(--radius) - 1px);
+  }
+
+  /* Auth card dark header — always dark regardless of theme */
+  .auth-header-banner {
+    background: linear-gradient(
+      135deg,
+      var(--palette-ink),
+      color-mix(in srgb, var(--palette-blue) 12%, var(--palette-ink) 88%)
+    );
   }
 }
 

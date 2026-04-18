@@ -38,7 +38,7 @@ export function AuthCard({
       <div
         className={cn(
           'relative',
-          'bg-gradient-to-br from-black via-[#020712] to-[#0a1328]',
+          'auth-header-banner',
           variant === 'center' ? 'px-6 pb-8 pt-9 text-center' : 'px-5 pb-6 pt-6 sm:px-6',
         )}
       >
