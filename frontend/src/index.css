@@ -223,9 +223,11 @@
   }
 
   #root {
-    /* Full viewport via CSS only — no JS height locks on documentElement */
+    /* Fill viewport; --app-layout-height is set in index.html for Android / vv accuracy */
     min-height: 100vh;
     min-height: 100dvh;
+    min-height: var(--app-layout-height, 100dvh);
+    height: 100%;
     display: flex;
     flex-direction: column;
     @apply min-w-0 max-w-full;
@@ -480,23 +482,19 @@
    */
   .dashboard-shell {
     /*
-     * Three-level height cascade (no JS, no custom properties needed):
-     *   1. 100vh         — universal fallback (Android Chrome < 108, very old browsers)
-     *   2. -webkit-fill-available — iOS Safari all versions (correct visible-area height
-     *                               in both browser and PWA/standalone mode)
-     *   3. 100dvh        — modern dynamic viewport (Chrome 108+, FF 101+, Safari 15.4+)
-     *
-     * Do NOT add `height: var(--app-shell-vh)` here — if the variable resolves to an
-     * unsupported unit (e.g. 100dvh on old Android Chrome) the declaration becomes
-     * "invalid at computed-value time" and CSS resets height to `auto`, overriding
-     * the valid 100vh fallback above it.
+     * Height cascade:
+     *   1. 100vh / -webkit-fill-available / 100dvh — static fallbacks when --app-layout-height absent
+     *   2. var(--app-layout-height, 100dvh) — px from index.html (visualViewport + keyboard heuristic)
+     *      fixes Android “half screen” / empty band under the mobile tab bar when dvh ≠ painted area.
      */
     height: 100vh;
-    height: -webkit-fill-available; /* iOS Safari PWA + browser: always correct visible-area */
+    height: -webkit-fill-available; /* iOS Safari PWA + browser */
     height: 100dvh;
+    height: var(--app-layout-height, 100dvh);
     max-height: 100vh;
     max-height: -webkit-fill-available;
     max-height: 100dvh;
+    max-height: var(--app-layout-height, 100dvh);
     overflow: hidden;
     position: relative;
   }
@@ -506,7 +504,9 @@
       height: 100vh;
       height: -webkit-fill-available;
       height: 100dvh;
+      height: var(--app-layout-height, 100dvh);
       max-height: 100dvh;
+      max-height: var(--app-layout-height, 100dvh);
     }
   }
 

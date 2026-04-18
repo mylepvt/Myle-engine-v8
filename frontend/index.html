@@ -34,6 +34,44 @@
       name="viewport"
       content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
     />
+    <!--
+      Real viewport height in px — fixes Android (Chrome / in-app WebView / MIUI) where 100dvh is
+      shorter than the painted area (“half screen” + dead band under the tab bar). Mirrors the
+      keyboard heuristic used in DashboardLayout (inset > 56px ≈ software keyboard).
+    -->
+    <script>
+      ;(function () {
+        function syncAppLayoutHeight() {
+          try {
+            var inner = window.innerHeight || 0
+            var client = document.documentElement.clientHeight || 0
+            var vv = window.visualViewport
+            var h
+            if (vv && vv.height) {
+              var inset = Math.max(0, Math.round(inner - vv.height - (vv.offsetTop || 0)))
+              if (inset > 56) {
+                h = Math.round(vv.height)
+              } else {
+                h = Math.max(inner, client, Math.round(vv.height + (vv.offsetTop || 0)), Math.round(vv.height))
+              }
+            } else {
+              h = Math.max(inner, client)
+            }
+            if (h < 320) h = Math.max(inner, client, 480)
+            document.documentElement.style.setProperty('--app-layout-height', Math.round(h) + 'px')
+          } catch (e) {
+            /* ignore */
+          }
+        }
+        syncAppLayoutHeight()
+        window.addEventListener('resize', syncAppLayoutHeight, { passive: true })
+        window.addEventListener('orientationchange', syncAppLayoutHeight, { passive: true })
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener('resize', syncAppLayoutHeight, { passive: true })
+          window.visualViewport.addEventListener('scroll', syncAppLayoutHeight, { passive: true })
+        }
+      })()
+    </script>
     <!-- Early: installed PWA / iOS standalone — used by index.css to avoid dvh “dead band” at bottom -->
     <script>
       ;(function () {
