@@ -265,25 +265,35 @@ async def import_users_phase(
             "User import skipped rows and --fail-on-skip is enabled; fix conflicts then re-run.",
         )
 
-    # If all users were skipped (already imported), rebuild mapping from existing DB rows
-    if not mapping and skipped > 0:
-        print("  [users] rebuilding id-map from existing rows in PostgreSQL …")
-        rows2 = legacy.execute("SELECT id, email, fbo_id FROM users ORDER BY id").fetchall()
+    # Every legacy user id must map to PostgreSQL users.id (new row or already-existing row).
+    # Without this, leads import mis-assigns owners when some users inserted and some skipped.
+    need_link = [int(row["id"]) for row in rows if int(row["id"]) not in mapping]
+    if need_link:
+        print(f"  [users] linking {len(need_link)} legacy users to existing PostgreSQL rows …")
+        from sqlalchemy import select as _select, or_ as _or
+        from app.models.user import User as _User
+
         async with AsyncSessionLocal() as session:
-            for row in rows2:
+            for row in rows:
                 lid = int(row["id"])
-                email = _norm_email(str(row["fbo_id"] or ""), lid, str(row["email"] or ""))
+                if lid in mapping:
+                    continue
+                username = str(row["username"] or "").strip()
+                email = _norm_email(username, lid, str(row["email"] or ""))
                 fbo = _norm_fbo(str(row["fbo_id"] or ""), lid)
-                # Try email lookup first, then fbo_id
-                from sqlalchemy import select as _select, or_ as _or
-                from app.models.user import User as _User
                 result = await session.execute(
-                    _select(_User).where(_or(_User.email == email, _User.fbo_id == fbo))
+                    _select(_User).where(_or(_User.email == email, _User.fbo_id == fbo)),
                 )
                 existing = result.scalars().first()
                 if existing:
                     mapping[lid] = existing.id
-        print(f"  [users] rebuilt {len(mapping)} mappings from existing rows")
+                else:
+                    print(
+                        f"    WARN legacy user id={lid} has no PostgreSQL match "
+                        f"(fbo={fbo!r} email={email!r})",
+                        file=sys.stderr,
+                    )
+        print(f"  [users] full legacy id → pg id map size: {len(mapping)}")
     return mapping
 
 
