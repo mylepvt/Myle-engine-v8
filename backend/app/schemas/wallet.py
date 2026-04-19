@@ -15,6 +15,7 @@ class WalletLedgerEntryPublic(BaseModel):
     currency: str
     note: Optional[str] = None
     created_at: datetime
+    invoice_number: Optional[str] = None
 
 
 class WalletSummaryResponse(BaseModel):
@@ -75,6 +76,7 @@ class WalletRechargePublic(BaseModel):
     reviewed_by_user_id: Optional[int]
     reviewed_at: Optional[datetime]
     created_at: datetime
+    invoice_number: Optional[str] = None
 
 
 class WalletRechargeListResponse(BaseModel):

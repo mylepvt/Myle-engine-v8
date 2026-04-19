@@ -7,6 +7,7 @@ import {
   useWalletRechargeInstructionsQuery,
   useWalletRechargeRequestsQuery,
 } from '@/hooks/use-wallet-recharge-query'
+import { invoiceDownloadUrl } from '@/lib/invoice-url'
 import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
 
 type Props = {
@@ -243,6 +244,18 @@ export function WalletRechargePage({ title }: Props) {
                     <span className="text-xs text-muted-foreground">
                       {new Date(r.created_at).toLocaleDateString()}
                     </span>
+                    {r.status === 'approved' && r.invoice_number ? (
+                      <a
+                        href={invoiceDownloadUrl(r.invoice_number)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-base leading-none text-muted-foreground hover:text-foreground"
+                        title={`Download receipt ${r.invoice_number}`}
+                        aria-label="Download payment receipt"
+                      >
+                        📄
+                      </a>
+                    ) : null}
                   </div>
                 </div>
                 {r.admin_note ? (

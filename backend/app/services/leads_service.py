@@ -15,7 +15,7 @@ from app.core.realtime_hub import notify_topics
 from app.models.follow_up import FollowUp
 from app.models.lead import Lead
 from app.models.user import User
-from app.models.user import User
+from app.models.wallet_ledger import WalletLedgerEntry
 from app.repositories.leads_repository import SqlAlchemyLeadsRepository
 from app.schemas.call_events import CallEventCreate, CallEventListResponse, CallEventPublic
 from app.schemas.leads import (
@@ -32,6 +32,7 @@ from app.schemas.leads import (
 )
 from app.services.leads_contracts import LeadsRepositoryContract, TopicNotifierContract
 from app.services.auto_handoff import AutoHandoffService
+from app.services.invoice_records import create_tax_invoice_for_pool_claim
 from app.services.ctcs_heat import bump_heat_on_entering_contacted, clamp_ctcs_heat
 from app.services.ctcs_status_chain import advance_lead_status_toward
 from app.services.whatsapp_ctcs import send_interested_enrollment_assets
@@ -245,6 +246,21 @@ class LeadsService:
                 lead_name=lead.name,
                 price_cents=price,
             )
+            await self._session.flush()
+            idem_key = f"pool_claim_{lead_id}_{user.user_id}"
+            entry_row = await self._session.execute(
+                select(WalletLedgerEntry).where(WalletLedgerEntry.idempotency_key == idem_key)
+            )
+            entry = entry_row.scalar_one_or_none()
+            if entry is not None:
+                await create_tax_invoice_for_pool_claim(
+                    self._session,
+                    user_id=user.user_id,
+                    total_cents=price,
+                    wallet_ledger_entry_id=entry.id,
+                    crm_claim_idempotency_key=None,
+                    lead_index=1,
+                )
         await self._repository.mark_lead_claimed(lead, user.user_id)
         await self._repository.add_lead_activity(
             user_id=user.user_id,

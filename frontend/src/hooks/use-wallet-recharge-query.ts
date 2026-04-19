@@ -13,6 +13,7 @@ export type WalletRecharge = {
   reviewed_by_user_id: number | null
   reviewed_at: string | null
   created_at: string
+  invoice_number?: string | null
 }
 
 export type WalletRechargeCreate = {

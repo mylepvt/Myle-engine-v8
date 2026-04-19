@@ -73,6 +73,7 @@ export type FullUiSurface =
     }
   | { kind: 'wallet' }
   | { kind: 'finance-recharges' }
+  | { kind: 'admin-invoices' }
   | { kind: 'wallet-recharge' }
   | { kind: 'wallet-recharge-admin' }
   | { kind: 'notice-board' }
@@ -292,6 +293,14 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('finance/recharges'),
     surface: 'full',
     ui: { kind: 'finance-recharges' },
+  },
+  {
+    path: 'finance/invoices',
+    section: { id: 'finance', label: 'Wallet' },
+    label: 'Invoices',
+    roles: routeRoles('finance/invoices'),
+    surface: 'full',
+    ui: { kind: 'admin-invoices' },
   },
   {
     path: 'finance/budget-export',

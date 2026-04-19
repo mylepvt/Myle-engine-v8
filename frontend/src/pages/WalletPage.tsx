@@ -1,11 +1,27 @@
 import { Skeleton } from '@/components/ui/skeleton'
 import { useWalletLedgerQuery, useWalletMeQuery } from '@/hooks/use-wallet-query'
+import { invoiceDownloadUrl } from '@/lib/invoice-url'
 
 type Props = { title: string }
 
 function formatMoney(cents: number, currency: string) {
   const major = cents / 100
   return `${currency} ${major.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+function InvoiceDocButton({ invoiceNumber }: { invoiceNumber: string }) {
+  return (
+    <a
+      href={invoiceDownloadUrl(invoiceNumber)}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex shrink-0 items-center justify-center rounded-md border border-white/15 px-1.5 py-0.5 text-base leading-none text-muted-foreground hover:border-primary/40 hover:text-foreground"
+      title={`Download ${invoiceNumber}`}
+      aria-label={`Download invoice ${invoiceNumber}`}
+    >
+      📄
+    </a>
+  )
 }
 
 export function WalletPage({ title }: Props) {
@@ -46,14 +62,17 @@ export function WalletPage({ title }: Props) {
             {me.data.recent_entries.map((e) => (
               <li
                 key={e.id}
-                className="surface-inset px-3 py-2 text-muted-foreground"
+                className="surface-inset flex items-start justify-between gap-2 px-3 py-2 text-muted-foreground"
               >
-                <span className={e.amount_cents >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
-                  {e.amount_cents >= 0 ? '+' : ''}
-                  {(e.amount_cents / 100).toFixed(2)} {e.currency}
-                </span>
-                {e.note ? <span className="ml-2 text-xs">{e.note}</span> : null}
-                <span className="mt-1 block text-xs">{new Date(e.created_at).toLocaleString()}</span>
+                <div className="min-w-0">
+                  <span className={e.amount_cents >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                    {e.amount_cents >= 0 ? '+' : ''}
+                    {(e.amount_cents / 100).toFixed(2)} {e.currency}
+                  </span>
+                  {e.note ? <span className="ml-2 text-xs">{e.note}</span> : null}
+                  <span className="mt-1 block text-xs">{new Date(e.created_at).toLocaleString()}</span>
+                </div>
+                {e.invoice_number ? <InvoiceDocButton invoiceNumber={e.invoice_number} /> : null}
               </li>
             ))}
           </ul>
@@ -76,9 +95,12 @@ export function WalletPage({ title }: Props) {
         {ledger.data && ledger.data.items.length > 0 ? (
           <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
             {ledger.data.items.map((e) => (
-              <li key={e.id}>
-                #{e.id} · {e.amount_cents >= 0 ? '+' : ''}
-                {(e.amount_cents / 100).toFixed(2)} · {new Date(e.created_at).toLocaleString()}
+              <li key={e.id} className="flex items-center justify-between gap-2">
+                <span>
+                  #{e.id} · {e.amount_cents >= 0 ? '+' : ''}
+                  {(e.amount_cents / 100).toFixed(2)} · {new Date(e.created_at).toLocaleString()}
+                </span>
+                {e.invoice_number ? <InvoiceDocButton invoiceNumber={e.invoice_number} /> : null}
               </li>
             ))}
           </ul>
