@@ -84,7 +84,11 @@ function RechargeRow({
               ₹{(item.amount_cents / 100).toFixed(2)}
             </span>
             <RechargeStatusBadge status={item.status} />
-            <span className="text-xs text-muted-foreground">User #{item.user_id}</span>
+            <span className="text-xs text-muted-foreground">
+              {item.member_name || item.member_fbo_id
+                ? `${item.member_name?.trim() || '—'} · ${item.member_fbo_id ?? '—'}`
+                : `User #${item.user_id}`}
+            </span>
             {item.status === 'approved' && item.invoice_number ? (
               <a
                 href={invoiceDownloadUrl(item.invoice_number)}

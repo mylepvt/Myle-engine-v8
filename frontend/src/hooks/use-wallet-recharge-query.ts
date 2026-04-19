@@ -5,6 +5,8 @@ import { apiFetch } from '@/lib/api'
 export type WalletRecharge = {
   id: number
   user_id: number
+  member_name?: string | null
+  member_fbo_id?: string | null
   amount_cents: number
   utr_number: string | null
   proof_url: string | null

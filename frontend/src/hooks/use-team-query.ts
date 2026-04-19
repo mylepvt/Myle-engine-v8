@@ -6,6 +6,7 @@ import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 export type TeamMemberPublic = {
   id: number
   fbo_id: string
+  name?: string | null
   username: string | null
   email: string
   role: string

@@ -62,6 +62,33 @@ async def _invoice_numbers_for_recharge_ids(session: AsyncSession, recharge_ids:
     return {int(rid): str(num) for rid, num in rows if rid is not None}
 
 
+async def _user_display_by_ids(
+    session: AsyncSession, user_ids: list[int]
+) -> dict[int, tuple[Optional[str], Optional[str]]]:
+    """user_id -> (name, fbo_id) for API labels."""
+    ids = list({int(i) for i in user_ids if i})
+    if not ids:
+        return {}
+    stmt = select(User.id, User.name, User.fbo_id).where(User.id.in_(ids))
+    rows = (await session.execute(stmt)).all()
+    return {int(uid): (name, fbo) for uid, name, fbo in rows}
+
+
+async def _wallet_recharge_public_response(
+    session: AsyncSession, row: WalletRecharge
+) -> WalletRechargePublic:
+    inv_map = await _invoice_numbers_for_recharge_ids(session, [row.id])
+    umeta = await _user_display_by_ids(session, [row.user_id])
+    name, fbo = umeta.get(row.user_id, (None, None))
+    return WalletRechargePublic.model_validate(row).model_copy(
+        update={
+            "invoice_number": inv_map.get(row.id),
+            "member_name": name,
+            "member_fbo_id": fbo,
+        }
+    )
+
+
 def _require_admin(user: AuthUser) -> None:
     if user.role != "admin":
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
@@ -316,7 +343,7 @@ async def create_recharge_request(
         )
         hit = existing.scalar_one_or_none()
         if hit is not None:
-            return WalletRechargePublic.model_validate(hit)
+            return await _wallet_recharge_public_response(session, hit)
 
     recharge = WalletRecharge(
         user_id=user.user_id,
@@ -341,11 +368,11 @@ async def create_recharge_request(
             )
             replay = again.scalar_one_or_none()
             if replay is not None:
-                return WalletRechargePublic.model_validate(replay)
+                return await _wallet_recharge_public_response(session, replay)
         raise
 
     await notify_topics("wallet")
-    return WalletRechargePublic.model_validate(recharge)
+    return await _wallet_recharge_public_response(session, recharge)
 
 
 @router.get("/recharge-requests", response_model=WalletRechargeListResponse)
@@ -383,8 +410,15 @@ async def list_recharge_requests(
 
     rows = (await session.execute(list_stmt)).scalars().all()
     inv_map = await _invoice_numbers_for_recharge_ids(session, [r.id for r in rows])
+    umeta = await _user_display_by_ids(session, [r.user_id for r in rows])
     items = [
-        WalletRechargePublic.model_validate(r).model_copy(update={"invoice_number": inv_map.get(r.id)})
+        WalletRechargePublic.model_validate(r).model_copy(
+            update={
+                "invoice_number": inv_map.get(r.id),
+                "member_name": umeta.get(r.user_id, (None, None))[0],
+                "member_fbo_id": umeta.get(r.user_id, (None, None))[1],
+            }
+        )
         for r in rows
     ]
     return WalletRechargeListResponse(items=items, total=total, limit=limit, offset=offset)
@@ -409,10 +443,7 @@ async def review_recharge_request(
 
     # Idempotent: already reviewed with same outcome
     if recharge.status in {"approved", "rejected"}:
-        inv_map = await _invoice_numbers_for_recharge_ids(session, [recharge.id])
-        return WalletRechargePublic.model_validate(recharge).model_copy(
-            update={"invoice_number": inv_map.get(recharge.id)}
-        )
+        return await _wallet_recharge_public_response(session, recharge)
 
     if recharge.status != "pending":
         raise HTTPException(
@@ -455,7 +486,4 @@ async def review_recharge_request(
     await session.commit()
     await session.refresh(recharge)
     await notify_topics("wallet")
-    inv_map = await _invoice_numbers_for_recharge_ids(session, [recharge.id])
-    return WalletRechargePublic.model_validate(recharge).model_copy(
-        update={"invoice_number": inv_map.get(recharge.id)}
-    )
+    return await _wallet_recharge_public_response(session, recharge)

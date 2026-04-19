@@ -4,10 +4,15 @@ import { InsightList } from '@/components/dashboard/InsightList'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useShellStubQuery } from '@/hooks/use-shell-stub-query'
-import { useTeamMembersQuery } from '@/hooks/use-team-query'
+import { useTeamMembersQuery, type TeamMemberPublic } from '@/hooks/use-team-query'
 import { useWalletAdjustmentMutation } from '@/hooks/use-wallet-query'
 
 type Props = { title: string }
+
+function memberSelectLabel(m: TeamMemberPublic): string {
+  const display = (m.name && m.name.trim()) || m.username || m.email
+  return `${display} · ${m.fbo_id} (${m.role})`
+}
 
 export function FinanceRechargesPage({ title }: Props) {
   const stub = useShellStubQuery('/api/v1/finance/recharges')
@@ -79,7 +84,7 @@ export function FinanceRechargesPage({ title }: Props) {
               <option value="">Select…</option>
               {members.data.items.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.fbo_id} · {m.email} ({m.role})
+                  {memberSelectLabel(m)}
                 </option>
               ))}
             </select>
