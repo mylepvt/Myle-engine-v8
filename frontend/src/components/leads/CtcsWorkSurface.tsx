@@ -44,7 +44,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   const { role } = useDashboardShellRole()
   const [tab, setTab] = useState<CtcsTab>('today')
   const ctcsOpts = useMemo(
-    () => ({ ctcsFilter: tab, ctcsPrioritySort: true as const }),
+    () => ({ ctcsFilter: tab, ctcsPrioritySort: true as const, preEnrollmentOnly: true as const }),
     [tab],
   )
 

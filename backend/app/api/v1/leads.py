@@ -144,6 +144,10 @@ async def list_leads(
         default=False,
         description="When true, order leads for calling (new → follow-ups → hot → old).",
     ),
+    pre_enrollment_only: bool = Query(
+        default=False,
+        description="When true, only return leads in pre-enrollment statuses (calling board clean mode).",
+    ),
 ) -> LeadListResponse:
     return await service.list_leads(
         user=user,
@@ -155,6 +159,7 @@ async def list_leads(
         deleted_only=deleted_only,
         ctcs_filter=ctcs_filter,
         ctcs_priority_sort=ctcs_priority_sort,
+        pre_enrollment_only=pre_enrollment_only,
     )
 
 

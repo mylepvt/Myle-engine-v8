@@ -8,6 +8,7 @@ from typing import Annotated
 import os
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
@@ -56,6 +57,33 @@ async def system_training(
 ) -> TrainingSurfaceResponse:
     """7-day training catalog + caller's completion rows (legacy training home data)."""
     return await build_training_surface(session, user.user_id)
+
+
+@router.get("/training/day/{day_number}/embed")
+async def training_day_embed(
+    day_number: int,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> RedirectResponse:
+    """Auth-gated YouTube embed redirect — URL never exposed to client JS."""
+    row = (
+        await session.execute(select(TrainingVideo).where(TrainingVideo.day_number == day_number))
+    ).scalar_one_or_none()
+    if row is None or not row.youtube_url:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Video not available")
+    raw = row.youtube_url.strip()
+    # Normalise: support watch?v= and youtu.be/ forms
+    if "youtu.be/" in raw:
+        vid_id = raw.split("youtu.be/")[-1].split("?")[0].split("&")[0]
+    elif "watch?v=" in raw:
+        vid_id = raw.split("watch?v=")[-1].split("&")[0]
+    elif "embed/" in raw:
+        vid_id = raw.split("embed/")[-1].split("?")[0]
+    else:
+        vid_id = raw.split("/")[-1].split("?")[0]
+    params = "controls=0&modestbranding=1&rel=0&disablekb=1&fs=0&iv_load_policy=3"
+    embed_url = f"https://www.youtube.com/embed/{vid_id}?{params}"
+    return RedirectResponse(url=embed_url, status_code=302)
 
 
 @router.post("/training/mark-day", response_model=TrainingSurfaceResponse)

@@ -127,7 +127,7 @@ function IconBtn({ href, onClick, title, colorHover, children }: {
   return <button type="button" title={title} onClick={onClick} className={cls}>{children}</button>
 }
 
-// ── LeadCard (team / leader / closing tab) ─────────────────────────────────────
+// ── LeadCard (team / leader / closing tab + day tabs) ─────────────────────────
 const LeadCard = memo(function LeadCard({
   lead,
   pm,
@@ -135,6 +135,9 @@ const LeadCard = memo(function LeadCard({
   mindsetBusy,
   mindsetPreview,
   onRequestMindsetSend,
+  dayKey,
+  onMoveNext,
+  nextLabel,
 }: {
   lead: LeadPublic
   pm: PM
@@ -142,6 +145,9 @@ const LeadCard = memo(function LeadCard({
   mindsetBusy?: boolean
   mindsetPreview?: MindsetLockPreviewResponse | null
   onRequestMindsetSend?: (lead: LeadPublic) => void
+  dayKey?: 1 | 2 | 3
+  onMoveNext?: () => void
+  nextLabel?: string
 }) {
   const [nowMs, setNowMs] = useState(() => Date.now())
   useEffect(() => {
@@ -292,12 +298,22 @@ const LeadCard = memo(function LeadCard({
           </button>
         </div>
       ) : null}
+      {dayKey != null ? (
+        <DayBatchSection
+          lead={lead}
+          dayKey={dayKey}
+          pm={pm}
+          leadPatchBusy={leadPatchBusy}
+          onMoveNext={onMoveNext}
+          nextLabel={nextLabel}
+        />
+      ) : null}
     </article>
   )
 })
 
-// ── AdminLeadCard (day tabs) ───────────────────────────────────────────────────
-const AdminLeadCard = memo(function AdminLeadCard({ lead, dayKey, pm, leadPatchBusy, onMoveNext, nextLabel }: {
+// ── DayBatchSection — shared batch-slot strip used inside LeadCard for day tabs ─
+function DayBatchSection({ lead, dayKey, pm, leadPatchBusy, onMoveNext, nextLabel }: {
   lead: LeadPublic; dayKey: 1|2|3; pm: PM; leadPatchBusy: boolean; onMoveNext?: () => void; nextLabel?: string
 }) {
   const batchSlots = dayKey === 1
@@ -310,17 +326,8 @@ const AdminLeadCard = memo(function AdminLeadCard({ lead, dayKey, pm, leadPatchB
     ? batchSlots.every((k) => lead[k])
     : !!lead.day3_completed_at
 
-  const patchKey = dayKey === 3
-    ? ('day3_completed' as const)
-    : null
+  const patchKey = dayKey === 3 ? ('day3_completed' as const) : null
   const showDay2TestSend = dayKey === 2 && done
-
-  const handleSendDay2Test = async () => {
-    const waUrl = day2TestWhatsAppUrl(lead)
-    if (!waUrl) return
-    window.open(waUrl, '_blank', 'noopener,noreferrer')
-    await pm.mutateAsync({ id: lead.id, body: { whatsapp_sent: true } })
-  }
 
   const handleBatchClick = async (slot: 'M' | 'A' | 'E', slotKey?: BatchSlotKey) => {
     let tokenizedLinks: { v1?: string; v2?: string } | undefined
@@ -336,33 +343,14 @@ const AdminLeadCard = memo(function AdminLeadCard({ lead, dayKey, pm, leadPatchB
       }
     }
     const waUrl = workboardBatchWhatsAppUrl(lead, dayKey, slot, tokenizedLinks)
-    if (waUrl) {
-      window.open(waUrl, '_blank', 'noopener,noreferrer')
-    }
-    if (slotKey) {
-      // Batch slot auto-turns green from watch token completion callback.
-      return
-    }
-    if (patchKey) {
+    if (waUrl) window.open(waUrl, '_blank', 'noopener,noreferrer')
+    if (!slotKey && patchKey) {
       await pm.mutateAsync({ id: lead.id, body: { [patchKey]: true } })
     }
   }
 
   return (
-    <article className="surface-inset flex flex-col gap-2 rounded-lg px-2.5 py-2">
-      <div className="flex items-center justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-medium leading-tight text-foreground">{lead.name}</p>
-          {lead.city && <p className="mt-0.5 text-ds-caption text-muted-foreground">{lead.city}</p>}
-        </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <LeadContactActions phone={lead.phone} />
-          <Link to={`/dashboard/work/leads/${lead.id}`} title="Edit"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted/30 transition hover:border-primary/40 hover:text-primary">
-            <Pencil className="h-3.5 w-3.5"/>
-          </Link>
-        </div>
-      </div>
+    <div className="space-y-1.5 border-t border-border/40 pt-1.5">
       <div className="flex items-center gap-2">
         <span className="text-ds-caption text-muted-foreground">Batches:</span>
         {batchSlots
@@ -390,26 +378,24 @@ const AdminLeadCard = memo(function AdminLeadCard({ lead, dayKey, pm, leadPatchB
             ))}
       </div>
       {showDay2TestSend && (
-        <button
-          type="button"
-          disabled={leadPatchBusy}
-          onClick={() => void handleSendDay2Test()}
-          className="mt-0.5 rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-ds-caption font-semibold text-emerald-300 transition hover:bg-emerald-400/20 disabled:opacity-50"
-        >
+        <button type="button" disabled={leadPatchBusy}
+          onClick={() => { const u = day2TestWhatsAppUrl(lead); if (u) window.open(u, '_blank', 'noopener,noreferrer'); void pm.mutateAsync({ id: lead.id, body: { whatsapp_sent: true } }) }}
+          className="w-full rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-ds-caption font-semibold text-emerald-300 transition hover:bg-emerald-400/20 disabled:opacity-50">
           Send Test on WhatsApp
         </button>
       )}
-      {done && onMoveNext &&
+      {done && onMoveNext && (
         <button type="button" disabled={leadPatchBusy} onClick={onMoveNext}
-          className="mt-0.5 rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50">
+          className="w-full rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50">
           {nextLabel ?? 'Move to next stage →'}
-        </button>}
-    </article>
+        </button>
+      )}
+    </div>
   )
-})
+}
 
 const LEAD_CARD_ROW = 138
-const ADMIN_CARD_ROW = 198
+const ADMIN_CARD_ROW = 230
 
 function leadsForColumn<T>(items: T[], colIndex: number, columnCount: number): T[] {
   const out: T[] = []
@@ -589,7 +575,7 @@ function AdminColRow(props: RowComponentProps<AdminColData>): ReactElement | nul
     : undefined
   return (
     <div {...ariaAttributes} style={style} className="box-border px-0.5 pb-2">
-      <AdminLeadCard
+      <LeadCard
         lead={lead}
         dayKey={dayKey}
         pm={pm}

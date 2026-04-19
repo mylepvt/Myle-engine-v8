@@ -157,6 +157,7 @@ export type CtcsAction = 'not_picked' | 'interested' | 'call_later' | 'not_inter
 export type CtcsListOptions = {
   ctcsFilter?: CtcsTab | null
   ctcsPrioritySort?: boolean
+  preEnrollmentOnly?: boolean
 }
 
 const DEFAULT_PAGE_SIZE = 50
@@ -181,6 +182,9 @@ function buildLeadsQueryString(
   }
   if (ctcs?.ctcsPrioritySort) {
     p.set('ctcs_priority_sort', 'true')
+  }
+  if (ctcs?.preEnrollmentOnly) {
+    p.set('pre_enrollment_only', 'true')
   }
   const qs = p.toString()
   return qs ? `?${qs}` : ''

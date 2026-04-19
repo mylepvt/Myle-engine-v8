@@ -39,7 +39,7 @@ export function TrainingDayView({
   onRefresh,
   canBypassTrainingLocks,
 }: Props) {
-  const { day_number, title, youtube_url, audio_url, unlocked = true } = video
+  const { day_number, title, has_video, audio_url, unlocked = true } = video
   const effectivelyUnlocked = canBypassTrainingLocks || unlocked
   const cleanTitle = title.replace(/^Day\s*\d+\s*[—–-]+\s*/i, '')
 
@@ -109,8 +109,8 @@ export function TrainingDayView({
     )
   }
 
-  const embedUrl = youtube_url
-    ? youtube_url.replace('watch?v=', 'embed/').split('&')[0] + '?enablejsapi=1'
+  const embedUrl = has_video
+    ? `/api/v1/system/training/day/${day_number}/embed`
     : null
 
   return (
@@ -147,8 +147,7 @@ export function TrainingDayView({
                 <iframe
                   src={embedUrl}
                   className="h-full w-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
+                  allow="accelerometer; autoplay; encrypted-media; gyroscope"
                   onLoad={handleIframeLoad}
                   title={`Day ${day_number} video`}
                 />
