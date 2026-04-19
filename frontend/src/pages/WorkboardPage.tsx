@@ -127,7 +127,7 @@ function IconBtn({ href, onClick, title, colorHover, children }: {
   return <button type="button" title={title} onClick={onClick} className={cls}>{children}</button>
 }
 
-// ── LeadCard (team / leader / closing tab) ─────────────────────────────────────
+// ── LeadCard (team / leader / closing tab + day tabs) ─────────────────────────
 const LeadCard = memo(function LeadCard({
   lead,
   pm,
@@ -135,6 +135,9 @@ const LeadCard = memo(function LeadCard({
   mindsetBusy,
   mindsetPreview,
   onRequestMindsetSend,
+  dayKey,
+  onMoveNext,
+  nextLabel,
 }: {
   lead: LeadPublic
   pm: PM
@@ -142,6 +145,9 @@ const LeadCard = memo(function LeadCard({
   mindsetBusy?: boolean
   mindsetPreview?: MindsetLockPreviewResponse | null
   onRequestMindsetSend?: (lead: LeadPublic) => void
+  dayKey?: 1 | 2 | 3
+  onMoveNext?: () => void
+  nextLabel?: string
 }) {
   const [nowMs, setNowMs] = useState(() => Date.now())
   useEffect(() => {
@@ -292,11 +298,104 @@ const LeadCard = memo(function LeadCard({
           </button>
         </div>
       ) : null}
+      {dayKey != null ? (
+        <DayBatchSection
+          lead={lead}
+          dayKey={dayKey}
+          pm={pm}
+          leadPatchBusy={leadPatchBusy}
+          onMoveNext={onMoveNext}
+          nextLabel={nextLabel}
+        />
+      ) : null}
     </article>
   )
 })
 
-// ── AdminLeadCard (day tabs) ───────────────────────────────────────────────────
+// ── DayBatchSection — shared batch-slot strip used inside LeadCard for day tabs ─
+function DayBatchSection({ lead, dayKey, pm, leadPatchBusy, onMoveNext, nextLabel }: {
+  lead: LeadPublic; dayKey: 1|2|3; pm: PM; leadPatchBusy: boolean; onMoveNext?: () => void; nextLabel?: string
+}) {
+  const batchSlots = dayKey === 1
+    ? (['d1_morning', 'd1_afternoon', 'd1_evening'] as const)
+    : dayKey === 2
+    ? (['d2_morning', 'd2_afternoon', 'd2_evening'] as const)
+    : null
+
+  const done = batchSlots
+    ? batchSlots.every((k) => lead[k])
+    : !!lead.day3_completed_at
+
+  const patchKey = dayKey === 3 ? ('day3_completed' as const) : null
+  const showDay2TestSend = dayKey === 2 && done
+
+  const handleBatchClick = async (slot: 'M' | 'A' | 'E', slotKey?: BatchSlotKey) => {
+    let tokenizedLinks: { v1?: string; v2?: string } | undefined
+    if (slotKey) {
+      const res = await apiFetch(`/api/v1/leads/${lead.id}/batch-share-url`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slot: slotKey }),
+      })
+      if (res.ok) {
+        const body = (await res.json()) as { watch_url_v1?: string; watch_url_v2?: string }
+        tokenizedLinks = { v1: body.watch_url_v1, v2: body.watch_url_v2 }
+      }
+    }
+    const waUrl = workboardBatchWhatsAppUrl(lead, dayKey, slot, tokenizedLinks)
+    if (waUrl) window.open(waUrl, '_blank', 'noopener,noreferrer')
+    if (!slotKey && patchKey) {
+      await pm.mutateAsync({ id: lead.id, body: { [patchKey]: true } })
+    }
+  }
+
+  return (
+    <div className="space-y-1.5 border-t border-border/40 pt-1.5">
+      <div className="flex items-center gap-2">
+        <span className="text-ds-caption text-muted-foreground">Batches:</span>
+        {batchSlots
+          ? batchSlots.map((slotKey, i) => {
+              const slot = (['M', 'A', 'E'] as const)[i]
+              const slotDone = lead[slotKey]
+              return (
+                <button key={slotKey} type="button" disabled={leadPatchBusy || done}
+                  onClick={() => void handleBatchClick(slot, slotKey)}
+                  className={cn('flex h-6 w-6 items-center justify-center rounded text-ds-caption font-semibold transition',
+                    slotDone || done ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-400'
+                      : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary')}>
+                  {slotDone || done ? <CheckSquare className="h-3 w-3"/> : <span>{slot}</span>}
+                </button>
+              )
+            })
+          : (['M','A','E'] as const).map((slot) => (
+              <button key={slot} type="button" disabled={leadPatchBusy || done || !patchKey}
+                onClick={() => void handleBatchClick(slot)}
+                className={cn('flex h-6 w-6 items-center justify-center rounded text-ds-caption font-semibold transition',
+                  done ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-400'
+                    : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary')}>
+                {done ? <CheckSquare className="h-3 w-3"/> : <span>{slot}</span>}
+              </button>
+            ))}
+      </div>
+      {showDay2TestSend && (
+        <button type="button" disabled={leadPatchBusy}
+          onClick={() => { const u = day2TestWhatsAppUrl(lead); if (u) window.open(u, '_blank', 'noopener,noreferrer'); void pm.mutateAsync({ id: lead.id, body: { whatsapp_sent: true } }) }}
+          className="w-full rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-ds-caption font-semibold text-emerald-300 transition hover:bg-emerald-400/20 disabled:opacity-50">
+          Send Test on WhatsApp
+        </button>
+      )}
+      {done && onMoveNext && (
+        <button type="button" disabled={leadPatchBusy} onClick={onMoveNext}
+          className="w-full rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50">
+          {nextLabel ?? 'Move to next stage →'}
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ── AdminLeadCard (day tabs) — kept for reference, replaced by LeadCard+DayBatchSection ─
+
 const AdminLeadCard = memo(function AdminLeadCard({ lead, dayKey, pm, leadPatchBusy, onMoveNext, nextLabel }: {
   lead: LeadPublic; dayKey: 1|2|3; pm: PM; leadPatchBusy: boolean; onMoveNext?: () => void; nextLabel?: string
 }) {
@@ -409,7 +508,7 @@ const AdminLeadCard = memo(function AdminLeadCard({ lead, dayKey, pm, leadPatchB
 })
 
 const LEAD_CARD_ROW = 138
-const ADMIN_CARD_ROW = 198
+const ADMIN_CARD_ROW = 230
 
 function leadsForColumn<T>(items: T[], colIndex: number, columnCount: number): T[] {
   const out: T[] = []
@@ -589,7 +688,7 @@ function AdminColRow(props: RowComponentProps<AdminColData>): ReactElement | nul
     : undefined
   return (
     <div {...ariaAttributes} style={style} className="box-border px-0.5 pb-2">
-      <AdminLeadCard
+      <LeadCard
         lead={lead}
         dayKey={dayKey}
         pm={pm}
