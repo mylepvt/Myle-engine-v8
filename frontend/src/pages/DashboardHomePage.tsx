@@ -27,7 +27,7 @@ import { useFollowUpsQuery } from '@/hooks/use-follow-ups-query'
 import { useTeamPersonalFunnelQuery } from '@/hooks/use-team-personal-funnel-query'
 import { useTeamTodayStatsQuery } from '@/hooks/use-team-today-stats-query'
 import { useLeadPoolQuery } from '@/hooks/use-lead-pool-query'
-import { LEAD_STATUS_OPTIONS, type LeadPublic, usePatchLeadMutation } from '@/hooks/use-leads-query'
+import { LEAD_STATUS_OPTIONS, type LeadPublic, type LeadStatus, usePatchLeadMutation } from '@/hooks/use-leads-query'
 import { useTeamReportsQuery } from '@/hooks/use-team-reports-query'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
 import { usePingLoginMutation } from '@/hooks/use-xp-query'
@@ -67,7 +67,7 @@ function Day1PipelineRow({
   patching,
 }: {
   lead: LeadPublic
-  onPatch: (id: number, body: { d1_morning?: boolean; d1_afternoon?: boolean; d1_evening?: boolean; status?: string }) => void
+  onPatch: (id: number, body: { d1_morning?: boolean; d1_afternoon?: boolean; d1_evening?: boolean; status?: LeadStatus }) => void
   patching: boolean
 }) {
   const allDone = lead.d1_morning && lead.d1_afternoon && lead.d1_evening
@@ -121,7 +121,7 @@ function Day1PipelineRow({
               variant="default"
               disabled={patching}
               className="h-7 px-3 text-xs bg-primary/90 hover:bg-primary"
-              onClick={() => onPatch(lead.id, { status: 'day2' })}
+              onClick={() => onPatch(lead.id, { status: 'day2' as LeadStatus })}
             >
               Push to Day 2 →
             </Button>
