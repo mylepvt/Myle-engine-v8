@@ -233,10 +233,11 @@ function MemberProfileModal({
           ) : null}
           <Button
             type="button"
-            variant="destructive"
+            variant="outline"
             size="sm"
             disabled={deleteMut.isPending}
             onClick={handleDelete}
+            className="border-destructive/50 text-destructive hover:bg-destructive/10"
           >
             {deleteMut.isPending ? 'Deleting…' : 'Delete Account'}
           </Button>
