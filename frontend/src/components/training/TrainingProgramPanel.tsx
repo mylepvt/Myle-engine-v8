@@ -10,7 +10,7 @@ import {
   useUpdateTrainingDayMutation,
   useUploadTrainingAudioMutation,
   useUploadTrainingNotesMutation,
-  useUploadCertificateMutation,
+  useDownloadCertificateMutation,
 } from '@/hooks/use-training-query'
 import { apiFetch } from '@/lib/api'
 import { authSyncIdentity } from '@/lib/auth-api'
@@ -59,6 +59,7 @@ type TrainingTestResultRow = {
 function AdminDayConfig({ dayNumber }: { dayNumber: number }) {
   const [title, setTitle] = useState('')
   const [youtubeUrl, setYoutubeUrl] = useState('')
+  const [audioUrl, setAudioUrl] = useState('')
   const [audioFile, setAudioFile] = useState<File | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -71,9 +72,10 @@ function AdminDayConfig({ dayNumber }: { dayNumber: number }) {
     setMsg(null)
     setErr(null)
     try {
-      const payload: { title?: string; youtube_url?: string } = {}
+      const payload: { title?: string; youtube_url?: string; audio_url?: string } = {}
       if (title.trim()) payload.title = title.trim()
       if (youtubeUrl.trim()) payload.youtube_url = youtubeUrl.trim()
+      if (audioUrl.trim()) payload.audio_url = audioUrl.trim()
       if (Object.keys(payload).length > 0) {
         await updateDay.mutateAsync({ dayNumber, payload })
       }
@@ -82,29 +84,35 @@ function AdminDayConfig({ dayNumber }: { dayNumber: number }) {
         setAudioFile(null)
         if (audioRef.current) audioRef.current.value = ''
       }
-      setMsg('Saved')
+      setMsg('Saved ✓')
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Save failed')
     }
   }
 
   return (
-    <div className="mt-2 space-y-2 rounded-md border border-white/10 bg-white/[0.03] p-3">
-      <p className="text-xs font-semibold text-foreground/70">Day {dayNumber} — Admin config</p>
+    <div className="mt-3 space-y-2 rounded-md border border-amber-500/20 bg-amber-500/[0.04] p-3">
+      <p className="text-xs font-semibold text-amber-400/80">⚙ Admin — Day {dayNumber} content</p>
       <input
         className="field-input w-full text-xs"
-        placeholder="Title"
+        placeholder="Day title (e.g. Day 1 — Welcome & Orientation)"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
       />
       <input
         className="field-input w-full text-xs"
-        placeholder="YouTube URL"
+        placeholder="YouTube video URL"
         value={youtubeUrl}
         onChange={(e) => setYoutubeUrl(e.target.value)}
       />
+      <input
+        className="field-input w-full text-xs"
+        placeholder="Audio URL (paste link — or upload file below)"
+        value={audioUrl}
+        onChange={(e) => setAudioUrl(e.target.value)}
+      />
       <div className="flex items-center gap-2">
-        <label className="text-xs text-muted-foreground">Audio (.mp3):</label>
+        <label className="shrink-0 text-xs text-muted-foreground">Upload audio file:</label>
         <input
           ref={audioRef}
           type="file"
@@ -361,61 +369,31 @@ function TrainingDaysBlock({
 }
 
 // ---------------------------------------------------------------------------
-// Certificate upload block — shown after all 7 days completed
+// Certificate download block — shown after training_status = 'completed'
 // ---------------------------------------------------------------------------
 
-function CertificateUploadBlock({ onRefresh }: { onRefresh: () => Promise<void> }) {
-  const [file, setFile] = useState<File | null>(null)
-  const [err, setErr] = useState<string | null>(null)
-  const [done, setDone] = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
-  const uploadMut = useUploadCertificateMutation()
-
-  const handleUpload = async () => {
-    if (!file) return
-    setErr(null)
-    try {
-      await uploadMut.mutateAsync(file)
-      setDone(true)
-      await onRefresh()
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Upload failed')
-    }
-  }
-
-  if (done) {
-    return (
-      <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-4 text-center">
-        <p className="text-base font-semibold text-emerald-400">🎉 Training Complete!</p>
-        <p className="mt-1 text-xs text-muted-foreground">Your certificate has been submitted. Dashboard is now unlocking…</p>
-      </div>
-    )
-  }
-
+function CertificateDownloadBlock() {
+  const downloadMut = useDownloadCertificateMutation()
   return (
-    <div className="rounded-xl border border-primary/30 bg-primary/[0.06] px-4 py-4 space-y-3">
-      <p className="text-sm font-semibold text-foreground">🏆 All 7 Days Complete!</p>
+    <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/[0.07] px-4 py-4 space-y-3 text-center">
+      <p className="text-base font-semibold text-emerald-400">🎉 Training Complete!</p>
       <p className="text-xs text-muted-foreground">
-        Upload your training certificate (photo/screenshot) to unlock the full dashboard.
+        Your certificate is ready. Download it below — your name is printed on it automatically.
       </p>
-      <div className="flex flex-wrap items-center gap-2">
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*,application/pdf"
-          className="text-xs text-foreground"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-        />
-        <Button
-          type="button"
-          size="sm"
-          disabled={!file || uploadMut.isPending}
-          onClick={() => void handleUpload()}
-        >
-          {uploadMut.isPending ? 'Uploading…' : 'Submit Certificate'}
-        </Button>
-      </div>
-      {err ? <p className="text-xs text-destructive" role="alert">{err}</p> : null}
+      <Button
+        type="button"
+        size="sm"
+        disabled={downloadMut.isPending}
+        onClick={() => downloadMut.mutate()}
+        className="gap-2"
+      >
+        {downloadMut.isPending ? 'Generating…' : '⬇ Download Certificate (PDF)'}
+      </Button>
+      {downloadMut.isError && (
+        <p className="text-xs text-destructive" role="alert">
+          {downloadMut.error instanceof Error ? downloadMut.error.message : 'Download failed'}
+        </p>
+      )}
     </div>
   )
 }
@@ -551,21 +529,21 @@ function TrainingCertificationBlock({
         </p>
       ) : null}
       {result ? (
-        <p className="mt-2 text-xs text-foreground/90">
-          Score {result.score}/{result.total_questions} ({result.percent}%) —{' '}
-          {result.passed ? (
-            <span className="font-medium text-emerald-400">Passed</span>
-          ) : (
-            <span className="font-medium text-amber-300">
-              Below pass mark ({result.pass_mark_percent}%)
-            </span>
-          )}
+        <div className="mt-2 space-y-2">
+          <p className="text-xs text-foreground/90">
+            Score {result.score}/{result.total_questions} ({result.percent}%) —{' '}
+            {result.passed ? (
+              <span className="font-medium text-emerald-400">Passed ✓</span>
+            ) : (
+              <span className="font-medium text-amber-300">
+                Below pass mark ({result.pass_mark_percent}%) — try again
+              </span>
+            )}
+          </p>
           {result.passed && result.training_completed ? (
-            <span className="ml-1 text-emerald-400/90">
-              — Training complete. You can use the full dashboard now.
-            </span>
+            <CertificateDownloadBlock />
           ) : null}
-        </p>
+        </div>
       ) : null}
     </div>
   )
@@ -592,7 +570,7 @@ export function TrainingProgramPanel({ data }: Props) {
     await qc.invalidateQueries({ queryKey: ['training', 'surface'] })
   }, [qc])
 
-  const isAdmin = role === 'admin' || role === 'leader'
+  const isAdmin = role === 'admin'
   const trainingStatus = me?.training_status ?? ''
 
   // All 7 days marked done but certificate not yet uploaded
@@ -600,16 +578,24 @@ export function TrainingProgramPanel({ data }: Props) {
   const progress = Array.isArray(data.progress) ? data.progress : []
   const doneSet = new Set(progress.filter((p) => p.completed).map((p) => p.day_number))
   const allDaysDone = vids.length > 0 && vids.every((v) => doneSet.has(v.day_number))
-  const needsCertificate = allDaysDone && trainingStatus !== 'completed'
+  // After all 7 days: show MCQ test. After test pass: show certificate download.
+  const showTest = allDaysDone && trainingStatus !== 'completed'
+  const trainingComplete = trainingStatus === 'completed'
 
   return (
     <div className="surface-elevated space-y-4 p-4 text-sm text-muted-foreground">
       {data.note ? <p className="text-foreground/90">{data.note}</p> : null}
       <TrainingDaysBlock data={data} onSessionRefresh={onSessionRefresh} isAdmin={isAdmin} />
-      {needsCertificate ? (
-        <CertificateUploadBlock onRefresh={onSessionRefresh} />
+      {showTest ? (
+        <div className="rounded-xl border border-primary/25 bg-primary/[0.05] px-4 py-4">
+          <p className="mb-1 text-sm font-semibold text-foreground">🎯 All 7 days done! Take the final test</p>
+          <p className="mb-3 text-xs text-muted-foreground">Pass with 60% or above to unlock your certificate.</p>
+          <TrainingCertificationBlock onSessionRefresh={onSessionRefresh} />
+        </div>
       ) : null}
-      <TrainingCertificationBlock onSessionRefresh={onSessionRefresh} />
+      {trainingComplete ? (
+        <CertificateDownloadBlock />
+      ) : null}
     </div>
   )
 }

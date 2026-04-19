@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 
@@ -44,6 +44,8 @@ export function LeadPoolWorkPage({ title }: Props) {
 
   // Confirm dialog state: which lead is being claimed
   const [confirmId, setConfirmId] = useState<number | null>(null)
+  const [batchCountStr, setBatchCountStr] = useState('1')
+  const [batchConfirmOpen, setBatchConfirmOpen] = useState(false)
   // Admin: price input per lead
   const [priceInputs, setPriceInputs] = useState<Record<number, string>>({})
   const [poolFile, setPoolFile] = useState<File | null>(null)
@@ -84,6 +86,40 @@ export function LeadPoolWorkPage({ title }: Props) {
       setConfirmId(null)
     } catch {
       /* error surfaced below */
+    }
+  }
+
+  const maxBatch = data ? Math.min(50, data.total) : 0
+
+  const batchFifoEstimateCents = useMemo(() => {
+    if (!data?.items.length) return 0
+    const n = Math.min(50, Math.max(1, parseInt(batchCountStr, 10) || 1), data.total)
+    const fifo = [...data.items].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    )
+    const slice = fifo.slice(0, Math.min(n, fifo.length))
+    return slice.reduce((s, l) => s + (l.pool_price_cents ?? 0), 0)
+  }, [data, batchCountStr])
+
+  const batchCountParsed =
+    data != null
+      ? Math.min(50, Math.max(1, parseInt(batchCountStr, 10) || 1), data.total)
+      : 1
+
+  const canAffordBatchEstimate = batchFifoEstimateCents === 0 || walletBalance >= batchFifoEstimateCents
+
+  async function handleBatchClaim() {
+    if (!data) return
+    const n = Math.min(50, Math.max(1, parseInt(batchCountStr, 10) || 1), data.total)
+    try {
+      await claimMut.mutateAsync({
+        count: n,
+        idempotencyKey: `batch-${Date.now()}-${n}`,
+        pipelineKind: 'PERSONAL',
+      })
+      setBatchConfirmOpen(false)
+    } catch {
+      /* surfaced below */
     }
   }
 
@@ -173,8 +209,9 @@ export function LeadPoolWorkPage({ title }: Props) {
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Leads an admin has released into the shared pool. Claim one to assign it to yourself —
-        paid leads will be debited from your wallet.
+        Leads an admin has released into the shared pool. Claim individually, or up to 50 in one request
+        (oldest in the pool first — same FIFO rules as the legacy app). Paid rows debit your wallet; the
+        whole batch is rejected if the combined price exceeds your balance.
       </p>
 
       {role === 'admin' ? (
@@ -300,6 +337,76 @@ export function LeadPoolWorkPage({ title }: Props) {
       {data ? (
         <div className="surface-elevated p-4 text-sm text-muted-foreground">
           <p className="mb-3 font-medium text-foreground">In pool: {data.total}</p>
+
+          {role !== 'admin' && data.total > 0 ? (
+            <div className="mb-4 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs">
+              <p className="font-medium text-foreground">Bulk claim (FIFO, max 50)</p>
+              <p className="mt-1 text-muted-foreground">
+                Server picks the oldest leads in the pool first. If this page does not list every pool row,
+                the amount shown is only an estimate from visible leads.
+              </p>
+              {data.items.length < data.total ? (
+                <p className="mt-2 text-amber-400/90">Some pool leads are not loaded on this screen.</p>
+              ) : null}
+              {batchConfirmOpen ? (
+                <div className="mt-3 space-y-2 rounded-md border border-amber-400/30 bg-amber-400/5 p-2">
+                  <p className="text-foreground">
+                    Claim up to <strong className="tabular-nums">{batchCountParsed}</strong> lead(s)? Estimated
+                    debit from visible FIFO slice:{' '}
+                    <strong className="tabular-nums">{formatRupees(batchFifoEstimateCents)}</strong>
+                    {' · '}
+                    Balance: <strong className="tabular-nums">{formatRupees(walletBalance)}</strong>
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={claimMut.isPending || !canAffordBatchEstimate}
+                      onClick={() => void handleBatchClaim()}
+                    >
+                      {claimMut.isPending ? 'Claiming…' : 'Confirm batch'}
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setBatchConfirmOpen(false)}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-3 flex flex-wrap items-end gap-2">
+                  <div>
+                    <label htmlFor="lead-pool-batch-count" className="sr-only">
+                      Number of leads to claim in one batch
+                    </label>
+                    <input
+                      id="lead-pool-batch-count"
+                      type="number"
+                      min={1}
+                      max={maxBatch}
+                      step={1}
+                      value={batchCountStr}
+                      onChange={(e) => setBatchCountStr(e.target.value)}
+                      className="w-20 rounded-md border border-white/12 bg-white/[0.05] px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+                    />
+                    <span className="ml-2 text-muted-foreground">(max {maxBatch})</span>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={!canAffordBatchEstimate || batchCountParsed < 1}
+                    title={
+                      !canAffordBatchEstimate
+                        ? `Estimated ${formatRupees(batchFifoEstimateCents)} from visible rows; balance ${formatRupees(walletBalance)}`
+                        : undefined
+                    }
+                    onClick={() => setBatchConfirmOpen(true)}
+                  >
+                    Claim batch
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : null}
 
           {data.items.length === 0 ? (
             <p>No leads in pool right now.</p>

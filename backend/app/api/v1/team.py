@@ -409,6 +409,40 @@ async def update_member_role(
     return TeamMemberPublic.model_validate(target)
 
 
+class TrainingToggleBody(BaseModel):
+    locked: bool  # True = require training (lock), False = skip/unlock training
+
+
+@router.patch("/members/{target_user_id}/training-lock")
+async def toggle_training_lock(
+    target_user_id: int,
+    body: TrainingToggleBody,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Admin: force-lock or force-unlock 7-day training for any user."""
+    _require_admin(user)
+    target = await session.get(User, target_user_id)
+    if target is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    if body.locked:
+        # Lock: require training, reset to pending unless already completed
+        target.training_required = True
+        if target.training_status == "not_required":
+            target.training_status = "pending"
+    else:
+        # Unlock: skip training entirely
+        target.training_required = False
+        target.training_status = "not_required"
+    await session.commit()
+    return {
+        "user_id": target.id,
+        "fbo_id": target.fbo_id,
+        "training_required": target.training_required,
+        "training_status": target.training_status,
+    }
+
+
 @router.delete("/members/{target_user_id}", status_code=http_status.HTTP_204_NO_CONTENT)
 async def delete_member(
     target_user_id: int,

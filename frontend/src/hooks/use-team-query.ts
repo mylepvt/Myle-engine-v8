@@ -13,6 +13,8 @@ export type TeamMemberPublic = {
   created_at: string
   upline_fbo_id?: string | null
   upline_name?: string | null
+  training_required?: boolean | null
+  training_status?: string | null
 }
 
 export type TeamMemberListResponse = {
@@ -263,6 +265,29 @@ export function useEnrollmentDecisionMutation() {
     mutationFn: decideEnrollmentRequest,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['team', 'enrollment-requests'] })
+    },
+  })
+}
+
+async function toggleTrainingLock(body: { userId: number; locked: boolean }): Promise<{ training_required: boolean; training_status: string }> {
+  const res = await apiFetch(`/api/v1/team/members/${body.userId}/training-lock`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ locked: body.locked }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { detail?: string }).detail ?? res.statusText)
+  }
+  return res.json()
+}
+
+export function useToggleTrainingLockMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: toggleTrainingLock,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['team', 'members'] })
     },
   })
 }

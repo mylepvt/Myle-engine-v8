@@ -13,6 +13,7 @@ import {
   useUpdateMemberRoleMutation,
   useDeleteMemberMutation,
   useMemberLeadsQuery,
+  useToggleTrainingLockMutation,
   type TeamMemberPublic,
 } from '@/hooks/use-team-query'
 import { useInvoicesQuery } from '@/hooks/use-invoices-query'
@@ -110,9 +111,12 @@ function MemberProfileModal({
   const invQuery = useInvoicesQuery({ user_id: member.id, limit: 50, offset: 0 })
   const updateRoleMut = useUpdateMemberRoleMutation()
   const deleteMut = useDeleteMemberMutation()
+  const trainingToggle = useToggleTrainingLockMutation()
   const [selectedRole, setSelectedRole] = useState<Role>(member.role as Role)
   const [roleError, setRoleError] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [trainingError, setTrainingError] = useState<string | null>(null)
+  const [trainingRequired, setTrainingRequired] = useState<boolean>(member.training_required ?? false)
 
   function handleRoleChange() {
     setRoleError(null)
@@ -266,6 +270,49 @@ function MemberProfileModal({
               ))}
             </ul>
           )}
+        </div>
+
+        {/* Training lock/unlock */}
+        <div className="mb-4 rounded-lg border border-border bg-muted/20 p-3">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Training Gate</p>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs text-foreground">
+                Status:{' '}
+                <span className={trainingRequired ? 'text-amber-400 font-medium' : 'text-emerald-400 font-medium'}>
+                  {trainingRequired ? '🔒 Locked (training required)' : '✓ Unlocked'}
+                </span>
+              </p>
+              {member.training_status ? (
+                <p className="mt-0.5 text-[0.68rem] text-muted-foreground">
+                  Progress: {member.training_status}
+                </p>
+              ) : null}
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={trainingToggle.isPending}
+              onClick={() => {
+                setTrainingError(null)
+                const newLocked = !trainingRequired
+                trainingToggle.mutate(
+                  { userId: member.id, locked: newLocked },
+                  {
+                    onSuccess: () => setTrainingRequired(newLocked),
+                    onError: (e: Error) => setTrainingError(e.message),
+                  },
+                )
+              }}
+              className="shrink-0"
+            >
+              {trainingToggle.isPending ? '…' : trainingRequired ? 'Unlock' : 'Lock'}
+            </Button>
+          </div>
+          {trainingError ? (
+            <p className="mt-1 text-ds-caption text-destructive" role="alert">{trainingError}</p>
+          ) : null}
         </div>
 
         {/* Delete */}

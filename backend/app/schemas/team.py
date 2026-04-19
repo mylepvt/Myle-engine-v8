@@ -20,6 +20,8 @@ class TeamMemberPublic(BaseModel):
     created_at: datetime
     upline_fbo_id: Optional[str] = None
     upline_name: Optional[str] = None
+    training_required: Optional[bool] = None
+    training_status: Optional[str] = None
 
 
 class TeamMemberListResponse(BaseModel):

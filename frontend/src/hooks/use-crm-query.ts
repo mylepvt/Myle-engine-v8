@@ -87,23 +87,45 @@ export function useCrmLeadReassign() {
 // Pool claim
 // ---------------------------------------------------------------------------
 
-export function useCrmPoolClaim() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({
-      leadId,
-      idempotencyKey,
-      pipelineKind = 'PERSONAL',
-    }: {
+export type CrmPoolClaimInput =
+  | {
       leadId: number
       idempotencyKey: string
       pipelineKind?: 'PERSONAL' | 'TEAM'
-    }) =>
-      crmFetch('/pool/claim', {
+    }
+  | {
+      /** FIFO batch (1–50); mutually exclusive with ``leadId``. */
+      count: number
+      idempotencyKey: string
+      pipelineKind?: 'PERSONAL' | 'TEAM'
+    }
+
+export function useCrmPoolClaim() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (vars: CrmPoolClaimInput) => {
+      const pipelineKind = vars.pipelineKind ?? 'PERSONAL'
+      if ('count' in vars) {
+        return crmFetch<{ leads: unknown[]; totalPriceCents: number }>('/pool/claim', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            count: vars.count,
+            idempotencyKey: vars.idempotencyKey,
+            pipelineKind,
+          }),
+        })
+      }
+      return crmFetch('/pool/claim', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leadId, idempotencyKey, pipelineKind }),
-      }),
+        body: JSON.stringify({
+          leadId: vars.leadId,
+          idempotencyKey: vars.idempotencyKey,
+          pipelineKind,
+        }),
+      })
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['lead-pool'] })
       qc.invalidateQueries({ queryKey: ['crm-wallet'] })

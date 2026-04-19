@@ -92,7 +92,7 @@ export async function uploadTrainingNotes(dayNumber: number, file: File): Promis
 export async function uploadTrainingAudio(dayNumber: number, file: File): Promise<{ day_number: number; audio_url: string }> {
   const form = new FormData()
   form.append('file', file)
-  const res = await apiFetch(`/api/v1/system/training/days/${dayNumber}/audio`, {
+  const res = await apiFetch(`/api/v1/other/training/days/${dayNumber}/audio`, {
     method: 'POST',
     body: form,
   })
@@ -104,9 +104,9 @@ export async function uploadTrainingAudio(dayNumber: number, file: File): Promis
 
 export async function updateTrainingDay(
   dayNumber: number,
-  payload: { title?: string; youtube_url?: string },
-): Promise<{ day_number: number; title: string; youtube_url?: string }> {
-  const res = await apiFetch(`/api/v1/system/training/days/${dayNumber}`, {
+  payload: { title?: string; youtube_url?: string; audio_url?: string },
+): Promise<{ day_number: number; title: string; youtube_url?: string; audio_url?: string }> {
+  const res = await apiFetch(`/api/v1/other/training/days/${dayNumber}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -181,7 +181,7 @@ export function useUploadTrainingAudioMutation() {
 export function useUpdateTrainingDayMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ dayNumber, payload }: { dayNumber: number; payload: { title?: string; youtube_url?: string } }) =>
+    mutationFn: ({ dayNumber, payload }: { dayNumber: number; payload: { title?: string; youtube_url?: string; audio_url?: string } }) =>
       updateTrainingDay(dayNumber, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['training', 'surface'] })

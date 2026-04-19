@@ -282,6 +282,7 @@ async def other_training(
 class UpdateTrainingDayBody(BaseModel):
     title: Optional[str] = None
     youtube_url: Optional[str] = None
+    audio_url: Optional[str] = None
 
 
 @router.patch("/training/days/{day_number}")
@@ -302,8 +303,10 @@ async def update_training_day(
         row.title = body.title.strip()
     if body.youtube_url is not None:
         row.youtube_url = body.youtube_url.strip() or None
+    if body.audio_url is not None:
+        row.audio_url = body.audio_url.strip() or None
     await session.commit()
-    return {"day_number": day_number, "title": row.title, "youtube_url": row.youtube_url}
+    return {"day_number": day_number, "title": row.title, "youtube_url": row.youtube_url, "audio_url": row.audio_url}
 
 
 @router.post("/training/days/{day_number}/audio")
