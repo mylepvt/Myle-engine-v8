@@ -119,8 +119,7 @@ class PaymentService:
         if lead.payment_status == "approved":
             return False, "Payment proof is already approved"
         if lead.payment_status != "proof_uploaded":
-            if approved_by_role != "admin":
-                return False, "Payment proof is not pending approval"
+            return False, "Payment proof is not pending approval"
 
         lead.payment_status = "approved"
 
@@ -162,8 +161,7 @@ class PaymentService:
         if not (lead.payment_proof_url or "").strip():
             return False, "Payment proof file is missing"
         if lead.payment_status != "proof_uploaded":
-            if rejected_by_role != "admin":
-                return False, "Payment proof is not pending approval"
+            return False, "Payment proof is not pending approval"
 
         lead.payment_status = "rejected"
 

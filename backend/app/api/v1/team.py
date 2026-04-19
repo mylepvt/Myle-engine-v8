@@ -245,7 +245,8 @@ async def decide_enrollment_request(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
-    _require_admin_or_leader(user)
+    # Only admin can approve/reject — leader can view queue but not act on it.
+    _require_admin(user)
     service = PaymentService(session)
     if body.action == "approve":
         ok, message = await service.approve_payment_proof(

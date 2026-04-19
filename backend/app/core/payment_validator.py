@@ -6,16 +6,25 @@ from starlette import status as http_status
 
 from app.api.deps import AuthUser
 
-APPROVER_ROLES = frozenset({"leader", "admin"})
+APPROVER_ROLES = frozenset({"leader", "admin"})  # view-only for leader
 STANDARD_AMOUNT_CENTS = 19_600  # ₹196 enrollment fee
 
 
 def require_approver_role(user: AuthUser) -> None:
-    """Raise 403 if user is not leader/admin."""
+    """Raise 403 if user is not leader/admin (used for viewing pending queue)."""
     if user.role not in APPROVER_ROLES:
         raise HTTPException(
             status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Only leader and admin can perform this action",
+        )
+
+
+def require_admin_role(user: AuthUser) -> None:
+    """Raise 403 if user is not admin. Only admin can approve/reject payment proofs."""
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail="Only admin can approve or reject payment proofs.",
         )
 
 

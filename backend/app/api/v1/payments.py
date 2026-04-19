@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.core.realtime_hub import notify_topics
 from app.core.payment_validator import (
+    require_admin_role,
     require_approver_role,
     validate_payment_amount,
     validate_image_upload,
@@ -87,8 +88,8 @@ async def approve_payment_proof(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> PaymentProofResponse:
-    """Approve payment proof (leader/admin only)."""
-    require_approver_role(user)
+    """Approve payment proof (admin only)."""
+    require_admin_role(user)
     service = PaymentService(session)
 
     try:
@@ -124,8 +125,8 @@ async def reject_payment_proof(
     session: Annotated[AsyncSession, Depends(get_db)],
     rejection_reason: Optional[str] = None,
 ) -> PaymentProofResponse:
-    """Reject payment proof (leader/admin only)."""
-    require_approver_role(user)
+    """Reject payment proof (admin only)."""
+    require_admin_role(user)
     service = PaymentService(session)
 
     try:
