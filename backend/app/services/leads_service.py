@@ -160,6 +160,7 @@ class LeadsService:
         deleted_only: bool,
         ctcs_filter: Optional[str] = None,
         ctcs_priority_sort: bool = False,
+        pre_enrollment_only: bool = False,
     ) -> LeadListResponse:
         validate_list_flags(archived_only=archived_only, deleted_only=deleted_only, user=user)
         condition = lead_list_conditions(
@@ -172,6 +173,11 @@ class LeadsService:
         extra = _ctcs_filter_clause(ctcs_filter)
         if extra is not None:
             condition = and_(condition, extra) if condition is not None else extra
+        if pre_enrollment_only:
+            pre_enroll = Lead.status.in_(
+                ["new_lead", "contacted", "invited", "video_sent", "video_watched"]
+            )
+            condition = and_(condition, pre_enroll) if condition is not None else pre_enroll
         total = await self._repository.count_leads(condition)
         rows = await self._repository.list_leads(
             condition=condition,
