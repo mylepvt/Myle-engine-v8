@@ -1,41 +1,20 @@
-import { useCallback, useRef, useState } from 'react'
+import { Award, BookOpenCheck, ClipboardCheck, Sparkles } from 'lucide-react'
+import { useCallback, useState } from 'react'
 
 import { useQueryClient } from '@tanstack/react-query'
 
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { TrainingDayAdmin } from '@/components/training/TrainingDayAdmin'
+import { TrainingDayView } from '@/components/training/TrainingDayView'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
+import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import type { TrainingSurfacePayload } from '@/hooks/use-system-surface-query'
-import {
-  useMarkTrainingDayMutation,
-  useUpdateTrainingDayMutation,
-  useUploadTrainingAudioMutation,
-  useUploadTrainingNotesMutation,
-  useDownloadCertificateMutation,
-} from '@/hooks/use-training-query'
+import { useDownloadCertificateMutation } from '@/hooks/use-training-query'
 import { apiFetch } from '@/lib/api'
 import { authSyncIdentity } from '@/lib/auth-api'
 import { messageFromApiErrorPayload } from '@/lib/http-error-message'
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function getApiBase(): string {
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-    return 'http://localhost:8000'
-  }
-  return ''
-}
-
-function resolveUrl(url: string | undefined | null): string | null {
-  if (!url) return null
-  if (url.startsWith('http')) return url
-  return `${getApiBase()}${url}`
-}
-
-// ---------------------------------------------------------------------------
-// Training question types (kept here for certification block)
-// ---------------------------------------------------------------------------
+import { cn } from '@/lib/utils'
 
 type TrainingQuestionRow = {
   id: number
@@ -52,288 +31,100 @@ type TrainingTestResultRow = {
   training_completed?: boolean
 }
 
-// ---------------------------------------------------------------------------
-// Admin config panel (one day at a time)
-// ---------------------------------------------------------------------------
-
-function AdminDayConfig({ dayNumber }: { dayNumber: number }) {
-  const [title, setTitle] = useState('')
-  const [youtubeUrl, setYoutubeUrl] = useState('')
-  const [audioUrl, setAudioUrl] = useState('')
-  const [audioFile, setAudioFile] = useState<File | null>(null)
-  const [msg, setMsg] = useState<string | null>(null)
-  const [err, setErr] = useState<string | null>(null)
-  const audioRef = useRef<HTMLInputElement>(null)
-
-  const updateDay = useUpdateTrainingDayMutation()
-  const uploadAudio = useUploadTrainingAudioMutation()
-
-  const save = async () => {
-    setMsg(null)
-    setErr(null)
-    try {
-      const payload: { title?: string; youtube_url?: string; audio_url?: string } = {}
-      if (title.trim()) payload.title = title.trim()
-      if (youtubeUrl.trim()) payload.youtube_url = youtubeUrl.trim()
-      if (audioUrl.trim()) payload.audio_url = audioUrl.trim()
-      if (Object.keys(payload).length > 0) {
-        await updateDay.mutateAsync({ dayNumber, payload })
-      }
-      if (audioFile) {
-        await uploadAudio.mutateAsync({ dayNumber, file: audioFile })
-        setAudioFile(null)
-        if (audioRef.current) audioRef.current.value = ''
-      }
-      setMsg('Saved ✓')
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Save failed')
-    }
-  }
-
-  return (
-    <div className="mt-3 space-y-2 rounded-md border border-amber-500/20 bg-amber-500/[0.04] p-3">
-      <p className="text-xs font-semibold text-amber-400/80">⚙ Admin — Day {dayNumber} content</p>
-      <input
-        className="field-input w-full text-xs"
-        placeholder="Day title (e.g. Day 1 — Welcome & Orientation)"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-      />
-      <input
-        className="field-input w-full text-xs"
-        placeholder="YouTube video URL"
-        value={youtubeUrl}
-        onChange={(e) => setYoutubeUrl(e.target.value)}
-      />
-      <input
-        className="field-input w-full text-xs"
-        placeholder="Audio URL (paste link — or upload file below)"
-        value={audioUrl}
-        onChange={(e) => setAudioUrl(e.target.value)}
-      />
-      <div className="flex items-center gap-2">
-        <label className="shrink-0 text-xs text-muted-foreground">Upload audio file:</label>
-        <input
-          ref={audioRef}
-          type="file"
-          accept="audio/*"
-          className="text-xs text-foreground"
-          onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
-        />
-      </div>
-      <Button
-        type="button"
-        size="sm"
-        variant="secondary"
-        className="h-7 text-xs"
-        disabled={updateDay.isPending || uploadAudio.isPending}
-        onClick={() => void save()}
-      >
-        {updateDay.isPending || uploadAudio.isPending ? 'Saving…' : 'Save'}
-      </Button>
-      {msg && <p className="text-xs text-emerald-400">{msg}</p>}
-      {err && <p className="text-xs text-destructive">{err}</p>}
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Per-day card
-// ---------------------------------------------------------------------------
-
-function DayCard({
-  video,
-  completed,
-  hasNotes,
-  onRefresh,
-  isAdmin,
+function TrainingOverviewCard({
+  totalDays,
+  completedDays,
+  showQuiz,
+  trainingComplete,
 }: {
-  video: TrainingSurfacePayload['videos'][number]
-  completed: boolean
-  hasNotes: boolean
-  onRefresh: () => Promise<void>
-  isAdmin: boolean
+  totalDays: number
+  completedDays: number
+  showQuiz: boolean
+  trainingComplete: boolean
 }) {
-  const { day_number, title, youtube_url, audio_url, unlocked = true } = video
-  // Admin/leader can access all days regardless of unlock state
-  const effectivelyUnlocked = isAdmin || unlocked
+  const progressPercent = totalDays > 0 ? Math.round((completedDays / totalDays) * 100) : 0
+  const remainingDays = Math.max(totalDays - completedDays, 0)
 
-  const [timerDone, setTimerDone] = useState(false)
-  const [noteFile, setNoteFile] = useState<File | null>(null)
-  const [noteErr, setNoteErr] = useState<string | null>(null)
-  const [noteUploading, setNoteUploading] = useState(false)
-  const [localHasNotes, setLocalHasNotes] = useState(hasNotes)
-  const fileRef = useRef<HTMLInputElement>(null)
-
-  const markDay = useMarkTrainingDayMutation()
-  const uploadNotes = useUploadTrainingNotesMutation()
-
-  // Start timer when video is embedded (best-effort 30s wait)
-  const handleIframeLoad = useCallback(() => {
-    const t = setTimeout(() => setTimerDone(true), 30_000)
-    return () => clearTimeout(t)
-  }, [])
-
-  const handleNoteUpload = async () => {
-    if (!noteFile) return
-    setNoteErr(null)
-    setNoteUploading(true)
-    try {
-      await uploadNotes.mutateAsync({ dayNumber: day_number, file: noteFile })
-      setLocalHasNotes(true)
-      setNoteFile(null)
-      if (fileRef.current) fileRef.current.value = ''
-    } catch (e) {
-      setNoteErr(e instanceof Error ? e.message : 'Upload failed')
-    } finally {
-      setNoteUploading(false)
-    }
-  }
-
-  const handleMarkComplete = async () => {
-    try {
-      await markDay.mutateAsync(day_number)
-      await onRefresh()
-    } catch {
-      // error shown inline via mutation state
-    }
-  }
-
-  if (!effectivelyUnlocked) {
-    return (
-      <div className="rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 opacity-50">
-        <div className="flex items-center gap-2">
-          <span className="text-base">🔒</span>
-          <span className="text-sm font-medium text-foreground">
-            Day {day_number} — {title}
-          </span>
-        </div>
-        <p className="mt-1 text-xs text-muted-foreground">Complete Day {day_number - 1} first</p>
-      </div>
-    )
-  }
-
-  const embedUrl = youtube_url
-    ? youtube_url.replace('watch?v=', 'embed/').split('&')[0] + '?enablejsapi=1'
-    : null
+  let nextStep = 'Day 1'
+  if (trainingComplete) nextStep = 'Certificate'
+  else if (showQuiz) nextStep = 'Final quiz'
+  else if (completedDays > 0) nextStep = `Day ${Math.min(completedDays + 1, totalDays)}`
 
   return (
-    <div className="space-y-3 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-foreground">
-          Day {day_number} — {title.replace(/^Day\s*\d+\s*[—–-]+\s*/i, '')}
-        </span>
-        {completed && (
-          <span className="text-xs font-medium text-emerald-400">✓ Completed</span>
-        )}
-      </div>
-
-      {/* 1. Video */}
-      <div className="space-y-1">
-        {embedUrl ? (
-          <>
-            <p className="text-xs text-muted-foreground">Watch video fully before proceeding</p>
-            <div className="aspect-video w-full overflow-hidden rounded-md bg-black">
-              <iframe
-                src={embedUrl}
-                className="h-full w-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                onLoad={handleIframeLoad}
-                title={`Day ${day_number} video`}
-              />
-            </div>
-            {!timerDone && (
-              <p className="text-xs text-amber-400">Please spend at least 30 seconds watching before proceeding</p>
-            )}
-          </>
-        ) : (
-          <p className="text-xs text-muted-foreground">Video not configured yet</p>
-        )}
-      </div>
-
-      {/* 2. Audio */}
-      <div className="space-y-1">
-        <p className="text-xs font-medium text-foreground/70">Listen to the audio</p>
-        {resolveUrl(audio_url) ? (
-          <audio controls src={resolveUrl(audio_url)!} className="w-full" />
-        ) : (
-          <p className="text-xs text-muted-foreground">Audio not configured yet</p>
-        )}
-      </div>
-
-      {/* 3. Notes upload */}
-      <div className="space-y-1">
-        <p className="text-xs font-medium text-foreground/70">Upload your notes</p>
-        {localHasNotes ? (
-          <p className="text-xs text-emerald-400">✓ Notes submitted</p>
-        ) : (
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              className="text-xs text-foreground"
-              onChange={(e) => setNoteFile(e.target.files?.[0] ?? null)}
-            />
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              className="h-7 text-xs"
-              disabled={!noteFile || noteUploading}
-              onClick={() => void handleNoteUpload()}
-            >
-              {noteUploading ? 'Uploading…' : 'Upload'}
-            </Button>
-          </div>
-        )}
-        {noteErr && <p className="text-xs text-destructive">{noteErr}</p>}
-      </div>
-
-      {/* 4. Mark complete */}
-      {!completed && (
-        <div className="space-y-1">
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            className="h-8 text-xs"
-            disabled={!localHasNotes || markDay.isPending}
-            onClick={() => void handleMarkComplete()}
-          >
-            {markDay.isPending ? 'Saving…' : 'Mark complete'}
-          </Button>
-          {!localHasNotes && (
-            <p className="text-xs text-muted-foreground">Upload your notes first to enable this button</p>
-          )}
-          {markDay.isError && (
-            <p className="text-xs text-destructive">
-              {markDay.error instanceof Error ? markDay.error.message : 'Could not save'}
+    <div className="overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-card via-card to-primary/[0.08] p-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="space-y-3">
+          <Badge variant="primary" className="w-fit gap-1.5 px-3 py-1">
+            <Sparkles className="size-3.5" />
+            Training
+          </Badge>
+          <div className="space-y-1">
+            <h2 className="text-lg font-semibold tracking-tight text-foreground">
+              Stay consistent. Finish one clear step at a time.
+            </h2>
+            <p className="max-w-2xl text-sm text-muted-foreground">
+              Watch the lesson, play the audio, upload one clear notes photo, then mark the day as
+              done. Each day unlocks the next step.
             </p>
-          )}
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+            <div className="surface-inset inline-flex items-center gap-2 px-3 py-1.5">
+              <BookOpenCheck className="size-3.5 text-primary" />
+              <span>{totalDays} lessons</span>
+            </div>
+            <div className="surface-inset inline-flex items-center gap-2 px-3 py-1.5">
+              <ClipboardCheck className="size-3.5 text-primary" />
+              <span>Notes needed each day</span>
+            </div>
+          </div>
         </div>
-      )}
 
-      {/* Admin config */}
-      {isAdmin && <AdminDayConfig dayNumber={day_number} />}
+        <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[25rem]">
+          <div className="surface-inset px-4 py-3">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Done</p>
+            <p className="mt-1 text-2xl font-semibold text-foreground">{completedDays}</p>
+          </div>
+          <div className="surface-inset px-4 py-3">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Left</p>
+            <p className="mt-1 text-2xl font-semibold text-foreground">{remainingDays}</p>
+          </div>
+          <div className="surface-inset px-4 py-3">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Next</p>
+            <p className="mt-1 text-lg font-semibold text-foreground">{nextStep}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 space-y-2">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>Progress</span>
+          <span>{progressPercent}%</span>
+        </div>
+        <div className="h-2 overflow-hidden rounded-full bg-white/6">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-primary to-primary/70 transition-[width] duration-300"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+      </div>
     </div>
   )
 }
-
-// ---------------------------------------------------------------------------
-// Training days block
-// ---------------------------------------------------------------------------
 
 function TrainingDaysBlock({
   data,
   onSessionRefresh,
-  isAdmin,
+  canEditTrainingContent,
+  canBypassTrainingLocks,
+  showQuiz,
+  trainingComplete,
 }: {
   data: TrainingSurfacePayload
   onSessionRefresh: () => Promise<void>
-  isAdmin: boolean
+  canEditTrainingContent: boolean
+  canBypassTrainingLocks: boolean
+  showQuiz: boolean
+  trainingComplete: boolean
 }) {
   const vids = Array.isArray(data.videos) ? data.videos : []
   const progress = Array.isArray(data.progress) ? data.progress : []
@@ -341,66 +132,81 @@ function TrainingDaysBlock({
 
   const doneSet = new Set(progress.filter((p) => p.completed).map((p) => p.day_number))
   const notesSet = new Set(notes.map((n) => n.day_number))
+  const completedDays = vids.filter((v) => doneSet.has(v.day_number)).length
 
   if (vids.length === 0) {
-    return <p className="text-foreground/90">No training days configured yet.</p>
+    return (
+      <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] px-5 py-8 text-center">
+        <p className="text-base font-medium text-foreground">Training is not available yet</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Please try again later. If this keeps happening, contact support.
+        </p>
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-3">
-      <p className="text-sm font-medium text-foreground">7-day program</p>
-      <p className="text-ds-caption text-muted-foreground">
-        Watch each video, listen to the audio, upload your notes, then mark the day complete.
-      </p>
+    <div className="space-y-4">
+      <TrainingOverviewCard
+        totalDays={vids.length}
+        completedDays={completedDays}
+        showQuiz={showQuiz}
+        trainingComplete={trainingComplete}
+      />
+
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-foreground">Your 7-day plan</p>
+        <p className="text-sm text-muted-foreground">
+          One day at a time: watch the lesson, play the audio, add a clear photo of your notes, then
+          mark that day as done.
+        </p>
+      </div>
+
       <div className="space-y-3">
         {vids.map((v) => (
-          <DayCard
-            key={v.day_number}
-            video={v}
-            completed={doneSet.has(v.day_number)}
-            hasNotes={notesSet.has(v.day_number)}
-            onRefresh={onSessionRefresh}
-            isAdmin={isAdmin}
-          />
+          <div key={v.day_number} className="min-w-0">
+            <TrainingDayView
+              video={v}
+              completed={doneSet.has(v.day_number)}
+              hasNotes={notesSet.has(v.day_number)}
+              onRefresh={onSessionRefresh}
+              canBypassTrainingLocks={canBypassTrainingLocks}
+            />
+            {canEditTrainingContent ? <TrainingDayAdmin dayNumber={v.day_number} /> : null}
+          </div>
         ))}
       </div>
     </div>
   )
 }
 
-// ---------------------------------------------------------------------------
-// Certificate download block — shown after training_status = 'completed'
-// ---------------------------------------------------------------------------
-
 function CertificateDownloadBlock() {
   const downloadMut = useDownloadCertificateMutation()
   return (
-    <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/[0.07] px-4 py-4 space-y-3 text-center">
-      <p className="text-base font-semibold text-emerald-400">🎉 Training Complete!</p>
-      <p className="text-xs text-muted-foreground">
-        Your certificate is ready. Download it below — your name is printed on it automatically.
+    <div className="rounded-2xl border border-emerald-400/25 bg-gradient-to-br from-emerald-400/[0.12] to-transparent px-5 py-5 text-center">
+      <div className="mx-auto flex size-12 items-center justify-center rounded-2xl border border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300">
+        <Award className="size-5" />
+      </div>
+      <p className="mt-3 text-base font-semibold text-foreground">You're done with training</p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Download your certificate. Your name is added for you.
       </p>
       <Button
         type="button"
-        size="sm"
+        className="mt-4"
         disabled={downloadMut.isPending}
         onClick={() => downloadMut.mutate()}
-        className="gap-2"
       >
-        {downloadMut.isPending ? 'Generating…' : '⬇ Download Certificate (PDF)'}
+        {downloadMut.isPending ? 'Preparing...' : 'Download certificate'}
       </Button>
       {downloadMut.isError && (
-        <p className="text-xs text-destructive" role="alert">
-          {downloadMut.error instanceof Error ? downloadMut.error.message : 'Download failed'}
+        <p className="mt-3 text-xs text-destructive" role="alert">
+          Could not download. Check your connection and try again.
         </p>
       )}
     </div>
   )
 }
-
-// ---------------------------------------------------------------------------
-// Certification block (unchanged logic, kept intact)
-// ---------------------------------------------------------------------------
 
 function TrainingCertificationBlock({
   onSessionRefresh,
@@ -431,13 +237,14 @@ function TrainingCertificationBlock({
         const o = x as Record<string, unknown>
         const id = typeof o.id === 'number' ? o.id : Number(o.id)
         const question = typeof o.question === 'string' ? o.question : ''
-        const options = o.options && typeof o.options === 'object' ? (o.options as Record<string, string>) : {}
+        const options =
+          o.options && typeof o.options === 'object' ? (o.options as Record<string, string>) : {}
         if (!Number.isFinite(id) || !question) continue
         cleaned.push({ id, question, options })
       }
       setQuestions(cleaned)
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Failed to load test')
+      setErr(e instanceof Error ? e.message : 'Could not open the quiz. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -468,7 +275,7 @@ function TrainingCertificationBlock({
         await onSessionRefresh()
       }
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Submit failed')
+      setErr(e instanceof Error ? e.message : 'Could not submit. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -476,82 +283,106 @@ function TrainingCertificationBlock({
 
   return (
     <div className="mt-4 border-t border-white/10 pt-4">
-      <p className="mb-2 text-sm font-medium text-foreground">Certification test</p>
-      {questions === null ? (
-        <button
-          type="button"
-          disabled={loading}
-          onClick={() => void load()}
-          className="rounded-md border border-white/15 bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-foreground transition hover:border-primary/40 disabled:opacity-50"
-        >
-          {loading ? 'Loading…' : 'Load questions'}
-        </button>
-      ) : questions.length === 0 ? (
-        <p className="text-xs text-muted-foreground">No questions configured yet.</p>
-      ) : (
-        <div className="space-y-3">
-          {questions.map((q) => (
-            <fieldset key={q.id} className="space-y-1.5">
-              <legend className="text-xs text-foreground/90">{q.question}</legend>
-              <div className="flex flex-wrap gap-2">
-                {(['a', 'b', 'c', 'd'] as const).map((letter) => (
-                  <label
-                    key={letter}
-                    className="flex cursor-pointer items-center gap-1.5 rounded border border-white/10 px-2 py-1 text-xs"
-                  >
-                    <input
-                      type="radio"
-                      name={`q-${q.id}`}
-                      className="accent-primary"
-                      checked={answers[q.id] === letter}
-                      onChange={() => setAnswers((prev) => ({ ...prev, [q.id]: letter }))}
-                    />
-                    <span className="text-muted-foreground">{letter.toUpperCase()}:</span>
-                    <span>{q.options[letter] ?? '—'}</span>
-                  </label>
-                ))}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-sm font-medium text-foreground">Final quiz</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Answer all questions, then submit once.
+          </p>
+        </div>
+        {questions === null ? (
+          <Button type="button" variant="secondary" size="sm" disabled={loading} onClick={() => void load()}>
+            {loading ? 'Opening...' : 'Start quiz'}
+          </Button>
+        ) : null}
+      </div>
+
+      {questions !== null && questions.length === 0 ? (
+        <p className="mt-4 text-sm text-muted-foreground">
+          The quiz is not ready yet. Please check back soon.
+        </p>
+      ) : null}
+
+      {questions ? (
+        <div className="mt-4 space-y-3">
+          {questions.map((q, index) => (
+            <fieldset key={q.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+              <legend className="flex items-start gap-2 text-sm font-medium text-foreground">
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-xs text-muted-foreground">
+                  {index + 1}
+                </span>
+                <span className="pt-0.5">{q.question}</span>
+              </legend>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {(['a', 'b', 'c', 'd'] as const).map((letter) => {
+                  const selected = answers[q.id] === letter
+                  return (
+                    <label
+                      key={letter}
+                      className={cn(
+                        'flex min-h-[48px] cursor-pointer items-start gap-2 rounded-xl border px-3 py-3 text-sm transition-colors',
+                        selected
+                          ? 'border-primary/40 bg-primary/[0.08] text-foreground'
+                          : 'border-white/10 bg-white/[0.02] text-muted-foreground hover:border-primary/20 hover:text-foreground',
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name={`q-${q.id}`}
+                        className="mt-0.5 accent-primary"
+                        checked={selected}
+                        onChange={() => setAnswers((prev) => ({ ...prev, [q.id]: letter }))}
+                      />
+                      <span className="min-w-0">
+                        <span className="mr-1 font-semibold text-foreground">{letter.toUpperCase()}.</span>
+                        {q.options[letter] ?? '-'}
+                      </span>
+                    </label>
+                  )
+                })}
               </div>
             </fieldset>
           ))}
-          <button
-            type="button"
-            disabled={loading}
-            onClick={() => void submit()}
-            className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/25 disabled:opacity-50"
-          >
-            Submit answers
-          </button>
+
+          <Button type="button" className="w-full sm:w-auto" disabled={loading} onClick={() => void submit()}>
+            {loading ? 'Submitting...' : 'Submit quiz'}
+          </Button>
         </div>
-      )}
+      ) : null}
+
       {err ? (
-        <p className="mt-2 text-xs text-destructive" role="alert">
+        <p className="mt-3 text-xs text-destructive" role="alert">
           {err}
         </p>
       ) : null}
+
       {result ? (
-        <div className="mt-2 space-y-2">
-          <p className="text-xs text-foreground/90">
-            Score {result.score}/{result.total_questions} ({result.percent}%) —{' '}
-            {result.passed ? (
-              <span className="font-medium text-emerald-400">Passed ✓</span>
-            ) : (
-              <span className="font-medium text-amber-300">
-                Below pass mark ({result.pass_mark_percent}%) — try again
-              </span>
-            )}
+        <div
+          className={cn(
+            'mt-4 rounded-xl border px-4 py-4',
+            result.passed
+              ? 'border-emerald-400/20 bg-emerald-400/[0.08]'
+              : 'border-amber-400/20 bg-amber-400/[0.08]',
+          )}
+        >
+          <p className="text-sm text-foreground">
+            You scored {result.score} out of {result.total_questions} ({result.percent}%).
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {result.passed
+              ? 'You passed. Your certificate is ready below.'
+              : `You need ${result.pass_mark_percent}% to pass. Try again when you are ready.`}
           </p>
           {result.passed && result.training_completed ? (
-            <CertificateDownloadBlock />
+            <div className="mt-4">
+              <CertificateDownloadBlock />
+            </div>
           ) : null}
         </div>
       ) : null}
     </div>
   )
 }
-
-// ---------------------------------------------------------------------------
-// Main export
-// ---------------------------------------------------------------------------
 
 type Props = {
   data: TrainingSurfacePayload
@@ -560,7 +391,7 @@ type Props = {
 export function TrainingProgramPanel({ data }: Props) {
   const qc = useQueryClient()
   const { data: me } = useAuthMeQuery()
-  const role = me?.role ?? null
+  const { serverRole, isAdminPreviewing } = useDashboardShellRole()
 
   const onSessionRefresh = useCallback(async () => {
     await authSyncIdentity()
@@ -570,32 +401,52 @@ export function TrainingProgramPanel({ data }: Props) {
     await qc.invalidateQueries({ queryKey: ['training', 'surface'] })
   }, [qc])
 
-  const isAdmin = role === 'admin'
-  const trainingStatus = me?.training_status ?? ''
+  const canEditTrainingContent = serverRole === 'admin' && !isAdminPreviewing
+  const canBypassTrainingLocks = serverRole === 'admin' && !isAdminPreviewing
 
-  // All 7 days marked done but certificate not yet uploaded
+  const trainingStatus = me?.training_status ?? ''
   const vids = Array.isArray(data.videos) ? data.videos : []
   const progress = Array.isArray(data.progress) ? data.progress : []
   const doneSet = new Set(progress.filter((p) => p.completed).map((p) => p.day_number))
   const allDaysDone = vids.length > 0 && vids.every((v) => doneSet.has(v.day_number))
-  // After all 7 days: show MCQ test. After test pass: show certificate download.
   const showTest = allDaysDone && trainingStatus !== 'completed'
   const trainingComplete = trainingStatus === 'completed'
 
   return (
-    <div className="surface-elevated space-y-4 p-4 text-sm text-muted-foreground">
-      {data.note ? <p className="text-foreground/90">{data.note}</p> : null}
-      <TrainingDaysBlock data={data} onSessionRefresh={onSessionRefresh} isAdmin={isAdmin} />
+    <div className="surface-elevated space-y-5 p-4 text-sm text-muted-foreground md:p-5">
+      {data.note ? (
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-foreground/90">
+          {data.note}
+        </div>
+      ) : null}
+
+      <TrainingDaysBlock
+        data={data}
+        onSessionRefresh={onSessionRefresh}
+        canEditTrainingContent={canEditTrainingContent}
+        canBypassTrainingLocks={canBypassTrainingLocks}
+        showQuiz={showTest}
+        trainingComplete={trainingComplete}
+      />
+
       {showTest ? (
-        <div className="rounded-xl border border-primary/25 bg-primary/[0.05] px-4 py-4">
-          <p className="mb-1 text-sm font-semibold text-foreground">🎯 All 7 days done! Take the final test</p>
-          <p className="mb-3 text-xs text-muted-foreground">Pass with 60% or above to unlock your certificate.</p>
+        <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/[0.08] to-transparent px-5 py-5">
+          <div className="flex items-start gap-3">
+            <div className="rounded-2xl border border-primary/20 bg-primary/[0.08] p-3 text-primary">
+              <ClipboardCheck className="size-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-base font-semibold text-foreground">All 7 days are complete</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Take the short quiz next. You need at least 60% to unlock your certificate.
+              </p>
+            </div>
+          </div>
           <TrainingCertificationBlock onSessionRefresh={onSessionRefresh} />
         </div>
       ) : null}
-      {trainingComplete ? (
-        <CertificateDownloadBlock />
-      ) : null}
+
+      {trainingComplete ? <CertificateDownloadBlock /> : null}
     </div>
   )
 }

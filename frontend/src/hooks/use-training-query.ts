@@ -92,7 +92,7 @@ export async function uploadTrainingNotes(dayNumber: number, file: File): Promis
 export async function uploadTrainingAudio(dayNumber: number, file: File): Promise<{ day_number: number; audio_url: string }> {
   const form = new FormData()
   form.append('file', file)
-  const res = await apiFetch(`/api/v1/other/training/days/${dayNumber}/audio`, {
+  const res = await apiFetch(`/api/v1/admin/training/day/${dayNumber}/audio`, {
     method: 'POST',
     body: form,
   })
@@ -106,8 +106,8 @@ export async function updateTrainingDay(
   dayNumber: number,
   payload: { title?: string; youtube_url?: string; audio_url?: string },
 ): Promise<{ day_number: number; title: string; youtube_url?: string; audio_url?: string }> {
-  const res = await apiFetch(`/api/v1/other/training/days/${dayNumber}`, {
-    method: 'PATCH',
+  const res = await apiFetch(`/api/v1/admin/training/day/${dayNumber}`, {
+    method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
