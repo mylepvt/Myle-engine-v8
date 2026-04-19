@@ -143,10 +143,11 @@ def test_my_team_team_user_ok(monkeypatch: pytest.MonkeyPatch) -> None:
     assert body["items"][0]["email"] == "dev-team@myle.local"
 
 
-def test_my_team_forbidden_for_admin(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_my_team_accessible_for_admin(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Admin can access /my-team (returns their own record or empty list)."""
     c = _authed_client(monkeypatch)
     assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
-    assert c.get("/api/v1/team/my-team").status_code == 403
+    assert c.get("/api/v1/team/my-team").status_code == 200
 
 
 def test_admin_training_put_forbidden_for_team(monkeypatch: pytest.MonkeyPatch) -> None:

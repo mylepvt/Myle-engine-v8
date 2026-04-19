@@ -160,16 +160,17 @@ def test_ctcs_action_followup_at_rejected_for_non_call_later(monkeypatch: pytest
         asyncio.run(_clear_leads())
 
 
-def test_ctcs_action_paid_leader_day1(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_ctcs_action_paid_requires_approved_proof(monkeypatch: pytest.MonkeyPatch) -> None:
+    """'paid' CTCS action requires payment_status == 'approved' — blocked without proof."""
     asyncio.run(_clear_leads())
     asyncio.run(_seed_lead())
     try:
         c = _authed(monkeypatch)
         lead_id = c.get("/api/v1/leads").json()["items"][0]["id"]
+        # No proof uploaded → must be blocked
         r = c.post(f"/api/v1/leads/{lead_id}/action", json={"action": "paid"})
-        assert r.status_code == 200, r.text
-        assert r.json()["status"] == "day1"
-        assert r.json().get("payment_status") == "approved"
+        assert r.status_code == 400, r.text
+        assert "proof" in r.json()["error"]["message"].lower()
     finally:
         asyncio.run(_clear_leads())
 
