@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from 'react'
+import { Fragment, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, ClipboardCheck, TrendingUp, UserPlus } from 'lucide-react'
+import { ArrowRight, CheckCircle2, Circle, ClipboardCheck, TrendingUp, UserPlus } from 'lucide-react'
 
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { XpBadge } from '@/components/xp/XpBadge'
@@ -27,7 +27,7 @@ import { useFollowUpsQuery } from '@/hooks/use-follow-ups-query'
 import { useTeamPersonalFunnelQuery } from '@/hooks/use-team-personal-funnel-query'
 import { useTeamTodayStatsQuery } from '@/hooks/use-team-today-stats-query'
 import { useLeadPoolQuery } from '@/hooks/use-lead-pool-query'
-import { LEAD_STATUS_OPTIONS, type LeadPublic } from '@/hooks/use-leads-query'
+import { LEAD_STATUS_OPTIONS, type LeadPublic, usePatchLeadMutation } from '@/hooks/use-leads-query'
 import { useTeamReportsQuery } from '@/hooks/use-team-reports-query'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
 import { usePingLoginMutation } from '@/hooks/use-xp-query'
@@ -59,10 +59,84 @@ function recentFromWorkboard(columns: { items?: LeadPublic[] }[] | undefined): L
     .slice(0, 8)
 }
 
+const D1_STAGES = ['contacted', 'invited', 'video_sent', 'video_watched', 'paid'] as const
+
+function Day1PipelineRow({
+  lead,
+  onPatch,
+  patching,
+}: {
+  lead: LeadPublic
+  onPatch: (id: number, body: { d1_morning?: boolean; d1_afternoon?: boolean; d1_evening?: boolean; status?: string }) => void
+  patching: boolean
+}) {
+  const allDone = lead.d1_morning && lead.d1_afternoon && lead.d1_evening
+  const day1Complete = Boolean(lead.day1_completed_at) || allDone
+
+  return (
+    <TableRow className="bg-primary/[0.03] hover:bg-primary/[0.06]">
+      <TableCell colSpan={4} className="py-2 px-4">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Previous stages auto-complete */}
+          <div className="flex items-center gap-1">
+            {D1_STAGES.map((s) => (
+              <span key={s} className="flex items-center gap-0.5 text-[0.6rem] text-emerald-400/80">
+                <CheckCircle2 className="size-3" />
+              </span>
+            ))}
+            <span className="ml-1 text-[0.62rem] text-muted-foreground">Pre-Day 1 ✓</span>
+          </div>
+
+          <span className="text-muted-foreground/40">|</span>
+
+          {/* Day 1 batch slots */}
+          <div className="flex items-center gap-2">
+            {(['d1_morning', 'd1_afternoon', 'd1_evening'] as const).map((slot, i) => {
+              const labels = ['M', 'A', 'E']
+              const checked = lead[slot]
+              return (
+                <button
+                  key={slot}
+                  type="button"
+                  disabled={patching}
+                  onClick={() => onPatch(lead.id, { [slot]: !checked })}
+                  className={cn(
+                    'flex items-center gap-1 rounded-full border px-2 py-0.5 text-[0.65rem] font-medium transition disabled:opacity-50',
+                    checked
+                      ? 'border-emerald-400/40 bg-emerald-400/12 text-emerald-400'
+                      : 'border-border bg-muted/40 text-muted-foreground hover:border-primary/40 hover:text-foreground',
+                  )}
+                >
+                  {checked ? <CheckCircle2 className="size-3" /> : <Circle className="size-3" />}
+                  {labels[i]}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Push to Day 2 */}
+          {day1Complete && (
+            <Button
+              size="sm"
+              variant="default"
+              disabled={patching}
+              className="h-7 px-3 text-xs bg-primary/90 hover:bg-primary"
+              onClick={() => onPatch(lead.id, { status: 'day2' })}
+            >
+              Push to Day 2 →
+            </Button>
+          )}
+        </div>
+      </TableCell>
+    </TableRow>
+  )
+}
+
 export function DashboardHomePage() {
   const { role } = useDashboardShellRole()
   const { data: me, isPending: mePending } = useAuthMeQuery()
   const sessionReady = Boolean(me?.authenticated)
+  const patchLead = usePatchLeadMutation()
 
   const wb = useWorkboardQuery(sessionReady)
   /** Legacy team dashboard had no follow-up queue in nav; skip API for team. */
@@ -491,31 +565,43 @@ export function DashboardHomePage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recentLeads.map((lead) => (
-                  <TableRow key={lead.id}>
-                    <TableCell className="font-medium capitalize">{lead.name?.toLowerCase()}</TableCell>
-                    <TableCell>
-                      {lead.phone?.trim() ? (
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-ds-caption tabular-nums text-muted-foreground">{lead.phone}</span>
-                          <LeadContactActions phone={lead.phone} />
-                        </div>
-                      ) : (
-                        <span className="text-ds-caption text-muted-foreground">—</span>
+                {recentLeads.map((lead) => {
+                  const isDay1 = lead.status === 'day1' && (role === 'leader' || role === 'admin')
+                  return (
+                    <Fragment key={lead.id}>
+                      <TableRow>
+                        <TableCell className="font-medium capitalize">{lead.name?.toLowerCase()}</TableCell>
+                        <TableCell>
+                          {lead.phone?.trim() ? (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-ds-caption tabular-nums text-muted-foreground">{lead.phone}</span>
+                              <LeadContactActions phone={lead.phone} />
+                            </div>
+                          ) : (
+                            <span className="text-ds-caption text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{statusLabel(lead.status)}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right text-ds-caption text-muted-foreground">
+                          {new Date(lead.created_at).toLocaleDateString(undefined, {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
+                        </TableCell>
+                      </TableRow>
+                      {isDay1 && (
+                        <Day1PipelineRow
+                          lead={lead}
+                          patching={patchLead.isPending}
+                          onPatch={(id, body) => patchLead.mutate({ id, body })}
+                        />
                       )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{statusLabel(lead.status)}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right text-ds-caption text-muted-foreground">
-                      {new Date(lead.created_at).toLocaleDateString(undefined, {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                    </Fragment>
+                  )
+                })}
               </TableBody>
             </Table>
           )}
