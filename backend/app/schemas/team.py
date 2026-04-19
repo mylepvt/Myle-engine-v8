@@ -18,6 +18,8 @@ class TeamMemberPublic(BaseModel):
     email: str
     role: str
     created_at: datetime
+    upline_fbo_id: Optional[str] = None
+    upline_name: Optional[str] = None
 
 
 class TeamMemberListResponse(BaseModel):
@@ -93,6 +95,8 @@ class PendingRegistrationItem(BaseModel):
     email: str
     phone: Optional[str] = None
     created_at: datetime
+    upline_fbo_id: Optional[str] = None
+    upline_name: Optional[str] = None
 
 
 class PendingRegistrationsResponse(BaseModel):

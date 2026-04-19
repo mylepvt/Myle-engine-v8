@@ -56,12 +56,20 @@ class OrgTreeService:
         *,
         max_depth: int | None = None,
     ) -> dict[str, Any]:
+        def count_descendants(node: dict[str, Any]) -> int:
+            total = 0
+            for child in node["children"]:
+                total += 1 + count_descendants(child)
+            return total
+
         def walk(user_id: int, depth: int, seen: set[int]) -> dict[str, Any]:
             user = users_by_id[user_id]
             node: dict[str, Any] = {
                 "id": user.id,
                 "name": user.name,
+                "fbo_id": user.fbo_id,
                 "role": user.role,
+                "team_size": 0,
                 "children": [],
             }
 
@@ -76,6 +84,7 @@ class OrgTreeService:
 
             child_ids = children_map.get(user_id, [])
             node["children"] = [walk(child_id, depth + 1, next_seen) for child_id in child_ids]
+            node["team_size"] = count_descendants(node)
             return node
 
         return walk(root_id, 0, set())

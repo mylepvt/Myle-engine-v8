@@ -1772,6 +1772,8 @@ export interface components {
             fbo_id: string;
             /** Username */
             username?: string | null;
+            /** Name */
+            name?: string | null;
             /** Email */
             email: string;
             /** Role */
@@ -1781,6 +1783,10 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Upline Fbo Id */
+            upline_fbo_id?: string | null;
+            /** Upline Name */
+            upline_name?: string | null;
         };
         /**
          * TeamMyTeamResponse

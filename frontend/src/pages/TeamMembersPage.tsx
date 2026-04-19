@@ -433,6 +433,14 @@ export function TeamMembersPage({ title }: Props) {
                   <span className="mt-0.5 block text-ds-caption">
                     {m.role} · joined {new Date(m.created_at).toLocaleString()}
                   </span>
+                  {(m.upline_name || m.upline_fbo_id) ? (
+                    <span className="mt-0.5 block text-ds-caption text-muted-foreground">
+                      Upline: <span className="text-foreground">{m.upline_name ?? m.upline_fbo_id}</span>
+                      {m.upline_name && m.upline_fbo_id ? (
+                        <span className="ml-1 font-mono opacity-60">({m.upline_fbo_id})</span>
+                      ) : null}
+                    </span>
+                  ) : null}
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-1.5">
                   {isAdmin ? (

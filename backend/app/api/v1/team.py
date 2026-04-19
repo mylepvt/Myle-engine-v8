@@ -66,14 +66,26 @@ async def list_team_members(
     """All users (no passwords) — admin only."""
     _require_admin(user)
 
+    from sqlalchemy.orm import aliased
     count_q = select(func.count()).select_from(User)
     total = int((await session.execute(count_q)).scalar_one())
 
+    Upline = aliased(User, name="upline")
     list_q = (
-        select(User).order_by(User.created_at.asc()).limit(limit).offset(offset)
+        select(User, Upline.fbo_id.label("upline_fbo_id"), Upline.username.label("upline_username"))
+        .outerjoin(Upline, User.upline_user_id == Upline.id)
+        .order_by(User.created_at.asc())
+        .limit(limit)
+        .offset(offset)
     )
-    rows = (await session.execute(list_q)).scalars().all()
-    items = [TeamMemberPublic.model_validate(r) for r in rows]
+    rows = (await session.execute(list_q)).all()
+    items = []
+    for row in rows:
+        u, up_fbo, up_name = row
+        item = TeamMemberPublic.model_validate(u)
+        item.upline_fbo_id = up_fbo
+        item.upline_name = up_name
+        items.append(item)
     return TeamMemberListResponse(items=items, total=total, limit=limit, offset=offset)
 
 
@@ -228,13 +240,23 @@ async def list_pending_registrations(
 ) -> PendingRegistrationsResponse:
     """Admin — self-serve signups awaiting approval (legacy ``/admin/approvals``)."""
     _require_admin(user)
+    UplineAlias = User.__class__.__mro__  # just for naming — use aliased below
+    from sqlalchemy.orm import aliased
+    Upline = aliased(User, name="upline")
     q = await session.execute(
-        select(User)
+        select(User, Upline.fbo_id.label("upline_fbo_id"), Upline.username.label("upline_username"))
+        .outerjoin(Upline, User.upline_user_id == Upline.id)
         .where(User.registration_status == "pending")
         .order_by(User.created_at.asc())
     )
-    rows = q.scalars().all()
-    items = [PendingRegistrationItem.model_validate(r) for r in rows]
+    rows = q.all()
+    items = []
+    for row in rows:
+        u, up_fbo, up_name = row
+        item = PendingRegistrationItem.model_validate(u)
+        item.upline_fbo_id = up_fbo
+        item.upline_name = up_name
+        items.append(item)
     return PendingRegistrationsResponse(items=items, total=len(items))
 
 

@@ -19,6 +19,8 @@ type PendingRow = {
   email: string
   phone: string | null
   created_at: string
+  upline_fbo_id: string | null
+  upline_name: string | null
 }
 
 type Props = {
@@ -86,6 +88,7 @@ export function TeamApprovalsPage({ title }: Props) {
                 <TableRow>
                   <TableHead>FBO ID</TableHead>
                   <TableHead>Username</TableHead>
+                  <TableHead>Upline</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -96,6 +99,15 @@ export function TeamApprovalsPage({ title }: Props) {
                   <TableRow key={row.id}>
                     <TableCell className="font-mono text-xs">{row.fbo_id}</TableCell>
                     <TableCell>{row.username ?? '—'}</TableCell>
+                    <TableCell className="text-xs">
+                      {row.upline_name ? (
+                        <span className="font-medium text-foreground">{row.upline_name}</span>
+                      ) : null}
+                      {row.upline_fbo_id ? (
+                        <span className="block font-mono text-[0.68rem] text-muted-foreground">{row.upline_fbo_id}</span>
+                      ) : null}
+                      {!row.upline_name && !row.upline_fbo_id ? '—' : null}
+                    </TableCell>
                     <TableCell className="text-xs">{row.email}</TableCell>
                     <TableCell className="text-xs">{row.phone ?? '—'}</TableCell>
                     <TableCell className="text-right">

@@ -16,7 +16,9 @@ router = APIRouter()
 class OrgTreeNode(BaseModel):
     id: int
     name: str
+    fbo_id: str
     role: str
+    team_size: int = 0  # total descendants count
     children: list["OrgTreeNode"] = Field(default_factory=list)
 
 

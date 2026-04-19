@@ -116,6 +116,15 @@ export function RegisterPage() {
       setFormError('Please fill all required fields.')
       return
     }
+    // Upline must be verified as leader or admin before submitting
+    if (uplineLookup === null || !uplineLookup.is_valid_upline) {
+      // If not yet checked, run check now
+      if (uplineLookup === null) {
+        await refreshUplineLookup(uplineFboId)
+      }
+      setFormError('Enter a valid upline FBO ID (must be a leader or admin).')
+      return
+    }
     setSubmitting(true)
     try {
       const res = await authRegister({

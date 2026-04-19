@@ -12,6 +12,7 @@ from app.models.user import User
 class OrgUserRow:
     id: int
     name: str
+    fbo_id: str
     role: str
     upline_user_id: int | None
 
@@ -47,6 +48,7 @@ class OrgRepository:
                 OrgUserRow(
                     id=int(uid),
                     name=display_name,
+                    fbo_id=str(fbo_id or ""),
                     role=str(role),
                     upline_user_id=int(upline_user_id) if upline_user_id is not None else None,
                 )

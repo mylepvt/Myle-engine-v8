@@ -13,9 +13,24 @@ initPerformanceProfile()
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    void navigator.serviceWorker.register('/sw.js').catch(() => {
-      /* non-fatal: PWA install hint only */
-    })
+    navigator.serviceWorker.register('/sw.js').then((reg) => {
+      // When SW sends SW_UPDATED message → reload to get fresh assets
+      navigator.serviceWorker.addEventListener('message', (e) => {
+        if (e.data?.type === 'SW_UPDATED') {
+          window.location.reload()
+        }
+      })
+      // If new SW waiting → tell it to activate immediately
+      reg.addEventListener('updatefound', () => {
+        const newSW = reg.installing
+        if (!newSW) return
+        newSW.addEventListener('statechange', () => {
+          if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+            newSW.postMessage({ type: 'SKIP_WAITING' })
+          }
+        })
+      })
+    }).catch(() => { /* non-fatal */ })
   })
 }
 

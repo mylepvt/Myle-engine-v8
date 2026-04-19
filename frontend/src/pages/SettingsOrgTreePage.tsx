@@ -1,66 +1,187 @@
 import { useCallback, useMemo, useState } from 'react'
+import { ChevronDown, ChevronRight, Users } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useShellStubQuery } from '@/hooks/use-shell-stub-query'
+import { apiFetch } from '@/lib/api'
+import { useQuery } from '@tanstack/react-query'
+import { cn } from '@/lib/utils'
 
 type Props = { title: string }
 
-type OrgRow = {
-  member: string
+type OrgNode = {
+  id: number
+  name: string
+  fbo_id: string
   role: string
-  fbo: string
-  upline: string
+  team_size: number
+  children: OrgNode[]
 }
 
-/** Parse title "Name (role)" and detail "FBO 123 · upline: ..." */
-function parseOrgRow(row: Record<string, unknown>): OrgRow {
-  const titleRaw = typeof row.title === 'string' ? row.title : ''
-  const detailRaw = typeof row.detail === 'string' ? row.detail : ''
-
-  const roleMatch = titleRaw.match(/\(([^)]+)\)$/)
-  const role = roleMatch ? roleMatch[1] : '—'
-  const member = titleRaw.replace(/\s*\([^)]*\)$/, '').trim() || '—'
-
-  const fboPart = detailRaw.match(/FBO\s+([^\s·]+)/)
-  const fbo = fboPart ? fboPart[1] : '—'
-
-  const uplinePart = detailRaw.match(/upline:\s*(.+)$/)
-  const upline = uplinePart ? uplinePart[1].trim() : '—'
-
-  return { member, role, fbo, upline }
+type OrgTreeResponse = {
+  items: OrgNode[]
+  total: number
 }
 
 const ROLE_COLORS: Record<string, string> = {
-  admin: 'bg-primary/15 text-primary',
-  leader: 'bg-amber-400/15 text-amber-400',
-  team: 'bg-[hsl(142_71%_48%)]/15 text-[hsl(142_71%_48%)]',
+  admin: 'bg-primary/15 text-primary border-primary/20',
+  leader: 'bg-amber-400/15 text-amber-400 border-amber-400/20',
+  team: 'bg-emerald-400/15 text-emerald-400 border-emerald-400/20',
+}
+
+const ROLE_LINE: Record<string, string> = {
+  admin: 'border-primary/30',
+  leader: 'border-amber-400/30',
+  team: 'border-emerald-400/20',
+}
+
+/** Flatten tree to list of {node, depth} for search matching */
+function flatten(nodes: OrgNode[], depth = 0): { node: OrgNode; depth: number }[] {
+  const out: { node: OrgNode; depth: number }[] = []
+  for (const n of nodes) {
+    out.push({ node: n, depth })
+    out.push(...flatten(n.children, depth + 1))
+  }
+  return out
+}
+
+/** Check if node or any descendant matches needle */
+function nodeMatches(node: OrgNode, needle: string): boolean {
+  if (
+    node.name.toLowerCase().includes(needle) ||
+    node.fbo_id.toLowerCase().includes(needle) ||
+    node.role.toLowerCase().includes(needle)
+  )
+    return true
+  return node.children.some((c) => nodeMatches(c, needle))
+}
+
+/** Filter tree keeping only branches with a match */
+function filterTree(nodes: OrgNode[], needle: string): OrgNode[] {
+  if (!needle) return nodes
+  return nodes
+    .filter((n) => nodeMatches(n, needle))
+    .map((n) => ({ ...n, children: filterTree(n.children, needle) }))
+}
+
+function TreeNode({
+  node,
+  depth,
+  needle,
+  defaultOpen,
+}: {
+  node: OrgNode
+  depth: number
+  needle: string
+  defaultOpen: boolean
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  const hasChildren = node.children.length > 0
+
+  const highlight = needle
+    ? node.name.toLowerCase().includes(needle) ||
+      node.fbo_id.toLowerCase().includes(needle) ||
+      node.role.toLowerCase().includes(needle)
+    : false
+
+  return (
+    <div className={cn('relative', depth > 0 && 'ml-5 border-l', ROLE_LINE[node.role] ?? 'border-white/10')}>
+      <div
+        className={cn(
+          'flex items-center gap-2 rounded-lg px-2 py-2 transition-colors',
+          highlight ? 'bg-primary/[0.07]' : 'hover:bg-white/[0.03]',
+        )}
+      >
+        {/* Expand/collapse toggle */}
+        <button
+          type="button"
+          className={cn(
+            'flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors',
+            hasChildren
+              ? 'hover:bg-white/10 hover:text-foreground'
+              : 'pointer-events-none opacity-0',
+          )}
+          onClick={() => setOpen((s) => !s)}
+          aria-label={open ? 'Collapse' : 'Expand'}
+        >
+          {hasChildren ? (
+            open ? (
+              <ChevronDown className="size-3.5" />
+            ) : (
+              <ChevronRight className="size-3.5" />
+            )
+          ) : null}
+        </button>
+
+        {/* Name + role badge */}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={cn('font-medium text-foreground text-sm', highlight && 'text-primary')}>
+              {node.name}
+            </span>
+            <span
+              className={cn(
+                'inline-flex items-center rounded-full border px-1.5 py-0.5 text-[0.62rem] font-semibold uppercase tracking-wide',
+                ROLE_COLORS[node.role] ?? 'bg-muted/30 text-muted-foreground border-white/10',
+              )}
+            >
+              {node.role}
+            </span>
+            {node.team_size > 0 ? (
+              <span className="flex items-center gap-1 text-[0.68rem] text-muted-foreground">
+                <Users className="size-3" />
+                {node.team_size}
+              </span>
+            ) : null}
+          </div>
+          <div className="mt-0.5 font-mono text-[0.65rem] text-muted-foreground/70">
+            {node.fbo_id}
+          </div>
+        </div>
+      </div>
+
+      {/* Children */}
+      {hasChildren && open ? (
+        <div className="pl-1">
+          {node.children.map((child) => (
+            <TreeNode
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              needle={needle}
+              defaultOpen={depth < 1}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
 }
 
 export function SettingsOrgTreePage({ title }: Props) {
-  const { data, isPending, isError, error, refetch } = useShellStubQuery('/api/v1/settings/org-tree')
+  const { data, isPending, isError, error, refetch } = useQuery({
+    queryKey: ['org', 'tree'],
+    queryFn: async () => {
+      const r = await apiFetch('/api/v1/org/tree?include_inactive=true')
+      if (!r.ok) throw new Error(await r.text())
+      return r.json() as Promise<OrgTreeResponse>
+    },
+    staleTime: 60_000,
+  })
+
   const [q, setQ] = useState('')
+  const needle = q.trim().toLowerCase()
 
-  const rows = useMemo<OrgRow[]>(() => (data?.items ?? []).map(parseOrgRow), [data])
+  const tree = useMemo(() => filterTree(data?.items ?? [], needle), [data, needle])
 
-  const filtered = useMemo(() => {
-    const needle = q.trim().toLowerCase()
-    if (!needle) return rows
-    return rows.filter(
-      (r) =>
-        r.member.toLowerCase().includes(needle) ||
-        r.fbo.toLowerCase().includes(needle) ||
-        r.upline.toLowerCase().includes(needle) ||
-        r.role.toLowerCase().includes(needle),
-    )
-  }, [rows, q])
+  const allFlat = useMemo(() => flatten(data?.items ?? []), [data])
 
   const downloadCsv = useCallback(() => {
-    const header = ['Member', 'Role', 'FBO ID', 'Upline'].join(',')
-    const body = filtered
-      .map((r) =>
-        [r.member, r.role, r.fbo, r.upline]
-          .map((v) => `"${v.replace(/"/g, '""')}"`)
+    const header = ['Member', 'Role', 'FBO ID', 'Team size'].join(',')
+    const body = allFlat
+      .map(({ node }) =>
+        [node.name, node.role, node.fbo_id, node.team_size]
+          .map((v) => `"${String(v).replace(/"/g, '""')}"`)
           .join(','),
       )
       .join('\n')
@@ -77,17 +198,18 @@ export function SettingsOrgTreePage({ title }: Props) {
     } finally {
       if (url) URL.revokeObjectURL(url)
     }
-  }, [filtered])
+  }, [allFlat])
+
+  const totalMembers = allFlat.length
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="max-w-3xl space-y-5">
+      {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Flat directory from{' '}
-            <code className="rounded bg-white/10 px-1 text-xs">users.upline_user_id</code>.
-            Sorted by user id.
+            Hierarchy by upline. Expand nodes to see team members.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -95,7 +217,7 @@ export function SettingsOrgTreePage({ title }: Props) {
             type="button"
             variant="secondary"
             size="sm"
-            disabled={filtered.length === 0}
+            disabled={totalMembers === 0}
             onClick={downloadCsv}
           >
             Download CSV
@@ -112,73 +234,77 @@ export function SettingsOrgTreePage({ title }: Props) {
         </div>
       </div>
 
+      {/* Legend */}
+      <div className="flex flex-wrap gap-3 text-[0.68rem]">
+        {(['admin', 'leader', 'team'] as const).map((r) => (
+          <span
+            key={r}
+            className={cn(
+              'inline-flex items-center rounded-full border px-2 py-0.5 font-semibold uppercase tracking-wide',
+              ROLE_COLORS[r],
+            )}
+          >
+            {r}
+          </span>
+        ))}
+        <span className="flex items-center gap-1 text-muted-foreground">
+          <Users className="size-3" /> = team size (all descendants)
+        </span>
+      </div>
+
+      {/* Search */}
+      <input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Search name, FBO ID, role…"
+        className="w-full max-w-xs rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-sm text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+      />
+
+      {/* States */}
       {isPending ? (
         <div className="space-y-2">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
         </div>
       ) : null}
+
       {isError ? (
         <div className="text-sm text-destructive" role="alert">
-          <span>{error instanceof Error ? error.message : 'Could not load'} </span>
+          {error instanceof Error ? error.message : 'Could not load'}{' '}
           <button type="button" className="underline underline-offset-2" onClick={() => void refetch()}>
             Retry
           </button>
         </div>
       ) : null}
+
+      {/* Tree */}
       {data ? (
-        <div className="space-y-3">
-          {data.note ? <p className="text-xs text-muted-foreground">{data.note}</p> : null}
-          <label className="block max-w-xs text-sm">
-            <span className="mb-1 block text-ds-caption text-muted-foreground">Search members</span>
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Name, FBO ID, upline…"
-              className="w-full rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-sm text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
-            />
-          </label>
-          <div className="surface-elevated overflow-x-auto p-3">
-            <table className="w-full min-w-[36rem] border-collapse text-left text-sm">
-              <thead className="sticky top-0 z-[1] bg-muted/40 backdrop-blur-sm">
-                <tr className="border-b border-white/10 text-ds-caption text-muted-foreground">
-                  <th className="py-2 pr-4 font-medium">Member</th>
-                  <th className="py-2 pr-4 font-medium">Role</th>
-                  <th className="py-2 pr-4 font-medium">FBO ID</th>
-                  <th className="py-2 font-medium">Upline</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((r, i) => (
-                  <tr key={i} className="border-b border-white/[0.06]">
-                    <td className="py-2.5 pr-4 font-medium text-foreground">{r.member}</td>
-                    <td className="py-2.5 pr-4">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${ROLE_COLORS[r.role] ?? 'bg-muted/30 text-muted-foreground'}`}
-                      >
-                        {r.role}
-                      </span>
-                    </td>
-                    <td className="py-2.5 pr-4 font-mono text-xs text-muted-foreground">{r.fbo}</td>
-                    <td className="py-2.5 text-muted-foreground">{r.upline}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {filtered.length === 0 ? (
-              <p className="mt-3 text-muted-foreground">
-                {q ? 'No members match your search.' : 'No users in database.'}
-              </p>
-            ) : null}
-          </div>
-          {rows.length > 0 ? (
-            <p className="text-xs text-muted-foreground">
-              {filtered.length} of {rows.length} member{rows.length !== 1 ? 's' : ''}
-              {q ? ' (filtered)' : ''}
+        <div className="surface-elevated space-y-0.5 rounded-xl border border-border p-3">
+          {tree.length === 0 ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">
+              {needle ? 'No members match your search.' : 'No members.'}
             </p>
-          ) : null}
+          ) : (
+            tree.map((node) => (
+              <TreeNode
+                key={node.id}
+                node={node}
+                depth={0}
+                needle={needle}
+                defaultOpen={true}
+              />
+            ))
+          )}
         </div>
+      ) : null}
+
+      {data && totalMembers > 0 ? (
+        <p className="text-xs text-muted-foreground">
+          {needle ? `${flatten(tree).length} of ` : ''}
+          {totalMembers} member{totalMembers !== 1 ? 's' : ''}
+          {needle ? ' match' : ''}
+        </p>
       ) : null}
     </div>
   )

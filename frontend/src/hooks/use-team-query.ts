@@ -11,6 +11,8 @@ export type TeamMemberPublic = {
   email: string
   role: string
   created_at: string
+  upline_fbo_id?: string | null
+  upline_name?: string | null
 }
 
 export type TeamMemberListResponse = {
