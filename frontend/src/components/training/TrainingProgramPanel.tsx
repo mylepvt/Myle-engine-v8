@@ -147,6 +147,8 @@ function DayCard({
   isAdmin: boolean
 }) {
   const { day_number, title, youtube_url, audio_url, unlocked = true } = video
+  // Admin/leader can access all days regardless of unlock state
+  const effectivelyUnlocked = isAdmin || unlocked
 
   const [timerDone, setTimerDone] = useState(false)
   const [noteFile, setNoteFile] = useState<File | null>(null)
@@ -189,7 +191,7 @@ function DayCard({
     }
   }
 
-  if (!unlocked) {
+  if (!effectivelyUnlocked) {
     return (
       <div className="rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 opacity-50">
         <div className="flex items-center gap-2">
