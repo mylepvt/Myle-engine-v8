@@ -212,7 +212,7 @@ function DayCard({
       {/* Header */}
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-foreground">
-          Day {day_number} — {title}
+          Day {day_number} — {title.replace(/^Day\s*\d+\s*[—–-]+\s*/i, '')}
         </span>
         {completed && (
           <span className="text-xs font-medium text-emerald-400">✓ Completed</span>
