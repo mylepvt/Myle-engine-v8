@@ -12,6 +12,7 @@ Zero business logic lives here. FastAPI = gate, CRM = brain.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 from typing import Annotated
@@ -173,29 +174,58 @@ async def crm_proxy_pool_claim(
     except (json.JSONDecodeError, UnicodeDecodeError):
         return resp
 
-    price_raw = lead_json.get("poolPriceCents")
-    if price_raw is None:
-        price_raw = lead_json.get("pool_price_cents")
-    try:
-        price_int = int(price_raw or 0)
-    except (TypeError, ValueError):
-        price_int = 0
-    if price_int <= 0:
-        return resp
+    def _pool_claim_invoice_key(base_idem: str, lead_key: str) -> str:
+        return hashlib.sha256(f"{base_idem}|{lead_key}".encode()).hexdigest()[:120]
+
+    def _lead_pool_price_cents(lead: dict) -> int:
+        price_raw = lead.get("poolPriceCents") or lead.get("pool_price_cents")
+        try:
+            return int(price_raw or 0)
+        except (TypeError, ValueError):
+            return 0
 
     try:
         from app.services.invoice_records import create_tax_invoice_for_pool_claim
 
-        created = await create_tax_invoice_for_pool_claim(
-            session,
-            user_id=user.user_id,
-            total_cents=price_int,
-            wallet_ledger_entry_id=None,
-            crm_claim_idempotency_key=idem,
-            lead_index=1,
-        )
-        if created is not None:
-            await session.commit()
+        batch_leads = lead_json.get("leads") if isinstance(lead_json, dict) else None
+        if isinstance(batch_leads, list) and batch_leads:
+            any_created = False
+            for idx, row in enumerate(batch_leads):
+                if not isinstance(row, dict):
+                    continue
+                price_int = _lead_pool_price_cents(row)
+                if price_int <= 0:
+                    continue
+                lk = str(row.get("legacyId") or row.get("legacy_id") or row.get("id") or idx)
+                inv_key = _pool_claim_invoice_key(idem, lk)
+                created = await create_tax_invoice_for_pool_claim(
+                    session,
+                    user_id=user.user_id,
+                    total_cents=price_int,
+                    wallet_ledger_entry_id=None,
+                    crm_claim_idempotency_key=inv_key,
+                    lead_index=idx + 1,
+                )
+                if created is not None:
+                    any_created = True
+            if any_created:
+                await session.commit()
+        else:
+            if not isinstance(lead_json, dict):
+                return resp
+            price_int = _lead_pool_price_cents(lead_json)
+            if price_int <= 0:
+                return resp
+            created = await create_tax_invoice_for_pool_claim(
+                session,
+                user_id=user.user_id,
+                total_cents=price_int,
+                wallet_ledger_entry_id=None,
+                crm_claim_idempotency_key=idem,
+                lead_index=1,
+            )
+            if created is not None:
+                await session.commit()
     except Exception as exc:  # noqa: BLE001
         logger.warning("Pool claim invoice hook failed: %s", exc)
         await session.rollback()
