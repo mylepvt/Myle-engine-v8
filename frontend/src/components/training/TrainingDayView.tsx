@@ -63,8 +63,8 @@ export function TrainingDayView({
       setLocalHasNotes(true)
       setNoteFile(null)
       if (fileRef.current) fileRef.current.value = ''
-    } catch (e) {
-      setNoteErr(e instanceof Error ? e.message : 'Upload failed')
+    } catch {
+      setNoteErr('Upload did not work. Please try again.')
     } finally {
       setNoteUploading(false)
     }
@@ -88,7 +88,9 @@ export function TrainingDayView({
             Day {day_number} — {title}
           </span>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">Complete Day {day_number - 1} first</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Finish day {day_number - 1} first — then this day opens.
+        </p>
       </div>
     )
   }
@@ -103,13 +105,13 @@ export function TrainingDayView({
         <span className="text-sm font-medium text-foreground">
           Day {day_number} — {title.replace(/^Day\s*\d+\s*[—–-]+\s*/i, '')}
         </span>
-        {completed && <span className="text-xs font-medium text-emerald-400">✓ Completed</span>}
+        {completed && <span className="text-xs font-medium text-emerald-400">Done</span>}
       </div>
 
       <div className="space-y-1">
         {embedUrl ? (
           <>
-            <p className="text-xs text-muted-foreground">Watch video fully before proceeding</p>
+            <p className="text-xs text-muted-foreground">Watch the full video.</p>
             <div className="aspect-video w-full max-w-full overflow-hidden rounded-md bg-black">
               <iframe
                 src={embedUrl}
@@ -121,27 +123,27 @@ export function TrainingDayView({
               />
             </div>
             {!timerDone && (
-              <p className="text-xs text-amber-400">Please spend at least 30 seconds watching before proceeding</p>
+              <p className="text-xs text-amber-400">Stay on this video for at least 30 seconds to continue.</p>
             )}
           </>
         ) : (
-          <p className="text-xs text-muted-foreground">Content will be available soon</p>
+          <p className="text-xs text-muted-foreground">This part is not ready yet. Please check back soon.</p>
         )}
       </div>
 
       <div className="space-y-1">
-        <p className="text-xs font-medium text-foreground/70">Listen to the audio</p>
+        <p className="text-xs font-medium text-foreground/70">Listen</p>
         {resolveUrl(audio_url) ? (
           <audio controls src={resolveUrl(audio_url)!} className="w-full max-w-full" />
         ) : (
-          <p className="text-xs text-muted-foreground">Content will be available soon</p>
+          <p className="text-xs text-muted-foreground">This part is not ready yet. Please check back soon.</p>
         )}
       </div>
 
       <div className="space-y-1 min-w-0">
-        <p className="text-xs font-medium text-foreground/70">Upload your notes</p>
+        <p className="text-xs font-medium text-foreground/70">Your notes (photo)</p>
         {localHasNotes ? (
-          <p className="text-xs text-emerald-400">✓ Notes submitted</p>
+          <p className="text-xs text-emerald-400">Notes received</p>
         ) : (
           <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <input
@@ -159,7 +161,7 @@ export function TrainingDayView({
               disabled={!noteFile || noteUploading}
               onClick={() => void handleNoteUpload()}
             >
-              {noteUploading ? 'Uploading…' : 'Upload'}
+              {noteUploading ? 'Sending…' : 'Upload photo'}
             </Button>
           </div>
         )}
@@ -176,14 +178,14 @@ export function TrainingDayView({
             disabled={!localHasNotes || markDay.isPending}
             onClick={() => void handleMarkComplete()}
           >
-            {markDay.isPending ? 'Saving…' : 'Mark complete'}
+            {markDay.isPending ? 'Saving…' : 'Mark day as done'}
           </Button>
           {!localHasNotes && (
-            <p className="text-xs text-muted-foreground">Upload your notes first to enable this button</p>
+            <p className="text-xs text-muted-foreground">Upload a photo of your notes first.</p>
           )}
           {markDay.isError && (
             <p className="text-xs text-destructive">
-              {markDay.error instanceof Error ? markDay.error.message : 'Could not save'}
+              Could not save. Please try again.
             </p>
           )}
         </div>

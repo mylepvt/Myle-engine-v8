@@ -35,8 +35,8 @@ export function SystemSurfacePage({ title, surface }: Props) {
       {data && surface === 'training' && !('videos' in data) && 'items' in data ? (
         <div className="surface-elevated space-y-4 p-4 text-sm text-muted-foreground">
           {'note' in data && data.note ? <p className="text-foreground/90">{data.note}</p> : null}
-          <p className="text-ds-caption">
-            Signals:{' '}
+          <p className="text-ds-caption text-muted-foreground">
+            Items:{' '}
             <span className="font-medium text-foreground">
               {'total' in data ? data.total : 0}
             </span>
@@ -47,8 +47,8 @@ export function SystemSurfacePage({ title, surface }: Props) {
       {data && surface !== 'training' ? (
         <div className="surface-elevated space-y-4 p-4 text-sm text-muted-foreground">
           {'note' in data && data.note ? <p className="text-foreground/90">{data.note}</p> : null}
-          <p className="text-ds-caption">
-            Signals:{' '}
+          <p className="text-ds-caption text-muted-foreground">
+            Items:{' '}
             <span className="font-medium text-foreground">
               {'total' in data && typeof data.total === 'number' ? data.total : 0}
             </span>

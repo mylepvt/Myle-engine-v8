@@ -10,6 +10,13 @@ import { cn } from '@/lib/utils'
 
 type Props = { title: string }
 
+function roleLabel(role: string): string {
+  if (role === 'team') return 'Member'
+  if (role === 'leader') return 'Leader'
+  if (role === 'admin') return 'Admin'
+  return role
+}
+
 function OrgBranch({ node, depth }: { node: OrgTreeNode; depth: number }) {
   const [open, setOpen] = useState(depth < 2)
   const hasChildren = node.children.length > 0
@@ -34,7 +41,7 @@ function OrgBranch({ node, depth }: { node: OrgTreeNode; depth: number }) {
         <span className="min-w-0 flex-1 truncate font-medium">{node.name}</span>
         <span className="shrink-0 font-mono text-[0.65rem] text-muted-foreground/80">{node.fbo_id}</span>
         <span className="shrink-0 rounded-full border border-white/10 px-1.5 py-0.5 text-[0.58rem] uppercase text-muted-foreground">
-          {node.role}
+          {roleLabel(node.role)}
         </span>
       </button>
       {hasChildren && open ? (
@@ -72,8 +79,8 @@ export function MyTeamPage({ title }: Props) {
       </div>
       <p className="text-sm text-muted-foreground">
         {isLeader
-          ? 'Your organisation: everyone in your downline. Admins can change placement in Team → Members.'
-          : 'Your profile and upline. Team leaders manage downline from My team.'}
+          ? 'See everyone under you. Only an admin can move people in the main team list.'
+          : 'Your details and who you report to. Leaders see their full team here.'}
       </p>
 
       {isLeader && data ? (
@@ -81,16 +88,16 @@ export function MyTeamPage({ title }: Props) {
           <div className="flex min-w-[8rem] items-center gap-2">
             <Users className="size-4 text-muted-foreground" />
             <div>
-              <p className="text-xs text-muted-foreground">Total downline</p>
+              <p className="text-xs text-muted-foreground">People under you</p>
               <p className="font-semibold text-foreground">{data.total_downline ?? 0}</p>
             </div>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Direct members</p>
+            <p className="text-xs text-muted-foreground">Direct on you</p>
             <p className="font-semibold text-foreground">{data.direct_members ?? 0}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">In this list</p>
+            <p className="text-xs text-muted-foreground">Listed here</p>
             <p className="font-semibold text-foreground">{data.total}</p>
           </div>
         </div>
@@ -117,20 +124,20 @@ export function MyTeamPage({ title }: Props) {
       ) : null}
       {org.isError ? (
         <p className="text-xs text-destructive">
-          {org.error instanceof Error ? org.error.message : 'Could not load org tree'}
+          {org.error instanceof Error ? org.error.message : 'Could not load team map'}
         </p>
       ) : null}
 
       {root ? (
         <div className="surface-elevated p-4 text-sm">
-          <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Org tree</p>
+          <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Team map</p>
           <OrgBranch node={root} depth={0} />
         </div>
       ) : null}
 
       {data ? (
         <div className="surface-elevated p-4 text-sm">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Directory</p>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">List</p>
           <ul className="space-y-2">
             {data.items.map((m) => (
               <li key={m.id} className="surface-inset min-w-0 px-3 py-2 text-muted-foreground">
@@ -141,12 +148,12 @@ export function MyTeamPage({ title }: Props) {
                 <span className="mt-0.5 block truncate text-xs text-muted-foreground">{m.email}</span>
                 {m.upline_name ? (
                   <span className="mt-0.5 block text-xs text-muted-foreground">
-                    Upline: {m.upline_name}
+                    Reports to: {m.upline_name}
                     {m.upline_fbo_id ? ` (${m.upline_fbo_id})` : ''}
                   </span>
                 ) : null}
                 <span className="mt-0.5 block text-xs">
-                  {m.role} · joined {new Date(m.created_at).toLocaleString()}
+                  {roleLabel(m.role)} · joined {new Date(m.created_at).toLocaleString()}
                 </span>
               </li>
             ))}

@@ -11,15 +11,12 @@ export function CommunityTrainingPage({ title }: Props) {
     <div className="max-w-2xl space-y-6">
       <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
       <p className="text-sm text-muted-foreground">
-        Required training track for field partners (same catalog as System → Training; progress is
-        shared). If the video list is empty, populate the{' '}
-        <code className="rounded bg-white/10 px-1">training_videos</code> table via migration{' '}
-        <code className="rounded bg-white/10 px-1">20260413_0020_seed_seven_training_videos</code>{' '}
-        in <code className="rounded bg-white/10 px-1">backend/alembic/versions/</code>.
+        Finish all 7 days in order. Your progress is saved automatically. If you also open Training
+        under System, it shows the same steps.
       </p>
       <p className="text-xs text-muted-foreground">
-        Day 1/2/3 <strong>batch slots</strong> (Morning / Afternoon / Evening) are updated directly on
-        each lead card in Workboard. This uses a single unified Workboard flow.
+        For Day 1–3 session times (morning / afternoon / evening), your leader updates them on each
+        lead in Workboard.
       </p>
 
       {isPending ? (

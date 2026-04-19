@@ -37,35 +37,35 @@ export function TrainingDayAdmin({ dayNumber }: Props) {
         setAudioFile(null)
         if (audioRef.current) audioRef.current.value = ''
       }
-      setMsg('Saved ✓')
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Save failed')
+      setMsg('Saved')
+    } catch {
+      setErr('Could not save. Check the links and file, then try again.')
     }
   }
 
   return (
     <div className="mt-3 space-y-2 rounded-md border border-amber-500/20 bg-amber-500/[0.04] p-3 min-w-0">
-      <p className="text-xs font-semibold text-amber-400/80">Admin — Day {dayNumber} content</p>
+      <p className="text-xs font-semibold text-amber-400/80">Edit day {dayNumber}</p>
       <input
         className="field-input w-full min-w-0 max-w-full text-xs"
-        placeholder="Day title (e.g. Day 1 — Welcome & Orientation)"
+        placeholder="Day title shown to learners"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
       />
       <input
         className="field-input w-full min-w-0 max-w-full text-xs"
-        placeholder="YouTube video URL"
+        placeholder="Video link (YouTube)"
         value={youtubeUrl}
         onChange={(e) => setYoutubeUrl(e.target.value)}
       />
       <input
         className="field-input w-full min-w-0 max-w-full text-xs"
-        placeholder="Audio URL (paste link — or upload file below)"
+        placeholder="Audio link (optional if you upload a file)"
         value={audioUrl}
         onChange={(e) => setAudioUrl(e.target.value)}
       />
       <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-        <span className="shrink-0 text-xs text-muted-foreground">Upload audio file</span>
+        <span className="shrink-0 text-xs text-muted-foreground">Or upload an audio file</span>
         <input
           ref={audioRef}
           type="file"

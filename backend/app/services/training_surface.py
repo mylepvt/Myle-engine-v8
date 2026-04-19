@@ -85,7 +85,8 @@ async def build_training_surface(session: AsyncSession, user_id: int) -> Trainin
         for v in video_rows
     ]
 
-    note = None if videos else "Training catalog is empty - admin can seed `training_videos`."
+    # Optional banner for clients; empty catalog is handled in the app UI.
+    note = None
     return TrainingSurfaceResponse(
         videos=videos,
         progress=progress,

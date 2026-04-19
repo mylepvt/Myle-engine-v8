@@ -55,14 +55,19 @@ function TrainingDaysBlock({
   const notesSet = new Set(notes.map((n) => n.day_number))
 
   if (vids.length === 0) {
-    return <p className="text-foreground/90">No training days configured yet.</p>
+    return (
+      <p className="text-sm text-muted-foreground">
+        Training is not available yet. Please try again later or contact support if this continues.
+      </p>
+    )
   }
 
   return (
     <div className="space-y-3">
-      <p className="text-sm font-medium text-foreground">7-day program</p>
+      <p className="text-sm font-medium text-foreground">Your 7-day plan</p>
       <p className="text-ds-caption text-muted-foreground">
-        Watch each video, listen to the audio, upload your notes, then mark the day complete.
+        One day at a time: watch the lesson, play the audio, add a clear photo of your notes, then
+        mark that day as done.
       </p>
       <div className="space-y-3">
         {vids.map((v) => (
@@ -90,9 +95,9 @@ function CertificateDownloadBlock() {
   const downloadMut = useDownloadCertificateMutation()
   return (
     <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/[0.07] px-4 py-4 space-y-3 text-center">
-      <p className="text-base font-semibold text-emerald-400">🎉 Training Complete!</p>
+      <p className="text-base font-semibold text-emerald-400">You&apos;re done with training</p>
       <p className="text-xs text-muted-foreground">
-        Your certificate is ready. Download it below — your name is printed on it automatically.
+        Download your certificate. Your name is added for you.
       </p>
       <Button
         type="button"
@@ -101,11 +106,11 @@ function CertificateDownloadBlock() {
         onClick={() => downloadMut.mutate()}
         className="gap-2"
       >
-        {downloadMut.isPending ? 'Generating…' : '⬇ Download Certificate (PDF)'}
+        {downloadMut.isPending ? 'Preparing…' : 'Download certificate'}
       </Button>
       {downloadMut.isError && (
         <p className="text-xs text-destructive" role="alert">
-          {downloadMut.error instanceof Error ? downloadMut.error.message : 'Download failed'}
+          Could not download. Check your connection and try again.
         </p>
       )}
     </div>
@@ -151,7 +156,7 @@ function TrainingCertificationBlock({
       }
       setQuestions(cleaned)
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Failed to load test')
+      setErr(e instanceof Error ? e.message : 'Could not open the quiz. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -182,7 +187,7 @@ function TrainingCertificationBlock({
         await onSessionRefresh()
       }
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Submit failed')
+      setErr(e instanceof Error ? e.message : 'Could not submit. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -190,7 +195,7 @@ function TrainingCertificationBlock({
 
   return (
     <div className="mt-4 border-t border-white/10 pt-4">
-      <p className="mb-2 text-sm font-medium text-foreground">Certification test</p>
+      <p className="mb-2 text-sm font-medium text-foreground">Final quiz</p>
       {questions === null ? (
         <button
           type="button"
@@ -198,10 +203,10 @@ function TrainingCertificationBlock({
           onClick={() => void load()}
           className="rounded-md border border-white/15 bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-foreground transition hover:border-primary/40 disabled:opacity-50"
         >
-          {loading ? 'Loading…' : 'Load questions'}
+          {loading ? 'Opening…' : 'Start quiz'}
         </button>
       ) : questions.length === 0 ? (
-        <p className="text-xs text-muted-foreground">No questions configured yet.</p>
+        <p className="text-xs text-muted-foreground">The quiz is not ready yet. Please check back soon.</p>
       ) : (
         <div className="space-y-3">
           {questions.map((q) => (
@@ -233,7 +238,7 @@ function TrainingCertificationBlock({
             onClick={() => void submit()}
             className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/25 disabled:opacity-50"
           >
-            Submit answers
+            Submit quiz
           </button>
         </div>
       )}
@@ -245,12 +250,12 @@ function TrainingCertificationBlock({
       {result ? (
         <div className="mt-2 space-y-2">
           <p className="text-xs text-foreground/90">
-            Score {result.score}/{result.total_questions} ({result.percent}%) —{' '}
+            You scored {result.score} out of {result.total_questions} ({result.percent}%).{' '}
             {result.passed ? (
-              <span className="font-medium text-emerald-400">Passed ✓</span>
+              <span className="font-medium text-emerald-400">You passed.</span>
             ) : (
               <span className="font-medium text-amber-300">
-                Below pass mark ({result.pass_mark_percent}%) — try again
+                You need {result.pass_mark_percent}% to pass — try again.
               </span>
             )}
           </p>
@@ -309,8 +314,10 @@ export function TrainingProgramPanel({ data }: Props) {
       />
       {showTest ? (
         <div className="rounded-xl border border-primary/25 bg-primary/[0.05] px-4 py-4">
-          <p className="mb-1 text-sm font-semibold text-foreground">🎯 All 7 days done! Take the final test</p>
-          <p className="mb-3 text-xs text-muted-foreground">Pass with 60% or above to unlock your certificate.</p>
+          <p className="mb-1 text-sm font-semibold text-foreground">All 7 days are complete</p>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Take the short quiz next. You need at least 60% to unlock your certificate.
+          </p>
           <TrainingCertificationBlock onSessionRefresh={onSessionRefresh} />
         </div>
       ) : null}
