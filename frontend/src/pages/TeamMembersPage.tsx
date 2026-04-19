@@ -14,6 +14,8 @@ import {
   useMemberLeadsQuery,
   type TeamMemberPublic,
 } from '@/hooks/use-team-query'
+import { useInvoicesQuery } from '@/hooks/use-invoices-query'
+import { invoiceDownloadUrl } from '@/lib/invoice-url'
 import { ROLES, roleShortLabel, type Role } from '@/types/role'
 
 type ResetTarget = Pick<TeamMemberPublic, 'id' | 'fbo_id' | 'email'>
@@ -105,6 +107,7 @@ function MemberProfileModal({
   onClose: () => void
 }) {
   const { data, isPending } = useMemberLeadsQuery(member.id)
+  const invQuery = useInvoicesQuery({ user_id: member.id, limit: 50, offset: 0 })
   const updateRoleMut = useUpdateMemberRoleMutation()
   const deleteMut = useDeleteMemberMutation()
   const [selectedRole, setSelectedRole] = useState<Role>(member.role as Role)
@@ -220,6 +223,48 @@ function MemberProfileModal({
                   <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
                     {lead.status}
                   </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Invoices */}
+        <div className="mb-4">
+          <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Invoices</p>
+          {invQuery.isPending ? (
+            <div className="space-y-1.5">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <Skeleton key={i} className="h-9 w-full" />
+              ))}
+            </div>
+          ) : !invQuery.data?.items.length ? (
+            <p className="text-ds-caption text-muted-foreground">No invoices yet.</p>
+          ) : (
+            <ul className="max-h-48 space-y-1 overflow-y-auto text-ds-caption">
+              {invQuery.data.items.map((inv) => (
+                <li
+                  key={inv.invoice_number}
+                  className="surface-inset flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <span className="font-mono text-xs text-foreground">{inv.invoice_number}</span>
+                    <span className="ml-2 text-muted-foreground">
+                      {inv.doc_type === 'tax_invoice' ? 'Tax Invoice' : 'Receipt'}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      {new Date(inv.issued_at).toLocaleDateString()} · ₹
+                      {(inv.total_cents / 100).toFixed(2)}
+                    </span>
+                  </div>
+                  <a
+                    href={invoiceDownloadUrl(inv.invoice_number)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="shrink-0 text-xs text-primary underline-offset-2 hover:underline"
+                  >
+                    Download
+                  </a>
                 </li>
               ))}
             </ul>

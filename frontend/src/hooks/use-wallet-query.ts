@@ -9,6 +9,7 @@ export type WalletLedgerEntryPublic = {
   currency: string
   note: string | null
   created_at: string
+  invoice_number?: string | null
 }
 
 export type WalletSummaryResponse = {

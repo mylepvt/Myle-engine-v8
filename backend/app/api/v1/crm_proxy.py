@@ -12,13 +12,15 @@ Zero business logic lives here. FastAPI = gate, CRM = brain.
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Annotated
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import AuthUser
+from app.api.deps import AuthUser, get_db
 from app.core.auth_cookie import MYLE_ACCESS_COOKIE
 from app.core.config import settings
 
@@ -106,6 +108,99 @@ async def _proxy(
 # ---------------------------------------------------------------------------
 
 AuthDep = Annotated[AuthUser, Depends(require_auth_user)]
+
+
+@router.post("/crm/pool/claim", tags=["crm"])
+async def crm_proxy_pool_claim(
+    request: Request,
+    user: AuthDep,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    """Forward pool claim to CRM; on success create vl2 tax invoice (CRM wallet is source of truth)."""
+    body_bytes = await request.body()
+    token = request.cookies.get(MYLE_ACCESS_COOKIE, "")
+
+    skip = {"host", "cookie", "content-length", "transfer-encoding", "connection"}
+    headers: dict[str, str] = {
+        k: v for k, v in request.headers.items() if k.lower() not in skip
+    }
+    headers["authorization"] = f"Bearer {token}"
+
+    client = get_crm_client()
+    try:
+        crm_resp = await client.request(
+            method="POST",
+            url="/api/v1/pool/claim",
+            headers=headers,
+            content=body_bytes,
+        )
+    except httpx.ConnectError:
+        logger.error("CRM proxy: cannot connect to %s", settings.crm_api_url)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="CRM service unavailable",
+        )
+    except httpx.TimeoutException:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="CRM service timed out",
+        )
+
+    skip_resp = {"transfer-encoding", "connection", "keep-alive", "content-encoding"}
+    resp_headers = {
+        k: v for k, v in crm_resp.headers.items() if k.lower() not in skip_resp
+    }
+    resp = Response(
+        content=crm_resp.content,
+        status_code=crm_resp.status_code,
+        headers=resp_headers,
+        media_type=crm_resp.headers.get("content-type", "application/json"),
+    )
+
+    if not (200 <= crm_resp.status_code < 300):
+        return resp
+
+    try:
+        req_json = json.loads(body_bytes.decode("utf-8") or "{}")
+    except json.JSONDecodeError:
+        return resp
+    idem = str(req_json.get("idempotencyKey") or "").strip()
+    if len(idem) < 8:
+        return resp
+
+    try:
+        lead_json = json.loads(crm_resp.content.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return resp
+
+    price_raw = lead_json.get("poolPriceCents")
+    if price_raw is None:
+        price_raw = lead_json.get("pool_price_cents")
+    try:
+        price_int = int(price_raw or 0)
+    except (TypeError, ValueError):
+        price_int = 0
+    if price_int <= 0:
+        return resp
+
+    try:
+        from app.services.invoice_records import create_tax_invoice_for_pool_claim
+
+        created = await create_tax_invoice_for_pool_claim(
+            session,
+            user_id=user.user_id,
+            total_cents=price_int,
+            wallet_ledger_entry_id=None,
+            crm_claim_idempotency_key=idem,
+            lead_index=1,
+        )
+        if created is not None:
+            await session.commit()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Pool claim invoice hook failed: %s", exc)
+        await session.rollback()
+
+    return resp
 
 
 @router.get("/crm/{crm_path:path}", tags=["crm"])

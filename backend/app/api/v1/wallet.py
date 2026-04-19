@@ -17,9 +17,11 @@ from app.api.deps import AuthUser, get_db, require_auth_user
 from app.core.auth_cookie import MYLE_ACCESS_COOKIE
 from app.core.config import settings
 from app.core.realtime_hub import notify_topics
+from app.models.invoice import Invoice
 from app.models.user import User
 from app.models.wallet_ledger import WalletLedgerEntry
 from app.models.wallet_recharge import WalletRecharge
+from app.services.invoice_records import create_payment_receipt_for_positive_adjustment, create_payment_receipt_for_recharge
 from app.schemas.wallet import (
     WalletAdjustmentCreate,
     WalletLedgerEntryPublic,
@@ -38,6 +40,26 @@ logger = logging.getLogger(__name__)
 _MAX_LIMIT = 100
 _DEFAULT_LIMIT = 50
 _RECENT = 10
+
+
+async def _invoice_numbers_for_ledger_ids(session: AsyncSession, ledger_ids: list[int]) -> dict[int, str]:
+    if not ledger_ids:
+        return {}
+    stmt = select(Invoice.wallet_ledger_entry_id, Invoice.invoice_number).where(
+        Invoice.wallet_ledger_entry_id.in_(ledger_ids)
+    )
+    rows = (await session.execute(stmt)).all()
+    return {int(lid): str(num) for lid, num in rows if lid is not None}
+
+
+async def _invoice_numbers_for_recharge_ids(session: AsyncSession, recharge_ids: list[int]) -> dict[int, str]:
+    if not recharge_ids:
+        return {}
+    stmt = select(Invoice.wallet_recharge_id, Invoice.invoice_number).where(
+        Invoice.wallet_recharge_id.in_(recharge_ids)
+    )
+    rows = (await session.execute(stmt)).all()
+    return {int(rid): str(num) for rid, num in rows if rid is not None}
 
 
 def _require_admin(user: AuthUser) -> None:
@@ -76,10 +98,17 @@ async def wallet_me(
         .limit(_RECENT)
     )
     rows = (await session.execute(recent_q)).scalars().all()
+    inv_map = await _invoice_numbers_for_ledger_ids(session, [r.id for r in rows])
+    recent_entries = [
+        WalletLedgerEntryPublic.model_validate(r).model_copy(
+            update={"invoice_number": inv_map.get(r.id)}
+        )
+        for r in rows
+    ]
     return WalletSummaryResponse(
         balance_cents=bal,
         currency=currency,
-        recent_entries=[WalletLedgerEntryPublic.model_validate(r) for r in rows],
+        recent_entries=recent_entries,
     )
 
 
@@ -121,7 +150,11 @@ async def wallet_ledger(
         .offset(offset)
     )
     rows = (await session.execute(list_q)).scalars().all()
-    items = [WalletLedgerEntryPublic.model_validate(r) for r in rows]
+    inv_map = await _invoice_numbers_for_ledger_ids(session, [r.id for r in rows])
+    items = [
+        WalletLedgerEntryPublic.model_validate(r).model_copy(update={"invoice_number": inv_map.get(r.id)})
+        for r in rows
+    ]
     return WalletLedgerListResponse(items=items, total=total, limit=limit, offset=offset)
 
 
@@ -186,6 +219,14 @@ async def _fastapi_wallet_adjustment(
     )
     session.add(entry)
     try:
+        await session.flush()
+        if body.amount_cents > 0:
+            await create_payment_receipt_for_positive_adjustment(
+                session,
+                user_id=body.user_id,
+                amount_cents=body.amount_cents,
+                wallet_ledger_entry_id=entry.id,
+            )
         await session.commit()
         await session.refresh(entry)
     except IntegrityError:
@@ -341,7 +382,11 @@ async def list_recharge_requests(
         list_stmt = list_stmt.where(cond)
 
     rows = (await session.execute(list_stmt)).scalars().all()
-    items = [WalletRechargePublic.model_validate(r) for r in rows]
+    inv_map = await _invoice_numbers_for_recharge_ids(session, [r.id for r in rows])
+    items = [
+        WalletRechargePublic.model_validate(r).model_copy(update={"invoice_number": inv_map.get(r.id)})
+        for r in rows
+    ]
     return WalletRechargeListResponse(items=items, total=total, limit=limit, offset=offset)
 
 
@@ -364,7 +409,10 @@ async def review_recharge_request(
 
     # Idempotent: already reviewed with same outcome
     if recharge.status in {"approved", "rejected"}:
-        return WalletRechargePublic.model_validate(recharge)
+        inv_map = await _invoice_numbers_for_recharge_ids(session, [recharge.id])
+        return WalletRechargePublic.model_validate(recharge).model_copy(
+            update={"invoice_number": inv_map.get(recharge.id)}
+        )
 
     if recharge.status != "pending":
         raise HTTPException(
@@ -394,8 +442,20 @@ async def review_recharge_request(
                 created_by_user_id=user.user_id,
             )
             session.add(ledger_entry)
+            await session.flush()
+            await create_payment_receipt_for_recharge(
+                session,
+                recharge_id=recharge.id,
+                user_id=recharge.user_id,
+                amount_cents=recharge.amount_cents,
+                utr_number=recharge.utr_number,
+                wallet_ledger_entry_id=ledger_entry.id,
+            )
 
     await session.commit()
     await session.refresh(recharge)
     await notify_topics("wallet")
-    return WalletRechargePublic.model_validate(recharge)
+    inv_map = await _invoice_numbers_for_recharge_ids(session, [recharge.id])
+    return WalletRechargePublic.model_validate(recharge).model_copy(
+        update={"invoice_number": inv_map.get(recharge.id)}
+    )

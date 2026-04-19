@@ -12,6 +12,7 @@ from app.models.lead import Lead
 from app.models.user import User
 from app.models.wallet_ledger import WalletLedgerEntry
 from app.models.wallet_recharge import WalletRecharge
+from app.services.invoice_records import create_payment_receipt_for_positive_adjustment
 
 
 class WalletService:
@@ -271,9 +272,17 @@ class WalletService:
             idempotency_key=idem_key,
             created_by_user_id=admin_user_id,
         )
-        
+
         self.session.add(ledger_entry)
+        await self.session.flush()
+        if amount_cents > 0:
+            await create_payment_receipt_for_positive_adjustment(
+                self.session,
+                user_id=target_user_id,
+                amount_cents=amount_cents,
+                wallet_ledger_entry_id=ledger_entry.id,
+            )
         await self.session.commit()
-        
+
         action = "credited" if amount_cents > 0 else "debited"
         return True, f"Successfully {action} {abs(amount_cents) // 100} rupees"

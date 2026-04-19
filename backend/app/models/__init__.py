@@ -3,6 +3,7 @@ from app.models.activity_log import ActivityLog
 from app.models.call_event import CallEvent
 from app.models.batch_share_link import BatchShareLink
 from app.models.enroll_share_link import EnrollShareLink
+from app.models.invoice import Invoice
 from app.models.lead import Lead
 from app.models.legacy_row_snapshot import LegacyRowSnapshot
 from app.models.user import User
@@ -25,6 +26,7 @@ __all__ = [
     "CallEvent",
     "BatchShareLink",
     "EnrollShareLink",
+    "Invoice",
     "Lead",
     "LegacyRowSnapshot",
     "User",

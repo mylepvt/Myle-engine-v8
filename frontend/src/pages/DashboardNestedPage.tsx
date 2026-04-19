@@ -42,6 +42,7 @@ import { SettingsAppPage } from '@/pages/SettingsAppPage'
 import { SettingsHelpPage } from '@/pages/SettingsHelpPage'
 import { SettingsOrgTreePage } from '@/pages/SettingsOrgTreePage'
 import { AllMembersPage } from '@/pages/AllMembersPage'
+import { AdminInvoicesPage } from '@/pages/AdminInvoicesPage'
 
 function renderFullUi(ui: FullUiSurface, title: string) {
   switch (ui.kind) {
@@ -79,6 +80,8 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <WalletPage title={title} />
     case 'finance-recharges':
       return <FinanceRechargesPage title={title} />
+    case 'admin-invoices':
+      return <AdminInvoicesPage title={title} />
     case 'wallet-recharge':
       return <WalletRechargePage title={title} />
     case 'wallet-recharge-admin':

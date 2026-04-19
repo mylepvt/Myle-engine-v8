@@ -20,6 +20,7 @@
   "system/coaching": ["admin", "leader"],
   "analytics/activity-log": ["admin"],
   "finance/recharges": ["admin"],
+  "finance/invoices": ["admin"],
   "finance/budget-export": ["admin"],
   "finance/wallet": ["leader", "team"],
   "other/leaderboard": ["admin", "leader", "team"],

@@ -12,6 +12,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
+from app.api.invoice_public import router as invoice_public_router
 from app.api.v1 import api_router
 from app.core.config import settings
 from app.health_migrations import alembic_head_revisions, db_alembic_revision
@@ -47,6 +48,7 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix="/api/v1")
+app.include_router(invoice_public_router)
 
 _uploads_dir = Path(__file__).resolve().parent / "uploads"
 _uploads_dir.mkdir(exist_ok=True)
@@ -94,7 +96,7 @@ async def spa_fallback(full_path: str) -> FileResponse:
     if _spa_dir is None or _index is None or not _index.is_file():
         raise HTTPException(status_code=404, detail="Not found")
     root = _spa_dir
-    if full_path.startswith("api"):
+    if full_path.startswith("api") or full_path.startswith("invoice/"):
         raise HTTPException(status_code=404, detail="Not found")
     safe = (root / full_path).resolve()
     try:
