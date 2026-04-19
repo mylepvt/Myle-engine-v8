@@ -5,7 +5,7 @@ import { apiFetch } from '@/lib/api'
 export type TrainingVideo = {
   day_number: number
   title: string
-  youtube_url?: string
+  has_video?: boolean
   audio_url?: string
   unlocked?: boolean
 }

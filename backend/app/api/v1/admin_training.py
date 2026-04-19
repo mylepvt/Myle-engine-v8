@@ -44,7 +44,11 @@ async def admin_put_training_day(
         await session.execute(select(TrainingVideo).where(TrainingVideo.day_number == day_number))
     ).scalar_one_or_none()
     if row is None:
-        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Training day not found")
+        row = TrainingVideo(
+            day_number=day_number,
+            title=body.title or f"Day {day_number}",
+        )
+        session.add(row)
     if body.title is not None:
         row.title = body.title.strip()
     if body.youtube_url is not None:

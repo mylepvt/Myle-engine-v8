@@ -38,8 +38,9 @@ export function TrainingDayAdmin({ dayNumber }: Props) {
         if (audioRef.current) audioRef.current.value = ''
       }
       setMsg('Saved')
-    } catch {
-      setErr('Could not save. Check the links and file, then try again.')
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown error'
+      setErr(`Save failed: ${msg}`)
     }
   }
 

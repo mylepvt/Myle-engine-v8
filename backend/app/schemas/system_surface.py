@@ -17,7 +17,7 @@ class SystemStubResponse(BaseModel):
 class TrainingVideoRow(BaseModel):
     day_number: int
     title: str
-    youtube_url: Optional[str] = None
+    has_video: bool = False
     audio_url: Optional[str] = None
     unlocked: bool = True
 
