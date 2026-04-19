@@ -3,9 +3,12 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Optional
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, func, text
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
+
+# JSONB in Postgres; plain JSON for SQLite (CI pytest uses create_all on SQLite).
+_PayloadJSON = JSON().with_variant(JSONB(), "postgresql")
 
 from app.db.base import Base
 
@@ -35,7 +38,11 @@ class Invoice(Base):
         server_default=func.now(),
         nullable=False,
     )
-    payload_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    payload_json: Mapped[dict[str, Any]] = mapped_column(
+        _PayloadJSON,
+        nullable=False,
+        server_default=text("'{}'"),
+    )
     wallet_recharge_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("wallet_recharges.id"),
         unique=True,
