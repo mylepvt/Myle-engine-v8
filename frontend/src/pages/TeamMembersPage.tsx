@@ -9,6 +9,9 @@ import {
   useTeamMembersQuery,
   useResetAllMembersPasswordMutation,
   useResetMemberPasswordMutation,
+  useUpdateMemberRoleMutation,
+  useDeleteMemberMutation,
+  useMemberLeadsQuery,
   type TeamMemberPublic,
 } from '@/hooks/use-team-query'
 import { ROLES, roleShortLabel, type Role } from '@/types/role'
@@ -81,20 +84,162 @@ function ResetPasswordModal({
           </div>
         </label>
         {resetError ? (
-          <p className="mt-2 text-ds-caption text-destructive" role="alert">
-            {resetError}
-          </p>
+          <p className="mt-2 text-ds-caption text-destructive" role="alert">{resetError}</p>
         ) : null}
         <div className="mt-4 flex justify-end gap-2">
-          <Button variant="ghost" type="button" onClick={onClose} disabled={resetMut.isPending}>
-            Cancel
+          <Button variant="ghost" type="button" onClick={onClose} disabled={resetMut.isPending}>Cancel</Button>
+          <Button type="button" disabled={resetMut.isPending || newPassword.length < 8} onClick={handleSubmit}>
+            {resetMut.isPending ? '…' : 'Reset'}
           </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MemberProfileModal({
+  member,
+  onClose,
+}: {
+  member: TeamMemberPublic
+  onClose: () => void
+}) {
+  const { data, isPending } = useMemberLeadsQuery(member.id)
+  const updateRoleMut = useUpdateMemberRoleMutation()
+  const deleteMut = useDeleteMemberMutation()
+  const [selectedRole, setSelectedRole] = useState<Role>(member.role as Role)
+  const [roleError, setRoleError] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  function handleRoleChange() {
+    setRoleError(null)
+    updateRoleMut.mutate(
+      { userId: member.id, role: selectedRole },
+      {
+        onError: (e: Error) => setRoleError(e.message),
+        onSuccess: onClose,
+      },
+    )
+  }
+
+  function handleDelete() {
+    if (!window.confirm(`Delete ${member.fbo_id}? This cannot be undone.`)) return
+    setDeleteError(null)
+    deleteMut.mutate(member.id, {
+      onError: (e: Error) => setDeleteError(e.message),
+      onSuccess: onClose,
+    })
+  }
+
+  return (
+    <div
+      className="keyboard-safe-modal fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="keyboard-safe-sheet surface-elevated max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-xl p-6 text-sm shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">{member.fbo_id}</h2>
+            {member.username ? (
+              <p className="text-ds-caption text-muted-foreground">({member.username})</p>
+            ) : null}
+            <p className="mt-0.5 text-ds-caption text-muted-foreground">{member.email}</p>
+            <p className="mt-0.5 text-ds-caption text-muted-foreground">
+              Joined {new Date(member.created_at).toLocaleString()}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 rounded-md px-2 py-1 text-ds-caption text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Role change */}
+        <div className="mb-4 rounded-lg border border-border bg-muted/20 p-3">
+          <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Change Role</p>
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value as Role)}
+              disabled={updateRoleMut.isPending}
+              className="field-input flex-1"
+            >
+              {ROLES.map((r) => (
+                <option key={r} value={r}>{roleShortLabel(r)}</option>
+              ))}
+            </select>
+            <Button
+              type="button"
+              size="sm"
+              disabled={updateRoleMut.isPending || selectedRole === member.role}
+              onClick={handleRoleChange}
+            >
+              {updateRoleMut.isPending ? '…' : 'Save'}
+            </Button>
+          </div>
+          {roleError ? (
+            <p className="mt-1 text-ds-caption text-destructive" role="alert">{roleError}</p>
+          ) : null}
+        </div>
+
+        {/* Leads */}
+        <div className="mb-4">
+          <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Leads {data ? `(${data.total})` : ''}
+          </p>
+          {isPending ? (
+            <div className="space-y-1.5">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-9 w-full" />
+              ))}
+            </div>
+          ) : !data?.items.length ? (
+            <p className="text-ds-caption text-muted-foreground">No leads yet.</p>
+          ) : (
+            <ul className="max-h-64 space-y-1 overflow-y-auto">
+              {data.items.map((lead) => (
+                <li
+                  key={lead.id}
+                  className="surface-inset flex items-center justify-between gap-2 rounded-lg px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <span className="block truncate font-medium capitalize text-foreground">
+                      {lead.name.toLowerCase()}
+                    </span>
+                    {lead.phone ? (
+                      <span className="text-ds-caption text-muted-foreground">{lead.phone}</span>
+                    ) : null}
+                  </div>
+                  <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
+                    {lead.status}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Delete */}
+        <div className="border-t border-border pt-3">
+          {deleteError ? (
+            <p className="mb-2 text-ds-caption text-destructive" role="alert">{deleteError}</p>
+          ) : null}
           <Button
             type="button"
-            disabled={resetMut.isPending || newPassword.length < 8}
-            onClick={handleSubmit}
+            variant="outline"
+            size="sm"
+            disabled={deleteMut.isPending}
+            onClick={handleDelete}
+            className="border-destructive/50 text-destructive hover:bg-destructive/10"
           >
-            {resetMut.isPending ? '…' : 'Reset'}
+            {deleteMut.isPending ? 'Deleting…' : 'Delete Account'}
           </Button>
         </div>
       </div>
@@ -118,6 +263,7 @@ export function TeamMembersPage({ title }: Props) {
   const [createError, setCreateError] = useState<string | null>(null)
 
   const [resetTarget, setResetTarget] = useState<ResetTarget | null>(null)
+  const [profileTarget, setProfileTarget] = useState<TeamMemberPublic | null>(null)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
   const bulkResetMut = useResetAllMembersPasswordMutation()
 
@@ -156,86 +302,38 @@ export function TeamMembersPage({ title }: Props) {
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
             <label className="block min-w-[10rem] flex-1">
               <span className="mb-1 block text-ds-caption text-muted-foreground">FBO ID (unique)</span>
-              <input
-                autoComplete="off"
-                value={fboId}
-                onChange={(e) => setFboId(e.target.value)}
-                disabled={createMut.isPending}
-                className="field-input"
-              />
+              <input autoComplete="off" value={fboId} onChange={(e) => setFboId(e.target.value)} disabled={createMut.isPending} className="field-input" />
             </label>
             <label className="block min-w-[10rem] flex-1">
               <span className="mb-1 block text-ds-caption text-muted-foreground">Username (optional)</span>
-              <input
-                autoComplete="off"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                disabled={createMut.isPending}
-                className="field-input"
-              />
+              <input autoComplete="off" value={username} onChange={(e) => setUsername(e.target.value)} disabled={createMut.isPending} className="field-input" />
             </label>
             <label className="block min-w-[12rem] flex-1">
               <span className="mb-1 block text-ds-caption text-muted-foreground">Email</span>
-              <input
-                type="email"
-                autoComplete="off"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={createMut.isPending}
-                className="field-input"
-              />
+              <input type="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} disabled={createMut.isPending} className="field-input" />
             </label>
             <label className="block min-w-[10rem] flex-1">
               <span className="mb-1 block text-ds-caption text-muted-foreground">Password</span>
-              <input
-                type="password"
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={createMut.isPending}
-                className="field-input"
-              />
+              <input type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} disabled={createMut.isPending} className="field-input" />
             </label>
             <label className="block w-full min-w-[8rem] sm:w-auto">
               <span className="mb-1 block text-ds-caption text-muted-foreground">Role</span>
-              <select
-                value={newRole}
-                onChange={(e) => setNewRole(e.target.value as Role)}
-                disabled={createMut.isPending}
-                className="field-input sm:w-36"
-              >
+              <select value={newRole} onChange={(e) => setNewRole(e.target.value as Role)} disabled={createMut.isPending} className="field-input sm:w-36">
                 {ROLES.map((r) => (
-                  <option key={r} value={r}>
-                    {roleShortLabel(r)}
-                  </option>
+                  <option key={r} value={r}>{roleShortLabel(r)}</option>
                 ))}
               </select>
             </label>
             <Button
               type="button"
-              disabled={
-                createMut.isPending ||
-                !fboId.trim() ||
-                !email.trim() ||
-                password.length < 8
-              }
-              onClick={() =>
-                createMut.mutate({
-                  fbo_id: fboId.trim(),
-                  username: username.trim() || null,
-                  email: email.trim(),
-                  password,
-                  role: newRole,
-                })
-              }
+              disabled={createMut.isPending || !fboId.trim() || !email.trim() || password.length < 8}
+              onClick={() => createMut.mutate({ fbo_id: fboId.trim(), username: username.trim() || null, email: email.trim(), password, role: newRole })}
             >
               {createMut.isPending ? '…' : 'Create'}
             </Button>
           </div>
           {createError ? (
-            <p className="mt-2 text-ds-caption text-destructive" role="alert">
-              {createError}
-            </p>
+            <p className="mt-2 text-ds-caption text-destructive" role="alert">{createError}</p>
           ) : null}
         </div>
       ) : null}
@@ -249,9 +347,7 @@ export function TeamMembersPage({ title }: Props) {
       {isError ? (
         <div className="text-sm text-destructive" role="alert">
           <span>{error instanceof Error ? error.message : 'Could not load members'} </span>
-          <button type="button" className="underline underline-offset-2" onClick={() => void refetch()}>
-            Retry
-          </button>
+          <button type="button" className="underline underline-offset-2" onClick={() => void refetch()}>Retry</button>
         </div>
       ) : null}
       {data ? (
@@ -265,19 +361,13 @@ export function TeamMembersPage({ title }: Props) {
                 size="sm"
                 disabled={bulkResetMut.isPending}
                 onClick={() => {
-                  const ok = window.confirm(
-                    'Reset password for ALL users to Myle@2323 ?',
-                  )
+                  const ok = window.confirm('Reset password for ALL users to Myle@2323 ?')
                   if (!ok) return
                   bulkResetMut.mutate(
                     { newPassword: 'Myle@2323' },
                     {
-                      onSuccess: (d) => {
-                        setToastMsg(`Password reset done for ${d.updated} users`)
-                      },
-                      onError: (e: Error) => {
-                        setToastMsg(`Bulk reset failed: ${e.message}`)
-                      },
+                      onSuccess: (d) => setToastMsg(`Password reset done for ${d.updated} users`),
+                      onError: (e: Error) => setToastMsg(`Bulk reset failed: ${e.message}`),
                     },
                   )
                 }}
@@ -292,7 +382,7 @@ export function TeamMembersPage({ title }: Props) {
                 key={m.id}
                 className="surface-inset flex items-start justify-between gap-3 px-3 py-2.5 text-muted-foreground"
               >
-                <div>
+                <div className="min-w-0 flex-1">
                   <span className="font-medium text-foreground">{m.fbo_id}</span>
                   {m.username ? (
                     <span className="ml-1.5 text-muted-foreground">({m.username})</span>
@@ -302,15 +392,26 @@ export function TeamMembersPage({ title }: Props) {
                     {m.role} · joined {new Date(m.created_at).toLocaleString()}
                   </span>
                 </div>
-                {isAdminOrLeader ? (
-                  <button
-                    type="button"
-                    onClick={() => setResetTarget({ id: m.id, fbo_id: m.fbo_id, email: m.email })}
-                    className="shrink-0 rounded-md border border-border bg-muted/30 px-2 py-1 text-ds-caption text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                  >
-                    Reset Password
-                  </button>
-                ) : null}
+                <div className="flex shrink-0 flex-wrap gap-1.5">
+                  {isAdmin ? (
+                    <button
+                      type="button"
+                      onClick={() => setProfileTarget(m)}
+                      className="rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-ds-caption text-primary transition hover:bg-primary/20"
+                    >
+                      View Profile
+                    </button>
+                  ) : null}
+                  {isAdminOrLeader ? (
+                    <button
+                      type="button"
+                      onClick={() => setResetTarget({ id: m.id, fbo_id: m.fbo_id, email: m.email })}
+                      className="rounded-md border border-border bg-muted/30 px-2 py-1 text-ds-caption text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    >
+                      Reset Password
+                    </button>
+                  ) : null}
+                </div>
               </li>
             ))}
           </ul>
@@ -322,6 +423,13 @@ export function TeamMembersPage({ title }: Props) {
           target={resetTarget}
           onClose={() => setResetTarget(null)}
           onSuccess={(name) => setToastMsg(`Password reset for ${name}`)}
+        />
+      ) : null}
+
+      {profileTarget ? (
+        <MemberProfileModal
+          member={profileTarget}
+          onClose={() => setProfileTarget(null)}
         />
       ) : null}
 
