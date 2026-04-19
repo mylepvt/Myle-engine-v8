@@ -140,7 +140,7 @@ function DayCard({
   onRefresh,
   isAdmin,
 }: {
-  video: { day_number: number; title: string; youtube_url?: string; audio_url?: string; unlocked?: boolean }
+  video: TrainingSurfacePayload['videos'][number]
   completed: boolean
   hasNotes: boolean
   onRefresh: () => Promise<void>
@@ -186,7 +186,7 @@ function DayCard({
     try {
       await markDay.mutateAsync(day_number)
       await onRefresh()
-    } catch (e) {
+    } catch {
       // error shown inline via mutation state
     }
   }
@@ -329,7 +329,7 @@ function TrainingDaysBlock({
 }) {
   const vids = Array.isArray(data.videos) ? data.videos : []
   const progress = Array.isArray(data.progress) ? data.progress : []
-  const notes = Array.isArray((data as any).notes) ? (data as any).notes as { day_number: number }[] : []
+  const notes = Array.isArray(data.notes) ? data.notes : []
 
   const doneSet = new Set(progress.filter((p) => p.completed).map((p) => p.day_number))
   const notesSet = new Set(notes.map((n) => n.day_number))
