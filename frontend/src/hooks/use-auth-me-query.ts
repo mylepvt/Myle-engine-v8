@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 
-import { apiFetch } from '@/lib/api'
-import { authRefresh } from '@/lib/auth-api'
+import { apiFetch, silentAuthRefresh } from '@/lib/api'
 
 export type MeResponse = {
   authenticated: boolean
@@ -41,23 +40,10 @@ const UNAUTH: MeResponse = {
 }
 
 export async function fetchAuthMe(): Promise<MeResponse> {
-  const readMe = async (): Promise<Response> => apiFetch('/api/v1/auth/me')
-  let res = await readMe()
-  if (res.status === 401) {
-    // Access cookie can expire while refresh is still valid ("remember me" path).
-    try {
-      await authRefresh()
-      res = await readMe()
-    } catch {
-      return UNAUTH
-    }
-  }
-  if (res.status === 401) {
-    return UNAUTH
-  }
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  const raw = (await res.json()) as Partial<MeResponse>
-  return {
+  const readMe = async (): Promise<Response> =>
+    apiFetch('/api/v1/auth/me', { skipAuthRetry: true })
+
+  const normalize = (raw: Partial<MeResponse>): MeResponse => ({
     authenticated: Boolean(raw.authenticated),
     role: raw.role ?? null,
     user_id: raw.user_id ?? null,
@@ -79,7 +65,35 @@ export async function fetchAuthMe(): Promise<MeResponse> {
       typeof raw.avatar_url === 'string' && raw.avatar_url.length > 0
         ? raw.avatar_url
         : null,
+  })
+
+  const readNormalized = async (): Promise<MeResponse | null> => {
+    const res = await readMe()
+    if (res.status === 401) {
+      return null
+    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    return normalize((await res.json()) as Partial<MeResponse>)
   }
+
+  let me = await readNormalized()
+  if (me?.authenticated) {
+    return me
+  }
+
+  // `/auth/me` returns 200 + `authenticated=false` when the short-lived access
+  // cookie expires, so try the refresh cookie once before treating the session
+  // as logged out.
+  const refreshed = await silentAuthRefresh()
+  if (!refreshed) {
+    return UNAUTH
+  }
+
+  me = await readNormalized()
+  if (!me?.authenticated) {
+    return UNAUTH
+  }
+  return me
 }
 
 export type UseAuthMeQueryOptions = {

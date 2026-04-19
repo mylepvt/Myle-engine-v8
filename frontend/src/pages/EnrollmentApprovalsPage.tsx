@@ -6,6 +6,7 @@ import {
   useEnrollmentDecisionMutation,
   useEnrollmentRequestsQuery,
 } from '@/hooks/use-team-query'
+import { playAppSound } from '@/lib/app-sounds'
 import { ClipboardList, ExternalLink } from 'lucide-react'
 
 type Props = { title: string }
@@ -18,6 +19,7 @@ export function EnrollmentApprovalsPage({ title }: Props) {
 
   async function handleApprove(leadId: number) {
     await decide.mutateAsync({ leadId, action: 'approve' })
+    playAppSound('cashier')
   }
 
   async function handleReject(leadId: number) {
@@ -28,6 +30,7 @@ export function EnrollmentApprovalsPage({ title }: Props) {
       action: 'reject',
       reason: reason.trim() || 'Proof is unclear or incomplete',
     })
+    playAppSound('decline')
   }
 
   return (

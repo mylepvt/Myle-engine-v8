@@ -8,6 +8,7 @@ import {
   useWalletRechargeInstructionsQuery,
   useWalletRechargeRequestsQuery,
 } from '@/hooks/use-wallet-recharge-query'
+import { playAppSound } from '@/lib/app-sounds'
 import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
 
 type Props = {
@@ -69,6 +70,7 @@ export function WalletRechargePage({ title }: Props) {
         idempotency_key,
       })
       useUiFeedbackStore.getState().addSatisfactionPoints(15)
+      playAppSound('success')
       setAmount('')
       setUtr('')
       setProofUrl('')

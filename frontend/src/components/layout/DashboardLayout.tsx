@@ -715,6 +715,8 @@ export function DashboardLayout() {
             role={shellRole}
             trainingLocked={trainingLocked}
             onOpenMenu={() => setMobileMenuOpen(true)}
+            keyboardOpen={keyboardOpen}
+            scrolled={isMainScrolled}
           />
         ) : null}
         {debugViewport && viewportDebug ? (

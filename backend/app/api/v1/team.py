@@ -146,11 +146,36 @@ async def my_team(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> TeamMyTeamResponse:
-    """Leader: self + entire downline (flat list). Team: self only. Admin: use ``GET /team/members``."""
-    if user.role not in ("leader", "team"):
+    """Leader: self + entire downline (flat). Team: self only. Admin: global directory slice (UI preview / QA)."""
+    if user.role not in ("admin", "leader", "team"):
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
     Upline = aliased(User, name="upline")
+
+    if user.role == "admin":
+        count_q = select(func.count()).select_from(User)
+        total = int((await session.execute(count_q)).scalar_one())
+        list_q = (
+            select(User, Upline.fbo_id.label("upline_fbo_id"), Upline.username.label("upline_username"))
+            .outerjoin(Upline, User.upline_user_id == Upline.id)
+            .order_by(User.created_at.asc())
+            .limit(_MAX_LIMIT)
+            .offset(0)
+        )
+        rows = (await session.execute(list_q)).all()
+        items: list[TeamMemberPublic] = []
+        for row in rows:
+            u, up_fbo, up_name = row
+            item = TeamMemberPublic.model_validate(u)
+            item.upline_fbo_id = up_fbo
+            item.upline_name = up_name
+            items.append(item)
+        return TeamMyTeamResponse(
+            items=items,
+            total=total,
+            direct_members=0,
+            total_downline=0,
+        )
 
     if user.role == "team":
         row = await session.get(User, user.user_id)

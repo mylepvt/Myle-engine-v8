@@ -20,10 +20,67 @@ export function apiUrl(path: string): string {
   return `${base}${p}`
 }
 
-/** Browser fetch with cookies (JWT dev auth). */
-export function apiFetch(path: string, init?: RequestInit): Promise<Response> {
+export type ApiFetchOptions = RequestInit & {
+  skipAuthRetry?: boolean
+}
+
+let refreshInFlight: Promise<boolean> | null = null
+
+function fetchWithCookies(path: string, init?: RequestInit): Promise<Response> {
   return fetch(apiUrl(path), {
     credentials: 'include',
     ...init,
   })
+}
+
+function shouldRetryAfter401(path: string): boolean {
+  return ![
+    '/api/v1/auth/login',
+    '/api/v1/auth/dev-login',
+    '/api/v1/auth/refresh',
+  ].includes(path)
+}
+
+/**
+ * Refresh the httpOnly session cookies once and share the result with any
+ * concurrent 401 handlers so the UI does not fan out multiple refresh calls.
+ */
+export function silentAuthRefresh(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = (async () => {
+      try {
+        const res = await fetchWithCookies('/api/v1/auth/refresh', {
+          method: 'POST',
+        })
+        return res.ok
+      } catch {
+        return false
+      }
+    })().finally(() => {
+      refreshInFlight = null
+    })
+  }
+  return refreshInFlight
+}
+
+/** Browser fetch with cookies (JWT auth + silent refresh retry). */
+export async function apiFetch(
+  path: string,
+  init?: ApiFetchOptions,
+): Promise<Response> {
+  const { skipAuthRetry = false, ...requestInit } = init ?? {}
+  let response = await fetchWithCookies(path, requestInit)
+  if (
+    skipAuthRetry ||
+    response.status !== 401 ||
+    !shouldRetryAfter401(path)
+  ) {
+    return response
+  }
+  const refreshed = await silentAuthRefresh()
+  if (!refreshed) {
+    return response
+  }
+  response = await fetchWithCookies(path, requestInit)
+  return response
 }

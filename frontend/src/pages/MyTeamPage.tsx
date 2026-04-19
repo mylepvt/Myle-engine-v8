@@ -133,7 +133,7 @@ export function MyTeamPage({ title }: Props) {
   const { data, isPending, isError, error, refetch } = useMyTeamQuery()
   const org = useOrgTreeQuery({
     includeInactive: false,
-    enabled: Boolean(me?.authenticated) && (me?.role === 'leader' || me?.role === 'team'),
+    enabled: Boolean(me?.authenticated) && (me?.role === 'leader' || me?.role === 'team' || me?.role === 'admin'),
   })
 
   const isLeader = me?.role === 'leader'

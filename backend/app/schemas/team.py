@@ -47,7 +47,7 @@ class TeamMemberCreate(BaseModel):
 
 
 class TeamMyTeamResponse(BaseModel):
-    """Directory rows for the current user: leader sees self + full downline; team sees self only."""
+    """Directory rows: leader self + downline; team self only; admin global slice (first ``limit`` rows)."""
 
     items: list[TeamMemberPublic]
     total: int

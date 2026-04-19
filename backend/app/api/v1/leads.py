@@ -255,6 +255,12 @@ async def generate_batch_share_url(
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
     if not await _actor_may_share_batch_link(session=session, user=user, lead=lead, slot=slot):
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    # Batch share links for any slot require approved payment proof (non-admin).
+    if user.role != "admin" and lead.payment_status != "approved":
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="Payment proof must be approved before generating batch share links.",
+        )
 
     existing = (
         await session.execute(

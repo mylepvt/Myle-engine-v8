@@ -19,6 +19,7 @@ import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { useWalletMeQuery } from '@/hooks/use-wallet-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { apiFetch } from '@/lib/api'
+import { playAppSound } from '@/lib/app-sounds'
 
 type Props = {
   title: string
@@ -83,6 +84,7 @@ export function LeadPoolWorkPage({ title }: Props) {
         idempotencyKey: `claim-${leadId}-${Date.now()}`,
         pipelineKind: 'PERSONAL',
       })
+      playAppSound('cashier')
       setConfirmId(null)
     } catch {
       /* error surfaced below */
@@ -117,6 +119,7 @@ export function LeadPoolWorkPage({ title }: Props) {
         idempotencyKey: `batch-${Date.now()}-${n}`,
         pipelineKind: 'PERSONAL',
       })
+      playAppSound('cashier')
       setBatchConfirmOpen(false)
     } catch {
       /* surfaced below */

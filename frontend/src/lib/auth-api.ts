@@ -40,7 +40,10 @@ export async function authPasswordLogin(
 
 /** Rotates access + refresh cookies using the httpOnly refresh cookie. */
 export async function authRefresh(): Promise<void> {
-  const res = await apiFetch('/api/v1/auth/refresh', { method: 'POST' })
+  const res = await apiFetch('/api/v1/auth/refresh', {
+    method: 'POST',
+    skipAuthRetry: true,
+  })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     const msg =

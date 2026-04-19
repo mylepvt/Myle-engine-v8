@@ -38,6 +38,12 @@ from app.services.ctcs_status_chain import advance_lead_status_toward
 from app.services.whatsapp_ctcs import send_interested_enrollment_assets
 from app.validators.leads_validator import lead_list_conditions, parse_status_query, validate_list_flags
 
+# Statuses that require an approved payment proof before entry.
+# Any transition *into* these statuses must pass the payment gate.
+_PAYMENT_REQUIRED_STATUSES: frozenset[str] = frozenset(
+    {"seat_hold", "paid", "day1", "day2", "interview", "track_selected", "converted"}
+)
+
 
 async def _deliver_ctcs_interested_whatsapp(lead_id: int, phone: str | None) -> None:
     await send_interested_enrollment_assets(lead_id=lead_id, phone=phone)
@@ -465,6 +471,13 @@ class LeadsService:
             )
             if not ok:
                 raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
+            # Payment gate: non-admins cannot write post-payment statuses without approved proof.
+            if body.status in _PAYMENT_REQUIRED_STATUSES and user.role != "admin":
+                if lead.payment_status != "approved":
+                    raise HTTPException(
+                        status_code=http_status.HTTP_400_BAD_REQUEST,
+                        detail="Payment proof must be approved before moving to this status.",
+                    )
             prev_status = lead.status
             lead.status = body.status
             bump_heat_on_entering_contacted(lead, prev_status)
@@ -493,6 +506,11 @@ class LeadsService:
         elif body.whatsapp_sent is False:
             lead.whatsapp_sent_at = None
         if body.payment_status is not None:
+            if user.role != "admin":
+                raise HTTPException(
+                    status_code=http_status.HTTP_403_FORBIDDEN,
+                    detail="Only admins can directly set payment_status; use the payment proof upload flow.",
+                )
             lead.payment_status = body.payment_status
         now = datetime.now(timezone.utc)
         if body.no_response_attempt_count is not None:
@@ -654,6 +672,13 @@ class LeadsService:
         )
         if not ok:
             raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
+        # Payment gate: non-admins cannot enter post-payment statuses without approved proof.
+        if body.target_status in _PAYMENT_REQUIRED_STATUSES and user.role != "admin":
+            if lead.payment_status != "approved":
+                raise HTTPException(
+                    status_code=http_status.HTTP_400_BAD_REQUEST,
+                    detail="Payment proof must be approved before moving to this status.",
+                )
         prev_status = lead.status
         lead.status = body.target_status
         bump_heat_on_entering_contacted(lead, prev_status)
@@ -751,11 +776,19 @@ class LeadsService:
             lead.archived_at = now
             lead.in_pool = False
         elif action == "paid":
+            # Only admin/leader can mark payment as paid via CTCS action.
             if user.role == "team":
-                advance_lead_status_toward(lead=lead, target_slug="paid", role=user.role)
-            else:
-                advance_lead_status_toward(lead=lead, target_slug="day1", role=user.role)
-            lead.payment_status = "approved"
+                raise HTTPException(
+                    status_code=http_status.HTTP_403_FORBIDDEN,
+                    detail="Team members cannot mark payment as paid. Upload payment proof for admin approval.",
+                )
+            # Require actual approved proof before advancing to post-payment status.
+            if lead.payment_status != "approved":
+                raise HTTPException(
+                    status_code=http_status.HTTP_400_BAD_REQUEST,
+                    detail="Payment proof must be approved before using the 'paid' action.",
+                )
+            advance_lead_status_toward(lead=lead, target_slug="day1", role=user.role)
             lead.heat_score = clamp_ctcs_heat(int(lead.heat_score or 0) + settings.ctcs_heat_paid_bonus)
 
         lead.last_action_at = now

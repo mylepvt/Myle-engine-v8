@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 
 import { App } from '@/App'
+import { AppSoundProvider } from '@/components/providers/AppSoundProvider'
 import { ThemeAndFeedbackProvider } from '@/components/providers/ThemeAndFeedbackProvider'
 import { AppErrorBoundary } from '@/components/routing/AppErrorBoundary'
 import { initPerformanceProfile, isLowEndDevice } from '@/lib/device-performance'
@@ -58,7 +59,9 @@ createRoot(rootEl).render(
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <ThemeAndFeedbackProvider>
-<App />
+            <AppSoundProvider>
+              <App />
+            </AppSoundProvider>
           </ThemeAndFeedbackProvider>
         </BrowserRouter>
       </QueryClientProvider>

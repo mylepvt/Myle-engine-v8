@@ -8,6 +8,7 @@ import {
   useWalletRechargeRequestsQuery,
   type WalletRecharge,
 } from '@/hooks/use-wallet-recharge-query'
+import { playAppSound } from '@/lib/app-sounds'
 
 type Props = {
   title: string
@@ -56,6 +57,7 @@ function RechargeRow({
     setRowError('')
     try {
       await reviewMut.mutateAsync({ id: item.id, body: { status: 'approved' } })
+      playAppSound('cashier')
     } catch (e) {
       setRowError(e instanceof Error ? e.message : 'Action failed')
     }
@@ -68,6 +70,7 @@ function RechargeRow({
         id: item.id,
         body: { status: 'rejected', admin_note: rejectNote.trim() || undefined },
       })
+      playAppSound('decline')
       setShowRejectNote(false)
       setRejectNote('')
     } catch (e) {
