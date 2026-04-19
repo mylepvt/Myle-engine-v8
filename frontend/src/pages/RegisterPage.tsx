@@ -137,7 +137,7 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="relative flex min-h-dvh flex-col items-center justify-center px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
+    <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-y-auto px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
         <div className="absolute -left-20 top-[10%] h-80 w-80 rounded-full bg-primary/[0.08] blur-3xl" />
         <div className="absolute -right-20 bottom-[15%] h-72 w-72 rounded-full bg-white/[0.03] blur-3xl" />
