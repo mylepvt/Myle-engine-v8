@@ -5,7 +5,9 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+import os
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
@@ -152,12 +154,62 @@ async def mark_training_day(
         done_set = set(done_rows.scalars().all())
         if all(d in done_set for d in catalog):
             urow = await session.get(User, user.user_id)
-            if urow is not None:
-                urow.training_status = "completed"
-                urow.training_required = False
+            if urow is not None and urow.training_status != "completed":
+                # Mark all days done — awaiting certificate upload to fully unlock
+                urow.training_status = "all_days_done"
 
     await session.commit()
     return await build_training_surface(session, user.user_id)
+
+
+@router.post("/training/certificate/upload")
+async def upload_training_certificate(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    file: UploadFile = File(...),
+) -> dict:
+    """Upload training certificate image → unlocks full dashboard (sets training_status=completed)."""
+    urow = await session.get(User, user.user_id)
+    if urow is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    # Check all days completed first
+    catalog = (
+        await session.execute(
+            select(TrainingVideo.day_number).order_by(TrainingVideo.day_number.asc())
+        )
+    ).scalars().all()
+    if catalog:
+        done_rows = await session.execute(
+            select(TrainingProgress.day_number).where(
+                TrainingProgress.user_id == user.user_id,
+                TrainingProgress.completed.is_(True),
+            )
+        )
+        done_set = set(done_rows.scalars().all())
+        if not all(d in done_set for d in catalog):
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="Complete all 7 training days before uploading certificate",
+            )
+
+    # Save file
+    upload_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads", "training_certificates")
+    os.makedirs(upload_dir, exist_ok=True)
+    ext = os.path.splitext(file.filename or "cert.jpg")[1] or ".jpg"
+    filename = f"user_{user.user_id}{ext}"
+    file_path = os.path.join(upload_dir, filename)
+    contents = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(contents)
+
+    cert_url = f"/uploads/training_certificates/{filename}"
+    urow.certificate_url = cert_url
+    urow.training_status = "completed"
+    urow.training_required = False
+    await session.commit()
+
+    return {"ok": True, "certificate_url": cert_url}
 
 
 @router.get("/training-test/questions", response_model=list[TrainingTestQuestionPublic])

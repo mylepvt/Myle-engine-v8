@@ -69,6 +69,9 @@ class User(Base):
         nullable=False,
     )
 
+    # Training certificate — uploaded by trainee after all 7 days done; unlocks full dashboard.
+    certificate_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
     # XP / gamification columns (added in migration 0031)
     xp_total: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"), default=0)
     xp_level: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'rookie'"), default="rookie")

@@ -243,7 +243,6 @@ export function useDownloadCertificateMutation() {
   return useMutation({
     mutationFn: downloadCertificate,
     onSuccess: (blob) => {
-      // Create download link
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -252,6 +251,32 @@ export function useDownloadCertificateMutation() {
       a.click()
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
+    },
+  })
+}
+
+export async function uploadCertificate(file: File): Promise<{ ok: boolean; certificate_url: string }> {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await apiFetch('/api/v1/system/training/certificate/upload', {
+    method: 'POST',
+    body: form,
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    const msg = (err as { detail?: string }).detail ?? `HTTP ${res.status}`
+    throw new Error(msg)
+  }
+  return res.json()
+}
+
+export function useUploadCertificateMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: uploadCertificate,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
+      void queryClient.invalidateQueries({ queryKey: ['training', 'surface'] })
     },
   })
 }

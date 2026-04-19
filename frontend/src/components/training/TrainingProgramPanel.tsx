@@ -10,6 +10,7 @@ import {
   useUpdateTrainingDayMutation,
   useUploadTrainingAudioMutation,
   useUploadTrainingNotesMutation,
+  useUploadCertificateMutation,
 } from '@/hooks/use-training-query'
 import { apiFetch } from '@/lib/api'
 import { authSyncIdentity } from '@/lib/auth-api'
@@ -358,6 +359,66 @@ function TrainingDaysBlock({
 }
 
 // ---------------------------------------------------------------------------
+// Certificate upload block — shown after all 7 days completed
+// ---------------------------------------------------------------------------
+
+function CertificateUploadBlock({ onRefresh }: { onRefresh: () => Promise<void> }) {
+  const [file, setFile] = useState<File | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  const [done, setDone] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const uploadMut = useUploadCertificateMutation()
+
+  const handleUpload = async () => {
+    if (!file) return
+    setErr(null)
+    try {
+      await uploadMut.mutateAsync(file)
+      setDone(true)
+      await onRefresh()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Upload failed')
+    }
+  }
+
+  if (done) {
+    return (
+      <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-4 text-center">
+        <p className="text-base font-semibold text-emerald-400">🎉 Training Complete!</p>
+        <p className="mt-1 text-xs text-muted-foreground">Your certificate has been submitted. Dashboard is now unlocking…</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-xl border border-primary/30 bg-primary/[0.06] px-4 py-4 space-y-3">
+      <p className="text-sm font-semibold text-foreground">🏆 All 7 Days Complete!</p>
+      <p className="text-xs text-muted-foreground">
+        Upload your training certificate (photo/screenshot) to unlock the full dashboard.
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*,application/pdf"
+          className="text-xs text-foreground"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+        />
+        <Button
+          type="button"
+          size="sm"
+          disabled={!file || uploadMut.isPending}
+          onClick={() => void handleUpload()}
+        >
+          {uploadMut.isPending ? 'Uploading…' : 'Submit Certificate'}
+        </Button>
+      </div>
+      {err ? <p className="text-xs text-destructive" role="alert">{err}</p> : null}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Certification block (unchanged logic, kept intact)
 // ---------------------------------------------------------------------------
 
@@ -530,11 +591,22 @@ export function TrainingProgramPanel({ data }: Props) {
   }, [qc])
 
   const isAdmin = role === 'admin' || role === 'leader'
+  const trainingStatus = me?.training_status ?? ''
+
+  // All 7 days marked done but certificate not yet uploaded
+  const vids = Array.isArray(data.videos) ? data.videos : []
+  const progress = Array.isArray(data.progress) ? data.progress : []
+  const doneSet = new Set(progress.filter((p) => p.completed).map((p) => p.day_number))
+  const allDaysDone = vids.length > 0 && vids.every((v) => doneSet.has(v.day_number))
+  const needsCertificate = allDaysDone && trainingStatus !== 'completed'
 
   return (
     <div className="surface-elevated space-y-4 p-4 text-sm text-muted-foreground">
       {data.note ? <p className="text-foreground/90">{data.note}</p> : null}
       <TrainingDaysBlock data={data} onSessionRefresh={onSessionRefresh} isAdmin={isAdmin} />
+      {needsCertificate ? (
+        <CertificateUploadBlock onRefresh={onSessionRefresh} />
+      ) : null}
       <TrainingCertificationBlock onSessionRefresh={onSessionRefresh} />
     </div>
   )
