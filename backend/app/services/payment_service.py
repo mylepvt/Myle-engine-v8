@@ -85,9 +85,6 @@ class PaymentService:
         if lead.payment_proof_url and lead.payment_status == "proof_uploaded":
             return False, "Payment proof is already pending review"
 
-        if lead.status not in ["video_watched", "paid"]:
-            return False, "Payment proof can only be uploaded for video_watched or paid leads"
-
         lead.payment_amount_cents = payment_amount_cents
         lead.payment_proof_url = proof_url
         lead.payment_proof_uploaded_at = datetime.now(timezone.utc)
