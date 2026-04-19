@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { InvoiceDownloadLink } from '@/components/wallet/InvoiceDownloadLink'
@@ -22,6 +23,30 @@ import { ROLES, roleShortLabel, type Role } from '@/types/role'
 type ResetTarget = Pick<TeamMemberPublic, 'id' | 'fbo_id' | 'email'>
 
 type Props = { title: string }
+
+function memberRoleLabel(role: string): string {
+  if (role === 'admin' || role === 'leader' || role === 'team') {
+    return roleShortLabel(role)
+  }
+  return role
+}
+
+function memberRoleBadgeVariant(role: string): 'warning' | 'primary' | 'success' | 'outline' {
+  if (role === 'admin') return 'warning'
+  if (role === 'leader') return 'primary'
+  if (role === 'team') return 'success'
+  return 'outline'
+}
+
+function formatMemberTimestamp(value: string): string {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleString(undefined, {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      })
+}
 
 function ResetPasswordModal({
   target,
@@ -61,7 +86,7 @@ function ResetPasswordModal({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="mb-1 font-semibold text-foreground">Reset Password</h2>
-        <p className="mb-4 text-ds-caption text-muted-foreground">
+        <p className="mb-4 break-all text-ds-caption text-muted-foreground">
           <span className="font-medium text-foreground">{target.fbo_id}</span>
           {' · '}
           {target.email}
@@ -149,14 +174,14 @@ function MemberProfileModal({
       >
         {/* Header */}
         <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold text-foreground">{member.fbo_id}</h2>
+          <div className="min-w-0 flex-1">
+            <h2 className="break-all text-base font-semibold text-foreground">{member.fbo_id}</h2>
             {member.username ? (
-              <p className="text-ds-caption text-muted-foreground">({member.username})</p>
+              <p className="break-words text-ds-caption text-muted-foreground">({member.username})</p>
             ) : null}
-            <p className="mt-0.5 text-ds-caption text-muted-foreground">{member.email}</p>
+            <p className="mt-0.5 break-all text-ds-caption text-muted-foreground">{member.email}</p>
             <p className="mt-0.5 text-ds-caption text-muted-foreground">
-              Joined {new Date(member.created_at).toLocaleString()}
+              Joined {formatMemberTimestamp(member.created_at)}
             </p>
           </div>
           <button
@@ -376,18 +401,30 @@ export function TeamMembersPage({ title }: Props) {
   })
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
-      <p className="text-sm text-muted-foreground">
-        All accounts in this environment (from the users table). Passwords are never exposed via this API.
-      </p>
+    <div className="max-w-3xl space-y-5">
+      <div className="space-y-2">
+        <Badge variant="primary" className="w-fit px-3 py-1">
+          Member directory
+        </Badge>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          All accounts in this environment from the users table. Passwords are never exposed through this API.
+        </p>
+      </div>
 
       {isAdmin ? (
-        <div className="surface-elevated p-5 text-sm">
-          <h2 className="mb-3 font-medium text-foreground">Add user</h2>
-          <p className="mb-3 text-ds-caption text-muted-foreground">
-            Creates a password-login account (min. 8 characters). Admin only.
-          </p>
+        <div className="surface-elevated p-5 text-sm md:p-6">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="font-medium text-foreground">Add user</h2>
+              <p className="mt-1 text-ds-caption text-muted-foreground">
+                Create a password-login account with a clean role assignment. Admin only.
+              </p>
+            </div>
+            <Badge variant="warning" className="w-fit">
+              Admin tools
+            </Badge>
+          </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
             <label className="block min-w-[10rem] flex-1">
               <span className="mb-1 block text-ds-caption text-muted-foreground">FBO ID (unique)</span>
@@ -415,6 +452,7 @@ export function TeamMembersPage({ title }: Props) {
             </label>
             <Button
               type="button"
+              className="w-full sm:w-auto"
               disabled={createMut.isPending || !fboId.trim() || !email.trim() || password.length < 8}
               onClick={() => createMut.mutate({ fbo_id: fboId.trim(), username: username.trim() || null, email: email.trim(), password, role: newRole })}
             >
@@ -440,14 +478,20 @@ export function TeamMembersPage({ title }: Props) {
         </div>
       ) : null}
       {data ? (
-        <div className="surface-elevated p-5 text-sm">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <p className="font-medium text-foreground">Total: {data.total}</p>
+        <div className="surface-elevated p-5 text-sm md:p-6">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-medium text-foreground">Total: {data.total}</p>
+              <p className="mt-1 text-ds-caption text-muted-foreground">
+                Responsive member cards with wrapped details and quick actions.
+              </p>
+            </div>
             {isAdmin ? (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
+                className="w-full justify-center sm:w-auto"
                 disabled={bulkResetMut.isPending}
                 onClick={() => {
                   const ok = window.confirm('Reset password for ALL users to Myle@2323 ?')
@@ -465,49 +509,70 @@ export function TeamMembersPage({ title }: Props) {
               </Button>
             ) : null}
           </div>
-          <ul className="space-y-2">
+          <ul className="space-y-3">
             {data.items.map((m) => (
               <li
                 key={m.id}
-                className="surface-inset flex items-start justify-between gap-3 px-3 py-2.5 text-muted-foreground"
+                className="surface-inset overflow-hidden rounded-2xl border border-white/5 px-4 py-3 text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
               >
-                <div className="min-w-0 flex-1">
-                  <span className="font-medium text-foreground">{m.fbo_id}</span>
-                  {m.username ? (
-                    <span className="ml-1.5 text-muted-foreground">({m.username})</span>
-                  ) : null}
-                  <span className="mt-0.5 block text-ds-caption text-muted-foreground">{m.email}</span>
-                  <span className="mt-0.5 block text-ds-caption">
-                    {m.role} · joined {new Date(m.created_at).toLocaleString()}
-                  </span>
-                  {(m.upline_name || m.upline_fbo_id) ? (
-                    <span className="mt-0.5 block text-ds-caption text-muted-foreground">
-                      Upline: <span className="text-foreground">{m.upline_name ?? m.upline_fbo_id}</span>
-                      {m.upline_name && m.upline_fbo_id ? (
-                        <span className="ml-1 font-mono opacity-60">({m.upline_fbo_id})</span>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="break-all text-sm font-semibold text-foreground sm:text-[0.95rem]">
+                            {m.fbo_id}
+                          </span>
+                          <Badge variant={memberRoleBadgeVariant(m.role)} className="shrink-0">
+                            {memberRoleLabel(m.role)}
+                          </Badge>
+                        </div>
+                        {m.username ? (
+                          <p className="mt-1 break-words text-ds-caption text-muted-foreground">
+                            {m.username}
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="mt-2 grid gap-1.5 text-ds-caption text-muted-foreground">
+                      <p className="break-all">{m.email}</p>
+                      <p>Joined {formatMemberTimestamp(m.created_at)}</p>
+                      {(m.upline_name || m.upline_fbo_id) ? (
+                        <p className="break-words">
+                          Upline: <span className="text-foreground">{m.upline_name ?? m.upline_fbo_id}</span>
+                          {m.upline_name && m.upline_fbo_id ? (
+                            <span className="ml-1 font-mono opacity-70">({m.upline_fbo_id})</span>
+                          ) : null}
+                        </p>
                       ) : null}
-                    </span>
-                  ) : null}
-                </div>
-                <div className="flex shrink-0 flex-wrap gap-1.5">
-                  {isAdmin ? (
-                    <button
-                      type="button"
-                      onClick={() => setProfileTarget(m)}
-                      className="rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-ds-caption text-primary transition hover:bg-primary/20"
-                    >
-                      View Profile
-                    </button>
-                  ) : null}
-                  {isAdminOrLeader ? (
-                    <button
-                      type="button"
-                      onClick={() => setResetTarget({ id: m.id, fbo_id: m.fbo_id, email: m.email })}
-                      className="rounded-md border border-border bg-muted/30 px-2 py-1 text-ds-caption text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                    >
-                      Reset Password
-                    </button>
-                  ) : null}
+                    </div>
+                  </div>
+
+                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[10.5rem]">
+                    {isAdmin ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setProfileTarget(m)}
+                        className="w-full justify-center border-primary/30 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
+                      >
+                        View Profile
+                      </Button>
+                    ) : null}
+                    {isAdminOrLeader ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setResetTarget({ id: m.id, fbo_id: m.fbo_id, email: m.email })}
+                        className="w-full justify-center bg-muted/30 text-muted-foreground hover:bg-muted"
+                      >
+                        Reset Password
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
               </li>
             ))}
