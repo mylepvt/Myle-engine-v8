@@ -1,6 +1,6 @@
 import { InsightList } from '@/components/dashboard/InsightList'
 import { TrainingProgramPanel } from '@/components/training/TrainingProgramPanel'
-import { Skeleton } from '@/components/ui/skeleton'
+import { ErrorState, LoadingState } from '@/components/ui/states'
 import {
   useSystemSurfaceQuery,
   type SystemSurface,
@@ -15,21 +15,20 @@ export function SystemSurfacePage({ title, surface }: Props) {
   const { data, isPending, isError, error, refetch } = useSystemSurfaceQuery(surface)
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-4xl space-y-5">
       <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
 
       {isPending ? (
-        <div className="space-y-2">
-          <Skeleton className="h-9 w-full" />
+        <div className="surface-elevated p-4">
+          <LoadingState label="Loading..." />
         </div>
       ) : null}
       {isError ? (
-        <div className="text-sm text-destructive" role="alert">
-          <span>{error instanceof Error ? error.message : 'Could not load'} </span>
-          <button type="button" className="underline underline-offset-2" onClick={() => void refetch()}>
-            Retry
-          </button>
-        </div>
+        <ErrorState
+          title={`Could not load ${title.toLowerCase()}`}
+          message={error instanceof Error ? error.message : 'Please try again.'}
+          onRetry={() => void refetch()}
+        />
       ) : null}
       {data && surface === 'training' && 'videos' in data ? <TrainingProgramPanel data={data} /> : null}
       {data && surface === 'training' && !('videos' in data) && 'items' in data ? (
