@@ -85,8 +85,13 @@ async def build_training_surface(session: AsyncSession, user_id: int) -> Trainin
         for v in video_rows
     ]
 
-    # Optional banner for clients; empty catalog is handled in the app UI.
-    note = None
+    # Backward-compatible API contract:
+    # tests and older clients expect a non-empty note when the catalog is empty.
+    note = (
+        "Training days are not configured yet. Please ask admin to add training content."
+        if not videos
+        else None
+    )
     return TrainingSurfaceResponse(
         videos=videos,
         progress=progress,
