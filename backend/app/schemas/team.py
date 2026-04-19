@@ -47,10 +47,18 @@ class TeamMemberCreate(BaseModel):
 
 
 class TeamMyTeamResponse(BaseModel):
-    """V1: only the authenticated user until org / reporting lines exist."""
+    """Directory rows for the current user: leader sees self + full downline; team sees self only."""
 
     items: list[TeamMemberPublic]
     total: int
+    direct_members: int = Field(
+        default=0,
+        description="Users whose direct upline is the current leader (0 for team role).",
+    )
+    total_downline: int = Field(
+        default=0,
+        description="Strict descendants under the leader (excludes the leader row); 0 for team role.",
+    )
 
 
 class TeamEnrollmentRequestItem(BaseModel):

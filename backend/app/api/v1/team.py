@@ -7,9 +7,10 @@ from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import delete as sa_delete, func, select, update
+from sqlalchemy import case, delete as sa_delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
@@ -32,6 +33,7 @@ from app.schemas.team import (
     TeamReportsLiveSummary,
     TeamReportsResponse,
 )
+from app.services.downline import is_user_in_downline_of
 from app.services.payment_service import PaymentService
 from app.services.team_reports_metrics import IST, compute_live_summary
 
@@ -41,13 +43,17 @@ _MAX_LIMIT = 100
 _DEFAULT_LIMIT = 50
 
 
+async def _recursive_downline_user_ids(session: AsyncSession, leader_id: int) -> list[int]:
+    """Strict descendants of ``leader_id`` (does not include the leader)."""
+    anchor = select(User.id).where(User.upline_user_id == leader_id)
+    tree = anchor.cte(name="team_downline", recursive=True)
+    tree = tree.union_all(select(User.id).where(User.upline_user_id == tree.c.id))
+    rows = (await session.execute(select(tree.c.id))).all()
+    return [int(r[0]) for r in rows]
+
+
 def _require_admin(user: AuthUser) -> None:
     if user.role != "admin":
-        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
-
-
-def _require_leader(user: AuthUser) -> None:
-    if user.role != "leader":
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
 
@@ -66,7 +72,6 @@ async def list_team_members(
     """All users (no passwords) — admin only."""
     _require_admin(user)
 
-    from sqlalchemy.orm import aliased
     count_q = select(func.count()).select_from(User)
     total = int((await session.execute(count_q)).scalar_one())
 
@@ -141,13 +146,55 @@ async def my_team(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> TeamMyTeamResponse:
-    """Leader-only; V1 returns only your own row until reporting lines are modeled."""
-    _require_leader(user)
+    """Leader: self + entire downline (flat list). Team: self only. Admin: use ``GET /team/members``."""
+    if user.role not in ("leader", "team"):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
-    row = await session.get(User, user.user_id)
-    if row is None:
-        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
-    return TeamMyTeamResponse(items=[TeamMemberPublic.model_validate(row)], total=1)
+    Upline = aliased(User, name="upline")
+
+    if user.role == "team":
+        row = await session.get(User, user.user_id)
+        if row is None:
+            raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+        item = TeamMemberPublic.model_validate(row)
+        if row.upline_user_id is not None:
+            up = await session.get(User, row.upline_user_id)
+            if up is not None:
+                item.upline_fbo_id = up.fbo_id
+                item.upline_name = (up.username or up.name or up.fbo_id or "").strip() or None
+        return TeamMyTeamResponse(items=[item], total=1, direct_members=0, total_downline=0)
+
+    leader_id = user.user_id
+    downline_ids = await _recursive_downline_user_ids(session, leader_id)
+    id_list = [leader_id, *downline_ids]
+    list_q = (
+        select(User, Upline.fbo_id.label("upline_fbo_id"), Upline.username.label("upline_username"))
+        .outerjoin(Upline, User.upline_user_id == Upline.id)
+        .where(User.id.in_(id_list))
+        .order_by(case((User.id == leader_id, 0), else_=1), User.created_at.asc())
+    )
+    rows = (await session.execute(list_q)).all()
+    items: list[TeamMemberPublic] = []
+    for row in rows:
+        u, up_fbo, up_name = row
+        item = TeamMemberPublic.model_validate(u)
+        item.upline_fbo_id = up_fbo
+        item.upline_name = up_name
+        items.append(item)
+
+    direct_ct = int(
+        (
+            await session.execute(
+                select(func.count()).select_from(User).where(User.upline_user_id == leader_id)
+            )
+        ).scalar_one()
+    )
+    return TeamMyTeamResponse(
+        items=items,
+        total=len(items),
+        direct_members=direct_ct,
+        total_downline=len(downline_ids),
+    )
 
 
 @router.get("/enrollment-requests", response_model=TeamEnrollmentListResponse)
@@ -240,8 +287,6 @@ async def list_pending_registrations(
 ) -> PendingRegistrationsResponse:
     """Admin — self-serve signups awaiting approval (legacy ``/admin/approvals``)."""
     _require_admin(user)
-    UplineAlias = User.__class__.__mro__  # just for naming — use aliased below
-    from sqlalchemy.orm import aliased
     Upline = aliased(User, name="upline")
     q = await session.execute(
         select(User, Upline.fbo_id.label("upline_fbo_id"), Upline.username.label("upline_username"))
@@ -292,7 +337,7 @@ async def reset_member_password(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
-    """Reset a user's password. Admin/leader only."""
+    """Reset a user's password. Admin: any user. Leader: strict downline only (not self)."""
     _require_admin_or_leader(user)
     new_password = body.get("new_password", "")
     if not isinstance(new_password, str) or len(new_password) < 8:
@@ -303,6 +348,14 @@ async def reset_member_password(
     row = await session.get(User, target_user_id)
     if row is None:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    if user.role == "leader":
+        if target_user_id == user.user_id:
+            raise HTTPException(
+                status_code=http_status.HTTP_403_FORBIDDEN,
+                detail="Leaders cannot reset their own password via this endpoint",
+            )
+        if not await is_user_in_downline_of(session, target_user_id, user.user_id):
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
     row.hashed_password = hash_password(new_password)
     await session.commit()
     return {"ok": True}

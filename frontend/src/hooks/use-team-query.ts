@@ -27,6 +27,8 @@ export type TeamMemberListResponse = {
 export type TeamMyTeamResponse = {
   items: TeamMemberPublic[]
   total: number
+  direct_members?: number
+  total_downline?: number
 }
 
 export type TeamEnrollmentListResponse = {

@@ -45,8 +45,8 @@ class OrgTreeService:
         if actor_role == "leader":
             return [self._build_subtree(actor.id, users_by_id, children_map)]
 
-        # Team visibility: self + direct reports only.
-        return [self._build_subtree(actor.id, users_by_id, children_map, max_depth=1)]
+        # Team member: self only (no downline tree in product UI).
+        return [self._build_subtree(actor.id, users_by_id, children_map, max_depth=0)]
 
     def _build_subtree(
         self,
