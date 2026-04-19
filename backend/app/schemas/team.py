@@ -13,6 +13,7 @@ class TeamMemberPublic(BaseModel):
 
     id: int
     fbo_id: str
+    name: Optional[str] = None
     username: Optional[str] = None
     email: str
     role: str

@@ -68,6 +68,8 @@ class WalletRechargePublic(BaseModel):
 
     id: int
     user_id: int
+    member_name: Optional[str] = None
+    member_fbo_id: Optional[str] = None
     amount_cents: int
     utr_number: Optional[str]
     proof_url: Optional[str]
