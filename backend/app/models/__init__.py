@@ -17,6 +17,7 @@ from app.models.app_setting import AppSetting
 from app.models.training_question import TrainingQuestion
 from app.models.training_test_attempt import TrainingTestAttempt
 from app.models.lead_note import LeadNote
+from app.models.training_day_note import TrainingDayNote
 
 __all__ = [
     "Announcement",
@@ -38,4 +39,5 @@ __all__ = [
     "TrainingQuestion",
     "TrainingTestAttempt",
     "LeadNote",
+    "TrainingDayNote",
 ]

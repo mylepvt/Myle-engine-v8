@@ -1,12 +1,40 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 
 import { useQueryClient } from '@tanstack/react-query'
 
 import { Button } from '@/components/ui/button'
+import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import type { TrainingSurfacePayload } from '@/hooks/use-system-surface-query'
+import {
+  useMarkTrainingDayMutation,
+  useUpdateTrainingDayMutation,
+  useUploadTrainingAudioMutation,
+  useUploadTrainingNotesMutation,
+} from '@/hooks/use-training-query'
 import { apiFetch } from '@/lib/api'
 import { authSyncIdentity } from '@/lib/auth-api'
 import { messageFromApiErrorPayload } from '@/lib/http-error-message'
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function getApiBase(): string {
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    return 'http://localhost:8000'
+  }
+  return ''
+}
+
+function resolveUrl(url: string | undefined | null): string | null {
+  if (!url) return null
+  if (url.startsWith('http')) return url
+  return `${getApiBase()}${url}`
+}
+
+// ---------------------------------------------------------------------------
+// Training question types (kept here for certification block)
+// ---------------------------------------------------------------------------
 
 type TrainingQuestionRow = {
   id: number
@@ -23,39 +51,285 @@ type TrainingTestResultRow = {
   training_completed?: boolean
 }
 
+// ---------------------------------------------------------------------------
+// Admin config panel (one day at a time)
+// ---------------------------------------------------------------------------
+
+function AdminDayConfig({ dayNumber }: { dayNumber: number }) {
+  const [title, setTitle] = useState('')
+  const [youtubeUrl, setYoutubeUrl] = useState('')
+  const [audioFile, setAudioFile] = useState<File | null>(null)
+  const [msg, setMsg] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  const audioRef = useRef<HTMLInputElement>(null)
+
+  const updateDay = useUpdateTrainingDayMutation()
+  const uploadAudio = useUploadTrainingAudioMutation()
+
+  const save = async () => {
+    setMsg(null)
+    setErr(null)
+    try {
+      const payload: { title?: string; youtube_url?: string } = {}
+      if (title.trim()) payload.title = title.trim()
+      if (youtubeUrl.trim()) payload.youtube_url = youtubeUrl.trim()
+      if (Object.keys(payload).length > 0) {
+        await updateDay.mutateAsync({ dayNumber, payload })
+      }
+      if (audioFile) {
+        await uploadAudio.mutateAsync({ dayNumber, file: audioFile })
+        setAudioFile(null)
+        if (audioRef.current) audioRef.current.value = ''
+      }
+      setMsg('Saved')
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Save failed')
+    }
+  }
+
+  return (
+    <div className="mt-2 space-y-2 rounded-md border border-white/10 bg-white/[0.03] p-3">
+      <p className="text-xs font-semibold text-foreground/70">Day {dayNumber} — Admin config</p>
+      <input
+        className="field-input w-full text-xs"
+        placeholder="Title"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+      />
+      <input
+        className="field-input w-full text-xs"
+        placeholder="YouTube URL"
+        value={youtubeUrl}
+        onChange={(e) => setYoutubeUrl(e.target.value)}
+      />
+      <div className="flex items-center gap-2">
+        <label className="text-xs text-muted-foreground">Audio (.mp3):</label>
+        <input
+          ref={audioRef}
+          type="file"
+          accept="audio/*"
+          className="text-xs text-foreground"
+          onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
+        />
+      </div>
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        className="h-7 text-xs"
+        disabled={updateDay.isPending || uploadAudio.isPending}
+        onClick={() => void save()}
+      >
+        {updateDay.isPending || uploadAudio.isPending ? 'Saving…' : 'Save'}
+      </Button>
+      {msg && <p className="text-xs text-emerald-400">{msg}</p>}
+      {err && <p className="text-xs text-destructive">{err}</p>}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Per-day card
+// ---------------------------------------------------------------------------
+
+function DayCard({
+  video,
+  completed,
+  hasNotes,
+  onRefresh,
+  isAdmin,
+}: {
+  video: { day_number: number; title: string; youtube_url?: string; audio_url?: string; unlocked?: boolean }
+  completed: boolean
+  hasNotes: boolean
+  onRefresh: () => Promise<void>
+  isAdmin: boolean
+}) {
+  const { day_number, title, youtube_url, audio_url, unlocked = true } = video
+
+  const [timerDone, setTimerDone] = useState(false)
+  const [noteFile, setNoteFile] = useState<File | null>(null)
+  const [noteErr, setNoteErr] = useState<string | null>(null)
+  const [noteUploading, setNoteUploading] = useState(false)
+  const [localHasNotes, setLocalHasNotes] = useState(hasNotes)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const markDay = useMarkTrainingDayMutation()
+  const uploadNotes = useUploadTrainingNotesMutation()
+
+  // Start timer when video is embedded (best-effort 30s wait)
+  const handleIframeLoad = useCallback(() => {
+    const t = setTimeout(() => setTimerDone(true), 30_000)
+    return () => clearTimeout(t)
+  }, [])
+
+  const handleNoteUpload = async () => {
+    if (!noteFile) return
+    setNoteErr(null)
+    setNoteUploading(true)
+    try {
+      await uploadNotes.mutateAsync({ dayNumber: day_number, file: noteFile })
+      setLocalHasNotes(true)
+      setNoteFile(null)
+      if (fileRef.current) fileRef.current.value = ''
+    } catch (e) {
+      setNoteErr(e instanceof Error ? e.message : 'Upload failed')
+    } finally {
+      setNoteUploading(false)
+    }
+  }
+
+  const handleMarkComplete = async () => {
+    try {
+      await markDay.mutateAsync(day_number)
+      await onRefresh()
+    } catch (e) {
+      // error shown inline via mutation state
+    }
+  }
+
+  if (!unlocked) {
+    return (
+      <div className="rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 opacity-50">
+        <div className="flex items-center gap-2">
+          <span className="text-base">🔒</span>
+          <span className="text-sm font-medium text-foreground">
+            Day {day_number} — {title}
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">Complete Day {day_number - 1} first</p>
+      </div>
+    )
+  }
+
+  const embedUrl = youtube_url
+    ? youtube_url.replace('watch?v=', 'embed/').split('&')[0] + '?enablejsapi=1'
+    : null
+
+  return (
+    <div className="space-y-3 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-foreground">
+          Day {day_number} — {title}
+        </span>
+        {completed && (
+          <span className="text-xs font-medium text-emerald-400">✓ Completed</span>
+        )}
+      </div>
+
+      {/* 1. Video */}
+      <div className="space-y-1">
+        {embedUrl ? (
+          <>
+            <p className="text-xs text-muted-foreground">Watch video fully before proceeding</p>
+            <div className="aspect-video w-full overflow-hidden rounded-md bg-black">
+              <iframe
+                src={embedUrl}
+                className="h-full w-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                onLoad={handleIframeLoad}
+                title={`Day ${day_number} video`}
+              />
+            </div>
+            {!timerDone && (
+              <p className="text-xs text-amber-400">Please spend at least 30 seconds watching before proceeding</p>
+            )}
+          </>
+        ) : (
+          <p className="text-xs text-muted-foreground">Video not configured yet</p>
+        )}
+      </div>
+
+      {/* 2. Audio */}
+      <div className="space-y-1">
+        <p className="text-xs font-medium text-foreground/70">Listen to the audio</p>
+        {resolveUrl(audio_url) ? (
+          <audio controls src={resolveUrl(audio_url)!} className="w-full" />
+        ) : (
+          <p className="text-xs text-muted-foreground">Audio not configured yet</p>
+        )}
+      </div>
+
+      {/* 3. Notes upload */}
+      <div className="space-y-1">
+        <p className="text-xs font-medium text-foreground/70">Upload your notes</p>
+        {localHasNotes ? (
+          <p className="text-xs text-emerald-400">✓ Notes submitted</p>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="text-xs text-foreground"
+              onChange={(e) => setNoteFile(e.target.files?.[0] ?? null)}
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="h-7 text-xs"
+              disabled={!noteFile || noteUploading}
+              onClick={() => void handleNoteUpload()}
+            >
+              {noteUploading ? 'Uploading…' : 'Upload'}
+            </Button>
+          </div>
+        )}
+        {noteErr && <p className="text-xs text-destructive">{noteErr}</p>}
+      </div>
+
+      {/* 4. Mark complete */}
+      {!completed && (
+        <div className="space-y-1">
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            className="h-8 text-xs"
+            disabled={!localHasNotes || markDay.isPending}
+            onClick={() => void handleMarkComplete()}
+          >
+            {markDay.isPending ? 'Saving…' : 'Mark complete'}
+          </Button>
+          {!localHasNotes && (
+            <p className="text-xs text-muted-foreground">Upload your notes first to enable this button</p>
+          )}
+          {markDay.isError && (
+            <p className="text-xs text-destructive">
+              {markDay.error instanceof Error ? markDay.error.message : 'Could not save'}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Admin config */}
+      {isAdmin && <AdminDayConfig dayNumber={day_number} />}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Training days block
+// ---------------------------------------------------------------------------
+
 function TrainingDaysBlock({
   data,
   onSessionRefresh,
+  isAdmin,
 }: {
   data: TrainingSurfacePayload
   onSessionRefresh: () => Promise<void>
+  isAdmin: boolean
 }) {
   const vids = Array.isArray(data.videos) ? data.videos : []
   const progress = Array.isArray(data.progress) ? data.progress : []
-  const done = new Map(progress.filter((p) => p.completed).map((p) => [p.day_number, true]))
-  const [loadingDay, setLoadingDay] = useState<number | null>(null)
-  const [err, setErr] = useState<string | null>(null)
+  const notes = Array.isArray((data as any).notes) ? (data as any).notes as { day_number: number }[] : []
 
-  const mark = async (dayNumber: number) => {
-    setLoadingDay(dayNumber)
-    setErr(null)
-    try {
-      const r = await apiFetch('/api/v1/system/training/mark-day', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ day_number: dayNumber }),
-      })
-      const body: unknown = await r.json().catch(() => null)
-      if (!r.ok) {
-        throw new Error(messageFromApiErrorPayload(body, r.statusText))
-      }
-      await onSessionRefresh()
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Could not save progress')
-    } finally {
-      setLoadingDay(null)
-    }
-  }
+  const doneSet = new Set(progress.filter((p) => p.completed).map((p) => p.day_number))
+  const notesSet = new Set(notes.map((n) => n.day_number))
 
   if (vids.length === 0) {
     return <p className="text-foreground/90">No training days configured yet.</p>
@@ -65,57 +339,27 @@ function TrainingDaysBlock({
     <div className="space-y-3">
       <p className="text-sm font-medium text-foreground">7-day program</p>
       <p className="text-ds-caption text-muted-foreground">
-        Mark each day complete after watching. When all days are done, your training gate clears
-        (same as passing the certification test below).
+        Watch each video, listen to the audio, upload your notes, then mark the day complete.
       </p>
-      <ul className="space-y-2">
-        {vids.map((v) => {
-          const isDone = done.has(v.day_number)
-          return (
-            <li
-              key={v.day_number}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-foreground/90"
-            >
-              <span className="text-sm">
-                <span className="font-medium">Day {v.day_number}</span>
-                <span className="text-muted-foreground"> — {v.title}</span>
-              </span>
-              {v.youtube_url ? (
-                <a
-                  href={v.youtube_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-xs font-medium text-primary underline-offset-2 hover:underline"
-                >
-                  Watch →
-                </a>
-              ) : null}
-              {isDone ? (
-                <span className="text-xs font-medium text-emerald-400">Completed</span>
-              ) : (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  className="h-8 text-xs"
-                  disabled={loadingDay === v.day_number}
-                  onClick={() => void mark(v.day_number)}
-                >
-                  {loadingDay === v.day_number ? 'Saving…' : 'Mark complete'}
-                </Button>
-              )}
-            </li>
-          )
-        })}
-      </ul>
-      {err ? (
-        <p className="text-xs text-destructive" role="alert">
-          {err}
-        </p>
-      ) : null}
+      <div className="space-y-3">
+        {vids.map((v) => (
+          <DayCard
+            key={v.day_number}
+            video={v}
+            completed={doneSet.has(v.day_number)}
+            hasNotes={notesSet.has(v.day_number)}
+            onRefresh={onSessionRefresh}
+            isAdmin={isAdmin}
+          />
+        ))}
+      </div>
     </div>
   )
 }
+
+// ---------------------------------------------------------------------------
+// Certification block (unchanged logic, kept intact)
+// ---------------------------------------------------------------------------
 
 function TrainingCertificationBlock({
   onSessionRefresh,
@@ -264,24 +508,33 @@ function TrainingCertificationBlock({
   )
 }
 
+// ---------------------------------------------------------------------------
+// Main export
+// ---------------------------------------------------------------------------
+
 type Props = {
   data: TrainingSurfacePayload
 }
 
 export function TrainingProgramPanel({ data }: Props) {
   const qc = useQueryClient()
+  const { data: me } = useAuthMeQuery()
+  const role = me?.role ?? null
 
   const onSessionRefresh = useCallback(async () => {
     await authSyncIdentity()
     await qc.invalidateQueries({ queryKey: ['auth', 'me'] })
     await qc.invalidateQueries({ queryKey: ['system', 'training'] })
     await qc.invalidateQueries({ queryKey: ['other', 'training'] })
+    await qc.invalidateQueries({ queryKey: ['training', 'surface'] })
   }, [qc])
+
+  const isAdmin = role === 'admin' || role === 'leader'
 
   return (
     <div className="surface-elevated space-y-4 p-4 text-sm text-muted-foreground">
       {data.note ? <p className="text-foreground/90">{data.note}</p> : null}
-      <TrainingDaysBlock data={data} onSessionRefresh={onSessionRefresh} />
+      <TrainingDaysBlock data={data} onSessionRefresh={onSessionRefresh} isAdmin={isAdmin} />
       <TrainingCertificationBlock onSessionRefresh={onSessionRefresh} />
     </div>
   )

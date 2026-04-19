@@ -7,6 +7,7 @@ from typing import Annotated, Any
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -46,6 +47,10 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix="/api/v1")
+
+_uploads_dir = Path(__file__).resolve().parent / "uploads"
+_uploads_dir.mkdir(exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(_uploads_dir)), name="uploads")
 
 
 @app.get("/health")

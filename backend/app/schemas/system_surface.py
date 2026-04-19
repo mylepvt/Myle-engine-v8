@@ -18,6 +18,8 @@ class TrainingVideoRow(BaseModel):
     day_number: int
     title: str
     youtube_url: Optional[str] = None
+    audio_url: Optional[str] = None
+    unlocked: bool = True
 
 
 class TrainingProgressRow(BaseModel):
@@ -26,11 +28,16 @@ class TrainingProgressRow(BaseModel):
     completed_at: Optional[datetime] = None
 
 
+class TrainingDayNoteRow(BaseModel):
+    day_number: int
+
+
 class TrainingSurfaceResponse(BaseModel):
     """Training home payload — catalog + per-user progress (DB-backed)."""
 
     videos: list[TrainingVideoRow] = Field(default_factory=list)
     progress: list[TrainingProgressRow] = Field(default_factory=list)
+    notes: list[TrainingDayNoteRow] = Field(default_factory=list)
     note: Optional[str] = None
     unlock_dates: Optional[dict[int, str]] = Field(default=None, description="Calendar unlock dates for days 2-7")
 

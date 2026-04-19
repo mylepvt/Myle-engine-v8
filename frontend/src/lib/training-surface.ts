@@ -7,6 +7,7 @@ export function normalizeTrainingSurfacePayload(raw: unknown): TrainingSurfacePa
   const o = raw as Record<string, unknown>
   const videos = Array.isArray(o.videos) ? o.videos : []
   const progress = Array.isArray(o.progress) ? o.progress : []
+  const notes = Array.isArray(o.notes) ? o.notes : []
   const note = typeof o.note === 'string' ? o.note : null
-  return { videos, progress, note } as TrainingSurfacePayload
+  return { videos, progress, notes, note } as TrainingSurfacePayload
 }

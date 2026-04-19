@@ -6,6 +6,8 @@ export type TrainingVideo = {
   day_number: number
   title: string
   youtube_url?: string
+  audio_url?: string
+  unlocked?: boolean
 }
 
 export type TrainingProgress = {
@@ -14,9 +16,14 @@ export type TrainingProgress = {
   completed_at?: string
 }
 
+export type TrainingDayNote = {
+  day_number: number
+}
+
 export type TrainingSurfaceResponse = {
   videos: TrainingVideo[]
   progress: TrainingProgress[]
+  notes?: TrainingDayNote[]
   note?: string
 }
 
@@ -69,6 +76,47 @@ export async function submitTrainingTest(answers: Record<string, string>): Promi
   return res.json()
 }
 
+export async function uploadTrainingNotes(dayNumber: number, file: File): Promise<{ day_number: number; image_url: string }> {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await apiFetch(`/api/v1/system/training/days/${dayNumber}/notes`, {
+    method: 'POST',
+    body: form,
+  })
+  if (!res.ok) {
+    throw new Error(`Upload notes HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function uploadTrainingAudio(dayNumber: number, file: File): Promise<{ day_number: number; audio_url: string }> {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await apiFetch(`/api/v1/system/training/days/${dayNumber}/audio`, {
+    method: 'POST',
+    body: form,
+  })
+  if (!res.ok) {
+    throw new Error(`Upload audio HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function updateTrainingDay(
+  dayNumber: number,
+  payload: { title?: string; youtube_url?: string },
+): Promise<{ day_number: number; title: string; youtube_url?: string }> {
+  const res = await apiFetch(`/api/v1/system/training/days/${dayNumber}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    throw new Error(`Update training day HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
 export async function markTrainingDay(dayNumber: number): Promise<TrainingSurfaceResponse> {
   const res = await apiFetch('/api/v1/system/training/mark-day', {
     method: 'POST',
@@ -104,6 +152,39 @@ export function useMarkTrainingDayMutation() {
     mutationFn: markTrainingDay,
     onSuccess: (data) => {
       queryClient.setQueryData(['training', 'surface'], data)
+    },
+  })
+}
+
+export function useUploadTrainingNotesMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ dayNumber, file }: { dayNumber: number; file: File }) =>
+      uploadTrainingNotes(dayNumber, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['training', 'surface'] })
+    },
+  })
+}
+
+export function useUploadTrainingAudioMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ dayNumber, file }: { dayNumber: number; file: File }) =>
+      uploadTrainingAudio(dayNumber, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['training', 'surface'] })
+    },
+  })
+}
+
+export function useUpdateTrainingDayMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ dayNumber, payload }: { dayNumber: number; payload: { title?: string; youtube_url?: string } }) =>
+      updateTrainingDay(dayNumber, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['training', 'surface'] })
     },
   })
 }

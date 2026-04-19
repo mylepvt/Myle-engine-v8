@@ -9,8 +9,9 @@ export type SystemSurface = 'training' | 'decision-engine' | 'coaching'
 
 /** DB-backed training home (differs from stub shape). */
 export type TrainingSurfacePayload = {
-  videos: { day_number: number; title: string; youtube_url?: string | null }[]
+  videos: { day_number: number; title: string; youtube_url?: string | null; audio_url?: string | null; unlocked?: boolean }[]
   progress: { day_number: number; completed: boolean; completed_at?: string | null }[]
+  notes?: { day_number: number }[]
   note?: string | null
 }
 

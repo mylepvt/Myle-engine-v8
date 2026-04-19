@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
+from app.models.training_day_note import TrainingDayNote
 from app.models.training_progress import TrainingProgress
 from app.models.training_question import TrainingQuestion
 from app.models.training_test_attempt import TrainingTestAttempt
@@ -100,6 +101,19 @@ async def mark_training_day(
                     status_code=http_status.HTTP_400_BAD_REQUEST,
                     detail=f"Day {body.day_number} unlocks {min_days_required} days after completing Day 1",
                 )
+
+    # Require notes upload before marking complete
+    note_row = await session.execute(
+        select(TrainingDayNote).where(
+            TrainingDayNote.user_id == user.user_id,
+            TrainingDayNote.day_number == body.day_number,
+        )
+    )
+    if note_row.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="Please upload your notes before completing this day",
+        )
 
     now = datetime.now(timezone.utc)
     existing = await session.execute(
