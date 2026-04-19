@@ -5,6 +5,7 @@ Aggregate all v1 routers here. New domains: add `your_module.router` + `include_
 from fastapi import APIRouter
 
 from app.api.v1 import (
+    admin_training,
     invoices,
     analytics,
     auth,
@@ -41,6 +42,7 @@ from app.api.v1 import (
 api_router = APIRouter()
 api_router.include_router(meta.router, prefix="/meta", tags=["meta"])
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
+api_router.include_router(admin_training.router, prefix="/admin", tags=["admin"])
 api_router.include_router(media.router, prefix="/media", tags=["media"])
 api_router.include_router(hello.router, prefix="/hello", tags=["hello"])
 api_router.include_router(leads.router, prefix="/leads", tags=["leads"])

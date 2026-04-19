@@ -117,23 +117,43 @@ def test_create_team_member_short_password(monkeypatch: pytest.MonkeyPatch) -> N
     assert res.status_code == 422
 
 
-def test_my_team_leader_returns_self(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_my_team_leader_returns_self_and_downline_counts(monkeypatch: pytest.MonkeyPatch) -> None:
     c = _authed_client(monkeypatch)
     assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
     res = c.get("/api/v1/team/my-team")
     assert res.status_code == 200
     body = res.json()
+    assert body["total"] >= 1
+    assert len(body["items"]) == body["total"]
+    leader_rows = [x for x in body["items"] if x["email"] == "dev-leader@myle.local"]
+    assert len(leader_rows) == 1
+    assert leader_rows[0]["fbo_id"] == "fbo-leader-001"
+    assert leader_rows[0]["role"] == "leader"
+    assert body.get("direct_members", 0) >= 0
+    assert body.get("total_downline", 0) == max(0, body["total"] - 1)
+
+
+def test_my_team_team_user_ok(monkeypatch: pytest.MonkeyPatch) -> None:
+    c = _authed_client(monkeypatch)
+    assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+    res = c.get("/api/v1/team/my-team")
+    assert res.status_code == 200
+    body = res.json()
     assert body["total"] == 1
-    assert len(body["items"]) == 1
-    assert body["items"][0]["email"] == "dev-leader@myle.local"
-    assert body["items"][0]["fbo_id"] == "fbo-leader-001"
-    assert body["items"][0]["role"] == "leader"
+    assert body["items"][0]["email"] == "dev-team@myle.local"
 
 
 def test_my_team_forbidden_for_admin(monkeypatch: pytest.MonkeyPatch) -> None:
     c = _authed_client(monkeypatch)
     assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
     assert c.get("/api/v1/team/my-team").status_code == 403
+
+
+def test_admin_training_put_forbidden_for_team(monkeypatch: pytest.MonkeyPatch) -> None:
+    c = _authed_client(monkeypatch)
+    assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+    res = c.put("/api/v1/admin/training/day/1", json={"title": "x"})
+    assert res.status_code == 403
 
 
 def test_enrollment_requests_empty_admin(monkeypatch: pytest.MonkeyPatch) -> None:

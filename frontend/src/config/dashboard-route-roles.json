@@ -14,7 +14,7 @@
   "team/reports": ["admin"],
   "team/approvals": ["admin"],
   "team/enrollment-approvals": ["admin", "leader"],
-  "team/my-team": ["leader"],
+  "team/my-team": ["leader", "team"],
   "system/training": ["admin", "leader", "team"],
   "system/decision-engine": ["admin"],
   "system/coaching": ["admin", "leader"],
