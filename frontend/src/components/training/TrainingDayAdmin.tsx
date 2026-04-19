@@ -37,55 +37,88 @@ export function TrainingDayAdmin({ dayNumber }: Props) {
         setAudioFile(null)
         if (audioRef.current) audioRef.current.value = ''
       }
-      setMsg('Saved ✓')
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Save failed')
+      setMsg('Saved')
+    } catch {
+      setErr('Could not save. Check the links and file, then try again.')
     }
   }
 
   return (
-    <div className="mt-3 space-y-2 rounded-md border border-amber-500/20 bg-amber-500/[0.04] p-3 min-w-0">
-      <p className="text-xs font-semibold text-amber-400/80">Admin — Day {dayNumber} content</p>
-      <input
-        className="field-input w-full min-w-0 max-w-full text-xs"
-        placeholder="Day title (e.g. Day 1 — Welcome & Orientation)"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-      />
-      <input
-        className="field-input w-full min-w-0 max-w-full text-xs"
-        placeholder="YouTube video URL"
-        value={youtubeUrl}
-        onChange={(e) => setYoutubeUrl(e.target.value)}
-      />
-      <input
-        className="field-input w-full min-w-0 max-w-full text-xs"
-        placeholder="Audio URL (paste link — or upload file below)"
-        value={audioUrl}
-        onChange={(e) => setAudioUrl(e.target.value)}
-      />
-      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-        <span className="shrink-0 text-xs text-muted-foreground">Upload audio file</span>
-        <input
-          ref={audioRef}
-          type="file"
-          accept="audio/*"
-          className="block w-full min-w-0 max-w-full text-xs file:mr-2 file:rounded file:border-0 file:bg-white/10 file:px-2 file:py-1 file:text-xs"
-          onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
-        />
+    <div className="mt-3 overflow-hidden rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.07] via-transparent to-transparent p-4 min-w-0">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-amber-300/90">Admin editor</p>
+          <p className="mt-1 text-sm font-semibold text-foreground">Update day {dayNumber}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Change the title, video and audio shown to learners.
+          </p>
+        </div>
+        {msg ? (
+          <div className="rounded-full border border-emerald-400/20 bg-emerald-400/[0.08] px-3 py-1 text-xs text-emerald-300">
+            {msg}
+          </div>
+        ) : null}
       </div>
-      <Button
-        type="button"
-        size="sm"
-        variant="secondary"
-        className="h-7 text-xs"
-        disabled={updateDay.isPending || uploadAudio.isPending}
-        onClick={() => void save()}
-      >
-        {updateDay.isPending || uploadAudio.isPending ? 'Saving…' : 'Save'}
-      </Button>
-      {msg && <p className="text-xs text-emerald-400">{msg}</p>}
-      {err && <p className="text-xs text-destructive">{err}</p>}
+
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <label className="block md:col-span-2">
+          <span className="field-label">Day title</span>
+          <input
+            className="field-input w-full min-w-0 max-w-full text-sm"
+            placeholder="Day title shown to learners"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </label>
+
+        <label className="block">
+          <span className="field-label">Video link</span>
+          <input
+            className="field-input w-full min-w-0 max-w-full text-sm"
+            placeholder="Paste a YouTube link"
+            value={youtubeUrl}
+            onChange={(e) => setYoutubeUrl(e.target.value)}
+          />
+        </label>
+
+        <label className="block">
+          <span className="field-label">Audio link</span>
+          <input
+            className="field-input w-full min-w-0 max-w-full text-sm"
+            placeholder="Optional if you upload a file"
+            value={audioUrl}
+            onChange={(e) => setAudioUrl(e.target.value)}
+          />
+        </label>
+
+        <label className="block md:col-span-2">
+          <span className="field-label">Audio file</span>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+            <input
+              ref={audioRef}
+              type="file"
+              accept="audio/*"
+              className="block w-full min-w-0 max-w-full text-xs file:mr-2 file:rounded file:border-0 file:bg-white/10 file:px-2 file:py-1 file:text-xs"
+              onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
+            />
+          </div>
+        </label>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="min-h-[20px] text-xs">
+          {err ? <p className="text-destructive">{err}</p> : <p className="text-muted-foreground">Save when you are ready.</p>}
+        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          className="w-full md:w-auto"
+          disabled={updateDay.isPending || uploadAudio.isPending}
+          onClick={() => void save()}
+        >
+          {updateDay.isPending || uploadAudio.isPending ? 'Saving...' : 'Save changes'}
+        </Button>
+      </div>
     </div>
   )
 }
