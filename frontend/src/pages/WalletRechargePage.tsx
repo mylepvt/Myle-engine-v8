@@ -2,12 +2,12 @@ import { type FormEvent, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { InvoiceDownloadLink } from '@/components/wallet/InvoiceDownloadLink'
 import {
   useCreateRechargeRequestMutation,
   useWalletRechargeInstructionsQuery,
   useWalletRechargeRequestsQuery,
 } from '@/hooks/use-wallet-recharge-query'
-import { invoiceDownloadUrl } from '@/lib/invoice-url'
 import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
 
 type Props = {
@@ -245,16 +245,7 @@ export function WalletRechargePage({ title }: Props) {
                       {new Date(r.created_at).toLocaleDateString()}
                     </span>
                     {r.status === 'approved' && r.invoice_number ? (
-                      <a
-                        href={invoiceDownloadUrl(r.invoice_number)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-base leading-none text-muted-foreground hover:text-foreground"
-                        title={`Download receipt ${r.invoice_number}`}
-                        aria-label="Download payment receipt"
-                      >
-                        📄
-                      </a>
+                      <InvoiceDownloadLink invoiceNumber={r.invoice_number} kind="receipt" />
                     ) : null}
                   </div>
                 </div>

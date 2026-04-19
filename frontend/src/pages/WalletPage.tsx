@@ -1,27 +1,12 @@
 import { Skeleton } from '@/components/ui/skeleton'
+import { InvoiceDownloadLink } from '@/components/wallet/InvoiceDownloadLink'
 import { useWalletLedgerQuery, useWalletMeQuery } from '@/hooks/use-wallet-query'
-import { invoiceDownloadUrl } from '@/lib/invoice-url'
 
 type Props = { title: string }
 
 function formatMoney(cents: number, currency: string) {
   const major = cents / 100
   return `${currency} ${major.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
-
-function InvoiceDocButton({ invoiceNumber }: { invoiceNumber: string }) {
-  return (
-    <a
-      href={invoiceDownloadUrl(invoiceNumber)}
-      target="_blank"
-      rel="noreferrer"
-      className="inline-flex shrink-0 items-center justify-center rounded-md border border-white/15 px-1.5 py-0.5 text-base leading-none text-muted-foreground hover:border-primary/40 hover:text-foreground"
-      title={`Download ${invoiceNumber}`}
-      aria-label={`Download invoice ${invoiceNumber}`}
-    >
-      📄
-    </a>
-  )
 }
 
 export function WalletPage({ title }: Props) {
@@ -33,7 +18,10 @@ export function WalletPage({ title }: Props) {
       <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
       <p className="text-sm text-muted-foreground">
         Balance is the sum of all ledger lines (append-only). Credits and debits are applied by admins via Finance →
-        Recharges.
+        Recharges. When a document exists, use{' '}
+        <span className="text-foreground/90">Download payment receipt</span> or{' '}
+        <span className="text-foreground/90">Download tax invoice</span> to open a printable page (save as PDF from the
+        browser if you need a file).
       </p>
 
       {me.isPending ? <Skeleton className="h-16 w-full" /> : null}
@@ -62,7 +50,7 @@ export function WalletPage({ title }: Props) {
             {me.data.recent_entries.map((e) => (
               <li
                 key={e.id}
-                className="surface-inset flex items-start justify-between gap-2 px-3 py-2 text-muted-foreground"
+                className="surface-inset flex flex-col gap-2 px-3 py-2 text-muted-foreground sm:flex-row sm:items-start sm:justify-between"
               >
                 <div className="min-w-0">
                   <span className={e.amount_cents >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
@@ -72,7 +60,14 @@ export function WalletPage({ title }: Props) {
                   {e.note ? <span className="ml-2 text-xs">{e.note}</span> : null}
                   <span className="mt-1 block text-xs">{new Date(e.created_at).toLocaleString()}</span>
                 </div>
-                {e.invoice_number ? <InvoiceDocButton invoiceNumber={e.invoice_number} /> : null}
+                {e.invoice_number ? (
+                  <InvoiceDownloadLink
+                    invoiceNumber={e.invoice_number}
+                    kind="ledger"
+                    amountCents={e.amount_cents}
+                    className="self-start sm:self-auto"
+                  />
+                ) : null}
               </li>
             ))}
           </ul>
@@ -95,12 +90,22 @@ export function WalletPage({ title }: Props) {
         {ledger.data && ledger.data.items.length > 0 ? (
           <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
             {ledger.data.items.map((e) => (
-              <li key={e.id} className="flex items-center justify-between gap-2">
-                <span>
+              <li
+                key={e.id}
+                className="flex flex-col gap-2 rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-2 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <span className="min-w-0">
                   #{e.id} · {e.amount_cents >= 0 ? '+' : ''}
                   {(e.amount_cents / 100).toFixed(2)} · {new Date(e.created_at).toLocaleString()}
                 </span>
-                {e.invoice_number ? <InvoiceDocButton invoiceNumber={e.invoice_number} /> : null}
+                {e.invoice_number ? (
+                  <InvoiceDownloadLink
+                    invoiceNumber={e.invoice_number}
+                    kind="ledger"
+                    amountCents={e.amount_cents}
+                    className="self-start"
+                  />
+                ) : null}
               </li>
             ))}
           </ul>

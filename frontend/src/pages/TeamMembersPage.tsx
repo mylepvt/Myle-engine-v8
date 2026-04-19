@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { InvoiceDownloadLink } from '@/components/wallet/InvoiceDownloadLink'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import {
   createTeamMember,
@@ -15,7 +16,6 @@ import {
   type TeamMemberPublic,
 } from '@/hooks/use-team-query'
 import { useInvoicesQuery } from '@/hooks/use-invoices-query'
-import { invoiceDownloadUrl } from '@/lib/invoice-url'
 import { ROLES, roleShortLabel, type Role } from '@/types/role'
 
 type ResetTarget = Pick<TeamMemberPublic, 'id' | 'fbo_id' | 'email'>
@@ -257,14 +257,11 @@ function MemberProfileModal({
                       {(inv.total_cents / 100).toFixed(2)}
                     </span>
                   </div>
-                  <a
-                    href={invoiceDownloadUrl(inv.invoice_number)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="shrink-0 text-xs text-primary underline-offset-2 hover:underline"
-                  >
-                    Download
-                  </a>
+                  <InvoiceDownloadLink
+                    invoiceNumber={inv.invoice_number}
+                    kind={inv.doc_type === 'tax_invoice' ? 'tax_invoice' : 'receipt'}
+                    className="shrink-0"
+                  />
                 </li>
               ))}
             </ul>

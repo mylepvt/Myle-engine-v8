@@ -2,12 +2,12 @@ import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { InvoiceDownloadLink } from '@/components/wallet/InvoiceDownloadLink'
 import {
   useReviewRechargeRequestMutation,
   useWalletRechargeRequestsQuery,
   type WalletRecharge,
 } from '@/hooks/use-wallet-recharge-query'
-import { invoiceDownloadUrl } from '@/lib/invoice-url'
 
 type Props = {
   title: string
@@ -90,16 +90,7 @@ function RechargeRow({
                 : `User #${item.user_id}`}
             </span>
             {item.status === 'approved' && item.invoice_number ? (
-              <a
-                href={invoiceDownloadUrl(item.invoice_number)}
-                target="_blank"
-                rel="noreferrer"
-                className="text-base leading-none text-muted-foreground hover:text-foreground"
-                title={`Receipt ${item.invoice_number}`}
-                aria-label="Download receipt"
-              >
-                📄
-              </a>
+              <InvoiceDownloadLink invoiceNumber={item.invoice_number} kind="receipt" />
             ) : null}
           </div>
           {item.utr_number ? (

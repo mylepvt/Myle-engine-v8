@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { InvoiceDownloadLink } from '@/components/wallet/InvoiceDownloadLink'
 import { useInvoicesQuery, postInvoicesBulkDownload } from '@/hooks/use-invoices-query'
-import { invoiceDownloadUrl } from '@/lib/invoice-url'
 
 type Props = { title: string }
 
@@ -208,15 +208,12 @@ export function AdminInvoicesPage({ title }: Props) {
                     </td>
                     <td className="px-3 py-2">{typeLabel(row.doc_type)}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{formatMoney(row.total_cents, row.currency)}</td>
-                    <td className="px-3 py-2">
-                      <a
-                        href={invoiceDownloadUrl(row.invoice_number)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-primary underline-offset-2 hover:underline"
-                      >
-                        Open
-                      </a>
+                    <td className="max-w-[12rem] px-3 py-2 align-top">
+                      <InvoiceDownloadLink
+                        invoiceNumber={row.invoice_number}
+                        kind={row.doc_type === 'tax_invoice' ? 'tax_invoice' : 'receipt'}
+                        className="w-full whitespace-normal"
+                      />
                     </td>
                   </tr>
                 ))
