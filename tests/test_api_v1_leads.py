@@ -166,10 +166,10 @@ def test_slice1_team_list_only_creator_not_assignee(
         asyncio.run(_clear_leads())
 
 
-def test_slice1_leader_list_includes_downline_created_leads(
+def test_slice1_leader_does_not_see_downline_leads(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Dev DB: team user id=3 has ``upline_user_id=2`` (leader). Leader list should include team-created leads."""
+    """Leader should NOT see leads created by downline team members — only own leads."""
     asyncio.run(_seed_one_lead(user_id=3, name="From downline team"))
     try:
         c = _authed_client(monkeypatch)
@@ -177,9 +177,8 @@ def test_slice1_leader_list_includes_downline_created_leads(
         res = c.get("/api/v1/leads")
         assert res.status_code == 200
         body = res.json()
-        assert body["total"] == 1
-        assert body["items"][0]["name"] == "From downline team"
-        assert body["items"][0]["created_by_user_id"] == 3
+        # Lead was created by team user (id=3), not leader → leader must not see it.
+        assert body["total"] == 0
     finally:
         asyncio.run(_clear_leads())
 

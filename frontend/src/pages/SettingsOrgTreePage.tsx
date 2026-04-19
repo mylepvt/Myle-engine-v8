@@ -286,9 +286,12 @@ export function SettingsOrgTreePage({ title }: Props) {
 
   const totalMembers = allFlat.length
 
-  // Separate admin(s) from leaders/root-level nodes
+  // Admin is root; leaders live inside admin.children
   const adminNodes = tree.filter((n) => n.role === 'admin')
-  const leaderNodes = tree.filter((n) => n.role !== 'admin')
+  const leaderNodes =
+    adminNodes.length > 0
+      ? adminNodes[0].children // leaders (and any non-admin roots) nested under admin
+      : tree.filter((n) => n.role !== 'admin')
 
   return (
     <div className="max-w-3xl space-y-5">

@@ -11,7 +11,6 @@ from app.models.lead import Lead
 from app.services.downline import (
     is_user_in_downline_of,
     lead_execution_visible_to_leader_clause,
-    lead_visible_to_leader_clause,
 )
 
 
@@ -24,8 +23,7 @@ def lead_visibility_where(user: AuthUser) -> Optional[Any]:
     """
     if user.role == "admin":
         return None
-    if user.role == "leader":
-        return lead_visible_to_leader_clause(user.user_id)
+    # Leaders see only their own leads (not downline team leads).
     return Lead.created_by_user_id == user.user_id
 
 
