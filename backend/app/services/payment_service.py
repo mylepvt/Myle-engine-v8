@@ -176,13 +176,13 @@ class PaymentService:
     ) -> List[dict]:
         """Get pending payment proofs for approval."""
         if user_role == "admin":
-            # Any non-deleted lead with proof on file that is not yet approved (manual URL,
-            # pool, legacy pending, or standard proof_uploaded).
+            # Only actionable proofs: uploaded but not yet approved or rejected.
+            # Rejected proofs require team to re-upload before admin can act.
             where_clause = and_(
                 Lead.deleted_at.is_(None),
                 Lead.payment_proof_url.isnot(None),
                 Lead.payment_proof_url != "",
-                or_(Lead.payment_status.is_(None), Lead.payment_status != "approved"),
+                Lead.payment_status == "proof_uploaded",
             )
         elif user_role == "leader":
             # Include leads assigned to anyone in the downline (e.g. admin/pool-created
@@ -222,7 +222,7 @@ class PaymentService:
                 "payment_proof_uploaded_at": lead.payment_proof_uploaded_at,
                 "uploaded_by_user_id": lead.assigned_to_user_id,
                 "uploaded_by_username": username,
-                "status": "pending",
+                "status": lead.payment_status or "proof_uploaded",
             }
             for lead, username in rows
         ]
