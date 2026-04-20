@@ -13,7 +13,6 @@ pool-claim, leaderboard, and shadow-read surfaces only.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
 from typing import Annotated
@@ -229,9 +228,6 @@ async def crm_proxy_pool_claim(
     except (json.JSONDecodeError, UnicodeDecodeError):
         return resp
 
-    def _pool_claim_invoice_key(base_idem: str, lead_key: str) -> str:
-        return hashlib.sha256(f"{base_idem}|{lead_key}".encode()).hexdigest()[:120]
-
     def _lead_pool_price_cents(lead: dict) -> int:
         price_raw = lead.get("poolPriceCents") or lead.get("pool_price_cents")
         try:
@@ -239,32 +235,38 @@ async def crm_proxy_pool_claim(
         except (TypeError, ValueError):
             return 0
 
+    def _lead_ref(lead: dict, index: int) -> str:
+        raw_id = lead.get("legacyId") or lead.get("legacy_id") or lead.get("id")
+        return f"Lead #{raw_id or index}"
+
     try:
-        from app.services.invoice_records import create_tax_invoice_for_pool_claim
+        from app.services.invoice_records import create_tax_invoice_for_pool_claim, create_tax_invoice_for_pool_claims
 
         batch_leads = lead_json.get("leads") if isinstance(lead_json, dict) else None
         if isinstance(batch_leads, list) and batch_leads:
-            any_created = False
+            claims: list[dict[str, int | str]] = []
             for idx, row in enumerate(batch_leads):
                 if not isinstance(row, dict):
                     continue
                 price_int = _lead_pool_price_cents(row)
                 if price_int <= 0:
                     continue
-                lk = str(row.get("legacyId") or row.get("legacy_id") or row.get("id") or idx)
-                inv_key = _pool_claim_invoice_key(idem, lk)
-                created = await create_tax_invoice_for_pool_claim(
+                claims.append(
+                    {
+                        "lead_ref": _lead_ref(row, idx + 1),
+                        "total_cents": price_int,
+                    }
+                )
+            if claims:
+                created = await create_tax_invoice_for_pool_claims(
                     session,
                     user_id=user.user_id,
-                    total_cents=price_int,
+                    claims=claims,
                     wallet_ledger_entry_id=None,
-                    crm_claim_idempotency_key=inv_key,
-                    lead_index=idx + 1,
+                    crm_claim_idempotency_key=idem,
                 )
                 if created is not None:
-                    any_created = True
-            if any_created:
-                await session.commit()
+                    await session.commit()
         else:
             if not isinstance(lead_json, dict):
                 return resp
@@ -278,6 +280,7 @@ async def crm_proxy_pool_claim(
                 wallet_ledger_entry_id=None,
                 crm_claim_idempotency_key=idem,
                 lead_index=1,
+                lead_ref=_lead_ref(lead_json, 1),
             )
             if created is not None:
                 await session.commit()

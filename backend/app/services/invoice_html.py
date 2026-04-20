@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import html
 from datetime import datetime
-from typing import Any
+from typing import Any, Iterable
 
 from app.models.invoice import Invoice
 from app.models.user import User
@@ -14,6 +14,10 @@ from app.services.invoice_rupees_words import rupees_int_to_words
 def _fmt_inr(cents: int) -> str:
     rupees = cents / 100.0
     return f"₹{rupees:,.2f}"
+
+
+def _rupees_words_from_cents(total_cents: int) -> str:
+    return rupees_int_to_words(int(round(total_cents / 100.0)))
 
 
 def _gst_from_inclusive_total_cents(total_cents: int) -> tuple[float, float, float]:
@@ -94,7 +98,7 @@ def render_invoice_html(*, invoice: Invoice, member: User) -> str:
         sub = float(payload.get("subtotal_rupees", 0))
         igst = float(payload.get("igst_rupees", 0))
         tot = float(payload.get("total_rupees", invoice.total_cents / 100.0))
-        words = html.escape(str(payload.get("amount_in_words", rupees_int_to_words(invoice.total_cents))))
+        words = html.escape(str(payload.get("amount_in_words", _rupees_words_from_cents(invoice.total_cents))))
         body_main = f"""
         <h3>Line items</h3>
         <table class="grid">
@@ -172,22 +176,54 @@ def render_invoice_html(*, invoice: Invoice, member: User) -> str:
 </body></html>"""
 
 
-def build_tax_payload_for_single_lead(*, total_cents: int, lead_index: int = 1) -> dict[str, Any]:
-    base_r, igst_r, total_r = _gst_from_inclusive_total_cents(total_cents)
-    unit = round(base_r, 2)
-    return {
-        "lines": [
+def build_tax_payload_for_claims(*, claims: Iterable[dict[str, Any]]) -> dict[str, Any]:
+    lines: list[dict[str, Any]] = []
+    subtotal_rupees = 0.0
+    total_cents = 0
+
+    for index, raw in enumerate(claims, start=1):
+        line_total_cents = int(raw.get("total_cents") or 0)
+        if line_total_cents <= 0:
+            continue
+
+        qty = max(1, int(raw.get("qty") or 1))
+        lead_ref = str(raw.get("lead_ref") or f"Lead #{index}")
+        description = str(raw.get("description") or "Digital Lead Generation Services")
+        sac = str(raw.get("sac") or "998361")
+
+        line_subtotal_rupees, _line_igst_rupees, _line_total_rupees = _gst_from_inclusive_total_cents(line_total_cents)
+        unit_rate_rupees = round(line_subtotal_rupees / qty, 2)
+
+        lines.append(
             {
-                "lead_ref": f"Lead #{lead_index}",
-                "description": "Digital Lead Generation Services",
-                "sac": "998361",
-                "qty": 1,
-                "unit_rate_rupees": f"{unit:,.2f}",
-                "amount_rupees": f"{unit:,.2f}",
+                "lead_ref": lead_ref,
+                "description": description,
+                "sac": sac,
+                "qty": qty,
+                "unit_rate_rupees": f"{unit_rate_rupees:,.2f}",
+                "amount_rupees": f"{line_subtotal_rupees:,.2f}",
             }
-        ],
-        "subtotal_rupees": base_r,
-        "igst_rupees": igst_r,
-        "total_rupees": total_r,
-        "amount_in_words": rupees_int_to_words(total_cents),
+        )
+        subtotal_rupees = round(subtotal_rupees + line_subtotal_rupees, 2)
+        total_cents += line_total_cents
+
+    total_rupees = round(total_cents / 100.0, 2)
+    igst_rupees = round(total_rupees - subtotal_rupees, 2)
+    return {
+        "lines": lines,
+        "subtotal_rupees": subtotal_rupees,
+        "igst_rupees": igst_rupees,
+        "total_rupees": total_rupees,
+        "amount_in_words": _rupees_words_from_cents(total_cents),
     }
+
+
+def build_tax_payload_for_single_lead(*, total_cents: int, lead_index: int = 1, lead_ref: str | None = None) -> dict[str, Any]:
+    return build_tax_payload_for_claims(
+        claims=[
+            {
+                "lead_ref": lead_ref or f"Lead #{lead_index}",
+                "total_cents": total_cents,
+            }
+        ]
+    )
