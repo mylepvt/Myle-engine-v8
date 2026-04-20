@@ -1,13 +1,15 @@
-import { useState } from 'react'
+import { useDeferredValue, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronDown, ChevronRight, GitBranch, LayoutList, Users } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { ListSearchInput } from '@/components/ui/list-search-input'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { useOrgTreeQuery, type OrgTreeNode } from '@/hooks/use-org-tree-query'
 import { useMyTeamQuery, type TeamMemberPublic } from '@/hooks/use-team-query'
+import { directorySearchValues, filterCollectionByQuery } from '@/lib/search-filter'
 import { cn } from '@/lib/utils'
 
 type Props = { title: string }
@@ -131,6 +133,7 @@ function TeamListItem({ member }: { member: TeamMemberPublic }) {
 export function MyTeamPage({ title }: Props) {
   const { data: me } = useAuthMeQuery()
   const { data, isPending, isError, error, refetch } = useMyTeamQuery()
+  const [teamQuery, setTeamQuery] = useState('')
   const org = useOrgTreeQuery({
     includeInactive: false,
     enabled: Boolean(me?.authenticated) && (me?.role === 'leader' || me?.role === 'team' || me?.role === 'admin'),
@@ -139,6 +142,11 @@ export function MyTeamPage({ title }: Props) {
   const isLeader = me?.role === 'leader'
   const root = org.data?.items?.[0]
   const initialLoading = (!data && isPending) || (!root && org.isPending)
+  const deferredTeamQuery = useDeferredValue(teamQuery)
+  const searchActive = teamQuery.trim().length > 0
+  const filteredMembers = data
+    ? filterCollectionByQuery(data.items, deferredTeamQuery, (member) => directorySearchValues(member))
+    : []
 
   return (
     <div className="max-w-5xl space-y-5 overflow-x-hidden">
@@ -218,13 +226,29 @@ export function MyTeamPage({ title }: Props) {
           </section>
 
           <section className="surface-elevated p-4 md:p-5">
-            <div className="mb-4 flex items-center gap-2">
-              <div className="rounded-xl border border-primary/20 bg-primary/[0.08] p-2 text-primary">
-                <LayoutList className="size-4" />
+            <div className="mb-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="rounded-xl border border-primary/20 bg-primary/[0.08] p-2 text-primary">
+                  <LayoutList className="size-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Team list</p>
+                  <p className="text-xs text-muted-foreground">A quick list of everyone shown on this page.</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-semibold text-foreground">Team list</p>
-                <p className="text-xs text-muted-foreground">A quick list of everyone shown on this page.</p>
+              <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                <ListSearchInput
+                  value={teamQuery}
+                  onValueChange={setTeamQuery}
+                  placeholder="Search by name, email, FBO ID, or upline"
+                  aria-label="Search team list"
+                  wrapperClassName="w-full xl:max-w-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {searchActive
+                    ? `Showing ${filteredMembers.length} of ${data?.total ?? 0} people in this list.`
+                    : 'Search helps you jump to a member without opening the full org tree.'}
+                </p>
               </div>
             </div>
 
@@ -235,11 +259,18 @@ export function MyTeamPage({ title }: Props) {
                 onRetry={() => void refetch()}
               />
             ) : data?.items?.length ? (
-              <ul className="space-y-2">
-                {data.items.map((member) => (
-                  <TeamListItem key={member.id} member={member} />
-                ))}
-              </ul>
+              filteredMembers.length ? (
+                <ul className="space-y-2">
+                  {filteredMembers.map((member) => (
+                    <TeamListItem key={member.id} member={member} />
+                  ))}
+                </ul>
+              ) : (
+                <EmptyState
+                  title="No team members match this search"
+                  description="Try a different name, email, FBO ID, or upline to find the right person."
+                />
+              )
             ) : (
               <EmptyState
                 title={isLeader ? 'No team members yet' : 'Your details will show here'}

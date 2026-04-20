@@ -1,10 +1,12 @@
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useDeferredValue, useState } from 'react'
 
 import { InsightList } from '@/components/dashboard/InsightList'
 import { Button } from '@/components/ui/button'
+import { ListSearchInput } from '@/components/ui/list-search-input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useShellStubQuery } from '@/hooks/use-shell-stub-query'
 import { useTeamMembersQuery, type TeamMemberPublic } from '@/hooks/use-team-query'
+import { directorySearchValues, filterCollectionByQuery } from '@/lib/search-filter'
 import { useWalletAdjustmentMutation } from '@/hooks/use-wallet-query'
 
 type Props = { title: string }
@@ -20,7 +22,18 @@ export function FinanceRechargesPage({ title }: Props) {
   const mut = useWalletAdjustmentMutation()
   const [userId, setUserId] = useState('')
   const [amountCents, setAmountCents] = useState('')
+  const [memberQuery, setMemberQuery] = useState('')
   const [note, setNote] = useState('')
+  const deferredMemberQuery = useDeferredValue(memberQuery)
+  const searchActive = memberQuery.trim().length > 0
+  const filteredMembers = members.data
+    ? filterCollectionByQuery(members.data.items, deferredMemberQuery, (member) => directorySearchValues(member))
+    : []
+  const selectedMember = members.data?.items.find((member) => String(member.id) === userId) ?? null
+  const visibleMembers =
+    selectedMember && !filteredMembers.some((member) => member.id === selectedMember.id)
+      ? [selectedMember, ...filteredMembers]
+      : filteredMembers
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -69,25 +82,49 @@ export function FinanceRechargesPage({ title }: Props) {
         </p>
         {members.isPending ? <Skeleton className="h-10 w-full" /> : null}
         {members.data ? (
-          <div>
-            <label htmlFor="recharge-user" className="mb-1 block text-xs text-muted-foreground">
-              User
-            </label>
-            <select
-              id="recharge-user"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              required
-              disabled={mut.isPending}
-              className="w-full rounded-md border border-white/12 bg-white/[0.05] backdrop-blur-sm px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 disabled:opacity-50"
-            >
-              <option value="">Select…</option>
-              {members.data.items.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {memberSelectLabel(m)}
-                </option>
-              ))}
-            </select>
+          <div className="space-y-3">
+            <div>
+              <label htmlFor="recharge-member-search" className="mb-1 block text-xs text-muted-foreground">
+                Search member
+              </label>
+              <ListSearchInput
+                id="recharge-member-search"
+                value={memberQuery}
+                onValueChange={setMemberQuery}
+                placeholder="Search by name, email, FBO ID, or role"
+                aria-label="Search wallet adjustment members"
+                wrapperClassName="w-full"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                {searchActive
+                  ? `Showing ${filteredMembers.length} of ${members.data.total} members.`
+                  : 'Filter the member list before selecting a user.'}
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor="recharge-user" className="mb-1 block text-xs text-muted-foreground">
+                User
+              </label>
+              <select
+                id="recharge-user"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+                required
+                disabled={mut.isPending}
+                className="w-full rounded-md border border-white/12 bg-white/[0.05] backdrop-blur-sm px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 disabled:opacity-50"
+              >
+                <option value="">Select…</option>
+                {visibleMembers.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {memberSelectLabel(m)}
+                  </option>
+                ))}
+              </select>
+              {searchActive && filteredMembers.length === 0 && !selectedMember ? (
+                <p className="mt-1 text-xs text-muted-foreground">No members match this search.</p>
+              ) : null}
+            </div>
           </div>
         ) : null}
         {members.isError ? (

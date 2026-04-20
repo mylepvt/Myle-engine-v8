@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useDeferredValue, useEffect, useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { ListSearchInput } from '@/components/ui/list-search-input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { InvoiceDownloadLink } from '@/components/wallet/InvoiceDownloadLink'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
@@ -18,6 +19,7 @@ import {
   type TeamMemberPublic,
 } from '@/hooks/use-team-query'
 import { useInvoicesQuery } from '@/hooks/use-invoices-query'
+import { directorySearchValues, filterCollectionByQuery } from '@/lib/search-filter'
 import { ROLES, roleShortLabel, type Role } from '@/types/role'
 
 type ResetTarget = Pick<TeamMemberPublic, 'id' | 'fbo_id' | 'email'>
@@ -374,12 +376,18 @@ export function TeamMembersPage({ title }: Props) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [newRole, setNewRole] = useState<Role>('team')
+  const [memberQuery, setMemberQuery] = useState('')
   const [createError, setCreateError] = useState<string | null>(null)
 
   const [resetTarget, setResetTarget] = useState<ResetTarget | null>(null)
   const [profileTarget, setProfileTarget] = useState<TeamMemberPublic | null>(null)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
   const bulkResetMut = useResetAllMembersPasswordMutation()
+  const deferredMemberQuery = useDeferredValue(memberQuery)
+  const searchActive = memberQuery.trim().length > 0
+  const filteredMembers = data
+    ? filterCollectionByQuery(data.items, deferredMemberQuery, (member) => directorySearchValues(member))
+    : []
 
   useEffect(() => {
     if (!toastMsg) return
@@ -509,74 +517,97 @@ export function TeamMembersPage({ title }: Props) {
               </Button>
             ) : null}
           </div>
-          <ul className="space-y-3">
-            {data.items.map((m) => (
-              <li
-                key={m.id}
-                className="surface-inset overflow-hidden rounded-2xl border border-white/5 px-4 py-3 text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
-              >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-start gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="break-all text-sm font-semibold text-foreground sm:text-[0.95rem]">
-                            {m.fbo_id}
-                          </span>
-                          <Badge variant={memberRoleBadgeVariant(m.role)} className="shrink-0">
-                            {memberRoleLabel(m.role)}
-                          </Badge>
+          <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <ListSearchInput
+              value={memberQuery}
+              onValueChange={setMemberQuery}
+              placeholder="Search by FBO ID, username, email, role, or upline"
+              aria-label="Search members"
+              wrapperClassName="w-full lg:max-w-md"
+            />
+            <p className="text-ds-caption text-muted-foreground">
+              {searchActive
+                ? `Showing ${filteredMembers.length} of ${data.total} members.`
+                : 'Search works across FBO ID, username, email, role, and upline.'}
+            </p>
+          </div>
+
+          {filteredMembers.length ? (
+            <ul className="space-y-3">
+              {filteredMembers.map((m) => (
+                <li
+                  key={m.id}
+                  className="surface-inset overflow-hidden rounded-2xl border border-white/5 px-4 py-3 text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-start gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="break-all text-sm font-semibold text-foreground sm:text-[0.95rem]">
+                              {m.fbo_id}
+                            </span>
+                            <Badge variant={memberRoleBadgeVariant(m.role)} className="shrink-0">
+                              {memberRoleLabel(m.role)}
+                            </Badge>
+                          </div>
+                          {m.username ? (
+                            <p className="mt-1 break-words text-ds-caption text-muted-foreground">
+                              {m.username}
+                            </p>
+                          ) : null}
                         </div>
-                        {m.username ? (
-                          <p className="mt-1 break-words text-ds-caption text-muted-foreground">
-                            {m.username}
+                      </div>
+
+                      <div className="mt-2 grid gap-1.5 text-ds-caption text-muted-foreground">
+                        <p className="break-all">{m.email}</p>
+                        <p>Joined {formatMemberTimestamp(m.created_at)}</p>
+                        {(m.upline_name || m.upline_fbo_id) ? (
+                          <p className="break-words">
+                            Upline: <span className="text-foreground">{m.upline_name ?? m.upline_fbo_id}</span>
+                            {m.upline_name && m.upline_fbo_id ? (
+                              <span className="ml-1 font-mono opacity-70">({m.upline_fbo_id})</span>
+                            ) : null}
                           </p>
                         ) : null}
                       </div>
                     </div>
 
-                    <div className="mt-2 grid gap-1.5 text-ds-caption text-muted-foreground">
-                      <p className="break-all">{m.email}</p>
-                      <p>Joined {formatMemberTimestamp(m.created_at)}</p>
-                      {(m.upline_name || m.upline_fbo_id) ? (
-                        <p className="break-words">
-                          Upline: <span className="text-foreground">{m.upline_name ?? m.upline_fbo_id}</span>
-                          {m.upline_name && m.upline_fbo_id ? (
-                            <span className="ml-1 font-mono opacity-70">({m.upline_fbo_id})</span>
-                          ) : null}
-                        </p>
+                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[10.5rem]">
+                      {isAdmin ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setProfileTarget(m)}
+                          className="w-full justify-center border-primary/30 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
+                        >
+                          View Profile
+                        </Button>
+                      ) : null}
+                      {isAdminOrLeader ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setResetTarget({ id: m.id, fbo_id: m.fbo_id, email: m.email })}
+                          className="w-full justify-center bg-muted/30 text-muted-foreground hover:bg-muted"
+                        >
+                          Reset Password
+                        </Button>
                       ) : null}
                     </div>
                   </div>
-
-                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[10.5rem]">
-                    {isAdmin ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setProfileTarget(m)}
-                        className="w-full justify-center border-primary/30 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
-                      >
-                        View Profile
-                      </Button>
-                    ) : null}
-                    {isAdminOrLeader ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setResetTarget({ id: m.id, fbo_id: m.fbo_id, email: m.email })}
-                        className="w-full justify-center bg-muted/30 text-muted-foreground hover:bg-muted"
-                      >
-                        Reset Password
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="surface-inset rounded-2xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+              {searchActive
+                ? 'No members match this search yet. Try a broader FBO ID, email, or username.'
+                : 'No members found in this environment yet.'}
+            </div>
+          )}
         </div>
       ) : null}
 
