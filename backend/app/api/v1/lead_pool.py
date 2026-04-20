@@ -13,6 +13,8 @@ from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
 from app.schemas.leads import (
     LeadListResponse,
+    LeadPoolClaimBatchRequest,
+    LeadPoolClaimBatchResponse,
     LeadPoolDefaultsResponse,
     LeadPoolDefaultsUpdateRequest,
     LeadPoolImportResponse,
@@ -24,6 +26,7 @@ from app.services.lead_pool_defaults import (
     get_default_pool_price_cents,
 )
 from app.services.lead_pool_import import parse_pool_xlsx_rows
+from app.services.leads_service import LeadsService, get_leads_service
 from app.services.settings_service import SettingsService
 
 router = APIRouter()
@@ -73,7 +76,7 @@ async def list_lead_pool(
     limit: int = Query(default=_DEFAULT_LIMIT, ge=1, le=_MAX_LIMIT),
     offset: int = Query(default=0, ge=0),
 ) -> LeadListResponse:
-    """Leads released into the pool (same list for admin and members; claim via ``POST /leads/{id}/claim``)."""
+    """Leads released into the pool (same list for admin and members; claim via single or batch claim endpoints)."""
     _ = user  # any authenticated role
     cond = and_(
         Lead.in_pool.is_(True),
@@ -90,6 +93,22 @@ async def list_lead_pool(
     rows = (await session.execute(list_q)).scalars().all()
     items = [LeadPublic.model_validate(r) for r in rows]
     return LeadListResponse(items=items, total=total, limit=limit, offset=offset)
+
+
+@router.post("/claim", response_model=LeadPoolClaimBatchResponse)
+async def claim_lead_pool_batch(
+    body: LeadPoolClaimBatchRequest,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    service: Annotated[LeadsService, Depends(get_leads_service)],
+) -> LeadPoolClaimBatchResponse:
+    leads, total_price_cents = await service.claim_lead_pool_batch(
+        count=body.count,
+        user=user,
+    )
+    return LeadPoolClaimBatchResponse(
+        leads=[LeadPublic.model_validate(lead) for lead in leads],
+        total_price_cents=total_price_cents,
+    )
 
 
 _MAX_IMPORT_BYTES = 12 * 1024 * 1024

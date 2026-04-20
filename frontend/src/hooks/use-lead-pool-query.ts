@@ -42,6 +42,11 @@ export type LeadPoolDefaults = {
   default_pool_price_cents: number
 }
 
+export type LeadPoolBatchClaimResponse = {
+  leads: PoolLead[]
+  total_price_cents: number
+}
+
 async function fetchLeadPoolDefaults(): Promise<LeadPoolDefaults> {
   const res = await apiFetch('/api/v1/lead-pool/defaults')
   if (!res.ok) {
@@ -75,6 +80,31 @@ export function useLeadPoolDefaultsMutation() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['lead-pool', 'defaults'] })
       void qc.invalidateQueries({ queryKey: ['lead-pool'] })
+    },
+  })
+}
+
+async function claimLeadPoolBatch(count: number): Promise<LeadPoolBatchClaimResponse> {
+  const res = await apiFetch('/api/v1/lead-pool/claim', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ count }),
+  })
+  if (!res.ok) {
+    await parseError(res)
+  }
+  return res.json()
+}
+
+export function useLeadPoolBatchClaimMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: claimLeadPoolBatch,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['lead-pool'] })
+      void qc.invalidateQueries({ queryKey: ['leads'] })
+      void qc.invalidateQueries({ queryKey: ['workboard'] })
+      void qc.invalidateQueries({ queryKey: ['wallet'] })
     },
   })
 }

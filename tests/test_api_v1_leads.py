@@ -466,7 +466,7 @@ def test_claim_lead_from_pool(
         asyncio.run(_clear_leads())
 
 
-def test_slice5_admin_cannot_claim_pool_lead(
+def test_slice5_admin_can_claim_pool_lead(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     asyncio.run(_seed_one_lead(user_id=1, name="Admin should not claim", in_pool=True))
@@ -474,7 +474,33 @@ def test_slice5_admin_cannot_claim_pool_lead(
         c = _authed_client(monkeypatch)
         assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
         claim = c.post("/api/v1/leads/1/claim")
-        assert claim.status_code == 403
+        assert claim.status_code == 200
+        body = claim.json()
+        assert body["in_pool"] is False
+        assert body["created_by_user_id"] == 1
+        assert c.get("/api/v1/lead-pool").json()["total"] == 0
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_slice5_batch_claim_leads_from_pool_for_leader(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(_seed_one_lead(user_id=1, name="Oldest", in_pool=True))
+    asyncio.run(_seed_one_lead(user_id=1, name="Second", in_pool=True))
+    asyncio.run(_seed_one_lead(user_id=1, name="Third", in_pool=True))
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        claim = c.post("/api/v1/lead-pool/claim", json={"count": 2})
+        assert claim.status_code == 200
+        body = claim.json()
+        assert body["total_price_cents"] == 0
+        assert [lead["name"] for lead in body["leads"]] == ["Oldest", "Second"]
+
+        pool = c.get("/api/v1/lead-pool").json()
+        assert pool["total"] == 1
+        assert pool["items"][0]["name"] == "Third"
     finally:
         asyncio.run(_clear_leads())
 
