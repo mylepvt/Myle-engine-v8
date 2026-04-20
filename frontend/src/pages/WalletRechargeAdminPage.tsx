@@ -16,6 +16,22 @@ type Props = {
 
 type FilterTab = 'all' | 'pending' | 'approved' | 'rejected'
 
+function formatMemberLabel(item: WalletRecharge): string {
+  const name = item.member_name?.trim() || ''
+  const fbo = item.member_fbo_id?.trim() || ''
+  if (name && fbo && name !== fbo) return `${name} · ${fbo}`
+  if (name) return name
+  if (fbo) return fbo
+  return `User #${item.user_id}`
+}
+
+function formatReviewerLabel(item: WalletRecharge): string {
+  const name = item.reviewed_by_name?.trim() || ''
+  if (name) return name
+  if (item.reviewed_by_user_id) return `user #${item.reviewed_by_user_id}`
+  return ''
+}
+
 function RechargeStatusBadge({ status }: { status: string }) {
   const cls: Record<string, string> = {
     pending: 'bg-amber-400/15 text-amber-400',
@@ -88,9 +104,7 @@ function RechargeRow({
             </span>
             <RechargeStatusBadge status={item.status} />
             <span className="text-xs text-muted-foreground">
-              {item.member_name || item.member_fbo_id
-                ? `${item.member_name?.trim() || '—'} · ${item.member_fbo_id ?? '—'}`
-                : `User #${item.user_id}`}
+              {formatMemberLabel(item)}
             </span>
             {item.status === 'approved' && item.invoice_number ? (
               <InvoiceDownloadLink invoiceNumber={item.invoice_number} kind="receipt" />
@@ -115,7 +129,7 @@ function RechargeRow({
           {item.reviewed_at ? (
             <p className="text-xs text-muted-foreground">
               Reviewed {new Date(item.reviewed_at).toLocaleString()}
-              {item.reviewed_by_user_id ? ` by user #${item.reviewed_by_user_id}` : ''}
+              {formatReviewerLabel(item) ? ` by ${formatReviewerLabel(item)}` : ''}
             </p>
           ) : null}
           {item.admin_note ? (

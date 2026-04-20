@@ -76,6 +76,7 @@ class WalletRechargePublic(BaseModel):
     status: str
     admin_note: Optional[str]
     reviewed_by_user_id: Optional[int]
+    reviewed_by_name: Optional[str] = None
     reviewed_at: Optional[datetime]
     created_at: datetime
     invoice_number: Optional[str] = None

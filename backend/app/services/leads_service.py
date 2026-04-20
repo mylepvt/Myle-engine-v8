@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
@@ -33,7 +34,7 @@ from app.schemas.leads import (
 from app.services.leads_contracts import LeadsRepositoryContract, TopicNotifierContract
 from app.services.auto_handoff import AutoHandoffService
 from app.services.crm_outbox import enqueue_lead_shadow_delete, enqueue_lead_shadow_upsert
-from app.services.invoice_records import create_tax_invoice_for_pool_claim
+from app.services.invoice_records import create_tax_invoice_for_pool_claim, create_tax_invoice_for_pool_claims
 from app.services.ctcs_heat import bump_heat_on_entering_contacted, clamp_ctcs_heat
 from app.services.ctcs_status_chain import advance_lead_status_toward
 from app.services.whatsapp_ctcs import send_interested_enrollment_assets
@@ -409,6 +410,8 @@ class LeadsService:
                 )
 
         claimed: list[Lead] = []
+        invoice_claims: list[dict[str, int | str]] = []
+        batch_invoice_wallet_entry_id: int | None = None
         for lead in leads:
             price = int(lead.pool_price_cents or 0)
             if price > 0:
@@ -424,15 +427,9 @@ class LeadsService:
                     select(WalletLedgerEntry).where(WalletLedgerEntry.idempotency_key == idem_key)
                 )
                 entry = entry_row.scalar_one_or_none()
-                if entry is not None:
-                    await create_tax_invoice_for_pool_claim(
-                        self._session,
-                        user_id=user.user_id,
-                        total_cents=price,
-                        wallet_ledger_entry_id=entry.id,
-                        crm_claim_idempotency_key=None,
-                        lead_index=1,
-                    )
+                if entry is not None and batch_invoice_wallet_entry_id is None:
+                    batch_invoice_wallet_entry_id = entry.id
+                invoice_claims.append({"lead_ref": f"Lead #{lead.id}", "total_cents": price})
 
             await self._repository.mark_lead_claimed(lead, user.user_id)
             await self._repository.add_lead_activity(
@@ -444,6 +441,18 @@ class LeadsService:
             await self._session.flush()
             enqueue_lead_shadow_upsert(self._session, lead)
             claimed.append(lead)
+
+        if invoice_claims:
+            batch_invoice_key = hashlib.sha256(
+                f"{user.user_id}:{','.join(str(lead.id) for lead in claimed)}".encode()
+            ).hexdigest()[:120]
+            await create_tax_invoice_for_pool_claims(
+                self._session,
+                user_id=user.user_id,
+                claims=invoice_claims,
+                wallet_ledger_entry_id=batch_invoice_wallet_entry_id,
+                crm_claim_idempotency_key=batch_invoice_key,
+            )
 
         await self._repository.commit()
         for lead in claimed:
