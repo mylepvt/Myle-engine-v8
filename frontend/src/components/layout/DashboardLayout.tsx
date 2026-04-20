@@ -130,18 +130,22 @@ export function DashboardLayout() {
 
     const syncKeyboardState = () => {
       const vv = window.visualViewport
-      const active = document.activeElement
-      const editing = isEditableElement(active)
-      if (!vv || !editing) {
+      if (!vv) {
         setKeyboardInset(0)
         setKeyboardOpen(false)
         return
       }
 
       const rawInset = Math.round(Math.max(0, window.innerHeight - vv.height - vv.offsetTop))
-      const nextInset = rawInset > 56 ? rawInset : 0
+      const active = document.activeElement
+      const editing = isEditableElement(active)
+      // iOS standalone can briefly drop focus during keyboard animation; keep the inset
+      // while the visual viewport is still clearly collapsed.
+      const keyboardLikelyOpen =
+        rawInset > 56 || (editing && window.innerHeight - vv.height > 40)
+      const nextInset = keyboardLikelyOpen ? rawInset : 0
       setKeyboardInset(nextInset)
-      setKeyboardOpen(nextInset > 0)
+      setKeyboardOpen(keyboardLikelyOpen && nextInset > 0)
     }
 
     const onFocusIn = () => window.setTimeout(syncKeyboardState, 0)

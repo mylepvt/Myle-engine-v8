@@ -195,7 +195,13 @@
     max-width: 100%;
     overflow-x: clip;
     touch-action: manipulation;
-    /* App chrome: no accidental text selection on taps; form fields opt back in */
+  }
+
+  button,
+  a,
+  [role='button'],
+  [role='tab'],
+  summary {
     -webkit-user-select: none;
     user-select: none;
     -webkit-touch-callout: none;
@@ -608,11 +614,12 @@
   }
 
   .keyboard-safe-modal {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
     padding-bottom: calc(max(env(safe-area-inset-bottom), var(--keyboard-inset-height, 0px)) + 0.5rem);
   }
 
   .keyboard-safe-sheet {
-    max-height: calc(100dvh - var(--keyboard-inset-height, 0px) - 0.5rem);
+    max-height: calc(var(--app-layout-height, 100dvh) - env(safe-area-inset-top, 0px) - var(--keyboard-inset-height, 0px) - 0.5rem);
   }
 
   /* ─── Mobile bottom tab bar ──────────────────────────────────────────────── */
