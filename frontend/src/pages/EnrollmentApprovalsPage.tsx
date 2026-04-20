@@ -39,7 +39,7 @@ export function EnrollmentApprovalsPage({ title }: Props) {
       <p className="text-sm text-muted-foreground">
         {isAdmin
           ? 'Pending ₹196 payment proofs from every leader and team member appear here for approval.'
-          : 'Review and approve paid enrollment requests (e.g. INR 196 tier) for your downline.'}
+          : 'Review pending ₹196 payment proofs for your downline. Admin approves or rejects them here.'}
       </p>
 
       {isPending ? (
@@ -129,7 +129,7 @@ export function EnrollmentApprovalsPage({ title }: Props) {
                       </a>
                     ) : null}
                   </div>
-                  {row.status === 'pending' ? (
+                  {isAdmin && row.status === 'pending' ? (
                     <div className="flex shrink-0 gap-2">
                       <Button
                         size="default"

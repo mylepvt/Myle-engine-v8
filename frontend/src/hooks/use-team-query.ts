@@ -47,7 +47,7 @@ export type TeamEnrollmentRequest = {
   payment_proof_uploaded_at: string | null
   uploaded_by_user_id: number | null
   uploaded_by_username: string | null
-  status: 'pending' | 'approved' | 'rejected'
+  status: 'pending' | 'proof_uploaded' | 'approved' | 'rejected'
 }
 
 async function parseError(res: Response): Promise<never> {
@@ -74,7 +74,16 @@ async function fetchMyTeam(): Promise<TeamMyTeamResponse> {
 async function fetchEnrollmentRequests(): Promise<TeamEnrollmentListResponse> {
   const res = await apiFetch('/api/v1/team/enrollment-requests')
   if (!res.ok) await parseError(res)
-  return res.json()
+  const body = (await res.json()) as TeamEnrollmentListResponse
+  return {
+    ...body,
+    items: body.items.map((item) => ({
+      ...item,
+      // Backend still stores actionable queue rows as payment_status=proof_uploaded.
+      // Normalize that to "pending" so the approvals UI behaves consistently.
+      status: (item.status === 'proof_uploaded' ? 'pending' : item.status) as TeamEnrollmentRequest['status'],
+    })),
+  }
 }
 
 export async function decideEnrollmentRequest(body: {
