@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
+from app.core.auth_cookies import display_name_from_user
 from app.core.auth_cookie import MYLE_ACCESS_COOKIE
 from app.core.config import settings
 from app.core.realtime_hub import notify_topics
@@ -65,26 +66,34 @@ async def _invoice_numbers_for_recharge_ids(session: AsyncSession, recharge_ids:
 async def _user_display_by_ids(
     session: AsyncSession, user_ids: list[int]
 ) -> dict[int, tuple[Optional[str], Optional[str]]]:
-    """user_id -> (name, fbo_id) for API labels."""
+    """user_id -> (display_name, fbo_id) for API labels."""
     ids = list({int(i) for i in user_ids if i})
     if not ids:
         return {}
-    stmt = select(User.id, User.name, User.fbo_id).where(User.id.in_(ids))
-    rows = (await session.execute(stmt)).all()
-    return {int(uid): (name, fbo) for uid, name, fbo in rows}
+    stmt = select(User).where(User.id.in_(ids))
+    rows = (await session.execute(stmt)).scalars().all()
+    return {
+        int(row.id): (display_name_from_user(row) or row.fbo_id or None, row.fbo_id)
+        for row in rows
+    }
 
 
 async def _wallet_recharge_public_response(
     session: AsyncSession, row: WalletRecharge
 ) -> WalletRechargePublic:
     inv_map = await _invoice_numbers_for_recharge_ids(session, [row.id])
-    umeta = await _user_display_by_ids(session, [row.user_id])
+    umeta = await _user_display_by_ids(
+        session,
+        [row.user_id, row.reviewed_by_user_id] if row.reviewed_by_user_id else [row.user_id],
+    )
     name, fbo = umeta.get(row.user_id, (None, None))
+    reviewed_by_name, _reviewed_by_fbo = umeta.get(row.reviewed_by_user_id or 0, (None, None))
     return WalletRechargePublic.model_validate(row).model_copy(
         update={
             "invoice_number": inv_map.get(row.id),
             "member_name": name,
             "member_fbo_id": fbo,
+            "reviewed_by_name": reviewed_by_name,
         }
     )
 
@@ -410,13 +419,17 @@ async def list_recharge_requests(
 
     rows = (await session.execute(list_stmt)).scalars().all()
     inv_map = await _invoice_numbers_for_recharge_ids(session, [r.id for r in rows])
-    umeta = await _user_display_by_ids(session, [r.user_id for r in rows])
+    umeta = await _user_display_by_ids(
+        session,
+        [*(r.user_id for r in rows), *(r.reviewed_by_user_id for r in rows if r.reviewed_by_user_id is not None)],
+    )
     items = [
         WalletRechargePublic.model_validate(r).model_copy(
             update={
                 "invoice_number": inv_map.get(r.id),
                 "member_name": umeta.get(r.user_id, (None, None))[0],
                 "member_fbo_id": umeta.get(r.user_id, (None, None))[1],
+                "reviewed_by_name": umeta.get(r.reviewed_by_user_id or 0, (None, None))[0],
             }
         )
         for r in rows

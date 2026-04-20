@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 from fastapi.testclient import TestClient
 
 from main import app
 
+from conftest import get_test_session_factory
+from app.models.user import User
 from util_jwt_patch import patch_jwt_settings
 
 
@@ -68,3 +72,35 @@ def test_other_training_matches_system_shape(monkeypatch: pytest.MonkeyPatch) ->
     assert r.status_code == 200
     b = r.json()
     assert "videos" in b and "progress" in b
+
+
+def test_finance_recharges_stub_uses_member_display_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    factory = get_test_session_factory()
+
+    async def seed_name() -> None:
+        async with factory() as session:
+            team = await session.get(User, 3)
+            assert team is not None
+            team.name = "Claim Owner"
+            await session.commit()
+
+    asyncio.run(seed_name())
+
+    c = _admin(monkeypatch)
+    seeded = c.post(
+        "/api/v1/wallet/adjustments",
+        json={
+            "user_id": 3,
+            "amount_cents": 5000,
+            "idempotency_key": "finance-stub-name-001",
+            "note": "pool_claim",
+        },
+    )
+    assert seeded.status_code == 201
+
+    r = c.get("/api/v1/finance/recharges")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["items"]
+    assert "Claim Owner" in body["items"][0]["title"]
+    assert "User #3" not in body["items"][0]["title"]

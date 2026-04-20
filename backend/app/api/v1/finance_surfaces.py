@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
+from app.core.auth_cookies import display_name_from_user
 from app.models.app_setting import AppSetting
 from app.models.lead import Lead
 from app.models.user import User
@@ -30,6 +31,19 @@ def _require_leader_or_team(user: AuthUser) -> None:
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
 
+def _finance_recharge_title(
+    *,
+    user_id: int,
+    amount_cents: int,
+    user_map: dict[int, dict[str, str | None]],
+) -> str:
+    meta = user_map.get(user_id, {"display_name": f"User #{user_id}", "fbo_id": None})
+    display_name = meta.get("display_name") or f"User #{user_id}"
+    fbo_id = meta.get("fbo_id")
+    fbo_suffix = f" · {fbo_id}" if fbo_id and display_name != fbo_id else ""
+    return f"{display_name}{fbo_suffix} · ₹{amount_cents / 100:,.2f}"
+
+
 @router.get("/recharges", response_model=SystemStubResponse)
 async def finance_recharges_stub(
     user: Annotated[AuthUser, Depends(require_auth_user)],
@@ -40,9 +54,25 @@ async def finance_recharges_stub(
         select(WalletLedgerEntry).order_by(WalletLedgerEntry.created_at.desc()).limit(25)
     )
     rows = q.scalars().all()
+    user_rows = (
+        await session.execute(
+            select(User).where(User.id.in_([row.user_id for row in rows]))
+        )
+    ).scalars().all()
+    user_map = {
+        int(row.id): {
+            "display_name": display_name_from_user(row) or row.fbo_id or f"User #{row.id}",
+            "fbo_id": row.fbo_id,
+        }
+        for row in user_rows
+    }
     items = [
         {
-            "title": f"User #{e.user_id} · ₹{e.amount_cents / 100:,.2f}",
+            "title": _finance_recharge_title(
+                user_id=e.user_id,
+                amount_cents=e.amount_cents,
+                user_map=user_map,
+            ),
             "detail": (e.note or "ledger") + (f" · {e.idempotency_key}" if e.idempotency_key else ""),
         }
         for e in rows
