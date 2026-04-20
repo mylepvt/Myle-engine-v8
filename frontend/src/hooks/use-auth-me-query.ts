@@ -85,6 +85,13 @@ export async function fetchAuthMe(): Promise<MeResponse> {
   // cookie expires, so try the refresh cookie once before treating the session
   // as logged out.
   const refreshed = await silentAuthRefresh()
+  // null = network error (server unreachable / deploy restart).
+  // Throw so React Query enters error state with a retry button instead of
+  // redirecting to login and destroying the session.
+  if (refreshed === null) {
+    throw new Error('Network error: could not reach auth server')
+  }
+  // false = server rejected token (401/403) → session genuinely expired
   if (!refreshed) {
     return UNAUTH
   }

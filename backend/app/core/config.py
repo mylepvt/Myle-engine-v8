@@ -53,7 +53,7 @@ class Settings(BaseSettings):
         description="JWT cookie SameSite. Use ``none`` when the SPA and API are on different sites (requires Secure).",
     )
     jwt_access_minutes: int = Field(
-        default=60,
+        default=480,
         validation_alias="JWT_ACCESS_MINUTES",
         description="Access JWT lifetime (minutes).",
     )

@@ -24,7 +24,8 @@ export type ApiFetchOptions = RequestInit & {
   skipAuthRetry?: boolean
 }
 
-let refreshInFlight: Promise<boolean> | null = null
+/** null = network error (server unreachable), false = auth rejected (401/403), true = refreshed ok */
+let refreshInFlight: Promise<boolean | null> | null = null
 
 function fetchWithCookies(path: string, init?: RequestInit): Promise<Response> {
   return fetch(apiUrl(path), {
@@ -44,17 +45,27 @@ function shouldRetryAfter401(path: string): boolean {
 /**
  * Refresh the httpOnly session cookies once and share the result with any
  * concurrent 401 handlers so the UI does not fan out multiple refresh calls.
+ *
+ * Returns:
+ *   true  — refreshed successfully
+ *   false — server rejected auth (401/403); session is genuinely expired
+ *   null  — network error (server unreachable/deploy restart); do NOT log out
  */
-export function silentAuthRefresh(): Promise<boolean> {
+export function silentAuthRefresh(): Promise<boolean | null> {
   if (!refreshInFlight) {
     refreshInFlight = (async () => {
       try {
         const res = await fetchWithCookies('/api/v1/auth/refresh', {
           method: 'POST',
         })
-        return res.ok
+        if (res.ok) return true
+        // 401/403 = token genuinely invalid → must log in again
+        if (res.status === 401 || res.status === 403) return false
+        // 5xx / unexpected → transient server error, preserve session
+        return null
       } catch {
-        return false
+        // Network failure (server down, deploy restart) → preserve session
+        return null
       }
     })().finally(() => {
       refreshInFlight = null
@@ -78,6 +89,8 @@ export async function apiFetch(
     return response
   }
   const refreshed = await silentAuthRefresh()
+  // null = network error: return original 401 so caller can handle
+  // false = auth rejected: return original 401
   if (!refreshed) {
     return response
   }
