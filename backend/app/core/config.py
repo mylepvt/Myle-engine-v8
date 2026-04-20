@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Literal, Optional
+from urllib.parse import urlparse
 
 from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -47,10 +48,10 @@ class Settings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("SESSION_COOKIE_SECURE", "session_cookie_secure"),
     )
-    auth_cookie_samesite: Literal["lax", "strict", "none"] = Field(
-        default="lax",
+    auth_cookie_samesite: Optional[Literal["lax", "strict", "none"]] = Field(
+        default=None,
         validation_alias=AliasChoices("AUTH_COOKIE_SAMESITE", "auth_cookie_samesite"),
-        description="JWT cookie SameSite. Use ``none`` when the SPA and API are on different sites (requires Secure).",
+        description="JWT cookie SameSite. When omitted, vl2 infers ``none`` for secure split-host deploys and ``lax`` for same-origin/local dev.",
     )
     jwt_access_minutes: int = Field(
         default=480,
@@ -79,7 +80,7 @@ class Settings(BaseSettings):
     )
     frontend_dist: Optional[str] = Field(
         default=None,
-        validation_alias="FRONTEND_DIST",
+        validation_alias=AliasChoices("FRONTEND_DIST", "frontend_dist"),
         description="If set to a directory containing index.html, serve the Vite SPA from the API (same-origin auth).",
     )
     upload_dir: str = Field(
@@ -222,6 +223,12 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def none_samesite_requires_secure(self) -> "Settings":
+        if self.auth_cookie_samesite is None:
+            object.__setattr__(
+                self,
+                "auth_cookie_samesite",
+                self._default_auth_cookie_samesite(),
+            )
         if self.auth_cookie_samesite == "none" and not self.session_cookie_secure:
             raise ValueError(
                 "AUTH_COOKIE_SAMESITE=none requires SESSION_COOKIE_SECURE=true",
@@ -237,5 +244,18 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.backend_cors_origins.split(",") if o.strip()]
+
+    def _default_auth_cookie_samesite(self) -> Literal["lax", "none"]:
+        if (self.frontend_dist or "").strip():
+            return "lax"
+        origins = self.cors_origin_list
+        if origins and all(_is_local_origin(origin) for origin in origins):
+            return "lax"
+        return "none" if self.session_cookie_secure else "lax"
+
+
+def _is_local_origin(origin: str) -> bool:
+    host = (urlparse(origin).hostname or "").strip().lower()
+    return host in {"localhost", "127.0.0.1"} or host.endswith(".local")
 
 settings = Settings()

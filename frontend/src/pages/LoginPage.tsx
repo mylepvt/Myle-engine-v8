@@ -34,6 +34,8 @@ import {
 
 /** Persists only the checkbox preference (server still controls cookie lifetime via `remember_me`). */
 const REMEMBER_ME_PREF_KEY = 'myle_login_remember_me_pref'
+const COOKIE_BLOCKED_MESSAGE =
+  'Login accepted, but this app could not keep your secure session. Please update the app or ask admin to check API URL / cookie settings.'
 
 function RequiredMark() {
   return (
@@ -125,7 +127,7 @@ export function LoginPage() {
         })
       }
       if (!me.authenticated) {
-        window.location.assign(from)
+        setError(COOKIE_BLOCKED_MESSAGE)
         return
       }
       login()
@@ -164,7 +166,7 @@ export function LoginPage() {
         })
       }
       if (!me.authenticated) {
-        window.location.assign(from)
+        setError(COOKIE_BLOCKED_MESSAGE)
         return
       }
       login()
