@@ -10,6 +10,7 @@ from sqlalchemy import delete, func, select
 
 from app.models.app_setting import AppSetting
 from app.models.batch_share_link import BatchShareLink
+from app.models.crm_outbox import CrmOutbox
 from app.models.lead import Lead
 from app.models.follow_up import FollowUp
 from main import app
@@ -90,6 +91,7 @@ async def _clear_leads() -> None:
     async with fac() as session:
         await session.execute(delete(BatchShareLink))
         await session.execute(delete(AppSetting))
+        await session.execute(delete(CrmOutbox))
         await session.execute(delete(Lead))
         await session.commit()
 

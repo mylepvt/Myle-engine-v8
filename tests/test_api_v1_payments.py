@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import delete
 
 from app.models.activity_log import ActivityLog
+from app.models.crm_outbox import CrmOutbox
 from app.models.lead import Lead
 from app.services import payment_proof_storage
 from main import app
@@ -47,6 +48,7 @@ async def _clear_payment_state() -> None:
     fac = test_conftest.get_test_session_factory()
     async with fac() as session:
         await session.execute(delete(ActivityLog))
+        await session.execute(delete(CrmOutbox))
         await session.execute(delete(Lead))
         await session.commit()
 
@@ -61,6 +63,7 @@ def test_public_payment_proof_upload_reaches_admin_queue(
         upload_dir=str(tmp_path),
     )
     monkeypatch.setattr(payment_proof_storage, "settings", patched_settings)
+    asyncio.run(_clear_payment_state())
     asyncio.run(_seed_payment_lead())
 
     try:

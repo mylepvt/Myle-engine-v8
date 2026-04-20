@@ -811,9 +811,10 @@ class LeadsService:
             if body.target_status == "contacted":
                 await grant_xp(self._session, user.user_id, "lead_contacted", lead.id)
             elif body.target_status == "converted":
-                await grant_xp(self._session, user.user_id, "lead_won", lead.id)
+                xp_user_id = int(lead.assigned_to_user_id or user.user_id)
+                await grant_xp(self._session, xp_user_id, "lead_won", lead.id)
             if prev_status == "converted" and body.target_status != "converted":
-                await revoke_won_xp(self._session, user.user_id, lead.id)
+                await revoke_won_xp(self._session, lead.id)
             await self._session.commit()
         except Exception:
             pass

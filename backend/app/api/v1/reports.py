@@ -14,6 +14,7 @@ from app.api.deps import AuthUser, get_db, require_auth_user
 from app.models.daily_report import DailyReport
 from app.models.daily_score import DailyScore
 from app.schemas.reports import DailyReportPublic, DailyReportSubmit
+from app.services.team_reports_metrics import IST
 
 router = APIRouter()
 
@@ -26,6 +27,18 @@ def _require_report_actor(user: AuthUser) -> None:
         raise HTTPException(
             status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Daily report is only for team, leader, or admin accounts.",
+        )
+
+
+def _validate_submit_date(user: AuthUser, report_date: date) -> None:
+    """Lock non-admin users to the current India business day to prevent farming."""
+    if user.role == "admin":
+        return
+    today_ist = datetime.now(IST).date()
+    if report_date != today_ist:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="Only today's daily report can be submitted.",
         )
 
 
@@ -82,6 +95,7 @@ async def submit_daily_report(
 ) -> DailyReportPublic:
     """Upsert daily report for ``report_date``; award points once per calendar day (resubmit updates fields only)."""
     _require_report_actor(user)
+    _validate_submit_date(user, body.report_date)
 
     r = await session.execute(
         select(DailyReport).where(

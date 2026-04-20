@@ -28,6 +28,8 @@ from app.models.training_video import TrainingVideo  # noqa: F401
 from app.models.training_progress import TrainingProgress  # noqa: F401
 from app.models.daily_report import DailyReport  # noqa: F401
 from app.models.daily_score import DailyScore  # noqa: F401
+from app.models.xp_event import XpEvent  # noqa: F401
+from app.models.xp_monthly_archive import XpMonthlyArchive  # noqa: F401
 from app.models.app_setting import AppSetting  # noqa: F401
 from app.models.training_question import TrainingQuestion  # noqa: F401
 from app.models.training_test_attempt import TrainingTestAttempt  # noqa: F401
