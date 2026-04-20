@@ -55,6 +55,8 @@ _PAYMENT_REQUIRED_STATUSES: frozenset[str] = frozenset(
     }
 )
 
+_POOL_CLAIM_ROLES: frozenset[str] = frozenset({"team", "leader", "admin"})
+
 
 async def _deliver_ctcs_interested_whatsapp(lead_id: int, phone: str | None) -> None:
     await send_interested_enrollment_assets(lead_id=lead_id, phone=phone)
@@ -316,7 +318,7 @@ class LeadsService:
         return lead
 
     async def claim_lead(self, *, lead_id: int, user: AuthUser) -> Lead:
-        if user.role not in {"team", "leader"}:
+        if user.role not in _POOL_CLAIM_ROLES:
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
         lead = await self._repository.get_lead_for_update(lead_id)
         if lead is None or lead.deleted_at is not None:
@@ -365,6 +367,89 @@ class LeadsService:
         lead = await self._commit_with_shadow_upsert(lead)
         await self._notifier("leads", "wallet")
         return lead
+
+    async def claim_lead_pool_batch(
+        self,
+        *,
+        count: int,
+        user: AuthUser,
+    ) -> tuple[list[Lead], int]:
+        if user.role not in _POOL_CLAIM_ROLES:
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+        cap = max(1, min(int(count), 50))
+        stmt = (
+            select(Lead)
+            .where(
+                Lead.in_pool.is_(True),
+                Lead.deleted_at.is_(None),
+                Lead.archived_at.is_(None),
+            )
+            .order_by(Lead.created_at.asc(), Lead.id.asc())
+            .limit(cap)
+            .with_for_update()
+        )
+        leads = list((await self._session.execute(stmt)).scalars().all())
+        if not leads:
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="No leads available in the pool",
+            )
+
+        total_price_cents = sum(int(lead.pool_price_cents or 0) for lead in leads)
+        if total_price_cents > 0:
+            balance = await self._repository.wallet_balance_cents(user.user_id)
+            if balance < total_price_cents:
+                raise HTTPException(
+                    status_code=http_status.HTTP_402_PAYMENT_REQUIRED,
+                    detail=(
+                        "Insufficient wallet balance. "
+                        f"Need ₹{total_price_cents / 100:.0f}, have ₹{balance / 100:.0f}."
+                    ),
+                )
+
+        claimed: list[Lead] = []
+        for lead in leads:
+            price = int(lead.pool_price_cents or 0)
+            if price > 0:
+                await self._repository.add_wallet_debit_for_claim(
+                    user_id=user.user_id,
+                    lead_id=lead.id,
+                    lead_name=lead.name,
+                    price_cents=price,
+                )
+                await self._session.flush()
+                idem_key = f"pool_claim_{lead.id}_{user.user_id}"
+                entry_row = await self._session.execute(
+                    select(WalletLedgerEntry).where(WalletLedgerEntry.idempotency_key == idem_key)
+                )
+                entry = entry_row.scalar_one_or_none()
+                if entry is not None:
+                    await create_tax_invoice_for_pool_claim(
+                        self._session,
+                        user_id=user.user_id,
+                        total_cents=price,
+                        wallet_ledger_entry_id=entry.id,
+                        crm_claim_idempotency_key=None,
+                        lead_index=1,
+                    )
+
+            await self._repository.mark_lead_claimed(lead, user.user_id)
+            await self._repository.add_lead_activity(
+                user_id=user.user_id,
+                action="lead.claimed",
+                lead_id=lead.id,
+                meta={"price_cents": price, "batch_claim_count": len(leads)},
+            )
+            await self._session.flush()
+            enqueue_lead_shadow_upsert(self._session, lead)
+            claimed.append(lead)
+
+        await self._repository.commit()
+        for lead in claimed:
+            await self._session.refresh(lead)
+        await self._notifier("leads", "wallet")
+        return claimed, total_price_cents
 
     async def preview_mindset_lock(self, *, lead_id: int, user: AuthUser) -> MindsetLockPreviewResponse:
         if user.role != "team":
@@ -811,9 +896,10 @@ class LeadsService:
             if body.target_status == "contacted":
                 await grant_xp(self._session, user.user_id, "lead_contacted", lead.id)
             elif body.target_status == "converted":
-                await grant_xp(self._session, user.user_id, "lead_won", lead.id)
+                xp_user_id = int(lead.assigned_to_user_id or user.user_id)
+                await grant_xp(self._session, xp_user_id, "lead_won", lead.id)
             if prev_status == "converted" and body.target_status != "converted":
-                await revoke_won_xp(self._session, user.user_id, lead.id)
+                await revoke_won_xp(self._session, lead.id)
             await self._session.commit()
         except Exception:
             pass

@@ -435,3 +435,12 @@ class LeadPoolDefaultsResponse(BaseModel):
 
 class LeadPoolDefaultsUpdateRequest(BaseModel):
     default_pool_price_cents: int = Field(ge=0, le=999_999_999)
+
+
+class LeadPoolClaimBatchRequest(BaseModel):
+    count: int = Field(ge=1, le=50)
+
+
+class LeadPoolClaimBatchResponse(BaseModel):
+    leads: list[LeadPublic]
+    total_price_cents: int = Field(ge=0)

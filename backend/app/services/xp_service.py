@@ -13,6 +13,7 @@ reset via the admin endpoint.
 """
 from __future__ import annotations
 
+from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
@@ -37,7 +38,7 @@ XP_TABLE: dict[str, int] = {
 }
 
 DAILY_CAP = 300
-PER_LEAD_ACTIONS = {"lead_contacted", "followup_completed"}
+PER_LEAD_DAILY_ACTIONS = {"followup_completed"}
 
 LEVEL_THRESHOLDS = [
     (1000, "legend"),
@@ -100,6 +101,22 @@ async def _already_granted_today(
     )
     if lead_id is not None:
         q = q.where(XpEvent.lead_id == lead_id)
+    count = int((await session.execute(q)).scalar_one())
+    return count > 0
+
+
+async def _already_granted_ever(
+    session: AsyncSession,
+    *,
+    action: str,
+    lead_id: Optional[int] = None,
+    user_id: Optional[int] = None,
+) -> bool:
+    q = select(func.count()).where(XpEvent.action == action)
+    if lead_id is not None:
+        q = q.where(XpEvent.lead_id == lead_id)
+    if user_id is not None:
+        q = q.where(XpEvent.user_id == user_id)
     count = int((await session.execute(q)).scalar_one())
     return count > 0
 
@@ -190,6 +207,19 @@ async def grant_xp(
     # Monthly season check — reset if new month
     await _maybe_reset_season(session, user)
 
+    # Login/report actions are single-claim per day even if callers retry.
+    if action in {"login_daily", "report_submitted"}:
+        if await _already_granted_today(session, user_id, action, None):
+            return None
+
+    # First-contact XP is a one-time reward for the lead, not something that
+    # can be farmed by bouncing the status back and forth.
+    if action == "lead_contacted":
+        if lead_id is None:
+            return None
+        if await _already_granted_ever(session, action=action, lead_id=lead_id):
+            return None
+
     # lead_won anti-cheat: lead must be >24h old
     if action == "lead_won":
         if lead_id is None:
@@ -200,9 +230,11 @@ async def grant_xp(
         age = _now_utc() - lead.created_at.replace(tzinfo=timezone.utc)
         if age < timedelta(hours=24):
             return None
+        if await _already_granted_ever(session, action=action, lead_id=lead_id):
+            return None
 
     # Per-lead per-day cap
-    if action in PER_LEAD_ACTIONS and lead_id is not None:
+    if action in PER_LEAD_DAILY_ACTIONS and lead_id is not None:
         if await _already_granted_today(session, user_id, action, lead_id):
             return None
 
@@ -223,12 +255,11 @@ async def grant_xp(
     return actual_xp
 
 
-async def revoke_won_xp(session: AsyncSession, user_id: int, lead_id: int) -> None:
-    """Delete lead_won XP events for a lead and deduct from user total."""
+async def revoke_won_xp(session: AsyncSession, lead_id: int) -> None:
+    """Delete all lead_won XP events for a lead and deduct from each user total."""
     rows = (
         await session.execute(
             select(XpEvent).where(
-                XpEvent.user_id == user_id,
                 XpEvent.action == "lead_won",
                 XpEvent.lead_id == lead_id,
             )
@@ -238,20 +269,29 @@ async def revoke_won_xp(session: AsyncSession, user_id: int, lead_id: int) -> No
     if not rows:
         return
 
-    total_revoke = sum(e.xp for e in rows)
+    total_revoke_by_user: dict[int, int] = defaultdict(int)
+    for event in rows:
+        total_revoke_by_user[int(event.user_id)] += int(event.xp)
 
     await session.execute(
         delete(XpEvent).where(
-            XpEvent.user_id == user_id,
             XpEvent.action == "lead_won",
             XpEvent.lead_id == lead_id,
         )
     )
 
-    user = (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
-    if user is not None:
-        user.xp_total = max(0, (user.xp_total or 0) - total_revoke)
-        user.xp_level = _calculate_level(user.xp_total)
+    if total_revoke_by_user:
+        users = (
+            await session.execute(
+                select(User).where(User.id.in_(tuple(total_revoke_by_user.keys()))),
+            )
+        ).scalars().all()
+        for user in users:
+            total_revoke = int(total_revoke_by_user.get(int(user.id), 0))
+            if total_revoke <= 0:
+                continue
+            user.xp_total = max(0, (user.xp_total or 0) - total_revoke)
+            user.xp_level = _calculate_level(user.xp_total)
 
     await session.flush()
 

@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   LEAD_STATUS_OPTIONS,
+  useClaimLeadMutation,
   usePatchLeadMutation,
 } from '@/hooks/use-leads-query'
-import { useCrmPoolClaim } from '@/hooks/use-crm-query'
 import {
+  useLeadPoolBatchClaimMutation,
   useLeadPoolDefaultsMutation,
   useLeadPoolDefaultsQuery,
   useLeadPoolQuery,
@@ -35,13 +36,19 @@ function formatRupees(cents: number): string {
 
 export function LeadPoolWorkPage({ title }: Props) {
   const qc = useQueryClient()
-  const { role } = useDashboardShellRole()
+  const { role, serverRole, isAdminPreviewing } = useDashboardShellRole()
   const { data, isPending, isError, error, refetch } = useLeadPoolQuery()
-  const { data: poolDefaults } = useLeadPoolDefaultsQuery(role === 'admin')
+  const actualRole = serverRole ?? role
+  const canManagePool = role === 'admin' && actualRole === 'admin'
+  const canClaimPool = actualRole != null && ['team', 'leader', 'admin'].includes(actualRole)
+  const { data: poolDefaults } = useLeadPoolDefaultsQuery(canManagePool)
   const poolDefaultsMut = useLeadPoolDefaultsMutation()
-  const { data: walletData } = useWalletMeQuery(true)
-  const claimMut = useCrmPoolClaim()
+  const { data: walletData } = useWalletMeQuery(canClaimPool)
+  const claimMut = useClaimLeadMutation()
+  const batchClaimMut = useLeadPoolBatchClaimMutation()
   const patchMut = usePatchLeadMutation()
+  const claimBusy = claimMut.isPending || batchClaimMut.isPending
+  const claimError = claimMut.error ?? batchClaimMut.error
 
   // Confirm dialog state: which lead is being claimed
   const [confirmId, setConfirmId] = useState<number | null>(null)
@@ -79,11 +86,7 @@ export function LeadPoolWorkPage({ title }: Props) {
 
   async function handleClaim(leadId: number) {
     try {
-      await claimMut.mutateAsync({
-        leadId,
-        idempotencyKey: `claim-${leadId}-${Date.now()}`,
-        pipelineKind: 'PERSONAL',
-      })
+      await claimMut.mutateAsync(leadId)
       playAppSound('cashier')
       setConfirmId(null)
     } catch {
@@ -114,11 +117,7 @@ export function LeadPoolWorkPage({ title }: Props) {
     if (!data) return
     const n = Math.min(50, Math.max(1, parseInt(batchCountStr, 10) || 1), data.total)
     try {
-      await claimMut.mutateAsync({
-        count: n,
-        idempotencyKey: `batch-${Date.now()}-${n}`,
-        pipelineKind: 'PERSONAL',
-      })
+      await batchClaimMut.mutateAsync(n)
       playAppSound('cashier')
       setBatchConfirmOpen(false)
     } catch {
@@ -217,7 +216,14 @@ export function LeadPoolWorkPage({ title }: Props) {
         whole batch is rejected if the combined price exceeds your balance.
       </p>
 
-      {role === 'admin' ? (
+      {isAdminPreviewing ? (
+        <div className="surface-inset border border-primary/20 px-4 py-3 text-xs text-muted-foreground">
+          View-as only changes the navigation. Claim, pricing, and import actions still use your signed-in
+          admin account.
+        </div>
+      ) : null}
+
+      {canManagePool ? (
         <div className="surface-inset space-y-3 p-4 text-sm">
           <p className="font-medium text-foreground">Default claim price (new pool leads)</p>
           <p className="text-ds-caption text-muted-foreground">
@@ -309,7 +315,7 @@ export function LeadPoolWorkPage({ title }: Props) {
       ) : null}
 
       {/* Wallet balance chip */}
-      {role !== 'admin' && walletData !== undefined ? (
+      {canClaimPool && walletData !== undefined ? (
         <div className="surface-inset inline-flex items-center gap-2 px-3 py-1.5 text-sm">
           <span className="text-muted-foreground">Wallet balance:</span>
           <span className={`font-semibold ${walletBalance > 0 ? 'text-[hsl(142_71%_48%)]' : 'text-destructive'}`}>
@@ -341,7 +347,7 @@ export function LeadPoolWorkPage({ title }: Props) {
         <div className="surface-elevated p-4 text-sm text-muted-foreground">
           <p className="mb-3 font-medium text-foreground">In pool: {data.total}</p>
 
-          {role !== 'admin' && data.total > 0 ? (
+          {canClaimPool && data.total > 0 ? (
             <div className="mb-4 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs">
               <p className="font-medium text-foreground">Bulk claim (FIFO, max 50)</p>
               <p className="mt-1 text-muted-foreground">
@@ -364,10 +370,10 @@ export function LeadPoolWorkPage({ title }: Props) {
                     <Button
                       type="button"
                       size="sm"
-                      disabled={claimMut.isPending || !canAffordBatchEstimate}
+                      disabled={claimBusy || !canAffordBatchEstimate}
                       onClick={() => void handleBatchClaim()}
                     >
-                      {claimMut.isPending ? 'Claiming…' : 'Confirm batch'}
+                      {claimBusy ? 'Claiming…' : 'Confirm batch'}
                     </Button>
                     <Button type="button" variant="ghost" size="sm" onClick={() => setBatchConfirmOpen(false)}>
                       Cancel
@@ -396,7 +402,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                     type="button"
                     size="sm"
                     variant="outline"
-                    disabled={!canAffordBatchEstimate || batchCountParsed < 1}
+                    disabled={claimBusy || !canAffordBatchEstimate || batchCountParsed < 1}
                     title={
                       !canAffordBatchEstimate
                         ? `Estimated ${formatRupees(batchFifoEstimateCents)} from visible rows; balance ${formatRupees(walletBalance)}`
@@ -452,7 +458,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                     </div>
 
                     {/* Admin controls */}
-                    {role === 'admin' ? (
+                    {canManagePool ? (
                       <div className="flex flex-wrap items-center gap-2">
                         <input
                           type="number"
@@ -485,7 +491,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                     ) : null}
 
                     {/* Claim flow */}
-                    {role !== 'admin' ? (
+                    {canClaimPool ? (
                       isConfirming ? (
                         <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2">
                           <p className="flex-1 text-xs text-foreground">
@@ -496,10 +502,10 @@ export function LeadPoolWorkPage({ title }: Props) {
                           <Button
                             type="button"
                             size="sm"
-                            disabled={claimMut.isPending || (!isFree && !canAfford)}
+                            disabled={claimBusy || (!isFree && !canAfford)}
                             onClick={() => void handleClaim(l.id)}
                           >
-                            {claimMut.isPending ? 'Claiming…' : 'Confirm'}
+                            {claimBusy ? 'Claiming…' : 'Confirm'}
                           </Button>
                           <Button
                             type="button"
@@ -515,7 +521,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                           type="button"
                           size="sm"
                           className="self-start"
-                          disabled={!isFree && !canAfford}
+                          disabled={claimBusy || (!isFree && !canAfford)}
                           title={!isFree && !canAfford ? `Need ${formatRupees(price)}, wallet has ${formatRupees(walletBalance)}` : undefined}
                           onClick={() => setConfirmId(l.id)}
                         >
@@ -529,9 +535,11 @@ export function LeadPoolWorkPage({ title }: Props) {
             </ul>
           )}
 
-          {claimMut.isError ? (
+          {claimMut.isError || batchClaimMut.isError ? (
             <p className="mt-3 text-xs text-destructive" role="alert">
-              {claimMut.error instanceof Error ? claimMut.error.message : 'Claim failed'}
+              {claimError instanceof Error
+                ? claimError.message
+                : 'Claim failed'}
             </p>
           ) : null}
           {patchMut.isError ? (

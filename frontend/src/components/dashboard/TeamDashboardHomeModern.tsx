@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
+import { XpBadge } from '@/components/xp/XpBadge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { HomeQuickAction } from '@/config/dashboard-home-actions'
@@ -256,6 +257,8 @@ export function TeamDashboardHomeModern({
           ) : null}
         </div>
       </section>
+
+      <XpBadge />
 
       <GateAssistantCard sessionReady={sessionReady} />
 
