@@ -141,3 +141,21 @@ def test_password_login_remember_me_extends_refresh_cookie(
     set_cookie = ",".join(res.headers.get_list("set-cookie"))
     assert "myle_refresh=" in set_cookie
     assert "Max-Age=5184000" in set_cookie  # 60 days
+
+
+def test_password_login_applies_secure_cross_site_cookie_settings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    patch_jwt_settings(
+        monkeypatch,
+        session_cookie_secure=True,
+        auth_cookie_samesite="none",
+    )
+    res = client.post(
+        "/api/v1/auth/login",
+        json={"fbo_id": "fbo-leader-001", "password": DEV_LOGIN_PASSWORD_PLAIN},
+    )
+    assert res.status_code == 200
+    set_cookie = ",".join(res.headers.get_list("set-cookie")).lower()
+    assert "secure" in set_cookie
+    assert "samesite=none" in set_cookie

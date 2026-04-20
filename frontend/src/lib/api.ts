@@ -1,13 +1,25 @@
 /**
  * - `VITE_API_URL` unset → local dev default (`localhost:8000`).
  * - `VITE_API_URL=""` → same origin as the page (unified API + static deploy).
+ * - Legacy `VITE_API_BASE_URL` is also accepted and normalized.
  * - Otherwise → absolute API base (split static site + API).
  */
+function normalizeConfiguredApiBase(raw: string): string {
+  const trimmed = raw.trim()
+  if (trimmed === '') return ''
+  return trimmed
+    .replace(/\/+$/, '')
+    .replace(/\/api\/v1$/i, '')
+    .replace(/\/api$/i, '')
+}
+
 function resolveApiBase(): string {
-  const v = import.meta.env.VITE_API_URL as string | undefined
-  if (v === '') return ''
-  if (v === undefined) return 'http://localhost:8000'
-  return v.replace(/\/$/, '')
+  const modern = import.meta.env.VITE_API_URL as string | undefined
+  const legacy = import.meta.env.VITE_API_BASE_URL as string | undefined
+  const configured = modern ?? legacy
+  if (configured === '') return ''
+  if (configured === undefined) return 'http://localhost:8000'
+  return normalizeConfiguredApiBase(configured)
 }
 
 export const apiBase = resolveApiBase()

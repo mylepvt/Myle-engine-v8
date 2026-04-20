@@ -148,7 +148,7 @@ fi
 cd ../frontend
 if [ ! -f ".env" ]; then
     cat > .env << EOF
-VITE_API_BASE_URL=http://localhost:8000/api/v1
+VITE_API_URL=http://localhost:8000
 VITE_APP_NAME=Myle Dashboard
 VITE_VERSION=1.0.0
 EOF

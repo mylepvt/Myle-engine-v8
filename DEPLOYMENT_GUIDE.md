@@ -213,7 +213,7 @@ SMTP_PASSWORD=your-app-password
 Create `.env` file in frontend directory:
 
 ```env
-VITE_API_BASE_URL=http://localhost:8000/api/v1
+VITE_API_URL=http://localhost:8000
 VITE_APP_NAME=Myle Dashboard
 VITE_VERSION=1.0.0
 ```
