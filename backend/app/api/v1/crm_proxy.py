@@ -48,6 +48,8 @@ def get_crm_client() -> httpx.AsyncClient:
 # ---------------------------------------------------------------------------
 
 from app.api.deps import require_auth_user  # noqa: E402 — after router definition
+from app.models.lead import Lead
+from sqlalchemy import select
 
 
 async def _proxy(
@@ -240,10 +242,50 @@ async def crm_proxy_get(
     return await _proxy(request, f"/{crm_path}", user)
 
 
+# FSM events that require an approved payment proof before CRM is allowed to process them.
+_PAYMENT_GATE_EVENTS = frozenset({"PAYMENT_DONE"})
+# Lead transition path pattern: /leads/{id}/transition
+import re as _re
+_LEAD_TRANSITION_RE = _re.compile(r"^leads/(\d+)/transition$")
+
+
+async def _enforce_payment_gate_if_needed(
+    crm_path: str,
+    request: Request,
+    user: AuthUser,
+    session: AsyncSession,
+) -> None:
+    """For PAYMENT_DONE FSM event, verify approved proof before forwarding to CRM."""
+    if user.role == "admin":
+        return
+    m = _LEAD_TRANSITION_RE.match(crm_path)
+    if not m:
+        return
+    body_bytes = await request.body()
+    try:
+        payload = json.loads(body_bytes.decode("utf-8") or "{}")
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return
+    if payload.get("event") not in _PAYMENT_GATE_EVENTS:
+        return
+    lead_id = int(m.group(1))
+    result = await session.execute(select(Lead).where(Lead.id == lead_id))
+    lead = result.scalar_one_or_none()
+    if lead is None or lead.payment_status != "approved":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Payment proof must be approved before marking payment done.",
+        )
+
+
 @router.post("/crm/{crm_path:path}", tags=["crm"])
 async def crm_proxy_post(
-    crm_path: str, request: Request, user: AuthDep
+    crm_path: str,
+    request: Request,
+    user: AuthDep,
+    session: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
+    await _enforce_payment_gate_if_needed(crm_path, request, user, session)
     return await _proxy(request, f"/{crm_path}", user)
 
 
