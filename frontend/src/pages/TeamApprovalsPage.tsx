@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useDeferredValue, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { ListSearchInput } from '@/components/ui/list-search-input'
 import { ErrorState, LoadingState } from '@/components/ui/states'
 import {
   Table,
@@ -11,6 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { apiFetch } from '@/lib/api'
+import { directorySearchValues, filterCollectionByQuery } from '@/lib/search-filter'
 
 type PendingRow = {
   id: number
@@ -29,6 +32,7 @@ type Props = {
 
 export function TeamApprovalsPage({ title }: Props) {
   const qc = useQueryClient()
+  const [searchQuery, setSearchQuery] = useState('')
   const q = useQuery({
     queryKey: ['team', 'pending-registrations'],
     queryFn: async () => {
@@ -64,6 +68,11 @@ export function TeamApprovalsPage({ title }: Props) {
       void qc.invalidateQueries({ queryKey: ['team', 'pending-registrations'] })
     },
   })
+  const deferredSearchQuery = useDeferredValue(searchQuery)
+  const searchActive = searchQuery.trim().length > 0
+  const filteredRows = q.data
+    ? filterCollectionByQuery(q.data.items, deferredSearchQuery, (row) => directorySearchValues(row))
+    : []
 
   return (
     <div className="max-w-4xl space-y-4">
@@ -73,6 +82,21 @@ export function TeamApprovalsPage({ title }: Props) {
         in; approved users can log in with the password they set at registration.
       </p>
 
+      <div className="surface-elevated space-y-2 p-4 text-sm">
+        <ListSearchInput
+          value={searchQuery}
+          onValueChange={setSearchQuery}
+          placeholder="Search by FBO ID, username, email, phone, or upline"
+          aria-label="Search pending registrations"
+          wrapperClassName="w-full sm:max-w-md"
+        />
+        <p className="text-xs text-muted-foreground">
+          {searchActive
+            ? `Showing ${filteredRows.length} of ${q.data?.total ?? 0} pending registrations.`
+            : 'Search helps when multiple pending registrations are waiting for approval.'}
+        </p>
+      </div>
+
       {q.isPending ? <LoadingState label="Loading pending registrations" /> : null}
       {q.isError ? (
         <ErrorState message={q.error instanceof Error ? q.error.message : 'Failed to load'} />
@@ -81,6 +105,10 @@ export function TeamApprovalsPage({ title }: Props) {
       {q.data ? (
         q.data.items.length === 0 ? (
           <p className="text-sm text-muted-foreground">No pending registrations.</p>
+        ) : filteredRows.length === 0 ? (
+          <div className="surface-elevated rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+            No pending registrations match this search.
+          </div>
         ) : (
           <div className="surface-elevated overflow-hidden rounded-xl border border-border">
             <Table>
@@ -95,7 +123,7 @@ export function TeamApprovalsPage({ title }: Props) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {q.data.items.map((row) => (
+                {filteredRows.map((row) => (
                   <TableRow key={row.id}>
                     <TableCell className="font-mono text-xs">{row.fbo_id}</TableCell>
                     <TableCell>{row.username ?? '—'}</TableCell>
@@ -117,7 +145,6 @@ export function TeamApprovalsPage({ title }: Props) {
                           size="sm"
                           variant="secondary"
                           disabled={decide.isPending}
-                         
                           onClick={() => decide.mutate({ id: row.id, action: 'reject' })}
                         >
                           Reject
@@ -126,7 +153,6 @@ export function TeamApprovalsPage({ title }: Props) {
                           type="button"
                           size="sm"
                           disabled={decide.isPending}
-                         
                           onClick={() => decide.mutate({ id: row.id, action: 'approve' })}
                         >
                           Approve
