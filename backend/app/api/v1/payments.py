@@ -17,6 +17,7 @@ from app.core.payment_validator import (
     validate_payment_amount,
     validate_image_upload,
 )
+from app.models.lead import Lead
 from app.schemas.payments import PaymentProofResponse
 from app.services.payment_service import PaymentService
 
@@ -62,8 +63,7 @@ async def upload_payment_proof(
             raise HTTPException(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail=message,
-            )
-
+        )
         await notify_topics("team", "leads")
 
         return PaymentProofResponse(
@@ -103,8 +103,7 @@ async def approve_payment_proof(
             raise HTTPException(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail=message,
-            )
-
+        )
         await notify_topics("team", "leads")
 
         return PaymentProofResponse(
@@ -141,8 +140,7 @@ async def reject_payment_proof(
             raise HTTPException(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail=message,
-            )
-
+        )
         await notify_topics("team", "leads")
 
         return PaymentProofResponse(
@@ -169,4 +167,3 @@ async def get_pending_payment_proofs(
         return await service.get_pending_payment_proofs(user.user_id, user.role)
     except Exception as e:
         raise _internal_server_error("Failed to fetch pending payment proofs", e)
-

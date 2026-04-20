@@ -10,11 +10,14 @@ LEAD_STATUS_SEQUENCE: tuple[str, ...] = (
     "new_lead",           # Fresh / just added
     "contacted",          # Called / WhatsApp sent
     "invited",            # Invited to watch enrollment video
+    "whatsapp_sent",      # WhatsApp message sent before video share
     "video_sent",         # Enrollment link shared
     "video_watched",      # Prospect watched the video
     "paid",               # ₹196 enrollment fee paid & approved
+    "mindset_lock",       # 5-minute mindset lock before leader handoff
     "day1",               # Attending Day 1 session
     "day2",               # Attending Day 2 session
+    "day3",               # Day 3 closer stage
     "interview",          # Post Day2 interview stage
     "track_selected",     # Chose Slow/Medium/Fast track
     "seat_hold",          # Seat hold amount paid
@@ -36,6 +39,7 @@ TEAM_FORBIDDEN_STATUS_SLUGS: frozenset[str] = frozenset(
     {
         "day1",
         "day2",
+        "day3",
         "interview",
         "track_selected",
         "seat_hold",
@@ -52,11 +56,14 @@ LEAD_STATUS_LABELS: dict[str, str] = {
     "new_lead":       "New Lead",
     "contacted":      "Contacted",
     "invited":        "Invited",
+    "whatsapp_sent":  "WhatsApp Sent",
     "video_sent":     "Video Sent",
     "video_watched":  "Video Watched",
     "paid":           "Paid ₹196",
+    "mindset_lock":   "Mindset Lock",
     "day1":           "Day 1",
     "day2":           "Day 2",
+    "day3":           "Day 3",
     "interview":      "Interview",
     "track_selected": "Track Selected",
     "seat_hold":      "Seat Hold",
@@ -76,11 +83,14 @@ WORKBOARD_COLUMNS: tuple[str, ...] = (
     "new_lead",
     "contacted",
     "invited",
+    "whatsapp_sent",
     "video_sent",
     "video_watched",
     "paid",
+    "mindset_lock",
     "day1",
     "day2",
+    "day3",
     "interview",
     "track_selected",
     "seat_hold",

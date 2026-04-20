@@ -19,7 +19,7 @@ VL2_LOST = "lost"
 # Explicit buckets after alias normalization (see pipeline_rules.normalize_flow_status)
 _LEGACY_VL2_NEW = frozenset({"New Lead"})
 _LEGACY_VL2_CONTACTED = frozenset(
-    {"Contacted", "Invited", "Video Sent", "Video Watched"},
+    {"Contacted", "Invited", "WhatsApp Sent", "Video Sent", "Video Watched"},
 )
 _LEGACY_VL2_QUALIFIED = frozenset(
     {

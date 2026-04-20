@@ -15,6 +15,7 @@ from app.schemas.follow_ups import (
     FollowUpPublic,
     FollowUpUpdate,
 )
+from app.services.crm_outbox import enqueue_lead_shadow_upsert
 from app.services.lead_access import require_visible_lead
 
 router = APIRouter()
@@ -141,6 +142,10 @@ async def update_follow_up(
         else:
             fu.completed_at = None
     newly_completed = (not was_completed) and fu.completed_at is not None
+    lead_state_before = (lead.status, lead.assigned_to_user_id)
+    await session.flush()
+    if newly_completed and (lead.status, lead.assigned_to_user_id) != lead_state_before:
+        enqueue_lead_shadow_upsert(session, lead)
     await session.commit()
     await session.refresh(fu)
     if newly_completed:

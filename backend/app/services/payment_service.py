@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
 from app.models.user import User
+from app.services.crm_outbox import enqueue_lead_shadow_upsert
 from app.services.downline import (
     is_user_in_downline_of,
     lead_execution_visible_to_leader_clause,
@@ -25,6 +26,11 @@ class PaymentService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+
+    async def _commit_with_shadow_upsert(self, lead: Lead) -> None:
+        await self.session.flush()
+        enqueue_lead_shadow_upsert(self.session, lead)
+        await self.session.commit()
 
     async def upload_payment_proof(self, file: UploadFile, *, lead_id: int) -> str:
         """Upload payment proof file and return URL."""
@@ -94,7 +100,7 @@ class PaymentService:
             lead_id, uploaded_by_user_id, "payment_proof_uploaded", notes
         )
 
-        await self.session.commit()
+        await self._commit_with_shadow_upsert(lead)
         return True, "Payment proof uploaded successfully"
 
     async def approve_payment_proof(
@@ -126,9 +132,8 @@ class PaymentService:
         if lead.status == "video_watched":
             lead.status = "paid"
         if lead.status == "paid":
-            lead.mindset_lock_state = "mindset_lock"
-            if lead.mindset_started_at is None:
-                lead.mindset_started_at = datetime.now(timezone.utc)
+            lead.mindset_lock_state = None
+            lead.mindset_started_at = None
             lead.mindset_completed_at = None
             lead.mindset_completed_by_user_id = None
             lead.mindset_leader_user_id = None
@@ -137,7 +142,7 @@ class PaymentService:
             lead_id, approved_by_user_id, "payment_proof_approved"
         )
 
-        await self.session.commit()
+        await self._commit_with_shadow_upsert(lead)
         return True, "Payment proof approved"
 
     async def reject_payment_proof(
@@ -168,7 +173,7 @@ class PaymentService:
         await self._log_payment_activity(
             lead_id, rejected_by_user_id, "payment_proof_rejected", rejection_reason
         )
-        await self.session.commit()
+        await self._commit_with_shadow_upsert(lead)
         return True, "Payment proof rejected"
 
     async def get_pending_payment_proofs(

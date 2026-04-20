@@ -176,6 +176,42 @@ class Settings(BaseSettings):
         validation_alias="CRM_INTERNAL_SECRET",
         description="Shared secret for CRM internal endpoints (x-internal-secret header).",
     )
+    crm_outbox_batch_size: int = Field(
+        default=50,
+        ge=1,
+        le=500,
+        validation_alias="CRM_OUTBOX_BATCH_SIZE",
+    )
+    crm_outbox_poll_seconds: float = Field(
+        default=1.0,
+        ge=0.1,
+        le=60.0,
+        validation_alias="CRM_OUTBOX_POLL_SECONDS",
+    )
+    crm_outbox_retry_base_seconds: int = Field(
+        default=1,
+        ge=1,
+        le=300,
+        validation_alias="CRM_OUTBOX_RETRY_BASE_SECONDS",
+    )
+    crm_outbox_retry_max_seconds: int = Field(
+        default=60,
+        ge=1,
+        le=3600,
+        validation_alias="CRM_OUTBOX_RETRY_MAX_SECONDS",
+    )
+    crm_outbox_max_retries: int = Field(
+        default=5,
+        ge=1,
+        le=100,
+        validation_alias="CRM_OUTBOX_MAX_RETRIES",
+    )
+    crm_outbox_processing_timeout_seconds: int = Field(
+        default=120,
+        ge=5,
+        le=3600,
+        validation_alias="CRM_OUTBOX_PROCESSING_TIMEOUT_SECONDS",
+    )
 
     @field_validator("database_url", mode="before")
     @classmethod

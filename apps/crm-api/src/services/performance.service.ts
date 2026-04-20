@@ -5,10 +5,10 @@ import { setRealtimeScore } from "./redis-score.service.js";
 /** Deterministic composite score — DB snapshot + Redis realtime for Top 10 ranking. */
 export async function recomputeUserPerformance(userId: string, pipelineKind: PipelineKind) {
   const closed = await prisma.lead.count({
-    where: { closedById: userId, pipelineKind, stage: LeadStage.CLOSED },
+    where: { closedById: userId, pipelineKind, stage: LeadStage.CLOSED, isShadow: false },
   });
   const assigned = await prisma.lead.count({
-    where: { handlerId: userId, pipelineKind },
+    where: { handlerId: userId, pipelineKind, isShadow: false },
   });
   const conversionRate = assigned > 0 ? closed / assigned : 0;
   const compositeScore = conversionRate * 100 + (assigned > 0 ? 10 : 0);
@@ -54,6 +54,7 @@ export async function pickLeastLoadedHandler(
       handlerId: { in: candidateUserIds },
       pipelineKind,
       inPool: false,
+      isShadow: false,
     },
     _count: { handlerId: true },
   });

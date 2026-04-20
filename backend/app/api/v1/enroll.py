@@ -28,6 +28,7 @@ from app.schemas.enroll import (
     EnrollShareLinkPublic,
     WatchPageData,
 )
+from app.services.crm_outbox import enqueue_lead_shadow_upsert
 from app.services.lead_scope import lead_visibility_where
 
 router = APIRouter()
@@ -40,13 +41,17 @@ _VIDEO_WATCHED_STATUS = "video_watched"
 # Statuses considered "past" video_sent — don't regress them
 _PAST_VIDEO_SENT = {
     "video_watched",
-    "interested",
-    "not_interested",
-    "enrolled",
-    "payment_pending",
-    "payment_done",
-    "won",
+    "paid",
+    "mindset_lock",
+    "day1",
+    "day2",
+    "day3",
+    "interview",
+    "track_selected",
+    "seat_hold",
+    "converted",
     "lost",
+    "inactive",
 }
 
 
@@ -90,9 +95,14 @@ async def generate_share_link(
     session.add(link)
 
     # Advance lead status to video_sent if not already past that stage
+    should_sync_lead = False
     if lead.status not in _PAST_VIDEO_SENT and lead.status != _VIDEO_SENT_STATUS:
         lead.status = _VIDEO_SENT_STATUS
+        should_sync_lead = True
 
+    await session.flush()
+    if should_sync_lead:
+        enqueue_lead_shadow_upsert(session, lead)
     await session.commit()
     await session.refresh(link)
     return EnrollShareLinkPublic.model_validate(link)
@@ -159,10 +169,15 @@ async def watch_video(
     link.last_viewed_at = now
 
     # Auto-update lead status once
+    should_sync_lead = False
     if not link.status_synced:
         lead.status = _VIDEO_WATCHED_STATUS
         link.status_synced = True
+        should_sync_lead = True
 
+    await session.flush()
+    if should_sync_lead:
+        enqueue_lead_shadow_upsert(session, lead)
     await session.commit()
     await session.refresh(link)
 

@@ -109,6 +109,12 @@ class Lead(Base):
         ForeignKey("users.id"),
         nullable=True,
     )
+    crm_shadow_version: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        server_default=text("0"),
+        default=0,
+    )
 
     # Day completion tracking
     day1_completed_at: Mapped[Optional[datetime]] = mapped_column(

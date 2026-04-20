@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { LEAD_STATUS_OPTIONS } from '@/hooks/use-leads-query'
+import { LEAD_STATUS_OPTIONS, type LeadStatus } from '@/hooks/use-leads-query'
 import {
   useLeadCallsQuery,
   useLeadDetailQuery,
@@ -42,9 +42,18 @@ function outcomeLabel(v: string): string {
 function StatusBadge({ status }: { status: string }) {
   const cls: Record<string, string> = {
     new: 'bg-primary/15 text-primary',
+    new_lead: 'bg-primary/15 text-primary',
     contacted: 'bg-sky-400/15 text-sky-400',
-    qualified: 'bg-emerald-400/15 text-emerald-400',
-    won: 'bg-[hsl(142_71%_48%)]/15 text-[hsl(142_71%_48%)]',
+    invited: 'bg-violet-400/15 text-violet-400',
+    whatsapp_sent: 'bg-pink-400/15 text-pink-400',
+    video_sent: 'bg-indigo-400/15 text-indigo-400',
+    video_watched: 'bg-blue-400/15 text-blue-400',
+    paid: 'bg-amber-400/15 text-amber-400',
+    mindset_lock: 'bg-fuchsia-400/15 text-fuchsia-400',
+    day1: 'bg-orange-400/15 text-orange-400',
+    day2: 'bg-yellow-400/15 text-yellow-400',
+    day3: 'bg-lime-400/15 text-lime-400',
+    converted: 'bg-[hsl(142_71%_48%)]/15 text-[hsl(142_71%_48%)]',
     lost: 'bg-destructive/15 text-destructive',
   }
   const c = cls[status] ?? 'bg-muted/30 text-muted-foreground'
@@ -121,7 +130,7 @@ export function LeadDetailPage({ leadId }: Props) {
     try {
       await patchMut.mutateAsync({
         leadId,
-        body: { status: pipelineStatus, call_status: pipelineCallStatus || null },
+        body: { status: pipelineStatus as LeadStatus, call_status: pipelineCallStatus || undefined },
       })
     } catch (e) {
       setPipelineError(e instanceof Error ? e.message : 'Save failed')
@@ -172,10 +181,16 @@ export function LeadDetailPage({ leadId }: Props) {
     field: 'day1_completed_at' | 'day2_completed_at' | 'day3_completed_at',
     current: string | null,
   ) {
+    const patchField =
+      field === 'day1_completed_at'
+        ? 'day1_completed'
+        : field === 'day2_completed_at'
+          ? 'day2_completed'
+          : 'day3_completed'
     try {
       await patchMut.mutateAsync({
         leadId,
-        body: { [field]: current ? null : new Date().toISOString() },
+        body: { [patchField]: !current },
       })
     } catch {
       /* surfaced by patchMut.isError */
@@ -186,7 +201,7 @@ export function LeadDetailPage({ leadId }: Props) {
     try {
       await patchMut.mutateAsync({
         leadId,
-        body: { whatsapp_sent_at: current ? null : new Date().toISOString() },
+        body: { whatsapp_sent: !current },
       })
     } catch {
       /* surfaced by patchMut.isError */
