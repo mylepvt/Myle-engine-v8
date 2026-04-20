@@ -128,7 +128,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pb-1">
         {TABS.map((t) => {
           const active = tab === t.id
           return (
@@ -137,10 +137,10 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
               type="button"
               onClick={() => setTab(t.id)}
               className={cn(
-                'flex shrink-0 items-center gap-1.5 pb-2 text-sm font-medium transition-colors',
+                'flex min-w-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
                 active
-                  ? 'border-b-2 border-primary text-foreground'
-                  : 'border-b-2 border-transparent text-muted-foreground hover:text-foreground',
+                  ? 'border-primary/45 bg-primary/10 text-foreground'
+                  : 'border-border/70 text-muted-foreground hover:border-border hover:text-foreground',
               )}
             >
               <span>{t.label}</span>
