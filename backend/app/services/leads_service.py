@@ -32,6 +32,7 @@ from app.schemas.leads import (
 )
 from app.services.leads_contracts import LeadsRepositoryContract, TopicNotifierContract
 from app.services.auto_handoff import AutoHandoffService
+from app.services.crm_outbox import enqueue_lead_shadow_delete, enqueue_lead_shadow_upsert
 from app.services.invoice_records import create_tax_invoice_for_pool_claim
 from app.services.ctcs_heat import bump_heat_on_entering_contacted, clamp_ctcs_heat
 from app.services.ctcs_status_chain import advance_lead_status_toward
@@ -41,7 +42,17 @@ from app.validators.leads_validator import lead_list_conditions, parse_status_qu
 # Statuses that require an approved payment proof before entry.
 # Any transition *into* these statuses must pass the payment gate.
 _PAYMENT_REQUIRED_STATUSES: frozenset[str] = frozenset(
-    {"seat_hold", "paid", "day1", "day2", "interview", "track_selected", "converted"}
+    {
+        "paid",
+        "mindset_lock",
+        "day1",
+        "day2",
+        "day3",
+        "interview",
+        "track_selected",
+        "seat_hold",
+        "converted",
+    }
 )
 
 
@@ -84,7 +95,17 @@ def _ctcs_filter_clause(ctcs_filter: Optional[str]) -> Any:
         return Lead.heat_score >= settings.ctcs_heat_hot_threshold
     if key == "converted":
         return Lead.status.in_(
-            ("converted", "seat_hold", "paid", "day1", "day2", "interview", "track_selected"),
+            (
+                "converted",
+                "seat_hold",
+                "paid",
+                "mindset_lock",
+                "day1",
+                "day2",
+                "day3",
+                "interview",
+                "track_selected",
+            ),
         )
     raise HTTPException(
         status_code=http_status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -105,6 +126,43 @@ def _sync_batch_completion_timestamps(lead: Lead, now: datetime) -> None:
         lead.day2_completed_at = None
 
 
+def _apply_status_side_effects(
+    lead: Lead,
+    *,
+    previous_status: str,
+    new_status: str,
+    now: datetime,
+) -> None:
+    if new_status == "whatsapp_sent" and lead.whatsapp_sent_at is None:
+        lead.whatsapp_sent_at = now
+
+    if new_status == "paid":
+        lead.mindset_lock_state = None
+        lead.mindset_started_at = None
+        lead.mindset_completed_at = None
+        lead.mindset_completed_by_user_id = None
+        lead.mindset_leader_user_id = None
+    elif new_status == "mindset_lock":
+        lead.mindset_lock_state = "mindset_lock"
+        lead.mindset_started_at = now
+        lead.mindset_completed_at = None
+        lead.mindset_completed_by_user_id = None
+        lead.mindset_leader_user_id = None
+    elif previous_status == "mindset_lock" and new_status != "mindset_lock":
+        if new_status != "day1":
+            lead.mindset_lock_state = None
+            lead.mindset_started_at = None
+            lead.mindset_completed_at = None
+            lead.mindset_completed_by_user_id = None
+            lead.mindset_leader_user_id = None
+
+    if new_status == "day3":
+        lead.day3_completed_at = None
+    elif new_status == "converted" and previous_status in {"day3", "interview", "track_selected", "seat_hold"}:
+        if lead.day3_completed_at is None:
+            lead.day3_completed_at = now
+
+
 class LeadsService:
     def __init__(
         self,
@@ -122,6 +180,30 @@ class LeadsService:
         if lead is None:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
         return lead
+
+    async def _commit_with_shadow_upsert(self, lead: Lead) -> Lead:
+        await self._repository.persist_lead(lead, commit=False, refresh=False)
+        enqueue_lead_shadow_upsert(self._session, lead)
+        await self._repository.commit()
+        await self._session.refresh(lead)
+        return lead
+
+    async def _commit_with_shadow_delete(
+        self,
+        lead: Lead,
+        *,
+        permanently_deleted: bool = False,
+        hard_delete: bool = False,
+    ) -> None:
+        await self._session.flush()
+        enqueue_lead_shadow_delete(
+            self._session,
+            lead,
+            permanently_deleted=permanently_deleted,
+        )
+        if hard_delete:
+            await self._repository.hard_delete_lead(lead.id, commit=False)
+        await self._repository.commit()
 
     async def _nearest_leader(self, start_user_id: int) -> tuple[int, str] | None:
         current = int(start_user_id)
@@ -181,7 +263,7 @@ class LeadsService:
             condition = and_(condition, extra) if condition is not None else extra
         if pre_enrollment_only:
             pre_enroll = Lead.status.in_(
-                ["new_lead", "contacted", "invited", "video_sent", "video_watched"]
+                ["new_lead", "contacted", "invited", "whatsapp_sent", "video_sent", "video_watched"]
             )
             condition = and_(condition, pre_enroll) if condition is not None else pre_enroll
         total = await self._repository.count_leads(condition)
@@ -229,7 +311,7 @@ class LeadsService:
             lead_id=lead.id,
             meta={"name": lead.name, "status": lead.status},
         )
-        lead = await self._repository.persist_lead(lead)
+        lead = await self._commit_with_shadow_upsert(lead)
         await self._notifier("leads")
         return lead
 
@@ -280,7 +362,7 @@ class LeadsService:
             lead_id=lead_id,
             meta={"price_cents": price},
         )
-        lead = await self._repository.persist_lead(lead)
+        lead = await self._commit_with_shadow_upsert(lead)
         await self._notifier("leads", "wallet")
         return lead
 
@@ -290,6 +372,11 @@ class LeadsService:
         lead = await self._get_lead_or_404(lead_id)
         if lead.assigned_to_user_id != user.user_id:
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        if lead.status != "mindset_lock":
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="Lead is not currently in mindset lock",
+            )
         started_at = lead.mindset_started_at
         if started_at is None:
             raise HTTPException(
@@ -355,6 +442,11 @@ class LeadsService:
                 status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail="Payment proof must be approved before leader handoff",
             )
+        if lead.status != "mindset_lock":
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="Lead must be in mindset lock before leader handoff",
+            )
         started_at = lead.mindset_started_at
         if started_at is None:
             raise HTTPException(
@@ -376,6 +468,7 @@ class LeadsService:
             )
         leader_id, leader_name = leader
         from_uid = lead.assigned_to_user_id
+        lead.status = "day1"
         lead.assigned_to_user_id = leader_id
         lead.last_action_at = now
         lead.mindset_completed_at = now
@@ -396,7 +489,7 @@ class LeadsService:
                 "duration_seconds": duration_seconds,
             },
         )
-        await self._repository.persist_lead(lead)
+        await self._commit_with_shadow_upsert(lead)
         await self._notifier("leads", "workboard")
         return MindsetLockCompleteResponse(
             status="assigned",
@@ -420,7 +513,7 @@ class LeadsService:
             if user.role != "admin" and lead.assigned_to_user_id != user.user_id:
                 raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
             lead.deleted_at = None
-            lead = await self._repository.persist_lead(lead)
+            lead = await self._commit_with_shadow_upsert(lead)
             await self._notifier("leads")
             return lead
         if not await self._repository.can_mutate_lead(user, lead):
@@ -481,6 +574,12 @@ class LeadsService:
             prev_status = lead.status
             lead.status = body.status
             bump_heat_on_entering_contacted(lead, prev_status)
+            _apply_status_side_effects(
+                lead,
+                previous_status=prev_status,
+                new_status=body.status,
+                now=datetime.now(timezone.utc),
+            )
         if body.archived is True:
             lead.archived_at = datetime.now(timezone.utc)
             lead.in_pool = False
@@ -503,8 +602,12 @@ class LeadsService:
             lead.call_status = body.call_status
         if body.whatsapp_sent is True:
             lead.whatsapp_sent_at = datetime.now(timezone.utc)
+            if lead.status in {"contacted", "invited"}:
+                lead.status = "whatsapp_sent"
         elif body.whatsapp_sent is False:
             lead.whatsapp_sent_at = None
+            if lead.status == "whatsapp_sent":
+                lead.status = "invited"
         if body.payment_status is not None:
             if user.role != "admin":
                 raise HTTPException(
@@ -552,29 +655,38 @@ class LeadsService:
         elif body.day3_completed is False:
             lead.day3_completed_at = None
         _sync_batch_completion_timestamps(lead, now)
-        lead = await self._repository.persist_lead(lead)
+        lead = await self._commit_with_shadow_upsert(lead)
         await self._notifier("leads")
         return lead
 
     async def delete_lead(self, *, lead_id: int, user: AuthUser) -> None:
-        lead = await self._get_lead_or_404(lead_id)
+        lead = await self._repository.get_lead_for_update(lead_id)
+        if lead is None:
+            raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
         if not await self._repository.can_mutate_lead(user, lead):
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
         if lead.deleted_at is not None:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
-        await self._repository.soft_delete_lead(lead)
+        await self._repository.soft_delete_lead(lead, commit=False)
+        await self._commit_with_shadow_delete(lead)
         await self._notifier("leads")
 
     async def permanent_delete_lead(self, *, lead_id: int, user: AuthUser) -> None:
         if user.role != "admin":
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
-        lead = await self._get_lead_or_404(lead_id)
+        lead = await self._repository.get_lead_for_update(lead_id)
+        if lead is None:
+            raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
         if lead.deleted_at is None:
             raise HTTPException(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail="Lead is not in recycle bin",
             )
-        await self._repository.hard_delete_lead(lead_id)
+        await self._commit_with_shadow_delete(
+            lead,
+            permanently_deleted=True,
+            hard_delete=True,
+        )
         await self._notifier("leads")
 
     async def get_lead_detail(self, *, lead_id: int, user: AuthUser) -> LeadDetailPublic:
@@ -611,6 +723,8 @@ class LeadsService:
         )
         handoff = AutoHandoffService(self._session)
         await handoff.on_call_logged(lead=lead, outcome=body.outcome, actor_user_id=user.user_id)
+        await self._session.flush()
+        enqueue_lead_shadow_upsert(self._session, lead)
         await self._repository.commit()
         await self._notifier("leads")
         return CallEventPublic.model_validate(event)
@@ -679,19 +793,26 @@ class LeadsService:
                     status_code=http_status.HTTP_400_BAD_REQUEST,
                     detail="Payment proof must be approved before moving to this status.",
                 )
+        now = datetime.now(timezone.utc)
         prev_status = lead.status
         lead.status = body.target_status
         bump_heat_on_entering_contacted(lead, prev_status)
-        lead = await self._repository.persist_lead(lead)
+        _apply_status_side_effects(
+            lead,
+            previous_status=prev_status,
+            new_status=body.target_status,
+            now=now,
+        )
+        lead = await self._commit_with_shadow_upsert(lead)
 
         # XP hooks — fire-and-forget; never block transition on XP errors
         try:
             from app.services.xp_service import grant_xp, revoke_won_xp
             if body.target_status == "contacted":
                 await grant_xp(self._session, user.user_id, "lead_contacted", lead.id)
-            elif body.target_status == "won":
+            elif body.target_status == "converted":
                 await grant_xp(self._session, user.user_id, "lead_won", lead.id)
-            if prev_status == "won" and body.target_status != "won":
+            if prev_status == "converted" and body.target_status != "converted":
                 await revoke_won_xp(self._session, user.user_id, lead.id)
             await self._session.commit()
         except Exception:
@@ -788,11 +909,11 @@ class LeadsService:
                     status_code=http_status.HTTP_400_BAD_REQUEST,
                     detail="Payment proof must be approved before using the 'paid' action.",
                 )
-            advance_lead_status_toward(lead=lead, target_slug="day1", role=user.role)
+            advance_lead_status_toward(lead=lead, target_slug="paid", role=user.role)
             lead.heat_score = clamp_ctcs_heat(int(lead.heat_score or 0) + settings.ctcs_heat_paid_bonus)
 
         lead.last_action_at = now
-        lead = await self._repository.persist_lead(lead)
+        lead = await self._commit_with_shadow_upsert(lead)
         await self._notifier("leads")
         return lead
 

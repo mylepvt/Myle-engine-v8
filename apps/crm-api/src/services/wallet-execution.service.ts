@@ -36,6 +36,7 @@ export async function runPoolClaimInTransaction(
       id: input.leadId,
       inPool: true,
       pipelineKind: input.pipelineKind,
+      isShadow: false,
     },
   });
   if (!lead) throw fsmError("POOL_EMPTY", "Lead not in pool", 400);
@@ -100,7 +101,7 @@ export async function runPoolClaimBatchInTransaction(
 ): Promise<PoolClaimBatchTxResult> {
   const cap = Math.max(1, Math.min(50, Math.floor(input.count)));
   const picked = await tx.lead.findMany({
-    where: { inPool: true, pipelineKind: input.pipelineKind },
+    where: { inPool: true, pipelineKind: input.pipelineKind, isShadow: false },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     take: cap,
   });

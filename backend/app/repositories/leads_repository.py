@@ -70,7 +70,7 @@ class SqlAlchemyLeadsRepository:
                 else_=1,
             )
             hotish = case(
-                (Lead.status.in_(("invited", "video_sent", "video_watched")), 0),
+                (Lead.status.in_(("invited", "whatsapp_sent", "video_sent", "video_watched")), 0),
                 else_=1,
             )
             stmt = stmt.order_by(
@@ -190,23 +190,35 @@ class SqlAlchemyLeadsRepository:
         lead.assigned_to_user_id = user_id
         lead.in_pool = False
 
-    async def persist_lead(self, lead: Lead) -> Lead:
-        await self._session.commit()
-        await self._session.refresh(lead)
+    async def persist_lead(
+        self,
+        lead: Lead,
+        *,
+        commit: bool = True,
+        refresh: bool = True,
+    ) -> Lead:
+        await self._session.flush()
+        if commit:
+            await self._session.commit()
+        if refresh:
+            await self._session.refresh(lead)
         return lead
 
-    async def soft_delete_lead(self, lead: Lead) -> None:
+    async def soft_delete_lead(self, lead: Lead, *, commit: bool = True) -> None:
         lead.deleted_at = datetime.now(timezone.utc)
         lead.in_pool = False
-        await self._session.commit()
+        await self._session.flush()
+        if commit:
+            await self._session.commit()
 
-    async def hard_delete_lead(self, lead_id: int) -> None:
+    async def hard_delete_lead(self, lead_id: int, *, commit: bool = True) -> None:
         # Explicit child cleanup because FK rows do not use ON DELETE CASCADE.
         await self._session.execute(delete(FollowUp).where(FollowUp.lead_id == lead_id))
         await self._session.execute(delete(CallEvent).where(CallEvent.lead_id == lead_id))
         await self._session.execute(delete(EnrollShareLink).where(EnrollShareLink.lead_id == lead_id))
         await self._session.execute(delete(Lead).where(Lead.id == lead_id))
-        await self._session.commit()
+        if commit:
+            await self._session.commit()
 
     async def create_call_event(self, *, lead_id: int, user_id: int, body: CallEventCreate) -> CallEvent:
         now = datetime.now(timezone.utc)

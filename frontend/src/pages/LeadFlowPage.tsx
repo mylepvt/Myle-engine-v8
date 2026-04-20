@@ -7,8 +7,8 @@ type Props = {
 }
 
 const PIPELINE_STAGES = [
-  'new_lead', 'contacted', 'invited', 'video_sent', 'video_watched',
-  'paid', 'day1', 'day2', 'interview', 'track_selected', 'seat_hold', 'converted',
+  'new_lead', 'contacted', 'invited', 'whatsapp_sent', 'video_sent', 'video_watched',
+  'paid', 'mindset_lock', 'day1', 'day2', 'day3', 'converted',
 ] as const
 
 const TERMINAL_STAGES = ['lost', 'retarget', 'inactive'] as const
@@ -23,11 +23,14 @@ const STAGE_COLORS: Record<string, string> = {
   new_lead:       'border-primary/30 bg-primary/10 text-primary',
   contacted:      'border-sky-400/30 bg-sky-400/10 text-sky-400',
   invited:        'border-violet-400/30 bg-violet-400/10 text-violet-400',
+  whatsapp_sent:  'border-pink-400/30 bg-pink-400/10 text-pink-400',
   video_sent:     'border-indigo-400/30 bg-indigo-400/10 text-indigo-400',
   video_watched:  'border-blue-400/30 bg-blue-400/10 text-blue-400',
   paid:           'border-amber-400/30 bg-amber-400/10 text-amber-400',
+  mindset_lock:   'border-fuchsia-400/30 bg-fuchsia-400/10 text-fuchsia-400',
   day1:           'border-orange-400/30 bg-orange-400/10 text-orange-400',
   day2:           'border-yellow-400/30 bg-yellow-400/10 text-yellow-400',
+  day3:           'border-lime-400/30 bg-lime-400/10 text-lime-400',
   interview:      'border-lime-400/30 bg-lime-400/10 text-lime-400',
   track_selected: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-400',
   seat_hold:      'border-teal-400/30 bg-teal-400/10 text-teal-400',
@@ -52,7 +55,7 @@ export function LeadFlowPage({ title }: Props) {
         <Link to="/dashboard/work/workboard" className="text-primary underline-offset-2 hover:underline">
           Workboard
         </Link>
-        .
+        . FastAPI is now the single source of truth for this lifecycle.
       </p>
 
       {/* Main pipeline */}

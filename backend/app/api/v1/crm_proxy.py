@@ -1,5 +1,5 @@
 """
-CRM Proxy — FastAPI gateway to CRM Fastify microservice.
+CRM Proxy — FastAPI gateway to the CRM Fastify microservice.
 
 Every request hitting /api/v1/crm/* is:
   1. Authenticated via FastAPI JWT cookie (same as all other routes).
@@ -7,7 +7,8 @@ Every request hitting /api/v1/crm/* is:
      so the CRM can extract sub + role from it.
   3. Response (body + status) is streamed back as-is.
 
-Zero business logic lives here. FastAPI = gate, CRM = brain.
+FastAPI is the single writer for lead lifecycle. CRM remains for wallet,
+pool-claim, leaderboard, and shadow-read surfaces only.
 """
 
 from __future__ import annotations
@@ -111,6 +112,58 @@ async def _proxy(
 # ---------------------------------------------------------------------------
 
 AuthDep = Annotated[AuthUser, Depends(require_auth_user)]
+
+
+def _crm_lifecycle_gone(detail: str) -> HTTPException:
+    return HTTPException(status_code=status.HTTP_410_GONE, detail=detail)
+
+
+@router.post("/crm/leads/{lead_id}/transition", tags=["crm"])
+async def crm_lead_transition_blocked(lead_id: int, user: AuthDep) -> Response:
+    _ = (lead_id, user)
+    raise _crm_lifecycle_gone("Lead lifecycle moved to /api/v1/leads/{id}/transition")
+
+
+@router.get("/crm/leads", tags=["crm"])
+async def crm_lead_list_blocked(user: AuthDep) -> Response:
+    _ = user
+    raise _crm_lifecycle_gone("Lead reads are no longer served from CRM")
+
+
+@router.post("/crm/leads", tags=["crm"])
+async def crm_lead_create_blocked(user: AuthDep) -> Response:
+    _ = user
+    raise _crm_lifecycle_gone("Lead creation moved to /api/v1/leads")
+
+
+@router.post("/crm/leads/{lead_id}/reassign", tags=["crm"])
+async def crm_lead_reassign_blocked(lead_id: int, user: AuthDep) -> Response:
+    _ = (lead_id, user)
+    raise _crm_lifecycle_gone("Lead reassignment is no longer handled through CRM")
+
+
+@router.post("/crm/leads/{lead_id}/close", tags=["crm"])
+async def crm_lead_close_blocked(lead_id: int, user: AuthDep) -> Response:
+    _ = (lead_id, user)
+    raise _crm_lifecycle_gone("Lead closing is no longer handled through CRM")
+
+
+@router.get("/crm/escalations", tags=["crm"])
+async def crm_escalations_blocked(user: AuthDep) -> Response:
+    _ = user
+    raise _crm_lifecycle_gone("Escalations are no longer served from CRM")
+
+
+@router.post("/crm/escalations", tags=["crm"])
+async def crm_create_escalation_blocked(user: AuthDep) -> Response:
+    _ = user
+    raise _crm_lifecycle_gone("Escalations are no longer created through CRM")
+
+
+@router.post("/crm/escalations/{escalation_id}/ack", tags=["crm"])
+async def crm_ack_escalation_blocked(escalation_id: str, user: AuthDep) -> Response:
+    _ = (escalation_id, user)
+    raise _crm_lifecycle_gone("Escalations are no longer acknowledged through CRM")
 
 
 @router.post("/crm/pool/claim", tags=["crm"])

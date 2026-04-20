@@ -109,7 +109,7 @@ class WorkboardService:
                 )
             )
             videos_to_send = await self._repository.count_leads(
-                and_(scope, Lead.status.in_(("new_lead", "new", "contacted", "invited")))
+                and_(scope, Lead.status.in_(("new_lead", "new", "contacted", "invited", "whatsapp_sent")))
             )
         batches_due = await self._repository.count_leads(
             and_(
@@ -135,7 +135,7 @@ class WorkboardService:
             )
         )
         closings_due = await self._repository.count_leads(
-            and_(scope, Lead.status.in_(("interview", "track_selected", "seat_hold")))
+            and_(scope, Lead.status.in_(("day3", "interview", "track_selected", "seat_hold")))
         )
         stale_before = datetime.now(timezone.utc) - timedelta(hours=stale_hours)
         stale_total = await self._repository.count_leads(

@@ -40,18 +40,21 @@ const BADGE: Record<string, string> = {
   new_lead:       'bg-primary/15 text-primary border-primary/25',
   contacted:      'bg-sky-400/15 text-sky-300 border-sky-400/25',
   invited:        'bg-violet-400/15 text-violet-300 border-violet-400/25',
+  whatsapp_sent:  'bg-pink-400/15 text-pink-300 border-pink-400/25',
   video_sent:     'bg-indigo-400/15 text-indigo-300 border-indigo-400/25',
   video_watched:  'bg-blue-400/15 text-blue-300 border-blue-400/25',
   paid:           'bg-amber-400/15 text-amber-300 border-amber-400/25',
+  mindset_lock:   'bg-fuchsia-400/15 text-fuchsia-300 border-fuchsia-400/25',
   day1:           'bg-orange-400/15 text-orange-300 border-orange-400/25',
   day2:           'bg-yellow-400/15 text-yellow-300 border-yellow-400/25',
+  day3:           'bg-lime-400/15 text-lime-300 border-lime-400/25',
   interview:      'bg-lime-400/15 text-lime-300 border-lime-400/25',
   track_selected: 'bg-emerald-400/15 text-emerald-300 border-emerald-400/25',
   seat_hold:      'bg-teal-400/15 text-teal-300 border-teal-400/25',
   converted:      'bg-green-500/15 text-green-300 border-green-500/25',
   lost:           'bg-destructive/15 text-destructive border-destructive/25',
 }
-const DAY3:   LeadStatus[] = ['interview','track_selected','seat_hold']
+const DAY3:   LeadStatus[] = ['day3', 'interview', 'track_selected', 'seat_hold']
 const CLOSE:  LeadStatus[] = ['converted','lost']
 const MIN_MINDSET_SECONDS = 300
 type BatchSlotKey = 'd1_morning' | 'd1_afternoon' | 'd1_evening' | 'd2_morning' | 'd2_afternoon' | 'd2_evening'
@@ -188,8 +191,13 @@ const LeadCard = memo(function LeadCard({
   const badge = BADGE[lead.status] ?? 'bg-muted/30 text-muted-foreground border-white/10'
   const isWatched = lead.status === 'video_watched' || lead.call_status === 'video_watched'
   const isSent    = !isWatched && (lead.status === 'video_sent' || lead.call_status === 'video_sent')
-  const mindsetReady =
+  const mindsetStartable =
     lead.status === 'paid' &&
+    !!(lead.payment_proof_url ?? '').trim() &&
+    lead.payment_status === 'approved' &&
+    !lead.mindset_started_at
+  const mindsetReady =
+    lead.status === 'mindset_lock' &&
     !!(lead.payment_proof_url ?? '').trim() &&
     lead.payment_status === 'approved' &&
     lead.mindset_lock_state !== 'leader_assigned'
@@ -273,6 +281,22 @@ const LeadCard = memo(function LeadCard({
           <Pencil className="h-3.5 w-3.5"/>
         </Link>
       </div>
+      {mindsetStartable ? (
+        <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 px-2 py-2">
+          <p className="text-ds-caption text-muted-foreground">
+            Payment approved. Start the 5-minute mindset lock before leader handoff.
+          </p>
+          <button
+            type="button"
+            disabled={leadPatchBusy}
+            onClick={() => void pm.mutateAsync({ id: lead.id, body: { status: 'mindset_lock' as LeadStatus } })}
+            className="flex h-8 w-full items-center justify-center gap-1 rounded-md border border-fuchsia-400/40 bg-fuchsia-400/12 px-2 text-ds-caption font-semibold text-fuchsia-300 transition hover:bg-fuchsia-400/20 disabled:opacity-50"
+          >
+            <CheckSquare className="h-3.5 w-3.5" />
+            <span>Start Mindset Lock</span>
+          </button>
+        </div>
+      ) : null}
       {mindsetReady ? (
         <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 px-2 py-2">
           <p className={cn('text-ds-caption font-semibold', lockLineClass)}>
@@ -316,17 +340,33 @@ const LeadCard = memo(function LeadCard({
 function DayBatchSection({ lead, dayKey, pm, leadPatchBusy, onMoveNext, nextLabel }: {
   lead: LeadPublic; dayKey: 1|2|3; pm: PM; leadPatchBusy: boolean; onMoveNext?: () => void; nextLabel?: string
 }) {
+  if (dayKey === 3) {
+    return (
+      <div className="space-y-1.5 border-t border-border/40 pt-1.5">
+        <p className="text-ds-caption text-muted-foreground">
+          Day 3 closer stage. Confirm completion when this lead is ready to convert.
+        </p>
+        {onMoveNext ? (
+          <button
+            type="button"
+            disabled={leadPatchBusy}
+            onClick={onMoveNext}
+            className="w-full rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50"
+          >
+            {nextLabel ?? 'Move to next stage →'}
+          </button>
+        ) : null}
+      </div>
+    )
+  }
+
   const batchSlots = dayKey === 1
     ? (['d1_morning', 'd1_afternoon', 'd1_evening'] as const)
-    : dayKey === 2
-    ? (['d2_morning', 'd2_afternoon', 'd2_evening'] as const)
-    : null
+    : (['d2_morning', 'd2_afternoon', 'd2_evening'] as const)
 
-  const done = batchSlots
-    ? batchSlots.every((k) => lead[k])
-    : !!lead.day3_completed_at
+  const done = batchSlots.every((k) => lead[k])
 
-  const patchKey = dayKey === 3 ? ('day3_completed' as const) : null
+  const patchKey = null
   const showDay2TestSend = dayKey === 2 && done
 
   const handleBatchClick = async (slot: 'M' | 'A' | 'E', slotKey?: BatchSlotKey) => {
@@ -725,15 +765,20 @@ function TeamView({
 }) {
   const byS = Object.fromEntries(cols.map((c) => [c.status, c]))
   const needle = search.trim().toLowerCase()
-  const mindsetLeads = (byS.paid?.items ?? []).filter(
+  const paidLeads = (byS.paid?.items ?? []).filter(
     (l) =>
-      l.mindset_lock_state === 'mindset_lock' &&
+      l.payment_status === 'approved' &&
       (!needle || l.name.toLowerCase().includes(needle) || (l.phone ?? '').includes(needle)),
   )
+  const mindsetLeads = (byS.mindset_lock?.items ?? []).filter(
+    (l) =>
+      (!needle || l.name.toLowerCase().includes(needle) || (l.phone ?? '').includes(needle)),
+  )
+  const mindsetQueue = [...paidLeads, ...mindsetLeads]
   useEffect(() => {
     mindsetLeads.forEach((lead) => {
       const ready =
-        lead.status === 'paid' &&
+        lead.status === 'mindset_lock' &&
         !!(lead.payment_proof_url ?? '').trim() &&
         lead.payment_status === 'approved' &&
         lead.mindset_lock_state !== 'leader_assigned'
@@ -748,17 +793,17 @@ function TeamView({
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-muted-foreground">Mindset Lock</h2>
         <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-ds-caption font-semibold tabular-nums text-muted-foreground">
-          {mindsetLeads.length}
+          {mindsetQueue.length}
         </span>
       </div>
       <Grid
-        leads={mindsetLeads}
+        leads={mindsetQueue}
         pm={pm}
         patchBusyLeadId={patchBusyLeadId}
         mindsetBusyLeadId={mindsetBusyLeadId}
         mindsetPreviewByLeadId={mindsetPreviewByLeadId}
         onRequestMindsetSend={onRequestMindsetSend}
-        empty="No mindset-lock leads yet"
+        empty="No paid or mindset-lock leads yet"
       />
     </div>
   )
@@ -807,32 +852,11 @@ function AdminView({ cols, pm, patchBusyLeadId, search }: { cols: Col[]; pm: PM;
             ].map(([label, count, cls]) =>
               <span key={label as string} className={cn('rounded-full border px-2.5 py-0.5 text-ds-caption font-medium', cls as string)}>{label}: {count}</span>)}
           </div>
-          <DayGrid leads={day2} dayKey={2} nextStatus="interview" nextLabel="Move to Day 3 →" pm={pm} patchBusyLeadId={patchBusyLeadId} />
+          <DayGrid leads={day2} dayKey={2} nextStatus="day3" nextLabel="Move to Day 3 →" pm={pm} patchBusyLeadId={patchBusyLeadId} />
         </div>
       )}
       {tab === 'day3' && (
-        <div className="space-y-6">
-          {DAY3.map((s) => {
-            const items = f([s])
-            return (
-              <div key={s} className="space-y-2">
-                <h3 className="text-sm font-semibold text-muted-foreground">{slabel(s)}</h3>
-                {items.length === 0 ? (
-                  <p className="rounded-lg border border-dashed border-border/70 px-3 py-6 text-center text-ds-caption text-muted-foreground">
-                    No leads
-                  </p>
-                ) : (
-                  <VirtualAdminLeadGrid
-                    leads={items}
-                    dayKey={3}
-                    pm={pm}
-                    patchBusyLeadId={patchBusyLeadId}
-                  />
-                )}
-              </div>
-            )
-          })}
-        </div>
+        <DayGrid leads={day3} dayKey={3} nextStatus="converted" nextLabel="Mark converted →" pm={pm} patchBusyLeadId={patchBusyLeadId} />
       )}
       {tab === 'closing' && (
         <div className="space-y-6">

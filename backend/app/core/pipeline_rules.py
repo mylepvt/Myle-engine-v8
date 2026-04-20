@@ -59,11 +59,14 @@ STATUS_TO_STAGE = {
     "New": "prospecting",
     "Contacted": "prospecting",
     "Invited": "prospecting",
+    "WhatsApp Sent": "prospecting",
     "Video Sent": "prospecting",
     "Video Watched": "prospecting",
     "Paid ₹196": "enrolled",
+    "Mindset Lock": "enrolled",
     "Day 1": "day1",
     "Day 2": "day2",
+    "Day 3": "day3",
     "Interview": "day3",
     "2cc Plan": "plan_2cc",
     "Track Selected": "day3",
@@ -80,9 +83,10 @@ STATUS_TO_STAGE = {
 
 STAGE_TO_DEFAULT_STATUS = {
     "enrollment": "New Lead",
+    "enrolled": "Paid ₹196",
     "day1": "Day 1",
     "day2": "Day 2",
-    "day3": "Interview",
+    "day3": "Day 3",
     "seat_hold": "Seat Hold Confirmed",
     "closing": "Fully Converted",
     "training": "Training",
@@ -96,6 +100,7 @@ TEAM_FORBIDDEN_STATUSES = frozenset(
     [
         "Day 1",
         "Day 2",
+        "Day 3",
         "Interview",
         "Track Selected",
         "Seat Hold Confirmed",
@@ -112,9 +117,11 @@ TEAM_ALLOWED_STATUSES = (
     "New Lead",
     "Contacted",
     "Invited",
+    "WhatsApp Sent",
     "Video Sent",
     "Video Watched",
     "Paid ₹196",
+    "Mindset Lock",
     "Lost",
     "Retarget",
 )
@@ -125,14 +132,14 @@ STATUS_FLOW_ORDER = [
     "New Lead",
     "Contacted",
     "Invited",
+    "WhatsApp Sent",
     "Video Sent",
     "Video Watched",
     "Paid ₹196",
+    "Mindset Lock",
     "Day 1",
     "Day 2",
-    "Interview",
-    "Track Selected",
-    "Seat Hold Confirmed",
+    "Day 3",
     "Fully Converted",
 ]
 
@@ -212,6 +219,8 @@ def is_valid_forward_status_transition(
         paid_i = flow_idx.get("Paid ₹196")
         if tgt == "Paid ₹196":
             return cur in ("Video Watched", "Paid ₹196")
+        if tgt == "Mindset Lock":
+            return cur in ("Paid ₹196", "Mindset Lock")
         if paid_i is not None and flow_idx[tgt] < paid_i:
             return flow_idx[tgt] > flow_idx[cur]
         return False

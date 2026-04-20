@@ -14,7 +14,7 @@ export async function qaRoutes(fastify: FastifyInstance) {
       orderBy: { email: "asc" },
     });
     const leads = await prisma.lead.findMany({
-      where: { name: { startsWith: "QA " } },
+      where: { name: { startsWith: "QA " }, isShadow: false },
       select: {
         id: true,
         name: true,
@@ -32,7 +32,7 @@ export async function qaRoutes(fastify: FastifyInstance) {
     });
     const handlerLoad = await prisma.lead.groupBy({
       by: ["handlerId"],
-      where: { pipelineKind: PipelineKind.TEAM, inPool: false, handlerId: { not: null } },
+      where: { pipelineKind: PipelineKind.TEAM, inPool: false, handlerId: { not: null }, isShadow: false },
       _count: { handlerId: true },
     });
     return {

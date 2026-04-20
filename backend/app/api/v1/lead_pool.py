@@ -18,6 +18,7 @@ from app.schemas.leads import (
     LeadPoolImportResponse,
     LeadPublic,
 )
+from app.services.crm_outbox import enqueue_lead_shadow_upsert
 from app.services.lead_pool_defaults import (
     APP_KEY_LEAD_POOL_DEFAULT_PRICE_CENTS,
     get_default_pool_price_cents,
@@ -141,6 +142,8 @@ async def import_lead_pool_xlsx(
         if st is not None:
             lead.created_at = st
         session.add(lead)
+        await session.flush()
+        enqueue_lead_shadow_upsert(session, lead)
         created += 1
 
     session.add(

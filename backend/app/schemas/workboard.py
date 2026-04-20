@@ -14,7 +14,7 @@ class WorkboardActionCounts(BaseModel):
     )
     videos_to_send: int = Field(
         0,
-        description="Scoped leads in invited or video_sent (share / follow up on enrollment video)",
+        description="Scoped leads in invited / WhatsApp sent before the enrollment video has been shared",
     )
     batches_due: int = Field(
         0,
@@ -22,7 +22,7 @@ class WorkboardActionCounts(BaseModel):
     )
     closings_due: int = Field(
         0,
-        description="Legacy parity: scoped interview/track-selected/seat-hold workload",
+        description="Scoped Day 3 / closing workload ready for closer action",
     )
 
 

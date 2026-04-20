@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
+import type { PatchLeadBody } from '@/hooks/use-leads-query'
 
 export type LeadDetail = {
   id: number
@@ -84,7 +85,7 @@ async function postLeadCall(leadId: number, body: CallEventCreate): Promise<Call
 
 async function patchLeadDetail(
   leadId: number,
-  body: Partial<LeadDetail>,
+  body: PatchLeadBody,
 ): Promise<LeadDetail> {
   const res = await apiFetch(`/api/v1/leads/${leadId}`, {
     method: 'PATCH',
@@ -126,7 +127,7 @@ export function useLogCallMutation() {
 export function usePatchLeadDetailMutation() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ leadId, body }: { leadId: number; body: Partial<LeadDetail> }) =>
+    mutationFn: ({ leadId, body }: { leadId: number; body: PatchLeadBody }) =>
       patchLeadDetail(leadId, body),
     onSuccess: (_data, { leadId }) => {
       void qc.invalidateQueries({ queryKey: ['lead-detail', leadId] })

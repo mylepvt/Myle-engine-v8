@@ -60,6 +60,13 @@ def _authed_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     return TestClient(app)
 
 
+@pytest.fixture(autouse=True)
+def _isolate_leads_table() -> None:
+    asyncio.run(_clear_leads())
+    yield
+    asyncio.run(_clear_leads())
+
+
 def test_workboard_requires_auth() -> None:
     res = client.get("/api/v1/workboard")
     assert res.status_code == 401

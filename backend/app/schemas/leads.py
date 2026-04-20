@@ -100,7 +100,7 @@ class LeadPublic(BaseModel):
             return "DAY1"
         if self.status == "day2":
             return "DAY2"
-        if self.status in ("interview", "track_selected", "seat_hold", "converted"):
+        if self.status in ("day3", "interview", "track_selected", "seat_hold", "converted"):
             return "DAY3"
         return "NONE"
 

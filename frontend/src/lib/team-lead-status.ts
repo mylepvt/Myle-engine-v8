@@ -4,6 +4,7 @@ import type { LeadStatus } from '@/hooks/use-leads-query'
 const TEAM_FORBIDDEN: ReadonlySet<LeadStatus> = new Set([
   'day1',
   'day2',
+  'day3',
   'interview',
   'track_selected',
   'seat_hold',

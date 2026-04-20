@@ -5,9 +5,8 @@ Uses vl2 schema: ``Lead`` + ``FollowUp`` + ``User`` (async SQLAlchemy). Legacy S
 columns (``follow_up_date`` on leads, ``pipeline_entered_at``, ``stale_worker``,
 ``call_result``, ``total_points``) are mapped or omitted — see each function.
 
-**Funnel semantics (vl2):** “Pre-video” ≈ ``status`` in {``new``, ``contacted``};
-“video reached” ≈ moved past that; “₹196 paid” ≈ ``payment_amount_cents`` ≥ 19600
-(legacy ₹196) or strong enrollment signal.
+**Funnel semantics (vl2):** pre-video ≈ ``new_lead/contacted/invited/whatsapp_sent``;
+video reached ≈ ``video_sent`` or beyond; paid ≈ approved payment / post-payment stage.
 """
 
 from __future__ import annotations
@@ -40,12 +39,37 @@ from app.schemas.execution_enforcement import (
 
 logger = logging.getLogger(__name__)
 
-# Legacy PRE_VIDEO → vl2 coarse buckets (short status set).
-PRE_VIDEO_STATUSES_VL2 = frozenset({"new", "contacted"})
-_FUNNEL_EXCLUDE_TERMINAL = frozenset({"won", "lost"})
+# Canonical pre-video stages in the FastAPI-led lifecycle.
+PRE_VIDEO_STATUSES_VL2 = frozenset({"new", "new_lead", "contacted", "invited", "whatsapp_sent"})
+_FUNNEL_EXCLUDE_TERMINAL = frozenset({"converted", "lost", "inactive"})
 # Redistribution-specific terminal states that must not be reassigned.
 _REDISTRIBUTION_TERMINAL_STATUSES = frozenset(
-    {"paid", "converted", "lost", "inactive"}
+    {
+        "paid",
+        "mindset_lock",
+        "day1",
+        "day2",
+        "day3",
+        "interview",
+        "track_selected",
+        "seat_hold",
+        "converted",
+        "lost",
+        "inactive",
+    }
+)
+_ENROLLED_SIGNAL_STATUSES = frozenset(
+    {
+        "paid",
+        "mindset_lock",
+        "day1",
+        "day2",
+        "day3",
+        "interview",
+        "track_selected",
+        "seat_hold",
+        "converted",
+    }
 )
 # ₹196 in paise/cents as stored (rupees × 100).
 RUPEES_196_CENTS = 196 * 100
@@ -166,7 +190,7 @@ async def team_personal_funnel(session: AsyncSession, user_id: int) -> TeamPerso
         base,
         or_(
             Lead.payment_amount_cents >= RUPEES_196_CENTS,
-            and_(Lead.status == "qualified", Lead.payment_status == "approved"),
+            and_(Lead.status.in_(tuple(_ENROLLED_SIGNAL_STATUSES)), Lead.payment_status == "approved"),
         ),
     )
     paid = int(
@@ -322,7 +346,7 @@ async def downline_member_execution_stats(
         (
             or_(
                 Lead.payment_amount_cents >= RUPEES_196_CENTS,
-                and_(Lead.status == "qualified", Lead.payment_status == "approved"),
+                and_(Lead.status.in_(tuple(_ENROLLED_SIGNAL_STATUSES)), Lead.payment_status == "approved"),
             ),
             1,
         ),
@@ -648,7 +672,7 @@ async def admin_weak_members(
         (
             or_(
                 Lead.payment_amount_cents >= RUPEES_196_CENTS,
-                and_(Lead.status == "qualified", Lead.payment_status == "approved"),
+                and_(Lead.status.in_(tuple(_ENROLLED_SIGNAL_STATUSES)), Lead.payment_status == "approved"),
             ),
             1,
         ),
@@ -711,7 +735,20 @@ async def admin_leak_map(session: AsyncSession) -> LeakMapOut:
     rows = (await session.execute(stmt)).all()
     hist_list = [StatusHistogramRow(status=s, count=int(c or 0)) for s, c in rows]
     m = {x.status: x.count for x in hist_list}
-    funnel_order = ["new", "contacted", "qualified", "won"]
+    funnel_order = [
+        "new_lead",
+        "contacted",
+        "invited",
+        "whatsapp_sent",
+        "video_sent",
+        "video_watched",
+        "paid",
+        "mindset_lock",
+        "day1",
+        "day2",
+        "day3",
+        "converted",
+    ]
     drops: list[FunnelDropRow] = []
     prev: tuple[str, int] | None = None
     for st in funnel_order:

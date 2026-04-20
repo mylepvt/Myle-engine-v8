@@ -2,6 +2,7 @@ from app.models.announcement import Announcement
 from app.models.activity_log import ActivityLog
 from app.models.call_event import CallEvent
 from app.models.batch_share_link import BatchShareLink
+from app.models.crm_outbox import CrmOutbox
 from app.models.enroll_share_link import EnrollShareLink
 from app.models.invoice import Invoice
 from app.models.lead import Lead
@@ -25,6 +26,7 @@ __all__ = [
     "ActivityLog",
     "CallEvent",
     "BatchShareLink",
+    "CrmOutbox",
     "EnrollShareLink",
     "Invoice",
     "Lead",

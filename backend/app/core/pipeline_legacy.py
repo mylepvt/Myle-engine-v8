@@ -49,11 +49,14 @@ STATUSES = [
     "New",
     "Contacted",
     "Invited",
+    "WhatsApp Sent",
     "Video Sent",
     "Video Watched",
     "Paid ₹196",
+    "Mindset Lock",
     "Day 1",
     "Day 2",
+    "Day 3",
     "Interview",
     "2cc Plan",
     "Track Selected",
@@ -73,10 +76,11 @@ WORKING_ENROLLMENT_STATUSES = (
     "New",
     "Contacted",
     "Invited",
+    "WhatsApp Sent",
     "Video Sent",
     "Video Watched",
 )
-WORKING_ENROLLED_STATUSES = ("Paid ₹196",)
+WORKING_ENROLLED_STATUSES = ("Paid ₹196", "Mindset Lock")
 WORKING_SIDE_PIPELINE_STATUSES = (
     "Retarget",
     "Inactive",
@@ -90,6 +94,7 @@ WORKING_BOARD_HOME_STATUSES = frozenset(
     + [
         "Day 1",
         "Day 2",
+        "Day 3",
         "Interview",
         "Track Selected",
         "Seat Hold Confirmed",
@@ -104,13 +109,16 @@ ADMIN_PIPELINE_BUCKET_ENROLLMENT = (
     "New Lead",
     "Contacted",
     "Invited",
+    "WhatsApp Sent",
     "Video Sent",
     "Video Watched",
     "Paid ₹196",
+    "Mindset Lock",
 )
 ADMIN_PIPELINE_BUCKET_TRAINING = (
     "Day 1",
     "Day 2",
+    "Day 3",
     "Interview",
     "Track Selected",
     "2cc Plan",
@@ -122,6 +130,7 @@ TEAM_MY_LEADS_READONLY_STATUSES = frozenset(
     {
         "Day 1",
         "Day 2",
+        "Day 3",
         "Interview",
         "Track Selected",
         "Seat Hold Confirmed",
