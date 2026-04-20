@@ -34,7 +34,7 @@ from app.schemas.leads import (
 )
 from app.services.all_leads_service import AllLeadsService, get_all_leads_service
 from app.services.lead_file_import import run_personal_lead_import
-from app.services.leads_service import LeadsService, get_leads_service
+from app.services.leads_service import LeadsService, get_leads_service, _PAYMENT_REQUIRED_STATUSES
 from app.services.downline import is_user_in_downline_of
 from app.services.leads_service import _sync_batch_completion_timestamps
 from app.api.v1.crm_sync import ensure_crm_shadow
@@ -445,8 +445,15 @@ async def transition_lead_status(
     # Access check stays in FastAPI (auth is our job)
     lead = await service._get_lead_or_404(lead_id)
     if not await service._repository.can_mutate_lead(user, lead):
-        from fastapi import HTTPException
         raise HTTPException(status_code=403, detail="Forbidden")
+
+    # Payment gate enforced here so CRM proxy path cannot bypass it.
+    if body.target_status in _PAYMENT_REQUIRED_STATUSES and user.role != "admin":
+        if lead.payment_status != "approved":
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="Payment proof must be approved before moving to this status.",
+            )
 
     if token and settings.crm_api_url:
         try:
