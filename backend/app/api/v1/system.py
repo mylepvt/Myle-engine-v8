@@ -34,6 +34,7 @@ from app.schemas.training_test import (
 from app.core.realtime_hub import notify_topics
 from app.services.shell_insights import build_decision_engine_snapshot
 from app.services.training_surface import build_training_surface
+from app.services.training_uploads import save_training_notes_image
 
 router = APIRouter()
 
@@ -84,6 +85,39 @@ async def training_day_embed(
     params = "controls=0&modestbranding=1&rel=0&disablekb=1&fs=0&iv_load_policy=3"
     embed_url = f"https://www.youtube.com/embed/{vid_id}?{params}"
     return RedirectResponse(url=embed_url, status_code=302)
+
+
+@router.post("/training/days/{day_number}/notes")
+async def upload_training_notes(
+    day_number: int,
+    file: Annotated[UploadFile, File()],
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Upload notes image for one training day from the system training surface."""
+    image_path = await save_training_notes_image(user.user_id, day_number, file)
+
+    existing = (
+        await session.execute(
+            select(TrainingDayNote).where(
+                TrainingDayNote.user_id == user.user_id,
+                TrainingDayNote.day_number == day_number,
+            )
+        )
+    ).scalar_one_or_none()
+
+    if existing:
+        existing.image_url = image_path
+    else:
+        session.add(
+            TrainingDayNote(
+                user_id=user.user_id,
+                day_number=day_number,
+                image_url=image_path,
+            )
+        )
+    await session.commit()
+    return {"day_number": day_number, "image_url": image_path}
 
 
 @router.post("/training/mark-day", response_model=TrainingSurfaceResponse)

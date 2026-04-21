@@ -172,7 +172,7 @@ function TrainingDaysBlock({
               onRefresh={onSessionRefresh}
               canBypassTrainingLocks={canBypassTrainingLocks}
             />
-            {canEditTrainingContent ? <TrainingDayAdmin dayNumber={v.day_number} /> : null}
+            {canEditTrainingContent ? <TrainingDayAdmin video={v} /> : null}
           </div>
         ))}
       </div>
@@ -401,7 +401,7 @@ export function TrainingProgramPanel({ data }: Props) {
     await qc.invalidateQueries({ queryKey: ['training', 'surface'] })
   }, [qc])
 
-  const canEditTrainingContent = serverRole === 'admin' && !isAdminPreviewing
+  const canEditTrainingContent = serverRole === 'admin'
   const canBypassTrainingLocks = serverRole === 'admin' && !isAdminPreviewing
 
   const trainingStatus = me?.training_status ?? ''
