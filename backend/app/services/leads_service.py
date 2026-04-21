@@ -635,40 +635,42 @@ class LeadsService:
             mindset_completed_at=now,
         )
 
-    async def reset_mindset_clock(
+    async def reset_stage_clock(
         self,
         *,
         lead_id: int,
         user: AuthUser,
     ) -> Lead:
         if user.role != "admin":
-            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Only admin can reset mindset clock")
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Only admin can reset stage clock")
         lead = await self._repository.get_lead_for_update(lead_id)
         if lead is None or lead.deleted_at is not None:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
 
         now = datetime.now(timezone.utc)
-        prev_status = lead.status
+        prev_last_action_at = _ensure_utc_datetime(lead.last_action_at)
         prev_started_at = _ensure_utc_datetime(lead.mindset_started_at)
         prev_completed_at = _ensure_utc_datetime(lead.mindset_completed_at)
         prev_lock_state = lead.mindset_lock_state
+        clock_scope = "stage"
 
-        lead.status = "mindset_lock"
-        _apply_status_side_effects(
-            lead,
-            previous_status=prev_status,
-            new_status=lead.status,
-            now=now,
-        )
-        _sync_stage_anchor(lead, previous_status=prev_status, now=now)
+        lead.last_action_at = now
+        if lead.status == "mindset_lock":
+            clock_scope = "mindset_lock"
+            lead.mindset_lock_state = "mindset_lock"
+            lead.mindset_started_at = now
+            lead.mindset_completed_at = None
+            lead.mindset_completed_by_user_id = None
+            lead.mindset_leader_user_id = None
 
         await self._repository.add_lead_activity(
             user_id=user.user_id,
-            action="mindset_clock.reset",
+            action="stage_clock.reset",
             lead_id=lead.id,
             meta={
-                "from_status": prev_status,
-                "to_status": lead.status,
+                "status": lead.status,
+                "clock_scope": clock_scope,
+                "previous_last_action_at": prev_last_action_at.isoformat() if prev_last_action_at else None,
                 "previous_started_at": prev_started_at.isoformat() if prev_started_at else None,
                 "previous_completed_at": prev_completed_at.isoformat() if prev_completed_at else None,
                 "previous_lock_state": prev_lock_state,

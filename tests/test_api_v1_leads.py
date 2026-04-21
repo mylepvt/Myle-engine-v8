@@ -725,34 +725,53 @@ def test_mindset_lock_complete_handles_persisted_started_at_after_reconnect(
         asyncio.run(_clear_leads())
 
 
-def test_admin_can_reset_mindset_clock_from_any_stage(
+def test_admin_can_reset_current_stage_clock_without_changing_status(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    started_at = datetime.now(timezone.utc) - timedelta(minutes=18)
-    completed_at = datetime.now(timezone.utc) - timedelta(minutes=12)
-    fac = test_conftest.get_test_session_factory()
-
-    async def _seed_lead() -> None:
-        async with fac() as session:
-            session.add(
-                Lead(
-                    name="Converted Lead",
-                    status="converted",
-                    payment_status="approved",
-                    mindset_started_at=started_at,
-                    mindset_completed_at=completed_at,
-                    mindset_lock_state="leader_assigned",
-                    created_by_user_id=2,
-                    assigned_to_user_id=2,
-                )
-            )
-            await session.commit()
-
-    asyncio.run(_seed_lead())
+    anchor = datetime.now(timezone.utc) - timedelta(hours=3)
+    asyncio.run(
+        _seed_one_lead(
+            user_id=2,
+            name="Day 2 Lead",
+            lead_status="day2",
+            assigned_to_user_id=2,
+            last_action_at=anchor,
+        )
+    )
     try:
         c = _authed_client(monkeypatch)
         assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
-        res = c.post("/api/v1/leads/1/mindset-lock-reset")
+        res = c.post("/api/v1/leads/1/stage-clock-reset")
+        assert res.status_code == 200
+        body = res.json()
+        assert body["status"] == "day2"
+        assert body["assigned_to_user_id"] == 2
+        assert body["last_action_at"] is not None
+        assert body["last_action_at"] != anchor.isoformat()
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_admin_can_reset_mindset_lock_timer_without_leaving_stage(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    started_at = datetime.now(timezone.utc) - timedelta(minutes=18)
+    anchor = datetime.now(timezone.utc) - timedelta(hours=1)
+    asyncio.run(
+        _seed_one_lead(
+            user_id=2,
+            name="Mindset Lead",
+            lead_status="mindset_lock",
+            mindset_started_at=started_at,
+            mindset_lock_state="mindset_lock",
+            assigned_to_user_id=2,
+            last_action_at=anchor,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        res = c.post("/api/v1/leads/1/stage-clock-reset")
         assert res.status_code == 200
         body = res.json()
         assert body["status"] == "mindset_lock"
@@ -761,11 +780,13 @@ def test_admin_can_reset_mindset_clock_from_any_stage(
         assert body["mindset_completed_at"] is None
         assert body["mindset_started_at"] is not None
         assert body["mindset_started_at"] != started_at.isoformat()
+        assert body["last_action_at"] is not None
+        assert body["last_action_at"] != anchor.isoformat()
     finally:
         asyncio.run(_clear_leads())
 
 
-def test_non_admin_cannot_reset_mindset_clock(
+def test_non_admin_cannot_reset_stage_clock(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     asyncio.run(
@@ -779,7 +800,7 @@ def test_non_admin_cannot_reset_mindset_clock(
     try:
         c = _authed_client(monkeypatch)
         assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
-        res = c.post("/api/v1/leads/1/mindset-lock-reset")
+        res = c.post("/api/v1/leads/1/stage-clock-reset")
         assert res.status_code == 403
     finally:
         asyncio.run(_clear_leads())
