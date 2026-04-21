@@ -19,6 +19,7 @@ import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { apiFetch } from '@/lib/api'
 import { callStatusSelectOptions } from '@/lib/call-status-options'
 import { formatCountdown, timerRemainingMs } from '@/lib/ctcs-timer'
+import { getMindsetLockSendState } from '@/lib/mindset-lock'
 import { LEAD_SLA_SMOOTH_REFRESH_MS, formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
 import { whatsappDigits } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
@@ -178,7 +179,6 @@ const LeadCard = memo(function LeadCard({
   nowMs: number
 }) {
   const { role } = useDashboardShellRole()
-
   // ── Proof upload ──────────────────────────────────────────────────────────────
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
@@ -235,10 +235,15 @@ const LeadCard = memo(function LeadCard({
   const startedAtMs = lead.mindset_started_at ? new Date(lead.mindset_started_at).getTime() : null
   const elapsedSeconds = startedAtMs ? Math.max(0, Math.floor((nowMs - startedAtMs) / 1000)) : 0
   const remainingSeconds = Math.max(0, MIN_MINDSET_SECONDS - elapsedSeconds)
-  const unlocked = remainingSeconds === 0
+  const { unlocked, canSend, leaderName: previewName } = getMindsetLockSendState({
+    mindsetReady,
+    remainingSeconds,
+    preview: mindsetPreview,
+  })
   const lockLineClass = unlocked ? 'text-emerald-300' : 'text-red-300'
-  const previewName = mindsetPreview?.leader_name ?? 'Resolving...'
-  const canSend = mindsetReady && unlocked && !!mindsetPreview?.leader_user_id
+  const mindsetFlowCopy = unlocked
+    ? '5-minute call complete. Send now to move this lead into Day 1.'
+    : 'Complete the full 5-minute call to unlock Day 1 handoff.'
   const callOptions = callStatusSelectOptions(role ?? null, lead.status as LeadStatus)
   const rawCallStatus = (lead.call_status ?? '').trim()
   const callValue = callOptions.some((option) => option.value === rawCallStatus)
@@ -420,11 +425,14 @@ const LeadCard = memo(function LeadCard({
               Minimum call time: {mmss(remainingSeconds)}
             </p>
             <p className="text-ds-caption text-muted-foreground">
-              Will be assigned to: <span className="font-semibold text-foreground">{previewName}</span>
+              {mindsetFlowCopy}
+            </p>
+            <p className="text-ds-caption text-muted-foreground">
+              Day 1 handoff: <span className="font-semibold text-foreground">{previewName}</span>
             </p>
             <button
               type="button"
-              title={!canSend ? 'Complete at least 5 minutes call before sending' : 'Send to leader'}
+              title={!canSend ? 'Complete at least 5 minutes call before sending' : 'Send to leader and move to Day 1'}
               disabled={!canSend || mindsetBusy}
               onClick={() => onRequestMindsetSend?.(lead)}
               className={cn(
@@ -924,7 +932,7 @@ export function WorkboardPage({ title }: Props) {
         delete next[leadId]
         return next
       })
-      setToastMsg('Lead sent to leader')
+      setToastMsg('Lead moved to Day 1')
     } catch (e) {
       setMindsetErr(e instanceof Error ? e.message : 'Could not complete mindset lock')
     } finally {
@@ -1011,7 +1019,7 @@ export function WorkboardPage({ title }: Props) {
             <h3 className="text-base font-semibold text-foreground">Send to Leader?</h3>
             <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
               <li>You have completed mindset call (5–10 min)</li>
-              <li>This action will transfer lead to your leader</li>
+              <li>This action will move the lead to Day 1 under your leader</li>
               <li>You won’t be able to edit after this</li>
             </ul>
             <div className="mt-4 flex items-center justify-end gap-2">
