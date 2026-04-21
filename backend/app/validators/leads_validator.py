@@ -10,7 +10,6 @@ from app.api.deps import AuthUser
 from app.core.lead_status import LEAD_STATUS_SET
 from app.models.lead import Lead
 from app.services.lead_scope import lead_visibility_where
-from app.services.downline import lead_management_visible_to_leader_clause
 
 
 def escape_ilike(term: str) -> str:
@@ -49,11 +48,7 @@ def lead_list_conditions(
     if archived_only or deleted_only:
         visibility = None if user.role == "admin" else Lead.assigned_to_user_id == user.user_id
     else:
-        visibility = (
-            lead_management_visible_to_leader_clause(user.user_id)
-            if user.role == "leader"
-            else lead_visibility_where(user)
-        )
+        visibility = lead_visibility_where(user)
     if visibility is not None:
         parts.append(visibility)
 

@@ -553,8 +553,11 @@ class LeadsService:
         return claimed, total_price_cents
 
     async def preview_mindset_lock(self, *, lead_id: int, user: AuthUser) -> MindsetLockPreviewResponse:
-        if user.role != "team":
-            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Only team can preview mindset lock")
+        if user.role not in {"team", "leader"}:
+            raise HTTPException(
+                status_code=http_status.HTTP_403_FORBIDDEN,
+                detail="Only team or leader can preview mindset lock",
+            )
         lead = await self._get_lead_or_404(lead_id)
         if lead.assigned_to_user_id != user.user_id:
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
@@ -569,7 +572,11 @@ class LeadsService:
                 status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail="Mindset session has not started for this lead",
             )
-        leader = await self._nearest_leader(user.user_id)
+        leader = (
+            (user.user_id, _display_name_from_fields(user.display_name, user.username, user.email))
+            if user.role == "leader"
+            else await self._nearest_leader(user.user_id)
+        )
         now = datetime.now(timezone.utc)
         elapsed_seconds = max(0, int((now - started_at).total_seconds()))
         remaining_seconds = max(0, 300 - elapsed_seconds)
@@ -588,8 +595,11 @@ class LeadsService:
         lead_id: int,
         user: AuthUser,
     ) -> MindsetLockCompleteResponse:
-        if user.role != "team":
-            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Only team can complete mindset lock")
+        if user.role not in {"team", "leader"}:
+            raise HTTPException(
+                status_code=http_status.HTTP_403_FORBIDDEN,
+                detail="Only team or leader can complete mindset lock",
+            )
         lead = await self._repository.get_lead_for_update(lead_id)
         if lead is None:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
@@ -629,7 +639,7 @@ class LeadsService:
         if lead.status != "mindset_lock":
             raise HTTPException(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
-                detail="Lead must be in mindset lock before leader handoff",
+                detail="Lead must be in mindset lock before completion",
             )
         started_at = _ensure_utc_datetime(lead.mindset_started_at)
         if started_at is None:
@@ -642,15 +652,19 @@ class LeadsService:
         if duration_seconds < 300:
             raise HTTPException(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
-                detail="Minimum 5 minutes required before sending to leader",
+                detail="Minimum 5 minutes required before completing mindset lock",
             )
-        leader = await self._nearest_leader(user.user_id)
-        if leader is None:
-            raise HTTPException(
-                status_code=http_status.HTTP_400_BAD_REQUEST,
-                detail="No leader found in upline",
-            )
-        leader_id, leader_name = leader
+        if user.role == "leader":
+            leader_id = user.user_id
+            leader_name = _display_name_from_fields(user.display_name, user.username, user.email)
+        else:
+            leader = await self._nearest_leader(user.user_id)
+            if leader is None:
+                raise HTTPException(
+                    status_code=http_status.HTTP_400_BAD_REQUEST,
+                    detail="No leader found in upline",
+                )
+            leader_id, leader_name = leader
         from_uid = lead.assigned_to_user_id
         lead.status = "day1"
         lead.assigned_to_user_id = leader_id
