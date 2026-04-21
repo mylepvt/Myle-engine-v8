@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { ArrowUpRight, CheckCircle2, ShieldCheck, Sparkles } from 'lucide-react'
+import { CheckCircle2, ShieldCheck, Sparkles } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { InAppVideoPlayer } from '@/components/watch/InAppVideoPlayer'
 import { WatchLiveGauge } from '@/components/watch/WatchLiveGauge'
 import { apiUrl } from '@/lib/api'
 import { buildEmbeddableVideoUrl, resolveYouTubeWatchUrl } from '@/lib/youtube'
@@ -146,48 +147,23 @@ export function WatchPage() {
                   </div>
                   <Badge variant="success">Ready</Badge>
                 </div>
-                <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-black/70 shadow-[0_30px_80px_-35px_rgba(56,189,248,0.55)]">
-                  <iframe
-                    className="aspect-video h-full w-full"
-                    src={embedUrl}
-                    title={data.title}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-white/55">
-                    <span>Clean embed loaded inside Myle. If autoplay is blocked, tap play once.</span>
-                    {externalUrl ? (
-                      <a
-                        href={externalUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-cyan-100 transition hover:text-white"
-                      >
-                        Open in YouTube
-                        <ArrowUpRight className="size-3.5" />
-                      </a>
-                    ) : null}
-                  </div>
-                </div>
+                <InAppVideoPlayer
+                  embedUrl={embedUrl}
+                  title={data.title}
+                  fallbackUrl={externalUrl}
+                  previewEyebrow="Private room ready"
+                  previewTitle={data.title}
+                  previewDescription="Tap play to open the session inside Myle without exposing YouTube text before the video starts."
+                />
               </section>
             ) : (
-              <section className="flex aspect-video w-full flex-col items-center justify-center rounded-[2rem] border border-amber-300/20 bg-amber-300/[0.06] px-6 text-center">
-                <p className="text-base font-semibold text-white">Video needs a clean embeddable source.</p>
-                <p className="mt-2 max-w-md text-sm leading-relaxed text-white/65">
-                  Broken mobile watch URLs are blocked from loading inside the app player, so the room stays clean instead of showing refused-to-connect errors.
-                </p>
-                {externalUrl ? (
-                  <a
-                    href={externalUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/25 px-4 py-2 text-sm font-medium text-white transition hover:border-cyan-300/25 hover:text-cyan-100"
-                  >
-                    Open fallback video
-                    <ArrowUpRight className="size-4" />
-                  </a>
-                ) : null}
-              </section>
+              <InAppVideoPlayer
+                embedUrl={null}
+                title={data.title}
+                fallbackUrl={externalUrl}
+                previewEyebrow="Private room ready"
+                previewTitle={data.title}
+              />
             )}
 
             <section className="grid gap-4 md:grid-cols-2">
