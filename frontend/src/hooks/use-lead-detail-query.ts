@@ -96,8 +96,8 @@ async function patchLeadDetail(
   return res.json()
 }
 
-async function postResetMindsetClock(leadId: number): Promise<LeadDetail> {
-  const res = await apiFetch(`/api/v1/leads/${leadId}/mindset-lock-reset`, {
+async function postResetStageClock(leadId: number): Promise<LeadDetail> {
+  const res = await apiFetch(`/api/v1/leads/${leadId}/stage-clock-reset`, {
     method: 'POST',
   })
   if (!res.ok) await parseError(res)
@@ -144,10 +144,10 @@ export function usePatchLeadDetailMutation() {
   })
 }
 
-export function useResetMindsetClockMutation() {
+export function useResetStageClockMutation() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ leadId }: { leadId: number }) => postResetMindsetClock(leadId),
+    mutationFn: ({ leadId }: { leadId: number }) => postResetStageClock(leadId),
     onSuccess: (_data, { leadId }) => {
       void qc.invalidateQueries({ queryKey: ['lead-detail', leadId] })
       void qc.invalidateQueries({ queryKey: ['leads'] })

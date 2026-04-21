@@ -10,7 +10,7 @@ import {
   useLeadDetailQuery,
   useLogCallMutation,
   usePatchLeadDetailMutation,
-  useResetMindsetClockMutation,
+  useResetStageClockMutation,
 } from '@/hooks/use-lead-detail-query'
 import { EnrollmentCard } from '@/components/leads/EnrollmentCard'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
@@ -88,7 +88,7 @@ export function LeadDetailPage({ leadId }: Props) {
   const transitionsQ = useAvailableTransitionsQuery(leadId)
   const callsQuery = useLeadCallsQuery(leadId)
   const patchMut = usePatchLeadDetailMutation()
-  const resetMindsetClockMut = useResetMindsetClockMutation()
+  const resetStageClockMut = useResetStageClockMutation()
   const logCallMut = useLogCallMutation()
   const pipelineStatusOptions = lead
     ? (() => {
@@ -219,17 +219,20 @@ export function LeadDetailPage({ leadId }: Props) {
     }
   }
 
-  async function handleResetMindsetClock() {
-    if (role !== 'admin') return
+  async function handleResetStageClock() {
+    if (role !== 'admin' || !lead) return
     setResetClockError('')
+    const currentStageLabel = LEAD_STATUS_OPTIONS.find((option) => option.value === lead.status)?.label ?? lead.status
     const confirmed = window.confirm(
-      'Reset mindset clock and move this lead back to Mindset Lock? This keeps the lead assigned, but restarts the 5-minute timer.',
+      lead.status === 'mindset_lock'
+        ? 'Reset the Mindset Lock timer for this lead? This keeps the lead in Mindset Lock and restarts the 5-minute countdown.'
+        : `Reset the ${currentStageLabel} clock for this lead? This keeps the lead in ${currentStageLabel} and restarts that stage timer.`,
     )
     if (!confirmed) return
     try {
-      await resetMindsetClockMut.mutateAsync({ leadId })
+      await resetStageClockMut.mutateAsync({ leadId })
     } catch (e) {
-      setResetClockError(e instanceof Error ? e.message : 'Could not reset mindset clock')
+      setResetClockError(e instanceof Error ? e.message : 'Could not reset stage clock')
     }
   }
 
@@ -265,6 +268,14 @@ export function LeadDetailPage({ leadId }: Props) {
       </div>
     )
   }
+
+  const currentStageLabel = LEAD_STATUS_OPTIONS.find((option) => option.value === lead.status)?.label ?? lead.status
+  const stageClockHelpText =
+    lead.status === 'mindset_lock'
+      ? 'Admin-only: restart the 5-minute Mindset Lock timer without moving this lead out of Mindset Lock.'
+      : `Admin-only: restart the ${currentStageLabel} stage clock without moving this lead out of ${currentStageLabel}.`
+  const stageClockButtonLabel =
+    lead.status === 'mindset_lock' ? 'Reset Mindset Lock Clock' : `Reset ${currentStageLabel} Clock`
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -391,6 +402,30 @@ export function LeadDetailPage({ leadId }: Props) {
                 <p className="text-xs text-destructive" role="alert">
                   {pipelineError}
                 </p>
+              ) : null}
+              {role === 'admin' ? (
+                <div className="rounded-md border border-amber-400/20 bg-amber-400/5 p-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Stage Clock Control</p>
+                      <p className="text-xs text-muted-foreground">{stageClockHelpText}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      disabled={resetStageClockMut.isPending}
+                      onClick={() => void handleResetStageClock()}
+                    >
+                      {resetStageClockMut.isPending ? 'Resetting…' : stageClockButtonLabel}
+                    </Button>
+                  </div>
+                  {resetClockError ? (
+                    <p className="mt-2 text-xs text-destructive" role="alert">
+                      {resetClockError}
+                    </p>
+                  ) : null}
+                </div>
               ) : null}
             </div>
           </div>
@@ -644,32 +679,6 @@ export function LeadDetailPage({ leadId }: Props) {
                 </div>
               </div>
             </div>
-            {role === 'admin' ? (
-              <div className="rounded-md border border-amber-400/20 bg-amber-400/5 p-3">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Mindset Clock Control</p>
-                    <p className="text-xs text-muted-foreground">
-                      Admin-only: move this lead into Mindset Lock and restart the 5-minute timer from any stage.
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    disabled={resetMindsetClockMut.isPending}
-                    onClick={() => void handleResetMindsetClock()}
-                  >
-                    {resetMindsetClockMut.isPending ? 'Resetting…' : 'Reset Mindset Clock'}
-                  </Button>
-                </div>
-                {resetClockError ? (
-                  <p className="mt-2 text-xs text-destructive" role="alert">
-                    {resetClockError}
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
           </div>
         </div>
       </div>
