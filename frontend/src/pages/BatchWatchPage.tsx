@@ -280,7 +280,7 @@ export function BatchWatchPage() {
     : null
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#040915] text-white">
+    <div className="relative min-h-screen overflow-x-hidden bg-[#040915] text-white">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-[-8rem] top-[-10rem] h-[24rem] w-[24rem] rounded-full bg-cyan-400/18 blur-3xl" />
         <div className="absolute right-[-10rem] top-[4rem] h-[28rem] w-[28rem] rounded-full bg-blue-500/16 blur-3xl" />
@@ -320,69 +320,8 @@ export function BatchWatchPage() {
           </div>
         ) : data ? (
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1.18fr)_22rem]">
-            <div className="space-y-6">
-              <section className="rounded-[2rem] border border-white/10 bg-white/[0.05] p-5 shadow-[0_24px_80px_-38px_rgba(34,211,238,0.55)] backdrop-blur-xl md:p-7">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="primary">Day {data.day_number}</Badge>
-                  <Badge variant="outline" className="border-white/15 bg-white/[0.04] text-white/75">
-                    {data.slot_label}
-                  </Badge>
-                  <Badge variant="outline" className="border-white/15 bg-white/[0.04] text-white/75">
-                    Video {data.version}
-                  </Badge>
-                  {greetingCopy ? (
-                    <Badge variant="outline" className="border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-100">
-                      {greetingCopy.reservedBadge}
-                    </Badge>
-                  ) : null}
-                  {watchComplete ? <Badge variant="success">Watch tracked</Badge> : <Badge variant="warning">Playing now</Badge>}
-                </div>
-
-                <div className="mt-6 grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
-                  <div className="rounded-[1.75rem] border border-white/10 bg-black/20 p-4">
-                    <WatchLiveGauge />
-                  </div>
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-sm uppercase tracking-[0.28em] text-cyan-200/70">
-                        {greetingCopy?.greetingLine ?? 'Personal batch room'}
-                      </p>
-                      <h1 className="mt-2 text-3xl font-semibold leading-tight text-white md:text-[2.6rem]">
-                        {greetingCopy?.heroTitle ?? `${data.slot_label} batch ready for ${data.lead_name}.`}
-                      </h1>
-                      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/68 md:text-base">
-                        {greetingCopy?.heroSubtitle ?? data.subtitle}
-                      </p>
-                    </div>
-
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-3">
-                        <p className="text-xs uppercase tracking-[0.22em] text-white/45">Playback</p>
-                        <p className="mt-2 text-sm font-semibold text-white">Inside Myle</p>
-                      </div>
-                      <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-3">
-                        <p className="text-xs uppercase tracking-[0.22em] text-white/45">Batch</p>
-                        <p className="mt-2 text-sm font-semibold text-white">
-                          {greetingCopy?.privateRoomBadge ?? data.title}
-                        </p>
-                      </div>
-                      <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-3">
-                        <p className="text-xs uppercase tracking-[0.22em] text-white/45">Trust Layer</p>
-                        <p className="mt-2 text-sm font-semibold text-white">Private room</p>
-                      </div>
-                    </div>
-
-                    {greetingCopy ? (
-                      <div className="rounded-[1.5rem] border border-cyan-300/12 bg-cyan-300/[0.06] px-4 py-4">
-                        <p className="text-sm font-semibold text-white">{greetingCopy.focusLine}</p>
-                        <p className="mt-1 text-sm text-white/62">{greetingCopy.trustLine}</p>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              </section>
-
-              <section className="rounded-[2rem] border border-white/10 bg-white/[0.05] p-4 backdrop-blur-xl md:p-5">
+            <div className="flex flex-col gap-6">
+              <section className="order-1 rounded-[2rem] border border-white/10 bg-white/[0.05] p-4 backdrop-blur-xl md:p-5 lg:order-2">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-white">In-app player</p>
@@ -415,13 +354,78 @@ export function BatchWatchPage() {
                   </div>
                 ) : (
                   <p className="mt-3 text-sm text-white/58">
-                    Video ending par status auto-track ho jayega. Button fallback ke liye bhi diya hua hai.
+                    Video starting me issue ho to screen par play tap kariye. Button fallback bhi diya hua hai.
                   </p>
                 )}
               </section>
 
+              <section className="order-2 rounded-[2rem] border border-white/10 bg-white/[0.05] p-5 shadow-[0_24px_80px_-38px_rgba(34,211,238,0.55)] backdrop-blur-xl md:p-7 lg:order-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="primary">Day {data.day_number}</Badge>
+                  <Badge variant="outline" className="border-white/15 bg-white/[0.04] text-white/75">
+                    {data.slot_label}
+                  </Badge>
+                  <Badge variant="outline" className="border-white/15 bg-white/[0.04] text-white/75">
+                    Video {data.version}
+                  </Badge>
+                  {greetingCopy ? (
+                    <Badge variant="outline" className="border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-100">
+                      {greetingCopy.reservedBadge}
+                    </Badge>
+                  ) : null}
+                  {watchComplete ? <Badge variant="success">Watch tracked</Badge> : <Badge variant="warning">Playing now</Badge>}
+                </div>
+
+                <div className="mt-5 grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-6">
+                  <div className="hidden rounded-[1.75rem] border border-white/10 bg-black/20 p-4 sm:block">
+                    <WatchLiveGauge />
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm uppercase tracking-[0.28em] text-cyan-200/70">
+                        {greetingCopy?.greetingLine ?? 'Personal batch room'}
+                      </p>
+                      <h1 className="mt-2 text-2xl font-semibold leading-tight text-white sm:text-3xl md:text-[2.6rem]">
+                        {greetingCopy?.heroTitle ?? `${data.slot_label} batch ready for ${data.lead_name}.`}
+                      </h1>
+                      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/68 md:text-base">
+                        {greetingCopy?.heroSubtitle ?? data.subtitle}
+                      </p>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-3">
+                        <p className="text-xs uppercase tracking-[0.22em] text-white/45">Playback</p>
+                        <p className="mt-2 text-sm font-semibold text-white">Inside Myle</p>
+                      </div>
+                      <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-3">
+                        <p className="text-xs uppercase tracking-[0.22em] text-white/45">Batch</p>
+                        <p className="mt-2 text-sm font-semibold text-white">
+                          {greetingCopy?.privateRoomBadge ?? data.title}
+                        </p>
+                      </div>
+                      <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-3">
+                        <p className="text-xs uppercase tracking-[0.22em] text-white/45">Trust Layer</p>
+                        <p className="mt-2 text-sm font-semibold text-white">Private room</p>
+                      </div>
+                    </div>
+
+                    {greetingCopy ? (
+                      <div className="rounded-[1.5rem] border border-cyan-300/12 bg-cyan-300/[0.06] px-4 py-4">
+                        <p className="text-sm font-semibold text-white">{greetingCopy.focusLine}</p>
+                        <p className="mt-1 text-sm text-white/62">{greetingCopy.trustLine}</p>
+                      </div>
+                    ) : null}
+
+                    <div className="rounded-[1.35rem] border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/68 sm:hidden">
+                      Scroll down for your full batch flow and submission wall.
+                    </div>
+                  </div>
+                </div>
+              </section>
+
               {data.submission_enabled ? (
-                <section className="rounded-[2rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl md:p-6">
+                <section className="order-3 rounded-[2rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl md:p-6">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="primary">Day 2 Submission</Badge>
                     <Badge variant="outline" className="border-white/15 bg-white/[0.04] text-white/75">

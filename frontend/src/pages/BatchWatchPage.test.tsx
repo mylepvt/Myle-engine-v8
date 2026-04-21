@@ -45,9 +45,13 @@ describe('BatchWatchPage', () => {
       expect(screen.getByText('Good Morning Rahul')).toBeInTheDocument()
     })
 
+    const playerHeading = screen.getByText('In-app player')
+    const greeting = screen.getByText('Good Morning Rahul')
+
     expect(screen.getByText('Your Day 2 Morning Batch is ready')).toBeInTheDocument()
     expect(screen.getByText('Reserved for Rahul')).toBeInTheDocument()
     expect(screen.getByText(/Video plays inside Myle/i)).toBeInTheDocument()
+    expect(playerHeading.compareDocumentPosition(greeting) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 
     const iframe = screen.getByTitle('Day 2 Morning Batch')
     expect(iframe).toHaveAttribute(
