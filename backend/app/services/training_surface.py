@@ -79,6 +79,7 @@ async def build_training_surface(session: AsyncSession, user_id: int) -> Trainin
             day_number=v.day_number,
             title=v.title,
             has_video=bool(v.youtube_url),
+            youtube_url=v.youtube_url,
             audio_url=getattr(v, "audio_url", None),
             unlocked=_is_unlocked(v.day_number, progress),
         )

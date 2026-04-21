@@ -6,7 +6,8 @@ export type TrainingVideo = {
   day_number: number
   title: string
   has_video?: boolean
-  audio_url?: string
+  youtube_url?: string | null
+  audio_url?: string | null
   unlocked?: boolean
 }
 
