@@ -26,7 +26,9 @@ class TeamTodayStatsOut(BaseModel):
     """Legacy-style team dashboard day counters (IST day window)."""
 
     claimed_today: int
+    fresh_leads_today: int = 0
     calls_today: int
+    call_target: int = 0
     enrolled_today: int
 
 
@@ -45,6 +47,10 @@ class MemberExecutionStats(BaseModel):
     proof_pend: int
     fu_due: int
     conv_pct: float
+    calls_today: int = 0
+    fresh_leads_today: int = 0
+    call_target: int = 0
+    call_gate_met: bool = True
 
 
 class DownlineExecutionStatsOut(BaseModel):

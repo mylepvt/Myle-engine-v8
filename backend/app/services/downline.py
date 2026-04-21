@@ -33,6 +33,23 @@ async def is_user_in_downline_of(
     return False
 
 
+async def recursive_downline_user_ids(
+    session: AsyncSession,
+    leader_user_id: int,
+) -> list[int]:
+    """Strict descendants of ``leader_user_id`` in the upline tree."""
+    tree = (
+        select(User.id)
+        .where(User.upline_user_id == leader_user_id)
+        .cte(name="recursive_downline_tree", recursive=True)
+    )
+    tree = tree.union_all(
+        select(User.id).where(User.upline_user_id == tree.c.id),
+    )
+    rows = await session.execute(select(tree.c.id))
+    return [int(uid) for uid in rows.scalars().all()]
+
+
 def lead_visible_to_leader_clause(leader_user_id: int):
     """Leads the leader may see: own + created by any descendant in the upline tree."""
     tree = (

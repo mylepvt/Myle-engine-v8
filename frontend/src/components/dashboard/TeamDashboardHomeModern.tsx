@@ -46,9 +46,9 @@ function statCards(
 }[] {
   return [
     {
-      label: 'Claimed',
+      label: "Today's Leads",
       value: today?.claimed_today ?? 0,
-      sub: 'Today',
+      sub: 'Fresh today',
       Icon: Briefcase,
       accent: 'text-blue-400',
       cardClass:
@@ -184,7 +184,7 @@ export function TeamDashboardHomeModern({
           <div className="grid grid-cols-3 gap-2">
             <div className="rounded-[1.15rem] border border-white/10 bg-white/[0.08] px-3 py-3 backdrop-blur-sm">
               <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-blue-100/64">
-                Claimed
+                Today&apos;s leads
               </p>
               <p className="mt-2 text-xl font-semibold leading-none text-white">
                 {today?.claimed_today ?? 0}

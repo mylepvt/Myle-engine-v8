@@ -10,12 +10,19 @@ export type GateChecklistItem = {
 }
 
 export type GateAssistantResponse = {
+  role: 'team' | 'leader' | 'admin'
   risk_level: 'green' | 'yellow' | 'red'
   progress_done: number
   progress_total: number
   next_action: string
   next_href: string | null
+  next_label: string | null
   checklist: GateChecklistItem[]
+  fresh_leads_today: number
+  calls_today: number
+  call_target: number
+  pending_proof_count: number
+  members_below_call_gate: number
   open_follow_ups: number
   overdue_follow_ups: number
   active_pipeline_leads: number

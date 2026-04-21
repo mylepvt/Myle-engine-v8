@@ -110,8 +110,12 @@ async def execution_downline_stats(
             proof_pend=d["proof_pend"],
             fu_due=d["fu_due"],
             conv_pct=d["conv_pct"],
+            calls_today=d["calls_today"],
+            fresh_leads_today=d["fresh_leads_today"],
+            call_target=d["call_target"],
+            call_gate_met=d["call_gate_met"],
         )
-        tags[str(uid)] = enf.bottleneck_tags_for_member(d, calls_today=0)
+        tags[str(uid)] = enf.bottleneck_tags_for_member(d, calls_today=d["calls_today"])
     return DownlineExecutionStatsOut(stats=stats, bottleneck_tags=tags)
 
 
