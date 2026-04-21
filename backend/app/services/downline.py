@@ -66,6 +66,24 @@ def lead_visible_to_leader_clause(leader_user_id: int):
     )
 
 
+def lead_management_visible_to_leader_clause(leader_user_id: int):
+    """Leads a leader may manage from All Leads: own/downline creator or assignee scope."""
+    tree = (
+        select(User.id)
+        .where(User.upline_user_id == leader_user_id)
+        .cte(name="management_downline_tree", recursive=True)
+    )
+    tree = tree.union_all(
+        select(User.id).where(User.upline_user_id == tree.c.id),
+    )
+    return or_(
+        Lead.created_by_user_id == leader_user_id,
+        Lead.assigned_to_user_id == leader_user_id,
+        Lead.created_by_user_id.in_(select(tree.c.id)),
+        Lead.assigned_to_user_id.in_(select(tree.c.id)),
+    )
+
+
 def lead_execution_visible_to_leader_clause(leader_user_id: int):
     """Execution ownership visibility: leader + assignees in downline tree."""
     tree = (

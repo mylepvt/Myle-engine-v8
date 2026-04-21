@@ -17,13 +17,12 @@ from app.services.downline import (
 def lead_visibility_where(user: AuthUser) -> Optional[Any]:
     """None = no extra filter (admin).
 
-    Leader: own leads plus leads created by users under them (``User.upline_user_id`` tree).
+    Default creator scope used by legacy parity surfaces.
 
-    Team: only leads they created.
+    List/workboard endpoints may apply broader leader-specific execution filters separately.
     """
     if user.role == "admin":
         return None
-    # Leaders see only their own leads (not downline team leads).
     return Lead.created_by_user_id == user.user_id
 
 
@@ -36,6 +35,20 @@ def lead_execution_visibility_where(user: AuthUser) -> Optional[Any]:
     return Lead.assigned_to_user_id == user.user_id
 
 
+async def _leader_may_manage_lead(session: AsyncSession, user: AuthUser, lead: Lead) -> bool:
+    member_ids = {
+        int(member_id)
+        for member_id in (lead.created_by_user_id, lead.assigned_to_user_id)
+        if member_id is not None
+    }
+    for member_id in member_ids:
+        if member_id == user.user_id:
+            return True
+        if await is_user_in_downline_of(session, member_id, user.user_id):
+            return True
+    return False
+
+
 async def user_can_access_lead(session: AsyncSession, user: AuthUser, lead: Lead) -> bool:
     """Single-lead gate aligned with list/workboard visibility (plus assignee read)."""
     if user.role == "admin":
@@ -45,16 +58,16 @@ async def user_can_access_lead(session: AsyncSession, user: AuthUser, lead: Lead
     if lead.assigned_to_user_id == user.user_id:
         return True
     if user.role == "leader":
-        return await is_user_in_downline_of(session, lead.created_by_user_id, user.user_id)
+        return await _leader_may_manage_lead(session, user, lead)
     return False
 
 
 async def user_can_mutate_lead(session: AsyncSession, user: AuthUser, lead: Lead) -> bool:
-    """PATCH/delete and similar — admin, owner, or leader over downline-created leads."""
+    """PATCH/delete and similar — admin, owner, or leader over managed downline leads."""
     if user.role == "admin":
         return True
     if lead.created_by_user_id == user.user_id:
         return True
     if user.role == "leader":
-        return await is_user_in_downline_of(session, lead.created_by_user_id, user.user_id)
+        return await _leader_may_manage_lead(session, user, lead)
     return False

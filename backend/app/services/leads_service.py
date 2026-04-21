@@ -149,6 +149,10 @@ def _apply_status_side_effects(
     if new_status == "whatsapp_sent" and lead.whatsapp_sent_at is None:
         lead.whatsapp_sent_at = now
 
+    if new_status in {"lost", "retarget"}:
+        # Legacy parity: terminal retarget/lost moves clear pending follow-up timers.
+        lead.next_followup_at = None
+
     if new_status == "paid":
         lead.mindset_lock_state = None
         lead.mindset_started_at = None

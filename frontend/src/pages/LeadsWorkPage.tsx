@@ -296,7 +296,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                 type="text"
                 value={qInput}
                 onChange={(e) => setQInput(e.target.value)}
-                placeholder="Search leads..."
+                placeholder="Search name, phone, email..."
                 className="min-w-0 flex-1 bg-transparent text-ds-caption text-foreground outline-none placeholder:text-muted-foreground"
                 autoComplete="off"
               />
