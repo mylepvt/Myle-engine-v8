@@ -8,6 +8,7 @@ import { callStatusSelectOptions, type CallStatusApi } from '@/lib/call-status-o
 import { formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
 import { leadStatusSelectOptionsForLead, teamMayChangeLeadStatus } from '@/lib/team-lead-status'
 import { formatCountdown, timerRemainingMs } from '@/lib/ctcs-timer'
+import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import { telHref, whatsAppChatHref } from '@/lib/phone-links'
 import { LEAD_STATUS_OPTIONS, type LeadPublic, type LeadStatus } from '@/hooks/use-leads-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
@@ -64,7 +65,7 @@ export function CtcsLeadCard({
   onCall,
   onFollowUp,
 }: Props) {
-  const { role } = useDashboardShellRole()
+  const { role, serverRole } = useDashboardShellRole()
   const selectBusy = patchBusy || actionBusy
 
   // ── Proof upload ───────────────────────────────────────────────────────────
@@ -78,7 +79,7 @@ export function CtcsLeadCard({
   const proofPending = lead.payment_status === 'proof_uploaded' || uploadDone
   const proofRejected = lead.payment_status === 'rejected'
   const showProofControl = lead.status === 'video_watched' || proofPending || proofApproved || proofRejected
-  const currentRole = role ?? 'team'
+  const currentRole = resolveDashboardSurfaceRole(role, serverRole) ?? 'team'
   const mayUploadProof = (currentRole === 'leader' || currentRole === 'team') && (lead.status === 'video_watched' || proofRejected)
 
   async function handleProofFile(file: File) {
