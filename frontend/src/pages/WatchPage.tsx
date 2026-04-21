@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { CheckCircle2, ShieldCheck, Sparkles } from 'lucide-react'
 
+import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { WatchLiveGauge } from '@/components/watch/WatchLiveGauge'
+import { apiUrl } from '@/lib/api'
+import { extractYouTubeId } from '@/lib/youtube'
 
 type WatchPageData = {
   token: string
@@ -10,32 +14,6 @@ type WatchPageData = {
   youtube_url: string | null
   lead_name: string
   view_count: number
-}
-
-/** Extract YouTube video ID from various URL formats. */
-function extractYouTubeId(url: string): string | null {
-  try {
-    // youtu.be/ID
-    const shortMatch = url.match(/youtu\.be\/([A-Za-z0-9_-]{11})/)
-    if (shortMatch) return shortMatch[1]
-
-    const parsed = new URL(url)
-
-    // youtube.com/watch?v=ID
-    const v = parsed.searchParams.get('v')
-    if (v && v.length === 11) return v
-
-    // youtube.com/embed/ID
-    const embedMatch = parsed.pathname.match(/\/embed\/([A-Za-z0-9_-]{11})/)
-    if (embedMatch) return embedMatch[1]
-
-    // youtube.com/shorts/ID
-    const shortsMatch = parsed.pathname.match(/\/shorts\/([A-Za-z0-9_-]{11})/)
-    if (shortsMatch) return shortsMatch[1]
-  } catch {
-    // not a valid URL — ignore
-  }
-  return null
 }
 
 export function WatchPage() {
@@ -51,8 +29,7 @@ export function WatchPage() {
       return
     }
 
-    // Plain fetch — no auth headers needed (public endpoint)
-    fetch(`/api/v1/watch/${token}`)
+    fetch(apiUrl(`/api/v1/watch/${token}`))
       .then(async (res) => {
         if (!res.ok) {
           const body = await res.json().catch(() => ({}))
@@ -77,69 +54,135 @@ export function WatchPage() {
   const videoId = data?.youtube_url ? extractYouTubeId(data.youtube_url) : null
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-zinc-950 via-black to-zinc-950 text-white flex flex-col items-center">
-      {/* Header */}
-      <header className="w-full border-b border-white/10 bg-black/40 px-4 py-3 backdrop-blur-md">
-        <div className="mx-auto flex max-w-2xl items-center justify-between">
-          <span className="bg-gradient-to-r from-cyan-200 via-white to-violet-200 bg-clip-text text-lg font-semibold tracking-tight text-transparent">
-            Myle
-          </span>
-          <span className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[0.6rem] font-medium uppercase tracking-wider text-white/50">
-            Watch
-          </span>
+    <div className="relative min-h-screen overflow-hidden bg-[#040915] text-white">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute left-[-8rem] top-[-10rem] h-[24rem] w-[24rem] rounded-full bg-cyan-400/18 blur-3xl" />
+        <div className="absolute right-[-10rem] top-[4rem] h-[28rem] w-[28rem] rounded-full bg-blue-500/16 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_35%),linear-gradient(180deg,rgba(8,15,30,0.72),rgba(3,6,13,0.96))]" />
+      </div>
+
+      <header className="relative w-full border-b border-white/10 bg-black/20 px-4 py-4 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-5xl items-center justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.32em] text-cyan-200/70">Myle Experience</p>
+            <p className="mt-1 text-lg font-semibold tracking-tight text-white">Private Watch Room</p>
+          </div>
+          <Badge variant="outline" className="border-white/15 bg-white/[0.05] text-white/72">
+            Same-domain video room
+          </Badge>
         </div>
       </header>
 
-      <main className="w-full max-w-2xl flex flex-col items-center gap-6 px-4 py-8">
+      <main className="relative mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8 md:px-6 md:py-10">
         {loading ? (
           <>
-            <Skeleton className="h-7 w-64 bg-white/10" />
-            <Skeleton className="w-full aspect-video bg-white/10" />
-            <Skeleton className="h-4 w-80 bg-white/10" />
+            <Skeleton className="h-12 w-72 bg-white/10" />
+            <Skeleton className="h-[30rem] w-full rounded-[2rem] bg-white/10" />
+            <Skeleton className="h-32 w-full rounded-[2rem] bg-white/10" />
           </>
         ) : error ? (
-          <div className="text-center space-y-2 pt-8" role="alert">
-            <p className="text-destructive text-sm">{error}</p>
-            <p className="text-white/50 text-xs">
+          <div className="mx-auto max-w-xl rounded-[2rem] border border-red-400/20 bg-red-500/[0.08] px-6 py-8 text-center" role="alert">
+            <p className="text-sm text-red-200">{error}</p>
+            <p className="mt-2 text-xs text-white/55">
               This link may have expired or is invalid.
             </p>
           </div>
         ) : data ? (
           <>
-            <WatchLiveGauge />
-
-            {/* Title */}
-            <h1 className="text-lg font-semibold text-center text-white/90">
-              {data.title}
-            </h1>
-
-            {/* Personalised greeting */}
-            <p className="text-sm text-white/60 -mt-3">
-              Hey {data.lead_name}, this video was shared with you personally.
-            </p>
-
-            {/* Video embed */}
-            {videoId ? (
-              <div className="w-full aspect-video rounded-lg overflow-hidden bg-black">
-                <iframe
-                  className="w-full h-full"
-                  src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
-                  title={data.title}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
+            <section className="rounded-[2rem] border border-white/10 bg-white/[0.05] p-5 shadow-[0_24px_80px_-38px_rgba(34,211,238,0.55)] backdrop-blur-xl md:p-7">
+              <div className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
+                <div className="rounded-[1.75rem] border border-white/10 bg-black/20 p-4">
+                  <WatchLiveGauge />
+                </div>
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="primary">
+                      <Sparkles className="mr-1 size-3.5" />
+                      Private share
+                    </Badge>
+                    <Badge variant="outline" className="border-white/15 bg-white/[0.04] text-white/75">
+                      View #{data.view_count}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-sm uppercase tracking-[0.28em] text-cyan-200/70">Personal video room</p>
+                    <h1 className="mt-2 text-3xl font-semibold leading-tight text-white md:text-[2.6rem]">
+                      {data.title}
+                    </h1>
+                    <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/68 md:text-base">
+                      Hey {data.lead_name}, this video was shared personally for you. Watch it here
+                      inside Myle with the full branded experience.
+                    </p>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-3">
+                      <p className="text-xs uppercase tracking-[0.22em] text-white/45">Playback</p>
+                      <p className="mt-2 text-sm font-semibold text-white">Inside Myle</p>
+                    </div>
+                    <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-3">
+                      <p className="text-xs uppercase tracking-[0.22em] text-white/45">Trust Layer</p>
+                      <p className="mt-2 text-sm font-semibold text-white">Private same-domain room</p>
+                    </div>
+                  </div>
+                </div>
               </div>
+            </section>
+
+            {videoId ? (
+              <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.05] p-4 backdrop-blur-xl md:p-5">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-white">In-app player</p>
+                    <p className="mt-1 text-sm text-white/60">
+                      Video plays here so the experience stays premium and focused.
+                    </p>
+                  </div>
+                  <Badge variant="success">Ready</Badge>
+                </div>
+                <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-black/70 shadow-[0_30px_80px_-35px_rgba(56,189,248,0.55)]">
+                  <iframe
+                    className="aspect-video h-full w-full"
+                    src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`}
+                    title={data.title}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              </section>
             ) : (
-              <div className="w-full aspect-video rounded-lg bg-white/5 flex items-center justify-center">
-                <p className="text-white/40 text-sm">Video link coming soon.</p>
+              <div className="flex aspect-video w-full items-center justify-center rounded-[2rem] border border-white/10 bg-white/[0.05] text-sm text-white/45">
+                Video link coming soon.
               </div>
             )}
 
-            {/* Footer message */}
-            <p className="text-center text-sm text-white/50 max-w-sm">
-              This video was shared with you personally. After watching, you'll be
-              contacted shortly.
-            </p>
+            <section className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-[2rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-3 text-cyan-200">
+                    <ShieldCheck className="size-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">Built for trust</p>
+                    <p className="mt-1 text-xs leading-relaxed text-white/58">
+                      Same-domain playback makes the journey feel premium instead of bouncing out to a raw YouTube page.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-[2rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-3 text-emerald-200">
+                    <CheckCircle2 className="size-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">What happens next</p>
+                    <p className="mt-1 text-xs leading-relaxed text-white/58">
+                      After watching, the team can follow up with you directly from the next step in the flow.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
           </>
         ) : null}
       </main>
