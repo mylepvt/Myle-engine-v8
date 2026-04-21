@@ -635,6 +635,50 @@ class LeadsService:
             mindset_completed_at=now,
         )
 
+    async def reset_mindset_clock(
+        self,
+        *,
+        lead_id: int,
+        user: AuthUser,
+    ) -> Lead:
+        if user.role != "admin":
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Only admin can reset mindset clock")
+        lead = await self._repository.get_lead_for_update(lead_id)
+        if lead is None or lead.deleted_at is not None:
+            raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
+
+        now = datetime.now(timezone.utc)
+        prev_status = lead.status
+        prev_started_at = _ensure_utc_datetime(lead.mindset_started_at)
+        prev_completed_at = _ensure_utc_datetime(lead.mindset_completed_at)
+        prev_lock_state = lead.mindset_lock_state
+
+        lead.status = "mindset_lock"
+        _apply_status_side_effects(
+            lead,
+            previous_status=prev_status,
+            new_status=lead.status,
+            now=now,
+        )
+        _sync_stage_anchor(lead, previous_status=prev_status, now=now)
+
+        await self._repository.add_lead_activity(
+            user_id=user.user_id,
+            action="mindset_clock.reset",
+            lead_id=lead.id,
+            meta={
+                "from_status": prev_status,
+                "to_status": lead.status,
+                "previous_started_at": prev_started_at.isoformat() if prev_started_at else None,
+                "previous_completed_at": prev_completed_at.isoformat() if prev_completed_at else None,
+                "previous_lock_state": prev_lock_state,
+                "reset_at": now.isoformat(),
+            },
+        )
+        lead = await self._commit_with_shadow_upsert(lead)
+        await self._notifier("leads", "workboard")
+        return lead
+
     async def update_lead(self, *, lead_id: int, body: LeadUpdate, user: AuthUser) -> Lead:
         lead = await self._get_lead_or_404(lead_id)
         if lead.deleted_at is not None and body.restored is not True:

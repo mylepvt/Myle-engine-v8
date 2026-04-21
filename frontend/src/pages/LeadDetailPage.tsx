@@ -10,6 +10,7 @@ import {
   useLeadDetailQuery,
   useLogCallMutation,
   usePatchLeadDetailMutation,
+  useResetMindsetClockMutation,
 } from '@/hooks/use-lead-detail-query'
 import { EnrollmentCard } from '@/components/leads/EnrollmentCard'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
@@ -87,6 +88,7 @@ export function LeadDetailPage({ leadId }: Props) {
   const transitionsQ = useAvailableTransitionsQuery(leadId)
   const callsQuery = useLeadCallsQuery(leadId)
   const patchMut = usePatchLeadDetailMutation()
+  const resetMindsetClockMut = useResetMindsetClockMutation()
   const logCallMut = useLogCallMutation()
   const pipelineStatusOptions = lead
     ? (() => {
@@ -103,6 +105,7 @@ export function LeadDetailPage({ leadId }: Props) {
   const [pipelineStatus, setPipelineStatus] = useState('')
   const [pipelineCallStatus, setPipelineCallStatus] = useState('')
   const [pipelineError, setPipelineError] = useState('')
+  const [resetClockError, setResetClockError] = useState('')
 
   // Notes card
   const [notes, setNotes] = useState('')
@@ -213,6 +216,20 @@ export function LeadDetailPage({ leadId }: Props) {
       })
     } catch {
       /* surfaced by patchMut.isError */
+    }
+  }
+
+  async function handleResetMindsetClock() {
+    if (role !== 'admin') return
+    setResetClockError('')
+    const confirmed = window.confirm(
+      'Reset mindset clock and move this lead back to Mindset Lock? This keeps the lead assigned, but restarts the 5-minute timer.',
+    )
+    if (!confirmed) return
+    try {
+      await resetMindsetClockMut.mutateAsync({ leadId })
+    } catch (e) {
+      setResetClockError(e instanceof Error ? e.message : 'Could not reset mindset clock')
     }
   }
 
@@ -627,6 +644,32 @@ export function LeadDetailPage({ leadId }: Props) {
                 </div>
               </div>
             </div>
+            {role === 'admin' ? (
+              <div className="rounded-md border border-amber-400/20 bg-amber-400/5 p-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Mindset Clock Control</p>
+                    <p className="text-xs text-muted-foreground">
+                      Admin-only: move this lead into Mindset Lock and restart the 5-minute timer from any stage.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={resetMindsetClockMut.isPending}
+                    onClick={() => void handleResetMindsetClock()}
+                  >
+                    {resetMindsetClockMut.isPending ? 'Resetting…' : 'Reset Mindset Clock'}
+                  </Button>
+                </div>
+                {resetClockError ? (
+                  <p className="mt-2 text-xs text-destructive" role="alert">
+                    {resetClockError}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
