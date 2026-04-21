@@ -4,9 +4,13 @@ import asyncio
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import delete
 
+from app.models.invoice import Invoice
 from main import app
 
+from app.models.wallet_ledger import WalletLedgerEntry
+from app.models.wallet_recharge import WalletRecharge
 from conftest import get_test_session_factory
 from app.models.user import User
 from util_jwt_patch import patch_jwt_settings
@@ -15,6 +19,22 @@ from util_jwt_patch import patch_jwt_settings
 def _authed(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     patch_jwt_settings(monkeypatch, auth_dev_login_enabled=True)
     return TestClient(app)
+
+
+async def _reset_wallet_tables() -> None:
+    factory = get_test_session_factory()
+    async with factory() as session:
+        await session.execute(delete(Invoice))
+        await session.execute(delete(WalletRecharge))
+        await session.execute(delete(WalletLedgerEntry))
+        await session.commit()
+
+
+@pytest.fixture(autouse=True)
+def _clean_wallet_state() -> None:
+    asyncio.run(_reset_wallet_tables())
+    yield
+    asyncio.run(_reset_wallet_tables())
 
 
 def test_wallet_me_requires_auth() -> None:

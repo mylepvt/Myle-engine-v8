@@ -78,6 +78,25 @@ export function GateAssistantCard({ sessionReady }: Props) {
     data.progress_total > 0
       ? Math.round((data.progress_done / data.progress_total) * 100)
       : 0
+  const summaryBits = [
+    data.fresh_leads_today > 0 ? `Today's leads: ${data.fresh_leads_today}` : null,
+    data.call_target > 0
+      ? `Fresh calls: ${data.calls_today} / ${data.call_target}`
+      : data.calls_today > 0
+        ? `Fresh calls: ${data.calls_today}`
+        : null,
+    data.overdue_follow_ups > 0 || data.role === 'team'
+      ? `Overdue follow-ups: ${data.overdue_follow_ups}`
+      : null,
+    data.pending_proof_count > 0 || data.role !== 'team'
+      ? `Proofs waiting: ${data.pending_proof_count}`
+      : null,
+    data.members_below_call_gate > 0 || data.role === 'leader'
+      ? `Members below gate: ${data.members_below_call_gate}`
+      : null,
+    data.active_pipeline_leads > 0 ? `Pipeline leads: ${data.active_pipeline_leads}` : null,
+  ].filter(Boolean) as string[]
+  const secondaryGate = data.checklist.find((c) => !c.done && c.href && c.href !== data.next_href)
 
   return (
     <Card
@@ -104,7 +123,7 @@ export function GateAssistantCard({ sessionReady }: Props) {
           </span>
         </div>
         <CardDescription>
-          Daily focus — follow-ups and pipeline health (from your live data).
+          Role-based execution gates from live leads, calls, follow-ups, and proof state.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -133,30 +152,43 @@ export function GateAssistantCard({ sessionReady }: Props) {
               ) : (
                 <CircleAlert className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
               )}
-              <span className={cn(c.done ? 'text-muted-foreground' : 'text-foreground')}>
-                {c.label}
-              </span>
+              {c.href && !c.done ? (
+                <Link
+                  to={`/dashboard/${c.href}`}
+                  className={cn(
+                    'underline underline-offset-2',
+                    c.done ? 'text-muted-foreground' : 'text-foreground',
+                  )}
+                >
+                  {c.label}
+                </Link>
+              ) : (
+                <span className={cn(c.done ? 'text-muted-foreground' : 'text-foreground')}>
+                  {c.label}
+                </span>
+              )}
             </li>
           ))}
         </ul>
 
         <div className="flex flex-wrap gap-2">
-          <Button variant="default" size="sm" asChild>
-            <Link to="/dashboard/work/follow-ups">View queue</Link>
-          </Button>
           {data.next_href ? (
+            <Button variant="default" size="sm" asChild>
+              <Link to={`/dashboard/${data.next_href}`}>{data.next_label ?? 'Open task'}</Link>
+            </Button>
+          ) : null}
+          {secondaryGate?.href ? (
             <Button variant="outline" size="sm" asChild>
-              <Link to={`/dashboard/${data.next_href}`}>Open follow-ups</Link>
+              <Link to={`/dashboard/${secondaryGate.href}`}>Open another gate</Link>
             </Button>
           ) : null}
         </div>
 
         <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-sm">
           <p className="font-medium text-foreground">{data.next_action}</p>
-          <p className="mt-1 text-ds-caption text-muted-foreground">
-            Open: {data.open_follow_ups} · Overdue: {data.overdue_follow_ups} · Pipeline leads:{' '}
-            {data.active_pipeline_leads}
-          </p>
+          {summaryBits.length > 0 ? (
+            <p className="mt-1 text-ds-caption text-muted-foreground">{summaryBits.join(' · ')}</p>
+          ) : null}
         </div>
       </CardContent>
     </Card>

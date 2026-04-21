@@ -24,6 +24,11 @@ from app.models.follow_up import FollowUp
 from app.models.call_event import CallEvent
 from app.models.lead import Lead
 from app.models.user import User
+from app.services.live_metrics import (
+    fresh_call_counts_by_user,
+    fresh_lead_counts_by_user,
+    get_daily_call_target,
+)
 from app.schemas.execution_enforcement import (
     AtRiskLeadRow,
     LeakMapOut,
@@ -130,7 +135,11 @@ def bottleneck_tags_for_member(
         and int(stats.get("total_active") or 0) >= 4
     ):
         tags.append("Follow-up slow")
-    if int(stats.get("total_active") or 0) >= 2 and calls_today == 0:
+    call_target = int(stats.get("call_target") or 0)
+    fresh_leads_today = int(stats.get("fresh_leads_today") or 0)
+    if call_target > 0 and fresh_leads_today > 0 and calls_today < call_target:
+        tags.append("No activity" if calls_today == 0 else "Call gate short")
+    elif int(stats.get("total_active") or 0) >= 2 and calls_today == 0:
         tags.append("No activity")
     if not tags:
         tags.append("On track")
@@ -218,39 +227,15 @@ async def team_today_stats(
     today_iso: str,
 ) -> TeamTodayStatsOut:
     """Legacy-like team day counters for dashboard cards."""
+    day = datetime.strptime(today_iso, "%Y-%m-%d").date()
     start = _start_of_day_ist(today_iso)
     end = _end_of_day_ist(today_iso)
     base = and_(Lead.assigned_to_user_id == user_id, _active_lead_filters())
 
-    claimed_today = int(
-        (
-            await session.execute(
-                select(func.count())
-                .select_from(Lead)
-                .where(
-                    base,
-                    Lead.created_at >= start,
-                    Lead.created_at <= end,
-                )
-            )
-        ).scalar_one()
-        or 0
-    )
-
-    calls_today = int(
-        (
-            await session.execute(
-                select(func.count())
-                .select_from(CallEvent)
-                .where(
-                    CallEvent.user_id == user_id,
-                    CallEvent.called_at >= start,
-                    CallEvent.called_at <= end,
-                )
-            )
-        ).scalar_one()
-        or 0
-    )
+    fresh_leads_today = (await fresh_lead_counts_by_user(session, [user_id], day)).get(user_id, 0)
+    calls_today = (await fresh_call_counts_by_user(session, [user_id], day)).get(user_id, 0)
+    call_target = await get_daily_call_target(session)
+    effective_call_target = call_target if fresh_leads_today > 0 else 0
 
     enrolled_today = int(
         (
@@ -278,8 +263,10 @@ async def team_today_stats(
     )
 
     return TeamTodayStatsOut(
-        claimed_today=claimed_today,
+        claimed_today=fresh_leads_today,
+        fresh_leads_today=fresh_leads_today,
         calls_today=calls_today,
+        call_target=effective_call_target,
         enrolled_today=enrolled_today,
     )
 
@@ -331,7 +318,11 @@ async def downline_member_execution_stats(
     """Per assignee: totals, enrollments, proof queue, follow-up pressure."""
     if not user_ids:
         return {}
+    day = datetime.strptime(today_iso, "%Y-%m-%d").date()
     end = _end_of_day_ist(today_iso)
+    calls_today_map = await fresh_call_counts_by_user(session, user_ids, day)
+    fresh_leads_today_map = await fresh_lead_counts_by_user(session, user_ids, day)
+    daily_call_target = await get_daily_call_target(session)
 
     fu_open_due = exists(
         select(1).where(
@@ -386,12 +377,19 @@ async def downline_member_execution_stats(
         uid = int(r["uid"])
         tot = int(r["total_active"] or 0)
         enr = int(r["enrollments"] or 0)
+        calls_today = int(calls_today_map.get(uid, 0))
+        fresh_leads_today = int(fresh_leads_today_map.get(uid, 0))
+        call_target = daily_call_target if fresh_leads_today > 0 else 0
         out[uid] = {
             "total_active": tot,
             "enrollments": enr,
             "proof_pend": int(r["proof_pend"] or 0),
             "fu_due": int(r["fu_due"] or 0),
             "conv_pct": round(100.0 * enr / tot, 1) if tot else 0.0,
+            "calls_today": calls_today,
+            "fresh_leads_today": fresh_leads_today,
+            "call_target": call_target,
+            "call_gate_met": call_target == 0 or calls_today >= call_target,
         }
     return out
 

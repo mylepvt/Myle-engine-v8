@@ -9,8 +9,8 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.activity_log import ActivityLog
-from app.models.call_event import CallEvent
 from app.models.lead import Lead
+from app.services.live_metrics import fresh_call_count_total
 
 IST = ZoneInfo("Asia/Kolkata")
 
@@ -44,15 +44,7 @@ async def compute_live_summary(session: AsyncSession, report_date: date) -> dict
     )
     leads_claimed_today = int(claims_q.scalar_one())
 
-    calls_q = await session.execute(
-        select(func.count())
-        .select_from(CallEvent)
-        .where(
-            CallEvent.called_at >= start,
-            CallEvent.called_at < end,
-        ),
-    )
-    calls_made_today = int(calls_q.scalar_one())
+    calls_made_today = await fresh_call_count_total(session, report_date)
 
     enrolled_q = await session.execute(
         select(func.count())

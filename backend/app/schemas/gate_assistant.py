@@ -18,12 +18,19 @@ class GateChecklistItem(BaseModel):
 
 
 class GateAssistantResponse(BaseModel):
+    role: Literal["team", "leader", "admin"]
     risk_level: Literal["green", "yellow", "red"]
     progress_done: int
     progress_total: int
     next_action: str
     next_href: Optional[str] = None
+    next_label: Optional[str] = None
     checklist: list[GateChecklistItem]
+    fresh_leads_today: int = 0
+    calls_today: int = 0
+    call_target: int = 0
+    pending_proof_count: int = 0
+    members_below_call_gate: int = 0
     open_follow_ups: int = 0
     overdue_follow_ups: int = 0
     active_pipeline_leads: int = 0
