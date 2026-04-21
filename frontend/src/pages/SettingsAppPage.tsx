@@ -188,7 +188,10 @@ export function SettingsAppPage({ title }: Props) {
         <div>
           <h2 className="text-sm font-semibold text-foreground">Batch Video Links</h2>
           <p className="text-xs text-muted-foreground">
-            Update WhatsApp watch links for D1/D2 batches. Button color auto-updates after viewer completes video.
+            Update WhatsApp watch links for D1/D2 batches. Admin YouTube link ya direct hosted `.mp4/.webm` link dono use kar sakta hai.
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Direct file link use karoge to in-app native player chalega with fullscreen and without YouTube bottom clutter.
           </p>
         </div>
 
@@ -211,7 +214,7 @@ export function SettingsAppPage({ title }: Props) {
                       [key]: e.target.value,
                     }))
                   }
-                  placeholder="https://youtube.com/watch?v=..."
+                  placeholder="https://youtube.com/watch?v=... or https://cdn.example.com/video.mp4"
                   className="w-full rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
                 />
                 <span className="mt-1 block font-mono text-[10px] text-muted-foreground/80">{key}</span>

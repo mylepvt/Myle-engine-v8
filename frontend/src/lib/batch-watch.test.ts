@@ -31,7 +31,7 @@ describe('batch watch greeting copy', () => {
     expect(copy.heroSubtitle).toContain('Watch this batch inside Myle')
   })
 
-  it('builds submission-led copy for day 2 afternoon rooms', () => {
+  it('builds upload plus evaluation copy for day 2 afternoon rooms', () => {
     const copy = buildBatchGreetingCopy({
       leadName: 'priya',
       dayNumber: 2,
@@ -40,8 +40,8 @@ describe('batch watch greeting copy', () => {
     })
 
     expect(copy.greetingLine).toBe('Good Afternoon Priya')
-    expect(copy.heroSubtitle).toContain('submit your notes, voice note, or practice video')
-    expect(copy.submissionLine).toContain('afternoon batch')
+    expect(copy.heroSubtitle).toContain('upload your notes, voice note, video, or message here')
+    expect(copy.mentorLine).toContain('Final batch ke baad business evaluation link')
     expect(copy.completionMessage).toContain('Priya')
   })
 })

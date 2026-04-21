@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ArrowUpRight, PlayCircle } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { isYouTubeUrl } from '@/lib/youtube'
 
 type InAppVideoPlayerProps = {
   embedUrl: string | null
@@ -11,6 +12,62 @@ type InAppVideoPlayerProps = {
   previewTitle?: string
   previewDescription?: string
   playLabel?: string
+}
+
+const NATIVE_VIDEO_MIME_TYPES: Record<string, string> = {
+  mp4: 'video/mp4',
+  webm: 'video/webm',
+  ogg: 'video/ogg',
+  ogv: 'video/ogg',
+  m4v: 'video/mp4',
+  mov: 'video/quicktime',
+  m3u8: 'application/x-mpegURL',
+}
+
+const VIDEO_MIME_HINT_KEYS = ['response-content-type', 'content-type', 'content_type', 'mime', 'type']
+
+type PlaybackSource =
+  | { kind: 'youtube'; src: string }
+  | { kind: 'native'; src: string; mimeType?: string }
+  | { kind: 'unsupported' }
+
+function resolvePlaybackSource(rawUrl: string | null): PlaybackSource | null {
+  const value = rawUrl?.trim()
+  if (!value) return null
+  if (isYouTubeUrl(value)) {
+    return { kind: 'youtube', src: value }
+  }
+
+  try {
+    const parsed = new URL(value, 'https://myle.local')
+    const pathname = parsed.pathname.toLowerCase()
+    const extMatch = pathname.match(/\.([a-z0-9]+)$/)
+    const mimeTypeFromExt = extMatch ? NATIVE_VIDEO_MIME_TYPES[extMatch[1]] : undefined
+    if (mimeTypeFromExt) {
+      return { kind: 'native', src: value, mimeType: mimeTypeFromExt }
+    }
+
+    for (const key of VIDEO_MIME_HINT_KEYS) {
+      const hintedMimeType = parsed.searchParams.get(key)?.trim().toLowerCase()
+      if (!hintedMimeType) continue
+      if (
+        hintedMimeType.startsWith('video/') ||
+        hintedMimeType === 'application/x-mpegurl' ||
+        hintedMimeType === 'application/vnd.apple.mpegurl'
+      ) {
+        return {
+          kind: 'native',
+          src: value,
+          mimeType:
+            hintedMimeType === 'application/vnd.apple.mpegurl' ? 'application/x-mpegURL' : hintedMimeType,
+        }
+      }
+    }
+  } catch {
+    return { kind: 'unsupported' }
+  }
+
+  return { kind: 'unsupported' }
 }
 
 export function InAppVideoPlayer({
@@ -23,12 +80,13 @@ export function InAppVideoPlayer({
   playLabel = 'Play inside Myle',
 }: InAppVideoPlayerProps) {
   const [playerActivated, setPlayerActivated] = useState(false)
+  const playbackSource = resolvePlaybackSource(embedUrl)
 
   useEffect(() => {
     setPlayerActivated(false)
   }, [embedUrl, fallbackUrl, title])
 
-  if (!embedUrl) {
+  if (!playbackSource || playbackSource.kind === 'unsupported') {
     if (!fallbackUrl) {
       return (
         <div className="flex aspect-video items-center justify-center rounded-[2rem] border border-white/10 bg-white/[0.04] text-sm text-white/55">
@@ -39,9 +97,10 @@ export function InAppVideoPlayer({
 
     return (
       <div className="flex aspect-video flex-col items-center justify-center rounded-[2rem] border border-amber-300/20 bg-amber-300/[0.06] px-6 text-center">
-        <p className="text-base font-semibold text-white">Video could not be embedded from this link.</p>
+        <p className="text-base font-semibold text-white">Video could not be played cleanly inside this room.</p>
         <p className="mt-2 max-w-md text-sm leading-relaxed text-white/65">
-          We are blocking broken mobile watch URLs from rendering inside the player so the room stays clean.
+          For the cleanest in-app player, use a direct hosted video file link like `.mp4` or `.webm` instead of a
+          share-page URL.
         </p>
         <a
           href={fallbackUrl}
@@ -85,15 +144,31 @@ export function InAppVideoPlayer({
 
   return (
     <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-black/70 shadow-[0_30px_80px_-35px_rgba(56,189,248,0.55)]">
-      <iframe
-        className="aspect-video h-full w-full bg-black"
-        src={embedUrl}
-        title={title}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowFullScreen
-      />
+      {playbackSource.kind === 'native' ? (
+        <video
+          className="aspect-video h-full w-full bg-black object-contain"
+          src={playbackSource.src}
+          title={title}
+          controls
+          playsInline
+          preload="metadata"
+          controlsList="nodownload noplaybackrate"
+        >
+          {playbackSource.mimeType ? <source src={playbackSource.src} type={playbackSource.mimeType} /> : null}
+        </video>
+      ) : (
+        <iframe
+          className="aspect-video h-full w-full bg-black"
+          src={playbackSource.src}
+          title={title}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+      )}
       <div className="border-t border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-white/55">
-        Playback stays inside Myle. If the video pauses, tap once inside the player.
+        {playbackSource.kind === 'native'
+          ? 'Playback stays inside Myle with native controls and fullscreen available from the player.'
+          : 'Playback stays inside Myle. If the video pauses, tap once inside the player.'}
       </div>
     </div>
   )

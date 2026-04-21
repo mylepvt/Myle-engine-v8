@@ -26,5 +26,6 @@ class BatchWatchPageData(BaseModel):
     youtube_url: Optional[str] = None
     video_id: Optional[str] = None
     watch_complete: bool = False
+    day2_evaluation_ready: bool = False
     submission_enabled: bool = False
     submission: Optional[BatchWatchSubmissionPublic] = None

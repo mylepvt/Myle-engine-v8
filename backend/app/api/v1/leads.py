@@ -562,6 +562,9 @@ async def watch_batch_video_payload(
             )
         )
     ).scalar_one_or_none()
+    day2_evaluation_ready = bool(
+        day_number == 2 and getattr(lead, "d2_morning", False) and getattr(lead, "d2_afternoon", False) and getattr(lead, "d2_evening", False)
+    )
 
     lead_first_name = (lead.name or "").split()[0] if lead.name else "there"
     slot_label = _batch_slot_label(slot)
@@ -573,7 +576,7 @@ async def watch_batch_video_payload(
         slot_label=slot_label,
         title=f"Day {day_number} {slot_label} Batch",
         subtitle=(
-            "Watch both videos inside Myle and submit your work from the same page."
+            "Watch both videos inside Myle and upload your notes, voice note, video, or message here. After the final Day 2 batch, the business evaluation link is shared separately."
             if day_number == 2
             else "Watch your batch inside Myle with the same premium experience throughout."
         ),
@@ -581,6 +584,7 @@ async def watch_batch_video_payload(
         youtube_url=video_url,
         video_id=_youtube_video_id(video_url),
         watch_complete=bool(getattr(lead, slot, False)),
+        day2_evaluation_ready=day2_evaluation_ready,
         submission_enabled=day_number == 2,
         submission=_to_batch_submission_public(submission),
     )

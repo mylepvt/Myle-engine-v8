@@ -19,14 +19,6 @@ import { apiUrl } from '@/lib/api'
 import { buildBatchGreetingCopy } from '@/lib/batch-watch'
 import { buildEmbeddableVideoUrl, resolveYouTubeWatchUrl } from '@/lib/youtube'
 
-type BatchWatchSubmission = {
-  notes_url: string | null
-  voice_note_url: string | null
-  video_url: string | null
-  notes_text: string | null
-  submitted_at: string | null
-}
-
 type BatchWatchData = {
   token: string
   slot: string
@@ -39,8 +31,17 @@ type BatchWatchData = {
   youtube_url: string | null
   video_id: string | null
   watch_complete: boolean
+  day2_evaluation_ready: boolean
   submission_enabled: boolean
   submission: BatchWatchSubmission | null
+}
+
+type BatchWatchSubmission = {
+  notes_url: string | null
+  voice_note_url: string | null
+  video_url: string | null
+  notes_text: string | null
+  submitted_at: string | null
 }
 
 function toAbsoluteUrl(url: string | null | undefined): string | null {
@@ -122,6 +123,14 @@ export function BatchWatchPage() {
   const [videoFile, setVideoFile] = useState<File | null>(null)
   const [notesText, setNotesText] = useState('')
 
+  const loadPayload = async () => {
+    if (!slot || !version || !token) return
+    const res = await fetch(apiUrl(`/api/v1/watch/batch/${slot}/${version}/payload?token=${encodeURIComponent(token)}`))
+    if (!res.ok) throw new Error(await readJsonError(res))
+    const payload = (await res.json()) as BatchWatchData
+    setData(payload)
+  }
+
   useEffect(() => {
     if (!slot || !version || !token) {
       setError('This batch link is incomplete. Please use the latest link.')
@@ -131,13 +140,8 @@ export function BatchWatchPage() {
 
     setLoading(true)
     setError(null)
-    void fetch(apiUrl(`/api/v1/watch/batch/${slot}/${version}/payload?token=${encodeURIComponent(token)}`))
-      .then(async (res) => {
-        if (!res.ok) throw new Error(await readJsonError(res))
-        return res.json() as Promise<BatchWatchData>
-      })
-      .then((payload) => {
-        setData(payload)
+    void loadPayload()
+      .then(() => {
         setLoading(false)
       })
       .catch((err: unknown) => {
@@ -169,7 +173,7 @@ export function BatchWatchPage() {
         body: JSON.stringify({ token, slot }),
       })
       if (!res.ok) throw new Error(await readJsonError(res))
-      setData((current) => (current ? { ...current, watch_complete: true } : current))
+      await loadPayload()
     } catch (err) {
       setCompletionError(err instanceof Error ? err.message : 'Could not update watch status.')
     } finally {
@@ -209,7 +213,7 @@ export function BatchWatchPage() {
       const nextSubmission = (await res.json()) as BatchWatchSubmission
 
       setData((current) => (current ? { ...current, submission: nextSubmission } : current))
-      setSubmissionMessage('Submission received. Team can review it from here onward.')
+      setSubmissionMessage('Upload received. Team isi batch ke against isse dekh sakti hai.')
       setNotesFile(null)
       setVoiceFile(null)
       setVideoFile(null)
@@ -220,10 +224,6 @@ export function BatchWatchPage() {
       setSubmissionBusy(false)
     }
   }
-
-  const noteUrl = toAbsoluteUrl(submission?.notes_url)
-  const voiceUrl = toAbsoluteUrl(submission?.voice_note_url)
-  const submittedVideoUrl = toAbsoluteUrl(submission?.video_url)
   const greetingCopy = data
     ? buildBatchGreetingCopy({
         leadName: data.lead_name,
@@ -232,6 +232,11 @@ export function BatchWatchPage() {
         slotLabel: data.slot_label,
       })
     : null
+  const isDay2 = data?.day_number === 2
+  const evaluationReady = !!data?.day2_evaluation_ready
+  const noteUrl = toAbsoluteUrl(submission?.notes_url)
+  const voiceUrl = toAbsoluteUrl(submission?.voice_note_url)
+  const submittedVideoUrl = toAbsoluteUrl(submission?.video_url)
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-[#040915] text-white">
@@ -299,7 +304,7 @@ export function BatchWatchPage() {
                   fallbackUrl={playerExternalUrl}
                   previewEyebrow="Batch player primed"
                   previewTitle={data.title}
-                  previewDescription="Tap play to start the batch inside Myle without showing raw YouTube UI before the session begins."
+                  previewDescription="Tap play to start the batch inside Myle without showing external video clutter before the session begins."
                   playLabel="Start batch now"
                 />
 
@@ -376,7 +381,7 @@ export function BatchWatchPage() {
                     ) : null}
 
                     <div className="rounded-[1.35rem] border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/68 sm:hidden">
-                      Scroll down for your full batch flow and submission wall.
+                      Scroll down for your full batch flow and next step.
                     </div>
                   </div>
                 </div>
@@ -385,30 +390,29 @@ export function BatchWatchPage() {
               {data.submission_enabled ? (
                 <section className="order-3 rounded-[2rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl md:p-6">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="primary">Day 2 Submission</Badge>
+                    <Badge variant="primary">Post-batch upload</Badge>
                     <Badge variant="outline" className="border-white/15 bg-white/[0.04] text-white/75">
-                      Notes + voice + video
+                      Notes + voice + video + message
                     </Badge>
                   </div>
 
                   <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                     <div>
-                      <h2 className="text-xl font-semibold text-white">Submit your work right here</h2>
+                      <h2 className="text-xl font-semibold text-white">Upload after this batch</h2>
                       <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/62">
-                        {greetingCopy?.submissionLine ??
-                          'Day 2 ke liye apne handwritten notes, voice explanation, ya short practice video isi page se upload kijiye. Team ko sab kuch same room me mil jayega.'}
+                        Is batch ke baad notes, voice note, practice video, ya short message isi page se bhej sakte ho.
                       </p>
                     </div>
                     {submission?.submitted_at ? (
                       <div className="rounded-full border border-emerald-400/20 bg-emerald-400/[0.08] px-4 py-2 text-xs text-emerald-100">
-                        Last submitted {new Date(submission.submitted_at).toLocaleString()}
+                        Last uploaded {new Date(submission.submitted_at).toLocaleString()}
                       </div>
                     ) : null}
                   </div>
 
                   {(noteUrl || voiceUrl || submittedVideoUrl || submission?.notes_text) && (
                     <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
-                      <p className="text-sm font-semibold text-white">Latest submission</p>
+                      <p className="text-sm font-semibold text-white">Latest upload for this batch</p>
                       <div className="mt-3 grid gap-3 md:grid-cols-3">
                         <a
                           href={noteUrl ?? undefined}
@@ -502,12 +506,12 @@ export function BatchWatchPage() {
                     </div>
 
                     <label className="block">
-                      <span className="text-sm font-medium text-white">Message for mentor</span>
+                      <span className="text-sm font-medium text-white">Message</span>
                       <textarea
                         rows={4}
                         value={notesText}
                         onChange={(event) => setNotesText(event.target.value)}
-                        placeholder="Agar chahein to short update ya question bhi likh sakte hain..."
+                        placeholder="Short update, summary, ya question likh sakte ho..."
                         className="mt-2 w-full rounded-[1.5rem] border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-cyan-300/30 focus:ring-2 focus:ring-cyan-300/15"
                       />
                     </label>
@@ -518,13 +522,66 @@ export function BatchWatchPage() {
                     <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.5rem] border border-white/10 bg-black/20 px-4 py-4">
                       <p className="text-sm text-white/62">
                         {greetingCopy?.mentorLine ??
-                          'Team ko clean submission milegi aur aapko baar-baar app se bahar nahi jana padega.'}
+                          'Team ko is batch ka upload clean way me mil jayega aur final test step alag rahega.'}
                       </p>
                       <Button type="submit" disabled={submissionBusy}>
-                        {submissionBusy ? 'Submitting...' : 'Submit to team'}
+                        {submissionBusy ? 'Uploading...' : 'Upload to team'}
                       </Button>
                     </div>
                   </form>
+                </section>
+              ) : null}
+
+              {isDay2 ? (
+                <section className="order-4 rounded-[2rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl md:p-6">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="primary">Next step after final Day 2 batch</Badge>
+                    <Badge variant="outline" className="border-white/15 bg-white/[0.04] text-white/75">
+                      Old app test flow
+                    </Badge>
+                  </div>
+
+                  <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                    <div>
+                      <h2 className="text-xl font-semibold text-white">Business evaluation stays separate</h2>
+                      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/62">
+                        Test link alag action hai. Ye final Day 2 batch ke baad old-app style me coordinator share karta hai.
+                      </p>
+                    </div>
+                    <div
+                      className={`rounded-full border px-4 py-2 text-xs ${
+                        evaluationReady
+                          ? 'border-emerald-400/20 bg-emerald-400/[0.08] text-emerald-100'
+                          : 'border-amber-300/20 bg-amber-300/[0.08] text-amber-100'
+                      }`}
+                    >
+                      {evaluationReady ? 'Ready for old test link flow' : 'Unlocks after the 3rd Day 2 batch'}
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid gap-4 md:grid-cols-3">
+                    <div className="rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
+                      <p className="text-xs uppercase tracking-[0.22em] text-white/45">Verification</p>
+                      <p className="mt-3 text-sm font-semibold text-white">Registered mobile number</p>
+                      <p className="mt-2 text-xs leading-relaxed text-white/58">
+                        Prospect ko same registered mobile se verify karna hota hai.
+                      </p>
+                    </div>
+                    <div className="rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
+                      <p className="text-xs uppercase tracking-[0.22em] text-white/45">Attempts</p>
+                      <p className="mt-3 text-sm font-semibold text-white">Max 2 attempts</p>
+                      <p className="mt-2 text-xs leading-relaxed text-white/58">
+                        Business evaluation old app ke jaise controlled attempts ke saath hi rahega.
+                      </p>
+                    </div>
+                    <div className="rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
+                      <p className="text-xs uppercase tracking-[0.22em] text-white/45">Link window</p>
+                      <p className="mt-3 text-sm font-semibold text-white">24-hour link</p>
+                      <p className="mt-2 text-xs leading-relaxed text-white/58">
+                        Test link short window ke liye active rehta hai, bilkul old flow ki tarah.
+                      </p>
+                    </div>
+                  </div>
                 </section>
               ) : null}
             </div>
@@ -559,10 +616,11 @@ export function BatchWatchPage() {
                     <p className="mt-2 text-sm text-white/78">Status is tracked without opening YouTube separately.</p>
                   </div>
                   <div className="rounded-[1.25rem] border border-white/10 bg-black/20 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.22em] text-white/45">3. Submit</p>
+                    <p className="text-xs uppercase tracking-[0.22em] text-white/45">{isDay2 ? '3. Upload' : '3. Continue'}</p>
                     <p className="mt-2 text-sm text-white/78">
-                      {greetingCopy?.mentorLine ??
-                        'Day 2 par notes, voice note, aur video isi screen se deliver ho jata hai.'}
+                      {isDay2
+                        ? 'Har Day 2 batch ke baad notes, voice, video, ya message isi page se upload hota hai.'
+                        : greetingCopy?.mentorLine ?? 'After this batch, your progress stays tracked inside the same Myle room.'}
                     </p>
                   </div>
                 </div>
@@ -579,9 +637,13 @@ export function BatchWatchPage() {
                     <p className="mt-2 text-sm text-white">{watchComplete ? 'Watched in app' : 'Watching now'}</p>
                   </div>
                   <div className="rounded-[1.25rem] border border-white/10 bg-black/20 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.22em] text-white/45">Submission wall</p>
+                    <p className="text-xs uppercase tracking-[0.22em] text-white/45">{isDay2 ? 'Evaluation gate' : 'Next step'}</p>
                     <p className="mt-2 text-sm text-white">
-                      {data.submission_enabled ? 'Unlocked on this batch' : 'Unlocks on Day 2'}
+                      {isDay2
+                        ? evaluationReady
+                          ? 'Ready for coach test link'
+                          : 'Unlocks after all Day 2 batches'
+                        : 'Stay in the same guided room'}
                     </p>
                   </div>
                   <div className="rounded-[1.25rem] border border-white/10 bg-black/20 px-4 py-3">

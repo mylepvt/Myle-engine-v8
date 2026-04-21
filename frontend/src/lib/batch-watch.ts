@@ -45,7 +45,6 @@ export function buildBatchGreetingCopy({
       focusLine: string
       trustLine: string
       completionVerb: string
-      submissionLine: string
     }
   > = {
     morning: {
@@ -54,7 +53,6 @@ export function buildBatchGreetingCopy({
       focusLine: 'Fresh focus, private batch room, zero distractions.',
       trustLine: 'Your morning batch is reserved personally for you.',
       completionVerb: 'morning batch is completed and tracked',
-      submissionLine: 'Finish the morning session and send your work before the day moves fast.',
     },
     afternoon: {
       greeting: 'Good Afternoon',
@@ -62,7 +60,6 @@ export function buildBatchGreetingCopy({
       focusLine: 'One focused batch room to watch, confirm, and continue.',
       trustLine: 'Your afternoon batch is lined up for smooth in-app follow-through.',
       completionVerb: 'afternoon batch is completed and tracked',
-      submissionLine: 'Wrap the afternoon batch and submit everything from this same room.',
     },
     evening: {
       greeting: 'Good Evening',
@@ -70,7 +67,6 @@ export function buildBatchGreetingCopy({
       focusLine: 'Premium room, calmer flow, and a clean final push for the day.',
       trustLine: 'Your evening batch stays private and polished all the way through.',
       completionVerb: 'evening batch is completed and tracked',
-      submissionLine: 'Finish the evening batch and send your notes, voice, and practice in one go.',
     },
     unknown: {
       greeting: 'Hello',
@@ -78,7 +74,6 @@ export function buildBatchGreetingCopy({
       focusLine: 'Watch, confirm, and continue in one branded flow.',
       trustLine: 'This batch room was shared personally for you.',
       completionVerb: 'batch is completed and tracked',
-      submissionLine: 'Submit your work here once you finish the batch.',
     },
   }
 
@@ -90,7 +85,7 @@ export function buildBatchGreetingCopy({
     heroTitle: `Your Day ${dayNumber} ${slotLabel} Batch is ready`,
     heroSubtitle:
       dayNumber === 2
-        ? `${tone.energyLine} Watch both videos and submit your notes, voice note, or practice video right here.`
+        ? `${tone.energyLine} Watch this batch inside Myle and upload your notes, voice note, video, or message here. Final Day 2 batch ke baad business evaluation link alag se share hota hai.`
         : `${tone.energyLine} Watch this batch inside Myle and stay in the same premium flow.`,
     reservedBadge: `Reserved for ${firstName}`,
     privateRoomBadge: `${slotLabel} private room`,
@@ -98,9 +93,8 @@ export function buildBatchGreetingCopy({
     trustLine: tone.trustLine,
     mentorLine:
       dayNumber === 2
-        ? `After this batch, your submission goes straight to the team from the same screen.`
+        ? `After each Day 2 batch, upload isi screen se jata hai. Final batch ke baad business evaluation link coordinator alag se share karta hai.`
         : `After this batch, your progress stays tracked inside the same Myle room.`,
-    submissionLine: tone.submissionLine,
     completionMessage: `Nice work ${firstName}, your ${tone.completionVerb}.`,
   }
 }
