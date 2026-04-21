@@ -1,7 +1,6 @@
-import { type ReactElement, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckCircle2, CheckSquare, Eye, Pencil, Search, Send, Upload, Video } from 'lucide-react'
-import { List, type RowComponentProps } from 'react-window'
 import { useQueryClient } from '@tanstack/react-query'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { Button } from '@/components/ui/button'
@@ -149,7 +148,7 @@ function Tabs({ tabs, active, onChange }: {
 function IconBtn({ href, onClick, title, colorHover, children }: {
   href?: string; onClick?: () => void; title: string; colorHover: string; children: React.ReactNode
 }) {
-  const cls = cn('flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted/30 text-foreground transition', colorHover)
+  const cls = cn('flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-muted/30 text-foreground transition', colorHover)
   if (href) return <a href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" title={title} className={cls}>{children}</a>
   return <button type="button" title={title} onClick={onClick} className={cls}>{children}</button>
 }
@@ -249,7 +248,7 @@ const LeadCard = memo(function LeadCard({
   return (
     <article
       className={cn(
-        'relative overflow-hidden rounded-xl border p-2.5 text-card-foreground backdrop-blur-md',
+        'relative overflow-hidden rounded-2xl border p-3 text-card-foreground backdrop-blur-md sm:p-3.5',
         'bg-card/90 dark:bg-card/80 supports-[backdrop-filter]:bg-card/75 supports-[backdrop-filter]:dark:bg-card/60',
         slaTone.border,
         slaTone.cardGlow,
@@ -259,13 +258,13 @@ const LeadCard = memo(function LeadCard({
         className={cn('absolute bottom-2 left-0 top-2 w-[3px] rounded-full', slaTone.leftBorder)}
         aria-hidden
       />
-      <div className="relative flex flex-col gap-2 pl-2.5">
-        <div className="flex items-start justify-between gap-2">
+      <div className="relative flex flex-col gap-2.5 pl-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1">
-            <p className="truncate font-medium leading-tight text-foreground">{lead.name}</p>
-            {lead.city && <p className="mt-0.5 truncate text-ds-caption text-muted-foreground">{lead.city}</p>}
+            <p className="break-words text-sm font-semibold leading-tight text-foreground sm:text-base">{lead.name}</p>
+            {lead.city && <p className="mt-0.5 break-words text-ds-caption text-muted-foreground">{lead.city}</p>}
           </div>
-          <span className={cn('shrink-0 rounded-full border px-2 py-0.5 text-ds-caption font-semibold', badge)}>{slabel(lead.status)}</span>
+          <span className={cn('self-start rounded-full border px-2 py-0.5 text-ds-caption font-semibold', badge)}>{slabel(lead.status)}</span>
         </div>
         {!stageOpsCard && isWatched ? (
           <div className="flex items-center gap-1.5 rounded-md bg-blue-400/10 px-2 py-1 text-ds-caption font-medium text-blue-300">
@@ -285,12 +284,12 @@ const LeadCard = memo(function LeadCard({
             disabled={leadPatchBusy}
             aria-label={`Call status for ${lead.name}`}
             onChange={(e) => void pm.mutateAsync({ id: lead.id, body: { call_status: e.target.value } })}
-            className="min-w-0 flex-1 rounded-md border border-border bg-muted/30 px-2 py-1.5 text-ds-caption text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+            className="w-full min-w-0 rounded-md border border-border bg-muted/30 px-2 py-2 text-ds-caption text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
           >
             {callOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         ) : null}
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-1.5">
             <div className={cn('relative size-8 shrink-0 rounded-full', slaTone.glow)}>
               <svg viewBox="0 0 40 40" className="size-full" aria-hidden>
@@ -343,7 +342,7 @@ const LeadCard = memo(function LeadCard({
               <p className="text-ds-caption text-muted-foreground">{slaOverdue ? 'SLA' : 'remaining'}</p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
             {showLeadContactActions ? (
               <>
                 <LeadContactActions phone={lead.phone} />
@@ -369,11 +368,11 @@ const LeadCard = memo(function LeadCard({
             />
             {showProofControl ? (
               proofApproved ? (
-                <span title="Proof approved" className="flex h-8 w-8 items-center justify-center rounded-md border border-emerald-400/30 bg-emerald-400/12 text-emerald-300">
+                <span title="Proof approved" className="flex h-10 w-10 items-center justify-center rounded-lg border border-emerald-400/30 bg-emerald-400/12 text-emerald-300">
                   <CheckCircle2 className="h-3.5 w-3.5" />
                 </span>
               ) : proofPending ? (
-                <span title="Proof pending review" className="flex h-8 w-8 items-center justify-center rounded-md border border-sky-400/30 bg-sky-400/12 text-sky-300">
+                <span title="Proof pending review" className="flex h-10 w-10 items-center justify-center rounded-lg border border-sky-400/30 bg-sky-400/12 text-sky-300">
                   <CheckCircle2 className="h-3.5 w-3.5" />
                 </span>
               ) : mayUploadProof ? (
@@ -383,7 +382,7 @@ const LeadCard = memo(function LeadCard({
                   disabled={uploading}
                   onClick={() => fileInputRef.current?.click()}
                   className={cn(
-                    'flex h-8 w-8 items-center justify-center rounded-md border bg-muted/30 transition disabled:opacity-50',
+                    'flex h-10 w-10 items-center justify-center rounded-lg border bg-muted/30 transition disabled:opacity-50',
                     uploadError
                       ? 'border-red-400/40 text-red-400 hover:bg-red-400/10'
                       : 'border-border text-foreground hover:border-amber-400/40 hover:text-amber-400',
@@ -394,7 +393,7 @@ const LeadCard = memo(function LeadCard({
               ) : null
             ) : null}
             <Link to={`/dashboard/work/leads/${lead.id}`} title="Edit"
-              className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted/30 transition hover:border-primary/40 hover:text-primary">
+              className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-muted/30 transition hover:border-primary/40 hover:text-primary">
               <Pencil className="h-3.5 w-3.5"/>
             </Link>
           </div>
@@ -605,125 +604,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
   )
 }
 
-const LEAD_CARD_ROW = 138
-const ADMIN_CARD_ROW = 260
-
-function leadsForColumn<T>(items: T[], colIndex: number, columnCount: number): T[] {
-  const out: T[] = []
-  for (let i = colIndex; i < items.length; i += columnCount) {
-    out.push(items[i])
-  }
-  return out
-}
-
-function useBoardColumnCount(): number {
-  const [n, setN] = useState(() => {
-    if (typeof window === 'undefined') return 3
-    const w = window.innerWidth
-    if (w < 640) return 1
-    if (w < 1024) return 2
-    return 3
-  })
-  useEffect(() => {
-    const q = () => {
-      const w = window.innerWidth
-      if (w < 640) setN(1)
-      else if (w < 1024) setN(2)
-      else setN(3)
-    }
-    window.addEventListener('resize', q)
-    return () => window.removeEventListener('resize', q)
-  }, [])
-  return n
-}
-
-type LeadColData = {
-  colLeads: LeadPublic[]
-  pm: PM
-  patchBusyLeadId: number | null
-  mindsetBusyLeadId: number | null
-  mindsetPreviewByLeadId: Record<number, MindsetLockPreviewResponse | undefined>
-  onRequestMindsetSend?: (lead: LeadPublic) => void
-  nowMs: number
-}
-
-function LeadColRow(props: RowComponentProps<LeadColData>): ReactElement | null {
-  const {
-    index,
-    style,
-    ariaAttributes,
-    colLeads,
-    pm,
-    patchBusyLeadId,
-    mindsetBusyLeadId,
-    mindsetPreviewByLeadId,
-    onRequestMindsetSend,
-    nowMs,
-  } = props
-  const lead = colLeads[index]
-  if (!lead) return null
-  return (
-    <div {...ariaAttributes} style={style} className="box-border px-0.5 pb-2">
-      <LeadCard
-        lead={lead}
-        pm={pm}
-        leadPatchBusy={patchBusyLeadId === lead.id}
-        mindsetBusy={mindsetBusyLeadId === lead.id}
-        mindsetPreview={mindsetPreviewByLeadId[lead.id] ?? null}
-        onRequestMindsetSend={onRequestMindsetSend}
-        nowMs={nowMs}
-      />
-    </div>
-  )
-}
-
-const VirtualLeadColumn = memo(function VirtualLeadColumn({
-  colLeads,
-  height,
-  pm,
-  patchBusyLeadId,
-  mindsetBusyLeadId,
-  mindsetPreviewByLeadId,
-  onRequestMindsetSend,
-  nowMs,
-}: {
-  colLeads: LeadPublic[]
-  height: number
-  pm: PM
-  patchBusyLeadId: number | null
-  mindsetBusyLeadId: number | null
-  mindsetPreviewByLeadId: Record<number, MindsetLockPreviewResponse | undefined>
-  onRequestMindsetSend?: (lead: LeadPublic) => void
-  nowMs: number
-}) {
-  const itemData = useMemo(
-    () => ({
-      colLeads,
-      pm,
-      patchBusyLeadId,
-      mindsetBusyLeadId,
-      mindsetPreviewByLeadId,
-      onRequestMindsetSend,
-      nowMs,
-    }),
-    [colLeads, pm, patchBusyLeadId, mindsetBusyLeadId, mindsetPreviewByLeadId, onRequestMindsetSend, nowMs],
-  )
-  if (colLeads.length === 0) return <div className="min-h-0 min-w-0 flex-1" />
-  return (
-    <div className="min-h-0 min-w-0 flex-1">
-      <List<LeadColData>
-        rowCount={colLeads.length}
-        rowHeight={LEAD_CARD_ROW}
-        rowComponent={LeadColRow}
-        rowProps={itemData}
-        overscanCount={4}
-        style={{ height, width: '100%' }}
-      />
-    </div>
-  )
-})
-
-function VirtualLeadGrid({
+function ResponsiveLeadGrid({
   leads,
   pm,
   patchBusyLeadId,
@@ -732,6 +613,9 @@ function VirtualLeadGrid({
   onRequestMindsetSend,
   empty,
   nowMs,
+  stageKey,
+  nextStatus,
+  nextLabel,
 }: {
   leads: LeadPublic[]
   pm: PM
@@ -741,14 +625,10 @@ function VirtualLeadGrid({
   onRequestMindsetSend?: (lead: LeadPublic) => void
   empty?: string
   nowMs: number
+  stageKey?: WorkboardStageKey
+  nextStatus?: LeadStatus
+  nextLabel?: string
 }) {
-  const cols = useBoardColumnCount()
-  const colArrays = useMemo(
-    () => Array.from({ length: cols }, (_, c) => leadsForColumn(leads, c, cols)),
-    [leads, cols],
-  )
-  const maxCol = Math.max(1, ...colArrays.map((c) => c.length))
-  const listHeight = Math.min(520, Math.max(LEAD_CARD_ROW, maxCol * LEAD_CARD_ROW))
 
   if (leads.length === 0) {
     return (
@@ -759,142 +639,27 @@ function VirtualLeadGrid({
   }
 
   return (
-    <div className="flex w-full gap-2" style={{ height: listHeight }}>
-      {colArrays.map((colLeads, ci) => (
-        <VirtualLeadColumn
-          key={ci}
-          colLeads={colLeads}
-          height={listHeight}
-          pm={pm}
-          patchBusyLeadId={patchBusyLeadId}
-          mindsetBusyLeadId={mindsetBusyLeadId}
-          mindsetPreviewByLeadId={mindsetPreviewByLeadId}
-          onRequestMindsetSend={onRequestMindsetSend}
-          nowMs={nowMs}
-        />
-      ))}
-    </div>
-  )
-}
-
-type AdminColData = {
-  colLeads: LeadPublic[]
-  stageKey: WorkboardStageKey
-  nextStatus?: LeadStatus
-  nextLabel?: string
-  pm: PM
-  patchBusyLeadId: number | null
-  nowMs: number
-}
-
-function AdminColRow(props: RowComponentProps<AdminColData>): ReactElement | null {
-  const { index, style, ariaAttributes, colLeads, stageKey, nextStatus, nextLabel, pm, patchBusyLeadId, nowMs } = props
-  const lead = colLeads[index]
-  if (!lead) return null
-  const onMoveNext = nextStatus
-    ? () => void pm.mutateAsync({ id: lead.id, body: { status: nextStatus } })
-    : undefined
-  return (
-    <div {...ariaAttributes} style={style} className="box-border px-0.5 pb-2">
-      <LeadCard
-        lead={lead}
-        stageKey={stageKey}
-        pm={pm}
-        leadPatchBusy={patchBusyLeadId === lead.id}
-        onMoveNext={onMoveNext}
-        nextLabel={nextLabel}
-        nowMs={nowMs}
-      />
-    </div>
-  )
-}
-
-const VirtualAdminColumn = memo(function VirtualAdminColumn({
-  colLeads,
-  height,
-  stageKey,
-  nextStatus,
-  nextLabel,
-  pm,
-  patchBusyLeadId,
-  nowMs,
-}: {
-  colLeads: LeadPublic[]
-  height: number
-  stageKey: WorkboardStageKey
-  nextStatus?: LeadStatus
-  nextLabel?: string
-  pm: PM
-  patchBusyLeadId: number | null
-  nowMs: number
-}) {
-  const itemData = useMemo(
-    () => ({ colLeads, stageKey, nextStatus, nextLabel, pm, patchBusyLeadId, nowMs }),
-    [colLeads, stageKey, nextStatus, nextLabel, pm, patchBusyLeadId, nowMs],
-  )
-  if (colLeads.length === 0) return <div className="min-h-0 min-w-0 flex-1" />
-  return (
-    <div className="min-h-0 min-w-0 flex-1">
-      <List<AdminColData>
-        rowCount={colLeads.length}
-        rowHeight={ADMIN_CARD_ROW}
-        rowComponent={AdminColRow}
-        rowProps={itemData}
-        overscanCount={3}
-        style={{ height, width: '100%' }}
-      />
-    </div>
-  )
-})
-
-function VirtualAdminLeadGrid({
-  leads,
-  stageKey,
-  nextStatus,
-  nextLabel,
-  pm,
-  patchBusyLeadId,
-  nowMs,
-}: {
-  leads: LeadPublic[]
-  stageKey: WorkboardStageKey
-  nextStatus?: LeadStatus
-  nextLabel?: string
-  pm: PM
-  patchBusyLeadId: number | null
-  nowMs: number
-}) {
-  const cols = useBoardColumnCount()
-  const colArrays = useMemo(
-    () => Array.from({ length: cols }, (_, c) => leadsForColumn(leads, c, cols)),
-    [leads, cols],
-  )
-  const maxCol = Math.max(1, ...colArrays.map((c) => c.length))
-  const listHeight = Math.min(520, Math.max(ADMIN_CARD_ROW, maxCol * ADMIN_CARD_ROW))
-
-  if (leads.length === 0) {
-    return (
-      <p className="rounded-lg border border-dashed border-border/70 px-3 py-8 text-center text-ds-caption text-muted-foreground">
-        No leads
-      </p>
-    )
-  }
-
-  return (
-    <div className="flex w-full gap-2" style={{ height: listHeight }}>
-      {colArrays.map((colLeads, ci) => (
-        <VirtualAdminColumn
-          key={ci}
-          colLeads={colLeads}
-          height={listHeight}
-          stageKey={stageKey}
-          nextStatus={nextStatus}
-          nextLabel={nextLabel}
-          pm={pm}
-          patchBusyLeadId={patchBusyLeadId}
-          nowMs={nowMs}
-        />
-      ))}
+    <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      {leads.map((lead) => {
+        const onMoveNext = stageKey && nextStatus
+          ? () => void pm.mutateAsync({ id: lead.id, body: { status: nextStatus } })
+          : undefined
+        return (
+          <LeadCard
+            key={lead.id}
+            lead={lead}
+            stageKey={stageKey}
+            pm={pm}
+            leadPatchBusy={patchBusyLeadId === lead.id}
+            mindsetBusy={mindsetBusyLeadId === lead.id}
+            mindsetPreview={mindsetPreviewByLeadId[lead.id] ?? null}
+            onRequestMindsetSend={onRequestMindsetSend}
+            onMoveNext={onMoveNext}
+            nextLabel={nextLabel}
+            nowMs={nowMs}
+          />
+        )
+      })}
     </div>
   )
 }
@@ -909,6 +674,9 @@ function Grid({
   onRequestMindsetSend,
   empty,
   nowMs,
+  stageKey,
+  nextStatus,
+  nextLabel,
 }: {
   leads: LeadPublic[]
   pm: PM
@@ -918,9 +686,12 @@ function Grid({
   onRequestMindsetSend?: (lead: LeadPublic) => void
   empty?: string
   nowMs: number
+  stageKey?: WorkboardStageKey
+  nextStatus?: LeadStatus
+  nextLabel?: string
 }) {
   return (
-    <VirtualLeadGrid
+    <ResponsiveLeadGrid
       leads={leads}
       pm={pm}
       patchBusyLeadId={patchBusyLeadId}
@@ -929,6 +700,9 @@ function Grid({
       onRequestMindsetSend={onRequestMindsetSend}
       empty={empty}
       nowMs={nowMs}
+      stageKey={stageKey}
+      nextStatus={nextStatus}
+      nextLabel={nextLabel}
     />
   )
 }
@@ -1002,29 +776,6 @@ function TeamView({
   )
 }
 
-// ── StageGrid (hoisted outside AdminView to avoid component-in-render) ────────
-function StageGrid({ leads, stageKey, nextStatus, nextLabel, pm, patchBusyLeadId, nowMs }: {
-  leads: LeadPublic[]
-  stageKey: WorkboardStageKey
-  nextStatus?: LeadStatus
-  nextLabel?: string
-  pm: PM
-  patchBusyLeadId: number | null
-  nowMs: number
-}) {
-  return (
-    <VirtualAdminLeadGrid
-      leads={leads}
-      stageKey={stageKey}
-      nextStatus={nextStatus}
-      nextLabel={nextLabel}
-      pm={pm}
-      patchBusyLeadId={patchBusyLeadId}
-      nowMs={nowMs}
-    />
-  )
-}
-
 // ── AdminView ──────────────────────────────────────────────────────────────────
 type ATab = WorkboardStageKey | 'closing'
 function AdminView({ cols, pm, patchBusyLeadId, search, nowMs }: {
@@ -1065,7 +816,7 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs }: {
             ].map(([label, count, cls]) =>
               <span key={label as string} className={cn('rounded-full border px-2.5 py-0.5 text-ds-caption font-medium', cls as string)}>{label}: {count}</span>)}
           </div>
-          <StageGrid leads={day2} stageKey="day2" nextStatus="day3" nextLabel="Move to Day 3 →" pm={pm} patchBusyLeadId={patchBusyLeadId} nowMs={nowMs} />
+          <Grid leads={day2} stageKey="day2" nextStatus="day3" nextLabel="Move to Day 3 →" pm={pm} patchBusyLeadId={patchBusyLeadId} nowMs={nowMs} />
         </div>
       ) : active?.id === 'closing' ? (
         <div className="space-y-6">
@@ -1084,7 +835,7 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs }: {
           })}
         </div>
       ) : active?.stageKey ? (
-        <StageGrid
+        <Grid
           leads={active.items}
           stageKey={active.stageKey}
           nextStatus={active.nextStatus}
