@@ -18,3 +18,15 @@ export function extractYouTubeId(url: string): string | null {
   }
   return null
 }
+
+export function buildYouTubeEmbedUrl(videoId: string, autoplay = true): string {
+  const params = new URLSearchParams({
+    rel: '0',
+    modestbranding: '1',
+    playsinline: '1',
+  })
+  if (autoplay) {
+    params.set('autoplay', '1')
+  }
+  return `https://www.youtube.com/embed/${videoId}?${params.toString()}`
+}
