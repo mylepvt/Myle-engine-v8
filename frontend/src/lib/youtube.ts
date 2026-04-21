@@ -62,6 +62,7 @@ export function buildYouTubeEmbedUrl(videoId: string, autoplay = true): string {
     modestbranding: '1',
     playsinline: '1',
     controls: '1',
+    fs: '1',
   })
   if (autoplay) {
     params.set('autoplay', '1')

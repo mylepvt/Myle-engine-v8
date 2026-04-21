@@ -153,7 +153,7 @@ export function WatchPage() {
                   fallbackUrl={externalUrl}
                   previewEyebrow="Private room ready"
                   previewTitle={data.title}
-                  previewDescription="Tap play to open the session inside Myle without exposing YouTube text before the video starts."
+                  previewDescription="Tap play to open the session inside Myle without exposing external player clutter before the video starts."
                 />
               </section>
             ) : (
