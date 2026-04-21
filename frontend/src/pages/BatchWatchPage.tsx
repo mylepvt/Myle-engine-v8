@@ -13,10 +13,11 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { InAppVideoPlayer } from '@/components/watch/InAppVideoPlayer'
 import { WatchLiveGauge } from '@/components/watch/WatchLiveGauge'
 import { apiUrl } from '@/lib/api'
 import { buildBatchGreetingCopy } from '@/lib/batch-watch'
-import { buildYouTubeEmbedUrl, extractYouTubeId } from '@/lib/youtube'
+import { buildEmbeddableVideoUrl, resolveYouTubeWatchUrl } from '@/lib/youtube'
 
 type BatchWatchSubmission = {
   notes_url: string | null
@@ -54,56 +55,6 @@ async function readJsonError(res: Response): Promise<string> {
     return body.detail
   }
   return res.statusText || `HTTP ${res.status}`
-}
-
-function BatchVideoPlayer({
-  videoId,
-  title,
-  fallbackUrl,
-}: {
-  videoId: string | null
-  title: string
-  fallbackUrl: string | null
-}) {
-  const embedUrl = videoId
-    ? buildYouTubeEmbedUrl(videoId)
-    : fallbackUrl
-
-  if (!embedUrl) {
-    if (!fallbackUrl) {
-      return (
-        <div className="flex aspect-video items-center justify-center rounded-[2rem] border border-white/10 bg-white/[0.04] text-sm text-white/55">
-          Video link is being prepared.
-        </div>
-      )
-    }
-    return (
-      <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-black/40">
-        <iframe
-          className="aspect-video h-full w-full"
-          src={fallbackUrl}
-          title={title}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-        />
-      </div>
-    )
-  }
-
-  return (
-    <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-black/70 shadow-[0_30px_80px_-35px_rgba(56,189,248,0.55)]">
-      <iframe
-        className="aspect-video h-full w-full bg-black"
-        src={embedUrl}
-        title={title}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowFullScreen
-      />
-      <div className="border-t border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-white/55">
-        Video plays inside Myle. If autoplay is blocked on the device, tap play once.
-      </div>
-    </div>
-  )
 }
 
 function UploadCard({
@@ -195,11 +146,14 @@ export function BatchWatchPage() {
       })
   }, [slot, token, version])
 
-  const playerVideoId = useMemo(() => {
-    if (data?.video_id) return data.video_id
-    if (data?.youtube_url) return extractYouTubeId(data.youtube_url)
-    return null
-  }, [data?.video_id, data?.youtube_url])
+  const playerEmbedUrl = useMemo(
+    () => buildEmbeddableVideoUrl(toAbsoluteUrl(data?.youtube_url), data?.video_id),
+    [data?.video_id, data?.youtube_url],
+  )
+  const playerExternalUrl = useMemo(
+    () => resolveYouTubeWatchUrl(toAbsoluteUrl(data?.youtube_url), data?.video_id) ?? toAbsoluteUrl(data?.youtube_url),
+    [data?.video_id, data?.youtube_url],
+  )
 
   const watchComplete = !!data?.watch_complete
   const submission = data?.submission
@@ -339,10 +293,14 @@ export function BatchWatchPage() {
                   </Button>
                 </div>
 
-                <BatchVideoPlayer
-                  videoId={playerVideoId}
+                <InAppVideoPlayer
+                  embedUrl={playerEmbedUrl}
                   title={data.title}
-                  fallbackUrl={toAbsoluteUrl(data.youtube_url)}
+                  fallbackUrl={playerExternalUrl}
+                  previewEyebrow="Batch player primed"
+                  previewTitle={data.title}
+                  previewDescription="Tap play to start the batch inside Myle without showing raw YouTube UI before the session begins."
+                  playLabel="Start batch now"
                 />
 
                 {completionError ? (

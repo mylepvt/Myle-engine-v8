@@ -2,6 +2,7 @@ import secrets
 from datetime import datetime, timezone
 from typing import Annotated, Optional
 import re
+from urllib.parse import parse_qs, urlparse
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import RedirectResponse
@@ -63,7 +64,11 @@ _BATCH_SLOTS = frozenset(
         "d2_evening",
     }
 )
-_YOUTUBE_ID_RE = re.compile(r"(?:youtu\.be/|v=|/embed/|/shorts/)([A-Za-z0-9_-]{11})")
+_YOUTUBE_ID_RE = re.compile(
+    r"(?:youtu\.be/|youtube(?:-nocookie)?\.com/(?:watch\?(?:.*?&)?v=|embed/|shorts/|live/|v/))([A-Za-z0-9_-]{11})",
+    re.IGNORECASE,
+)
+_YOUTUBE_ID_ONLY_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
 
 
 async def _get_setting_value(session: AsyncSession, key: str) -> str:
@@ -74,17 +79,45 @@ async def _get_setting_value(session: AsyncSession, key: str) -> str:
 
 
 def _youtube_video_id(raw_url: str) -> str | None:
-    m = _YOUTUBE_ID_RE.search(raw_url)
-    if not m:
+    candidate = (raw_url or "").strip()
+    if not candidate:
         return None
-    return m.group(1)
+    if _YOUTUBE_ID_ONLY_RE.fullmatch(candidate):
+        return candidate
+
+    try:
+        parsed = urlparse(candidate)
+        hostname = parsed.hostname or ""
+        hostname = re.sub(r"^(www|m|music)\.", "", hostname.lower())
+
+        if hostname == "youtu.be":
+            first_segment = next((segment for segment in parsed.path.split("/") if segment), "")
+            if _YOUTUBE_ID_ONLY_RE.fullmatch(first_segment):
+                return first_segment
+
+        if hostname in {"youtube.com", "youtube-nocookie.com"}:
+            query_video_id = parse_qs(parsed.query).get("v", [None])[0]
+            if query_video_id and _YOUTUBE_ID_ONLY_RE.fullmatch(query_video_id):
+                return query_video_id
+
+            path_segments = [segment for segment in parsed.path.split("/") if segment]
+            if len(path_segments) >= 2 and path_segments[0] in {"embed", "shorts", "live", "v"}:
+                if _YOUTUBE_ID_ONLY_RE.fullmatch(path_segments[1]):
+                    return path_segments[1]
+    except ValueError:
+        pass
+
+    match = _YOUTUBE_ID_RE.search(candidate)
+    if not match:
+        return None
+    return match.group(1)
 
 
 def _youtube_embed_url(raw_url: str) -> str | None:
     vid = _youtube_video_id(raw_url)
     if not vid:
         return None
-    return f"https://www.youtube.com/embed/{vid}?autoplay=1&enablejsapi=1&rel=0"
+    return f"https://www.youtube-nocookie.com/embed/{vid}?autoplay=1&enablejsapi=1&rel=0&playsinline=1"
 
 
 def _batch_day_number(slot: str) -> int:

@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { CheckCircle2, ShieldCheck, Sparkles } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { InAppVideoPlayer } from '@/components/watch/InAppVideoPlayer'
 import { WatchLiveGauge } from '@/components/watch/WatchLiveGauge'
 import { apiUrl } from '@/lib/api'
-import { extractYouTubeId } from '@/lib/youtube'
+import { buildEmbeddableVideoUrl, resolveYouTubeWatchUrl } from '@/lib/youtube'
 
 type WatchPageData = {
   token: string
@@ -51,7 +52,14 @@ export function WatchPage() {
       })
   }, [token])
 
-  const videoId = data?.youtube_url ? extractYouTubeId(data.youtube_url) : null
+  const embedUrl = useMemo(
+    () => buildEmbeddableVideoUrl(data?.youtube_url, null),
+    [data?.youtube_url],
+  )
+  const externalUrl = useMemo(
+    () => resolveYouTubeWatchUrl(data?.youtube_url, null) ?? data?.youtube_url ?? null,
+    [data?.youtube_url],
+  )
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-[#040915] text-white">
@@ -128,7 +136,7 @@ export function WatchPage() {
               </div>
             </section>
 
-            {videoId ? (
+            {embedUrl ? (
               <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.05] p-4 backdrop-blur-xl md:p-5">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
@@ -139,20 +147,23 @@ export function WatchPage() {
                   </div>
                   <Badge variant="success">Ready</Badge>
                 </div>
-                <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-black/70 shadow-[0_30px_80px_-35px_rgba(56,189,248,0.55)]">
-                  <iframe
-                    className="aspect-video h-full w-full"
-                    src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`}
-                    title={data.title}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                </div>
+                <InAppVideoPlayer
+                  embedUrl={embedUrl}
+                  title={data.title}
+                  fallbackUrl={externalUrl}
+                  previewEyebrow="Private room ready"
+                  previewTitle={data.title}
+                  previewDescription="Tap play to open the session inside Myle without exposing YouTube text before the video starts."
+                />
               </section>
             ) : (
-              <div className="flex aspect-video w-full items-center justify-center rounded-[2rem] border border-white/10 bg-white/[0.05] text-sm text-white/45">
-                Video link coming soon.
-              </div>
+              <InAppVideoPlayer
+                embedUrl={null}
+                title={data.title}
+                fallbackUrl={externalUrl}
+                previewEyebrow="Private room ready"
+                previewTitle={data.title}
+              />
             )}
 
             <section className="grid gap-4 md:grid-cols-2">

@@ -3,6 +3,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '@/lib/api'
 import type { PatchLeadBody } from '@/hooks/use-leads-query'
 
+export type LeadBatchSubmission = {
+  id: number
+  day_number: number
+  slot: string
+  notes_url: string | null
+  voice_note_url: string | null
+  video_url: string | null
+  notes_text: string | null
+  submitted_at: string
+}
+
 export type LeadDetail = {
   id: number
   name: string
@@ -28,6 +39,7 @@ export type LeadDetail = {
   created_at: string
   archived_at: string | null
   in_pool: boolean
+  batch_submissions: LeadBatchSubmission[]
 }
 
 export type CallEvent = {

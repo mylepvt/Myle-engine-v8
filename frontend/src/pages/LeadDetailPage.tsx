@@ -1,11 +1,13 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Headphones, MessageSquareText, NotebookPen, Video } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { LEAD_STATUS_OPTIONS, type LeadStatus, useAvailableTransitionsQuery } from '@/hooks/use-leads-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import {
+  type LeadBatchSubmission,
   useLeadCallsQuery,
   useLeadDetailQuery,
   useLogCallMutation,
@@ -16,6 +18,7 @@ import { EnrollmentCard } from '@/components/leads/EnrollmentCard'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LeadNextStepPanel } from '@/components/leads/LeadNextStepPanel'
 import { LeadNotesPanel } from '@/components/leads/LeadNotesPanel'
+import { apiUrl } from '@/lib/api'
 import { callStatusSelectOptions } from '@/lib/call-status-options'
 import { leadStatusSelectOptionsForLead, teamLeadStatusSelectOptions } from '@/lib/team-lead-status'
 
@@ -79,6 +82,106 @@ function PaymentStatusBadge({ status }: { status: string }) {
     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${c}`}>
       {labels[status] ?? status}
     </span>
+  )
+}
+
+function resolveAssetUrl(url: string | null | undefined): string | null {
+  if (!url) return null
+  return url.startsWith('http') ? url : apiUrl(url)
+}
+
+function batchSubmissionLabel(slot: string): string {
+  const match = slot.match(/^d(\d+)_(.+)$/)
+  if (!match) return slot.replace(/_/g, ' ')
+  return `Day ${match[1]} ${match[2].replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())}`
+}
+
+function BatchSubmissionCard({ submission }: { submission: LeadBatchSubmission }) {
+  const notesUrl = resolveAssetUrl(submission.notes_url)
+  const voiceUrl = resolveAssetUrl(submission.voice_note_url)
+  const videoUrl = resolveAssetUrl(submission.video_url)
+
+  return (
+    <div className="surface-inset space-y-3 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+            {batchSubmissionLabel(submission.slot)}
+          </span>
+          <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-0.5 text-xs text-muted-foreground">
+            Day {submission.day_number}
+          </span>
+        </div>
+        <span className="text-xs text-muted-foreground">
+          {new Date(submission.submitted_at).toLocaleString()}
+        </span>
+      </div>
+
+      {submission.notes_text ? (
+        <div className="rounded-md border border-white/10 bg-white/[0.04] p-3">
+          <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <MessageSquareText className="size-3.5" />
+            Lead message
+          </div>
+          <p className="text-sm leading-relaxed text-foreground">{submission.notes_text}</p>
+        </div>
+      ) : null}
+
+      <div className="grid gap-3">
+        <div className="rounded-md border border-white/10 bg-white/[0.04] p-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <NotebookPen className="size-4" />
+            Notes file
+          </div>
+          {notesUrl ? (
+            <a
+              href={notesUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-block text-xs text-primary underline-offset-2 hover:underline"
+            >
+              Open uploaded notes
+            </a>
+          ) : (
+            <p className="mt-2 text-xs text-muted-foreground">No notes file uploaded in this submission.</p>
+          )}
+        </div>
+
+        <div className="rounded-md border border-white/10 bg-white/[0.04] p-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Headphones className="size-4" />
+            Voice note
+          </div>
+          {voiceUrl ? (
+            <audio controls src={voiceUrl} preload="metadata" className="mt-3 w-full" />
+          ) : (
+            <p className="mt-2 text-xs text-muted-foreground">No voice note uploaded in this submission.</p>
+          )}
+        </div>
+
+        <div className="rounded-md border border-white/10 bg-white/[0.04] p-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Video className="size-4" />
+            Practice video
+          </div>
+          {videoUrl ? (
+            <div className="mt-3 space-y-2">
+              <video controls src={videoUrl} preload="metadata" className="aspect-video w-full rounded-md bg-black" />
+              <a
+                href={videoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block text-xs text-primary underline-offset-2 hover:underline"
+              >
+                Open uploaded video in new tab
+              </a>
+            </div>
+          ) : (
+            <p className="mt-2 text-xs text-muted-foreground">No practice video uploaded in this submission.</p>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -629,6 +732,24 @@ export function LeadDetailPage({ leadId }: Props) {
 
           {/* Enrollment card */}
           <EnrollmentCard leadId={leadId} />
+
+          <div className="surface-elevated p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Batch submissions</p>
+              <span className="text-xs text-muted-foreground">Day 2 review wall</span>
+            </div>
+            {lead.batch_submissions.length > 0 ? (
+              <div className="space-y-3">
+                {lead.batch_submissions.map((submission) => (
+                  <BatchSubmissionCard key={submission.id} submission={submission} />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Lead ne abhi Day 2 notes, voice note, video, ya message submit nahi kiya. Jaise hi batch room se submission aayegi, admin yahi dekh paayega.
+              </p>
+            )}
+          </div>
 
           {/* Payment card */}
           <div className="surface-elevated p-4 space-y-3">

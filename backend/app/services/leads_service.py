@@ -14,6 +14,7 @@ from app.api.deps import AuthUser, get_db
 from app.core.config import settings
 from app.core.pipeline_rules import validate_vl2_status_transition_for_role
 from app.core.realtime_hub import notify_topics
+from app.models.batch_day_submission import BatchDaySubmission
 from app.models.follow_up import FollowUp
 from app.models.lead import Lead
 from app.models.user import User
@@ -23,6 +24,7 @@ from app.schemas.call_events import CallEventCreate, CallEventListResponse, Call
 from app.schemas.leads import (
     LeadCreate,
     LeadCtcsActionRequest,
+    LeadBatchSubmissionPublic,
     LeadDetailPublic,
     LeadListResponse,
     MindsetLockCompleteResponse,
@@ -891,7 +893,16 @@ class LeadsService:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
         if not await self._repository.can_access_lead(user, lead):
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
-        return LeadDetailPublic.model_validate(lead)
+        submissions = (
+            await self._session.execute(
+                select(BatchDaySubmission)
+                .where(BatchDaySubmission.lead_id == lead.id)
+                .order_by(BatchDaySubmission.submitted_at.desc())
+            )
+        ).scalars().all()
+        detail = LeadDetailPublic.model_validate(lead)
+        detail.batch_submissions = [LeadBatchSubmissionPublic.model_validate(row) for row in submissions]
+        return detail
 
     async def log_call(self, *, lead_id: int, body: CallEventCreate, user: AuthUser) -> CallEventPublic:
         lead = await self._get_lead_or_404(lead_id)
