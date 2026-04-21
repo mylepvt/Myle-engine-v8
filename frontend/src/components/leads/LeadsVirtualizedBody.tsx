@@ -6,6 +6,7 @@ import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LeadRowStatusDropdown } from '@/components/leads/LeadRowStatusDropdown'
 import { Button } from '@/components/ui/button'
 import { LEAD_STATUS_OPTIONS, type LeadPublic, type LeadStatus } from '@/hooks/use-leads-query'
+import { leadStatusSelectOptionsForLead } from '@/lib/team-lead-status'
 import type { Role } from '@/types/role'
 
 const ROW_HEIGHT = 76
@@ -65,6 +66,7 @@ function LeadRow(props: RowComponentProps<RowData>): ReactElement | null {
   if (!l) return null
   const patchBusy = patchBusyLeadId === l.id
   const delBusy = deleteBusyLeadId === l.id
+  const statusOptions = leadStatusSelectOptionsForLead(role, l.status as LeadStatus, LEAD_STATUS_OPTIONS)
 
   return (
     <div
@@ -97,6 +99,7 @@ function LeadRow(props: RowComponentProps<RowData>): ReactElement | null {
             <LeadRowStatusDropdown
               leadName={l.name}
               status={l.status}
+              options={statusOptions}
               busy={patchBusy}
               onSelect={(v) => onPatchStatus(l.id, v)}
             />

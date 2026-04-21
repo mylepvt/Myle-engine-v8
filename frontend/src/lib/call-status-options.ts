@@ -1,4 +1,5 @@
 import type { Role } from '@/types/role'
+import type { LeadStatus } from '@/hooks/use-leads-query'
 
 /** API `call_status` slugs allowed by `LeadUpdate` — labels mirror legacy dial-outcome copy. */
 export const CALL_STATUS_API_VALUES = [
@@ -42,11 +43,75 @@ const TEAM_ORDER: CallStatusApi[] = [
   'callback_requested',
 ]
 
-export function callStatusSelectOptions(role: Role | null): { value: CallStatusApi; label: string }[] {
-  const full = CALL_STATUS_API_VALUES.map((value) => ({ value, label: LABEL[value] }))
+const BASE_ORDER: CallStatusApi[] = [
+  'not_called',
+  'no_answer',
+  'interested',
+  'not_interested',
+  'follow_up',
+  'called',
+  'callback_requested',
+]
+
+const VIDEO_SENT_STAGES = new Set<LeadStatus>([
+  'video_sent',
+  'video_watched',
+  'paid',
+  'mindset_lock',
+  'day1',
+  'day2',
+  'day3',
+  'interview',
+  'track_selected',
+  'seat_hold',
+  'converted',
+])
+
+const VIDEO_WATCHED_STAGES = new Set<LeadStatus>([
+  'video_watched',
+  'paid',
+  'mindset_lock',
+  'day1',
+  'day2',
+  'day3',
+  'interview',
+  'track_selected',
+  'seat_hold',
+  'converted',
+])
+
+const PAYMENT_DONE_STAGES = new Set<LeadStatus>([
+  'paid',
+  'mindset_lock',
+  'day1',
+  'day2',
+  'day3',
+  'interview',
+  'track_selected',
+  'seat_hold',
+  'converted',
+])
+
+export function callStatusSelectOptions(
+  role: Role | null,
+  currentStatus?: LeadStatus | string | null,
+): { value: CallStatusApi; label: string }[] {
   if (role === 'team') {
     return TEAM_ORDER.map((value) => ({ value, label: LABEL[value] }))
   }
-  return full
-}
 
+  const status = (currentStatus ?? '').trim() as LeadStatus
+  if (!status) {
+    return CALL_STATUS_API_VALUES.map((value) => ({ value, label: LABEL[value] }))
+  }
+
+  const visible = new Set<CallStatusApi>(BASE_ORDER)
+  if (VIDEO_SENT_STAGES.has(status)) visible.add('video_sent')
+  if (VIDEO_WATCHED_STAGES.has(status)) visible.add('video_watched')
+  if (PAYMENT_DONE_STAGES.has(status)) visible.add('payment_done')
+  if (status === 'converted') visible.add('converted')
+
+  return CALL_STATUS_API_VALUES
+    .filter((value) => visible.has(value))
+    .map((value) => ({ value, label: LABEL[value] }))
+}

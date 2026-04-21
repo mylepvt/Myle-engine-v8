@@ -82,6 +82,20 @@ class TeamEnrollmentListResponse(BaseModel):
     offset: int
 
 
+class TeamEnrollmentHistoryItem(TeamEnrollmentRequestItem):
+    reviewed_at: datetime
+    reviewed_by_user_id: Optional[int] = None
+    reviewed_by_username: Optional[str] = None
+    review_action: Literal["approved", "rejected"]
+    review_note: Optional[str] = None
+
+
+class TeamEnrollmentHistoryResponse(BaseModel):
+    items: list[TeamEnrollmentHistoryItem] = Field(default_factory=list)
+    total: int = 0
+    date: str = Field(description="Calendar day YYYY-MM-DD, Asia/Kolkata")
+
+
 class TeamReportsLiveSummary(BaseModel):
     """Legacy dashboard “LIVE DATA” tiles (approximations documented on API)."""
 

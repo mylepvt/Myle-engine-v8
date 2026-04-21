@@ -38,6 +38,20 @@ export type TeamEnrollmentListResponse = {
   offset: number
 }
 
+export type TeamEnrollmentHistoryItem = TeamEnrollmentRequest & {
+  reviewed_at: string
+  reviewed_by_user_id: number | null
+  reviewed_by_username: string | null
+  review_action: 'approved' | 'rejected'
+  review_note: string | null
+}
+
+export type TeamEnrollmentHistoryResponse = {
+  items: TeamEnrollmentHistoryItem[]
+  total: number
+  date: string
+}
+
 export type TeamEnrollmentRequest = {
   lead_id: number
   lead_name: string
@@ -84,6 +98,15 @@ async function fetchEnrollmentRequests(): Promise<TeamEnrollmentListResponse> {
       status: (item.status === 'proof_uploaded' ? 'pending' : item.status) as TeamEnrollmentRequest['status'],
     })),
   }
+}
+
+async function fetchEnrollmentHistory(date: string): Promise<TeamEnrollmentHistoryResponse> {
+  const params = new URLSearchParams()
+  if (date.trim()) params.set('date', date.trim())
+  const qs = params.toString()
+  const res = await apiFetch(`/api/v1/team/enrollment-requests/history${qs ? `?${qs}` : ''}`)
+  if (!res.ok) await parseError(res)
+  return res.json()
 }
 
 export async function decideEnrollmentRequest(body: {
@@ -142,6 +165,14 @@ export function useEnrollmentRequestsQuery(enabled = true) {
     queryKey: ['team', 'enrollment-requests'],
     queryFn: fetchEnrollmentRequests,
     enabled,
+  })
+}
+
+export function useEnrollmentHistoryQuery(date: string, enabled = true) {
+  return useQuery({
+    queryKey: ['team', 'enrollment-history', date],
+    queryFn: () => fetchEnrollmentHistory(date),
+    enabled: enabled && date.trim().length > 0,
   })
 }
 
@@ -276,6 +307,7 @@ export function useEnrollmentDecisionMutation() {
     mutationFn: decideEnrollmentRequest,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['team', 'enrollment-requests'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'enrollment-history'] })
     },
   })
 }

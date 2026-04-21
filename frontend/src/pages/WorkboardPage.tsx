@@ -18,6 +18,7 @@ import {
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { apiFetch } from '@/lib/api'
+import { callStatusSelectOptions } from '@/lib/call-status-options'
 import { whatsappDigits } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
 
@@ -26,16 +27,6 @@ type Props = { title: string }
 type Col = { status: string; total: number; items: LeadPublic[] }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
-const CALL_OPTS = [
-  { value: 'not_called', label: 'Not Called' },
-  { value: 'no_answer', label: 'No Answer' },
-  { value: 'interested', label: 'Interested' },
-  { value: 'not_interested', label: 'Not Interested' },
-  { value: 'follow_up', label: 'Follow Up' },
-  { value: 'video_sent', label: 'Video Sent' },
-  { value: 'video_watched', label: 'Video Watched' },
-  { value: 'payment_done', label: 'Payment Done' },
-]
 const BADGE: Record<string, string> = {
   new_lead:       'bg-primary/15 text-primary border-primary/25',
   contacted:      'bg-sky-400/15 text-sky-300 border-sky-400/25',
@@ -54,11 +45,28 @@ const BADGE: Record<string, string> = {
   converted:      'bg-green-500/15 text-green-300 border-green-500/25',
   lost:           'bg-destructive/15 text-destructive border-destructive/25',
 }
-const DAY3:   LeadStatus[] = ['day3', 'interview', 'track_selected', 'seat_hold']
 const CLOSE:  LeadStatus[] = ['converted','lost']
 const MIN_MINDSET_SECONDS = 300
 type BatchSlotKey = 'd1_morning' | 'd1_afternoon' | 'd1_evening' | 'd2_morning' | 'd2_afternoon' | 'd2_evening'
+type WorkboardStageKey = 'day1' | 'day2' | 'day3' | 'interview' | 'track_selected' | 'seat_hold'
 const slabel  = (s: string) => LEAD_STATUS_OPTIONS.find((o) => o.value === s)?.label ?? s
+
+const ADMIN_STAGE_TABS: {
+  id: WorkboardStageKey | 'closing'
+  label: string
+  statuses: LeadStatus[]
+  stageKey?: WorkboardStageKey
+  nextStatus?: LeadStatus
+  nextLabel?: string
+}[] = [
+  { id: 'day1', label: 'Day 1', statuses: ['day1'], stageKey: 'day1', nextStatus: 'day2', nextLabel: 'Move to Day 2 →' },
+  { id: 'day2', label: 'Day 2', statuses: ['day2'], stageKey: 'day2', nextStatus: 'day3', nextLabel: 'Move to Day 3 →' },
+  { id: 'day3', label: 'Day 3', statuses: ['day3'], stageKey: 'day3', nextStatus: 'interview', nextLabel: 'Move to Interview →' },
+  { id: 'interview', label: 'Interview', statuses: ['interview'], stageKey: 'interview', nextStatus: 'track_selected', nextLabel: 'Move to Track Selected →' },
+  { id: 'track_selected', label: 'Track', statuses: ['track_selected'], stageKey: 'track_selected', nextStatus: 'seat_hold', nextLabel: 'Move to Seat Hold →' },
+  { id: 'seat_hold', label: 'Seat Hold', statuses: ['seat_hold'], stageKey: 'seat_hold', nextStatus: 'converted', nextLabel: 'Mark converted →' },
+  { id: 'closing', label: 'Closing', statuses: CLOSE },
+]
 
 function mmss(totalSeconds: number): string {
   const sec = Math.max(0, totalSeconds)
@@ -97,6 +105,20 @@ function workboardBatchWhatsAppUrl(
     (linkBlock ? `\n${linkBlock}` : '\n') +
     'Please watch and confirm.'
   return `https://wa.me/${digits}?text=${encodeURIComponent(msg)}`
+}
+
+async function readResponseError(res: Response): Promise<string> {
+  const body = await res.json().catch(() => ({}))
+  if (typeof body === 'object' && body !== null) {
+    if ('detail' in body && typeof body.detail === 'string' && body.detail.trim()) {
+      return body.detail
+    }
+    const errorMessage = (body as { error?: { message?: string } }).error?.message
+    if (typeof errorMessage === 'string' && errorMessage.trim()) {
+      return errorMessage
+    }
+  }
+  return res.statusText || `HTTP ${res.status}`
 }
 
 // ── Tiny shared primitives ─────────────────────────────────────────────────────
@@ -138,7 +160,7 @@ const LeadCard = memo(function LeadCard({
   mindsetBusy,
   mindsetPreview,
   onRequestMindsetSend,
-  dayKey,
+  stageKey,
   onMoveNext,
   nextLabel,
 }: {
@@ -148,10 +170,11 @@ const LeadCard = memo(function LeadCard({
   mindsetBusy?: boolean
   mindsetPreview?: MindsetLockPreviewResponse | null
   onRequestMindsetSend?: (lead: LeadPublic) => void
-  dayKey?: 1 | 2 | 3
+  stageKey?: WorkboardStageKey
   onMoveNext?: () => void
   nextLabel?: string
 }) {
+  const { role } = useDashboardShellRole()
   const [nowMs, setNowMs] = useState(() => Date.now())
   useEffect(() => {
     const id = window.setInterval(() => setNowMs(Date.now()), 1000)
@@ -165,9 +188,11 @@ const LeadCard = memo(function LeadCard({
   const [uploadError, setUploadError] = useState<string | null>(null)
   const qc = useQueryClient()
 
-  const proofAlreadyUploaded =
-    lead.payment_status === 'proof_uploaded' ||
-    lead.payment_status === 'approved'
+  const proofApproved = lead.payment_status === 'approved'
+  const proofPending = lead.payment_status === 'proof_uploaded' || uploadDone
+  const proofRejected = lead.payment_status === 'rejected'
+  const showProofControl = lead.status === 'video_watched' || proofPending || proofApproved || proofRejected
+  const mayUploadProof = lead.status === 'video_watched' || proofRejected
 
   async function handleProofFile(file: File) {
     setUploading(true)
@@ -181,6 +206,7 @@ const LeadCard = memo(function LeadCard({
       setUploadDone(true)
       void qc.invalidateQueries({ queryKey: ['workboard'] })
       void qc.invalidateQueries({ queryKey: ['team', 'enrollment-requests'] })
+      void qc.invalidateQueries({ queryKey: ['leads'] })
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed')
     } finally {
@@ -208,6 +234,11 @@ const LeadCard = memo(function LeadCard({
   const lockLineClass = unlocked ? 'text-emerald-300' : 'text-red-300'
   const previewName = mindsetPreview?.leader_name ?? 'Resolving...'
   const canSend = mindsetReady && unlocked && !!mindsetPreview?.leader_user_id
+  const callOptions = callStatusSelectOptions(role ?? null, lead.status as LeadStatus)
+  const rawCallStatus = (lead.call_status ?? '').trim()
+  const callValue = callOptions.some((option) => option.value === rawCallStatus)
+    ? rawCallStatus
+    : (callOptions[0]?.value ?? 'not_called')
   return (
     <article className="surface-inset flex flex-col gap-2 rounded-lg px-2.5 py-2">
       <div className="flex items-start justify-between gap-2">
@@ -230,13 +261,13 @@ const LeadCard = memo(function LeadCard({
         </div>
       ) : null}
       <select
-        value={lead.call_status ?? 'not_called'}
+        value={callValue}
         disabled={leadPatchBusy}
         aria-label={`Call status for ${lead.name}`}
         onChange={(e) => void pm.mutateAsync({ id: lead.id, body: { call_status: e.target.value } })}
         className="min-w-0 flex-1 rounded-md border border-border bg-muted/30 px-2 py-1.5 text-ds-caption text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
       >
-        {CALL_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        {callOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
       <div className="flex items-center gap-1.5">
         <LeadContactActions phone={lead.phone} />
@@ -256,26 +287,32 @@ const LeadCard = memo(function LeadCard({
             e.target.value = ''
           }}
         />
-        {proofAlreadyUploaded || uploadDone ? (
-          <span title="Proof uploaded" className="flex h-8 w-8 items-center justify-center rounded-md border border-emerald-400/30 bg-emerald-400/12 text-emerald-300">
-            <CheckCircle2 className="h-3.5 w-3.5" />
-          </span>
-        ) : (
-          <button
-            type="button"
-            title={uploading ? 'Uploading…' : uploadError ? `Retry — ${uploadError}` : 'Upload ₹196 proof'}
-            disabled={uploading}
-            onClick={() => fileInputRef.current?.click()}
-            className={cn(
-              'flex h-8 w-8 items-center justify-center rounded-md border bg-muted/30 transition disabled:opacity-50',
-              uploadError
-                ? 'border-red-400/40 text-red-400 hover:bg-red-400/10'
-                : 'border-border text-foreground hover:border-amber-400/40 hover:text-amber-400',
-            )}
-          >
-            <Upload className="h-3.5 w-3.5" />
-          </button>
-        )}
+        {showProofControl ? (
+          proofApproved ? (
+            <span title="Proof approved" className="flex h-8 w-8 items-center justify-center rounded-md border border-emerald-400/30 bg-emerald-400/12 text-emerald-300">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+            </span>
+          ) : proofPending ? (
+            <span title="Proof pending review" className="flex h-8 w-8 items-center justify-center rounded-md border border-sky-400/30 bg-sky-400/12 text-sky-300">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+            </span>
+          ) : mayUploadProof ? (
+            <button
+              type="button"
+              title={uploading ? 'Uploading…' : uploadError ? `Retry — ${uploadError}` : 'Upload ₹196 proof'}
+              disabled={uploading}
+              onClick={() => fileInputRef.current?.click()}
+              className={cn(
+                'flex h-8 w-8 items-center justify-center rounded-md border bg-muted/30 transition disabled:opacity-50',
+                uploadError
+                  ? 'border-red-400/40 text-red-400 hover:bg-red-400/10'
+                  : 'border-border text-foreground hover:border-amber-400/40 hover:text-amber-400',
+              )}
+            >
+              <Upload className="h-3.5 w-3.5" />
+            </button>
+          ) : null
+        ) : null}
         <Link to={`/dashboard/work/leads/${lead.id}`} title="Edit"
           className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted/30 transition hover:border-primary/40 hover:text-primary">
           <Pencil className="h-3.5 w-3.5"/>
@@ -322,10 +359,10 @@ const LeadCard = memo(function LeadCard({
           </button>
         </div>
       ) : null}
-      {dayKey != null ? (
-        <DayBatchSection
+      {stageKey ? (
+        <StageAdvanceSection
           lead={lead}
-          dayKey={dayKey}
+          stageKey={stageKey}
           pm={pm}
           leadPatchBusy={leadPatchBusy}
           onMoveNext={onMoveNext}
@@ -336,16 +373,29 @@ const LeadCard = memo(function LeadCard({
   )
 })
 
-// ── DayBatchSection — shared batch-slot strip used inside LeadCard for day tabs ─
-function DayBatchSection({ lead, dayKey, pm, leadPatchBusy, onMoveNext, nextLabel }: {
-  lead: LeadPublic; dayKey: 1|2|3; pm: PM; leadPatchBusy: boolean; onMoveNext?: () => void; nextLabel?: string
+// ── StageAdvanceSection — day flow + post-Day-3 progression ──────────────────
+function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, nextLabel }: {
+  lead: LeadPublic
+  stageKey: WorkboardStageKey
+  pm: PM
+  leadPatchBusy: boolean
+  onMoveNext?: () => void
+  nextLabel?: string
 }) {
-  if (dayKey === 3) {
+  const [sharingSlot, setSharingSlot] = useState<BatchSlotKey | null>(null)
+  const [toggleSlot, setToggleSlot] = useState<BatchSlotKey | null>(null)
+  const [batchError, setBatchError] = useState<string | null>(null)
+
+  if (stageKey === 'day3' || stageKey === 'interview' || stageKey === 'track_selected' || stageKey === 'seat_hold') {
+    const copy: Record<Exclude<WorkboardStageKey, 'day1' | 'day2'>, string> = {
+      day3: 'Day 3 closer stage. Confirm completion when this lead is ready for interview.',
+      interview: 'Interview stage. Move ahead once the interview has been completed.',
+      track_selected: 'Track selected stage. Advance once the track choice is finalized.',
+      seat_hold: 'Seat hold stage. Move ahead after the seat hold is confirmed.',
+    }
     return (
       <div className="space-y-1.5 border-t border-border/40 pt-1.5">
-        <p className="text-ds-caption text-muted-foreground">
-          Day 3 closer stage. Confirm completion when this lead is ready to convert.
-        </p>
+        <p className="text-ds-caption text-muted-foreground">{copy[stageKey]}</p>
         {onMoveNext ? (
           <button
             type="button"
@@ -360,63 +410,102 @@ function DayBatchSection({ lead, dayKey, pm, leadPatchBusy, onMoveNext, nextLabe
     )
   }
 
-  const batchSlots = dayKey === 1
+  const dayKey = stageKey === 'day1' ? 1 : 2
+  const batchSlots = stageKey === 'day1'
     ? (['d1_morning', 'd1_afternoon', 'd1_evening'] as const)
     : (['d2_morning', 'd2_afternoon', 'd2_evening'] as const)
-
   const done = batchSlots.every((k) => lead[k])
+  const showDay2TestSend = stageKey === 'day2' && done
 
-  const patchKey = null
-  const showDay2TestSend = dayKey === 2 && done
-
-  const handleBatchClick = async (slot: 'M' | 'A' | 'E', slotKey?: BatchSlotKey) => {
-    let tokenizedLinks: { v1?: string; v2?: string } | undefined
-    if (slotKey) {
+  const handleBatchShare = async (slot: 'M' | 'A' | 'E', slotKey: BatchSlotKey) => {
+    setBatchError(null)
+    setSharingSlot(slotKey)
+    try {
       const res = await apiFetch(`/api/v1/leads/${lead.id}/batch-share-url`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slot: slotKey }),
       })
-      if (res.ok) {
-        const body = (await res.json()) as { watch_url_v1?: string; watch_url_v2?: string }
-        tokenizedLinks = { v1: body.watch_url_v1, v2: body.watch_url_v2 }
+      if (!res.ok) {
+        throw new Error(await readResponseError(res))
       }
+      const body = (await res.json()) as { watch_url_v1?: string; watch_url_v2?: string }
+      const tokenizedLinks = { v1: body.watch_url_v1, v2: body.watch_url_v2 }
+      const waUrl = workboardBatchWhatsAppUrl(lead, dayKey, slot, tokenizedLinks)
+      if (!waUrl) {
+        throw new Error('Phone number missing for WhatsApp batch share.')
+      }
+      window.open(waUrl, '_blank', 'noopener,noreferrer')
+    } catch (err) {
+      setBatchError(err instanceof Error ? err.message : 'Could not generate batch links')
+    } finally {
+      setSharingSlot(null)
     }
-    const waUrl = workboardBatchWhatsAppUrl(lead, dayKey, slot, tokenizedLinks)
-    if (waUrl) window.open(waUrl, '_blank', 'noopener,noreferrer')
-    if (!slotKey && patchKey) {
-      await pm.mutateAsync({ id: lead.id, body: { [patchKey]: true } })
+  }
+
+  const handleBatchToggle = async (slotKey: BatchSlotKey) => {
+    setBatchError(null)
+    setToggleSlot(slotKey)
+    try {
+      await pm.mutateAsync({ id: lead.id, body: { [slotKey]: !lead[slotKey] } })
+    } catch (err) {
+      setBatchError(err instanceof Error ? err.message : 'Could not update batch state')
+    } finally {
+      setToggleSlot(null)
     }
   }
 
   return (
     <div className="space-y-1.5 border-t border-border/40 pt-1.5">
       <div className="flex items-center gap-2">
-        <span className="text-ds-caption text-muted-foreground">Batches:</span>
-        {batchSlots
-          ? batchSlots.map((slotKey, i) => {
-              const slot = (['M', 'A', 'E'] as const)[i]
-              const slotDone = lead[slotKey]
-              return (
-                <button key={slotKey} type="button" disabled={leadPatchBusy || done}
-                  onClick={() => void handleBatchClick(slot, slotKey)}
-                  className={cn('flex h-6 w-6 items-center justify-center rounded text-ds-caption font-semibold transition',
-                    slotDone || done ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-400'
-                      : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary')}>
-                  {slotDone || done ? <CheckSquare className="h-3 w-3"/> : <span>{slot}</span>}
-                </button>
-              )
-            })
-          : (['M','A','E'] as const).map((slot) => (
-              <button key={slot} type="button" disabled={leadPatchBusy || done || !patchKey}
-                onClick={() => void handleBatchClick(slot)}
-                className={cn('flex h-6 w-6 items-center justify-center rounded text-ds-caption font-semibold transition',
-                  done ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-400'
-                    : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary')}>
-                {done ? <CheckSquare className="h-3 w-3"/> : <span>{slot}</span>}
-              </button>
-            ))}
+        <span className="text-ds-caption text-muted-foreground">Links:</span>
+        {batchSlots.map((slotKey, i) => {
+          const slot = (['M', 'A', 'E'] as const)[i]
+          const slotDone = lead[slotKey]
+          const busy = sharingSlot === slotKey
+          return (
+            <button
+              key={`share-${slotKey}`}
+              type="button"
+              disabled={leadPatchBusy || busy}
+              onClick={() => void handleBatchShare(slot, slotKey)}
+              className={cn(
+                'flex h-6 min-w-8 items-center justify-center rounded px-1.5 text-ds-caption font-semibold transition disabled:opacity-50',
+                slotDone
+                  ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
+                  : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
+              )}
+            >
+              {busy ? '...' : slot}
+            </button>
+          )
+        })}
       </div>
+      <div className="flex items-center gap-2">
+        <span className="text-ds-caption text-muted-foreground">Check:</span>
+        {batchSlots.map((slotKey, i) => {
+          const slot = (['M', 'A', 'E'] as const)[i]
+          const slotDone = lead[slotKey]
+          const busy = toggleSlot === slotKey
+          return (
+            <button
+              key={`toggle-${slotKey}`}
+              type="button"
+              disabled={leadPatchBusy || busy}
+              onClick={() => void handleBatchToggle(slotKey)}
+              className={cn(
+                'flex h-6 min-w-8 items-center justify-center rounded px-1.5 text-ds-caption font-semibold transition disabled:opacity-50',
+                slotDone
+                  ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
+                  : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
+              )}
+            >
+              {busy ? '...' : slotDone ? <CheckSquare className="h-3 w-3" /> : <span>{slot}</span>}
+            </button>
+          )
+        })}
+      </div>
+      {batchError ? <p className="text-ds-caption text-destructive">{batchError}</p> : null}
       {showDay2TestSend && (
         <button type="button" disabled={leadPatchBusy}
           onClick={() => { const u = day2TestWhatsAppUrl(lead); if (u) window.open(u, '_blank', 'noopener,noreferrer'); void pm.mutateAsync({ id: lead.id, body: { whatsapp_sent: true } }) }}
@@ -435,7 +524,7 @@ function DayBatchSection({ lead, dayKey, pm, leadPatchBusy, onMoveNext, nextLabe
 }
 
 const LEAD_CARD_ROW = 138
-const ADMIN_CARD_ROW = 230
+const ADMIN_CARD_ROW = 260
 
 function leadsForColumn<T>(items: T[], colIndex: number, columnCount: number): T[] {
   const out: T[] = []
@@ -599,7 +688,7 @@ function VirtualLeadGrid({
 
 type AdminColData = {
   colLeads: LeadPublic[]
-  dayKey: 1 | 2 | 3
+  stageKey: WorkboardStageKey
   nextStatus?: LeadStatus
   nextLabel?: string
   pm: PM
@@ -607,7 +696,7 @@ type AdminColData = {
 }
 
 function AdminColRow(props: RowComponentProps<AdminColData>): ReactElement | null {
-  const { index, style, ariaAttributes, colLeads, dayKey, nextStatus, nextLabel, pm, patchBusyLeadId } = props
+  const { index, style, ariaAttributes, colLeads, stageKey, nextStatus, nextLabel, pm, patchBusyLeadId } = props
   const lead = colLeads[index]
   if (!lead) return null
   const onMoveNext = nextStatus
@@ -617,7 +706,7 @@ function AdminColRow(props: RowComponentProps<AdminColData>): ReactElement | nul
     <div {...ariaAttributes} style={style} className="box-border px-0.5 pb-2">
       <LeadCard
         lead={lead}
-        dayKey={dayKey}
+        stageKey={stageKey}
         pm={pm}
         leadPatchBusy={patchBusyLeadId === lead.id}
         onMoveNext={onMoveNext}
@@ -630,7 +719,7 @@ function AdminColRow(props: RowComponentProps<AdminColData>): ReactElement | nul
 const VirtualAdminColumn = memo(function VirtualAdminColumn({
   colLeads,
   height,
-  dayKey,
+  stageKey,
   nextStatus,
   nextLabel,
   pm,
@@ -638,15 +727,15 @@ const VirtualAdminColumn = memo(function VirtualAdminColumn({
 }: {
   colLeads: LeadPublic[]
   height: number
-  dayKey: 1 | 2 | 3
+  stageKey: WorkboardStageKey
   nextStatus?: LeadStatus
   nextLabel?: string
   pm: PM
   patchBusyLeadId: number | null
 }) {
   const itemData = useMemo(
-    () => ({ colLeads, dayKey, nextStatus, nextLabel, pm, patchBusyLeadId }),
-    [colLeads, dayKey, nextStatus, nextLabel, pm, patchBusyLeadId],
+    () => ({ colLeads, stageKey, nextStatus, nextLabel, pm, patchBusyLeadId }),
+    [colLeads, stageKey, nextStatus, nextLabel, pm, patchBusyLeadId],
   )
   if (colLeads.length === 0) return <div className="min-h-0 min-w-0 flex-1" />
   return (
@@ -665,14 +754,14 @@ const VirtualAdminColumn = memo(function VirtualAdminColumn({
 
 function VirtualAdminLeadGrid({
   leads,
-  dayKey,
+  stageKey,
   nextStatus,
   nextLabel,
   pm,
   patchBusyLeadId,
 }: {
   leads: LeadPublic[]
-  dayKey: 1 | 2 | 3
+  stageKey: WorkboardStageKey
   nextStatus?: LeadStatus
   nextLabel?: string
   pm: PM
@@ -701,7 +790,7 @@ function VirtualAdminLeadGrid({
           key={ci}
           colLeads={colLeads}
           height={listHeight}
-          dayKey={dayKey}
+          stageKey={stageKey}
           nextStatus={nextStatus}
           nextLabel={nextLabel}
           pm={pm}
@@ -809,14 +898,19 @@ function TeamView({
   )
 }
 
-// ── DayGrid (hoisted outside AdminView to avoid component-in-render) ──────────
-function DayGrid({ leads, dayKey, nextStatus, nextLabel, pm, patchBusyLeadId }: {
-  leads: LeadPublic[]; dayKey: 1|2|3; nextStatus?: LeadStatus; nextLabel?: string; pm: PM; patchBusyLeadId: number | null
+// ── StageGrid (hoisted outside AdminView to avoid component-in-render) ────────
+function StageGrid({ leads, stageKey, nextStatus, nextLabel, pm, patchBusyLeadId }: {
+  leads: LeadPublic[]
+  stageKey: WorkboardStageKey
+  nextStatus?: LeadStatus
+  nextLabel?: string
+  pm: PM
+  patchBusyLeadId: number | null
 }) {
   return (
     <VirtualAdminLeadGrid
       leads={leads}
-      dayKey={dayKey}
+      stageKey={stageKey}
       nextStatus={nextStatus}
       nextLabel={nextLabel}
       pm={pm}
@@ -826,7 +920,7 @@ function DayGrid({ leads, dayKey, nextStatus, nextLabel, pm, patchBusyLeadId }: 
 }
 
 // ── AdminView ──────────────────────────────────────────────────────────────────
-type ATab = 'day1'|'day2'|'day3'|'closing'
+type ATab = WorkboardStageKey | 'closing'
 function AdminView({ cols, pm, patchBusyLeadId, search }: { cols: Col[]; pm: PM; patchBusyLeadId: number | null; search: string }) {
   const [tab, setTab] = useState<ATab>('day1')
   const byS = Object.fromEntries(cols.map((c) => [c.status, c]))
@@ -834,15 +928,22 @@ function AdminView({ cols, pm, patchBusyLeadId, search }: { cols: Col[]; pm: PM;
   const f = (statuses: string[]) =>
     statuses.flatMap((s) => (byS[s]?.items ?? []).filter((l) =>
       !needle || l.name.toLowerCase().includes(needle) || (l.phone ?? '').includes(needle)))
-
-  const day1 = f(['day1']), day2 = f(['day2']), day3 = f(DAY3), closing = f(CLOSE)
-  const tabs = [{id:'day1',label:'Day 1',count:day1.length},{id:'day2',label:'Day 2',count:day2.length},{id:'day3',label:'Day 3',count:day3.length},{id:'closing',label:'Closing',count:closing.length}]
+  const tabData = ADMIN_STAGE_TABS.map((config) => ({
+    ...config,
+    items: f(config.statuses),
+  }))
+  const tabs = tabData.map((config) => ({
+    id: config.id,
+    label: config.label,
+    count: config.items.length,
+  }))
+  const active = tabData.find((config) => config.id === tab) ?? tabData[0]
+  const day2 = tabData.find((config) => config.id === 'day2')?.items ?? []
 
   return (
     <div className="space-y-4">
       <Tabs tabs={tabs} active={tab} onChange={(id) => setTab(id as ATab)}/>
-      {tab === 'day1' && <DayGrid leads={day1} dayKey={1} nextStatus="day2" nextLabel="Move to Day 2 →" pm={pm} patchBusyLeadId={patchBusyLeadId} />}
-      {tab === 'day2' && (
+      {active?.id === 'day2' ? (
         <div className="space-y-3">
           {/* Day 2 summary chips */}
           <div className="flex flex-wrap gap-2">
@@ -852,13 +953,9 @@ function AdminView({ cols, pm, patchBusyLeadId, search }: { cols: Col[]; pm: PM;
             ].map(([label, count, cls]) =>
               <span key={label as string} className={cn('rounded-full border px-2.5 py-0.5 text-ds-caption font-medium', cls as string)}>{label}: {count}</span>)}
           </div>
-          <DayGrid leads={day2} dayKey={2} nextStatus="day3" nextLabel="Move to Day 3 →" pm={pm} patchBusyLeadId={patchBusyLeadId} />
+          <StageGrid leads={day2} stageKey="day2" nextStatus="day3" nextLabel="Move to Day 3 →" pm={pm} patchBusyLeadId={patchBusyLeadId} />
         </div>
-      )}
-      {tab === 'day3' && (
-        <DayGrid leads={day3} dayKey={3} nextStatus="converted" nextLabel="Mark converted →" pm={pm} patchBusyLeadId={patchBusyLeadId} />
-      )}
-      {tab === 'closing' && (
+      ) : active?.id === 'closing' ? (
         <div className="space-y-6">
           {CLOSE.map((s) => {
             const items = f([s])
@@ -874,7 +971,16 @@ function AdminView({ cols, pm, patchBusyLeadId, search }: { cols: Col[]; pm: PM;
             )
           })}
         </div>
-      )}
+      ) : active?.stageKey ? (
+        <StageGrid
+          leads={active.items}
+          stageKey={active.stageKey}
+          nextStatus={active.nextStatus}
+          nextLabel={active.nextLabel}
+          pm={pm}
+          patchBusyLeadId={patchBusyLeadId}
+        />
+      ) : null}
     </div>
   )
 }

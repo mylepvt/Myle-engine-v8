@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime, timezone
 
 import conftest as test_conftest
 import pytest
@@ -53,6 +54,36 @@ async def _clear_payment_state() -> None:
         await session.commit()
 
 
+async def _seed_payment_history_lead(*, reviewed_at: datetime) -> None:
+    fac = test_conftest.get_test_session_factory()
+    async with fac() as session:
+        lead = Lead(
+            name="History Lead",
+            status="paid",
+            created_by_user_id=3,
+            assigned_to_user_id=3,
+            phone="8888888888",
+            source="facebook",
+            payment_status="approved",
+            payment_amount_cents=19600,
+            payment_proof_url="https://example.com/proof.png",
+            payment_proof_uploaded_at=reviewed_at,
+        )
+        session.add(lead)
+        await session.flush()
+        session.add(
+            ActivityLog(
+                user_id=1,
+                action="payment_proof_approved",
+                entity_type="lead",
+                entity_id=lead.id,
+                meta={"notes": "Looks good"},
+                created_at=reviewed_at,
+            )
+        )
+        await session.commit()
+
+
 def test_public_payment_proof_upload_reaches_admin_queue(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path,
@@ -101,5 +132,36 @@ def test_public_payment_proof_upload_reaches_admin_queue(
         lead_body = lead.json()
         assert lead_body["status"] == "paid"
         assert lead_body["payment_status"] == "approved"
+    finally:
+        asyncio.run(_clear_payment_state())
+
+
+def test_enrollment_history_returns_calendar_wise_payment_decisions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    patch_jwt_settings(monkeypatch, auth_dev_login_enabled=True)
+    asyncio.run(_clear_payment_state())
+    reviewed_at = datetime(2026, 4, 21, 4, 30, tzinfo=timezone.utc)
+    asyncio.run(_seed_payment_history_lead(reviewed_at=reviewed_at))
+
+    try:
+        admin = TestClient(app)
+        assert admin.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+
+        history = admin.get(
+            "/api/v1/team/enrollment-requests/history",
+            params={"date": "2026-04-21"},
+        )
+        assert history.status_code == 200
+        body = history.json()
+        assert body["date"] == "2026-04-21"
+        assert body["total"] == 1
+        item = body["items"][0]
+        assert item["lead_name"] == "History Lead"
+        assert item["review_action"] == "approved"
+        assert item["review_note"] == "Looks good"
+        assert item["payment_proof_url"] == "https://example.com/proof.png"
+        assert item["reviewed_by_user_id"] == 1
+        assert item["reviewed_at"].startswith("2026-04-21T04:30:00")
     finally:
         asyncio.run(_clear_payment_state())

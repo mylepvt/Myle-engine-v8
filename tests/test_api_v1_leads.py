@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import conftest as test_conftest
 import pytest
@@ -60,6 +60,10 @@ async def _seed_one_lead(
     user_id: int,
     name: str = "Acme Corp",
     lead_status: str = "new",
+    phone: str | None = None,
+    payment_status: str | None = None,
+    mindset_started_at: datetime | None = None,
+    mindset_lock_state: str | None = None,
     archived_at: datetime | None = None,
     deleted_at: datetime | None = None,
     in_pool: bool = False,
@@ -75,6 +79,10 @@ async def _seed_one_lead(
             Lead(
                 name=name,
                 status=lead_status,
+                phone=phone,
+                payment_status=payment_status,
+                mindset_started_at=mindset_started_at,
+                mindset_lock_state=mindset_lock_state,
                 created_by_user_id=cb,
                 assigned_to_user_id=at,
                 archived_at=archived_at,
@@ -215,6 +223,63 @@ def test_create_lead(
         listed = c.get("/api/v1/leads").json()
         assert listed["total"] == 1
         assert listed["items"][0]["name"] == "New Co"
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_create_lead_rejects_duplicate_phone_across_full_funnel(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _seed_one_lead(
+            user_id=2,
+            name="Existing Training Lead",
+            lead_status="training",
+            phone="9876543210",
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+        res = c.post(
+            "/api/v1/leads",
+            json={"name": "Duplicate Attempt", "phone": "+91 98765 43210"},
+        )
+        assert res.status_code == 409
+        msg = res.json()["error"]["message"]
+        assert "9876543210" in msg
+        assert "Duplicate leads are blocked across the full funnel." in msg
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_update_lead_rejects_duplicate_phone_across_full_funnel(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _seed_one_lead(
+            user_id=2,
+            name="Converted Lead",
+            lead_status="converted",
+            phone="9876543210",
+        )
+    )
+    asyncio.run(
+        _seed_one_lead(
+            user_id=2,
+            name="Fresh Lead",
+            lead_status="new_lead",
+            phone="9123456780",
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        res = c.patch("/api/v1/leads/2", json={"phone": "09876 543210"})
+        assert res.status_code == 409
+        msg = res.json()["error"]["message"]
+        assert "9876543210" in msg
+        assert "Duplicate leads are blocked across the full funnel." in msg
     finally:
         asyncio.run(_clear_leads())
 
@@ -570,7 +635,7 @@ def test_batch_share_url_returns_tokenized_watch_links(
         asyncio.run(_clear_leads())
 
 
-def test_batch_share_url_d2_forbidden_for_leader(
+def test_batch_share_url_d2_allowed_for_leader(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     asyncio.run(
@@ -578,6 +643,7 @@ def test_batch_share_url_d2_forbidden_for_leader(
             user_id=2,
             name="Day2Lead",
             lead_status="day2",
+            payment_status="approved",
             assigned_to_user_id=2,
         )
     )
@@ -585,7 +651,76 @@ def test_batch_share_url_d2_forbidden_for_leader(
         c = _authed_client(monkeypatch)
         assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
         res = c.post("/api/v1/leads/1/batch-share-url", json={"slot": "d2_morning"})
-        assert res.status_code == 403
+        assert res.status_code == 200
+        body = res.json()
+        assert "/api/v1/watch/batch/d2_morning/1?token=" in body["watch_url_v1"]
+        assert "/api/v1/watch/batch/d2_morning/2?token=" in body["watch_url_v2"]
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_mindset_lock_preview_uses_persisted_started_at_after_reconnect(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    started_at = datetime.now(timezone.utc) - timedelta(seconds=75)
+    asyncio.run(
+        _seed_one_lead(
+            user_id=3,
+            name="Mindset Resume",
+            lead_status="mindset_lock",
+            payment_status="approved",
+            mindset_started_at=started_at,
+            mindset_lock_state="mindset_lock",
+            assigned_to_user_id=3,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+        first = c.get("/api/v1/leads/1/mindset-lock-preview")
+        assert first.status_code == 200
+        body1 = first.json()
+        second = c.get("/api/v1/leads/1/mindset-lock-preview")
+        assert second.status_code == 200
+        body2 = second.json()
+        assert body1["mindset_started_at"] == body2["mindset_started_at"]
+        assert body1["remaining_seconds"] > 0
+        assert body2["remaining_seconds"] <= body1["remaining_seconds"]
+        assert body1["leader_user_id"] == 2
+        assert body1["eligible"] is False
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_mindset_lock_complete_handles_persisted_started_at_after_reconnect(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    started_at = datetime.now(timezone.utc) - timedelta(minutes=6)
+    asyncio.run(
+        _seed_one_lead(
+            user_id=3,
+            name="Mindset Complete Resume",
+            lead_status="mindset_lock",
+            payment_status="approved",
+            mindset_started_at=started_at,
+            mindset_lock_state="mindset_lock",
+            assigned_to_user_id=3,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+        res = c.post("/api/v1/leads/1/mindset-lock-complete")
+        assert res.status_code == 200
+        body = res.json()
+        assert body["status"] == "assigned"
+        assert body["leader_user_id"] == 2
+        lead = c.get("/api/v1/leads/1")
+        assert lead.status_code == 200
+        lead_body = lead.json()
+        assert lead_body["status"] == "day1"
+        assert lead_body["assigned_to_user_id"] == 2
+        assert lead_body["mindset_lock_state"] == "leader_assigned"
     finally:
         asyncio.run(_clear_leads())
 

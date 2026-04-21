@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
@@ -57,6 +58,7 @@ _PAYMENT_REQUIRED_STATUSES: frozenset[str] = frozenset(
 )
 
 _POOL_CLAIM_ROLES: frozenset[str] = frozenset({"team", "leader", "admin"})
+_PHONE_DIGIT_RE = re.compile(r"\D")
 
 
 async def _deliver_ctcs_interested_whatsapp(lead_id: int, phone: str | None) -> None:
@@ -80,6 +82,21 @@ def _display_name_from_fields(name: str | None, username: str | None, email: str
         return username.strip()
     local = (email or "").split("@", 1)[0].strip()
     return local or "Leader"
+
+
+def _normalize_phone_digits(raw: str | None) -> str | None:
+    digits = _PHONE_DIGIT_RE.sub("", raw or "")
+    if len(digits) >= 10:
+        return digits[-10:]
+    return None
+
+
+def _ensure_utc_datetime(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
 
 
 def _ctcs_filter_clause(ctcs_filter: Optional[str]) -> Any:
@@ -304,7 +321,35 @@ class LeadsService:
             offset=offset,
         )
 
+    async def _find_duplicate_phone_lead(
+        self,
+        phone: str | None,
+        *,
+        exclude_lead_id: int | None = None,
+    ) -> tuple[int, str, str, str] | None:
+        normalized = _normalize_phone_digits(phone)
+        if not normalized or len(normalized) != 10:
+            return None
+        stmt = select(Lead.id, Lead.name, Lead.status, Lead.phone).where(Lead.deleted_at.is_(None))
+        if exclude_lead_id is not None:
+            stmt = stmt.where(Lead.id != exclude_lead_id)
+        rows = (await self._session.execute(stmt)).all()
+        for lead_id, name, status, existing_phone in rows:
+            if _normalize_phone_digits(existing_phone) == normalized:
+                return int(lead_id), str(name), str(status), normalized
+        return None
+
     async def create_lead(self, *, body: LeadCreate, user: AuthUser) -> Lead:
+        dup = await self._find_duplicate_phone_lead(body.phone)
+        if dup is not None:
+            dup_id, dup_name, dup_status, normalized = dup
+            raise HTTPException(
+                status_code=http_status.HTTP_409_CONFLICT,
+                detail=(
+                    f"Phone {normalized} already exists on lead #{dup_id} "
+                    f"({dup_name} · {dup_status}). Duplicate leads are blocked across the full funnel."
+                ),
+            )
         lead = await self._repository.create_lead(body, user.user_id)
         handoff = AutoHandoffService(self._session)
         await handoff.on_lead_created(lead=lead, actor_user_id=user.user_id)
@@ -471,7 +516,7 @@ class LeadsService:
                 status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail="Lead is not currently in mindset lock",
             )
-        started_at = lead.mindset_started_at
+        started_at = _ensure_utc_datetime(lead.mindset_started_at)
         if started_at is None:
             raise HTTPException(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
@@ -520,14 +565,17 @@ class LeadsService:
             ).one_or_none()
             if row is not None:
                 leader_name = _display_name_from_fields(row[0], row[1], row[2])
-            duration_seconds = max(0, int((lead.mindset_completed_at - lead.mindset_started_at).total_seconds()))
+            completed_at = _ensure_utc_datetime(lead.mindset_completed_at)
+            started_at = _ensure_utc_datetime(lead.mindset_started_at)
+            assert completed_at is not None and started_at is not None
+            duration_seconds = max(0, int((completed_at - started_at).total_seconds()))
             return MindsetLockCompleteResponse(
                 status="assigned",
                 leader_name=leader_name,
                 leader_user_id=leader_id,
                 duration_seconds=duration_seconds,
-                mindset_started_at=lead.mindset_started_at,
-                mindset_completed_at=lead.mindset_completed_at,
+                mindset_started_at=started_at,
+                mindset_completed_at=completed_at,
             )
         if lead.assigned_to_user_id != user.user_id:
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
@@ -541,7 +589,7 @@ class LeadsService:
                 status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail="Lead must be in mindset lock before leader handoff",
             )
-        started_at = lead.mindset_started_at
+        started_at = _ensure_utc_datetime(lead.mindset_started_at)
         if started_at is None:
             raise HTTPException(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
@@ -680,6 +728,16 @@ class LeadsService:
         elif body.archived is False:
             lead.archived_at = None
         if body.phone is not None:
+            dup = await self._find_duplicate_phone_lead(body.phone, exclude_lead_id=lead.id)
+            if dup is not None:
+                dup_id, dup_name, dup_status, normalized = dup
+                raise HTTPException(
+                    status_code=http_status.HTTP_409_CONFLICT,
+                    detail=(
+                        f"Phone {normalized} already exists on lead #{dup_id} "
+                        f"({dup_name} · {dup_status}). Duplicate leads are blocked across the full funnel."
+                    ),
+                )
             lead.phone = body.phone
         if body.email is not None:
             lead.email = body.email

@@ -60,6 +60,35 @@ export const LEAD_STATUS_OPTIONS: { value: LeadStatus; label: string }[] = [
   { value: 'new',            label: 'New (Legacy)' },
 ]
 
+export const PRIMARY_USER_FLOW_STATUSES: LeadStatus[] = [
+  'new_lead',
+  'invited',
+  'whatsapp_sent',
+  'video_sent',
+  'video_watched',
+  'paid',
+  'mindset_lock',
+  'day1',
+  'day2',
+  'day3',
+  'interview',
+  'track_selected',
+  'seat_hold',
+  'converted',
+]
+
+export const USER_OUTCOME_STATUSES: LeadStatus[] = ['lost', 'retarget', 'inactive']
+
+export const INTERNAL_OPS_STATUSES: LeadStatus[] = ['contacted']
+
+export const LEGACY_COMPAT_STATUSES: LeadStatus[] = [
+  'training',
+  'plan_2cc',
+  'level_up',
+  'pending',
+  'new',
+]
+
 /** Won/closed statuses for metrics */
 export const CLOSED_WON_STATUSES: LeadStatus[] = ['converted']
 export const CLOSED_LOST_STATUSES: LeadStatus[] = ['lost', 'inactive']
@@ -138,11 +167,10 @@ export type LeadListFetchParams = LeadListFilters & {
 
 /** Group statuses by phase for filter dropdowns */
 export const LEAD_STATUS_GROUPS: { label: string; statuses: LeadStatus[] }[] = [
-  { label: 'Pre-Enrollment', statuses: ['new_lead', 'contacted', 'invited', 'whatsapp_sent', 'video_sent', 'video_watched'] },
-  { label: 'Enrolled', statuses: ['paid', 'mindset_lock', 'day1', 'day2', 'day3'] },
-  { label: 'Closing', statuses: ['interview', 'track_selected', 'seat_hold', 'converted'] },
-  { label: 'Re-engage', statuses: ['lost', 'retarget', 'inactive'] },
-  { label: 'Other', statuses: ['training', 'plan_2cc', 'level_up', 'pending', 'new'] },
+  { label: 'Main Journey', statuses: PRIMARY_USER_FLOW_STATUSES },
+  { label: 'Outcomes', statuses: USER_OUTCOME_STATUSES },
+  { label: 'Internal Ops', statuses: INTERNAL_OPS_STATUSES },
+  { label: 'Legacy / Compat', statuses: LEGACY_COMPAT_STATUSES },
 ]
 
 async function parseError(res: Response): Promise<never> {
@@ -540,7 +568,10 @@ export function useClaimLeadMutation() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: claimLead,
-    onSuccess: () => invalidateLeadRelated(qc),
+    onSuccess: () => {
+      invalidateLeadRelated(qc)
+      void qc.invalidateQueries({ queryKey: ['wallet'] })
+    },
   })
 }
 
