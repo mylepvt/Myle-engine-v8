@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -6,9 +7,11 @@ import {
   primaryActionLabel,
   buildWhatsAppVideoUrl,
   shouldOfferWhatsAppForTransition,
+  visibleAlternativeTransitions,
 } from '@/lib/lead-next-action'
 import { useAvailableTransitionsQuery, useTransitionLeadMutation } from '@/hooks/use-leads-query'
 import { LEAD_STATUS_OPTIONS } from '@/hooks/use-leads-query'
+import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { cn } from '@/lib/utils'
 import { ChevronDown, ChevronUp, MessageCircle } from 'lucide-react'
 
@@ -17,6 +20,7 @@ type LeadMini = {
   name: string
   phone?: string | null
   status: string
+  paymentStatus?: string | null
 }
 
 type Props = {
@@ -25,6 +29,7 @@ type Props = {
 }
 
 export function LeadNextStepPanel({ lead, className }: Props) {
+  const { role } = useDashboardShellRole()
   const { data: transitions, isPending, isError, error, refetch } = useAvailableTransitionsQuery(lead.id)
   const mut = useTransitionLeadMutation()
   const [showAll, setShowAll] = useState(false)
@@ -35,7 +40,25 @@ export function LeadNextStepPanel({ lead, className }: Props) {
     : null
 
   const others =
-    transitions && primary ? transitions.filter((t) => t !== primary) : transitions ?? []
+    transitions && primary ? visibleAlternativeTransitions(lead.status, transitions).filter((t) => t !== primary) : []
+  const paidGateBlocked = primary === 'paid' && lead.paymentStatus !== 'approved'
+  const workLeadsLabel = role === 'leader' || role === 'admin' ? 'All Leads' : 'Calling Board'
+
+  function paidGateCopy(): string {
+    if (role === 'admin') {
+      if (lead.paymentStatus === 'proof_uploaded') {
+        return '₹196 proof review me hai. Approvals se approve hote hi Paid unlock ho jayega.'
+      }
+      return '₹196 proof leader ya team work/leads flow se upload hota hai. Approval ke baad hi Paid move sahi chalega.'
+    }
+    if (lead.paymentStatus === 'proof_uploaded') {
+      return '₹196 proof review me hai. Admin approval ke baad Paid unlock ho jayega.'
+    }
+    if (lead.paymentStatus === 'rejected') {
+      return `₹196 proof reject ho gaya hai. Naya screenshot ${workLeadsLabel} se upload karo.`
+    }
+    return `₹196 proof pehle ${workLeadsLabel} se upload karo. Admin approval ke baad Paid unlock hoga.`
+  }
 
   async function runTransition(target: string) {
     setLocalError(null)
@@ -86,17 +109,39 @@ export function LeadNextStepPanel({ lead, className }: Props) {
   return (
     <div className={cn('space-y-2', className)}>
       <p className="text-ds-caption font-semibold uppercase tracking-wide text-muted-foreground">Next step</p>
-      <Button
-        type="button"
-        className="h-11 w-full justify-center gap-2 rounded-xl border border-primary/35 bg-primary/15 text-sm font-semibold text-primary shadow-sm transition-transform active:scale-[0.98] hover:bg-primary/25"
-        disabled={mut.isPending}
-        onClick={() => void onPrimaryClick()}
-      >
-        {shouldOfferWhatsAppForTransition(lead.status, primary) ? (
-          <MessageCircle className="size-4 shrink-0" aria-hidden />
-        ) : null}
-        {primaryActionLabel(primary)}
-      </Button>
+      {!paidGateBlocked ? (
+        <Button
+          type="button"
+          className="h-11 w-full justify-center gap-2 rounded-xl border border-primary/35 bg-primary/15 text-sm font-semibold text-primary shadow-sm transition-transform active:scale-[0.98] hover:bg-primary/25"
+          disabled={mut.isPending}
+          onClick={() => void onPrimaryClick()}
+        >
+          {shouldOfferWhatsAppForTransition(lead.status, primary) ? (
+            <MessageCircle className="size-4 shrink-0" aria-hidden />
+          ) : null}
+          {primaryActionLabel(primary)}
+        </Button>
+      ) : null}
+      {paidGateBlocked ? (
+        <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-ds-caption text-amber-200">
+          <p className="leading-relaxed">{paidGateCopy()}</p>
+          {role !== 'admin' ? (
+            <Link
+              to="/dashboard/work/leads"
+              className="mt-2 inline-flex font-semibold text-primary underline-offset-2 hover:underline"
+            >
+              Open {workLeadsLabel}
+            </Link>
+          ) : (
+            <Link
+              to="/dashboard/team/enrollment-approvals"
+              className="mt-2 inline-flex font-semibold text-primary underline-offset-2 hover:underline"
+            >
+              Open ₹196 Approvals
+            </Link>
+          )}
+        </div>
+      ) : null}
 
       {localError ? (
         <p className="text-ds-caption text-destructive" role="alert">
