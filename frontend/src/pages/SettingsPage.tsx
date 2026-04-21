@@ -40,13 +40,15 @@ import { apiUrl } from '@/lib/api'
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile')
   const { data: authData } = useAuthMeQuery()
+  const userRole = authData?.role as Role | undefined
+  const isAdmin = userRole === 'admin'
   
   // Queries
   const userProfile = useUserProfileQuery()
   const userPreferences = useUserPreferencesQuery()
-  const systemConfig = useSystemConfigurationQuery()
-  const usersSummary = useSystemUsersSummaryQuery()
-  const appSettings = useAppSettingsQuery()
+  const systemConfig = useSystemConfigurationQuery(isAdmin)
+  const usersSummary = useSystemUsersSummaryQuery(isAdmin)
+  const appSettings = useAppSettingsQuery(isAdmin)
   
   // Mutations
   const updateProfile = useUserProfileUpdateMutation()
@@ -83,9 +85,6 @@ export default function SettingsPage() {
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [settingError, setSettingError] = useState<string | null>(null)
   const [deleteConfirmKey, setDeleteConfirmKey] = useState<string | null>(null)
-
-  const userRole = authData?.role as Role | undefined
-  const isAdmin = userRole === 'admin'
 
   const [profileSuccess, setProfileSuccess] = useState<string | null>(null)
   const [profileError, setProfileError] = useState<string | null>(null)
