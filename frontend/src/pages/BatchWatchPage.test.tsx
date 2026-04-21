@@ -22,8 +22,8 @@ describe('BatchWatchPage', () => {
           title: 'Day 2 Morning Batch',
           subtitle: 'Watch both videos inside Myle and submit your work from the same page.',
           lead_name: 'rahul sharma',
-          youtube_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-          video_id: 'dQw4w9WgXcQ',
+          youtube_url: 'https://m.youtube.com/watch?v=dQw4w9WgXcQ&feature=youtu.be',
+          video_id: null,
           watch_complete: false,
           submission_enabled: true,
           submission: null,
@@ -56,7 +56,7 @@ describe('BatchWatchPage', () => {
     const iframe = screen.getByTitle('Day 2 Morning Batch')
     expect(iframe).toHaveAttribute(
       'src',
-      'https://www.youtube.com/embed/dQw4w9WgXcQ?rel=0&modestbranding=1&playsinline=1&autoplay=1',
+      'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0&modestbranding=1&playsinline=1&controls=1&autoplay=1',
     )
   })
 })

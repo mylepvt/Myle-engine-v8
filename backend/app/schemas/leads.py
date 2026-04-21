@@ -105,10 +105,23 @@ class LeadPublic(BaseModel):
         return "NONE"
 
 
+class LeadBatchSubmissionPublic(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    day_number: int
+    slot: str
+    notes_url: Optional[str] = None
+    voice_note_url: Optional[str] = None
+    video_url: Optional[str] = None
+    notes_text: Optional[str] = None
+    submitted_at: datetime
+
+
 class LeadDetailPublic(LeadPublic):
     """Extended lead detail — same fields as LeadPublic (all included)."""
 
-    pass
+    batch_submissions: list[LeadBatchSubmissionPublic] = Field(default_factory=list)
 
 
 class LeadFileImportResponse(BaseModel):

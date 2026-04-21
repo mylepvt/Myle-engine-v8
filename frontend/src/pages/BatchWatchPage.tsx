@@ -1,6 +1,7 @@
 import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import {
+  ArrowUpRight,
   CheckCircle2,
   CloudUpload,
   Headphones,
@@ -16,7 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { WatchLiveGauge } from '@/components/watch/WatchLiveGauge'
 import { apiUrl } from '@/lib/api'
 import { buildBatchGreetingCopy } from '@/lib/batch-watch'
-import { buildYouTubeEmbedUrl, extractYouTubeId } from '@/lib/youtube'
+import { buildEmbeddableVideoUrl, resolveYouTubeWatchUrl } from '@/lib/youtube'
 
 type BatchWatchSubmission = {
   notes_url: string | null
@@ -57,20 +58,16 @@ async function readJsonError(res: Response): Promise<string> {
 }
 
 function BatchVideoPlayer({
-  videoId,
+  embedUrl,
   title,
-  fallbackUrl,
+  externalUrl,
 }: {
-  videoId: string | null
+  embedUrl: string | null
   title: string
-  fallbackUrl: string | null
+  externalUrl: string | null
 }) {
-  const embedUrl = videoId
-    ? buildYouTubeEmbedUrl(videoId)
-    : fallbackUrl
-
   if (!embedUrl) {
-    if (!fallbackUrl) {
+    if (!externalUrl) {
       return (
         <div className="flex aspect-video items-center justify-center rounded-[2rem] border border-white/10 bg-white/[0.04] text-sm text-white/55">
           Video link is being prepared.
@@ -78,14 +75,20 @@ function BatchVideoPlayer({
       )
     }
     return (
-      <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-black/40">
-        <iframe
-          className="aspect-video h-full w-full"
-          src={fallbackUrl}
-          title={title}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-        />
+      <div className="flex aspect-video flex-col items-center justify-center rounded-[2rem] border border-amber-300/20 bg-amber-300/[0.06] px-6 text-center">
+        <p className="text-base font-semibold text-white">Video could not be embedded from this link.</p>
+        <p className="mt-2 max-w-md text-sm leading-relaxed text-white/65">
+          Clean YouTube embed ko priority di gayi hai so the app never loads a broken mobile watch URL inside the player.
+        </p>
+        <a
+          href={externalUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/25 px-4 py-2 text-sm font-medium text-white transition hover:border-cyan-300/25 hover:text-cyan-100"
+        >
+          Open fallback video
+          <ArrowUpRight className="size-4" />
+        </a>
       </div>
     )
   }
@@ -99,8 +102,19 @@ function BatchVideoPlayer({
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen
       />
-      <div className="border-t border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-white/55">
-        Video plays inside Myle. If autoplay is blocked on the device, tap play once.
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-white/55">
+        <span>Video plays inside Myle. If autoplay is blocked on the device, tap play once.</span>
+        {externalUrl ? (
+          <a
+            href={externalUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-cyan-100 transition hover:text-white"
+          >
+            Open in YouTube
+            <ArrowUpRight className="size-3.5" />
+          </a>
+        ) : null}
       </div>
     </div>
   )
@@ -195,11 +209,14 @@ export function BatchWatchPage() {
       })
   }, [slot, token, version])
 
-  const playerVideoId = useMemo(() => {
-    if (data?.video_id) return data.video_id
-    if (data?.youtube_url) return extractYouTubeId(data.youtube_url)
-    return null
-  }, [data?.video_id, data?.youtube_url])
+  const playerEmbedUrl = useMemo(
+    () => buildEmbeddableVideoUrl(toAbsoluteUrl(data?.youtube_url), data?.video_id),
+    [data?.video_id, data?.youtube_url],
+  )
+  const playerExternalUrl = useMemo(
+    () => resolveYouTubeWatchUrl(toAbsoluteUrl(data?.youtube_url), data?.video_id) ?? toAbsoluteUrl(data?.youtube_url),
+    [data?.video_id, data?.youtube_url],
+  )
 
   const watchComplete = !!data?.watch_complete
   const submission = data?.submission
@@ -340,9 +357,9 @@ export function BatchWatchPage() {
                 </div>
 
                 <BatchVideoPlayer
-                  videoId={playerVideoId}
+                  embedUrl={playerEmbedUrl}
                   title={data.title}
-                  fallbackUrl={toAbsoluteUrl(data.youtube_url)}
+                  externalUrl={playerExternalUrl}
                 />
 
                 {completionError ? (

@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { CheckCircle2, ShieldCheck, Sparkles } from 'lucide-react'
+import { ArrowUpRight, CheckCircle2, ShieldCheck, Sparkles } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { WatchLiveGauge } from '@/components/watch/WatchLiveGauge'
 import { apiUrl } from '@/lib/api'
-import { extractYouTubeId } from '@/lib/youtube'
+import { buildEmbeddableVideoUrl, resolveYouTubeWatchUrl } from '@/lib/youtube'
 
 type WatchPageData = {
   token: string
@@ -51,7 +51,14 @@ export function WatchPage() {
       })
   }, [token])
 
-  const videoId = data?.youtube_url ? extractYouTubeId(data.youtube_url) : null
+  const embedUrl = useMemo(
+    () => buildEmbeddableVideoUrl(data?.youtube_url, null),
+    [data?.youtube_url],
+  )
+  const externalUrl = useMemo(
+    () => resolveYouTubeWatchUrl(data?.youtube_url, null) ?? data?.youtube_url ?? null,
+    [data?.youtube_url],
+  )
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-[#040915] text-white">
@@ -128,7 +135,7 @@ export function WatchPage() {
               </div>
             </section>
 
-            {videoId ? (
+            {embedUrl ? (
               <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.05] p-4 backdrop-blur-xl md:p-5">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
@@ -142,17 +149,45 @@ export function WatchPage() {
                 <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-black/70 shadow-[0_30px_80px_-35px_rgba(56,189,248,0.55)]">
                   <iframe
                     className="aspect-video h-full w-full"
-                    src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`}
+                    src={embedUrl}
                     title={data.title}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                   />
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-white/55">
+                    <span>Clean embed loaded inside Myle. If autoplay is blocked, tap play once.</span>
+                    {externalUrl ? (
+                      <a
+                        href={externalUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-cyan-100 transition hover:text-white"
+                      >
+                        Open in YouTube
+                        <ArrowUpRight className="size-3.5" />
+                      </a>
+                    ) : null}
+                  </div>
                 </div>
               </section>
             ) : (
-              <div className="flex aspect-video w-full items-center justify-center rounded-[2rem] border border-white/10 bg-white/[0.05] text-sm text-white/45">
-                Video link coming soon.
-              </div>
+              <section className="flex aspect-video w-full flex-col items-center justify-center rounded-[2rem] border border-amber-300/20 bg-amber-300/[0.06] px-6 text-center">
+                <p className="text-base font-semibold text-white">Video needs a clean embeddable source.</p>
+                <p className="mt-2 max-w-md text-sm leading-relaxed text-white/65">
+                  Broken mobile watch URLs are blocked from loading inside the app player, so the room stays clean instead of showing refused-to-connect errors.
+                </p>
+                {externalUrl ? (
+                  <a
+                    href={externalUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/25 px-4 py-2 text-sm font-medium text-white transition hover:border-cyan-300/25 hover:text-cyan-100"
+                  >
+                    Open fallback video
+                    <ArrowUpRight className="size-4" />
+                  </a>
+                ) : null}
+              </section>
             )}
 
             <section className="grid gap-4 md:grid-cols-2">
