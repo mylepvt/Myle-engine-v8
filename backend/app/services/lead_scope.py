@@ -53,6 +53,8 @@ async def user_can_access_lead(session: AsyncSession, user: AuthUser, lead: Lead
     """Single-lead gate aligned with list/workboard visibility (plus assignee read)."""
     if user.role == "admin":
         return True
+    if lead.in_pool:
+        return False
     if lead.created_by_user_id == user.user_id:
         return True
     if lead.assigned_to_user_id == user.user_id:
@@ -66,6 +68,8 @@ async def user_can_mutate_lead(session: AsyncSession, user: AuthUser, lead: Lead
     """PATCH/delete and similar — admin, owner, or leader over managed downline leads."""
     if user.role == "admin":
         return True
+    if lead.in_pool:
+        return False
     if lead.created_by_user_id == user.user_id:
         return True
     if user.role == "leader":

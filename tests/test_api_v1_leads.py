@@ -35,6 +35,19 @@ def test_lead_pool_requires_auth() -> None:
     assert body["error"]["request_id"] == res.headers.get("X-Request-ID")
 
 
+def test_lead_pool_list_forbidden_for_non_admin(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(_seed_one_lead(user_id=1, name="Pool only", in_pool=True))
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        res = c.get("/api/v1/lead-pool")
+        assert res.status_code == 403
+    finally:
+        asyncio.run(_clear_leads())
+
+
 def test_list_leads_empty_when_authenticated(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -552,7 +565,7 @@ def test_admin_release_to_pool_hides_from_main_list(
         asyncio.run(_clear_leads())
 
 
-def test_claim_lead_from_pool(
+def test_non_admin_cannot_single_claim_lead_from_pool(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     asyncio.run(_seed_one_lead(user_id=1, name="Claimable", in_pool=True))
@@ -560,14 +573,13 @@ def test_claim_lead_from_pool(
         c = _authed_client(monkeypatch)
         assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
         cl = c.post("/api/v1/leads/1/claim")
-        assert cl.status_code == 200
-        body = cl.json()
-        assert body["in_pool"] is False
-        assert body["created_by_user_id"] == 3
-        assert c.get("/api/v1/lead-pool").json()["total"] == 0
-        mine = c.get("/api/v1/leads").json()
-        assert mine["total"] == 1
-        assert mine["items"][0]["name"] == "Claimable"
+        assert cl.status_code == 403
+
+        admin = _authed_client(monkeypatch)
+        assert admin.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        pool = admin.get("/api/v1/lead-pool")
+        assert pool.status_code == 200
+        assert pool.json()["total"] == 1
     finally:
         asyncio.run(_clear_leads())
 
@@ -604,7 +616,9 @@ def test_slice5_batch_claim_leads_from_pool_for_leader(
         assert body["total_price_cents"] == 0
         assert [lead["name"] for lead in body["leads"]] == ["Oldest", "Second"]
 
-        pool = c.get("/api/v1/lead-pool").json()
+        admin = _authed_client(monkeypatch)
+        assert admin.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        pool = admin.get("/api/v1/lead-pool").json()
         assert pool["total"] == 1
         assert pool["items"][0]["name"] == "Third"
     finally:
@@ -626,10 +640,12 @@ def test_slice5_claim_requires_sufficient_wallet_balance(
     try:
         c = _authed_client(monkeypatch)
         assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
-        claim = c.post("/api/v1/leads/1/claim")
+        claim = c.post("/api/v1/lead-pool/claim", json={"count": 1})
         assert claim.status_code == 402
         # Lead should remain in pool when claim fails.
-        lead = c.get("/api/v1/lead-pool").json()
+        admin = _authed_client(monkeypatch)
+        assert admin.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        lead = admin.get("/api/v1/lead-pool").json()
         assert lead["total"] == 1
         assert lead["items"][0]["in_pool"] is True
     finally:
@@ -643,12 +659,120 @@ def test_slice5_cannot_reclaim_already_claimed_lead(
     try:
         first = _authed_client(monkeypatch)
         assert first.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
-        assert first.post("/api/v1/leads/1/claim").status_code == 200
+        assert first.post("/api/v1/lead-pool/claim", json={"count": 1}).status_code == 200
 
         second = _authed_client(monkeypatch)
         assert second.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
-        retry = second.post("/api/v1/leads/1/claim")
+        retry = second.post("/api/v1/lead-pool/claim", json={"count": 1})
         assert retry.status_code == 400
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_leader_can_preview_batch_claim_without_lead_list(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(_seed_one_lead(user_id=1, name="Oldest", in_pool=True, pool_price_cents=1_666))
+    asyncio.run(_seed_one_lead(user_id=1, name="Second", in_pool=True, pool_price_cents=2_000))
+    asyncio.run(_seed_one_lead(user_id=1, name="Third", in_pool=True, pool_price_cents=3_333))
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        res = c.get("/api/v1/lead-pool/batch-preview", params={"count": 2})
+        assert res.status_code == 200
+        assert res.json() == {
+            "requested_count": 2,
+            "claim_count": 2,
+            "available_count": 3,
+            "total_price_cents": 3_666,
+        }
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_pool_claim_error_keeps_exact_decimal_price(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(_seed_one_lead(user_id=1, name="Exact price", in_pool=True, pool_price_cents=1_666))
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+        res = c.post("/api/v1/lead-pool/claim", json={"count": 1})
+        assert res.status_code == 402
+        body = res.json()
+        message = body.get("detail") or body.get("error", {}).get("message")
+        assert message == "Insufficient wallet balance. Need ₹16.66, have ₹0.00."
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_team_cannot_open_pooled_lead_detail_even_if_creator(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _seed_one_lead(
+            user_id=3,
+            name="Own pooled lead",
+            in_pool=True,
+            created_by_user_id=3,
+            assigned_to_user_id=3,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+        detail = c.get("/api/v1/leads/1")
+        assert detail.status_code == 403
+        patch = c.patch("/api/v1/leads/1", json={"status": "contacted"})
+        assert patch.status_code == 403
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_importing_pool_leads_sends_push_to_active_members(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    push_calls: list[tuple[tuple[str, ...], str, str, str]] = []
+
+    def fake_parse(_: bytes) -> tuple[list[dict[str, object]], list[str]]:
+        return ([{"name": "Imported lead", "phone": "9999999999", "city": "Pune"}], [])
+
+    async def fake_push(
+        _session_factory,
+        roles: tuple[str, ...],
+        *,
+        title: str,
+        body: str,
+        url: str = "/dashboard",
+    ) -> None:
+        push_calls.append((tuple(roles), title, body, url))
+
+    monkeypatch.setattr("app.api.v1.lead_pool.parse_pool_xlsx_rows", fake_parse)
+    monkeypatch.setattr("app.api.v1.lead_pool.send_push_to_roles_bg", fake_push)
+
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        res = c.post(
+            "/api/v1/lead-pool/import",
+            files={
+                "file": (
+                    "lead-pool.xlsx",
+                    b"dummy-xlsx-content",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
+        )
+        assert res.status_code == 200
+        assert res.json()["created"] == 1
+        assert push_calls == [
+            (
+                ("leader", "team"),
+                "Lead Pool Updated",
+                "New leads are available in the lead pool. Claim your leads now!",
+                "/dashboard/work/lead-pool",
+            )
+        ]
     finally:
         asyncio.run(_clear_leads())
 

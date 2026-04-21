@@ -18,11 +18,13 @@ from app.core.auth_cookies import display_name_from_user
 from app.core.auth_cookie import MYLE_ACCESS_COOKIE
 from app.core.config import settings
 from app.core.realtime_hub import notify_topics
+from app.db.session import AsyncSessionLocal
 from app.models.invoice import Invoice
 from app.models.user import User
 from app.models.wallet_ledger import WalletLedgerEntry
 from app.models.wallet_recharge import WalletRecharge
 from app.services.invoice_records import create_payment_receipt_for_positive_adjustment, create_payment_receipt_for_recharge
+from app.services.push_service import send_push_to_user_bg
 from app.schemas.wallet import (
     WalletAdjustmentCreate,
     WalletLedgerEntryPublic,
@@ -441,6 +443,7 @@ async def list_recharge_requests(
 async def review_recharge_request(
     request_id: int,
     body: WalletRechargeReview,
+    background_tasks: BackgroundTasks,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> WalletRechargePublic:
@@ -499,4 +502,13 @@ async def review_recharge_request(
     await session.commit()
     await session.refresh(recharge)
     await notify_topics("wallet")
+    if body.status == "approved":
+        background_tasks.add_task(
+            send_push_to_user_bg,
+            AsyncSessionLocal,
+            recharge.user_id,
+            title="Wallet Recharged",
+            body="Your wallet has been successfully recharged. You can now claim leads.",
+            url="/dashboard/work/lead-pool",
+        )
     return await _wallet_recharge_public_response(session, recharge)

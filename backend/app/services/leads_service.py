@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from fastapi import BackgroundTasks, Depends, HTTPException
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
@@ -53,6 +53,7 @@ _PAYMENT_REQUIRED_STATUSES: frozenset[str] = frozenset(
 )
 
 _POOL_CLAIM_ROLES: frozenset[str] = frozenset({"team", "leader", "admin"})
+_POOL_SINGLE_CLAIM_ROLES: frozenset[str] = frozenset({"admin"})
 _PHONE_DIGIT_RE = re.compile(r"\D")
 
 
@@ -92,6 +93,18 @@ def _ensure_utc_datetime(value: datetime | None) -> datetime | None:
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc)
+
+
+def _format_rupees_exact(cents: int) -> str:
+    return f"₹{cents / 100:,.2f}"
+
+
+def _lead_pool_available_clause() -> Any:
+    return and_(
+        Lead.in_pool.is_(True),
+        Lead.deleted_at.is_(None),
+        Lead.archived_at.is_(None),
+    )
 
 
 def _ctcs_filter_clause(ctcs_filter: Optional[str]) -> Any:
@@ -368,7 +381,7 @@ class LeadsService:
         return lead
 
     async def claim_lead(self, *, lead_id: int, user: AuthUser) -> Lead:
-        if user.role not in _POOL_CLAIM_ROLES:
+        if user.role not in _POOL_SINGLE_CLAIM_ROLES:
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
         lead = await self._repository.get_lead_for_update(lead_id)
         if lead is None or lead.deleted_at is not None:
@@ -384,7 +397,10 @@ class LeadsService:
             if balance < price:
                 raise HTTPException(
                     status_code=http_status.HTTP_402_PAYMENT_REQUIRED,
-                    detail=f"Insufficient wallet balance. Need ₹{price / 100:.0f}, have ₹{balance / 100:.0f}.",
+                    detail=(
+                        "Insufficient wallet balance. "
+                        f"Need {_format_rupees_exact(price)}, have {_format_rupees_exact(balance)}."
+                    ),
                 )
             await self._repository.add_wallet_debit_for_claim(
                 user_id=user.user_id,
@@ -418,6 +434,36 @@ class LeadsService:
         await self._notifier("leads", "wallet")
         return lead
 
+    async def preview_lead_pool_batch(
+        self,
+        *,
+        count: int,
+        user: AuthUser,
+    ) -> tuple[int, int, int]:
+        if user.role not in _POOL_CLAIM_ROLES:
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+        cap = max(1, min(int(count), 50))
+        cond = _lead_pool_available_clause()
+        total_available = int(
+            (
+                await self._session.execute(
+                    select(func.count()).select_from(Lead).where(cond)
+                )
+            ).scalar_one()
+        )
+        preview_rows = (
+            await self._session.execute(
+                select(Lead.pool_price_cents)
+                .where(cond)
+                .order_by(Lead.created_at.asc(), Lead.id.asc())
+                .limit(cap)
+            )
+        ).scalars().all()
+        claim_count = len(preview_rows)
+        total_price_cents = sum(int(price or 0) for price in preview_rows)
+        return total_available, claim_count, total_price_cents
+
     async def claim_lead_pool_batch(
         self,
         *,
@@ -430,11 +476,7 @@ class LeadsService:
         cap = max(1, min(int(count), 50))
         stmt = (
             select(Lead)
-            .where(
-                Lead.in_pool.is_(True),
-                Lead.deleted_at.is_(None),
-                Lead.archived_at.is_(None),
-            )
+            .where(_lead_pool_available_clause())
             .order_by(Lead.created_at.asc(), Lead.id.asc())
             .limit(cap)
             .with_for_update()
@@ -454,7 +496,8 @@ class LeadsService:
                     status_code=http_status.HTTP_402_PAYMENT_REQUIRED,
                     detail=(
                         "Insufficient wallet balance. "
-                        f"Need ₹{total_price_cents / 100:.0f}, have ₹{balance / 100:.0f}."
+                        f"Need {_format_rupees_exact(total_price_cents)}, "
+                        f"have {_format_rupees_exact(balance)}."
                     ),
                 )
 

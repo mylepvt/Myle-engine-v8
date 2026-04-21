@@ -232,6 +232,48 @@ async def send_push_to_role(
         return 0
 
 
+async def send_push_to_roles(
+    session: AsyncSession,
+    roles: list[str] | tuple[str, ...],
+    *,
+    title: str,
+    body: str,
+    url: str = "/dashboard",
+) -> int:
+    """Send push to active subscribed users across multiple roles."""
+    if not _PUSH_AVAILABLE:
+        return 0
+    role_list = [str(role).strip().lower() for role in roles if str(role).strip()]
+    if not role_list:
+        return 0
+    try:
+        private_pem, _ = await _get_or_create_vapid_keys(session)
+        user_ids = (
+            await session.execute(
+                select(User.id).where(
+                    User.role.in_(role_list),
+                    User.registration_status == "approved",
+                    User.access_blocked.is_(False),
+                    User.discipline_status == "active",
+                )
+            )
+        ).scalars().all()
+        if not user_ids:
+            return 0
+        subs = (
+            await session.execute(
+                select(PushSubscription).where(PushSubscription.user_id.in_(list(user_ids)))
+            )
+        ).scalars().all()
+        if not subs:
+            return 0
+        data = json.dumps({"title": title, "body": body, "url": url})
+        return await _send_and_cleanup(session, list(subs), data, private_pem)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("send_push_to_roles failed: %s", exc)
+        return 0
+
+
 async def broadcast_push(
     session: AsyncSession,
     *,
@@ -299,3 +341,19 @@ async def send_push_to_role_bg(
             await send_push_to_role(session, role, title=title, body=body, url=url)
     except Exception as exc:  # noqa: BLE001
         logger.error("send_push_to_role_bg failed: %s", exc)
+
+
+async def send_push_to_roles_bg(
+    session_factory: Any,
+    roles: list[str] | tuple[str, ...],
+    *,
+    title: str,
+    body: str,
+    url: str = "/dashboard",
+) -> None:
+    """Background-safe multi-role push for active users."""
+    try:
+        async with session_factory() as session:
+            await send_push_to_roles(session, roles, title=title, body=body, url=url)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("send_push_to_roles_bg failed: %s", exc)

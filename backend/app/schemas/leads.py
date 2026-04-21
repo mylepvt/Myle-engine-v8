@@ -454,6 +454,13 @@ class LeadPoolClaimBatchRequest(BaseModel):
     count: int = Field(ge=1, le=50)
 
 
+class LeadPoolBatchPreviewResponse(BaseModel):
+    requested_count: int = Field(ge=1, le=50)
+    claim_count: int = Field(ge=0, le=50)
+    available_count: int = Field(ge=0)
+    total_price_cents: int = Field(ge=0)
+
+
 class LeadPoolClaimBatchResponse(BaseModel):
     leads: list[LeadPublic]
     total_price_cents: int = Field(ge=0)
