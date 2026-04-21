@@ -637,7 +637,7 @@ def test_batch_share_url_returns_tokenized_watch_links(
         asyncio.run(_clear_leads())
 
 
-def test_batch_share_url_d2_allowed_for_leader(
+def test_batch_share_url_d2_allowed_for_leader_without_payment_approval(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     asyncio.run(
@@ -645,7 +645,6 @@ def test_batch_share_url_d2_allowed_for_leader(
             user_id=2,
             name="Day2Lead",
             lead_status="day2",
-            payment_status="approved",
             assigned_to_user_id=2,
         )
     )
@@ -703,7 +702,6 @@ def test_mindset_lock_complete_handles_persisted_started_at_after_reconnect(
             user_id=3,
             name="Mindset Complete Resume",
             lead_status="mindset_lock",
-            payment_status="approved",
             mindset_started_at=started_at,
             mindset_lock_state="mindset_lock",
             assigned_to_user_id=3,
@@ -723,6 +721,36 @@ def test_mindset_lock_complete_handles_persisted_started_at_after_reconnect(
         assert lead_body["status"] == "day1"
         assert lead_body["assigned_to_user_id"] == 2
         assert lead_body["mindset_lock_state"] == "leader_assigned"
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_leader_can_patch_day2_without_payment_approval_after_day1(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(_clear_leads())
+    asyncio.run(_seed_one_lead(user_id=2, name="Leader Day1", lead_status="day1"))
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        res = c.patch("/api/v1/leads/1", json={"status": "day2"})
+        assert res.status_code == 200
+        assert res.json()["status"] == "day2"
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_leader_can_transition_day2_without_payment_approval_after_day1(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(_clear_leads())
+    asyncio.run(_seed_one_lead(user_id=2, name="Leader Day1 Transition", lead_status="day1"))
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        res = c.post("/api/v1/leads/1/transition", json={"target_status": "day2"})
+        assert res.status_code == 200
+        assert res.json()["new_status"] == "day2"
     finally:
         asyncio.run(_clear_leads())
 

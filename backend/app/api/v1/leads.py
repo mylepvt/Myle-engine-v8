@@ -250,13 +250,6 @@ async def generate_batch_share_url(
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
     if not await _actor_may_share_batch_link(session=session, user=user, lead=lead, slot=slot):
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
-    # Batch share links for any slot require approved payment proof (non-admin).
-    if user.role != "admin" and lead.payment_status != "approved":
-        raise HTTPException(
-            status_code=http_status.HTTP_400_BAD_REQUEST,
-            detail="Payment proof must be approved before generating batch share links.",
-        )
-
     existing = (
         await session.execute(
             select(BatchShareLink).where(
@@ -424,7 +417,7 @@ async def transition_lead_status(
     if not await service._repository.can_mutate_lead(user, lead):
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    # Payment gate enforced here so CRM proxy path cannot bypass it.
+    # Only entering Paid ₹196 is payment-gated here; later stages must stay unlocked.
     if body.target_status in _PAYMENT_REQUIRED_STATUSES and user.role != "admin":
         if lead.payment_status != "approved":
             raise HTTPException(
