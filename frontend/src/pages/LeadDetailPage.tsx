@@ -445,7 +445,13 @@ export function LeadDetailPage({ leadId }: Props) {
 
           <LeadNextStepPanel
             className="surface-elevated p-4"
-            lead={{ id: lead.id, name: lead.name, phone: lead.phone, status: lead.status }}
+            lead={{
+              id: lead.id,
+              name: lead.name,
+              phone: lead.phone,
+              status: lead.status,
+              paymentStatus: lead.payment_status,
+            }}
           />
 
           {/* Pipeline card */}
@@ -787,14 +793,41 @@ export function LeadDetailPage({ leadId }: Props) {
                     </a>
                   ) : (
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      ₹196 proof is uploaded from the lead card on the{' '}
-                      <Link
-                        to="/dashboard/work/workboard"
-                        className="font-medium text-primary underline-offset-2 hover:underline"
-                      >
-                        Workboard
-                      </Link>{' '}
-                      (image upload), not here.
+                      {role === 'team' ? (
+                        <>
+                          ₹196 proof upload sirf{' '}
+                          <Link
+                            to="/dashboard/work/leads"
+                            className="font-medium text-primary underline-offset-2 hover:underline"
+                          >
+                            Calling Board
+                          </Link>{' '}
+                          me hota hai.
+                        </>
+                      ) : role === 'leader' ? (
+                        <>
+                          ₹196 proof upload sirf{' '}
+                          <Link
+                            to="/dashboard/work/leads"
+                            className="font-medium text-primary underline-offset-2 hover:underline"
+                          >
+                            All Leads
+                          </Link>{' '}
+                          me hota hai.
+                        </>
+                      ) : (
+                        <>
+                          ₹196 proof leader ya team work/leads flow se upload karte hain; admin yahan se sirf status dekh
+                          ya{' '}
+                          <Link
+                            to="/dashboard/team/enrollment-approvals"
+                            className="font-medium text-primary underline-offset-2 hover:underline"
+                          >
+                            approvals
+                          </Link>{' '}
+                          review karta hai.
+                        </>
+                      )}
                     </p>
                   )}
                 </div>

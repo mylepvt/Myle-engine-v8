@@ -78,7 +78,8 @@ export function CtcsLeadCard({
   const proofPending = lead.payment_status === 'proof_uploaded' || uploadDone
   const proofRejected = lead.payment_status === 'rejected'
   const showProofControl = lead.status === 'video_watched' || proofPending || proofApproved || proofRejected
-  const mayUploadProof = lead.status === 'video_watched' || proofRejected
+  const currentRole = role ?? 'team'
+  const mayUploadProof = (currentRole === 'leader' || currentRole === 'team') && (lead.status === 'video_watched' || proofRejected)
 
   async function handleProofFile(file: File) {
     setUploading(true)
@@ -124,10 +125,9 @@ export function CtcsLeadCard({
   const assigneeName = (lead.assigned_to_name ?? '').trim() || 'Assigned'
   const assigneeInitials = initialsFromName(lead.assigned_to_name)
 
-  const r = role ?? 'team'
-  const pipelineReadonly = r === 'team' && !teamMayChangeLeadStatus(lead.status as LeadStatus)
-  const statusOptions = leadStatusSelectOptionsForLead(r, lead.status as LeadStatus, LEAD_STATUS_OPTIONS)
-  const callOpts = callStatusSelectOptions(r, lead.status as LeadStatus)
+  const pipelineReadonly = currentRole === 'team' && !teamMayChangeLeadStatus(lead.status as LeadStatus)
+  const statusOptions = leadStatusSelectOptionsForLead(currentRole, lead.status as LeadStatus, LEAD_STATUS_OPTIONS)
+  const callOpts = callStatusSelectOptions(currentRole, lead.status as LeadStatus)
   const callVal = normalizeCallStatus(lead.call_status)
 
   return (
@@ -221,7 +221,7 @@ export function CtcsLeadCard({
               className={pillSelectInner}
               disabled={selectBusy}
               value={callVal}
-              title={r === 'team' ? 'Call / line — dial outcome' : 'Call classification'}
+              title={currentRole === 'team' ? 'Call / line — dial outcome' : 'Call classification'}
               aria-label="Call status"
               onChange={(e) => onPatchCallStatus(lead.id, e.target.value)}
             >
