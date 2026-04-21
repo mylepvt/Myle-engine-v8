@@ -245,6 +245,7 @@ const LeadCard = memo(function LeadCard({
   const callValue = callOptions.some((option) => option.value === rawCallStatus)
     ? rawCallStatus
     : (callOptions[0]?.value ?? 'not_called')
+  const showLeadContactActions = !stageOpsCard || role === 'leader' || role === 'admin'
   return (
     <article
       className={cn(
@@ -343,13 +344,15 @@ const LeadCard = memo(function LeadCard({
             </div>
           </div>
           <div className="flex items-center gap-1.5">
-            {!stageOpsCard ? (
+            {showLeadContactActions ? (
               <>
                 <LeadContactActions phone={lead.phone} />
-                <IconBtn title="Send Video" colorHover="hover:border-indigo-400/40 hover:text-indigo-400 disabled:opacity-50"
-                  onClick={() => void pm.mutateAsync({ id: lead.id, body: { call_status: 'video_sent', status: 'video_sent' as LeadStatus } })}>
-                  <Video className="h-3.5 w-3.5"/>
-                </IconBtn>
+                {!stageOpsCard ? (
+                  <IconBtn title="Send Video" colorHover="hover:border-indigo-400/40 hover:text-indigo-400 disabled:opacity-50"
+                    onClick={() => void pm.mutateAsync({ id: lead.id, body: { call_status: 'video_sent', status: 'video_sent' as LeadStatus } })}>
+                    <Video className="h-3.5 w-3.5"/>
+                  </IconBtn>
+                ) : null}
               </>
             ) : null}
             {/* ₹196 proof upload */}
