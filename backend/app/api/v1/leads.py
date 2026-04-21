@@ -234,6 +234,14 @@ async def mindset_lock_complete(
     return await service.complete_mindset_lock(lead_id=lead_id, user=user)
 
 
+@router.post("/{lead_id}/mindset-lock-reset", response_model=LeadPublic)
+async def mindset_lock_reset(
+    lead_id: int,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    service: Annotated[LeadsService, Depends(get_leads_service)],
+):
+    return await service.reset_mindset_clock(lead_id=lead_id, user=user)
+
 @router.post("/{lead_id}/batch-share-url", response_model=BatchShareUrlResponse)
 async def generate_batch_share_url(
     lead_id: int,

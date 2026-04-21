@@ -725,6 +725,66 @@ def test_mindset_lock_complete_handles_persisted_started_at_after_reconnect(
         asyncio.run(_clear_leads())
 
 
+def test_admin_can_reset_mindset_clock_from_any_stage(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    started_at = datetime.now(timezone.utc) - timedelta(minutes=18)
+    completed_at = datetime.now(timezone.utc) - timedelta(minutes=12)
+    fac = test_conftest.get_test_session_factory()
+
+    async def _seed_lead() -> None:
+        async with fac() as session:
+            session.add(
+                Lead(
+                    name="Converted Lead",
+                    status="converted",
+                    payment_status="approved",
+                    mindset_started_at=started_at,
+                    mindset_completed_at=completed_at,
+                    mindset_lock_state="leader_assigned",
+                    created_by_user_id=2,
+                    assigned_to_user_id=2,
+                )
+            )
+            await session.commit()
+
+    asyncio.run(_seed_lead())
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        res = c.post("/api/v1/leads/1/mindset-lock-reset")
+        assert res.status_code == 200
+        body = res.json()
+        assert body["status"] == "mindset_lock"
+        assert body["assigned_to_user_id"] == 2
+        assert body["mindset_lock_state"] == "mindset_lock"
+        assert body["mindset_completed_at"] is None
+        assert body["mindset_started_at"] is not None
+        assert body["mindset_started_at"] != started_at.isoformat()
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_non_admin_cannot_reset_mindset_clock(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _seed_one_lead(
+            user_id=2,
+            name="Leader Lead",
+            lead_status="day2",
+            mindset_lock_state="leader_assigned",
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        res = c.post("/api/v1/leads/1/mindset-lock-reset")
+        assert res.status_code == 403
+    finally:
+        asyncio.run(_clear_leads())
+
+
 def test_leader_can_patch_day2_without_payment_approval_after_day1(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
