@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
@@ -22,6 +22,7 @@ from app.models.user import User
 from app.schemas.system_surface import SystemStubResponse
 from app.schemas.team import (
     EnrollmentDecisionBody,
+    TeamEnrollmentHistoryResponse,
     PendingRegistrationsResponse,
     PendingRegistrationItem,
     RegistrationDecisionBody,
@@ -236,6 +237,34 @@ async def list_enrollment_requests(
     total = len(items)
     page = items[offset : offset + limit]
     return TeamEnrollmentListResponse(items=page, total=total, limit=limit, offset=offset)
+
+
+@router.get("/enrollment-requests/history", response_model=TeamEnrollmentHistoryResponse)
+async def enrollment_request_history(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    date: Optional[str] = Query(
+        default=None,
+        description="Calendar day YYYY-MM-DD (Asia/Kolkata); default today",
+    ),
+    limit: int = Query(default=_DEFAULT_LIMIT, ge=1, le=_MAX_LIMIT),
+    offset: int = Query(default=0, ge=0),
+) -> TeamEnrollmentHistoryResponse:
+    """Calendar-wise proof approval / rejection history for admin / leader review."""
+    _require_admin_or_leader(user)
+    target_day = _parse_report_date_param(date)
+    start_ist = datetime.combine(target_day, time.min, tzinfo=IST)
+    end_ist = start_ist + timedelta(days=1)
+    service = PaymentService(session)
+    items, total = await service.get_payment_proof_history(
+        user.user_id,
+        user.role,
+        reviewed_after=start_ist.astimezone(timezone.utc),
+        reviewed_before=end_ist.astimezone(timezone.utc),
+        limit=limit,
+        offset=offset,
+    )
+    return TeamEnrollmentHistoryResponse(items=items, total=total, date=target_day.isoformat())
 
 
 @router.post("/enrollment-requests/{lead_id}/decision")

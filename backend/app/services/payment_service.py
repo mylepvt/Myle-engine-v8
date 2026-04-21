@@ -8,6 +8,7 @@ from typing import List, Tuple
 from fastapi import UploadFile
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
@@ -231,6 +232,89 @@ class PaymentService:
             }
             for lead, username in rows
         ]
+
+    async def get_payment_proof_history(
+        self,
+        user_id: int,
+        user_role: str,
+        *,
+        reviewed_after: datetime,
+        reviewed_before: datetime,
+        limit: int,
+        offset: int,
+    ) -> tuple[List[dict], int]:
+        """Calendar-day approval / rejection history for proofs."""
+        if user_role not in ("admin", "leader"):
+            return [], 0
+
+        uploaded_by = aliased(User, name="uploaded_by")
+        reviewed_by = aliased(User, name="reviewed_by")
+
+        where_parts = [
+            Lead.deleted_at.is_(None),
+            ActivityLog.entity_type == "lead",
+            ActivityLog.action.in_(("payment_proof_approved", "payment_proof_rejected")),
+            ActivityLog.created_at >= reviewed_after,
+            ActivityLog.created_at < reviewed_before,
+        ]
+        if user_role == "leader":
+            where_parts.append(
+                or_(
+                    lead_visible_to_leader_clause(user_id),
+                    lead_execution_visible_to_leader_clause(user_id),
+                )
+            )
+
+        count_stmt = (
+            select(func.count())
+            .select_from(ActivityLog)
+            .join(Lead, Lead.id == ActivityLog.entity_id)
+            .where(*where_parts)
+        )
+        total = int((await self.session.execute(count_stmt)).scalar_one())
+
+        stmt = (
+            select(
+                ActivityLog,
+                Lead,
+                uploaded_by.username.label("uploaded_by_username"),
+                reviewed_by.id.label("reviewed_by_user_id"),
+                reviewed_by.username.label("reviewed_by_username"),
+            )
+            .join(Lead, Lead.id == ActivityLog.entity_id)
+            .outerjoin(uploaded_by, uploaded_by.id == Lead.assigned_to_user_id)
+            .outerjoin(reviewed_by, reviewed_by.id == ActivityLog.user_id)
+            .where(*where_parts)
+            .order_by(ActivityLog.created_at.desc(), ActivityLog.id.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        rows = (await self.session.execute(stmt)).all()
+
+        items: list[dict] = []
+        for activity, lead, uploaded_by_username, reviewed_by_user_id, reviewed_by_username in rows:
+            action = "approved" if activity.action == "payment_proof_approved" else "rejected"
+            meta = activity.meta if isinstance(activity.meta, dict) else {}
+            note = meta.get("notes")
+            items.append(
+                {
+                    "lead_id": lead.id,
+                    "lead_name": lead.name,
+                    "lead_phone": lead.phone,
+                    "payment_amount_cents": lead.payment_amount_cents,
+                    "payment_proof_url": lead.payment_proof_url,
+                    "payment_proof_uploaded_at": lead.payment_proof_uploaded_at,
+                    "uploaded_by_user_id": lead.assigned_to_user_id,
+                    "uploaded_by_username": uploaded_by_username,
+                    "status": lead.payment_status or action,
+                    "reviewed_at": activity.created_at,
+                    "reviewed_by_user_id": reviewed_by_user_id,
+                    "reviewed_by_username": reviewed_by_username,
+                    "review_action": action,
+                    "review_note": str(note).strip() if isinstance(note, str) and note.strip() else None,
+                }
+            )
+        return items, total
 
     async def _log_payment_activity(
         self, lead_id: int, user_id: int, action: str, notes: str | None = None

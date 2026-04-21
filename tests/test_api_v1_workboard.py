@@ -330,3 +330,22 @@ def test_leader_workboard_hides_pending_and_video_actions(monkeypatch: pytest.Mo
         assert body["action_counts"]["videos_to_send"] == 0
     finally:
         asyncio.run(_clear_leads())
+
+
+def test_workboard_counts_batches_and_extended_closing_stages(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(_seed_lead(user_id=1, name="Day1 Batch", lead_status="day1"))
+    asyncio.run(_seed_lead(user_id=1, name="Day2 Batch", lead_status="day2"))
+    asyncio.run(_seed_lead(user_id=1, name="Day3 Close", lead_status="day3"))
+    asyncio.run(_seed_lead(user_id=1, name="Interview Close", lead_status="interview"))
+    asyncio.run(_seed_lead(user_id=1, name="Track Close", lead_status="track_selected"))
+    asyncio.run(_seed_lead(user_id=1, name="Seat Hold Close", lead_status="seat_hold"))
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        body = c.get("/api/v1/workboard").json()
+        assert body["action_counts"]["batches_due"] == 2
+        assert body["action_counts"]["closings_due"] == 4
+    finally:
+        asyncio.run(_clear_leads())

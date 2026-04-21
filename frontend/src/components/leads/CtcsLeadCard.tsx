@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { apiFetch } from '@/lib/api'
 import { callStatusSelectOptions, type CallStatusApi } from '@/lib/call-status-options'
-import { teamLeadStatusSelectOptions, teamMayChangeLeadStatus } from '@/lib/team-lead-status'
+import { leadStatusSelectOptionsForLead, teamMayChangeLeadStatus } from '@/lib/team-lead-status'
 import { formatCountdown, timerRemainingMs } from '@/lib/ctcs-timer'
 import { telHref, whatsAppChatHref } from '@/lib/phone-links'
 import { LEAD_STATUS_OPTIONS, type LeadPublic, type LeadStatus } from '@/hooks/use-leads-query'
@@ -138,8 +138,11 @@ export function CtcsLeadCard({
   const [uploadError, setUploadError] = useState<string | null>(null)
   const qc = useQueryClient()
 
-  const proofAlreadyUploaded =
-    lead.payment_status === 'proof_uploaded' || lead.payment_status === 'approved'
+  const proofApproved = lead.payment_status === 'approved'
+  const proofPending = lead.payment_status === 'proof_uploaded' || uploadDone
+  const proofRejected = lead.payment_status === 'rejected'
+  const showProofControl = lead.status === 'video_watched' || proofPending || proofApproved || proofRejected
+  const mayUploadProof = lead.status === 'video_watched' || proofRejected
 
   async function handleProofFile(file: File) {
     setUploading(true)
@@ -151,6 +154,8 @@ export function CtcsLeadCard({
       fd.append('payment_amount_cents', '19600')
       await apiFetch('/api/v1/payments/proof/upload', { method: 'POST', body: fd })
       setUploadDone(true)
+      void qc.invalidateQueries({ queryKey: ['workboard'] })
+      void qc.invalidateQueries({ queryKey: ['team', 'enrollment-requests'] })
       void qc.invalidateQueries({ queryKey: ['leads'] })
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed')
@@ -191,8 +196,8 @@ export function CtcsLeadCard({
 
   const r = role ?? 'team'
   const pipelineReadonly = r === 'team' && !teamMayChangeLeadStatus(lead.status as LeadStatus)
-  const statusOptions = teamLeadStatusSelectOptions(r, LEAD_STATUS_OPTIONS)
-  const callOpts = callStatusSelectOptions(r)
+  const statusOptions = leadStatusSelectOptionsForLead(r, lead.status as LeadStatus, LEAD_STATUS_OPTIONS)
+  const callOpts = callStatusSelectOptions(r, lead.status as LeadStatus)
   const callVal = normalizeCallStatus(lead.call_status)
 
   return (
@@ -432,29 +437,38 @@ export function CtcsLeadCard({
                 e.target.value = ''
               }}
             />
-            {proofAlreadyUploaded || uploadDone ? (
-              <span
-                title="Proof uploaded"
-                className="flex size-8 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-400/12 text-emerald-300"
-              >
-                <CheckCircle2 className="size-3.5" />
-              </span>
-            ) : (
-              <button
-                type="button"
-                title={uploading ? 'Uploading…' : uploadError ? `Retry — ${uploadError}` : 'Upload ₹196 proof'}
-                disabled={uploading}
-                onClick={() => fileInputRef.current?.click()}
-                className={cn(
-                  'flex size-8 items-center justify-center rounded-full border transition disabled:opacity-50 active:scale-95',
-                  uploadError
-                    ? 'border-red-400/40 bg-muted/30 text-red-400 hover:bg-red-400/10'
-                    : 'border-border bg-muted/30 text-muted-foreground hover:border-amber-400/40 hover:text-amber-400',
-                )}
-              >
-                <Upload className="size-3.5" />
-              </button>
-            )}
+            {showProofControl ? (
+              proofApproved ? (
+                <span
+                  title="Proof approved"
+                  className="flex size-8 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-400/12 text-emerald-300"
+                >
+                  <CheckCircle2 className="size-3.5" />
+                </span>
+              ) : proofPending ? (
+                <span
+                  title="Proof pending review"
+                  className="flex size-8 items-center justify-center rounded-full border border-sky-400/30 bg-sky-400/12 text-sky-300"
+                >
+                  <CheckCircle2 className="size-3.5" />
+                </span>
+              ) : mayUploadProof ? (
+                <button
+                  type="button"
+                  title={uploading ? 'Uploading…' : uploadError ? `Retry — ${uploadError}` : 'Upload ₹196 proof'}
+                  disabled={uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={cn(
+                    'flex size-8 items-center justify-center rounded-full border transition disabled:opacity-50 active:scale-95',
+                    uploadError
+                      ? 'border-red-400/40 bg-muted/30 text-red-400 hover:bg-red-400/10'
+                      : 'border-border bg-muted/30 text-muted-foreground hover:border-amber-400/40 hover:text-amber-400',
+                  )}
+                >
+                  <Upload className="size-3.5" />
+                </button>
+              ) : null
+            ) : null}
           </div>
         </div>
       </div>

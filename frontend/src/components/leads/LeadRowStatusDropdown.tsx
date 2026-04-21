@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 type Props = {
   leadName: string
   status: string
+  options?: { value: LeadStatus; label: string }[]
   disabled?: boolean
   busy?: boolean
   onSelect: (next: LeadStatus) => void
@@ -20,6 +21,7 @@ type Props = {
 export const LeadRowStatusDropdown = memo(function LeadRowStatusDropdown({
   leadName,
   status,
+  options,
   disabled,
   busy,
   onSelect,
@@ -35,14 +37,13 @@ export const LeadRowStatusDropdown = memo(function LeadRowStatusDropdown({
     LEAD_STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status
 
   const allOptions = useMemo(
-    () =>
-      LEAD_STATUS_GROUPS.flatMap((g) =>
-        g.statuses.flatMap((v) => {
-          const o = LEAD_STATUS_OPTIONS.find((x) => x.value === v)
-          return o ? [o] : []
-        }),
-      ),
-    [],
+    () => options ?? LEAD_STATUS_GROUPS.flatMap((g) =>
+      g.statuses.flatMap((v) => {
+        const o = LEAD_STATUS_OPTIONS.find((x) => x.value === v)
+        return o ? [o] : []
+      }),
+    ),
+    [options],
   )
 
   const close = useCallback(() => setOpen(false), [])
@@ -135,7 +136,7 @@ export const LeadRowStatusDropdown = memo(function LeadRowStatusDropdown({
                   {g.label}
                 </p>
                 {g.statuses.map((value) => {
-                  const o = LEAD_STATUS_OPTIONS.find((x) => x.value === value)
+                  const o = allOptions.find((x) => x.value === value)
                   if (!o) return null
                   const active = o.value === status
                   const optIdx = allOptions.findIndex((x) => x.value === o.value)

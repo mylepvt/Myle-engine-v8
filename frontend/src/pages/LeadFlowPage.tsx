@@ -7,13 +7,13 @@ type Props = {
 }
 
 const PIPELINE_STAGES = [
-  'new_lead', 'contacted', 'invited', 'whatsapp_sent', 'video_sent', 'video_watched',
-  'paid', 'mindset_lock', 'day1', 'day2', 'day3', 'converted',
+  'new_lead', 'invited', 'whatsapp_sent', 'video_sent', 'video_watched',
+  'paid', 'mindset_lock', 'day1', 'day2', 'day3', 'interview', 'track_selected', 'seat_hold', 'converted',
 ] as const
 
 const TERMINAL_STAGES = ['lost', 'retarget', 'inactive'] as const
 
-const RE_ENGAGE_STAGES = ['retarget', 'plan_2cc', 'level_up'] as const
+const INTERNAL_COMPAT_STAGES = ['contacted', 'training', 'plan_2cc', 'level_up', 'pending', 'new'] as const
 
 function label(v: string): string {
   return LEAD_STATUS_OPTIONS.find((o) => o.value === v)?.label ?? v
@@ -47,7 +47,7 @@ export function LeadFlowPage({ title }: Props) {
     <div className="max-w-3xl space-y-6">
       <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
       <p className="text-sm text-muted-foreground">
-        Full Myle lead pipeline — from first contact to conversion. Moves are done on{' '}
+        Canonical Myle lead journey — from new lead to conversion. Moves are done on{' '}
         <Link to="/dashboard/work/leads" className="text-primary underline-offset-2 hover:underline">
           Calling Board
         </Link>{' '}
@@ -75,6 +75,13 @@ export function LeadFlowPage({ title }: Props) {
             </span>
           ))}
         </div>
+        <p className="mt-3 text-xs text-muted-foreground">
+          After <span className="font-medium text-foreground">Video Watched</span>, the team uploads payment proof,
+          admin approves it, and only then the lead may enter <span className="font-medium text-foreground">Paid ₹196</span>.
+          Post-day-3 execution continues through <span className="font-medium text-foreground">Interview</span>,{' '}
+          <span className="font-medium text-foreground">Track Selected</span>, and{' '}
+          <span className="font-medium text-foreground">Seat Hold</span> before conversion.
+        </p>
       </div>
 
       {/* Outcome stages */}
@@ -91,25 +98,25 @@ export function LeadFlowPage({ title }: Props) {
         </div>
       </div>
 
-      {/* Re-engage path */}
+      {/* Internal / compatibility */}
       <div className="surface-elevated p-4">
         <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-          Re-Engage Path
+          Internal / Compatibility
         </p>
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          {RE_ENGAGE_STAGES.map((s, i) => (
+          {INTERNAL_COMPAT_STAGES.map((s, i) => (
             <span key={s} className="flex items-center gap-2">
               <span className={`rounded-md border px-3 py-1.5 font-medium ${STAGE_COLORS[s] ?? 'border-border bg-muted/30 text-foreground'}`}>
                 {label(s)}
               </span>
-              {i < RE_ENGAGE_STAGES.length - 1 ? (
+              {i < INTERNAL_COMPAT_STAGES.length - 1 ? (
                 <span className="text-muted-foreground/60 text-xs" aria-hidden>→</span>
               ) : null}
             </span>
           ))}
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          Lost leads can be moved to Retarget → 2CC Plan → Level Up before final close.
+          These statuses are still supported for compatibility or internal ops, but they are not part of the primary conversion journey.
         </p>
       </div>
 

@@ -12,6 +12,8 @@ export type WorkboardColumn = {
 export type WorkboardActionCounts = {
   pending_calls: number
   videos_to_send: number
+  batches_due: number
+  closings_due: number
 }
 
 export type WorkboardResponse = {

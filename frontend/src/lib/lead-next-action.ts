@@ -1,31 +1,32 @@
-import { LEAD_STATUS_OPTIONS } from '@/hooks/use-leads-query'
+import { LEAD_STATUS_OPTIONS, PRIMARY_USER_FLOW_STATUSES, USER_OUTCOME_STATUSES } from '@/hooks/use-leads-query'
 
-/** Same order as backend `LEAD_STATUS_SEQUENCE` — forward “next” picks lowest index &gt; current. */
+/** Preferred primary action order — mirrors the real team journey instead of legacy compat stages. */
 export const LEAD_PIPELINE_ORDER: readonly string[] = [
-  'new_lead',
-  'contacted',
-  'invited',
-  'whatsapp_sent',
-  'video_sent',
-  'video_watched',
-  'paid',
-  'mindset_lock',
-  'day1',
-  'day2',
-  'day3',
-  'converted',
-  'interview',
-  'track_selected',
-  'seat_hold',
-  'lost',
-  'retarget',
-  'inactive',
-  'training',
-  'plan_2cc',
-  'level_up',
-  'pending',
-  'new',
+  ...PRIMARY_USER_FLOW_STATUSES,
+  ...USER_OUTCOME_STATUSES,
 ]
+
+const PRIMARY_NEXT_BY_STATUS: Record<string, string> = {
+  new_lead: 'invited',
+  contacted: 'invited',
+  invited: 'whatsapp_sent',
+  whatsapp_sent: 'video_sent',
+  video_sent: 'video_watched',
+  video_watched: 'paid',
+  paid: 'mindset_lock',
+  mindset_lock: 'day1',
+  day1: 'day2',
+  day2: 'day3',
+  day3: 'interview',
+  interview: 'track_selected',
+  track_selected: 'seat_hold',
+  seat_hold: 'converted',
+}
+
+const VISIBLE_ALTERNATIVE_TARGETS = new Set<string>([
+  ...PRIMARY_USER_FLOW_STATUSES,
+  ...USER_OUTCOME_STATUSES,
+])
 
 function orderIndex(slug: string): number {
   const i = LEAD_PIPELINE_ORDER.indexOf(slug)
@@ -38,12 +39,25 @@ function orderIndex(slug: string): number {
  */
 export function pickPrimaryNextTransition(currentSlug: string, availableTargets: string[]): string | null {
   if (!availableTargets.length) return null
+  const preferred = PRIMARY_NEXT_BY_STATUS[currentSlug]
+  if (preferred && availableTargets.includes(preferred)) {
+    return preferred
+  }
   const cur = orderIndex(currentSlug)
   const forwards = availableTargets.filter((t) => orderIndex(t) > cur)
   if (forwards.length) {
     return forwards.sort((a, b) => orderIndex(a) - orderIndex(b))[0] ?? null
   }
   return availableTargets[0] ?? null
+}
+
+export function visibleAlternativeTransitions(currentSlug: string, availableTargets: string[]): string[] {
+  const preferred = PRIMARY_NEXT_BY_STATUS[currentSlug]
+  return availableTargets.filter((target) => {
+    if (target === currentSlug || !VISIBLE_ALTERNATIVE_TARGETS.has(target)) return false
+    if (preferred && target === preferred) return true
+    return USER_OUTCOME_STATUSES.includes(target as (typeof USER_OUTCOME_STATUSES)[number])
+  })
 }
 
 function statusLabel(slug: string): string {
@@ -65,8 +79,8 @@ export function primaryActionLabel(targetSlug: string): string {
     day2: 'Move to Day 2',
     day3: 'Move to Day 3',
     interview: 'Move to Interview',
-    track_selected: 'Track selected',
-    seat_hold: 'Seat hold',
+    track_selected: 'Mark track selected',
+    seat_hold: 'Mark seat hold',
     converted: 'Mark converted',
     lost: 'Mark lost',
     retarget: 'Move to Retarget',

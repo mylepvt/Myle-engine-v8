@@ -83,8 +83,6 @@ async def _actor_may_share_batch_link(
 ) -> bool:
     if user.role == "admin":
         return True
-    if slot.startswith("d2_"):
-        return False
     if user.role != "leader":
         return False
     if lead.assigned_to_user_id == user.user_id:

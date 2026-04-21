@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { LEAD_STATUS_OPTIONS, type LeadStatus } from '@/hooks/use-leads-query'
+import { LEAD_STATUS_OPTIONS, type LeadStatus, useAvailableTransitionsQuery } from '@/hooks/use-leads-query'
+import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import {
   useLeadCallsQuery,
   useLeadDetailQuery,
@@ -14,6 +15,8 @@ import { EnrollmentCard } from '@/components/leads/EnrollmentCard'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LeadNextStepPanel } from '@/components/leads/LeadNextStepPanel'
 import { LeadNotesPanel } from '@/components/leads/LeadNotesPanel'
+import { callStatusSelectOptions } from '@/lib/call-status-options'
+import { leadStatusSelectOptionsForLead, teamLeadStatusSelectOptions } from '@/lib/team-lead-status'
 
 type Props = {
   leadId: number
@@ -25,14 +28,6 @@ const CALL_OUTCOME_OPTIONS = [
   { value: 'busy', label: 'Busy' },
   { value: 'callback_requested', label: 'Callback Requested' },
   { value: 'wrong_number', label: 'Wrong Number' },
-]
-
-const CALL_STATUS_OPTIONS = [
-  { value: '', label: 'None' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'in_progress', label: 'In Progress' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'dnc', label: 'Do Not Call' },
 ]
 
 function outcomeLabel(v: string): string {
@@ -87,10 +82,23 @@ function PaymentStatusBadge({ status }: { status: string }) {
 }
 
 export function LeadDetailPage({ leadId }: Props) {
+  const { role } = useDashboardShellRole()
   const { data: lead, isPending, isError, error, refetch } = useLeadDetailQuery(leadId)
+  const transitionsQ = useAvailableTransitionsQuery(leadId)
   const callsQuery = useLeadCallsQuery(leadId)
   const patchMut = usePatchLeadDetailMutation()
   const logCallMut = useLogCallMutation()
+  const pipelineStatusOptions = lead
+    ? (() => {
+        const base = leadStatusSelectOptionsForLead(role ?? null, lead.status as LeadStatus, LEAD_STATUS_OPTIONS)
+        const allowed = new Set<LeadStatus>([lead.status as LeadStatus, ...((transitionsQ.data ?? []) as LeadStatus[])])
+        const scoped = base.filter((option) => allowed.has(option.value))
+        return scoped.length > 0 ? scoped : base
+      })()
+    : teamLeadStatusSelectOptions(role ?? null, LEAD_STATUS_OPTIONS)
+  const pipelineCallStatusOptions = lead
+    ? callStatusSelectOptions(role ?? null, lead.status as LeadStatus)
+    : callStatusSelectOptions(role ?? null)
   // Pipeline card local state
   const [pipelineStatus, setPipelineStatus] = useState('')
   const [pipelineCallStatus, setPipelineCallStatus] = useState('')
@@ -326,7 +334,7 @@ export function LeadDetailPage({ leadId }: Props) {
                   onChange={(e) => setPipelineStatus(e.target.value)}
                   className="w-full rounded-md border border-white/12 bg-white/[0.05] px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
                 >
-                  {LEAD_STATUS_OPTIONS.map((o) => (
+                  {pipelineStatusOptions.map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
                     </option>
@@ -346,7 +354,8 @@ export function LeadDetailPage({ leadId }: Props) {
                   onChange={(e) => setPipelineCallStatus(e.target.value)}
                   className="w-full rounded-md border border-white/12 bg-white/[0.05] px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
                 >
-                  {CALL_STATUS_OPTIONS.map((o) => (
+                  <option value="">None</option>
+                  {pipelineCallStatusOptions.map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
                     </option>
