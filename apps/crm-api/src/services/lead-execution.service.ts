@@ -11,22 +11,9 @@ import type { Server } from "socket.io";
 import { bumpRealtimeScoreOnActivity } from "./redis-score.service.js";
 import { recordAudit } from "./audit.service.js";
 import { acquireLock, releaseLock } from "../lib/redis-lock.js";
+import { legacyStatusForStage } from "./lead-stage-legacy-status.js";
 
 const INACTIVITY_REASSIGN_MS = 48 * 60 * 60 * 1000;
-
-/** CRM LeadStage → FastAPI leads.status string */
-const STAGE_TO_LEGACY_STATUS: Partial<Record<string, string>> = {
-  NEW:          "new_lead",
-  INVITED:      "invited",
-  WHATSAPP_SENT:"contacted",
-  VIDEO_SENT:   "video_sent",
-  PAYMENT_DONE: "paid",
-  MINDSET_LOCK: "day1",
-  DAY1_UPLINE:  "day2",
-  DAY2_ADMIN:   "interview",
-  DAY3_CLOSER:  "track_selected",
-  CLOSED:       "converted",
-};
 
 async function teamScopeForUser(userId: string): Promise<string> {
   const u = await prisma.user.findUnique({ where: { id: userId }, select: { teamId: true } });
@@ -155,7 +142,7 @@ export async function transitionLead(
   // Write status back to FastAPI's leads table for read consistency
   const legacyLead = await prisma.lead.findUnique({ where: { id: leadId }, select: { legacyId: true, stage: true } });
   if (legacyLead?.legacyId) {
-    const legacyStatus = STAGE_TO_LEGACY_STATUS[legacyLead.stage];
+    const legacyStatus = legacyStatusForStage(legacyLead.stage);
     if (legacyStatus) {
       await (prisma as any).legacyLead.update({
         where: { id: legacyLead.legacyId },

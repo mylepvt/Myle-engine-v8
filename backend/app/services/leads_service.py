@@ -41,19 +41,12 @@ from app.services.ctcs_status_chain import advance_lead_status_toward
 from app.services.whatsapp_ctcs import send_interested_enrollment_assets
 from app.validators.leads_validator import lead_list_conditions, parse_status_query, validate_list_flags
 
-# Statuses that require an approved payment proof before entry.
-# Any transition *into* these statuses must pass the payment gate.
+# Only the Paid ₹196 entry point requires approved payment proof.
+# Once a lead has entered the post-paid flow, mindset/day/close stages must not
+# re-check the proof gate.
 _PAYMENT_REQUIRED_STATUSES: frozenset[str] = frozenset(
     {
         "paid",
-        "mindset_lock",
-        "day1",
-        "day2",
-        "day3",
-        "interview",
-        "track_selected",
-        "seat_hold",
-        "converted",
     }
 )
 
@@ -584,11 +577,6 @@ class LeadsService:
             )
         if lead.assigned_to_user_id != user.user_id:
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
-        if lead.payment_status != "approved":
-            raise HTTPException(
-                status_code=http_status.HTTP_400_BAD_REQUEST,
-                detail="Payment proof must be approved before leader handoff",
-            )
         if lead.status != "mindset_lock":
             raise HTTPException(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
@@ -713,7 +701,7 @@ class LeadsService:
             )
             if not ok:
                 raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
-            # Payment gate: non-admins cannot write post-payment statuses without approved proof.
+            # Only entering Paid ₹196 is payment-gated; post-paid stages stay unlocked.
             if body.status in _PAYMENT_REQUIRED_STATUSES and user.role != "admin":
                 if lead.payment_status != "approved":
                     raise HTTPException(
@@ -944,7 +932,7 @@ class LeadsService:
         )
         if not ok:
             raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
-        # Payment gate: non-admins cannot enter post-payment statuses without approved proof.
+        # Only entering Paid ₹196 is payment-gated; post-paid stages stay unlocked.
         if body.target_status in _PAYMENT_REQUIRED_STATUSES and user.role != "admin":
             if lead.payment_status != "approved":
                 raise HTTPException(
