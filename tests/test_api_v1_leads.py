@@ -61,6 +61,7 @@ async def _seed_one_lead(
     name: str = "Acme Corp",
     lead_status: str = "new",
     phone: str | None = None,
+    email: str | None = None,
     payment_status: str | None = None,
     mindset_started_at: datetime | None = None,
     mindset_lock_state: str | None = None,
@@ -71,6 +72,7 @@ async def _seed_one_lead(
     created_by_user_id: int | None = None,
     assigned_to_user_id: int | None = None,
     last_action_at: datetime | None = None,
+    next_followup_at: datetime | None = None,
 ) -> None:
     fac = test_conftest.get_test_session_factory()
     cb = created_by_user_id if created_by_user_id is not None else user_id
@@ -81,6 +83,7 @@ async def _seed_one_lead(
                 name=name,
                 status=lead_status,
                 phone=phone,
+                email=email,
                 payment_status=payment_status,
                 mindset_started_at=mindset_started_at,
                 mindset_lock_state=mindset_lock_state,
@@ -91,6 +94,7 @@ async def _seed_one_lead(
                 in_pool=in_pool,
                 pool_price_cents=pool_price_cents,
                 last_action_at=last_action_at,
+                next_followup_at=next_followup_at,
             )
         )
         await session.commit()
@@ -178,10 +182,10 @@ def test_slice1_team_list_only_creator_not_assignee(
         asyncio.run(_clear_leads())
 
 
-def test_slice1_leader_does_not_see_downline_leads(
+def test_slice1_leader_sees_downline_team_leads_in_all_leads(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Leader should NOT see leads created by downline team members — only own leads."""
+    """Leader All Leads scope includes downline team rows for search/update control."""
     asyncio.run(_seed_one_lead(user_id=3, name="From downline team"))
     try:
         c = _authed_client(monkeypatch)
@@ -189,8 +193,8 @@ def test_slice1_leader_does_not_see_downline_leads(
         res = c.get("/api/v1/leads")
         assert res.status_code == 200
         body = res.json()
-        # Lead was created by team user (id=3), not leader → leader must not see it.
-        assert body["total"] == 0
+        assert body["total"] == 1
+        assert body["items"][0]["name"] == "From downline team"
     finally:
         asyncio.run(_clear_leads())
 
@@ -296,6 +300,41 @@ def test_leader_cannot_patch_others_lead(
         res = c.patch("/api/v1/leads/1", json={"name": "Hacked"})
         assert res.status_code == 403
         assert res.json()["error"]["code"] == "forbidden"
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_leader_can_search_and_update_downline_assigned_lead(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    followup_at = datetime.now(timezone.utc) + timedelta(days=1)
+    asyncio.run(
+        _seed_one_lead(
+            user_id=1,
+            name="Admin imported for team",
+            lead_status="contacted",
+            phone="9876543210",
+            email="team.lead@example.com",
+            created_by_user_id=1,
+            assigned_to_user_id=3,
+            next_followup_at=followup_at,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+
+        res = c.get("/api/v1/leads", params={"q": "9876543210"})
+        assert res.status_code == 200
+        body = res.json()
+        assert body["total"] == 1
+        assert body["items"][0]["name"] == "Admin imported for team"
+
+        patch = c.patch("/api/v1/leads/1", json={"status": "lost"})
+        assert patch.status_code == 200
+        patched = patch.json()
+        assert patched["status"] == "lost"
+        assert patched["next_followup_at"] is None
     finally:
         asyncio.run(_clear_leads())
 

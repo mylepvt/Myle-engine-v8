@@ -1,4 +1,4 @@
-import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import {
   CheckCircle2,
@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { WatchLiveGauge } from '@/components/watch/WatchLiveGauge'
 import { apiUrl } from '@/lib/api'
 import { buildBatchGreetingCopy } from '@/lib/batch-watch'
-import { extractYouTubeId } from '@/lib/youtube'
+import { buildYouTubeEmbedUrl, extractYouTubeId } from '@/lib/youtube'
 
 type BatchWatchSubmission = {
   notes_url: string | null
@@ -42,29 +42,6 @@ type BatchWatchData = {
   submission: BatchWatchSubmission | null
 }
 
-declare global {
-  interface Window {
-    YT?: {
-      Player: new (
-        element: HTMLElement | string,
-        options: {
-          width?: string
-          height?: string
-          videoId: string
-          playerVars?: Record<string, number | string>
-          events?: {
-            onReady?: () => void
-            onStateChange?: (event: { data: number }) => void
-          }
-        },
-      ) => { destroy?: () => void }
-      PlayerState: { ENDED: number }
-    }
-    __myleYouTubeApiPromise?: Promise<unknown>
-    onYouTubeIframeAPIReady?: (() => void) | undefined
-  }
-}
-
 function toAbsoluteUrl(url: string | null | undefined): string | null {
   if (!url) return null
   if (url.startsWith('http')) return url
@@ -79,91 +56,20 @@ async function readJsonError(res: Response): Promise<string> {
   return res.statusText || `HTTP ${res.status}`
 }
 
-function loadYouTubeApi(): Promise<unknown> {
-  if (window.YT?.Player) return Promise.resolve(window.YT)
-  if (window.__myleYouTubeApiPromise) return window.__myleYouTubeApiPromise
-
-  window.__myleYouTubeApiPromise = new Promise((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>('script[src="https://www.youtube.com/iframe_api"]')
-    const previous = window.onYouTubeIframeAPIReady
-
-    window.onYouTubeIframeAPIReady = () => {
-      previous?.()
-      resolve(window.YT)
-    }
-
-    if (existing) return
-
-    const script = document.createElement('script')
-    script.src = 'https://www.youtube.com/iframe_api'
-    script.async = true
-    script.onerror = () => reject(new Error('Could not load YouTube player.'))
-    document.body.appendChild(script)
-  })
-
-  return window.__myleYouTubeApiPromise
-}
-
 function BatchVideoPlayer({
   videoId,
   title,
   fallbackUrl,
-  onEnded,
 }: {
   videoId: string | null
   title: string
   fallbackUrl: string | null
-  onEnded: () => void
 }) {
-  const mountRef = useRef<HTMLDivElement>(null)
-  const [playerReady, setPlayerReady] = useState(false)
-  const [playerError, setPlayerError] = useState<string | null>(null)
+  const embedUrl = videoId
+    ? buildYouTubeEmbedUrl(videoId)
+    : fallbackUrl
 
-  useEffect(() => {
-    if (!videoId || !mountRef.current) return
-
-    let active = true
-    let player: { destroy?: () => void } | null = null
-    setPlayerError(null)
-    setPlayerReady(false)
-
-    void loadYouTubeApi()
-      .then(() => {
-        if (!active || !mountRef.current || !window.YT?.Player) return
-        player = new window.YT.Player(mountRef.current, {
-          width: '100%',
-          height: '100%',
-          videoId,
-          playerVars: {
-            autoplay: 1,
-            rel: 0,
-            modestbranding: 1,
-            playsinline: 1,
-          },
-          events: {
-            onReady: () => {
-              if (active) setPlayerReady(true)
-            },
-            onStateChange: (event) => {
-              if (event.data === window.YT?.PlayerState?.ENDED) {
-                onEnded()
-              }
-            },
-          },
-        })
-      })
-      .catch((err: unknown) => {
-        if (!active) return
-        setPlayerError(err instanceof Error ? err.message : 'Could not start the video player.')
-      })
-
-    return () => {
-      active = false
-      player?.destroy?.()
-    }
-  }, [videoId, onEnded])
-
-  if (!videoId) {
+  if (!embedUrl) {
     if (!fallbackUrl) {
       return (
         <div className="flex aspect-video items-center justify-center rounded-[2rem] border border-white/10 bg-white/[0.04] text-sm text-white/55">
@@ -186,15 +92,15 @@ function BatchVideoPlayer({
 
   return (
     <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-black/70 shadow-[0_30px_80px_-35px_rgba(56,189,248,0.55)]">
-      <div className="aspect-video w-full bg-black">
-        <div ref={mountRef} className="h-full w-full" />
-      </div>
+      <iframe
+        className="aspect-video h-full w-full bg-black"
+        src={embedUrl}
+        title={title}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+      />
       <div className="border-t border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-white/55">
-        {playerError
-          ? playerError
-          : playerReady
-            ? 'Playback running inside Myle.'
-            : 'Loading premium player...'}
+        Video plays inside Myle. If autoplay is blocked on the device, tap play once.
       </div>
     </div>
   )
@@ -498,7 +404,6 @@ export function BatchWatchPage() {
                   videoId={playerVideoId}
                   title={data.title}
                   fallbackUrl={toAbsoluteUrl(data.youtube_url)}
-                  onEnded={() => void handleMarkComplete()}
                 />
 
                 {completionError ? (

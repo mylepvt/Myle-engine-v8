@@ -10,6 +10,7 @@ from app.api.deps import AuthUser, get_db, require_auth_user
 from app.models.lead import Lead
 from app.schemas.leads import LeadListResponse, LeadPublic
 from app.services.lead_scope import lead_visibility_where
+from app.services.downline import lead_management_visible_to_leader_clause
 
 router = APIRouter()
 
@@ -32,7 +33,11 @@ async def list_retarget_leads(
         Lead.deleted_at.is_(None),
         Lead.in_pool.is_(False),
     ]
-    vis = lead_visibility_where(user)
+    vis = (
+        lead_management_visible_to_leader_clause(user.user_id)
+        if user.role == "leader"
+        else lead_visibility_where(user)
+    )
     if vis is not None:
         parts.append(vis)
     cond = and_(*parts)
