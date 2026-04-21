@@ -1,75 +1,16 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { CheckCircle2, ChevronRight, MessageCircle, MoreHorizontal, Phone, Upload } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { cn } from '@/lib/utils'
 import { apiFetch } from '@/lib/api'
 import { callStatusSelectOptions, type CallStatusApi } from '@/lib/call-status-options'
+import { formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
 import { leadStatusSelectOptionsForLead, teamMayChangeLeadStatus } from '@/lib/team-lead-status'
 import { formatCountdown, timerRemainingMs } from '@/lib/ctcs-timer'
 import { telHref, whatsAppChatHref } from '@/lib/phone-links'
 import { LEAD_STATUS_OPTIONS, type LeadPublic, type LeadStatus } from '@/hooks/use-leads-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
-
-function ctcsGetTimeColor(totalSeconds: number) {
-  const hours = totalSeconds / 3600
-
-  if (hours >= 24) return {
-    text: 'text-emerald-800 dark:text-urgency-safe',
-    stroke: 'var(--urgency-safe)',
-    glow: 'shadow-urgency-safe',
-    border: 'border-urgency-safe/25',
-    cardGlow: 'shadow-urgency-safe-card',
-    leftBorder: 'bg-urgency-safe shadow-urgency-safe',
-  }
-  if (hours >= 18) return {
-    text: 'text-blue-700 dark:text-urgency-watch',
-    stroke: 'var(--urgency-watch)',
-    glow: 'shadow-urgency-watch',
-    border: 'border-urgency-watch/25',
-    cardGlow: 'shadow-urgency-watch-card',
-    leftBorder: 'bg-urgency-watch shadow-urgency-watch',
-  }
-  if (hours >= 12) return {
-    text: 'text-orange-700 dark:text-urgency-caution',
-    stroke: 'var(--urgency-caution)',
-    glow: 'shadow-urgency-caution',
-    border: 'border-urgency-caution/25',
-    cardGlow: 'shadow-urgency-caution-card',
-    leftBorder: 'bg-urgency-caution shadow-urgency-caution',
-  }
-  if (hours >= 6) return {
-    text: 'text-red-700 dark:text-urgency-warning',
-    stroke: 'var(--urgency-warning)',
-    glow: 'shadow-urgency-warning',
-    border: 'border-urgency-warning/25',
-    cardGlow: 'shadow-urgency-warning-card',
-    leftBorder: 'bg-urgency-warning shadow-urgency-warning',
-  }
-  if (hours >= 2) return {
-    text: 'text-red-800 dark:text-urgency-danger',
-    stroke: 'var(--urgency-danger)',
-    glow: 'shadow-urgency-danger',
-    border: 'border-urgency-danger/30',
-    cardGlow: 'shadow-urgency-danger-card',
-    leftBorder: 'bg-urgency-danger shadow-urgency-danger',
-  }
-  return {
-    text: 'text-red-900 dark:text-urgency-critical',
-    stroke: 'var(--urgency-critical)',
-    glow: 'shadow-urgency-critical',
-    border: 'border-urgency-critical/40',
-    cardGlow: 'shadow-urgency-critical-card',
-    leftBorder: 'bg-urgency-critical shadow-urgency-critical',
-  }
-}
-
-function formatTime(totalSeconds: number) {
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = totalSeconds % 60
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-}
 
 const ASSIGNEE_PALETTE = ['bg-blue-500', 'bg-pink-500', 'bg-violet-500', 'bg-cyan-500', 'bg-amber-500'] as const
 
@@ -102,6 +43,7 @@ function initialsFromName(name: string | null | undefined): string {
 
 type Props = {
   lead: LeadPublic
+  nowMs: number
   isActive: boolean
   patchBusy: boolean
   actionBusy: boolean
@@ -113,6 +55,7 @@ type Props = {
 
 export function CtcsLeadCard({
   lead,
+  nowMs,
   isActive,
   patchBusy,
   actionBusy,
@@ -122,14 +65,7 @@ export function CtcsLeadCard({
   onFollowUp,
 }: Props) {
   const { role } = useDashboardShellRole()
-  const [tick, setTick] = useState(0)
-  useEffect(() => {
-    const id = window.setInterval(() => setTick((t) => t + 1), 1000)
-    return () => window.clearInterval(id)
-  }, [])
-
   const selectBusy = patchBusy || actionBusy
-  void tick
 
   // ── Proof upload ───────────────────────────────────────────────────────────
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -164,18 +100,12 @@ export function CtcsLeadCard({
     }
   }
 
-  const ms = timerRemainingMs(lead.last_action_at ?? null, lead.created_at)
+  const ms = timerRemainingMs(lead.last_action_at ?? null, lead.created_at, nowMs)
   const overdue = ms < 0
   const remainingSec = Math.max(0, Math.floor(ms / 1000))
   const colorKey = overdue ? 0 : remainingSec
-  const timeColors = ctcsGetTimeColor(colorKey)
-
-  const hours = Math.floor(remainingSec / 3600)
-  const minutes = Math.floor((remainingSec % 3600) / 60)
-  const seconds = remainingSec % 60
-  const hourAngle = (hours % 12) * 30 + minutes * 0.5
-  const minuteAngle = minutes * 6 + seconds * 0.1
-  const secondAngle = seconds * 6
+  const timeColors = leadSlaTone(colorKey)
+  const { hourAngle, minuteAngle, secondAngle } = leadSlaClockAngles(overdue ? 0 : ms)
 
   const wa = whatsAppChatHref(lead.phone ?? '')
   const tel = telHref(lead.phone)
@@ -357,7 +287,7 @@ export function CtcsLeadCard({
             </div>
             <div>
               <p className={cn('text-ds-caption font-semibold leading-tight', timeColors.text)}>
-                {overdue ? formatCountdown(ms) : formatTime(remainingSec)}
+                {overdue ? formatCountdown(ms) : formatLeadSlaTime(remainingSec)}
               </p>
               <p className="text-ds-caption text-muted-foreground">{overdue ? 'SLA' : 'remaining'}</p>
             </div>

@@ -264,6 +264,7 @@ def test_workboard_excludes_archived_leads(
 
 def test_workboard_summary_and_stale_shape(monkeypatch: pytest.MonkeyPatch) -> None:
     old_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    recent_call = datetime.now(timezone.utc)
     asyncio.run(
         _seed_lead(
             user_id=2,
@@ -279,7 +280,8 @@ def test_workboard_summary_and_stale_shape(monkeypatch: pytest.MonkeyPatch) -> N
             row = await session.get(Lead, 1)
             assert row is not None
             row.created_at = old_time
-            row.last_called_at = old_time
+            row.last_action_at = old_time
+            row.last_called_at = recent_call
             await session.commit()
 
     asyncio.run(_touch_old())

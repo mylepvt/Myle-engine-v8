@@ -5,7 +5,7 @@ from time import monotonic
 from typing import Annotated
 
 from fastapi import Depends
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthUser, get_db
@@ -25,6 +25,10 @@ from app.services.lead_scope import lead_execution_visibility_where
 
 _SUMMARY_CACHE_TTL_SECONDS = 10
 _summary_cache: dict[tuple[int, str, int], tuple[float, WorkboardSummaryResponse]] = {}
+
+
+def _stage_anchor_ts():
+    return func.coalesce(Lead.last_action_at, Lead.created_at)
 
 
 class WorkboardService:
@@ -71,10 +75,7 @@ class WorkboardService:
         stale_total = await self._repository.count_leads(
             and_(
                 scope,
-                or_(
-                    and_(Lead.last_called_at.is_(None), Lead.created_at <= stale_before),
-                    Lead.last_called_at <= stale_before,
-                ),
+                _stage_anchor_ts() <= stale_before,
             )
         )
         return WorkboardStaleResponse(
@@ -141,10 +142,7 @@ class WorkboardService:
         stale_total = await self._repository.count_leads(
             and_(
                 scope,
-                or_(
-                    and_(Lead.last_called_at.is_(None), Lead.created_at <= stale_before),
-                    Lead.last_called_at <= stale_before,
-                ),
+                _stage_anchor_ts() <= stale_before,
             )
         )
         payload = WorkboardSummaryResponse(

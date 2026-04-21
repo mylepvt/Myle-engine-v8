@@ -70,6 +70,7 @@ async def _seed_one_lead(
     pool_price_cents: int | None = None,
     created_by_user_id: int | None = None,
     assigned_to_user_id: int | None = None,
+    last_action_at: datetime | None = None,
 ) -> None:
     fac = test_conftest.get_test_session_factory()
     cb = created_by_user_id if created_by_user_id is not None else user_id
@@ -89,6 +90,7 @@ async def _seed_one_lead(
                 deleted_at=deleted_at,
                 in_pool=in_pool,
                 pool_price_cents=pool_price_cents,
+                last_action_at=last_action_at,
             )
         )
         await session.commit()
@@ -847,6 +849,7 @@ def test_patch_lead_status_only(
         assert res.status_code == 200
         assert res.json()["name"] == "X"
         assert res.json()["status"] == "contacted"
+        assert res.json()["last_action_at"] is not None
     finally:
         asyncio.run(_clear_leads())
 

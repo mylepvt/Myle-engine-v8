@@ -19,6 +19,8 @@ import { useWorkboardQuery } from '@/hooks/use-workboard-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { apiFetch } from '@/lib/api'
 import { callStatusSelectOptions } from '@/lib/call-status-options'
+import { formatCountdown, timerRemainingMs } from '@/lib/ctcs-timer'
+import { LEAD_SLA_SMOOTH_REFRESH_MS, formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
 import { whatsappDigits } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
 
@@ -163,6 +165,7 @@ const LeadCard = memo(function LeadCard({
   stageKey,
   onMoveNext,
   nextLabel,
+  nowMs,
 }: {
   lead: LeadPublic
   pm: PM
@@ -173,13 +176,9 @@ const LeadCard = memo(function LeadCard({
   stageKey?: WorkboardStageKey
   onMoveNext?: () => void
   nextLabel?: string
+  nowMs: number
 }) {
   const { role } = useDashboardShellRole()
-  const [nowMs, setNowMs] = useState(() => Date.now())
-  useEffect(() => {
-    const id = window.setInterval(() => setNowMs(Date.now()), 1000)
-    return () => window.clearInterval(id)
-  }, [])
 
   // ── Proof upload ──────────────────────────────────────────────────────────────
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -187,11 +186,12 @@ const LeadCard = memo(function LeadCard({
   const [uploadDone, setUploadDone] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const qc = useQueryClient()
+  const stageOpsCard = stageKey != null
 
   const proofApproved = lead.payment_status === 'approved'
   const proofPending = lead.payment_status === 'proof_uploaded' || uploadDone
   const proofRejected = lead.payment_status === 'rejected'
-  const showProofControl = lead.status === 'video_watched' || proofPending || proofApproved || proofRejected
+  const showProofControl = !stageOpsCard && (lead.status === 'video_watched' || proofPending || proofApproved || proofRejected)
   const mayUploadProof = lead.status === 'video_watched' || proofRejected
 
   async function handleProofFile(file: File) {
@@ -217,6 +217,12 @@ const LeadCard = memo(function LeadCard({
   const badge = BADGE[lead.status] ?? 'bg-muted/30 text-muted-foreground border-white/10'
   const isWatched = lead.status === 'video_watched' || lead.call_status === 'video_watched'
   const isSent    = !isWatched && (lead.status === 'video_sent' || lead.call_status === 'video_sent')
+  const slaMs = timerRemainingMs(lead.last_action_at ?? null, lead.created_at, nowMs)
+  const slaOverdue = slaMs < 0
+  const slaRemainingSec = Math.max(0, Math.floor(slaMs / 1000))
+  const slaTone = leadSlaTone(slaOverdue ? 0 : slaRemainingSec)
+  const { hourAngle: slaHourAngle, minuteAngle: slaMinuteAngle, secondAngle: slaSecondAngle } =
+    leadSlaClockAngles(slaOverdue ? 0 : slaMs)
   const mindsetStartable =
     lead.status === 'paid' &&
     !!(lead.payment_proof_url ?? '').trim() &&
@@ -240,135 +246,208 @@ const LeadCard = memo(function LeadCard({
     ? rawCallStatus
     : (callOptions[0]?.value ?? 'not_called')
   return (
-    <article className="surface-inset flex flex-col gap-2 rounded-lg px-2.5 py-2">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-medium leading-tight text-foreground">{lead.name}</p>
-          {lead.city && <p className="mt-0.5 truncate text-ds-caption text-muted-foreground">{lead.city}</p>}
+    <article
+      className={cn(
+        'relative overflow-hidden rounded-xl border p-2.5 text-card-foreground backdrop-blur-md',
+        'bg-card/90 dark:bg-card/80 supports-[backdrop-filter]:bg-card/75 supports-[backdrop-filter]:dark:bg-card/60',
+        slaTone.border,
+        slaTone.cardGlow,
+      )}
+    >
+      <div
+        className={cn('absolute bottom-2 left-0 top-2 w-[3px] rounded-full', slaTone.leftBorder)}
+        aria-hidden
+      />
+      <div className="relative flex flex-col gap-2 pl-2.5">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-medium leading-tight text-foreground">{lead.name}</p>
+            {lead.city && <p className="mt-0.5 truncate text-ds-caption text-muted-foreground">{lead.city}</p>}
+          </div>
+          <span className={cn('shrink-0 rounded-full border px-2 py-0.5 text-ds-caption font-semibold', badge)}>{slabel(lead.status)}</span>
         </div>
-        <span className={cn('shrink-0 rounded-full border px-2 py-0.5 text-ds-caption font-semibold', badge)}>{slabel(lead.status)}</span>
-      </div>
-      {isWatched ? (
-        <div className="flex items-center gap-1.5 rounded-md bg-blue-400/10 px-2 py-1 text-ds-caption font-medium text-blue-300">
-          <Eye className="size-3.5 shrink-0" aria-hidden />
-          <span>Prospect watched the video — call now!</span>
+        {!stageOpsCard && isWatched ? (
+          <div className="flex items-center gap-1.5 rounded-md bg-blue-400/10 px-2 py-1 text-ds-caption font-medium text-blue-300">
+            <Eye className="size-3.5 shrink-0" aria-hidden />
+            <span>Prospect watched the video — call now!</span>
+          </div>
+        ) : null}
+        {!stageOpsCard && isSent ? (
+          <div className="flex items-center gap-1.5 rounded-md bg-indigo-400/10 px-2 py-1 text-ds-caption font-medium text-indigo-300">
+            <Send className="size-3.5 shrink-0" aria-hidden />
+            <span>Video sent — waiting for response</span>
+          </div>
+        ) : null}
+        {!stageOpsCard ? (
+          <select
+            value={callValue}
+            disabled={leadPatchBusy}
+            aria-label={`Call status for ${lead.name}`}
+            onChange={(e) => void pm.mutateAsync({ id: lead.id, body: { call_status: e.target.value } })}
+            className="min-w-0 flex-1 rounded-md border border-border bg-muted/30 px-2 py-1.5 text-ds-caption text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+          >
+            {callOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        ) : null}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <div className={cn('relative size-8 shrink-0 rounded-full', slaTone.glow)}>
+              <svg viewBox="0 0 40 40" className="size-full" aria-hidden>
+                <circle
+                  cx="20"
+                  cy="20"
+                  r="18"
+                  fill="transparent"
+                  stroke={slaTone.stroke}
+                  strokeWidth="2"
+                  strokeOpacity="0.5"
+                />
+                <line
+                  x1="20"
+                  y1="20"
+                  x2="20"
+                  y2="10"
+                  stroke={slaTone.stroke}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  transform={`rotate(${slaHourAngle}, 20, 20)`}
+                />
+                <line
+                  x1="20"
+                  y1="20"
+                  x2="20"
+                  y2="7"
+                  stroke={slaTone.stroke}
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  transform={`rotate(${slaMinuteAngle}, 20, 20)`}
+                />
+                <line
+                  x1="20"
+                  y1="20"
+                  x2="20"
+                  y2="5"
+                  stroke={slaTone.stroke}
+                  strokeWidth="1"
+                  strokeLinecap="round"
+                  transform={`rotate(${slaSecondAngle}, 20, 20)`}
+                />
+                <circle cx="20" cy="20" r="2" fill={slaTone.stroke} />
+              </svg>
+            </div>
+            <div>
+              <p className={cn('text-ds-caption font-semibold leading-tight', slaTone.text)}>
+                {slaOverdue ? formatCountdown(slaMs) : formatLeadSlaTime(slaRemainingSec)}
+              </p>
+              <p className="text-ds-caption text-muted-foreground">{slaOverdue ? 'SLA' : 'remaining'}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {!stageOpsCard ? (
+              <>
+                <LeadContactActions phone={lead.phone} />
+                <IconBtn title="Send Video" colorHover="hover:border-indigo-400/40 hover:text-indigo-400 disabled:opacity-50"
+                  onClick={() => void pm.mutateAsync({ id: lead.id, body: { call_status: 'video_sent', status: 'video_sent' as LeadStatus } })}>
+                  <Video className="h-3.5 w-3.5"/>
+                </IconBtn>
+              </>
+            ) : null}
+            {/* ₹196 proof upload */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) void handleProofFile(file)
+                e.target.value = ''
+              }}
+            />
+            {showProofControl ? (
+              proofApproved ? (
+                <span title="Proof approved" className="flex h-8 w-8 items-center justify-center rounded-md border border-emerald-400/30 bg-emerald-400/12 text-emerald-300">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                </span>
+              ) : proofPending ? (
+                <span title="Proof pending review" className="flex h-8 w-8 items-center justify-center rounded-md border border-sky-400/30 bg-sky-400/12 text-sky-300">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                </span>
+              ) : mayUploadProof ? (
+                <button
+                  type="button"
+                  title={uploading ? 'Uploading…' : uploadError ? `Retry — ${uploadError}` : 'Upload ₹196 proof'}
+                  disabled={uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={cn(
+                    'flex h-8 w-8 items-center justify-center rounded-md border bg-muted/30 transition disabled:opacity-50',
+                    uploadError
+                      ? 'border-red-400/40 text-red-400 hover:bg-red-400/10'
+                      : 'border-border text-foreground hover:border-amber-400/40 hover:text-amber-400',
+                  )}
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                </button>
+              ) : null
+            ) : null}
+            <Link to={`/dashboard/work/leads/${lead.id}`} title="Edit"
+              className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted/30 transition hover:border-primary/40 hover:text-primary">
+              <Pencil className="h-3.5 w-3.5"/>
+            </Link>
+          </div>
         </div>
-      ) : null}
-      {isSent ? (
-        <div className="flex items-center gap-1.5 rounded-md bg-indigo-400/10 px-2 py-1 text-ds-caption font-medium text-indigo-300">
-          <Send className="size-3.5 shrink-0" aria-hidden />
-          <span>Video sent — waiting for response</span>
-        </div>
-      ) : null}
-      <select
-        value={callValue}
-        disabled={leadPatchBusy}
-        aria-label={`Call status for ${lead.name}`}
-        onChange={(e) => void pm.mutateAsync({ id: lead.id, body: { call_status: e.target.value } })}
-        className="min-w-0 flex-1 rounded-md border border-border bg-muted/30 px-2 py-1.5 text-ds-caption text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
-      >
-        {callOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
-      <div className="flex items-center gap-1.5">
-        <LeadContactActions phone={lead.phone} />
-        <IconBtn title="Send Video" colorHover="hover:border-indigo-400/40 hover:text-indigo-400 disabled:opacity-50"
-          onClick={() => void pm.mutateAsync({ id: lead.id, body: { call_status: 'video_sent', status: 'video_sent' as LeadStatus } })}>
-          <Video className="h-3.5 w-3.5"/>
-        </IconBtn>
-        {/* ₹196 proof upload */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (file) void handleProofFile(file)
-            e.target.value = ''
-          }}
-        />
-        {showProofControl ? (
-          proofApproved ? (
-            <span title="Proof approved" className="flex h-8 w-8 items-center justify-center rounded-md border border-emerald-400/30 bg-emerald-400/12 text-emerald-300">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-            </span>
-          ) : proofPending ? (
-            <span title="Proof pending review" className="flex h-8 w-8 items-center justify-center rounded-md border border-sky-400/30 bg-sky-400/12 text-sky-300">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-            </span>
-          ) : mayUploadProof ? (
+        {mindsetStartable ? (
+          <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 px-2 py-2">
+            <p className="text-ds-caption text-muted-foreground">
+              Payment approved. Start the 5-minute mindset lock before leader handoff.
+            </p>
             <button
               type="button"
-              title={uploading ? 'Uploading…' : uploadError ? `Retry — ${uploadError}` : 'Upload ₹196 proof'}
-              disabled={uploading}
-              onClick={() => fileInputRef.current?.click()}
+              disabled={leadPatchBusy}
+              onClick={() => void pm.mutateAsync({ id: lead.id, body: { status: 'mindset_lock' as LeadStatus } })}
+              className="flex h-8 w-full items-center justify-center gap-1 rounded-md border border-fuchsia-400/40 bg-fuchsia-400/12 px-2 text-ds-caption font-semibold text-fuchsia-300 transition hover:bg-fuchsia-400/20 disabled:opacity-50"
+            >
+              <CheckSquare className="h-3.5 w-3.5" />
+              <span>Start Mindset Lock</span>
+            </button>
+          </div>
+        ) : null}
+        {mindsetReady ? (
+          <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 px-2 py-2">
+            <p className={cn('text-ds-caption font-semibold', lockLineClass)}>
+              Minimum call time: {mmss(remainingSeconds)}
+            </p>
+            <p className="text-ds-caption text-muted-foreground">
+              Will be assigned to: <span className="font-semibold text-foreground">{previewName}</span>
+            </p>
+            <button
+              type="button"
+              title={!canSend ? 'Complete at least 5 minutes call before sending' : 'Send to leader'}
+              disabled={!canSend || mindsetBusy}
+              onClick={() => onRequestMindsetSend?.(lead)}
               className={cn(
-                'flex h-8 w-8 items-center justify-center rounded-md border bg-muted/30 transition disabled:opacity-50',
-                uploadError
-                  ? 'border-red-400/40 text-red-400 hover:bg-red-400/10'
-                  : 'border-border text-foreground hover:border-amber-400/40 hover:text-amber-400',
+                'flex h-8 w-full items-center justify-center gap-1 rounded-md border px-2 text-ds-caption font-semibold transition disabled:cursor-not-allowed disabled:opacity-50',
+                canSend
+                  ? 'border-emerald-400/40 bg-emerald-400/12 text-emerald-300 hover:bg-emerald-400/20'
+                  : 'border-red-400/30 bg-red-400/10 text-red-300',
               )}
             >
-              <Upload className="h-3.5 w-3.5" />
+              <CheckSquare className="h-3.5 w-3.5" />
+              <span>{mindsetBusy ? 'Sending...' : 'Lock & Send to Leader'}</span>
             </button>
-          ) : null
+          </div>
         ) : null}
-        <Link to={`/dashboard/work/leads/${lead.id}`} title="Edit"
-          className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted/30 transition hover:border-primary/40 hover:text-primary">
-          <Pencil className="h-3.5 w-3.5"/>
-        </Link>
+        {stageKey ? (
+          <StageAdvanceSection
+            lead={lead}
+            stageKey={stageKey}
+            pm={pm}
+            leadPatchBusy={leadPatchBusy}
+            onMoveNext={onMoveNext}
+            nextLabel={nextLabel}
+          />
+        ) : null}
       </div>
-      {mindsetStartable ? (
-        <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 px-2 py-2">
-          <p className="text-ds-caption text-muted-foreground">
-            Payment approved. Start the 5-minute mindset lock before leader handoff.
-          </p>
-          <button
-            type="button"
-            disabled={leadPatchBusy}
-            onClick={() => void pm.mutateAsync({ id: lead.id, body: { status: 'mindset_lock' as LeadStatus } })}
-            className="flex h-8 w-full items-center justify-center gap-1 rounded-md border border-fuchsia-400/40 bg-fuchsia-400/12 px-2 text-ds-caption font-semibold text-fuchsia-300 transition hover:bg-fuchsia-400/20 disabled:opacity-50"
-          >
-            <CheckSquare className="h-3.5 w-3.5" />
-            <span>Start Mindset Lock</span>
-          </button>
-        </div>
-      ) : null}
-      {mindsetReady ? (
-        <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 px-2 py-2">
-          <p className={cn('text-ds-caption font-semibold', lockLineClass)}>
-            Minimum call time: {mmss(remainingSeconds)}
-          </p>
-          <p className="text-ds-caption text-muted-foreground">
-            Will be assigned to: <span className="font-semibold text-foreground">{previewName}</span>
-          </p>
-          <button
-            type="button"
-            title={!canSend ? 'Complete at least 5 minutes call before sending' : 'Send to leader'}
-            disabled={!canSend || mindsetBusy}
-            onClick={() => onRequestMindsetSend?.(lead)}
-            className={cn(
-              'flex h-8 w-full items-center justify-center gap-1 rounded-md border px-2 text-ds-caption font-semibold transition disabled:cursor-not-allowed disabled:opacity-50',
-              canSend
-                ? 'border-emerald-400/40 bg-emerald-400/12 text-emerald-300 hover:bg-emerald-400/20'
-                : 'border-red-400/30 bg-red-400/10 text-red-300',
-            )}
-          >
-            <CheckSquare className="h-3.5 w-3.5" />
-            <span>{mindsetBusy ? 'Sending...' : 'Lock & Send to Leader'}</span>
-          </button>
-        </div>
-      ) : null}
-      {stageKey ? (
-        <StageAdvanceSection
-          lead={lead}
-          stageKey={stageKey}
-          pm={pm}
-          leadPatchBusy={leadPatchBusy}
-          onMoveNext={onMoveNext}
-          nextLabel={nextLabel}
-        />
-      ) : null}
     </article>
   )
 })
@@ -562,6 +641,7 @@ type LeadColData = {
   mindsetBusyLeadId: number | null
   mindsetPreviewByLeadId: Record<number, MindsetLockPreviewResponse | undefined>
   onRequestMindsetSend?: (lead: LeadPublic) => void
+  nowMs: number
 }
 
 function LeadColRow(props: RowComponentProps<LeadColData>): ReactElement | null {
@@ -575,6 +655,7 @@ function LeadColRow(props: RowComponentProps<LeadColData>): ReactElement | null 
     mindsetBusyLeadId,
     mindsetPreviewByLeadId,
     onRequestMindsetSend,
+    nowMs,
   } = props
   const lead = colLeads[index]
   if (!lead) return null
@@ -587,6 +668,7 @@ function LeadColRow(props: RowComponentProps<LeadColData>): ReactElement | null 
         mindsetBusy={mindsetBusyLeadId === lead.id}
         mindsetPreview={mindsetPreviewByLeadId[lead.id] ?? null}
         onRequestMindsetSend={onRequestMindsetSend}
+        nowMs={nowMs}
       />
     </div>
   )
@@ -600,6 +682,7 @@ const VirtualLeadColumn = memo(function VirtualLeadColumn({
   mindsetBusyLeadId,
   mindsetPreviewByLeadId,
   onRequestMindsetSend,
+  nowMs,
 }: {
   colLeads: LeadPublic[]
   height: number
@@ -608,6 +691,7 @@ const VirtualLeadColumn = memo(function VirtualLeadColumn({
   mindsetBusyLeadId: number | null
   mindsetPreviewByLeadId: Record<number, MindsetLockPreviewResponse | undefined>
   onRequestMindsetSend?: (lead: LeadPublic) => void
+  nowMs: number
 }) {
   const itemData = useMemo(
     () => ({
@@ -617,8 +701,9 @@ const VirtualLeadColumn = memo(function VirtualLeadColumn({
       mindsetBusyLeadId,
       mindsetPreviewByLeadId,
       onRequestMindsetSend,
+      nowMs,
     }),
-    [colLeads, pm, patchBusyLeadId, mindsetBusyLeadId, mindsetPreviewByLeadId, onRequestMindsetSend],
+    [colLeads, pm, patchBusyLeadId, mindsetBusyLeadId, mindsetPreviewByLeadId, onRequestMindsetSend, nowMs],
   )
   if (colLeads.length === 0) return <div className="min-h-0 min-w-0 flex-1" />
   return (
@@ -643,6 +728,7 @@ function VirtualLeadGrid({
   mindsetPreviewByLeadId,
   onRequestMindsetSend,
   empty,
+  nowMs,
 }: {
   leads: LeadPublic[]
   pm: PM
@@ -651,6 +737,7 @@ function VirtualLeadGrid({
   mindsetPreviewByLeadId: Record<number, MindsetLockPreviewResponse | undefined>
   onRequestMindsetSend?: (lead: LeadPublic) => void
   empty?: string
+  nowMs: number
 }) {
   const cols = useBoardColumnCount()
   const colArrays = useMemo(
@@ -680,6 +767,7 @@ function VirtualLeadGrid({
           mindsetBusyLeadId={mindsetBusyLeadId}
           mindsetPreviewByLeadId={mindsetPreviewByLeadId}
           onRequestMindsetSend={onRequestMindsetSend}
+          nowMs={nowMs}
         />
       ))}
     </div>
@@ -693,10 +781,11 @@ type AdminColData = {
   nextLabel?: string
   pm: PM
   patchBusyLeadId: number | null
+  nowMs: number
 }
 
 function AdminColRow(props: RowComponentProps<AdminColData>): ReactElement | null {
-  const { index, style, ariaAttributes, colLeads, stageKey, nextStatus, nextLabel, pm, patchBusyLeadId } = props
+  const { index, style, ariaAttributes, colLeads, stageKey, nextStatus, nextLabel, pm, patchBusyLeadId, nowMs } = props
   const lead = colLeads[index]
   if (!lead) return null
   const onMoveNext = nextStatus
@@ -711,6 +800,7 @@ function AdminColRow(props: RowComponentProps<AdminColData>): ReactElement | nul
         leadPatchBusy={patchBusyLeadId === lead.id}
         onMoveNext={onMoveNext}
         nextLabel={nextLabel}
+        nowMs={nowMs}
       />
     </div>
   )
@@ -724,6 +814,7 @@ const VirtualAdminColumn = memo(function VirtualAdminColumn({
   nextLabel,
   pm,
   patchBusyLeadId,
+  nowMs,
 }: {
   colLeads: LeadPublic[]
   height: number
@@ -732,10 +823,11 @@ const VirtualAdminColumn = memo(function VirtualAdminColumn({
   nextLabel?: string
   pm: PM
   patchBusyLeadId: number | null
+  nowMs: number
 }) {
   const itemData = useMemo(
-    () => ({ colLeads, stageKey, nextStatus, nextLabel, pm, patchBusyLeadId }),
-    [colLeads, stageKey, nextStatus, nextLabel, pm, patchBusyLeadId],
+    () => ({ colLeads, stageKey, nextStatus, nextLabel, pm, patchBusyLeadId, nowMs }),
+    [colLeads, stageKey, nextStatus, nextLabel, pm, patchBusyLeadId, nowMs],
   )
   if (colLeads.length === 0) return <div className="min-h-0 min-w-0 flex-1" />
   return (
@@ -759,6 +851,7 @@ function VirtualAdminLeadGrid({
   nextLabel,
   pm,
   patchBusyLeadId,
+  nowMs,
 }: {
   leads: LeadPublic[]
   stageKey: WorkboardStageKey
@@ -766,6 +859,7 @@ function VirtualAdminLeadGrid({
   nextLabel?: string
   pm: PM
   patchBusyLeadId: number | null
+  nowMs: number
 }) {
   const cols = useBoardColumnCount()
   const colArrays = useMemo(
@@ -795,6 +889,7 @@ function VirtualAdminLeadGrid({
           nextLabel={nextLabel}
           pm={pm}
           patchBusyLeadId={patchBusyLeadId}
+          nowMs={nowMs}
         />
       ))}
     </div>
@@ -810,6 +905,7 @@ function Grid({
   mindsetPreviewByLeadId = {},
   onRequestMindsetSend,
   empty,
+  nowMs,
 }: {
   leads: LeadPublic[]
   pm: PM
@@ -818,6 +914,7 @@ function Grid({
   mindsetPreviewByLeadId?: Record<number, MindsetLockPreviewResponse | undefined>
   onRequestMindsetSend?: (lead: LeadPublic) => void
   empty?: string
+  nowMs: number
 }) {
   return (
     <VirtualLeadGrid
@@ -828,6 +925,7 @@ function Grid({
       mindsetPreviewByLeadId={mindsetPreviewByLeadId}
       onRequestMindsetSend={onRequestMindsetSend}
       empty={empty}
+      nowMs={nowMs}
     />
   )
 }
@@ -842,6 +940,7 @@ function TeamView({
   ensureMindsetPreview,
   onRequestMindsetSend,
   search,
+  nowMs,
 }: {
   cols: Col[]
   pm: PM
@@ -851,6 +950,7 @@ function TeamView({
   ensureMindsetPreview: (lead: LeadPublic) => void
   onRequestMindsetSend?: (lead: LeadPublic) => void
   search: string
+  nowMs: number
 }) {
   const byS = Object.fromEntries(cols.map((c) => [c.status, c]))
   const needle = search.trim().toLowerCase()
@@ -893,19 +993,21 @@ function TeamView({
         mindsetPreviewByLeadId={mindsetPreviewByLeadId}
         onRequestMindsetSend={onRequestMindsetSend}
         empty="No paid or mindset-lock leads yet"
+        nowMs={nowMs}
       />
     </div>
   )
 }
 
 // ── StageGrid (hoisted outside AdminView to avoid component-in-render) ────────
-function StageGrid({ leads, stageKey, nextStatus, nextLabel, pm, patchBusyLeadId }: {
+function StageGrid({ leads, stageKey, nextStatus, nextLabel, pm, patchBusyLeadId, nowMs }: {
   leads: LeadPublic[]
   stageKey: WorkboardStageKey
   nextStatus?: LeadStatus
   nextLabel?: string
   pm: PM
   patchBusyLeadId: number | null
+  nowMs: number
 }) {
   return (
     <VirtualAdminLeadGrid
@@ -915,13 +1017,20 @@ function StageGrid({ leads, stageKey, nextStatus, nextLabel, pm, patchBusyLeadId
       nextLabel={nextLabel}
       pm={pm}
       patchBusyLeadId={patchBusyLeadId}
+      nowMs={nowMs}
     />
   )
 }
 
 // ── AdminView ──────────────────────────────────────────────────────────────────
 type ATab = WorkboardStageKey | 'closing'
-function AdminView({ cols, pm, patchBusyLeadId, search }: { cols: Col[]; pm: PM; patchBusyLeadId: number | null; search: string }) {
+function AdminView({ cols, pm, patchBusyLeadId, search, nowMs }: {
+  cols: Col[]
+  pm: PM
+  patchBusyLeadId: number | null
+  search: string
+  nowMs: number
+}) {
   const [tab, setTab] = useState<ATab>('day1')
   const byS = Object.fromEntries(cols.map((c) => [c.status, c]))
   const needle = search.trim().toLowerCase()
@@ -953,7 +1062,7 @@ function AdminView({ cols, pm, patchBusyLeadId, search }: { cols: Col[]; pm: PM;
             ].map(([label, count, cls]) =>
               <span key={label as string} className={cn('rounded-full border px-2.5 py-0.5 text-ds-caption font-medium', cls as string)}>{label}: {count}</span>)}
           </div>
-          <StageGrid leads={day2} stageKey="day2" nextStatus="day3" nextLabel="Move to Day 3 →" pm={pm} patchBusyLeadId={patchBusyLeadId} />
+          <StageGrid leads={day2} stageKey="day2" nextStatus="day3" nextLabel="Move to Day 3 →" pm={pm} patchBusyLeadId={patchBusyLeadId} nowMs={nowMs} />
         </div>
       ) : active?.id === 'closing' ? (
         <div className="space-y-6">
@@ -966,7 +1075,7 @@ function AdminView({ cols, pm, patchBusyLeadId, search }: { cols: Col[]; pm: PM;
                   <h3 className="text-sm font-semibold text-muted-foreground">{slabel(s)}</h3>
                   <span className={cn('rounded-full border px-2 py-0.5 text-ds-caption font-semibold', badge)}>{items.length}</span>
                 </div>
-                <Grid leads={items} pm={pm} patchBusyLeadId={patchBusyLeadId} empty="No leads" />
+                <Grid leads={items} pm={pm} patchBusyLeadId={patchBusyLeadId} empty="No leads" nowMs={nowMs} />
               </div>
             )
           })}
@@ -979,6 +1088,7 @@ function AdminView({ cols, pm, patchBusyLeadId, search }: { cols: Col[]; pm: PM;
           nextLabel={active.nextLabel}
           pm={pm}
           patchBusyLeadId={patchBusyLeadId}
+          nowMs={nowMs}
         />
       ) : null}
     </div>
@@ -1002,6 +1112,11 @@ export function WorkboardPage({ title }: Props) {
   const [toastMsg, setToastMsg] = useState<string | null>(null)
   const [qInput, setQInput] = useState('')
   const [search, setSearch] = useState('')
+  const [nowMs, setNowMs] = useState(() => Date.now())
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), LEAD_SLA_SMOOTH_REFRESH_MS)
+    return () => window.clearInterval(id)
+  }, [])
   useEffect(() => {
     const id = window.setTimeout(() => setSearch(qInput), 350)
     return () => window.clearTimeout(id)
@@ -1131,9 +1246,10 @@ export function WorkboardPage({ title }: Props) {
               ensureMindsetPreview={ensureMindsetPreview}
               onRequestMindsetSend={(lead) => setConfirmLead(lead)}
               search={search}
+              nowMs={nowMs}
             />
           )
-          : <AdminView cols={cols} pm={pm} patchBusyLeadId={patchBusyLeadId} search={search} />
+          : <AdminView cols={cols} pm={pm} patchBusyLeadId={patchBusyLeadId} search={search} nowMs={nowMs} />
       )}
       {confirmLead ? (
         <div className="keyboard-safe-modal fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4">

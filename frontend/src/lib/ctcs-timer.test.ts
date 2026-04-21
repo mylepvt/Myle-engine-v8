@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { formatCountdown, timerRemainingMs } from '@/lib/ctcs-timer'
+import { formatCountdown, timerRemainingMs } from './ctcs-timer'
 
 describe('ctcs-timer', () => {
-  it('counts down 24h from last_action_at', () => {
+  it('counts down 24h from the current stage anchor', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-04-15T12:00:00.000Z'))
     const last = '2026-04-15T00:00:00.000Z'
@@ -13,7 +13,7 @@ describe('ctcs-timer', () => {
     vi.useRealTimers()
   })
 
-  it('falls back to created_at when last_action missing', () => {
+  it('falls back to created_at when stage anchor is missing', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-04-15T13:00:00.000Z'))
     const created = '2026-04-14T13:00:00.000Z'

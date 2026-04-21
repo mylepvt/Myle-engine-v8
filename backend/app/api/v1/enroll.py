@@ -96,8 +96,11 @@ async def generate_share_link(
 
     # Advance lead status to video_sent if not already past that stage
     should_sync_lead = False
+    prev_status = lead.status
     if lead.status not in _PAST_VIDEO_SENT and lead.status != _VIDEO_SENT_STATUS:
         lead.status = _VIDEO_SENT_STATUS
+        if lead.status != prev_status:
+            lead.last_action_at = datetime.now(timezone.utc)
         should_sync_lead = True
 
     await session.flush()
@@ -170,9 +173,12 @@ async def watch_video(
 
     # Auto-update lead status once
     should_sync_lead = False
+    prev_status = lead.status
     if not link.status_synced:
         lead.status = _VIDEO_WATCHED_STATUS
         link.status_synced = True
+        if lead.status != prev_status:
+            lead.last_action_at = now
         should_sync_lead = True
 
     await session.flush()

@@ -128,6 +128,8 @@ class PaymentService:
         if lead.payment_status != "proof_uploaded":
             return False, "Payment proof is not pending approval"
 
+        now = datetime.now(timezone.utc)
+        prev_status = lead.status
         lead.payment_status = "approved"
 
         if lead.status == "video_watched":
@@ -138,6 +140,8 @@ class PaymentService:
             lead.mindset_completed_at = None
             lead.mindset_completed_by_user_id = None
             lead.mindset_leader_user_id = None
+        if lead.status != prev_status:
+            lead.last_action_at = now
 
         await self._log_payment_activity(
             lead_id, approved_by_user_id, "payment_proof_approved"
