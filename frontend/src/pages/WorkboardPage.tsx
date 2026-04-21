@@ -20,6 +20,7 @@ import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { apiFetch } from '@/lib/api'
 import { callStatusSelectOptions } from '@/lib/call-status-options'
 import { formatCountdown, timerRemainingMs } from '@/lib/ctcs-timer'
+import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import { getMindsetLockSendState } from '@/lib/mindset-lock'
 import { LEAD_SLA_SMOOTH_REFRESH_MS, formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
 import { whatsappDigits } from '@/lib/phone-links'
@@ -179,7 +180,8 @@ const LeadCard = memo(function LeadCard({
   nextLabel?: string
   nowMs: number
 }) {
-  const { role } = useDashboardShellRole()
+  const { role, serverRole } = useDashboardShellRole()
+  const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
   // ── Proof upload ──────────────────────────────────────────────────────────────
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
@@ -241,7 +243,7 @@ const LeadCard = memo(function LeadCard({
     remainingSeconds,
     preview: mindsetPreview,
   })
-  const isLeaderMindsetFlow = role === 'leader'
+  const isLeaderMindsetFlow = surfaceRole === 'leader'
   const lockLineClass = unlocked ? 'text-emerald-300' : 'text-red-300'
   const targetName = isLeaderMindsetFlow && previewName === 'Leader will be assigned on send' ? 'You' : previewName
   const mindsetFlowCopy = unlocked
@@ -251,12 +253,12 @@ const LeadCard = memo(function LeadCard({
     : isLeaderMindsetFlow
       ? 'Complete the full 5-minute call to unlock Day 1 start.'
       : 'Complete the full 5-minute call to unlock Day 1 handoff.'
-  const callOptions = callStatusSelectOptions(role ?? null, lead.status as LeadStatus)
+  const callOptions = callStatusSelectOptions(surfaceRole ?? null, lead.status as LeadStatus)
   const rawCallStatus = (lead.call_status ?? '').trim()
   const callValue = callOptions.some((option) => option.value === rawCallStatus)
     ? rawCallStatus
     : (callOptions[0]?.value ?? 'not_called')
-  const showLeadContactActions = !stageOpsCard || role === 'leader' || role === 'admin'
+  const showLeadContactActions = !stageOpsCard || surfaceRole === 'leader' || surfaceRole === 'admin'
   return (
     <article
       className={cn(
@@ -940,7 +942,8 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs }: {
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 export function WorkboardPage({ title }: Props) {
-  const { role } = useDashboardShellRole()
+  const { role, serverRole } = useDashboardShellRole()
+  const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
   const { data: me } = useAuthMeQuery()
   const qc = useQueryClient()
   const { data, isPending, isError, error, refetch } = useWorkboardQuery(true)
@@ -1031,9 +1034,9 @@ export function WorkboardPage({ title }: Props) {
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            {role === 'admin'
+            {surfaceRole === 'admin'
               ? 'Organization view — all active leads.'
-              : role === 'leader'
+              : surfaceRole === 'leader'
                 ? 'Your personal mindset queue plus execution pipeline.'
                 : 'Your personal pipeline.'}
           </p>
@@ -1084,7 +1087,7 @@ export function WorkboardPage({ title }: Props) {
 
       {/* Main content */}
       {data && !isPending && (
-        role === 'team'
+        surfaceRole === 'team'
           ? (
             <MindsetQueueView
               cols={cols}
@@ -1100,7 +1103,7 @@ export function WorkboardPage({ title }: Props) {
               currentUserId={currentUserId}
             />
           )
-          : role === 'leader'
+          : surfaceRole === 'leader'
             ? (
               <LeaderView
                 cols={cols}
@@ -1121,10 +1124,10 @@ export function WorkboardPage({ title }: Props) {
         <div className="keyboard-safe-modal fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4">
           <div className="keyboard-safe-sheet w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-4 shadow-2xl">
             <h3 className="text-base font-semibold text-foreground">
-              {role === 'leader' ? 'Start Day 1?' : 'Send to Leader?'}
+              {surfaceRole === 'leader' ? 'Start Day 1?' : 'Send to Leader?'}
             </h3>
             <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-              {role === 'leader' ? (
+              {surfaceRole === 'leader' ? (
                 <>
                   <li>You have completed mindset call (5–10 min)</li>
                   <li>This action will move the lead into your Day 1 queue</li>
@@ -1148,10 +1151,10 @@ export function WorkboardPage({ title }: Props) {
                 disabled={mindsetBusyLeadId === confirmLead.id}
               >
                 {mindsetBusyLeadId === confirmLead.id
-                  ? role === 'leader'
+                  ? surfaceRole === 'leader'
                     ? 'Starting…'
                     : 'Sending…'
-                  : role === 'leader'
+                  : surfaceRole === 'leader'
                     ? 'Confirm & Start Day 1'
                     : 'Confirm & Send'}
               </Button>

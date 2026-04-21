@@ -352,6 +352,50 @@ def test_leader_cannot_find_downline_assigned_lead_in_calling_list_but_can_still
         asyncio.run(_clear_leads())
 
 
+def test_admin_can_patch_team_assigned_lead_status(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _seed_one_lead(
+            user_id=2,
+            name="Leader created for team",
+            lead_status="contacted",
+            created_by_user_id=2,
+            assigned_to_user_id=3,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        patch = c.patch("/api/v1/leads/1", json={"status": "day2"})
+        assert patch.status_code == 200
+        assert patch.json()["status"] == "day2"
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_team_can_patch_leader_assigned_lead_status(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _seed_one_lead(
+            user_id=2,
+            name="Leader assigned to team",
+            lead_status="new_lead",
+            created_by_user_id=2,
+            assigned_to_user_id=3,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+        patch = c.patch("/api/v1/leads/1", json={"status": "contacted"})
+        assert patch.status_code == 200
+        assert patch.json()["status"] == "contacted"
+    finally:
+        asyncio.run(_clear_leads())
+
+
 def test_delete_lead_returns_204(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -794,8 +838,8 @@ def test_batch_share_url_returns_tokenized_watch_links(
         res = c.post("/api/v1/leads/1/batch-share-url", json={"slot": "d1_morning"})
         assert res.status_code == 200
         body = res.json()
-        assert "/api/v1/watch/batch/d1_morning/1?token=" in body["watch_url_v1"]
-        assert "/api/v1/watch/batch/d1_morning/2?token=" in body["watch_url_v2"]
+        assert "/watch/batch/d1_morning/1?token=" in body["watch_url_v1"]
+        assert "/watch/batch/d1_morning/2?token=" in body["watch_url_v2"]
     finally:
         asyncio.run(_clear_leads())
 
@@ -817,8 +861,8 @@ def test_batch_share_url_d2_allowed_for_leader_without_payment_approval(
         res = c.post("/api/v1/leads/1/batch-share-url", json={"slot": "d2_morning"})
         assert res.status_code == 200
         body = res.json()
-        assert "/api/v1/watch/batch/d2_morning/1?token=" in body["watch_url_v1"]
-        assert "/api/v1/watch/batch/d2_morning/2?token=" in body["watch_url_v2"]
+        assert "/watch/batch/d2_morning/1?token=" in body["watch_url_v1"]
+        assert "/watch/batch/d2_morning/2?token=" in body["watch_url_v2"]
     finally:
         asyncio.run(_clear_leads())
 
@@ -1096,9 +1140,14 @@ def test_watch_batch_token_marks_slot_done_after_completion_callback(
         token = share.json()["watch_url_v1"].split("token=")[-1]
 
         watch = c.get(f"/api/v1/watch/batch/d1_morning/1?token={token}", follow_redirects=False)
-        assert watch.status_code == 200
-        assert "Watch complete hone par auto mark ho jayega." in watch.text
-        assert "youtube.com/iframe_api" in watch.text
+        assert watch.status_code == 307
+        assert watch.headers["location"] == f"/watch/batch/d1_morning/1?token={token}"
+
+        payload = c.get(f"/api/v1/watch/batch/d1_morning/1/payload", params={"token": token})
+        assert payload.status_code == 200
+        payload_body = payload.json()
+        assert payload_body["watch_complete"] is False
+        assert payload_body["video_id"] == "dQw4w9WgXcQ"
 
         pre = asyncio.run(_lead_after())
         assert pre is not None

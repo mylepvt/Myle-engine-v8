@@ -20,6 +20,7 @@ import { LeadNextStepPanel } from '@/components/leads/LeadNextStepPanel'
 import { LeadNotesPanel } from '@/components/leads/LeadNotesPanel'
 import { apiUrl } from '@/lib/api'
 import { callStatusSelectOptions } from '@/lib/call-status-options'
+import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import { leadStatusSelectOptionsForLead, teamLeadStatusSelectOptions } from '@/lib/team-lead-status'
 
 type Props = {
@@ -186,7 +187,8 @@ function BatchSubmissionCard({ submission }: { submission: LeadBatchSubmission }
 }
 
 export function LeadDetailPage({ leadId }: Props) {
-  const { role } = useDashboardShellRole()
+  const { role, serverRole } = useDashboardShellRole()
+  const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
   const { data: lead, isPending, isError, error, refetch } = useLeadDetailQuery(leadId)
   const transitionsQ = useAvailableTransitionsQuery(leadId)
   const callsQuery = useLeadCallsQuery(leadId)
@@ -195,15 +197,15 @@ export function LeadDetailPage({ leadId }: Props) {
   const logCallMut = useLogCallMutation()
   const pipelineStatusOptions = lead
     ? (() => {
-        const base = leadStatusSelectOptionsForLead(role ?? null, lead.status as LeadStatus, LEAD_STATUS_OPTIONS)
+        const base = leadStatusSelectOptionsForLead(surfaceRole ?? null, lead.status as LeadStatus, LEAD_STATUS_OPTIONS)
         const allowed = new Set<LeadStatus>([lead.status as LeadStatus, ...((transitionsQ.data ?? []) as LeadStatus[])])
         const scoped = base.filter((option) => allowed.has(option.value))
         return scoped.length > 0 ? scoped : base
       })()
-    : teamLeadStatusSelectOptions(role ?? null, LEAD_STATUS_OPTIONS)
+    : teamLeadStatusSelectOptions(surfaceRole ?? null, LEAD_STATUS_OPTIONS)
   const pipelineCallStatusOptions = lead
-    ? callStatusSelectOptions(role ?? null, lead.status as LeadStatus)
-    : callStatusSelectOptions(role ?? null)
+    ? callStatusSelectOptions(surfaceRole ?? null, lead.status as LeadStatus)
+    : callStatusSelectOptions(surfaceRole ?? null)
   // Pipeline card local state
   const [pipelineStatus, setPipelineStatus] = useState('')
   const [pipelineCallStatus, setPipelineCallStatus] = useState('')
@@ -323,7 +325,7 @@ export function LeadDetailPage({ leadId }: Props) {
   }
 
   async function handleResetStageClock() {
-    if (role !== 'admin' || !lead) return
+    if (surfaceRole !== 'admin' || !lead) return
     setResetClockError('')
     const currentStageLabel = LEAD_STATUS_OPTIONS.find((option) => option.value === lead.status)?.label ?? lead.status
     const confirmed = window.confirm(
@@ -512,7 +514,7 @@ export function LeadDetailPage({ leadId }: Props) {
                   {pipelineError}
                 </p>
               ) : null}
-              {role === 'admin' ? (
+              {surfaceRole === 'admin' ? (
                 <div className="rounded-md border border-amber-400/20 bg-amber-400/5 p-3">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -793,7 +795,7 @@ export function LeadDetailPage({ leadId }: Props) {
                     </a>
                   ) : (
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      {role === 'team' ? (
+                      {surfaceRole === 'team' ? (
                         <>
                           ₹196 proof upload sirf{' '}
                           <Link
@@ -804,7 +806,7 @@ export function LeadDetailPage({ leadId }: Props) {
                           </Link>{' '}
                           me hota hai.
                         </>
-                      ) : role === 'leader' ? (
+                      ) : surfaceRole === 'leader' ? (
                         <>
                           ₹196 proof upload sirf{' '}
                           <Link

@@ -59,7 +59,7 @@ function recentFromWorkboard(columns: { items?: LeadPublic[] }[] | undefined): L
     .slice(0, 8)
 }
 
-const D1_STAGES = ['contacted', 'invited', 'whatsapp_sent', 'video_sent', 'video_watched', 'paid'] as const
+const D1_STAGES = ['invited', 'whatsapp_sent', 'video_sent', 'video_watched', 'paid'] as const
 
 function Day1PipelineRow({
   lead,
@@ -143,7 +143,7 @@ export function DashboardHomePage() {
   const fu = useFollowUpsQuery(true, sessionReady && role !== 'team')
   const teamFunnel = useTeamPersonalFunnelQuery(sessionReady && role === 'team')
   const teamToday = useTeamTodayStatsQuery(sessionReady && role === 'team')
-  const pool = useLeadPoolQuery(sessionReady)
+  const pool = useLeadPoolQuery(sessionReady && role === 'admin')
   const adminReports = useTeamReportsQuery('', sessionReady && role === 'admin')
   const pingLogin = usePingLoginMutation()
 

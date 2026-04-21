@@ -194,10 +194,11 @@ async function submitDailyReport(request: ReportSubmissionRequest): Promise<Repo
 }
 
 // Analytics hooks
-export function useTeamPerformanceQuery(days = 30) {
+export function useTeamPerformanceQuery(days = 30, enabled = true) {
   return useQuery({
     queryKey: ['analytics', 'team-performance', days],
     queryFn: () => fetchTeamPerformance(days),
+    enabled,
     staleTime: 30_000,
   })
 }
@@ -218,10 +219,11 @@ export function useLeaderboardQuery(days = 30) {
   })
 }
 
-export function useSystemOverviewQuery(days = 30) {
+export function useSystemOverviewQuery(days = 30, enabled = true) {
   return useQuery({
     queryKey: ['analytics', 'system-overview', days],
     queryFn: () => fetchSystemOverview(days),
+    enabled,
     staleTime: 60_000,
   })
 }

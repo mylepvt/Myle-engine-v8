@@ -18,6 +18,7 @@ import {
   usePatchLeadMutation,
 } from '@/hooks/use-leads-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
+import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import { teamLeadStatusSelectOptions } from '@/lib/team-lead-status'
 import type { Role } from '@/types/role'
 
@@ -56,7 +57,8 @@ function emptyListHint(role: Role | null, archivedOnly: boolean): string {
 export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const archivedOnly = listMode === 'archived'
   const leadsListMode = listMode === 'archived' ? 'archived' : 'active'
-  const { role } = useDashboardShellRole()
+  const { role, serverRole } = useDashboardShellRole()
+  const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
   const [searchParams] = useSearchParams()
   const qParam = searchParams.get('q') ?? ''
   const [qInput, setQInput] = useState(qParam)
@@ -74,7 +76,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const [importHint, setImportHint] = useState<string | null>(null)
   const importFileRef = useRef<HTMLInputElement>(null)
   const importMut = useImportLeadsFileMutation()
-  const canFileImport = role === 'leader' || role === 'team'
+  const canFileImport = surfaceRole === 'leader' || surfaceRole === 'team'
 
   useEffect(() => {
     setQInput(qParam)
@@ -121,8 +123,8 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
     deleteMut.isPending && typeof deleteMut.variables === 'number' ? deleteMut.variables : null
 
   const addStatusOptions = useMemo(
-    () => teamLeadStatusSelectOptions(role ?? null, LEAD_STATUS_OPTIONS),
-    [role],
+    () => teamLeadStatusSelectOptions(surfaceRole ?? null, LEAD_STATUS_OPTIONS),
+    [surfaceRole],
   )
 
   const onPatchStatus = useCallback(
@@ -241,13 +243,13 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
               ) : null}
             </p>
             {items.length === 0 ? (
-              <p>{emptyListHint(role ?? null, archivedOnly)}</p>
+              <p>{emptyListHint(surfaceRole ?? null, archivedOnly)}</p>
             ) : (
               <div className="-mx-1 max-w-full overflow-x-auto rounded-md border border-border/50">
                 <LeadsVirtualizedBody
                   items={items}
                   archivedOnly={archivedOnly}
-                  role={role ?? null}
+                  role={surfaceRole ?? null}
                   patchBusyLeadId={patchBusyLeadId}
                   deleteBusyLeadId={deleteBusyLeadId}
                   onPatchStatus={onPatchStatus}
@@ -421,13 +423,13 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                       ) : null}
                     </p>
                     {classicLeadsQ.data.pages.flatMap((p) => p.items).length === 0 ? (
-                      <p className="px-2 text-sm">{emptyListHint(role ?? null, false)}</p>
+                      <p className="px-2 text-sm">{emptyListHint(surfaceRole ?? null, false)}</p>
                     ) : (
                       <div className="-mx-1 max-w-full overflow-x-auto rounded-md border border-border">
                         <LeadsVirtualizedBody
                           items={classicLeadsQ.data.pages.flatMap((p) => p.items)}
                           archivedOnly={false}
-                          role={role ?? null}
+                          role={surfaceRole ?? null}
                           patchBusyLeadId={patchBusyLeadId}
                           deleteBusyLeadId={deleteBusyLeadId}
                           onPatchStatus={onPatchStatus}
