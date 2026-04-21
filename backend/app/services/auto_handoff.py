@@ -41,8 +41,11 @@ class AutoHandoffService:
 
     async def on_call_logged(self, *, lead: Lead, outcome: str, actor_user_id: int) -> None:
         prev_status = lead.status
+        now = datetime.now(timezone.utc)
         if lead.status in {"new_lead", "new"}:
             lead.status = "contacted"
+        if lead.status != prev_status:
+            lead.last_action_at = now
         bump_heat_on_entering_contacted(lead, prev_status)
         if lead.assigned_to_user_id is None:
             lead.assigned_to_user_id = lead.created_by_user_id or actor_user_id
@@ -111,8 +114,11 @@ def _apply_follow_up_completion_handoff(session: Session, follow_up: FollowUp) -
         return
 
     prev_status = lead.status
+    now = datetime.now(timezone.utc)
     if lead.status in {"new_lead", "new"}:
         lead.status = "contacted"
+    if lead.status != prev_status:
+        lead.last_action_at = now
     bump_heat_on_entering_contacted(lead, prev_status)
     if lead.assigned_to_user_id is None:
         lead.assigned_to_user_id = lead.created_by_user_id
@@ -126,7 +132,7 @@ def _apply_follow_up_completion_handoff(session: Session, follow_up: FollowUp) -
                 FollowUp(
                     lead_id=lead.id,
                     note="Auto handoff: next follow-up",
-                    due_at=datetime.now(timezone.utc) + timedelta(hours=24),
+                    due_at=now + timedelta(hours=24),
                     created_by_user_id=lead.assigned_to_user_id or lead.created_by_user_id,
                 )
             )

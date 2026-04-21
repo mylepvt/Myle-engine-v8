@@ -1,9 +1,13 @@
-/** 24h window from last action — overdue returns negative remaining ms. */
-export function timerRemainingMs(lastActionIso: string | null | undefined, createdAtIso: string): number {
+/** 24h window from current stage anchor — overdue returns negative remaining ms. */
+export function timerRemainingMs(
+  lastActionIso: string | null | undefined,
+  createdAtIso: string,
+  nowMs: number = Date.now(),
+): number {
   const anchor = lastActionIso?.trim() ? new Date(lastActionIso).getTime() : new Date(createdAtIso).getTime()
   if (Number.isNaN(anchor)) return 0
   const end = anchor + 24 * 60 * 60 * 1000
-  return end - Date.now()
+  return end - nowMs
 }
 
 export function formatCountdown(ms: number): string {

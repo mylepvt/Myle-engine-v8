@@ -183,6 +183,11 @@ def _apply_status_side_effects(
             lead.day3_completed_at = now
 
 
+def _sync_stage_anchor(lead: Lead, *, previous_status: str, now: datetime) -> None:
+    if lead.status != previous_status:
+        lead.last_action_at = now
+
+
 class LeadsService:
     def __init__(
         self,
@@ -660,6 +665,8 @@ class LeadsService:
             return lead
         if not await self._repository.can_mutate_lead(user, lead):
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        now = datetime.now(timezone.utc)
+        stage_status_before = lead.status
         if user.role == "team":
             if body.day1_completed is not None:
                 raise HTTPException(
@@ -720,10 +727,10 @@ class LeadsService:
                 lead,
                 previous_status=prev_status,
                 new_status=body.status,
-                now=datetime.now(timezone.utc),
+                now=now,
             )
         if body.archived is True:
-            lead.archived_at = datetime.now(timezone.utc)
+            lead.archived_at = now
             lead.in_pool = False
         elif body.archived is False:
             lead.archived_at = None
@@ -749,11 +756,10 @@ class LeadsService:
             lead.notes = body.notes
         if body.next_followup_at is not None:
             lead.next_followup_at = body.next_followup_at
-            lead.last_action_at = datetime.now(timezone.utc)
         if body.call_status is not None:
             lead.call_status = body.call_status
         if body.whatsapp_sent is True:
-            lead.whatsapp_sent_at = datetime.now(timezone.utc)
+            lead.whatsapp_sent_at = now
             if lead.status in {"contacted", "invited"}:
                 lead.status = "whatsapp_sent"
         elif body.whatsapp_sent is False:
@@ -767,7 +773,7 @@ class LeadsService:
                     detail="Only admins can directly set payment_status; use the payment proof upload flow.",
                 )
             lead.payment_status = body.payment_status
-        now = datetime.now(timezone.utc)
+        _sync_stage_anchor(lead, previous_status=stage_status_before, now=now)
         if body.no_response_attempt_count is not None:
             lead.no_response_attempt_count = body.no_response_attempt_count
         explicit_d1 = (body.d1_morning, body.d1_afternoon, body.d1_evening)
@@ -955,6 +961,7 @@ class LeadsService:
             new_status=body.target_status,
             now=now,
         )
+        _sync_stage_anchor(lead, previous_status=prev_status, now=now)
         lead = await self._commit_with_shadow_upsert(lead)
 
         # XP hooks — fire-and-forget; never block transition on XP errors
@@ -996,6 +1003,7 @@ class LeadsService:
 
         now = datetime.now(timezone.utc)
         action = body.action
+        prev_status = lead.status
 
         if action == "interested":
             advance_lead_status_toward(lead=lead, target_slug="video_sent", role=user.role)
@@ -1065,7 +1073,14 @@ class LeadsService:
             advance_lead_status_toward(lead=lead, target_slug="paid", role=user.role)
             lead.heat_score = clamp_ctcs_heat(int(lead.heat_score or 0) + settings.ctcs_heat_paid_bonus)
 
-        lead.last_action_at = now
+        if lead.status != prev_status:
+            _apply_status_side_effects(
+                lead,
+                previous_status=prev_status,
+                new_status=lead.status,
+                now=now,
+            )
+        _sync_stage_anchor(lead, previous_status=prev_status, now=now)
         lead = await self._commit_with_shadow_upsert(lead)
         await self._notifier("leads")
         return lead

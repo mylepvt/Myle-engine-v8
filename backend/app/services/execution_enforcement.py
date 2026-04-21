@@ -78,6 +78,7 @@ RUPEES_196_CENTS = 196 * 100
 def _lead_last_activity_ts():
     """Best proxy for “stale” until ``updated_at`` exists on ``Lead``."""
     return func.coalesce(
+        Lead.last_action_at,
         Lead.last_called_at,
         Lead.payment_proof_uploaded_at,
         Lead.whatsapp_sent_at,
@@ -471,7 +472,8 @@ async def admin_at_risk_leads(
 def _lead_last_activity_value(lead: Lead) -> datetime:
     """Python-side mirror of `_lead_last_activity_ts()` for runtime guards."""
     return (
-        lead.last_called_at
+        lead.last_action_at
+        or lead.last_called_at
         or lead.payment_proof_uploaded_at
         or lead.whatsapp_sent_at
         or lead.day3_completed_at

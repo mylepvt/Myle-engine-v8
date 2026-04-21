@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { CtcsLeadCard } from '@/components/leads/CtcsLeadCard'
 import { CtcsOutcomeModal } from '@/components/leads/CtcsOutcomeModal'
+import { LEAD_SLA_SMOOTH_REFRESH_MS } from '@/lib/lead-sla'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -43,10 +44,15 @@ type Props = {
 export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   const { role } = useDashboardShellRole()
   const [tab, setTab] = useState<CtcsTab>('today')
+  const [nowMs, setNowMs] = useState(() => Date.now())
   const ctcsOpts = useMemo(
     () => ({ ctcsFilter: tab, ctcsPrioritySort: true as const, preEnrollmentOnly: true as const }),
     [tab],
   )
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), LEAD_SLA_SMOOTH_REFRESH_MS)
+    return () => window.clearInterval(id)
+  }, [])
 
   const leadsQ = useLeadsInfiniteQuery(true, filters, 'active', 50, ctcsOpts)
   const items = useMemo(() => leadsQ.data?.pages.flatMap((p) => p.items) ?? [], [leadsQ.data])
@@ -186,6 +192,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
           <CtcsLeadCard
             key={l.id}
             lead={l}
+            nowMs={nowMs}
             isActive={callMode && activeLeadId === l.id}
             patchBusy={patchBusyLeadId === l.id || patchMut.isPending}
             actionBusy={actionBusy}

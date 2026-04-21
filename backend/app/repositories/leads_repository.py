@@ -99,10 +99,7 @@ class SqlAlchemyLeadsRepository:
         return (await self._session.execute(stmt)).scalars().all()
 
     async def get_stale_leads(self, *, condition: Any, stale_before: datetime, limit: int) -> list[Lead]:
-        stale_condition = or_(
-            and_(Lead.last_called_at.is_(None), Lead.created_at <= stale_before),
-            Lead.last_called_at <= stale_before,
-        )
+        stale_condition = func.coalesce(Lead.last_action_at, Lead.created_at) <= stale_before
         stmt = select(Lead).where(stale_condition).order_by(Lead.created_at.asc()).limit(limit)
         if condition is not None:
             stmt = stmt.where(condition)

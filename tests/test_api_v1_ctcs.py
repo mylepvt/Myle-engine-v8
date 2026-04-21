@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import delete
 
+from app.models.crm_outbox import CrmOutbox
 from app.models.follow_up import FollowUp
 from app.models.lead import Lead
 from main import app
@@ -21,6 +22,7 @@ async def _clear_leads() -> None:
     fac = test_conftest.get_test_session_factory()
     async with fac() as session:
         await session.execute(delete(FollowUp))
+        await session.execute(delete(CrmOutbox))
         await session.execute(delete(Lead))
         await session.commit()
 
@@ -32,6 +34,7 @@ async def _seed_lead(
     status: str = "new_lead",
     phone: str = "9876500000",
     city: str = "Mumbai",
+    last_action_at: datetime | None = None,
 ) -> None:
     fac = test_conftest.get_test_session_factory()
     async with fac() as session:
@@ -43,6 +46,7 @@ async def _seed_lead(
                 assigned_to_user_id=user_id,
                 phone=phone,
                 city=city,
+                last_action_at=last_action_at,
             ),
         )
         await session.commit()
@@ -203,7 +207,7 @@ def test_ctcs_action_not_interested_archives(monkeypatch: pytest.MonkeyPatch) ->
         asyncio.run(_clear_leads())
 
 
-def test_patch_next_followup_updates_last_action(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_patch_next_followup_does_not_reset_stage_timer(monkeypatch: pytest.MonkeyPatch) -> None:
     asyncio.run(_clear_leads())
     asyncio.run(_seed_lead())
     try:
@@ -213,7 +217,24 @@ def test_patch_next_followup_updates_last_action(monkeypatch: pytest.MonkeyPatch
         r = c.patch(f"/api/v1/leads/{lead_id}", json={"next_followup_at": when})
         assert r.status_code == 200, r.text
         assert r.json().get("next_followup_at") is not None
-        assert r.json().get("last_action_at") is not None
+        assert r.json().get("last_action_at") is None
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_ctcs_action_call_later_keeps_stage_timer_when_stage_is_unchanged(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    anchor = datetime(2026, 4, 20, 12, 0, tzinfo=timezone.utc)
+    asyncio.run(_clear_leads())
+    asyncio.run(_seed_lead(status="contacted", last_action_at=anchor))
+    try:
+        c = _authed(monkeypatch)
+        lead_id = c.get("/api/v1/leads").json()["items"][0]["id"]
+        r = c.post(f"/api/v1/leads/{lead_id}/action", json={"action": "call_later"})
+        assert r.status_code == 200, r.text
+        assert r.json()["status"] == "contacted"
+        assert r.json()["last_action_at"].startswith("2026-04-20T12:00:00")
     finally:
         asyncio.run(_clear_leads())
 

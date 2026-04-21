@@ -132,6 +132,7 @@ def test_public_payment_proof_upload_reaches_admin_queue(
         lead_body = lead.json()
         assert lead_body["status"] == "paid"
         assert lead_body["payment_status"] == "approved"
+        assert lead_body["last_action_at"] is not None
     finally:
         asyncio.run(_clear_payment_state())
 
