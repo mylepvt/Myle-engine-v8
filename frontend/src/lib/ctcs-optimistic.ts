@@ -6,7 +6,7 @@ function clampHeat(n: number): number {
 
 export type CtcsOptimisticOpts = {
   followupAt?: string | null
-  /** Paid action: team stays on ``paid``; leader/admin advance to ``day1``. */
+  /** Paid action stays on ``paid`` until mindset lock / next-stage work happens. */
   paidStatus?: 'paid' | 'day1'
 }
 

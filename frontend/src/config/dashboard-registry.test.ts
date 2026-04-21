@@ -19,6 +19,7 @@ describe('dashboard-registry', () => {
 
   it('resolveTitleForPath uses labelByRole for admin on work/leads', () => {
     expect(resolveTitleForPath('work/leads', 'admin')).toBe('All Leads')
+    expect(resolveTitleForPath('work/leads', 'leader')).toBe('Calling Board')
     expect(resolveTitleForPath('work/leads', 'team')).toBe('Calling Board')
   })
 

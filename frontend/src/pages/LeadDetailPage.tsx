@@ -811,7 +811,7 @@ export function LeadDetailPage({ leadId }: Props) {
                             to="/dashboard/work/leads"
                             className="font-medium text-primary underline-offset-2 hover:underline"
                           >
-                            All Leads
+                            Calling Board
                           </Link>{' '}
                           me hota hai.
                         </>

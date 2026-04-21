@@ -133,7 +133,7 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     path: 'work/leads',
     section: { id: 'work', label: '' },
     label: 'Calling Board',
-    labelByRole: { admin: 'All Leads', leader: 'All Leads' },
+    labelByRole: { admin: 'All Leads' },
     roles: routeRoles('work/leads'),
     surface: 'full',
     ui: { kind: 'leads', listMode: 'active' },

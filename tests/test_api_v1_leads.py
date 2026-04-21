@@ -195,11 +195,12 @@ def test_slice1_team_list_only_creator_not_assignee(
         asyncio.run(_clear_leads())
 
 
-def test_slice1_leader_sees_downline_team_leads_in_all_leads(
+def test_slice1_leader_list_only_shows_personal_calling_leads(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Leader All Leads scope includes downline team rows for search/update control."""
+    """Leader calling list stays personal-only even when downline members have leads."""
     asyncio.run(_seed_one_lead(user_id=3, name="From downline team"))
+    asyncio.run(_seed_one_lead(user_id=2, name="Leader personal lead"))
     try:
         c = _authed_client(monkeypatch)
         assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
@@ -207,7 +208,7 @@ def test_slice1_leader_sees_downline_team_leads_in_all_leads(
         assert res.status_code == 200
         body = res.json()
         assert body["total"] == 1
-        assert body["items"][0]["name"] == "From downline team"
+        assert body["items"][0]["name"] == "Leader personal lead"
     finally:
         asyncio.run(_clear_leads())
 
@@ -317,7 +318,7 @@ def test_leader_cannot_patch_others_lead(
         asyncio.run(_clear_leads())
 
 
-def test_leader_can_search_and_update_downline_assigned_lead(
+def test_leader_cannot_find_downline_assigned_lead_in_calling_list_but_can_still_update_it(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     followup_at = datetime.now(timezone.utc) + timedelta(days=1)
@@ -340,8 +341,7 @@ def test_leader_can_search_and_update_downline_assigned_lead(
         res = c.get("/api/v1/leads", params={"q": "9876543210"})
         assert res.status_code == 200
         body = res.json()
-        assert body["total"] == 1
-        assert body["items"][0]["name"] == "Admin imported for team"
+        assert body["total"] == 0
 
         patch = c.patch("/api/v1/leads/1", json={"status": "lost"})
         assert patch.status_code == 200
@@ -873,6 +873,68 @@ def test_mindset_lock_complete_handles_persisted_started_at_after_reconnect(
     try:
         c = _authed_client(monkeypatch)
         assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+        res = c.post("/api/v1/leads/1/mindset-lock-complete")
+        assert res.status_code == 200
+        body = res.json()
+        assert body["status"] == "assigned"
+        assert body["leader_user_id"] == 2
+        lead = c.get("/api/v1/leads/1")
+        assert lead.status_code == 200
+        lead_body = lead.json()
+        assert lead_body["status"] == "day1"
+        assert lead_body["assigned_to_user_id"] == 2
+        assert lead_body["mindset_lock_state"] == "leader_assigned"
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_leader_can_preview_personal_mindset_lock(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    started_at = datetime.now(timezone.utc) - timedelta(seconds=95)
+    asyncio.run(
+        _seed_one_lead(
+            user_id=2,
+            name="Leader Mindset Preview",
+            lead_status="mindset_lock",
+            payment_status="approved",
+            mindset_started_at=started_at,
+            mindset_lock_state="mindset_lock",
+            assigned_to_user_id=2,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        res = c.get("/api/v1/leads/1/mindset-lock-preview")
+        assert res.status_code == 200
+        body = res.json()
+        assert body["leader_user_id"] == 2
+        assert body["leader_name"]
+        assert body["remaining_seconds"] > 0
+        assert body["eligible"] is False
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_leader_can_complete_personal_mindset_lock_into_day1(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    started_at = datetime.now(timezone.utc) - timedelta(minutes=6)
+    asyncio.run(
+        _seed_one_lead(
+            user_id=2,
+            name="Leader Mindset Complete",
+            lead_status="mindset_lock",
+            payment_status="approved",
+            mindset_started_at=started_at,
+            mindset_lock_state="mindset_lock",
+            assigned_to_user_id=2,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
         res = c.post("/api/v1/leads/1/mindset-lock-complete")
         assert res.status_code == 200
         body = res.json()

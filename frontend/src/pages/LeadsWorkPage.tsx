@@ -48,7 +48,7 @@ function emptyListHint(role: Role | null, archivedOnly: boolean): string {
     return 'No leads match this view — adjust filters or add one above. You see all active leads (admin scope).'
   }
   if (role === 'leader') {
-    return 'No leads match this view — adjust filters or add one above. You see your leads and your downline’s leads (same rules as workboard).'
+    return 'No leads match this view — adjust filters or add one above. You see only your personal calling leads here.'
   }
   return 'No leads match this view — adjust filters or add one above. You see only leads you created.'
 }

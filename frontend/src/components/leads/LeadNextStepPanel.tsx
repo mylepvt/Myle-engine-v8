@@ -42,7 +42,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
   const others =
     transitions && primary ? visibleAlternativeTransitions(lead.status, transitions).filter((t) => t !== primary) : []
   const paidGateBlocked = primary === 'paid' && lead.paymentStatus !== 'approved'
-  const workLeadsLabel = role === 'leader' || role === 'admin' ? 'All Leads' : 'Calling Board'
+  const workLeadsLabel = role === 'admin' ? 'All Leads' : 'Calling Board'
 
   function paidGateCopy(): string {
     if (role === 'admin') {

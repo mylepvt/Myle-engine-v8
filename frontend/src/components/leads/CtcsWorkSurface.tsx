@@ -16,7 +16,6 @@ import {
   useLeadsInfiniteQuery,
   usePatchLeadMutation,
 } from '@/hooks/use-leads-query'
-import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { useCallToCloseStore } from '@/stores/call-to-close-store'
 
 function nextLeadId(items: LeadPublic[], current: number | null): number | null {
@@ -42,7 +41,6 @@ type Props = {
 }
 
 export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
-  const { role } = useDashboardShellRole()
   const [tab, setTab] = useState<CtcsTab>('today')
   const [nowMs, setNowMs] = useState(() => Date.now())
   const ctcsOpts = useMemo(
@@ -92,12 +90,11 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
 
   const onCtcsAction = useCallback(
     async (id: number, action: CtcsAction, opts?: { followupAt?: string | null }) => {
-      const paidStatus = role === 'team' ? ('paid' as const) : ('day1' as const)
       await ctcsMut.mutateAsync({
         id,
         action,
         followupAt: opts?.followupAt,
-        paidStatus,
+        paidStatus: 'paid',
       })
       const ref = await leadsQ.refetch()
       const fresh = ref.data?.pages.flatMap((p) => p.items) ?? []
@@ -106,7 +103,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
       }
       setOutcomeLeadId(null)
     },
-    [ctcsMut, callMode, setActiveLeadId, setOutcomeLeadId, leadsQ, role],
+    [ctcsMut, callMode, setActiveLeadId, setOutcomeLeadId, leadsQ],
   )
 
   const onCall = useCallback(
