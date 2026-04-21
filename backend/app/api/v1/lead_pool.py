@@ -2,17 +2,19 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.core.realtime_hub import notify_topics
+from app.db.session import AsyncSessionLocal
 from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
 from app.schemas.leads import (
     LeadListResponse,
+    LeadPoolBatchPreviewResponse,
     LeadPoolClaimBatchRequest,
     LeadPoolClaimBatchResponse,
     LeadPoolDefaultsResponse,
@@ -27,6 +29,7 @@ from app.services.lead_pool_defaults import (
 )
 from app.services.lead_pool_import import parse_pool_xlsx_rows
 from app.services.leads_service import LeadsService, get_leads_service
+from app.services.push_service import send_push_to_roles_bg
 from app.services.settings_service import SettingsService
 
 router = APIRouter()
@@ -76,8 +79,8 @@ async def list_lead_pool(
     limit: int = Query(default=_DEFAULT_LIMIT, ge=1, le=_MAX_LIMIT),
     offset: int = Query(default=0, ge=0),
 ) -> LeadListResponse:
-    """Leads released into the pool (same list for admin and members; claim via single or batch claim endpoints)."""
-    _ = user  # any authenticated role
+    """Admin-only list of leads currently available in the shared pool."""
+    _require_admin(user)
     cond = and_(
         Lead.in_pool.is_(True),
         Lead.deleted_at.is_(None),
@@ -93,6 +96,24 @@ async def list_lead_pool(
     rows = (await session.execute(list_q)).scalars().all()
     items = [LeadPublic.model_validate(r) for r in rows]
     return LeadListResponse(items=items, total=total, limit=limit, offset=offset)
+
+
+@router.get("/batch-preview", response_model=LeadPoolBatchPreviewResponse)
+async def preview_lead_pool_batch(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    service: Annotated[LeadsService, Depends(get_leads_service)],
+    count: int = Query(default=1, ge=1, le=50),
+) -> LeadPoolBatchPreviewResponse:
+    available_count, claim_count, total_price_cents = await service.preview_lead_pool_batch(
+        count=count,
+        user=user,
+    )
+    return LeadPoolBatchPreviewResponse(
+        requested_count=count,
+        claim_count=claim_count,
+        available_count=available_count,
+        total_price_cents=total_price_cents,
+    )
 
 
 @router.post("/claim", response_model=LeadPoolClaimBatchResponse)
@@ -118,6 +139,7 @@ _MAX_IMPORT_BYTES = 12 * 1024 * 1024
 async def import_lead_pool_xlsx(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(..., description="Excel .xlsx with headers (Full Name required)"),
 ) -> LeadPoolImportResponse:
     """Admin: bulk-add rows to the shared pool from an Excel file.
@@ -176,4 +198,12 @@ async def import_lead_pool_xlsx(
     )
     await session.commit()
     await notify_topics("leads")
+    background_tasks.add_task(
+        send_push_to_roles_bg,
+        AsyncSessionLocal,
+        ("leader", "team"),
+        title="Lead Pool Updated",
+        body="New leads are available in the lead pool. Claim your leads now!",
+        url="/dashboard/work/lead-pool",
+    )
     return LeadPoolImportResponse(created=created, warnings=warnings)

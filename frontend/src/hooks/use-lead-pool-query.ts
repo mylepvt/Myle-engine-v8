@@ -47,6 +47,13 @@ export type LeadPoolBatchClaimResponse = {
   total_price_cents: number
 }
 
+export type LeadPoolBatchPreviewResponse = {
+  requested_count: number
+  claim_count: number
+  available_count: number
+  total_price_cents: number
+}
+
 async function fetchLeadPoolDefaults(): Promise<LeadPoolDefaults> {
   const res = await apiFetch('/api/v1/lead-pool/defaults')
   if (!res.ok) {
@@ -59,6 +66,22 @@ export function useLeadPoolDefaultsQuery(enabled = true) {
   return useQuery({
     queryKey: ['lead-pool', 'defaults'],
     queryFn: fetchLeadPoolDefaults,
+    enabled,
+  })
+}
+
+async function fetchLeadPoolBatchPreview(count: number): Promise<LeadPoolBatchPreviewResponse> {
+  const res = await apiFetch(`/api/v1/lead-pool/batch-preview?count=${count}`)
+  if (!res.ok) {
+    await parseError(res)
+  }
+  return res.json()
+}
+
+export function useLeadPoolBatchPreviewQuery(count: number, enabled = true) {
+  return useQuery({
+    queryKey: ['lead-pool', 'batch-preview', count],
+    queryFn: () => fetchLeadPoolBatchPreview(count),
     enabled,
   })
 }

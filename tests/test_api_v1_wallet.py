@@ -150,3 +150,48 @@ def test_wallet_recharge_responses_include_display_names(monkeypatch: pytest.Mon
     body = reviewed.json()
     assert body["reviewed_by_user_id"] == 1
     assert body["reviewed_by_name"] == "Admin Reviewer"
+
+
+def test_wallet_recharge_approval_sends_push_notification(monkeypatch: pytest.MonkeyPatch) -> None:
+    push_calls: list[tuple[int, str, str, str]] = []
+
+    async def fake_push(
+        _session_factory,
+        user_id: int,
+        *,
+        title: str,
+        body: str,
+        url: str = "/dashboard",
+    ) -> None:
+        push_calls.append((user_id, title, body, url))
+
+    monkeypatch.setattr("app.api.v1.wallet.send_push_to_user_bg", fake_push)
+
+    c_team = _authed(monkeypatch)
+    assert c_team.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+    created = c_team.post(
+        "/api/v1/wallet/recharge-requests",
+        json={
+            "amount_cents": 1500,
+            "utr_number": "UTR-PUSH-001",
+            "idempotency_key": "wallet-recharge-push-001",
+        },
+    )
+    assert created.status_code == 201
+    request_id = created.json()["id"]
+
+    c_admin = _authed(monkeypatch)
+    assert c_admin.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+    reviewed = c_admin.patch(
+        f"/api/v1/wallet/recharge-requests/{request_id}",
+        json={"status": "approved"},
+    )
+    assert reviewed.status_code == 200
+    assert push_calls == [
+        (
+            3,
+            "Wallet Recharged",
+            "Your wallet has been successfully recharged. You can now claim leads.",
+            "/dashboard/work/lead-pool",
+        )
+    ]
