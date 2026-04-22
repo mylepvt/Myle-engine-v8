@@ -51,6 +51,39 @@ def _require_admin_or_leader(user: AuthUser) -> None:
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
 
+async def _ensure_training_day_exists(session: AsyncSession, day_number: int) -> None:
+    exists = await session.execute(
+        select(TrainingVideo.id).where(TrainingVideo.day_number == day_number)
+    )
+    if exists.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail="Invalid training day",
+        )
+
+
+async def _ensure_day_unlocked_for_user(
+    session: AsyncSession,
+    *,
+    user_id: int,
+    day_number: int,
+) -> None:
+    if day_number <= 1:
+        return
+    previous = await session.execute(
+        select(TrainingProgress.id).where(
+            TrainingProgress.user_id == user_id,
+            TrainingProgress.day_number == day_number - 1,
+            TrainingProgress.completed.is_(True),
+        )
+    )
+    if previous.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail=f"Complete Day {day_number - 1} first",
+        )
+
+
 @router.get("/training", response_model=TrainingSurfaceResponse)
 async def system_training(
     user: Annotated[AuthUser, Depends(require_auth_user)],
@@ -95,7 +128,12 @@ async def upload_training_notes(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     """Upload notes image for one training day from the system training surface."""
-    image_path = await save_training_notes_image(user.user_id, day_number, file)
+    await _ensure_training_day_exists(session, day_number)
+    await _ensure_day_unlocked_for_user(session, user_id=user.user_id, day_number=day_number)
+    try:
+        image_path = await save_training_notes_image(user.user_id, day_number, file)
+    except ValueError as exc:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     existing = (
         await session.execute(
@@ -127,14 +165,7 @@ async def mark_training_day(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> TrainingSurfaceResponse:
     """Mark one training day complete (legacy day-by-day). All catalog days done → training gate cleared."""
-    vq = await session.execute(
-        select(TrainingVideo.id).where(TrainingVideo.day_number == body.day_number)
-    )
-    if vq.scalar_one_or_none() is None:
-        raise HTTPException(
-            status_code=http_status.HTTP_404_NOT_FOUND,
-            detail="Invalid training day",
-        )
+    await _ensure_training_day_exists(session, body.day_number)
 
     # Get current progress to enforce sequential and calendar rules
     current_progress = await session.execute(

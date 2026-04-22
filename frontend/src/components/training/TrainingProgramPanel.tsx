@@ -401,7 +401,7 @@ export function TrainingProgramPanel({ data }: Props) {
     await qc.invalidateQueries({ queryKey: ['training', 'surface'] })
   }, [qc])
 
-  const canEditTrainingContent = serverRole === 'admin'
+  const canEditTrainingContent = serverRole === 'admin' && !isAdminPreviewing
   const canBypassTrainingLocks = serverRole === 'admin' && !isAdminPreviewing
 
   const trainingStatus = me?.training_status ?? ''

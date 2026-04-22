@@ -171,6 +171,39 @@ def test_system_training_notes_upload_route(monkeypatch: pytest.MonkeyPatch) -> 
         asyncio.run(_clear_training_tables())
 
 
+def test_system_training_notes_upload_rejects_locked_day(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_clear_training_tables())
+    asyncio.run(_seed_training_day(1))
+    asyncio.run(_seed_training_day(2))
+    try:
+        c = _authed(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+        res = c.post(
+            "/api/v1/system/training/days/2/notes",
+            files={"file": ("notes.png", b"fake-image", "image/png")},
+        )
+        assert res.status_code == 400
+        assert res.json()["error"]["message"] == "Complete Day 1 first"
+    finally:
+        asyncio.run(_clear_training_tables())
+
+
+def test_system_training_notes_upload_rejects_non_image(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_clear_training_tables())
+    asyncio.run(_seed_training_day())
+    try:
+        c = _authed(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+        res = c.post(
+            "/api/v1/system/training/days/1/notes",
+            files={"file": ("notes.txt", b"not-an-image", "text/plain")},
+        )
+        assert res.status_code == 400
+        assert "Unsupported image file" in res.json()["error"]["message"]
+    finally:
+        asyncio.run(_clear_training_tables())
+
+
 def test_admin_training_audio_upload_preserves_m4a_extension(monkeypatch: pytest.MonkeyPatch) -> None:
     asyncio.run(_clear_training_tables())
     asyncio.run(_seed_training_day())
@@ -188,6 +221,30 @@ def test_admin_training_audio_upload_preserves_m4a_extension(monkeypatch: pytest
         training = c.get("/api/v1/system/training")
         assert training.status_code == 200
         assert training.json()["videos"][0]["audio_url"].endswith(".m4a")
+    finally:
+        asyncio.run(_clear_training_tables())
+
+
+def test_system_training_normalizes_legacy_audio_paths(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_clear_training_tables())
+    asyncio.run(_seed_training_day())
+    try:
+        factory = test_conftest.get_test_session_factory()
+
+        async def seed_audio_url() -> None:
+            async with factory() as session:
+                row = await session.get(TrainingVideo, 1)
+                assert row is not None
+                row.audio_url = "audio/day1_podcast.m4a"
+                await session.commit()
+
+        asyncio.run(seed_audio_url())
+
+        c = _authed(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+        res = c.get("/api/v1/system/training")
+        assert res.status_code == 200
+        assert res.json()["videos"][0]["audio_url"] == "/uploads/training/audio/day1_podcast.m4a"
     finally:
         asyncio.run(_clear_training_tables())
 
