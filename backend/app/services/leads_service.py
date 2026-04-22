@@ -286,14 +286,17 @@ class LeadsService:
         ctcs_filter: Optional[str] = None,
         ctcs_priority_sort: bool = False,
         pre_enrollment_only: bool = False,
+        search_all_sections: bool = False,
     ) -> LeadListResponse:
         validate_list_flags(archived_only=archived_only, deleted_only=deleted_only, user=user)
+        cross_section_search = search_all_sections and bool((q or "").strip())
         condition = lead_list_conditions(
             user,
             q=q,
             status_filter=parse_status_query(status),
             archived_only=archived_only,
             deleted_only=deleted_only,
+            search_all_sections=cross_section_search,
         )
         extra = _ctcs_filter_clause(ctcs_filter)
         if extra is not None:

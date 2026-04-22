@@ -1,4 +1,4 @@
-"""Leads eligible for retargeting (non-archived, status lost or contacted)."""
+"""Leads eligible for retargeting (non-archived, status lost/contacted/inactive/retarget)."""
 
 from typing import Annotated
 
@@ -14,7 +14,7 @@ from app.services.downline import lead_management_visible_to_leader_clause
 
 router = APIRouter()
 
-_RETARGET_STATUSES = ("lost", "contacted")
+_RETARGET_STATUSES = ("lost", "contacted", "inactive", "retarget")
 _MAX_LIMIT = 100
 _DEFAULT_LIMIT = 50
 
@@ -26,7 +26,7 @@ async def list_retarget_leads(
     limit: int = Query(default=_DEFAULT_LIMIT, ge=1, le=_MAX_LIMIT),
     offset: int = Query(default=0, ge=0),
 ) -> LeadListResponse:
-    """Scoped like ``GET /leads`` — only rows with ``status`` in lost/contacted and not archived."""
+    """Scoped like ``GET /leads`` — only rows in retarget-worthy statuses and not archived."""
     parts = [
         Lead.status.in_(_RETARGET_STATUSES),
         Lead.archived_at.is_(None),

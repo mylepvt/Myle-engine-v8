@@ -16,6 +16,8 @@ import {
   useLeadsInfiniteQuery,
   usePatchLeadMutation,
 } from '@/hooks/use-leads-query'
+import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
+import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import { useCallToCloseStore } from '@/stores/call-to-close-store'
 
 function nextLeadId(items: LeadPublic[], current: number | null): number | null {
@@ -41,11 +43,18 @@ type Props = {
 }
 
 export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
+  const { role, serverRole } = useDashboardShellRole()
+  const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
   const [tab, setTab] = useState<CtcsTab>('today')
   const [nowMs, setNowMs] = useState(() => Date.now())
+  const searchMode =
+    filters.q.trim().length > 0 && (surfaceRole === 'admin' || surfaceRole === 'leader')
   const ctcsOpts = useMemo(
-    () => ({ ctcsFilter: tab, ctcsPrioritySort: true as const, preEnrollmentOnly: true as const }),
-    [tab],
+    () =>
+      searchMode
+        ? ({ searchAllSections: true as const })
+        : ({ ctcsFilter: tab, ctcsPrioritySort: true as const, preEnrollmentOnly: true as const }),
+    [searchMode, tab],
   )
   useEffect(() => {
     const id = window.setInterval(() => setNowMs(Date.now()), LEAD_SLA_SMOOTH_REFRESH_MS)
@@ -131,29 +140,35 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pb-1">
-        {TABS.map((t) => {
-          const active = tab === t.id
-          return (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTab(t.id)}
-              className={cn(
-                'flex min-w-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
-                active
-                  ? 'border-primary/45 bg-primary/10 text-foreground'
-                  : 'border-border/70 text-muted-foreground hover:border-border hover:text-foreground',
-              )}
-            >
-              <span>{t.label}</span>
-              {active && total > 0 ? (
-                <span className="rounded bg-muted px-1.5 py-0.5 text-ds-caption text-muted-foreground">{total}</span>
-              ) : null}
-            </button>
-          )
-        })}
-      </div>
+      {searchMode ? (
+        <div className="rounded-xl border border-primary/20 bg-primary/[0.08] px-3 py-2 text-sm text-muted-foreground">
+          Search is scanning all sections for this role, including workboard, retarget, and archived leads.
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pb-1">
+          {TABS.map((t) => {
+            const active = tab === t.id
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTab(t.id)}
+                className={cn(
+                  'flex min-w-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
+                  active
+                    ? 'border-primary/45 bg-primary/10 text-foreground'
+                    : 'border-border/70 text-muted-foreground hover:border-border hover:text-foreground',
+                )}
+              >
+                <span>{t.label}</span>
+                {active && total > 0 ? (
+                  <span className="rounded bg-muted px-1.5 py-0.5 text-ds-caption text-muted-foreground">{total}</span>
+                ) : null}
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <button
@@ -168,7 +183,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
         </button>
         <p className="text-ds-caption text-muted-foreground">
           {items.length < total ? `Loaded ${items.length} · ` : null}
-          tab total {total}
+          {searchMode ? `search results ${total}` : `tab total ${total}`}
         </p>
       </div>
 

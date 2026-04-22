@@ -352,6 +352,69 @@ def test_leader_cannot_find_downline_assigned_lead_in_calling_list_but_can_still
         asyncio.run(_clear_leads())
 
 
+def test_admin_search_all_sections_finds_archived_and_inactive_leads(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _seed_one_lead(
+            user_id=2,
+            name="Archived Search Lead",
+            lead_status="day1",
+            archived_at=datetime.now(timezone.utc),
+        )
+    )
+    asyncio.run(
+        _seed_one_lead(
+            user_id=3,
+            name="Inactive Search Lead",
+            lead_status="inactive",
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+
+        res = c.get(
+            "/api/v1/leads",
+            params={"q": "Search Lead", "search_all_sections": "true"},
+        )
+        assert res.status_code == 200
+        body = res.json()
+        assert body["total"] == 2
+        names = {item["name"] for item in body["items"]}
+        assert names == {"Archived Search Lead", "Inactive Search Lead"}
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_leader_search_all_sections_can_find_team_leads(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _seed_one_lead(
+            user_id=1,
+            name="Downline Day Lead",
+            lead_status="day1",
+            created_by_user_id=3,
+            assigned_to_user_id=3,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+
+        res = c.get(
+            "/api/v1/leads",
+            params={"q": "Downline Day Lead", "search_all_sections": "true"},
+        )
+        assert res.status_code == 200
+        body = res.json()
+        assert body["total"] == 1
+        assert body["items"][0]["name"] == "Downline Day Lead"
+    finally:
+        asyncio.run(_clear_leads())
+
+
 def test_admin_can_patch_team_assigned_lead_status(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

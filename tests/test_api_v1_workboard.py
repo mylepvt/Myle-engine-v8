@@ -191,6 +191,24 @@ def test_leader_sees_downline_created_leads(
         asyncio.run(_clear_leads())
 
 
+def test_admin_day1_visibility_is_not_limited_by_recent_new_leads(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    for idx in range(60):
+        asyncio.run(_seed_lead(user_id=2, name=f"Fresh-{idx}", lead_status="new_lead"))
+    asyncio.run(_seed_lead(user_id=3, name="Leader Day1", lead_status="day1"))
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        res = c.get("/api/v1/workboard", params={"max_rows": 50, "limit_per_column": 10})
+        assert res.status_code == 200
+        by_status = {col["status"]: col for col in res.json()["columns"]}
+        assert by_status["day1"]["total"] == 1
+        assert by_status["day1"]["items"][0]["name"] == "Leader Day1"
+    finally:
+        asyncio.run(_clear_leads())
+
+
 def test_slice2_team_workboard_uses_assignment_not_creator(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

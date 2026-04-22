@@ -247,6 +247,10 @@ async def list_leads(
         default=False,
         description="When true, only return leads in pre-enrollment statuses (calling board clean mode).",
     ),
+    search_all_sections: bool = Query(
+        default=False,
+        description="When true with a search query, admin/leader search spans active and archived sections.",
+    ),
 ) -> LeadListResponse:
     return await service.list_leads(
         user=user,
@@ -259,6 +263,7 @@ async def list_leads(
         ctcs_filter=ctcs_filter,
         ctcs_priority_sort=ctcs_priority_sort,
         pre_enrollment_only=pre_enrollment_only,
+        search_all_sections=search_all_sections,
     )
 
 
