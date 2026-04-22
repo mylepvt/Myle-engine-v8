@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
+import { messageFromApiErrorPayload } from '@/lib/http-error-message'
 
 export type TrainingVideo = {
   day_number: number
@@ -85,7 +86,8 @@ export async function uploadTrainingNotes(dayNumber: number, file: File): Promis
     body: form,
   })
   if (!res.ok) {
-    throw new Error(`Upload notes HTTP ${res.status}`)
+    const raw: unknown = await res.json().catch(() => null)
+    throw new Error(messageFromApiErrorPayload(raw, `Upload notes HTTP ${res.status}`))
   }
   return res.json()
 }
@@ -98,7 +100,8 @@ export async function uploadTrainingAudio(dayNumber: number, file: File): Promis
     body: form,
   })
   if (!res.ok) {
-    throw new Error(`Upload audio HTTP ${res.status}`)
+    const raw: unknown = await res.json().catch(() => null)
+    throw new Error(messageFromApiErrorPayload(raw, `Upload audio HTTP ${res.status}`))
   }
   return res.json()
 }
@@ -113,7 +116,8 @@ export async function updateTrainingDay(
     body: JSON.stringify(payload),
   })
   if (!res.ok) {
-    throw new Error(`Update training day HTTP ${res.status}`)
+    const raw: unknown = await res.json().catch(() => null)
+    throw new Error(messageFromApiErrorPayload(raw, `Update training day HTTP ${res.status}`))
   }
   return res.json()
 }
@@ -125,7 +129,8 @@ export async function markTrainingDay(dayNumber: number): Promise<TrainingSurfac
     body: JSON.stringify({ day_number: dayNumber }),
   })
   if (!res.ok) {
-    throw new Error(`Mark training day HTTP ${res.status}`)
+    const raw: unknown = await res.json().catch(() => null)
+    throw new Error(messageFromApiErrorPayload(raw, `Mark training day HTTP ${res.status}`))
   }
   return res.json()
 }
@@ -164,6 +169,8 @@ export function useUploadTrainingNotesMutation() {
       uploadTrainingNotes(dayNumber, file),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['training', 'surface'] })
+      queryClient.invalidateQueries({ queryKey: ['system', 'training'] })
+      queryClient.invalidateQueries({ queryKey: ['other', 'training'] })
     },
   })
 }
@@ -175,6 +182,8 @@ export function useUploadTrainingAudioMutation() {
       uploadTrainingAudio(dayNumber, file),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['training', 'surface'] })
+      queryClient.invalidateQueries({ queryKey: ['system', 'training'] })
+      queryClient.invalidateQueries({ queryKey: ['other', 'training'] })
     },
   })
 }
@@ -186,6 +195,8 @@ export function useUpdateTrainingDayMutation() {
       updateTrainingDay(dayNumber, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['training', 'surface'] })
+      queryClient.invalidateQueries({ queryKey: ['system', 'training'] })
+      queryClient.invalidateQueries({ queryKey: ['other', 'training'] })
     },
   })
 }

@@ -1,22 +1,16 @@
 import { CheckCircle2, CirclePlay, FileImage, Headphones, Lock } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import type { TrainingSurfacePayload } from '@/hooks/use-system-surface-query'
 import { useMarkTrainingDayMutation, useUploadTrainingNotesMutation } from '@/hooks/use-training-query'
-
-function getApiBase(): string {
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-    return 'http://localhost:8000'
-  }
-  return ''
-}
+import { apiUrl } from '@/lib/api'
 
 function resolveUrl(url: string | undefined | null): string | null {
   if (!url) return null
-  if (url.startsWith('http')) return url
-  return `${getApiBase()}${url}`
+  if (url.startsWith('http') || url.startsWith('data:') || url.startsWith('blob:')) return url
+  return apiUrl(url)
 }
 
 type Props = {
@@ -48,10 +42,20 @@ export function TrainingDayView({
   const [noteErr, setNoteErr] = useState<string | null>(null)
   const [noteUploading, setNoteUploading] = useState(false)
   const [localHasNotes, setLocalHasNotes] = useState(hasNotes)
+  const [audioFailed, setAudioFailed] = useState(false)
+  const [markErr, setMarkErr] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const markDay = useMarkTrainingDayMutation()
   const uploadNotes = useUploadTrainingNotesMutation()
+
+  useEffect(() => {
+    setLocalHasNotes(hasNotes)
+  }, [hasNotes])
+
+  useEffect(() => {
+    setAudioFailed(false)
+  }, [audio_url])
 
   const handleIframeLoad = () => {
     window.setTimeout(() => setTimerDone(true), 30_000)
@@ -66,19 +70,20 @@ export function TrainingDayView({
       setLocalHasNotes(true)
       setNoteFile(null)
       if (fileRef.current) fileRef.current.value = ''
-    } catch {
-      setNoteErr('Upload did not work. Please try again.')
+    } catch (error) {
+      setNoteErr(error instanceof Error ? error.message : 'Upload did not work. Please try again.')
     } finally {
       setNoteUploading(false)
     }
   }
 
   const handleMarkComplete = async () => {
+    setMarkErr(null)
     try {
       await markDay.mutateAsync(day_number)
       await onRefresh()
-    } catch {
-      // mutation surfaces error state
+    } catch (error) {
+      setMarkErr(error instanceof Error ? error.message : 'Could not save. Please try again.')
     }
   }
 
@@ -112,6 +117,7 @@ export function TrainingDayView({
   const embedUrl = has_video
     ? `/api/v1/system/training/day/${day_number}/embed`
     : null
+  const resolvedAudioUrl = resolveUrl(audio_url)
 
   return (
     <div className="surface-inset overflow-hidden border-white/10 bg-white/[0.04] px-4 py-4 md:px-5 md:py-5">
@@ -173,8 +179,22 @@ export function TrainingDayView({
               <Headphones className="size-4 text-primary" />
               <span>Listen</span>
             </div>
-            {resolveUrl(audio_url) ? (
-              <audio controls src={resolveUrl(audio_url)!} className="w-full max-w-full" />
+            {resolvedAudioUrl && !audioFailed ? (
+              <>
+                <audio
+                  controls
+                  src={resolvedAudioUrl}
+                  className="w-full max-w-full"
+                  onError={() => setAudioFailed(true)}
+                />
+                <p className="mt-2 text-xs text-muted-foreground">
+                  If playback does not start, refresh once. If it still fails, admin can re-upload the file.
+                </p>
+              </>
+            ) : resolvedAudioUrl ? (
+              <div className="rounded-lg border border-amber-400/20 bg-amber-400/[0.08] px-3 py-2 text-sm text-amber-200">
+                Audio link exists, but this file is not loading right now. Training can continue while admin replaces the audio file.
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground">Audio is not ready yet.</p>
             )}
@@ -245,9 +265,7 @@ export function TrainingDayView({
               {!localHasNotes && (
                 <p className="mt-2 text-xs text-muted-foreground">Upload a photo of your notes first.</p>
               )}
-              {markDay.isError && (
-                <p className="mt-2 text-xs text-destructive">Could not save. Please try again.</p>
-              )}
+              {markErr ? <p className="mt-2 text-xs text-destructive">{markErr}</p> : null}
             </div>
           )}
         </div>

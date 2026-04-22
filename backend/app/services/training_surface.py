@@ -17,6 +17,7 @@ from app.schemas.system_surface import (
     TrainingSurfaceResponse,
     TrainingVideoRow,
 )
+from app.services.training_uploads import normalize_training_audio_url
 
 
 def _calculate_unlock_dates(progress_rows: list[TrainingProgressRow]) -> Dict[int, str]:
@@ -80,7 +81,7 @@ async def build_training_surface(session: AsyncSession, user_id: int) -> Trainin
             title=v.title,
             has_video=bool(v.youtube_url),
             youtube_url=v.youtube_url,
-            audio_url=getattr(v, "audio_url", None),
+            audio_url=normalize_training_audio_url(getattr(v, "audio_url", None)),
             unlocked=_is_unlocked(v.day_number, progress),
         )
         for v in video_rows

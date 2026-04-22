@@ -12,7 +12,11 @@ from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.models.training_video import TrainingVideo
-from app.services.training_uploads import remove_training_audio_file, save_training_audio_file
+from app.services.training_uploads import (
+    normalize_training_audio_url,
+    remove_training_audio_file,
+    save_training_audio_file,
+)
 
 router = APIRouter()
 
@@ -51,7 +55,7 @@ async def admin_put_training_day(
     if body.youtube_url is not None:
         row.youtube_url = body.youtube_url.strip() or None
     if body.audio_url is not None:
-        next_audio_url = body.audio_url.strip() or None
+        next_audio_url = normalize_training_audio_url(body.audio_url)
         if row.audio_url != next_audio_url:
             remove_training_audio_file(row.audio_url)
         row.audio_url = next_audio_url
@@ -74,7 +78,10 @@ async def admin_upload_training_audio(
     if row is None:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Training day not found")
     remove_training_audio_file(row.audio_url)
-    audio_path = await save_training_audio_file(day_number, file)
+    try:
+        audio_path = await save_training_audio_file(day_number, file)
+    except ValueError as exc:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     row.audio_url = audio_path
     await session.commit()
     return {"day_number": day_number, "audio_url": audio_path}

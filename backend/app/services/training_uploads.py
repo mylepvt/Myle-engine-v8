@@ -48,6 +48,29 @@ _CONTENT_TYPE_EXTENSIONS = {
 }
 
 
+def normalize_training_audio_url(audio_url: str | None) -> str | None:
+    """Normalize persisted audio links so older relative values still resolve in UI."""
+    if audio_url is None:
+        return None
+    raw = audio_url.strip()
+    if not raw:
+        return None
+
+    lower = raw.lower()
+    if lower.startswith(("http://", "https://", "data:", "blob:")):
+        return raw
+    if raw.startswith("/"):
+        return raw
+    if raw.startswith("uploads/"):
+        return f"/{raw}"
+    if raw.startswith("training_audio/"):
+        return f"/uploads/{raw}"
+    # Legacy monolith stored media as "audio/<file>" under uploads/training/.
+    if raw.startswith("audio/") or raw.startswith("pdf/"):
+        return f"/uploads/training/{raw}"
+    return f"/{raw}"
+
+
 def _pick_extension(
     *,
     filename: str | None,
@@ -64,6 +87,28 @@ def _pick_extension(
         return mapped
 
     return default_ext
+
+
+def _looks_like_audio_upload(file: UploadFile) -> bool:
+    ext = Path(file.filename or "").suffix.lower()
+    if ext in _AUDIO_EXTENSIONS:
+        return True
+    content_type = (file.content_type or "").lower()
+    if content_type.startswith("audio/"):
+        return True
+    mapped = _CONTENT_TYPE_EXTENSIONS.get(content_type)
+    return mapped in _AUDIO_EXTENSIONS
+
+
+def _looks_like_image_upload(file: UploadFile) -> bool:
+    ext = Path(file.filename or "").suffix.lower()
+    if ext in _IMAGE_EXTENSIONS:
+        return True
+    content_type = (file.content_type or "").lower()
+    if content_type.startswith("image/"):
+        return True
+    mapped = _CONTENT_TYPE_EXTENSIONS.get(content_type)
+    return mapped in _IMAGE_EXTENSIONS
 
 
 def _delete_matching_files(root: Path, stem: str) -> None:
@@ -88,6 +133,9 @@ def remove_training_audio_file(audio_url: str | None) -> None:
 
 
 async def save_training_audio_file(day_number: int, file: UploadFile) -> str:
+    if not _looks_like_audio_upload(file):
+        raise ValueError("Unsupported audio file. Please upload .m4a, .mp3, .wav, .ogg, .aac, or .webm.")
+
     _TRAINING_AUDIO_ROOT.mkdir(parents=True, exist_ok=True)
     stem = f"day_{day_number}"
     _delete_matching_files(_TRAINING_AUDIO_ROOT, stem)
@@ -104,6 +152,9 @@ async def save_training_audio_file(day_number: int, file: UploadFile) -> str:
 
 
 async def save_training_notes_image(user_id: int, day_number: int, file: UploadFile) -> str:
+    if not _looks_like_image_upload(file):
+        raise ValueError("Unsupported image file. Please upload .jpg, .jpeg, .png, .webp, .heic, .heif, or .gif.")
+
     _TRAINING_NOTES_ROOT.mkdir(parents=True, exist_ok=True)
     stem = f"{user_id}_{day_number}"
     _delete_matching_files(_TRAINING_NOTES_ROOT, stem)
