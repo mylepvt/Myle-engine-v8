@@ -9,12 +9,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import AuthUser, get_db
 from app.repositories.leads_repository import SqlAlchemyLeadsRepository
 from app.schemas.leads import AllLeadsResponse, LeadPublic
+from app.services.lead_payloads import build_lead_public_payloads
 from app.validators.leads_validator import lead_list_conditions, parse_status_query, validate_list_flags
 
 
 class AllLeadsService:
-    def __init__(self, repository: SqlAlchemyLeadsRepository) -> None:
+    def __init__(self, repository: SqlAlchemyLeadsRepository, session: AsyncSession) -> None:
         self._repository = repository
+        self._session = session
 
     async def get_all(
         self,
@@ -43,13 +45,13 @@ class AllLeadsService:
             limit=limit,
             offset=offset,
         )
+        payloads = await build_lead_public_payloads(self._session, rows)
         today_items: list[LeadPublic] = []
         history_items: list[LeadPublic] = []
-        for row in rows:
+        for row, payload in zip(rows, payloads):
             created_at = row.created_at
             if created_at.tzinfo is None:
                 created_at = created_at.replace(tzinfo=timezone.utc)
-            payload = LeadPublic.model_validate(row)
             if created_at >= day_start:
                 today_items.append(payload)
             else:
@@ -68,4 +70,4 @@ class AllLeadsService:
 def get_all_leads_service(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> AllLeadsService:
-    return AllLeadsService(repository=SqlAlchemyLeadsRepository(session))
+    return AllLeadsService(repository=SqlAlchemyLeadsRepository(session), session=session)

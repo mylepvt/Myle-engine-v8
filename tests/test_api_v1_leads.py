@@ -83,12 +83,14 @@ async def _seed_one_lead(
     in_pool: bool = False,
     pool_price_cents: int | None = None,
     created_by_user_id: int | None = None,
+    owner_user_id: int | None = None,
     assigned_to_user_id: int | None = None,
     last_action_at: datetime | None = None,
     next_followup_at: datetime | None = None,
 ) -> None:
     fac = test_conftest.get_test_session_factory()
     cb = created_by_user_id if created_by_user_id is not None else user_id
+    owner = owner_user_id if owner_user_id is not None else (None if in_pool else cb)
     at = assigned_to_user_id if assigned_to_user_id is not None else user_id
     async with fac() as session:
         session.add(
@@ -101,6 +103,7 @@ async def _seed_one_lead(
                 mindset_started_at=mindset_started_at,
                 mindset_lock_state=mindset_lock_state,
                 created_by_user_id=cb,
+                owner_user_id=owner,
                 assigned_to_user_id=at,
                 archived_at=archived_at,
                 deleted_at=deleted_at,
@@ -240,9 +243,49 @@ def test_create_lead(
         assert body["name"] == "New Co"
         assert body["status"] == "new"
         assert body["created_by_user_id"] == 3
+        assert body["owner_user_id"] == 3
+        assert body["owner_name"] == "dev-team"
+        assert body["leader_user_id"] == 2
+        assert body["leader_name"] == "TestLeaderDisplay"
         listed = c.get("/api/v1/leads").json()
         assert listed["total"] == 1
         assert listed["items"][0]["name"] == "New Co"
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_team_lead_payload_includes_owner_and_leader_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _seed_one_lead(
+            user_id=3,
+            name="Team Claimed Lead",
+            owner_user_id=3,
+            assigned_to_user_id=2,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+
+        listed = c.get("/api/v1/leads")
+        assert listed.status_code == 200
+        item = listed.json()["items"][0]
+        assert item["owner_user_id"] == 3
+        assert item["owner_name"] == "dev-team"
+        assert item["assigned_to_user_id"] == 2
+        assert item["assigned_to_name"] == "TestLeaderDisplay"
+        assert item["leader_user_id"] == 2
+        assert item["leader_name"] == "TestLeaderDisplay"
+
+        detail = c.get("/api/v1/leads/1")
+        assert detail.status_code == 200
+        detail_body = detail.json()
+        assert detail_body["owner_user_id"] == 3
+        assert detail_body["owner_name"] == "dev-team"
+        assert detail_body["leader_user_id"] == 2
+        assert detail_body["leader_name"] == "TestLeaderDisplay"
     finally:
         asyncio.run(_clear_leads())
 
@@ -703,6 +746,7 @@ def test_slice5_admin_can_claim_pool_lead(
         body = claim.json()
         assert body["in_pool"] is False
         assert body["created_by_user_id"] == 1
+        assert body["owner_user_id"] == 1
         assert c.get("/api/v1/lead-pool").json()["total"] == 0
     finally:
         asyncio.run(_clear_leads())
@@ -722,6 +766,7 @@ def test_slice5_batch_claim_leads_from_pool_for_leader(
         body = claim.json()
         assert body["total_price_cents"] == 0
         assert [lead["name"] for lead in body["leads"]] == ["Oldest", "Second"]
+        assert [lead["owner_user_id"] for lead in body["leads"]] == [2, 2]
 
         admin = _authed_client(monkeypatch)
         assert admin.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
@@ -974,6 +1019,7 @@ def test_mindset_lock_complete_handles_persisted_started_at_after_reconnect(
             lead_status="mindset_lock",
             mindset_started_at=started_at,
             mindset_lock_state="mindset_lock",
+            owner_user_id=3,
             assigned_to_user_id=3,
         )
     )
@@ -989,6 +1035,7 @@ def test_mindset_lock_complete_handles_persisted_started_at_after_reconnect(
         assert lead.status_code == 200
         lead_body = lead.json()
         assert lead_body["status"] == "day1"
+        assert lead_body["owner_user_id"] == 3
         assert lead_body["assigned_to_user_id"] == 2
         assert lead_body["mindset_lock_state"] == "leader_assigned"
     finally:
@@ -1036,6 +1083,7 @@ def test_leader_can_complete_personal_mindset_lock_into_day1(
             payment_status="approved",
             mindset_started_at=started_at,
             mindset_lock_state="mindset_lock",
+            owner_user_id=2,
             assigned_to_user_id=2,
         )
     )
@@ -1051,6 +1099,7 @@ def test_leader_can_complete_personal_mindset_lock_into_day1(
         assert lead.status_code == 200
         lead_body = lead.json()
         assert lead_body["status"] == "day1"
+        assert lead_body["owner_user_id"] == 2
         assert lead_body["assigned_to_user_id"] == 2
         assert lead_body["mindset_lock_state"] == "leader_assigned"
     finally:

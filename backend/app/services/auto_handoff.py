@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.models.activity_log import ActivityLog
 from app.models.follow_up import FollowUp
 from app.models.lead import Lead
+from app.services.lead_owner import resolved_owner_user_id
 from app.services.ctcs_heat import bump_heat_on_entering_contacted
 
 _TERMINAL_STATUSES = {"lost", "converted", "inactive"}
@@ -22,7 +23,7 @@ class AutoHandoffService:
 
     async def on_lead_created(self, *, lead: Lead, actor_user_id: int) -> None:
         if lead.assigned_to_user_id is None:
-            lead.assigned_to_user_id = lead.created_by_user_id
+            lead.assigned_to_user_id = resolved_owner_user_id(lead)
         await self._ensure_open_follow_up(
             lead_id=lead.id,
             created_by_user_id=lead.assigned_to_user_id or actor_user_id,
@@ -48,7 +49,7 @@ class AutoHandoffService:
             lead.last_action_at = now
         bump_heat_on_entering_contacted(lead, prev_status)
         if lead.assigned_to_user_id is None:
-            lead.assigned_to_user_id = lead.created_by_user_id or actor_user_id
+            lead.assigned_to_user_id = resolved_owner_user_id(lead) or actor_user_id
         if outcome in {"no_answer", "busy", "callback_requested"} and lead.status not in _TERMINAL_STATUSES:
             await self._ensure_open_follow_up(
                 lead_id=lead.id,
@@ -68,7 +69,7 @@ class AutoHandoffService:
 
     async def on_payment_approved(self, *, lead: Lead, actor_user_id: int) -> None:
         if lead.assigned_to_user_id is None:
-            lead.assigned_to_user_id = lead.created_by_user_id or actor_user_id
+            lead.assigned_to_user_id = resolved_owner_user_id(lead) or actor_user_id
         await self._ensure_open_follow_up(
             lead_id=lead.id,
             created_by_user_id=lead.assigned_to_user_id or actor_user_id,
@@ -121,7 +122,7 @@ def _apply_follow_up_completion_handoff(session: Session, follow_up: FollowUp) -
         lead.last_action_at = now
     bump_heat_on_entering_contacted(lead, prev_status)
     if lead.assigned_to_user_id is None:
-        lead.assigned_to_user_id = lead.created_by_user_id
+        lead.assigned_to_user_id = resolved_owner_user_id(lead)
 
     if lead.status not in _TERMINAL_STATUSES:
         existing = session.execute(
@@ -139,7 +140,7 @@ def _apply_follow_up_completion_handoff(session: Session, follow_up: FollowUp) -
 
     session.add(
         ActivityLog(
-            user_id=lead.assigned_to_user_id or lead.created_by_user_id,
+            user_id=lead.assigned_to_user_id or resolved_owner_user_id(lead),
             action="auto_handoff.follow_up_completed",
             entity_type="lead",
             entity_id=lead.id,

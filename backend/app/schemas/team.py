@@ -18,8 +18,11 @@ class TeamMemberPublic(BaseModel):
     email: str
     role: str
     created_at: datetime
+    upline_user_id: Optional[int] = None
     upline_fbo_id: Optional[str] = None
     upline_name: Optional[str] = None
+    leader_user_id: Optional[int] = None
+    leader_name: Optional[str] = None
     training_required: Optional[bool] = None
     training_status: Optional[str] = None
 

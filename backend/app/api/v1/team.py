@@ -35,22 +35,19 @@ from app.schemas.team import (
     TeamReportsResponse,
 )
 from app.services.downline import is_user_in_downline_of
+from app.services.lead_owner import lead_owner_clause
 from app.services.payment_service import PaymentService
 from app.services.team_reports_metrics import IST, compute_live_summary
+from app.services.user_hierarchy import (
+    load_user_hierarchy_entries,
+    nearest_leader_entry,
+    recursive_downline_user_ids,
+)
 
 router = APIRouter()
 
 _MAX_LIMIT = 100
 _DEFAULT_LIMIT = 50
-
-
-async def _recursive_downline_user_ids(session: AsyncSession, leader_id: int) -> list[int]:
-    """Strict descendants of ``leader_id`` (does not include the leader)."""
-    anchor = select(User.id).where(User.upline_user_id == leader_id)
-    tree = anchor.cte(name="team_downline", recursive=True)
-    tree = tree.union_all(select(User.id).where(User.upline_user_id == tree.c.id))
-    rows = (await session.execute(select(tree.c.id))).all()
-    return [int(r[0]) for r in rows]
 
 
 def _require_admin(user: AuthUser) -> None:
@@ -61,6 +58,18 @@ def _require_admin(user: AuthUser) -> None:
 def _require_admin_or_leader(user: AuthUser) -> None:
     if user.role not in ("admin", "leader"):
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+
+async def _attach_team_member_hierarchy(
+    session: AsyncSession,
+    items: list[TeamMemberPublic],
+) -> list[TeamMemberPublic]:
+    entries = await load_user_hierarchy_entries(session, [item.id for item in items])
+    for item in items:
+        leader = nearest_leader_entry(item.id, entries)
+        item.leader_user_id = leader.id if leader is not None else None
+        item.leader_name = leader.display_name if leader is not None else None
+    return items
 
 
 @router.get("/members", response_model=TeamMemberListResponse)
@@ -92,6 +101,7 @@ async def list_team_members(
         item.upline_fbo_id = up_fbo
         item.upline_name = up_name
         items.append(item)
+    items = await _attach_team_member_hierarchy(session, items)
     return TeamMemberListResponse(items=items, total=total, limit=limit, offset=offset)
 
 
@@ -171,6 +181,7 @@ async def my_team(
             item.upline_fbo_id = up_fbo
             item.upline_name = up_name
             items.append(item)
+        items = await _attach_team_member_hierarchy(session, items)
         return TeamMyTeamResponse(
             items=items,
             total=total,
@@ -188,10 +199,11 @@ async def my_team(
             if up is not None:
                 item.upline_fbo_id = up.fbo_id
                 item.upline_name = (up.username or up.name or up.fbo_id or "").strip() or None
+        [item] = await _attach_team_member_hierarchy(session, [item])
         return TeamMyTeamResponse(items=[item], total=1, direct_members=0, total_downline=0)
 
     leader_id = user.user_id
-    downline_ids = await _recursive_downline_user_ids(session, leader_id)
+    downline_ids = await recursive_downline_user_ids(session, leader_id)
     id_list = [leader_id, *downline_ids]
     list_q = (
         select(User, Upline.fbo_id.label("upline_fbo_id"), Upline.username.label("upline_username"))
@@ -207,6 +219,7 @@ async def my_team(
         item.upline_fbo_id = up_fbo
         item.upline_name = up_name
         items.append(item)
+    items = await _attach_team_member_hierarchy(session, items)
 
     direct_ct = int(
         (
@@ -464,7 +477,7 @@ async def get_member_leads(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> MemberLeadsResponse:
-    """Leads created by or assigned to a specific user. Admin only."""
+    """Leads permanently owned by a specific user. Admin only."""
     _require_admin(user)
     target = await session.get(User, target_user_id)
     if target is None:
@@ -472,13 +485,13 @@ async def get_member_leads(
     count_q = (
         select(func.count())
         .select_from(Lead)
-        .where(Lead.created_by_user_id == target_user_id)
+        .where(lead_owner_clause(target_user_id))
         .where(Lead.deleted_at.is_(None))
     )
     total = int((await session.execute(count_q)).scalar_one())
     list_q = (
         select(Lead)
-        .where(Lead.created_by_user_id == target_user_id)
+        .where(lead_owner_clause(target_user_id))
         .where(Lead.deleted_at.is_(None))
         .order_by(Lead.created_at.desc())
         .limit(limit)

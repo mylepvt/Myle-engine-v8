@@ -30,6 +30,10 @@ def test_team_members_admin_lists_users(monkeypatch: pytest.MonkeyPatch) -> None
     assert len(body["items"]) == 3
     emails = {x["email"] for x in body["items"]}
     assert "dev-admin@myle.local" in emails
+    team_row = next(x for x in body["items"] if x["email"] == "dev-team@myle.local")
+    assert team_row["upline_user_id"] == 2
+    assert team_row["leader_user_id"] == 2
+    assert team_row["leader_name"] == "TestLeaderDisplay"
     assert all("hashed_password" not in x for x in body["items"])
     assert all("password" not in str(x) for x in body["items"])
 
@@ -141,6 +145,9 @@ def test_my_team_team_user_ok(monkeypatch: pytest.MonkeyPatch) -> None:
     body = res.json()
     assert body["total"] == 1
     assert body["items"][0]["email"] == "dev-team@myle.local"
+    assert body["items"][0]["upline_user_id"] == 2
+    assert body["items"][0]["leader_user_id"] == 2
+    assert body["items"][0]["leader_name"] == "TestLeaderDisplay"
 
 
 def test_my_team_accessible_for_admin(monkeypatch: pytest.MonkeyPatch) -> None:

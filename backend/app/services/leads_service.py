@@ -40,6 +40,8 @@ from app.services.crm_outbox import enqueue_lead_shadow_delete, enqueue_lead_sha
 from app.services.invoice_records import create_tax_invoice_for_pool_claim, create_tax_invoice_for_pool_claims
 from app.services.ctcs_heat import bump_heat_on_entering_contacted, clamp_ctcs_heat
 from app.services.ctcs_status_chain import advance_lead_status_toward
+from app.services.lead_payloads import build_lead_public_payloads
+from app.services.user_hierarchy import nearest_leader_for_user
 from app.services.whatsapp_ctcs import send_interested_enrollment_assets
 from app.validators.leads_validator import lead_list_conditions, parse_status_query, validate_list_flags
 
@@ -59,16 +61,6 @@ _PHONE_DIGIT_RE = re.compile(r"\D")
 
 async def _deliver_ctcs_interested_whatsapp(lead_id: int, phone: str | None) -> None:
     await send_interested_enrollment_assets(lead_id=lead_id, phone=phone)
-
-
-def _display_name_for_user(row: tuple[int, str | None, str | None, str]) -> str:
-    _, name, username, email = row
-    if name and name.strip():
-        return name.strip()
-    if username and username.strip():
-        return username.strip()
-    local = (email or "").split("@", 1)[0].strip()
-    return local or "Assigned"
 
 
 def _display_name_from_fields(name: str | None, username: str | None, email: str | None) -> str:
@@ -243,35 +235,17 @@ class LeadsService:
         await self._repository.commit()
 
     async def _nearest_leader(self, start_user_id: int) -> tuple[int, str] | None:
-        current = int(start_user_id)
-        seen: set[int] = set()
-        while current not in seen:
-            seen.add(current)
-            row = (
-                await self._session.execute(
-                    select(User.upline_user_id).where(User.id == current).limit(1)
-                )
-            ).scalar_one_or_none()
-            if row is None:
-                return None
-            parent_id = int(row)
-            parent = (
-                await self._session.execute(
-                    select(User.id, User.role, User.upline_user_id, User.name, User.username, User.email)
-                    .where(User.id == parent_id)
-                    .limit(1)
-                )
-            ).one_or_none()
-            if parent is None:
-                return None
-            pid, role, _, name, username, email = parent
-            role_key = (role or "").strip().lower()
-            if role_key == "leader":
-                return int(pid), _display_name_from_fields(name, username, email)
-            if role_key == "admin":
-                return None
-            current = int(pid)
-        return None
+        leader = await nearest_leader_for_user(self._session, start_user_id)
+        if leader is None:
+            return None
+        return leader.id, leader.display_name
+
+    async def serialize_lead_public(self, lead: Lead) -> LeadPublic:
+        items = await build_lead_public_payloads(self._session, [lead])
+        return items[0]
+
+    async def serialize_lead_public_list(self, leads: list[Lead]) -> list[LeadPublic]:
+        return await build_lead_public_payloads(self._session, leads)
 
     async def list_leads(
         self,
@@ -314,26 +288,7 @@ class LeadsService:
             ctcs_priority_sort=ctcs_priority_sort,
             now_utc=datetime.now(timezone.utc),
         )
-        assigned_ids = {
-            int(r.assigned_to_user_id)
-            for r in rows
-            if getattr(r, "assigned_to_user_id", None) is not None
-        }
-        assigned_name_by_id: dict[int, str] = {}
-        if assigned_ids:
-            assigned_rows = (
-                await self._session.execute(
-                    select(User.id, User.name, User.username, User.email).where(User.id.in_(assigned_ids))
-                )
-            ).all()
-            assigned_name_by_id = {int(uid): _display_name_for_user((uid, name, username, email)) for uid, name, username, email in assigned_rows}
-
-        items: list[LeadPublic] = []
-        for r in rows:
-            item = LeadPublic.model_validate(r)
-            uid = item.assigned_to_user_id
-            item.assigned_to_name = assigned_name_by_id.get(uid) if uid is not None else None
-            items.append(item)
+        items = await self.serialize_lead_public_list(rows)
         return LeadListResponse(
             items=items,
             total=total,
@@ -960,7 +915,8 @@ class LeadsService:
                 .order_by(BatchDaySubmission.submitted_at.desc())
             )
         ).scalars().all()
-        detail = LeadDetailPublic.model_validate(lead)
+        lead_public = await self.serialize_lead_public(lead)
+        detail = LeadDetailPublic.model_validate(lead_public.model_dump())
         detail.batch_submissions = [LeadBatchSubmissionPublic.model_validate(row) for row in submissions]
         return detail
 

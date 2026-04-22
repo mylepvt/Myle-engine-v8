@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, event, func, inspect as sa_inspect, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -55,6 +55,13 @@ class Lead(Base):
     ad_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Permanent owner (creator / personal importer / pool claimer). Never changes after set.
+    owner_user_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=True,
+        index=True,
+    )
 
     # Assignment
     assigned_to_user_id: Mapped[Optional[int]] = mapped_column(
@@ -163,3 +170,15 @@ class Lead(Base):
         DateTime(timezone=True),
         nullable=True,
     )
+
+
+@event.listens_for(Lead, "before_update", propagate=True)
+def _prevent_owner_reassignment(_mapper, _connection, target: Lead) -> None:
+    """Owner is sticky for lifetime once it has been set."""
+    hist = sa_inspect(target).attrs.owner_user_id.history
+    if not hist.has_changes():
+        return
+    old = hist.deleted[0] if hist.deleted else None
+    new = hist.added[0] if hist.added else target.owner_user_id
+    if old is not None and new is not None and int(old) != int(new):
+        raise ValueError("owner_user_id is immutable once assigned")

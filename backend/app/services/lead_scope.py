@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from sqlalchemy import and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthUser
@@ -12,6 +13,9 @@ from app.services.downline import (
     is_user_in_downline_of,
     lead_execution_visible_to_leader_clause,
 )
+from app.services.lead_owner import lead_owner_clause, resolved_owner_user_id
+
+_POST_PAYMENT_FALLBACK_STATUSES = ("paid", "mindset_lock")
 
 
 def lead_visibility_where(user: AuthUser) -> Optional[Any]:
@@ -23,7 +27,7 @@ def lead_visibility_where(user: AuthUser) -> Optional[Any]:
     """
     if user.role == "admin":
         return None
-    return Lead.created_by_user_id == user.user_id
+    return lead_owner_clause(user.user_id)
 
 
 def lead_execution_visibility_where(user: AuthUser) -> Optional[Any]:
@@ -32,13 +36,20 @@ def lead_execution_visibility_where(user: AuthUser) -> Optional[Any]:
         return None
     if user.role == "leader":
         return lead_execution_visible_to_leader_clause(user.user_id)
-    return Lead.assigned_to_user_id == user.user_id
+    return or_(
+        Lead.assigned_to_user_id == user.user_id,
+        and_(
+            Lead.assigned_to_user_id.is_(None),
+            lead_owner_clause(user.user_id),
+            Lead.status.in_(_POST_PAYMENT_FALLBACK_STATUSES),
+        ),
+    )
 
 
 async def _leader_may_manage_lead(session: AsyncSession, user: AuthUser, lead: Lead) -> bool:
     member_ids = {
         int(member_id)
-        for member_id in (lead.created_by_user_id, lead.assigned_to_user_id)
+        for member_id in (resolved_owner_user_id(lead), lead.assigned_to_user_id)
         if member_id is not None
     }
     for member_id in member_ids:
@@ -55,7 +66,7 @@ async def user_can_access_lead(session: AsyncSession, user: AuthUser, lead: Lead
         return True
     if lead.in_pool:
         return False
-    if lead.created_by_user_id == user.user_id:
+    if resolved_owner_user_id(lead) == user.user_id:
         return True
     if lead.assigned_to_user_id == user.user_id:
         return True
@@ -72,7 +83,7 @@ async def user_can_mutate_lead(session: AsyncSession, user: AuthUser, lead: Lead
         return False
     if lead.assigned_to_user_id == user.user_id:
         return True
-    if lead.created_by_user_id == user.user_id:
+    if resolved_owner_user_id(lead) == user.user_id:
         return True
     if user.role == "leader":
         return await _leader_may_manage_lead(session, user, lead)
