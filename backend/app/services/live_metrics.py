@@ -16,8 +16,9 @@ from app.models.user import User
 from app.services.downline import (
     lead_execution_visible_to_leader_clause,
     lead_visible_to_leader_clause,
-    recursive_downline_user_ids,
 )
+from app.services.lead_owner import lead_owner_or_assignee_clause
+from app.services.user_hierarchy import recursive_downline_user_ids
 from app.core.time_ist import IST
 
 DEFAULT_DAILY_CALL_TARGET = 15
@@ -205,12 +206,7 @@ async def pending_payment_proof_count(
     elif role_key == "team":
         if user_id is None:
             return 0
-        base.append(
-            or_(
-                Lead.created_by_user_id == user_id,
-                Lead.assigned_to_user_id == user_id,
-            )
-        )
+        base.append(lead_owner_or_assignee_clause(user_id))
     stmt = select(func.count()).select_from(Lead).where(*base)
     return int((await session.execute(stmt)).scalar_one() or 0)
 

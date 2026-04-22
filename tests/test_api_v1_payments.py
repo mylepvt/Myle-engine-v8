@@ -45,6 +45,22 @@ async def _seed_payment_lead() -> None:
         await session.commit()
 
 
+async def _seed_unassigned_payment_lead() -> None:
+    fac = test_conftest.get_test_session_factory()
+    async with fac() as session:
+        session.add(
+            Lead(
+                name="Unassigned Payment Lead",
+                status="video_watched",
+                created_by_user_id=3,
+                assigned_to_user_id=None,
+                phone="7777777777",
+                source="facebook",
+            )
+        )
+        await session.commit()
+
+
 async def _clear_payment_state() -> None:
     fac = test_conftest.get_test_session_factory()
     async with fac() as session:
@@ -133,6 +149,52 @@ def test_public_payment_proof_upload_reaches_admin_queue(
         assert lead_body["status"] == "paid"
         assert lead_body["payment_status"] == "approved"
         assert lead_body["last_action_at"] is not None
+    finally:
+        asyncio.run(_clear_payment_state())
+
+
+def test_payment_approval_restores_missing_assignee_for_workboard_route(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    patched_settings = patch_jwt_settings(
+        monkeypatch,
+        auth_dev_login_enabled=True,
+        upload_dir=str(tmp_path),
+    )
+    monkeypatch.setattr(payment_proof_storage, "settings", patched_settings)
+    asyncio.run(_clear_payment_state())
+    asyncio.run(_seed_unassigned_payment_lead())
+
+    try:
+        team = TestClient(app)
+        assert team.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+
+        upload = team.post(
+            "/api/v1/payments/proof/upload",
+            files={"proof_file": ("proof.png", _PNG_BYTES, "image/png")},
+            data={
+                "lead_id": "1",
+                "payment_amount_cents": "19600",
+                "notes": "proof",
+            },
+        )
+        assert upload.status_code == 200
+        assert upload.json()["payment_status"] == "proof_uploaded"
+
+        admin = TestClient(app)
+        assert admin.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+
+        approve = admin.post("/api/v1/team/enrollment-requests/1/decision", json={"action": "approve"})
+        assert approve.status_code == 200
+        assert approve.json()["payment_status"] == "approved"
+
+        lead = team.get("/api/v1/leads/1")
+        assert lead.status_code == 200
+        lead_body = lead.json()
+        assert lead_body["status"] == "paid"
+        assert lead_body["payment_status"] == "approved"
+        assert lead_body["assigned_to_user_id"] == 3
     finally:
         asyncio.run(_clear_payment_state())
 

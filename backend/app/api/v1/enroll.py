@@ -29,6 +29,7 @@ from app.schemas.enroll import (
     WatchPageData,
 )
 from app.services.crm_outbox import enqueue_lead_shadow_upsert
+from app.services.lead_owner import resolved_owner_user_id
 from app.services.lead_scope import lead_visibility_where
 
 router = APIRouter()
@@ -65,7 +66,7 @@ async def _get_lead_or_404(session: AsyncSession, lead_id: int) -> Lead:
 def _assert_lead_access(user: AuthUser, lead: Lead) -> None:
     vis = lead_visibility_where(user)
     if vis is not None:
-        if lead.created_by_user_id != user.user_id and lead.assigned_to_user_id != user.user_id:
+        if resolved_owner_user_id(lead) != user.user_id and lead.assigned_to_user_id != user.user_id:
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
 

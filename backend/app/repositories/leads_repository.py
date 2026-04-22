@@ -141,6 +141,7 @@ class SqlAlchemyLeadsRepository:
             name=body.name.strip(),
             status=body.status,
             created_by_user_id=user_id,
+            owner_user_id=user_id,
             assigned_to_user_id=user_id,
             phone=body.phone,
             email=body.email,
@@ -184,6 +185,7 @@ class SqlAlchemyLeadsRepository:
 
     async def mark_lead_claimed(self, lead: Lead, user_id: int) -> None:
         lead.created_by_user_id = user_id
+        lead.owner_user_id = user_id
         lead.assigned_to_user_id = user_id
         lead.in_pool = False
 

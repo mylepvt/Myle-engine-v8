@@ -33,6 +33,8 @@ class LeadPublic(BaseModel):
     name: str
     status: str
     created_by_user_id: int
+    owner_user_id: Optional[int] = None
+    owner_name: Optional[str] = None
     created_at: datetime
     archived_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
@@ -52,6 +54,8 @@ class LeadPublic(BaseModel):
     # Assignment
     assigned_to_user_id: Optional[int] = None
     assigned_to_name: Optional[str] = None
+    leader_user_id: Optional[int] = None
+    leader_name: Optional[str] = None
 
     # Call tracking
     call_status: Optional[str] = None

@@ -20,7 +20,6 @@ from app.schemas.leads import (
     LeadPoolDefaultsResponse,
     LeadPoolDefaultsUpdateRequest,
     LeadPoolImportResponse,
-    LeadPublic,
 )
 from app.services.crm_outbox import enqueue_lead_shadow_upsert
 from app.services.lead_pool_defaults import (
@@ -28,6 +27,7 @@ from app.services.lead_pool_defaults import (
     get_default_pool_price_cents,
 )
 from app.services.lead_pool_import import parse_pool_xlsx_rows
+from app.services.lead_payloads import build_lead_public_payloads
 from app.services.leads_service import LeadsService, get_leads_service
 from app.services.push_service import send_push_to_roles_bg
 from app.services.settings_service import SettingsService
@@ -94,7 +94,7 @@ async def list_lead_pool(
         select(Lead).where(cond).order_by(Lead.created_at.desc()).limit(limit).offset(offset)
     )
     rows = (await session.execute(list_q)).scalars().all()
-    items = [LeadPublic.model_validate(r) for r in rows]
+    items = await build_lead_public_payloads(session, rows)
     return LeadListResponse(items=items, total=total, limit=limit, offset=offset)
 
 
@@ -127,7 +127,7 @@ async def claim_lead_pool_batch(
         user=user,
     )
     return LeadPoolClaimBatchResponse(
-        leads=[LeadPublic.model_validate(lead) for lead in leads],
+        leads=await service.serialize_lead_public_list(leads),
         total_price_cents=total_price_cents,
     )
 

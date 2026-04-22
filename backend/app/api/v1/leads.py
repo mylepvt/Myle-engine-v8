@@ -44,6 +44,7 @@ from app.services.batch_watch_uploads import (
 from app.services.lead_file_import import run_personal_lead_import
 from app.services.leads_service import LeadsService, get_leads_service, _PAYMENT_REQUIRED_STATUSES
 from app.services.downline import is_user_in_downline_of
+from app.services.lead_owner import resolved_owner_user_id
 from app.services.leads_service import _sync_batch_completion_timestamps
 from app.db.session import AsyncSessionLocal
 from app.services.crm_outbox import enqueue_lead_shadow_upsert
@@ -192,9 +193,10 @@ async def _actor_may_share_batch_link(
         return True
     if lead.assigned_to_user_id is not None:
         return await is_user_in_downline_of(session, lead.assigned_to_user_id, user.user_id)
-    if lead.created_by_user_id == user.user_id:
+    owner_user_id = resolved_owner_user_id(lead)
+    if owner_user_id == user.user_id:
         return True
-    return await is_user_in_downline_of(session, lead.created_by_user_id, user.user_id)
+    return await is_user_in_downline_of(session, owner_user_id, user.user_id)
 
 
 @router.get("/all", response_model=AllLeadsResponse)
@@ -275,7 +277,7 @@ async def create_lead(
     service: Annotated[LeadsService, Depends(get_leads_service)],
 ):
     lead = await service.create_lead(body=body, user=user)
-    return lead
+    return await service.serialize_lead_public(lead)
 
 
 @router.post("/import-file", response_model=LeadFileImportResponse)
@@ -320,7 +322,7 @@ async def claim_lead(
     service: Annotated[LeadsService, Depends(get_leads_service)],
 ):
     lead = await service.claim_lead(lead_id=lead_id, user=user)
-    return lead
+    return await service.serialize_lead_public(lead)
 
 
 @router.get("/{lead_id}/mindset-lock-preview", response_model=MindsetLockPreviewResponse)
@@ -348,7 +350,8 @@ async def stage_clock_reset(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     service: Annotated[LeadsService, Depends(get_leads_service)],
 ):
-    return await service.reset_stage_clock(lead_id=lead_id, user=user)
+    lead = await service.reset_stage_clock(lead_id=lead_id, user=user)
+    return await service.serialize_lead_public(lead)
 
 
 @router.post("/{lead_id}/batch-share-url", response_model=BatchShareUrlResponse)
@@ -423,7 +426,7 @@ async def update_lead(
             body=f"Lead '{lead.name}' has been assigned to you",
             url="/dashboard/work/leads",
         )
-    return lead
+    return await service.serialize_lead_public(lead)
 
 
 @router.delete("/{lead_id}", status_code=http_status.HTTP_204_NO_CONTENT)
@@ -458,7 +461,7 @@ async def ctcs_lead_action(
         user=user,
         background_tasks=background_tasks,
     )
-    return LeadPublic.model_validate(lead)
+    return await service.serialize_lead_public(lead)
 
 
 @router.post(

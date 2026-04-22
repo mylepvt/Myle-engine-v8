@@ -17,6 +17,7 @@ from app.schemas.follow_ups import (
 )
 from app.services.crm_outbox import enqueue_lead_shadow_upsert
 from app.services.lead_access import require_visible_lead
+from app.services.lead_owner import lead_owner_clause
 
 router = APIRouter()
 
@@ -45,7 +46,7 @@ def _to_public(fu: FollowUp, lead_name: str) -> FollowUpPublic:
 def _list_filters(user: AuthUser, open_only: bool):
     parts = []
     if user.role != "admin":
-        parts.append(Lead.created_by_user_id == user.user_id)
+        parts.append(lead_owner_clause(user.user_id))
     if open_only:
         parts.append(FollowUp.completed_at.is_(None))
     return parts
@@ -110,7 +111,7 @@ async def _get_follow_up_for_user(
     _ensure_follow_up_access(user)
     q = select(FollowUp, Lead).join(Lead, FollowUp.lead_id == Lead.id).where(FollowUp.id == follow_up_id)
     if user.role != "admin":
-        q = q.where(Lead.created_by_user_id == user.user_id)
+        q = q.where(lead_owner_clause(user.user_id))
     row = (await session.execute(q)).one_or_none()
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Follow-up not found")

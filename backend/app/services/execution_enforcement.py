@@ -29,6 +29,7 @@ from app.services.live_metrics import (
     fresh_lead_counts_by_user,
     get_daily_call_target,
 )
+from app.services.user_hierarchy import nearest_leader_username_for_user_id
 from app.schemas.execution_enforcement import (
     AtRiskLeadRow,
     LeakMapOut,
@@ -157,11 +158,11 @@ def _start_of_day_ist(day_iso: str) -> datetime:
 
 
 async def nearest_leader_username_for_assignee(
-    _session: AsyncSession,
-    _assignee_username: str,
+    session: AsyncSession,
+    assignee_user_id: int | None,
 ) -> str | None:
-    """Placeholder until org upline exists on ``User``."""
-    return None
+    """Resolve the assignee's nearest leader from the org tree."""
+    return await nearest_leader_username_for_user_id(session, assignee_user_id)
 
 
 async def team_personal_funnel(session: AsyncSession, user_id: int) -> TeamPersonalFunnelOut:
@@ -413,7 +414,9 @@ async def admin_at_risk_leads(
             act.label("activity_at"),
             Lead.payment_status,
             Lead.payment_proof_url,
+            User.id,
             User.username,
+            User.fbo_id,
         )
         .select_from(Lead)
         .outerjoin(User, User.id == Lead.assigned_to_user_id)
@@ -428,7 +431,7 @@ async def admin_at_risk_leads(
     now = datetime.now(timezone.utc)
     out: list[AtRiskLeadRow] = []
     for row in rows:
-        lid, name, phone, status, activity_at, pay_st, proof_url, uname = row
+        lid, name, phone, status, activity_at, pay_st, proof_url, assignee_user_id, uname, assignee_fbo = row
         days_stuck = 0.0
         if activity_at:
             uat = activity_at
@@ -447,8 +450,8 @@ async def admin_at_risk_leads(
             proof_state = "none"
         else:
             proof_state = "uploaded"
-        ax = (uname or "").strip()
-        leader = await nearest_leader_username_for_assignee(session, ax)
+        ax = (uname or assignee_fbo or "").strip()
+        leader = await nearest_leader_username_for_assignee(session, assignee_user_id)
         out.append(
             AtRiskLeadRow(
                 id=int(lid),
@@ -456,7 +459,7 @@ async def admin_at_risk_leads(
                 phone=phone,
                 status=status,
                 updated_at=activity_at,
-                assignee=uname,
+                assignee=(uname or assignee_fbo),
                 team_member_display=ax,
                 leader_username=leader,
                 days_stuck=round(days_stuck, 1),

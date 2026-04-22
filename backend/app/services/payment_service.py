@@ -19,6 +19,7 @@ from app.services.downline import (
     lead_execution_visible_to_leader_clause,
     lead_visible_to_leader_clause,
 )
+from app.services.lead_owner import resolved_owner_user_id
 from app.services.payment_proof_storage import save_payment_proof_file
 
 
@@ -27,6 +28,13 @@ class PaymentService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+
+    @staticmethod
+    def _restore_execution_owner(lead: Lead) -> None:
+        # Workboard execution is assignee-scoped; legacy/imported leads can arrive
+        # with a creator but no assignee, which makes approved ₹196 leads "disappear".
+        if lead.assigned_to_user_id is None:
+            lead.assigned_to_user_id = resolved_owner_user_id(lead)
 
     async def _commit_with_shadow_upsert(self, lead: Lead) -> None:
         await self.session.flush()
@@ -49,12 +57,12 @@ class PaymentService:
     ) -> bool:
         if actor_role == "admin":
             return True
-        if lead.created_by_user_id == actor_user_id or lead.assigned_to_user_id == actor_user_id:
+        if resolved_owner_user_id(lead) == actor_user_id or lead.assigned_to_user_id == actor_user_id:
             return True
         if actor_role == "leader":
             if await is_user_in_downline_of(
                 self.session,
-                lead.created_by_user_id,
+                resolved_owner_user_id(lead),
                 actor_user_id,
             ):
                 return True
@@ -92,6 +100,7 @@ class PaymentService:
         if lead.payment_proof_url and lead.payment_status == "proof_uploaded":
             return False, "Payment proof is already pending review"
 
+        self._restore_execution_owner(lead)
         lead.payment_amount_cents = payment_amount_cents
         lead.payment_proof_url = proof_url
         lead.payment_proof_uploaded_at = datetime.now(timezone.utc)
@@ -130,6 +139,7 @@ class PaymentService:
 
         now = datetime.now(timezone.utc)
         prev_status = lead.status
+        self._restore_execution_owner(lead)
         lead.payment_status = "approved"
 
         if lead.status == "video_watched":

@@ -213,6 +213,7 @@ async def run_personal_lead_import(
             name=body.name,
             status=body.status,
             created_by_user_id=user_id,
+            owner_user_id=user_id,
             assigned_to_user_id=user_id,
             phone=body.phone,
             email=body.email,

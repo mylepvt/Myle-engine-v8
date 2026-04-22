@@ -21,6 +21,7 @@ from app.schemas.workboard import (
     WorkboardStaleResponse,
     WorkboardSummaryResponse,
 )
+from app.services.lead_payloads import build_lead_public_payloads
 from app.services.lead_scope import lead_execution_visibility_where
 
 _SUMMARY_CACHE_TTL_SECONDS = 10
@@ -32,8 +33,9 @@ def _stage_anchor_ts():
 
 
 class WorkboardService:
-    def __init__(self, repository: SqlAlchemyLeadsRepository) -> None:
+    def __init__(self, repository: SqlAlchemyLeadsRepository, session: AsyncSession) -> None:
         self._repository = repository
+        self._session = session
 
     def _active_scope(self, user: AuthUser):
         scope = and_(
@@ -55,7 +57,7 @@ class WorkboardService:
                 condition=and_(scope, Lead.status == status),
                 limit=limit_per_column,
             )
-            buckets[status] = [LeadPublic.model_validate(row) for row in rows]
+            buckets[status] = await build_lead_public_payloads(self._session, rows)
         return WorkboardLeadsResponse(
             columns=[
                 WorkboardColumnOut(status=status, total=totals.get(status, 0), items=buckets[status])
@@ -79,7 +81,7 @@ class WorkboardService:
             )
         )
         return WorkboardStaleResponse(
-            items=[LeadPublic.model_validate(row) for row in stale_rows],
+            items=await build_lead_public_payloads(self._session, stale_rows),
             total=stale_total,
             stale_hours=stale_hours,
         )
@@ -182,4 +184,4 @@ class WorkboardService:
 def get_workboard_service(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> WorkboardService:
-    return WorkboardService(repository=SqlAlchemyLeadsRepository(session))
+    return WorkboardService(repository=SqlAlchemyLeadsRepository(session), session=session)

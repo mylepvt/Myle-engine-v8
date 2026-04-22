@@ -256,6 +256,52 @@ def test_slice2_team_workboard_hides_unassigned_self_created_lead(
         asyncio.run(_clear_leads())
 
 
+def test_team_workboard_shows_unassigned_paid_lead_via_creator_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _seed_lead(
+            user_id=3,
+            name="Paid But Unassigned",
+            lead_status="paid",
+            created_by_user_id=3,
+            assigned_to_user_id=None,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+        body = c.get("/api/v1/workboard/leads").json()
+        by_status = {col["status"]: col for col in body["columns"]}
+        assert by_status["paid"]["total"] == 1
+        assert by_status["paid"]["items"][0]["name"] == "Paid But Unassigned"
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_leader_workboard_shows_downline_unassigned_paid_lead_via_creator_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _seed_lead(
+            user_id=3,
+            name="Downline Paid But Unassigned",
+            lead_status="paid",
+            created_by_user_id=3,
+            assigned_to_user_id=None,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        body = c.get("/api/v1/workboard/leads").json()
+        by_status = {col["status"]: col for col in body["columns"]}
+        assert by_status["paid"]["total"] == 1
+        assert by_status["paid"]["items"][0]["name"] == "Downline Paid But Unassigned"
+    finally:
+        asyncio.run(_clear_leads())
+
+
 def test_workboard_excludes_archived_leads(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
