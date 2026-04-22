@@ -49,9 +49,11 @@ def test_retarget_requires_auth() -> None:
     assert TestClient(app).get("/api/v1/retarget").status_code == 401
 
 
-def test_retarget_lists_lost_and_contacted_only(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_retarget_lists_reengagement_statuses(monkeypatch: pytest.MonkeyPatch) -> None:
     asyncio.run(_seed_lead(user_id=2, name="Cold", lead_status="lost"))
     asyncio.run(_seed_lead(user_id=2, name="Warm", lead_status="contacted"))
+    asyncio.run(_seed_lead(user_id=2, name="Inactive", lead_status="inactive"))
+    asyncio.run(_seed_lead(user_id=2, name="Retargeted", lead_status="retarget"))
     asyncio.run(_seed_lead(user_id=2, name="Newbie", lead_status="new"))
     try:
         c = _client(monkeypatch)
@@ -59,9 +61,9 @@ def test_retarget_lists_lost_and_contacted_only(monkeypatch: pytest.MonkeyPatch)
         r = c.get("/api/v1/retarget")
         assert r.status_code == 200
         data = r.json()
-        assert data["total"] == 2
+        assert data["total"] == 4
         names = {x["name"] for x in data["items"]}
-        assert names == {"Cold", "Warm"}
+        assert names == {"Cold", "Warm", "Inactive", "Retargeted"}
     finally:
         asyncio.run(_clear())
 

@@ -27,7 +27,7 @@ export function RetargetWorkPage({ title }: Props) {
         {title}
       </h1>
       <p className="text-sm text-muted-foreground">
-        Shows active leads in <strong>Lost</strong> or <strong>Contacted</strong> — good candidates to re-engage.
+        Shows active leads in <strong>Lost</strong>, <strong>Inactive</strong>, <strong>Retarget</strong>, or <strong>Contacted</strong> states.
         Change status from{' '}
         <Link to="/dashboard/work/leads" className="text-primary underline-offset-2 hover:underline">
           Calling Board

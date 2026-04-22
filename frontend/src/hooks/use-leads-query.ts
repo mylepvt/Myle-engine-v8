@@ -192,6 +192,7 @@ export type CtcsListOptions = {
   ctcsFilter?: CtcsTab | null
   ctcsPrioritySort?: boolean
   preEnrollmentOnly?: boolean
+  searchAllSections?: boolean
 }
 
 const DEFAULT_PAGE_SIZE = 50
@@ -219,6 +220,9 @@ function buildLeadsQueryString(
   }
   if (ctcs?.preEnrollmentOnly) {
     p.set('pre_enrollment_only', 'true')
+  }
+  if (ctcs?.searchAllSections) {
+    p.set('search_all_sections', 'true')
   }
   const qs = p.toString()
   return qs ? `?${qs}` : ''
@@ -456,6 +460,8 @@ export function useLeadsInfiniteQuery(
       pageSize,
       ctcs?.ctcsFilter,
       ctcs?.ctcsPrioritySort,
+      ctcs?.preEnrollmentOnly,
+      ctcs?.searchAllSections,
     ],
     initialPageParam: 0,
     queryFn: ({ pageParam }) =>

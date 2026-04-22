@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useRef, useState } from 'react'
 import { CheckCircle2, ChevronRight, MessageCircle, MoreHorizontal, Phone, Upload } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -5,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { apiFetch } from '@/lib/api'
 import { callStatusSelectOptions, type CallStatusApi } from '@/lib/call-status-options'
+import { currentSectionForLead, nextSectionForLead } from '@/lib/lead-section'
 import { formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
 import { leadStatusSelectOptionsForLead, teamMayChangeLeadStatus } from '@/lib/team-lead-status'
 import { formatCountdown, timerRemainingMs } from '@/lib/ctcs-timer'
@@ -130,6 +132,12 @@ export function CtcsLeadCard({
   const statusOptions = leadStatusSelectOptionsForLead(currentRole, lead.status as LeadStatus, LEAD_STATUS_OPTIONS)
   const callOpts = callStatusSelectOptions(currentRole, lead.status as LeadStatus)
   const callVal = normalizeCallStatus(lead.call_status)
+  const currentSection = currentSectionForLead(lead, currentRole)
+  const nextSection = nextSectionForLead(lead, currentRole)
+  const timerEndingSoon = overdue || remainingSec <= 2 * 60 * 60
+  const showCurrentSectionHint =
+    lead.archived_at != null || currentSection.path !== '/dashboard/work/leads'
+  const showNextSectionHint = timerEndingSoon && nextSection != null
 
   return (
     <div
@@ -402,6 +410,33 @@ export function CtcsLeadCard({
             ) : null}
           </div>
         </div>
+
+        {showCurrentSectionHint || showNextSectionHint ? (
+          <div className="mt-1.5 rounded-lg border border-border/50 bg-muted/20 px-2.5 py-2 text-ds-caption">
+            {showCurrentSectionHint ? (
+              <p className="text-muted-foreground">
+                Find now:{' '}
+                <Link
+                  to={currentSection.path}
+                  className="font-semibold text-foreground underline-offset-2 hover:underline"
+                >
+                  {currentSection.label}
+                </Link>
+              </p>
+            ) : null}
+            {showNextSectionHint ? (
+              <p className="text-muted-foreground">
+                Timer ending:{' '}
+                <Link
+                  to={nextSection.path}
+                  className="font-semibold text-foreground underline-offset-2 hover:underline"
+                >
+                  {nextSection.label}
+                </Link>
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </div>
   )

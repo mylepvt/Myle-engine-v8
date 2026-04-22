@@ -49,13 +49,13 @@ class WorkboardService:
     async def get_leads(self, *, user: AuthUser, limit_per_column: int, max_rows: int) -> WorkboardLeadsResponse:
         scope = self._active_scope(user)
         totals = await self._repository.get_workboard_counts(condition=scope)
-        rows = await self._repository.get_workboard_leads(condition=scope, limit=max_rows)
         buckets: dict[str, list[LeadPublic]] = {s: [] for s in WORKBOARD_COLUMNS}
-        for lead in rows:
-            status = lead.status
-            if status not in buckets or len(buckets[status]) >= limit_per_column:
-                continue
-            buckets[status].append(LeadPublic.model_validate(lead))
+        for status in WORKBOARD_COLUMNS:
+            rows = await self._repository.get_workboard_leads(
+                condition=and_(scope, Lead.status == status),
+                limit=limit_per_column,
+            )
+            buckets[status] = [LeadPublic.model_validate(row) for row in rows]
         return WorkboardLeadsResponse(
             columns=[
                 WorkboardColumnOut(status=status, total=totals.get(status, 0), items=buckets[status])

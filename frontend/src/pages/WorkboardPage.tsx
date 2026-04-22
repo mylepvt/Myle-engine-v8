@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { CheckCircle2, CheckSquare, Eye, Pencil, Search, Send, Upload, Video } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
@@ -71,6 +71,12 @@ const ADMIN_STAGE_TABS: {
   { id: 'seat_hold', label: 'Seat Hold', statuses: ['seat_hold'], stageKey: 'seat_hold', nextStatus: 'converted', nextLabel: 'Mark converted →' },
   { id: 'closing', label: 'Closing', statuses: CLOSE },
 ]
+type ATab = WorkboardStageKey | 'closing'
+
+function parseAdminTab(value: string | null): ATab {
+  const match = ADMIN_STAGE_TABS.find((tab) => tab.id === value)
+  return (match?.id ?? 'day1') as ATab
+}
 
 function mmss(totalSeconds: number): string {
   const sec = Math.max(0, totalSeconds)
@@ -799,7 +805,7 @@ function MindsetQueueView({
   }, [mindsetLeads, mindsetPreviewByLeadId, ensureMindsetPreview])
 
   return (
-    <div className="space-y-3">
+    <div id="mindset-lock" className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-muted-foreground">Mindset Lock</h2>
         <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-ds-caption font-semibold tabular-nums text-muted-foreground">
@@ -835,6 +841,8 @@ function LeaderView({
   search,
   nowMs,
   currentUserId,
+  adminTab,
+  onAdminTabChange,
 }: {
   cols: Col[]
   pm: PM
@@ -846,6 +854,8 @@ function LeaderView({
   search: string
   nowMs: number
   currentUserId: number | null
+  adminTab: ATab
+  onAdminTabChange: (tab: ATab) => void
 }) {
   return (
     <div className="space-y-6">
@@ -862,21 +872,30 @@ function LeaderView({
         queueRole="leader"
         currentUserId={currentUserId}
       />
-      <AdminView cols={cols} pm={pm} patchBusyLeadId={patchBusyLeadId} search={search} nowMs={nowMs} />
+      <AdminView
+        cols={cols}
+        pm={pm}
+        patchBusyLeadId={patchBusyLeadId}
+        search={search}
+        nowMs={nowMs}
+        tab={adminTab}
+        onTabChange={onAdminTabChange}
+      />
     </div>
   )
 }
 
 // ── AdminView ──────────────────────────────────────────────────────────────────
-type ATab = WorkboardStageKey | 'closing'
-function AdminView({ cols, pm, patchBusyLeadId, search, nowMs }: {
+function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance = true, tab, onTabChange }: {
   cols: Col[]
   pm: PM
   patchBusyLeadId: number | null
   search: string
   nowMs: number
+  allowStageAdvance?: boolean
+  tab: ATab
+  onTabChange: (tab: ATab) => void
 }) {
-  const [tab, setTab] = useState<ATab>('day1')
   const byS = Object.fromEntries(cols.map((c) => [c.status, c]))
   const needle = search.trim().toLowerCase()
   const f = (statuses: string[]) =>
@@ -895,8 +914,8 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs }: {
   const day2 = tabData.find((config) => config.id === 'day2')?.items ?? []
 
   return (
-    <div className="space-y-4">
-      <Tabs tabs={tabs} active={tab} onChange={(id) => setTab(id as ATab)}/>
+    <div id="pipeline" className="space-y-4">
+      <Tabs tabs={tabs} active={tab} onChange={(id) => onTabChange(id as ATab)}/>
       {active?.id === 'day2' ? (
         <div className="space-y-3">
           {/* Day 2 summary chips */}
@@ -907,7 +926,15 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs }: {
             ].map(([label, count, cls]) =>
               <span key={label as string} className={cn('rounded-full border px-2.5 py-0.5 text-ds-caption font-medium', cls as string)}>{label}: {count}</span>)}
           </div>
-          <Grid leads={day2} stageKey="day2" nextStatus="day3" nextLabel="Move to Day 3 →" pm={pm} patchBusyLeadId={patchBusyLeadId} nowMs={nowMs} />
+          <Grid
+            leads={day2}
+            stageKey="day2"
+            nextStatus={allowStageAdvance ? 'day3' : undefined}
+            nextLabel={allowStageAdvance ? 'Move to Day 3 →' : undefined}
+            pm={pm}
+            patchBusyLeadId={patchBusyLeadId}
+            nowMs={nowMs}
+          />
         </div>
       ) : active?.id === 'closing' ? (
         <div className="space-y-6">
@@ -929,8 +956,8 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs }: {
         <Grid
           leads={active.items}
           stageKey={active.stageKey}
-          nextStatus={active.nextStatus}
-          nextLabel={active.nextLabel}
+          nextStatus={allowStageAdvance ? active.nextStatus : undefined}
+          nextLabel={allowStageAdvance ? active.nextLabel : undefined}
           pm={pm}
           patchBusyLeadId={patchBusyLeadId}
           nowMs={nowMs}
@@ -942,6 +969,7 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs }: {
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 export function WorkboardPage({ title }: Props) {
+  const [searchParams, setSearchParams] = useSearchParams()
   const { role, serverRole } = useDashboardShellRole()
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
   const { data: me } = useAuthMeQuery()
@@ -960,6 +988,7 @@ export function WorkboardPage({ title }: Props) {
   const [qInput, setQInput] = useState('')
   const [search, setSearch] = useState('')
   const [nowMs, setNowMs] = useState(() => Date.now())
+  const adminTab = parseAdminTab(searchParams.get('tab'))
   const currentUserId = me?.authenticated ? (me.user_id ?? null) : null
   useEffect(() => {
     const id = window.setInterval(() => setNowMs(Date.now()), LEAD_SLA_SMOOTH_REFRESH_MS)
@@ -1002,6 +1031,16 @@ export function WorkboardPage({ title }: Props) {
       }
     })()
   }, [])
+
+  const setAdminTab = useCallback((tab: ATab) => {
+    const next = new URLSearchParams(searchParams)
+    if (tab === 'day1') {
+      next.delete('tab')
+    } else {
+      next.set('tab', tab)
+    }
+    setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams])
 
   async function completeMindsetLock(leadId: number) {
     setMindsetErr(null)
@@ -1089,19 +1128,31 @@ export function WorkboardPage({ title }: Props) {
       {data && !isPending && (
         surfaceRole === 'team'
           ? (
-            <MindsetQueueView
-              cols={cols}
-              pm={pm}
-              patchBusyLeadId={patchBusyLeadId}
-              mindsetBusyLeadId={mindsetBusyLeadId}
-              mindsetPreviewByLeadId={mindsetPreviewByLeadId}
-              ensureMindsetPreview={ensureMindsetPreview}
-              onRequestMindsetSend={(lead) => setConfirmLead(lead)}
-              search={search}
-              nowMs={nowMs}
-              queueRole="team"
-              currentUserId={currentUserId}
-            />
+            <div className="space-y-6">
+              <MindsetQueueView
+                cols={cols}
+                pm={pm}
+                patchBusyLeadId={patchBusyLeadId}
+                mindsetBusyLeadId={mindsetBusyLeadId}
+                mindsetPreviewByLeadId={mindsetPreviewByLeadId}
+                ensureMindsetPreview={ensureMindsetPreview}
+                onRequestMindsetSend={(lead) => setConfirmLead(lead)}
+                search={search}
+                nowMs={nowMs}
+                queueRole="team"
+                currentUserId={currentUserId}
+              />
+              <AdminView
+                cols={cols}
+                pm={pm}
+                patchBusyLeadId={patchBusyLeadId}
+                search={search}
+                nowMs={nowMs}
+                allowStageAdvance={false}
+                tab={adminTab}
+                onTabChange={setAdminTab}
+              />
+            </div>
           )
           : surfaceRole === 'leader'
             ? (
@@ -1116,9 +1167,20 @@ export function WorkboardPage({ title }: Props) {
                 search={search}
                 nowMs={nowMs}
                 currentUserId={currentUserId}
+                adminTab={adminTab}
+                onAdminTabChange={setAdminTab}
               />
             )
-            : <AdminView cols={cols} pm={pm} patchBusyLeadId={patchBusyLeadId} search={search} nowMs={nowMs} />
+            : <AdminView
+                cols={cols}
+                pm={pm}
+                patchBusyLeadId={patchBusyLeadId}
+                search={search}
+                nowMs={nowMs}
+                allowStageAdvance
+                tab={adminTab}
+                onTabChange={setAdminTab}
+              />
       )}
       {confirmLead ? (
         <div className="keyboard-safe-modal fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4">

@@ -63,6 +63,10 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const qParam = searchParams.get('q') ?? ''
   const [qInput, setQInput] = useState(qParam)
   const [filters, setFilters] = useState<LeadListFilters>({ ...emptyFilters, q: qParam })
+  const crossSectionSearch =
+    !archivedOnly &&
+    filters.q.trim().length > 0 &&
+    (surfaceRole === 'admin' || surfaceRole === 'leader')
   const [newStatus, setNewStatus] = useState<LeadStatus>('new_lead')
   const [name, setName] = useState('')
   const [newPhone, setNewPhone] = useState('')
@@ -103,6 +107,8 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
     !archivedOnly && advancedTableOpen,
     filters,
     'active',
+    50,
+    crossSectionSearch ? { searchAllSections: true } : undefined,
   )
   const data = leadsQ.data
   const items = data?.pages.flatMap((p) => p.items) ?? []
@@ -383,6 +389,12 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                 </optgroup>
               ))}
             </select>
+          </div>
+        ) : null}
+
+        {crossSectionSearch ? (
+          <div className="border-b border-border px-4 py-2 text-ds-caption text-muted-foreground">
+            Search results include workboard, retarget, and archived leads for this role.
           </div>
         ) : null}
 
