@@ -64,6 +64,8 @@ export type TeamEnrollmentRequest = {
   status: 'pending' | 'proof_uploaded' | 'approved' | 'rejected'
 }
 
+const TEAM_MEMBERS_PAGE_SIZE = 100
+
 async function parseError(res: Response): Promise<never> {
   const err = await res.json().catch(() => ({}))
   const msg =
@@ -73,10 +75,32 @@ async function parseError(res: Response): Promise<never> {
   throw new Error(msg || `HTTP ${res.status}`)
 }
 
-async function fetchTeamMembers(): Promise<TeamMemberListResponse> {
-  const res = await apiFetch('/api/v1/team/members')
-  if (!res.ok) await parseError(res)
-  return res.json()
+export async function fetchTeamMembers(): Promise<TeamMemberListResponse> {
+  const items: TeamMemberPublic[] = []
+  let total = 0
+  let offset = 0
+
+  while (true) {
+    const res = await apiFetch(`/api/v1/team/members?limit=${TEAM_MEMBERS_PAGE_SIZE}&offset=${offset}`)
+    if (!res.ok) await parseError(res)
+
+    const page = (await res.json()) as TeamMemberListResponse
+    total = page.total
+    items.push(...page.items)
+
+    if (page.items.length === 0 || items.length >= total) {
+      break
+    }
+
+    offset += page.items.length
+  }
+
+  return {
+    items,
+    total: Math.max(total, items.length),
+    limit: items.length,
+    offset: 0,
+  }
 }
 
 async function fetchMyTeam(): Promise<TeamMyTeamResponse> {
