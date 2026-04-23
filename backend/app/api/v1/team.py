@@ -14,9 +14,11 @@ from sqlalchemy.orm import aliased
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
+from app.core.auth_cookies import display_name_from_user
 from app.core.realtime_hub import notify_topics
 from app.core.fbo_id import normalize_fbo_id
 from app.core.passwords import hash_password
+from app.models.daily_report import DailyReport
 from app.models.lead import Lead
 from app.models.user import User
 from app.schemas.system_surface import SystemStubResponse
@@ -31,6 +33,8 @@ from app.schemas.team import (
     TeamMemberListResponse,
     TeamMemberPublic,
     TeamMyTeamResponse,
+    TeamReportItem,
+    TeamReportMissingMember,
     TeamReportsLiveSummary,
     TeamReportsResponse,
 )
@@ -70,6 +74,56 @@ async def _attach_team_member_hierarchy(
         item.leader_user_id = leader.id if leader is not None else None
         item.leader_name = leader.display_name if leader is not None else None
     return items
+
+
+def _display_name_or_fbo(member: User) -> str:
+    return display_name_from_user(member) or member.fbo_id
+
+
+def _upline_label(upline: User | None) -> str | None:
+    if upline is None:
+        return None
+    return _display_name_or_fbo(upline)
+
+
+async def _team_reports_scope_members(
+    session: AsyncSession,
+    user: AuthUser,
+) -> list[TeamReportMissingMember]:
+    Upline = aliased(User, name="upline")
+
+    where_parts = [User.registration_status == "approved"]
+    if user.role == "admin":
+        where_parts.append(User.role.in_(("leader", "team")))
+    else:
+        downline_ids = await recursive_downline_user_ids(session, user.user_id)
+        if not downline_ids:
+            return []
+        where_parts.append(User.id.in_(downline_ids))
+
+    rows = (
+        await session.execute(
+            select(User, Upline)
+            .outerjoin(Upline, User.upline_user_id == Upline.id)
+            .where(*where_parts)
+            .order_by(User.created_at.asc(), User.id.asc())
+        )
+    ).all()
+
+    return [
+        TeamReportMissingMember(
+            user_id=member.id,
+            member_name=_display_name_or_fbo(member),
+            member_username=(member.username or "").strip() or None,
+            member_email=member.email,
+            member_phone=member.phone,
+            member_fbo_id=member.fbo_id,
+            member_role=member.role,
+            upline_name=_upline_label(upline),
+            upline_fbo_id=upline.fbo_id if upline is not None else None,
+        )
+        for member, upline in rows
+    ]
 
 
 @router.get("/members", response_model=TeamMemberListResponse)
@@ -333,17 +387,87 @@ async def team_reports(
         description="Calendar day YYYY-MM-DD (Asia/Kolkata); default today",
     ),
 ) -> TeamReportsResponse:
-    """Admin — live pipeline metrics (legacy team reports top row)."""
-    _require_admin(user)
+    """Leader/admin team reports with org-tree scoping and member-wise daily rows."""
+    _require_admin_or_leader(user)
     d = _parse_report_date_param(date)
-    live = await compute_live_summary(session, d)
+
+    scope_members = await _team_reports_scope_members(session, user)
+    scope_user_ids = [member.user_id for member in scope_members]
+    live = await compute_live_summary(session, d, user_ids=scope_user_ids)
+
+    items: list[TeamReportItem] = []
+    submitted_ids: set[int] = set()
+    if scope_user_ids:
+        ReportMember = aliased(User, name="report_member")
+        ReportUpline = aliased(User, name="report_upline")
+        rows = (
+            await session.execute(
+                select(DailyReport, ReportMember, ReportUpline)
+                .join(ReportMember, ReportMember.id == DailyReport.user_id)
+                .outerjoin(ReportUpline, ReportMember.upline_user_id == ReportUpline.id)
+                .where(
+                    DailyReport.user_id.in_(scope_user_ids),
+                    DailyReport.report_date == d,
+                )
+                .order_by(DailyReport.submitted_at.desc(), ReportMember.created_at.asc(), ReportMember.id.asc())
+            )
+        ).all()
+
+        for report, member, upline in rows:
+            submitted_ids.add(int(member.id))
+            items.append(
+                TeamReportItem(
+                    report_id=report.id,
+                    report_date=report.report_date,
+                    submitted_at=report.submitted_at,
+                    user_id=member.id,
+                    member_name=_display_name_or_fbo(member),
+                    member_username=(member.username or "").strip() or None,
+                    member_email=member.email,
+                    member_phone=member.phone,
+                    member_fbo_id=member.fbo_id,
+                    member_role=member.role,
+                    upline_name=_upline_label(upline),
+                    upline_fbo_id=upline.fbo_id if upline is not None else None,
+                    total_calling=int(report.total_calling or 0),
+                    calls_picked=int(report.calls_picked or 0),
+                    wrong_numbers=int(report.wrong_numbers or 0),
+                    enrollments_done=int(report.enrollments_done or 0),
+                    pending_enroll=int(report.pending_enroll or 0),
+                    underage=int(report.underage or 0),
+                    plan_2cc=int(report.plan_2cc or 0),
+                    seat_holdings=int(report.seat_holdings or 0),
+                    leads_educated=int(report.leads_educated or 0),
+                    pdf_covered=int(report.pdf_covered or 0),
+                    videos_sent_actual=int(report.videos_sent_actual or 0),
+                    calls_made_actual=int(report.calls_made_actual or 0),
+                    payments_actual=int(report.payments_actual or 0),
+                    remarks=report.remarks,
+                    system_verified=bool(report.system_verified),
+                )
+            )
+
+    missing_members = [
+        member for member in scope_members if member.user_id not in submitted_ids
+    ]
+
+    scope_note = (
+        "Leader view is scoped to your org-tree downline and excludes your own report."
+        if user.role == "leader"
+        else "Admin view includes all approved leader and team members across the org tree."
+    )
     return TeamReportsResponse(
+        items=items,
+        total=len(items),
+        missing_members=missing_members,
+        scope_total_members=len(scope_members),
         date=d.isoformat(),
         live_summary=TeamReportsLiveSummary(**live),
         note=(
+            f"{scope_note} "
             "Tiles use pool claims (activity_log), call events, payment proof upload timestamps, "
-            "payment proof approvals (activity_log payment_proof_approved), and active pipeline counts. "
-            "Per-user daily report lines also exist (POST /api/v1/reports/daily) and feed leaderboard scoring."
+            "payment proof approvals, and active pipeline counts for the same scoped members. "
+            "Daily report rows are read-only and ordered by latest submission time."
         ),
     )
 
