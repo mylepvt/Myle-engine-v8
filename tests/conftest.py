@@ -93,9 +93,11 @@ async def _override_get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 from app.api.deps import get_db
+from app.db.session import get_session_factory
 from main import app
 
 app.dependency_overrides[get_db] = _override_get_db
+app.dependency_overrides[get_session_factory] = lambda: _session_factory
 
 
 @pytest.fixture(autouse=True)
