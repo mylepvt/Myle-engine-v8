@@ -60,6 +60,7 @@ export type FullUiSurface =
   | { kind: 'lead-pool' }
   | { kind: 'recycle-bin' }
   | { kind: 'team-members' }
+  | { kind: 'team-tracking' }
   | { kind: 'my-team' }
   | { kind: 'team-approvals' }
   | { kind: 'enrollment-approvals' }
@@ -218,6 +219,14 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('team/members'),
     surface: 'full',
     ui: { kind: 'team-members' },
+  },
+  {
+    path: 'team/tracking',
+    section: { id: 'team', label: 'Team' },
+    label: 'Tracking Preview',
+    roles: routeRoles('team/tracking'),
+    surface: 'full',
+    ui: { kind: 'team-tracking' },
   },
   {
     path: 'team/enrollment-approvals',

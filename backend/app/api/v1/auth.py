@@ -47,6 +47,7 @@ from app.services.login_identity import (
     resolve_user_by_fbo_or_username,
     validate_upline_for_team_registration,
 )
+from app.services.team_tracking import record_login_activity
 from app.core.auth_login_guards import ensure_may_issue_session_cookies
 
 router = APIRouter()
@@ -346,6 +347,8 @@ async def dev_login(
         user.email = email
         await session.commit()
         await session.refresh(user)
+    await record_login_activity(session, user_id=user.id)
+    await session.commit()
     issue_session_cookies(response, user)
     return DevLoginResponse()
 
@@ -370,8 +373,8 @@ async def login_with_password(
         )
     if should_upgrade_stored_password_to_bcrypt(user.hashed_password):
         user.hashed_password = hash_password(body.password)
-        await session.commit()
-        await session.refresh(user)
+    await record_login_activity(session, user_id=user.id)
+    await session.commit()
     ensure_may_issue_session_cookies(user)
     issue_session_cookies(response, user, remember_me=body.remember_me)
     return DevLoginResponse()

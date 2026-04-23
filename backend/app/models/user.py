@@ -34,6 +34,11 @@ class User(Base):
         default="approved",
     )
     phone: Mapped[Optional[str]] = mapped_column(String(32), unique=True, nullable=True)
+    last_seen_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+    )
     training_required: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
@@ -80,4 +85,3 @@ class User(Base):
     # Season tracking — which year/month this user's xp_total belongs to (migration 0032)
     xp_season_year: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     xp_season_month: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-
