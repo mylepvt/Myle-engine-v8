@@ -46,4 +46,50 @@ describe('TrainingDayView', () => {
       ),
     ).toBeInTheDocument()
   })
+
+  it('shows the unlock date when a future day is still calendar-locked', () => {
+    render(
+      <TrainingDayView
+        video={{
+          day_number: 2,
+          title: 'Day 2 - Practice',
+          has_video: false,
+          audio_url: null,
+          unlocked: false,
+        }}
+        completed={false}
+        hasNotes={false}
+        unlockDate="24 Apr 2026"
+        onRefresh={vi.fn().mockResolvedValue(undefined)}
+        canBypassTrainingLocks={false}
+      />,
+    )
+
+    expect(
+      screen.getByText('This lesson opens on 24 Apr 2026 once Day 1 is complete.'),
+    ).toBeInTheDocument()
+  })
+
+  it('tells the learner to mark the day done after notes are uploaded', () => {
+    render(
+      <TrainingDayView
+        video={{
+          day_number: 1,
+          title: 'Day 1 - Welcome',
+          has_video: false,
+          audio_url: null,
+          unlocked: true,
+        }}
+        completed={false}
+        hasNotes
+        onRefresh={vi.fn().mockResolvedValue(undefined)}
+        canBypassTrainingLocks={false}
+      />,
+    )
+
+    expect(screen.getByText('Notes received')).toBeInTheDocument()
+    expect(
+      screen.getByText(/Next step: click/i),
+    ).toBeInTheDocument()
+  })
 })

@@ -9,5 +9,9 @@ export function normalizeTrainingSurfacePayload(raw: unknown): TrainingSurfacePa
   const progress = Array.isArray(o.progress) ? o.progress : []
   const notes = Array.isArray(o.notes) ? o.notes : []
   const note = typeof o.note === 'string' ? o.note : null
-  return { videos, progress, notes, note } as TrainingSurfacePayload
+  const unlockDates =
+    o.unlock_dates && typeof o.unlock_dates === 'object'
+      ? (o.unlock_dates as Record<string, string>)
+      : null
+  return { videos, progress, notes, note, unlock_dates: unlockDates } as TrainingSurfacePayload
 }

@@ -20,6 +20,7 @@ export type TrainingSurfacePayload = {
   progress: { day_number: number; completed: boolean; completed_at?: string | null }[]
   notes?: { day_number: number }[]
   note?: string | null
+  unlock_dates?: Record<string, string> | null
 }
 
 const PATHS: Record<SystemSurface, string> = {
