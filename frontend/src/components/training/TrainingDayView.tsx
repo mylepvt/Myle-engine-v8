@@ -17,6 +17,7 @@ type Props = {
   video: TrainingSurfacePayload['videos'][number]
   completed: boolean
   hasNotes: boolean
+  unlockDate?: string | null
   onRefresh: () => Promise<void>
   /** True when real admin (not preview-as) — unlocks all days for QA. */
   canBypassTrainingLocks: boolean
@@ -30,6 +31,7 @@ export function TrainingDayView({
   video,
   completed,
   hasNotes,
+  unlockDate,
   onRefresh,
   canBypassTrainingLocks,
 }: Props) {
@@ -104,11 +106,19 @@ export function TrainingDayView({
           </div>
           <p className="mt-2 text-sm font-semibold text-foreground">{cleanTitle || title}</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            This lesson opens after the previous day is finished.
+            {unlockDate
+              ? `This lesson opens on ${unlockDate} once Day ${day_number - 1} is complete.`
+              : 'This lesson opens after the previous day is finished.'}
           </p>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Finish day {day_number - 1} first - then this day opens.
-          </p>
+          {unlockDate ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Finish day {day_number - 1}, then come back on {unlockDate}.
+            </p>
+          ) : (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Finish day {day_number - 1} first - then this day opens.
+            </p>
+          )}
         </div>
       </div>
     )
@@ -209,9 +219,16 @@ export function TrainingDayView({
               Upload one clear photo of your notes for this day.
             </p>
             {localHasNotes ? (
-              <div className="flex items-center gap-2 rounded-lg border border-emerald-400/20 bg-emerald-400/[0.08] px-3 py-2 text-sm text-emerald-300">
-                <CheckCircle2 className="size-4" />
-                <span>Notes received</span>
+              <div className="rounded-lg border border-emerald-400/20 bg-emerald-400/[0.08] px-3 py-2 text-sm text-emerald-300">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="size-4" />
+                  <span>Notes received</span>
+                </div>
+                {!completed ? (
+                  <p className="mt-2 text-xs text-emerald-200/90">
+                    Next step: click <strong>Mark day as done</strong> below to unlock the next day when it becomes available.
+                  </p>
+                ) : null}
               </div>
             ) : (
               <div className="space-y-2">

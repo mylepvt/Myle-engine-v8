@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime
 from pathlib import Path
 
 import conftest as test_conftest
@@ -108,6 +109,25 @@ async def _seed_training_day(day_number: int = 1) -> None:
                 day_number=day_number,
                 title=f"Day {day_number}",
                 youtube_url=f"https://youtu.be/day-{day_number}",
+            )
+        )
+        await session.commit()
+
+
+async def _seed_training_progress(
+    user_id: int,
+    day_number: int,
+    *,
+    completed_at: datetime | None = None,
+) -> None:
+    fac = test_conftest.get_test_session_factory()
+    async with fac() as session:
+        session.add(
+            TrainingProgress(
+                user_id=user_id,
+                day_number=day_number,
+                completed=True,
+                completed_at=completed_at or datetime.now(UTC),
             )
         )
         await session.commit()
@@ -225,6 +245,28 @@ def test_admin_training_audio_upload_preserves_m4a_extension(monkeypatch: pytest
         asyncio.run(_clear_training_tables())
 
 
+def test_admin_training_audio_reupload_busts_stale_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_clear_training_tables())
+    asyncio.run(_seed_training_day())
+    try:
+        c = _authed(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        first = c.post(
+            "/api/v1/admin/training/day/1/audio",
+            files={"file": ("lesson.m4a", b"fake-audio-1", "audio/mp4")},
+        )
+        assert first.status_code == 200
+        second = c.post(
+            "/api/v1/admin/training/day/1/audio",
+            files={"file": ("lesson.m4a", b"fake-audio-2", "audio/mp4")},
+        )
+        assert second.status_code == 200
+        assert first.json()["audio_url"] != second.json()["audio_url"]
+        assert second.json()["audio_url"].endswith(".m4a")
+    finally:
+        asyncio.run(_clear_training_tables())
+
+
 def test_system_training_normalizes_legacy_audio_paths(monkeypatch: pytest.MonkeyPatch) -> None:
     asyncio.run(_clear_training_tables())
     asyncio.run(_seed_training_day())
@@ -245,6 +287,27 @@ def test_system_training_normalizes_legacy_audio_paths(monkeypatch: pytest.Monke
         res = c.get("/api/v1/system/training")
         assert res.status_code == 200
         assert res.json()["videos"][0]["audio_url"] == "/uploads/training/audio/day1_podcast.m4a"
+    finally:
+        asyncio.run(_clear_training_tables())
+
+
+def test_system_training_respects_calendar_unlock_dates(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_clear_training_tables())
+    asyncio.run(_seed_training_day(1))
+    asyncio.run(_seed_training_day(2))
+    try:
+        c = _authed(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+        me = c.get("/api/v1/auth/me")
+        assert me.status_code == 200
+        user_id = me.json()["user_id"]
+        asyncio.run(_seed_training_progress(user_id, 1, completed_at=datetime.now(UTC)))
+        res = c.get("/api/v1/system/training")
+        assert res.status_code == 200
+        body = res.json()
+        assert body["videos"][0]["unlocked"] is True
+        assert body["videos"][1]["unlocked"] is False
+        assert body["unlock_dates"]["2"]
     finally:
         asyncio.run(_clear_training_tables())
 

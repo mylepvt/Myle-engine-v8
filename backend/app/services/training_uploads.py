@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from uuid import uuid4
 
 from fastapi import UploadFile
 
@@ -114,9 +115,10 @@ def _looks_like_image_upload(file: UploadFile) -> bool:
 def _delete_matching_files(root: Path, stem: str) -> None:
     if not root.exists():
         return
-    for candidate in root.glob(f"{stem}.*"):
-        if candidate.is_file():
-            candidate.unlink(missing_ok=True)
+    for pattern in (f"{stem}.*", f"{stem}_*"):
+        for candidate in root.glob(pattern):
+            if candidate.is_file():
+                candidate.unlink(missing_ok=True)
 
 
 def remove_training_audio_file(audio_url: str | None) -> None:
@@ -146,7 +148,7 @@ async def save_training_audio_file(day_number: int, file: UploadFile) -> str:
         allowed=_AUDIO_EXTENSIONS,
         default_ext=".mp3",
     )
-    destination = _TRAINING_AUDIO_ROOT / f"{stem}{ext}"
+    destination = _TRAINING_AUDIO_ROOT / f"{stem}_{uuid4().hex}{ext}"
     destination.write_bytes(await file.read())
     return f"/uploads/training_audio/{destination.name}"
 
