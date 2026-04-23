@@ -43,6 +43,7 @@ from app.services.batch_watch_uploads import (
 )
 from app.services.lead_file_import import run_personal_lead_import
 from app.services.leads_service import LeadsService, get_leads_service, _PAYMENT_REQUIRED_STATUSES
+from app.services.team_tracking import refresh_daily_member_stat_after_change
 from app.services.downline import is_user_in_downline_of
 from app.services.lead_owner import resolved_owner_user_id
 from app.services.leads_service import _sync_batch_completion_timestamps
@@ -306,7 +307,9 @@ async def import_leads_file(
         filename=file.filename or "upload",
         source_tag=(source_tag or "").strip() or "Import",
     )
-    await notify_topics("leads")
+    if result.imported > 0:
+        await refresh_daily_member_stat_after_change(session, user_id=user.user_id)
+    await notify_topics("leads", "team_tracking")
     return LeadFileImportResponse(
         imported=result.imported,
         skipped=result.skipped,

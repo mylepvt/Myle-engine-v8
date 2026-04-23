@@ -11,6 +11,7 @@
   "work/lead-pool-admin": ["admin"],
   "work/recycle-bin": ["admin", "leader", "team"],
   "team/members": ["admin"],
+  "team/tracking": ["admin"],
   "team/reports": ["admin", "leader"],
   "team/approvals": ["admin"],
   "team/enrollment-approvals": ["admin", "leader"],

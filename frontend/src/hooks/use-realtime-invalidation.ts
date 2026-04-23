@@ -11,6 +11,7 @@ import {
 import { mergeTopicBatches } from '@/lib/merge-topic-batches'
 
 type InvalidateMsg = { v: number; type: 'invalidate'; topics: string[] }
+type PresenceAction = 'ping' | 'idle' | 'resume'
 
 function buildWsUrl(): string {
   const path = '/api/v1/ws'
@@ -46,12 +47,17 @@ function applyTopics(qc: QueryClient, topics: string[]) {
     void qc.invalidateQueries({ queryKey: ['shell-stub'] })
     void qc.invalidateQueries({ queryKey: ['analytics'] })
     void qc.invalidateQueries({ queryKey: ['system'] })
+    void qc.invalidateQueries({ queryKey: ['team', 'tracking'] })
   }
   if (t.has('follow_ups')) {
     void qc.invalidateQueries({ queryKey: ['follow-ups'] })
+    void qc.invalidateQueries({ queryKey: ['team', 'tracking'] })
   }
   if (t.has('team')) {
     void qc.invalidateQueries({ queryKey: ['team'] })
+  }
+  if (t.has('team_tracking') || t.has('team_tracking.presence')) {
+    void qc.invalidateQueries({ queryKey: ['team', 'tracking'] })
   }
   if (t.has('wallet')) {
     void qc.invalidateQueries({ queryKey: ['wallet'] })
@@ -69,8 +75,35 @@ export function useRealtimeInvalidation(enabled: boolean) {
     let closed = false
     let reconnectTimer: number | undefined
     let debounceTimer: number | undefined
+    let heartbeatTimer: number | undefined
     const lowEndPending: string[][] = []
     const reconnectMs = isLowEndDevice() ? 8_000 : 3_000
+    const heartbeatMs = isLowEndDevice() ? 25_000 : 20_000
+
+    const sendPresence = (action: PresenceAction) => {
+      const ws = wsRef.current
+      if (!ws || ws.readyState !== WebSocket.OPEN) return
+      ws.send(
+        JSON.stringify({
+          action,
+          path: window.location.pathname,
+        }),
+      )
+    }
+
+    const clearHeartbeat = () => {
+      if (heartbeatTimer !== undefined) {
+        window.clearInterval(heartbeatTimer)
+        heartbeatTimer = undefined
+      }
+    }
+
+    const startHeartbeat = () => {
+      clearHeartbeat()
+      heartbeatTimer = window.setInterval(() => {
+        sendPresence(document.visibilityState === 'hidden' ? 'idle' : 'ping')
+      }, heartbeatMs)
+    }
 
     const scheduleTopics = (topics: string[]) => {
       const deliver = (merged: string[]) => {
@@ -95,6 +128,11 @@ export function useRealtimeInvalidation(enabled: boolean) {
       const ws = new WebSocket(url)
       wsRef.current = ws
 
+      ws.onopen = () => {
+        sendPresence(document.visibilityState === 'hidden' ? 'idle' : 'resume')
+        startHeartbeat()
+      }
+
       ws.onmessage = (ev) => {
         try {
           const raw = JSON.parse(String(ev.data)) as InvalidateMsg
@@ -108,6 +146,7 @@ export function useRealtimeInvalidation(enabled: boolean) {
 
       ws.onclose = () => {
         wsRef.current = null
+        clearHeartbeat()
         if (closed) return
         reconnectTimer = window.setTimeout(connect, reconnectMs)
       }
@@ -117,14 +156,28 @@ export function useRealtimeInvalidation(enabled: boolean) {
       }
     }
 
+    const onVisibilityChange = () => {
+      sendPresence(document.visibilityState === 'hidden' ? 'idle' : 'resume')
+    }
+    const onFocus = () => sendPresence('resume')
+    const onPageHide = () => sendPresence('idle')
+
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('focus', onFocus)
+    window.addEventListener('pagehide', onPageHide)
+
     connect()
 
     return () => {
       closed = true
       if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer)
       if (debounceTimer !== undefined) window.clearTimeout(debounceTimer)
+      clearHeartbeat()
       lowEndPending.length = 0
       clearScrollGatePolling()
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      window.removeEventListener('focus', onFocus)
+      window.removeEventListener('pagehide', onPageHide)
       wsRef.current?.close()
       wsRef.current = null
     }

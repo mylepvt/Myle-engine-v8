@@ -41,6 +41,7 @@ from app.services.invoice_records import create_tax_invoice_for_pool_claim, crea
 from app.services.ctcs_heat import bump_heat_on_entering_contacted, clamp_ctcs_heat
 from app.services.ctcs_status_chain import advance_lead_status_toward
 from app.services.lead_payloads import build_lead_public_payloads
+from app.services.team_tracking import refresh_daily_member_stat_after_change
 from app.services.user_hierarchy import nearest_leader_for_user
 from app.services.whatsapp_ctcs import send_interested_enrollment_assets
 from app.validators.leads_validator import lead_list_conditions, parse_status_query, validate_list_flags
@@ -335,7 +336,12 @@ class LeadsService:
             meta={"name": lead.name, "status": lead.status},
         )
         lead = await self._commit_with_shadow_upsert(lead)
-        await self._notifier("leads")
+        await refresh_daily_member_stat_after_change(
+            self._session,
+            user_id=user.user_id,
+            occurred_at=lead.created_at,
+        )
+        await self._notifier("leads", "team_tracking")
         return lead
 
     async def claim_lead(self, *, lead_id: int, user: AuthUser) -> Lead:
@@ -949,7 +955,12 @@ class LeadsService:
         await self._session.flush()
         enqueue_lead_shadow_upsert(self._session, lead)
         await self._repository.commit()
-        await self._notifier("leads")
+        await refresh_daily_member_stat_after_change(
+            self._session,
+            user_id=user.user_id,
+            occurred_at=event.called_at,
+        )
+        await self._notifier("leads", "team_tracking")
         return CallEventPublic.model_validate(event)
 
     async def list_calls(

@@ -18,6 +18,10 @@ from app.schemas.follow_ups import (
 from app.services.crm_outbox import enqueue_lead_shadow_upsert
 from app.services.lead_access import require_visible_lead
 from app.services.lead_owner import lead_owner_clause
+from app.services.team_tracking import (
+    record_followup_completion_activity,
+    refresh_daily_member_stat_after_change,
+)
 
 router = APIRouter()
 
@@ -137,12 +141,17 @@ async def update_follow_up(
     if "due_at" in patch:
         fu.due_at = patch["due_at"]
     was_completed = fu.completed_at is not None
+    previous_completed_at = fu.completed_at
+    previous_completed_by_user_id = fu.completed_by_user_id
     if "completed" in patch:
         if patch["completed"] is True:
             fu.completed_at = datetime.now(timezone.utc)
+            fu.completed_by_user_id = user.user_id
         else:
             fu.completed_at = None
+            fu.completed_by_user_id = None
     newly_completed = (not was_completed) and fu.completed_at is not None
+    reopened = was_completed and fu.completed_at is None
     lead_state_before = (lead.status, lead.assigned_to_user_id)
     await session.flush()
     if newly_completed and (lead.status, lead.assigned_to_user_id) != lead_state_before:
@@ -150,13 +159,26 @@ async def update_follow_up(
     await session.commit()
     await session.refresh(fu)
     if newly_completed:
+        await record_followup_completion_activity(
+            session,
+            user_id=user.user_id,
+            follow_up_id=fu.id,
+            lead_id=fu.lead_id,
+            occurred_at=fu.completed_at or datetime.now(timezone.utc),
+        )
         try:
             from app.services.xp_service import grant_xp
             await grant_xp(session, user.user_id, "followup_completed", fu.lead_id)
-            await session.commit()
         except Exception:
             pass
-    await notify_topics("follow_ups", "leads")
+        await session.commit()
+    elif reopened and previous_completed_by_user_id is not None:
+        await refresh_daily_member_stat_after_change(
+            session,
+            user_id=previous_completed_by_user_id,
+            occurred_at=previous_completed_at,
+        )
+    await notify_topics("follow_ups", "leads", "team_tracking")
     return _to_public(fu, lead.name)
 
 
