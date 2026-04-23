@@ -2,6 +2,39 @@ import { useQuery } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
 
+export type TeamReportsMember = {
+  user_id: number
+  member_name: string
+  member_username: string | null
+  member_email: string
+  member_phone: string | null
+  member_fbo_id: string
+  member_role: string
+  upline_name: string | null
+  upline_fbo_id: string | null
+}
+
+export type TeamReportItem = TeamReportsMember & {
+  report_id: number
+  report_date: string
+  submitted_at: string
+  total_calling: number
+  calls_picked: number
+  wrong_numbers: number
+  enrollments_done: number
+  pending_enroll: number
+  underage: number
+  plan_2cc: number
+  seat_holdings: number
+  leads_educated: number
+  pdf_covered: number
+  videos_sent_actual: number
+  calls_made_actual: number
+  payments_actual: number
+  remarks: string | null
+  system_verified: boolean
+}
+
 export type TeamReportsLiveSummary = {
   leads_claimed_today: number
   calls_made_today: number
@@ -14,8 +47,10 @@ export type TeamReportsLiveSummary = {
 }
 
 export type TeamReportsPayload = {
-  items: Record<string, unknown>[]
+  items: TeamReportItem[]
   total: number
+  missing_members: TeamReportsMember[]
+  scope_total_members: number
   note: string | null
   date: string
   timezone: string
