@@ -21,8 +21,13 @@ from app.schemas.settings import (
     SystemConfigurationUpdateRequest,
     AppSettingsResponse,
     AppSettingUpdateRequest,
+    EnrollmentVideoUploadResponse,
     SystemUsersSummaryResponse,
     AuditLogResponse,
+)
+from app.services.enrollment_video_uploads import (
+    remove_managed_enrollment_video_file,
+    save_enrollment_video_file,
 )
 from app.services.settings_service import SettingsService
 
@@ -249,6 +254,41 @@ async def create_or_update_app_setting(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update app setting: {str(e)}",
         )
+
+
+@router.post("/system/app-settings/enrollment-video/upload", response_model=EnrollmentVideoUploadResponse)
+async def upload_enrollment_video(
+    file: Annotated[UploadFile, File()],
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> EnrollmentVideoUploadResponse:
+    """Upload enrollment video into backend/uploads and update the app setting automatically."""
+    _require_admin(user)
+
+    service = SettingsService(session)
+    previous_source = await service.get_app_setting("enrollment_video_source_url")
+
+    ok, message, source_url = await save_enrollment_video_file(file)
+    if not ok or not source_url:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=message)
+
+    success, update_message = await service.update_app_setting(
+        "enrollment_video_source_url",
+        source_url,
+        user.user_id,
+    )
+    if not success:
+        remove_managed_enrollment_video_file(source_url)
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=update_message)
+
+    if previous_source and previous_source != source_url:
+        remove_managed_enrollment_video_file(previous_source)
+
+    return EnrollmentVideoUploadResponse(
+        source_url=source_url,
+        file_name=source_url.rsplit("/", 1)[-1],
+        message=message,
+    )
 
 
 @router.delete("/system/app-settings/{key}", response_model=Dict[str, str])

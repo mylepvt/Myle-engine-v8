@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
+import { messageFromApiErrorPayload } from '@/lib/http-error-message'
 
 export type UserProfileResponse = {
   id: number
@@ -97,6 +98,12 @@ export type AppSettingsResponse = {
 export type AppSettingUpdateRequest = {
   key: string
   value: string
+}
+
+export type EnrollmentVideoUploadResponse = {
+  source_url: string
+  file_name: string
+  message: string
 }
 
 export type PasswordChangeRequest = {
@@ -224,6 +231,20 @@ async function updateAppSetting(request: AppSettingUpdateRequest): Promise<{ mes
   })
   if (!res.ok) {
     throw new Error(`Update app setting HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+async function uploadEnrollmentVideo(file: File): Promise<EnrollmentVideoUploadResponse> {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await apiFetch('/api/v1/settings-enhanced/system/app-settings/enrollment-video/upload', {
+    method: 'POST',
+    body: form,
+  })
+  if (!res.ok) {
+    const raw: unknown = await res.json().catch(() => null)
+    throw new Error(messageFromApiErrorPayload(raw, `Upload enrollment video HTTP ${res.status}`))
   }
   return res.json()
 }
@@ -356,6 +377,18 @@ export function useAppSettingUpdateMutation() {
   
   return useMutation({
     mutationFn: updateAppSetting,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings', 'system', 'app-settings'] })
+      queryClient.invalidateQueries({ queryKey: ['settings', 'system', 'configuration'] })
+    },
+  })
+}
+
+export function useEnrollmentVideoUploadMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: uploadEnrollmentVideo,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings', 'system', 'app-settings'] })
       queryClient.invalidateQueries({ queryKey: ['settings', 'system', 'configuration'] })
