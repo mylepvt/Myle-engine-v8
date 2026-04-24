@@ -164,17 +164,16 @@ def test_gate_assistant_team_uses_fresh_claim_create_import_calls(monkeypatch: p
         assert r.status_code == 200
         body = r.json()
         assert body["role"] == "team"
-        assert len(body["checklist"]) == 3
+        assert len(body["checklist"]) == 2
         assert [item["id"] for item in body["checklist"]] == [
             "daily_call_target",
             "daily_report_submitted",
-            "followups_overdue",
         ]
         assert body["fresh_leads_today"] == 3
         assert body["calls_today"] == 3
         assert body["call_target"] == 15
         assert body["overdue_follow_ups"] == 1
-        assert body["next_href"] == "work/follow-ups"
+        assert body["next_href"] == "other/daily-report"
     finally:
         asyncio.run(_reset_live_tables())
 
@@ -266,8 +265,21 @@ def test_gate_assistant_team_shows_warning_streaks(monkeypatch: pytest.MonkeyPat
         assert [item["id"] for item in body["checklist"]] == [
             "daily_call_target",
             "daily_report_submitted",
-            "followups_overdue",
         ]
     finally:
         asyncio.run(_reset_live_tables())
         asyncio.run(cleanup_warning_user())
+
+
+def test_gate_assistant_leader_uses_same_two_personal_gates(monkeypatch: pytest.MonkeyPatch) -> None:
+    c = _authed(monkeypatch)
+    assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+    r = c.get("/api/v1/gate-assistant")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["role"] == "leader"
+    assert len(body["checklist"]) == 2
+    assert [item["id"] for item in body["checklist"]] == [
+        "daily_call_target",
+        "daily_report_submitted",
+    ]

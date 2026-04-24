@@ -4,6 +4,7 @@ import { CheckCircle2, CircleAlert, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { useGateAssistantQuery } from '@/hooks/use-gate-assistant-query'
 import { cn } from '@/lib/utils'
 
@@ -41,9 +42,14 @@ function formatShortDate(value: string | null) {
 }
 
 export function GateAssistantCard({ sessionReady }: Props) {
+  const { isAdminPreviewing } = useDashboardShellRole()
   const { data, isPending, isError, error, refetch } = useGateAssistantQuery(sessionReady)
 
   if (!sessionReady) {
+    return null
+  }
+
+  if (isAdminPreviewing) {
     return null
   }
 
@@ -85,28 +91,21 @@ export function GateAssistantCard({ sessionReady }: Props) {
     data.progress_total > 0
       ? Math.round((data.progress_done / data.progress_total) * 100)
       : 0
-  const summaryBits = [
-    data.fresh_leads_today > 0 ? `Today's leads: ${data.fresh_leads_today}` : null,
-    data.call_target > 0
-      ? `Fresh calls: ${data.calls_today} / ${data.call_target}`
-      : data.calls_today > 0
-        ? `Fresh calls: ${data.calls_today}`
-        : null,
-    data.overdue_follow_ups > 0 || data.role === 'team'
-      ? `Overdue follow-ups: ${data.overdue_follow_ups}`
-      : null,
-    data.pending_proof_count > 0 || data.role !== 'team'
-      ? `Proofs waiting: ${data.pending_proof_count}`
-      : null,
-    data.members_below_call_gate > 0 || data.role === 'leader'
-      ? `Members below gate: ${data.members_below_call_gate}`
-      : null,
-    data.role !== 'team'
-      ? `Warnings: ${data.team_warning_count} · Strong: ${data.team_strong_warning_count} · Final: ${data.team_final_warning_count} · Removed: ${data.team_removed_count}`
-      : null,
-    data.active_pipeline_leads > 0 ? `Pipeline leads: ${data.active_pipeline_leads}` : null,
-  ].filter(Boolean) as string[]
-  const secondaryGate = data.checklist.find((c) => !c.done && c.href && c.href !== data.next_href)
+  const reportGate = data.checklist.find((c) => c.id === 'daily_report_submitted')
+  const summaryBits = data.role === 'admin'
+    ? [
+        data.pending_proof_count > 0 ? `Proofs waiting: ${data.pending_proof_count}` : null,
+        data.team_warning_count > 0 || data.team_strong_warning_count > 0 || data.team_final_warning_count > 0 || data.team_removed_count > 0
+          ? `Warnings: ${data.team_warning_count} · Strong: ${data.team_strong_warning_count} · Final: ${data.team_final_warning_count} · Removed: ${data.team_removed_count}`
+          : null,
+      ].filter(Boolean) as string[]
+    : [
+        data.fresh_leads_today > 0 ? `Today's leads: ${data.fresh_leads_today}` : 'No fresh lead gate yet today',
+        data.call_target > 0
+          ? `Fresh calls: ${data.calls_today} / ${data.call_target}`
+          : `Fresh calls: ${data.calls_today}`,
+        `Report: ${reportGate?.done ? 'submitted' : 'pending'}`,
+      ]
   const disciplineDate = formatShortDate(data.grace_end_date)
 
   return (
@@ -133,7 +132,11 @@ export function GateAssistantCard({ sessionReady }: Props) {
             {riskLabel(data.risk_level)}
           </span>
         </div>
-        <CardDescription>Current targets, discipline status, and next action.</CardDescription>
+        <CardDescription>
+          {data.role === 'admin'
+            ? 'Org discipline overview.'
+            : 'Only 2 active gates: 15 fresh calls and today\'s daily report.'}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {pct < 100 ? (
@@ -180,31 +183,20 @@ export function GateAssistantCard({ sessionReady }: Props) {
           ))}
         </ul>
 
-        {data.compliance_title || data.role !== 'team' ? (
+        {data.role !== 'admin' && (data.compliance_title || data.calls_short_streak > 0 || data.missing_report_streak > 0 || disciplineDate) ? (
           <div className="rounded-lg border border-border/60 bg-background/70 px-3 py-2 text-sm">
-            {data.role === 'team' ? (
-              <>
-                <p className="font-medium text-foreground">
-                  {data.compliance_title ?? 'Discipline status'}
-                </p>
-                <p className="mt-1 text-ds-caption text-muted-foreground">
-                  {data.compliance_summary ?? 'No active compliance warning.'}
-                </p>
-                {(data.calls_short_streak > 0 || data.missing_report_streak > 0 || disciplineDate) ? (
-                  <p className="mt-1 text-ds-caption text-muted-foreground">
-                    Calls streak: {data.calls_short_streak}d · Report streak: {data.missing_report_streak}d
-                    {disciplineDate ? ` · Grace till ${disciplineDate}` : ''}
-                  </p>
-                ) : null}
-              </>
-            ) : (
-              <>
-                <p className="font-medium text-foreground">Team discipline snapshot</p>
-                <p className="mt-1 text-ds-caption text-muted-foreground">
-                  Warning {data.team_warning_count} · Strong {data.team_strong_warning_count} · Final {data.team_final_warning_count} · Removed {data.team_removed_count} · Grace {data.team_grace_count}
-                </p>
-              </>
-            )}
+            <p className="font-medium text-foreground">
+              {data.compliance_title ?? 'Discipline status'}
+            </p>
+            <p className="mt-1 text-ds-caption text-muted-foreground">
+              {data.compliance_summary ?? 'No active compliance warning.'}
+            </p>
+            {(data.calls_short_streak > 0 || data.missing_report_streak > 0 || disciplineDate) ? (
+              <p className="mt-1 text-ds-caption text-muted-foreground">
+                Calls streak: {data.calls_short_streak}d · Report streak: {data.missing_report_streak}d
+                {disciplineDate ? ` · Grace till ${disciplineDate}` : ''}
+              </p>
+            ) : null}
           </div>
         ) : null}
 
@@ -212,11 +204,6 @@ export function GateAssistantCard({ sessionReady }: Props) {
           {data.next_href ? (
             <Button variant="default" size="sm" asChild>
               <Link to={`/dashboard/${data.next_href}`}>{data.next_label ?? 'Open task'}</Link>
-            </Button>
-          ) : null}
-          {secondaryGate?.href ? (
-            <Button variant="outline" size="sm" asChild>
-              <Link to={`/dashboard/${secondaryGate.href}`}>Open another gate</Link>
             </Button>
           ) : null}
         </div>
