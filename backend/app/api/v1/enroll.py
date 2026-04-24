@@ -179,7 +179,8 @@ def _watch_page_payload(
         expires_at=link.expires_at,
         access_granted=access_granted,
         stream_url=f"/api/v1/watch/{link.token}/stream" if access_granted else None,
-        watch_started=bool(link.status_synced),
+        watch_started=link.first_viewed_at is not None,
+        watch_completed=bool(link.status_synced),
     )
 
 
@@ -333,6 +334,27 @@ async def mark_watch_started(
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Verify your number to continue.")
 
     now = datetime.now(timezone.utc)
+
+    if link.first_viewed_at is None:
+        link.first_viewed_at = now
+        link.view_count = int(link.view_count or 0) + 1
+    link.last_viewed_at = now
+
+    await session.commit()
+    return WatchEventResponse(ok=True, watch_started=True, watch_completed=bool(link.status_synced))
+
+
+@watch_router.post("/watch/{token}/complete", response_model=WatchEventResponse)
+async def mark_watch_completed(
+    token: str,
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> WatchEventResponse:
+    link, lead = await _get_watch_link_and_lead(session, token)
+    if not has_watch_access(request, link=link, lead=lead):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Verify your number to continue.")
+
+    now = datetime.now(timezone.utc)
     should_sync_lead = False
 
     if link.first_viewed_at is None:
@@ -347,7 +369,7 @@ async def mark_watch_started(
     if should_sync_lead:
         enqueue_lead_shadow_upsert(session, lead)
     await session.commit()
-    return WatchEventResponse(ok=True, watch_started=True)
+    return WatchEventResponse(ok=True, watch_started=True, watch_completed=True)
 
 
 @watch_router.get("/watch/{token}/stream")

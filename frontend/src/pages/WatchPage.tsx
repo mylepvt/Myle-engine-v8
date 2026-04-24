@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { LockKeyhole, ShieldCheck, TimerReset } from 'lucide-react'
 
@@ -15,6 +15,13 @@ type WatchPageData = {
   access_granted: boolean
   stream_url: string | null
   watch_started: boolean
+  watch_completed: boolean
+}
+
+type WatchEventResponse = {
+  ok: boolean
+  watch_started: boolean
+  watch_completed: boolean
 }
 
 function resolveWish(date: Date): string {
@@ -32,6 +39,14 @@ function formatRemaining(expiresAt: string, nowMs: number): string {
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
   return `${minutes}m ${seconds.toString().padStart(2, '0')}s left`
+}
+
+function formatPlaybackTime(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return '0:00'
+  const safeSeconds = Math.max(0, Math.floor(value))
+  const minutes = Math.floor(safeSeconds / 60)
+  const seconds = safeSeconds % 60
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`
 }
 
 async function readJsonError(res: Response, fallback: string): Promise<Error> {
@@ -52,6 +67,11 @@ async function readJsonError(res: Response, fallback: string): Promise<Error> {
 
 export function WatchPage() {
   const { token } = useParams<{ token: string }>()
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const maxAllowedTimeRef = useRef(0)
+  const startRequestedRef = useRef(false)
+  const completionRequestedRef = useRef(false)
+
   const [data, setData] = useState<WatchPageData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -59,6 +79,12 @@ export function WatchPage() {
   const [unlocking, setUnlocking] = useState(false)
   const [unlockError, setUnlockError] = useState<string | null>(null)
   const [playMarked, setPlayMarked] = useState(false)
+  const [watchCompleted, setWatchCompleted] = useState(false)
+  const [playing, setPlaying] = useState(false)
+  const [playerError, setPlayerError] = useState<string | null>(null)
+  const [currentSeconds, setCurrentSeconds] = useState(0)
+  const [durationSeconds, setDurationSeconds] = useState(0)
+  const [completing, setCompleting] = useState(false)
   const [nowMs, setNowMs] = useState(() => Date.now())
 
   useEffect(() => {
@@ -83,6 +109,14 @@ export function WatchPage() {
       .then((payload) => {
         setData(payload)
         setPlayMarked(payload.watch_started)
+        setWatchCompleted(payload.watch_completed)
+        startRequestedRef.current = payload.watch_started
+        completionRequestedRef.current = payload.watch_completed
+        maxAllowedTimeRef.current = 0
+        setPlaying(false)
+        setPlayerError(null)
+        setCurrentSeconds(0)
+        setDurationSeconds(0)
         setLoading(false)
       })
       .catch((err: unknown) => {
@@ -96,6 +130,16 @@ export function WatchPage() {
     () => (data ? formatRemaining(data.expires_at, nowMs) : ''),
     [data, nowMs],
   )
+  const videoSrc = data?.stream_url ? apiUrl(data.stream_url) : null
+  const progressPercent = durationSeconds > 0 ? Math.min(100, (currentSeconds / durationSeconds) * 100) : 0
+  const progressLabel = `${formatPlaybackTime(currentSeconds)} / ${formatPlaybackTime(durationSeconds)}`
+  const playerButtonLabel = playing
+    ? 'Pause video'
+    : watchCompleted
+      ? 'Replay video'
+      : currentSeconds > 0
+        ? 'Resume video'
+        : 'Play video'
 
   async function handleUnlock(e: FormEvent) {
     e.preventDefault()
@@ -113,6 +157,14 @@ export function WatchPage() {
       const payload = (await res.json()) as WatchPageData
       setData(payload)
       setPlayMarked(payload.watch_started)
+      setWatchCompleted(payload.watch_completed)
+      startRequestedRef.current = payload.watch_started
+      completionRequestedRef.current = payload.watch_completed
+      maxAllowedTimeRef.current = 0
+      setPlaying(false)
+      setPlayerError(null)
+      setCurrentSeconds(0)
+      setDurationSeconds(0)
       setPhone('')
     } catch (err) {
       setUnlockError(err instanceof Error ? err.message : 'Could not verify number.')
@@ -122,8 +174,10 @@ export function WatchPage() {
   }
 
   async function handleFirstPlay() {
-    if (!token || !data?.access_granted || playMarked) return
+    if (!token || !data?.access_granted || startRequestedRef.current) return
+    startRequestedRef.current = true
     setPlayMarked(true)
+    setPlayerError(null)
     try {
       const res = await fetch(apiUrl(`/api/v1/watch/${token}/play`), {
         method: 'POST',
@@ -132,13 +186,82 @@ export function WatchPage() {
       if (!res.ok) {
         throw await readJsonError(res, 'Could not start secure playback.')
       }
-      setData((current) => (current ? { ...current, watch_started: true } : current))
-    } catch {
+      const payload = (await res.json()) as WatchEventResponse
+      setPlayMarked(payload.watch_started)
+      if (payload.watch_completed) {
+        completionRequestedRef.current = true
+        setWatchCompleted(true)
+      }
+      setData((current) =>
+        current
+          ? {
+              ...current,
+              watch_started: payload.watch_started,
+              watch_completed: payload.watch_completed,
+            }
+          : current,
+      )
+    } catch (err) {
+      startRequestedRef.current = false
       setPlayMarked(false)
+      setPlayerError(err instanceof Error ? err.message : 'Could not start secure playback.')
+      videoRef.current?.pause()
     }
   }
 
-  const videoSrc = data?.stream_url ? apiUrl(data.stream_url) : null
+  async function handleCompleteWatch() {
+    if (!token || !data?.access_granted || completionRequestedRef.current) return
+    completionRequestedRef.current = true
+    setCompleting(true)
+    setPlayerError(null)
+    try {
+      const res = await fetch(apiUrl(`/api/v1/watch/${token}/complete`), {
+        method: 'POST',
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        throw await readJsonError(res, 'Could not complete secure playback.')
+      }
+      const payload = (await res.json()) as WatchEventResponse
+      startRequestedRef.current = payload.watch_started
+      setPlayMarked(payload.watch_started)
+      setWatchCompleted(payload.watch_completed)
+      setData((current) =>
+        current
+          ? {
+              ...current,
+              watch_started: payload.watch_started,
+              watch_completed: payload.watch_completed,
+            }
+          : current,
+      )
+    } catch (err) {
+      completionRequestedRef.current = false
+      setPlayerError(err instanceof Error ? err.message : 'Could not complete secure playback.')
+    } finally {
+      setCompleting(false)
+    }
+  }
+
+  async function togglePlayback() {
+    const video = videoRef.current
+    if (!video) return
+    setPlayerError(null)
+    try {
+      if (video.paused) {
+        if (watchCompleted && durationSeconds > 0 && currentSeconds >= Math.max(0, durationSeconds - 1)) {
+          video.currentTime = 0
+          maxAllowedTimeRef.current = 0
+          setCurrentSeconds(0)
+        }
+        await video.play()
+        return
+      }
+      video.pause()
+    } catch (err) {
+      setPlayerError(err instanceof Error ? err.message : 'Could not control secure playback.')
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#f4efe6] text-[#10231d]">
@@ -247,7 +370,7 @@ export function WatchPage() {
                       <div>
                         <p className="text-sm font-semibold text-[#10231d]">Private in-app player</p>
                         <p className="mt-1 text-sm text-[#5f655f]">
-                          Playback stays inside Myle. No YouTube redirect, no related videos.
+                          Playback stays inside Myle. No YouTube redirect, no related videos, no skip controls.
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -255,28 +378,121 @@ export function WatchPage() {
                           <ShieldCheck className="mr-1 size-3.5" />
                           Same-domain stream
                         </Badge>
-                        {data.watch_started ? (
-                          <Badge variant="outline" className="border-[#d8e3db] bg-[#f7fbf8] text-[#285241]">
-                            Started
-                          </Badge>
-                        ) : null}
+                        <Badge variant="outline" className="border-[#d8e3db] bg-[#f7fbf8] text-[#285241]">
+                          {watchCompleted ? 'Completed' : playMarked ? 'In progress' : 'Ready'}
+                        </Badge>
                       </div>
                     </div>
                   </div>
 
                   <div className="bg-[#0b1714] p-3 sm:p-4">
                     {videoSrc ? (
-                      <video
-                        className="aspect-video h-full w-full rounded-[1.4rem] bg-black object-contain"
-                        src={videoSrc}
-                        crossOrigin="use-credentials"
-                        controls
-                        playsInline
-                        preload="metadata"
-                        controlsList="nodownload noplaybackrate noremoteplayback"
-                        disablePictureInPicture
-                        onPlay={() => void handleFirstPlay()}
-                      />
+                      <>
+                        <div className="relative">
+                          <video
+                            ref={videoRef}
+                            className="pointer-events-none aspect-video h-full w-full rounded-[1.4rem] bg-black object-contain select-none"
+                            src={videoSrc}
+                            crossOrigin="use-credentials"
+                            playsInline
+                            preload="metadata"
+                            controls={false}
+                            controlsList="nodownload nofullscreen noplaybackrate noremoteplayback"
+                            disablePictureInPicture
+                            tabIndex={-1}
+                            onContextMenu={(e) => e.preventDefault()}
+                            onLoadedMetadata={(e) => {
+                              const nextDuration = Number.isFinite(e.currentTarget.duration)
+                                ? e.currentTarget.duration
+                                : 0
+                              setDurationSeconds(nextDuration)
+                              setCurrentSeconds(e.currentTarget.currentTime || 0)
+                              maxAllowedTimeRef.current = Math.max(maxAllowedTimeRef.current, e.currentTarget.currentTime || 0)
+                            }}
+                            onPlay={() => {
+                              setPlaying(true)
+                              if (!playMarked) {
+                                void handleFirstPlay()
+                              }
+                            }}
+                            onPause={() => setPlaying(false)}
+                            onTimeUpdate={(e) => {
+                              const nextTime = e.currentTarget.currentTime || 0
+                              const nextDuration = Number.isFinite(e.currentTarget.duration)
+                                ? e.currentTarget.duration
+                                : 0
+                              setCurrentSeconds(nextTime)
+                              if (nextDuration > 0) {
+                                setDurationSeconds(nextDuration)
+                              }
+                              maxAllowedTimeRef.current = Math.max(maxAllowedTimeRef.current, nextTime)
+                              if (!watchCompleted && nextDuration > 0 && nextTime / nextDuration >= 0.985) {
+                                void handleCompleteWatch()
+                              }
+                            }}
+                            onSeeking={(e) => {
+                              const video = e.currentTarget
+                              const allowedTime = maxAllowedTimeRef.current
+                              if (video.currentTime > allowedTime + 0.35) {
+                                video.currentTime = allowedTime
+                              }
+                            }}
+                            onEnded={() => {
+                              setPlaying(false)
+                              setCurrentSeconds(durationSeconds)
+                              maxAllowedTimeRef.current = durationSeconds
+                              void handleCompleteWatch()
+                            }}
+                          />
+                          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 rounded-b-[1.4rem] bg-gradient-to-t from-[#030806] to-transparent" />
+                        </div>
+
+                        <div className="mt-4 rounded-[1.4rem] border border-white/10 bg-white/[0.04] p-4 text-white/90">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                              <p className="text-sm font-semibold text-white">
+                                {watchCompleted ? 'Video completed' : playMarked ? 'Watch in progress' : 'Full watch required'}
+                              </p>
+                              <p className="mt-1 text-xs leading-relaxed text-white/65">
+                                Skipping is disabled. Team tabhi aage badhegi jab video end tak complete hogi.
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => void togglePlayback()}
+                              disabled={!videoSrc || completing}
+                              className="inline-flex h-11 items-center justify-center rounded-2xl bg-white px-5 text-sm font-semibold text-[#10231d] transition hover:bg-[#f0e7da] disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {playerButtonLabel}
+                            </button>
+                          </div>
+
+                          <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
+                            <div
+                              className="h-full rounded-full bg-[#d7c8af] transition-[width]"
+                              style={{ width: `${progressPercent}%` }}
+                            />
+                          </div>
+
+                          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-white/70">
+                            <span>{progressLabel}</span>
+                            <span>
+                              {watchCompleted
+                                ? 'Full watch complete. Team can now move to the ₹196 proof step.'
+                                : 'Video ko end tak dekhein. Skip option intentionally hidden hai.'}
+                            </span>
+                          </div>
+
+                          {completing ? (
+                            <p className="mt-3 text-xs text-[#d7c8af]">Completing secure watch…</p>
+                          ) : null}
+                          {playerError ? (
+                            <p className="mt-3 text-xs text-red-300" role="alert">
+                              {playerError}
+                            </p>
+                          ) : null}
+                        </div>
+                      </>
                     ) : (
                       <div className="flex aspect-video items-center justify-center rounded-[1.4rem] bg-black text-sm text-white/70">
                         Secure video stream is getting ready.

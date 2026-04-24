@@ -69,6 +69,7 @@ class WatchPageData(BaseModel):
     access_granted: bool
     stream_url: Optional[str] = None
     watch_started: bool = False
+    watch_completed: bool = False
 
 
 class WatchUnlockRequest(BaseModel):
@@ -78,3 +79,4 @@ class WatchUnlockRequest(BaseModel):
 class WatchEventResponse(BaseModel):
     ok: bool = True
     watch_started: bool = False
+    watch_completed: bool = False

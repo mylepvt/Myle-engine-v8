@@ -24,6 +24,38 @@ function formatDateTime(value: string | null | undefined): string {
   }
 }
 
+function shareLinkState(link: {
+  status_synced: boolean
+  is_expired: boolean
+  first_viewed_at: string | null
+}): {
+  label: string
+  className: string
+} {
+  if (link.status_synced) {
+    return {
+      label: 'Watched',
+      className: 'rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-300',
+    }
+  }
+  if (link.is_expired) {
+    return {
+      label: 'Expired',
+      className: 'rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[11px] font-semibold text-amber-300',
+    }
+  }
+  if (link.first_viewed_at) {
+    return {
+      label: 'Started',
+      className: 'rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 text-[11px] font-semibold text-cyan-300',
+    }
+  }
+  return {
+    label: 'Active',
+    className: 'rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 text-[11px] font-semibold text-cyan-300',
+  }
+}
+
 export function EnrollmentCard({ leadId }: Props) {
   const shareLinksQuery = useLeadShareLinksQuery(leadId)
   const sendMut = useSendEnrollmentVideoMutation()
@@ -120,46 +152,44 @@ export function EnrollmentCard({ leadId }: Props) {
 
       {shareLinksQuery.data && shareLinksQuery.data.items.length > 0 ? (
         <ul className="space-y-2">
-          {shareLinksQuery.data.items.map((link) => (
-            <li key={link.id} className="surface-inset space-y-2 px-3 py-3 text-sm">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className="font-medium text-foreground">{link.title || 'Enrollment video'}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    Sent {formatDateTime(link.created_at)} · Expires {formatDateTime(link.expires_at)}
-                  </p>
+          {shareLinksQuery.data.items.map((link) => {
+            const state = shareLinkState(link)
+            return (
+              <li key={link.id} className="surface-inset space-y-2 px-3 py-3 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="font-medium text-foreground">{link.title || 'Enrollment video'}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Sent {formatDateTime(link.created_at)} · Expires {formatDateTime(link.expires_at)}
+                    </p>
+                    {link.first_viewed_at ? (
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        Started {formatDateTime(link.first_viewed_at)}
+                      </p>
+                    ) : null}
+                  </div>
+                  <span className={state.className}>{state.label}</span>
                 </div>
-                <span
-                  className={
-                    link.status_synced
-                      ? 'rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-300'
-                      : link.is_expired
-                        ? 'rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[11px] font-semibold text-amber-300'
-                        : 'rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 text-[11px] font-semibold text-cyan-300'
-                  }
-                >
-                  {link.status_synced ? 'Watched' : link.is_expired ? 'Expired' : 'Active'}
-                </span>
-              </div>
-              <div className="flex flex-wrap items-center gap-3 text-xs">
-                <button
-                  type="button"
-                  className="text-primary underline-offset-2 hover:underline"
-                  onClick={() => handleCopyLink(link.share_url, link.token)}
-                >
-                  {copiedToken === link.token ? 'Copied!' : 'Copy private room link'}
-                </button>
-                <a
-                  href={link.share_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-muted-foreground underline-offset-2 hover:underline"
-                >
-                  Open room
-                </a>
-              </div>
-            </li>
-          ))}
+                <div className="flex flex-wrap items-center gap-3 text-xs">
+                  <button
+                    type="button"
+                    className="text-primary underline-offset-2 hover:underline"
+                    onClick={() => handleCopyLink(link.share_url, link.token)}
+                  >
+                    {copiedToken === link.token ? 'Copied!' : 'Copy private room link'}
+                  </button>
+                  <a
+                    href={link.share_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-muted-foreground underline-offset-2 hover:underline"
+                  >
+                    Open room
+                  </a>
+                </div>
+              </li>
+            )
+          })}
         </ul>
       ) : null}
     </div>
