@@ -16,6 +16,10 @@ type WatchPageData = {
   stream_url: string | null
   watch_started: boolean
   watch_completed: boolean
+  social_proof_count: number | null
+  total_seats: number | null
+  seats_left: number | null
+  trust_note: string | null
 }
 
 type WatchEventResponse = {
@@ -47,6 +51,11 @@ function formatPlaybackTime(value: number): string {
   const minutes = Math.floor(safeSeconds / 60)
   const seconds = safeSeconds % 60
   return `${minutes}:${seconds.toString().padStart(2, '0')}`
+}
+
+function easeOutCubic(value: number): number {
+  const clamped = Math.min(1, Math.max(0, value))
+  return 1 - Math.pow(1 - clamped, 3)
 }
 
 async function readJsonError(res: Response, fallback: string): Promise<Error> {
@@ -125,12 +134,42 @@ export function WatchPage() {
       })
   }, [token])
 
+  useEffect(() => {
+    const previousTitle = document.title
+    document.title = data?.title ? `${data.title} | Myle` : 'Private Enrollment Room | Myle'
+    return () => {
+      document.title = previousTitle
+    }
+  }, [data?.title])
+
   const wish = useMemo(() => resolveWish(new Date(nowMs)), [nowMs])
   const countdown = useMemo(
     () => (data ? formatRemaining(data.expires_at, nowMs) : ''),
     [data, nowMs],
   )
   const videoSrc = data?.stream_url ? apiUrl(data.stream_url) : null
+  const playbackWindowSeconds = durationSeconds > 0 ? durationSeconds : 15 * 60
+  const socialProofProgress = easeOutCubic(playbackWindowSeconds > 0 ? currentSeconds / playbackWindowSeconds : 0)
+  const socialProofStart = data?.social_proof_count != null
+    ? Math.max(data.social_proof_count - Math.min(24, Math.max(8, Math.round(data.social_proof_count * 0.06))), 0)
+    : null
+  const displayedSocialProof = data?.social_proof_count != null && socialProofStart != null
+    ? Math.round(socialProofStart + (data.social_proof_count - socialProofStart) * socialProofProgress)
+    : null
+  const seatsLeftStart = data?.seats_left != null
+    ? Math.min(
+        data.total_seats ?? Number.MAX_SAFE_INTEGER,
+        data.seats_left + Math.min(6, Math.max(2, Math.round((data.total_seats ?? data.seats_left) * 0.12))),
+      )
+    : null
+  const displayedSeatsLeft = data?.seats_left != null && seatsLeftStart != null
+    ? Math.max(
+        data.seats_left,
+        Math.round(seatsLeftStart - (seatsLeftStart - data.seats_left) * socialProofProgress),
+      )
+    : null
+  const showBatchSnapshot =
+    displayedSocialProof != null || data?.total_seats != null || displayedSeatsLeft != null || !!data?.trust_note
   const progressPercent = durationSeconds > 0 ? Math.min(100, (currentSeconds / durationSeconds) * 100) : 0
   const progressLabel = `${formatPlaybackTime(currentSeconds)} / ${formatPlaybackTime(durationSeconds)}`
   const playerButtonLabel = playing
@@ -321,6 +360,74 @@ export function WatchPage() {
                 </div>
               </section>
 
+              {showBatchSnapshot ? (
+                <section className="rounded-[2rem] border border-[#e6dccb] bg-[#fffaf2] px-5 py-5 shadow-[0_24px_80px_-56px_rgba(122,93,50,0.28)] sm:px-6">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                    <div className="max-w-2xl">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#8a6b3f]">
+                        Current batch snapshot
+                      </p>
+                      <h3 className="mt-2 text-xl font-semibold tracking-tight text-[#10231d]">
+                        Clean, private first exposure for this enrollment room
+                      </h3>
+                      <p className="mt-2 text-sm leading-relaxed text-[#5f655f]">
+                        Yahan sirf focused video experience milega. No public distractions, no YouTube clutter, aur
+                        current batch ke trust signals isi room ke andar visible rahenge.
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="border-[#d7c8af] bg-white text-[#7a5d32]">
+                      Live room cues
+                    </Badge>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-3">
+                    {displayedSocialProof != null ? (
+                      <div className="rounded-[1.5rem] border border-[#eadfcb] bg-white px-4 py-4 shadow-sm">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8a6b3f]">
+                          Forms received
+                        </p>
+                        <p className="mt-2 text-3xl font-semibold tracking-tight text-[#10231d] tabular-nums">
+                          {displayedSocialProof}
+                        </p>
+                        <p className="mt-1 text-xs leading-relaxed text-[#6c6f67]">
+                          Current form volume for this onboarding window.
+                        </p>
+                      </div>
+                    ) : null}
+                    {data.total_seats != null ? (
+                      <div className="rounded-[1.5rem] border border-[#eadfcb] bg-white px-4 py-4 shadow-sm">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8a6b3f]">
+                          Batch seats
+                        </p>
+                        <p className="mt-2 text-3xl font-semibold tracking-tight text-[#10231d] tabular-nums">
+                          {data.total_seats}
+                        </p>
+                        <p className="mt-1 text-xs leading-relaxed text-[#6c6f67]">
+                          Planned capacity for this current room cycle.
+                        </p>
+                      </div>
+                    ) : null}
+                    {displayedSeatsLeft != null ? (
+                      <div className="rounded-[1.5rem] border border-[#eadfcb] bg-white px-4 py-4 shadow-sm">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8a6b3f]">
+                          Seats left
+                        </p>
+                        <p className="mt-2 text-3xl font-semibold tracking-tight text-[#10231d] tabular-nums">
+                          {displayedSeatsLeft}
+                        </p>
+                        <p className="mt-1 text-xs leading-relaxed text-[#6c6f67]">
+                          Availability snapshot paced softly with the room playback.
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {data.trust_note ? (
+                    <p className="mt-4 text-sm leading-relaxed text-[#5f655f]">{data.trust_note}</p>
+                  ) : null}
+                </section>
+              ) : null}
+
               {!data.access_granted ? (
                 <section className="mx-auto w-full max-w-xl rounded-[2rem] border border-black/5 bg-white px-5 py-6 shadow-[0_24px_80px_-52px_rgba(16,35,29,0.28)] sm:px-6">
                   <div className="flex items-start gap-3">
@@ -454,7 +561,8 @@ export function WatchPage() {
                                 {watchCompleted ? 'Video completed' : playMarked ? 'Watch in progress' : 'Full watch required'}
                               </p>
                               <p className="mt-1 text-xs leading-relaxed text-white/65">
-                                Skipping is disabled. Team tabhi aage badhegi jab video end tak complete hogi.
+                                Skipping is disabled. Playback completion alag se track hoti hai, aur team next step
+                                status ke hisab se handle karti hai.
                               </p>
                             </div>
                             <button
@@ -478,7 +586,7 @@ export function WatchPage() {
                             <span>{progressLabel}</span>
                             <span>
                               {watchCompleted
-                                ? 'Full watch complete. Team can now move to the ₹196 proof step.'
+                                ? 'Playback completion recorded. Team room se bahar aapka next status manually handle karegi.'
                                 : 'Video ko end tak dekhein. Skip option intentionally hidden hai.'}
                             </span>
                           </div>

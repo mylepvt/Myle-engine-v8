@@ -32,6 +32,10 @@ describe('WatchPage', () => {
           stream_url: '/api/v1/watch/demo-token/stream',
           watch_started: false,
           watch_completed: false,
+          social_proof_count: 300,
+          total_seats: 50,
+          seats_left: 12,
+          trust_note: 'Private room access is limited to the current batch window.',
         })
       }
       if (url.endsWith('/api/v1/watch/demo-token/play') && init?.method === 'POST') {
@@ -57,6 +61,12 @@ describe('WatchPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Private in-app player')).toBeInTheDocument()
     })
+
+    expect(screen.getByText('Current batch snapshot')).toBeInTheDocument()
+    expect(screen.getByText('Forms received')).toBeInTheDocument()
+    expect(screen.getByText('Batch seats')).toBeInTheDocument()
+    expect(screen.getByText('Seats left')).toBeInTheDocument()
+    expect(screen.getByText('Private room access is limited to the current batch window.')).toBeInTheDocument()
 
     const video = container.querySelector('video')
     expect(video).not.toBeNull()
@@ -94,7 +104,9 @@ describe('WatchPage', () => {
     })
 
     expect(await screen.findByText('Video completed')).toBeInTheDocument()
-    expect(screen.getByText('Full watch complete. Team can now move to the ₹196 proof step.')).toBeInTheDocument()
+    expect(
+      screen.getByText('Playback completion recorded. Team room se bahar aapka next status manually handle karegi.'),
+    ).toBeInTheDocument()
   })
 
   it('keeps the player non-seekable and hides native skip controls', async () => {
@@ -109,6 +121,10 @@ describe('WatchPage', () => {
         stream_url: '/api/v1/watch/demo-token/stream',
         watch_started: false,
         watch_completed: false,
+        social_proof_count: null,
+        total_seats: null,
+        seats_left: null,
+        trust_note: null,
       }),
     )
     vi.stubGlobal('fetch', fetchMock)
@@ -128,7 +144,11 @@ describe('WatchPage', () => {
     const video = container.querySelector('video') as HTMLVideoElement | null
     expect(video).not.toBeNull()
     expect(video?.controls).toBe(false)
-    expect(screen.getByText('Skipping is disabled. Team tabhi aage badhegi jab video end tak complete hogi.')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Skipping is disabled. Playback completion alag se track hoti hai, aur team next step status ke hisab se handle karti hai.',
+      ),
+    ).toBeInTheDocument()
 
     Object.defineProperty(video!, 'duration', { configurable: true, value: 120 })
     Object.defineProperty(video!, 'currentTime', { configurable: true, writable: true, value: 0 })

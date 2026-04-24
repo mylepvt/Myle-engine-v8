@@ -34,6 +34,7 @@ from app.services.enrollment_video import (
     enrollment_expires_at,
     ensure_utc_datetime,
     expire_active_links_for_lead,
+    get_app_setting,
     get_enrollment_video_title,
     has_watch_access,
     issue_watch_cookie,
@@ -51,7 +52,6 @@ router = APIRouter()
 watch_router = APIRouter()
 
 _VIDEO_SENT_STATUS = "video_sent"
-_VIDEO_WATCHED_STATUS = "video_watched"
 _POST_VIDEO_SENT_STATUSES = {
     "video_watched",
     "paid",
@@ -66,21 +66,7 @@ _POST_VIDEO_SENT_STATUSES = {
     "lost",
     "inactive",
 }
-_POST_WATCH_STATUSES = {
-    "paid",
-    "mindset_lock",
-    "day1",
-    "day2",
-    "day3",
-    "interview",
-    "track_selected",
-    "seat_hold",
-    "converted",
-    "lost",
-    "inactive",
-}
 _POST_SENT_CALL_STATUSES = {"video_watched", "payment_done"}
-_POST_WATCH_CALL_STATUSES = {"payment_done"}
 
 
 async def _get_lead_or_404(session: AsyncSession, lead_id: int) -> Lead:
@@ -111,15 +97,34 @@ def _sync_lead_for_send(lead: Lead, *, now: datetime) -> bool:
     return lead.status != previous_status
 
 
-def _sync_lead_for_watch(lead: Lead, *, now: datetime) -> bool:
-    previous_status = lead.status
-    if lead.status not in _POST_WATCH_STATUSES and lead.status != _VIDEO_WATCHED_STATUS:
-        lead.status = _VIDEO_WATCHED_STATUS
-    if (lead.call_status or "").strip() not in _POST_WATCH_CALL_STATUSES:
-        lead.call_status = _VIDEO_WATCHED_STATUS
-    if lead.status != previous_status:
-        lead.last_action_at = now
-    return lead.status != previous_status
+def _parse_non_negative_int(raw_value: str) -> int | None:
+    value = (raw_value or "").strip()
+    if not value:
+        return None
+    try:
+        parsed = int(value)
+    except ValueError:
+        return None
+    return max(0, parsed)
+
+
+async def _load_watch_room_snapshot(session: AsyncSession) -> dict[str, int | str | None]:
+    social_proof_count = _parse_non_negative_int(
+        await get_app_setting(session, "enrollment_social_proof_count")
+    )
+    total_seats = _parse_non_negative_int(await get_app_setting(session, "enrollment_total_seats"))
+    seats_left = _parse_non_negative_int(await get_app_setting(session, "enrollment_seats_left"))
+    trust_note = (await get_app_setting(session, "enrollment_trust_note")).strip() or None
+
+    if total_seats is not None and seats_left is not None:
+        seats_left = min(seats_left, total_seats)
+
+    return {
+        "social_proof_count": social_proof_count,
+        "total_seats": total_seats,
+        "seats_left": seats_left,
+        "trust_note": trust_note,
+    }
 
 
 async def _prepare_share_link(
@@ -169,8 +174,10 @@ def _watch_page_payload(
     link: EnrollShareLink,
     lead: Lead,
     access_granted: bool,
+    room_snapshot: dict[str, int | str | None] | None = None,
 ) -> WatchPageData:
     lead_first_name = (lead.name or "").split()[0] if lead.name else "there"
+    snapshot = room_snapshot or {}
     return WatchPageData(
         token=link.token,
         title=link.title or "Enrollment video",
@@ -181,6 +188,10 @@ def _watch_page_payload(
         stream_url=f"/api/v1/watch/{link.token}/stream" if access_granted else None,
         watch_started=link.first_viewed_at is not None,
         watch_completed=bool(link.status_synced),
+        social_proof_count=snapshot.get("social_proof_count"),
+        total_seats=snapshot.get("total_seats"),
+        seats_left=snapshot.get("seats_left"),
+        trust_note=snapshot.get("trust_note"),
     )
 
 
@@ -300,7 +311,13 @@ async def watch_video(
     access_granted = has_watch_access(request, link=link, lead=lead)
     if not access_granted:
         clear_watch_cookie(response)
-    return _watch_page_payload(link=link, lead=lead, access_granted=access_granted)
+    room_snapshot = await _load_watch_room_snapshot(session)
+    return _watch_page_payload(
+        link=link,
+        lead=lead,
+        access_granted=access_granted,
+        room_snapshot=room_snapshot,
+    )
 
 
 @watch_router.post("/watch/{token}/unlock", response_model=WatchPageData)
@@ -320,7 +337,13 @@ async def unlock_watch_video(
             detail="Use the same number that is registered on this lead.",
         )
     issue_watch_cookie(response, token=link.token, lead=lead, expires_at=link.expires_at)
-    return _watch_page_payload(link=link, lead=lead, access_granted=True)
+    room_snapshot = await _load_watch_room_snapshot(session)
+    return _watch_page_payload(
+        link=link,
+        lead=lead,
+        access_granted=True,
+        room_snapshot=room_snapshot,
+    )
 
 
 @watch_router.post("/watch/{token}/play", response_model=WatchEventResponse)
@@ -355,19 +378,14 @@ async def mark_watch_completed(
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Verify your number to continue.")
 
     now = datetime.now(timezone.utc)
-    should_sync_lead = False
 
     if link.first_viewed_at is None:
         link.first_viewed_at = now
         link.view_count = int(link.view_count or 0) + 1
     link.last_viewed_at = now
     if not link.status_synced:
-        should_sync_lead = _sync_lead_for_watch(lead, now=now)
         link.status_synced = True
 
-    await session.flush()
-    if should_sync_lead:
-        enqueue_lead_shadow_upsert(session, lead)
     await session.commit()
     return WatchEventResponse(ok=True, watch_started=True, watch_completed=True)
 

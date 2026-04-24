@@ -70,6 +70,10 @@ class WatchPageData(BaseModel):
     stream_url: Optional[str] = None
     watch_started: bool = False
     watch_completed: bool = False
+    social_proof_count: Optional[int] = None
+    total_seats: Optional[int] = None
+    seats_left: Optional[int] = None
+    trust_note: Optional[str] = None
 
 
 class WatchUnlockRequest(BaseModel):
