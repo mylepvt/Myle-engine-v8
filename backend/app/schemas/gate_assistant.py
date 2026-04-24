@@ -42,6 +42,9 @@ class GateAssistantResponse(BaseModel):
     grace_active: bool = False
     grace_ending_tomorrow: bool = False
     grace_end_date: Optional[str] = None
+    grace_request_pending: bool = False
+    grace_request_end_date: Optional[str] = None
+    grace_request_reason: Optional[str] = None
     team_warning_count: int = 0
     team_strong_warning_count: int = 0
     team_final_warning_count: int = 0

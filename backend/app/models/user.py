@@ -69,6 +69,17 @@ class User(Base):
         index=True,
     )
     grace_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    grace_request_end_date: Mapped[Optional[date]] = mapped_column(
+        Date,
+        nullable=True,
+        index=True,
+    )
+    grace_request_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    grace_request_requested_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+    )
     grace_updated_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
