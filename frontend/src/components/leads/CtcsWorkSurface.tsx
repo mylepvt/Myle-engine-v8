@@ -51,7 +51,7 @@ type Props = {
 export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   const { role, serverRole } = useDashboardShellRole()
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
-  const [tab, setTab] = useState<CtcsTab>('today')
+  const [tab, setTab] = useState<CtcsTab>('all')
   const [nowMs, setNowMs] = useState(() => Date.now())
   const searchMode =
     filters.q.trim().length > 0 && (surfaceRole === 'admin' || surfaceRole === 'leader')
