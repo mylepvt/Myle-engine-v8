@@ -175,6 +175,34 @@ def test_team_tracking_admin_me_returns_self(
         asyncio.run(_reset_tracking_state())
 
 
+def test_team_tracking_leader_scope_is_recursive_downline_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stat_date = date(2026, 4, 23)
+    asyncio.run(_reset_tracking_state())
+    asyncio.run(_seed_team_tracking_activity(stat_date))
+    try:
+        c = _client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+
+        overview = c.get("/api/v1/team/tracking/overview", params={"date": stat_date.isoformat()})
+        assert overview.status_code == 200
+        body = overview.json()
+
+        assert body["total"] == 1
+        assert body["scope_total_members"] == 1
+        assert [item["member_email"] for item in body["items"]] == ["dev-team@myle.local"]
+
+        downline_detail = c.get("/api/v1/team/tracking/3", params={"date": stat_date.isoformat()})
+        assert downline_detail.status_code == 200
+        assert downline_detail.json()["member"]["member_email"] == "dev-team@myle.local"
+
+        outside_scope = c.get("/api/v1/team/tracking/1", params={"date": stat_date.isoformat()})
+        assert outside_scope.status_code == 404
+    finally:
+        asyncio.run(_reset_tracking_state())
+
+
 def test_team_tracking_presence_websocket_lifecycle(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

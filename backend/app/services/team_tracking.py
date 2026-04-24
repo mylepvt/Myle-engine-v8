@@ -736,7 +736,7 @@ async def get_tracking_overview(
         offline_count=sum(1 for item in items if item.presence_status == "offline"),
         average_score=average_score,
         date=stat_date.isoformat(),
-        note="Preview uses canonical org-tree scope and server-side activity sources only.",
+        note="Tracking uses canonical org-tree scope and server-side activity sources only.",
     )
 
 

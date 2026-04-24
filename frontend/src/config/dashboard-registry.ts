@@ -223,7 +223,7 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
   {
     path: 'team/tracking',
     section: { id: 'team', label: 'Team' },
-    label: 'Tracking Preview',
+    label: 'Team Tracking',
     roles: routeRoles('team/tracking'),
     surface: 'full',
     ui: { kind: 'team-tracking' },

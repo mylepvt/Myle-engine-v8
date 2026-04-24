@@ -36,4 +36,15 @@ describe('dashboard-registry', () => {
     }
     expect(routeDefAccessible(def, 'admin')).toBe(true)
   })
+
+  it('team/tracking is available to leaders', () => {
+    const def = getDashboardChildRoute('team/tracking')
+    expect(def).toBeDefined()
+    if (!def || def.surface !== 'full') {
+      throw new Error('expected full surface')
+    }
+    expect(resolveTitleForPath('team/tracking', 'leader')).toBe('Team Tracking')
+    expect(routeDefAccessible(def, 'leader')).toBe(true)
+    expect(routeDefAccessible(def, 'team')).toBe(false)
+  })
 })
