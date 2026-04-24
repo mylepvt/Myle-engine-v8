@@ -26,7 +26,7 @@ const LABEL: Record<CallStatusApi, string> = {
   follow_up: 'Called - Follow Up',
   called: 'Called - Busy',
   callback_requested: 'Call Back',
-  video_sent: 'Video Sent',
+  video_sent: 'Sent Enroll Video',
   video_watched: 'Video Watched',
   payment_done: 'Payment Done',
   converted: 'Already / Converted',
