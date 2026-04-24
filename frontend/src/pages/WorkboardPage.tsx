@@ -23,6 +23,11 @@ import { callStatusSelectOptions } from '@/lib/call-status-options'
 import { formatCountdown, timerRemainingMs } from '@/lib/ctcs-timer'
 import { buildDay2BusinessTestWhatsAppUrl } from '@/lib/day2-business-test'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
+import {
+  closeExternalShareWindow,
+  completeExternalShareWindow,
+  reserveExternalShareWindow,
+} from '@/lib/external-share-window'
 import { getMindsetLockSendState } from '@/lib/mindset-lock'
 import { LEAD_SLA_SMOOTH_REFRESH_MS, formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
 import { whatsappDigits } from '@/lib/phone-links'
@@ -216,13 +221,15 @@ const LeadCard = memo(function LeadCard({
 
   async function handleSendEnrollmentVideo() {
     setSendError(null)
+    const shareWindow = reserveExternalShareWindow()
     try {
       const result = await sendMut.mutateAsync(lead.id)
       const manualUrl = result.delivery.manual_share_url?.trim()
-      if (manualUrl) {
-        window.open(manualUrl, '_blank', 'noopener,noreferrer')
+      if (!completeExternalShareWindow(shareWindow, manualUrl)) {
+        closeExternalShareWindow(shareWindow)
       }
     } catch (err) {
+      closeExternalShareWindow(shareWindow)
       setSendError(err instanceof Error ? err.message : 'Could not send enrollment video')
     }
   }

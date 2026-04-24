@@ -22,6 +22,11 @@ import { useSendEnrollmentVideoMutation } from '@/hooks/use-enroll-query'
 import { apiUrl } from '@/lib/api'
 import { callStatusSelectOptions } from '@/lib/call-status-options'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
+import {
+  closeExternalShareWindow,
+  completeExternalShareWindow,
+  reserveExternalShareWindow,
+} from '@/lib/external-share-window'
 import { leadStatusSelectOptionsForLead, teamLeadStatusSelectOptions } from '@/lib/team-lead-status'
 
 type Props = {
@@ -245,12 +250,13 @@ export function LeadDetailPage({ leadId }: Props) {
   async function savePipeline() {
     if (!lead) return
     setPipelineError('')
+    const shareWindow = pipelineStatus === 'video_sent' ? reserveExternalShareWindow() : null
     try {
       if (pipelineStatus === 'video_sent') {
         const result = await sendEnrollmentMut.mutateAsync(leadId)
         const manualUrl = result.delivery.manual_share_url?.trim()
-        if (manualUrl) {
-          window.open(manualUrl, '_blank', 'noopener,noreferrer')
+        if (!completeExternalShareWindow(shareWindow, manualUrl)) {
+          closeExternalShareWindow(shareWindow)
         }
         return
       }
@@ -259,6 +265,7 @@ export function LeadDetailPage({ leadId }: Props) {
         body: { status: pipelineStatus as LeadStatus, call_status: pipelineCallStatus || undefined },
       })
     } catch (e) {
+      closeExternalShareWindow(shareWindow)
       setPipelineError(e instanceof Error ? e.message : 'Save failed')
     }
   }

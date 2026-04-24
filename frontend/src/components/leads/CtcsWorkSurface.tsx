@@ -19,6 +19,11 @@ import {
 import { useSendEnrollmentVideoMutation } from '@/hooks/use-enroll-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
+import {
+  closeExternalShareWindow,
+  completeExternalShareWindow,
+  reserveExternalShareWindow,
+} from '@/lib/external-share-window'
 import { useCallToCloseStore } from '@/stores/call-to-close-store'
 
 function nextLeadId(items: LeadPublic[], current: number | null): number | null {
@@ -92,15 +97,18 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   const onPatchStatus = useCallback(
     (id: number, status: LeadStatus) => {
       if (status === 'video_sent') {
+        const shareWindow = reserveExternalShareWindow()
         void sendEnrollmentMut
           .mutateAsync(id)
           .then((result) => {
             const manualUrl = result.delivery.manual_share_url?.trim()
-            if (manualUrl) {
-              window.open(manualUrl, '_blank', 'noopener,noreferrer')
+            if (!completeExternalShareWindow(shareWindow, manualUrl)) {
+              closeExternalShareWindow(shareWindow)
             }
           })
-          .catch(() => {})
+          .catch(() => {
+            closeExternalShareWindow(shareWindow)
+          })
         return
       }
       void patchMut.mutateAsync({ id, body: { status } })
