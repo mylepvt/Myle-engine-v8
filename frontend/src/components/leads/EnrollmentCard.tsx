@@ -113,8 +113,8 @@ export function EnrollmentCard({ leadId }: Props) {
 
       {shareLinksQuery.data && shareLinksQuery.data.items.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Abhi tak koi secure enrollment link send nahi hua. Admin ko `Settings → Application Settings` me
-          `enrollment_video_source_url` direct video file par set rakhna chahiye.
+          Abhi tak koi secure enrollment link send nahi hua. Admin ko `Settings → General → Enrollment Video` me
+          direct hosted video source set rakhna chahiye.
         </p>
       ) : null}
 

@@ -117,6 +117,13 @@ class AppSettingUpdateRequest(BaseModel):
     value: str = Field(..., max_length=1000)
 
 
+class EnrollmentVideoUploadResponse(BaseModel):
+    """Response for enrollment video file uploads."""
+    source_url: str
+    file_name: str
+    message: str
+
+
 class SystemUsersSummaryResponse(BaseModel):
     """Response for system users summary."""
     total_users: int
