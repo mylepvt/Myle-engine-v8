@@ -14,7 +14,9 @@ export type EnrollShareLink = {
   last_viewed_at: string | null
   status_synced: boolean
   created_at: string
+  expires_at: string
   share_url: string
+  is_expired: boolean
 }
 
 type EnrollShareLinkListResponse = {
@@ -22,10 +24,24 @@ type EnrollShareLinkListResponse = {
   total: number
 }
 
+export type EnrollmentVideoSendDelivery = {
+  ok: boolean
+  channel: string
+  manual_share_url?: string | null
+  message_preview?: string | null
+  http_status?: number | null
+  body_preview?: string | null
+  error?: string | null
+  detail?: string | null
+}
+
+export type EnrollmentVideoSendResponse = {
+  link: EnrollShareLink
+  delivery: EnrollmentVideoSendDelivery
+}
+
 type GenerateShareLinkBody = {
   lead_id: number
-  youtube_url?: string | null
-  title?: string | null
 }
 
 async function parseError(res: Response): Promise<never> {
@@ -53,6 +69,16 @@ async function postGenerateShareLink(body: GenerateShareLinkBody): Promise<Enrol
   return res.json() as Promise<EnrollShareLink>
 }
 
+async function postSendEnrollmentVideo(leadId: number): Promise<EnrollmentVideoSendResponse> {
+  const res = await apiFetch('/api/v1/enroll/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lead_id: leadId }),
+  })
+  if (!res.ok) await parseError(res)
+  return res.json() as Promise<EnrollmentVideoSendResponse>
+}
+
 export function useLeadShareLinksQuery(leadId: number) {
   return useQuery({
     queryKey: ['enroll', 'lead', leadId],
@@ -68,6 +94,19 @@ export function useGenerateShareLinkMutation() {
     onSuccess: (_data, body) => {
       void qc.invalidateQueries({ queryKey: ['enroll', 'lead', body.lead_id] })
       void qc.invalidateQueries({ queryKey: ['lead-detail', body.lead_id] })
+    },
+  })
+}
+
+export function useSendEnrollmentVideoMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (leadId: number) => postSendEnrollmentVideo(leadId),
+    onSuccess: (_data, leadId) => {
+      void qc.invalidateQueries({ queryKey: ['enroll', 'lead', leadId] })
+      void qc.invalidateQueries({ queryKey: ['lead-detail', leadId] })
+      void qc.invalidateQueries({ queryKey: ['leads'] })
+      void qc.invalidateQueries({ queryKey: ['workboard'] })
     },
   })
 }

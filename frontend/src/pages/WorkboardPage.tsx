@@ -16,10 +16,12 @@ import {
   usePatchLeadMutation,
 } from '@/hooks/use-leads-query'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
+import { useSendEnrollmentVideoMutation } from '@/hooks/use-enroll-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { apiFetch } from '@/lib/api'
 import { callStatusSelectOptions } from '@/lib/call-status-options'
 import { formatCountdown, timerRemainingMs } from '@/lib/ctcs-timer'
+import { buildDay2BusinessTestWhatsAppUrl } from '@/lib/day2-business-test'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import { getMindsetLockSendState } from '@/lib/mindset-lock'
 import { LEAD_SLA_SMOOTH_REFRESH_MS, formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
@@ -83,18 +85,6 @@ function mmss(totalSeconds: number): string {
   const m = Math.floor(sec / 60)
   const s = sec % 60
   return `${m}:${s.toString().padStart(2, '0')}`
-}
-
-function day2TestWhatsAppUrl(lead: LeadPublic): string | null {
-  const digits = whatsappDigits(lead.phone ?? '')
-  if (!digits) return null
-  const testPath = '/dashboard/system/training'
-  const testUrl = `${window.location.origin}${testPath}`
-  const name = (lead.name || 'Participant').trim()
-  const msg =
-    `Hi ${name}, your Day 2 batches are complete.\n` +
-    `Please take the test from this link:\n${testUrl}`
-  return `https://wa.me/${digits}?text=${encodeURIComponent(msg)}`
 }
 
 function workboardBatchWhatsAppUrl(
@@ -193,7 +183,9 @@ const LeadCard = memo(function LeadCard({
   const [uploading, setUploading] = useState(false)
   const [uploadDone, setUploadDone] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [sendError, setSendError] = useState<string | null>(null)
   const qc = useQueryClient()
+  const sendMut = useSendEnrollmentVideoMutation()
   const stageOpsCard = stageKey != null
 
   const proofApproved = lead.payment_status === 'approved'
@@ -219,6 +211,19 @@ const LeadCard = memo(function LeadCard({
       setUploadError(err instanceof Error ? err.message : 'Upload failed')
     } finally {
       setUploading(false)
+    }
+  }
+
+  async function handleSendEnrollmentVideo() {
+    setSendError(null)
+    try {
+      const result = await sendMut.mutateAsync(lead.id)
+      const manualUrl = result.delivery.manual_share_url?.trim()
+      if (manualUrl) {
+        window.open(manualUrl, '_blank', 'noopener,noreferrer')
+      }
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : 'Could not send enrollment video')
     }
   }
 
@@ -368,7 +373,7 @@ const LeadCard = memo(function LeadCard({
                 <LeadContactActions phone={lead.phone} />
                 {!stageOpsCard ? (
                   <IconBtn title="Send Video" colorHover="hover:border-indigo-400/40 hover:text-indigo-400 disabled:opacity-50"
-                    onClick={() => void pm.mutateAsync({ id: lead.id, body: { call_status: 'video_sent', status: 'video_sent' as LeadStatus } })}>
+                    onClick={() => void handleSendEnrollmentVideo()}>
                     <Video className="h-3.5 w-3.5"/>
                   </IconBtn>
                 ) : null}
@@ -491,6 +496,11 @@ const LeadCard = memo(function LeadCard({
             nextLabel={nextLabel}
           />
         ) : null}
+        {sendError ? (
+          <p className="text-ds-caption text-destructive" role="alert">
+            {sendError}
+          </p>
+        ) : null}
       </div>
     </article>
   )
@@ -539,6 +549,12 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     : (['d2_morning', 'd2_afternoon', 'd2_evening'] as const)
   const done = batchSlots.every((k) => lead[k])
   const showDay2TestSend = stageKey === 'day2' && done
+  const day2EvaluationWhatsAppUrl = showDay2TestSend
+    ? buildDay2BusinessTestWhatsAppUrl({
+        leadName: lead.name,
+        phone: lead.phone,
+      })
+    : null
 
   const handleBatchShare = async (slot: 'M' | 'A' | 'E', slotKey: BatchSlotKey) => {
     setBatchError(null)
@@ -576,6 +592,16 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     } finally {
       setToggleSlot(null)
     }
+  }
+
+  const handleDay2EvaluationShare = async () => {
+    setBatchError(null)
+    if (!day2EvaluationWhatsAppUrl) {
+      setBatchError('Phone number missing for Day 2 evaluation WhatsApp share.')
+      return
+    }
+    window.open(day2EvaluationWhatsAppUrl, '_blank', 'noopener,noreferrer')
+    await pm.mutateAsync({ id: lead.id, body: { whatsapp_sent: true } })
   }
 
   return (
@@ -631,9 +657,9 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
       {batchError ? <p className="text-ds-caption text-destructive">{batchError}</p> : null}
       {showDay2TestSend && (
         <button type="button" disabled={leadPatchBusy}
-          onClick={() => { const u = day2TestWhatsAppUrl(lead); if (u) window.open(u, '_blank', 'noopener,noreferrer'); void pm.mutateAsync({ id: lead.id, body: { whatsapp_sent: true } }) }}
+          onClick={() => void handleDay2EvaluationShare()}
           className="w-full rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-ds-caption font-semibold text-emerald-300 transition hover:bg-emerald-400/20 disabled:opacity-50">
-          Send Test on WhatsApp
+          Send Day 2 Evaluation Update
         </button>
       )}
       {done && onMoveNext && (

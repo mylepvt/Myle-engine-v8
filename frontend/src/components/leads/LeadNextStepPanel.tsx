@@ -5,8 +5,6 @@ import { Button } from '@/components/ui/button'
 import {
   pickPrimaryNextTransition,
   primaryActionLabel,
-  buildWhatsAppVideoUrl,
-  shouldOfferWhatsAppForTransition,
   visibleAlternativeTransitions,
 } from '@/lib/lead-next-action'
 import { useAvailableTransitionsQuery, useTransitionLeadMutation } from '@/hooks/use-leads-query'
@@ -14,6 +12,7 @@ import { LEAD_STATUS_OPTIONS } from '@/hooks/use-leads-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { cn } from '@/lib/utils'
 import { ChevronDown, ChevronUp, MessageCircle } from 'lucide-react'
+import { useSendEnrollmentVideoMutation } from '@/hooks/use-enroll-query'
 
 type LeadMini = {
   id: number
@@ -32,6 +31,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
   const { role } = useDashboardShellRole()
   const { data: transitions, isPending, isError, error, refetch } = useAvailableTransitionsQuery(lead.id)
   const mut = useTransitionLeadMutation()
+  const sendMut = useSendEnrollmentVideoMutation()
   const [showAll, setShowAll] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
 
@@ -71,11 +71,20 @@ export function LeadNextStepPanel({ lead, className }: Props) {
 
   async function onPrimaryClick() {
     if (!primary) return
-    if (shouldOfferWhatsAppForTransition(lead.status, primary)) {
-      const url = buildWhatsAppVideoUrl(lead.phone, lead.name)
-      if (url) window.open(url, '_blank', 'noopener,noreferrer')
+    setLocalError(null)
+    try {
+      if (primary === 'video_sent') {
+        const result = await sendMut.mutateAsync(lead.id)
+        const manualUrl = result.delivery.manual_share_url?.trim()
+        if (manualUrl) {
+          window.open(manualUrl, '_blank', 'noopener,noreferrer')
+        }
+        return
+      }
+      await runTransition(primary)
+    } catch (e) {
+      setLocalError(e instanceof Error ? e.message : 'Could not update stage')
     }
-    await runTransition(primary)
   }
 
   if (isPending) {
@@ -113,10 +122,10 @@ export function LeadNextStepPanel({ lead, className }: Props) {
         <Button
           type="button"
           className="h-11 w-full justify-center gap-2 rounded-xl border border-primary/35 bg-primary/15 text-sm font-semibold text-primary shadow-sm transition-transform active:scale-[0.98] hover:bg-primary/25"
-          disabled={mut.isPending}
+          disabled={mut.isPending || sendMut.isPending}
           onClick={() => void onPrimaryClick()}
         >
-          {shouldOfferWhatsAppForTransition(lead.status, primary) ? (
+          {primary === 'video_sent' ? (
             <MessageCircle className="size-4 shrink-0" aria-hidden />
           ) : null}
           {primaryActionLabel(primary)}
