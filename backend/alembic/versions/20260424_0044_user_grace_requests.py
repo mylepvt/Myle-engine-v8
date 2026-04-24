@@ -1,15 +1,15 @@
 """user grace self-request fields
 
-Revision ID: 20260424_0043
-Revises: 20260424_0042
+Revision ID: 20260424_0044
+Revises: 20260424_0043
 Create Date: 2026-04-24 00:30:00.000000
 """
 
 from alembic import op
 import sqlalchemy as sa
 
-revision = "20260424_0043"
-down_revision = "20260424_0042"
+revision = "20260424_0044"
+down_revision = "20260424_0043"
 branch_labels = None
 depends_on = None
 
