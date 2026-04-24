@@ -5,6 +5,11 @@ from datetime import datetime, timezone
 from app.api.v1.enroll import _watch_page_payload
 from app.models.enroll_share_link import EnrollShareLink
 from app.models.lead import Lead
+from app.services import enrollment_video
+from app.services.enrollment_video import (
+    build_enrollment_stream_source_candidates,
+    normalize_video_source_url,
+)
 
 
 def test_watch_page_payload_distinguishes_started_vs_completed() -> None:
@@ -66,3 +71,28 @@ def test_watch_page_payload_includes_room_snapshot() -> None:
     assert payload.total_seats == 50
     assert payload.seats_left == 12
     assert payload.trust_note == "Private room access is limited to the current batch window."
+
+
+def test_normalize_video_source_url_encodes_legacy_upload_paths() -> None:
+    assert (
+        normalize_video_source_url("/uploads/EARN 30K USING INSTAGRAM  MONTHLY | MYLE COMMUNITY.mp4")
+        == "/uploads/EARN%2030K%20USING%20INSTAGRAM%20%20MONTHLY%20%7C%20MYLE%20COMMUNITY.mp4"
+    )
+
+
+def test_stream_candidates_fall_back_to_current_configured_video_for_missing_local_file(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    uploads_root = tmp_path / "uploads"
+    managed_video = uploads_root / "enrollment_video" / "enrollment_video_test.mp4"
+    managed_video.parent.mkdir(parents=True, exist_ok=True)
+    managed_video.write_bytes(b"video")
+    monkeypatch.setattr(enrollment_video, "_UPLOADS_ROOT", uploads_root)
+
+    candidates = build_enrollment_stream_source_candidates(
+        "/uploads/enrollment-demo.mp4",
+        "/uploads/enrollment_video/enrollment_video_test.mp4",
+    )
+
+    assert candidates == ["/uploads/enrollment_video/enrollment_video_test.mp4"]
