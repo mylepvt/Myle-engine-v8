@@ -30,16 +30,19 @@ from app.schemas.enroll import (
 from app.services.crm_outbox import enqueue_lead_shadow_upsert
 from app.services.enrollment_video import (
     absolute_video_source_url,
+    build_enrollment_stream_source_candidates,
     clear_watch_cookie,
     enrollment_expires_at,
     ensure_utc_datetime,
     expire_active_links_for_lead,
     get_app_setting,
+    get_enrollment_video_source,
     get_enrollment_video_title,
     has_watch_access,
     issue_watch_cookie,
     is_youtube_like_url,
     mask_phone,
+    normalize_video_source_url,
     normalize_phone_for_match,
     require_secure_enrollment_video_source,
     resolve_public_app_url,
@@ -400,25 +403,47 @@ async def stream_watch_video(
     if not has_watch_access(request, link=link, lead=lead):
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Verify your number to continue.")
 
-    source_url = (link.youtube_url or "").strip()
-    if not source_url:
-        source_url = await require_secure_enrollment_video_source(session)
-    if is_youtube_like_url(source_url):
-        raise HTTPException(
-            status_code=http_status.HTTP_400_BAD_REQUEST,
-            detail="Enrollment video source must be a direct hosted video URL.",
-        )
+    configured_source = await get_enrollment_video_source(session)
+    source_candidates = build_enrollment_stream_source_candidates(link.youtube_url, configured_source)
+    if not source_candidates:
+        await require_secure_enrollment_video_source(session)
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Video file is not available.")
 
-    upstream_url = absolute_video_source_url(request, source_url)
     forward_headers: dict[str, str] = {}
     if request.headers.get("range"):
         forward_headers["Range"] = request.headers["range"]
 
     client = httpx.AsyncClient(follow_redirects=True, timeout=httpx.Timeout(60.0, connect=10.0))
-    upstream = await client.send(client.build_request("GET", upstream_url, headers=forward_headers), stream=True)
-    if upstream.status_code not in {200, 206}:
-        await _close_upstream(upstream, client)
+    upstream: httpx.Response | None = None
+    resolved_source: str | None = None
+
+    for source_url in source_candidates:
+        if is_youtube_like_url(source_url):
+            continue
+        upstream_url = absolute_video_source_url(request, source_url)
+        try:
+            candidate_upstream = await client.send(
+                client.build_request("GET", upstream_url, headers=forward_headers),
+                stream=True,
+            )
+        except httpx.HTTPError:
+            continue
+
+        if candidate_upstream.status_code in {200, 206}:
+            upstream = candidate_upstream
+            resolved_source = source_url
+            break
+
+        await candidate_upstream.aclose()
+
+    if upstream is None or resolved_source is None:
+        await client.aclose()
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Video file is not available.")
+
+    normalized_link_source = normalize_video_source_url(link.youtube_url)
+    if resolved_source != normalized_link_source:
+        link.youtube_url = resolved_source
+        await session.commit()
 
     headers = {"Cache-Control": "private, no-store", "Content-Disposition": 'inline; filename="myle-enrollment-video"'}
     for key in ("content-type", "content-length", "content-range", "accept-ranges", "etag", "last-modified"):

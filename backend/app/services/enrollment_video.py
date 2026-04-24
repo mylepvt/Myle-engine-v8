@@ -4,8 +4,9 @@ import hashlib
 import hmac
 import re
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import quote, unquote, urlparse, urlsplit, urlunsplit
 
 import jwt
 from fastapi import HTTPException, Request, Response
@@ -24,6 +25,7 @@ ENROLL_WATCH_COOKIE = "myle_enroll_watch"
 _PHONE_DIGIT_RE = re.compile(r"\D")
 _PUBLIC_TOKEN_RE = re.compile(r"[^A-Za-z0-9_-]+")
 _YOUTUBE_HOSTS = {"youtube.com", "youtu.be", "youtube-nocookie.com"}
+_UPLOADS_ROOT = Path(__file__).resolve().parents[2] / "uploads"
 
 
 def sanitize_public_token(raw_token: str) -> str:
@@ -68,14 +70,70 @@ def is_youtube_like_url(raw_url: str | None) -> bool:
         return "youtu" in candidate.lower()
 
 
+def normalize_video_source_url(raw_url: str | None) -> str:
+    value = (raw_url or "").strip()
+    if not value:
+        return ""
+
+    if value.startswith(("http://", "https://")):
+        parsed = urlsplit(value)
+        safe_path = quote(unquote(parsed.path or ""), safe="/")
+        return urlunsplit((parsed.scheme, parsed.netloc, safe_path, parsed.query, parsed.fragment))
+
+    safe_path = quote(unquote(value), safe="/")
+    if safe_path.startswith("/"):
+        return safe_path
+    return f"/{safe_path.lstrip('/')}"
+
+
+def resolve_local_upload_source_path(raw_url: str | None) -> Path | None:
+    normalized = normalize_video_source_url(raw_url)
+    if not normalized:
+        return None
+
+    parsed = urlparse(normalized)
+    if parsed.scheme or parsed.netloc:
+        return None
+
+    path = unquote(parsed.path or "")
+    if not path.startswith("/uploads/"):
+        return None
+
+    candidate = (_UPLOADS_ROOT / path.removeprefix("/uploads/")).resolve()
+    uploads_root = _UPLOADS_ROOT.resolve()
+    try:
+        candidate.relative_to(uploads_root)
+    except ValueError:
+        return None
+    return candidate
+
+
+def local_video_source_exists(raw_url: str | None) -> bool | None:
+    local_path = resolve_local_upload_source_path(raw_url)
+    if local_path is None:
+        return None
+    return local_path.is_file()
+
+
+def build_enrollment_stream_source_candidates(*raw_sources: str | None) -> list[str]:
+    candidates: list[str] = []
+    for raw_source in raw_sources:
+        normalized = normalize_video_source_url(raw_source)
+        if not normalized or normalized in candidates or is_youtube_like_url(normalized):
+            continue
+        local_exists = local_video_source_exists(normalized)
+        if local_exists is False:
+            continue
+        candidates.append(normalized)
+    return candidates
+
+
 def absolute_video_source_url(request: Request, raw_url: str) -> str:
-    value = raw_url.strip()
+    value = normalize_video_source_url(raw_url)
     if value.startswith(("http://", "https://")):
         return value
     base = str(request.base_url).rstrip("/")
-    if value.startswith("/"):
-        return f"{base}{value}"
-    return f"{base}/{value.lstrip('/')}"
+    return f"{base}{value}"
 
 
 async def get_app_setting(session: AsyncSession, key: str) -> str:
