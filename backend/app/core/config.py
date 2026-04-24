@@ -1,3 +1,4 @@
+from datetime import date
 from pathlib import Path
 from typing import Literal, Optional
 from urllib.parse import urlparse
@@ -72,6 +73,11 @@ class Settings(BaseSettings):
         default=30,
         validation_alias="AUTH_LOGIN_RATE_LIMIT_PER_MINUTE",
         description="Max POSTs per client IP per minute on auth login paths; 0 disables.",
+    )
+    discipline_rollout_start_date: date = Field(
+        default=date(2026, 4, 24),
+        validation_alias="DISCIPLINE_ROLLOUT_START_DATE",
+        description="Calendar date from which call/report discipline starts counting. Older activity is ignored.",
     )
     app_environment: str = Field(
         default="development",
