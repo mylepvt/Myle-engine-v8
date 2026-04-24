@@ -7,11 +7,14 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import delete
 
-from app.core.time_ist import today_ist
+from app.core.passwords import DEV_LOGIN_PASSWORD_PLAIN, hash_password
+from app.core.time_ist import IST, today_ist
 from app.models.activity_log import ActivityLog
 from app.models.call_event import CallEvent
+from app.models.daily_report import DailyReport
 from app.models.follow_up import FollowUp
 from app.models.lead import Lead
+from app.models.user import User
 from main import app
 
 from conftest import get_test_session_factory
@@ -28,6 +31,7 @@ def _authed(monkeypatch: pytest.MonkeyPatch) -> TestClient:
 async def _reset_live_tables() -> None:
     factory = get_test_session_factory()
     async with factory() as session:
+        await session.execute(delete(DailyReport))
         await session.execute(delete(FollowUp))
         await session.execute(delete(CallEvent))
         await session.execute(delete(ActivityLog))
@@ -147,9 +151,10 @@ def test_gate_assistant_team_uses_fresh_claim_create_import_calls(monkeypatch: p
         assert r.status_code == 200
         body = r.json()
         assert body["role"] == "team"
-        assert len(body["checklist"]) == 2
+        assert len(body["checklist"]) == 3
         assert [item["id"] for item in body["checklist"]] == [
             "daily_call_target",
+            "daily_report_submitted",
             "followups_overdue",
         ]
         assert body["fresh_leads_today"] == 3
@@ -159,3 +164,96 @@ def test_gate_assistant_team_uses_fresh_claim_create_import_calls(monkeypatch: p
         assert body["next_href"] == "work/follow-ups"
     finally:
         asyncio.run(_reset_live_tables())
+
+
+def test_gate_assistant_team_shows_warning_streaks(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_reset_live_tables())
+    fbo = "discipline-gate-001"
+
+    async def seed_warning_user() -> None:
+        factory = get_test_session_factory()
+        yesterday = today_ist() - timedelta(days=1)
+        created_yesterday_utc = (
+            datetime.combine(yesterday, datetime.min.time(), tzinfo=IST) + timedelta(hours=11)
+        ).astimezone(timezone.utc)
+        async with factory() as session:
+            user = User(
+                fbo_id=fbo,
+                email="discipline-gate-001@test.local",
+                role="team",
+                hashed_password=hash_password(DEV_LOGIN_PASSWORD_PLAIN),
+                upline_user_id=2,
+                registration_status="approved",
+                created_at=datetime.now(timezone.utc) - timedelta(days=5),
+            )
+            session.add(user)
+            await session.flush()
+
+            lead = Lead(
+                name="Warning lead",
+                status="new_lead",
+                created_by_user_id=user.id,
+                assigned_to_user_id=user.id,
+                phone="9000000010",
+                created_at=created_yesterday_utc,
+            )
+            session.add(lead)
+            await session.flush()
+            session.add(
+                CallEvent(
+                    lead_id=lead.id,
+                    user_id=user.id,
+                    outcome="answered",
+                    called_at=created_yesterday_utc + timedelta(minutes=15),
+                )
+            )
+            session.add_all(
+                [
+                    DailyReport(
+                        user_id=user.id,
+                        report_date=today_ist() - timedelta(days=2),
+                        total_calling=15,
+                    ),
+                    DailyReport(
+                        user_id=user.id,
+                        report_date=today_ist() - timedelta(days=3),
+                        total_calling=15,
+                    ),
+                    DailyReport(
+                        user_id=user.id,
+                        report_date=today_ist() - timedelta(days=4),
+                        total_calling=15,
+                    ),
+                ]
+            )
+            await session.commit()
+
+    async def cleanup_warning_user() -> None:
+        factory = get_test_session_factory()
+        async with factory() as session:
+            await session.execute(delete(User).where(User.fbo_id == fbo))
+            await session.commit()
+
+    try:
+        asyncio.run(seed_warning_user())
+        c = _authed(monkeypatch)
+        login = c.post(
+            "/api/v1/auth/login",
+            json={"fbo_id": fbo, "password": DEV_LOGIN_PASSWORD_PLAIN},
+        )
+        assert login.status_code == 200
+        res = c.get("/api/v1/gate-assistant")
+        assert res.status_code == 200
+        body = res.json()
+        assert body["role"] == "team"
+        assert body["compliance_level"] == "warning"
+        assert body["calls_short_streak"] == 1
+        assert body["missing_report_streak"] == 1
+        assert [item["id"] for item in body["checklist"]] == [
+            "daily_call_target",
+            "daily_report_submitted",
+            "followups_overdue",
+        ]
+    finally:
+        asyncio.run(_reset_live_tables())
+        asyncio.run(cleanup_warning_user())

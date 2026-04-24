@@ -63,6 +63,39 @@ class User(Base):
         server_default=text("'active'"),
         default="active",
     )
+    grace_end_date: Mapped[Optional[date]] = mapped_column(
+        Date,
+        nullable=True,
+        index=True,
+    )
+    grace_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    grace_updated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    grace_set_by_user_id: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    discipline_reset_on: Mapped[Optional[date]] = mapped_column(
+        Date,
+        nullable=True,
+        index=True,
+    )
+    removed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+    )
+    removed_by_user_id: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    removal_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     # Public URL path served by GET /api/v1/media/avatar/{id} (set after upload).
     avatar_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # base64 data URL or legacy path

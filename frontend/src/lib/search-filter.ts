@@ -10,6 +10,9 @@ export type DirectorySearchableRecord = {
   upline_name?: string | null
   upline_fbo_id?: string | null
   training_status?: string | null
+  discipline_status?: string | null
+  compliance_title?: string | null
+  compliance_summary?: string | null
 }
 
 function normalizeSearchValue(value: SearchableValue): string {
@@ -51,5 +54,8 @@ export function directorySearchValues(record: DirectorySearchableRecord): Search
     record.upline_name,
     record.upline_fbo_id,
     record.training_status,
+    record.discipline_status,
+    record.compliance_title,
+    record.compliance_summary,
   ]
 }

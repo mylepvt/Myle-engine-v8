@@ -36,6 +36,15 @@ function presenceVariant(status: 'online' | 'idle' | 'offline') {
   return 'outline' as const
 }
 
+function complianceVariant(level: string | null) {
+  if (level === 'removed') return 'danger' as const
+  if (level === 'final_warning' || level === 'strong_warning') return 'warning' as const
+  if (level === 'warning') return 'primary' as const
+  if (level === 'grace' || level === 'grace_ending') return 'outline' as const
+  if (level === 'clear') return 'success' as const
+  return 'secondary' as const
+}
+
 export function TeamTrackingDetailPage({ title, userId }: Props) {
   const [params, setParams] = useSearchParams()
   const dateIso = params.get('date') || todayIsoLocal()
@@ -102,6 +111,11 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
                   <Badge variant={scoreVariant(data.member.consistency_band)}>
                     Score {data.member.consistency_score}
                   </Badge>
+                  {data.member.compliance_title ? (
+                    <Badge variant={complianceVariant(data.member.compliance_level)}>
+                      {data.member.compliance_title}
+                    </Badge>
+                  ) : null}
                 </div>
               </div>
             </CardHeader>
@@ -111,6 +125,9 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
                 <p>Phone: <span className="text-foreground">{data.member.member_phone || '—'}</span></p>
                 <p>Last seen: <span className="text-foreground">{formatDateTime(data.member.last_seen_at)}</span></p>
                 <p>Last activity: <span className="text-foreground">{formatDateTime(data.member.last_activity_at)}</span></p>
+                {data.member.compliance_summary ? (
+                  <p>Discipline: <span className="text-foreground">{data.member.compliance_summary}</span></p>
+                ) : null}
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="rounded-xl bg-muted/30 p-3">

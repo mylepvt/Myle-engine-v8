@@ -25,6 +25,21 @@ class TeamMemberPublic(BaseModel):
     leader_name: Optional[str] = None
     training_required: Optional[bool] = None
     training_status: Optional[str] = None
+    access_blocked: Optional[bool] = None
+    discipline_status: Optional[str] = None
+    grace_end_date: Optional[date] = None
+    grace_reason: Optional[str] = None
+    discipline_reset_on: Optional[date] = None
+    removed_at: Optional[datetime] = None
+    removed_by_user_id: Optional[int] = None
+    removal_reason: Optional[str] = None
+    calls_short_streak: Optional[int] = None
+    missing_report_streak: Optional[int] = None
+    compliance_level: Optional[str] = None
+    compliance_title: Optional[str] = None
+    compliance_summary: Optional[str] = None
+    grace_active: Optional[bool] = None
+    grace_ending_tomorrow: Optional[bool] = None
 
 
 class TeamMemberListResponse(BaseModel):
@@ -47,6 +62,12 @@ class TeamMemberCreate(BaseModel):
     email: str = Field(min_length=3, max_length=320)
     password: str = Field(min_length=8, max_length=128)
     role: Role
+
+
+class TeamMemberComplianceUpdate(BaseModel):
+    action: Literal["grant_grace", "clear_grace", "restore_access", "remove_now"]
+    grace_end_date: Optional[date] = None
+    reason: Optional[str] = Field(default=None, max_length=2000)
 
 
 class TeamMyTeamResponse(BaseModel):

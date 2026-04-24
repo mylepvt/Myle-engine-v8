@@ -21,6 +21,7 @@ from app.core.auth_constants import AUTH_SESSION_VERSION
 from app.core.auth_cookies import issue_session_cookies
 from app.core.auth_login_guards import ensure_may_issue_session_cookies
 from app.models.user import User
+from app.services.member_compliance import ensure_user_compliance_snapshot
 
 if TYPE_CHECKING:
     from app.api.deps import AuthUser
@@ -93,6 +94,11 @@ async def refresh_session_identity(
     Equivalent to legacy ``refresh_session_user``: updates cookie claims (role,
     ``fbo_id``, ``username``, ``display_name``, email, ``ver``) without requiring password again.
     """
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        return False
+    await ensure_user_compliance_snapshot(db, user_id=user_id, apply_actions=True)
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if user is None:

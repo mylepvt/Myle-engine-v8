@@ -27,6 +27,12 @@ class TeamTrackingMemberSummary(BaseModel):
     followups_done_count: int = 0
     consistency_score: int = 0
     consistency_band: str = "low"
+    compliance_level: Optional[str] = None
+    compliance_title: Optional[str] = None
+    compliance_summary: Optional[str] = None
+    calls_short_streak: int = 0
+    missing_report_streak: int = 0
+    grace_end_date: Optional[str] = None
     insights: list[str] = Field(default_factory=list)
 
 
@@ -67,4 +73,3 @@ class TeamTrackingDetailResponse(BaseModel):
     recent_activity: list[TeamTrackingActivityItem] = Field(default_factory=list)
     date: str
     timezone: str = "Asia/Kolkata"
-

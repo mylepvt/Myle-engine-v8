@@ -1,9 +1,10 @@
 import asyncio
+from datetime import datetime, timedelta, timezone
 
 from fastapi.testclient import TestClient
 
 import pytest
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 
 from app.core.passwords import DEV_LOGIN_PASSWORD_PLAIN, hash_password
 from app.models.user import User
@@ -113,6 +114,58 @@ def test_password_login_rejects_pending_registration(
         assert "pending" in res.json()["error"]["message"].lower()
     finally:
         asyncio.run(cleanup_pending())
+
+
+def test_password_login_blocks_after_four_missed_reports(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    patch_jwt_settings(monkeypatch)
+    fbo = "discipline-report-004"
+    email = "discipline-report-004@test.local"
+
+    async def seed_user() -> None:
+        factory = get_test_session_factory()
+        async with factory() as session:
+            session.add(
+                User(
+                    fbo_id=fbo,
+                    email=email,
+                    role="team",
+                    hashed_password=hash_password(DEV_LOGIN_PASSWORD_PLAIN),
+                    upline_user_id=2,
+                    registration_status="approved",
+                    created_at=datetime.now(timezone.utc) - timedelta(days=6),
+                )
+            )
+            await session.commit()
+
+    async def cleanup_user() -> None:
+        factory = get_test_session_factory()
+        async with factory() as session:
+            await session.execute(delete(User).where(User.fbo_id == fbo))
+            await session.commit()
+
+    try:
+        asyncio.run(seed_user())
+        res = client.post(
+            "/api/v1/auth/login",
+            json={"fbo_id": fbo, "password": DEV_LOGIN_PASSWORD_PLAIN},
+        )
+        assert res.status_code == 403
+        assert "remove" in res.json()["error"]["message"].lower()
+
+        async def assert_removed() -> None:
+            factory = get_test_session_factory()
+            async with factory() as session:
+                row = (
+                    await session.execute(select(User).where(User.fbo_id == fbo))
+                ).scalar_one()
+                assert row.access_blocked is True
+                assert row.discipline_status == "removed"
+
+        asyncio.run(assert_removed())
+    finally:
+        asyncio.run(cleanup_user())
 
 
 def test_lookup_upline_fbo_admin_verified(monkeypatch: pytest.MonkeyPatch) -> None:

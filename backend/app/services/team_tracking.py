@@ -31,6 +31,7 @@ from app.services.user_hierarchy import (
     nearest_leader_entry,
     recursive_downline_user_ids,
 )
+from app.services.member_compliance import ComplianceSnapshot, build_compliance_snapshots
 
 PRESENCE_ONLINE_STALE_SECONDS = 45
 TREND_DAYS = 7
@@ -620,11 +621,13 @@ async def _build_member_summary(
     presence_map: dict[int, tuple[str, datetime | None]],
     history_map: dict[int, list[DailyMemberStat]],
     hierarchy_entries: dict[int, UserHierarchyEntry],
+    compliance_map: dict[int, ComplianceSnapshot],
 ) -> TeamTrackingMemberSummary:
     leader = nearest_leader_entry(member.user.id, hierarchy_entries)
     today_row = stats_map.get(int(member.user.id))
     recent_rows = history_map.get(int(member.user.id), [])
     presence_status, presence_seen = presence_map.get(int(member.user.id), ("offline", None))
+    compliance = compliance_map.get(int(member.user.id))
     member_name = display_name_from_user(member.user) or member.user.fbo_id
     upline_name = (
         (display_name_from_user(member.upline) or member.upline.fbo_id)
@@ -653,6 +656,12 @@ async def _build_member_summary(
         followups_done_count=int(today_row.followups_done_count or 0) if today_row is not None else 0,
         consistency_score=int(today_row.consistency_score or 0) if today_row is not None else 0,
         consistency_band=(today_row.consistency_band or "low") if today_row is not None else "low",
+        compliance_level=compliance.compliance_level if compliance is not None else None,
+        compliance_title=compliance.compliance_title if compliance is not None else None,
+        compliance_summary=compliance.compliance_summary if compliance is not None else None,
+        calls_short_streak=int(compliance.calls_short_streak or 0) if compliance is not None else 0,
+        missing_report_streak=int(compliance.missing_report_streak or 0) if compliance is not None else 0,
+        grace_end_date=compliance.grace_end_date.isoformat() if compliance is not None and compliance.grace_end_date else None,
         insights=_member_insights(today_row, recent_rows=recent_rows),
     )
 
@@ -706,6 +715,7 @@ async def get_tracking_overview(
     history_map = await _history_rows_by_user(session, user_ids=user_ids, end_date=stat_date)
     presence_map = await _presence_by_user(session, user_ids=user_ids)
     hierarchy_entries = await load_user_hierarchy_entries(session, user_ids)
+    compliance_map = await build_compliance_snapshots(session, user_ids, apply_actions=True)
 
     items = [
         await _build_member_summary(
@@ -715,6 +725,7 @@ async def get_tracking_overview(
             presence_map=presence_map,
             history_map=history_map,
             hierarchy_entries=hierarchy_entries,
+            compliance_map=compliance_map,
         )
         for member in members
     ]
@@ -765,6 +776,7 @@ async def get_tracking_detail(
     history_map = await _history_rows_by_user(session, user_ids=[target_user_id], end_date=stat_date)
     presence_map = await _presence_by_user(session, user_ids=[target_user_id])
     hierarchy_entries = await load_user_hierarchy_entries(session, [target_user_id])
+    compliance_map = await build_compliance_snapshots(session, [target_user_id], apply_actions=True)
     summary = await _build_member_summary(
         member=member,
         stat_date=stat_date,
@@ -772,6 +784,7 @@ async def get_tracking_detail(
         presence_map=presence_map,
         history_map=history_map,
         hierarchy_entries=hierarchy_entries,
+        compliance_map=compliance_map,
     )
 
     history_rows = history_map.get(target_user_id, [])

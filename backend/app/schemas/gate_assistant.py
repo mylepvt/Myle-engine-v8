@@ -34,4 +34,17 @@ class GateAssistantResponse(BaseModel):
     open_follow_ups: int = 0
     overdue_follow_ups: int = 0
     active_pipeline_leads: int = 0
+    compliance_level: Optional[str] = None
+    compliance_title: Optional[str] = None
+    compliance_summary: Optional[str] = None
+    calls_short_streak: int = 0
+    missing_report_streak: int = 0
+    grace_active: bool = False
+    grace_ending_tomorrow: bool = False
+    grace_end_date: Optional[str] = None
+    team_warning_count: int = 0
+    team_strong_warning_count: int = 0
+    team_final_warning_count: int = 0
+    team_removed_count: int = 0
+    team_grace_count: int = 0
     note: Optional[str] = None

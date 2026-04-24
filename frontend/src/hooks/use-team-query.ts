@@ -15,6 +15,30 @@ export type TeamMemberPublic = {
   upline_name?: string | null
   training_required?: boolean | null
   training_status?: string | null
+  access_blocked?: boolean | null
+  discipline_status?: string | null
+  grace_end_date?: string | null
+  grace_reason?: string | null
+  discipline_reset_on?: string | null
+  removed_at?: string | null
+  removed_by_user_id?: number | null
+  removal_reason?: string | null
+  calls_short_streak?: number | null
+  missing_report_streak?: number | null
+  compliance_level?:
+    | 'clear'
+    | 'warning'
+    | 'strong_warning'
+    | 'final_warning'
+    | 'grace'
+    | 'grace_ending'
+    | 'removed'
+    | 'not_applicable'
+    | null
+  compliance_title?: string | null
+  compliance_summary?: string | null
+  grace_active?: boolean | null
+  grace_ending_tomorrow?: boolean | null
 }
 
 export type TeamMemberListResponse = {
@@ -306,6 +330,37 @@ export function useUpdateMemberRoleMutation() {
     mutationFn: updateMemberRole,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['team', 'members'] })
+    },
+  })
+}
+
+export async function updateMemberCompliance(body: {
+  userId: number
+  action: 'grant_grace' | 'clear_grace' | 'restore_access' | 'remove_now'
+  graceEndDate?: string | null
+  reason?: string | null
+}): Promise<TeamMemberPublic> {
+  const res = await apiFetch(`/api/v1/team/members/${body.userId}/compliance`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: body.action,
+      grace_end_date: body.graceEndDate ?? undefined,
+      reason: body.reason ?? undefined,
+    }),
+  })
+  if (!res.ok) await parseError(res)
+  return res.json()
+}
+
+export function useUpdateMemberComplianceMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: updateMemberCompliance,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['team', 'members'] })
+      void queryClient.invalidateQueries({ queryKey: ['gate-assistant'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'tracking'] })
     },
   })
 }
