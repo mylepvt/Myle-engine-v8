@@ -147,7 +147,7 @@ export function DashboardNestedPage() {
         </div>
       )
     }
-    if (!navRole || navRole !== 'admin') {
+    if (!navRole || (navRole !== 'admin' && navRole !== 'leader')) {
       return <Navigate to="/dashboard" replace />
     }
     const targetUserId = parseInt(trackingDetailMatch[1], 10)

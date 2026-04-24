@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { QueryClient, useQuery } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
 
@@ -65,6 +65,14 @@ export type TeamTrackingDetailResponse = {
   timezone: string
 }
 
+export type TeamTrackingPresenceEvent = {
+  v: number
+  type: 'team_tracking.presence'
+  user_id: number
+  presence_status: TeamTrackingMemberSummary['presence_status']
+  last_seen_at: string
+}
+
 async function parseError(res: Response): Promise<never> {
   const err = await res.json().catch(() => ({}))
   const detail =
@@ -101,6 +109,81 @@ async function fetchTrackingMe(dateIso: string): Promise<TeamTrackingDetailRespo
   return res.json() as Promise<TeamTrackingDetailResponse>
 }
 
+function patchPresenceMember(
+  member: TeamTrackingMemberSummary,
+  event: TeamTrackingPresenceEvent,
+): TeamTrackingMemberSummary {
+  if (member.user_id !== event.user_id) return member
+  return {
+    ...member,
+    presence_status: event.presence_status,
+    last_seen_at: event.last_seen_at,
+  }
+}
+
+function recalculatePresenceCounts(items: TeamTrackingMemberSummary[]) {
+  return items.reduce(
+    (acc, item) => {
+      if (item.presence_status === 'online') acc.online_count += 1
+      else if (item.presence_status === 'idle') acc.idle_count += 1
+      else acc.offline_count += 1
+      return acc
+    },
+    {
+      online_count: 0,
+      idle_count: 0,
+      offline_count: 0,
+    },
+  )
+}
+
+export function applyTeamTrackingPresenceEvent(
+  queryClient: QueryClient,
+  event: TeamTrackingPresenceEvent,
+) {
+  queryClient
+    .getQueriesData<TeamTrackingOverviewResponse>({
+      queryKey: ['team', 'tracking', 'overview'],
+    })
+    .forEach(([queryKey, data]) => {
+      if (!data || !data.items.some((item) => item.user_id === event.user_id)) return
+      const items = data.items.map((item) => patchPresenceMember(item, event))
+      queryClient.setQueryData<TeamTrackingOverviewResponse>(queryKey, {
+        ...data,
+        ...recalculatePresenceCounts(items),
+        items,
+      })
+    })
+
+  const patchDetailPayload = (data: TeamTrackingDetailResponse | undefined) => {
+    if (!data || data.member.user_id !== event.user_id) return data
+    return {
+      ...data,
+      member: patchPresenceMember(data.member, event),
+    }
+  }
+
+  queryClient
+    .getQueriesData<TeamTrackingDetailResponse>({
+      queryKey: ['team', 'tracking', 'detail'],
+    })
+    .forEach(([queryKey, data]) => {
+      const next = patchDetailPayload(data)
+      if (!next || next === data) return
+      queryClient.setQueryData<TeamTrackingDetailResponse>(queryKey, next)
+    })
+
+  queryClient
+    .getQueriesData<TeamTrackingDetailResponse>({
+      queryKey: ['team', 'tracking', 'me'],
+    })
+    .forEach(([queryKey, data]) => {
+      const next = patchDetailPayload(data)
+      if (!next || next === data) return
+      queryClient.setQueryData<TeamTrackingDetailResponse>(queryKey, next)
+    })
+}
+
 export function useTeamTrackingOverviewQuery(dateIso: string, enabled = true) {
   return useQuery({
     queryKey: ['team', 'tracking', 'overview', dateIso],
@@ -124,4 +207,3 @@ export function useTeamTrackingMeQuery(dateIso: string, enabled = true) {
     enabled,
   })
 }
-

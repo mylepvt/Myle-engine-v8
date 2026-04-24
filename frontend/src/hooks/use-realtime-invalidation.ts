@@ -9,8 +9,13 @@ import {
   flushRealtimeTopicsOrDefer,
 } from '@/lib/main-scroll-gate'
 import { mergeTopicBatches } from '@/lib/merge-topic-batches'
+import {
+  applyTeamTrackingPresenceEvent,
+  type TeamTrackingPresenceEvent,
+} from '@/hooks/use-team-tracking-query'
 
 type InvalidateMsg = { v: number; type: 'invalidate'; topics: string[] }
+type RealtimeMsg = InvalidateMsg | TeamTrackingPresenceEvent
 type PresenceAction = 'ping' | 'idle' | 'resume'
 
 function buildWsUrl(): string {
@@ -64,6 +69,10 @@ function applyTopics(qc: QueryClient, topics: string[]) {
   }
 }
 
+function isImmediateTrackingTopic(topics: string[]) {
+  return topics.some((topic) => topic === 'team_tracking' || topic === 'team_tracking.presence')
+}
+
 /** Subscribes to ``wss://…/api/v1/ws`` (cookie auth) and invalidates TanStack Query caches on server pushes. */
 export function useRealtimeInvalidation(enabled: boolean) {
   const qc = useQueryClient()
@@ -106,6 +115,10 @@ export function useRealtimeInvalidation(enabled: boolean) {
     }
 
     const scheduleTopics = (topics: string[]) => {
+      if (isImmediateTrackingTopic(topics)) {
+        applyTopics(qc, topics)
+        return
+      }
       const deliver = (merged: string[]) => {
         if (!isLowEndDevice()) {
           applyTopics(qc, merged)
@@ -135,7 +148,15 @@ export function useRealtimeInvalidation(enabled: boolean) {
 
       ws.onmessage = (ev) => {
         try {
-          const raw = JSON.parse(String(ev.data)) as InvalidateMsg
+          const raw = JSON.parse(String(ev.data)) as RealtimeMsg
+          if (
+            raw?.type === 'team_tracking.presence' &&
+            typeof raw.user_id === 'number' &&
+            typeof raw.last_seen_at === 'string'
+          ) {
+            applyTeamTrackingPresenceEvent(qc, raw)
+            return
+          }
           if (raw?.type === 'invalidate' && Array.isArray(raw.topics)) {
             scheduleTopics(raw.topics)
           }
