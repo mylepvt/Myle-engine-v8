@@ -5,7 +5,6 @@ import {
   ArrowDownWideNarrow,
   Gauge,
   Layers3,
-  Radio,
   ShieldAlert,
   Users,
 } from 'lucide-react'
@@ -56,7 +55,6 @@ type MetricPanelProps = {
   icon: typeof Users
   label: string
   value: string | number
-  hint: string
   tone?: 'default' | 'success' | 'warning' | 'danger'
 }
 
@@ -277,7 +275,7 @@ function updateParam(
   setParams(next, { replace: true })
 }
 
-function MetricPanel({ icon: Icon, label, value, hint, tone = 'default' }: MetricPanelProps) {
+function MetricPanel({ icon: Icon, label, value, tone = 'default' }: MetricPanelProps) {
   return (
     <Card className="surface-elevated overflow-hidden border-white/[0.08]">
       <CardContent className="relative p-4">
@@ -295,8 +293,7 @@ function MetricPanel({ icon: Icon, label, value, hint, tone = 'default' }: Metri
         <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
           {label}
         </p>
-        <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{value}</p>
-        <p className="mt-2 text-xs text-muted-foreground">{hint}</p>
+        <p className="mt-4 text-3xl font-semibold tracking-tight text-foreground">{value}</p>
       </CardContent>
     </Card>
   )
@@ -430,163 +427,129 @@ export function TeamTrackingPage({ title }: Props) {
 
   return (
     <div className="max-w-[88rem] space-y-5">
-      <section className="surface-elevated relative overflow-hidden px-5 py-5 md:px-6 md:py-6">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,197,94,0.16),transparent_30%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.14),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent)]" />
-        <div className="relative flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-          <div className="space-y-3">
-            <Badge variant="primary" className="w-fit gap-2 px-3 py-1">
-              <Radio className="size-3.5" />
-              Live command center
-            </Badge>
-            <div className="space-y-2">
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
-                {title}
-              </h1>
-              <p className="max-w-3xl text-sm text-muted-foreground">
-                Instant presence is server-authoritative, daily productivity is DB-derived, and
-                this screen stays tuned for fast admin scanning without long card scrolling.
-              </p>
-            </div>
+      <section className="surface-elevated overflow-hidden px-5 py-5 md:px-6 md:py-6">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <div className="space-y-2">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+              {title}
+            </h1>
+            <p className="max-w-3xl text-sm text-muted-foreground">
+              Live status, activity, and daily performance for the selected team.
+            </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[34rem]">
-            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] px-4 py-3">
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                Sync model
-              </p>
-              <p className="mt-2 text-sm font-medium text-foreground">Realtime under 1s</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Presence cache patches instantly from server events.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] px-4 py-3">
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                SSOT
-              </p>
-              <p className="mt-2 text-sm font-medium text-foreground">Server + DB locked</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Client only renders; it never invents activity truth.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] px-4 py-3">
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                Scope
-              </p>
-              <p className="mt-2 text-sm font-medium text-foreground">
-                {data?.scope_total_members ?? '—'} mapped members
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Canonical org-tree only. Timezone {data?.timezone ?? 'Asia/Kolkata'}.
-              </p>
-            </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <Badge variant="secondary" className="bg-white/[0.06] text-foreground">
+              {filteredItems.length} visible
+            </Badge>
+            <Badge variant="secondary" className="bg-white/[0.06] text-foreground">
+              {filteredLiveCount} live now
+            </Badge>
+            <Badge variant="secondary" className="bg-white/[0.06] text-foreground">
+              {flagged.length} need attention
+            </Badge>
+            <Badge variant="secondary" className="bg-white/[0.06] text-foreground">
+              High {filteredHighCount} · Medium {filteredMediumCount} · Low {filteredLowCount}
+            </Badge>
           </div>
         </div>
       </section>
 
-      <section className="surface-elevated sticky top-4 z-20 space-y-4 border border-white/[0.08] px-4 py-4 backdrop-blur-sm">
-        <div className="flex flex-col gap-3 2xl:flex-row 2xl:items-end 2xl:justify-between">
-          <div className="grid gap-3 xl:grid-cols-[minmax(18rem,1.25fr)_12rem]">
-            <ListSearchInput
-              value={searchQuery}
-              onValueChange={(value) => updateParam(params, setParams, 'q', value)}
-              placeholder="Search member, FBO ID, leader, email, or insight"
-              aria-label="Search tracked members"
-              wrapperClassName="w-full"
+      <section className="surface-elevated space-y-4 border border-white/[0.08] px-4 py-4">
+        <div className="grid gap-3 xl:grid-cols-[minmax(18rem,1.25fr)_12rem]">
+          <ListSearchInput
+            value={searchQuery}
+            onValueChange={(value) => updateParam(params, setParams, 'q', value)}
+            placeholder="Search member, FBO ID, leader, email, or insight"
+            aria-label="Search tracked members"
+            wrapperClassName="w-full"
+          />
+
+          <label className="space-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            <span>Date</span>
+            <input
+              type="date"
+              value={dateIso}
+              onChange={(event) => updateParam(params, setParams, 'date', event.target.value)}
+              className={cn(SELECT_CLASSNAME, 'w-full')}
             />
+          </label>
+        </div>
 
-            <label className="space-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              <span>Date</span>
-              <input
-                type="date"
-                value={dateIso}
-                onChange={(event) => updateParam(params, setParams, 'date', event.target.value)}
-                className={cn(SELECT_CLASSNAME, 'w-full')}
-              />
-            </label>
-          </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <label className="space-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            <span>Presence</span>
+            <select
+              value={presenceFilter}
+              onChange={(event) => updateParam(params, setParams, 'presence', event.target.value)}
+              className={SELECT_CLASSNAME}
+            >
+              <option value="all">All states</option>
+              <option value="online">Online</option>
+              <option value="idle">Idle</option>
+              <option value="offline">Offline</option>
+            </select>
+          </label>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <label className="space-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              <span>Presence</span>
-              <select
-                value={presenceFilter}
-                onChange={(event) => updateParam(params, setParams, 'presence', event.target.value)}
-                className={SELECT_CLASSNAME}
-              >
-                <option value="all">All states</option>
-                <option value="online">Online</option>
-                <option value="idle">Idle</option>
-                <option value="offline">Offline</option>
-              </select>
-            </label>
+          <label className="space-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            <span>Consistency</span>
+            <select
+              value={bandFilter}
+              onChange={(event) => updateParam(params, setParams, 'band', event.target.value)}
+              className={SELECT_CLASSNAME}
+            >
+              <option value="all">All bands</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </label>
 
-            <label className="space-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              <span>Consistency</span>
-              <select
-                value={bandFilter}
-                onChange={(event) => updateParam(params, setParams, 'band', event.target.value)}
-                className={SELECT_CLASSNAME}
-              >
-                <option value="all">All bands</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-            </label>
+          <label className="space-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            <span>Leader</span>
+            <select
+              value={leaderFilter}
+              onChange={(event) => updateParam(params, setParams, 'leader', event.target.value)}
+              className={SELECT_CLASSNAME}
+            >
+              <option value="all">All leaders</option>
+              <option value="unassigned">No mapped leader</option>
+              {leaderOptions.map((leader) => (
+                <option key={leader.value} value={leader.value}>
+                  {leader.label}
+                </option>
+              ))}
+            </select>
+          </label>
 
-            <label className="space-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              <span>Leader</span>
-              <select
-                value={leaderFilter}
-                onChange={(event) => updateParam(params, setParams, 'leader', event.target.value)}
-                className={SELECT_CLASSNAME}
-              >
-                <option value="all">All leaders</option>
-                <option value="unassigned">No mapped leader</option>
-                {leaderOptions.map((leader) => (
-                  <option key={leader.value} value={leader.value}>
-                    {leader.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="space-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              <span>Sort</span>
-              <select
-                value={sortMode}
-                onChange={(event) => updateParam(params, setParams, 'sort', event.target.value)}
-                className={SELECT_CLASSNAME}
-              >
-                <option value="attention">Attention first</option>
-                <option value="activity-desc">Most activity</option>
-                <option value="score-desc">Best score</option>
-                <option value="score-asc">Lowest score</option>
-                <option value="last-seen-desc">Latest seen</option>
-                <option value="name">Name A-Z</option>
-              </select>
-            </label>
-          </div>
+          <label className="space-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            <span>Sort</span>
+            <select
+              value={sortMode}
+              onChange={(event) => updateParam(params, setParams, 'sort', event.target.value)}
+              className={SELECT_CLASSNAME}
+            >
+              <option value="attention">Attention first</option>
+              <option value="activity-desc">Most activity</option>
+              <option value="score-desc">Best score</option>
+              <option value="score-asc">Lowest score</option>
+              <option value="last-seen-desc">Latest seen</option>
+              <option value="name">Name A-Z</option>
+            </select>
+          </label>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <Badge variant="secondary" className="bg-white/[0.06] text-foreground">
-            {filteredItems.length} visible
+            {data?.scope_total_members ?? filteredItems.length} members
           </Badge>
           <Badge variant="secondary" className="bg-white/[0.06] text-foreground">
-            {filteredLiveCount} live now
+            Timezone {data?.timezone ?? 'Asia/Kolkata'}
           </Badge>
-          <Badge variant="secondary" className="bg-white/[0.06] text-foreground">
-            {flagged.length} needs attention
-          </Badge>
-          <Badge variant="secondary" className="bg-white/[0.06] text-foreground">
-            High {filteredHighCount} · Medium {filteredMediumCount} · Low {filteredLowCount}
-          </Badge>
-          {data?.note ? (
-            <Badge variant="secondary" className="bg-white/[0.06] text-foreground">
-              {data.note}
-            </Badge>
-          ) : null}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <ArrowDownWideNarrow className="size-3.5" />
+            Sorted by {sortMode.replace('-', ' ')}
+          </div>
           {activeFilters ? (
             <Button
               type="button"
@@ -632,41 +595,35 @@ export function TeamTrackingPage({ title }: Props) {
               icon={Users}
               label="Members in scope"
               value={data.scope_total_members}
-              hint={`${filteredItems.length} visible in current filter set.`}
             />
             <MetricPanel
-              icon={Radio}
+              icon={Activity}
               label="Live now"
               value={filteredLiveCount}
-              hint={`${data.online_count} online and ${data.idle_count} idle across the full scope.`}
               tone="success"
             />
             <MetricPanel
               icon={ShieldAlert}
               label="Need attention"
               value={flagged.length}
-              hint="Offline, low-score, or low-activity members bubble up here."
               tone="danger"
             />
             <MetricPanel
               icon={Gauge}
               label="Average score"
               value={averageScore(filteredItems)}
-              hint="Filtered view average consistency for the selected date."
               tone="warning"
             />
             <MetricPanel
               icon={Activity}
               label="High performers"
               value={filteredHighCount}
-              hint="Members currently landing in the high consistency band."
               tone="success"
             />
             <MetricPanel
               icon={Layers3}
               label="Leader lanes"
               value={leaderHealth.length}
-              hint="Distinct leader groups visible under the active filters."
             />
           </div>
 
@@ -779,10 +736,9 @@ export function TeamTrackingPage({ title }: Props) {
                   Dense table for quick scanning, sorting, and drill-down.
                 </p>
               </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <ArrowDownWideNarrow className="size-3.5" />
-                Sorted by {sortMode.replace('-', ' ')}
-              </div>
+              <Badge variant="secondary" className="bg-white/[0.06] text-foreground">
+                {filteredItems.length} rows
+              </Badge>
             </div>
 
             {filteredItems.length === 0 ? (
