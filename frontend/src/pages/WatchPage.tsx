@@ -1,6 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { LockKeyhole, ShieldCheck, TimerReset } from 'lucide-react'
+import { LockKeyhole, ShieldCheck } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -329,7 +329,7 @@ export function WatchPage() {
             <section className="rounded-[2rem] border border-red-200 bg-white px-6 py-8 text-center shadow-sm" role="alert">
               <p className="text-base font-semibold text-red-700">{error}</p>
               <p className="mt-2 text-sm text-[#5f655f]">
-                Agar yeh link abhi mila hai to sender se naya secure link share karne ko bolen.
+                If this link has just reached you, please ask your team contact to send a fresh access link.
               </p>
             </section>
           ) : data ? (
@@ -344,14 +344,14 @@ export function WatchPage() {
                       {data.title}
                     </h2>
                     <p className="mt-3 text-sm leading-relaxed text-[#5f655f] sm:text-base">
-                      Yeh room sirf aapke liye banaya gaya hai. Video Myle ke andar hi play hogi, aur access sirf
-                      aapke registered number ke saath milega.
+                      This private room has been prepared for you. Access is available only through the mobile number
+                      registered on your lead profile.
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Badge className="border-0 bg-[#10392f] text-white">
                       <ShieldCheck className="mr-1 size-3.5" />
-                      Trusted in-app playback
+                      Private access
                     </Badge>
                     <Badge variant="outline" className="border-[#d7c8af] bg-[#fff8ee] text-[#7a5d32]">
                       {data.masked_phone}
@@ -365,18 +365,17 @@ export function WatchPage() {
                   <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                     <div className="max-w-2xl">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#8a6b3f]">
-                        Current batch snapshot
+                        Current intake
                       </p>
                       <h3 className="mt-2 text-xl font-semibold tracking-tight text-[#10231d]">
-                        Clean, private first exposure for this enrollment room
+                        A calm first look at this enrollment
                       </h3>
                       <p className="mt-2 text-sm leading-relaxed text-[#5f655f]">
-                        Yahan sirf focused video experience milega. No public distractions, no YouTube clutter, aur
-                        current batch ke trust signals isi room ke andar visible rahenge.
+                        A simple room, a clear video, and a live intake snapshot so you can focus without distraction.
                       </p>
                     </div>
                     <Badge variant="outline" className="border-[#d7c8af] bg-white text-[#7a5d32]">
-                      Live room cues
+                      Live intake
                     </Badge>
                   </div>
 
@@ -390,7 +389,7 @@ export function WatchPage() {
                           {displayedSocialProof}
                         </p>
                         <p className="mt-1 text-xs leading-relaxed text-[#6c6f67]">
-                          Current form volume for this onboarding window.
+                          Confirmed forms received in the current intake window.
                         </p>
                       </div>
                     ) : null}
@@ -402,9 +401,7 @@ export function WatchPage() {
                         <p className="mt-2 text-3xl font-semibold tracking-tight text-[#10231d] tabular-nums">
                           {data.total_seats}
                         </p>
-                        <p className="mt-1 text-xs leading-relaxed text-[#6c6f67]">
-                          Planned capacity for this current room cycle.
-                        </p>
+                        <p className="mt-1 text-xs leading-relaxed text-[#6c6f67]">Planned capacity for this intake.</p>
                       </div>
                     ) : null}
                     {displayedSeatsLeft != null ? (
@@ -415,9 +412,7 @@ export function WatchPage() {
                         <p className="mt-2 text-3xl font-semibold tracking-tight text-[#10231d] tabular-nums">
                           {displayedSeatsLeft}
                         </p>
-                        <p className="mt-1 text-xs leading-relaxed text-[#6c6f67]">
-                          Availability snapshot paced softly with the room playback.
-                        </p>
+                        <p className="mt-1 text-xs leading-relaxed text-[#6c6f67]">Availability remaining in this intake.</p>
                       </div>
                     ) : null}
                   </div>
@@ -437,7 +432,7 @@ export function WatchPage() {
                     <div>
                       <p className="text-lg font-semibold text-[#10231d]">Unlock with your registered number</p>
                       <p className="mt-1 text-sm leading-relaxed text-[#5f655f]">
-                        Jo number lead card par registered hai, wahi yahan enter karein. Tabhi secure room open hogi.
+                        Enter the mobile number already registered on your lead profile to continue.
                       </p>
                     </div>
                   </div>
@@ -475,10 +470,8 @@ export function WatchPage() {
                   <div className="border-b border-black/5 px-5 py-4 sm:px-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <p className="text-sm font-semibold text-[#10231d]">Private in-app player</p>
-                        <p className="mt-1 text-sm text-[#5f655f]">
-                          Playback stays inside Myle. No YouTube redirect, no related videos, no skip controls.
-                        </p>
+                        <p className="text-sm font-semibold text-[#10231d]">Private player</p>
+                        <p className="mt-1 text-sm text-[#5f655f]">A clean in-app viewing experience, prepared for you.</p>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <Badge variant="outline" className="border-[#d8e3db] bg-[#f7fbf8] text-[#285241]">
@@ -558,11 +551,10 @@ export function WatchPage() {
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                               <p className="text-sm font-semibold text-white">
-                                {watchCompleted ? 'Video completed' : playMarked ? 'Watch in progress' : 'Full watch required'}
+                                {watchCompleted ? 'Viewing completed' : playMarked ? 'Watching now' : 'Ready to watch'}
                               </p>
                               <p className="mt-1 text-xs leading-relaxed text-white/65">
-                                Skipping is disabled. Playback completion alag se track hoti hai, aur team next step
-                                status ke hisab se handle karti hai.
+                                This room plays in sequence for a smoother viewing experience.
                               </p>
                             </div>
                             <button
@@ -586,14 +578,12 @@ export function WatchPage() {
                             <span>{progressLabel}</span>
                             <span>
                               {watchCompleted
-                                ? 'Playback completion recorded. Team room se bahar aapka next status manually handle karegi.'
-                                : 'Video ko end tak dekhein. Skip option intentionally hidden hai.'}
+                                ? 'Viewing completion has been recorded for this room.'
+                                : 'Please continue watching to the end.'}
                             </span>
                           </div>
 
-                          {completing ? (
-                            <p className="mt-3 text-xs text-[#d7c8af]">Completing secure watch…</p>
-                          ) : null}
+                          {completing ? <p className="mt-3 text-xs text-[#d7c8af]">Saving your viewing record…</p> : null}
                           {playerError ? (
                             <p className="mt-3 text-xs text-red-300" role="alert">
                               {playerError}
@@ -610,34 +600,6 @@ export function WatchPage() {
                 </section>
               )}
 
-              <section className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-[1.6rem] border border-black/5 bg-white px-5 py-4 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-2xl bg-[#f4efe6] p-3 text-[#7a5d32]">
-                      <TimerReset className="size-4" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-[#10231d]">Time-limited access</p>
-                      <p className="mt-1 text-xs leading-relaxed text-[#5f655f]">
-                        Security ke liye yeh room 30 minutes me expire ho jaati hai.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="rounded-[1.6rem] border border-black/5 bg-white px-5 py-4 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-2xl bg-[#f4efe6] p-3 text-[#10392f]">
-                      <ShieldCheck className="size-4" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-[#10231d]">High-trust room</p>
-                      <p className="mt-1 text-xs leading-relaxed text-[#5f655f]">
-                        Yeh same Myle experience hai, isliye external player clutter ya suggested content nahi dikhega.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </section>
             </>
           ) : null}
         </main>

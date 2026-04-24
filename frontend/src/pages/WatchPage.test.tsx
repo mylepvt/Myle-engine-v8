@@ -59,10 +59,10 @@ describe('WatchPage', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('Private in-app player')).toBeInTheDocument()
+      expect(screen.getByText('Private player')).toBeInTheDocument()
     })
 
-    expect(screen.getByText('Current batch snapshot')).toBeInTheDocument()
+    expect(screen.getByText('Current intake')).toBeInTheDocument()
     expect(screen.getByText('Forms received')).toBeInTheDocument()
     expect(screen.getByText('Batch seats')).toBeInTheDocument()
     expect(screen.getByText('Seats left')).toBeInTheDocument()
@@ -103,10 +103,8 @@ describe('WatchPage', () => {
       ).toBe(true)
     })
 
-    expect(await screen.findByText('Video completed')).toBeInTheDocument()
-    expect(
-      screen.getByText('Playback completion recorded. Team room se bahar aapka next status manually handle karegi.'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('Viewing completed')).toBeInTheDocument()
+    expect(screen.getByText('Viewing completion has been recorded for this room.')).toBeInTheDocument()
   })
 
   it('keeps the player non-seekable and hides native skip controls', async () => {
@@ -138,17 +136,14 @@ describe('WatchPage', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('Private in-app player')).toBeInTheDocument()
+      expect(screen.getByText('Private player')).toBeInTheDocument()
     })
 
     const video = container.querySelector('video') as HTMLVideoElement | null
     expect(video).not.toBeNull()
     expect(video?.controls).toBe(false)
-    expect(
-      screen.getByText(
-        'Skipping is disabled. Playback completion alag se track hoti hai, aur team next step status ke hisab se handle karti hai.',
-      ),
-    ).toBeInTheDocument()
+    expect(screen.getByText('This room plays in sequence for a smoother viewing experience.')).toBeInTheDocument()
+    expect(screen.queryByText('High-trust room')).not.toBeInTheDocument()
 
     Object.defineProperty(video!, 'duration', { configurable: true, value: 120 })
     Object.defineProperty(video!, 'currentTime', { configurable: true, writable: true, value: 0 })
