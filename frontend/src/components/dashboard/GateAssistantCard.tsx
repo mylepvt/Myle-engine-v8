@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckCircle2, CircleAlert, ShieldCheck } from 'lucide-react'
 
@@ -6,6 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { useGateAssistantQuery } from '@/hooks/use-gate-assistant-query'
+import {
+  useCancelMyGraceRequestMutation,
+  useRequestMyGraceMutation,
+} from '@/hooks/use-team-query'
 import { cn } from '@/lib/utils'
 
 type Props = {
@@ -44,6 +49,18 @@ function formatShortDate(value: string | null) {
 export function GateAssistantCard({ sessionReady }: Props) {
   const { isAdminPreviewing } = useDashboardShellRole()
   const { data, isPending, isError, error, refetch } = useGateAssistantQuery(sessionReady)
+  const requestGraceMut = useRequestMyGraceMutation()
+  const cancelGraceRequestMut = useCancelMyGraceRequestMutation()
+  const [requestOpen, setRequestOpen] = useState(false)
+  const [requestEndDate, setRequestEndDate] = useState('')
+  const [requestReason, setRequestReason] = useState('')
+  const [requestError, setRequestError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!data) return
+    setRequestEndDate(data.grace_request_end_date?.slice(0, 10) ?? '')
+    setRequestReason(data.grace_request_reason ?? '')
+  }, [data?.grace_request_end_date, data?.grace_request_reason, data])
 
   if (!sessionReady) {
     return null
@@ -92,21 +109,59 @@ export function GateAssistantCard({ sessionReady }: Props) {
       ? Math.round((data.progress_done / data.progress_total) * 100)
       : 0
   const reportGate = data.checklist.find((c) => c.id === 'daily_report_submitted')
-  const summaryBits = data.role === 'admin'
-    ? [
-        data.pending_proof_count > 0 ? `Proofs waiting: ${data.pending_proof_count}` : null,
-        data.team_warning_count > 0 || data.team_strong_warning_count > 0 || data.team_final_warning_count > 0 || data.team_removed_count > 0
-          ? `Warnings: ${data.team_warning_count} · Strong: ${data.team_strong_warning_count} · Final: ${data.team_final_warning_count} · Removed: ${data.team_removed_count}`
-          : null,
-      ].filter(Boolean) as string[]
-    : [
-        data.fresh_leads_today > 0 ? `Today's leads: ${data.fresh_leads_today}` : 'No fresh lead gate yet today',
-        data.call_target > 0
-          ? `Fresh calls: ${data.calls_today} / ${data.call_target}`
-          : `Fresh calls: ${data.calls_today}`,
-        `Report: ${reportGate?.done ? 'submitted' : 'pending'}`,
-      ]
+  const summaryBits =
+    data.role === 'admin'
+      ? [
+          data.pending_proof_count > 0 ? `Proofs waiting: ${data.pending_proof_count}` : null,
+          data.team_warning_count > 0 ||
+          data.team_strong_warning_count > 0 ||
+          data.team_final_warning_count > 0 ||
+          data.team_removed_count > 0
+            ? `Warnings: ${data.team_warning_count} · Strong: ${data.team_strong_warning_count} · Final: ${data.team_final_warning_count} · Removed: ${data.team_removed_count}`
+            : null,
+        ].filter(Boolean) as string[]
+      : [
+          data.fresh_leads_today > 0 ? `Today's leads: ${data.fresh_leads_today}` : 'No fresh lead gate yet today',
+          data.call_target > 0
+            ? `Fresh calls: ${data.calls_today} / ${data.call_target}`
+            : `Fresh calls: ${data.calls_today}`,
+          `Report: ${reportGate?.done ? 'submitted' : 'pending'}`,
+        ]
   const disciplineDate = formatShortDate(data.grace_end_date)
+  const requestDate = formatShortDate(data.grace_request_end_date)
+  const requestBusy = requestGraceMut.isPending || cancelGraceRequestMut.isPending
+
+  function handleGraceRequestSubmit() {
+    if (!requestEndDate.trim()) {
+      setRequestError('Grace till date required.')
+      return
+    }
+    setRequestError(null)
+    requestGraceMut.mutate(
+      {
+        graceEndDate: requestEndDate,
+        reason: requestReason.trim() || null,
+      },
+      {
+        onSuccess: () => {
+          setRequestOpen(false)
+        },
+        onError: (e: Error) => setRequestError(e.message),
+      },
+    )
+  }
+
+  function handleCancelRequest() {
+    setRequestError(null)
+    cancelGraceRequestMut.mutate(undefined, {
+      onSuccess: () => {
+        setRequestOpen(false)
+        setRequestEndDate('')
+        setRequestReason('')
+      },
+      onError: (e: Error) => setRequestError(e.message),
+    })
+  }
 
   return (
     <Card
@@ -135,7 +190,7 @@ export function GateAssistantCard({ sessionReady }: Props) {
         <CardDescription>
           {data.role === 'admin'
             ? 'Org discipline overview.'
-            : 'Only 2 active gates: 15 fresh calls and today\'s daily report.'}
+            : "Only 2 active gates: 15 fresh calls and today's daily report."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -183,7 +238,11 @@ export function GateAssistantCard({ sessionReady }: Props) {
           ))}
         </ul>
 
-        {data.role !== 'admin' && (data.compliance_title || data.calls_short_streak > 0 || data.missing_report_streak > 0 || disciplineDate) ? (
+        {data.role !== 'admin' &&
+        (data.compliance_title ||
+          data.calls_short_streak > 0 ||
+          data.missing_report_streak > 0 ||
+          disciplineDate) ? (
           <div className="rounded-lg border border-border/60 bg-background/70 px-3 py-2 text-sm">
             <p className="font-medium text-foreground">
               {data.compliance_title ?? 'Discipline status'}
@@ -191,11 +250,116 @@ export function GateAssistantCard({ sessionReady }: Props) {
             <p className="mt-1 text-ds-caption text-muted-foreground">
               {data.compliance_summary ?? 'No active compliance warning.'}
             </p>
-            {(data.calls_short_streak > 0 || data.missing_report_streak > 0 || disciplineDate) ? (
+            {data.calls_short_streak > 0 || data.missing_report_streak > 0 || disciplineDate ? (
               <p className="mt-1 text-ds-caption text-muted-foreground">
                 Calls streak: {data.calls_short_streak}d · Report streak: {data.missing_report_streak}d
                 {disciplineDate ? ` · Grace till ${disciplineDate}` : ''}
               </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {data.role !== 'admin' ? (
+          <div className="rounded-lg border border-border/60 bg-background/70 px-3 py-2 text-sm">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <p className="font-medium text-foreground">
+                  {data.grace_request_pending ? 'Grace request pending' : 'Grace request'}
+                </p>
+                <p className="mt-1 text-ds-caption text-muted-foreground">
+                  {data.grace_request_pending
+                    ? `Requested till ${requestDate ?? data.grace_request_end_date ?? '—'}`
+                    : 'Raise leave / grace from here. Admin will review it from All Members.'}
+                </p>
+                {data.grace_request_reason ? (
+                  <p className="mt-1 text-ds-caption text-muted-foreground">{data.grace_request_reason}</p>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={requestBusy}
+                  onClick={() => {
+                    setRequestError(null)
+                    setRequestOpen((value) => !value)
+                  }}
+                >
+                  {data.grace_request_pending
+                    ? 'Update request'
+                    : data.grace_active
+                      ? 'Request extension'
+                      : 'Request grace'}
+                </Button>
+                {data.grace_request_pending ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={requestBusy}
+                    onClick={handleCancelRequest}
+                  >
+                    Cancel request
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+            {requestOpen ? (
+              <div className="mt-3 space-y-3">
+                <label className="block">
+                  <span className="mb-1 block text-ds-caption text-muted-foreground">Grace till</span>
+                  <input
+                    type="date"
+                    value={requestEndDate}
+                    onChange={(e) => setRequestEndDate(e.target.value)}
+                    disabled={requestBusy}
+                    className="field-input"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-ds-caption text-muted-foreground">Reason / note</span>
+                  <textarea
+                    value={requestReason}
+                    onChange={(e) => setRequestReason(e.target.value)}
+                    disabled={requestBusy}
+                    rows={3}
+                    className="field-input min-h-[5rem] resize-y"
+                    placeholder="Optional reason for leave / grace"
+                  />
+                </label>
+                {requestError ? (
+                  <p className="text-ds-caption text-destructive" role="alert">
+                    {requestError}
+                  </p>
+                ) : null}
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={requestBusy || !requestEndDate.trim()}
+                    onClick={handleGraceRequestSubmit}
+                  >
+                    {requestGraceMut.isPending
+                      ? '...'
+                      : data.grace_request_pending
+                        ? 'Update request'
+                        : 'Send request'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={requestBusy}
+                    onClick={() => {
+                      setRequestOpen(false)
+                      setRequestError(null)
+                    }}
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
             ) : null}
           </div>
         ) : null}

@@ -283,3 +283,25 @@ def test_gate_assistant_leader_uses_same_two_personal_gates(monkeypatch: pytest.
         "daily_call_target",
         "daily_report_submitted",
     ]
+
+
+def test_gate_assistant_team_shows_pending_grace_request(monkeypatch: pytest.MonkeyPatch) -> None:
+    c = _authed(monkeypatch)
+    assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+    grace_till = (today_ist() + timedelta(days=2)).isoformat()
+    requested = c.put(
+        "/api/v1/team/me/grace-request",
+        json={
+            "grace_end_date": grace_till,
+            "reason": "Personal leave",
+        },
+    )
+    assert requested.status_code == 200
+
+    r = c.get("/api/v1/gate-assistant")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["role"] == "team"
+    assert body["grace_request_pending"] is True
+    assert body["grace_request_end_date"] == grace_till
+    assert body["grace_request_reason"] == "Personal leave"

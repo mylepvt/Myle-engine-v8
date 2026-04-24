@@ -29,6 +29,9 @@ class TeamMemberPublic(BaseModel):
     discipline_status: Optional[str] = None
     grace_end_date: Optional[date] = None
     grace_reason: Optional[str] = None
+    grace_request_end_date: Optional[date] = None
+    grace_request_reason: Optional[str] = None
+    grace_request_requested_at: Optional[datetime] = None
     discipline_reset_on: Optional[date] = None
     removed_at: Optional[datetime] = None
     removed_by_user_id: Optional[int] = None
@@ -65,8 +68,20 @@ class TeamMemberCreate(BaseModel):
 
 
 class TeamMemberComplianceUpdate(BaseModel):
-    action: Literal["grant_grace", "clear_grace", "restore_access", "remove_now"]
+    action: Literal[
+        "grant_grace",
+        "clear_grace",
+        "approve_grace_request",
+        "reject_grace_request",
+        "restore_access",
+        "remove_now",
+    ]
     grace_end_date: Optional[date] = None
+    reason: Optional[str] = Field(default=None, max_length=2000)
+
+
+class TeamSelfGraceRequestBody(BaseModel):
+    grace_end_date: date
     reason: Optional[str] = Field(default=None, max_length=2000)
 
 

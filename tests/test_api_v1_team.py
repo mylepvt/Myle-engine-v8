@@ -152,6 +152,67 @@ def test_admin_can_manage_member_compliance_controls(monkeypatch: pytest.MonkeyP
     assert restored_body["compliance_level"] == "clear"
 
 
+def test_team_can_request_and_cancel_own_grace(monkeypatch: pytest.MonkeyPatch) -> None:
+    c = _authed_client(monkeypatch)
+    assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+    grace_till = (today_ist() + timedelta(days=2)).isoformat()
+
+    requested = c.put(
+        "/api/v1/team/me/grace-request",
+        json={
+            "grace_end_date": grace_till,
+            "reason": "Family event",
+        },
+    )
+    assert requested.status_code == 200
+    requested_body = requested.json()
+    assert requested_body["role"] == "team"
+    assert requested_body["grace_request_end_date"] == grace_till
+    assert requested_body["grace_request_reason"] == "Family event"
+    assert requested_body["discipline_status"] == "active"
+    assert requested_body["grace_end_date"] is None
+
+    cancelled = c.delete("/api/v1/team/me/grace-request")
+    assert cancelled.status_code == 200
+    cancelled_body = cancelled.json()
+    assert cancelled_body["grace_request_end_date"] is None
+    assert cancelled_body["grace_request_reason"] is None
+
+
+def test_leader_can_request_grace_and_admin_can_approve(monkeypatch: pytest.MonkeyPatch) -> None:
+    leader = _authed_client(monkeypatch)
+    assert leader.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+    grace_till = (today_ist() + timedelta(days=3)).isoformat()
+
+    requested = leader.put(
+        "/api/v1/team/me/grace-request",
+        json={
+            "grace_end_date": grace_till,
+            "reason": "Travel leave",
+        },
+    )
+    assert requested.status_code == 200
+    assert requested.json()["grace_request_end_date"] == grace_till
+
+    admin = _authed_client(monkeypatch)
+    assert admin.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+    listed = admin.get("/api/v1/team/members")
+    assert listed.status_code == 200
+    leader_row = next(item for item in listed.json()["items"] if item["role"] == "leader")
+    assert leader_row["grace_request_end_date"] == grace_till
+
+    approved = admin.patch(
+        "/api/v1/team/members/2/compliance",
+        json={"action": "approve_grace_request"},
+    )
+    assert approved.status_code == 200
+    approved_body = approved.json()
+    assert approved_body["role"] == "leader"
+    assert approved_body["discipline_status"] == "grace"
+    assert approved_body["grace_end_date"] == grace_till
+    assert approved_body["grace_request_end_date"] is None
+
+
 def test_create_team_member_short_password(monkeypatch: pytest.MonkeyPatch) -> None:
     c = _authed_client(monkeypatch)
     assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200

@@ -38,6 +38,7 @@ from app.schemas.team import (
     TeamReportMissingMember,
     TeamReportsLiveSummary,
     TeamReportsResponse,
+    TeamSelfGraceRequestBody,
 )
 from app.services.downline import is_user_in_downline_of
 from app.services.lead_owner import lead_owner_clause
@@ -63,6 +64,11 @@ def _require_admin(user: AuthUser) -> None:
 
 def _require_admin_or_leader(user: AuthUser) -> None:
     if user.role not in ("admin", "leader"):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+
+def _require_team_or_leader(user: AuthUser) -> None:
+    if user.role not in ("team", "leader"):
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
 
@@ -111,6 +117,15 @@ async def _finalize_team_member_items(
     session: AsyncSession,
     items: list[TeamMemberPublic],
 ) -> list[TeamMemberPublic]:
+    if items:
+        members = (
+            await session.execute(select(User).where(User.id.in_([item.id for item in items])))
+        ).scalars().all()
+        members_by_id = {member.id: member for member in members}
+        for item in items:
+            member = members_by_id.get(item.id)
+            if member is not None:
+                _attach_pending_grace_request(item, member)
     items = await _attach_team_member_hierarchy(session, items)
     items = await _attach_team_member_compliance(session, items)
     return items
@@ -124,6 +139,19 @@ def _upline_label(upline: User | None) -> str | None:
     if upline is None:
         return None
     return _display_name_or_fbo(upline)
+
+
+def _attach_pending_grace_request(item: TeamMemberPublic, member: User) -> TeamMemberPublic:
+    item.grace_request_end_date = member.grace_request_end_date
+    item.grace_request_reason = member.grace_request_reason
+    item.grace_request_requested_at = member.grace_request_requested_at
+    return item
+
+
+def _clear_pending_grace_request(member: User) -> None:
+    member.grace_request_end_date = None
+    member.grace_request_reason = None
+    member.grace_request_requested_at = None
 
 
 async def _team_reports_scope_members(
@@ -194,8 +222,9 @@ async def list_team_members(
         item = TeamMemberPublic.model_validate(u)
         item.upline_fbo_id = up_fbo
         item.upline_name = up_name
+        item = _attach_pending_grace_request(item, u)
         items.append(item)
-    items = await _attach_team_member_hierarchy(session, items)
+    items = await _finalize_team_member_items(session, items)
     return TeamMemberListResponse(items=items, total=total, limit=limit, offset=offset)
 
 
@@ -329,6 +358,49 @@ async def my_team(
         direct_members=direct_ct,
         total_downline=len(downline_ids),
     )
+
+
+@router.put("/me/grace-request", response_model=TeamMemberPublic)
+async def request_my_grace(
+    body: TeamSelfGraceRequestBody,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> TeamMemberPublic:
+    _require_team_or_leader(user)
+    target = await session.get(User, user.user_id)
+    if target is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    today = datetime.now(IST).date()
+    if body.grace_end_date < today:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="grace_end_date cannot be in the past",
+        )
+    target.grace_request_end_date = body.grace_end_date
+    target.grace_request_reason = (body.reason or "").strip() or None
+    target.grace_request_requested_at = datetime.now(timezone.utc)
+    await session.commit()
+    await session.refresh(target)
+    [item] = await _finalize_team_member_items(session, [TeamMemberPublic.model_validate(target)])
+    await notify_topics("team", "team_tracking")
+    return item
+
+
+@router.delete("/me/grace-request", response_model=TeamMemberPublic)
+async def cancel_my_grace_request(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> TeamMemberPublic:
+    _require_team_or_leader(user)
+    target = await session.get(User, user.user_id)
+    if target is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    _clear_pending_grace_request(target)
+    await session.commit()
+    await session.refresh(target)
+    [item] = await _finalize_team_member_items(session, [TeamMemberPublic.model_validate(target)])
+    await notify_topics("team", "team_tracking")
+    return item
 
 
 @router.get("/enrollment-requests", response_model=TeamEnrollmentListResponse)
@@ -751,6 +823,7 @@ async def update_member_compliance(
         target.removed_at = None
         target.removed_by_user_id = None
         target.removal_reason = None
+        _clear_pending_grace_request(target)
     elif body.action == "clear_grace":
         target.access_blocked = False
         target.discipline_status = "active"
@@ -759,6 +832,32 @@ async def update_member_compliance(
         target.grace_updated_at = datetime.now(timezone.utc)
         target.grace_set_by_user_id = user.user_id
         target.discipline_reset_on = datetime.now(IST).date()
+        _clear_pending_grace_request(target)
+    elif body.action == "approve_grace_request":
+        if role_key not in {"team", "leader"}:
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="Grace is only available for leader or team accounts",
+            )
+        if target.grace_request_end_date is None:
+            raise HTTPException(
+                status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="No pending grace request",
+            )
+        grace_reason = (body.reason or target.grace_request_reason or "").strip() or None
+        target.access_blocked = False
+        target.discipline_status = "grace"
+        target.grace_end_date = target.grace_request_end_date
+        target.grace_reason = grace_reason
+        target.grace_updated_at = datetime.now(timezone.utc)
+        target.grace_set_by_user_id = user.user_id
+        target.discipline_reset_on = None
+        target.removed_at = None
+        target.removed_by_user_id = None
+        target.removal_reason = None
+        _clear_pending_grace_request(target)
+    elif body.action == "reject_grace_request":
+        _clear_pending_grace_request(target)
     elif body.action == "restore_access":
         target.access_blocked = False
         target.discipline_status = "active"
@@ -770,6 +869,7 @@ async def update_member_compliance(
         target.removed_by_user_id = None
         target.removal_reason = None
         target.discipline_reset_on = datetime.now(IST).date()
+        _clear_pending_grace_request(target)
     elif body.action == "remove_now":
         target.access_blocked = True
         target.discipline_status = "removed"
@@ -780,6 +880,7 @@ async def update_member_compliance(
         target.grace_reason = None
         target.grace_updated_at = None
         target.grace_set_by_user_id = None
+        _clear_pending_grace_request(target)
     else:
         raise HTTPException(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,

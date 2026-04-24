@@ -19,6 +19,9 @@ export type TeamMemberPublic = {
   discipline_status?: string | null
   grace_end_date?: string | null
   grace_reason?: string | null
+  grace_request_end_date?: string | null
+  grace_request_reason?: string | null
+  grace_request_requested_at?: string | null
   discipline_reset_on?: string | null
   removed_at?: string | null
   removed_by_user_id?: number | null
@@ -336,7 +339,13 @@ export function useUpdateMemberRoleMutation() {
 
 export async function updateMemberCompliance(body: {
   userId: number
-  action: 'grant_grace' | 'clear_grace' | 'restore_access' | 'remove_now'
+  action:
+    | 'grant_grace'
+    | 'clear_grace'
+    | 'approve_grace_request'
+    | 'reject_grace_request'
+    | 'restore_access'
+    | 'remove_now'
   graceEndDate?: string | null
   reason?: string | null
 }): Promise<TeamMemberPublic> {
@@ -359,7 +368,58 @@ export function useUpdateMemberComplianceMutation() {
     mutationFn: updateMemberCompliance,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['team', 'members'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'my-team'] })
       void queryClient.invalidateQueries({ queryKey: ['gate-assistant'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'tracking'] })
+    },
+  })
+}
+
+export async function requestMyGrace(body: {
+  graceEndDate: string
+  reason?: string | null
+}): Promise<TeamMemberPublic> {
+  const res = await apiFetch('/api/v1/team/me/grace-request', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      grace_end_date: body.graceEndDate,
+      reason: body.reason ?? undefined,
+    }),
+  })
+  if (!res.ok) await parseError(res)
+  return res.json()
+}
+
+export async function cancelMyGraceRequest(): Promise<TeamMemberPublic> {
+  const res = await apiFetch('/api/v1/team/me/grace-request', {
+    method: 'DELETE',
+  })
+  if (!res.ok) await parseError(res)
+  return res.json()
+}
+
+export function useRequestMyGraceMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: requestMyGrace,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['gate-assistant'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'my-team'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'members'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'tracking'] })
+    },
+  })
+}
+
+export function useCancelMyGraceRequestMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: cancelMyGraceRequest,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['gate-assistant'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'my-team'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'members'] })
       void queryClient.invalidateQueries({ queryKey: ['team', 'tracking'] })
     },
   })

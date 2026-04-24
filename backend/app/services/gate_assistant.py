@@ -83,6 +83,9 @@ async def build_gate_assistant(session: AsyncSession, user: AuthUser) -> GateAss
     grace_active = False
     grace_ending_tomorrow = False
     grace_end_date: str | None = None
+    grace_request_pending = False
+    grace_request_end_date: str | None = None
+    grace_request_reason: str | None = None
     team_warning_count = 0
     team_strong_warning_count = 0
     team_final_warning_count = 0
@@ -90,6 +93,7 @@ async def build_gate_assistant(session: AsyncSession, user: AuthUser) -> GateAss
     team_grace_count = 0
 
     if user.role in {"team", "leader"}:
+        member = await session.get(User, user.user_id)
         compliance = (
             await build_compliance_snapshots(session, [user.user_id], apply_actions=True)
         ).get(user.user_id)
@@ -127,6 +131,14 @@ async def build_gate_assistant(session: AsyncSession, user: AuthUser) -> GateAss
             grace_active = compliance.grace_active
             grace_ending_tomorrow = compliance.grace_ending_tomorrow
             grace_end_date = compliance.grace_end_date.isoformat() if compliance.grace_end_date else None
+        if (
+            member is not None
+            and member.grace_request_end_date is not None
+            and member.grace_request_requested_at is not None
+        ):
+            grace_request_pending = True
+            grace_request_end_date = member.grace_request_end_date.isoformat()
+            grace_request_reason = (member.grace_request_reason or "").strip() or None
         if compliance_level == "final_warning":
             risk = "red"
             next_action = compliance_summary or "Final warning active."
@@ -280,6 +292,9 @@ async def build_gate_assistant(session: AsyncSession, user: AuthUser) -> GateAss
         grace_active=grace_active,
         grace_ending_tomorrow=grace_ending_tomorrow,
         grace_end_date=grace_end_date,
+        grace_request_pending=grace_request_pending,
+        grace_request_end_date=grace_request_end_date,
+        grace_request_reason=grace_request_reason,
         team_warning_count=team_warning_count,
         team_strong_warning_count=team_strong_warning_count,
         team_final_warning_count=team_final_warning_count,

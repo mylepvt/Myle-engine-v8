@@ -198,15 +198,19 @@ function MemberProfileModal({
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [trainingError, setTrainingError] = useState<string | null>(null)
   const [trainingRequired, setTrainingRequired] = useState<boolean>(member.training_required ?? false)
-  const [graceEndDate, setGraceEndDate] = useState(member.grace_end_date?.slice(0, 10) ?? '')
-  const [graceReason, setGraceReason] = useState(member.grace_reason ?? '')
+  const [graceEndDate, setGraceEndDate] = useState(
+    member.grace_request_end_date?.slice(0, 10) ?? member.grace_end_date?.slice(0, 10) ?? '',
+  )
+  const [graceReason, setGraceReason] = useState(
+    member.grace_request_reason ?? member.grace_reason ?? '',
+  )
 
   useEffect(() => {
     setCurrentMember(member)
     setSelectedRole(member.role as Role)
     setTrainingRequired(member.training_required ?? false)
-    setGraceEndDate(member.grace_end_date?.slice(0, 10) ?? '')
-    setGraceReason(member.grace_reason ?? '')
+    setGraceEndDate(member.grace_request_end_date?.slice(0, 10) ?? member.grace_end_date?.slice(0, 10) ?? '')
+    setGraceReason(member.grace_request_reason ?? member.grace_reason ?? '')
   }, [member])
 
   function handleRoleChange() {
@@ -224,7 +228,13 @@ function MemberProfileModal({
   }
 
   function handleComplianceAction(
-    action: 'grant_grace' | 'clear_grace' | 'restore_access' | 'remove_now',
+    action:
+      | 'grant_grace'
+      | 'clear_grace'
+      | 'approve_grace_request'
+      | 'reject_grace_request'
+      | 'restore_access'
+      | 'remove_now',
   ) {
     if (action === 'grant_grace' && !graceEndDate.trim()) {
       setComplianceError('Grace till date required.')
@@ -246,8 +256,8 @@ function MemberProfileModal({
         onError: (e: Error) => setComplianceError(e.message),
         onSuccess: (updated) => {
           setCurrentMember(updated)
-          setGraceEndDate(updated.grace_end_date?.slice(0, 10) ?? '')
-          setGraceReason(updated.grace_reason ?? '')
+          setGraceEndDate(updated.grace_request_end_date?.slice(0, 10) ?? updated.grace_end_date?.slice(0, 10) ?? '')
+          setGraceReason(updated.grace_request_reason ?? updated.grace_reason ?? '')
         },
       },
     )
@@ -306,6 +316,11 @@ function MemberProfileModal({
                   {currentMember.grace_end_date ? (
                     <Badge variant="outline">Grace till {formatMemberDate(currentMember.grace_end_date)}</Badge>
                   ) : null}
+                  {currentMember.grace_request_end_date ? (
+                    <Badge variant="primary">
+                      Request till {formatMemberDate(currentMember.grace_request_end_date)}
+                    </Badge>
+                  ) : null}
                   {currentMember.access_blocked ? (
                     <Badge variant="danger">Access blocked</Badge>
                   ) : null}
@@ -319,6 +334,12 @@ function MemberProfileModal({
             <p className={`text-xs ${complianceTone(currentMember.compliance_level)}`}>
               {currentMember.compliance_summary ?? 'No active discipline note.'}
             </p>
+            {currentMember.grace_request_end_date ? (
+              <p className="text-[0.72rem] text-primary">
+                Pending grace request till {formatMemberDate(currentMember.grace_request_end_date)}
+                {currentMember.grace_request_reason ? ` · ${currentMember.grace_request_reason}` : ''}
+              </p>
+            ) : null}
 
             {currentMember.role === 'admin' ? (
               <p className="text-[0.72rem] text-muted-foreground">
@@ -361,6 +382,27 @@ function MemberProfileModal({
                   />
                 </label>
                 <div className="flex flex-wrap gap-2">
+                  {currentMember.grace_request_end_date ? (
+                    <>
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={updateComplianceMut.isPending}
+                        onClick={() => handleComplianceAction('approve_grace_request')}
+                      >
+                        Approve Request
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={updateComplianceMut.isPending}
+                        onClick={() => handleComplianceAction('reject_grace_request')}
+                      >
+                        Reject Request
+                      </Button>
+                    </>
+                  ) : null}
                   <Button
                     type="button"
                     variant="outline"
@@ -791,12 +833,27 @@ export function TeamMembersPage({ title }: Props) {
                                 Grace till {formatMemberDate(m.grace_end_date)}
                               </span>
                             ) : null}
+                            {m.grace_request_end_date ? (
+                              <span className="text-[0.68rem] text-primary">
+                                Request till {formatMemberDate(m.grace_request_end_date)}
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        {!m.compliance_title && m.grace_request_end_date ? (
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <span className="text-[0.68rem] text-primary">
+                              Request till {formatMemberDate(m.grace_request_end_date)}
+                            </span>
                           </div>
                         ) : null}
                         {m.compliance_summary && m.compliance_level !== 'not_applicable' ? (
                           <p className={`text-[0.7rem] ${complianceTone(m.compliance_level)}`}>
                             {m.compliance_summary}
                           </p>
+                        ) : null}
+                        {m.grace_request_end_date && m.grace_request_reason ? (
+                          <p className="text-[0.7rem] text-muted-foreground">{m.grace_request_reason}</p>
                         ) : null}
                       </div>
                     </div>

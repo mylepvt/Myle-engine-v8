@@ -34,6 +34,9 @@ export type GateAssistantResponse = {
   grace_active: boolean
   grace_ending_tomorrow: boolean
   grace_end_date: string | null
+  grace_request_pending: boolean
+  grace_request_end_date: string | null
+  grace_request_reason: string | null
   team_warning_count: number
   team_strong_warning_count: number
   team_final_warning_count: number
