@@ -3,12 +3,13 @@ from __future__ import annotations
 from typing import Optional
 
 from fastapi import HTTPException
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 from starlette import status as http_status
 
 from app.api.deps import AuthUser
 from app.core.lead_status import LEAD_STATUS_SET
 from app.models.lead import Lead
+from app.services.downline import lead_management_visible_to_leader_clause
 from app.services.lead_scope import lead_visibility_where
 
 
@@ -43,11 +44,18 @@ def lead_list_conditions(
     status_filter: Optional[str],
     archived_only: bool,
     deleted_only: bool,
+    search_all_sections: bool = False,
 ):
     parts: list = []
-    # Legacy parity slice 4: archived (`/old-leads`) and recycle (`/leads/recycle-bin`)
-    # list rows are scoped to exact assignee for non-admin users (not leader downline expansion).
-    if archived_only or deleted_only:
+    if search_all_sections:
+        visibility = (
+            None
+            if user.role == "admin"
+            else lead_management_visible_to_leader_clause(user.user_id)
+            if user.role == "leader"
+            else lead_visibility_where(user)
+        )
+    elif archived_only or deleted_only:
         visibility = None if user.role == "admin" else Lead.assigned_to_user_id == user.user_id
     else:
         visibility = lead_visibility_where(user)
@@ -59,13 +67,21 @@ def lead_list_conditions(
     else:
         parts.append(Lead.deleted_at.is_(None))
         parts.append(Lead.in_pool.is_(False))
-        if archived_only:
-            parts.append(Lead.archived_at.is_not(None))
-        else:
-            parts.append(Lead.archived_at.is_(None))
+        if not search_all_sections:
+            if archived_only:
+                parts.append(Lead.archived_at.is_not(None))
+            else:
+                parts.append(Lead.archived_at.is_(None))
 
     if q is not None and (needle := q.strip()):
-        parts.append(Lead.name.ilike(f"%{escape_ilike(needle)}%", escape="\\"))
+        pattern = f"%{escape_ilike(needle)}%"
+        parts.append(
+            or_(
+                Lead.name.ilike(pattern, escape="\\"),
+                Lead.phone.ilike(pattern, escape="\\"),
+                Lead.email.ilike(pattern, escape="\\"),
+            )
+        )
 
     if status_filter is not None:
         parts.append(Lead.status == status_filter)

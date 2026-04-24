@@ -230,7 +230,7 @@ export function TerminalBootOverlay({
             const t = typeof col.total === 'number' ? col.total : 0
             activeLeads += t
             if (col.status === 'follow_up') followUpLeads = t
-            if (col.status === 'converted' || col.status === 'won') won = t
+            if (col.status === 'converted') won = t
             if (col.status === 'lost') lost = t
           }
         }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 
@@ -6,10 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   LEAD_STATUS_OPTIONS,
+  useClaimLeadMutation,
   usePatchLeadMutation,
 } from '@/hooks/use-leads-query'
-import { useCrmPoolClaim } from '@/hooks/use-crm-query'
 import {
+  useLeadPoolBatchClaimMutation,
+  useLeadPoolBatchPreviewQuery,
   useLeadPoolDefaultsMutation,
   useLeadPoolDefaultsQuery,
   useLeadPoolQuery,
@@ -29,19 +31,47 @@ function statusLabel(value: string): string {
   return LEAD_STATUS_OPTIONS.find((o) => o.value === value)?.label ?? value
 }
 
+const rupeeFormatter = new Intl.NumberFormat('en-IN', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})
+
 function formatRupees(cents: number): string {
-  return `₹${(cents / 100).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
+  return `₹${rupeeFormatter.format(cents / 100)}`
+}
+
+function formatRupeesInput(cents: number): string {
+  const raw = (cents / 100).toFixed(2)
+  return raw.endsWith('.00') ? raw.slice(0, -3) : raw
+}
+
+function parseRupeesToCents(value: string): number | null {
+  const normalized = value.trim()
+  if (!normalized) return null
+  if (!/^\d+(?:\.\d{0,2})?$/.test(normalized)) return null
+  const [wholePart, fractionPart = ''] = normalized.split('.')
+  const whole = Number.parseInt(wholePart, 10)
+  if (!Number.isFinite(whole) || whole < 0) return null
+  const fraction = Number.parseInt((fractionPart + '00').slice(0, 2), 10)
+  return whole * 100 + fraction
 }
 
 export function LeadPoolWorkPage({ title }: Props) {
   const qc = useQueryClient()
-  const { role } = useDashboardShellRole()
-  const { data, isPending, isError, error, refetch } = useLeadPoolQuery()
-  const { data: poolDefaults } = useLeadPoolDefaultsQuery(role === 'admin')
+  const { role, serverRole, isAdminPreviewing } = useDashboardShellRole()
+  const signedInRole = serverRole ?? role
+  const canViewPoolList = signedInRole === 'admin'
+  const { data, isPending, isError, error, refetch } = useLeadPoolQuery(canViewPoolList)
+  const canManagePool = role === 'admin' && signedInRole === 'admin'
+  const canClaimPool = signedInRole != null && ['team', 'leader', 'admin'].includes(signedInRole)
+  const { data: poolDefaults } = useLeadPoolDefaultsQuery(canManagePool)
   const poolDefaultsMut = useLeadPoolDefaultsMutation()
-  const { data: walletData } = useWalletMeQuery(true)
-  const claimMut = useCrmPoolClaim()
+  const { data: walletData } = useWalletMeQuery(canClaimPool)
+  const claimMut = useClaimLeadMutation()
+  const batchClaimMut = useLeadPoolBatchClaimMutation()
   const patchMut = usePatchLeadMutation()
+  const claimBusy = claimMut.isPending || batchClaimMut.isPending
+  const claimError = claimMut.error ?? batchClaimMut.error
 
   // Confirm dialog state: which lead is being claimed
   const [confirmId, setConfirmId] = useState<number | null>(null)
@@ -58,19 +88,27 @@ export function LeadPoolWorkPage({ title }: Props) {
   const [defaultPriceHydrated, setDefaultPriceHydrated] = useState(false)
 
   const walletBalance = walletData?.balance_cents ?? 0
+  const requestedBatchCount = Math.min(50, Math.max(1, Number.parseInt(batchCountStr, 10) || 1))
+  const {
+    data: batchPreview,
+    isPending: isBatchPreviewPending,
+    isError: isBatchPreviewError,
+    error: batchPreviewError,
+    refetch: refetchBatchPreview,
+  } = useLeadPoolBatchPreviewQuery(requestedBatchCount, canClaimPool)
 
   useEffect(() => {
     if (!poolDefaults || defaultPriceHydrated) return
-    setDefaultRupees(String((poolDefaults.default_pool_price_cents ?? 0) / 100))
+    setDefaultRupees(formatRupeesInput(poolDefaults.default_pool_price_cents ?? 0))
     setDefaultPriceHydrated(true)
   }, [poolDefaults, defaultPriceHydrated])
 
   async function handleSaveDefaultPoolPrice() {
-    const rupees = parseFloat(defaultRupees)
-    if (isNaN(rupees) || rupees < 0) return
+    const cents = parseRupeesToCents(defaultRupees)
+    if (cents == null) return
     try {
       await poolDefaultsMut.mutateAsync({
-        default_pool_price_cents: Math.round(rupees * 100),
+        default_pool_price_cents: cents,
       })
     } catch {
       /* surfaced below */
@@ -79,11 +117,7 @@ export function LeadPoolWorkPage({ title }: Props) {
 
   async function handleClaim(leadId: number) {
     try {
-      await claimMut.mutateAsync({
-        leadId,
-        idempotencyKey: `claim-${leadId}-${Date.now()}`,
-        pipelineKind: 'PERSONAL',
-      })
+      await claimMut.mutateAsync(leadId)
       playAppSound('cashier')
       setConfirmId(null)
     } catch {
@@ -91,34 +125,14 @@ export function LeadPoolWorkPage({ title }: Props) {
     }
   }
 
-  const maxBatch = data ? Math.min(50, data.total) : 0
-
-  const batchFifoEstimateCents = useMemo(() => {
-    if (!data?.items.length) return 0
-    const n = Math.min(50, Math.max(1, parseInt(batchCountStr, 10) || 1), data.total)
-    const fifo = [...data.items].sort(
-      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
-    )
-    const slice = fifo.slice(0, Math.min(n, fifo.length))
-    return slice.reduce((s, l) => s + (l.pool_price_cents ?? 0), 0)
-  }, [data, batchCountStr])
-
-  const batchCountParsed =
-    data != null
-      ? Math.min(50, Math.max(1, parseInt(batchCountStr, 10) || 1), data.total)
-      : 1
-
+  const maxBatch = Math.min(50, batchPreview?.available_count ?? 50)
+  const batchCountParsed = batchPreview?.claim_count ?? 0
+  const batchFifoEstimateCents = batchPreview?.total_price_cents ?? 0
   const canAffordBatchEstimate = batchFifoEstimateCents === 0 || walletBalance >= batchFifoEstimateCents
 
   async function handleBatchClaim() {
-    if (!data) return
-    const n = Math.min(50, Math.max(1, parseInt(batchCountStr, 10) || 1), data.total)
     try {
-      await claimMut.mutateAsync({
-        count: n,
-        idempotencyKey: `batch-${Date.now()}-${n}`,
-        pipelineKind: 'PERSONAL',
-      })
+      await batchClaimMut.mutateAsync(requestedBatchCount)
       playAppSound('cashier')
       setBatchConfirmOpen(false)
     } catch {
@@ -128,9 +142,8 @@ export function LeadPoolWorkPage({ title }: Props) {
 
   async function handleSetPrice(leadId: number) {
     const raw = priceInputs[leadId] ?? ''
-    const rupees = parseFloat(raw)
-    if (isNaN(rupees) || rupees < 0) return
-    const cents = Math.round(rupees * 100)
+    const cents = parseRupeesToCents(raw)
+    if (cents == null) return
     try {
       await patchMut.mutateAsync({ id: leadId, body: { pool_price_cents: cents } })
       setPriceInputs((p) => ({ ...p, [leadId]: '' }))
@@ -212,12 +225,19 @@ export function LeadPoolWorkPage({ title }: Props) {
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Leads an admin has released into the shared pool. Claim individually, or up to 50 in one request
-        (oldest in the pool first — same FIFO rules as the legacy app). Paid rows debit your wallet; the
-        whole batch is rejected if the combined price exceeds your balance.
+        {canViewPoolList
+          ? 'Leads an admin has released into the shared pool. Admins can inspect the list, claim individually, or claim up to 50 in one request (oldest in the pool first — same FIFO rules as the legacy app). Paid rows debit your wallet; the whole batch is rejected if the combined price exceeds your balance.'
+          : 'Leads an admin has released into the shared pool. Leaders and team members can only claim in bulk here, with the server always taking the oldest available leads first. Paid rows debit your wallet, and the whole batch is rejected if the combined price exceeds your balance.'}
       </p>
 
-      {role === 'admin' ? (
+      {isAdminPreviewing ? (
+        <div className="surface-inset border border-primary/20 px-4 py-3 text-xs text-muted-foreground">
+          View-as only changes the navigation. Claim, pricing, and import actions still use your signed-in
+          admin account.
+        </div>
+      ) : null}
+
+      {canManagePool ? (
         <div className="surface-inset space-y-3 p-4 text-sm">
           <p className="font-medium text-foreground">Default claim price (new pool leads)</p>
           <p className="text-ds-caption text-muted-foreground">
@@ -232,7 +252,7 @@ export function LeadPoolWorkPage({ title }: Props) {
               id="lead-pool-default-price"
               type="number"
               min="0"
-              step="1"
+              step="0.01"
               placeholder="₹ per claim"
               value={defaultRupees}
               onChange={(e) => setDefaultRupees(e.target.value)}
@@ -309,7 +329,7 @@ export function LeadPoolWorkPage({ title }: Props) {
       ) : null}
 
       {/* Wallet balance chip */}
-      {role !== 'admin' && walletData !== undefined ? (
+      {canClaimPool && walletData !== undefined ? (
         <div className="surface-inset inline-flex items-center gap-2 px-3 py-1.5 text-sm">
           <span className="text-muted-foreground">Wallet balance:</span>
           <span className={`font-semibold ${walletBalance > 0 ? 'text-[hsl(142_71%_48%)]' : 'text-destructive'}`}>
@@ -321,14 +341,14 @@ export function LeadPoolWorkPage({ title }: Props) {
         </div>
       ) : null}
 
-      {isPending ? (
+      {canViewPoolList && isPending ? (
         <div className="space-y-2">
           <Skeleton className="h-16 w-full" />
           <Skeleton className="h-16 w-full" />
         </div>
       ) : null}
 
-      {isError ? (
+      {canViewPoolList && isError ? (
         <div className="text-sm text-destructive" role="alert">
           <span>{error instanceof Error ? error.message : 'Could not load pool'} </span>
           <button type="button" className="underline underline-offset-2" onClick={() => void refetch()}>
@@ -337,25 +357,39 @@ export function LeadPoolWorkPage({ title }: Props) {
         </div>
       ) : null}
 
-      {data ? (
+      {canClaimPool ? (
         <div className="surface-elevated p-4 text-sm text-muted-foreground">
-          <p className="mb-3 font-medium text-foreground">In pool: {data.total}</p>
+          <p className="mb-3 font-medium text-foreground">
+            In pool: {batchPreview?.available_count ?? (canViewPoolList ? data?.total ?? 0 : 0)}
+          </p>
 
-          {role !== 'admin' && data.total > 0 ? (
+          {isBatchPreviewPending ? (
+            <div className="space-y-2">
+              <Skeleton className="h-24 w-full" />
+            </div>
+          ) : null}
+
+          {isBatchPreviewError ? (
+            <div className="mb-4 text-xs text-destructive" role="alert">
+              <span>{batchPreviewError instanceof Error ? batchPreviewError.message : 'Could not load bulk claim preview'} </span>
+              <button type="button" className="underline underline-offset-2" onClick={() => void refetchBatchPreview()}>
+                Retry
+              </button>
+            </div>
+          ) : null}
+
+          {batchPreview != null ? (
             <div className="mb-4 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs">
               <p className="font-medium text-foreground">Bulk claim (FIFO, max 50)</p>
               <p className="mt-1 text-muted-foreground">
-                Server picks the oldest leads in the pool first. If this page does not list every pool row,
-                the amount shown is only an estimate from visible leads.
+                Server picks the oldest leads in the pool first and returns the exact combined price for this request.
+                Leaders and team members can only claim in bulk from this screen.
               </p>
-              {data.items.length < data.total ? (
-                <p className="mt-2 text-amber-400/90">Some pool leads are not loaded on this screen.</p>
-              ) : null}
               {batchConfirmOpen ? (
                 <div className="mt-3 space-y-2 rounded-md border border-amber-400/30 bg-amber-400/5 p-2">
                   <p className="text-foreground">
-                    Claim up to <strong className="tabular-nums">{batchCountParsed}</strong> lead(s)? Estimated
-                    debit from visible FIFO slice:{' '}
+                    Claim up to <strong className="tabular-nums">{batchCountParsed}</strong> lead(s)? Exact
+                    debit for the current FIFO slice:{' '}
                     <strong className="tabular-nums">{formatRupees(batchFifoEstimateCents)}</strong>
                     {' · '}
                     Balance: <strong className="tabular-nums">{formatRupees(walletBalance)}</strong>
@@ -364,10 +398,10 @@ export function LeadPoolWorkPage({ title }: Props) {
                     <Button
                       type="button"
                       size="sm"
-                      disabled={claimMut.isPending || !canAffordBatchEstimate}
+                      disabled={claimBusy || !canAffordBatchEstimate || batchCountParsed < 1}
                       onClick={() => void handleBatchClaim()}
                     >
-                      {claimMut.isPending ? 'Claiming…' : 'Confirm batch'}
+                      {claimBusy ? 'Claiming…' : 'Confirm batch'}
                     </Button>
                     <Button type="button" variant="ghost" size="sm" onClick={() => setBatchConfirmOpen(false)}>
                       Cancel
@@ -384,7 +418,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                       id="lead-pool-batch-count"
                       type="number"
                       min={1}
-                      max={maxBatch}
+                      max={Math.max(1, maxBatch)}
                       step={1}
                       value={batchCountStr}
                       onChange={(e) => setBatchCountStr(e.target.value)}
@@ -396,10 +430,10 @@ export function LeadPoolWorkPage({ title }: Props) {
                     type="button"
                     size="sm"
                     variant="outline"
-                    disabled={!canAffordBatchEstimate || batchCountParsed < 1}
+                    disabled={claimBusy || !canAffordBatchEstimate || batchCountParsed < 1}
                     title={
                       !canAffordBatchEstimate
-                        ? `Estimated ${formatRupees(batchFifoEstimateCents)} from visible rows; balance ${formatRupees(walletBalance)}`
+                        ? `Need ${formatRupees(batchFifoEstimateCents)}; wallet has ${formatRupees(walletBalance)}`
                         : undefined
                     }
                     onClick={() => setBatchConfirmOpen(true)}
@@ -411,9 +445,22 @@ export function LeadPoolWorkPage({ title }: Props) {
             </div>
           ) : null}
 
-          {data.items.length === 0 ? (
+          {canViewPoolList && data != null && data.items.length === 0 ? (
             <p>No leads in pool right now.</p>
-          ) : (
+          ) : null}
+
+          {!canViewPoolList && batchPreview != null && batchPreview.available_count === 0 ? (
+            <p>No leads in pool right now.</p>
+          ) : null}
+
+          {!canViewPoolList ? (
+            <p className="text-xs text-muted-foreground">
+              Lead details and single-claim actions are admin-only. Use bulk claim to pull the oldest available
+              leads.
+            </p>
+          ) : null}
+
+          {canViewPoolList && data != null && data.items.length > 0 ? (
             <ul className="space-y-3">
               {(data.items as PoolLead[]).map((l) => {
                 const price = l.pool_price_cents ?? 0
@@ -452,13 +499,13 @@ export function LeadPoolWorkPage({ title }: Props) {
                     </div>
 
                     {/* Admin controls */}
-                    {role === 'admin' ? (
+                    {canManagePool ? (
                       <div className="flex flex-wrap items-center gap-2">
                         <input
                           type="number"
                           min="0"
-                          step="1"
-                          placeholder={`Override ₹ — row ${isFree ? 'free' : (price / 100).toFixed(0)} · saved default ₹${((poolDefaults?.default_pool_price_cents ?? 0) / 100).toFixed(0)}`}
+                          step="0.01"
+                          placeholder={`Override ₹ — row ${isFree ? 'free' : formatRupeesInput(price)} · saved default ₹${formatRupeesInput(poolDefaults?.default_pool_price_cents ?? 0)}`}
                           value={priceInputs[l.id] ?? ''}
                           onChange={(e) => setPriceInputs((p) => ({ ...p, [l.id]: e.target.value }))}
                           className="w-40 rounded-md border border-white/12 bg-white/[0.05] px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
@@ -485,7 +532,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                     ) : null}
 
                     {/* Claim flow */}
-                    {role !== 'admin' ? (
+                    {canClaimPool ? (
                       isConfirming ? (
                         <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2">
                           <p className="flex-1 text-xs text-foreground">
@@ -496,10 +543,10 @@ export function LeadPoolWorkPage({ title }: Props) {
                           <Button
                             type="button"
                             size="sm"
-                            disabled={claimMut.isPending || (!isFree && !canAfford)}
+                            disabled={claimBusy || (!isFree && !canAfford)}
                             onClick={() => void handleClaim(l.id)}
                           >
-                            {claimMut.isPending ? 'Claiming…' : 'Confirm'}
+                            {claimBusy ? 'Claiming…' : 'Confirm'}
                           </Button>
                           <Button
                             type="button"
@@ -515,7 +562,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                           type="button"
                           size="sm"
                           className="self-start"
-                          disabled={!isFree && !canAfford}
+                          disabled={claimBusy || (!isFree && !canAfford)}
                           title={!isFree && !canAfford ? `Need ${formatRupees(price)}, wallet has ${formatRupees(walletBalance)}` : undefined}
                           onClick={() => setConfirmId(l.id)}
                         >
@@ -527,11 +574,13 @@ export function LeadPoolWorkPage({ title }: Props) {
                 )
               })}
             </ul>
-          )}
+          ) : null}
 
-          {claimMut.isError ? (
+          {claimMut.isError || batchClaimMut.isError ? (
             <p className="mt-3 text-xs text-destructive" role="alert">
-              {claimMut.error instanceof Error ? claimMut.error.message : 'Claim failed'}
+              {claimError instanceof Error
+                ? claimError.message
+                : 'Claim failed'}
             </p>
           ) : null}
           {patchMut.isError ? (

@@ -17,6 +17,7 @@ from app.core.payment_validator import (
     validate_payment_amount,
     validate_image_upload,
 )
+from app.models.lead import Lead
 from app.schemas.payments import PaymentProofResponse
 from app.services.payment_service import PaymentService
 
@@ -32,7 +33,8 @@ def _internal_server_error(message: str, exc: Exception) -> HTTPException:
     )
 
 
-@router.post("/payments/proof/upload", response_model=PaymentProofResponse)
+@router.post("/payments/proof/upload", response_model=PaymentProofResponse, include_in_schema=False)
+@router.post("/proof/upload", response_model=PaymentProofResponse)
 async def upload_payment_proof(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
@@ -62,8 +64,7 @@ async def upload_payment_proof(
             raise HTTPException(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail=message,
-            )
-
+        )
         await notify_topics("team", "leads")
 
         return PaymentProofResponse(
@@ -82,7 +83,8 @@ async def upload_payment_proof(
         raise _internal_server_error("Failed to upload payment proof", e)
 
 
-@router.post("/payments/proof/approve")
+@router.post("/payments/proof/approve", include_in_schema=False)
+@router.post("/proof/approve")
 async def approve_payment_proof(
     lead_id: int,
     user: Annotated[AuthUser, Depends(require_auth_user)],
@@ -103,8 +105,7 @@ async def approve_payment_proof(
             raise HTTPException(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail=message,
-            )
-
+        )
         await notify_topics("team", "leads")
 
         return PaymentProofResponse(
@@ -118,7 +119,8 @@ async def approve_payment_proof(
         raise _internal_server_error("Failed to approve payment proof", e)
 
 
-@router.post("/payments/proof/reject")
+@router.post("/payments/proof/reject", include_in_schema=False)
+@router.post("/proof/reject")
 async def reject_payment_proof(
     lead_id: int,
     user: Annotated[AuthUser, Depends(require_auth_user)],
@@ -141,8 +143,7 @@ async def reject_payment_proof(
             raise HTTPException(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail=message,
-            )
-
+        )
         await notify_topics("team", "leads")
 
         return PaymentProofResponse(
@@ -156,7 +157,8 @@ async def reject_payment_proof(
         raise _internal_server_error("Failed to reject payment proof", e)
 
 
-@router.get("/payments/proof/pending")
+@router.get("/payments/proof/pending", include_in_schema=False)
+@router.get("/proof/pending")
 async def get_pending_payment_proofs(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
@@ -169,4 +171,3 @@ async def get_pending_payment_proofs(
         return await service.get_pending_payment_proofs(user.user_id, user.role)
     except Exception as e:
         raise _internal_server_error("Failed to fetch pending payment proofs", e)
-

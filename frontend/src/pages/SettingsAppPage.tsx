@@ -20,6 +20,27 @@ const BATCH_SETTING_KEYS = [
   'batch_d2_evening_v2',
 ] as const
 
+const LIVE_SESSION_SETTING_FIELDS = [
+  {
+    key: 'live_session_url',
+    label: 'Join link',
+    placeholder: 'https://zoom.us/j/...',
+    help: 'Paste the Zoom or Meet join URL shown on Community -> Live session.',
+  },
+  {
+    key: 'live_session_title',
+    label: 'Title',
+    placeholder: "Today's Live Session",
+    help: 'Short heading shown on the live session card.',
+  },
+  {
+    key: 'live_session_schedule',
+    label: 'Schedule / details',
+    placeholder: 'Daily · 8:00 PM IST',
+    help: 'Shown below the title. You can include time, topic, or host details.',
+  },
+] as const
+
 function batchSettingLabel(key: string): string {
   return key
     .replace('batch_', '')
@@ -44,8 +65,17 @@ export function SettingsAppPage({ title }: Props) {
   const updateAppSetting = useAppSettingUpdateMutation()
 
   const [q, setQ] = useState('')
+  const [liveSessionEdits, setLiveSessionEdits] = useState<Record<string, string>>({})
   const [batchEdits, setBatchEdits] = useState<Record<string, string>>({})
+  const [liveSessionSaveMsg, setLiveSessionSaveMsg] = useState<string | null>(null)
   const [saveMsg, setSaveMsg] = useState<string | null>(null)
+  const [liveSessionErrorMsg, setLiveSessionErrorMsg] = useState<string | null>(null)
+  const [batchErrorMsg, setBatchErrorMsg] = useState<string | null>(null)
+  const liveSessionSource = appSettingsData?.settings ?? {}
+  const resolvedLiveSessionValue = (key: string): string =>
+    Object.prototype.hasOwnProperty.call(liveSessionEdits, key)
+      ? (liveSessionEdits[key] ?? '')
+      : (liveSessionSource[key] ?? '')
   const batchSource = appSettingsData?.settings ?? {}
   const resolvedBatchValue = (key: string): string =>
     Object.prototype.hasOwnProperty.call(batchEdits, key) ? (batchEdits[key] ?? '') : (batchSource[key] ?? '')
@@ -64,13 +94,34 @@ export function SettingsAppPage({ title }: Props) {
 
   const handleSaveBatchLinks = async () => {
     setSaveMsg(null)
-    for (const key of BATCH_SETTING_KEYS) {
-      const value = resolvedBatchValue(key).trim()
-      await updateAppSetting.mutateAsync({ key, value })
+    setBatchErrorMsg(null)
+    try {
+      for (const key of BATCH_SETTING_KEYS) {
+        const value = resolvedBatchValue(key).trim()
+        await updateAppSetting.mutateAsync({ key, value })
+      }
+      setBatchEdits({})
+      setSaveMsg('Batch links updated successfully.')
+      void refetchAppSettings()
+    } catch (error) {
+      setBatchErrorMsg(error instanceof Error ? error.message : 'Could not update batch links.')
     }
-    setBatchEdits({})
-    setSaveMsg('Batch links updated successfully.')
-    void refetchAppSettings()
+  }
+
+  const handleSaveLiveSession = async () => {
+    setLiveSessionSaveMsg(null)
+    setLiveSessionErrorMsg(null)
+    try {
+      for (const field of LIVE_SESSION_SETTING_FIELDS) {
+        const value = resolvedLiveSessionValue(field.key).trim()
+        await updateAppSetting.mutateAsync({ key: field.key, value })
+      }
+      setLiveSessionEdits({})
+      setLiveSessionSaveMsg('Live session settings updated successfully.')
+      void refetchAppSettings()
+    } catch (error) {
+      setLiveSessionErrorMsg(error instanceof Error ? error.message : 'Could not update live session settings.')
+    }
   }
 
   return (
@@ -83,9 +134,64 @@ export function SettingsAppPage({ title }: Props) {
       </p>
       <section className="surface-elevated space-y-3 p-4">
         <div>
+          <h2 className="text-sm font-semibold text-foreground">Live Session</h2>
+          <p className="text-xs text-muted-foreground">
+            Admin join details for <strong>Community → Live session</strong>. These
+            <code className="mx-1 rounded bg-white/10 px-1 text-[10px]">live_session_*</code>
+            keys are the preferred vl2 settings.
+          </p>
+        </div>
+
+        {appSettingsPending ? (
+          <Skeleton className="h-9 w-full" />
+        ) : appSettingsError ? (
+          <div className="text-sm text-destructive" role="alert">
+            {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load app settings.'}
+          </div>
+        ) : (
+          <div className="grid gap-3">
+            {LIVE_SESSION_SETTING_FIELDS.map((field) => (
+              <label key={field.key} className="block text-xs">
+                <span className="mb-1 block text-muted-foreground">{field.label}</span>
+                <input
+                  value={resolvedLiveSessionValue(field.key)}
+                  onChange={(e) =>
+                    setLiveSessionEdits((prev) => ({
+                      ...prev,
+                      [field.key]: e.target.value,
+                    }))
+                  }
+                  placeholder={field.placeholder}
+                  className="w-full rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                />
+                <span className="mt-1 block text-muted-foreground/80">{field.help}</span>
+                <span className="mt-1 block font-mono text-[10px] text-muted-foreground/80">{field.key}</span>
+              </label>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            disabled={updateAppSetting.isPending || appSettingsPending || appSettingsError}
+            onClick={() => void handleSaveLiveSession()}
+            className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-medium text-primary disabled:opacity-50"
+          >
+            {updateAppSetting.isPending ? 'Saving...' : 'Save live session'}
+          </button>
+          {liveSessionSaveMsg ? <p className="text-xs text-emerald-400">{liveSessionSaveMsg}</p> : null}
+          {liveSessionErrorMsg ? <p className="text-xs text-destructive">{liveSessionErrorMsg}</p> : null}
+        </div>
+      </section>
+      <section className="surface-elevated space-y-3 p-4">
+        <div>
           <h2 className="text-sm font-semibold text-foreground">Batch Video Links</h2>
           <p className="text-xs text-muted-foreground">
-            Update WhatsApp watch links for D1/D2 batches. Button color auto-updates after viewer completes video.
+            Update WhatsApp watch links for D1/D2 batches. Admin YouTube link ya direct hosted `.mp4/.webm` link dono use kar sakta hai.
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Direct file link use karoge to in-app native player chalega with fullscreen and without YouTube bottom clutter.
           </p>
         </div>
 
@@ -108,7 +214,7 @@ export function SettingsAppPage({ title }: Props) {
                       [key]: e.target.value,
                     }))
                   }
-                  placeholder="https://youtube.com/watch?v=..."
+                  placeholder="https://youtube.com/watch?v=... or https://cdn.example.com/video.mp4"
                   className="w-full rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
                 />
                 <span className="mt-1 block font-mono text-[10px] text-muted-foreground/80">{key}</span>
@@ -127,11 +233,7 @@ export function SettingsAppPage({ title }: Props) {
             {updateAppSetting.isPending ? 'Saving...' : 'Save batch links'}
           </button>
           {saveMsg ? <p className="text-xs text-emerald-400">{saveMsg}</p> : null}
-          {updateAppSetting.error ? (
-            <p className="text-xs text-destructive">
-              {updateAppSetting.error instanceof Error ? updateAppSetting.error.message : 'Save failed'}
-            </p>
-          ) : null}
+          {batchErrorMsg ? <p className="text-xs text-destructive">{batchErrorMsg}</p> : null}
         </div>
       </section>
 

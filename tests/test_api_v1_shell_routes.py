@@ -2,11 +2,19 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import delete
 
+from app.models.invoice import Invoice
 from main import app
 
+from conftest import get_test_session_factory
+from app.models.user import User
+from app.models.wallet_ledger import WalletLedgerEntry
+from app.models.wallet_recharge import WalletRecharge
 from util_jwt_patch import patch_jwt_settings
 
 
@@ -15,6 +23,15 @@ def _admin(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     c = TestClient(app)
     assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
     return c
+
+
+async def _reset_wallet_tables() -> None:
+    factory = get_test_session_factory()
+    async with factory() as session:
+        await session.execute(delete(Invoice))
+        await session.execute(delete(WalletRecharge))
+        await session.execute(delete(WalletLedgerEntry))
+        await session.commit()
 
 
 def test_execution_at_risk_admin(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -68,3 +85,39 @@ def test_other_training_matches_system_shape(monkeypatch: pytest.MonkeyPatch) ->
     assert r.status_code == 200
     b = r.json()
     assert "videos" in b and "progress" in b
+
+
+def test_finance_recharges_stub_uses_member_display_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    factory = get_test_session_factory()
+    asyncio.run(_reset_wallet_tables())
+
+    async def seed_name() -> None:
+        async with factory() as session:
+            team = await session.get(User, 3)
+            assert team is not None
+            team.name = "Claim Owner"
+            await session.commit()
+
+    try:
+        asyncio.run(seed_name())
+
+        c = _admin(monkeypatch)
+        seeded = c.post(
+            "/api/v1/wallet/adjustments",
+            json={
+                "user_id": 3,
+                "amount_cents": 5000,
+                "idempotency_key": "finance-stub-name-001",
+                "note": "pool_claim",
+            },
+        )
+        assert seeded.status_code == 201
+
+        r = c.get("/api/v1/finance/recharges")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["items"]
+        assert "Claim Owner" in body["items"][0]["title"]
+        assert "User #3" not in body["items"][0]["title"]
+    finally:
+        asyncio.run(_reset_wallet_tables())

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 from datetime import date, datetime
-from pathlib import Path
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
@@ -19,14 +18,14 @@ from app.models.app_setting import AppSetting
 from app.models.daily_report import DailyReport
 from app.models.daily_score import DailyScore
 from app.models.training_day_note import TrainingDayNote
+from app.models.training_progress import TrainingProgress
+from app.models.training_video import TrainingVideo
 from app.models.user import User
 from app.schemas.notice_board import AnnouncementCreate, AnnouncementOut, NoticeBoardResponse
 from app.schemas.system_surface import SystemStubResponse, TrainingSurfaceResponse
 from app.services.team_reports_metrics import IST
 from app.services.training_surface import build_training_surface
-
-_BACKEND_ROOT = Path(__file__).resolve().parents[4]
-_UPLOADS_NOTES = _BACKEND_ROOT / "uploads" / "training_notes"
+from app.services.training_uploads import save_training_notes_image
 
 router = APIRouter()
 
@@ -45,6 +44,39 @@ def _require_leader_team_or_admin(user: AuthUser) -> None:
 def _require_admin(user: AuthUser) -> None:
     if user.role != "admin":
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+
+async def _ensure_training_day_exists(session: AsyncSession, day_number: int) -> None:
+    exists = await session.execute(
+        select(TrainingVideo.id).where(TrainingVideo.day_number == day_number)
+    )
+    if exists.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail="Invalid training day",
+        )
+
+
+async def _ensure_day_unlocked_for_user(
+    session: AsyncSession,
+    *,
+    user_id: int,
+    day_number: int,
+) -> None:
+    if day_number <= 1:
+        return
+    previous = await session.execute(
+        select(TrainingProgress.id).where(
+            TrainingProgress.user_id == user_id,
+            TrainingProgress.day_number == day_number - 1,
+            TrainingProgress.completed.is_(True),
+        )
+    )
+    if previous.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail=f"Complete Day {day_number - 1} first",
+        )
 
 
 def _acting_label(user: AuthUser) -> str:
@@ -286,11 +318,12 @@ async def upload_training_notes(
 ) -> dict:
     """Team/leader/admin: upload notes image for a training day."""
     _require_leader_team_or_admin(user)
-    _UPLOADS_NOTES.mkdir(parents=True, exist_ok=True)
-    dest = _UPLOADS_NOTES / f"{user.user_id}_{day_number}.jpg"
-    contents = await file.read()
-    dest.write_bytes(contents)
-    image_path = f"/uploads/training_notes/{user.user_id}_{day_number}.jpg"
+    await _ensure_training_day_exists(session, day_number)
+    await _ensure_day_unlocked_for_user(session, user_id=user.user_id, day_number=day_number)
+    try:
+        image_path = await save_training_notes_image(user.user_id, day_number, file)
+    except ValueError as exc:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     existing = (
         await session.execute(

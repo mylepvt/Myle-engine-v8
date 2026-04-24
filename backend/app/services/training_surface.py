@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
-from typing import Dict, Optional
+from datetime import UTC, date, datetime, timedelta
+from typing import Dict
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,10 +17,11 @@ from app.schemas.system_surface import (
     TrainingSurfaceResponse,
     TrainingVideoRow,
 )
+from app.services.training_uploads import normalize_training_audio_url
 
 
-def _calculate_unlock_dates(progress_rows: list[TrainingProgressRow]) -> Dict[int, str]:
-    """Calculate unlock dates for training days based on calendar enforcement."""
+def _calculate_unlock_day_map(progress_rows: list[TrainingProgressRow]) -> Dict[int, date]:
+    """Return the calendar date when each later day becomes available."""
     day1_completion = next((p for p in progress_rows if p.day_number == 1 and p.completed_at), None)
 
     if not day1_completion or not day1_completion.completed_at:
@@ -35,19 +36,34 @@ def _calculate_unlock_dates(progress_rows: list[TrainingProgressRow]) -> Dict[in
     except (ValueError, AttributeError, TypeError):
         return {}
 
-    unlock_dates = {}
+    unlock_dates: Dict[int, date] = {}
     for day in range(2, 8):
-        unlock_date = day1_date.date() + timedelta(days=day - 1)
-        unlock_dates[day] = unlock_date.strftime('%d %b %Y')
+        unlock_dates[day] = day1_date.date() + timedelta(days=day - 1)
 
     return unlock_dates
 
 
-def _is_unlocked(day_number: int, progress_rows: list[TrainingProgressRow]) -> bool:
-    """Day 1 always unlocked; Day N unlocked if Day N-1 is completed."""
+def _calculate_unlock_dates(progress_rows: list[TrainingProgressRow]) -> Dict[int, str]:
+    unlock_day_map = _calculate_unlock_day_map(progress_rows)
+    return {day: unlock_date.strftime('%d %b %Y') for day, unlock_date in unlock_day_map.items()}
+
+
+def _is_unlocked(
+    day_number: int,
+    progress_rows: list[TrainingProgressRow],
+    unlock_day_map: Dict[int, date],
+) -> bool:
+    """Match the legacy calendar discipline: previous day complete + date reached."""
     if day_number == 1:
         return True
-    return any(p.day_number == day_number - 1 and p.completed for p in progress_rows)
+    if any(p.day_number == day_number and p.completed for p in progress_rows):
+        return True
+    if not any(p.day_number == day_number - 1 and p.completed for p in progress_rows):
+        return False
+    unlock_date = unlock_day_map.get(day_number)
+    if unlock_date is None:
+        return False
+    return datetime.now(UTC).date() >= unlock_date
 
 
 async def build_training_surface(session: AsyncSession, user_id: int) -> TrainingSurfaceResponse:
@@ -71,7 +87,7 @@ async def build_training_surface(session: AsyncSession, user_id: int) -> Trainin
     )
     notes = [TrainingDayNoteRow(day_number=n.day_number) for n in nq.scalars().all()]
 
-    # Calculate unlock dates for calendar enforcement
+    unlock_day_map = _calculate_unlock_day_map(progress)
     unlock_dates = _calculate_unlock_dates(progress)
 
     videos = [
@@ -79,8 +95,9 @@ async def build_training_surface(session: AsyncSession, user_id: int) -> Trainin
             day_number=v.day_number,
             title=v.title,
             has_video=bool(v.youtube_url),
-            audio_url=getattr(v, "audio_url", None),
-            unlocked=_is_unlocked(v.day_number, progress),
+            youtube_url=v.youtube_url,
+            audio_url=normalize_training_audio_url(getattr(v, "audio_url", None)),
+            unlocked=_is_unlocked(v.day_number, progress, unlock_day_map),
         )
         for v in video_rows
     ]

@@ -60,6 +60,7 @@ export type FullUiSurface =
   | { kind: 'lead-pool' }
   | { kind: 'recycle-bin' }
   | { kind: 'team-members' }
+  | { kind: 'team-tracking' }
   | { kind: 'my-team' }
   | { kind: 'team-approvals' }
   | { kind: 'enrollment-approvals' }
@@ -133,7 +134,7 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     path: 'work/leads',
     section: { id: 'work', label: '' },
     label: 'Calling Board',
-    labelByRole: { admin: 'All Leads', leader: 'All Leads' },
+    labelByRole: { admin: 'All Leads' },
     roles: routeRoles('work/leads'),
     surface: 'full',
     ui: { kind: 'leads', listMode: 'active' },
@@ -218,6 +219,14 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('team/members'),
     surface: 'full',
     ui: { kind: 'team-members' },
+  },
+  {
+    path: 'team/tracking',
+    section: { id: 'team', label: 'Team' },
+    label: 'Team Tracking',
+    roles: routeRoles('team/tracking'),
+    surface: 'full',
+    ui: { kind: 'team-tracking' },
   },
   {
     path: 'team/enrollment-approvals',

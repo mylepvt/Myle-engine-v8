@@ -70,6 +70,11 @@ model Lead {
   legacyId  Int?   @unique
   name      String
   phone     String?
+  /// Exact FastAPI status slug mirrored from the legacy dashboard funnel.
+  legacyStatus String?
+  isShadow     Boolean @default(false)
+  legacyVersion Int    @default(0)
+  legacyIdempotencyKey String?
 
   pipelineKind PipelineKind
   stage        LeadStage    @default(NEW)
@@ -87,6 +92,17 @@ model Lead {
   leadScore        Int           @default(0)
   highIntent       Boolean       @default(false)
   videoWatchPct    Float?
+
+  legacyWhatsappSentAt    DateTime?
+  legacyPaymentStatus     String?
+  legacyMindsetLockState  String?
+  legacyMindsetStartedAt  DateTime?
+  legacyMindsetCompletedAt DateTime?
+  legacyDay1CompletedAt   DateTime?
+  legacyDay2CompletedAt   DateTime?
+  legacyDay3CompletedAt   DateTime?
+  legacyDeletedAt         DateTime?
+  legacySyncedAt          DateTime?
 
   mindsetLockStartedAt   DateTime?
   mindsetLockCompletedAt DateTime?
@@ -117,9 +133,10 @@ model Lead {
   walletLines     WalletLedger[]
   escalations     Escalation[]
 
-  @@index([pipelineKind, inPool])
-  @@index([handlerId, lastActivityAt])
-  @@index([ownerId])
+  @@index([pipelineKind, inPool, isShadow])
+  @@index([handlerId, lastActivityAt, isShadow])
+  @@index([ownerId, isShadow])
+  @@index([isShadow, legacyVersion])
 }
 
 model LeadAssignment {

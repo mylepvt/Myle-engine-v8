@@ -6,11 +6,13 @@ import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LeadRowStatusDropdown } from '@/components/leads/LeadRowStatusDropdown'
 import { Button } from '@/components/ui/button'
 import { LEAD_STATUS_OPTIONS, type LeadPublic, type LeadStatus } from '@/hooks/use-leads-query'
+import { currentSectionForLead } from '@/lib/lead-section'
+import { leadStatusSelectOptionsForLead } from '@/lib/team-lead-status'
 import type { Role } from '@/types/role'
 
 const ROW_HEIGHT = 76
 const LIST_MAX_HEIGHT = 520
-const TABLE_MIN_WIDTH = 880
+const TABLE_MIN_WIDTH = 1040
 
 function statusLabel(value: string): string {
   return LEAD_STATUS_OPTIONS.find((o) => o.value === value)?.label ?? value
@@ -42,9 +44,9 @@ export type LeadsVirtualizedBodyProps = {
 type RowData = LeadsVirtualizedBodyProps
 
 const gridArchived =
-  'grid h-full w-full min-w-[880px] grid-cols-[4.5rem_minmax(8rem,1fr)_minmax(7rem,11rem)_minmax(8rem,11rem)_7.5rem_7.5rem_minmax(10rem,1fr)] items-center gap-2 px-2 py-1'
+  'grid h-full w-full min-w-[1040px] grid-cols-[4.5rem_minmax(8rem,1fr)_minmax(7rem,11rem)_minmax(8rem,11rem)_7.5rem_7.5rem_minmax(8.5rem,12rem)_minmax(10rem,1fr)] items-center gap-2 px-2 py-1'
 const gridActive =
-  'grid h-full w-full min-w-[880px] grid-cols-[4.5rem_minmax(9rem,1fr)_minmax(7rem,11rem)_minmax(9rem,13rem)_7.5rem_minmax(10rem,1fr)] items-center gap-2 px-2 py-1'
+  'grid h-full w-full min-w-[1040px] grid-cols-[4.5rem_minmax(9rem,1fr)_minmax(7rem,11rem)_minmax(9rem,13rem)_7.5rem_minmax(8.5rem,12rem)_minmax(10rem,1fr)] items-center gap-2 px-2 py-1'
 
 function LeadRow(props: RowComponentProps<RowData>): ReactElement | null {
   const {
@@ -65,6 +67,9 @@ function LeadRow(props: RowComponentProps<RowData>): ReactElement | null {
   if (!l) return null
   const patchBusy = patchBusyLeadId === l.id
   const delBusy = deleteBusyLeadId === l.id
+  const statusOptions = leadStatusSelectOptionsForLead(role, l.status as LeadStatus, LEAD_STATUS_OPTIONS)
+  const section = currentSectionForLead(l, role)
+  const rowArchived = l.archived_at != null
 
   return (
     <div
@@ -97,6 +102,7 @@ function LeadRow(props: RowComponentProps<RowData>): ReactElement | null {
             <LeadRowStatusDropdown
               leadName={l.name}
               status={l.status}
+              options={statusOptions}
               busy={patchBusy}
               onSelect={(v) => onPatchStatus(l.id, v)}
             />
@@ -110,8 +116,17 @@ function LeadRow(props: RowComponentProps<RowData>): ReactElement | null {
             {l.archived_at ? formatShort(l.archived_at) : '—'}
           </div>
         ) : null}
+        <div className="min-w-0 text-xs text-muted-foreground">
+          <Link
+            to={section.path}
+            className="block truncate underline-offset-2 hover:text-foreground hover:underline"
+            title={section.label}
+          >
+            {section.label}
+          </Link>
+        </div>
         <div className="flex flex-wrap items-center justify-end gap-1">
-          {!archivedOnly && role === 'admin' ? (
+          {!archivedOnly && role === 'admin' && !rowArchived ? (
             <Button
               type="button"
               variant="secondary"
@@ -124,7 +139,7 @@ function LeadRow(props: RowComponentProps<RowData>): ReactElement | null {
               To pool
             </Button>
           ) : null}
-          {archivedOnly ? (
+          {archivedOnly || rowArchived ? (
             <Button
               type="button"
               variant="secondary"
@@ -224,6 +239,9 @@ export const LeadsVirtualizedBody = memo(function LeadsVirtualizedBody(props: Le
               Archived
             </div>
           ) : null}
+          <div className="px-1 py-2 text-[0.65rem] font-semibold uppercase tracking-wide text-foreground">
+            Section
+          </div>
           <div className="px-1 py-2 text-right text-[0.65rem] font-semibold uppercase tracking-wide text-foreground">
             Actions
           </div>

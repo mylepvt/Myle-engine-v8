@@ -58,6 +58,12 @@ describe('applyCtcsOptimisticToLead', () => {
     expect(out.next_followup_at).toBe(when)
   })
 
+  it('call_later preserves stage timer when status is unchanged', () => {
+    const lead = { ...baseLead(), status: 'contacted', last_action_at: '2026-04-20T00:00:00.000Z' } as LeadPublic
+    const out = applyCtcsOptimisticToLead(lead, 'call_later')
+    expect(out.last_action_at).toBe('2026-04-20T00:00:00.000Z')
+  })
+
   it('paid respects paidStatus for team', () => {
     const out = applyCtcsOptimisticToLead(baseLead(), 'paid', { paidStatus: 'paid' })
     expect(out.status).toBe('paid')

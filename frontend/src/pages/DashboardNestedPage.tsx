@@ -17,6 +17,8 @@ import { LeadPoolWorkPage } from '@/pages/LeadPoolWorkPage'
 import { RecycleBinWorkPage } from '@/pages/RecycleBinWorkPage'
 import { TeamApprovalsPage } from '@/pages/TeamApprovalsPage'
 import { TeamMembersPage } from '@/pages/TeamMembersPage'
+import { TeamTrackingDetailPage } from '@/pages/TeamTrackingDetailPage'
+import { TeamTrackingPage } from '@/pages/TeamTrackingPage'
 import { MyTeamPage } from '@/pages/MyTeamPage'
 import { EnrollmentApprovalsPage } from '@/pages/EnrollmentApprovalsPage'
 import { AnalyticsSurfacePage } from '@/pages/AnalyticsSurfacePage'
@@ -62,6 +64,8 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <RecycleBinWorkPage title={title} />
     case 'team-members':
       return <TeamMembersPage title={title} />
+    case 'team-tracking':
+      return <TeamTrackingPage title={title} />
     case 'team-approvals':
       return <TeamApprovalsPage title={title} />
     case 'my-team':
@@ -131,6 +135,23 @@ export function DashboardNestedPage() {
   if (leadDetailMatch) {
     const leadId = parseInt(leadDetailMatch[1], 10)
     return <LeadDetailPage leadId={leadId} />
+  }
+
+  const trackingDetailMatch = /^team\/tracking\/(\d+)$/.exec(path)
+  if (trackingDetailMatch) {
+    if (rolePending) {
+      return (
+        <div className="space-y-3 p-4" aria-busy="true" aria-label="Loading">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-24 w-full max-w-2xl" />
+        </div>
+      )
+    }
+    if (!navRole || (navRole !== 'admin' && navRole !== 'leader')) {
+      return <Navigate to="/dashboard" replace />
+    }
+    const targetUserId = parseInt(trackingDetailMatch[1], 10)
+    return <TeamTrackingDetailPage title="Tracking detail" userId={targetUserId} />
   }
 
   if (!path || !dashboardChildPathSet.has(path)) {

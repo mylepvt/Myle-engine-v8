@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import conftest as test_conftest
 import pytest
@@ -10,6 +10,7 @@ from sqlalchemy import delete, func, select
 
 from app.models.app_setting import AppSetting
 from app.models.batch_share_link import BatchShareLink
+from app.models.crm_outbox import CrmOutbox
 from app.models.lead import Lead
 from app.models.follow_up import FollowUp
 from main import app
@@ -32,6 +33,19 @@ def test_lead_pool_requires_auth() -> None:
     assert body["error"]["code"] == "unauthorized"
     assert body["error"]["message"] == "Authentication required"
     assert body["error"]["request_id"] == res.headers.get("X-Request-ID")
+
+
+def test_lead_pool_list_forbidden_for_non_admin(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(_seed_one_lead(user_id=1, name="Pool only", in_pool=True))
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        res = c.get("/api/v1/lead-pool")
+        assert res.status_code == 403
+    finally:
+        asyncio.run(_clear_leads())
 
 
 def test_list_leads_empty_when_authenticated(
@@ -59,27 +73,44 @@ async def _seed_one_lead(
     user_id: int,
     name: str = "Acme Corp",
     lead_status: str = "new",
+    phone: str | None = None,
+    email: str | None = None,
+    payment_status: str | None = None,
+    mindset_started_at: datetime | None = None,
+    mindset_lock_state: str | None = None,
     archived_at: datetime | None = None,
     deleted_at: datetime | None = None,
     in_pool: bool = False,
     pool_price_cents: int | None = None,
     created_by_user_id: int | None = None,
+    owner_user_id: int | None = None,
     assigned_to_user_id: int | None = None,
+    last_action_at: datetime | None = None,
+    next_followup_at: datetime | None = None,
 ) -> None:
     fac = test_conftest.get_test_session_factory()
     cb = created_by_user_id if created_by_user_id is not None else user_id
+    owner = owner_user_id if owner_user_id is not None else (None if in_pool else cb)
     at = assigned_to_user_id if assigned_to_user_id is not None else user_id
     async with fac() as session:
         session.add(
             Lead(
                 name=name,
                 status=lead_status,
+                phone=phone,
+                email=email,
+                payment_status=payment_status,
+                mindset_started_at=mindset_started_at,
+                mindset_lock_state=mindset_lock_state,
                 created_by_user_id=cb,
+                owner_user_id=owner,
                 assigned_to_user_id=at,
                 archived_at=archived_at,
                 deleted_at=deleted_at,
                 in_pool=in_pool,
                 pool_price_cents=pool_price_cents,
+                last_action_at=last_action_at,
+                next_followup_at=next_followup_at,
             )
         )
         await session.commit()
@@ -90,6 +121,7 @@ async def _clear_leads() -> None:
     async with fac() as session:
         await session.execute(delete(BatchShareLink))
         await session.execute(delete(AppSetting))
+        await session.execute(delete(CrmOutbox))
         await session.execute(delete(Lead))
         await session.commit()
 
@@ -166,19 +198,20 @@ def test_slice1_team_list_only_creator_not_assignee(
         asyncio.run(_clear_leads())
 
 
-def test_slice1_leader_does_not_see_downline_leads(
+def test_slice1_leader_list_only_shows_personal_calling_leads(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Leader should NOT see leads created by downline team members — only own leads."""
+    """Leader calling list stays personal-only even when downline members have leads."""
     asyncio.run(_seed_one_lead(user_id=3, name="From downline team"))
+    asyncio.run(_seed_one_lead(user_id=2, name="Leader personal lead"))
     try:
         c = _authed_client(monkeypatch)
         assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
         res = c.get("/api/v1/leads")
         assert res.status_code == 200
         body = res.json()
-        # Lead was created by team user (id=3), not leader → leader must not see it.
-        assert body["total"] == 0
+        assert body["total"] == 1
+        assert body["items"][0]["name"] == "Leader personal lead"
     finally:
         asyncio.run(_clear_leads())
 
@@ -210,9 +243,106 @@ def test_create_lead(
         assert body["name"] == "New Co"
         assert body["status"] == "new"
         assert body["created_by_user_id"] == 3
+        assert body["owner_user_id"] == 3
+        assert body["owner_name"] == "dev-team"
+        assert body["leader_user_id"] == 2
+        assert body["leader_name"] == "TestLeaderDisplay"
         listed = c.get("/api/v1/leads").json()
         assert listed["total"] == 1
         assert listed["items"][0]["name"] == "New Co"
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_team_lead_payload_includes_owner_and_leader_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _seed_one_lead(
+            user_id=3,
+            name="Team Claimed Lead",
+            owner_user_id=3,
+            assigned_to_user_id=2,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+
+        listed = c.get("/api/v1/leads")
+        assert listed.status_code == 200
+        item = listed.json()["items"][0]
+        assert item["owner_user_id"] == 3
+        assert item["owner_name"] == "dev-team"
+        assert item["assigned_to_user_id"] == 2
+        assert item["assigned_to_name"] == "TestLeaderDisplay"
+        assert item["leader_user_id"] == 2
+        assert item["leader_name"] == "TestLeaderDisplay"
+
+        detail = c.get("/api/v1/leads/1")
+        assert detail.status_code == 200
+        detail_body = detail.json()
+        assert detail_body["owner_user_id"] == 3
+        assert detail_body["owner_name"] == "dev-team"
+        assert detail_body["leader_user_id"] == 2
+        assert detail_body["leader_name"] == "TestLeaderDisplay"
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_create_lead_rejects_duplicate_phone_across_full_funnel(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _seed_one_lead(
+            user_id=2,
+            name="Existing Training Lead",
+            lead_status="training",
+            phone="9876543210",
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+        res = c.post(
+            "/api/v1/leads",
+            json={"name": "Duplicate Attempt", "phone": "+91 98765 43210"},
+        )
+        assert res.status_code == 409
+        msg = res.json()["error"]["message"]
+        assert "9876543210" in msg
+        assert "Duplicate leads are blocked across the full funnel." in msg
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_update_lead_rejects_duplicate_phone_across_full_funnel(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _seed_one_lead(
+            user_id=2,
+            name="Converted Lead",
+            lead_status="converted",
+            phone="9876543210",
+        )
+    )
+    asyncio.run(
+        _seed_one_lead(
+            user_id=2,
+            name="Fresh Lead",
+            lead_status="new_lead",
+            phone="9123456780",
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        res = c.patch("/api/v1/leads/2", json={"phone": "09876 543210"})
+        assert res.status_code == 409
+        msg = res.json()["error"]["message"]
+        assert "9876543210" in msg
+        assert "Duplicate leads are blocked across the full funnel." in msg
     finally:
         asyncio.run(_clear_leads())
 
@@ -227,6 +357,147 @@ def test_leader_cannot_patch_others_lead(
         res = c.patch("/api/v1/leads/1", json={"name": "Hacked"})
         assert res.status_code == 403
         assert res.json()["error"]["code"] == "forbidden"
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_leader_cannot_find_downline_assigned_lead_in_calling_list_but_can_still_update_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    followup_at = datetime.now(timezone.utc) + timedelta(days=1)
+    asyncio.run(
+        _seed_one_lead(
+            user_id=1,
+            name="Admin imported for team",
+            lead_status="contacted",
+            phone="9876543210",
+            email="team.lead@example.com",
+            created_by_user_id=1,
+            assigned_to_user_id=3,
+            next_followup_at=followup_at,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+
+        res = c.get("/api/v1/leads", params={"q": "9876543210"})
+        assert res.status_code == 200
+        body = res.json()
+        assert body["total"] == 0
+
+        patch = c.patch("/api/v1/leads/1", json={"status": "lost"})
+        assert patch.status_code == 200
+        patched = patch.json()
+        assert patched["status"] == "lost"
+        assert patched["next_followup_at"] is None
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_admin_search_all_sections_finds_archived_and_inactive_leads(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _seed_one_lead(
+            user_id=2,
+            name="Archived Search Lead",
+            lead_status="day1",
+            archived_at=datetime.now(timezone.utc),
+        )
+    )
+    asyncio.run(
+        _seed_one_lead(
+            user_id=3,
+            name="Inactive Search Lead",
+            lead_status="inactive",
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+
+        res = c.get(
+            "/api/v1/leads",
+            params={"q": "Search Lead", "search_all_sections": "true"},
+        )
+        assert res.status_code == 200
+        body = res.json()
+        assert body["total"] == 2
+        names = {item["name"] for item in body["items"]}
+        assert names == {"Archived Search Lead", "Inactive Search Lead"}
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_leader_search_all_sections_can_find_team_leads(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _seed_one_lead(
+            user_id=1,
+            name="Downline Day Lead",
+            lead_status="day1",
+            created_by_user_id=3,
+            assigned_to_user_id=3,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+
+        res = c.get(
+            "/api/v1/leads",
+            params={"q": "Downline Day Lead", "search_all_sections": "true"},
+        )
+        assert res.status_code == 200
+        body = res.json()
+        assert body["total"] == 1
+        assert body["items"][0]["name"] == "Downline Day Lead"
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_admin_can_patch_team_assigned_lead_status(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _seed_one_lead(
+            user_id=2,
+            name="Leader created for team",
+            lead_status="contacted",
+            created_by_user_id=2,
+            assigned_to_user_id=3,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        patch = c.patch("/api/v1/leads/1", json={"status": "day2"})
+        assert patch.status_code == 200
+        assert patch.json()["status"] == "day2"
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_team_can_patch_leader_assigned_lead_status(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _seed_one_lead(
+            user_id=2,
+            name="Leader assigned to team",
+            lead_status="new_lead",
+            created_by_user_id=2,
+            assigned_to_user_id=3,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+        patch = c.patch("/api/v1/leads/1", json={"status": "contacted"})
+        assert patch.status_code == 200
+        assert patch.json()["status"] == "contacted"
     finally:
         asyncio.run(_clear_leads())
 
@@ -444,7 +715,7 @@ def test_admin_release_to_pool_hides_from_main_list(
         asyncio.run(_clear_leads())
 
 
-def test_claim_lead_from_pool(
+def test_non_admin_cannot_single_claim_lead_from_pool(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     asyncio.run(_seed_one_lead(user_id=1, name="Claimable", in_pool=True))
@@ -452,19 +723,18 @@ def test_claim_lead_from_pool(
         c = _authed_client(monkeypatch)
         assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
         cl = c.post("/api/v1/leads/1/claim")
-        assert cl.status_code == 200
-        body = cl.json()
-        assert body["in_pool"] is False
-        assert body["created_by_user_id"] == 3
-        assert c.get("/api/v1/lead-pool").json()["total"] == 0
-        mine = c.get("/api/v1/leads").json()
-        assert mine["total"] == 1
-        assert mine["items"][0]["name"] == "Claimable"
+        assert cl.status_code == 403
+
+        admin = _authed_client(monkeypatch)
+        assert admin.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        pool = admin.get("/api/v1/lead-pool")
+        assert pool.status_code == 200
+        assert pool.json()["total"] == 1
     finally:
         asyncio.run(_clear_leads())
 
 
-def test_slice5_admin_cannot_claim_pool_lead(
+def test_slice5_admin_can_claim_pool_lead(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     asyncio.run(_seed_one_lead(user_id=1, name="Admin should not claim", in_pool=True))
@@ -472,7 +742,37 @@ def test_slice5_admin_cannot_claim_pool_lead(
         c = _authed_client(monkeypatch)
         assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
         claim = c.post("/api/v1/leads/1/claim")
-        assert claim.status_code == 403
+        assert claim.status_code == 200
+        body = claim.json()
+        assert body["in_pool"] is False
+        assert body["created_by_user_id"] == 1
+        assert body["owner_user_id"] == 1
+        assert c.get("/api/v1/lead-pool").json()["total"] == 0
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_slice5_batch_claim_leads_from_pool_for_leader(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(_seed_one_lead(user_id=1, name="Oldest", in_pool=True))
+    asyncio.run(_seed_one_lead(user_id=1, name="Second", in_pool=True))
+    asyncio.run(_seed_one_lead(user_id=1, name="Third", in_pool=True))
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        claim = c.post("/api/v1/lead-pool/claim", json={"count": 2})
+        assert claim.status_code == 200
+        body = claim.json()
+        assert body["total_price_cents"] == 0
+        assert [lead["name"] for lead in body["leads"]] == ["Oldest", "Second"]
+        assert [lead["owner_user_id"] for lead in body["leads"]] == [2, 2]
+
+        admin = _authed_client(monkeypatch)
+        assert admin.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        pool = admin.get("/api/v1/lead-pool").json()
+        assert pool["total"] == 1
+        assert pool["items"][0]["name"] == "Third"
     finally:
         asyncio.run(_clear_leads())
 
@@ -492,10 +792,12 @@ def test_slice5_claim_requires_sufficient_wallet_balance(
     try:
         c = _authed_client(monkeypatch)
         assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
-        claim = c.post("/api/v1/leads/1/claim")
+        claim = c.post("/api/v1/lead-pool/claim", json={"count": 1})
         assert claim.status_code == 402
         # Lead should remain in pool when claim fails.
-        lead = c.get("/api/v1/lead-pool").json()
+        admin = _authed_client(monkeypatch)
+        assert admin.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        lead = admin.get("/api/v1/lead-pool").json()
         assert lead["total"] == 1
         assert lead["items"][0]["in_pool"] is True
     finally:
@@ -509,12 +811,120 @@ def test_slice5_cannot_reclaim_already_claimed_lead(
     try:
         first = _authed_client(monkeypatch)
         assert first.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
-        assert first.post("/api/v1/leads/1/claim").status_code == 200
+        assert first.post("/api/v1/lead-pool/claim", json={"count": 1}).status_code == 200
 
         second = _authed_client(monkeypatch)
         assert second.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
-        retry = second.post("/api/v1/leads/1/claim")
+        retry = second.post("/api/v1/lead-pool/claim", json={"count": 1})
         assert retry.status_code == 400
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_leader_can_preview_batch_claim_without_lead_list(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(_seed_one_lead(user_id=1, name="Oldest", in_pool=True, pool_price_cents=1_666))
+    asyncio.run(_seed_one_lead(user_id=1, name="Second", in_pool=True, pool_price_cents=2_000))
+    asyncio.run(_seed_one_lead(user_id=1, name="Third", in_pool=True, pool_price_cents=3_333))
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        res = c.get("/api/v1/lead-pool/batch-preview", params={"count": 2})
+        assert res.status_code == 200
+        assert res.json() == {
+            "requested_count": 2,
+            "claim_count": 2,
+            "available_count": 3,
+            "total_price_cents": 3_666,
+        }
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_pool_claim_error_keeps_exact_decimal_price(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(_seed_one_lead(user_id=1, name="Exact price", in_pool=True, pool_price_cents=1_666))
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+        res = c.post("/api/v1/lead-pool/claim", json={"count": 1})
+        assert res.status_code == 402
+        body = res.json()
+        message = body.get("detail") or body.get("error", {}).get("message")
+        assert message == "Insufficient wallet balance. Need ₹16.66, have ₹0.00."
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_team_cannot_open_pooled_lead_detail_even_if_creator(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _seed_one_lead(
+            user_id=3,
+            name="Own pooled lead",
+            in_pool=True,
+            created_by_user_id=3,
+            assigned_to_user_id=3,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+        detail = c.get("/api/v1/leads/1")
+        assert detail.status_code == 403
+        patch = c.patch("/api/v1/leads/1", json={"status": "contacted"})
+        assert patch.status_code == 403
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_importing_pool_leads_sends_push_to_active_members(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    push_calls: list[tuple[tuple[str, ...], str, str, str]] = []
+
+    def fake_parse(_: bytes) -> tuple[list[dict[str, object]], list[str]]:
+        return ([{"name": "Imported lead", "phone": "9999999999", "city": "Pune"}], [])
+
+    async def fake_push(
+        _session_factory,
+        roles: tuple[str, ...],
+        *,
+        title: str,
+        body: str,
+        url: str = "/dashboard",
+    ) -> None:
+        push_calls.append((tuple(roles), title, body, url))
+
+    monkeypatch.setattr("app.api.v1.lead_pool.parse_pool_xlsx_rows", fake_parse)
+    monkeypatch.setattr("app.api.v1.lead_pool.send_push_to_roles_bg", fake_push)
+
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        res = c.post(
+            "/api/v1/lead-pool/import",
+            files={
+                "file": (
+                    "lead-pool.xlsx",
+                    b"dummy-xlsx-content",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
+        )
+        assert res.status_code == 200
+        assert res.json()["created"] == 1
+        assert push_calls == [
+            (
+                ("leader", "team"),
+                "Lead Pool Updated",
+                "New leads are available in the lead pool. Claim your leads now!",
+                "/dashboard/work/lead-pool",
+            )
+        ]
     finally:
         asyncio.run(_clear_leads())
 
@@ -536,13 +946,13 @@ def test_batch_share_url_returns_tokenized_watch_links(
         res = c.post("/api/v1/leads/1/batch-share-url", json={"slot": "d1_morning"})
         assert res.status_code == 200
         body = res.json()
-        assert "/api/v1/watch/batch/d1_morning/1?token=" in body["watch_url_v1"]
-        assert "/api/v1/watch/batch/d1_morning/2?token=" in body["watch_url_v2"]
+        assert "/watch/batch/d1_morning/1?token=" in body["watch_url_v1"]
+        assert "/watch/batch/d1_morning/2?token=" in body["watch_url_v2"]
     finally:
         asyncio.run(_clear_leads())
 
 
-def test_batch_share_url_d2_forbidden_for_leader(
+def test_batch_share_url_d2_allowed_for_leader_without_payment_approval(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     asyncio.run(
@@ -557,7 +967,252 @@ def test_batch_share_url_d2_forbidden_for_leader(
         c = _authed_client(monkeypatch)
         assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
         res = c.post("/api/v1/leads/1/batch-share-url", json={"slot": "d2_morning"})
+        assert res.status_code == 200
+        body = res.json()
+        assert "/watch/batch/d2_morning/1?token=" in body["watch_url_v1"]
+        assert "/watch/batch/d2_morning/2?token=" in body["watch_url_v2"]
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_mindset_lock_preview_uses_persisted_started_at_after_reconnect(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    started_at = datetime.now(timezone.utc) - timedelta(seconds=75)
+    asyncio.run(
+        _seed_one_lead(
+            user_id=3,
+            name="Mindset Resume",
+            lead_status="mindset_lock",
+            payment_status="approved",
+            mindset_started_at=started_at,
+            mindset_lock_state="mindset_lock",
+            assigned_to_user_id=3,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+        first = c.get("/api/v1/leads/1/mindset-lock-preview")
+        assert first.status_code == 200
+        body1 = first.json()
+        second = c.get("/api/v1/leads/1/mindset-lock-preview")
+        assert second.status_code == 200
+        body2 = second.json()
+        assert body1["mindset_started_at"] == body2["mindset_started_at"]
+        assert body1["remaining_seconds"] > 0
+        assert body2["remaining_seconds"] <= body1["remaining_seconds"]
+        assert body1["leader_user_id"] == 2
+        assert body1["eligible"] is False
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_mindset_lock_complete_handles_persisted_started_at_after_reconnect(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    started_at = datetime.now(timezone.utc) - timedelta(minutes=6)
+    asyncio.run(
+        _seed_one_lead(
+            user_id=3,
+            name="Mindset Complete Resume",
+            lead_status="mindset_lock",
+            mindset_started_at=started_at,
+            mindset_lock_state="mindset_lock",
+            owner_user_id=3,
+            assigned_to_user_id=3,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+        res = c.post("/api/v1/leads/1/mindset-lock-complete")
+        assert res.status_code == 200
+        body = res.json()
+        assert body["status"] == "assigned"
+        assert body["leader_user_id"] == 2
+        lead = c.get("/api/v1/leads/1")
+        assert lead.status_code == 200
+        lead_body = lead.json()
+        assert lead_body["status"] == "day1"
+        assert lead_body["owner_user_id"] == 3
+        assert lead_body["assigned_to_user_id"] == 2
+        assert lead_body["mindset_lock_state"] == "leader_assigned"
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_leader_can_preview_personal_mindset_lock(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    started_at = datetime.now(timezone.utc) - timedelta(seconds=95)
+    asyncio.run(
+        _seed_one_lead(
+            user_id=2,
+            name="Leader Mindset Preview",
+            lead_status="mindset_lock",
+            payment_status="approved",
+            mindset_started_at=started_at,
+            mindset_lock_state="mindset_lock",
+            assigned_to_user_id=2,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        res = c.get("/api/v1/leads/1/mindset-lock-preview")
+        assert res.status_code == 200
+        body = res.json()
+        assert body["leader_user_id"] == 2
+        assert body["leader_name"]
+        assert body["remaining_seconds"] > 0
+        assert body["eligible"] is False
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_leader_can_complete_personal_mindset_lock_into_day1(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    started_at = datetime.now(timezone.utc) - timedelta(minutes=6)
+    asyncio.run(
+        _seed_one_lead(
+            user_id=2,
+            name="Leader Mindset Complete",
+            lead_status="mindset_lock",
+            payment_status="approved",
+            mindset_started_at=started_at,
+            mindset_lock_state="mindset_lock",
+            owner_user_id=2,
+            assigned_to_user_id=2,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        res = c.post("/api/v1/leads/1/mindset-lock-complete")
+        assert res.status_code == 200
+        body = res.json()
+        assert body["status"] == "assigned"
+        assert body["leader_user_id"] == 2
+        lead = c.get("/api/v1/leads/1")
+        assert lead.status_code == 200
+        lead_body = lead.json()
+        assert lead_body["status"] == "day1"
+        assert lead_body["owner_user_id"] == 2
+        assert lead_body["assigned_to_user_id"] == 2
+        assert lead_body["mindset_lock_state"] == "leader_assigned"
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_admin_can_reset_current_stage_clock_without_changing_status(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    anchor = datetime.now(timezone.utc) - timedelta(hours=3)
+    asyncio.run(
+        _seed_one_lead(
+            user_id=2,
+            name="Day 2 Lead",
+            lead_status="day2",
+            assigned_to_user_id=2,
+            last_action_at=anchor,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        res = c.post("/api/v1/leads/1/stage-clock-reset")
+        assert res.status_code == 200
+        body = res.json()
+        assert body["status"] == "day2"
+        assert body["assigned_to_user_id"] == 2
+        assert body["last_action_at"] is not None
+        assert body["last_action_at"] != anchor.isoformat()
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_admin_can_reset_mindset_lock_timer_without_leaving_stage(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    started_at = datetime.now(timezone.utc) - timedelta(minutes=18)
+    anchor = datetime.now(timezone.utc) - timedelta(hours=1)
+    asyncio.run(
+        _seed_one_lead(
+            user_id=2,
+            name="Mindset Lead",
+            lead_status="mindset_lock",
+            mindset_started_at=started_at,
+            mindset_lock_state="mindset_lock",
+            assigned_to_user_id=2,
+            last_action_at=anchor,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        res = c.post("/api/v1/leads/1/stage-clock-reset")
+        assert res.status_code == 200
+        body = res.json()
+        assert body["status"] == "mindset_lock"
+        assert body["assigned_to_user_id"] == 2
+        assert body["mindset_lock_state"] == "mindset_lock"
+        assert body["mindset_completed_at"] is None
+        assert body["mindset_started_at"] is not None
+        assert body["mindset_started_at"] != started_at.isoformat()
+        assert body["last_action_at"] is not None
+        assert body["last_action_at"] != anchor.isoformat()
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_non_admin_cannot_reset_stage_clock(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _seed_one_lead(
+            user_id=2,
+            name="Leader Lead",
+            lead_status="day2",
+            mindset_lock_state="leader_assigned",
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        res = c.post("/api/v1/leads/1/stage-clock-reset")
         assert res.status_code == 403
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_leader_can_patch_day2_without_payment_approval_after_day1(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(_clear_leads())
+    asyncio.run(_seed_one_lead(user_id=2, name="Leader Day1", lead_status="day1"))
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        res = c.patch("/api/v1/leads/1", json={"status": "day2"})
+        assert res.status_code == 200
+        assert res.json()["status"] == "day2"
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_leader_can_transition_day2_without_payment_approval_after_day1(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(_clear_leads())
+    asyncio.run(_seed_one_lead(user_id=2, name="Leader Day1 Transition", lead_status="day1"))
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        res = c.post("/api/v1/leads/1/transition", json={"target_status": "day2"})
+        assert res.status_code == 200
+        assert res.json()["new_status"] == "day2"
     finally:
         asyncio.run(_clear_leads())
 
@@ -597,9 +1252,14 @@ def test_watch_batch_token_marks_slot_done_after_completion_callback(
         token = share.json()["watch_url_v1"].split("token=")[-1]
 
         watch = c.get(f"/api/v1/watch/batch/d1_morning/1?token={token}", follow_redirects=False)
-        assert watch.status_code == 200
-        assert "Watch complete hone par auto mark ho jayega." in watch.text
-        assert "youtube.com/iframe_api" in watch.text
+        assert watch.status_code == 307
+        assert watch.headers["location"] == f"/watch/batch/d1_morning/1?token={token}"
+
+        payload = c.get(f"/api/v1/watch/batch/d1_morning/1/payload", params={"token": token})
+        assert payload.status_code == 200
+        payload_body = payload.json()
+        assert payload_body["watch_complete"] is False
+        assert payload_body["video_id"] == "dQw4w9WgXcQ"
 
         pre = asyncio.run(_lead_after())
         assert pre is not None
@@ -684,6 +1344,7 @@ def test_patch_lead_status_only(
         assert res.status_code == 200
         assert res.json()["name"] == "X"
         assert res.json()["status"] == "contacted"
+        assert res.json()["last_action_at"] is not None
     finally:
         asyncio.run(_clear_leads())
 

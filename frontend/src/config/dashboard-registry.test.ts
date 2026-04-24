@@ -19,6 +19,7 @@ describe('dashboard-registry', () => {
 
   it('resolveTitleForPath uses labelByRole for admin on work/leads', () => {
     expect(resolveTitleForPath('work/leads', 'admin')).toBe('All Leads')
+    expect(resolveTitleForPath('work/leads', 'leader')).toBe('Calling Board')
     expect(resolveTitleForPath('work/leads', 'team')).toBe('Calling Board')
   })
 
@@ -34,5 +35,16 @@ describe('dashboard-registry', () => {
       throw new Error('expected full surface')
     }
     expect(routeDefAccessible(def, 'admin')).toBe(true)
+  })
+
+  it('team/tracking is available to leaders', () => {
+    const def = getDashboardChildRoute('team/tracking')
+    expect(def).toBeDefined()
+    if (!def || def.surface !== 'full') {
+      throw new Error('expected full surface')
+    }
+    expect(resolveTitleForPath('team/tracking', 'leader')).toBe('Team Tracking')
+    expect(routeDefAccessible(def, 'leader')).toBe(true)
+    expect(routeDefAccessible(def, 'team')).toBe(false)
   })
 })

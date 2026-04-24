@@ -1,75 +1,19 @@
-import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { useRef, useState } from 'react'
 import { CheckCircle2, ChevronRight, MessageCircle, MoreHorizontal, Phone, Upload } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { cn } from '@/lib/utils'
 import { apiFetch } from '@/lib/api'
 import { callStatusSelectOptions, type CallStatusApi } from '@/lib/call-status-options'
-import { teamLeadStatusSelectOptions, teamMayChangeLeadStatus } from '@/lib/team-lead-status'
+import { currentSectionForLead, nextSectionForLead } from '@/lib/lead-section'
+import { formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
+import { leadStatusSelectOptionsForLead, teamMayChangeLeadStatus } from '@/lib/team-lead-status'
 import { formatCountdown, timerRemainingMs } from '@/lib/ctcs-timer'
+import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import { telHref, whatsAppChatHref } from '@/lib/phone-links'
 import { LEAD_STATUS_OPTIONS, type LeadPublic, type LeadStatus } from '@/hooks/use-leads-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
-
-function ctcsGetTimeColor(totalSeconds: number) {
-  const hours = totalSeconds / 3600
-
-  if (hours >= 24) return {
-    text: 'text-emerald-800 dark:text-urgency-safe',
-    stroke: 'var(--urgency-safe)',
-    glow: 'shadow-urgency-safe',
-    border: 'border-urgency-safe/25',
-    cardGlow: 'shadow-urgency-safe-card',
-    leftBorder: 'bg-urgency-safe shadow-urgency-safe',
-  }
-  if (hours >= 18) return {
-    text: 'text-blue-700 dark:text-urgency-watch',
-    stroke: 'var(--urgency-watch)',
-    glow: 'shadow-urgency-watch',
-    border: 'border-urgency-watch/25',
-    cardGlow: 'shadow-urgency-watch-card',
-    leftBorder: 'bg-urgency-watch shadow-urgency-watch',
-  }
-  if (hours >= 12) return {
-    text: 'text-orange-700 dark:text-urgency-caution',
-    stroke: 'var(--urgency-caution)',
-    glow: 'shadow-urgency-caution',
-    border: 'border-urgency-caution/25',
-    cardGlow: 'shadow-urgency-caution-card',
-    leftBorder: 'bg-urgency-caution shadow-urgency-caution',
-  }
-  if (hours >= 6) return {
-    text: 'text-red-700 dark:text-urgency-warning',
-    stroke: 'var(--urgency-warning)',
-    glow: 'shadow-urgency-warning',
-    border: 'border-urgency-warning/25',
-    cardGlow: 'shadow-urgency-warning-card',
-    leftBorder: 'bg-urgency-warning shadow-urgency-warning',
-  }
-  if (hours >= 2) return {
-    text: 'text-red-800 dark:text-urgency-danger',
-    stroke: 'var(--urgency-danger)',
-    glow: 'shadow-urgency-danger',
-    border: 'border-urgency-danger/30',
-    cardGlow: 'shadow-urgency-danger-card',
-    leftBorder: 'bg-urgency-danger shadow-urgency-danger',
-  }
-  return {
-    text: 'text-red-900 dark:text-urgency-critical',
-    stroke: 'var(--urgency-critical)',
-    glow: 'shadow-urgency-critical',
-    border: 'border-urgency-critical/40',
-    cardGlow: 'shadow-urgency-critical-card',
-    leftBorder: 'bg-urgency-critical shadow-urgency-critical',
-  }
-}
-
-function formatTime(totalSeconds: number) {
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = totalSeconds % 60
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-}
 
 const ASSIGNEE_PALETTE = ['bg-blue-500', 'bg-pink-500', 'bg-violet-500', 'bg-cyan-500', 'bg-amber-500'] as const
 
@@ -102,6 +46,7 @@ function initialsFromName(name: string | null | undefined): string {
 
 type Props = {
   lead: LeadPublic
+  nowMs: number
   isActive: boolean
   patchBusy: boolean
   actionBusy: boolean
@@ -113,6 +58,7 @@ type Props = {
 
 export function CtcsLeadCard({
   lead,
+  nowMs,
   isActive,
   patchBusy,
   actionBusy,
@@ -121,15 +67,8 @@ export function CtcsLeadCard({
   onCall,
   onFollowUp,
 }: Props) {
-  const { role } = useDashboardShellRole()
-  const [tick, setTick] = useState(0)
-  useEffect(() => {
-    const id = window.setInterval(() => setTick((t) => t + 1), 1000)
-    return () => window.clearInterval(id)
-  }, [])
-
+  const { role, serverRole } = useDashboardShellRole()
   const selectBusy = patchBusy || actionBusy
-  void tick
 
   // ── Proof upload ───────────────────────────────────────────────────────────
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -138,8 +77,12 @@ export function CtcsLeadCard({
   const [uploadError, setUploadError] = useState<string | null>(null)
   const qc = useQueryClient()
 
-  const proofAlreadyUploaded =
-    lead.payment_status === 'proof_uploaded' || lead.payment_status === 'approved'
+  const proofApproved = lead.payment_status === 'approved'
+  const proofPending = lead.payment_status === 'proof_uploaded' || uploadDone
+  const proofRejected = lead.payment_status === 'rejected'
+  const showProofControl = lead.status === 'video_watched' || proofPending || proofApproved || proofRejected
+  const currentRole = resolveDashboardSurfaceRole(role, serverRole) ?? 'team'
+  const mayUploadProof = (currentRole === 'leader' || currentRole === 'team') && (lead.status === 'video_watched' || proofRejected)
 
   async function handleProofFile(file: File) {
     setUploading(true)
@@ -151,6 +94,8 @@ export function CtcsLeadCard({
       fd.append('payment_amount_cents', '19600')
       await apiFetch('/api/v1/payments/proof/upload', { method: 'POST', body: fd })
       setUploadDone(true)
+      void qc.invalidateQueries({ queryKey: ['workboard'] })
+      void qc.invalidateQueries({ queryKey: ['team', 'enrollment-requests'] })
       void qc.invalidateQueries({ queryKey: ['leads'] })
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed')
@@ -159,18 +104,12 @@ export function CtcsLeadCard({
     }
   }
 
-  const ms = timerRemainingMs(lead.last_action_at ?? null, lead.created_at)
+  const ms = timerRemainingMs(lead.last_action_at ?? null, lead.created_at, nowMs)
   const overdue = ms < 0
   const remainingSec = Math.max(0, Math.floor(ms / 1000))
   const colorKey = overdue ? 0 : remainingSec
-  const timeColors = ctcsGetTimeColor(colorKey)
-
-  const hours = Math.floor(remainingSec / 3600)
-  const minutes = Math.floor((remainingSec % 3600) / 60)
-  const seconds = remainingSec % 60
-  const hourAngle = (hours % 12) * 30 + minutes * 0.5
-  const minuteAngle = minutes * 6 + seconds * 0.1
-  const secondAngle = seconds * 6
+  const timeColors = leadSlaTone(colorKey)
+  const { hourAngle, minuteAngle, secondAngle } = leadSlaClockAngles(overdue ? 0 : ms)
 
   const wa = whatsAppChatHref(lead.phone ?? '')
   const tel = telHref(lead.phone)
@@ -189,11 +128,16 @@ export function CtcsLeadCard({
   const assigneeName = (lead.assigned_to_name ?? '').trim() || 'Assigned'
   const assigneeInitials = initialsFromName(lead.assigned_to_name)
 
-  const r = role ?? 'team'
-  const pipelineReadonly = r === 'team' && !teamMayChangeLeadStatus(lead.status as LeadStatus)
-  const statusOptions = teamLeadStatusSelectOptions(r, LEAD_STATUS_OPTIONS)
-  const callOpts = callStatusSelectOptions(r)
+  const pipelineReadonly = currentRole === 'team' && !teamMayChangeLeadStatus(lead.status as LeadStatus)
+  const statusOptions = leadStatusSelectOptionsForLead(currentRole, lead.status as LeadStatus, LEAD_STATUS_OPTIONS)
+  const callOpts = callStatusSelectOptions(currentRole, lead.status as LeadStatus)
   const callVal = normalizeCallStatus(lead.call_status)
+  const currentSection = currentSectionForLead(lead, currentRole)
+  const nextSection = nextSectionForLead(lead, currentRole)
+  const timerEndingSoon = overdue || remainingSec <= 2 * 60 * 60
+  const showCurrentSectionHint =
+    lead.archived_at != null || currentSection.path !== '/dashboard/work/leads'
+  const showNextSectionHint = timerEndingSoon && nextSection != null
 
   return (
     <div
@@ -286,7 +230,7 @@ export function CtcsLeadCard({
               className={pillSelectInner}
               disabled={selectBusy}
               value={callVal}
-              title={r === 'team' ? 'Call / line — dial outcome' : 'Call classification'}
+              title={currentRole === 'team' ? 'Call / line — dial outcome' : 'Call classification'}
               aria-label="Call status"
               onChange={(e) => onPatchCallStatus(lead.id, e.target.value)}
             >
@@ -352,7 +296,7 @@ export function CtcsLeadCard({
             </div>
             <div>
               <p className={cn('text-ds-caption font-semibold leading-tight', timeColors.text)}>
-                {overdue ? formatCountdown(ms) : formatTime(remainingSec)}
+                {overdue ? formatCountdown(ms) : formatLeadSlaTime(remainingSec)}
               </p>
               <p className="text-ds-caption text-muted-foreground">{overdue ? 'SLA' : 'remaining'}</p>
             </div>
@@ -432,31 +376,67 @@ export function CtcsLeadCard({
                 e.target.value = ''
               }}
             />
-            {proofAlreadyUploaded || uploadDone ? (
-              <span
-                title="Proof uploaded"
-                className="flex size-8 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-400/12 text-emerald-300"
-              >
-                <CheckCircle2 className="size-3.5" />
-              </span>
-            ) : (
-              <button
-                type="button"
-                title={uploading ? 'Uploading…' : uploadError ? `Retry — ${uploadError}` : 'Upload ₹196 proof'}
-                disabled={uploading}
-                onClick={() => fileInputRef.current?.click()}
-                className={cn(
-                  'flex size-8 items-center justify-center rounded-full border transition disabled:opacity-50 active:scale-95',
-                  uploadError
-                    ? 'border-red-400/40 bg-muted/30 text-red-400 hover:bg-red-400/10'
-                    : 'border-border bg-muted/30 text-muted-foreground hover:border-amber-400/40 hover:text-amber-400',
-                )}
-              >
-                <Upload className="size-3.5" />
-              </button>
-            )}
+            {showProofControl ? (
+              proofApproved ? (
+                <span
+                  title="Proof approved"
+                  className="flex size-8 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-400/12 text-emerald-300"
+                >
+                  <CheckCircle2 className="size-3.5" />
+                </span>
+              ) : proofPending ? (
+                <span
+                  title="Proof pending review"
+                  className="flex size-8 items-center justify-center rounded-full border border-sky-400/30 bg-sky-400/12 text-sky-300"
+                >
+                  <CheckCircle2 className="size-3.5" />
+                </span>
+              ) : mayUploadProof ? (
+                <button
+                  type="button"
+                  title={uploading ? 'Uploading…' : uploadError ? `Retry — ${uploadError}` : 'Upload ₹196 proof'}
+                  disabled={uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={cn(
+                    'flex size-8 items-center justify-center rounded-full border transition disabled:opacity-50 active:scale-95',
+                    uploadError
+                      ? 'border-red-400/40 bg-muted/30 text-red-400 hover:bg-red-400/10'
+                      : 'border-border bg-muted/30 text-muted-foreground hover:border-amber-400/40 hover:text-amber-400',
+                  )}
+                >
+                  <Upload className="size-3.5" />
+                </button>
+              ) : null
+            ) : null}
           </div>
         </div>
+
+        {showCurrentSectionHint || showNextSectionHint ? (
+          <div className="mt-1.5 rounded-lg border border-border/50 bg-muted/20 px-2.5 py-2 text-ds-caption">
+            {showCurrentSectionHint ? (
+              <p className="text-muted-foreground">
+                Find now:{' '}
+                <Link
+                  to={currentSection.path}
+                  className="font-semibold text-foreground underline-offset-2 hover:underline"
+                >
+                  {currentSection.label}
+                </Link>
+              </p>
+            ) : null}
+            {showNextSectionHint ? (
+              <p className="text-muted-foreground">
+                Timer ending:{' '}
+                <Link
+                  to={nextSection.path}
+                  className="font-semibold text-foreground underline-offset-2 hover:underline"
+                >
+                  {nextSection.label}
+                </Link>
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </div>
   )

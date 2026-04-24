@@ -321,10 +321,11 @@ export function useUserPreferencesUpdateMutation() {
   })
 }
 
-export function useSystemConfigurationQuery() {
+export function useSystemConfigurationQuery(enabled = true) {
   return useQuery({
     queryKey: ['settings', 'system', 'configuration'],
     queryFn: fetchSystemConfiguration,
+    enabled,
     staleTime: 60_000,
   })
 }
@@ -341,10 +342,11 @@ export function useSystemConfigurationUpdateMutation() {
   })
 }
 
-export function useAppSettingsQuery() {
+export function useAppSettingsQuery(enabled = true) {
   return useQuery({
     queryKey: ['settings', 'system', 'app-settings'],
     queryFn: fetchAppSettings,
+    enabled,
     staleTime: 60_000,
   })
 }
@@ -373,10 +375,11 @@ export function useAppSettingDeleteMutation() {
   })
 }
 
-export function useSystemUsersSummaryQuery() {
+export function useSystemUsersSummaryQuery(enabled = true) {
   return useQuery({
     queryKey: ['settings', 'system', 'users-summary'],
     queryFn: fetchSystemUsersSummary,
+    enabled,
     staleTime: 60_000,
   })
 }

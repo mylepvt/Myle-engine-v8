@@ -13,6 +13,7 @@ export type WalletRecharge = {
   status: string
   admin_note: string | null
   reviewed_by_user_id: number | null
+  reviewed_by_name?: string | null
   reviewed_at: string | null
   created_at: string
   invoice_number?: string | null

@@ -70,7 +70,7 @@ class SqlAlchemyLeadsRepository:
                 else_=1,
             )
             hotish = case(
-                (Lead.status.in_(("invited", "video_sent", "video_watched")), 0),
+                (Lead.status.in_(("invited", "whatsapp_sent", "video_sent", "video_watched")), 0),
                 else_=1,
             )
             stmt = stmt.order_by(
@@ -99,10 +99,7 @@ class SqlAlchemyLeadsRepository:
         return (await self._session.execute(stmt)).scalars().all()
 
     async def get_stale_leads(self, *, condition: Any, stale_before: datetime, limit: int) -> list[Lead]:
-        stale_condition = or_(
-            and_(Lead.last_called_at.is_(None), Lead.created_at <= stale_before),
-            Lead.last_called_at <= stale_before,
-        )
+        stale_condition = func.coalesce(Lead.last_action_at, Lead.created_at) <= stale_before
         stmt = select(Lead).where(stale_condition).order_by(Lead.created_at.asc()).limit(limit)
         if condition is not None:
             stmt = stmt.where(condition)
@@ -144,6 +141,7 @@ class SqlAlchemyLeadsRepository:
             name=body.name.strip(),
             status=body.status,
             created_by_user_id=user_id,
+            owner_user_id=user_id,
             assigned_to_user_id=user_id,
             phone=body.phone,
             email=body.email,
@@ -187,26 +185,39 @@ class SqlAlchemyLeadsRepository:
 
     async def mark_lead_claimed(self, lead: Lead, user_id: int) -> None:
         lead.created_by_user_id = user_id
+        lead.owner_user_id = user_id
         lead.assigned_to_user_id = user_id
         lead.in_pool = False
 
-    async def persist_lead(self, lead: Lead) -> Lead:
-        await self._session.commit()
-        await self._session.refresh(lead)
+    async def persist_lead(
+        self,
+        lead: Lead,
+        *,
+        commit: bool = True,
+        refresh: bool = True,
+    ) -> Lead:
+        await self._session.flush()
+        if commit:
+            await self._session.commit()
+        if refresh:
+            await self._session.refresh(lead)
         return lead
 
-    async def soft_delete_lead(self, lead: Lead) -> None:
+    async def soft_delete_lead(self, lead: Lead, *, commit: bool = True) -> None:
         lead.deleted_at = datetime.now(timezone.utc)
         lead.in_pool = False
-        await self._session.commit()
+        await self._session.flush()
+        if commit:
+            await self._session.commit()
 
-    async def hard_delete_lead(self, lead_id: int) -> None:
+    async def hard_delete_lead(self, lead_id: int, *, commit: bool = True) -> None:
         # Explicit child cleanup because FK rows do not use ON DELETE CASCADE.
         await self._session.execute(delete(FollowUp).where(FollowUp.lead_id == lead_id))
         await self._session.execute(delete(CallEvent).where(CallEvent.lead_id == lead_id))
         await self._session.execute(delete(EnrollShareLink).where(EnrollShareLink.lead_id == lead_id))
         await self._session.execute(delete(Lead).where(Lead.id == lead_id))
-        await self._session.commit()
+        if commit:
+            await self._session.commit()
 
     async def create_call_event(self, *, lead_id: int, user_id: int, body: CallEventCreate) -> CallEvent:
         now = datetime.now(timezone.utc)

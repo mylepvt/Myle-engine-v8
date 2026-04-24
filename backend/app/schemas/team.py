@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Any, Literal, Optional
+from datetime import date, datetime
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -18,10 +18,31 @@ class TeamMemberPublic(BaseModel):
     email: str
     role: str
     created_at: datetime
+    upline_user_id: Optional[int] = None
     upline_fbo_id: Optional[str] = None
     upline_name: Optional[str] = None
+    leader_user_id: Optional[int] = None
+    leader_name: Optional[str] = None
     training_required: Optional[bool] = None
     training_status: Optional[str] = None
+    access_blocked: Optional[bool] = None
+    discipline_status: Optional[str] = None
+    grace_end_date: Optional[date] = None
+    grace_reason: Optional[str] = None
+    grace_request_end_date: Optional[date] = None
+    grace_request_reason: Optional[str] = None
+    grace_request_requested_at: Optional[datetime] = None
+    discipline_reset_on: Optional[date] = None
+    removed_at: Optional[datetime] = None
+    removed_by_user_id: Optional[int] = None
+    removal_reason: Optional[str] = None
+    calls_short_streak: Optional[int] = None
+    missing_report_streak: Optional[int] = None
+    compliance_level: Optional[str] = None
+    compliance_title: Optional[str] = None
+    compliance_summary: Optional[str] = None
+    grace_active: Optional[bool] = None
+    grace_ending_tomorrow: Optional[bool] = None
 
 
 class TeamMemberListResponse(BaseModel):
@@ -44,6 +65,24 @@ class TeamMemberCreate(BaseModel):
     email: str = Field(min_length=3, max_length=320)
     password: str = Field(min_length=8, max_length=128)
     role: Role
+
+
+class TeamMemberComplianceUpdate(BaseModel):
+    action: Literal[
+        "grant_grace",
+        "clear_grace",
+        "approve_grace_request",
+        "reject_grace_request",
+        "restore_access",
+        "remove_now",
+    ]
+    grace_end_date: Optional[date] = None
+    reason: Optional[str] = Field(default=None, max_length=2000)
+
+
+class TeamSelfGraceRequestBody(BaseModel):
+    grace_end_date: date
+    reason: Optional[str] = Field(default=None, max_length=2000)
 
 
 class TeamMyTeamResponse(BaseModel):
@@ -82,6 +121,20 @@ class TeamEnrollmentListResponse(BaseModel):
     offset: int
 
 
+class TeamEnrollmentHistoryItem(TeamEnrollmentRequestItem):
+    reviewed_at: datetime
+    reviewed_by_user_id: Optional[int] = None
+    reviewed_by_username: Optional[str] = None
+    review_action: Literal["approved", "rejected"]
+    review_note: Optional[str] = None
+
+
+class TeamEnrollmentHistoryResponse(BaseModel):
+    items: list[TeamEnrollmentHistoryItem] = Field(default_factory=list)
+    total: int = 0
+    date: str = Field(description="Calendar day YYYY-MM-DD, Asia/Kolkata")
+
+
 class TeamReportsLiveSummary(BaseModel):
     """Legacy dashboard “LIVE DATA” tiles (approximations documented on API)."""
 
@@ -92,6 +145,43 @@ class TeamReportsLiveSummary(BaseModel):
     day1_total: int
     day2_total: int
     converted_total: int
+
+
+class TeamReportsMemberBase(BaseModel):
+    user_id: int
+    member_name: str
+    member_username: Optional[str] = None
+    member_email: str
+    member_phone: Optional[str] = None
+    member_fbo_id: str
+    member_role: str
+    upline_name: Optional[str] = None
+    upline_fbo_id: Optional[str] = None
+
+
+class TeamReportItem(TeamReportsMemberBase):
+    report_id: int
+    report_date: date
+    submitted_at: datetime
+    total_calling: int
+    calls_picked: int
+    wrong_numbers: int
+    enrollments_done: int
+    pending_enroll: int
+    underage: int
+    plan_2cc: int
+    seat_holdings: int
+    leads_educated: int
+    pdf_covered: int
+    videos_sent_actual: int
+    calls_made_actual: int
+    payments_actual: int
+    remarks: Optional[str] = None
+    system_verified: bool
+
+
+class TeamReportMissingMember(TeamReportsMemberBase):
+    pass
 
 
 class PendingRegistrationItem(BaseModel):
@@ -124,10 +214,12 @@ class EnrollmentDecisionBody(BaseModel):
 
 
 class TeamReportsResponse(BaseModel):
-    """Admin team reports — extends stub shape with dated live summary."""
+    """Team reports — scoped to leader downline or all members for admin."""
 
-    items: list[dict[str, Any]] = Field(default_factory=list)
+    items: list[TeamReportItem] = Field(default_factory=list)
     total: int = 0
+    missing_members: list[TeamReportMissingMember] = Field(default_factory=list)
+    scope_total_members: int = 0
     note: Optional[str] = Field(
         default=None,
         description="Optional footnote (e.g. daily member rows not yet in Postgres).",

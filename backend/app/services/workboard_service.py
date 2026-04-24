@@ -5,7 +5,7 @@ from time import monotonic
 from typing import Annotated
 
 from fastapi import Depends
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthUser, get_db
@@ -21,15 +21,21 @@ from app.schemas.workboard import (
     WorkboardStaleResponse,
     WorkboardSummaryResponse,
 )
+from app.services.lead_payloads import build_lead_public_payloads
 from app.services.lead_scope import lead_execution_visibility_where
 
 _SUMMARY_CACHE_TTL_SECONDS = 10
 _summary_cache: dict[tuple[int, str, int], tuple[float, WorkboardSummaryResponse]] = {}
 
 
+def _stage_anchor_ts():
+    return func.coalesce(Lead.last_action_at, Lead.created_at)
+
+
 class WorkboardService:
-    def __init__(self, repository: SqlAlchemyLeadsRepository) -> None:
+    def __init__(self, repository: SqlAlchemyLeadsRepository, session: AsyncSession) -> None:
         self._repository = repository
+        self._session = session
 
     def _active_scope(self, user: AuthUser):
         scope = and_(
@@ -45,13 +51,13 @@ class WorkboardService:
     async def get_leads(self, *, user: AuthUser, limit_per_column: int, max_rows: int) -> WorkboardLeadsResponse:
         scope = self._active_scope(user)
         totals = await self._repository.get_workboard_counts(condition=scope)
-        rows = await self._repository.get_workboard_leads(condition=scope, limit=max_rows)
         buckets: dict[str, list[LeadPublic]] = {s: [] for s in WORKBOARD_COLUMNS}
-        for lead in rows:
-            status = lead.status
-            if status not in buckets or len(buckets[status]) >= limit_per_column:
-                continue
-            buckets[status].append(LeadPublic.model_validate(lead))
+        for status in WORKBOARD_COLUMNS:
+            rows = await self._repository.get_workboard_leads(
+                condition=and_(scope, Lead.status == status),
+                limit=limit_per_column,
+            )
+            buckets[status] = await build_lead_public_payloads(self._session, rows)
         return WorkboardLeadsResponse(
             columns=[
                 WorkboardColumnOut(status=status, total=totals.get(status, 0), items=buckets[status])
@@ -71,14 +77,11 @@ class WorkboardService:
         stale_total = await self._repository.count_leads(
             and_(
                 scope,
-                or_(
-                    and_(Lead.last_called_at.is_(None), Lead.created_at <= stale_before),
-                    Lead.last_called_at <= stale_before,
-                ),
+                _stage_anchor_ts() <= stale_before,
             )
         )
         return WorkboardStaleResponse(
-            items=[LeadPublic.model_validate(row) for row in stale_rows],
+            items=await build_lead_public_payloads(self._session, stale_rows),
             total=stale_total,
             stale_hours=stale_hours,
         )
@@ -109,7 +112,7 @@ class WorkboardService:
                 )
             )
             videos_to_send = await self._repository.count_leads(
-                and_(scope, Lead.status.in_(("new_lead", "new", "contacted", "invited")))
+                and_(scope, Lead.status.in_(("new_lead", "new", "contacted", "invited", "whatsapp_sent")))
             )
         batches_due = await self._repository.count_leads(
             and_(
@@ -135,16 +138,13 @@ class WorkboardService:
             )
         )
         closings_due = await self._repository.count_leads(
-            and_(scope, Lead.status.in_(("interview", "track_selected", "seat_hold")))
+            and_(scope, Lead.status.in_(("day3", "interview", "track_selected", "seat_hold")))
         )
         stale_before = datetime.now(timezone.utc) - timedelta(hours=stale_hours)
         stale_total = await self._repository.count_leads(
             and_(
                 scope,
-                or_(
-                    and_(Lead.last_called_at.is_(None), Lead.created_at <= stale_before),
-                    Lead.last_called_at <= stale_before,
-                ),
+                _stage_anchor_ts() <= stale_before,
             )
         )
         payload = WorkboardSummaryResponse(
@@ -184,4 +184,4 @@ class WorkboardService:
 def get_workboard_service(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> WorkboardService:
-    return WorkboardService(repository=SqlAlchemyLeadsRepository(session))
+    return WorkboardService(repository=SqlAlchemyLeadsRepository(session), session=session)

@@ -11,22 +11,9 @@ import type { Server } from "socket.io";
 import { bumpRealtimeScoreOnActivity } from "./redis-score.service.js";
 import { recordAudit } from "./audit.service.js";
 import { acquireLock, releaseLock } from "../lib/redis-lock.js";
+import { legacyStatusForStage } from "./lead-stage-legacy-status.js";
 
 const INACTIVITY_REASSIGN_MS = 48 * 60 * 60 * 1000;
-
-/** CRM LeadStage → FastAPI leads.status string */
-const STAGE_TO_LEGACY_STATUS: Partial<Record<string, string>> = {
-  NEW:          "new_lead",
-  INVITED:      "invited",
-  WHATSAPP_SENT:"contacted",
-  VIDEO_SENT:   "video_sent",
-  PAYMENT_DONE: "paid",
-  MINDSET_LOCK: "day1",
-  DAY1_UPLINE:  "day2",
-  DAY2_ADMIN:   "interview",
-  DAY3_CLOSER:  "track_selected",
-  CLOSED:       "converted",
-};
 
 async function teamScopeForUser(userId: string): Promise<string> {
   const u = await prisma.user.findUnique({ where: { id: userId }, select: { teamId: true } });
@@ -58,6 +45,12 @@ async function emitLeadChange(
   });
 }
 
+function assertMutableLeadIsNotShadow(lead: { isShadow: boolean }) {
+  if (lead.isShadow) {
+    throw fsmError("FORBIDDEN", "Shadow leads are read-only mirrors", 403);
+  }
+}
+
 export async function createLead(
   user: AuthUser,
   body: { name: string; phone?: string; pipelineKind: PipelineKind; legacyId?: number },
@@ -69,6 +62,7 @@ export async function createLead(
       phone: body.phone?.trim(),
       pipelineKind: body.pipelineKind,
       ownerId: user.id,
+      isShadow: false,
       inPool: true,
       handlerId: null,
       stage: LeadStage.NEW,
@@ -88,7 +82,7 @@ export async function createLead(
 }
 
 export async function listLeads(user: AuthUser, pipelineKind?: PipelineKind) {
-  const where: Prisma.LeadWhereInput = {};
+  const where: Prisma.LeadWhereInput = { isShadow: false };
   if (pipelineKind) where.pipelineKind = pipelineKind;
   if (user.role === "admin") {
     /* all */
@@ -112,6 +106,7 @@ export async function transitionLead(
 ) {
   const lead = await prisma.lead.findUnique({ where: { id: leadId } });
   if (!lead) throw fsmError("NOT_FOUND", "Lead not found", 404);
+  assertMutableLeadIsNotShadow(lead);
   if (lead.handlerId !== user.id) {
     throw fsmError("FORBIDDEN", "Only the active handler may transition this lead (no manual override)", 403);
   }
@@ -147,7 +142,7 @@ export async function transitionLead(
   // Write status back to FastAPI's leads table for read consistency
   const legacyLead = await prisma.lead.findUnique({ where: { id: leadId }, select: { legacyId: true, stage: true } });
   if (legacyLead?.legacyId) {
-    const legacyStatus = STAGE_TO_LEGACY_STATUS[legacyLead.stage];
+    const legacyStatus = legacyStatusForStage(legacyLead.stage);
     if (legacyStatus) {
       await (prisma as any).legacyLead.update({
         where: { id: legacyLead.legacyId },
@@ -218,6 +213,7 @@ export async function reassignLead(
   }
   const lead = await prisma.lead.findUnique({ where: { id: leadId } });
   if (!lead) throw fsmError("NOT_FOUND", "Lead not found", 404);
+  assertMutableLeadIsNotShadow(lead);
   if (lead.inPool) throw fsmError("INVALID_STATE", "Lead still in pool", 400);
   if (!lead.handlerId) throw fsmError("INVALID_STATE", "Lead has no handler", 400);
 
@@ -264,6 +260,7 @@ export async function systemReassignStaleLeadCore(
   try {
     const lead = await prisma.lead.findUnique({ where: { id: leadId } });
     if (!lead || lead.inPool || !lead.handlerId || !lead.lastActivityAt) return null;
+    if (lead.isShadow) return null;
     const idle = Date.now() - lead.lastActivityAt.getTime();
     if (idle < opts.minIdleMs) return null;
 
@@ -299,6 +296,7 @@ export async function systemReassignStaleLead(leadId: string, toUserId: string, 
 export async function closeLead(user: AuthUser, leadId: string, io?: Server) {
   const lead = await prisma.lead.findUnique({ where: { id: leadId } });
   if (!lead) throw fsmError("NOT_FOUND", "Lead not found", 404);
+  assertMutableLeadIsNotShadow(lead);
   if (lead.handlerId !== user.id && user.role !== "admin") {
     throw fsmError("FORBIDDEN", "Only handler or admin may close", 403);
   }

@@ -52,6 +52,27 @@ def test_samesite_none_allowed_when_secure() -> None:
     assert s.auth_cookie_samesite == "none"
 
 
+def test_secure_split_host_defaults_to_samesite_none() -> None:
+    s = Settings(
+        database_url="postgresql+asyncpg://a:b@localhost/db",
+        secret_key="x" * 40,
+        backend_cors_origins="https://app.example.com",
+        session_cookie_secure=True,
+    )
+    assert s.auth_cookie_samesite == "none"
+
+
+def test_frontend_dist_defaults_to_samesite_lax() -> None:
+    s = Settings(
+        database_url="postgresql+asyncpg://a:b@localhost/db",
+        secret_key="x" * 40,
+        backend_cors_origins="https://app.example.com",
+        session_cookie_secure=True,
+        frontend_dist="/tmp/frontend-dist",
+    )
+    assert s.auth_cookie_samesite == "lax"
+
+
 def test_asgi_exports_same_fastapi_app() -> None:
     """``asgi:app`` must match ``main:app`` (Docker / optional gunicorn UvicornWorker)."""
     import asgi

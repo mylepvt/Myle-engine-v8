@@ -18,6 +18,7 @@ class TrainingVideoRow(BaseModel):
     day_number: int
     title: str
     has_video: bool = False
+    youtube_url: Optional[str] = None
     audio_url: Optional[str] = None
     unlocked: bool = True
 

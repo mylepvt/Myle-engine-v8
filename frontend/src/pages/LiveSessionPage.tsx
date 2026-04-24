@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useShellStubQuery } from '@/hooks/use-shell-stub-query'
@@ -5,14 +7,45 @@ import { isSafeHttpUrl } from '@/lib/safe-http-url'
 
 type Props = { title: string }
 
+async function copyToClipboard(text: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text)
+    return
+  }
+
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.setAttribute('readonly', 'true')
+  textarea.style.position = 'fixed'
+  textarea.style.opacity = '0'
+  document.body.appendChild(textarea)
+  textarea.select()
+  const copied = document.execCommand('copy')
+  document.body.removeChild(textarea)
+  if (!copied) {
+    throw new Error('Copy failed')
+  }
+}
+
 export function LiveSessionPage({ title }: Props) {
   const { data, isPending, isError, error, refetch } = useShellStubQuery('/api/v1/other/live-session')
+  const [copyState, setCopyState] = useState<'idle' | 'done' | 'error'>('idle')
 
   const first = data?.items[0]
   const rawHref = first && typeof first.external_href === 'string' ? first.external_href.trim() : ''
   const href = isSafeHttpUrl(rawHref) ? rawHref : ''
   const sessionTitle = first && typeof first.title === 'string' ? first.title : 'Live session'
   const detail = first && typeof first.detail === 'string' ? first.detail : ''
+
+  const handleCopy = async () => {
+    if (!rawHref) return
+    try {
+      await copyToClipboard(rawHref)
+      setCopyState('done')
+    } catch {
+      setCopyState('error')
+    }
+  }
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -62,11 +95,24 @@ export function LiveSessionPage({ title }: Props) {
             </p>
           ) : null}
           {href ? (
-            <Button asChild size="lg" className="w-full sm:w-auto">
-              <a href={href} target="_blank" rel="noopener noreferrer">
-                Join live session
-              </a>
-            </Button>
+            <div className="space-y-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <Button asChild size="lg" className="w-full sm:w-auto">
+                  <a href={href} target="_blank" rel="noopener noreferrer">
+                    Join live session
+                  </a>
+                </Button>
+                <Button type="button" variant="secondary" size="lg" className="w-full sm:w-auto" onClick={() => void handleCopy()}>
+                  {copyState === 'done' ? 'Link copied' : 'Copy link'}
+                </Button>
+              </div>
+              <p className="break-all text-xs text-muted-foreground">{rawHref}</p>
+              {copyState === 'error' ? (
+                <p className="text-xs text-destructive" role="alert">
+                  Could not copy automatically. You can still copy the link shown above.
+                </p>
+              ) : null}
+            </div>
           ) : !rawHref ? (
             <p className="text-sm text-amber-300/90">
               Meeting link not published yet. Ask an admin to set{' '}

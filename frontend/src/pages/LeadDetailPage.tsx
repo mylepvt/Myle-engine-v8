@@ -1,19 +1,28 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Headphones, MessageSquareText, NotebookPen, Video } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { LEAD_STATUS_OPTIONS } from '@/hooks/use-leads-query'
+import { LEAD_STATUS_OPTIONS, type LeadStatus, useAvailableTransitionsQuery } from '@/hooks/use-leads-query'
+import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import {
+  type LeadBatchSubmission,
   useLeadCallsQuery,
   useLeadDetailQuery,
   useLogCallMutation,
   usePatchLeadDetailMutation,
+  useResetStageClockMutation,
 } from '@/hooks/use-lead-detail-query'
 import { EnrollmentCard } from '@/components/leads/EnrollmentCard'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LeadNextStepPanel } from '@/components/leads/LeadNextStepPanel'
 import { LeadNotesPanel } from '@/components/leads/LeadNotesPanel'
+import { useSendEnrollmentVideoMutation } from '@/hooks/use-enroll-query'
+import { apiUrl } from '@/lib/api'
+import { callStatusSelectOptions } from '@/lib/call-status-options'
+import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
+import { leadStatusSelectOptionsForLead, teamLeadStatusSelectOptions } from '@/lib/team-lead-status'
 
 type Props = {
   leadId: number
@@ -27,14 +36,6 @@ const CALL_OUTCOME_OPTIONS = [
   { value: 'wrong_number', label: 'Wrong Number' },
 ]
 
-const CALL_STATUS_OPTIONS = [
-  { value: '', label: 'None' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'in_progress', label: 'In Progress' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'dnc', label: 'Do Not Call' },
-]
-
 function outcomeLabel(v: string): string {
   return CALL_OUTCOME_OPTIONS.find((o) => o.value === v)?.label ?? v
 }
@@ -42,9 +43,18 @@ function outcomeLabel(v: string): string {
 function StatusBadge({ status }: { status: string }) {
   const cls: Record<string, string> = {
     new: 'bg-primary/15 text-primary',
+    new_lead: 'bg-primary/15 text-primary',
     contacted: 'bg-sky-400/15 text-sky-400',
-    qualified: 'bg-emerald-400/15 text-emerald-400',
-    won: 'bg-[hsl(142_71%_48%)]/15 text-[hsl(142_71%_48%)]',
+    invited: 'bg-violet-400/15 text-violet-400',
+    whatsapp_sent: 'bg-pink-400/15 text-pink-400',
+    video_sent: 'bg-indigo-400/15 text-indigo-400',
+    video_watched: 'bg-blue-400/15 text-blue-400',
+    paid: 'bg-amber-400/15 text-amber-400',
+    mindset_lock: 'bg-fuchsia-400/15 text-fuchsia-400',
+    day1: 'bg-orange-400/15 text-orange-400',
+    day2: 'bg-yellow-400/15 text-yellow-400',
+    day3: 'bg-lime-400/15 text-lime-400',
+    converted: 'bg-[hsl(142_71%_48%)]/15 text-[hsl(142_71%_48%)]',
     lost: 'bg-destructive/15 text-destructive',
   }
   const c = cls[status] ?? 'bg-muted/30 text-muted-foreground'
@@ -77,15 +87,132 @@ function PaymentStatusBadge({ status }: { status: string }) {
   )
 }
 
+function resolveAssetUrl(url: string | null | undefined): string | null {
+  if (!url) return null
+  return url.startsWith('http') ? url : apiUrl(url)
+}
+
+function batchSubmissionLabel(slot: string): string {
+  const match = slot.match(/^d(\d+)_(.+)$/)
+  if (!match) return slot.replace(/_/g, ' ')
+  return `Day ${match[1]} ${match[2].replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())}`
+}
+
+function BatchSubmissionCard({ submission }: { submission: LeadBatchSubmission }) {
+  const notesUrl = resolveAssetUrl(submission.notes_url)
+  const voiceUrl = resolveAssetUrl(submission.voice_note_url)
+  const videoUrl = resolveAssetUrl(submission.video_url)
+
+  return (
+    <div className="surface-inset space-y-3 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+            {batchSubmissionLabel(submission.slot)}
+          </span>
+          <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-0.5 text-xs text-muted-foreground">
+            Day {submission.day_number}
+          </span>
+        </div>
+        <span className="text-xs text-muted-foreground">
+          {new Date(submission.submitted_at).toLocaleString()}
+        </span>
+      </div>
+
+      {submission.notes_text ? (
+        <div className="rounded-md border border-white/10 bg-white/[0.04] p-3">
+          <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <MessageSquareText className="size-3.5" />
+            Lead message
+          </div>
+          <p className="text-sm leading-relaxed text-foreground">{submission.notes_text}</p>
+        </div>
+      ) : null}
+
+      <div className="grid gap-3">
+        <div className="rounded-md border border-white/10 bg-white/[0.04] p-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <NotebookPen className="size-4" />
+            Notes file
+          </div>
+          {notesUrl ? (
+            <a
+              href={notesUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-block text-xs text-primary underline-offset-2 hover:underline"
+            >
+              Open uploaded notes
+            </a>
+          ) : (
+            <p className="mt-2 text-xs text-muted-foreground">No notes file uploaded in this submission.</p>
+          )}
+        </div>
+
+        <div className="rounded-md border border-white/10 bg-white/[0.04] p-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Headphones className="size-4" />
+            Voice note
+          </div>
+          {voiceUrl ? (
+            <audio controls src={voiceUrl} preload="metadata" className="mt-3 w-full" />
+          ) : (
+            <p className="mt-2 text-xs text-muted-foreground">No voice note uploaded in this submission.</p>
+          )}
+        </div>
+
+        <div className="rounded-md border border-white/10 bg-white/[0.04] p-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Video className="size-4" />
+            Practice video
+          </div>
+          {videoUrl ? (
+            <div className="mt-3 space-y-2">
+              <video controls src={videoUrl} preload="metadata" className="aspect-video w-full rounded-md bg-black" />
+              <a
+                href={videoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block text-xs text-primary underline-offset-2 hover:underline"
+              >
+                Open uploaded video in new tab
+              </a>
+            </div>
+          ) : (
+            <p className="mt-2 text-xs text-muted-foreground">No practice video uploaded in this submission.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function LeadDetailPage({ leadId }: Props) {
+  const { role, serverRole } = useDashboardShellRole()
+  const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
   const { data: lead, isPending, isError, error, refetch } = useLeadDetailQuery(leadId)
+  const transitionsQ = useAvailableTransitionsQuery(leadId)
   const callsQuery = useLeadCallsQuery(leadId)
   const patchMut = usePatchLeadDetailMutation()
+  const sendEnrollmentMut = useSendEnrollmentVideoMutation()
+  const resetStageClockMut = useResetStageClockMutation()
   const logCallMut = useLogCallMutation()
+  const pipelineStatusOptions = lead
+    ? (() => {
+        const base = leadStatusSelectOptionsForLead(surfaceRole ?? null, lead.status as LeadStatus, LEAD_STATUS_OPTIONS)
+        const allowed = new Set<LeadStatus>([lead.status as LeadStatus, ...((transitionsQ.data ?? []) as LeadStatus[])])
+        const scoped = base.filter((option) => allowed.has(option.value))
+        return scoped.length > 0 ? scoped : base
+      })()
+    : teamLeadStatusSelectOptions(surfaceRole ?? null, LEAD_STATUS_OPTIONS)
+  const pipelineCallStatusOptions = lead
+    ? callStatusSelectOptions(surfaceRole ?? null, lead.status as LeadStatus)
+    : callStatusSelectOptions(surfaceRole ?? null)
   // Pipeline card local state
   const [pipelineStatus, setPipelineStatus] = useState('')
   const [pipelineCallStatus, setPipelineCallStatus] = useState('')
   const [pipelineError, setPipelineError] = useState('')
+  const [resetClockError, setResetClockError] = useState('')
 
   // Notes card
   const [notes, setNotes] = useState('')
@@ -119,9 +246,17 @@ export function LeadDetailPage({ leadId }: Props) {
     if (!lead) return
     setPipelineError('')
     try {
+      if (pipelineStatus === 'video_sent') {
+        const result = await sendEnrollmentMut.mutateAsync(leadId)
+        const manualUrl = result.delivery.manual_share_url?.trim()
+        if (manualUrl) {
+          window.open(manualUrl, '_blank', 'noopener,noreferrer')
+        }
+        return
+      }
       await patchMut.mutateAsync({
         leadId,
-        body: { status: pipelineStatus, call_status: pipelineCallStatus || null },
+        body: { status: pipelineStatus as LeadStatus, call_status: pipelineCallStatus || undefined },
       })
     } catch (e) {
       setPipelineError(e instanceof Error ? e.message : 'Save failed')
@@ -172,10 +307,16 @@ export function LeadDetailPage({ leadId }: Props) {
     field: 'day1_completed_at' | 'day2_completed_at' | 'day3_completed_at',
     current: string | null,
   ) {
+    const patchField =
+      field === 'day1_completed_at'
+        ? 'day1_completed'
+        : field === 'day2_completed_at'
+          ? 'day2_completed'
+          : 'day3_completed'
     try {
       await patchMut.mutateAsync({
         leadId,
-        body: { [field]: current ? null : new Date().toISOString() },
+        body: { [patchField]: !current },
       })
     } catch {
       /* surfaced by patchMut.isError */
@@ -186,10 +327,27 @@ export function LeadDetailPage({ leadId }: Props) {
     try {
       await patchMut.mutateAsync({
         leadId,
-        body: { whatsapp_sent_at: current ? null : new Date().toISOString() },
+        body: { whatsapp_sent: !current },
       })
     } catch {
       /* surfaced by patchMut.isError */
+    }
+  }
+
+  async function handleResetStageClock() {
+    if (surfaceRole !== 'admin' || !lead) return
+    setResetClockError('')
+    const currentStageLabel = LEAD_STATUS_OPTIONS.find((option) => option.value === lead.status)?.label ?? lead.status
+    const confirmed = window.confirm(
+      lead.status === 'mindset_lock'
+        ? 'Reset the Mindset Lock timer for this lead? This keeps the lead in Mindset Lock and restarts the 5-minute countdown.'
+        : `Reset the ${currentStageLabel} clock for this lead? This keeps the lead in ${currentStageLabel} and restarts that stage timer.`,
+    )
+    if (!confirmed) return
+    try {
+      await resetStageClockMut.mutateAsync({ leadId })
+    } catch (e) {
+      setResetClockError(e instanceof Error ? e.message : 'Could not reset stage clock')
     }
   }
 
@@ -225,6 +383,14 @@ export function LeadDetailPage({ leadId }: Props) {
       </div>
     )
   }
+
+  const currentStageLabel = LEAD_STATUS_OPTIONS.find((option) => option.value === lead.status)?.label ?? lead.status
+  const stageClockHelpText =
+    lead.status === 'mindset_lock'
+      ? 'Admin-only: restart the 5-minute Mindset Lock timer without moving this lead out of Mindset Lock.'
+      : `Admin-only: restart the ${currentStageLabel} stage clock without moving this lead out of ${currentStageLabel}.`
+  const stageClockButtonLabel =
+    lead.status === 'mindset_lock' ? 'Reset Mindset Lock Clock' : `Reset ${currentStageLabel} Clock`
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -291,7 +457,13 @@ export function LeadDetailPage({ leadId }: Props) {
 
           <LeadNextStepPanel
             className="surface-elevated p-4"
-            lead={{ id: lead.id, name: lead.name, phone: lead.phone, status: lead.status }}
+            lead={{
+              id: lead.id,
+              name: lead.name,
+              phone: lead.phone,
+              status: lead.status,
+              paymentStatus: lead.payment_status,
+            }}
           />
 
           {/* Pipeline card */}
@@ -311,7 +483,7 @@ export function LeadDetailPage({ leadId }: Props) {
                   onChange={(e) => setPipelineStatus(e.target.value)}
                   className="w-full rounded-md border border-white/12 bg-white/[0.05] px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
                 >
-                  {LEAD_STATUS_OPTIONS.map((o) => (
+                  {pipelineStatusOptions.map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
                     </option>
@@ -331,7 +503,8 @@ export function LeadDetailPage({ leadId }: Props) {
                   onChange={(e) => setPipelineCallStatus(e.target.value)}
                   className="w-full rounded-md border border-white/12 bg-white/[0.05] px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
                 >
-                  {CALL_STATUS_OPTIONS.map((o) => (
+                  <option value="">None</option>
+                  {pipelineCallStatusOptions.map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
                     </option>
@@ -350,6 +523,30 @@ export function LeadDetailPage({ leadId }: Props) {
                 <p className="text-xs text-destructive" role="alert">
                   {pipelineError}
                 </p>
+              ) : null}
+              {surfaceRole === 'admin' ? (
+                <div className="rounded-md border border-amber-400/20 bg-amber-400/5 p-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Stage Clock Control</p>
+                      <p className="text-xs text-muted-foreground">{stageClockHelpText}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      disabled={resetStageClockMut.isPending}
+                      onClick={() => void handleResetStageClock()}
+                    >
+                      {resetStageClockMut.isPending ? 'Resetting…' : stageClockButtonLabel}
+                    </Button>
+                  </div>
+                  {resetClockError ? (
+                    <p className="mt-2 text-xs text-destructive" role="alert">
+                      {resetClockError}
+                    </p>
+                  ) : null}
+                </div>
               ) : null}
             </div>
           </div>
@@ -554,6 +751,24 @@ export function LeadDetailPage({ leadId }: Props) {
           {/* Enrollment card */}
           <EnrollmentCard leadId={leadId} />
 
+          <div className="surface-elevated p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Batch submissions</p>
+              <span className="text-xs text-muted-foreground">Day 2 review wall</span>
+            </div>
+            {lead.batch_submissions.length > 0 ? (
+              <div className="space-y-3">
+                {lead.batch_submissions.map((submission) => (
+                  <BatchSubmissionCard key={submission.id} submission={submission} />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Lead ne abhi Day 2 notes, voice note, video, ya message submit nahi kiya. Jaise hi batch room se submission aayegi, admin yahi dekh paayega.
+              </p>
+            )}
+          </div>
+
           {/* Payment card */}
           <div className="surface-elevated p-4 space-y-3">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Payment</p>
@@ -590,14 +805,41 @@ export function LeadDetailPage({ leadId }: Props) {
                     </a>
                   ) : (
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      ₹196 proof is uploaded from the lead card on the{' '}
-                      <Link
-                        to="/dashboard/work/workboard"
-                        className="font-medium text-primary underline-offset-2 hover:underline"
-                      >
-                        Workboard
-                      </Link>{' '}
-                      (image upload), not here.
+                      {surfaceRole === 'team' ? (
+                        <>
+                          ₹196 proof upload sirf{' '}
+                          <Link
+                            to="/dashboard/work/leads"
+                            className="font-medium text-primary underline-offset-2 hover:underline"
+                          >
+                            Calling Board
+                          </Link>{' '}
+                          me hota hai.
+                        </>
+                      ) : surfaceRole === 'leader' ? (
+                        <>
+                          ₹196 proof upload sirf{' '}
+                          <Link
+                            to="/dashboard/work/leads"
+                            className="font-medium text-primary underline-offset-2 hover:underline"
+                          >
+                            Calling Board
+                          </Link>{' '}
+                          me hota hai.
+                        </>
+                      ) : (
+                        <>
+                          ₹196 proof leader ya team work/leads flow se upload karte hain; admin yahan se sirf status dekh
+                          ya{' '}
+                          <Link
+                            to="/dashboard/team/enrollment-approvals"
+                            className="font-medium text-primary underline-offset-2 hover:underline"
+                          >
+                            approvals
+                          </Link>{' '}
+                          review karta hai.
+                        </>
+                      )}
                     </p>
                   )}
                 </div>

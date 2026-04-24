@@ -5,9 +5,8 @@ Uses vl2 schema: ``Lead`` + ``FollowUp`` + ``User`` (async SQLAlchemy). Legacy S
 columns (``follow_up_date`` on leads, ``pipeline_entered_at``, ``stale_worker``,
 ``call_result``, ``total_points``) are mapped or omitted — see each function.
 
-**Funnel semantics (vl2):** “Pre-video” ≈ ``status`` in {``new``, ``contacted``};
-“video reached” ≈ moved past that; “₹196 paid” ≈ ``payment_amount_cents`` ≥ 19600
-(legacy ₹196) or strong enrollment signal.
+**Funnel semantics (vl2):** pre-video ≈ ``new_lead/contacted/invited/whatsapp_sent``;
+video reached ≈ ``video_sent`` or beyond; paid ≈ approved payment / post-payment stage.
 """
 
 from __future__ import annotations
@@ -25,6 +24,12 @@ from app.models.follow_up import FollowUp
 from app.models.call_event import CallEvent
 from app.models.lead import Lead
 from app.models.user import User
+from app.services.live_metrics import (
+    fresh_call_counts_by_user,
+    fresh_lead_counts_by_user,
+    get_daily_call_target,
+)
+from app.services.user_hierarchy import nearest_leader_username_for_user_id
 from app.schemas.execution_enforcement import (
     AtRiskLeadRow,
     LeakMapOut,
@@ -40,12 +45,37 @@ from app.schemas.execution_enforcement import (
 
 logger = logging.getLogger(__name__)
 
-# Legacy PRE_VIDEO → vl2 coarse buckets (short status set).
-PRE_VIDEO_STATUSES_VL2 = frozenset({"new", "contacted"})
-_FUNNEL_EXCLUDE_TERMINAL = frozenset({"won", "lost"})
+# Canonical pre-video stages in the FastAPI-led lifecycle.
+PRE_VIDEO_STATUSES_VL2 = frozenset({"new", "new_lead", "contacted", "invited", "whatsapp_sent"})
+_FUNNEL_EXCLUDE_TERMINAL = frozenset({"converted", "lost", "inactive"})
 # Redistribution-specific terminal states that must not be reassigned.
 _REDISTRIBUTION_TERMINAL_STATUSES = frozenset(
-    {"paid", "converted", "lost", "inactive"}
+    {
+        "paid",
+        "mindset_lock",
+        "day1",
+        "day2",
+        "day3",
+        "interview",
+        "track_selected",
+        "seat_hold",
+        "converted",
+        "lost",
+        "inactive",
+    }
+)
+_ENROLLED_SIGNAL_STATUSES = frozenset(
+    {
+        "paid",
+        "mindset_lock",
+        "day1",
+        "day2",
+        "day3",
+        "interview",
+        "track_selected",
+        "seat_hold",
+        "converted",
+    }
 )
 # ₹196 in paise/cents as stored (rupees × 100).
 RUPEES_196_CENTS = 196 * 100
@@ -54,6 +84,7 @@ RUPEES_196_CENTS = 196 * 100
 def _lead_last_activity_ts():
     """Best proxy for “stale” until ``updated_at`` exists on ``Lead``."""
     return func.coalesce(
+        Lead.last_action_at,
         Lead.last_called_at,
         Lead.payment_proof_uploaded_at,
         Lead.whatsapp_sent_at,
@@ -105,7 +136,11 @@ def bottleneck_tags_for_member(
         and int(stats.get("total_active") or 0) >= 4
     ):
         tags.append("Follow-up slow")
-    if int(stats.get("total_active") or 0) >= 2 and calls_today == 0:
+    call_target = int(stats.get("call_target") or 0)
+    fresh_leads_today = int(stats.get("fresh_leads_today") or 0)
+    if call_target > 0 and fresh_leads_today > 0 and calls_today < call_target:
+        tags.append("No activity" if calls_today == 0 else "Call gate short")
+    elif int(stats.get("total_active") or 0) >= 2 and calls_today == 0:
         tags.append("No activity")
     if not tags:
         tags.append("On track")
@@ -123,11 +158,11 @@ def _start_of_day_ist(day_iso: str) -> datetime:
 
 
 async def nearest_leader_username_for_assignee(
-    _session: AsyncSession,
-    _assignee_username: str,
+    session: AsyncSession,
+    assignee_user_id: int | None,
 ) -> str | None:
-    """Placeholder until org upline exists on ``User``."""
-    return None
+    """Resolve the assignee's nearest leader from the org tree."""
+    return await nearest_leader_username_for_user_id(session, assignee_user_id)
 
 
 async def team_personal_funnel(session: AsyncSession, user_id: int) -> TeamPersonalFunnelOut:
@@ -166,7 +201,7 @@ async def team_personal_funnel(session: AsyncSession, user_id: int) -> TeamPerso
         base,
         or_(
             Lead.payment_amount_cents >= RUPEES_196_CENTS,
-            and_(Lead.status == "qualified", Lead.payment_status == "approved"),
+            and_(Lead.status.in_(tuple(_ENROLLED_SIGNAL_STATUSES)), Lead.payment_status == "approved"),
         ),
     )
     paid = int(
@@ -193,39 +228,15 @@ async def team_today_stats(
     today_iso: str,
 ) -> TeamTodayStatsOut:
     """Legacy-like team day counters for dashboard cards."""
+    day = datetime.strptime(today_iso, "%Y-%m-%d").date()
     start = _start_of_day_ist(today_iso)
     end = _end_of_day_ist(today_iso)
     base = and_(Lead.assigned_to_user_id == user_id, _active_lead_filters())
 
-    claimed_today = int(
-        (
-            await session.execute(
-                select(func.count())
-                .select_from(Lead)
-                .where(
-                    base,
-                    Lead.created_at >= start,
-                    Lead.created_at <= end,
-                )
-            )
-        ).scalar_one()
-        or 0
-    )
-
-    calls_today = int(
-        (
-            await session.execute(
-                select(func.count())
-                .select_from(CallEvent)
-                .where(
-                    CallEvent.user_id == user_id,
-                    CallEvent.called_at >= start,
-                    CallEvent.called_at <= end,
-                )
-            )
-        ).scalar_one()
-        or 0
-    )
+    fresh_leads_today = (await fresh_lead_counts_by_user(session, [user_id], day)).get(user_id, 0)
+    calls_today = (await fresh_call_counts_by_user(session, [user_id], day)).get(user_id, 0)
+    call_target = await get_daily_call_target(session)
+    effective_call_target = call_target if fresh_leads_today > 0 else 0
 
     enrolled_today = int(
         (
@@ -253,8 +264,10 @@ async def team_today_stats(
     )
 
     return TeamTodayStatsOut(
-        claimed_today=claimed_today,
+        claimed_today=fresh_leads_today,
+        fresh_leads_today=fresh_leads_today,
         calls_today=calls_today,
+        call_target=effective_call_target,
         enrolled_today=enrolled_today,
     )
 
@@ -306,7 +319,11 @@ async def downline_member_execution_stats(
     """Per assignee: totals, enrollments, proof queue, follow-up pressure."""
     if not user_ids:
         return {}
+    day = datetime.strptime(today_iso, "%Y-%m-%d").date()
     end = _end_of_day_ist(today_iso)
+    calls_today_map = await fresh_call_counts_by_user(session, user_ids, day)
+    fresh_leads_today_map = await fresh_lead_counts_by_user(session, user_ids, day)
+    daily_call_target = await get_daily_call_target(session)
 
     fu_open_due = exists(
         select(1).where(
@@ -322,7 +339,7 @@ async def downline_member_execution_stats(
         (
             or_(
                 Lead.payment_amount_cents >= RUPEES_196_CENTS,
-                and_(Lead.status == "qualified", Lead.payment_status == "approved"),
+                and_(Lead.status.in_(tuple(_ENROLLED_SIGNAL_STATUSES)), Lead.payment_status == "approved"),
             ),
             1,
         ),
@@ -361,12 +378,19 @@ async def downline_member_execution_stats(
         uid = int(r["uid"])
         tot = int(r["total_active"] or 0)
         enr = int(r["enrollments"] or 0)
+        calls_today = int(calls_today_map.get(uid, 0))
+        fresh_leads_today = int(fresh_leads_today_map.get(uid, 0))
+        call_target = daily_call_target if fresh_leads_today > 0 else 0
         out[uid] = {
             "total_active": tot,
             "enrollments": enr,
             "proof_pend": int(r["proof_pend"] or 0),
             "fu_due": int(r["fu_due"] or 0),
             "conv_pct": round(100.0 * enr / tot, 1) if tot else 0.0,
+            "calls_today": calls_today,
+            "fresh_leads_today": fresh_leads_today,
+            "call_target": call_target,
+            "call_gate_met": call_target == 0 or calls_today >= call_target,
         }
     return out
 
@@ -390,7 +414,9 @@ async def admin_at_risk_leads(
             act.label("activity_at"),
             Lead.payment_status,
             Lead.payment_proof_url,
+            User.id,
             User.username,
+            User.fbo_id,
         )
         .select_from(Lead)
         .outerjoin(User, User.id == Lead.assigned_to_user_id)
@@ -405,7 +431,7 @@ async def admin_at_risk_leads(
     now = datetime.now(timezone.utc)
     out: list[AtRiskLeadRow] = []
     for row in rows:
-        lid, name, phone, status, activity_at, pay_st, proof_url, uname = row
+        lid, name, phone, status, activity_at, pay_st, proof_url, assignee_user_id, uname, assignee_fbo = row
         days_stuck = 0.0
         if activity_at:
             uat = activity_at
@@ -424,8 +450,8 @@ async def admin_at_risk_leads(
             proof_state = "none"
         else:
             proof_state = "uploaded"
-        ax = (uname or "").strip()
-        leader = await nearest_leader_username_for_assignee(session, ax)
+        ax = (uname or assignee_fbo or "").strip()
+        leader = await nearest_leader_username_for_assignee(session, assignee_user_id)
         out.append(
             AtRiskLeadRow(
                 id=int(lid),
@@ -433,7 +459,7 @@ async def admin_at_risk_leads(
                 phone=phone,
                 status=status,
                 updated_at=activity_at,
-                assignee=uname,
+                assignee=(uname or assignee_fbo),
                 team_member_display=ax,
                 leader_username=leader,
                 days_stuck=round(days_stuck, 1),
@@ -447,7 +473,8 @@ async def admin_at_risk_leads(
 def _lead_last_activity_value(lead: Lead) -> datetime:
     """Python-side mirror of `_lead_last_activity_ts()` for runtime guards."""
     return (
-        lead.last_called_at
+        lead.last_action_at
+        or lead.last_called_at
         or lead.payment_proof_uploaded_at
         or lead.whatsapp_sent_at
         or lead.day3_completed_at
@@ -648,7 +675,7 @@ async def admin_weak_members(
         (
             or_(
                 Lead.payment_amount_cents >= RUPEES_196_CENTS,
-                and_(Lead.status == "qualified", Lead.payment_status == "approved"),
+                and_(Lead.status.in_(tuple(_ENROLLED_SIGNAL_STATUSES)), Lead.payment_status == "approved"),
             ),
             1,
         ),
@@ -711,7 +738,20 @@ async def admin_leak_map(session: AsyncSession) -> LeakMapOut:
     rows = (await session.execute(stmt)).all()
     hist_list = [StatusHistogramRow(status=s, count=int(c or 0)) for s, c in rows]
     m = {x.status: x.count for x in hist_list}
-    funnel_order = ["new", "contacted", "qualified", "won"]
+    funnel_order = [
+        "new_lead",
+        "contacted",
+        "invited",
+        "whatsapp_sent",
+        "video_sent",
+        "video_watched",
+        "paid",
+        "mindset_lock",
+        "day1",
+        "day2",
+        "day3",
+        "converted",
+    ]
     drops: list[FunnelDropRow] = []
     prev: tuple[str, int] | None = None
     for st in funnel_order:

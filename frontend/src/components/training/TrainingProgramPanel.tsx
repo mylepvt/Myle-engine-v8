@@ -129,6 +129,7 @@ function TrainingDaysBlock({
   const vids = Array.isArray(data.videos) ? data.videos : []
   const progress = Array.isArray(data.progress) ? data.progress : []
   const notes = Array.isArray(data.notes) ? data.notes : []
+  const unlockDates = data.unlock_dates ?? null
 
   const doneSet = new Set(progress.filter((p) => p.completed).map((p) => p.day_number))
   const notesSet = new Set(notes.map((n) => n.day_number))
@@ -169,10 +170,11 @@ function TrainingDaysBlock({
               video={v}
               completed={doneSet.has(v.day_number)}
               hasNotes={notesSet.has(v.day_number)}
+              unlockDate={unlockDates?.[String(v.day_number)] ?? null}
               onRefresh={onSessionRefresh}
               canBypassTrainingLocks={canBypassTrainingLocks}
             />
-            {canEditTrainingContent ? <TrainingDayAdmin dayNumber={v.day_number} /> : null}
+            {canEditTrainingContent ? <TrainingDayAdmin video={v} /> : null}
           </div>
         ))}
       </div>

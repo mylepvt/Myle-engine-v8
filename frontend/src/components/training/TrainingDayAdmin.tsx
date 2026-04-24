@@ -1,15 +1,23 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import type { TrainingSurfacePayload } from '@/hooks/use-system-surface-query'
 import { useUpdateTrainingDayMutation, useUploadTrainingAudioMutation } from '@/hooks/use-training-query'
 
-type Props = { dayNumber: number }
+type Props = {
+  video: TrainingSurfacePayload['videos'][number]
+}
+
+function normalizeValue(value: string | null | undefined): string {
+  return typeof value === 'string' ? value.trim() : ''
+}
 
 /**
- * Training day editor — must only be mounted when the authenticated user is an admin
- * (not “view as” preview). Parent is responsible for conditional rendering.
+ * Training day editor — mounted only for real admins. It can stay visible even when
+ * admin is previewing another role so content fixes remain accessible.
  */
-export function TrainingDayAdmin({ dayNumber }: Props) {
+export function TrainingDayAdmin({ video }: Props) {
+  const dayNumber = video.day_number
   const [title, setTitle] = useState('')
   const [youtubeUrl, setYoutubeUrl] = useState('')
   const [audioUrl, setAudioUrl] = useState('')
@@ -21,14 +29,37 @@ export function TrainingDayAdmin({ dayNumber }: Props) {
   const updateDay = useUpdateTrainingDayMutation()
   const uploadAudio = useUploadTrainingAudioMutation()
 
+  const currentTitle = normalizeValue(video.title)
+  const currentYoutubeUrl = normalizeValue(video.youtube_url)
+  const currentAudioUrl = normalizeValue(video.audio_url)
+
+  useEffect(() => {
+    setTitle(video.title)
+    setYoutubeUrl(currentYoutubeUrl)
+    setAudioUrl(currentAudioUrl)
+    setAudioFile(null)
+    setMsg(null)
+    setErr(null)
+    if (audioRef.current) audioRef.current.value = ''
+  }, [dayNumber, video.title, currentYoutubeUrl, currentAudioUrl])
+
   const save = async () => {
     setMsg(null)
     setErr(null)
     try {
       const payload: { title?: string; youtube_url?: string; audio_url?: string } = {}
-      if (title.trim()) payload.title = title.trim()
-      if (youtubeUrl.trim()) payload.youtube_url = youtubeUrl.trim()
-      if (audioUrl.trim()) payload.audio_url = audioUrl.trim()
+      const nextTitle = title.trim()
+      const nextYoutubeUrl = youtubeUrl.trim()
+      const nextAudioUrl = audioUrl.trim()
+
+      if (nextTitle && nextTitle !== currentTitle) payload.title = nextTitle
+      if (nextYoutubeUrl !== currentYoutubeUrl) payload.youtube_url = nextYoutubeUrl
+      if (nextAudioUrl !== currentAudioUrl) payload.audio_url = nextAudioUrl
+
+      if (!audioFile && Object.keys(payload).length === 0) {
+        setMsg('No changes to save')
+        return
+      }
       if (Object.keys(payload).length > 0) {
         await updateDay.mutateAsync({ dayNumber, payload })
       }
@@ -44,14 +75,42 @@ export function TrainingDayAdmin({ dayNumber }: Props) {
     }
   }
 
+  const clearVideo = async () => {
+    setMsg(null)
+    setErr(null)
+    try {
+      await updateDay.mutateAsync({ dayNumber, payload: { youtube_url: '' } })
+      setYoutubeUrl('')
+      setMsg('Video removed')
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown error'
+      setErr(`Remove failed: ${msg}`)
+    }
+  }
+
+  const clearAudio = async () => {
+    setMsg(null)
+    setErr(null)
+    try {
+      await updateDay.mutateAsync({ dayNumber, payload: { audio_url: '' } })
+      setAudioUrl('')
+      setAudioFile(null)
+      if (audioRef.current) audioRef.current.value = ''
+      setMsg('Audio removed')
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown error'
+      setErr(`Remove failed: ${msg}`)
+    }
+  }
+
   return (
-    <div className="mt-3 overflow-hidden rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.07] via-transparent to-transparent p-4 min-w-0">
+    <div className="mt-3 min-w-0 overflow-hidden rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.07] via-transparent to-transparent p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-amber-300/90">Admin editor</p>
           <p className="mt-1 text-sm font-semibold text-foreground">Update day {dayNumber}</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Change the title, video and audio shown to learners.
+            Edit the current title, swap media links, or remove media that should no longer show.
           </p>
         </div>
         {msg ? (
@@ -80,6 +139,14 @@ export function TrainingDayAdmin({ dayNumber }: Props) {
             value={youtubeUrl}
             onChange={(e) => setYoutubeUrl(e.target.value)}
           />
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span>{currentYoutubeUrl ? 'Video linked right now' : 'No video linked yet'}</span>
+            {currentYoutubeUrl ? (
+              <Button type="button" variant="ghost" size="sm" className="h-7 px-2" onClick={() => void clearVideo()}>
+                Remove video
+              </Button>
+            ) : null}
+          </div>
         </label>
 
         <label className="block">
@@ -90,6 +157,14 @@ export function TrainingDayAdmin({ dayNumber }: Props) {
             value={audioUrl}
             onChange={(e) => setAudioUrl(e.target.value)}
           />
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span>{currentAudioUrl ? 'Audio linked right now' : 'No audio linked yet'}</span>
+            {currentAudioUrl ? (
+              <Button type="button" variant="ghost" size="sm" className="h-7 px-2" onClick={() => void clearAudio()}>
+                Remove audio
+              </Button>
+            ) : null}
+          </div>
         </label>
 
         <label className="block md:col-span-2">
@@ -98,11 +173,14 @@ export function TrainingDayAdmin({ dayNumber }: Props) {
             <input
               ref={audioRef}
               type="file"
-              accept="audio/*"
+              accept=".aac,.m4a,.mp3,.ogg,.wav,.webm,audio/*"
               className="block w-full min-w-0 max-w-full text-xs file:mr-2 file:rounded file:border-0 file:bg-white/10 file:px-2 file:py-1 file:text-xs"
               onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
             />
           </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            `.m4a`, `.mp3`, `.wav`, `.ogg` and similar audio files are supported.
+          </p>
         </label>
       </div>
 

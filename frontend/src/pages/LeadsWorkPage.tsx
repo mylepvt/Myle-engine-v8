@@ -17,7 +17,9 @@ import {
   useLeadsInfiniteQuery,
   usePatchLeadMutation,
 } from '@/hooks/use-leads-query'
+import { useSendEnrollmentVideoMutation } from '@/hooks/use-enroll-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
+import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import { teamLeadStatusSelectOptions } from '@/lib/team-lead-status'
 import type { Role } from '@/types/role'
 
@@ -48,7 +50,7 @@ function emptyListHint(role: Role | null, archivedOnly: boolean): string {
     return 'No leads match this view — adjust filters or add one above. You see all active leads (admin scope).'
   }
   if (role === 'leader') {
-    return 'No leads match this view — adjust filters or add one above. You see your leads and your downline’s leads (same rules as workboard).'
+    return 'No leads match this view — adjust filters or add one above. You see only your personal calling leads here.'
   }
   return 'No leads match this view — adjust filters or add one above. You see only leads you created.'
 }
@@ -56,11 +58,16 @@ function emptyListHint(role: Role | null, archivedOnly: boolean): string {
 export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const archivedOnly = listMode === 'archived'
   const leadsListMode = listMode === 'archived' ? 'archived' : 'active'
-  const { role } = useDashboardShellRole()
+  const { role, serverRole } = useDashboardShellRole()
+  const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
   const [searchParams] = useSearchParams()
   const qParam = searchParams.get('q') ?? ''
   const [qInput, setQInput] = useState(qParam)
   const [filters, setFilters] = useState<LeadListFilters>({ ...emptyFilters, q: qParam })
+  const crossSectionSearch =
+    !archivedOnly &&
+    filters.q.trim().length > 0 &&
+    (surfaceRole === 'admin' || surfaceRole === 'leader')
   const [newStatus, setNewStatus] = useState<LeadStatus>('new_lead')
   const [name, setName] = useState('')
   const [newPhone, setNewPhone] = useState('')
@@ -74,7 +81,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const [importHint, setImportHint] = useState<string | null>(null)
   const importFileRef = useRef<HTMLInputElement>(null)
   const importMut = useImportLeadsFileMutation()
-  const canFileImport = role === 'leader' || role === 'team'
+  const canFileImport = surfaceRole === 'leader' || surfaceRole === 'team'
 
   useEffect(() => {
     setQInput(qParam)
@@ -101,6 +108,8 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
     !archivedOnly && advancedTableOpen,
     filters,
     'active',
+    50,
+    crossSectionSearch ? { searchAllSections: true } : undefined,
   )
   const data = leadsQ.data
   const items = data?.pages.flatMap((p) => p.items) ?? []
@@ -113,6 +122,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const createMut = useCreateLeadMutation()
   const deleteMut = useDeleteLeadMutation()
   const patchMut = usePatchLeadMutation()
+  const sendEnrollmentMut = useSendEnrollmentVideoMutation()
   const patchBusyLeadId =
     patchMut.isPending && patchMut.variables && typeof patchMut.variables.id === 'number'
       ? patchMut.variables.id
@@ -121,13 +131,27 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
     deleteMut.isPending && typeof deleteMut.variables === 'number' ? deleteMut.variables : null
 
   const addStatusOptions = useMemo(
-    () => teamLeadStatusSelectOptions(role ?? null, LEAD_STATUS_OPTIONS),
-    [role],
+    () => teamLeadStatusSelectOptions(surfaceRole ?? null, LEAD_STATUS_OPTIONS),
+    [surfaceRole],
   )
 
   const onPatchStatus = useCallback(
-    (id: number, status: LeadStatus) => void patchMut.mutateAsync({ id, body: { status } }),
-    [patchMut],
+    (id: number, status: LeadStatus) => {
+      if (status === 'video_sent') {
+        void sendEnrollmentMut
+          .mutateAsync(id)
+          .then((result) => {
+            const manualUrl = result.delivery.manual_share_url?.trim()
+            if (manualUrl) {
+              window.open(manualUrl, '_blank', 'noopener,noreferrer')
+            }
+          })
+          .catch(() => {})
+        return
+      }
+      void patchMut.mutateAsync({ id, body: { status } })
+    },
+    [patchMut, sendEnrollmentMut],
   )
   const onPatchPool = useCallback(
     (id: number) => void patchMut.mutateAsync({ id, body: { in_pool: true } }),
@@ -241,13 +265,13 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
               ) : null}
             </p>
             {items.length === 0 ? (
-              <p>{emptyListHint(role ?? null, archivedOnly)}</p>
+              <p>{emptyListHint(surfaceRole ?? null, archivedOnly)}</p>
             ) : (
               <div className="-mx-1 max-w-full overflow-x-auto rounded-md border border-border/50">
                 <LeadsVirtualizedBody
                   items={items}
                   archivedOnly={archivedOnly}
-                  role={role ?? null}
+                  role={surfaceRole ?? null}
                   patchBusyLeadId={patchBusyLeadId}
                   deleteBusyLeadId={deleteBusyLeadId}
                   onPatchStatus={onPatchStatus}
@@ -279,6 +303,11 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                 {patchMut.error instanceof Error ? patchMut.error.message : 'Update failed'}
               </p>
             ) : null}
+            {sendEnrollmentMut.isError ? (
+              <p className="mt-2 text-xs text-destructive" role="alert">
+                {sendEnrollmentMut.error instanceof Error ? sendEnrollmentMut.error.message : 'Enrollment send failed'}
+              </p>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -289,56 +318,58 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
     <div className="mx-auto max-w-6xl">
       <div className="mx-auto min-h-[50dvh] max-w-[430px] bg-background pb-8 text-foreground transition-colors md:max-w-[480px]">
         <div className="border-b border-border/60 bg-card/55 px-4 pb-2 pt-2 supports-[backdrop-filter]:bg-card/40">
-          <div className="flex items-center gap-2">
-            <div className="surface-inset flex h-9 flex-1 items-center gap-1.5 rounded-lg px-2.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="surface-inset flex h-9 min-w-0 basis-full items-center gap-1.5 rounded-lg px-2.5 min-[360px]:basis-0 min-[360px]:flex-1">
               <Search className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
               <input
                 type="text"
                 value={qInput}
                 onChange={(e) => setQInput(e.target.value)}
-                placeholder="Search leads..."
+                placeholder="Search name, phone, email..."
                 className="min-w-0 flex-1 bg-transparent text-ds-caption text-foreground outline-none placeholder:text-muted-foreground"
                 autoComplete="off"
               />
             </div>
-            <button
-              type="button"
-              aria-label="Filters"
-              onClick={() => setFilterOpen((o) => !o)}
-              className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-sm transition hover:bg-muted hover:text-foreground"
-            >
-              <Filter className="size-3.5" />
-            </button>
-            {canFileImport ? (
-              <>
-                <input
-                  ref={importFileRef}
-                  type="file"
-                  accept=".pdf,application/pdf"
-                  className="sr-only"
-                  aria-hidden
-                  tabIndex={-1}
-                  onChange={(ev) => void handleImportFilePick(ev)}
-                />
-                <button
-                  type="button"
-                  aria-label="Import leads from PDF"
-                  disabled={importMut.isPending}
-                  onClick={() => importFileRef.current?.click()}
-                  className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-sm transition hover:bg-muted hover:text-foreground disabled:opacity-50"
-                >
-                  <Upload className="size-3.5" />
-                </button>
-              </>
-            ) : null}
-            <button
-              type="button"
-              aria-label="Add lead"
-              onClick={() => setQuickAddOpen(true)}
-              className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-md transition active:scale-95"
-            >
-              <Plus className="size-3.5" />
-            </button>
+            <div className="ml-auto flex w-full items-center justify-end gap-2 min-[360px]:w-auto">
+              <button
+                type="button"
+                aria-label="Filters"
+                onClick={() => setFilterOpen((o) => !o)}
+                className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-sm transition hover:bg-muted hover:text-foreground"
+              >
+                <Filter className="size-3.5" />
+              </button>
+              {canFileImport ? (
+                <>
+                  <input
+                    ref={importFileRef}
+                    type="file"
+                    accept=".pdf,application/pdf"
+                    className="sr-only"
+                    aria-hidden
+                    tabIndex={-1}
+                    onChange={(ev) => void handleImportFilePick(ev)}
+                  />
+                  <button
+                    type="button"
+                    aria-label="Import leads from PDF"
+                    disabled={importMut.isPending}
+                    onClick={() => importFileRef.current?.click()}
+                    className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-sm transition hover:bg-muted hover:text-foreground disabled:opacity-50"
+                  >
+                    <Upload className="size-3.5" />
+                  </button>
+                </>
+              ) : null}
+              <button
+                type="button"
+                aria-label="Add lead"
+                onClick={() => setQuickAddOpen(true)}
+                className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-md transition active:scale-95"
+              >
+                <Plus className="size-3.5" />
+              </button>
+            </div>
           </div>
           {importHint ? (
             <p className="mt-1 px-1 text-ds-caption text-muted-foreground" role="status">
@@ -382,6 +413,12 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
           </div>
         ) : null}
 
+        {crossSectionSearch ? (
+          <div className="border-b border-border px-4 py-2 text-ds-caption text-muted-foreground">
+            Search results include workboard, retarget, and archived leads for this role.
+          </div>
+        ) : null}
+
         <CtcsWorkSurface filters={filters} patchBusyLeadId={patchBusyLeadId} />
 
         <details
@@ -419,13 +456,13 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                       ) : null}
                     </p>
                     {classicLeadsQ.data.pages.flatMap((p) => p.items).length === 0 ? (
-                      <p className="px-2 text-sm">{emptyListHint(role ?? null, false)}</p>
+                      <p className="px-2 text-sm">{emptyListHint(surfaceRole ?? null, false)}</p>
                     ) : (
                       <div className="-mx-1 max-w-full overflow-x-auto rounded-md border border-border">
                         <LeadsVirtualizedBody
                           items={classicLeadsQ.data.pages.flatMap((p) => p.items)}
                           archivedOnly={false}
-                          role={role ?? null}
+                          role={surfaceRole ?? null}
                           patchBusyLeadId={patchBusyLeadId}
                           deleteBusyLeadId={deleteBusyLeadId}
                           onPatchStatus={onPatchStatus}
@@ -465,6 +502,11 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
         {patchMut.isError ? (
           <p className="mt-2 px-4 text-xs text-destructive" role="alert">
             {patchMut.error instanceof Error ? patchMut.error.message : 'Update failed'}
+          </p>
+        ) : null}
+        {sendEnrollmentMut.isError ? (
+          <p className="mt-2 px-4 text-xs text-destructive" role="alert">
+            {sendEnrollmentMut.error instanceof Error ? sendEnrollmentMut.error.message : 'Enrollment send failed'}
           </p>
         ) : null}
 

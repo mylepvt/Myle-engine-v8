@@ -15,7 +15,13 @@ from app.schemas.follow_ups import (
     FollowUpPublic,
     FollowUpUpdate,
 )
+from app.services.crm_outbox import enqueue_lead_shadow_upsert
 from app.services.lead_access import require_visible_lead
+from app.services.lead_owner import lead_owner_clause
+from app.services.team_tracking import (
+    record_followup_completion_activity,
+    refresh_daily_member_stat_after_change,
+)
 
 router = APIRouter()
 
@@ -44,7 +50,7 @@ def _to_public(fu: FollowUp, lead_name: str) -> FollowUpPublic:
 def _list_filters(user: AuthUser, open_only: bool):
     parts = []
     if user.role != "admin":
-        parts.append(Lead.created_by_user_id == user.user_id)
+        parts.append(lead_owner_clause(user.user_id))
     if open_only:
         parts.append(FollowUp.completed_at.is_(None))
     return parts
@@ -109,7 +115,7 @@ async def _get_follow_up_for_user(
     _ensure_follow_up_access(user)
     q = select(FollowUp, Lead).join(Lead, FollowUp.lead_id == Lead.id).where(FollowUp.id == follow_up_id)
     if user.role != "admin":
-        q = q.where(Lead.created_by_user_id == user.user_id)
+        q = q.where(lead_owner_clause(user.user_id))
     row = (await session.execute(q)).one_or_none()
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Follow-up not found")
@@ -135,22 +141,44 @@ async def update_follow_up(
     if "due_at" in patch:
         fu.due_at = patch["due_at"]
     was_completed = fu.completed_at is not None
+    previous_completed_at = fu.completed_at
+    previous_completed_by_user_id = fu.completed_by_user_id
     if "completed" in patch:
         if patch["completed"] is True:
             fu.completed_at = datetime.now(timezone.utc)
+            fu.completed_by_user_id = user.user_id
         else:
             fu.completed_at = None
+            fu.completed_by_user_id = None
     newly_completed = (not was_completed) and fu.completed_at is not None
+    reopened = was_completed and fu.completed_at is None
+    lead_state_before = (lead.status, lead.assigned_to_user_id)
+    await session.flush()
+    if newly_completed and (lead.status, lead.assigned_to_user_id) != lead_state_before:
+        enqueue_lead_shadow_upsert(session, lead)
     await session.commit()
     await session.refresh(fu)
     if newly_completed:
+        await record_followup_completion_activity(
+            session,
+            user_id=user.user_id,
+            follow_up_id=fu.id,
+            lead_id=fu.lead_id,
+            occurred_at=fu.completed_at or datetime.now(timezone.utc),
+        )
         try:
             from app.services.xp_service import grant_xp
             await grant_xp(session, user.user_id, "followup_completed", fu.lead_id)
-            await session.commit()
         except Exception:
             pass
-    await notify_topics("follow_ups", "leads")
+        await session.commit()
+    elif reopened and previous_completed_by_user_id is not None:
+        await refresh_daily_member_stat_after_change(
+            session,
+            user_id=previous_completed_by_user_id,
+            occurred_at=previous_completed_at,
+        )
+    await notify_topics("follow_ups", "leads", "team_tracking")
     return _to_public(fu, lead.name)
 
 

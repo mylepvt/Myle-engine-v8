@@ -15,6 +15,33 @@ export type TeamMemberPublic = {
   upline_name?: string | null
   training_required?: boolean | null
   training_status?: string | null
+  access_blocked?: boolean | null
+  discipline_status?: string | null
+  grace_end_date?: string | null
+  grace_reason?: string | null
+  grace_request_end_date?: string | null
+  grace_request_reason?: string | null
+  grace_request_requested_at?: string | null
+  discipline_reset_on?: string | null
+  removed_at?: string | null
+  removed_by_user_id?: number | null
+  removal_reason?: string | null
+  calls_short_streak?: number | null
+  missing_report_streak?: number | null
+  compliance_level?:
+    | 'clear'
+    | 'warning'
+    | 'strong_warning'
+    | 'final_warning'
+    | 'grace'
+    | 'grace_ending'
+    | 'removed'
+    | 'not_applicable'
+    | null
+  compliance_title?: string | null
+  compliance_summary?: string | null
+  grace_active?: boolean | null
+  grace_ending_tomorrow?: boolean | null
 }
 
 export type TeamMemberListResponse = {
@@ -38,6 +65,20 @@ export type TeamEnrollmentListResponse = {
   offset: number
 }
 
+export type TeamEnrollmentHistoryItem = TeamEnrollmentRequest & {
+  reviewed_at: string
+  reviewed_by_user_id: number | null
+  reviewed_by_username: string | null
+  review_action: 'approved' | 'rejected'
+  review_note: string | null
+}
+
+export type TeamEnrollmentHistoryResponse = {
+  items: TeamEnrollmentHistoryItem[]
+  total: number
+  date: string
+}
+
 export type TeamEnrollmentRequest = {
   lead_id: number
   lead_name: string
@@ -47,8 +88,10 @@ export type TeamEnrollmentRequest = {
   payment_proof_uploaded_at: string | null
   uploaded_by_user_id: number | null
   uploaded_by_username: string | null
-  status: 'pending' | 'approved' | 'rejected'
+  status: 'pending' | 'proof_uploaded' | 'approved' | 'rejected'
 }
+
+const TEAM_MEMBERS_PAGE_SIZE = 100
 
 async function parseError(res: Response): Promise<never> {
   const err = await res.json().catch(() => ({}))
@@ -59,10 +102,32 @@ async function parseError(res: Response): Promise<never> {
   throw new Error(msg || `HTTP ${res.status}`)
 }
 
-async function fetchTeamMembers(): Promise<TeamMemberListResponse> {
-  const res = await apiFetch('/api/v1/team/members')
-  if (!res.ok) await parseError(res)
-  return res.json()
+export async function fetchTeamMembers(): Promise<TeamMemberListResponse> {
+  const items: TeamMemberPublic[] = []
+  let total = 0
+  let offset = 0
+
+  while (true) {
+    const res = await apiFetch(`/api/v1/team/members?limit=${TEAM_MEMBERS_PAGE_SIZE}&offset=${offset}`)
+    if (!res.ok) await parseError(res)
+
+    const page = (await res.json()) as TeamMemberListResponse
+    total = page.total
+    items.push(...page.items)
+
+    if (page.items.length === 0 || items.length >= total) {
+      break
+    }
+
+    offset += page.items.length
+  }
+
+  return {
+    items,
+    total: Math.max(total, items.length),
+    limit: items.length,
+    offset: 0,
+  }
 }
 
 async function fetchMyTeam(): Promise<TeamMyTeamResponse> {
@@ -73,6 +138,24 @@ async function fetchMyTeam(): Promise<TeamMyTeamResponse> {
 
 async function fetchEnrollmentRequests(): Promise<TeamEnrollmentListResponse> {
   const res = await apiFetch('/api/v1/team/enrollment-requests')
+  if (!res.ok) await parseError(res)
+  const body = (await res.json()) as TeamEnrollmentListResponse
+  return {
+    ...body,
+    items: body.items.map((item) => ({
+      ...item,
+      // Backend still stores actionable queue rows as payment_status=proof_uploaded.
+      // Normalize that to "pending" so the approvals UI behaves consistently.
+      status: (item.status === 'proof_uploaded' ? 'pending' : item.status) as TeamEnrollmentRequest['status'],
+    })),
+  }
+}
+
+async function fetchEnrollmentHistory(date: string): Promise<TeamEnrollmentHistoryResponse> {
+  const params = new URLSearchParams()
+  if (date.trim()) params.set('date', date.trim())
+  const qs = params.toString()
+  const res = await apiFetch(`/api/v1/team/enrollment-requests/history${qs ? `?${qs}` : ''}`)
   if (!res.ok) await parseError(res)
   return res.json()
 }
@@ -133,6 +216,14 @@ export function useEnrollmentRequestsQuery(enabled = true) {
     queryKey: ['team', 'enrollment-requests'],
     queryFn: fetchEnrollmentRequests,
     enabled,
+  })
+}
+
+export function useEnrollmentHistoryQuery(date: string, enabled = true) {
+  return useQuery({
+    queryKey: ['team', 'enrollment-history', date],
+    queryFn: () => fetchEnrollmentHistory(date),
+    enabled: enabled && date.trim().length > 0,
   })
 }
 
@@ -246,6 +337,94 @@ export function useUpdateMemberRoleMutation() {
   })
 }
 
+export async function updateMemberCompliance(body: {
+  userId: number
+  action:
+    | 'grant_grace'
+    | 'clear_grace'
+    | 'approve_grace_request'
+    | 'reject_grace_request'
+    | 'restore_access'
+    | 'remove_now'
+  graceEndDate?: string | null
+  reason?: string | null
+}): Promise<TeamMemberPublic> {
+  const res = await apiFetch(`/api/v1/team/members/${body.userId}/compliance`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: body.action,
+      grace_end_date: body.graceEndDate ?? undefined,
+      reason: body.reason ?? undefined,
+    }),
+  })
+  if (!res.ok) await parseError(res)
+  return res.json()
+}
+
+export function useUpdateMemberComplianceMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: updateMemberCompliance,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['team', 'members'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'my-team'] })
+      void queryClient.invalidateQueries({ queryKey: ['gate-assistant'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'tracking'] })
+    },
+  })
+}
+
+export async function requestMyGrace(body: {
+  graceEndDate: string
+  reason?: string | null
+}): Promise<TeamMemberPublic> {
+  const res = await apiFetch('/api/v1/team/me/grace-request', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      grace_end_date: body.graceEndDate,
+      reason: body.reason ?? undefined,
+    }),
+  })
+  if (!res.ok) await parseError(res)
+  return res.json()
+}
+
+export async function cancelMyGraceRequest(): Promise<TeamMemberPublic> {
+  const res = await apiFetch('/api/v1/team/me/grace-request', {
+    method: 'DELETE',
+  })
+  if (!res.ok) await parseError(res)
+  return res.json()
+}
+
+export function useRequestMyGraceMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: requestMyGrace,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['gate-assistant'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'my-team'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'members'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'tracking'] })
+    },
+  })
+}
+
+export function useCancelMyGraceRequestMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: cancelMyGraceRequest,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['gate-assistant'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'my-team'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'members'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'tracking'] })
+    },
+  })
+}
+
 export async function deleteMember(userId: number): Promise<void> {
   const res = await apiFetch(`/api/v1/team/members/${userId}`, { method: 'DELETE' })
   if (!res.ok && res.status !== 204) await parseError(res)
@@ -267,6 +446,7 @@ export function useEnrollmentDecisionMutation() {
     mutationFn: decideEnrollmentRequest,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['team', 'enrollment-requests'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'enrollment-history'] })
     },
   })
 }

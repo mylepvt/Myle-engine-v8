@@ -61,7 +61,7 @@ export function TeamHomeExecutionStrip({
               ) : (
                 <>
                   <div className="rounded-xl border border-primary/20 bg-primary/[0.08] px-3 py-3">
-                    <p className="text-ds-caption text-muted-foreground">Claimed today</p>
+                    <p className="text-ds-caption text-muted-foreground">Fresh leads today</p>
                     <p className="mt-1 font-heading text-xl font-semibold tabular-nums">{todayStats?.claimed_today ?? 0}</p>
                   </div>
                   <div className="rounded-xl border border-primary/20 bg-primary/[0.08] px-3 py-3">

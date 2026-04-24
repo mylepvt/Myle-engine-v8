@@ -34,6 +34,7 @@ from app.schemas.training_test import (
 from app.core.realtime_hub import notify_topics
 from app.services.shell_insights import build_decision_engine_snapshot
 from app.services.training_surface import build_training_surface
+from app.services.training_uploads import save_training_notes_image
 
 router = APIRouter()
 
@@ -48,6 +49,39 @@ def _require_admin(user: AuthUser) -> None:
 def _require_admin_or_leader(user: AuthUser) -> None:
     if user.role not in ("admin", "leader"):
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+
+async def _ensure_training_day_exists(session: AsyncSession, day_number: int) -> None:
+    exists = await session.execute(
+        select(TrainingVideo.id).where(TrainingVideo.day_number == day_number)
+    )
+    if exists.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail="Invalid training day",
+        )
+
+
+async def _ensure_day_unlocked_for_user(
+    session: AsyncSession,
+    *,
+    user_id: int,
+    day_number: int,
+) -> None:
+    if day_number <= 1:
+        return
+    previous = await session.execute(
+        select(TrainingProgress.id).where(
+            TrainingProgress.user_id == user_id,
+            TrainingProgress.day_number == day_number - 1,
+            TrainingProgress.completed.is_(True),
+        )
+    )
+    if previous.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail=f"Complete Day {day_number - 1} first",
+        )
 
 
 @router.get("/training", response_model=TrainingSurfaceResponse)
@@ -86,6 +120,44 @@ async def training_day_embed(
     return RedirectResponse(url=embed_url, status_code=302)
 
 
+@router.post("/training/days/{day_number}/notes")
+async def upload_training_notes(
+    day_number: int,
+    file: Annotated[UploadFile, File()],
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Upload notes image for one training day from the system training surface."""
+    await _ensure_training_day_exists(session, day_number)
+    await _ensure_day_unlocked_for_user(session, user_id=user.user_id, day_number=day_number)
+    try:
+        image_path = await save_training_notes_image(user.user_id, day_number, file)
+    except ValueError as exc:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    existing = (
+        await session.execute(
+            select(TrainingDayNote).where(
+                TrainingDayNote.user_id == user.user_id,
+                TrainingDayNote.day_number == day_number,
+            )
+        )
+    ).scalar_one_or_none()
+
+    if existing:
+        existing.image_url = image_path
+    else:
+        session.add(
+            TrainingDayNote(
+                user_id=user.user_id,
+                day_number=day_number,
+                image_url=image_path,
+            )
+        )
+    await session.commit()
+    return {"day_number": day_number, "image_url": image_path}
+
+
 @router.post("/training/mark-day", response_model=TrainingSurfaceResponse)
 async def mark_training_day(
     body: MarkTrainingDayBody,
@@ -93,14 +165,7 @@ async def mark_training_day(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> TrainingSurfaceResponse:
     """Mark one training day complete (legacy day-by-day). All catalog days done → training gate cleared."""
-    vq = await session.execute(
-        select(TrainingVideo.id).where(TrainingVideo.day_number == body.day_number)
-    )
-    if vq.scalar_one_or_none() is None:
-        raise HTTPException(
-            status_code=http_status.HTTP_404_NOT_FOUND,
-            detail="Invalid training day",
-        )
+    await _ensure_training_day_exists(session, body.day_number)
 
     # Get current progress to enforce sequential and calendar rules
     current_progress = await session.execute(

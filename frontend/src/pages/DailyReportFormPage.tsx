@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 
+import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { Skeleton } from '@/components/ui/skeleton'
 import { apiFetch } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -53,11 +54,13 @@ type Props = { title: string }
 
 export function DailyReportFormPage({ title }: Props) {
   const qc = useQueryClient()
+  const { data: me } = useAuthMeQuery()
   const [dateIso, setDateIso] = useState(todayIsoLocal)
   const [remarks, setRemarks] = useState('')
   const [ints, setInts] = useState<Record<string, number>>(() =>
     Object.fromEntries(INT_FIELDS.map(({ key }) => [key, 0])),
   )
+  const canPickDate = me?.role === 'admin'
 
   const q = useQuery({
     queryKey: ['daily-report-mine', dateIso],
@@ -113,8 +116,9 @@ export function DailyReportFormPage({ title }: Props) {
     <div className="max-w-3xl space-y-6">
       <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
       <p className="text-sm text-muted-foreground">
-        Submit numbers for a calendar day. First save awards +20 score points for that day (legacy rule); updates keep
-        fields fresh without double-counting.
+        {canPickDate
+          ? 'Submit numbers for a calendar day. First save awards +20 score points for that day (legacy rule); updates keep fields fresh without double-counting.'
+          : "Submit today's numbers only. First save awards +20 score points for the day; updates keep fields fresh without double-counting."}
       </p>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -124,7 +128,7 @@ export function DailyReportFormPage({ title }: Props) {
             type="date"
             value={dateIso}
             onChange={(e) => setDateIso(e.target.value)}
-            disabled={mut.isPending}
+            disabled={mut.isPending || !canPickDate}
             className="rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-foreground disabled:opacity-50"
           />
         </label>

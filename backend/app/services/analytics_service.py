@@ -13,6 +13,7 @@ from app.models.daily_score import DailyScore
 from app.models.lead import Lead
 from app.models.user import User
 from app.models.wallet_ledger import WalletLedgerEntry
+from app.services.live_metrics import analytics_scope_user_ids
 
 
 class AnalyticsService:
@@ -22,15 +23,42 @@ class AnalyticsService:
         self.session = session
 
     async def get_team_performance_summary(
-        self, leader_user_id: int, days: int = 30
+        self,
+        leader_user_id: int,
+        requester_role: str,
+        days: int = 30,
     ) -> Dict:
         """Get comprehensive team performance summary for leader."""
         end_date = date.today()
         start_date = end_date - timedelta(days=days)
 
-        # Get team member IDs (simplified - implement based on your hierarchy)
-        team_user_ids = await self._get_team_user_ids(leader_user_id)
-        team_user_ids.append(leader_user_id)  # Include leader
+        team_user_ids = await self._get_team_user_ids(leader_user_id, requester_role)
+        if not team_user_ids:
+            return {
+                "period": f"{days} days",
+                "team_size": 0,
+                "reports": {
+                    "total_reports": 0,
+                    "total_calls": 0,
+                    "calls_picked": 0,
+                    "enrollments": 0,
+                    "payments": 0,
+                    "avg_daily_calls": 0.0,
+                    "pickup_rate": 0.0,
+                },
+                "leads": {
+                    "total_leads": 0,
+                    "converted_leads": 0,
+                    "paid_leads": 0,
+                    "conversion_rate": 0.0,
+                    "payment_rate": 0.0,
+                },
+                "scores": {
+                    "total_points": 0,
+                    "avg_daily_points": 0.0,
+                    "days_with_reports": 0,
+                },
+            }
 
         # Daily reports summary
         reports_q = await self.session.execute(
@@ -344,10 +372,11 @@ class AnalyticsService:
             select(
                 func.count(func.distinct(WalletLedgerEntry.user_id)).label("active_wallets"),
                 func.sum(case((WalletLedgerEntry.amount_cents > 0, WalletLedgerEntry.amount_cents), else_=0)).label("total_credits"),
-                func.sum(case((WalletLedgerEntry.amount_cents < 0, abs(WalletLedgerEntry.amount_cents)), else_=0)).label("total_debits"),
+                func.sum(case((WalletLedgerEntry.amount_cents < 0, func.abs(WalletLedgerEntry.amount_cents)), else_=0)).label("total_debits"),
             )
             .where(
-                WalletLedgerEntry.created_at >= datetime.combine(start_date, datetime.min.time())
+                WalletLedgerEntry.created_at >= datetime.combine(start_date, datetime.min.time()),
+                WalletLedgerEntry.created_at <= datetime.combine(end_date, datetime.max.time()),
             )
         )
         wallet_data = wallet_q.first()
@@ -373,14 +402,19 @@ class AnalyticsService:
             },
             "wallet": {
                 "active_wallets": wallet_data.active_wallets or 0,
-                "total_credits": wallet_data.total_cents or 0,
+                "total_credits": wallet_data.total_credits or 0,
                 "total_debits": wallet_data.total_debits or 0,
-                "net_volume": (wallet_data.total_cents or 0) - (wallet_data.total_debits or 0),
+                "net_volume": (wallet_data.total_credits or 0) - (wallet_data.total_debits or 0),
             },
         }
 
     async def get_daily_report_trends(
-        self, user_id: Optional[int] = None, days: int = 30
+        self,
+        user_id: Optional[int] = None,
+        days: int = 30,
+        *,
+        requester_user_id: Optional[int] = None,
+        requester_role: Optional[str] = None,
     ) -> List[Dict]:
         """Get daily report trends for user or team."""
         end_date = date.today()
@@ -393,8 +427,16 @@ class AnalyticsService:
                 DailyReport.report_date >= start_date,
                 DailyReport.report_date <= end_date,
             )
+        elif requester_user_id is not None and requester_role in {"leader", "admin"}:
+            scoped_ids = await self._get_team_user_ids(requester_user_id, requester_role)
+            if not scoped_ids:
+                return []
+            where_clause = and_(
+                DailyReport.user_id.in_(scoped_ids),
+                DailyReport.report_date >= start_date,
+                DailyReport.report_date <= end_date,
+            )
         else:
-            # Team trends - implement based on your team logic
             where_clause = and_(
                 DailyReport.report_date >= start_date,
                 DailyReport.report_date <= end_date,
@@ -426,8 +468,11 @@ class AnalyticsService:
             for row in trends_data
         ]
 
-    async def _get_team_user_ids(self, leader_user_id: int) -> List[int]:
-        """Get user IDs of team members under this leader."""
-        # This would typically query a hierarchy table
-        # For now, return empty - implement based on your user hierarchy
-        return []
+    async def _get_team_user_ids(self, leader_user_id: int, requester_role: str) -> List[int]:
+        """Scope ids for leader/admin analytics."""
+        ids = await analytics_scope_user_ids(
+            self.session,
+            user_id=leader_user_id,
+            role=requester_role,
+        )
+        return sorted({int(uid) for uid in ids})

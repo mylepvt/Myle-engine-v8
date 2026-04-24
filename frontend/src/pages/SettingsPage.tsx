@@ -40,13 +40,15 @@ import { apiUrl } from '@/lib/api'
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile')
   const { data: authData } = useAuthMeQuery()
+  const userRole = authData?.role as Role | undefined
+  const isAdmin = userRole === 'admin'
   
   // Queries
   const userProfile = useUserProfileQuery()
   const userPreferences = useUserPreferencesQuery()
-  const systemConfig = useSystemConfigurationQuery()
-  const usersSummary = useSystemUsersSummaryQuery()
-  const appSettings = useAppSettingsQuery()
+  const systemConfig = useSystemConfigurationQuery(isAdmin)
+  const usersSummary = useSystemUsersSummaryQuery(isAdmin)
+  const appSettings = useAppSettingsQuery(isAdmin)
   
   // Mutations
   const updateProfile = useUserProfileUpdateMutation()
@@ -83,9 +85,6 @@ export default function SettingsPage() {
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [settingError, setSettingError] = useState<string | null>(null)
   const [deleteConfirmKey, setDeleteConfirmKey] = useState<string | null>(null)
-
-  const userRole = authData?.role as Role | undefined
-  const isAdmin = userRole === 'admin'
 
   const [profileSuccess, setProfileSuccess] = useState<string | null>(null)
   const [profileError, setProfileError] = useState<string | null>(null)
@@ -632,6 +631,15 @@ export default function SettingsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                <div className="rounded-xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-sm text-amber-950 dark:text-amber-100">
+                  <p className="font-medium text-amber-950 dark:text-amber-50">Enrollment video setup</p>
+                  <p className="mt-1 leading-relaxed text-amber-900/90 dark:text-amber-100/90">
+                    Secure enrollment room ke liye `enrollment_video_source_url` me direct `.mp4` / hosted video link
+                    set karein. YouTube link mat use karein. Optional keys: `enrollment_video_title`, aur split-domain
+                    deploy ho to `public_app_url`.
+                  </p>
+                </div>
+
                 {/* Add New Setting */}
                 <div className="space-y-4">
                   <h4 className="font-medium">Add New Setting</h4>

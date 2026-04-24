@@ -22,6 +22,7 @@ from app.core.passwords import (
 from app.db.session import AsyncSessionLocal
 from app.models.password_reset_token import PasswordResetToken
 from app.models.user import User
+from app.services.member_compliance import ensure_user_compliance_snapshot
 from app.services.push_service import send_push_to_role_bg
 from app.schemas.auth import (
     DevLoginRequest,
@@ -47,6 +48,7 @@ from app.services.login_identity import (
     resolve_user_by_fbo_or_username,
     validate_upline_for_team_registration,
 )
+from app.services.team_tracking import record_login_activity
 from app.core.auth_login_guards import ensure_may_issue_session_cookies
 
 router = APIRouter()
@@ -55,6 +57,7 @@ router = APIRouter()
 @router.get("/me", response_model=MeResponse)
 async def read_me(
     request: Request,
+    response: Response,
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> MeResponse:
     token = request.cookies.get(MYLE_ACCESS_COOKIE)
@@ -94,9 +97,26 @@ async def read_me(
         tr_b = tr_raw
     avatar_url_s: str | None = None
     if user_id is not None:
+        await ensure_user_compliance_snapshot(session, user_id=user_id, apply_actions=True)
         row = await session.get(User, user_id)
         if row is not None:
+            try:
+                ensure_may_issue_session_cookies(row)
+            except HTTPException:
+                clear_session_cookies(response)
+                return MeResponse()
             avatar_url_s = row.avatar_url
+            role = row.role
+            email_s = row.email
+            fbo_s = row.fbo_id
+            un_s = (row.username or "").strip() or None
+            dn_s = (row.name or row.username or row.fbo_id or "").strip() or None
+            ts_s = row.training_status
+            tr_b = bool(row.training_required)
+            rs_s = row.registration_status
+        else:
+            clear_session_cookies(response)
+            return MeResponse()
     return MeResponse(
         authenticated=True,
         role=role,
@@ -346,6 +366,11 @@ async def dev_login(
         user.email = email
         await session.commit()
         await session.refresh(user)
+    await ensure_user_compliance_snapshot(session, user_id=user.id, apply_actions=True)
+    await session.refresh(user)
+    ensure_may_issue_session_cookies(user)
+    await record_login_activity(session, user_id=user.id)
+    await session.commit()
     issue_session_cookies(response, user)
     return DevLoginResponse()
 
@@ -370,9 +395,11 @@ async def login_with_password(
         )
     if should_upgrade_stored_password_to_bcrypt(user.hashed_password):
         user.hashed_password = hash_password(body.password)
-        await session.commit()
-        await session.refresh(user)
+    await ensure_user_compliance_snapshot(session, user_id=user.id, apply_actions=True)
+    await session.refresh(user)
     ensure_may_issue_session_cookies(user)
+    await record_login_activity(session, user_id=user.id)
+    await session.commit()
     issue_session_cookies(response, user, remember_me=body.remember_me)
     return DevLoginResponse()
 
@@ -410,6 +437,8 @@ async def refresh_session(
             detail="User not found",
         )
     remember = bool(payload.get("remember", False))
+    await ensure_user_compliance_snapshot(session, user_id=user.id, apply_actions=True)
+    await session.refresh(user)
     ensure_may_issue_session_cookies(user)
     issue_session_cookies(response, user, remember_me=remember)
     return DevLoginResponse()

@@ -258,28 +258,47 @@ function playSoftTap(graph: AudioGraph) {
   const now = ctx.currentTime + 0.005
   scheduleTone(ctx, output, {
     at: now,
-    frequency: 960,
-    endFrequency: 720,
+    frequency: 720,
+    endFrequency: 470,
     type: 'triangle',
-    peak: 0.018,
-    decay: 0.055,
-    pan: -0.04,
+    peak: 0.011,
+    attack: 0.002,
+    decay: 0.024,
+    filter: {
+      type: 'lowpass',
+      frequency: 1350,
+      q: 0.35,
+    },
   })
   scheduleTone(ctx, output, {
-    at: now + 0.003,
-    frequency: 1920,
-    endFrequency: 1480,
+    at: now + 0.001,
+    frequency: 1480,
+    endFrequency: 1180,
+    type: 'square',
+    peak: 0.0028,
+    attack: 0.001,
+    decay: 0.012,
+    filter: {
+      type: 'bandpass',
+      frequency: 1850,
+      q: 1.3,
+    },
+  })
+  scheduleTone(ctx, output, {
+    at: now,
+    frequency: 420,
+    endFrequency: 340,
     type: 'sine',
-    peak: 0.0065,
-    decay: 0.035,
-    pan: 0.08,
+    peak: 0.0022,
+    attack: 0.002,
+    decay: 0.03,
   })
   scheduleNoise(ctx, output, {
     at: now,
-    duration: 0.02,
-    peak: 0.0018,
-    highpass: 2400,
-    lowpass: 7600,
+    duration: 0.01,
+    peak: 0.00075,
+    highpass: 1900,
+    lowpass: 4200,
   })
 }
 

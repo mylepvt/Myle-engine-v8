@@ -6,11 +6,16 @@ from dataclasses import dataclass
 from typing import Annotated, Optional
 
 from fastapi import Depends, HTTPException, Request, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth_cookie import MYLE_ACCESS_COOKIE
 from app.core.config import settings
+from app.core.auth_login_guards import ensure_may_issue_session_cookies
 from app.core.jwt_tokens import decode_access_token
 from app.db.session import get_db
+from app.models.user import User
+from app.services.member_compliance import ensure_user_compliance_snapshot
 
 __all__ = ["get_db", "AuthUser", "require_auth_user", "optional_auth_user_from_token"]
 
@@ -67,14 +72,35 @@ def optional_auth_user_from_token(token: Optional[str]) -> Optional[AuthUser]:
     )
 
 
-def require_auth_user(request: Request) -> AuthUser:
-    user = optional_auth_user_from_token(request.cookies.get(MYLE_ACCESS_COOKIE))
-    if user is None:
+async def require_auth_user(
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> AuthUser:
+    token_user = optional_auth_user_from_token(request.cookies.get(MYLE_ACCESS_COOKIE))
+    if token_user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required",
         )
-    return user
+    await ensure_user_compliance_snapshot(session, user_id=token_user.user_id, apply_actions=True)
+    row = (
+        await session.execute(select(User).where(User.id == token_user.user_id))
+    ).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+    ensure_may_issue_session_cookies(row)
+    return AuthUser(
+        user_id=row.id,
+        role=row.role,
+        email=row.email,
+        fbo_id=row.fbo_id,
+        username=(row.username or "").strip(),
+        display_name=(row.name or row.username or row.fbo_id or "").strip(),
+        auth_version=token_user.auth_version,
+    )
 
 
 CurrentUser = Annotated[AuthUser, Depends(require_auth_user)]

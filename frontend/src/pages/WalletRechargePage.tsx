@@ -254,6 +254,12 @@ export function WalletRechargePage({ title }: Props) {
                 {r.admin_note ? (
                   <p className="mt-1 text-xs text-muted-foreground">Note: {r.admin_note}</p>
                 ) : null}
+                {r.reviewed_at ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Reviewed {new Date(r.reviewed_at).toLocaleString()}
+                    {r.reviewed_by_name?.trim() ? ` by ${r.reviewed_by_name.trim()}` : ''}
+                  </p>
+                ) : null}
               </li>
             ))}
           </ul>

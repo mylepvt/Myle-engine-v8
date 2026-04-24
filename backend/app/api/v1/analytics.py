@@ -109,7 +109,7 @@ async def get_team_performance(
     
     service = AnalyticsService(session)
     try:
-        performance = await service.get_team_performance_summary(user.user_id, days)
+        performance = await service.get_team_performance_summary(user.user_id, user.role, days)
         return TeamPerformanceResponse(**performance)
     except Exception as e:
         raise HTTPException(
@@ -204,7 +204,12 @@ async def get_daily_trends(
     
     service = AnalyticsService(session)
     try:
-        trends = await service.get_daily_report_trends(target_id, days)
+        trends = await service.get_daily_report_trends(
+            target_id,
+            days,
+            requester_user_id=user.user_id,
+            requester_role=user.role,
+        )
         return DailyTrendsResponse(trends=trends, period=f"{days} days")
     except Exception as e:
         raise HTTPException(
@@ -229,7 +234,7 @@ async def export_analytics(
         leaderboard = None
 
         if user.role in ["leader", "admin"]:
-            team_perf = await service.get_team_performance_summary(user.user_id, days)
+            team_perf = await service.get_team_performance_summary(user.user_id, user.role, days)
             leaderboard = await service.get_leaderboard(days)
 
         rows = _build_analytics_export_rows(

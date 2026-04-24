@@ -33,6 +33,8 @@ class LeadPublic(BaseModel):
     name: str
     status: str
     created_by_user_id: int
+    owner_user_id: Optional[int] = None
+    owner_name: Optional[str] = None
     created_at: datetime
     archived_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
@@ -52,6 +54,8 @@ class LeadPublic(BaseModel):
     # Assignment
     assigned_to_user_id: Optional[int] = None
     assigned_to_name: Optional[str] = None
+    leader_user_id: Optional[int] = None
+    leader_name: Optional[str] = None
 
     # Call tracking
     call_status: Optional[str] = None
@@ -100,15 +104,28 @@ class LeadPublic(BaseModel):
             return "DAY1"
         if self.status == "day2":
             return "DAY2"
-        if self.status in ("interview", "track_selected", "seat_hold", "converted"):
+        if self.status in ("day3", "interview", "track_selected", "seat_hold", "converted"):
             return "DAY3"
         return "NONE"
+
+
+class LeadBatchSubmissionPublic(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    day_number: int
+    slot: str
+    notes_url: Optional[str] = None
+    voice_note_url: Optional[str] = None
+    video_url: Optional[str] = None
+    notes_text: Optional[str] = None
+    submitted_at: datetime
 
 
 class LeadDetailPublic(LeadPublic):
     """Extended lead detail — same fields as LeadPublic (all included)."""
 
-    pass
+    batch_submissions: list[LeadBatchSubmissionPublic] = Field(default_factory=list)
 
 
 class LeadFileImportResponse(BaseModel):
@@ -435,3 +452,19 @@ class LeadPoolDefaultsResponse(BaseModel):
 
 class LeadPoolDefaultsUpdateRequest(BaseModel):
     default_pool_price_cents: int = Field(ge=0, le=999_999_999)
+
+
+class LeadPoolClaimBatchRequest(BaseModel):
+    count: int = Field(ge=1, le=50)
+
+
+class LeadPoolBatchPreviewResponse(BaseModel):
+    requested_count: int = Field(ge=1, le=50)
+    claim_count: int = Field(ge=0, le=50)
+    available_count: int = Field(ge=0)
+    total_price_cents: int = Field(ge=0)
+
+
+class LeadPoolClaimBatchResponse(BaseModel):
+    leads: list[LeadPublic]
+    total_price_cents: int = Field(ge=0)

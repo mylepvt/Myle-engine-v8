@@ -60,6 +60,13 @@ def _authed_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     return TestClient(app)
 
 
+@pytest.fixture(autouse=True)
+def _isolate_leads_table() -> None:
+    asyncio.run(_clear_leads())
+    yield
+    asyncio.run(_clear_leads())
+
+
 def test_workboard_requires_auth() -> None:
     res = client.get("/api/v1/workboard")
     assert res.status_code == 401
@@ -184,6 +191,24 @@ def test_leader_sees_downline_created_leads(
         asyncio.run(_clear_leads())
 
 
+def test_admin_day1_visibility_is_not_limited_by_recent_new_leads(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    for idx in range(60):
+        asyncio.run(_seed_lead(user_id=2, name=f"Fresh-{idx}", lead_status="new_lead"))
+    asyncio.run(_seed_lead(user_id=3, name="Leader Day1", lead_status="day1"))
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        res = c.get("/api/v1/workboard", params={"max_rows": 50, "limit_per_column": 10})
+        assert res.status_code == 200
+        by_status = {col["status"]: col for col in res.json()["columns"]}
+        assert by_status["day1"]["total"] == 1
+        assert by_status["day1"]["items"][0]["name"] == "Leader Day1"
+    finally:
+        asyncio.run(_clear_leads())
+
+
 def test_slice2_team_workboard_uses_assignment_not_creator(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -231,6 +256,52 @@ def test_slice2_team_workboard_hides_unassigned_self_created_lead(
         asyncio.run(_clear_leads())
 
 
+def test_team_workboard_shows_unassigned_paid_lead_via_creator_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _seed_lead(
+            user_id=3,
+            name="Paid But Unassigned",
+            lead_status="paid",
+            created_by_user_id=3,
+            assigned_to_user_id=None,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+        body = c.get("/api/v1/workboard/leads").json()
+        by_status = {col["status"]: col for col in body["columns"]}
+        assert by_status["paid"]["total"] == 1
+        assert by_status["paid"]["items"][0]["name"] == "Paid But Unassigned"
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_leader_workboard_shows_downline_unassigned_paid_lead_via_creator_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _seed_lead(
+            user_id=3,
+            name="Downline Paid But Unassigned",
+            lead_status="paid",
+            created_by_user_id=3,
+            assigned_to_user_id=None,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        body = c.get("/api/v1/workboard/leads").json()
+        by_status = {col["status"]: col for col in body["columns"]}
+        assert by_status["paid"]["total"] == 1
+        assert by_status["paid"]["items"][0]["name"] == "Downline Paid But Unassigned"
+    finally:
+        asyncio.run(_clear_leads())
+
+
 def test_workboard_excludes_archived_leads(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -257,6 +328,7 @@ def test_workboard_excludes_archived_leads(
 
 def test_workboard_summary_and_stale_shape(monkeypatch: pytest.MonkeyPatch) -> None:
     old_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    recent_call = datetime.now(timezone.utc)
     asyncio.run(
         _seed_lead(
             user_id=2,
@@ -272,7 +344,8 @@ def test_workboard_summary_and_stale_shape(monkeypatch: pytest.MonkeyPatch) -> N
             row = await session.get(Lead, 1)
             assert row is not None
             row.created_at = old_time
-            row.last_called_at = old_time
+            row.last_action_at = old_time
+            row.last_called_at = recent_call
             await session.commit()
 
     asyncio.run(_touch_old())
@@ -321,5 +394,24 @@ def test_leader_workboard_hides_pending_and_video_actions(monkeypatch: pytest.Mo
         body = c.get("/api/v1/workboard").json()
         assert body["action_counts"]["pending_calls"] == 0
         assert body["action_counts"]["videos_to_send"] == 0
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_workboard_counts_batches_and_extended_closing_stages(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(_seed_lead(user_id=1, name="Day1 Batch", lead_status="day1"))
+    asyncio.run(_seed_lead(user_id=1, name="Day2 Batch", lead_status="day2"))
+    asyncio.run(_seed_lead(user_id=1, name="Day3 Close", lead_status="day3"))
+    asyncio.run(_seed_lead(user_id=1, name="Interview Close", lead_status="interview"))
+    asyncio.run(_seed_lead(user_id=1, name="Track Close", lead_status="track_selected"))
+    asyncio.run(_seed_lead(user_id=1, name="Seat Hold Close", lead_status="seat_hold"))
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        body = c.get("/api/v1/workboard").json()
+        assert body["action_counts"]["batches_due"] == 2
+        assert body["action_counts"]["closings_due"] == 4
     finally:
         asyncio.run(_clear_leads())

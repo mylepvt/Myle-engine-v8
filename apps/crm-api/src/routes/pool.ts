@@ -30,8 +30,8 @@ const claimBody = z
 async function resolvePoolLeadId(leadId: string | number): Promise<string> {
   if (typeof leadId === "number" || /^\d+$/.test(String(leadId))) {
     const asInt = typeof leadId === "number" ? leadId : parseInt(leadId as string, 10);
-    const found = await prisma.lead.findUnique({
-      where: { legacyId: asInt },
+    const found = await prisma.lead.findFirst({
+      where: { legacyId: asInt, isShadow: false },
       select: { id: true },
     });
     if (!found) {
@@ -49,7 +49,7 @@ export async function poolRoutes(fastify: FastifyInstance) {
     requireAuth(req);
     const q = z.object({ pipelineKind: z.nativeEnum(PipelineKind) }).parse(req.query);
     return prisma.lead.findMany({
-      where: { inPool: true, pipelineKind: q.pipelineKind },
+      where: { inPool: true, pipelineKind: q.pipelineKind, isShadow: false },
       orderBy: { createdAt: "asc" },
       take: 100,
     });

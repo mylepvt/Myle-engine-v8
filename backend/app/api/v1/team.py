@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
@@ -14,9 +14,11 @@ from sqlalchemy.orm import aliased
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
+from app.core.auth_cookies import display_name_from_user
 from app.core.realtime_hub import notify_topics
 from app.core.fbo_id import normalize_fbo_id
 from app.core.passwords import hash_password
+from app.models.daily_report import DailyReport
 from app.models.lead import Lead
 from app.models.user import User
 from app.schemas.system_surface import SystemStubResponse
@@ -25,31 +27,34 @@ from app.schemas.team import (
     PendingRegistrationsResponse,
     PendingRegistrationItem,
     RegistrationDecisionBody,
+    TeamEnrollmentHistoryResponse,
     TeamEnrollmentListResponse,
+    TeamMemberComplianceUpdate,
     TeamMemberCreate,
     TeamMemberListResponse,
     TeamMemberPublic,
     TeamMyTeamResponse,
+    TeamReportItem,
+    TeamReportMissingMember,
     TeamReportsLiveSummary,
     TeamReportsResponse,
+    TeamSelfGraceRequestBody,
 )
 from app.services.downline import is_user_in_downline_of
+from app.services.lead_owner import lead_owner_clause
+from app.services.member_compliance import build_compliance_snapshots
 from app.services.payment_service import PaymentService
 from app.services.team_reports_metrics import IST, compute_live_summary
+from app.services.user_hierarchy import (
+    load_user_hierarchy_entries,
+    nearest_leader_entry,
+    recursive_downline_user_ids,
+)
 
 router = APIRouter()
 
 _MAX_LIMIT = 100
 _DEFAULT_LIMIT = 50
-
-
-async def _recursive_downline_user_ids(session: AsyncSession, leader_id: int) -> list[int]:
-    """Strict descendants of ``leader_id`` (does not include the leader)."""
-    anchor = select(User.id).where(User.upline_user_id == leader_id)
-    tree = anchor.cte(name="team_downline", recursive=True)
-    tree = tree.union_all(select(User.id).where(User.upline_user_id == tree.c.id))
-    rows = (await session.execute(select(tree.c.id))).all()
-    return [int(r[0]) for r in rows]
 
 
 def _require_admin(user: AuthUser) -> None:
@@ -60,6 +65,133 @@ def _require_admin(user: AuthUser) -> None:
 def _require_admin_or_leader(user: AuthUser) -> None:
     if user.role not in ("admin", "leader"):
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+
+def _require_team_or_leader(user: AuthUser) -> None:
+    if user.role not in ("team", "leader"):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+
+async def _attach_team_member_hierarchy(
+    session: AsyncSession,
+    items: list[TeamMemberPublic],
+) -> list[TeamMemberPublic]:
+    entries = await load_user_hierarchy_entries(session, [item.id for item in items])
+    for item in items:
+        leader = nearest_leader_entry(item.id, entries)
+        item.leader_user_id = leader.id if leader is not None else None
+        item.leader_name = leader.display_name if leader is not None else None
+    return items
+
+
+async def _attach_team_member_compliance(
+    session: AsyncSession,
+    items: list[TeamMemberPublic],
+) -> list[TeamMemberPublic]:
+    snapshots = await build_compliance_snapshots(
+        session,
+        [item.id for item in items],
+        apply_actions=True,
+    )
+    for item in items:
+        snapshot = snapshots.get(item.id)
+        if snapshot is None:
+            continue
+        item.access_blocked = snapshot.access_blocked
+        item.discipline_status = snapshot.discipline_status
+        item.grace_end_date = snapshot.grace_end_date
+        item.grace_reason = snapshot.grace_reason
+        item.removed_at = snapshot.removed_at
+        item.removal_reason = snapshot.removal_reason
+        item.calls_short_streak = snapshot.calls_short_streak
+        item.missing_report_streak = snapshot.missing_report_streak
+        item.compliance_level = snapshot.compliance_level
+        item.compliance_title = snapshot.compliance_title
+        item.compliance_summary = snapshot.compliance_summary
+        item.grace_active = snapshot.grace_active
+        item.grace_ending_tomorrow = snapshot.grace_ending_tomorrow
+    return items
+
+
+async def _finalize_team_member_items(
+    session: AsyncSession,
+    items: list[TeamMemberPublic],
+) -> list[TeamMemberPublic]:
+    if items:
+        members = (
+            await session.execute(select(User).where(User.id.in_([item.id for item in items])))
+        ).scalars().all()
+        members_by_id = {member.id: member for member in members}
+        for item in items:
+            member = members_by_id.get(item.id)
+            if member is not None:
+                _attach_pending_grace_request(item, member)
+    items = await _attach_team_member_hierarchy(session, items)
+    items = await _attach_team_member_compliance(session, items)
+    return items
+
+
+def _display_name_or_fbo(member: User) -> str:
+    return display_name_from_user(member) or member.fbo_id
+
+
+def _upline_label(upline: User | None) -> str | None:
+    if upline is None:
+        return None
+    return _display_name_or_fbo(upline)
+
+
+def _attach_pending_grace_request(item: TeamMemberPublic, member: User) -> TeamMemberPublic:
+    item.grace_request_end_date = member.grace_request_end_date
+    item.grace_request_reason = member.grace_request_reason
+    item.grace_request_requested_at = member.grace_request_requested_at
+    return item
+
+
+def _clear_pending_grace_request(member: User) -> None:
+    member.grace_request_end_date = None
+    member.grace_request_reason = None
+    member.grace_request_requested_at = None
+
+
+async def _team_reports_scope_members(
+    session: AsyncSession,
+    user: AuthUser,
+) -> list[TeamReportMissingMember]:
+    Upline = aliased(User, name="upline")
+
+    where_parts = [User.registration_status == "approved"]
+    if user.role == "admin":
+        where_parts.append(User.role.in_(("leader", "team")))
+    else:
+        downline_ids = await recursive_downline_user_ids(session, user.user_id)
+        if not downline_ids:
+            return []
+        where_parts.append(User.id.in_(downline_ids))
+
+    rows = (
+        await session.execute(
+            select(User, Upline)
+            .outerjoin(Upline, User.upline_user_id == Upline.id)
+            .where(*where_parts)
+            .order_by(User.created_at.asc(), User.id.asc())
+        )
+    ).all()
+
+    return [
+        TeamReportMissingMember(
+            user_id=member.id,
+            member_name=_display_name_or_fbo(member),
+            member_username=(member.username or "").strip() or None,
+            member_email=member.email,
+            member_phone=member.phone,
+            member_fbo_id=member.fbo_id,
+            member_role=member.role,
+            upline_name=_upline_label(upline),
+            upline_fbo_id=upline.fbo_id if upline is not None else None,
+        )
+        for member, upline in rows
+    ]
 
 
 @router.get("/members", response_model=TeamMemberListResponse)
@@ -90,7 +222,9 @@ async def list_team_members(
         item = TeamMemberPublic.model_validate(u)
         item.upline_fbo_id = up_fbo
         item.upline_name = up_name
+        item = _attach_pending_grace_request(item, u)
         items.append(item)
+    items = await _finalize_team_member_items(session, items)
     return TeamMemberListResponse(items=items, total=total, limit=limit, offset=offset)
 
 
@@ -138,7 +272,8 @@ async def create_team_member(
             detail="FBO ID or email already registered",
         ) from None
     await session.refresh(row)
-    return TeamMemberPublic.model_validate(row)
+    [item] = await _finalize_team_member_items(session, [TeamMemberPublic.model_validate(row)])
+    return item
 
 
 @router.get("/my-team", response_model=TeamMyTeamResponse)
@@ -170,6 +305,7 @@ async def my_team(
             item.upline_fbo_id = up_fbo
             item.upline_name = up_name
             items.append(item)
+        items = await _finalize_team_member_items(session, items)
         return TeamMyTeamResponse(
             items=items,
             total=total,
@@ -187,10 +323,11 @@ async def my_team(
             if up is not None:
                 item.upline_fbo_id = up.fbo_id
                 item.upline_name = (up.username or up.name or up.fbo_id or "").strip() or None
+        [item] = await _finalize_team_member_items(session, [item])
         return TeamMyTeamResponse(items=[item], total=1, direct_members=0, total_downline=0)
 
     leader_id = user.user_id
-    downline_ids = await _recursive_downline_user_ids(session, leader_id)
+    downline_ids = await recursive_downline_user_ids(session, leader_id)
     id_list = [leader_id, *downline_ids]
     list_q = (
         select(User, Upline.fbo_id.label("upline_fbo_id"), Upline.username.label("upline_username"))
@@ -206,6 +343,7 @@ async def my_team(
         item.upline_fbo_id = up_fbo
         item.upline_name = up_name
         items.append(item)
+    items = await _finalize_team_member_items(session, items)
 
     direct_ct = int(
         (
@@ -222,6 +360,49 @@ async def my_team(
     )
 
 
+@router.put("/me/grace-request", response_model=TeamMemberPublic)
+async def request_my_grace(
+    body: TeamSelfGraceRequestBody,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> TeamMemberPublic:
+    _require_team_or_leader(user)
+    target = await session.get(User, user.user_id)
+    if target is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    today = datetime.now(IST).date()
+    if body.grace_end_date < today:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="grace_end_date cannot be in the past",
+        )
+    target.grace_request_end_date = body.grace_end_date
+    target.grace_request_reason = (body.reason or "").strip() or None
+    target.grace_request_requested_at = datetime.now(timezone.utc)
+    await session.commit()
+    await session.refresh(target)
+    [item] = await _finalize_team_member_items(session, [TeamMemberPublic.model_validate(target)])
+    await notify_topics("team", "team_tracking")
+    return item
+
+
+@router.delete("/me/grace-request", response_model=TeamMemberPublic)
+async def cancel_my_grace_request(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> TeamMemberPublic:
+    _require_team_or_leader(user)
+    target = await session.get(User, user.user_id)
+    if target is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    _clear_pending_grace_request(target)
+    await session.commit()
+    await session.refresh(target)
+    [item] = await _finalize_team_member_items(session, [TeamMemberPublic.model_validate(target)])
+    await notify_topics("team", "team_tracking")
+    return item
+
+
 @router.get("/enrollment-requests", response_model=TeamEnrollmentListResponse)
 async def list_enrollment_requests(
     user: Annotated[AuthUser, Depends(require_auth_user)],
@@ -236,6 +417,34 @@ async def list_enrollment_requests(
     total = len(items)
     page = items[offset : offset + limit]
     return TeamEnrollmentListResponse(items=page, total=total, limit=limit, offset=offset)
+
+
+@router.get("/enrollment-requests/history", response_model=TeamEnrollmentHistoryResponse)
+async def enrollment_request_history(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    date: Optional[str] = Query(
+        default=None,
+        description="Calendar day YYYY-MM-DD (Asia/Kolkata); default today",
+    ),
+    limit: int = Query(default=_DEFAULT_LIMIT, ge=1, le=_MAX_LIMIT),
+    offset: int = Query(default=0, ge=0),
+) -> TeamEnrollmentHistoryResponse:
+    """Calendar-wise proof approval / rejection history for admin / leader review."""
+    _require_admin_or_leader(user)
+    target_day = _parse_report_date_param(date)
+    start_ist = datetime.combine(target_day, time.min, tzinfo=IST)
+    end_ist = start_ist + timedelta(days=1)
+    service = PaymentService(session)
+    items, total = await service.get_payment_proof_history(
+        user.user_id,
+        user.role,
+        reviewed_after=start_ist.astimezone(timezone.utc),
+        reviewed_before=end_ist.astimezone(timezone.utc),
+        limit=limit,
+        offset=offset,
+    )
+    return TeamEnrollmentHistoryResponse(items=items, total=total, date=target_day.isoformat())
 
 
 @router.post("/enrollment-requests/{lead_id}/decision")
@@ -291,17 +500,87 @@ async def team_reports(
         description="Calendar day YYYY-MM-DD (Asia/Kolkata); default today",
     ),
 ) -> TeamReportsResponse:
-    """Admin — live pipeline metrics (legacy team reports top row)."""
-    _require_admin(user)
+    """Leader/admin team reports with org-tree scoping and member-wise daily rows."""
+    _require_admin_or_leader(user)
     d = _parse_report_date_param(date)
-    live = await compute_live_summary(session, d)
+
+    scope_members = await _team_reports_scope_members(session, user)
+    scope_user_ids = [member.user_id for member in scope_members]
+    live = await compute_live_summary(session, d, user_ids=scope_user_ids)
+
+    items: list[TeamReportItem] = []
+    submitted_ids: set[int] = set()
+    if scope_user_ids:
+        ReportMember = aliased(User, name="report_member")
+        ReportUpline = aliased(User, name="report_upline")
+        rows = (
+            await session.execute(
+                select(DailyReport, ReportMember, ReportUpline)
+                .join(ReportMember, ReportMember.id == DailyReport.user_id)
+                .outerjoin(ReportUpline, ReportMember.upline_user_id == ReportUpline.id)
+                .where(
+                    DailyReport.user_id.in_(scope_user_ids),
+                    DailyReport.report_date == d,
+                )
+                .order_by(DailyReport.submitted_at.desc(), ReportMember.created_at.asc(), ReportMember.id.asc())
+            )
+        ).all()
+
+        for report, member, upline in rows:
+            submitted_ids.add(int(member.id))
+            items.append(
+                TeamReportItem(
+                    report_id=report.id,
+                    report_date=report.report_date,
+                    submitted_at=report.submitted_at,
+                    user_id=member.id,
+                    member_name=_display_name_or_fbo(member),
+                    member_username=(member.username or "").strip() or None,
+                    member_email=member.email,
+                    member_phone=member.phone,
+                    member_fbo_id=member.fbo_id,
+                    member_role=member.role,
+                    upline_name=_upline_label(upline),
+                    upline_fbo_id=upline.fbo_id if upline is not None else None,
+                    total_calling=int(report.total_calling or 0),
+                    calls_picked=int(report.calls_picked or 0),
+                    wrong_numbers=int(report.wrong_numbers or 0),
+                    enrollments_done=int(report.enrollments_done or 0),
+                    pending_enroll=int(report.pending_enroll or 0),
+                    underage=int(report.underage or 0),
+                    plan_2cc=int(report.plan_2cc or 0),
+                    seat_holdings=int(report.seat_holdings or 0),
+                    leads_educated=int(report.leads_educated or 0),
+                    pdf_covered=int(report.pdf_covered or 0),
+                    videos_sent_actual=int(report.videos_sent_actual or 0),
+                    calls_made_actual=int(report.calls_made_actual or 0),
+                    payments_actual=int(report.payments_actual or 0),
+                    remarks=report.remarks,
+                    system_verified=bool(report.system_verified),
+                )
+            )
+
+    missing_members = [
+        member for member in scope_members if member.user_id not in submitted_ids
+    ]
+
+    scope_note = (
+        "Leader view is scoped to your org-tree downline and excludes your own report."
+        if user.role == "leader"
+        else "Admin view includes all approved leader and team members across the org tree."
+    )
     return TeamReportsResponse(
+        items=items,
+        total=len(items),
+        missing_members=missing_members,
+        scope_total_members=len(scope_members),
         date=d.isoformat(),
         live_summary=TeamReportsLiveSummary(**live),
         note=(
+            f"{scope_note} "
             "Tiles use pool claims (activity_log), call events, payment proof upload timestamps, "
-            "payment proof approvals (activity_log payment_proof_approved), and active pipeline counts. "
-            "Per-user daily report lines also exist (POST /api/v1/reports/daily) and feed leaderboard scoring."
+            "payment proof approvals, and active pipeline counts for the same scoped members. "
+            "Daily report rows are read-only and ordered by latest submission time."
         ),
     )
 
@@ -435,7 +714,7 @@ async def get_member_leads(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> MemberLeadsResponse:
-    """Leads created by or assigned to a specific user. Admin only."""
+    """Leads permanently owned by a specific user. Admin only."""
     _require_admin(user)
     target = await session.get(User, target_user_id)
     if target is None:
@@ -443,13 +722,13 @@ async def get_member_leads(
     count_q = (
         select(func.count())
         .select_from(Lead)
-        .where(Lead.created_by_user_id == target_user_id)
+        .where(lead_owner_clause(target_user_id))
         .where(Lead.deleted_at.is_(None))
     )
     total = int((await session.execute(count_q)).scalar_one())
     list_q = (
         select(Lead)
-        .where(Lead.created_by_user_id == target_user_id)
+        .where(lead_owner_clause(target_user_id))
         .where(Lead.deleted_at.is_(None))
         .order_by(Lead.created_at.desc())
         .limit(limit)
@@ -482,10 +761,143 @@ async def update_member_role(
             status_code=http_status.HTTP_400_BAD_REQUEST,
             detail="Cannot change your own role",
         )
+    previous_role = (target.role or "").strip().lower()
     target.role = body.role
+    if body.role in ("leader", "team") and previous_role != body.role:
+        target.discipline_reset_on = datetime.now(IST).date()
+        if previous_role == "admin":
+            target.access_blocked = False
+            target.discipline_status = "active"
+            target.removed_at = None
+            target.removed_by_user_id = None
+            target.removal_reason = None
     await session.commit()
     await session.refresh(target)
-    return TeamMemberPublic.model_validate(target)
+    [item] = await _finalize_team_member_items(session, [TeamMemberPublic.model_validate(target)])
+    return item
+
+
+@router.patch("/members/{target_user_id}/compliance", response_model=TeamMemberPublic)
+async def update_member_compliance(
+    target_user_id: int,
+    body: TeamMemberComplianceUpdate,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> TeamMemberPublic:
+    """Admin control center for grace / restore / manual removal."""
+    _require_admin(user)
+    target = await session.get(User, target_user_id)
+    if target is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    if body.action == "remove_now" and target.id == user.user_id:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="Cannot remove your own account",
+        )
+
+    role_key = (target.role or "").strip().lower()
+    if body.action == "grant_grace":
+        if role_key not in {"team", "leader"}:
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="Grace is only available for leader or team accounts",
+            )
+        if body.grace_end_date is None:
+            raise HTTPException(
+                status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="grace_end_date is required",
+            )
+        today = datetime.now(IST).date()
+        if body.grace_end_date < today:
+            raise HTTPException(
+                status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="grace_end_date cannot be in the past",
+            )
+        target.access_blocked = False
+        target.discipline_status = "grace"
+        target.grace_end_date = body.grace_end_date
+        target.grace_reason = (body.reason or "").strip() or None
+        target.grace_updated_at = datetime.now(timezone.utc)
+        target.grace_set_by_user_id = user.user_id
+        target.discipline_reset_on = None
+        target.removed_at = None
+        target.removed_by_user_id = None
+        target.removal_reason = None
+        _clear_pending_grace_request(target)
+    elif body.action == "clear_grace":
+        target.access_blocked = False
+        target.discipline_status = "active"
+        target.grace_end_date = None
+        target.grace_reason = None
+        target.grace_updated_at = datetime.now(timezone.utc)
+        target.grace_set_by_user_id = user.user_id
+        target.discipline_reset_on = datetime.now(IST).date()
+        _clear_pending_grace_request(target)
+    elif body.action == "approve_grace_request":
+        if role_key not in {"team", "leader"}:
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="Grace is only available for leader or team accounts",
+            )
+        if target.grace_request_end_date is None:
+            raise HTTPException(
+                status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="No pending grace request",
+            )
+        grace_reason = (body.reason or target.grace_request_reason or "").strip() or None
+        target.access_blocked = False
+        target.discipline_status = "grace"
+        target.grace_end_date = target.grace_request_end_date
+        target.grace_reason = grace_reason
+        target.grace_updated_at = datetime.now(timezone.utc)
+        target.grace_set_by_user_id = user.user_id
+        target.discipline_reset_on = None
+        target.removed_at = None
+        target.removed_by_user_id = None
+        target.removal_reason = None
+        _clear_pending_grace_request(target)
+    elif body.action == "reject_grace_request":
+        _clear_pending_grace_request(target)
+    elif body.action == "restore_access":
+        target.access_blocked = False
+        target.discipline_status = "active"
+        target.grace_end_date = None
+        target.grace_reason = None
+        target.grace_updated_at = None
+        target.grace_set_by_user_id = None
+        target.removed_at = None
+        target.removed_by_user_id = None
+        target.removal_reason = None
+        target.discipline_reset_on = datetime.now(IST).date()
+        _clear_pending_grace_request(target)
+    elif body.action == "remove_now":
+        target.access_blocked = True
+        target.discipline_status = "removed"
+        target.removed_at = datetime.now(timezone.utc)
+        target.removed_by_user_id = user.user_id
+        target.removal_reason = (body.reason or "").strip() or "Removed manually by admin."
+        target.grace_end_date = None
+        target.grace_reason = None
+        target.grace_updated_at = None
+        target.grace_set_by_user_id = None
+        _clear_pending_grace_request(target)
+    else:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Unsupported compliance action",
+        )
+
+    await session.commit()
+    await session.refresh(target)
+    item = TeamMemberPublic.model_validate(target)
+    if target.upline_user_id is not None:
+        up = await session.get(User, target.upline_user_id)
+        if up is not None:
+            item.upline_fbo_id = up.fbo_id
+            item.upline_name = (up.username or up.name or up.fbo_id or "").strip() or None
+    [item] = await _finalize_team_member_items(session, [item])
+    await notify_topics("team", "team_tracking")
+    return item
 
 
 class TrainingToggleBody(BaseModel):

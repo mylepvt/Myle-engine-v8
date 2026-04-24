@@ -1,5 +1,7 @@
+from datetime import date
 from pathlib import Path
 from typing import Literal, Optional
+from urllib.parse import urlparse
 
 from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -47,10 +49,10 @@ class Settings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("SESSION_COOKIE_SECURE", "session_cookie_secure"),
     )
-    auth_cookie_samesite: Literal["lax", "strict", "none"] = Field(
-        default="lax",
+    auth_cookie_samesite: Optional[Literal["lax", "strict", "none"]] = Field(
+        default=None,
         validation_alias=AliasChoices("AUTH_COOKIE_SAMESITE", "auth_cookie_samesite"),
-        description="JWT cookie SameSite. Use ``none`` when the SPA and API are on different sites (requires Secure).",
+        description="JWT cookie SameSite. When omitted, vl2 infers ``none`` for secure split-host deploys and ``lax`` for same-origin/local dev.",
     )
     jwt_access_minutes: int = Field(
         default=480,
@@ -72,6 +74,11 @@ class Settings(BaseSettings):
         validation_alias="AUTH_LOGIN_RATE_LIMIT_PER_MINUTE",
         description="Max POSTs per client IP per minute on auth login paths; 0 disables.",
     )
+    discipline_rollout_start_date: date = Field(
+        default=date(2026, 4, 24),
+        validation_alias="DISCIPLINE_ROLLOUT_START_DATE",
+        description="Calendar date from which call/report discipline starts counting. Older activity is ignored.",
+    )
     app_environment: str = Field(
         default="development",
         validation_alias="APP_ENV",
@@ -79,7 +86,7 @@ class Settings(BaseSettings):
     )
     frontend_dist: Optional[str] = Field(
         default=None,
-        validation_alias="FRONTEND_DIST",
+        validation_alias=AliasChoices("FRONTEND_DIST", "frontend_dist"),
         description="If set to a directory containing index.html, serve the Vite SPA from the API (same-origin auth).",
     )
     upload_dir: str = Field(
@@ -176,6 +183,42 @@ class Settings(BaseSettings):
         validation_alias="CRM_INTERNAL_SECRET",
         description="Shared secret for CRM internal endpoints (x-internal-secret header).",
     )
+    crm_outbox_batch_size: int = Field(
+        default=50,
+        ge=1,
+        le=500,
+        validation_alias="CRM_OUTBOX_BATCH_SIZE",
+    )
+    crm_outbox_poll_seconds: float = Field(
+        default=1.0,
+        ge=0.1,
+        le=60.0,
+        validation_alias="CRM_OUTBOX_POLL_SECONDS",
+    )
+    crm_outbox_retry_base_seconds: int = Field(
+        default=1,
+        ge=1,
+        le=300,
+        validation_alias="CRM_OUTBOX_RETRY_BASE_SECONDS",
+    )
+    crm_outbox_retry_max_seconds: int = Field(
+        default=60,
+        ge=1,
+        le=3600,
+        validation_alias="CRM_OUTBOX_RETRY_MAX_SECONDS",
+    )
+    crm_outbox_max_retries: int = Field(
+        default=5,
+        ge=1,
+        le=100,
+        validation_alias="CRM_OUTBOX_MAX_RETRIES",
+    )
+    crm_outbox_processing_timeout_seconds: int = Field(
+        default=120,
+        ge=5,
+        le=3600,
+        validation_alias="CRM_OUTBOX_PROCESSING_TIMEOUT_SECONDS",
+    )
 
     @field_validator("database_url", mode="before")
     @classmethod
@@ -186,6 +229,12 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def none_samesite_requires_secure(self) -> "Settings":
+        if self.auth_cookie_samesite is None:
+            object.__setattr__(
+                self,
+                "auth_cookie_samesite",
+                self._default_auth_cookie_samesite(),
+            )
         if self.auth_cookie_samesite == "none" and not self.session_cookie_secure:
             raise ValueError(
                 "AUTH_COOKIE_SAMESITE=none requires SESSION_COOKIE_SECURE=true",
@@ -201,5 +250,18 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.backend_cors_origins.split(",") if o.strip()]
+
+    def _default_auth_cookie_samesite(self) -> Literal["lax", "none"]:
+        if (self.frontend_dist or "").strip():
+            return "lax"
+        origins = self.cors_origin_list
+        if origins and all(_is_local_origin(origin) for origin in origins):
+            return "lax"
+        return "none" if self.session_cookie_secure else "lax"
+
+
+def _is_local_origin(origin: str) -> bool:
+    host = (urlparse(origin).hostname or "").strip().lower()
+    return host in {"localhost", "127.0.0.1"} or host.endswith(".local")
 
 settings = Settings()

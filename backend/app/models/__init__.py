@@ -1,7 +1,10 @@
 from app.models.announcement import Announcement
 from app.models.activity_log import ActivityLog
+from app.models.batch_day_submission import BatchDaySubmission
 from app.models.call_event import CallEvent
 from app.models.batch_share_link import BatchShareLink
+from app.models.crm_outbox import CrmOutbox
+from app.models.daily_member_stat import DailyMemberStat
 from app.models.enroll_share_link import EnrollShareLink
 from app.models.invoice import Invoice
 from app.models.lead import Lead
@@ -19,12 +22,16 @@ from app.models.training_question import TrainingQuestion
 from app.models.training_test_attempt import TrainingTestAttempt
 from app.models.lead_note import LeadNote
 from app.models.training_day_note import TrainingDayNote
+from app.models.user_presence_session import UserPresenceSession
 
 __all__ = [
     "Announcement",
     "ActivityLog",
+    "BatchDaySubmission",
     "CallEvent",
     "BatchShareLink",
+    "CrmOutbox",
+    "DailyMemberStat",
     "EnrollShareLink",
     "Invoice",
     "Lead",
@@ -42,4 +49,5 @@ __all__ = [
     "TrainingTestAttempt",
     "LeadNote",
     "TrainingDayNote",
+    "UserPresenceSession",
 ]

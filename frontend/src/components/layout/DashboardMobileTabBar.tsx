@@ -47,6 +47,17 @@ export function DashboardMobileTabBar({
   keyboardOpen = false,
   scrolled = false,
 }: Props) {
+  const barClass = cn(
+    'dashboard-mobile-tabbar shrink-0 pb-[env(safe-area-inset-bottom)] md:hidden',
+    keyboardOpen && 'dashboard-mobile-tabbar--keyboard-open',
+    scrolled && 'dashboard-mobile-tabbar--scrolled',
+  )
+  const innerClass =
+    'dashboard-mobile-tabbar__inner mx-auto flex h-[3.85rem] max-w-lg items-stretch justify-around gap-1 px-1.5 min-[390px]:h-[4.25rem] min-[390px]:px-2'
+  const tabClass =
+    'dashboard-mobile-tabbar__tab flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[1rem] px-1 py-1 text-[0.6rem] font-medium leading-none transition-colors active:opacity-70 min-[390px]:text-[0.65rem]'
+  const iconClass = 'size-5 shrink-0 min-[390px]:size-[22px]'
+
   if (trainingLocked) {
     const def = defForPath('system/training')
     if (!def || !routeDefAccessible(def, role)) return null
@@ -55,20 +66,16 @@ export function DashboardMobileTabBar({
       resolveTitleForPath('system/training', role) ?? def.label
     return (
       <nav
-        className={cn(
-          'dashboard-mobile-tabbar shrink-0 pb-[env(safe-area-inset-bottom)] md:hidden',
-          keyboardOpen && 'dashboard-mobile-tabbar--keyboard-open',
-          scrolled && 'dashboard-mobile-tabbar--scrolled',
-        )}
+        className={barClass}
         role="navigation"
         aria-label="Training"
       >
-        <div className="dashboard-mobile-tabbar__inner mx-auto flex h-[4.25rem] max-w-lg items-stretch justify-around gap-1 px-2">
+        <div className={innerClass}>
           <NavLink
             to="/dashboard/system/training"
             className={({ isActive }) =>
               cn(
-                'dashboard-mobile-tabbar__tab flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[1rem] px-1 py-1 text-[0.65rem] font-medium leading-none transition-colors active:opacity-70',
+                tabClass,
                 isActive
                   ? 'dashboard-mobile-tabbar__tab--active text-primary'
                   : 'dashboard-mobile-tabbar__tab--idle text-muted-foreground hover:text-foreground',
@@ -79,7 +86,7 @@ export function DashboardMobileTabBar({
               <>
                 <Icon
                   className={cn(
-                    'size-[22px] shrink-0',
+                    iconClass,
                     isActive ? 'text-primary' : 'text-muted-foreground',
                   )}
                   strokeWidth={isActive ? 2.25 : 1.75}
@@ -92,10 +99,13 @@ export function DashboardMobileTabBar({
           <button
             type="button"
             onClick={onOpenMenu}
-            className="dashboard-mobile-tabbar__tab dashboard-mobile-tabbar__tab--idle flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[1rem] px-1 py-1 text-[0.65rem] font-medium leading-none text-muted-foreground transition-colors active:opacity-70 hover:text-foreground"
+            className={cn(
+              tabClass,
+              'dashboard-mobile-tabbar__tab--idle text-muted-foreground hover:text-foreground',
+            )}
             aria-label="Open menu"
           >
-            <MoreHorizontal className="size-[22px] shrink-0" strokeWidth={1.75} aria-hidden />
+            <MoreHorizontal className={iconClass} strokeWidth={1.75} aria-hidden />
             <span className="truncate">Menu</span>
           </button>
         </div>
@@ -113,15 +123,11 @@ export function DashboardMobileTabBar({
 
   return (
     <nav
-      className={cn(
-        'dashboard-mobile-tabbar shrink-0 pb-[env(safe-area-inset-bottom)] md:hidden',
-        keyboardOpen && 'dashboard-mobile-tabbar--keyboard-open',
-        scrolled && 'dashboard-mobile-tabbar--scrolled',
-      )}
+      className={barClass}
       role="navigation"
       aria-label="Main tabs"
     >
-      <div className="dashboard-mobile-tabbar__inner mx-auto flex h-[4.25rem] max-w-lg items-stretch justify-around gap-1 px-2">
+      <div className={innerClass}>
         {defs.map((def) => {
           const to = def.path === '' ? '/dashboard' : `/dashboard/${def.path}`
           const Icon = getDashboardNavIcon(def.path)
@@ -134,20 +140,20 @@ export function DashboardMobileTabBar({
               key={def.path || 'home'}
               to={to}
               end={def.end ?? false}
-            className={({ isActive }) =>
-              cn(
-                'dashboard-mobile-tabbar__tab flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[1rem] px-1 py-1 text-[0.65rem] font-medium leading-none transition-colors active:opacity-70',
-                isActive
-                  ? 'dashboard-mobile-tabbar__tab--active text-primary'
-                  : 'dashboard-mobile-tabbar__tab--idle text-muted-foreground hover:text-foreground',
-              )
-            }
-          >
+              className={({ isActive }) =>
+                cn(
+                  tabClass,
+                  isActive
+                    ? 'dashboard-mobile-tabbar__tab--active text-primary'
+                    : 'dashboard-mobile-tabbar__tab--idle text-muted-foreground hover:text-foreground',
+                )
+              }
+            >
               {({ isActive }) => (
                 <>
                   <Icon
                     className={cn(
-                      'size-[22px] shrink-0',
+                      iconClass,
                       isActive ? 'text-primary' : 'text-muted-foreground',
                     )}
                     strokeWidth={isActive ? 2.25 : 1.75}
@@ -163,10 +169,13 @@ export function DashboardMobileTabBar({
         <button
           type="button"
           onClick={onOpenMenu}
-          className="dashboard-mobile-tabbar__tab dashboard-mobile-tabbar__tab--idle flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[1rem] px-1 py-1 text-[0.65rem] font-medium leading-none text-muted-foreground transition-colors active:opacity-70 hover:text-foreground"
+          className={cn(
+            tabClass,
+            'dashboard-mobile-tabbar__tab--idle text-muted-foreground hover:text-foreground',
+          )}
           aria-label="Open full menu"
         >
-          <MoreHorizontal className="size-[22px] shrink-0" strokeWidth={1.75} aria-hidden />
+          <MoreHorizontal className={iconClass} strokeWidth={1.75} aria-hidden />
           <span className="truncate">More</span>
         </button>
       </div>

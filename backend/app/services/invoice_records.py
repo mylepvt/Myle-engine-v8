@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Iterable, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.invoice import Invoice
 from app.models.user import User
 from app.services.invoice_alloc import allocate_invoice_number
-from app.services.invoice_html import build_tax_payload_for_single_lead
+from app.services.invoice_html import build_tax_payload_for_claims
 
 
 async def create_payment_receipt_for_recharge(
@@ -86,7 +86,32 @@ async def create_tax_invoice_for_pool_claim(
     wallet_ledger_entry_id: Optional[int],
     crm_claim_idempotency_key: Optional[str],
     lead_index: int = 1,
+    lead_ref: Optional[str] = None,
 ) -> Optional[Invoice]:
+    return await create_tax_invoice_for_pool_claims(
+        session,
+        user_id=user_id,
+        claims=[
+            {
+                "lead_ref": lead_ref or f"Lead #{lead_index}",
+                "total_cents": total_cents,
+            }
+        ],
+        wallet_ledger_entry_id=wallet_ledger_entry_id,
+        crm_claim_idempotency_key=crm_claim_idempotency_key,
+    )
+
+
+async def create_tax_invoice_for_pool_claims(
+    session: AsyncSession,
+    *,
+    user_id: int,
+    claims: Iterable[dict[str, Any]],
+    wallet_ledger_entry_id: Optional[int],
+    crm_claim_idempotency_key: Optional[str],
+) -> Optional[Invoice]:
+    normalized_claims = [dict(claim) for claim in claims if int(claim.get("total_cents") or 0) > 0]
+    total_cents = sum(int(claim.get("total_cents") or 0) for claim in normalized_claims)
     if total_cents <= 0:
         return None
     if crm_claim_idempotency_key:
@@ -103,7 +128,7 @@ async def create_tax_invoice_for_pool_claim(
             return None
 
     invn = await allocate_invoice_number(session)
-    payload = build_tax_payload_for_single_lead(total_cents=total_cents, lead_index=lead_index)
+    payload = build_tax_payload_for_claims(claims=normalized_claims)
     inv = Invoice(
         invoice_number=invn,
         doc_type="tax_invoice",

@@ -16,6 +16,7 @@ from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
 from app.schemas.leads import LeadCreate
 from app.services.auto_handoff import AutoHandoffService
+from app.services.crm_outbox import enqueue_lead_shadow_upsert
 
 _PHONE_RE = re.compile(r"(?:(?:\+|0{0,2})91[-\s]?)?([6-9]\d{9})\b")
 _MAX_BYTES = 5 * 1024 * 1024
@@ -212,6 +213,7 @@ async def run_personal_lead_import(
             name=body.name,
             status=body.status,
             created_by_user_id=user_id,
+            owner_user_id=user_id,
             assigned_to_user_id=user_id,
             phone=body.phone,
             email=body.email,
@@ -232,6 +234,7 @@ async def run_personal_lead_import(
                 meta={"name": lead.name, "status": lead.status, "via": "file_import"},
             ),
         )
+        enqueue_lead_shadow_upsert(session, lead)
         existing.add(norm)
         imported += 1
 

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import hashlib
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from fastapi import BackgroundTasks, Depends, HTTPException
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
@@ -12,6 +14,7 @@ from app.api.deps import AuthUser, get_db
 from app.core.config import settings
 from app.core.pipeline_rules import validate_vl2_status_transition_for_role
 from app.core.realtime_hub import notify_topics
+from app.models.batch_day_submission import BatchDaySubmission
 from app.models.follow_up import FollowUp
 from app.models.lead import Lead
 from app.models.user import User
@@ -21,6 +24,7 @@ from app.schemas.call_events import CallEventCreate, CallEventListResponse, Call
 from app.schemas.leads import (
     LeadCreate,
     LeadCtcsActionRequest,
+    LeadBatchSubmissionPublic,
     LeadDetailPublic,
     LeadListResponse,
     MindsetLockCompleteResponse,
@@ -32,31 +36,32 @@ from app.schemas.leads import (
 )
 from app.services.leads_contracts import LeadsRepositoryContract, TopicNotifierContract
 from app.services.auto_handoff import AutoHandoffService
-from app.services.invoice_records import create_tax_invoice_for_pool_claim
+from app.services.crm_outbox import enqueue_lead_shadow_delete, enqueue_lead_shadow_upsert
+from app.services.invoice_records import create_tax_invoice_for_pool_claim, create_tax_invoice_for_pool_claims
 from app.services.ctcs_heat import bump_heat_on_entering_contacted, clamp_ctcs_heat
 from app.services.ctcs_status_chain import advance_lead_status_toward
+from app.services.lead_payloads import build_lead_public_payloads
+from app.services.team_tracking import refresh_daily_member_stat_after_change
+from app.services.user_hierarchy import nearest_leader_for_user
 from app.services.whatsapp_ctcs import send_interested_enrollment_assets
 from app.validators.leads_validator import lead_list_conditions, parse_status_query, validate_list_flags
 
-# Statuses that require an approved payment proof before entry.
-# Any transition *into* these statuses must pass the payment gate.
+# Only the Paid ₹196 entry point requires approved payment proof.
+# Once a lead has entered the post-paid flow, mindset/day/close stages must not
+# re-check the proof gate.
 _PAYMENT_REQUIRED_STATUSES: frozenset[str] = frozenset(
-    {"seat_hold", "paid", "day1", "day2", "interview", "track_selected", "converted"}
+    {
+        "paid",
+    }
 )
+
+_POOL_CLAIM_ROLES: frozenset[str] = frozenset({"team", "leader", "admin"})
+_POOL_SINGLE_CLAIM_ROLES: frozenset[str] = frozenset({"admin"})
+_PHONE_DIGIT_RE = re.compile(r"\D")
 
 
 async def _deliver_ctcs_interested_whatsapp(lead_id: int, phone: str | None) -> None:
     await send_interested_enrollment_assets(lead_id=lead_id, phone=phone)
-
-
-def _display_name_for_user(row: tuple[int, str | None, str | None, str]) -> str:
-    _, name, username, email = row
-    if name and name.strip():
-        return name.strip()
-    if username and username.strip():
-        return username.strip()
-    local = (email or "").split("@", 1)[0].strip()
-    return local or "Assigned"
 
 
 def _display_name_from_fields(name: str | None, username: str | None, email: str | None) -> str:
@@ -66,6 +71,33 @@ def _display_name_from_fields(name: str | None, username: str | None, email: str
         return username.strip()
     local = (email or "").split("@", 1)[0].strip()
     return local or "Leader"
+
+
+def _normalize_phone_digits(raw: str | None) -> str | None:
+    digits = _PHONE_DIGIT_RE.sub("", raw or "")
+    if len(digits) >= 10:
+        return digits[-10:]
+    return None
+
+
+def _ensure_utc_datetime(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _format_rupees_exact(cents: int) -> str:
+    return f"₹{cents / 100:,.2f}"
+
+
+def _lead_pool_available_clause() -> Any:
+    return and_(
+        Lead.in_pool.is_(True),
+        Lead.deleted_at.is_(None),
+        Lead.archived_at.is_(None),
+    )
 
 
 def _ctcs_filter_clause(ctcs_filter: Optional[str]) -> Any:
@@ -84,7 +116,17 @@ def _ctcs_filter_clause(ctcs_filter: Optional[str]) -> Any:
         return Lead.heat_score >= settings.ctcs_heat_hot_threshold
     if key == "converted":
         return Lead.status.in_(
-            ("converted", "seat_hold", "paid", "day1", "day2", "interview", "track_selected"),
+            (
+                "converted",
+                "seat_hold",
+                "paid",
+                "mindset_lock",
+                "day1",
+                "day2",
+                "day3",
+                "interview",
+                "track_selected",
+            ),
         )
     raise HTTPException(
         status_code=http_status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -105,6 +147,52 @@ def _sync_batch_completion_timestamps(lead: Lead, now: datetime) -> None:
         lead.day2_completed_at = None
 
 
+def _apply_status_side_effects(
+    lead: Lead,
+    *,
+    previous_status: str,
+    new_status: str,
+    now: datetime,
+) -> None:
+    if new_status == "whatsapp_sent" and lead.whatsapp_sent_at is None:
+        lead.whatsapp_sent_at = now
+
+    if new_status in {"lost", "retarget"}:
+        # Legacy parity: terminal retarget/lost moves clear pending follow-up timers.
+        lead.next_followup_at = None
+
+    if new_status == "paid":
+        lead.mindset_lock_state = None
+        lead.mindset_started_at = None
+        lead.mindset_completed_at = None
+        lead.mindset_completed_by_user_id = None
+        lead.mindset_leader_user_id = None
+    elif new_status == "mindset_lock":
+        lead.mindset_lock_state = "mindset_lock"
+        lead.mindset_started_at = now
+        lead.mindset_completed_at = None
+        lead.mindset_completed_by_user_id = None
+        lead.mindset_leader_user_id = None
+    elif previous_status == "mindset_lock" and new_status != "mindset_lock":
+        if new_status != "day1":
+            lead.mindset_lock_state = None
+            lead.mindset_started_at = None
+            lead.mindset_completed_at = None
+            lead.mindset_completed_by_user_id = None
+            lead.mindset_leader_user_id = None
+
+    if new_status == "day3":
+        lead.day3_completed_at = None
+    elif new_status == "converted" and previous_status in {"day3", "interview", "track_selected", "seat_hold"}:
+        if lead.day3_completed_at is None:
+            lead.day3_completed_at = now
+
+
+def _sync_stage_anchor(lead: Lead, *, previous_status: str, now: datetime) -> None:
+    if lead.status != previous_status:
+        lead.last_action_at = now
+
+
 class LeadsService:
     def __init__(
         self,
@@ -123,36 +211,42 @@ class LeadsService:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
         return lead
 
+    async def _commit_with_shadow_upsert(self, lead: Lead) -> Lead:
+        await self._repository.persist_lead(lead, commit=False, refresh=False)
+        enqueue_lead_shadow_upsert(self._session, lead)
+        await self._repository.commit()
+        await self._session.refresh(lead)
+        return lead
+
+    async def _commit_with_shadow_delete(
+        self,
+        lead: Lead,
+        *,
+        permanently_deleted: bool = False,
+        hard_delete: bool = False,
+    ) -> None:
+        await self._session.flush()
+        enqueue_lead_shadow_delete(
+            self._session,
+            lead,
+            permanently_deleted=permanently_deleted,
+        )
+        if hard_delete:
+            await self._repository.hard_delete_lead(lead.id, commit=False)
+        await self._repository.commit()
+
     async def _nearest_leader(self, start_user_id: int) -> tuple[int, str] | None:
-        current = int(start_user_id)
-        seen: set[int] = set()
-        while current not in seen:
-            seen.add(current)
-            row = (
-                await self._session.execute(
-                    select(User.upline_user_id).where(User.id == current).limit(1)
-                )
-            ).scalar_one_or_none()
-            if row is None:
-                return None
-            parent_id = int(row)
-            parent = (
-                await self._session.execute(
-                    select(User.id, User.role, User.upline_user_id, User.name, User.username, User.email)
-                    .where(User.id == parent_id)
-                    .limit(1)
-                )
-            ).one_or_none()
-            if parent is None:
-                return None
-            pid, role, _, name, username, email = parent
-            role_key = (role or "").strip().lower()
-            if role_key == "leader":
-                return int(pid), _display_name_from_fields(name, username, email)
-            if role_key == "admin":
-                return None
-            current = int(pid)
-        return None
+        leader = await nearest_leader_for_user(self._session, start_user_id)
+        if leader is None:
+            return None
+        return leader.id, leader.display_name
+
+    async def serialize_lead_public(self, lead: Lead) -> LeadPublic:
+        items = await build_lead_public_payloads(self._session, [lead])
+        return items[0]
+
+    async def serialize_lead_public_list(self, leads: list[Lead]) -> list[LeadPublic]:
+        return await build_lead_public_payloads(self._session, leads)
 
     async def list_leads(
         self,
@@ -167,21 +261,24 @@ class LeadsService:
         ctcs_filter: Optional[str] = None,
         ctcs_priority_sort: bool = False,
         pre_enrollment_only: bool = False,
+        search_all_sections: bool = False,
     ) -> LeadListResponse:
         validate_list_flags(archived_only=archived_only, deleted_only=deleted_only, user=user)
+        cross_section_search = search_all_sections and bool((q or "").strip())
         condition = lead_list_conditions(
             user,
             q=q,
             status_filter=parse_status_query(status),
             archived_only=archived_only,
             deleted_only=deleted_only,
+            search_all_sections=cross_section_search,
         )
         extra = _ctcs_filter_clause(ctcs_filter)
         if extra is not None:
             condition = and_(condition, extra) if condition is not None else extra
         if pre_enrollment_only:
             pre_enroll = Lead.status.in_(
-                ["new_lead", "contacted", "invited", "video_sent", "video_watched"]
+                ["new_lead", "contacted", "invited", "whatsapp_sent", "video_sent", "video_watched"]
             )
             condition = and_(condition, pre_enroll) if condition is not None else pre_enroll
         total = await self._repository.count_leads(condition)
@@ -192,26 +289,7 @@ class LeadsService:
             ctcs_priority_sort=ctcs_priority_sort,
             now_utc=datetime.now(timezone.utc),
         )
-        assigned_ids = {
-            int(r.assigned_to_user_id)
-            for r in rows
-            if getattr(r, "assigned_to_user_id", None) is not None
-        }
-        assigned_name_by_id: dict[int, str] = {}
-        if assigned_ids:
-            assigned_rows = (
-                await self._session.execute(
-                    select(User.id, User.name, User.username, User.email).where(User.id.in_(assigned_ids))
-                )
-            ).all()
-            assigned_name_by_id = {int(uid): _display_name_for_user((uid, name, username, email)) for uid, name, username, email in assigned_rows}
-
-        items: list[LeadPublic] = []
-        for r in rows:
-            item = LeadPublic.model_validate(r)
-            uid = item.assigned_to_user_id
-            item.assigned_to_name = assigned_name_by_id.get(uid) if uid is not None else None
-            items.append(item)
+        items = await self.serialize_lead_public_list(rows)
         return LeadListResponse(
             items=items,
             total=total,
@@ -219,7 +297,35 @@ class LeadsService:
             offset=offset,
         )
 
+    async def _find_duplicate_phone_lead(
+        self,
+        phone: str | None,
+        *,
+        exclude_lead_id: int | None = None,
+    ) -> tuple[int, str, str, str] | None:
+        normalized = _normalize_phone_digits(phone)
+        if not normalized or len(normalized) != 10:
+            return None
+        stmt = select(Lead.id, Lead.name, Lead.status, Lead.phone).where(Lead.deleted_at.is_(None))
+        if exclude_lead_id is not None:
+            stmt = stmt.where(Lead.id != exclude_lead_id)
+        rows = (await self._session.execute(stmt)).all()
+        for lead_id, name, status, existing_phone in rows:
+            if _normalize_phone_digits(existing_phone) == normalized:
+                return int(lead_id), str(name), str(status), normalized
+        return None
+
     async def create_lead(self, *, body: LeadCreate, user: AuthUser) -> Lead:
+        dup = await self._find_duplicate_phone_lead(body.phone)
+        if dup is not None:
+            dup_id, dup_name, dup_status, normalized = dup
+            raise HTTPException(
+                status_code=http_status.HTTP_409_CONFLICT,
+                detail=(
+                    f"Phone {normalized} already exists on lead #{dup_id} "
+                    f"({dup_name} · {dup_status}). Duplicate leads are blocked across the full funnel."
+                ),
+            )
         lead = await self._repository.create_lead(body, user.user_id)
         handoff = AutoHandoffService(self._session)
         await handoff.on_lead_created(lead=lead, actor_user_id=user.user_id)
@@ -229,12 +335,17 @@ class LeadsService:
             lead_id=lead.id,
             meta={"name": lead.name, "status": lead.status},
         )
-        lead = await self._repository.persist_lead(lead)
-        await self._notifier("leads")
+        lead = await self._commit_with_shadow_upsert(lead)
+        await refresh_daily_member_stat_after_change(
+            self._session,
+            user_id=user.user_id,
+            occurred_at=lead.created_at,
+        )
+        await self._notifier("leads", "team_tracking")
         return lead
 
     async def claim_lead(self, *, lead_id: int, user: AuthUser) -> Lead:
-        if user.role not in {"team", "leader"}:
+        if user.role not in _POOL_SINGLE_CLAIM_ROLES:
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
         lead = await self._repository.get_lead_for_update(lead_id)
         if lead is None or lead.deleted_at is not None:
@@ -250,7 +361,10 @@ class LeadsService:
             if balance < price:
                 raise HTTPException(
                     status_code=http_status.HTTP_402_PAYMENT_REQUIRED,
-                    detail=f"Insufficient wallet balance. Need ₹{price / 100:.0f}, have ₹{balance / 100:.0f}.",
+                    detail=(
+                        "Insufficient wallet balance. "
+                        f"Need {_format_rupees_exact(price)}, have {_format_rupees_exact(balance)}."
+                    ),
                 )
             await self._repository.add_wallet_debit_for_claim(
                 user_id=user.user_id,
@@ -280,23 +394,153 @@ class LeadsService:
             lead_id=lead_id,
             meta={"price_cents": price},
         )
-        lead = await self._repository.persist_lead(lead)
+        lead = await self._commit_with_shadow_upsert(lead)
         await self._notifier("leads", "wallet")
         return lead
 
+    async def preview_lead_pool_batch(
+        self,
+        *,
+        count: int,
+        user: AuthUser,
+    ) -> tuple[int, int, int]:
+        if user.role not in _POOL_CLAIM_ROLES:
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+        cap = max(1, min(int(count), 50))
+        cond = _lead_pool_available_clause()
+        total_available = int(
+            (
+                await self._session.execute(
+                    select(func.count()).select_from(Lead).where(cond)
+                )
+            ).scalar_one()
+        )
+        preview_rows = (
+            await self._session.execute(
+                select(Lead.pool_price_cents)
+                .where(cond)
+                .order_by(Lead.created_at.asc(), Lead.id.asc())
+                .limit(cap)
+            )
+        ).scalars().all()
+        claim_count = len(preview_rows)
+        total_price_cents = sum(int(price or 0) for price in preview_rows)
+        return total_available, claim_count, total_price_cents
+
+    async def claim_lead_pool_batch(
+        self,
+        *,
+        count: int,
+        user: AuthUser,
+    ) -> tuple[list[Lead], int]:
+        if user.role not in _POOL_CLAIM_ROLES:
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+        cap = max(1, min(int(count), 50))
+        stmt = (
+            select(Lead)
+            .where(_lead_pool_available_clause())
+            .order_by(Lead.created_at.asc(), Lead.id.asc())
+            .limit(cap)
+            .with_for_update()
+        )
+        leads = list((await self._session.execute(stmt)).scalars().all())
+        if not leads:
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="No leads available in the pool",
+            )
+
+        total_price_cents = sum(int(lead.pool_price_cents or 0) for lead in leads)
+        if total_price_cents > 0:
+            balance = await self._repository.wallet_balance_cents(user.user_id)
+            if balance < total_price_cents:
+                raise HTTPException(
+                    status_code=http_status.HTTP_402_PAYMENT_REQUIRED,
+                    detail=(
+                        "Insufficient wallet balance. "
+                        f"Need {_format_rupees_exact(total_price_cents)}, "
+                        f"have {_format_rupees_exact(balance)}."
+                    ),
+                )
+
+        claimed: list[Lead] = []
+        invoice_claims: list[dict[str, int | str]] = []
+        batch_invoice_wallet_entry_id: int | None = None
+        for lead in leads:
+            price = int(lead.pool_price_cents or 0)
+            if price > 0:
+                await self._repository.add_wallet_debit_for_claim(
+                    user_id=user.user_id,
+                    lead_id=lead.id,
+                    lead_name=lead.name,
+                    price_cents=price,
+                )
+                await self._session.flush()
+                idem_key = f"pool_claim_{lead.id}_{user.user_id}"
+                entry_row = await self._session.execute(
+                    select(WalletLedgerEntry).where(WalletLedgerEntry.idempotency_key == idem_key)
+                )
+                entry = entry_row.scalar_one_or_none()
+                if entry is not None and batch_invoice_wallet_entry_id is None:
+                    batch_invoice_wallet_entry_id = entry.id
+                invoice_claims.append({"lead_ref": f"Lead #{lead.id}", "total_cents": price})
+
+            await self._repository.mark_lead_claimed(lead, user.user_id)
+            await self._repository.add_lead_activity(
+                user_id=user.user_id,
+                action="lead.claimed",
+                lead_id=lead.id,
+                meta={"price_cents": price, "batch_claim_count": len(leads)},
+            )
+            await self._session.flush()
+            enqueue_lead_shadow_upsert(self._session, lead)
+            claimed.append(lead)
+
+        if invoice_claims:
+            batch_invoice_key = hashlib.sha256(
+                f"{user.user_id}:{','.join(str(lead.id) for lead in claimed)}".encode()
+            ).hexdigest()[:120]
+            await create_tax_invoice_for_pool_claims(
+                self._session,
+                user_id=user.user_id,
+                claims=invoice_claims,
+                wallet_ledger_entry_id=batch_invoice_wallet_entry_id,
+                crm_claim_idempotency_key=batch_invoice_key,
+            )
+
+        await self._repository.commit()
+        for lead in claimed:
+            await self._session.refresh(lead)
+        await self._notifier("leads", "wallet")
+        return claimed, total_price_cents
+
     async def preview_mindset_lock(self, *, lead_id: int, user: AuthUser) -> MindsetLockPreviewResponse:
-        if user.role != "team":
-            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Only team can preview mindset lock")
+        if user.role not in {"team", "leader"}:
+            raise HTTPException(
+                status_code=http_status.HTTP_403_FORBIDDEN,
+                detail="Only team or leader can preview mindset lock",
+            )
         lead = await self._get_lead_or_404(lead_id)
         if lead.assigned_to_user_id != user.user_id:
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
-        started_at = lead.mindset_started_at
+        if lead.status != "mindset_lock":
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="Lead is not currently in mindset lock",
+            )
+        started_at = _ensure_utc_datetime(lead.mindset_started_at)
         if started_at is None:
             raise HTTPException(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail="Mindset session has not started for this lead",
             )
-        leader = await self._nearest_leader(user.user_id)
+        leader = (
+            (user.user_id, _display_name_from_fields(user.display_name, user.username, user.email))
+            if user.role == "leader"
+            else await self._nearest_leader(user.user_id)
+        )
         now = datetime.now(timezone.utc)
         elapsed_seconds = max(0, int((now - started_at).total_seconds()))
         remaining_seconds = max(0, 300 - elapsed_seconds)
@@ -315,8 +559,11 @@ class LeadsService:
         lead_id: int,
         user: AuthUser,
     ) -> MindsetLockCompleteResponse:
-        if user.role != "team":
-            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Only team can complete mindset lock")
+        if user.role not in {"team", "leader"}:
+            raise HTTPException(
+                status_code=http_status.HTTP_403_FORBIDDEN,
+                detail="Only team or leader can complete mindset lock",
+            )
         lead = await self._repository.get_lead_for_update(lead_id)
         if lead is None:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
@@ -339,23 +586,26 @@ class LeadsService:
             ).one_or_none()
             if row is not None:
                 leader_name = _display_name_from_fields(row[0], row[1], row[2])
-            duration_seconds = max(0, int((lead.mindset_completed_at - lead.mindset_started_at).total_seconds()))
+            completed_at = _ensure_utc_datetime(lead.mindset_completed_at)
+            started_at = _ensure_utc_datetime(lead.mindset_started_at)
+            assert completed_at is not None and started_at is not None
+            duration_seconds = max(0, int((completed_at - started_at).total_seconds()))
             return MindsetLockCompleteResponse(
                 status="assigned",
                 leader_name=leader_name,
                 leader_user_id=leader_id,
                 duration_seconds=duration_seconds,
-                mindset_started_at=lead.mindset_started_at,
-                mindset_completed_at=lead.mindset_completed_at,
+                mindset_started_at=started_at,
+                mindset_completed_at=completed_at,
             )
         if lead.assigned_to_user_id != user.user_id:
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
-        if lead.payment_status != "approved":
+        if lead.status != "mindset_lock":
             raise HTTPException(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
-                detail="Payment proof must be approved before leader handoff",
+                detail="Lead must be in mindset lock before completion",
             )
-        started_at = lead.mindset_started_at
+        started_at = _ensure_utc_datetime(lead.mindset_started_at)
         if started_at is None:
             raise HTTPException(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
@@ -366,16 +616,21 @@ class LeadsService:
         if duration_seconds < 300:
             raise HTTPException(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
-                detail="Minimum 5 minutes required before sending to leader",
+                detail="Minimum 5 minutes required before completing mindset lock",
             )
-        leader = await self._nearest_leader(user.user_id)
-        if leader is None:
-            raise HTTPException(
-                status_code=http_status.HTTP_400_BAD_REQUEST,
-                detail="No leader found in upline",
-            )
-        leader_id, leader_name = leader
+        if user.role == "leader":
+            leader_id = user.user_id
+            leader_name = _display_name_from_fields(user.display_name, user.username, user.email)
+        else:
+            leader = await self._nearest_leader(user.user_id)
+            if leader is None:
+                raise HTTPException(
+                    status_code=http_status.HTTP_400_BAD_REQUEST,
+                    detail="No leader found in upline",
+                )
+            leader_id, leader_name = leader
         from_uid = lead.assigned_to_user_id
+        lead.status = "day1"
         lead.assigned_to_user_id = leader_id
         lead.last_action_at = now
         lead.mindset_completed_at = now
@@ -396,7 +651,7 @@ class LeadsService:
                 "duration_seconds": duration_seconds,
             },
         )
-        await self._repository.persist_lead(lead)
+        await self._commit_with_shadow_upsert(lead)
         await self._notifier("leads", "workboard")
         return MindsetLockCompleteResponse(
             status="assigned",
@@ -406,6 +661,52 @@ class LeadsService:
             mindset_started_at=started_at,
             mindset_completed_at=now,
         )
+
+    async def reset_stage_clock(
+        self,
+        *,
+        lead_id: int,
+        user: AuthUser,
+    ) -> Lead:
+        if user.role != "admin":
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Only admin can reset stage clock")
+        lead = await self._repository.get_lead_for_update(lead_id)
+        if lead is None or lead.deleted_at is not None:
+            raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
+
+        now = datetime.now(timezone.utc)
+        prev_last_action_at = _ensure_utc_datetime(lead.last_action_at)
+        prev_started_at = _ensure_utc_datetime(lead.mindset_started_at)
+        prev_completed_at = _ensure_utc_datetime(lead.mindset_completed_at)
+        prev_lock_state = lead.mindset_lock_state
+        clock_scope = "stage"
+
+        lead.last_action_at = now
+        if lead.status == "mindset_lock":
+            clock_scope = "mindset_lock"
+            lead.mindset_lock_state = "mindset_lock"
+            lead.mindset_started_at = now
+            lead.mindset_completed_at = None
+            lead.mindset_completed_by_user_id = None
+            lead.mindset_leader_user_id = None
+
+        await self._repository.add_lead_activity(
+            user_id=user.user_id,
+            action="stage_clock.reset",
+            lead_id=lead.id,
+            meta={
+                "status": lead.status,
+                "clock_scope": clock_scope,
+                "previous_last_action_at": prev_last_action_at.isoformat() if prev_last_action_at else None,
+                "previous_started_at": prev_started_at.isoformat() if prev_started_at else None,
+                "previous_completed_at": prev_completed_at.isoformat() if prev_completed_at else None,
+                "previous_lock_state": prev_lock_state,
+                "reset_at": now.isoformat(),
+            },
+        )
+        lead = await self._commit_with_shadow_upsert(lead)
+        await self._notifier("leads", "workboard")
+        return lead
 
     async def update_lead(self, *, lead_id: int, body: LeadUpdate, user: AuthUser) -> Lead:
         lead = await self._get_lead_or_404(lead_id)
@@ -420,11 +721,13 @@ class LeadsService:
             if user.role != "admin" and lead.assigned_to_user_id != user.user_id:
                 raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
             lead.deleted_at = None
-            lead = await self._repository.persist_lead(lead)
+            lead = await self._commit_with_shadow_upsert(lead)
             await self._notifier("leads")
             return lead
         if not await self._repository.can_mutate_lead(user, lead):
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        now = datetime.now(timezone.utc)
+        stage_status_before = lead.status
         if user.role == "team":
             if body.day1_completed is not None:
                 raise HTTPException(
@@ -471,7 +774,7 @@ class LeadsService:
             )
             if not ok:
                 raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
-            # Payment gate: non-admins cannot write post-payment statuses without approved proof.
+            # Only entering Paid ₹196 is payment-gated; post-paid stages stay unlocked.
             if body.status in _PAYMENT_REQUIRED_STATUSES and user.role != "admin":
                 if lead.payment_status != "approved":
                     raise HTTPException(
@@ -481,12 +784,28 @@ class LeadsService:
             prev_status = lead.status
             lead.status = body.status
             bump_heat_on_entering_contacted(lead, prev_status)
+            _apply_status_side_effects(
+                lead,
+                previous_status=prev_status,
+                new_status=body.status,
+                now=now,
+            )
         if body.archived is True:
-            lead.archived_at = datetime.now(timezone.utc)
+            lead.archived_at = now
             lead.in_pool = False
         elif body.archived is False:
             lead.archived_at = None
         if body.phone is not None:
+            dup = await self._find_duplicate_phone_lead(body.phone, exclude_lead_id=lead.id)
+            if dup is not None:
+                dup_id, dup_name, dup_status, normalized = dup
+                raise HTTPException(
+                    status_code=http_status.HTTP_409_CONFLICT,
+                    detail=(
+                        f"Phone {normalized} already exists on lead #{dup_id} "
+                        f"({dup_name} · {dup_status}). Duplicate leads are blocked across the full funnel."
+                    ),
+                )
             lead.phone = body.phone
         if body.email is not None:
             lead.email = body.email
@@ -498,13 +817,16 @@ class LeadsService:
             lead.notes = body.notes
         if body.next_followup_at is not None:
             lead.next_followup_at = body.next_followup_at
-            lead.last_action_at = datetime.now(timezone.utc)
         if body.call_status is not None:
             lead.call_status = body.call_status
         if body.whatsapp_sent is True:
-            lead.whatsapp_sent_at = datetime.now(timezone.utc)
+            lead.whatsapp_sent_at = now
+            if lead.status in {"contacted", "invited"}:
+                lead.status = "whatsapp_sent"
         elif body.whatsapp_sent is False:
             lead.whatsapp_sent_at = None
+            if lead.status == "whatsapp_sent":
+                lead.status = "invited"
         if body.payment_status is not None:
             if user.role != "admin":
                 raise HTTPException(
@@ -512,7 +834,7 @@ class LeadsService:
                     detail="Only admins can directly set payment_status; use the payment proof upload flow.",
                 )
             lead.payment_status = body.payment_status
-        now = datetime.now(timezone.utc)
+        _sync_stage_anchor(lead, previous_status=stage_status_before, now=now)
         if body.no_response_attempt_count is not None:
             lead.no_response_attempt_count = body.no_response_attempt_count
         explicit_d1 = (body.d1_morning, body.d1_afternoon, body.d1_evening)
@@ -552,29 +874,38 @@ class LeadsService:
         elif body.day3_completed is False:
             lead.day3_completed_at = None
         _sync_batch_completion_timestamps(lead, now)
-        lead = await self._repository.persist_lead(lead)
+        lead = await self._commit_with_shadow_upsert(lead)
         await self._notifier("leads")
         return lead
 
     async def delete_lead(self, *, lead_id: int, user: AuthUser) -> None:
-        lead = await self._get_lead_or_404(lead_id)
+        lead = await self._repository.get_lead_for_update(lead_id)
+        if lead is None:
+            raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
         if not await self._repository.can_mutate_lead(user, lead):
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
         if lead.deleted_at is not None:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
-        await self._repository.soft_delete_lead(lead)
+        await self._repository.soft_delete_lead(lead, commit=False)
+        await self._commit_with_shadow_delete(lead)
         await self._notifier("leads")
 
     async def permanent_delete_lead(self, *, lead_id: int, user: AuthUser) -> None:
         if user.role != "admin":
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
-        lead = await self._get_lead_or_404(lead_id)
+        lead = await self._repository.get_lead_for_update(lead_id)
+        if lead is None:
+            raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
         if lead.deleted_at is None:
             raise HTTPException(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail="Lead is not in recycle bin",
             )
-        await self._repository.hard_delete_lead(lead_id)
+        await self._commit_with_shadow_delete(
+            lead,
+            permanently_deleted=True,
+            hard_delete=True,
+        )
         await self._notifier("leads")
 
     async def get_lead_detail(self, *, lead_id: int, user: AuthUser) -> LeadDetailPublic:
@@ -583,7 +914,17 @@ class LeadsService:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
         if not await self._repository.can_access_lead(user, lead):
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
-        return LeadDetailPublic.model_validate(lead)
+        submissions = (
+            await self._session.execute(
+                select(BatchDaySubmission)
+                .where(BatchDaySubmission.lead_id == lead.id)
+                .order_by(BatchDaySubmission.submitted_at.desc())
+            )
+        ).scalars().all()
+        lead_public = await self.serialize_lead_public(lead)
+        detail = LeadDetailPublic.model_validate(lead_public.model_dump())
+        detail.batch_submissions = [LeadBatchSubmissionPublic.model_validate(row) for row in submissions]
+        return detail
 
     async def log_call(self, *, lead_id: int, body: CallEventCreate, user: AuthUser) -> CallEventPublic:
         lead = await self._get_lead_or_404(lead_id)
@@ -611,8 +952,15 @@ class LeadsService:
         )
         handoff = AutoHandoffService(self._session)
         await handoff.on_call_logged(lead=lead, outcome=body.outcome, actor_user_id=user.user_id)
+        await self._session.flush()
+        enqueue_lead_shadow_upsert(self._session, lead)
         await self._repository.commit()
-        await self._notifier("leads")
+        await refresh_daily_member_stat_after_change(
+            self._session,
+            user_id=user.user_id,
+            occurred_at=event.called_at,
+        )
+        await self._notifier("leads", "team_tracking")
         return CallEventPublic.model_validate(event)
 
     async def list_calls(
@@ -672,27 +1020,36 @@ class LeadsService:
         )
         if not ok:
             raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
-        # Payment gate: non-admins cannot enter post-payment statuses without approved proof.
+        # Only entering Paid ₹196 is payment-gated; post-paid stages stay unlocked.
         if body.target_status in _PAYMENT_REQUIRED_STATUSES and user.role != "admin":
             if lead.payment_status != "approved":
                 raise HTTPException(
                     status_code=http_status.HTTP_400_BAD_REQUEST,
                     detail="Payment proof must be approved before moving to this status.",
                 )
+        now = datetime.now(timezone.utc)
         prev_status = lead.status
         lead.status = body.target_status
         bump_heat_on_entering_contacted(lead, prev_status)
-        lead = await self._repository.persist_lead(lead)
+        _apply_status_side_effects(
+            lead,
+            previous_status=prev_status,
+            new_status=body.target_status,
+            now=now,
+        )
+        _sync_stage_anchor(lead, previous_status=prev_status, now=now)
+        lead = await self._commit_with_shadow_upsert(lead)
 
         # XP hooks — fire-and-forget; never block transition on XP errors
         try:
             from app.services.xp_service import grant_xp, revoke_won_xp
             if body.target_status == "contacted":
                 await grant_xp(self._session, user.user_id, "lead_contacted", lead.id)
-            elif body.target_status == "won":
-                await grant_xp(self._session, user.user_id, "lead_won", lead.id)
-            if prev_status == "won" and body.target_status != "won":
-                await revoke_won_xp(self._session, user.user_id, lead.id)
+            elif body.target_status == "converted":
+                xp_user_id = int(lead.assigned_to_user_id or user.user_id)
+                await grant_xp(self._session, xp_user_id, "lead_won", lead.id)
+            if prev_status == "converted" and body.target_status != "converted":
+                await revoke_won_xp(self._session, lead.id)
             await self._session.commit()
         except Exception:
             pass
@@ -722,6 +1079,7 @@ class LeadsService:
 
         now = datetime.now(timezone.utc)
         action = body.action
+        prev_status = lead.status
 
         if action == "interested":
             advance_lead_status_toward(lead=lead, target_slug="video_sent", role=user.role)
@@ -788,11 +1146,18 @@ class LeadsService:
                     status_code=http_status.HTTP_400_BAD_REQUEST,
                     detail="Payment proof must be approved before using the 'paid' action.",
                 )
-            advance_lead_status_toward(lead=lead, target_slug="day1", role=user.role)
+            advance_lead_status_toward(lead=lead, target_slug="paid", role=user.role)
             lead.heat_score = clamp_ctcs_heat(int(lead.heat_score or 0) + settings.ctcs_heat_paid_bonus)
 
-        lead.last_action_at = now
-        lead = await self._repository.persist_lead(lead)
+        if lead.status != prev_status:
+            _apply_status_side_effects(
+                lead,
+                previous_status=prev_status,
+                new_status=lead.status,
+                now=now,
+            )
+        _sync_stage_anchor(lead, previous_status=prev_status, now=now)
+        lead = await self._commit_with_shadow_upsert(lead)
         await self._notifier("leads")
         return lead
 

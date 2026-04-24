@@ -6,8 +6,12 @@ function clampHeat(n: number): number {
 
 export type CtcsOptimisticOpts = {
   followupAt?: string | null
-  /** Paid action: team stays on ``paid``; leader/admin advance to ``day1``. */
+  /** Paid action stays on ``paid`` until mindset lock / next-stage work happens. */
   paidStatus?: 'paid' | 'day1'
+}
+
+function stageAnchorForStatusChange(lead: LeadPublic, nextStatus: LeadPublic['status'], now: string): string | null | undefined {
+  return nextStatus === lead.status ? lead.last_action_at ?? null : now
 }
 
 /** Best-effort client mirror of CTCS action for instant list updates (reconciled on server response). */
@@ -25,7 +29,7 @@ export function applyCtcsOptimisticToLead(
         status: 'video_sent',
         call_status: 'video_sent',
         heat_score: clampHeat(h + 20),
-        last_action_at: now,
+        last_action_at: stageAnchorForStatusChange(lead, 'video_sent', now),
         whatsapp_sent_at: now,
       }
     case 'not_picked': {
@@ -35,7 +39,7 @@ export function applyCtcsOptimisticToLead(
         status: 'contacted',
         next_followup_at: next,
         heat_score: clampHeat(h + 10 - 5),
-        last_action_at: now,
+        last_action_at: stageAnchorForStatusChange(lead, 'contacted', now),
         call_status: 'no_answer',
       }
     }
@@ -50,7 +54,7 @@ export function applyCtcsOptimisticToLead(
         status: 'contacted',
         next_followup_at: next,
         heat_score: clampHeat(h + 10),
-        last_action_at: now,
+        last_action_at: stageAnchorForStatusChange(lead, 'contacted', now),
       }
     }
     case 'not_interested':
@@ -58,7 +62,7 @@ export function applyCtcsOptimisticToLead(
         ...lead,
         status: 'lost',
         heat_score: 0,
-        last_action_at: now,
+        last_action_at: stageAnchorForStatusChange(lead, 'lost', now),
         archived_at: now,
         is_archived: true,
         in_pool: false,
@@ -70,7 +74,7 @@ export function applyCtcsOptimisticToLead(
         status: slug,
         payment_status: 'approved',
         heat_score: clampHeat(h + 25),
-        last_action_at: now,
+        last_action_at: stageAnchorForStatusChange(lead, slug, now),
       }
     }
     default:

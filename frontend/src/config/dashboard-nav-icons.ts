@@ -46,6 +46,7 @@ const BY_PATH: Record<string, LucideIcon> = {
   'work/lead-pool-admin': Shield,
   'work/recycle-bin': Trash2,
   'team/members': UsersRound,
+  'team/tracking': Activity,
   'team/reports': FileBarChart,
   'team/approvals': CheckSquare,
   'team/enrollment-approvals': Banknote,

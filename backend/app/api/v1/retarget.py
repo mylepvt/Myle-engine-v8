@@ -1,4 +1,4 @@
-"""Leads eligible for retargeting (non-archived, status lost or contacted)."""
+"""Leads eligible for retargeting (non-archived, status lost/contacted/inactive/retarget)."""
 
 from typing import Annotated
 
@@ -8,12 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.models.lead import Lead
-from app.schemas.leads import LeadListResponse, LeadPublic
+from app.services.downline import lead_management_visible_to_leader_clause
+from app.schemas.leads import LeadListResponse
+from app.services.lead_payloads import build_lead_public_payloads
 from app.services.lead_scope import lead_visibility_where
 
 router = APIRouter()
 
-_RETARGET_STATUSES = ("lost", "contacted")
+_RETARGET_STATUSES = ("lost", "contacted", "inactive", "retarget")
 _MAX_LIMIT = 100
 _DEFAULT_LIMIT = 50
 
@@ -25,14 +27,18 @@ async def list_retarget_leads(
     limit: int = Query(default=_DEFAULT_LIMIT, ge=1, le=_MAX_LIMIT),
     offset: int = Query(default=0, ge=0),
 ) -> LeadListResponse:
-    """Scoped like ``GET /leads`` — only rows with ``status`` in lost/contacted and not archived."""
+    """Scoped like ``GET /leads`` — only rows in retarget-worthy statuses and not archived."""
     parts = [
         Lead.status.in_(_RETARGET_STATUSES),
         Lead.archived_at.is_(None),
         Lead.deleted_at.is_(None),
         Lead.in_pool.is_(False),
     ]
-    vis = lead_visibility_where(user)
+    vis = (
+        lead_management_visible_to_leader_clause(user.user_id)
+        if user.role == "leader"
+        else lead_visibility_where(user)
+    )
     if vis is not None:
         parts.append(vis)
     cond = and_(*parts)
@@ -44,5 +50,5 @@ async def list_retarget_leads(
         select(Lead).where(cond).order_by(Lead.created_at.desc()).limit(limit).offset(offset)
     )
     rows = (await session.execute(list_q)).scalars().all()
-    items = [LeadPublic.model_validate(r) for r in rows]
+    items = await build_lead_public_payloads(session, rows)
     return LeadListResponse(items=items, total=total, limit=limit, offset=offset)

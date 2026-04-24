@@ -22,16 +22,15 @@ export default function AnalyticsPage() {
   const [selectedDays, setSelectedDays] = useState(30)
   const [activeTab, setActiveTab] = useState('overview')
   const { data: authData } = useAuthMeQuery()
-  
-  const teamPerformance = useTeamPerformanceQuery(selectedDays)
-  const individualPerformance = useIndividualPerformanceQuery(undefined, selectedDays)
-  const leaderboard = useLeaderboardQuery(selectedDays)
-  const systemOverview = useSystemOverviewQuery(selectedDays)
-  const dailyTrends = useDailyTrendsQuery(undefined, selectedDays)
-
   const isAdmin = authData?.role === 'admin'
   const isLeader = authData?.role === 'leader'
   const canViewTeam = isAdmin || isLeader
+  
+  const teamPerformance = useTeamPerformanceQuery(selectedDays, canViewTeam)
+  const individualPerformance = useIndividualPerformanceQuery(undefined, selectedDays)
+  const leaderboard = useLeaderboardQuery(selectedDays)
+  const systemOverview = useSystemOverviewQuery(selectedDays, isAdmin)
+  const dailyTrends = useDailyTrendsQuery(undefined, selectedDays)
 
   return (
     <div className="container mx-auto p-6">
