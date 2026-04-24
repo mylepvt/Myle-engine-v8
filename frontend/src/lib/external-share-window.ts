@@ -43,7 +43,19 @@ export function completeExternalShareWindow(popup: Window | null, url: string | 
       // Fall through to a direct open attempt.
     }
   }
-  return Boolean(window.open(target, '_blank', 'noopener,noreferrer'))
+  try {
+    if (window.open(target, '_blank', 'noopener,noreferrer')) {
+      return true
+    }
+  } catch {
+    // Fall through to same-tab navigation.
+  }
+  try {
+    window.location.assign(target)
+    return true
+  } catch {
+    return false
+  }
 }
 
 export function closeExternalShareWindow(popup: Window | null) {
