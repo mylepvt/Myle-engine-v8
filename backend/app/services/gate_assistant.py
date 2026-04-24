@@ -16,7 +16,6 @@ from app.schemas.gate_assistant import GateAssistantResponse, GateChecklistItem
 from app.services.downline import lead_execution_visible_to_leader_clause
 from app.services.lead_scope import lead_visibility_where
 from app.services.live_metrics import (
-    downline_team_user_ids,
     fresh_call_counts_by_user,
     fresh_lead_counts_by_user,
     get_daily_call_target,
@@ -90,7 +89,7 @@ async def build_gate_assistant(session: AsyncSession, user: AuthUser) -> GateAss
     team_removed_count = 0
     team_grace_count = 0
 
-    if user.role == "team":
+    if user.role in {"team", "leader"}:
         compliance = (
             await build_compliance_snapshots(session, [user.user_id], apply_actions=True)
         ).get(user.user_id)
@@ -118,12 +117,6 @@ async def build_gate_assistant(session: AsyncSession, user: AuthUser) -> GateAss
                 done=bool(report_submitted_today),
                 href="other/daily-report",
             ),
-            GateChecklistItem(
-                id="followups_overdue",
-                label=f"No overdue follow-ups ({overdue_follow_ups})",
-                done=overdue_follow_ups == 0,
-                href="work/follow-ups",
-            ),
         ]
         if compliance is not None:
             compliance_level = compliance.compliance_level
@@ -134,12 +127,7 @@ async def build_gate_assistant(session: AsyncSession, user: AuthUser) -> GateAss
             grace_active = compliance.grace_active
             grace_ending_tomorrow = compliance.grace_ending_tomorrow
             grace_end_date = compliance.grace_end_date.isoformat() if compliance.grace_end_date else None
-        if overdue_follow_ups > 0:
-            risk = "red"
-            next_action = f"Resolve {overdue_follow_ups} overdue follow-up(s)"
-            next_href = "work/follow-ups"
-            next_label = "Open follow-ups"
-        elif compliance_level == "final_warning":
+        if compliance_level == "final_warning":
             risk = "red"
             next_action = compliance_summary or "Final warning active."
             next_href = "other/daily-report" if missing_report_streak >= calls_short_streak else "work/leads"
@@ -177,94 +165,11 @@ async def build_gate_assistant(session: AsyncSession, user: AuthUser) -> GateAss
             next_label = "Open leads"
         else:
             risk = "green"
-            next_action = "You're on track — today's fresh-lead gate is covered."
+            next_action = "You're on track — today's call and report gates are covered."
             next_href = None
             next_label = None
         pending_proof_count = 0
         members_below_call_gate = 0
-    elif user.role == "leader":
-        team_ids = await downline_team_user_ids(session, user.user_id)
-        compliance_map = await build_compliance_snapshots(session, team_ids, apply_actions=True)
-        fresh_counts = await fresh_lead_counts_by_user(session, team_ids, today)
-        call_counts = await fresh_call_counts_by_user(session, team_ids, today)
-        members_below_call_gate = sum(
-            1
-            for uid in team_ids
-            if int(fresh_counts.get(uid, 0)) > 0 and int(call_counts.get(uid, 0)) < daily_call_target
-        )
-        team_warning_count = sum(1 for snapshot in compliance_map.values() if snapshot.compliance_level == "warning")
-        team_strong_warning_count = sum(
-            1 for snapshot in compliance_map.values() if snapshot.compliance_level == "strong_warning"
-        )
-        team_final_warning_count = sum(
-            1 for snapshot in compliance_map.values() if snapshot.compliance_level == "final_warning"
-        )
-        team_removed_count = sum(1 for snapshot in compliance_map.values() if snapshot.compliance_level == "removed")
-        team_grace_count = sum(
-            1 for snapshot in compliance_map.values() if snapshot.compliance_level in {"grace", "grace_ending"}
-        )
-        pending_proof_count = await pending_payment_proof_count(
-            session,
-            role="leader",
-            user_id=user.user_id,
-        )
-        checklist = [
-            GateChecklistItem(
-                id="downline_call_gates",
-                label=f"Team members below {daily_call_target} fresh calls ({members_below_call_gate})",
-                done=members_below_call_gate == 0,
-                href="team/tracking",
-            ),
-            GateChecklistItem(
-                id="team_discipline",
-                label=(
-                    "Team discipline alerts "
-                    f"(W:{team_warning_count} / S:{team_strong_warning_count} / F:{team_final_warning_count} / R:{team_removed_count})"
-                ),
-                done=(team_warning_count + team_strong_warning_count + team_final_warning_count + team_removed_count) == 0,
-                href="team/tracking",
-            ),
-            GateChecklistItem(
-                id="payment_proofs_pending",
-                label=f"Rs 196 proofs waiting for review ({pending_proof_count})",
-                done=pending_proof_count == 0,
-                href="team/enrollment-approvals",
-            ),
-        ]
-        if team_removed_count > 0 or team_final_warning_count > 0:
-            risk = "red"
-            next_action = (
-                f"{team_removed_count} removed and {team_final_warning_count} final warning member(s) need leader attention"
-            )
-            next_href = "team/tracking"
-            next_label = "Open team tracking"
-        elif pending_proof_count > 0:
-            risk = "red"
-            next_action = f"Review {pending_proof_count} pending payment proof(s)"
-            next_href = "team/enrollment-approvals"
-            next_label = "Open proof queue"
-        elif team_strong_warning_count > 0 or team_warning_count > 0:
-            risk = "yellow"
-            next_action = (
-                f"{team_warning_count + team_strong_warning_count} team member(s) are under discipline watch"
-            )
-            next_href = "team/tracking"
-            next_label = "Review warnings"
-        elif members_below_call_gate > 0:
-            risk = "yellow"
-            next_action = f"{members_below_call_gate} team member(s) are below the fresh-call gate"
-            next_href = "team/tracking"
-            next_label = "Open team tracking"
-        else:
-            risk = "green"
-            next_action = "Your team's execution, discipline, and proof queues are on track."
-            next_href = None
-            next_label = None
-        fresh_leads_today = 0
-        calls_today = 0
-        effective_call_target = 0
-        open_follow_ups = 0
-        overdue_follow_ups = 0
     else:
         org_user_ids = [
             int(uid)
