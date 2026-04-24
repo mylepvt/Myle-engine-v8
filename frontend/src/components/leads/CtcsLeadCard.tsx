@@ -52,6 +52,7 @@ type Props = {
   actionBusy: boolean
   onPatchStatus: (id: number, status: LeadStatus) => void
   onPatchCallStatus: (id: number, callStatus: string) => void
+  onSendEnrollment: (id: number) => void
   onCall: (lead: LeadPublic) => void
   onFollowUp: (id: number) => void
 }
@@ -64,6 +65,7 @@ export function CtcsLeadCard({
   actionBusy,
   onPatchStatus,
   onPatchCallStatus,
+  onSendEnrollment,
   onCall,
   onFollowUp,
 }: Props) {
@@ -114,6 +116,7 @@ export function CtcsLeadCard({
   const wa = whatsAppChatHref(lead.phone ?? '')
   const tel = telHref(lead.phone)
   const canDial = tel !== '#'
+  const secureEnrollmentWhatsapp = wa !== '#' && lead.status === 'video_sent'
   /** Dial / WhatsApp stay usable while CTCS runs; only this card’s patch blocks. */
   const dialBlocked = patchBusy || !canDial
   const phoneRaw = lead.phone?.trim() ?? ''
@@ -331,7 +334,25 @@ export function CtcsLeadCard({
                 <Phone className="size-3.5 text-muted-foreground" aria-hidden />
               </span>
             )}
-            {wa !== '#' ? (
+            {secureEnrollmentWhatsapp ? (
+              <button
+                type="button"
+                disabled={selectBusy}
+                onClick={() => onSendEnrollment(lead.id)}
+                className={cn(
+                  'flex size-8 items-center justify-center rounded-full border-2 transition active:scale-95 disabled:opacity-50',
+                  'border-[#128C7E]/60 bg-[#25D366]/15 text-[#065f46]',
+                  'shadow-[0_0_10px_rgba(37,211,102,0.28)] ring-1 ring-[#25D366]/25 hover:bg-[#25D366]/25',
+                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#128C7E]/70',
+                  'dark:border-[#25D366]/75 dark:bg-[#25D366]/20 dark:text-[#dcf8c6] dark:shadow-[0_0_12px_rgba(37,211,102,0.45)] dark:ring-[#25D366]/35',
+                  'dark:hover:border-[#34eb75] dark:hover:bg-[#25D366]/30',
+                )}
+                title="Send secure enrollment video on WhatsApp"
+                aria-label="Send secure enrollment video on WhatsApp"
+              >
+                <MessageCircle className="size-3.5 text-[#047857] dark:text-[#b8f5c4]" aria-hidden />
+              </button>
+            ) : wa !== '#' ? (
               <a
                 href={wa}
                 target="_blank"

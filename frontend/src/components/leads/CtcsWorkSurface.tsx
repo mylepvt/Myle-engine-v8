@@ -51,7 +51,7 @@ type Props = {
 export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   const { role, serverRole } = useDashboardShellRole()
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
-  const [tab, setTab] = useState<CtcsTab>('today')
+  const [tab, setTab] = useState<CtcsTab>('all')
   const [nowMs, setNowMs] = useState(() => Date.now())
   const searchMode =
     filters.q.trim().length > 0 && (surfaceRole === 'admin' || surfaceRole === 'leader')
@@ -94,26 +94,33 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
     [items, outcomeLeadId],
   )
 
+  const onSendEnrollment = useCallback(
+    (id: number) => {
+      const shareWindow = reserveExternalShareWindow()
+      void sendEnrollmentMut
+        .mutateAsync(id)
+        .then((result) => {
+          const manualUrl = result.delivery.manual_share_url?.trim()
+          if (!completeExternalShareWindow(shareWindow, manualUrl)) {
+            closeExternalShareWindow(shareWindow)
+          }
+        })
+        .catch(() => {
+          closeExternalShareWindow(shareWindow)
+        })
+    },
+    [sendEnrollmentMut],
+  )
+
   const onPatchStatus = useCallback(
     (id: number, status: LeadStatus) => {
       if (status === 'video_sent') {
-        const shareWindow = reserveExternalShareWindow()
-        void sendEnrollmentMut
-          .mutateAsync(id)
-          .then((result) => {
-            const manualUrl = result.delivery.manual_share_url?.trim()
-            if (!completeExternalShareWindow(shareWindow, manualUrl)) {
-              closeExternalShareWindow(shareWindow)
-            }
-          })
-          .catch(() => {
-            closeExternalShareWindow(shareWindow)
-          })
+        onSendEnrollment(id)
         return
       }
       void patchMut.mutateAsync({ id, body: { status } })
     },
-    [patchMut, sendEnrollmentMut],
+    [onSendEnrollment, patchMut],
   )
 
   const onPatchCallStatus = useCallback(
@@ -161,6 +168,10 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   )
 
   const actionBusy = ctcsMut.isPending || callLogMut.isPending
+  const sendBusyLeadId =
+    sendEnrollmentMut.isPending && typeof sendEnrollmentMut.variables === 'number'
+      ? sendEnrollmentMut.variables
+      : null
 
   return (
     <div className="space-y-4">
@@ -230,10 +241,11 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
             lead={l}
             nowMs={nowMs}
             isActive={callMode && activeLeadId === l.id}
-            patchBusy={patchBusyLeadId === l.id || patchMut.isPending}
+            patchBusy={patchBusyLeadId === l.id || sendBusyLeadId === l.id || patchMut.isPending}
             actionBusy={actionBusy}
             onPatchStatus={onPatchStatus}
             onPatchCallStatus={onPatchCallStatus}
+            onSendEnrollment={onSendEnrollment}
             onCall={onCall}
             onFollowUp={onFollowUp}
           />
