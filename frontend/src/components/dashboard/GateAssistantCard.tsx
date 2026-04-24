@@ -33,6 +33,13 @@ function riskLabel(level: 'green' | 'yellow' | 'red') {
   }
 }
 
+function formatShortDate(value: string | null) {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleDateString(undefined, { dateStyle: 'medium' })
+}
+
 export function GateAssistantCard({ sessionReady }: Props) {
   const { data, isPending, isError, error, refetch } = useGateAssistantQuery(sessionReady)
 
@@ -94,9 +101,13 @@ export function GateAssistantCard({ sessionReady }: Props) {
     data.members_below_call_gate > 0 || data.role === 'leader'
       ? `Members below gate: ${data.members_below_call_gate}`
       : null,
+    data.role !== 'team'
+      ? `Warnings: ${data.team_warning_count} · Strong: ${data.team_strong_warning_count} · Final: ${data.team_final_warning_count} · Removed: ${data.team_removed_count}`
+      : null,
     data.active_pipeline_leads > 0 ? `Pipeline leads: ${data.active_pipeline_leads}` : null,
   ].filter(Boolean) as string[]
   const secondaryGate = data.checklist.find((c) => !c.done && c.href && c.href !== data.next_href)
+  const disciplineDate = formatShortDate(data.grace_end_date)
 
   return (
     <Card
@@ -122,9 +133,7 @@ export function GateAssistantCard({ sessionReady }: Props) {
             {riskLabel(data.risk_level)}
           </span>
         </div>
-        <CardDescription>
-          Role-based execution gates from live leads, calls, follow-ups, and proof state.
-        </CardDescription>
+        <CardDescription>Current targets, discipline status, and next action.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {pct < 100 ? (
@@ -170,6 +179,34 @@ export function GateAssistantCard({ sessionReady }: Props) {
             </li>
           ))}
         </ul>
+
+        {data.compliance_title || data.role !== 'team' ? (
+          <div className="rounded-lg border border-border/60 bg-background/70 px-3 py-2 text-sm">
+            {data.role === 'team' ? (
+              <>
+                <p className="font-medium text-foreground">
+                  {data.compliance_title ?? 'Discipline status'}
+                </p>
+                <p className="mt-1 text-ds-caption text-muted-foreground">
+                  {data.compliance_summary ?? 'No active compliance warning.'}
+                </p>
+                {(data.calls_short_streak > 0 || data.missing_report_streak > 0 || disciplineDate) ? (
+                  <p className="mt-1 text-ds-caption text-muted-foreground">
+                    Calls streak: {data.calls_short_streak}d · Report streak: {data.missing_report_streak}d
+                    {disciplineDate ? ` · Grace till ${disciplineDate}` : ''}
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <p className="font-medium text-foreground">Team discipline snapshot</p>
+                <p className="mt-1 text-ds-caption text-muted-foreground">
+                  Warning {data.team_warning_count} · Strong {data.team_strong_warning_count} · Final {data.team_final_warning_count} · Removed {data.team_removed_count} · Grace {data.team_grace_count}
+                </p>
+              </>
+            )}
+          </div>
+        ) : null}
 
         <div className="flex flex-wrap gap-2">
           {data.next_href ? (

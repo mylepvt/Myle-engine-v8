@@ -102,6 +102,24 @@ function scoreVariant(band: TeamTrackingMemberSummary['consistency_band']) {
   return 'danger' as const
 }
 
+function complianceVariant(level: TeamTrackingMemberSummary['compliance_level']) {
+  if (level === 'removed') return 'danger' as const
+  if (level === 'final_warning' || level === 'strong_warning') return 'warning' as const
+  if (level === 'warning') return 'primary' as const
+  if (level === 'grace' || level === 'grace_ending') return 'outline' as const
+  if (level === 'clear') return 'success' as const
+  return 'secondary' as const
+}
+
+function complianceRank(level: TeamTrackingMemberSummary['compliance_level']) {
+  if (level === 'removed') return 5
+  if (level === 'final_warning') return 4
+  if (level === 'strong_warning') return 3
+  if (level === 'warning') return 2
+  if (level === 'grace_ending') return 1
+  return 0
+}
+
 function presenceRank(status: TeamTrackingMemberSummary['presence_status']) {
   if (status === 'online') return 0
   if (status === 'idle') return 1
@@ -134,6 +152,8 @@ function memberSearchValues(item: TeamTrackingMemberSummary): SearchableValue[] 
     item.leader_name,
     item.upline_name,
     item.upline_fbo_id,
+    item.compliance_title,
+    item.compliance_summary,
     ...item.insights,
   ]
 }
@@ -144,6 +164,7 @@ function attentionScore(item: TeamTrackingMemberSummary) {
   else if (item.presence_status === 'idle') score += 2
   if (item.consistency_band === 'low') score += 4
   else if (item.consistency_band === 'medium') score += 1
+  score += complianceRank(item.compliance_level)
   if (item.calls_count === 0) score += 1
   if (item.followups_done_count === 0) score += 1
   if (item.last_activity_at === null) score += 2
@@ -309,6 +330,9 @@ function LiveMemberRow({ item, dateIso }: { item: TeamTrackingMemberSummary; dat
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-medium text-foreground group-hover:text-primary">{item.member_name}</span>
           <Badge variant={presenceVariant(item.presence_status)}>{item.presence_status}</Badge>
+          {item.compliance_title && item.compliance_level !== 'clear' && item.compliance_level !== 'not_applicable' ? (
+            <Badge variant={complianceVariant(item.compliance_level)}>{item.compliance_title}</Badge>
+          ) : null}
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
           {item.member_fbo_id}
@@ -345,6 +369,9 @@ function AttentionRow({ item, dateIso }: { item: TeamTrackingMemberSummary; date
             </Link>
             <Badge variant={presenceVariant(item.presence_status)}>{item.presence_status}</Badge>
             <Badge variant={scoreVariant(item.consistency_band)}>{item.consistency_score}</Badge>
+            {item.compliance_title && item.compliance_level !== 'clear' && item.compliance_level !== 'not_applicable' ? (
+              <Badge variant={complianceVariant(item.compliance_level)}>{item.compliance_title}</Badge>
+            ) : null}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             {item.leader_name ? `${item.leader_name} · ` : ''}
@@ -764,9 +791,9 @@ export function TeamTrackingPage({ title }: Props) {
                       <TableRow key={item.user_id}>
                         <TableCell className="py-3">
                           <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={cn(
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={cn(
                                   'size-2.5 rounded-full',
                                   liveBadgeClass(item.presence_status),
                                 )}
@@ -775,6 +802,11 @@ export function TeamTrackingPage({ title }: Props) {
                               <Badge variant={scoreVariant(item.consistency_band)}>
                                 {item.consistency_band}
                               </Badge>
+                              {item.compliance_title && item.compliance_level !== 'not_applicable' ? (
+                                <Badge variant={complianceVariant(item.compliance_level)}>
+                                  {item.compliance_title}
+                                </Badge>
+                              ) : null}
                             </div>
                             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                               <span className="font-mono">{item.member_fbo_id}</span>

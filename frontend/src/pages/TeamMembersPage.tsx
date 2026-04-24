@@ -12,6 +12,7 @@ import {
   useTeamMembersQuery,
   useResetAllMembersPasswordMutation,
   useResetMemberPasswordMutation,
+  useUpdateMemberComplianceMutation,
   useUpdateMemberRoleMutation,
   useDeleteMemberMutation,
   useMemberLeadsQuery,
@@ -48,6 +49,56 @@ function formatMemberTimestamp(value: string): string {
         dateStyle: 'medium',
         timeStyle: 'short',
       })
+}
+
+function formatMemberDate(value: string | null | undefined): string {
+  if (!value) return '—'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleDateString(undefined, {
+        dateStyle: 'medium',
+      })
+}
+
+function complianceBadgeVariant(
+  level: TeamMemberPublic['compliance_level'],
+): 'success' | 'warning' | 'danger' | 'primary' | 'outline' | 'default' {
+  switch (level) {
+    case 'removed':
+      return 'danger'
+    case 'final_warning':
+    case 'strong_warning':
+      return 'warning'
+    case 'warning':
+      return 'primary'
+    case 'grace':
+    case 'grace_ending':
+      return 'outline'
+    case 'clear':
+      return 'success'
+    default:
+      return 'default'
+  }
+}
+
+function complianceTone(level: TeamMemberPublic['compliance_level']): string {
+  switch (level) {
+    case 'removed':
+      return 'text-destructive'
+    case 'final_warning':
+    case 'strong_warning':
+      return 'text-warning'
+    case 'warning':
+      return 'text-primary'
+    case 'grace':
+    case 'grace_ending':
+      return 'text-foreground'
+    case 'clear':
+      return 'text-success'
+    default:
+      return 'text-muted-foreground'
+  }
 }
 
 function ResetPasswordModal({
@@ -134,32 +185,78 @@ function MemberProfileModal({
   member: TeamMemberPublic
   onClose: () => void
 }) {
-  const { data, isPending } = useMemberLeadsQuery(member.id)
-  const invQuery = useInvoicesQuery({ user_id: member.id, limit: 50, offset: 0 })
+  const [currentMember, setCurrentMember] = useState(member)
+  const { data, isPending } = useMemberLeadsQuery(currentMember.id)
+  const invQuery = useInvoicesQuery({ user_id: currentMember.id, limit: 50, offset: 0 })
   const updateRoleMut = useUpdateMemberRoleMutation()
+  const updateComplianceMut = useUpdateMemberComplianceMutation()
   const deleteMut = useDeleteMemberMutation()
   const trainingToggle = useToggleTrainingLockMutation()
   const [selectedRole, setSelectedRole] = useState<Role>(member.role as Role)
   const [roleError, setRoleError] = useState<string | null>(null)
+  const [complianceError, setComplianceError] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [trainingError, setTrainingError] = useState<string | null>(null)
   const [trainingRequired, setTrainingRequired] = useState<boolean>(member.training_required ?? false)
+  const [graceEndDate, setGraceEndDate] = useState(member.grace_end_date?.slice(0, 10) ?? '')
+  const [graceReason, setGraceReason] = useState(member.grace_reason ?? '')
+
+  useEffect(() => {
+    setCurrentMember(member)
+    setSelectedRole(member.role as Role)
+    setTrainingRequired(member.training_required ?? false)
+    setGraceEndDate(member.grace_end_date?.slice(0, 10) ?? '')
+    setGraceReason(member.grace_reason ?? '')
+  }, [member])
 
   function handleRoleChange() {
     setRoleError(null)
     updateRoleMut.mutate(
-      { userId: member.id, role: selectedRole },
+      { userId: currentMember.id, role: selectedRole },
       {
         onError: (e: Error) => setRoleError(e.message),
-        onSuccess: onClose,
+        onSuccess: (updated) => {
+          setCurrentMember(updated)
+          setSelectedRole(updated.role as Role)
+        },
+      },
+    )
+  }
+
+  function handleComplianceAction(
+    action: 'grant_grace' | 'clear_grace' | 'restore_access' | 'remove_now',
+  ) {
+    if (action === 'grant_grace' && !graceEndDate.trim()) {
+      setComplianceError('Grace till date required.')
+      return
+    }
+    if (action === 'remove_now') {
+      const ok = window.confirm(`Remove ${currentMember.fbo_id} from the system right now?`)
+      if (!ok) return
+    }
+    setComplianceError(null)
+    updateComplianceMut.mutate(
+      {
+        userId: currentMember.id,
+        action,
+        graceEndDate: action === 'grant_grace' ? graceEndDate : null,
+        reason: graceReason.trim() || null,
+      },
+      {
+        onError: (e: Error) => setComplianceError(e.message),
+        onSuccess: (updated) => {
+          setCurrentMember(updated)
+          setGraceEndDate(updated.grace_end_date?.slice(0, 10) ?? '')
+          setGraceReason(updated.grace_reason ?? '')
+        },
       },
     )
   }
 
   function handleDelete() {
-    if (!window.confirm(`Delete ${member.fbo_id}? This cannot be undone.`)) return
+    if (!window.confirm(`Delete ${currentMember.fbo_id}? This cannot be undone.`)) return
     setDeleteError(null)
-    deleteMut.mutate(member.id, {
+    deleteMut.mutate(currentMember.id, {
       onError: (e: Error) => setDeleteError(e.message),
       onSuccess: onClose,
     })
@@ -177,13 +274,13 @@ function MemberProfileModal({
         {/* Header */}
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <h2 className="break-all text-base font-semibold text-foreground">{member.fbo_id}</h2>
-            {member.username ? (
-              <p className="break-words text-ds-caption text-muted-foreground">({member.username})</p>
+            <h2 className="break-all text-base font-semibold text-foreground">{currentMember.fbo_id}</h2>
+            {currentMember.username ? (
+              <p className="break-words text-ds-caption text-muted-foreground">({currentMember.username})</p>
             ) : null}
-            <p className="mt-0.5 break-all text-ds-caption text-muted-foreground">{member.email}</p>
+            <p className="mt-0.5 break-all text-ds-caption text-muted-foreground">{currentMember.email}</p>
             <p className="mt-0.5 text-ds-caption text-muted-foreground">
-              Joined {formatMemberTimestamp(member.created_at)}
+              Joined {formatMemberTimestamp(currentMember.created_at)}
             </p>
           </div>
           <button
@@ -193,6 +290,113 @@ function MemberProfileModal({
           >
             ✕
           </button>
+        </div>
+
+        <div className="mb-4 rounded-lg border border-border bg-muted/20 p-3">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Compliance Control</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {currentMember.compliance_title ? (
+                    <Badge variant={complianceBadgeVariant(currentMember.compliance_level)}>
+                      {currentMember.compliance_title}
+                    </Badge>
+                  ) : null}
+                  {currentMember.grace_end_date ? (
+                    <Badge variant="outline">Grace till {formatMemberDate(currentMember.grace_end_date)}</Badge>
+                  ) : null}
+                  {currentMember.access_blocked ? (
+                    <Badge variant="danger">Access blocked</Badge>
+                  ) : null}
+                </div>
+              </div>
+              <div className="text-right text-[0.7rem] text-muted-foreground">
+                <p>Calls streak: {currentMember.calls_short_streak ?? 0}d</p>
+                <p>Report streak: {currentMember.missing_report_streak ?? 0}d</p>
+              </div>
+            </div>
+            <p className={`text-xs ${complianceTone(currentMember.compliance_level)}`}>
+              {currentMember.compliance_summary ?? 'No active discipline note.'}
+            </p>
+
+            {currentMember.role === 'admin' ? (
+              <p className="text-[0.72rem] text-muted-foreground">
+                Admin accounts are excluded from call/report discipline rules.
+              </p>
+            ) : (
+              <>
+                <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+                  <label className="block">
+                    <span className="mb-1 block text-ds-caption text-muted-foreground">Grace till</span>
+                    <input
+                      type="date"
+                      value={graceEndDate}
+                      onChange={(e) => setGraceEndDate(e.target.value)}
+                      disabled={updateComplianceMut.isPending}
+                      className="field-input"
+                    />
+                  </label>
+                  <div className="flex items-end">
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={updateComplianceMut.isPending || !graceEndDate.trim()}
+                      onClick={() => handleComplianceAction('grant_grace')}
+                      className="w-full md:w-auto"
+                    >
+                      {updateComplianceMut.isPending ? '…' : 'Grant Grace'}
+                    </Button>
+                  </div>
+                </div>
+                <label className="block">
+                  <span className="mb-1 block text-ds-caption text-muted-foreground">Reason / note</span>
+                  <textarea
+                    value={graceReason}
+                    onChange={(e) => setGraceReason(e.target.value)}
+                    disabled={updateComplianceMut.isPending}
+                    rows={3}
+                    className="field-input min-h-[5.5rem] resize-y"
+                    placeholder="Optional reason for grace or removal note"
+                  />
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={updateComplianceMut.isPending || !currentMember.grace_end_date}
+                    onClick={() => handleComplianceAction('clear_grace')}
+                  >
+                    Clear Grace
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={updateComplianceMut.isPending}
+                    onClick={() => handleComplianceAction('restore_access')}
+                  >
+                    Restore & Reset
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={updateComplianceMut.isPending}
+                    onClick={() => handleComplianceAction('remove_now')}
+                    className="border-destructive/50 text-destructive hover:bg-destructive/10"
+                  >
+                    Remove Now
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {complianceError ? (
+              <p className="text-ds-caption text-destructive" role="alert">{complianceError}</p>
+            ) : null}
+          </div>
         </div>
 
         {/* Role change */}
@@ -212,7 +416,7 @@ function MemberProfileModal({
             <Button
               type="button"
               size="sm"
-              disabled={updateRoleMut.isPending || selectedRole === member.role}
+              disabled={updateRoleMut.isPending || selectedRole === currentMember.role}
               onClick={handleRoleChange}
             >
               {updateRoleMut.isPending ? '…' : 'Save'}
@@ -310,9 +514,9 @@ function MemberProfileModal({
                   {trainingRequired ? '🔒 Locked (training required)' : '✓ Unlocked'}
                 </span>
               </p>
-              {member.training_status ? (
+              {currentMember.training_status ? (
                 <p className="mt-0.5 text-[0.68rem] text-muted-foreground">
-                  Progress: {member.training_status}
+                  Progress: {currentMember.training_status}
                 </p>
               ) : null}
             </div>
@@ -325,9 +529,16 @@ function MemberProfileModal({
                 setTrainingError(null)
                 const newLocked = !trainingRequired
                 trainingToggle.mutate(
-                  { userId: member.id, locked: newLocked },
+                  { userId: currentMember.id, locked: newLocked },
                   {
-                    onSuccess: () => setTrainingRequired(newLocked),
+                    onSuccess: (updated) => {
+                      setTrainingRequired(newLocked)
+                      setCurrentMember((prev) => ({
+                        ...prev,
+                        training_required: updated.training_required,
+                        training_status: updated.training_status,
+                      }))
+                    },
                     onError: (e: Error) => setTrainingError(e.message),
                   },
                 )
@@ -521,7 +732,7 @@ export function TeamMembersPage({ title }: Props) {
             <ListSearchInput
               value={memberQuery}
               onValueChange={setMemberQuery}
-              placeholder="Search by FBO ID, username, email, role, or upline"
+              placeholder="Search by FBO ID, username, email, role, upline, or compliance"
               aria-label="Search members"
               wrapperClassName="w-full lg:max-w-md"
             />
@@ -570,6 +781,23 @@ export function TeamMembersPage({ title }: Props) {
                             ) : null}
                           </p>
                         ) : null}
+                        {m.compliance_title && m.compliance_level !== 'not_applicable' ? (
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <Badge variant={complianceBadgeVariant(m.compliance_level)}>
+                              {m.compliance_title}
+                            </Badge>
+                            {m.grace_end_date ? (
+                              <span className="text-[0.68rem] text-muted-foreground">
+                                Grace till {formatMemberDate(m.grace_end_date)}
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        {m.compliance_summary && m.compliance_level !== 'not_applicable' ? (
+                          <p className={`text-[0.7rem] ${complianceTone(m.compliance_level)}`}>
+                            {m.compliance_summary}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
 
@@ -582,7 +810,7 @@ export function TeamMembersPage({ title }: Props) {
                           onClick={() => setProfileTarget(m)}
                           className="w-full justify-center border-primary/30 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
                         >
-                          View Profile
+                          Open Control Center
                         </Button>
                       ) : null}
                       {isAdminOrLeader ? (

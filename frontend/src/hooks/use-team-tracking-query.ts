@@ -23,6 +23,21 @@ export type TeamTrackingMemberSummary = {
   followups_done_count: number
   consistency_score: number
   consistency_band: 'low' | 'medium' | 'high'
+  compliance_level:
+    | 'clear'
+    | 'warning'
+    | 'strong_warning'
+    | 'final_warning'
+    | 'grace'
+    | 'grace_ending'
+    | 'removed'
+    | 'not_applicable'
+    | null
+  compliance_title: string | null
+  compliance_summary: string | null
+  calls_short_streak: number
+  missing_report_streak: number
+  grace_end_date: string | null
   insights: string[]
 }
 

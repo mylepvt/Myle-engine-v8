@@ -24,11 +24,12 @@ from app.models.user import User
 from app.schemas.system_surface import SystemStubResponse
 from app.schemas.team import (
     EnrollmentDecisionBody,
-    TeamEnrollmentHistoryResponse,
     PendingRegistrationsResponse,
     PendingRegistrationItem,
     RegistrationDecisionBody,
+    TeamEnrollmentHistoryResponse,
     TeamEnrollmentListResponse,
+    TeamMemberComplianceUpdate,
     TeamMemberCreate,
     TeamMemberListResponse,
     TeamMemberPublic,
@@ -40,6 +41,7 @@ from app.schemas.team import (
 )
 from app.services.downline import is_user_in_downline_of
 from app.services.lead_owner import lead_owner_clause
+from app.services.member_compliance import build_compliance_snapshots
 from app.services.payment_service import PaymentService
 from app.services.team_reports_metrics import IST, compute_live_summary
 from app.services.user_hierarchy import (
@@ -73,6 +75,44 @@ async def _attach_team_member_hierarchy(
         leader = nearest_leader_entry(item.id, entries)
         item.leader_user_id = leader.id if leader is not None else None
         item.leader_name = leader.display_name if leader is not None else None
+    return items
+
+
+async def _attach_team_member_compliance(
+    session: AsyncSession,
+    items: list[TeamMemberPublic],
+) -> list[TeamMemberPublic]:
+    snapshots = await build_compliance_snapshots(
+        session,
+        [item.id for item in items],
+        apply_actions=True,
+    )
+    for item in items:
+        snapshot = snapshots.get(item.id)
+        if snapshot is None:
+            continue
+        item.access_blocked = snapshot.access_blocked
+        item.discipline_status = snapshot.discipline_status
+        item.grace_end_date = snapshot.grace_end_date
+        item.grace_reason = snapshot.grace_reason
+        item.removed_at = snapshot.removed_at
+        item.removal_reason = snapshot.removal_reason
+        item.calls_short_streak = snapshot.calls_short_streak
+        item.missing_report_streak = snapshot.missing_report_streak
+        item.compliance_level = snapshot.compliance_level
+        item.compliance_title = snapshot.compliance_title
+        item.compliance_summary = snapshot.compliance_summary
+        item.grace_active = snapshot.grace_active
+        item.grace_ending_tomorrow = snapshot.grace_ending_tomorrow
+    return items
+
+
+async def _finalize_team_member_items(
+    session: AsyncSession,
+    items: list[TeamMemberPublic],
+) -> list[TeamMemberPublic]:
+    items = await _attach_team_member_hierarchy(session, items)
+    items = await _attach_team_member_compliance(session, items)
     return items
 
 
@@ -203,7 +243,8 @@ async def create_team_member(
             detail="FBO ID or email already registered",
         ) from None
     await session.refresh(row)
-    return TeamMemberPublic.model_validate(row)
+    [item] = await _finalize_team_member_items(session, [TeamMemberPublic.model_validate(row)])
+    return item
 
 
 @router.get("/my-team", response_model=TeamMyTeamResponse)
@@ -235,7 +276,7 @@ async def my_team(
             item.upline_fbo_id = up_fbo
             item.upline_name = up_name
             items.append(item)
-        items = await _attach_team_member_hierarchy(session, items)
+        items = await _finalize_team_member_items(session, items)
         return TeamMyTeamResponse(
             items=items,
             total=total,
@@ -253,7 +294,7 @@ async def my_team(
             if up is not None:
                 item.upline_fbo_id = up.fbo_id
                 item.upline_name = (up.username or up.name or up.fbo_id or "").strip() or None
-        [item] = await _attach_team_member_hierarchy(session, [item])
+        [item] = await _finalize_team_member_items(session, [item])
         return TeamMyTeamResponse(items=[item], total=1, direct_members=0, total_downline=0)
 
     leader_id = user.user_id
@@ -273,7 +314,7 @@ async def my_team(
         item.upline_fbo_id = up_fbo
         item.upline_name = up_name
         items.append(item)
-    items = await _attach_team_member_hierarchy(session, items)
+    items = await _finalize_team_member_items(session, items)
 
     direct_ct = int(
         (
@@ -648,10 +689,114 @@ async def update_member_role(
             status_code=http_status.HTTP_400_BAD_REQUEST,
             detail="Cannot change your own role",
         )
+    previous_role = (target.role or "").strip().lower()
     target.role = body.role
+    if body.role in ("leader", "team") and previous_role != body.role:
+        target.discipline_reset_on = datetime.now(IST).date()
+        if previous_role == "admin":
+            target.access_blocked = False
+            target.discipline_status = "active"
+            target.removed_at = None
+            target.removed_by_user_id = None
+            target.removal_reason = None
     await session.commit()
     await session.refresh(target)
-    return TeamMemberPublic.model_validate(target)
+    [item] = await _finalize_team_member_items(session, [TeamMemberPublic.model_validate(target)])
+    return item
+
+
+@router.patch("/members/{target_user_id}/compliance", response_model=TeamMemberPublic)
+async def update_member_compliance(
+    target_user_id: int,
+    body: TeamMemberComplianceUpdate,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> TeamMemberPublic:
+    """Admin control center for grace / restore / manual removal."""
+    _require_admin(user)
+    target = await session.get(User, target_user_id)
+    if target is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    if body.action == "remove_now" and target.id == user.user_id:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="Cannot remove your own account",
+        )
+
+    role_key = (target.role or "").strip().lower()
+    if body.action == "grant_grace":
+        if role_key not in {"team", "leader"}:
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="Grace is only available for leader or team accounts",
+            )
+        if body.grace_end_date is None:
+            raise HTTPException(
+                status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="grace_end_date is required",
+            )
+        today = datetime.now(IST).date()
+        if body.grace_end_date < today:
+            raise HTTPException(
+                status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="grace_end_date cannot be in the past",
+            )
+        target.access_blocked = False
+        target.discipline_status = "grace"
+        target.grace_end_date = body.grace_end_date
+        target.grace_reason = (body.reason or "").strip() or None
+        target.grace_updated_at = datetime.now(timezone.utc)
+        target.grace_set_by_user_id = user.user_id
+        target.discipline_reset_on = None
+        target.removed_at = None
+        target.removed_by_user_id = None
+        target.removal_reason = None
+    elif body.action == "clear_grace":
+        target.access_blocked = False
+        target.discipline_status = "active"
+        target.grace_end_date = None
+        target.grace_reason = None
+        target.grace_updated_at = datetime.now(timezone.utc)
+        target.grace_set_by_user_id = user.user_id
+        target.discipline_reset_on = datetime.now(IST).date()
+    elif body.action == "restore_access":
+        target.access_blocked = False
+        target.discipline_status = "active"
+        target.grace_end_date = None
+        target.grace_reason = None
+        target.grace_updated_at = None
+        target.grace_set_by_user_id = None
+        target.removed_at = None
+        target.removed_by_user_id = None
+        target.removal_reason = None
+        target.discipline_reset_on = datetime.now(IST).date()
+    elif body.action == "remove_now":
+        target.access_blocked = True
+        target.discipline_status = "removed"
+        target.removed_at = datetime.now(timezone.utc)
+        target.removed_by_user_id = user.user_id
+        target.removal_reason = (body.reason or "").strip() or "Removed manually by admin."
+        target.grace_end_date = None
+        target.grace_reason = None
+        target.grace_updated_at = None
+        target.grace_set_by_user_id = None
+    else:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Unsupported compliance action",
+        )
+
+    await session.commit()
+    await session.refresh(target)
+    item = TeamMemberPublic.model_validate(target)
+    if target.upline_user_id is not None:
+        up = await session.get(User, target.upline_user_id)
+        if up is not None:
+            item.upline_fbo_id = up.fbo_id
+            item.upline_name = (up.username or up.name or up.fbo_id or "").strip() or None
+    [item] = await _finalize_team_member_items(session, [item])
+    await notify_topics("team", "team_tracking")
+    return item
 
 
 class TrainingToggleBody(BaseModel):

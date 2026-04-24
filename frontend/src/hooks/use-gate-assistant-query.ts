@@ -26,6 +26,19 @@ export type GateAssistantResponse = {
   open_follow_ups: number
   overdue_follow_ups: number
   active_pipeline_leads: number
+  compliance_level: string | null
+  compliance_title: string | null
+  compliance_summary: string | null
+  calls_short_streak: number
+  missing_report_streak: number
+  grace_active: boolean
+  grace_ending_tomorrow: boolean
+  grace_end_date: string | null
+  team_warning_count: number
+  team_strong_warning_count: number
+  team_final_warning_count: number
+  team_removed_count: number
+  team_grace_count: number
   note: string | null
 }
 

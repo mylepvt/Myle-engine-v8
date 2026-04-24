@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from datetime import timedelta
+
 import pytest
 from fastapi.testclient import TestClient
 
+from app.core.time_ist import today_ist
 from main import app
 
 from util_jwt_patch import patch_jwt_settings
@@ -104,6 +107,49 @@ def test_create_team_member_forbidden_leader(monkeypatch: pytest.MonkeyPatch) ->
         },
     )
     assert res.status_code == 403
+
+
+def test_admin_can_manage_member_compliance_controls(monkeypatch: pytest.MonkeyPatch) -> None:
+    c = _authed_client(monkeypatch)
+    assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+    grace_till = (today_ist() + timedelta(days=2)).isoformat()
+
+    grace = c.patch(
+        "/api/v1/team/members/3/compliance",
+        json={
+            "action": "grant_grace",
+            "grace_end_date": grace_till,
+            "reason": "Approved leave",
+        },
+    )
+    assert grace.status_code == 200
+    grace_body = grace.json()
+    assert grace_body["discipline_status"] == "grace"
+    assert grace_body["grace_end_date"] == grace_till
+    assert grace_body["compliance_level"] in {"grace", "grace_ending"}
+
+    removed = c.patch(
+        "/api/v1/team/members/3/compliance",
+        json={
+            "action": "remove_now",
+            "reason": "Manual admin action",
+        },
+    )
+    assert removed.status_code == 200
+    removed_body = removed.json()
+    assert removed_body["access_blocked"] is True
+    assert removed_body["discipline_status"] == "removed"
+    assert removed_body["compliance_level"] == "removed"
+
+    restored = c.patch(
+        "/api/v1/team/members/3/compliance",
+        json={"action": "restore_access"},
+    )
+    assert restored.status_code == 200
+    restored_body = restored.json()
+    assert restored_body["access_blocked"] is False
+    assert restored_body["discipline_status"] == "active"
+    assert restored_body["compliance_level"] == "clear"
 
 
 def test_create_team_member_short_password(monkeypatch: pytest.MonkeyPatch) -> None:
