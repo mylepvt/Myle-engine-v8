@@ -18,6 +18,7 @@ import { EnrollmentCard } from '@/components/leads/EnrollmentCard'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LeadNextStepPanel } from '@/components/leads/LeadNextStepPanel'
 import { LeadNotesPanel } from '@/components/leads/LeadNotesPanel'
+import { useSendEnrollmentVideoMutation } from '@/hooks/use-enroll-query'
 import { apiUrl } from '@/lib/api'
 import { callStatusSelectOptions } from '@/lib/call-status-options'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
@@ -193,6 +194,7 @@ export function LeadDetailPage({ leadId }: Props) {
   const transitionsQ = useAvailableTransitionsQuery(leadId)
   const callsQuery = useLeadCallsQuery(leadId)
   const patchMut = usePatchLeadDetailMutation()
+  const sendEnrollmentMut = useSendEnrollmentVideoMutation()
   const resetStageClockMut = useResetStageClockMutation()
   const logCallMut = useLogCallMutation()
   const pipelineStatusOptions = lead
@@ -244,6 +246,14 @@ export function LeadDetailPage({ leadId }: Props) {
     if (!lead) return
     setPipelineError('')
     try {
+      if (pipelineStatus === 'video_sent') {
+        const result = await sendEnrollmentMut.mutateAsync(leadId)
+        const manualUrl = result.delivery.manual_share_url?.trim()
+        if (manualUrl) {
+          window.open(manualUrl, '_blank', 'noopener,noreferrer')
+        }
+        return
+      }
       await patchMut.mutateAsync({
         leadId,
         body: { status: pipelineStatus as LeadStatus, call_status: pipelineCallStatus || undefined },

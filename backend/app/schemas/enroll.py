@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -8,8 +8,6 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 class EnrollShareLinkCreate(BaseModel):
     lead_id: int
-    youtube_url: Optional[str] = Field(default=None, max_length=500)
-    title: Optional[str] = Field(default=None, max_length=200)
 
 
 class EnrollShareLinkPublic(BaseModel):
@@ -26,11 +24,16 @@ class EnrollShareLinkPublic(BaseModel):
     last_viewed_at: Optional[datetime]
     status_synced: bool
     created_at: datetime
+    expires_at: datetime
     share_url: str = ""
+    is_expired: bool = False
 
     @model_validator(mode="after")
     def set_share_url(self) -> "EnrollShareLinkPublic":
+        expiry = self.expires_at.replace(tzinfo=timezone.utc) if self.expires_at.tzinfo is None else self.expires_at.astimezone(timezone.utc)
+        self.expires_at = expiry
         self.share_url = f"/watch/{self.token}"
+        self.is_expired = expiry <= datetime.now(timezone.utc)
         return self
 
 
@@ -39,11 +42,39 @@ class EnrollShareLinkListResponse(BaseModel):
     total: int
 
 
+class EnrollmentVideoSendDelivery(BaseModel):
+    ok: bool
+    channel: str
+    manual_share_url: Optional[str] = None
+    message_preview: Optional[str] = None
+    http_status: Optional[int] = None
+    body_preview: Optional[str] = None
+    error: Optional[str] = None
+    detail: Optional[str] = None
+
+
+class EnrollmentVideoSendResponse(BaseModel):
+    link: EnrollShareLinkPublic
+    delivery: EnrollmentVideoSendDelivery
+
+
 class WatchPageData(BaseModel):
     """Public data for the watch page — no auth required."""
 
     token: str
     title: str
-    youtube_url: Optional[str]
     lead_name: str  # first name only for privacy
-    view_count: int
+    masked_phone: str
+    expires_at: datetime
+    access_granted: bool
+    stream_url: Optional[str] = None
+    watch_started: bool = False
+
+
+class WatchUnlockRequest(BaseModel):
+    phone: str = Field(min_length=10, max_length=32)
+
+
+class WatchEventResponse(BaseModel):
+    ok: bool = True
+    watch_started: bool = False

@@ -17,6 +17,7 @@ import {
   useLeadsInfiniteQuery,
   usePatchLeadMutation,
 } from '@/hooks/use-leads-query'
+import { useSendEnrollmentVideoMutation } from '@/hooks/use-enroll-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import { teamLeadStatusSelectOptions } from '@/lib/team-lead-status'
@@ -121,6 +122,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const createMut = useCreateLeadMutation()
   const deleteMut = useDeleteLeadMutation()
   const patchMut = usePatchLeadMutation()
+  const sendEnrollmentMut = useSendEnrollmentVideoMutation()
   const patchBusyLeadId =
     patchMut.isPending && patchMut.variables && typeof patchMut.variables.id === 'number'
       ? patchMut.variables.id
@@ -134,8 +136,22 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   )
 
   const onPatchStatus = useCallback(
-    (id: number, status: LeadStatus) => void patchMut.mutateAsync({ id, body: { status } }),
-    [patchMut],
+    (id: number, status: LeadStatus) => {
+      if (status === 'video_sent') {
+        void sendEnrollmentMut
+          .mutateAsync(id)
+          .then((result) => {
+            const manualUrl = result.delivery.manual_share_url?.trim()
+            if (manualUrl) {
+              window.open(manualUrl, '_blank', 'noopener,noreferrer')
+            }
+          })
+          .catch(() => {})
+        return
+      }
+      void patchMut.mutateAsync({ id, body: { status } })
+    },
+    [patchMut, sendEnrollmentMut],
   )
   const onPatchPool = useCallback(
     (id: number) => void patchMut.mutateAsync({ id, body: { in_pool: true } }),
@@ -285,6 +301,11 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
             {patchMut.isError ? (
               <p className="mt-2 text-xs text-destructive" role="alert">
                 {patchMut.error instanceof Error ? patchMut.error.message : 'Update failed'}
+              </p>
+            ) : null}
+            {sendEnrollmentMut.isError ? (
+              <p className="mt-2 text-xs text-destructive" role="alert">
+                {sendEnrollmentMut.error instanceof Error ? sendEnrollmentMut.error.message : 'Enrollment send failed'}
               </p>
             ) : null}
           </div>
@@ -481,6 +502,11 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
         {patchMut.isError ? (
           <p className="mt-2 px-4 text-xs text-destructive" role="alert">
             {patchMut.error instanceof Error ? patchMut.error.message : 'Update failed'}
+          </p>
+        ) : null}
+        {sendEnrollmentMut.isError ? (
+          <p className="mt-2 px-4 text-xs text-destructive" role="alert">
+            {sendEnrollmentMut.error instanceof Error ? sendEnrollmentMut.error.message : 'Enrollment send failed'}
           </p>
         ) : null}
 

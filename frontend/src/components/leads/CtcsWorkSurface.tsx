@@ -16,6 +16,7 @@ import {
   useLeadsInfiniteQuery,
   usePatchLeadMutation,
 } from '@/hooks/use-leads-query'
+import { useSendEnrollmentVideoMutation } from '@/hooks/use-enroll-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import { useCallToCloseStore } from '@/stores/call-to-close-store'
@@ -66,6 +67,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   const total = leadsQ.data?.pages[0]?.total ?? 0
 
   const patchMut = usePatchLeadMutation()
+  const sendEnrollmentMut = useSendEnrollmentVideoMutation()
   const ctcsMut = useLeadCtcsActionMutation()
   const callLogMut = useLeadCallLogMutation()
 
@@ -88,8 +90,22 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   )
 
   const onPatchStatus = useCallback(
-    (id: number, status: LeadStatus) => void patchMut.mutateAsync({ id, body: { status } }),
-    [patchMut],
+    (id: number, status: LeadStatus) => {
+      if (status === 'video_sent') {
+        void sendEnrollmentMut
+          .mutateAsync(id)
+          .then((result) => {
+            const manualUrl = result.delivery.manual_share_url?.trim()
+            if (manualUrl) {
+              window.open(manualUrl, '_blank', 'noopener,noreferrer')
+            }
+          })
+          .catch(() => {})
+        return
+      }
+      void patchMut.mutateAsync({ id, body: { status } })
+    },
+    [patchMut, sendEnrollmentMut],
   )
 
   const onPatchCallStatus = useCallback(
