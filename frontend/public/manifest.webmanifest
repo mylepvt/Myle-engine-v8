@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Myle — Sales workspace",
+  "name": "Myle — Secure workspace",
   "short_name": "Myle",
-  "description": "Pipeline, follow-ups, and team leads in one place.",
+  "description": "Secure guided onboarding, private watch rooms, and trusted team workflows.",
   "start_url": "/?utm_source=pwa",
   "scope": "/",
   "display": "standalone",

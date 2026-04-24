@@ -64,6 +64,33 @@ const ENROLLMENT_VIDEO_SETTING_FIELDS = [
     placeholder: 'https://app.example.com',
     help: 'Optional. Sirf tab jab API aur frontend alag domains par deployed hon aur WhatsApp link ko public app domain par khulna ho.',
   },
+  {
+    key: 'enrollment_social_proof_count',
+    label: 'Forms received',
+    placeholder: '300',
+    help: 'Optional. Enrollment room me social-proof counter ke liye current form volume.',
+    inputMode: 'numeric',
+  },
+  {
+    key: 'enrollment_total_seats',
+    label: 'Batch seats',
+    placeholder: '50',
+    help: 'Optional. Current batch me total seats kitni hain.',
+    inputMode: 'numeric',
+  },
+  {
+    key: 'enrollment_seats_left',
+    label: 'Seats left',
+    placeholder: '12',
+    help: 'Optional. Enrollment room me currently kitni seats left dikhani hain.',
+    inputMode: 'numeric',
+  },
+  {
+    key: 'enrollment_trust_note',
+    label: 'Trust note',
+    placeholder: 'Private room access is limited to the current batch window.',
+    help: 'Optional. Clean trust-building line jo video ke upar snapshot section me dikhani ho.',
+  },
 ] as const
 
 const YOUTUBE_HOSTS = new Set(['youtube.com', 'youtu.be', 'youtube-nocookie.com'])
@@ -295,6 +322,10 @@ export function SettingsAppPage({ title }: Props) {
             Lead ko raw video URL nahi jata. WhatsApp par private Myle room link jata hai jo sirf registered number aur
             30-minute expiry ke saath khulta hai.
           </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Agar trust-building snapshot dikhana ho to niche forms received, seats, aur trust note values bhi set kar
+            sakte ho.
+          </p>
         </div>
 
         <div className="rounded-xl border border-white/[0.1] bg-white/[0.04] p-4">
@@ -366,6 +397,7 @@ export function SettingsAppPage({ title }: Props) {
                       [field.key]: e.target.value,
                     }))
                   }
+                  inputMode={'inputMode' in field ? field.inputMode : undefined}
                   placeholder={field.placeholder}
                   className="w-full rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
                 />
