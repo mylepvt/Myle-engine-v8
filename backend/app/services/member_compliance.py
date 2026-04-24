@@ -7,6 +7,7 @@ from typing import Iterable, Literal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.time_ist import IST, today_ist
 from app.models.daily_report import DailyReport
 from app.models.user import User
@@ -113,6 +114,65 @@ def _user_business_start_date(user: User) -> date:
     return created_at.astimezone(IST).date()
 
 
+def _discipline_start_floor(user: User, policy_start_date: date) -> date:
+    start_date = max(_user_business_start_date(user), policy_start_date)
+    if user.discipline_reset_on is not None:
+        start_date = max(start_date, user.discipline_reset_on)
+    return start_date
+
+
+def _datetime_to_ist_date(value: datetime | None) -> date | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.date()
+    return value.astimezone(IST).date()
+
+
+def _is_rollout_stale_grace(user: User, policy_start_date: date) -> bool:
+    return (
+        (user.discipline_status or "").strip().lower() == "grace"
+        and user.grace_end_date is not None
+        and user.grace_end_date < policy_start_date
+    )
+
+
+def _clear_rollout_stale_grace(user: User, *, policy_start_date: date) -> None:
+    user.access_blocked = False
+    user.discipline_status = "active"
+    user.grace_end_date = None
+    user.grace_reason = None
+    user.grace_updated_at = None
+    user.grace_set_by_user_id = None
+    user.discipline_reset_on = policy_start_date
+
+
+def _is_rollout_grandfathered_auto_removal(user: User, policy_start_date: date) -> bool:
+    if user.removed_by_user_id is not None:
+        return False
+    removed_on = _datetime_to_ist_date(user.removed_at)
+    if removed_on is None:
+        return False
+    return removed_on <= policy_start_date and (user.discipline_status or "").strip().lower() == "removed"
+
+
+def _restore_rollout_grandfathered_auto_removal(
+    user: User,
+    *,
+    policy_start_date: date,
+) -> None:
+    user.access_blocked = False
+    user.discipline_status = "active"
+    user.grace_end_date = None
+    user.grace_reason = None
+    user.grace_updated_at = None
+    user.grace_set_by_user_id = None
+    user.removed_at = None
+    user.removed_by_user_id = None
+    user.removal_reason = None
+    user.discipline_reset_on = policy_start_date
+
+
 def _calls_short_streak(
     *,
     user: User,
@@ -120,14 +180,12 @@ def _calls_short_streak(
     call_target: int,
     fresh_leads_by_day: dict[date, dict[int, int]],
     fresh_calls_by_day: dict[date, dict[int, int]],
+    policy_start_date: date,
 ) -> int:
     streak = 0
-    reset_on = user.discipline_reset_on
-    created_on = _user_business_start_date(user)
+    start_floor = _discipline_start_floor(user, policy_start_date)
     for day in days:
-        if day < created_on:
-            break
-        if reset_on is not None and day < reset_on:
+        if day < start_floor:
             break
         fresh_leads = int(fresh_leads_by_day.get(day, {}).get(user.id, 0))
         calls = int(fresh_calls_by_day.get(day, {}).get(user.id, 0))
@@ -143,14 +201,12 @@ def _missing_report_streak(
     user: User,
     days: list[date],
     submitted_reports: set[tuple[int, date]],
+    policy_start_date: date,
 ) -> int:
     streak = 0
-    reset_on = user.discipline_reset_on
-    created_on = _user_business_start_date(user)
+    start_floor = _discipline_start_floor(user, policy_start_date)
     for day in days:
-        if day < created_on:
-            break
-        if reset_on is not None and day < reset_on:
+        if day < start_floor:
             break
         if (user.id, day) not in submitted_reports:
             streak += 1
@@ -220,6 +276,7 @@ async def build_compliance_snapshots(
         return {}
 
     today_date = today or today_ist()
+    policy_start_date = settings.discipline_rollout_start_date
     completed_days = _completed_business_days(today_date)
     call_target = await get_daily_call_target(session)
 
@@ -258,6 +315,7 @@ async def build_compliance_snapshots(
 
     for user in rows:
         status = (user.discipline_status or "").strip().lower() or "active"
+        ignore_grace_for_rollout = False
         snapshot = ComplianceSnapshot(
             user_id=user.id,
             eligible=user.id in eligible_ids,
@@ -277,14 +335,40 @@ async def build_compliance_snapshots(
             snapshots[user.id] = snapshot
             continue
 
-        if user.access_blocked or status == "removed":
+        if _is_rollout_stale_grace(user, policy_start_date):
+            if apply_actions:
+                _clear_rollout_stale_grace(user, policy_start_date=policy_start_date)
+                changed = True
+            ignore_grace_for_rollout = True
+            status = "active"
+            snapshot.access_blocked = False
+            snapshot.discipline_status = status
+            snapshot.grace_end_date = None
+            snapshot.grace_reason = None
+
+        if _is_rollout_grandfathered_auto_removal(user, policy_start_date):
+            if apply_actions:
+                _restore_rollout_grandfathered_auto_removal(
+                    user,
+                    policy_start_date=policy_start_date,
+                )
+                changed = True
+            status = "active"
+            snapshot.access_blocked = False
+            snapshot.discipline_status = status
+            snapshot.grace_end_date = None
+            snapshot.grace_reason = None
+            snapshot.removed_at = None
+            snapshot.removal_reason = None
+
+        if snapshot.access_blocked or status == "removed":
             snapshot.compliance_level = "removed"
             snapshot.compliance_title = "Removed from system"
             snapshot.compliance_summary = snapshot.removal_reason or "Access is blocked for this member."
             snapshots[user.id] = snapshot
             continue
 
-        if _has_expired_grace(user, today_date):
+        if not ignore_grace_for_rollout and _has_expired_grace(user, today_date):
             reason = (
                 f"Grace ended on {user.grace_end_date.isoformat()} and the system removed this member."
             )
@@ -301,7 +385,7 @@ async def build_compliance_snapshots(
             snapshots[user.id] = snapshot
             continue
 
-        if _is_active_grace(user, today_date):
+        if not ignore_grace_for_rollout and _is_active_grace(user, today_date):
             snapshot.grace_active = True
             snapshot.grace_ending_tomorrow = bool(
                 user.grace_end_date == today_date + timedelta(days=1)
@@ -325,11 +409,13 @@ async def build_compliance_snapshots(
             call_target=call_target,
             fresh_leads_by_day=fresh_leads_by_day,
             fresh_calls_by_day=fresh_calls_by_day,
+            policy_start_date=policy_start_date,
         )
         snapshot.missing_report_streak = _missing_report_streak(
             user=user,
             days=completed_days,
             submitted_reports=submitted_reports,
+            policy_start_date=policy_start_date,
         )
 
         call_level = _stage_for_streak(snapshot.calls_short_streak)

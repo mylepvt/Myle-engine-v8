@@ -28,6 +28,19 @@ def _authed(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     return TestClient(app)
 
 
+def _patch_compliance_rollout_start(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    days_ago: int,
+) -> None:
+    import app.services.member_compliance as compliance_mod
+
+    patched = compliance_mod.settings.model_copy(
+        update={"discipline_rollout_start_date": today_ist() - timedelta(days=days_ago)},
+    )
+    monkeypatch.setattr(compliance_mod, "settings", patched)
+
+
 async def _reset_live_tables() -> None:
     factory = get_test_session_factory()
     async with factory() as session:
@@ -168,6 +181,7 @@ def test_gate_assistant_team_uses_fresh_claim_create_import_calls(monkeypatch: p
 
 def test_gate_assistant_team_shows_warning_streaks(monkeypatch: pytest.MonkeyPatch) -> None:
     asyncio.run(_reset_live_tables())
+    _patch_compliance_rollout_start(monkeypatch, days_ago=10)
     fbo = "discipline-gate-001"
 
     async def seed_warning_user() -> None:

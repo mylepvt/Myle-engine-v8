@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy import delete, select
 
 from app.core.passwords import DEV_LOGIN_PASSWORD_PLAIN, hash_password
+from app.core.time_ist import today_ist
 from app.models.user import User
 from main import app
 
@@ -14,6 +15,19 @@ from conftest import get_test_session_factory
 from util_jwt_patch import patch_jwt_settings
 
 client = TestClient(app)
+
+
+def _patch_compliance_rollout_start(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    days_ago: int = 0,
+) -> None:
+    import app.services.member_compliance as compliance_mod
+
+    patched = compliance_mod.settings.model_copy(
+        update={"discipline_rollout_start_date": today_ist() - timedelta(days=days_ago)},
+    )
+    monkeypatch.setattr(compliance_mod, "settings", patched)
 
 
 def test_password_login_with_username_same_as_legacy(
@@ -116,10 +130,114 @@ def test_password_login_rejects_pending_registration(
         asyncio.run(cleanup_pending())
 
 
-def test_password_login_blocks_after_four_missed_reports(
+def test_password_login_ignores_pre_rollout_missed_reports_on_rollout_start(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     patch_jwt_settings(monkeypatch)
+    _patch_compliance_rollout_start(monkeypatch)
+    fbo = "discipline-report-004"
+    email = "discipline-report-004@test.local"
+
+    async def seed_user() -> None:
+        factory = get_test_session_factory()
+        async with factory() as session:
+            session.add(
+                User(
+                    fbo_id=fbo,
+                    email=email,
+                    role="team",
+                    hashed_password=hash_password(DEV_LOGIN_PASSWORD_PLAIN),
+                    upline_user_id=2,
+                    registration_status="approved",
+                    created_at=datetime.now(timezone.utc) - timedelta(days=6),
+                )
+            )
+            await session.commit()
+
+    async def cleanup_user() -> None:
+        factory = get_test_session_factory()
+        async with factory() as session:
+            await session.execute(delete(User).where(User.fbo_id == fbo))
+            await session.commit()
+
+    try:
+        asyncio.run(seed_user())
+        res = client.post(
+            "/api/v1/auth/login",
+            json={"fbo_id": fbo, "password": DEV_LOGIN_PASSWORD_PLAIN},
+        )
+        assert res.status_code == 200
+        assert res.json() == {"ok": True}
+    finally:
+        asyncio.run(cleanup_user())
+
+
+def test_password_login_restores_same_day_auto_removed_user_on_rollout_start(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    patch_jwt_settings(monkeypatch)
+    _patch_compliance_rollout_start(monkeypatch)
+    fbo = "discipline-auto-removed-rollout"
+    email = "discipline-auto-removed-rollout@test.local"
+
+    async def seed_user() -> None:
+        factory = get_test_session_factory()
+        async with factory() as session:
+            session.add(
+                User(
+                    fbo_id=fbo,
+                    email=email,
+                    role="team",
+                    hashed_password=hash_password(DEV_LOGIN_PASSWORD_PLAIN),
+                    upline_user_id=2,
+                    registration_status="approved",
+                    created_at=datetime.now(timezone.utc) - timedelta(days=6),
+                    access_blocked=True,
+                    discipline_status="removed",
+                    removed_at=datetime.now(timezone.utc),
+                    removal_reason="Removed for repeated non-compliance.",
+                )
+            )
+            await session.commit()
+
+    async def cleanup_user() -> None:
+        factory = get_test_session_factory()
+        async with factory() as session:
+            await session.execute(delete(User).where(User.fbo_id == fbo))
+            await session.commit()
+
+    try:
+        asyncio.run(seed_user())
+        res = client.post(
+            "/api/v1/auth/login",
+            json={"fbo_id": fbo, "password": DEV_LOGIN_PASSWORD_PLAIN},
+        )
+        assert res.status_code == 200
+        assert res.json() == {"ok": True}
+
+        async def assert_restored() -> None:
+            factory = get_test_session_factory()
+            async with factory() as session:
+                row = (
+                    await session.execute(select(User).where(User.fbo_id == fbo))
+                ).scalar_one()
+                assert row.access_blocked is False
+                assert row.discipline_status == "active"
+                assert row.removed_at is None
+                assert row.removed_by_user_id is None
+                assert row.removal_reason is None
+                assert row.discipline_reset_on == today_ist()
+
+        asyncio.run(assert_restored())
+    finally:
+        asyncio.run(cleanup_user())
+
+
+def test_password_login_blocks_after_four_missed_reports_once_rollout_window_has_passed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    patch_jwt_settings(monkeypatch)
+    _patch_compliance_rollout_start(monkeypatch, days_ago=10)
     fbo = "discipline-report-004"
     email = "discipline-report-004@test.local"
 
