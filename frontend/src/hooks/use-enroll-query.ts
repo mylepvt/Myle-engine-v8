@@ -46,10 +46,17 @@ type GenerateShareLinkBody = {
 
 async function parseError(res: Response): Promise<never> {
   const err = await res.json().catch(() => ({}))
-  const msg =
-    typeof err === 'object' && err !== null && 'detail' in err
-      ? String((err as { detail?: string }).detail ?? res.statusText)
-      : res.statusText
+  let msg = res.statusText
+  if (typeof err === 'object' && err !== null) {
+    if ('detail' in err && typeof (err as { detail?: unknown }).detail === 'string') {
+      msg = String((err as { detail?: string }).detail || res.statusText)
+    } else {
+      const wrapped = (err as { error?: { message?: string } }).error?.message
+      if (typeof wrapped === 'string' && wrapped.trim()) {
+        msg = wrapped
+      }
+    }
+  }
   throw new Error(msg || `HTTP ${res.status}`)
 }
 

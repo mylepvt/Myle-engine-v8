@@ -13,6 +13,11 @@ import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { cn } from '@/lib/utils'
 import { ChevronDown, ChevronUp, MessageCircle } from 'lucide-react'
 import { useSendEnrollmentVideoMutation } from '@/hooks/use-enroll-query'
+import {
+  closeExternalShareWindow,
+  completeExternalShareWindow,
+  reserveExternalShareWindow,
+} from '@/lib/external-share-window'
 
 type LeadMini = {
   id: number
@@ -72,17 +77,19 @@ export function LeadNextStepPanel({ lead, className }: Props) {
   async function onPrimaryClick() {
     if (!primary) return
     setLocalError(null)
+    const shareWindow = primary === 'video_sent' ? reserveExternalShareWindow() : null
     try {
       if (primary === 'video_sent') {
         const result = await sendMut.mutateAsync(lead.id)
         const manualUrl = result.delivery.manual_share_url?.trim()
-        if (manualUrl) {
-          window.open(manualUrl, '_blank', 'noopener,noreferrer')
+        if (!completeExternalShareWindow(shareWindow, manualUrl)) {
+          closeExternalShareWindow(shareWindow)
         }
         return
       }
       await runTransition(primary)
     } catch (e) {
+      closeExternalShareWindow(shareWindow)
       setLocalError(e instanceof Error ? e.message : 'Could not update stage')
     }
   }

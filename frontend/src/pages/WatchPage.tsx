@@ -36,10 +36,17 @@ function formatRemaining(expiresAt: string, nowMs: number): string {
 
 async function readJsonError(res: Response, fallback: string): Promise<Error> {
   const body = await res.json().catch(() => ({}))
-  const detail =
-    typeof body === 'object' && body !== null && 'detail' in body
-      ? String((body as { detail?: string }).detail)
-      : fallback
+  let detail = fallback
+  if (typeof body === 'object' && body !== null) {
+    if ('detail' in body && typeof (body as { detail?: unknown }).detail === 'string') {
+      detail = String((body as { detail?: string }).detail || fallback)
+    } else {
+      const wrapped = (body as { error?: { message?: string } }).error?.message
+      if (typeof wrapped === 'string' && wrapped.trim()) {
+        detail = wrapped
+      }
+    }
+  }
   return new Error(detail || fallback)
 }
 
