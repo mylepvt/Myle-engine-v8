@@ -19,9 +19,7 @@ import {
 } from '@/hooks/use-leads-query'
 import { useSendEnrollmentVideoMutation } from '@/hooks/use-enroll-query'
 import {
-  closeExternalShareWindow,
-  completeExternalShareWindow,
-  reserveExternalShareWindow,
+  openExternalShareUrl,
 } from '@/lib/external-share-window'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
@@ -143,18 +141,13 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const onPatchStatus = useCallback(
     (id: number, status: LeadStatus) => {
       if (status === 'video_sent') {
-        const shareWindow = reserveExternalShareWindow()
         void sendEnrollmentMut
           .mutateAsync(id)
           .then((result) => {
             const manualUrl = result.delivery.manual_share_url?.trim()
-            if (!completeExternalShareWindow(shareWindow, manualUrl)) {
-              closeExternalShareWindow(shareWindow)
-            }
+            openExternalShareUrl(manualUrl)
           })
-          .catch(() => {
-            closeExternalShareWindow(shareWindow)
-          })
+          .catch(() => {})
         return
       }
       void patchMut.mutateAsync({ id, body: { status } })

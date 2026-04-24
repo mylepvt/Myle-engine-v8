@@ -8,9 +8,7 @@ import {
   useSendEnrollmentVideoMutation,
 } from '@/hooks/use-enroll-query'
 import {
-  closeExternalShareWindow,
-  completeExternalShareWindow,
-  reserveExternalShareWindow,
+  openExternalShareUrl,
 } from '@/lib/external-share-window'
 
 type Props = {
@@ -36,20 +34,16 @@ export function EnrollmentCard({ leadId }: Props) {
   async function handleSend() {
     setActionError('')
     setActionHint('')
-    const shareWindow = reserveExternalShareWindow()
     try {
       const result = await sendMut.mutateAsync(leadId)
       const manualUrl = result.delivery.manual_share_url?.trim()
-      if (!completeExternalShareWindow(shareWindow, manualUrl)) {
-        closeExternalShareWindow(shareWindow)
-      }
+      openExternalShareUrl(manualUrl)
       setActionHint(
         result.delivery.channel === 'whatsapp_webhook'
           ? 'Secure enrollment video WhatsApp par bhej diya gaya.'
           : 'Secure private room ready hai. WhatsApp share window bhi open kar di gayi hai.',
       )
     } catch (err) {
-      closeExternalShareWindow(shareWindow)
       setActionError(err instanceof Error ? err.message : 'Could not send enrollment video')
     }
   }

@@ -14,6 +14,17 @@ function writePendingShell(popup: Window, message: string) {
   }
 }
 
+export function openExternalShareUrl(url: string | null | undefined): boolean {
+  const target = (url || '').trim()
+  if (!target || typeof window === 'undefined') return false
+  try {
+    window.location.assign(target)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export function reserveExternalShareWindow(message = 'Preparing secure WhatsApp share...'): Window | null {
   if (typeof window === 'undefined') return null
   const popup = window.open('about:blank', '_blank')

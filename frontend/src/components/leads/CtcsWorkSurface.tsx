@@ -20,9 +20,7 @@ import { useSendEnrollmentVideoMutation } from '@/hooks/use-enroll-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import {
-  closeExternalShareWindow,
-  completeExternalShareWindow,
-  reserveExternalShareWindow,
+  openExternalShareUrl,
 } from '@/lib/external-share-window'
 import { useCallToCloseStore } from '@/stores/call-to-close-store'
 
@@ -96,18 +94,13 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
 
   const onSendEnrollment = useCallback(
     (id: number) => {
-      const shareWindow = reserveExternalShareWindow()
       void sendEnrollmentMut
         .mutateAsync(id)
         .then((result) => {
           const manualUrl = result.delivery.manual_share_url?.trim()
-          if (!completeExternalShareWindow(shareWindow, manualUrl)) {
-            closeExternalShareWindow(shareWindow)
-          }
+          openExternalShareUrl(manualUrl)
         })
-        .catch(() => {
-          closeExternalShareWindow(shareWindow)
-        })
+        .catch(() => {})
     },
     [sendEnrollmentMut],
   )
