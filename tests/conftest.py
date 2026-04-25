@@ -32,6 +32,7 @@ from app.models.user import User
 from app.models.user_presence_session import UserPresenceSession  # noqa: F401
 from app.models.wallet_ledger import WalletLedgerEntry  # noqa: F401
 from app.models.password_reset_token import PasswordResetToken  # noqa: F401
+from app.models.push_subscription import PushSubscription  # noqa: F401
 from app.models.training_video import TrainingVideo  # noqa: F401
 from app.models.training_progress import TrainingProgress  # noqa: F401
 from app.models.daily_report import DailyReport  # noqa: F401
