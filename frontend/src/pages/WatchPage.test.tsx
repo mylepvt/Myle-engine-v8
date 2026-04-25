@@ -24,7 +24,7 @@ describe('WatchPage', () => {
       if (url.endsWith('/api/v1/watch/demo-token') && !init?.method) {
         return jsonResponse({
           token: 'demo-token',
-          title: 'Enrollment video',
+          title: 'EARN 30K USING INSTAGRAM MONTHLY | MYLE COMMUNITY',
           lead_name: 'Rahul',
           masked_phone: '******0001',
           expires_at: '2026-04-24T12:30:00Z',
@@ -59,14 +59,13 @@ describe('WatchPage', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('Private player')).toBeInTheDocument()
+      expect(screen.getByText('A quick introduction to Myle')).toBeInTheDocument()
     })
 
-    expect(screen.getByText('Current intake')).toBeInTheDocument()
-    expect(screen.getByText('Forms received')).toBeInTheDocument()
-    expect(screen.getByText('Batch seats')).toBeInTheDocument()
-    expect(screen.getByText('Seats left')).toBeInTheDocument()
+    expect(screen.getByText('Good morning, Rahul')).toBeInTheDocument()
+    expect(screen.getByText('282 applications reviewed • 18 places currently available')).toBeInTheDocument()
     expect(screen.getByText('Private room access is limited to the current batch window.')).toBeInTheDocument()
+    expect(screen.queryByText('EARN 30K USING INSTAGRAM MONTHLY | MYLE COMMUNITY')).not.toBeInTheDocument()
 
     const video = container.querySelector('video')
     expect(video).not.toBeNull()
@@ -74,7 +73,7 @@ describe('WatchPage', () => {
     Object.defineProperty(video!, 'currentTime', { configurable: true, writable: true, value: 0 })
 
     fireEvent.loadedMetadata(video!)
-    fireEvent.click(screen.getByRole('button', { name: 'Play video' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Play introduction' }))
     fireEvent.play(video!)
 
     await waitFor(() => {
@@ -103,8 +102,8 @@ describe('WatchPage', () => {
       ).toBe(true)
     })
 
-    expect(await screen.findByText('Viewing completed')).toBeInTheDocument()
-    expect(screen.getByText('Viewing completion has been recorded for this room.')).toBeInTheDocument()
+    expect(await screen.findByText('Thanks for watching')).toBeInTheDocument()
+    expect(screen.getByText('Thanks for watching.')).toBeInTheDocument()
   })
 
   it('keeps the player non-seekable and hides native skip controls', async () => {
@@ -136,14 +135,15 @@ describe('WatchPage', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('Private player')).toBeInTheDocument()
+      expect(screen.getByText('A quick introduction to Myle')).toBeInTheDocument()
     })
 
     const video = container.querySelector('video') as HTMLVideoElement | null
     expect(video).not.toBeNull()
     expect(video?.controls).toBe(false)
-    expect(screen.getByText('This room plays in sequence for a smoother viewing experience.')).toBeInTheDocument()
-    expect(screen.queryByText('High-trust room')).not.toBeInTheDocument()
+    expect(screen.getByText('A short private introduction is ready for you.')).toBeInTheDocument()
+    expect(screen.queryByText('Private player')).not.toBeInTheDocument()
+    expect(screen.queryByText('Current intake')).not.toBeInTheDocument()
 
     Object.defineProperty(video!, 'duration', { configurable: true, value: 120 })
     Object.defineProperty(video!, 'currentTime', { configurable: true, writable: true, value: 0 })
