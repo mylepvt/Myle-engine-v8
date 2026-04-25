@@ -35,21 +35,25 @@ async def _seed_lead(
     phone: str = "9876500000",
     city: str = "Mumbai",
     last_action_at: datetime | None = None,
+    created_at: datetime | None = None,
     created_by_user_id: int | None = None,
     assigned_to_user_id: int | None = None,
 ) -> None:
     fac = test_conftest.get_test_session_factory()
     async with fac() as session:
+        lead_kwargs = {
+            "name": name,
+            "status": status,
+            "created_by_user_id": created_by_user_id if created_by_user_id is not None else user_id,
+            "assigned_to_user_id": assigned_to_user_id if assigned_to_user_id is not None else user_id,
+            "phone": phone,
+            "city": city,
+            "last_action_at": last_action_at,
+        }
+        if created_at is not None:
+            lead_kwargs["created_at"] = created_at
         session.add(
-            Lead(
-                name=name,
-                status=status,
-                created_by_user_id=created_by_user_id if created_by_user_id is not None else user_id,
-                assigned_to_user_id=assigned_to_user_id if assigned_to_user_id is not None else user_id,
-                phone=phone,
-                city=city,
-                last_action_at=last_action_at,
-            ),
+            Lead(**lead_kwargs),
         )
         await session.commit()
 
@@ -74,6 +78,43 @@ def test_ctcs_list_accepts_filter_and_priority_sort(monkeypatch: pytest.MonkeyPa
         r = c.get("/api/v1/leads", params={"ctcs_filter": "today", "ctcs_priority_sort": "true"})
         assert r.status_code == 200
         assert r.json()["total"] == 0
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_ctcs_list_newest_first_for_calling_board(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_clear_leads())
+    now = datetime.now(timezone.utc)
+    asyncio.run(
+        _seed_lead(
+            name="Oldest Lead",
+            phone="9876500001",
+            created_at=now - timedelta(hours=3),
+        )
+    )
+    asyncio.run(
+        _seed_lead(
+            name="Newest Lead",
+            phone="9876500002",
+            created_at=now - timedelta(hours=1),
+        )
+    )
+    asyncio.run(
+        _seed_lead(
+            name="Middle Lead",
+            phone="9876500003",
+            created_at=now - timedelta(hours=2),
+        )
+    )
+    try:
+        c = _authed(monkeypatch)
+        r = c.get(
+            "/api/v1/leads",
+            params={"ctcs_priority_sort": "true", "pre_enrollment_only": "true"},
+        )
+        assert r.status_code == 200, r.text
+        names = [item["name"] for item in r.json()["items"][:3]]
+        assert names == ["Newest Lead", "Middle Lead", "Oldest Lead"]
     finally:
         asyncio.run(_clear_leads())
 

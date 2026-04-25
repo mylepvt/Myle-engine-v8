@@ -21,6 +21,10 @@ import { Button } from '@/components/ui/button'
 import { authDevLogin, authPasswordLogin } from '@/lib/auth-api'
 import { fetchAuthMe } from '@/hooks/use-auth-me-query'
 import { DEFAULT_META, useMetaQuery } from '@/hooks/use-meta-query'
+import {
+  requestPushPermissionFromGesture,
+  syncPushSubscriptionSilently,
+} from '@/hooks/use-push-notifications'
 import { t } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
@@ -106,6 +110,7 @@ export function LoginPage() {
       setError('Please enter your FBO ID (or your saved username).')
       return
     }
+    const pushPermission = await requestPushPermissionFromGesture()
     setPwPending(true)
     try {
       await authPasswordLogin(fboId, password, rememberMe)
@@ -131,6 +136,9 @@ export function LoginPage() {
         return
       }
       login()
+      if (pushPermission === 'granted' || Notification.permission === 'granted') {
+        void syncPushSubscriptionSilently().catch(() => undefined)
+      }
       const displayName =
         (me.username?.trim() && me.username.split(/\s+/)[0]) ||
         me.fbo_id ||
@@ -150,6 +158,7 @@ export function LoginPage() {
 
   async function handleContinue() {
     setError(null)
+    const pushPermission = await requestPushPermissionFromGesture()
     setPending(true)
     try {
       await authDevLogin(role)
@@ -170,6 +179,9 @@ export function LoginPage() {
         return
       }
       login()
+      if (pushPermission === 'granted' || Notification.permission === 'granted') {
+        void syncPushSubscriptionSilently().catch(() => undefined)
+      }
       const displayName =
         (me.username?.trim() && me.username.split(/\s+/)[0]) ||
         me.fbo_id ||

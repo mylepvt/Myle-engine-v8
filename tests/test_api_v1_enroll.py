@@ -111,7 +111,7 @@ def test_send_enrollment_video_creates_expiring_secure_link_and_updates_lead(
         asyncio.run(_clear_state())
 
 
-def test_watch_link_requires_matching_phone_and_marks_played(
+def test_watch_link_requires_matching_phone_and_marks_completion_time(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     asyncio.run(_clear_state())
@@ -140,14 +140,18 @@ def test_watch_link_requires_matching_phone_and_marks_played(
         played = client.post(f"/api/v1/watch/{token}/play")
         assert played.status_code == 200, played.text
         assert played.json()["watch_started"] is True
+        completed = client.post(f"/api/v1/watch/{token}/complete")
+        assert completed.status_code == 200, completed.text
+        assert completed.json()["watch_completed"] is True
 
         async def _assert_db() -> None:
             factory = test_conftest.get_test_session_factory()
             async with factory() as session:
                 lead = await session.get(Lead, 1)
                 assert lead is not None
-                assert lead.status == "video_watched"
-                assert lead.call_status == "video_watched"
+                assert lead.status == "video_sent"
+                assert lead.call_status == "video_sent"
+                assert lead.last_action_at is not None
                 link = (await session.execute(select(EnrollShareLink))).scalar_one()
                 assert link.status_synced is True
                 assert link.first_viewed_at is not None

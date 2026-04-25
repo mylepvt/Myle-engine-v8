@@ -44,6 +44,7 @@ from app.services.lead_payloads import build_lead_public_payloads
 from app.services.team_tracking import refresh_daily_member_stat_after_change
 from app.services.user_hierarchy import nearest_leader_for_user
 from app.services.whatsapp_ctcs import send_interested_enrollment_assets
+from app.services.execution_enforcement import run_completed_watch_pipeline_maintenance
 from app.validators.leads_validator import lead_list_conditions, parse_status_query, validate_list_flags
 
 # Only the Paid ₹196 entry point requires approved payment proof.
@@ -263,6 +264,7 @@ class LeadsService:
         pre_enrollment_only: bool = False,
         search_all_sections: bool = False,
     ) -> LeadListResponse:
+        await run_completed_watch_pipeline_maintenance(self._session)
         validate_list_flags(archived_only=archived_only, deleted_only=deleted_only, user=user)
         cross_section_search = search_all_sections and bool((q or "").strip())
         condition = lead_list_conditions(

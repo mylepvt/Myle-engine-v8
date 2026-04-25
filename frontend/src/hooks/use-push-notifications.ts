@@ -215,15 +215,29 @@ async function createOrReuseSubscription(
   }
 }
 
+export async function requestPushPermissionFromGesture(): Promise<NotificationPermission | null> {
+  const support = getPushSupportState()
+  if (!support.isSupported) return null
+  try {
+    if (Notification.permission === 'default') {
+      return await Notification.requestPermission()
+    }
+    return Notification.permission
+  } catch {
+    return Notification.permission
+  }
+}
+
 export async function syncPushSubscriptionSilently(): Promise<boolean> {
   const support = getPushSupportState()
   if (!support.isSupported) return false
   if (Notification.permission !== 'granted') return false
 
+  const vapidKeyRef = {
+    current: null as Uint8Array<ArrayBuffer> | null,
+  } as MutableRefObject<Uint8Array<ArrayBuffer> | null>
   const registration = await ensurePushServiceWorkerReady()
-  const pushSub = await registration.pushManager.getSubscription()
-  if (!pushSub) return false
-
+  const pushSub = await createOrReuseSubscription(registration, vapidKeyRef)
   await persistPushSubscription(pushSub)
   return true
 }

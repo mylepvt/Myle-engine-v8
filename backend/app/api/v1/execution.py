@@ -159,10 +159,10 @@ async def execution_stale_redistribute(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
     stale_hours: int = Query(default=48, ge=1, le=720),
-    top_n: int = Query(default=5, ge=1, le=50),
-    limit: int = Query(default=50, ge=1, le=500),
+    top_n: int = Query(default=10, ge=1, le=50),
+    limit: int = Query(default=500, ge=1, le=500),
 ) -> StaleRedistributeOut:
-    """Admin: legacy auto-assign stale_worker — not enabled until schema supports it."""
+    """Admin: auto-cycle completed-watch stale leads into the top-XP team pool."""
     _require_admin(user)
     return await enf.stale_redistribute(
         session, stale_hours=stale_hours, top_n=top_n, limit=limit

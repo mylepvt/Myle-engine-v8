@@ -10,6 +10,7 @@ from app.api.deps import AuthUser, get_db
 from app.repositories.leads_repository import SqlAlchemyLeadsRepository
 from app.schemas.leads import AllLeadsResponse, LeadPublic
 from app.services.lead_payloads import build_lead_public_payloads
+from app.services.execution_enforcement import run_completed_watch_pipeline_maintenance
 from app.validators.leads_validator import lead_list_conditions, parse_status_query, validate_list_flags
 
 
@@ -29,6 +30,7 @@ class AllLeadsService:
         archived_only: bool,
         deleted_only: bool,
     ) -> AllLeadsResponse:
+        await run_completed_watch_pipeline_maintenance(self._session)
         validate_list_flags(archived_only=archived_only, deleted_only=deleted_only, user=user)
         condition = lead_list_conditions(
             user,
