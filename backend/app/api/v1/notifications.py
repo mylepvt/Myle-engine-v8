@@ -23,6 +23,9 @@ router = APIRouter()
 
 class VapidKeyResponse(BaseModel):
     public_key: str
+    publicKey: str
+    enabled: bool
+    detail: str | None = None
 
 
 class PushSubscribeKeys(BaseModel):
@@ -36,7 +39,8 @@ class PushSubscribeBody(BaseModel):
 
 
 class PushUnsubscribeBody(BaseModel):
-    endpoint: str
+    endpoint: str | None = None
+    clear_all: bool = False
 
 
 class PushStatusResponse(BaseModel):
@@ -53,7 +57,17 @@ async def get_vapid_key(
 ) -> VapidKeyResponse:
     """Return VAPID public key for client-side push subscription. No auth required."""
     public_key = await get_vapid_public_key(session)
-    return VapidKeyResponse(public_key=public_key)
+    enabled = bool(public_key)
+    return VapidKeyResponse(
+        public_key=public_key,
+        publicKey=public_key,
+        enabled=enabled,
+        detail=(
+            None
+            if enabled
+            else "Push delivery is not configured on the server yet. Install the push dependencies and redeploy."
+        ),
+    )
 
 
 @router.post("/subscribe", status_code=http_status.HTTP_201_CREATED)
@@ -101,6 +115,17 @@ async def unsubscribe_push(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     """Remove a push subscription for the authenticated user."""
+    if body.clear_all or not body.endpoint:
+        rows = (
+            await session.execute(
+                select(PushSubscription).where(PushSubscription.user_id == user.user_id)
+            )
+        ).scalars().all()
+        for row in rows:
+            await session.delete(row)
+        await session.commit()
+        return {"ok": True, "deleted": len(rows)}
+
     row = (
         await session.execute(
             select(PushSubscription).where(
@@ -117,7 +142,7 @@ async def unsubscribe_push(
 
     await session.delete(row)
     await session.commit()
-    return {"ok": True}
+    return {"ok": True, "deleted": 1}
 
 
 @router.get("/status", response_model=PushStatusResponse)

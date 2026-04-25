@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect } from 'react'
 import { Route, Routes, useLocation } from 'react-router-dom'
 
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
+import { PushNotificationBootstrap } from '@/components/notifications/PushNotificationBootstrap'
 import { InstallAppBanner } from '@/components/pwa/InstallAppBanner'
 import { ProtectedRoute } from '@/components/routing/ProtectedRoute'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -68,6 +69,7 @@ export function App() {
 
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
+      <PushNotificationBootstrap />
       <InstallAppBanner />
     </div>
   )
