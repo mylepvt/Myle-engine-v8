@@ -361,18 +361,18 @@ export function WatchPage() {
   }
 
   return (
-    <div className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,#23483b_0%,#0f1d19_26%,#050807_62%,#020303_100%)] text-[#f5efe3]">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_top,rgba(214,184,128,0.18),transparent_58%)]" />
-      <div className="pointer-events-none absolute left-1/2 top-24 h-72 w-72 -translate-x-1/2 rounded-full bg-[#1b6a53]/16 blur-3xl" />
+    <div className="relative min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top,#233f74_0%,#101b39_28%,#060a17_66%,#02040a_100%)] text-[#f3f7ff]">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_top,rgba(160,195,255,0.18),transparent_58%)]" />
+      <div className="pointer-events-none absolute left-1/2 top-24 h-72 w-72 -translate-x-1/2 rounded-full bg-[#3158a4]/16 blur-3xl" />
       <div className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-6 sm:px-6 sm:py-8">
         <header className="rounded-[2rem] border border-white/10 bg-white/[0.04] px-5 py-4 shadow-[0_32px_120px_-72px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#9ead9f]">Myle</p>
-              <h1 className="mt-1 text-xl font-semibold tracking-tight text-[#f7f1e8]">Your private introduction</h1>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#9db0d6]">Myle</p>
+              <h1 className="mt-1 text-xl font-semibold tracking-tight text-[#f5f8ff]">Your private introduction</h1>
             </div>
             {data ? (
-              <p className="rounded-full border border-[#5f5137] bg-[#120e09] px-4 py-2 text-sm font-semibold text-[#f1d59f] shadow-[0_14px_34px_-24px_rgba(241,213,159,0.45)]">
+              <p className="rounded-full border border-[#3f537d] bg-[#0b1120] px-4 py-2 text-sm font-semibold text-[#c9d9ff] shadow-[0_14px_34px_-24px_rgba(132,165,255,0.35)]">
                 {countdown}
               </p>
             ) : null}
@@ -391,7 +391,7 @@ export function WatchPage() {
               role="alert"
             >
               <p className="text-base font-semibold text-[#ffb8bd]">{error}</p>
-              <p className="mt-2 text-sm text-[#cfbbb7]">
+              <p className="mt-2 text-sm text-[#d6c3c7]">
                 Please ask your team contact to send a fresh access link.
               </p>
             </section>
@@ -400,20 +400,20 @@ export function WatchPage() {
               <section className="rounded-[2.25rem] border border-white/10 bg-[linear-gradient(160deg,rgba(255,255,255,0.09),rgba(255,255,255,0.035))] px-5 py-6 shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl sm:px-8 sm:py-7">
                 <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                   <div className="max-w-2xl">
-                    <p className="text-base font-medium text-[#b3c0b7]">{heroGreeting}</p>
-                    <h2 className="mt-3 max-w-xl text-[clamp(2rem,4vw,3.55rem)] font-semibold leading-[1.02] tracking-[-0.04em] text-[#fbf6ef]">
+                    <p className="text-base font-medium text-[#b2c1de]">{heroGreeting}</p>
+                    <h2 className="mt-3 max-w-xl text-[clamp(2rem,4vw,3.55rem)] font-semibold leading-[1.02] tracking-[-0.04em] text-[#f7f9ff]">
                       {heroHeading}
                     </h2>
-                    <p className="mt-4 max-w-xl text-base leading-relaxed text-[#aab4ad]">
+                    <p className="mt-4 max-w-xl text-base leading-relaxed text-[#aab8d3]">
                       {GENERIC_PROSPECT_SUBLINE}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge className="border-0 bg-[#183d32] px-4 py-1.5 text-white shadow-[0_18px_38px_-30px_rgba(24,61,50,0.95)]">
+                    <Badge className="border-0 bg-[#19335e] px-4 py-1.5 text-white shadow-[0_18px_38px_-30px_rgba(25,51,94,0.95)]">
                       <ShieldCheck className="mr-1 size-3.5" />
                       Private access
                     </Badge>
-                    <Badge variant="outline" className="border-[#5f5137] bg-[#120e09] px-4 py-1.5 text-[#f1d59f]">
+                    <Badge variant="outline" className="border-[#3f537d] bg-[#0b1120] px-4 py-1.5 text-[#c9d9ff]">
                       {data.masked_phone}
                     </Badge>
                   </div>
@@ -423,10 +423,10 @@ export function WatchPage() {
               {showSoftSnapshot ? (
                 <section className="rounded-[1.8rem] border border-white/8 bg-white/[0.035] px-5 py-4 shadow-[0_24px_90px_-70px_rgba(0,0,0,0.9)] backdrop-blur-xl sm:px-6">
                   {intakeSummary ? (
-                    <p className="text-sm font-medium text-[#ecdfc6]">{intakeSummary}</p>
+                    <p className="text-sm font-medium text-[#d9e7ff]">{intakeSummary}</p>
                   ) : null}
                   {data.trust_note ? (
-                    <p className={`${intakeSummary ? 'mt-1.5' : ''} text-sm leading-relaxed text-[#9ca8a1]`}>
+                    <p className={`${intakeSummary ? 'mt-1.5' : ''} text-sm leading-relaxed text-[#9eabc7]`}>
                       {data.trust_note}
                     </p>
                   ) : null}
@@ -436,19 +436,19 @@ export function WatchPage() {
               {!data.access_granted ? (
                 <section className="mx-auto w-full max-w-xl rounded-[2rem] border border-white/10 bg-[linear-gradient(170deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] px-5 py-6 shadow-[0_34px_120px_-80px_rgba(0,0,0,0.95)] backdrop-blur-2xl sm:px-6">
                   <div className="flex items-start gap-3">
-                    <div className="rounded-2xl bg-[#133127] p-3 text-[#bfe8d3]">
+                    <div className="rounded-2xl bg-[#112549] p-3 text-[#d2e3ff]">
                       <LockKeyhole className="size-5" />
                     </div>
                     <div>
-                      <p className="text-lg font-semibold text-[#f7f1e8]">Continue with your number</p>
-                      <p className="mt-1 text-sm leading-relaxed text-[#aab4ad]">
+                      <p className="text-lg font-semibold text-[#f7f9ff]">Continue with your number</p>
+                      <p className="mt-1 text-sm leading-relaxed text-[#aab8d3]">
                         Use the same mobile number you shared with your team.
                       </p>
                     </div>
                   </div>
 
                   <form className="mt-5 space-y-3" onSubmit={(e) => void handleUnlock(e)}>
-                    <label className="block text-sm font-medium text-[#dfe9e2]" htmlFor="watch-phone">
+                    <label className="block text-sm font-medium text-[#dfe8ff]" htmlFor="watch-phone">
                       Registered mobile number
                     </label>
                     <input
@@ -459,7 +459,7 @@ export function WatchPage() {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="Enter the same number"
-                      className="h-12 w-full rounded-2xl border border-[#2a3c36] bg-[#09100f] px-4 text-base text-[#f7f1e8] outline-none transition placeholder:text-[#75817a] focus:border-[#d8bc8d] focus:ring-2 focus:ring-[#d8bc8d]/15"
+                      className="h-12 w-full rounded-2xl border border-[#26385d] bg-[#0a1120] px-4 text-base text-[#f7f9ff] outline-none transition placeholder:text-[#7887a3] focus:border-[#8eb0ff] focus:ring-2 focus:ring-[#8eb0ff]/20"
                     />
                     {unlockError ? (
                       <p className="text-sm text-[#ffb8bd]" role="alert">
@@ -469,7 +469,7 @@ export function WatchPage() {
                     <button
                       type="submit"
                       disabled={unlocking}
-                      className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[#f1e4ca] px-5 text-sm font-semibold text-[#09110f] transition hover:bg-[#e5d2aa] disabled:opacity-60"
+                      className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[#dce7ff] px-5 text-sm font-semibold text-[#0a1530] transition hover:bg-[#c6d8ff] disabled:opacity-60"
                     >
                       {unlocking ? 'Verifying…' : 'Continue'}
                     </button>
@@ -477,7 +477,7 @@ export function WatchPage() {
                 </section>
               ) : (
                 <section className="overflow-hidden rounded-[2.1rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.025))] shadow-[0_38px_140px_-88px_rgba(0,0,0,0.96)] backdrop-blur-2xl">
-                  <div className="bg-[#08110f] p-3 sm:p-4">
+                  <div className="bg-[#070d1d] p-3 sm:p-4">
                     {videoSrc ? (
                       <>
                         <div className="relative">
@@ -543,13 +543,13 @@ export function WatchPage() {
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                               <p className="text-base font-semibold text-white">{playerStatusTitle}</p>
-                              <p className="mt-1 text-sm leading-relaxed text-white/68">{playerStatusBody}</p>
+                              <p className="mt-1 text-sm leading-relaxed text-[#b6c6e7]">{playerStatusBody}</p>
                             </div>
                             <button
                               type="button"
                               onClick={() => void togglePlayback()}
                               disabled={!videoSrc || completing}
-                              className="inline-flex h-11 items-center justify-center rounded-2xl bg-[#f1e4ca] px-5 text-sm font-semibold text-[#09110f] transition hover:bg-[#e5d2aa] disabled:cursor-not-allowed disabled:opacity-60"
+                              className="inline-flex h-11 items-center justify-center rounded-2xl bg-[#dce7ff] px-5 text-sm font-semibold text-[#0a1530] transition hover:bg-[#c6d8ff] disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               {playerButtonLabel}
                             </button>
@@ -557,7 +557,7 @@ export function WatchPage() {
 
                           <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
                             <div
-                              className="h-full rounded-full bg-[#e3c388] transition-[width]"
+                              className="h-full rounded-full bg-[#8fb4ff] transition-[width]"
                               style={{ width: `${progressPercent}%` }}
                             />
                           </div>
@@ -567,7 +567,7 @@ export function WatchPage() {
                             <span>{watchCompleted ? 'Thanks for watching.' : 'Please watch through to the end.'}</span>
                           </div>
 
-                          {completing ? <p className="mt-3 text-xs text-[#e3c388]">Finishing up…</p> : null}
+                          {completing ? <p className="mt-3 text-xs text-[#8fb4ff]">Finishing up…</p> : null}
                           {playerError ? (
                             <p className="mt-3 text-xs text-red-300" role="alert">
                               {normalizeRoomError(playerError, 'Could not control secure playback.')}
