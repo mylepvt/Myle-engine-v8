@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -110,3 +110,99 @@ class StaleRedistributeOut(BaseModel):
     worker_pool_size: int = 0
     source_bucket: str = ""
     max_active_per_worker: int = 50
+
+
+class LeadControlAssignableUser(BaseModel):
+    user_id: int
+    display_name: str
+    role: str
+    fbo_id: str
+    username: Optional[str] = None
+    active_leads_count: int = 0
+    xp_total: int = 0
+
+
+class LeadControlQueueLead(BaseModel):
+    lead_id: int
+    lead_name: str
+    phone: Optional[str] = None
+    status: str
+    owner_user_id: Optional[int] = None
+    owner_name: str = ""
+    assigned_to_user_id: Optional[int] = None
+    assigned_to_name: str = ""
+    archived_at: datetime
+    watch_completed_at: Optional[datetime] = None
+    last_action_at: Optional[datetime] = None
+
+
+class LeadControlHistorySummaryRow(BaseModel):
+    user_id: int
+    display_name: str
+    role: str
+    total_received: int = 0
+    manual_received: int = 0
+    auto_received: int = 0
+    last_received_at: Optional[datetime] = None
+
+
+class LeadControlHistoryRow(BaseModel):
+    activity_id: int
+    occurred_at: datetime
+    mode: Literal["manual", "auto"]
+    lead_id: int
+    lead_name: str
+    previous_assignee_user_id: Optional[int] = None
+    previous_assignee_name: Optional[str] = None
+    assigned_to_user_id: Optional[int] = None
+    assigned_to_name: Optional[str] = None
+    owner_user_id: Optional[int] = None
+    owner_name: Optional[str] = None
+    actor_name: str
+    reason: Optional[str] = None
+
+
+class LeadControlDay2SubmissionRow(BaseModel):
+    submission_id: int
+    lead_id: int
+    lead_name: str
+    slot: str
+    submitted_at: datetime
+    assigned_to_user_id: Optional[int] = None
+    assigned_to_name: str = ""
+    owner_user_id: Optional[int] = None
+    owner_name: str = ""
+    notes_text_preview: Optional[str] = None
+    notes_url: Optional[str] = None
+    voice_note_url: Optional[str] = None
+    video_url: Optional[str] = None
+
+
+class LeadControlOut(BaseModel):
+    note: Optional[str] = None
+    queue: list[LeadControlQueueLead] = Field(default_factory=list)
+    queue_total: int = 0
+    assignable_users: list[LeadControlAssignableUser] = Field(default_factory=list)
+    history_summary: list[LeadControlHistorySummaryRow] = Field(default_factory=list)
+    history: list[LeadControlHistoryRow] = Field(default_factory=list)
+    history_total: int = 0
+    day2_submissions: list[LeadControlDay2SubmissionRow] = Field(default_factory=list)
+    day2_total: int = 0
+
+
+class LeadControlManualReassignIn(BaseModel):
+    lead_id: int = Field(ge=1)
+    to_user_id: int = Field(ge=1)
+    reason: Optional[str] = Field(default=None, max_length=500)
+
+
+class LeadControlManualReassignOut(BaseModel):
+    success: bool = True
+    message: str
+    lead_id: int
+    previous_assignee_user_id: Optional[int] = None
+    previous_assignee_name: Optional[str] = None
+    assigned_to_user_id: int
+    assigned_to_name: str
+    owner_user_id: Optional[int] = None
+    owner_name: str = ""

@@ -755,7 +755,7 @@ export function LeadDetailPage({ leadId }: Props) {
           <div className="surface-elevated p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Batch submissions</p>
-              <span className="text-xs text-muted-foreground">Day 2 review wall</span>
+              <span className="text-xs text-muted-foreground">Day 2 review wall · also in Lead Control</span>
             </div>
             {lead.batch_submissions.length > 0 ? (
               <div className="space-y-3">
@@ -765,7 +765,8 @@ export function LeadDetailPage({ leadId }: Props) {
               </div>
             ) : (
               <p className="text-sm leading-relaxed text-muted-foreground">
-                Lead ne abhi Day 2 notes, voice note, video, ya message submit nahi kiya. Jaise hi batch room se submission aayegi, admin yahi dekh paayega.
+                Lead ne abhi Day 2 notes, voice note, video, ya message submit nahi kiya. Jaise hi batch room se submission aayegi,
+                admin yahi ya Lead Control page par dekh paayega.
               </p>
             )}
           </div>

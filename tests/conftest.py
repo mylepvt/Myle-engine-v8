@@ -23,6 +23,7 @@ from app.models.activity_log import ActivityLog  # noqa: F401
 from app.models.announcement import Announcement  # noqa: F401
 from app.models.call_event import CallEvent  # noqa: F401
 from app.models.batch_share_link import BatchShareLink  # noqa: F401
+from app.models.batch_day_submission import BatchDaySubmission  # noqa: F401
 from app.models.crm_outbox import CrmOutbox  # noqa: F401
 from app.models.daily_member_stat import DailyMemberStat  # noqa: F401
 from app.models.enroll_share_link import EnrollShareLink  # noqa: F401

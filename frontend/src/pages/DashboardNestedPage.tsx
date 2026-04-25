@@ -40,6 +40,7 @@ import { LeaderboardPage } from '@/pages/LeaderboardPage'
 import { LiveSessionPage } from '@/pages/LiveSessionPage'
 import { CommunityTrainingPage } from '@/pages/CommunityTrainingPage'
 import { BudgetExportPage } from '@/pages/BudgetExportPage'
+import { LeadControlPage } from '@/pages/LeadControlPage'
 import { SettingsAppPage } from '@/pages/SettingsAppPage'
 import { SettingsHelpPage } from '@/pages/SettingsHelpPage'
 import { SettingsOrgTreePage } from '@/pages/SettingsOrgTreePage'
@@ -74,6 +75,8 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <EnrollmentApprovalsPage title={title} />
     case 'system':
       return <SystemSurfacePage title={title} surface={ui.surface} />
+    case 'lead-control':
+      return <LeadControlPage title={title} />
     case 'analytics':
       return 'surface' in ui ? (
         <AnalyticsSurfacePage title={title} surface={ui.surface} />

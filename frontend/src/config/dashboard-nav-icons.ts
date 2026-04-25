@@ -52,6 +52,7 @@ const BY_PATH: Record<string, LucideIcon> = {
   'team/enrollment-approvals': Banknote,
   'team/my-team': Users,
   'system/training': BookOpen,
+  'system/lead-control': Shield,
   'system/decision-engine': Cpu,
   'system/coaching': GraduationCap,
   'analytics/activity-log': Activity,
