@@ -88,6 +88,21 @@ function resolveProspectHeading(rawValue: string | null | undefined): string {
   return value
 }
 
+function normalizeRoomError(rawValue: string | null | undefined, fallback: string): string {
+  const value = (rawValue || '').trim()
+  if (!value) return fallback
+
+  if (/^failed to fetch$/i.test(value)) {
+    return 'This private link is temporarily unavailable.'
+  }
+
+  if (/operation is not supported/i.test(value) || /no supported sources/i.test(value)) {
+    return 'This video is not available on this device right now.'
+  }
+
+  return value
+}
+
 async function readJsonError(res: Response, fallback: string): Promise<Error> {
   const body = await res.json().catch(() => ({}))
   let detail = fallback
@@ -159,7 +174,7 @@ export function WatchPage() {
         setLoading(false)
       })
       .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : 'Could not load secure room.')
+        setError(normalizeRoomError(err instanceof Error ? err.message : null, 'Could not load secure room.'))
         setLoading(false)
       })
   }, [token])
@@ -346,16 +361,18 @@ export function WatchPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#fbf7ef_0%,#f5efe3_42%,#efe6d7_100%)] text-[#10231d]">
-      <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-6 sm:px-6 sm:py-8">
-        <header className="rounded-[2rem] border border-[#e9dfcf] bg-white/88 px-5 py-4 shadow-[0_24px_80px_-48px_rgba(16,35,29,0.18)] backdrop-blur">
+    <div className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,#23483b_0%,#0f1d19_26%,#050807_62%,#020303_100%)] text-[#f5efe3]">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_top,rgba(214,184,128,0.18),transparent_58%)]" />
+      <div className="pointer-events-none absolute left-1/2 top-24 h-72 w-72 -translate-x-1/2 rounded-full bg-[#1b6a53]/16 blur-3xl" />
+      <div className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-6 sm:px-6 sm:py-8">
+        <header className="rounded-[2rem] border border-white/10 bg-white/[0.04] px-5 py-4 shadow-[0_32px_120px_-72px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#617067]">Myle</p>
-              <h1 className="mt-1 text-xl font-semibold tracking-tight text-[#10231d]">Your private introduction</h1>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#9ead9f]">Myle</p>
+              <h1 className="mt-1 text-xl font-semibold tracking-tight text-[#f7f1e8]">Your private introduction</h1>
             </div>
             {data ? (
-              <p className="rounded-full border border-[#dccdb3] bg-[#fff8ee] px-4 py-2 text-sm font-semibold text-[#7a5d32]">
+              <p className="rounded-full border border-[#5f5137] bg-[#120e09] px-4 py-2 text-sm font-semibold text-[#f1d59f] shadow-[0_14px_34px_-24px_rgba(241,213,159,0.45)]">
                 {countdown}
               </p>
             ) : null}
@@ -365,35 +382,38 @@ export function WatchPage() {
         <main className="flex flex-1 flex-col gap-5 py-5">
           {loading ? (
             <>
-              <Skeleton className="h-28 w-full rounded-[2rem] bg-black/5" />
-              <Skeleton className="h-[24rem] w-full rounded-[2rem] bg-black/5" />
+              <Skeleton className="h-28 w-full rounded-[2rem] bg-white/[0.06]" />
+              <Skeleton className="h-[24rem] w-full rounded-[2rem] bg-white/[0.06]" />
             </>
           ) : error ? (
-            <section className="rounded-[2rem] border border-red-200 bg-white px-6 py-8 text-center shadow-sm" role="alert">
-              <p className="text-base font-semibold text-red-700">{error}</p>
-              <p className="mt-2 text-sm text-[#5f655f]">
+            <section
+              className="rounded-[2rem] border border-[#5b2327] bg-[linear-gradient(180deg,rgba(34,12,14,0.98),rgba(16,7,8,0.98))] px-6 py-8 text-center shadow-[0_32px_110px_-70px_rgba(0,0,0,0.9)]"
+              role="alert"
+            >
+              <p className="text-base font-semibold text-[#ffb8bd]">{error}</p>
+              <p className="mt-2 text-sm text-[#cfbbb7]">
                 Please ask your team contact to send a fresh access link.
               </p>
             </section>
           ) : data ? (
             <>
-              <section className="rounded-[2.25rem] border border-[#ece2d2] bg-white px-5 py-6 shadow-[0_30px_90px_-58px_rgba(16,35,29,0.28)] sm:px-8 sm:py-7">
+              <section className="rounded-[2.25rem] border border-white/10 bg-[linear-gradient(160deg,rgba(255,255,255,0.09),rgba(255,255,255,0.035))] px-5 py-6 shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl sm:px-8 sm:py-7">
                 <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                   <div className="max-w-2xl">
-                    <p className="text-base font-medium text-[#617067]">{heroGreeting}</p>
-                    <h2 className="mt-3 max-w-xl text-[clamp(2rem,4vw,3.55rem)] font-semibold leading-[1.02] tracking-[-0.04em] text-[#10231d]">
+                    <p className="text-base font-medium text-[#b3c0b7]">{heroGreeting}</p>
+                    <h2 className="mt-3 max-w-xl text-[clamp(2rem,4vw,3.55rem)] font-semibold leading-[1.02] tracking-[-0.04em] text-[#fbf6ef]">
                       {heroHeading}
                     </h2>
-                    <p className="mt-4 max-w-xl text-base leading-relaxed text-[#667168]">
+                    <p className="mt-4 max-w-xl text-base leading-relaxed text-[#aab4ad]">
                       {GENERIC_PROSPECT_SUBLINE}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge className="border-0 bg-[#10392f] px-4 py-1.5 text-white shadow-sm">
+                    <Badge className="border-0 bg-[#183d32] px-4 py-1.5 text-white shadow-[0_18px_38px_-30px_rgba(24,61,50,0.95)]">
                       <ShieldCheck className="mr-1 size-3.5" />
                       Private access
                     </Badge>
-                    <Badge variant="outline" className="border-[#ddcfb6] bg-[#fff8ee] px-4 py-1.5 text-[#7a5d32]">
+                    <Badge variant="outline" className="border-[#5f5137] bg-[#120e09] px-4 py-1.5 text-[#f1d59f]">
                       {data.masked_phone}
                     </Badge>
                   </div>
@@ -401,12 +421,12 @@ export function WatchPage() {
               </section>
 
               {showSoftSnapshot ? (
-                <section className="rounded-[1.8rem] border border-[#eadfcd] bg-white/80 px-5 py-4 shadow-[0_20px_70px_-60px_rgba(16,35,29,0.24)] sm:px-6">
+                <section className="rounded-[1.8rem] border border-white/8 bg-white/[0.035] px-5 py-4 shadow-[0_24px_90px_-70px_rgba(0,0,0,0.9)] backdrop-blur-xl sm:px-6">
                   {intakeSummary ? (
-                    <p className="text-sm font-medium text-[#243a33]">{intakeSummary}</p>
+                    <p className="text-sm font-medium text-[#ecdfc6]">{intakeSummary}</p>
                   ) : null}
                   {data.trust_note ? (
-                    <p className={`${intakeSummary ? 'mt-1.5' : ''} text-sm leading-relaxed text-[#6a736c]`}>
+                    <p className={`${intakeSummary ? 'mt-1.5' : ''} text-sm leading-relaxed text-[#9ca8a1]`}>
                       {data.trust_note}
                     </p>
                   ) : null}
@@ -414,21 +434,21 @@ export function WatchPage() {
               ) : null}
 
               {!data.access_granted ? (
-                <section className="mx-auto w-full max-w-xl rounded-[2rem] border border-[#ece2d2] bg-white px-5 py-6 shadow-[0_24px_80px_-52px_rgba(16,35,29,0.2)] sm:px-6">
+                <section className="mx-auto w-full max-w-xl rounded-[2rem] border border-white/10 bg-[linear-gradient(170deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] px-5 py-6 shadow-[0_34px_120px_-80px_rgba(0,0,0,0.95)] backdrop-blur-2xl sm:px-6">
                   <div className="flex items-start gap-3">
-                    <div className="rounded-2xl bg-[#f4efe6] p-3 text-[#10392f]">
+                    <div className="rounded-2xl bg-[#133127] p-3 text-[#bfe8d3]">
                       <LockKeyhole className="size-5" />
                     </div>
                     <div>
-                      <p className="text-lg font-semibold text-[#10231d]">Continue with your number</p>
-                      <p className="mt-1 text-sm leading-relaxed text-[#5f655f]">
+                      <p className="text-lg font-semibold text-[#f7f1e8]">Continue with your number</p>
+                      <p className="mt-1 text-sm leading-relaxed text-[#aab4ad]">
                         Use the same mobile number you shared with your team.
                       </p>
                     </div>
                   </div>
 
                   <form className="mt-5 space-y-3" onSubmit={(e) => void handleUnlock(e)}>
-                    <label className="block text-sm font-medium text-[#243a33]" htmlFor="watch-phone">
+                    <label className="block text-sm font-medium text-[#dfe9e2]" htmlFor="watch-phone">
                       Registered mobile number
                     </label>
                     <input
@@ -439,25 +459,25 @@ export function WatchPage() {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="Enter the same number"
-                      className="h-12 w-full rounded-2xl border border-[#d7d0c2] bg-[#fcfaf6] px-4 text-base text-[#10231d] outline-none transition focus:border-[#10392f] focus:ring-2 focus:ring-[#10392f]/10"
+                      className="h-12 w-full rounded-2xl border border-[#2a3c36] bg-[#09100f] px-4 text-base text-[#f7f1e8] outline-none transition placeholder:text-[#75817a] focus:border-[#d8bc8d] focus:ring-2 focus:ring-[#d8bc8d]/15"
                     />
                     {unlockError ? (
-                      <p className="text-sm text-red-700" role="alert">
-                        {unlockError}
+                      <p className="text-sm text-[#ffb8bd]" role="alert">
+                        {normalizeRoomError(unlockError, 'Could not verify number.')}
                       </p>
                     ) : null}
                     <button
                       type="submit"
                       disabled={unlocking}
-                      className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[#10392f] px-5 text-sm font-semibold text-white transition hover:bg-[#0c2f26] disabled:opacity-60"
+                      className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[#f1e4ca] px-5 text-sm font-semibold text-[#09110f] transition hover:bg-[#e5d2aa] disabled:opacity-60"
                     >
                       {unlocking ? 'Verifying…' : 'Continue'}
                     </button>
                   </form>
                 </section>
               ) : (
-                <section className="overflow-hidden rounded-[2.1rem] border border-[#ece2d2] bg-white shadow-[0_28px_90px_-56px_rgba(16,35,29,0.26)]">
-                  <div className="bg-[#0b1714] p-3 sm:p-4">
+                <section className="overflow-hidden rounded-[2.1rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.025))] shadow-[0_38px_140px_-88px_rgba(0,0,0,0.96)] backdrop-blur-2xl">
+                  <div className="bg-[#08110f] p-3 sm:p-4">
                     {videoSrc ? (
                       <>
                         <div className="relative">
@@ -519,17 +539,17 @@ export function WatchPage() {
                           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 rounded-b-[1.4rem] bg-gradient-to-t from-[#030806] to-transparent" />
                         </div>
 
-                        <div className="mt-4 rounded-[1.4rem] border border-white/10 bg-white/[0.04] p-4 text-white/90">
+                        <div className="mt-4 rounded-[1.4rem] border border-white/10 bg-white/[0.045] p-4 text-white/90">
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                               <p className="text-base font-semibold text-white">{playerStatusTitle}</p>
-                              <p className="mt-1 text-sm leading-relaxed text-white/65">{playerStatusBody}</p>
+                              <p className="mt-1 text-sm leading-relaxed text-white/68">{playerStatusBody}</p>
                             </div>
                             <button
                               type="button"
                               onClick={() => void togglePlayback()}
                               disabled={!videoSrc || completing}
-                              className="inline-flex h-11 items-center justify-center rounded-2xl bg-white px-5 text-sm font-semibold text-[#10231d] transition hover:bg-[#f0e7da] disabled:cursor-not-allowed disabled:opacity-60"
+                              className="inline-flex h-11 items-center justify-center rounded-2xl bg-[#f1e4ca] px-5 text-sm font-semibold text-[#09110f] transition hover:bg-[#e5d2aa] disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               {playerButtonLabel}
                             </button>
@@ -537,7 +557,7 @@ export function WatchPage() {
 
                           <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
                             <div
-                              className="h-full rounded-full bg-[#d7c8af] transition-[width]"
+                              className="h-full rounded-full bg-[#e3c388] transition-[width]"
                               style={{ width: `${progressPercent}%` }}
                             />
                           </div>
@@ -547,10 +567,10 @@ export function WatchPage() {
                             <span>{watchCompleted ? 'Thanks for watching.' : 'Please watch through to the end.'}</span>
                           </div>
 
-                          {completing ? <p className="mt-3 text-xs text-[#d7c8af]">Finishing up…</p> : null}
+                          {completing ? <p className="mt-3 text-xs text-[#e3c388]">Finishing up…</p> : null}
                           {playerError ? (
                             <p className="mt-3 text-xs text-red-300" role="alert">
-                              {playerError}
+                              {normalizeRoomError(playerError, 'Could not control secure playback.')}
                             </p>
                           ) : null}
                         </div>
