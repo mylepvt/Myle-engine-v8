@@ -54,35 +54,9 @@ class SqlAlchemyLeadsRepository:
         if condition is not None:
             stmt = stmt.where(condition)
         if ctcs_priority_sort:
-            now = now_utc or datetime.now(timezone.utc)
-            new_first = case(
-                (and_(Lead.call_count == 0, Lead.status == "new_lead"), 0),
-                else_=1,
-            )
-            due_follow = case(
-                (
-                    and_(
-                        Lead.next_followup_at.is_not(None),
-                        Lead.next_followup_at <= now,
-                    ),
-                    0,
-                ),
-                else_=1,
-            )
-            hotish = case(
-                (Lead.status.in_(("invited", "whatsapp_sent", "video_sent", "video_watched")), 0),
-                else_=1,
-            )
-            stmt = stmt.order_by(
-                new_first.asc(),
-                due_follow.asc(),
-                Lead.next_followup_at.asc().nulls_last(),
-                hotish.asc(),
-                Lead.heat_score.desc(),
-                Lead.created_at.asc(),
-            )
+            stmt = stmt.order_by(Lead.created_at.desc(), Lead.id.desc())
         else:
-            stmt = stmt.order_by(Lead.created_at.desc())
+            stmt = stmt.order_by(Lead.created_at.desc(), Lead.id.desc())
         return (await self._session.execute(stmt)).scalars().all()
 
     async def get_workboard_counts(self, *, condition: Any) -> dict[str, int]:

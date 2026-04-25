@@ -44,6 +44,7 @@ from app.schemas.execution_enforcement import (
     FunnelDropRow,
     FollowUpAttackRow,
 )
+from app.services.push_service import send_push_to_user
 
 logger = logging.getLogger(__name__)
 
@@ -79,10 +80,13 @@ _ENROLLED_SIGNAL_STATUSES = frozenset(
         "converted",
     }
 )
+_WATCH_PIPELINE_STATUSES = frozenset({"video_sent", "video_watched"})
 # ₹196 in paise/cents as stored (rupees × 100).
 RUPEES_196_CENTS = 196 * 100
-_STALE_WATCH_BUCKET = "completed_watch_stale_leads"
+_WATCH_ARCHIVE_BUCKET = "completed_watch_archived_leads"
+_STALE_WATCH_BUCKET = "archived_completed_watch_stale_leads"
 _DEFAULT_MAX_ACTIVE_LEADS_PER_WORKER = 50
+_DEFAULT_WATCH_ARCHIVE_AFTER_HOURS = 24
 
 
 def _lead_last_activity_ts():
@@ -113,7 +117,7 @@ def _redistribution_eligible_filters() -> ColumnElement[bool]:
     return and_(
         Lead.in_pool.is_(False),
         Lead.deleted_at.is_(None),
-        Lead.archived_at.is_(None),
+        Lead.archived_at.is_not(None),
         Lead.status.notin_(_REDISTRIBUTION_TERMINAL_STATUSES),
     )
 
@@ -124,6 +128,30 @@ def _completed_watch_exists() -> ColumnElement[bool]:
             EnrollShareLink.lead_id == Lead.id,
             EnrollShareLink.status_synced.is_(True),
         )
+    )
+
+
+def _completed_watch_anchor_ts():
+    latest_watch_ts = (
+        select(
+            func.max(
+                func.coalesce(
+                    EnrollShareLink.last_viewed_at,
+                    EnrollShareLink.first_viewed_at,
+                    EnrollShareLink.created_at,
+                )
+            )
+        )
+        .where(
+            EnrollShareLink.lead_id == Lead.id,
+            EnrollShareLink.status_synced.is_(True),
+        )
+        .scalar_subquery()
+    )
+    return func.coalesce(
+        Lead.last_action_at,
+        latest_watch_ts,
+        Lead.created_at,
     )
 
 
@@ -501,6 +529,14 @@ def _lead_last_activity_value(lead: Lead) -> datetime:
     return value.astimezone(timezone.utc)
 
 
+def _ensure_utc_datetime(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
 async def _get_workers(session: AsyncSession) -> list[tuple[int, str]]:
     rows = await session.execute(
         select(User.id, User.username, User.fbo_id)
@@ -565,43 +601,132 @@ async def _get_top_xp_workers(
     return workers
 
 
-async def _get_completed_watch_stale_leads(
+async def _get_archivable_completed_watch_leads(
     session: AsyncSession,
     *,
     cutoff: datetime,
     limit: int,
-) -> list[Lead]:
-    activity_ts = _lead_last_activity_ts()
+) -> list[tuple[Lead, datetime]]:
+    activity_ts = _completed_watch_anchor_ts()
     rows = await session.execute(
-        select(Lead)
+        select(Lead, activity_ts.label("activity_at"))
         .where(
-            _redistribution_eligible_filters(),
+            Lead.in_pool.is_(False),
+            Lead.deleted_at.is_(None),
+            Lead.archived_at.is_(None),
+            Lead.status.in_(tuple(_WATCH_PIPELINE_STATUSES)),
             _completed_watch_exists(),
             activity_ts <= cutoff,
         )
         .order_by(activity_ts.asc(), Lead.id.asc())
         .limit(limit)
     )
-    return rows.scalars().all()
+    out: list[tuple[Lead, datetime]] = []
+    for lead, activity_at in rows.all():
+        safe_activity = _ensure_utc_datetime(activity_at)
+        if safe_activity is None:
+            safe_activity = _lead_last_activity_value(lead)
+        out.append((lead, safe_activity))
+    return out
 
 
-async def _get_stale_leads(
+async def _get_completed_watch_stale_leads(
     session: AsyncSession,
     *,
     cutoff: datetime,
     limit: int,
 ) -> list[Lead]:
-    activity_ts = _lead_last_activity_ts()
     rows = await session.execute(
         select(Lead)
         .where(
             _redistribution_eligible_filters(),
-            activity_ts <= cutoff,
+            Lead.status.in_(tuple(_WATCH_PIPELINE_STATUSES)),
+            _completed_watch_exists(),
+            Lead.archived_at <= cutoff,
         )
-        .order_by(activity_ts.asc(), Lead.id.asc())
+        .order_by(Lead.archived_at.asc(), Lead.id.asc())
         .limit(limit)
     )
     return rows.scalars().all()
+
+
+async def auto_archive_completed_watch_leads(
+    session: AsyncSession,
+    *,
+    archive_after_hours: int = _DEFAULT_WATCH_ARCHIVE_AFTER_HOURS,
+    limit: int = 500,
+    now: datetime | None = None,
+) -> int:
+    ts = _ensure_utc_datetime(now) or datetime.now(timezone.utc)
+    archive_hours = max(1, int(archive_after_hours))
+    cutoff = ts - timedelta(hours=archive_hours)
+    rows = await _get_archivable_completed_watch_leads(session, cutoff=cutoff, limit=max(1, int(limit)))
+    if not rows:
+        return 0
+
+    audit_logs: list[ActivityLog] = []
+    archived = 0
+    for lead, activity_at in rows:
+        safe_activity = _ensure_utc_datetime(activity_at) or _lead_last_activity_value(lead)
+        if safe_activity > cutoff:
+            continue
+        archive_mark_at = safe_activity + timedelta(hours=archive_hours)
+        lead.archived_at = archive_mark_at
+        lead.in_pool = False
+        archived += 1
+        audit_logs.append(
+            ActivityLog(
+                user_id=int(lead.assigned_to_user_id or lead.owner_user_id or lead.created_by_user_id),
+                action="lead.auto_archived_after_watch",
+                entity_type="lead",
+                entity_id=lead.id,
+                meta={
+                    "actor": "system.watch_archive_cycle",
+                    "source_bucket": _WATCH_ARCHIVE_BUCKET,
+                    "watch_completed": True,
+                    "status": lead.status,
+                    "watch_completed_at": safe_activity.isoformat(),
+                    "archived_at": archive_mark_at.isoformat(),
+                    "owner_user_id": int(lead.owner_user_id) if lead.owner_user_id is not None else None,
+                    "assigned_to_user_id": int(lead.assigned_to_user_id) if lead.assigned_to_user_id is not None else None,
+                    "auto_cycle_hours": archive_hours,
+                },
+            )
+        )
+    if archived:
+        session.add_all(audit_logs)
+        await session.commit()
+    return archived
+
+
+async def run_completed_watch_pipeline_maintenance(
+    session: AsyncSession,
+    *,
+    archive_after_hours: int = _DEFAULT_WATCH_ARCHIVE_AFTER_HOURS,
+    stale_hours: int = _DEFAULT_WATCH_ARCHIVE_AFTER_HOURS,
+    top_n: int = 10,
+    limit: int = 500,
+    now: datetime | None = None,
+) -> dict[str, int]:
+    ts = _ensure_utc_datetime(now) or datetime.now(timezone.utc)
+    auto_archived = await auto_archive_completed_watch_leads(
+        session,
+        archive_after_hours=archive_after_hours,
+        limit=limit,
+        now=ts,
+    )
+    redistribution = await stale_redistribute(
+        session,
+        stale_hours=stale_hours,
+        top_n=top_n,
+        limit=limit,
+        now=ts,
+    )
+    return {
+        "auto_archived": int(auto_archived),
+        "reassigned": int(redistribution.assigned),
+        "skipped": int(redistribution.skipped),
+    }
 
 
 def _assign_leads(
@@ -610,8 +735,10 @@ def _assign_leads(
     workers: list[int],
     load_map: dict[int, int],
     cutoff: datetime,
+    now: datetime,
     worker_rank: dict[int, int],
     max_active_per_worker: int,
+    auto_cycle_hours: int,
     audit_log_user_id: int | None = None,
 ) -> tuple[int, int, list[list[Any]], list[ActivityLog]]:
     assigned = 0
@@ -649,7 +776,8 @@ def _assign_leads(
 
         # Ownership safety: only assignee can change.
         lead.assigned_to_user_id = to_uid
-        lead.last_action_at = datetime.now(timezone.utc)
+        lead.archived_at = None
+        lead.last_action_at = now
 
         assigned += 1
         load_map[to_uid] = load_map.get(to_uid, 0) + 1
@@ -670,14 +798,14 @@ def _assign_leads(
             lead_meta["stale_cutoff_at"] = cutoff.isoformat()
             lead_meta["worker_rank"] = int(worker_rank.get(to_uid, 0)) + 1
             yield_log = ActivityLog(
-                user_id=audit_log_user_id,
+                user_id=int(to_uid or audit_log_user_id),
                 action="lead.stale_watch_reassigned",
                 entity_type="lead",
                 entity_id=lead.id,
                 meta=lead_meta,
             )
             lead_meta["owner_preserved"] = True
-            lead_meta["auto_cycle_hours"] = 48
+            lead_meta["auto_cycle_hours"] = auto_cycle_hours
             # ActivityLog is append-only audit trail for sensitive redistribution.
             audit_logs.append(yield_log)
     return assigned, skipped, assignments, audit_logs
@@ -686,23 +814,25 @@ def _assign_leads(
 async def stale_redistribute(
     session: AsyncSession,
     *,
-    stale_hours: int = 48,
+    stale_hours: int = _DEFAULT_WATCH_ARCHIVE_AFTER_HOURS,
     top_n: int = 10,
     limit: int = 500,
+    now: datetime | None = None,
 ) -> StaleRedistributeOut:
     """
-    Reassign completed-watch stale leads to the top XP team pool.
+    Reassign archived completed-watch leads to the top XP team pool.
 
     Safety rules:
     - never change ``owner_user_id``
-    - only reassign from the completed-watch stale bucket
+    - only reassign from the archived completed-watch stale bucket
     - only assign into the top-XP approved team pool
     - cap each selected worker at 50 active leads
     """
     sh = max(1, int(stale_hours))
     n_workers = max(1, int(top_n))
     max_rows = max(1, int(limit))
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=sh)
+    ts = _ensure_utc_datetime(now) or datetime.now(timezone.utc)
+    cutoff = ts - timedelta(hours=sh)
     max_active_per_worker = _DEFAULT_MAX_ACTIVE_LEADS_PER_WORKER
 
     workers = await _get_top_xp_workers(session, top_n=n_workers)
@@ -737,7 +867,7 @@ async def stale_redistribute(
     if not stale_leads:
         return StaleRedistributeOut(
             implemented=True,
-            message="No completed-watch stale leads matched the given threshold.",
+            message="No archived completed-watch stale leads matched the given threshold.",
             source_bucket=_STALE_WATCH_BUCKET,
             max_active_per_worker=max_active_per_worker,
             worker_pool_size=len(worker_ids),
@@ -750,13 +880,30 @@ async def stale_redistribute(
         workers=eligible_workers,
         load_map=load_map,
         cutoff=cutoff,
+        now=ts,
         worker_rank=worker_rank,
         max_active_per_worker=max_active_per_worker,
+        auto_cycle_hours=sh,
         audit_log_user_id=audit_log_user_id,
     )
     session.add_all(audit_logs)
 
     await session.commit()
+    notified_users: set[int] = set()
+    for _lead_id, _from_uid, to_uid in assignments:
+        if to_uid is None or int(to_uid) in notified_users:
+            continue
+        notified_users.add(int(to_uid))
+        try:
+            await send_push_to_user(
+                session,
+                int(to_uid),
+                title="Leads Reassigned",
+                body="Stale archived leads have been moved back into your Calling Board.",
+                url="/dashboard/work/leads",
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception("Failed to send stale reassignment push to user %s", to_uid)
     logger.info(
         "stale_watch_redistribute assigned=%s skipped=%s workers=%s stale_hours=%s limit=%s",
         assigned,
@@ -767,7 +914,7 @@ async def stale_redistribute(
     )
     return StaleRedistributeOut(
         implemented=True,
-        message=f"Redistributed {assigned} completed-watch stale lead(s); skipped {skipped}.",
+        message=f"Redistributed {assigned} archived completed-watch stale lead(s); skipped {skipped}.",
         assigned=assigned,
         skipped=skipped,
         assignments=assignments,

@@ -13,7 +13,7 @@ from app.models.enroll_share_link import EnrollShareLink
 from app.models.lead import Lead
 from app.models.user import User
 from app.models.wallet_ledger import WalletLedgerEntry
-from app.services.execution_enforcement import stale_redistribute
+from app.services.execution_enforcement import run_completed_watch_pipeline_maintenance
 from main import app
 from util_jwt_patch import patch_jwt_settings
 
@@ -32,7 +32,9 @@ async def _reset_state() -> None:
 async def _seed_cycle_data() -> dict[str, int]:
     factory = test_conftest.get_test_session_factory()
     now = datetime.now(timezone.utc)
-    stale_at = now - timedelta(hours=49)
+    archive_only_at = now - timedelta(hours=30)
+    archive_and_reassign_at = now - timedelta(hours=49)
+    archived_stale_watch_at = now - timedelta(hours=50)
 
     async with factory() as session:
         ranked_workers: list[User] = []
@@ -62,6 +64,7 @@ async def _seed_cycle_data() -> dict[str, int]:
 
         top_worker = ranked_workers[0]
         second_worker = ranked_workers[1]
+        third_worker = ranked_workers[2]
         outside_top_ten = ranked_workers[-1]
 
         for idx in range(50):
@@ -78,15 +81,36 @@ async def _seed_cycle_data() -> dict[str, int]:
                 )
             )
 
-        stale_completed = Lead(
-            name="Completed Watch Stale",
+        archive_only = Lead(
+            name="Archive Only Lead",
             status="video_sent",
             created_by_user_id=3,
             owner_user_id=3,
             assigned_to_user_id=3,
             phone="8000000001",
-            created_at=stale_at,
-            last_action_at=stale_at,
+            created_at=archive_only_at,
+            last_action_at=archive_only_at,
+        )
+        archive_and_reassign = Lead(
+            name="Archive And Reassign Lead",
+            status="video_sent",
+            created_by_user_id=3,
+            owner_user_id=3,
+            assigned_to_user_id=3,
+            phone="8000000002",
+            created_at=archive_and_reassign_at,
+            last_action_at=archive_and_reassign_at,
+        )
+        already_archived_stale = Lead(
+            name="Archived Stale Lead",
+            status="video_sent",
+            created_by_user_id=3,
+            owner_user_id=3,
+            assigned_to_user_id=3,
+            phone="8000000003",
+            created_at=archived_stale_watch_at,
+            last_action_at=archived_stale_watch_at,
+            archived_at=now - timedelta(hours=26),
         )
         stale_without_watch = Lead(
             name="No Watch Completion",
@@ -94,19 +118,9 @@ async def _seed_cycle_data() -> dict[str, int]:
             created_by_user_id=3,
             owner_user_id=3,
             assigned_to_user_id=3,
-            phone="8000000002",
-            created_at=stale_at,
-            last_action_at=stale_at,
-        )
-        recent_completed = Lead(
-            name="Recent Completion",
-            status="video_sent",
-            created_by_user_id=3,
-            owner_user_id=3,
-            assigned_to_user_id=3,
-            phone="8000000003",
-            created_at=now - timedelta(hours=4),
-            last_action_at=now - timedelta(hours=4),
+            phone="8000000004",
+            created_at=archive_and_reassign_at,
+            last_action_at=archive_and_reassign_at,
         )
         stale_paid = Lead(
             name="Paid Lead",
@@ -114,33 +128,52 @@ async def _seed_cycle_data() -> dict[str, int]:
             created_by_user_id=3,
             owner_user_id=3,
             assigned_to_user_id=3,
-            phone="8000000004",
-            created_at=stale_at,
-            last_action_at=stale_at,
+            phone="8000000005",
+            created_at=archive_and_reassign_at,
+            last_action_at=archive_and_reassign_at,
+            archived_at=now - timedelta(hours=30),
         )
-        session.add_all([stale_completed, stale_without_watch, recent_completed, stale_paid])
+        session.add_all(
+            [
+                archive_only,
+                archive_and_reassign,
+                already_archived_stale,
+                stale_without_watch,
+                stale_paid,
+            ]
+        )
         await session.flush()
 
         session.add_all(
             [
                 EnrollShareLink(
-                    token="stale-completed-token",
-                    lead_id=stale_completed.id,
+                    token="archive-only-token",
+                    lead_id=archive_only.id,
                     created_by_user_id=3,
                     youtube_url="https://cdn.example.com/enrollment.mp4",
                     status_synced=True,
-                    first_viewed_at=stale_at,
-                    last_viewed_at=stale_at,
+                    first_viewed_at=archive_only_at,
+                    last_viewed_at=archive_only_at,
                     expires_at=now + timedelta(minutes=5),
                 ),
                 EnrollShareLink(
-                    token="recent-completed-token",
-                    lead_id=recent_completed.id,
+                    token="archive-and-reassign-token",
+                    lead_id=archive_and_reassign.id,
                     created_by_user_id=3,
                     youtube_url="https://cdn.example.com/enrollment.mp4",
                     status_synced=True,
-                    first_viewed_at=now - timedelta(hours=4),
-                    last_viewed_at=now - timedelta(hours=4),
+                    first_viewed_at=archive_and_reassign_at,
+                    last_viewed_at=archive_and_reassign_at,
+                    expires_at=now + timedelta(minutes=5),
+                ),
+                EnrollShareLink(
+                    token="already-archived-token",
+                    lead_id=already_archived_stale.id,
+                    created_by_user_id=3,
+                    youtube_url="https://cdn.example.com/enrollment.mp4",
+                    status_synced=True,
+                    first_viewed_at=archived_stale_watch_at,
+                    last_viewed_at=archived_stale_watch_at,
                     expires_at=now + timedelta(minutes=5),
                 ),
                 EnrollShareLink(
@@ -149,8 +182,8 @@ async def _seed_cycle_data() -> dict[str, int]:
                     created_by_user_id=3,
                     youtube_url="https://cdn.example.com/enrollment.mp4",
                     status_synced=True,
-                    first_viewed_at=stale_at,
-                    last_viewed_at=stale_at,
+                    first_viewed_at=archive_and_reassign_at,
+                    last_viewed_at=archive_and_reassign_at,
                     expires_at=now + timedelta(minutes=5),
                 ),
             ]
@@ -168,12 +201,13 @@ async def _seed_cycle_data() -> dict[str, int]:
         await session.commit()
 
         return {
-            "stale_completed_id": stale_completed.id,
+            "archive_only_id": archive_only.id,
+            "archive_and_reassign_id": archive_and_reassign.id,
+            "already_archived_stale_id": already_archived_stale.id,
             "stale_without_watch_id": stale_without_watch.id,
-            "recent_completed_id": recent_completed.id,
             "stale_paid_id": stale_paid.id,
-            "top_worker_id": top_worker.id,
             "second_worker_id": second_worker.id,
+            "third_worker_id": third_worker.id,
             "outside_top_ten_id": outside_top_ten.id,
         }
 
@@ -183,7 +217,7 @@ def _client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     return TestClient(app)
 
 
-def test_stale_watch_cycle_reassigns_only_completed_watch_leads_and_preserves_owner() -> None:
+def test_completed_watch_pipeline_archives_then_reassigns_without_changing_owner() -> None:
     asyncio.run(_reset_state())
     seeded = asyncio.run(_seed_cycle_data())
     try:
@@ -193,55 +227,82 @@ def test_stale_watch_cycle_reassigns_only_completed_watch_leads_and_preserves_ow
                 before_wallet_count = int(
                     (await session.execute(select(func.count()).select_from(WalletLedgerEntry))).scalar_one()
                 )
-                result = await stale_redistribute(session)
-                assert result.implemented is True
-                assert result.assigned == 1
-                assert result.skipped == 0
-                assert result.worker_pool_size == 10
-                assert result.source_bucket == "completed_watch_stale_leads"
-                assert result.max_active_per_worker == 50
+                result = await run_completed_watch_pipeline_maintenance(session)
+                assert result == {
+                    "auto_archived": 2,
+                    "reassigned": 2,
+                    "skipped": 0,
+                }
 
-                moved = await session.get(Lead, seeded["stale_completed_id"])
-                assert moved is not None
-                assert moved.owner_user_id == 3
-                assert moved.assigned_to_user_id == seeded["second_worker_id"]
+                archive_only = await session.get(Lead, seeded["archive_only_id"])
+                assert archive_only is not None
+                assert archive_only.owner_user_id == 3
+                assert archive_only.assigned_to_user_id == 3
+                assert archive_only.archived_at is not None
+
+                archive_and_reassign = await session.get(Lead, seeded["archive_and_reassign_id"])
+                assert archive_and_reassign is not None
+                assert archive_and_reassign.owner_user_id == 3
+                assert archive_and_reassign.assigned_to_user_id == seeded["third_worker_id"]
+                assert archive_and_reassign.archived_at is None
+
+                already_archived_stale = await session.get(Lead, seeded["already_archived_stale_id"])
+                assert already_archived_stale is not None
+                assert already_archived_stale.owner_user_id == 3
+                assert already_archived_stale.assigned_to_user_id == seeded["second_worker_id"]
+                assert already_archived_stale.archived_at is None
 
                 untouched_no_watch = await session.get(Lead, seeded["stale_without_watch_id"])
                 assert untouched_no_watch is not None
                 assert untouched_no_watch.assigned_to_user_id == 3
-
-                untouched_recent = await session.get(Lead, seeded["recent_completed_id"])
-                assert untouched_recent is not None
-                assert untouched_recent.assigned_to_user_id == 3
+                assert untouched_no_watch.archived_at is None
 
                 untouched_paid = await session.get(Lead, seeded["stale_paid_id"])
                 assert untouched_paid is not None
                 assert untouched_paid.assigned_to_user_id == 3
+                assert untouched_paid.archived_at is not None
 
-                log_rows = (
+                archive_logs = (
                     await session.execute(
-                        select(ActivityLog).where(
-                            ActivityLog.action == "lead.stale_watch_reassigned",
-                            ActivityLog.entity_id == seeded["stale_completed_id"],
-                        )
+                        select(ActivityLog).where(ActivityLog.action == "lead.auto_archived_after_watch")
                     )
                 ).scalars().all()
-                assert len(log_rows) == 1
-                assert log_rows[0].meta["owner_preserved"] is True
-                assert log_rows[0].meta["assigned_to_user_id"] == seeded["second_worker_id"]
+                assert {log.entity_id for log in archive_logs} == {
+                    seeded["archive_only_id"],
+                    seeded["archive_and_reassign_id"],
+                }
+
+                reassign_logs = (
+                    await session.execute(
+                        select(ActivityLog).where(ActivityLog.action == "lead.stale_watch_reassigned")
+                    )
+                ).scalars().all()
+                assert {log.entity_id for log in reassign_logs} == {
+                    seeded["archive_and_reassign_id"],
+                    seeded["already_archived_stale_id"],
+                }
+                assert all(log.meta["owner_preserved"] is True for log in reassign_logs)
+                assert all(
+                    log.meta["source_bucket"] == "archived_completed_watch_stale_leads"
+                    for log in reassign_logs
+                )
 
                 after_wallet_count = int(
                     (await session.execute(select(func.count()).select_from(WalletLedgerEntry))).scalar_one()
                 )
                 assert after_wallet_count == before_wallet_count
-                assert seeded["outside_top_ten_id"] not in {row[2] for row in result.assignments}
+                reassigned_users = {
+                    int(log.meta["assigned_to_user_id"])
+                    for log in reassign_logs
+                }
+                assert seeded["outside_top_ten_id"] not in reassigned_users
 
         asyncio.run(_exercise())
     finally:
         asyncio.run(_reset_state())
 
 
-def test_execution_stale_redistribute_endpoint_exposes_watch_cycle_contract(
+def test_execution_stale_redistribute_endpoint_exposes_archived_watch_cycle_contract(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     asyncio.run(_reset_state())
@@ -252,7 +313,7 @@ def test_execution_stale_redistribute_endpoint_exposes_watch_cycle_contract(
         assert res.status_code == 200
         body = res.json()
         assert body["implemented"] is True
-        assert body["source_bucket"] == "completed_watch_stale_leads"
+        assert body["source_bucket"] == "archived_completed_watch_stale_leads"
         assert body["max_active_per_worker"] == 50
     finally:
         asyncio.run(_reset_state())
