@@ -5,6 +5,8 @@ from uuid import uuid4
 
 from fastapi import UploadFile
 
+from app.services.enrollment_video import normalize_video_source_url
+
 _BACKEND_ROOT = Path(__file__).resolve().parents[2]
 _UPLOADS_ROOT = _BACKEND_ROOT / "uploads"
 _ENROLLMENT_VIDEO_ROOT = _UPLOADS_ROOT / "enrollment_video"
@@ -66,7 +68,7 @@ async def save_enrollment_video_file(file: UploadFile) -> tuple[bool, str, str |
 
 
 def remove_managed_enrollment_video_file(source_url: str | None) -> None:
-    raw = (source_url or "").strip()
+    raw = normalize_video_source_url(source_url)
     if not raw.startswith("/uploads/enrollment_video/"):
         return
 
@@ -77,3 +79,13 @@ def remove_managed_enrollment_video_file(source_url: str | None) -> None:
     except ValueError:
         return
     target.unlink(missing_ok=True)
+
+
+def cleanup_replaced_managed_enrollment_video(
+    previous_source_url: str | None,
+    next_source_url: str | None,
+) -> None:
+    previous = normalize_video_source_url(previous_source_url)
+    current = normalize_video_source_url(next_source_url)
+    if previous and previous != current:
+        remove_managed_enrollment_video_file(previous)
