@@ -297,8 +297,8 @@ async def _build_budget_rows(
                 select(WalletLedgerEntry)
                 .where(
                     WalletLedgerEntry.user_id.in_(visible_ids),
-                    func.date(WalletLedgerEntry.created_at) >= window.date_from.isoformat(),
-                    func.date(WalletLedgerEntry.created_at) <= window.date_to.isoformat(),
+                    func.date(WalletLedgerEntry.created_at) >= window.date_from,
+                    func.date(WalletLedgerEntry.created_at) <= window.date_to,
                 )
                 .order_by(WalletLedgerEntry.created_at.desc())
             )
@@ -626,8 +626,8 @@ async def finance_budget_export_history(
                 select(WalletLedgerEntry)
                 .where(
                     WalletLedgerEntry.user_id == int(user_id),
-                    func.date(WalletLedgerEntry.created_at) >= window.date_from.isoformat(),
-                    func.date(WalletLedgerEntry.created_at) <= window.date_to.isoformat(),
+                    func.date(WalletLedgerEntry.created_at) >= window.date_from,
+                    func.date(WalletLedgerEntry.created_at) <= window.date_to,
                 )
                 .order_by(WalletLedgerEntry.created_at.desc(), WalletLedgerEntry.id.desc())
             )
