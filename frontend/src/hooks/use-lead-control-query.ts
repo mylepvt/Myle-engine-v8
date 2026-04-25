@@ -57,6 +57,8 @@ export type LeadControlResponse = {
   note: string | null
   queue: LeadControlQueueLead[]
   queue_total: number
+  incubation_queue: LeadControlQueueLead[]
+  incubation_total: number
   assignable_users: LeadControlAssignableUser[]
   history_summary: LeadControlHistorySummaryRow[]
   history: LeadControlHistoryRow[]

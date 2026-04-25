@@ -182,6 +182,8 @@ class LeadControlOut(BaseModel):
     note: Optional[str] = None
     queue: list[LeadControlQueueLead] = Field(default_factory=list)
     queue_total: int = 0
+    incubation_queue: list[LeadControlQueueLead] = Field(default_factory=list)
+    incubation_total: int = 0
     assignable_users: list[LeadControlAssignableUser] = Field(default_factory=list)
     history_summary: list[LeadControlHistorySummaryRow] = Field(default_factory=list)
     history: list[LeadControlHistoryRow] = Field(default_factory=list)

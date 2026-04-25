@@ -690,6 +690,26 @@ async def _get_completed_watch_stale_leads(
     return rows.scalars().all()
 
 
+async def _get_completed_watch_incubating_leads(
+    session: AsyncSession,
+    *,
+    cutoff: datetime,
+    limit: int,
+) -> list[Lead]:
+    rows = await session.execute(
+        select(Lead)
+        .where(
+            _redistribution_eligible_filters(),
+            Lead.status.in_(tuple(_WATCH_PIPELINE_STATUSES)),
+            _completed_watch_exists(),
+            Lead.archived_at > cutoff,
+        )
+        .order_by(Lead.archived_at.asc(), Lead.id.asc())
+        .limit(limit)
+    )
+    return rows.scalars().all()
+
+
 async def _count_completed_watch_stale_leads(
     session: AsyncSession,
     *,
@@ -705,6 +725,28 @@ async def _count_completed_watch_stale_leads(
                     Lead.status.in_(tuple(_WATCH_PIPELINE_STATUSES)),
                     _completed_watch_exists(),
                     Lead.archived_at <= cutoff,
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+
+
+async def _count_completed_watch_incubating_leads(
+    session: AsyncSession,
+    *,
+    cutoff: datetime,
+) -> int:
+    return int(
+        (
+            await session.execute(
+                select(func.count())
+                .select_from(Lead)
+                .where(
+                    _redistribution_eligible_filters(),
+                    Lead.status.in_(tuple(_WATCH_PIPELINE_STATUSES)),
+                    _completed_watch_exists(),
+                    Lead.archived_at > cutoff,
                 )
             )
         ).scalar_one()
@@ -1091,10 +1133,25 @@ async def admin_lead_control_snapshot(
         limit=max(1, int(queue_limit)),
     )
     queue_total = await _count_completed_watch_stale_leads(session, cutoff=stale_cutoff)
+    incubation_queue = await _get_completed_watch_incubating_leads(
+        session,
+        cutoff=stale_cutoff,
+        limit=max(1, int(queue_limit)),
+    )
+    incubation_total = await _count_completed_watch_incubating_leads(session, cutoff=stale_cutoff)
     queue_lead_ids = [int(lead.id) for lead in queue]
-    watch_map = await _get_watch_completion_map(session, lead_ids=queue_lead_ids)
+    incubation_lead_ids = [int(lead.id) for lead in incubation_queue]
+    watch_map = await _get_watch_completion_map(
+        session,
+        lead_ids=queue_lead_ids + incubation_lead_ids,
+    )
     queue_user_ids: set[int] = set()
     for lead in queue:
+        if lead.owner_user_id is not None:
+            queue_user_ids.add(int(lead.owner_user_id))
+        if lead.assigned_to_user_id is not None:
+            queue_user_ids.add(int(lead.assigned_to_user_id))
+    for lead in incubation_queue:
         if lead.owner_user_id is not None:
             queue_user_ids.add(int(lead.owner_user_id))
         if lead.assigned_to_user_id is not None:
@@ -1123,6 +1180,30 @@ async def admin_lead_control_snapshot(
             last_action_at=_ensure_utc_datetime(lead.last_action_at),
         )
         for lead in queue
+    ]
+    incubation_rows = [
+        LeadControlQueueLead(
+            lead_id=int(lead.id),
+            lead_name=lead.name,
+            phone=lead.phone,
+            status=lead.status,
+            owner_user_id=int(lead.owner_user_id) if lead.owner_user_id is not None else None,
+            owner_name=_user_label(
+                queue_users.get(int(lead.owner_user_id)) if lead.owner_user_id is not None else None,
+                lead.owner_user_id,
+            ),
+            assigned_to_user_id=int(lead.assigned_to_user_id) if lead.assigned_to_user_id is not None else None,
+            assigned_to_name=_user_label(
+                queue_users.get(int(lead.assigned_to_user_id))
+                if lead.assigned_to_user_id is not None
+                else None,
+                lead.assigned_to_user_id,
+            ),
+            archived_at=_ensure_utc_datetime(lead.archived_at) or datetime.now(timezone.utc),
+            watch_completed_at=watch_map.get(int(lead.id)),
+            last_action_at=_ensure_utc_datetime(lead.last_action_at),
+        )
+        for lead in incubation_queue
     ]
 
     assignable_users = await _get_manual_assignable_users(session)
@@ -1247,6 +1328,8 @@ async def admin_lead_control_snapshot(
         ),
         queue=queue_rows,
         queue_total=queue_total,
+        incubation_queue=incubation_rows,
+        incubation_total=incubation_total,
         assignable_users=assignable_users,
         history_summary=history_summary,
         history=history_rows,

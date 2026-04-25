@@ -42,6 +42,7 @@ export type DashboardNavItem = {
   roles: Role[]
   end?: boolean
   labelByRole?: Partial<Record<Role, string>>
+  navHidden?: boolean
 }
 
 export type DashboardNavSection = {
@@ -103,6 +104,7 @@ export type DashboardRouteDef = {
   roles: Role[]
   end?: boolean
   labelByRole?: Partial<Record<Role, string>>
+  navHidden?: boolean
 } & (
   | { surface: 'dashboard-home' }
   | { surface: 'full'; ui: FullUiSurface }
@@ -422,6 +424,7 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     section: { id: 'settings', label: 'Settings' },
     label: 'All members',
     roles: routeRoles('settings/all-members'),
+    navHidden: true,
     surface: 'full',
     ui: { kind: 'all-members' },
   },
@@ -482,6 +485,7 @@ function defToNavItem(def: DashboardRouteDef): DashboardNavItem {
   }
   if (def.end !== undefined) base.end = def.end
   if (def.labelByRole) base.labelByRole = def.labelByRole
+  if (def.navHidden) base.navHidden = def.navHidden
   return base
 }
 
@@ -489,7 +493,7 @@ function defToNavItem(def: DashboardRouteDef): DashboardNavItem {
 export function buildDashboardNavSections(): DashboardNavSection[] {
   return SECTION_ORDER.map((sec) => {
     const items = DASHBOARD_ROUTE_DEFS.filter(
-      (d) => d.section.id === sec.id,
+      (d) => d.section.id === sec.id && d.navHidden !== true,
     ).map(defToNavItem)
     return { id: sec.id, label: sec.label, items }
   }).filter((s) => s.items.length > 0)

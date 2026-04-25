@@ -17,9 +17,17 @@ const mockUseXpMeQuery = vi.fn()
 const mockUseXpHistoryQuery = vi.fn()
 const mockUseXpLeaderboardQuery = vi.fn()
 const mockUsePatchLeadMutation = vi.fn()
+const mockAdminCommandCenter = vi.fn()
 
 vi.mock('@/components/dashboard/GateAssistantCard', () => ({
   GateAssistantCard: () => <div data-testid="gate-assistant">Gate Assistant</div>,
+}))
+
+vi.mock('@/components/dashboard/AdminCommandCenter', () => ({
+  AdminCommandCenter: (props: { firstName: string }) => {
+    mockAdminCommandCenter(props)
+    return <div data-testid="admin-command-center">{props.firstName}</div>
+  },
 }))
 
 vi.mock('@/hooks/use-dashboard-shell-role', () => ({
@@ -69,7 +77,7 @@ vi.mock('@/hooks/use-leads-query', () => ({
   usePatchLeadMutation: () => mockUsePatchLeadMutation(),
 }))
 
-function seedBaseMocks(role: 'team' | 'leader') {
+function seedBaseMocks(role: 'team' | 'leader' | 'admin') {
   mockUseDashboardShellRole.mockReturnValue({
     role,
     serverRole: role,
@@ -78,9 +86,12 @@ function seedBaseMocks(role: 'team' | 'leader') {
   mockUseAuthMeQuery.mockReturnValue({
     data: {
       authenticated: true,
-      username: role === 'team' ? 'Team User' : 'Leader User',
-      fbo_id: role === 'team' ? 'fbo-team-001' : 'fbo-leader-001',
-      email: role === 'team' ? 'team@myle.local' : 'leader@myle.local',
+      username:
+        role === 'team' ? 'Team User' : role === 'leader' ? 'Leader User' : 'Admin User',
+      fbo_id:
+        role === 'team' ? 'fbo-team-001' : role === 'leader' ? 'fbo-leader-001' : 'fbo-admin-001',
+      email:
+        role === 'team' ? 'team@myle.local' : role === 'leader' ? 'leader@myle.local' : 'admin@myle.local',
     },
     isPending: false,
   })
@@ -184,5 +195,18 @@ describe('DashboardHomePage', () => {
     )
 
     expect(screen.getByTestId('gate-assistant')).toBeInTheDocument()
+  })
+
+  it('routes admin home to the command center surface', () => {
+    seedBaseMocks('admin')
+
+    render(
+      <MemoryRouter>
+        <DashboardHomePage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByTestId('admin-command-center')).toBeInTheDocument()
+    expect(mockAdminCommandCenter).toHaveBeenCalledWith({ firstName: 'Admin' })
   })
 })

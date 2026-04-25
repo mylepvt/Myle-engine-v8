@@ -98,6 +98,8 @@ export type LeadPublic = {
   name: string
   status: string
   created_by_user_id: number
+  owner_user_id?: number | null
+  owner_name?: string | null
   created_at: string
   archived_at: string | null
   deleted_at: string | null
