@@ -69,6 +69,7 @@ export type FullUiSurface =
       surface: 'training' | 'decision-engine' | 'coaching'
     }
   | { kind: 'lead-control' }
+  | { kind: 'day2-review' }
   | {
       kind: 'analytics'
       surface: 'activity-log'
@@ -279,6 +280,14 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('system/lead-control'),
     surface: 'full',
     ui: { kind: 'lead-control' },
+  },
+  {
+    path: 'system/day2-review',
+    section: { id: 'system', label: 'System' },
+    label: 'Day 2 Review',
+    roles: routeRoles('system/day2-review'),
+    surface: 'full',
+    ui: { kind: 'day2-review' },
   },
   {
     path: 'system/decision-engine',

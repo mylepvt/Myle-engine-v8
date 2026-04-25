@@ -264,6 +264,7 @@ def test_admin_surfaces(monkeypatch: pytest.MonkeyPatch) -> None:
     assert c.get("/api/v1/execution/weak-members").status_code == 200
     assert c.get("/api/v1/execution/leak-map").status_code == 200
     assert c.get("/api/v1/execution/lead-control").status_code == 200
+    assert c.get("/api/v1/execution/day2-review").status_code == 200
     stale = c.post("/api/v1/execution/stale-redistribute")
     assert stale.status_code == 200
     assert isinstance(stale.json().get("implemented"), bool)
@@ -274,9 +275,12 @@ def test_team_cannot_admin_leak_map(monkeypatch: pytest.MonkeyPatch) -> None:
     assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
     assert c.get("/api/v1/execution/leak-map").status_code == 403
     assert c.get("/api/v1/execution/lead-control").status_code == 403
+    assert c.get("/api/v1/execution/day2-review").status_code == 403
 
 
-def test_admin_lead_control_surface_exposes_queue_history_and_day2(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_admin_lead_control_surface_exposes_queue_and_assignable_users(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     asyncio.run(_reset_execution_tables())
     try:
         seeded = asyncio.run(_seed_lead_control_data())
@@ -288,11 +292,28 @@ def test_admin_lead_control_surface_exposes_queue_history_and_day2(monkeypatch: 
         assert body["queue_total"] == 1
         assert body["queue"][0]["lead_id"] == seeded["lead_id"]
         assert body["queue"][0]["owner_user_id"] == 3
-        assert body["day2_total"] == 1
-        assert body["day2_submissions"][0]["lead_id"] == seeded["lead_id"]
         assignable_ids = {row["user_id"] for row in body["assignable_users"]}
         assert seeded["team_target_id"] in assignable_ids
         assert seeded["leader_target_id"] in assignable_ids
+    finally:
+        asyncio.run(_reset_execution_tables())
+
+
+def test_admin_day2_review_surface_exposes_recent_submissions(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_reset_execution_tables())
+    try:
+        seeded = asyncio.run(_seed_lead_control_data())
+        c = _client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        response = c.get("/api/v1/execution/day2-review")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["total"] == 1
+        assert body["notes_count"] == 1
+        assert body["voice_count"] == 1
+        assert body["video_count"] == 1
+        assert body["submissions"][0]["lead_id"] == seeded["lead_id"]
+        assert body["submissions"][0]["owner_user_id"] == 3
     finally:
         asyncio.run(_reset_execution_tables())
 

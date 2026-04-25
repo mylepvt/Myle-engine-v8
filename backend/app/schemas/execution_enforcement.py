@@ -162,7 +162,7 @@ class LeadControlHistoryRow(BaseModel):
     reason: Optional[str] = None
 
 
-class LeadControlDay2SubmissionRow(BaseModel):
+class Day2ReviewSubmissionRow(BaseModel):
     submission_id: int
     lead_id: int
     lead_name: str
@@ -186,8 +186,15 @@ class LeadControlOut(BaseModel):
     history_summary: list[LeadControlHistorySummaryRow] = Field(default_factory=list)
     history: list[LeadControlHistoryRow] = Field(default_factory=list)
     history_total: int = 0
-    day2_submissions: list[LeadControlDay2SubmissionRow] = Field(default_factory=list)
-    day2_total: int = 0
+
+
+class Day2ReviewOut(BaseModel):
+    note: Optional[str] = None
+    submissions: list[Day2ReviewSubmissionRow] = Field(default_factory=list)
+    total: int = 0
+    notes_count: int = 0
+    voice_count: int = 0
+    video_count: int = 0
 
 
 class LeadControlManualReassignIn(BaseModel):
