@@ -53,32 +53,16 @@ export type LeadControlHistoryRow = {
   reason: string | null
 }
 
-export type LeadControlDay2SubmissionRow = {
-  submission_id: number
-  lead_id: number
-  lead_name: string
-  slot: string
-  submitted_at: string
-  assigned_to_user_id: number | null
-  assigned_to_name: string
-  owner_user_id: number | null
-  owner_name: string
-  notes_text_preview: string | null
-  notes_url: string | null
-  voice_note_url: string | null
-  video_url: string | null
-}
-
 export type LeadControlResponse = {
   note: string | null
   queue: LeadControlQueueLead[]
   queue_total: number
+  incubation_queue: LeadControlQueueLead[]
+  incubation_total: number
   assignable_users: LeadControlAssignableUser[]
   history_summary: LeadControlHistorySummaryRow[]
   history: LeadControlHistoryRow[]
   history_total: number
-  day2_submissions: LeadControlDay2SubmissionRow[]
-  day2_total: number
 }
 
 export type LeadControlManualReassignBody = {
@@ -142,6 +126,7 @@ export function useLeadControlManualReassignMutation() {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['execution', 'lead-control'] }),
+        queryClient.invalidateQueries({ queryKey: ['execution', 'day2-review'] }),
         queryClient.invalidateQueries({ queryKey: ['leads'] }),
         queryClient.invalidateQueries({ queryKey: ['workboard'] }),
       ])

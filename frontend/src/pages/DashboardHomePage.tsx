@@ -6,6 +6,7 @@ import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { XpBadge } from '@/components/xp/XpBadge'
 import { XpLeaderboard } from '@/components/xp/XpLeaderboard'
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
+import { AdminCommandCenter } from '@/components/dashboard/AdminCommandCenter'
 import { TeamDashboardHomeModern } from '@/components/dashboard/TeamDashboardHomeModern'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -237,6 +238,10 @@ export function DashboardHomePage() {
         quickActions={quickActions}
       />
     )
+  }
+
+  if (role === 'admin' && sessionReady) {
+    return <AdminCommandCenter firstName={firstName} />
   }
 
   return (

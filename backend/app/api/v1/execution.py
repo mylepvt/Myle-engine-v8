@@ -15,6 +15,7 @@ from app.models.user import User
 from app.models.wallet_ledger import WalletLedgerEntry
 from app.schemas.execution_enforcement import (
     AtRiskLeadRow,
+    Day2ReviewOut,
     DownlineExecutionStatsOut,
     FollowUpAttackRow,
     LeakMapOut,
@@ -180,17 +181,26 @@ async def execution_lead_control(
     stale_hours: int = Query(default=24, ge=1, le=720),
     queue_limit: int = Query(default=100, ge=1, le=250),
     history_limit: int = Query(default=80, ge=1, le=250),
-    day2_limit: int = Query(default=24, ge=1, le=100),
 ) -> LeadControlOut:
-    """Admin: manual reassignment queue + soft history + recent Day 2 review."""
+    """Admin: reassignment queue + soft history for completed-watch archived leads."""
     _require_admin(user)
     return await enf.admin_lead_control_snapshot(
         session,
         stale_hours=stale_hours,
         queue_limit=queue_limit,
         history_limit=history_limit,
-        day2_limit=day2_limit,
     )
+
+
+@router.get("/day2-review", response_model=Day2ReviewOut)
+async def execution_day2_review(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = Query(default=40, ge=1, le=150),
+) -> Day2ReviewOut:
+    """Admin: recent Day 2 notes, voice notes, and videos in a dedicated review surface."""
+    _require_admin(user)
+    return await enf.admin_day2_review_snapshot(session, limit=limit)
 
 
 @router.post("/lead-control/reassign", response_model=LeadControlManualReassignOut)

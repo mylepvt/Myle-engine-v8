@@ -37,9 +37,10 @@ from app.services.live_metrics import (
 from app.services.user_hierarchy import nearest_leader_username_for_user_id
 from app.schemas.execution_enforcement import (
     AtRiskLeadRow,
+    Day2ReviewOut,
+    Day2ReviewSubmissionRow,
     LeakMapOut,
     LeadControlAssignableUser,
-    LeadControlDay2SubmissionRow,
     LeadControlHistoryRow,
     LeadControlHistorySummaryRow,
     LeadControlManualReassignOut,
@@ -689,6 +690,26 @@ async def _get_completed_watch_stale_leads(
     return rows.scalars().all()
 
 
+async def _get_completed_watch_incubating_leads(
+    session: AsyncSession,
+    *,
+    cutoff: datetime,
+    limit: int,
+) -> list[Lead]:
+    rows = await session.execute(
+        select(Lead)
+        .where(
+            _redistribution_eligible_filters(),
+            Lead.status.in_(tuple(_WATCH_PIPELINE_STATUSES)),
+            _completed_watch_exists(),
+            Lead.archived_at > cutoff,
+        )
+        .order_by(Lead.archived_at.asc(), Lead.id.asc())
+        .limit(limit)
+    )
+    return rows.scalars().all()
+
+
 async def _count_completed_watch_stale_leads(
     session: AsyncSession,
     *,
@@ -704,6 +725,28 @@ async def _count_completed_watch_stale_leads(
                     Lead.status.in_(tuple(_WATCH_PIPELINE_STATUSES)),
                     _completed_watch_exists(),
                     Lead.archived_at <= cutoff,
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+
+
+async def _count_completed_watch_incubating_leads(
+    session: AsyncSession,
+    *,
+    cutoff: datetime,
+) -> int:
+    return int(
+        (
+            await session.execute(
+                select(func.count())
+                .select_from(Lead)
+                .where(
+                    _redistribution_eligible_filters(),
+                    Lead.status.in_(tuple(_WATCH_PIPELINE_STATUSES)),
+                    _completed_watch_exists(),
+                    Lead.archived_at > cutoff,
                 )
             )
         ).scalar_one()
@@ -1082,7 +1125,6 @@ async def admin_lead_control_snapshot(
     stale_hours: int = _DEFAULT_WATCH_ARCHIVE_AFTER_HOURS,
     queue_limit: int = 100,
     history_limit: int = 80,
-    day2_limit: int = 24,
 ) -> LeadControlOut:
     stale_cutoff = datetime.now(timezone.utc) - timedelta(hours=max(1, int(stale_hours)))
     queue = await _get_completed_watch_stale_leads(
@@ -1091,10 +1133,25 @@ async def admin_lead_control_snapshot(
         limit=max(1, int(queue_limit)),
     )
     queue_total = await _count_completed_watch_stale_leads(session, cutoff=stale_cutoff)
+    incubation_queue = await _get_completed_watch_incubating_leads(
+        session,
+        cutoff=stale_cutoff,
+        limit=max(1, int(queue_limit)),
+    )
+    incubation_total = await _count_completed_watch_incubating_leads(session, cutoff=stale_cutoff)
     queue_lead_ids = [int(lead.id) for lead in queue]
-    watch_map = await _get_watch_completion_map(session, lead_ids=queue_lead_ids)
+    incubation_lead_ids = [int(lead.id) for lead in incubation_queue]
+    watch_map = await _get_watch_completion_map(
+        session,
+        lead_ids=queue_lead_ids + incubation_lead_ids,
+    )
     queue_user_ids: set[int] = set()
     for lead in queue:
+        if lead.owner_user_id is not None:
+            queue_user_ids.add(int(lead.owner_user_id))
+        if lead.assigned_to_user_id is not None:
+            queue_user_ids.add(int(lead.assigned_to_user_id))
+    for lead in incubation_queue:
         if lead.owner_user_id is not None:
             queue_user_ids.add(int(lead.owner_user_id))
         if lead.assigned_to_user_id is not None:
@@ -1123,6 +1180,30 @@ async def admin_lead_control_snapshot(
             last_action_at=_ensure_utc_datetime(lead.last_action_at),
         )
         for lead in queue
+    ]
+    incubation_rows = [
+        LeadControlQueueLead(
+            lead_id=int(lead.id),
+            lead_name=lead.name,
+            phone=lead.phone,
+            status=lead.status,
+            owner_user_id=int(lead.owner_user_id) if lead.owner_user_id is not None else None,
+            owner_name=_user_label(
+                queue_users.get(int(lead.owner_user_id)) if lead.owner_user_id is not None else None,
+                lead.owner_user_id,
+            ),
+            assigned_to_user_id=int(lead.assigned_to_user_id) if lead.assigned_to_user_id is not None else None,
+            assigned_to_name=_user_label(
+                queue_users.get(int(lead.assigned_to_user_id))
+                if lead.assigned_to_user_id is not None
+                else None,
+                lead.assigned_to_user_id,
+            ),
+            archived_at=_ensure_utc_datetime(lead.archived_at) or datetime.now(timezone.utc),
+            watch_completed_at=watch_map.get(int(lead.id)),
+            last_action_at=_ensure_utc_datetime(lead.last_action_at),
+        )
+        for lead in incubation_queue
     ]
 
     assignable_users = await _get_manual_assignable_users(session)
@@ -1240,7 +1321,28 @@ async def admin_lead_control_snapshot(
             )
         )
 
-    day2_total = int(
+    return LeadControlOut(
+        note=(
+            "Admin-only control surface. Owner never changes here; only the working assignee can move. "
+            "Archived completed-watch leads appear once they are stale for reassignment."
+        ),
+        queue=queue_rows,
+        queue_total=queue_total,
+        incubation_queue=incubation_rows,
+        incubation_total=incubation_total,
+        assignable_users=assignable_users,
+        history_summary=history_summary,
+        history=history_rows,
+        history_total=history_total,
+    )
+
+
+async def admin_day2_review_snapshot(
+    session: AsyncSession,
+    *,
+    limit: int = 40,
+) -> Day2ReviewOut:
+    total = int(
         (
             await session.execute(
                 select(func.count())
@@ -1250,24 +1352,66 @@ async def admin_lead_control_snapshot(
         ).scalar_one()
         or 0
     )
-    day2_rows = (
+    notes_count = int(
+        (
+            await session.execute(
+                select(func.count())
+                .select_from(BatchDaySubmission)
+                .where(
+                    BatchDaySubmission.day_number == 2,
+                    or_(
+                        BatchDaySubmission.notes_url.is_not(None),
+                        func.length(func.trim(func.coalesce(BatchDaySubmission.notes_text, ""))) > 0,
+                    ),
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+    voice_count = int(
+        (
+            await session.execute(
+                select(func.count())
+                .select_from(BatchDaySubmission)
+                .where(
+                    BatchDaySubmission.day_number == 2,
+                    BatchDaySubmission.voice_note_url.is_not(None),
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+    video_count = int(
+        (
+            await session.execute(
+                select(func.count())
+                .select_from(BatchDaySubmission)
+                .where(
+                    BatchDaySubmission.day_number == 2,
+                    BatchDaySubmission.video_url.is_not(None),
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+    rows = (
         await session.execute(
             select(BatchDaySubmission, Lead)
             .join(Lead, Lead.id == BatchDaySubmission.lead_id)
             .where(BatchDaySubmission.day_number == 2)
             .order_by(BatchDaySubmission.submitted_at.desc(), BatchDaySubmission.id.desc())
-            .limit(max(1, int(day2_limit)))
+            .limit(max(1, int(limit)))
         )
     ).all()
-    day2_user_ids: set[int] = set()
-    for _submission, lead in day2_rows:
+    user_ids: set[int] = set()
+    for _submission, lead in rows:
         if lead.assigned_to_user_id is not None:
-            day2_user_ids.add(int(lead.assigned_to_user_id))
+            user_ids.add(int(lead.assigned_to_user_id))
         if lead.owner_user_id is not None:
-            day2_user_ids.add(int(lead.owner_user_id))
-    day2_users = await _load_users_by_ids(session, day2_user_ids)
-    day2_submissions = [
-        LeadControlDay2SubmissionRow(
+            user_ids.add(int(lead.owner_user_id))
+    users = await _load_users_by_ids(session, user_ids)
+    submissions = [
+        Day2ReviewSubmissionRow(
             submission_id=int(submission.id),
             lead_id=int(lead.id),
             lead_name=lead.name,
@@ -1275,14 +1419,12 @@ async def admin_lead_control_snapshot(
             submitted_at=_ensure_utc_datetime(submission.submitted_at) or datetime.now(timezone.utc),
             assigned_to_user_id=int(lead.assigned_to_user_id) if lead.assigned_to_user_id is not None else None,
             assigned_to_name=_user_label(
-                day2_users.get(int(lead.assigned_to_user_id))
-                if lead.assigned_to_user_id is not None
-                else None,
+                users.get(int(lead.assigned_to_user_id)) if lead.assigned_to_user_id is not None else None,
                 lead.assigned_to_user_id,
             ),
             owner_user_id=int(lead.owner_user_id) if lead.owner_user_id is not None else None,
             owner_name=_user_label(
-                day2_users.get(int(lead.owner_user_id)) if lead.owner_user_id is not None else None,
+                users.get(int(lead.owner_user_id)) if lead.owner_user_id is not None else None,
                 lead.owner_user_id,
             ),
             notes_text_preview=_preview_text(submission.notes_text),
@@ -1290,22 +1432,18 @@ async def admin_lead_control_snapshot(
             voice_note_url=submission.voice_note_url,
             video_url=submission.video_url,
         )
-        for submission, lead in day2_rows
+        for submission, lead in rows
     ]
-
-    return LeadControlOut(
+    return Day2ReviewOut(
         note=(
-            "Admin-only control surface. Owner never changes here; only the working assignee can move. "
-            "Archived completed-watch leads appear once they are stale for reassignment."
+            "Admin-only Day 2 review surface. Use this to inspect recent notes, voice notes, and videos "
+            "without mixing it into reassignment controls."
         ),
-        queue=queue_rows,
-        queue_total=queue_total,
-        assignable_users=assignable_users,
-        history_summary=history_summary,
-        history=history_rows,
-        history_total=history_total,
-        day2_submissions=day2_submissions,
-        day2_total=day2_total,
+        submissions=submissions,
+        total=total,
+        notes_count=notes_count,
+        voice_count=voice_count,
+        video_count=video_count,
     )
 
 

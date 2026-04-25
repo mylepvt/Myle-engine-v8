@@ -18,6 +18,7 @@
   "team/my-team": ["leader", "team"],
   "system/training": ["admin", "leader", "team"],
   "system/lead-control": ["admin"],
+  "system/day2-review": ["admin"],
   "system/decision-engine": ["admin"],
   "system/coaching": ["admin", "leader"],
   "analytics/activity-log": ["admin"],

@@ -1,22 +1,12 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  ArrowRightLeft,
-  Clock3,
-  FileText,
-  Headphones,
-  MessageSquareText,
-  ShieldCheck,
-  UserCheck,
-  Video,
-} from 'lucide-react'
+import { ArrowRightLeft, Clock3, ShieldCheck, UserCheck } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states'
 import { useLeadControlManualReassignMutation, useLeadControlQuery } from '@/hooks/use-lead-control-query'
 import { LEAD_STATUS_OPTIONS } from '@/hooks/use-leads-query'
-import { apiUrl } from '@/lib/api'
 
 type Props = {
   title: string
@@ -42,17 +32,6 @@ function formatHoursAgo(value: string | null | undefined): string {
   const diffMs = Date.now() - new Date(value).getTime()
   const hours = Math.max(0, Math.round(diffMs / 3_600_000))
   return `${hours}h ago`
-}
-
-function resolveAssetUrl(url: string | null | undefined): string | null {
-  if (!url) return null
-  return url.startsWith('http') ? url : apiUrl(url)
-}
-
-function batchSubmissionLabel(slot: string): string {
-  const match = slot.match(/^d(\d+)_(.+)$/)
-  if (!match) return slot.replace(/_/g, ' ')
-  return `Day ${match[1]} ${match[2].replace(/_/g, ' ')}`
 }
 
 function StatCard({
@@ -82,7 +61,6 @@ export function LeadControlPage({ title }: Props) {
   const assignableUsers = query.data?.assignable_users ?? []
   const historySummary = query.data?.history_summary ?? []
   const history = query.data?.history ?? []
-  const day2Submissions = query.data?.day2_submissions ?? []
 
   const [selectedLeadId, setSelectedLeadId] = useState<number | null>(null)
   const [selectedUserId, setSelectedUserId] = useState('')
@@ -150,7 +128,7 @@ export function LeadControlPage({ title }: Props) {
       <div className="max-w-4xl space-y-2">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
         <p className="text-sm text-muted-foreground">
-          Admin-only control for archived completed-watch leads, manual redistribution, soft history, and Day 2 review.
+          Admin-only control for archived completed-watch reassignment, manual redistribution, and soft audit history.
         </p>
       </div>
 
@@ -182,6 +160,13 @@ export function LeadControlPage({ title }: Props) {
                 <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
                   {query.data.note}
                 </p>
+                <p className="text-xs text-muted-foreground">
+                  Day 2 uploads now live in{' '}
+                  <Link to="/dashboard/system/day2-review" className="text-primary underline-offset-2 hover:underline">
+                    Day 2 Review
+                  </Link>
+                  , so reassignment controls stay focused here.
+                </p>
               </div>
               <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
                 Admin only
@@ -206,9 +191,9 @@ export function LeadControlPage({ title }: Props) {
               hint="Recent auto + manual reassignment records stored for admin review."
             />
             <StatCard
-              label="Day 2 Wall"
-              value={query.data.day2_total}
-              hint="Recent Day 2 submissions visible here without opening each lead first."
+              label="Workers Used"
+              value={historySummary.length}
+              hint="Members who have already received reassigned leads in the soft log."
             />
           </section>
 
@@ -473,105 +458,6 @@ export function LeadControlPage({ title }: Props) {
               </CardContent>
             </Card>
           </section>
-
-          <Card className="surface-elevated border-white/[0.08]">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <MessageSquareText className="size-4" />
-                Day 2 Review Wall
-              </CardTitle>
-              <CardDescription>
-                Recent Day 2 notes, voice, and video submissions. Full detail still opens on the lead page.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {day2Submissions.length === 0 ? (
-                <EmptyState
-                  title="No Day 2 submissions yet"
-                  description="Once a lead uploads notes, voice, or video in Day 2, it will appear here."
-                />
-              ) : (
-                <div className="grid gap-4 xl:grid-cols-2">
-                  {day2Submissions.map((submission) => {
-                    const notesUrl = resolveAssetUrl(submission.notes_url)
-                    const voiceUrl = resolveAssetUrl(submission.voice_note_url)
-                    const videoUrl = resolveAssetUrl(submission.video_url)
-                    return (
-                      <div key={submission.submission_id} className="surface-inset space-y-3 rounded-2xl p-4">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
-                            <p className="font-medium text-foreground">{submission.lead_name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {batchSubmissionLabel(submission.slot)} · {formatDateTime(submission.submitted_at)}
-                            </p>
-                          </div>
-                          <Button asChild size="sm" variant="secondary">
-                            <Link to={`/dashboard/work/leads/${submission.lead_id}`}>Open lead</Link>
-                          </Button>
-                        </div>
-                        <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
-                          <p>
-                            Assignee: <span className="text-foreground">{submission.assigned_to_name}</span>
-                          </p>
-                          <p>
-                            Owner: <span className="text-foreground">{submission.owner_name}</span>
-                          </p>
-                        </div>
-
-                        {submission.notes_text_preview ? (
-                          <div className="rounded-xl border border-white/[0.08] bg-background/60 p-3">
-                            <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                              <MessageSquareText className="size-3.5" />
-                              Lead message
-                            </div>
-                            <p className="text-sm leading-relaxed text-foreground">
-                              {submission.notes_text_preview}
-                            </p>
-                          </div>
-                        ) : null}
-
-                        <div className="flex flex-wrap gap-2">
-                          {notesUrl ? (
-                            <a
-                              href={notesUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-2 rounded-full border border-white/[0.1] px-3 py-1.5 text-xs text-foreground hover:bg-white/[0.04]"
-                            >
-                              <FileText className="size-3.5" />
-                              Notes file
-                            </a>
-                          ) : null}
-                          {voiceUrl ? (
-                            <a
-                              href={voiceUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-2 rounded-full border border-white/[0.1] px-3 py-1.5 text-xs text-foreground hover:bg-white/[0.04]"
-                            >
-                              <Headphones className="size-3.5" />
-                              Voice note
-                            </a>
-                          ) : null}
-                          {videoUrl ? (
-                            <a
-                              href={videoUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-2 rounded-full border border-white/[0.1] px-3 py-1.5 text-xs text-foreground hover:bg-white/[0.04]"
-                            >
-                              <Video className="size-3.5" />
-                              Practice video
-                            </a>
-                          ) : null}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </>
       ) : null}
     </div>

@@ -143,20 +143,43 @@ async def _seed_lead_control_data() -> dict[str, int]:
             last_action_at=now - timedelta(hours=52),
             phone="9777777777",
         )
-        session.add(lead)
+        incubating_lead = Lead(
+            name="Archived Watch Lead",
+            status="video_watched",
+            created_by_user_id=3,
+            owner_user_id=3,
+            assigned_to_user_id=3,
+            archived_at=now - timedelta(hours=4),
+            created_at=now - timedelta(hours=30),
+            last_action_at=now - timedelta(hours=30),
+            phone="9888888888",
+        )
+        session.add_all([lead, incubating_lead])
         await session.flush()
 
-        session.add(
-            EnrollShareLink(
-                token="lead-control-watch-token",
-                lead_id=lead.id,
-                created_by_user_id=1,
-                youtube_url="https://cdn.example.com/enrollment.mp4",
-                status_synced=True,
-                first_viewed_at=now - timedelta(hours=52),
-                last_viewed_at=now - timedelta(hours=52),
-                expires_at=now + timedelta(minutes=30),
-            )
+        session.add_all(
+            [
+                EnrollShareLink(
+                    token="lead-control-watch-token",
+                    lead_id=lead.id,
+                    created_by_user_id=1,
+                    youtube_url="https://cdn.example.com/enrollment.mp4",
+                    status_synced=True,
+                    first_viewed_at=now - timedelta(hours=52),
+                    last_viewed_at=now - timedelta(hours=52),
+                    expires_at=now + timedelta(minutes=30),
+                ),
+                EnrollShareLink(
+                    token="lead-control-incubating-token",
+                    lead_id=incubating_lead.id,
+                    created_by_user_id=1,
+                    youtube_url="https://cdn.example.com/enrollment.mp4",
+                    status_synced=True,
+                    first_viewed_at=now - timedelta(hours=30),
+                    last_viewed_at=now - timedelta(hours=30),
+                    expires_at=now + timedelta(minutes=30),
+                ),
+            ]
         )
         session.add(
             BatchDaySubmission(
@@ -172,6 +195,7 @@ async def _seed_lead_control_data() -> dict[str, int]:
         await session.commit()
         return {
             "lead_id": lead.id,
+            "incubating_lead_id": incubating_lead.id,
             "team_target_id": team_target.id,
             "leader_target_id": leader_target.id,
         }
@@ -264,6 +288,7 @@ def test_admin_surfaces(monkeypatch: pytest.MonkeyPatch) -> None:
     assert c.get("/api/v1/execution/weak-members").status_code == 200
     assert c.get("/api/v1/execution/leak-map").status_code == 200
     assert c.get("/api/v1/execution/lead-control").status_code == 200
+    assert c.get("/api/v1/execution/day2-review").status_code == 200
     stale = c.post("/api/v1/execution/stale-redistribute")
     assert stale.status_code == 200
     assert isinstance(stale.json().get("implemented"), bool)
@@ -274,9 +299,12 @@ def test_team_cannot_admin_leak_map(monkeypatch: pytest.MonkeyPatch) -> None:
     assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
     assert c.get("/api/v1/execution/leak-map").status_code == 403
     assert c.get("/api/v1/execution/lead-control").status_code == 403
+    assert c.get("/api/v1/execution/day2-review").status_code == 403
 
 
-def test_admin_lead_control_surface_exposes_queue_history_and_day2(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_admin_lead_control_surface_exposes_queue_and_assignable_users(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     asyncio.run(_reset_execution_tables())
     try:
         seeded = asyncio.run(_seed_lead_control_data())
@@ -288,11 +316,30 @@ def test_admin_lead_control_surface_exposes_queue_history_and_day2(monkeypatch: 
         assert body["queue_total"] == 1
         assert body["queue"][0]["lead_id"] == seeded["lead_id"]
         assert body["queue"][0]["owner_user_id"] == 3
-        assert body["day2_total"] == 1
-        assert body["day2_submissions"][0]["lead_id"] == seeded["lead_id"]
+        assert body["incubation_total"] == 1
+        assert body["incubation_queue"][0]["lead_id"] == seeded["incubating_lead_id"]
         assignable_ids = {row["user_id"] for row in body["assignable_users"]}
         assert seeded["team_target_id"] in assignable_ids
         assert seeded["leader_target_id"] in assignable_ids
+    finally:
+        asyncio.run(_reset_execution_tables())
+
+
+def test_admin_day2_review_surface_exposes_recent_submissions(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_reset_execution_tables())
+    try:
+        seeded = asyncio.run(_seed_lead_control_data())
+        c = _client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        response = c.get("/api/v1/execution/day2-review")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["total"] == 1
+        assert body["notes_count"] == 1
+        assert body["voice_count"] == 1
+        assert body["video_count"] == 1
+        assert body["submissions"][0]["lead_id"] == seeded["lead_id"]
+        assert body["submissions"][0]["owner_user_id"] == 3
     finally:
         asyncio.run(_reset_execution_tables())
 

@@ -26,7 +26,7 @@ describe('LeadControlPage', () => {
     vi.clearAllMocks()
   })
 
-  it('renders the admin queue, history, and day 2 review wall', () => {
+  it('renders the admin queue and reassignment history', () => {
     mockUseLeadControlQuery.mockReturnValue({
       data: {
         note: 'Admin-only control surface.',
@@ -86,24 +86,6 @@ describe('LeadControlPage', () => {
             reason: 'Fresh follow-up',
           },
         ],
-        day2_total: 1,
-        day2_submissions: [
-          {
-            submission_id: 11,
-            lead_id: 9,
-            lead_name: 'Queued Watch Lead',
-            slot: 'd2_morning',
-            submitted_at: '2026-04-25T05:15:00Z',
-            assigned_to_user_id: 7,
-            assigned_to_name: 'Fresh Team',
-            owner_user_id: 3,
-            owner_name: 'Team User',
-            notes_text_preview: 'Shared Day 2 notes for admin review.',
-            notes_url: '/uploads/day2-note.pdf',
-            voice_note_url: '/uploads/day2-voice.m4a',
-            video_url: '/uploads/day2-video.mp4',
-          },
-        ],
       },
       isPending: false,
       isError: false,
@@ -123,8 +105,8 @@ describe('LeadControlPage', () => {
 
     expect(screen.getAllByText('Queued Watch Lead').length).toBeGreaterThan(0)
     expect(screen.getByText('Reassignment Queue')).toBeInTheDocument()
-    expect(screen.getByText('Day 2 Review Wall')).toBeInTheDocument()
-    expect(screen.getByText('Shared Day 2 notes for admin review.')).toBeInTheDocument()
+    expect(screen.getByText('Recent Reassignment Log')).toBeInTheDocument()
+    expect(screen.getByText('Day 2 Review')).toBeInTheDocument()
     expect(screen.getAllByText('Fresh Team').length).toBeGreaterThan(0)
   })
 
@@ -162,8 +144,6 @@ describe('LeadControlPage', () => {
         history_total: 0,
         history_summary: [],
         history: [],
-        day2_total: 0,
-        day2_submissions: [],
       },
       isPending: false,
       isError: false,
