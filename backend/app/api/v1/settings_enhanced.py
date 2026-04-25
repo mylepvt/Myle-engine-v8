@@ -26,9 +26,11 @@ from app.schemas.settings import (
     AuditLogResponse,
 )
 from app.services.enrollment_video_uploads import (
+    cleanup_replaced_managed_enrollment_video,
     remove_managed_enrollment_video_file,
     save_enrollment_video_file,
 )
+from app.services.enrollment_video import normalize_video_source_url
 from app.services.settings_service import SettingsService
 
 router = APIRouter()
@@ -238,14 +240,21 @@ async def create_or_update_app_setting(
     
     service = SettingsService(session)
     try:
+        previous_source = None
+        value = request.value
+        if request.key == "enrollment_video_source_url":
+            previous_source = await service.get_app_setting("enrollment_video_source_url")
+            value = normalize_video_source_url(request.value)
         success, message = await service.update_app_setting(
-            request.key, request.value, user.user_id
+            request.key, value, user.user_id
         )
         if not success:
             raise HTTPException(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail=message,
             )
+        if request.key == "enrollment_video_source_url":
+            cleanup_replaced_managed_enrollment_video(previous_source, value)
         return {"message": message}
     except HTTPException:
         raise
@@ -281,8 +290,7 @@ async def upload_enrollment_video(
         remove_managed_enrollment_video_file(source_url)
         raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=update_message)
 
-    if previous_source and previous_source != source_url:
-        remove_managed_enrollment_video_file(previous_source)
+    cleanup_replaced_managed_enrollment_video(previous_source, source_url)
 
     return EnrollmentVideoUploadResponse(
         source_url=source_url,
