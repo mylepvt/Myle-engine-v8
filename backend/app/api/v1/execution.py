@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
+from app.core.realtime_hub import notify_topics
 from app.models.user import User
 from app.models.wallet_ledger import WalletLedgerEntry
 from app.schemas.execution_enforcement import (
@@ -17,6 +18,9 @@ from app.schemas.execution_enforcement import (
     DownlineExecutionStatsOut,
     FollowUpAttackRow,
     LeakMapOut,
+    LeadControlManualReassignIn,
+    LeadControlManualReassignOut,
+    LeadControlOut,
     MemberExecutionStats,
     StaleRedistributeOut,
     TeamPersonalFunnelOut,
@@ -167,6 +171,54 @@ async def execution_stale_redistribute(
     return await enf.stale_redistribute(
         session, stale_hours=stale_hours, top_n=top_n, limit=limit
     )
+
+
+@router.get("/lead-control", response_model=LeadControlOut)
+async def execution_lead_control(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    stale_hours: int = Query(default=24, ge=1, le=720),
+    queue_limit: int = Query(default=100, ge=1, le=250),
+    history_limit: int = Query(default=80, ge=1, le=250),
+    day2_limit: int = Query(default=24, ge=1, le=100),
+) -> LeadControlOut:
+    """Admin: manual reassignment queue + soft history + recent Day 2 review."""
+    _require_admin(user)
+    return await enf.admin_lead_control_snapshot(
+        session,
+        stale_hours=stale_hours,
+        queue_limit=queue_limit,
+        history_limit=history_limit,
+        day2_limit=day2_limit,
+    )
+
+
+@router.post("/lead-control/reassign", response_model=LeadControlManualReassignOut)
+async def execution_manual_reassign(
+    body: LeadControlManualReassignIn,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> LeadControlManualReassignOut:
+    """Admin: manually reassign a queued archived completed-watch lead."""
+    _require_admin(user)
+    try:
+        result = await enf.admin_manual_reassign_archived_completed_watch_lead(
+            session,
+            admin_user_id=user.user_id,
+            lead_id=body.lead_id,
+            to_user_id=body.to_user_id,
+            reason=body.reason,
+        )
+    except ValueError as exc:
+        detail = str(exc).strip() or "Unable to reassign lead"
+        status_code = (
+            http_status.HTTP_404_NOT_FOUND
+            if detail == "Lead not found"
+            else http_status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=status_code, detail=detail) from exc
+    await notify_topics("leads", "workboard", "team_tracking")
+    return result
 
 
 @router.get("/lead-ledger", response_model=SystemStubResponse)

@@ -20,12 +20,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.core.time_ist import IST, today_ist
+from app.core.auth_cookies import display_name_from_user
 from app.models.activity_log import ActivityLog
+from app.models.batch_day_submission import BatchDaySubmission
 from app.models.follow_up import FollowUp
 from app.models.call_event import CallEvent
 from app.models.enroll_share_link import EnrollShareLink
 from app.models.lead import Lead
 from app.models.user import User
+from app.services.crm_outbox import enqueue_lead_shadow_upsert
 from app.services.live_metrics import (
     fresh_call_counts_by_user,
     fresh_lead_counts_by_user,
@@ -35,6 +38,13 @@ from app.services.user_hierarchy import nearest_leader_username_for_user_id
 from app.schemas.execution_enforcement import (
     AtRiskLeadRow,
     LeakMapOut,
+    LeadControlAssignableUser,
+    LeadControlDay2SubmissionRow,
+    LeadControlHistoryRow,
+    LeadControlHistorySummaryRow,
+    LeadControlManualReassignOut,
+    LeadControlOut,
+    LeadControlQueueLead,
     MemberExecutionStats,
     StatusHistogramRow,
     StaleRedistributeOut,
@@ -87,6 +97,35 @@ _WATCH_ARCHIVE_BUCKET = "completed_watch_archived_leads"
 _STALE_WATCH_BUCKET = "archived_completed_watch_stale_leads"
 _DEFAULT_MAX_ACTIVE_LEADS_PER_WORKER = 50
 _DEFAULT_WATCH_ARCHIVE_AFTER_HOURS = 24
+_AUTO_REASSIGNMENT_ACTION = "lead.stale_watch_reassigned"
+_MANUAL_REASSIGNMENT_ACTION = "lead.manual_watch_reassigned"
+_REASSIGNMENT_HISTORY_ACTIONS = (_AUTO_REASSIGNMENT_ACTION, _MANUAL_REASSIGNMENT_ACTION)
+
+
+def _user_label(user: User | None, user_id: int | None = None) -> str:
+    if user is not None:
+        return display_name_from_user(user) or user.fbo_id or f"User #{int(user.id)}"
+    if user_id is None:
+        return "Unassigned"
+    return f"User #{int(user_id)}"
+
+
+def _coerce_int(value: Any) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _preview_text(value: str | None, *, limit: int = 160) -> str | None:
+    text = (value or "").strip()
+    if not text:
+        return None
+    if len(text) <= limit:
+        return text
+    return f"{text[: limit - 1].rstrip()}…"
 
 
 def _lead_last_activity_ts():
@@ -650,6 +689,118 @@ async def _get_completed_watch_stale_leads(
     return rows.scalars().all()
 
 
+async def _count_completed_watch_stale_leads(
+    session: AsyncSession,
+    *,
+    cutoff: datetime,
+) -> int:
+    return int(
+        (
+            await session.execute(
+                select(func.count())
+                .select_from(Lead)
+                .where(
+                    _redistribution_eligible_filters(),
+                    Lead.status.in_(tuple(_WATCH_PIPELINE_STATUSES)),
+                    _completed_watch_exists(),
+                    Lead.archived_at <= cutoff,
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+
+
+async def _load_users_by_ids(
+    session: AsyncSession,
+    user_ids: set[int],
+) -> dict[int, User]:
+    ids = sorted({int(uid) for uid in user_ids if uid})
+    if not ids:
+        return {}
+    rows = (
+        await session.execute(
+            select(User).where(User.id.in_(ids))
+        )
+    ).scalars().all()
+    return {int(row.id): row for row in rows}
+
+
+async def _get_watch_completion_map(
+    session: AsyncSession,
+    *,
+    lead_ids: list[int],
+) -> dict[int, datetime]:
+    if not lead_ids:
+        return {}
+    rows = (
+        await session.execute(
+            select(
+                EnrollShareLink.lead_id,
+                func.max(
+                    func.coalesce(
+                        EnrollShareLink.last_viewed_at,
+                        EnrollShareLink.first_viewed_at,
+                        EnrollShareLink.created_at,
+                    )
+                ).label("watch_completed_at"),
+            )
+            .where(
+                EnrollShareLink.lead_id.in_(lead_ids),
+                EnrollShareLink.status_synced.is_(True),
+            )
+            .group_by(EnrollShareLink.lead_id)
+        )
+    ).all()
+    out: dict[int, datetime] = {}
+    for lead_id, watch_completed_at in rows:
+        safe = _ensure_utc_datetime(watch_completed_at)
+        if safe is not None:
+            out[int(lead_id)] = safe
+    return out
+
+
+async def _get_manual_assignable_users(
+    session: AsyncSession,
+) -> list[LeadControlAssignableUser]:
+    rows = (
+        await session.execute(
+            select(User)
+            .where(
+                User.role.in_(("leader", "team")),
+                User.registration_status == "approved",
+                User.removed_at.is_(None),
+                User.access_blocked.is_(False),
+            )
+            .order_by(User.role.asc(), User.xp_total.desc(), User.created_at.asc(), User.id.asc())
+        )
+    ).scalars().all()
+    user_ids = [int(row.id) for row in rows]
+    active_loads = await _get_worker_load(session, user_ids)
+    out: list[LeadControlAssignableUser] = []
+    for row in rows:
+        out.append(
+            LeadControlAssignableUser(
+                user_id=int(row.id),
+                display_name=_user_label(row),
+                role=row.role,
+                fbo_id=row.fbo_id,
+                username=row.username,
+                active_leads_count=int(active_loads.get(int(row.id), 0)),
+                xp_total=int(row.xp_total or 0),
+            )
+        )
+    out.sort(
+        key=lambda item: (
+            int(item.active_leads_count),
+            0 if item.role == "team" else 1,
+            -int(item.xp_total),
+            item.display_name.lower(),
+        )
+    )
+    return out
+
+
 async def auto_archive_completed_watch_leads(
     session: AsyncSession,
     *,
@@ -922,6 +1073,351 @@ async def stale_redistribute(
         worker_pool_size=len(worker_ids),
         source_bucket=_STALE_WATCH_BUCKET,
         max_active_per_worker=max_active_per_worker,
+    )
+
+
+async def admin_lead_control_snapshot(
+    session: AsyncSession,
+    *,
+    stale_hours: int = _DEFAULT_WATCH_ARCHIVE_AFTER_HOURS,
+    queue_limit: int = 100,
+    history_limit: int = 80,
+    day2_limit: int = 24,
+) -> LeadControlOut:
+    stale_cutoff = datetime.now(timezone.utc) - timedelta(hours=max(1, int(stale_hours)))
+    queue = await _get_completed_watch_stale_leads(
+        session,
+        cutoff=stale_cutoff,
+        limit=max(1, int(queue_limit)),
+    )
+    queue_total = await _count_completed_watch_stale_leads(session, cutoff=stale_cutoff)
+    queue_lead_ids = [int(lead.id) for lead in queue]
+    watch_map = await _get_watch_completion_map(session, lead_ids=queue_lead_ids)
+    queue_user_ids: set[int] = set()
+    for lead in queue:
+        if lead.owner_user_id is not None:
+            queue_user_ids.add(int(lead.owner_user_id))
+        if lead.assigned_to_user_id is not None:
+            queue_user_ids.add(int(lead.assigned_to_user_id))
+    queue_users = await _load_users_by_ids(session, queue_user_ids)
+    queue_rows = [
+        LeadControlQueueLead(
+            lead_id=int(lead.id),
+            lead_name=lead.name,
+            phone=lead.phone,
+            status=lead.status,
+            owner_user_id=int(lead.owner_user_id) if lead.owner_user_id is not None else None,
+            owner_name=_user_label(
+                queue_users.get(int(lead.owner_user_id)) if lead.owner_user_id is not None else None,
+                lead.owner_user_id,
+            ),
+            assigned_to_user_id=int(lead.assigned_to_user_id) if lead.assigned_to_user_id is not None else None,
+            assigned_to_name=_user_label(
+                queue_users.get(int(lead.assigned_to_user_id))
+                if lead.assigned_to_user_id is not None
+                else None,
+                lead.assigned_to_user_id,
+            ),
+            archived_at=_ensure_utc_datetime(lead.archived_at) or datetime.now(timezone.utc),
+            watch_completed_at=watch_map.get(int(lead.id)),
+            last_action_at=_ensure_utc_datetime(lead.last_action_at),
+        )
+        for lead in queue
+    ]
+
+    assignable_users = await _get_manual_assignable_users(session)
+
+    history_logs = (
+        await session.execute(
+            select(ActivityLog)
+            .where(ActivityLog.action.in_(_REASSIGNMENT_HISTORY_ACTIONS))
+            .order_by(ActivityLog.created_at.desc(), ActivityLog.id.desc())
+        )
+    ).scalars().all()
+    history_total = len(history_logs)
+    recent_logs = history_logs[: max(1, int(history_limit))]
+
+    history_user_ids: set[int] = set()
+    history_lead_ids: set[int] = set()
+    summary_map: dict[int, LeadControlHistorySummaryRow] = {}
+    for log in history_logs:
+        meta = log.meta if isinstance(log.meta, dict) else {}
+        assigned_to_user_id = _coerce_int(meta.get("assigned_to_user_id"))
+        previous_assignee_user_id = _coerce_int(meta.get("previous_assignee_user_id"))
+        owner_user_id = _coerce_int(meta.get("owner_user_id"))
+        if assigned_to_user_id is not None:
+            history_user_ids.add(assigned_to_user_id)
+        if previous_assignee_user_id is not None:
+            history_user_ids.add(previous_assignee_user_id)
+        if owner_user_id is not None:
+            history_user_ids.add(owner_user_id)
+        if log.action == _MANUAL_REASSIGNMENT_ACTION:
+            history_user_ids.add(int(log.user_id))
+        if log.entity_id is not None:
+            history_lead_ids.add(int(log.entity_id))
+
+    history_users = await _load_users_by_ids(session, history_user_ids)
+    history_leads = (
+        await session.execute(select(Lead).where(Lead.id.in_(sorted(history_lead_ids))))
+    ).scalars().all()
+    history_leads_by_id = {int(lead.id): lead for lead in history_leads}
+
+    for log in history_logs:
+        meta = log.meta if isinstance(log.meta, dict) else {}
+        assigned_to_user_id = _coerce_int(meta.get("assigned_to_user_id"))
+        if assigned_to_user_id is None:
+            continue
+        assigned_user = history_users.get(assigned_to_user_id)
+        entry = summary_map.get(assigned_to_user_id)
+        if entry is None:
+            entry = LeadControlHistorySummaryRow(
+                user_id=assigned_to_user_id,
+                display_name=_user_label(assigned_user, assigned_to_user_id),
+                role=assigned_user.role if assigned_user is not None else "unknown",
+                total_received=0,
+                manual_received=0,
+                auto_received=0,
+                last_received_at=None,
+            )
+            summary_map[assigned_to_user_id] = entry
+        entry.total_received += 1
+        if log.action == _MANUAL_REASSIGNMENT_ACTION:
+            entry.manual_received += 1
+        else:
+            entry.auto_received += 1
+        received_at = _ensure_utc_datetime(log.created_at)
+        if received_at is not None and (
+            entry.last_received_at is None or received_at > entry.last_received_at
+        ):
+            entry.last_received_at = received_at
+
+    history_summary = sorted(
+        summary_map.values(),
+        key=lambda row: (-int(row.total_received), row.display_name.lower(), int(row.user_id)),
+    )
+
+    history_rows: list[LeadControlHistoryRow] = []
+    for log in recent_logs:
+        meta = log.meta if isinstance(log.meta, dict) else {}
+        lead_id = int(log.entity_id or 0)
+        lead = history_leads_by_id.get(lead_id)
+        previous_assignee_user_id = _coerce_int(meta.get("previous_assignee_user_id"))
+        assigned_to_user_id = _coerce_int(meta.get("assigned_to_user_id"))
+        owner_user_id = _coerce_int(meta.get("owner_user_id"))
+        mode = "manual" if log.action == _MANUAL_REASSIGNMENT_ACTION else "auto"
+        actor_name = (
+            _user_label(history_users.get(int(log.user_id)), int(log.user_id))
+            if mode == "manual"
+            else "System cycle"
+        )
+        history_rows.append(
+            LeadControlHistoryRow(
+                activity_id=int(log.id),
+                occurred_at=_ensure_utc_datetime(log.created_at) or datetime.now(timezone.utc),
+                mode=mode,
+                lead_id=lead_id,
+                lead_name=lead.name if lead is not None else f"Lead #{lead_id}",
+                previous_assignee_user_id=previous_assignee_user_id,
+                previous_assignee_name=(
+                    _user_label(history_users.get(previous_assignee_user_id), previous_assignee_user_id)
+                    if previous_assignee_user_id is not None
+                    else "Unassigned"
+                ),
+                assigned_to_user_id=assigned_to_user_id,
+                assigned_to_name=(
+                    _user_label(history_users.get(assigned_to_user_id), assigned_to_user_id)
+                    if assigned_to_user_id is not None
+                    else "Unassigned"
+                ),
+                owner_user_id=owner_user_id,
+                owner_name=(
+                    _user_label(history_users.get(owner_user_id), owner_user_id)
+                    if owner_user_id is not None
+                    else "Unknown"
+                ),
+                actor_name=actor_name,
+                reason=str(meta.get("reason")).strip() if isinstance(meta.get("reason"), str) and str(meta.get("reason")).strip() else None,
+            )
+        )
+
+    day2_total = int(
+        (
+            await session.execute(
+                select(func.count())
+                .select_from(BatchDaySubmission)
+                .where(BatchDaySubmission.day_number == 2)
+            )
+        ).scalar_one()
+        or 0
+    )
+    day2_rows = (
+        await session.execute(
+            select(BatchDaySubmission, Lead)
+            .join(Lead, Lead.id == BatchDaySubmission.lead_id)
+            .where(BatchDaySubmission.day_number == 2)
+            .order_by(BatchDaySubmission.submitted_at.desc(), BatchDaySubmission.id.desc())
+            .limit(max(1, int(day2_limit)))
+        )
+    ).all()
+    day2_user_ids: set[int] = set()
+    for _submission, lead in day2_rows:
+        if lead.assigned_to_user_id is not None:
+            day2_user_ids.add(int(lead.assigned_to_user_id))
+        if lead.owner_user_id is not None:
+            day2_user_ids.add(int(lead.owner_user_id))
+    day2_users = await _load_users_by_ids(session, day2_user_ids)
+    day2_submissions = [
+        LeadControlDay2SubmissionRow(
+            submission_id=int(submission.id),
+            lead_id=int(lead.id),
+            lead_name=lead.name,
+            slot=submission.slot,
+            submitted_at=_ensure_utc_datetime(submission.submitted_at) or datetime.now(timezone.utc),
+            assigned_to_user_id=int(lead.assigned_to_user_id) if lead.assigned_to_user_id is not None else None,
+            assigned_to_name=_user_label(
+                day2_users.get(int(lead.assigned_to_user_id))
+                if lead.assigned_to_user_id is not None
+                else None,
+                lead.assigned_to_user_id,
+            ),
+            owner_user_id=int(lead.owner_user_id) if lead.owner_user_id is not None else None,
+            owner_name=_user_label(
+                day2_users.get(int(lead.owner_user_id)) if lead.owner_user_id is not None else None,
+                lead.owner_user_id,
+            ),
+            notes_text_preview=_preview_text(submission.notes_text),
+            notes_url=submission.notes_url,
+            voice_note_url=submission.voice_note_url,
+            video_url=submission.video_url,
+        )
+        for submission, lead in day2_rows
+    ]
+
+    return LeadControlOut(
+        note=(
+            "Admin-only control surface. Owner never changes here; only the working assignee can move. "
+            "Archived completed-watch leads appear once they are stale for reassignment."
+        ),
+        queue=queue_rows,
+        queue_total=queue_total,
+        assignable_users=assignable_users,
+        history_summary=history_summary,
+        history=history_rows,
+        history_total=history_total,
+        day2_submissions=day2_submissions,
+        day2_total=day2_total,
+    )
+
+
+async def admin_manual_reassign_archived_completed_watch_lead(
+    session: AsyncSession,
+    *,
+    admin_user_id: int,
+    lead_id: int,
+    to_user_id: int,
+    reason: str | None = None,
+) -> LeadControlManualReassignOut:
+    lead = await session.get(Lead, int(lead_id))
+    if lead is None or lead.deleted_at is not None or lead.in_pool:
+        raise ValueError("Lead not found")
+    if lead.archived_at is None:
+        raise ValueError("Lead is not in the archived reassignment queue")
+    if lead.status not in _WATCH_PIPELINE_STATUSES:
+        raise ValueError("Only completed-watch archived leads can be reassigned here")
+    watch_completed = bool(
+        (
+            await session.execute(
+                select(func.count())
+                .select_from(EnrollShareLink)
+                .where(
+                    EnrollShareLink.lead_id == lead.id,
+                    EnrollShareLink.status_synced.is_(True),
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+    if not watch_completed:
+        raise ValueError("Lead has not completed the enrollment watch flow")
+
+    target_user = (
+        await session.execute(
+            select(User).where(
+                User.id == int(to_user_id),
+                User.role.in_(("leader", "team")),
+                User.registration_status == "approved",
+                User.removed_at.is_(None),
+                User.access_blocked.is_(False),
+            )
+        )
+    ).scalar_one_or_none()
+    if target_user is None:
+        raise ValueError("Select an active approved leader or team member")
+
+    from_user_id = int(lead.assigned_to_user_id) if lead.assigned_to_user_id is not None else None
+    if from_user_id == int(target_user.id):
+        raise ValueError("Lead is already assigned to that member")
+
+    involved_user_ids = {int(target_user.id), int(admin_user_id)}
+    if from_user_id is not None:
+        involved_user_ids.add(from_user_id)
+    if lead.owner_user_id is not None:
+        involved_user_ids.add(int(lead.owner_user_id))
+    users_by_id = await _load_users_by_ids(session, involved_user_ids)
+
+    now = datetime.now(timezone.utc)
+    lead.assigned_to_user_id = int(target_user.id)
+    lead.archived_at = None
+    lead.in_pool = False
+    lead.last_action_at = now
+    enqueue_lead_shadow_upsert(session, lead)
+    session.add(
+        ActivityLog(
+            user_id=int(admin_user_id),
+            action=_MANUAL_REASSIGNMENT_ACTION,
+            entity_type="lead",
+            entity_id=int(lead.id),
+            meta={
+                "actor": "admin.manual_reassign",
+                "previous_assignee_user_id": from_user_id,
+                "assigned_to_user_id": int(target_user.id),
+                "owner_user_id": int(lead.owner_user_id) if lead.owner_user_id is not None else None,
+                "source_bucket": _STALE_WATCH_BUCKET,
+                "owner_preserved": True,
+                "reason": (reason or "").strip() or None,
+                "status": lead.status,
+                "manual": True,
+            },
+        )
+    )
+    await session.commit()
+    try:
+        await send_push_to_user(
+            session,
+            int(target_user.id),
+            title="Lead Reassigned",
+            body=f"Lead '{lead.name}' has been moved into your Calling Board by admin.",
+            url="/dashboard/work/leads",
+        )
+    except Exception:  # noqa: BLE001
+        logger.exception("Failed to send manual reassignment push for lead %s", lead.id)
+    return LeadControlManualReassignOut(
+        success=True,
+        message="Lead reassigned successfully. Owner stayed unchanged and the lead left the queue.",
+        lead_id=int(lead.id),
+        previous_assignee_user_id=from_user_id,
+        previous_assignee_name=(
+            _user_label(users_by_id.get(from_user_id), from_user_id)
+            if from_user_id is not None
+            else "Unassigned"
+        ),
+        assigned_to_user_id=int(target_user.id),
+        assigned_to_name=_user_label(target_user),
+        owner_user_id=int(lead.owner_user_id) if lead.owner_user_id is not None else None,
+        owner_name=_user_label(
+            users_by_id.get(int(lead.owner_user_id)) if lead.owner_user_id is not None else None,
+            lead.owner_user_id,
+        ),
     )
 
 
