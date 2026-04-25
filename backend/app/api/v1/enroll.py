@@ -388,6 +388,7 @@ async def mark_watch_completed(
     link.last_viewed_at = now
     if not link.status_synced:
         link.status_synced = True
+    lead.last_action_at = now
 
     await session.commit()
     return WatchEventResponse(ok=True, watch_started=True, watch_completed=True)

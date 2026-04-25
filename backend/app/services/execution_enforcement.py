@@ -20,8 +20,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.core.time_ist import IST, today_ist
+from app.models.activity_log import ActivityLog
 from app.models.follow_up import FollowUp
 from app.models.call_event import CallEvent
+from app.models.enroll_share_link import EnrollShareLink
 from app.models.lead import Lead
 from app.models.user import User
 from app.services.live_metrics import (
@@ -79,6 +81,8 @@ _ENROLLED_SIGNAL_STATUSES = frozenset(
 )
 # ₹196 in paise/cents as stored (rupees × 100).
 RUPEES_196_CENTS = 196 * 100
+_STALE_WATCH_BUCKET = "completed_watch_stale_leads"
+_DEFAULT_MAX_ACTIVE_LEADS_PER_WORKER = 50
 
 
 def _lead_last_activity_ts():
@@ -111,6 +115,15 @@ def _redistribution_eligible_filters() -> ColumnElement[bool]:
         Lead.deleted_at.is_(None),
         Lead.archived_at.is_(None),
         Lead.status.notin_(_REDISTRIBUTION_TERMINAL_STATUSES),
+    )
+
+
+def _completed_watch_exists() -> ColumnElement[bool]:
+    return exists(
+        select(1).where(
+            EnrollShareLink.lead_id == Lead.id,
+            EnrollShareLink.status_synced.is_(True),
+        )
     )
 
 
@@ -472,7 +485,7 @@ async def admin_at_risk_leads(
 
 def _lead_last_activity_value(lead: Lead) -> datetime:
     """Python-side mirror of `_lead_last_activity_ts()` for runtime guards."""
-    return (
+    value = (
         lead.last_action_at
         or lead.last_called_at
         or lead.payment_proof_uploaded_at
@@ -483,6 +496,9 @@ def _lead_last_activity_value(lead: Lead) -> datetime:
         or lead.created_at
         or datetime.now(timezone.utc)
     )
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
 
 
 async def _get_workers(session: AsyncSession) -> list[tuple[int, str]]:
@@ -492,6 +508,7 @@ async def _get_workers(session: AsyncSession) -> list[tuple[int, str]]:
             User.role == "team",
             User.access_blocked.is_(False),
             User.registration_status == "approved",
+            User.removed_at.is_(None),
         )
         .order_by(User.id.asc())
     )
@@ -525,6 +542,49 @@ async def _get_worker_load(
     return load_map
 
 
+async def _get_top_xp_workers(
+    session: AsyncSession,
+    *,
+    top_n: int,
+) -> list[tuple[int, str]]:
+    rows = await session.execute(
+        select(User.id, User.username, User.fbo_id)
+        .where(
+            User.role == "team",
+            User.access_blocked.is_(False),
+            User.registration_status == "approved",
+            User.removed_at.is_(None),
+        )
+        .order_by(User.xp_total.desc(), User.id.asc())
+        .limit(top_n)
+    )
+    workers: list[tuple[int, str]] = []
+    for uid, uname, fbo in rows.all():
+        label = (uname or fbo or f"user_{int(uid)}")
+        workers.append((int(uid), label))
+    return workers
+
+
+async def _get_completed_watch_stale_leads(
+    session: AsyncSession,
+    *,
+    cutoff: datetime,
+    limit: int,
+) -> list[Lead]:
+    activity_ts = _lead_last_activity_ts()
+    rows = await session.execute(
+        select(Lead)
+        .where(
+            _redistribution_eligible_filters(),
+            _completed_watch_exists(),
+            activity_ts <= cutoff,
+        )
+        .order_by(activity_ts.asc(), Lead.id.asc())
+        .limit(limit)
+    )
+    return rows.scalars().all()
+
+
 async def _get_stale_leads(
     session: AsyncSession,
     *,
@@ -550,11 +610,14 @@ def _assign_leads(
     workers: list[int],
     load_map: dict[int, int],
     cutoff: datetime,
-) -> tuple[int, int, list[list[Any]]]:
+    worker_rank: dict[int, int],
+    max_active_per_worker: int,
+    audit_log_user_id: int | None = None,
+) -> tuple[int, int, list[list[Any]], list[ActivityLog]]:
     assigned = 0
     skipped = 0
     assignments: list[list[Any]] = []
-    worker_cursor = 0
+    audit_logs: list[ActivityLog] = []
 
     for lead in leads:
         # Guard: skip if lead appears recently active at runtime.
@@ -563,8 +626,21 @@ def _assign_leads(
             continue
 
         from_uid = int(lead.assigned_to_user_id) if lead.assigned_to_user_id is not None else None
-        to_uid = workers[worker_cursor % len(workers)]
-        worker_cursor += 1
+        eligible_workers = sorted(
+            workers,
+            key=lambda wid: (int(load_map.get(wid, 0)), int(worker_rank.get(wid, 9999)), int(wid)),
+        )
+        to_uid = next(
+            (
+                wid
+                for wid in eligible_workers
+                if wid != from_uid and int(load_map.get(wid, 0)) < max_active_per_worker
+            ),
+            None,
+        )
+        if to_uid is None:
+            skipped += 1
+            continue
 
         # Guard: no-op reassignment should not be counted.
         if from_uid == to_uid:
@@ -573,50 +649,87 @@ def _assign_leads(
 
         # Ownership safety: only assignee can change.
         lead.assigned_to_user_id = to_uid
+        lead.last_action_at = datetime.now(timezone.utc)
 
         assigned += 1
         load_map[to_uid] = load_map.get(to_uid, 0) + 1
         if from_uid is not None and from_uid in load_map and load_map[from_uid] > 0:
             load_map[from_uid] -= 1
         assignments.append([int(lead.id), from_uid, to_uid])
-    return assigned, skipped, assignments
+        if audit_log_user_id is not None:
+            lead_meta = {
+                "actor": "system.stale_watch_cycle",
+                "previous_assignee_user_id": from_uid,
+                "assigned_to_user_id": to_uid,
+                "owner_user_id": int(lead.owner_user_id) if lead.owner_user_id is not None else None,
+                "source_bucket": _STALE_WATCH_BUCKET,
+                "max_active_per_worker": max_active_per_worker,
+            }
+            lead_meta["watch_completed"] = True
+            lead_meta["status"] = lead.status
+            lead_meta["stale_cutoff_at"] = cutoff.isoformat()
+            lead_meta["worker_rank"] = int(worker_rank.get(to_uid, 0)) + 1
+            yield_log = ActivityLog(
+                user_id=audit_log_user_id,
+                action="lead.stale_watch_reassigned",
+                entity_type="lead",
+                entity_id=lead.id,
+                meta=lead_meta,
+            )
+            lead_meta["owner_preserved"] = True
+            lead_meta["auto_cycle_hours"] = 48
+            # ActivityLog is append-only audit trail for sensitive redistribution.
+            audit_logs.append(yield_log)
+    return assigned, skipped, assignments, audit_logs
 
 
 async def stale_redistribute(
     session: AsyncSession,
     *,
     stale_hours: int = 48,
-    top_n: int = 5,
-    limit: int = 50,
+    top_n: int = 10,
+    limit: int = 500,
 ) -> StaleRedistributeOut:
     """
-    Reassign stale active leads to least-loaded active team members.
+    Reassign completed-watch stale leads to the top XP team pool.
 
-    Uses existing ``leads.assigned_to_user_id`` to avoid schema changes.
+    Safety rules:
+    - never change ``owner_user_id``
+    - only reassign from the completed-watch stale bucket
+    - only assign into the top-XP approved team pool
+    - cap each selected worker at 50 active leads
     """
     sh = max(1, int(stale_hours))
     n_workers = max(1, int(top_n))
     max_rows = max(1, int(limit))
     cutoff = datetime.now(timezone.utc) - timedelta(hours=sh)
+    max_active_per_worker = _DEFAULT_MAX_ACTIVE_LEADS_PER_WORKER
 
-    workers = await _get_workers(session)
+    workers = await _get_top_xp_workers(session, top_n=n_workers)
     if not workers:
         return StaleRedistributeOut(
             implemented=True,
-            message="No eligible team members found for redistribution.",
+            message="No eligible top-XP team members found for redistribution.",
+            source_bucket=_STALE_WATCH_BUCKET,
+            max_active_per_worker=max_active_per_worker,
         )
 
     worker_ids = [wid for wid, _label in workers]
     worker_meta = {wid: label for wid, label in workers}
+    worker_rank = {wid: idx for idx, wid in enumerate(worker_ids)}
     load_map = await _get_worker_load(session, worker_ids)
-    sorted_workers = sorted(worker_ids, key=lambda wid: (load_map[wid], wid))[:n_workers]
-    if not sorted_workers:
+    eligible_workers = [wid for wid in worker_ids if int(load_map.get(wid, 0)) < max_active_per_worker]
+    if not eligible_workers:
         return StaleRedistributeOut(
             implemented=True,
-            message="No workers selected for redistribution.",
+            message="Top-XP team members are already at the active-lead cap.",
+            source_bucket=_STALE_WATCH_BUCKET,
+            max_active_per_worker=max_active_per_worker,
+            worker_pool_size=len(worker_ids),
+            worker_counts={worker_meta[wid]: int(load_map.get(wid, 0)) for wid in worker_ids},
         )
 
-    stale_leads = await _get_stale_leads(
+    stale_leads = await _get_completed_watch_stale_leads(
         session,
         cutoff=cutoff,
         limit=max_rows,
@@ -624,33 +737,44 @@ async def stale_redistribute(
     if not stale_leads:
         return StaleRedistributeOut(
             implemented=True,
-            message="No stale leads matched the given threshold.",
-            worker_counts={worker_meta[wid]: load_map[wid] for wid in sorted_workers},
+            message="No completed-watch stale leads matched the given threshold.",
+            source_bucket=_STALE_WATCH_BUCKET,
+            max_active_per_worker=max_active_per_worker,
+            worker_pool_size=len(worker_ids),
+            worker_counts={worker_meta[wid]: int(load_map.get(wid, 0)) for wid in worker_ids},
         )
 
-    assigned, skipped, assignments = _assign_leads(
+    audit_log_user_id = next((wid for wid in worker_ids if int(load_map.get(wid, 0)) < max_active_per_worker), None)
+    assigned, skipped, assignments, audit_logs = _assign_leads(
         leads=stale_leads,
-        workers=sorted_workers,
+        workers=eligible_workers,
         load_map=load_map,
         cutoff=cutoff,
+        worker_rank=worker_rank,
+        max_active_per_worker=max_active_per_worker,
+        audit_log_user_id=audit_log_user_id,
     )
+    session.add_all(audit_logs)
 
     await session.commit()
     logger.info(
-        "stale_redistribute assigned=%s skipped=%s workers=%s stale_hours=%s limit=%s",
+        "stale_watch_redistribute assigned=%s skipped=%s workers=%s stale_hours=%s limit=%s",
         assigned,
         skipped,
-        len(sorted_workers),
+        len(eligible_workers),
         sh,
         max_rows,
     )
     return StaleRedistributeOut(
         implemented=True,
-        message=f"Redistributed {assigned} stale lead(s); skipped {skipped}.",
+        message=f"Redistributed {assigned} completed-watch stale lead(s); skipped {skipped}.",
         assigned=assigned,
         skipped=skipped,
         assignments=assignments,
-        worker_counts={worker_meta[wid]: int(load_map.get(wid, 0)) for wid in sorted_workers},
+        worker_counts={worker_meta[wid]: int(load_map.get(wid, 0)) for wid in worker_ids},
+        worker_pool_size=len(worker_ids),
+        source_bucket=_STALE_WATCH_BUCKET,
+        max_active_per_worker=max_active_per_worker,
     )
 
 
