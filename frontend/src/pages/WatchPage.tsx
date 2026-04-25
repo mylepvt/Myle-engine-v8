@@ -28,6 +28,9 @@ type WatchEventResponse = {
   watch_completed: boolean
 }
 
+const GENERIC_PROSPECT_HEADING = 'A quick introduction to Myle'
+const GENERIC_PROSPECT_SUBLINE = 'Take a few minutes to see how Myle works and what comes next.'
+
 function resolveWish(date: Date): string {
   const hour = date.getHours()
   if (hour < 12) return 'Good morning'
@@ -56,6 +59,33 @@ function formatPlaybackTime(value: number): string {
 function easeOutCubic(value: number): number {
   const clamped = Math.min(1, Math.max(0, value))
   return 1 - Math.pow(1 - clamped, 3)
+}
+
+function resolveGreetingName(rawValue: string | null | undefined): string | null {
+  const value = (rawValue || '').trim()
+  if (!value) return null
+  const first = value.split(/\s+/)[0]?.trim() || ''
+  if (!first || /^(there|lead|user|prospect)$/i.test(first)) return null
+  return first
+}
+
+function resolveProspectHeading(rawValue: string | null | undefined): string {
+  const value = (rawValue || '').trim()
+  if (!value || /^enrollment video$/i.test(value)) {
+    return GENERIC_PROSPECT_HEADING
+  }
+
+  if (/\.(mp4|mov|webm|m4v|mpeg|mpg)$/i.test(value) || /[|_/]/.test(value) || value.length > 56) {
+    return GENERIC_PROSPECT_HEADING
+  }
+
+  const letters = value.replace(/[^A-Za-z]/g, '')
+  const uppercaseLetters = letters.replace(/[^A-Z]/g, '').length
+  if (letters.length >= 10 && uppercaseLetters / letters.length > 0.72) {
+    return GENERIC_PROSPECT_HEADING
+  }
+
+  return value
 }
 
 async function readJsonError(res: Response, fallback: string): Promise<Error> {
@@ -136,13 +166,16 @@ export function WatchPage() {
 
   useEffect(() => {
     const previousTitle = document.title
-    document.title = data?.title ? `${data.title} | Myle` : 'Private Enrollment Room | Myle'
+    document.title = `${resolveProspectHeading(data?.title)} | Myle`
     return () => {
       document.title = previousTitle
     }
   }, [data?.title])
 
   const wish = useMemo(() => resolveWish(new Date(nowMs)), [nowMs])
+  const greetingName = useMemo(() => resolveGreetingName(data?.lead_name), [data?.lead_name])
+  const heroGreeting = greetingName ? `${wish}, ${greetingName}` : wish
+  const heroHeading = useMemo(() => resolveProspectHeading(data?.title), [data?.title])
   const countdown = useMemo(
     () => (data ? formatRemaining(data.expires_at, nowMs) : ''),
     [data, nowMs],
@@ -168,17 +201,27 @@ export function WatchPage() {
         Math.round(seatsLeftStart - (seatsLeftStart - data.seats_left) * socialProofProgress),
       )
     : null
-  const showBatchSnapshot =
-    displayedSocialProof != null || data?.total_seats != null || displayedSeatsLeft != null || !!data?.trust_note
+  const intakeHighlights = [
+    displayedSocialProof != null ? `${displayedSocialProof} applications reviewed` : null,
+    displayedSeatsLeft != null ? `${displayedSeatsLeft} places currently available` : null,
+  ].filter((value): value is string => Boolean(value))
+  const intakeSummary = intakeHighlights.join(' • ')
+  const showSoftSnapshot = Boolean(intakeSummary || data?.trust_note)
   const progressPercent = durationSeconds > 0 ? Math.min(100, (currentSeconds / durationSeconds) * 100) : 0
   const progressLabel = `${formatPlaybackTime(currentSeconds)} / ${formatPlaybackTime(durationSeconds)}`
   const playerButtonLabel = playing
-    ? 'Pause video'
+    ? 'Pause'
     : watchCompleted
-      ? 'Replay video'
+      ? 'Play again'
       : currentSeconds > 0
-        ? 'Resume video'
-        : 'Play video'
+        ? 'Resume'
+        : 'Play introduction'
+  const playerStatusTitle = watchCompleted ? 'Thanks for watching' : playMarked ? 'Now playing' : 'Press play to begin'
+  const playerStatusBody = watchCompleted
+    ? 'You can replay this introduction anytime while this private access window is active.'
+    : playMarked
+      ? 'Keep watching for the full introduction.'
+      : 'A short private introduction is ready for you.'
 
   async function handleUnlock(e: FormEvent) {
     e.preventDefault()
@@ -303,18 +346,18 @@ export function WatchPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f4efe6] text-[#10231d]">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#fbf7ef_0%,#f5efe3_42%,#efe6d7_100%)] text-[#10231d]">
       <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-6 sm:px-6 sm:py-8">
-        <header className="rounded-[2rem] border border-black/5 bg-white/80 px-5 py-4 shadow-[0_24px_80px_-48px_rgba(16,35,29,0.32)] backdrop-blur">
+        <header className="rounded-[2rem] border border-[#e9dfcf] bg-white/88 px-5 py-4 shadow-[0_24px_80px_-48px_rgba(16,35,29,0.18)] backdrop-blur">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#4f6a61]">Myle Experience</p>
-              <h1 className="mt-1 text-xl font-semibold tracking-tight text-[#10231d]">Private Enrollment Room</h1>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#617067]">Myle</p>
+              <h1 className="mt-1 text-xl font-semibold tracking-tight text-[#10231d]">Your private introduction</h1>
             </div>
             {data ? (
-              <Badge variant="outline" className="border-[#d7c8af] bg-[#fff8ee] text-[#7a5d32]">
+              <p className="rounded-full border border-[#dccdb3] bg-[#fff8ee] px-4 py-2 text-sm font-semibold text-[#7a5d32]">
                 {countdown}
-              </Badge>
+              </p>
             ) : null}
           </div>
         </header>
@@ -329,110 +372,57 @@ export function WatchPage() {
             <section className="rounded-[2rem] border border-red-200 bg-white px-6 py-8 text-center shadow-sm" role="alert">
               <p className="text-base font-semibold text-red-700">{error}</p>
               <p className="mt-2 text-sm text-[#5f655f]">
-                If this link has just reached you, please ask your team contact to send a fresh access link.
+                Please ask your team contact to send a fresh access link.
               </p>
             </section>
           ) : data ? (
             <>
-              <section className="rounded-[2rem] border border-black/5 bg-white px-5 py-5 shadow-[0_24px_80px_-52px_rgba(16,35,29,0.35)] sm:px-7 sm:py-6">
+              <section className="rounded-[2.25rem] border border-[#ece2d2] bg-white px-5 py-6 shadow-[0_30px_90px_-58px_rgba(16,35,29,0.28)] sm:px-8 sm:py-7">
                 <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                   <div className="max-w-2xl">
-                    <p className="text-sm font-medium text-[#5a6c64]">
-                      {wish}, <span className="font-semibold text-[#10231d]">{data.lead_name}</span>
-                    </p>
-                    <h2 className="mt-2 text-3xl font-semibold leading-tight tracking-tight text-[#10231d]">
-                      {data.title}
+                    <p className="text-base font-medium text-[#617067]">{heroGreeting}</p>
+                    <h2 className="mt-3 max-w-xl text-[clamp(2rem,4vw,3.55rem)] font-semibold leading-[1.02] tracking-[-0.04em] text-[#10231d]">
+                      {heroHeading}
                     </h2>
-                    <p className="mt-3 text-sm leading-relaxed text-[#5f655f] sm:text-base">
-                      This private room has been prepared for you. Access is available only through the mobile number
-                      registered on your lead profile.
+                    <p className="mt-4 max-w-xl text-base leading-relaxed text-[#667168]">
+                      {GENERIC_PROSPECT_SUBLINE}
                     </p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge className="border-0 bg-[#10392f] text-white">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge className="border-0 bg-[#10392f] px-4 py-1.5 text-white shadow-sm">
                       <ShieldCheck className="mr-1 size-3.5" />
                       Private access
                     </Badge>
-                    <Badge variant="outline" className="border-[#d7c8af] bg-[#fff8ee] text-[#7a5d32]">
+                    <Badge variant="outline" className="border-[#ddcfb6] bg-[#fff8ee] px-4 py-1.5 text-[#7a5d32]">
                       {data.masked_phone}
                     </Badge>
                   </div>
                 </div>
               </section>
 
-              {showBatchSnapshot ? (
-                <section className="rounded-[2rem] border border-[#e6dccb] bg-[#fffaf2] px-5 py-5 shadow-[0_24px_80px_-56px_rgba(122,93,50,0.28)] sm:px-6">
-                  <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-                    <div className="max-w-2xl">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#8a6b3f]">
-                        Current intake
-                      </p>
-                      <h3 className="mt-2 text-xl font-semibold tracking-tight text-[#10231d]">
-                        A calm first look at this enrollment
-                      </h3>
-                      <p className="mt-2 text-sm leading-relaxed text-[#5f655f]">
-                        A simple room, a clear video, and a live intake snapshot so you can focus without distraction.
-                      </p>
-                    </div>
-                    <Badge variant="outline" className="border-[#d7c8af] bg-white text-[#7a5d32]">
-                      Live intake
-                    </Badge>
-                  </div>
-
-                  <div className="mt-4 grid gap-3 md:grid-cols-3">
-                    {displayedSocialProof != null ? (
-                      <div className="rounded-[1.5rem] border border-[#eadfcb] bg-white px-4 py-4 shadow-sm">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8a6b3f]">
-                          Forms received
-                        </p>
-                        <p className="mt-2 text-3xl font-semibold tracking-tight text-[#10231d] tabular-nums">
-                          {displayedSocialProof}
-                        </p>
-                        <p className="mt-1 text-xs leading-relaxed text-[#6c6f67]">
-                          Confirmed forms received in the current intake window.
-                        </p>
-                      </div>
-                    ) : null}
-                    {data.total_seats != null ? (
-                      <div className="rounded-[1.5rem] border border-[#eadfcb] bg-white px-4 py-4 shadow-sm">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8a6b3f]">
-                          Batch seats
-                        </p>
-                        <p className="mt-2 text-3xl font-semibold tracking-tight text-[#10231d] tabular-nums">
-                          {data.total_seats}
-                        </p>
-                        <p className="mt-1 text-xs leading-relaxed text-[#6c6f67]">Planned capacity for this intake.</p>
-                      </div>
-                    ) : null}
-                    {displayedSeatsLeft != null ? (
-                      <div className="rounded-[1.5rem] border border-[#eadfcb] bg-white px-4 py-4 shadow-sm">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8a6b3f]">
-                          Seats left
-                        </p>
-                        <p className="mt-2 text-3xl font-semibold tracking-tight text-[#10231d] tabular-nums">
-                          {displayedSeatsLeft}
-                        </p>
-                        <p className="mt-1 text-xs leading-relaxed text-[#6c6f67]">Availability remaining in this intake.</p>
-                      </div>
-                    ) : null}
-                  </div>
-
+              {showSoftSnapshot ? (
+                <section className="rounded-[1.8rem] border border-[#eadfcd] bg-white/80 px-5 py-4 shadow-[0_20px_70px_-60px_rgba(16,35,29,0.24)] sm:px-6">
+                  {intakeSummary ? (
+                    <p className="text-sm font-medium text-[#243a33]">{intakeSummary}</p>
+                  ) : null}
                   {data.trust_note ? (
-                    <p className="mt-4 text-sm leading-relaxed text-[#5f655f]">{data.trust_note}</p>
+                    <p className={`${intakeSummary ? 'mt-1.5' : ''} text-sm leading-relaxed text-[#6a736c]`}>
+                      {data.trust_note}
+                    </p>
                   ) : null}
                 </section>
               ) : null}
 
               {!data.access_granted ? (
-                <section className="mx-auto w-full max-w-xl rounded-[2rem] border border-black/5 bg-white px-5 py-6 shadow-[0_24px_80px_-52px_rgba(16,35,29,0.28)] sm:px-6">
+                <section className="mx-auto w-full max-w-xl rounded-[2rem] border border-[#ece2d2] bg-white px-5 py-6 shadow-[0_24px_80px_-52px_rgba(16,35,29,0.2)] sm:px-6">
                   <div className="flex items-start gap-3">
                     <div className="rounded-2xl bg-[#f4efe6] p-3 text-[#10392f]">
                       <LockKeyhole className="size-5" />
                     </div>
                     <div>
-                      <p className="text-lg font-semibold text-[#10231d]">Unlock with your registered number</p>
+                      <p className="text-lg font-semibold text-[#10231d]">Continue with your number</p>
                       <p className="mt-1 text-sm leading-relaxed text-[#5f655f]">
-                        Enter the mobile number already registered on your lead profile to continue.
+                        Use the same mobile number you shared with your team.
                       </p>
                     </div>
                   </div>
@@ -461,30 +451,12 @@ export function WatchPage() {
                       disabled={unlocking}
                       className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[#10392f] px-5 text-sm font-semibold text-white transition hover:bg-[#0c2f26] disabled:opacity-60"
                     >
-                      {unlocking ? 'Verifying…' : 'Unlock private room'}
+                      {unlocking ? 'Verifying…' : 'Continue'}
                     </button>
                   </form>
                 </section>
               ) : (
-                <section className="overflow-hidden rounded-[2rem] border border-black/5 bg-white shadow-[0_24px_80px_-52px_rgba(16,35,29,0.35)]">
-                  <div className="border-b border-black/5 px-5 py-4 sm:px-6">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-[#10231d]">Private player</p>
-                        <p className="mt-1 text-sm text-[#5f655f]">A clean in-app viewing experience, prepared for you.</p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Badge variant="outline" className="border-[#d8e3db] bg-[#f7fbf8] text-[#285241]">
-                          <ShieldCheck className="mr-1 size-3.5" />
-                          Same-domain stream
-                        </Badge>
-                        <Badge variant="outline" className="border-[#d8e3db] bg-[#f7fbf8] text-[#285241]">
-                          {watchCompleted ? 'Completed' : playMarked ? 'In progress' : 'Ready'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-
+                <section className="overflow-hidden rounded-[2.1rem] border border-[#ece2d2] bg-white shadow-[0_28px_90px_-56px_rgba(16,35,29,0.26)]">
                   <div className="bg-[#0b1714] p-3 sm:p-4">
                     {videoSrc ? (
                       <>
@@ -550,12 +522,8 @@ export function WatchPage() {
                         <div className="mt-4 rounded-[1.4rem] border border-white/10 bg-white/[0.04] p-4 text-white/90">
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
-                              <p className="text-sm font-semibold text-white">
-                                {watchCompleted ? 'Viewing completed' : playMarked ? 'Watching now' : 'Ready to watch'}
-                              </p>
-                              <p className="mt-1 text-xs leading-relaxed text-white/65">
-                                This room plays in sequence for a smoother viewing experience.
-                              </p>
+                              <p className="text-base font-semibold text-white">{playerStatusTitle}</p>
+                              <p className="mt-1 text-sm leading-relaxed text-white/65">{playerStatusBody}</p>
                             </div>
                             <button
                               type="button"
@@ -576,14 +544,10 @@ export function WatchPage() {
 
                           <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-white/70">
                             <span>{progressLabel}</span>
-                            <span>
-                              {watchCompleted
-                                ? 'Viewing completion has been recorded for this room.'
-                                : 'Please continue watching to the end.'}
-                            </span>
+                            <span>{watchCompleted ? 'Thanks for watching.' : 'Please watch through to the end.'}</span>
                           </div>
 
-                          {completing ? <p className="mt-3 text-xs text-[#d7c8af]">Saving your viewing record…</p> : null}
+                          {completing ? <p className="mt-3 text-xs text-[#d7c8af]">Finishing up…</p> : null}
                           {playerError ? (
                             <p className="mt-3 text-xs text-red-300" role="alert">
                               {playerError}
@@ -593,7 +557,7 @@ export function WatchPage() {
                       </>
                     ) : (
                       <div className="flex aspect-video items-center justify-center rounded-[1.4rem] bg-black text-sm text-white/70">
-                        Secure video stream is getting ready.
+                        Preparing your video…
                       </div>
                     )}
                   </div>
