@@ -24,7 +24,10 @@ import { formatCountdown, timerRemainingMs } from '@/lib/ctcs-timer'
 import { buildDay2BusinessTestWhatsAppUrl } from '@/lib/day2-business-test'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import {
+  closeExternalShareWindow,
+  completeExternalShareWindow,
   openExternalShareUrl,
+  reserveExternalShareWindow,
 } from '@/lib/external-share-window'
 import { getMindsetLockSendState } from '@/lib/mindset-lock'
 import { LEAD_SLA_SMOOTH_REFRESH_MS, formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
@@ -516,6 +519,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
   onMoveNext?: () => void
   nextLabel?: string
 }) {
+  const qc = useQueryClient()
   const [sharingSlot, setSharingSlot] = useState<BatchSlotKey | null>(null)
   const [toggleSlot, setToggleSlot] = useState<BatchSlotKey | null>(null)
   const [batchError, setBatchError] = useState<string | null>(null)
@@ -560,6 +564,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
   const handleBatchShare = async (slot: 'M' | 'A' | 'E', slotKey: BatchSlotKey) => {
     setBatchError(null)
     setSharingSlot(slotKey)
+    const popup = reserveExternalShareWindow('Preparing batch share...')
     try {
       const res = await apiFetch(`/api/v1/leads/${lead.id}/batch-share-url`, {
         method: 'POST',
@@ -575,8 +580,13 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
       if (!waUrl) {
         throw new Error('Phone number missing for WhatsApp batch share.')
       }
-      window.open(waUrl, '_blank', 'noopener,noreferrer')
+      if (!completeExternalShareWindow(popup, waUrl)) {
+        throw new Error('Could not open WhatsApp share window.')
+      }
+      await pm.mutateAsync({ id: lead.id, body: { [slotKey]: true } })
+      await qc.refetchQueries({ queryKey: ['workboard'] })
     } catch (err) {
+      closeExternalShareWindow(popup)
       setBatchError(err instanceof Error ? err.message : 'Could not generate batch links')
     } finally {
       setSharingSlot(null)
@@ -588,6 +598,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     setToggleSlot(slotKey)
     try {
       await pm.mutateAsync({ id: lead.id, body: { [slotKey]: !lead[slotKey] } })
+      await qc.refetchQueries({ queryKey: ['workboard'] })
     } catch (err) {
       setBatchError(err instanceof Error ? err.message : 'Could not update batch state')
     } finally {
@@ -601,8 +612,12 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
       setBatchError('Phone number missing for Day 2 evaluation WhatsApp share.')
       return
     }
-    window.open(day2EvaluationWhatsAppUrl, '_blank', 'noopener,noreferrer')
+    if (!openExternalShareUrl(day2EvaluationWhatsAppUrl)) {
+      setBatchError('Could not open Day 2 evaluation WhatsApp share.')
+      return
+    }
     await pm.mutateAsync({ id: lead.id, body: { whatsapp_sent: true } })
+    await qc.refetchQueries({ queryKey: ['workboard'] })
   }
 
   return (
