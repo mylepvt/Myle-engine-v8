@@ -88,9 +88,9 @@ export async function installE2eApiMocks(page: Page) {
     if (path === '/api/v1/auth/me' && method === 'GET') {
       await fulfill(route, {
         authenticated: true,
-        role: 'admin',
+        role: 'leader',
         user_id: 1,
-        fbo_id: 'e2e-admin',
+        fbo_id: 'e2e-leader',
         username: 'e2e',
         email: 'e2e@myle.local',
         display_name: 'E2E',
@@ -99,6 +99,8 @@ export async function installE2eApiMocks(page: Page) {
         training_required: false,
         registration_status: 'approved',
         avatar_url: null,
+        compliance_level: null,
+        compliance_summary: null,
       })
       return
     }
@@ -140,6 +142,11 @@ export async function installE2eApiMocks(page: Page) {
         active_pipeline_leads: 0,
         note: null,
       })
+      return
+    }
+
+    if (path === '/api/v1/team/enrollment-requests' && method === 'GET') {
+      await fulfill(route, { items: [], total: 0 })
       return
     }
 
