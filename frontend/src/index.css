@@ -565,6 +565,25 @@
     -webkit-backdrop-filter: saturate(132%) blur(9px);
   }
 
+  /*
+   * Extend header frosted-glass background behind the iOS status bar.
+   * The wrapper div has pt-[env(safe-area-inset-top)] so the header starts
+   * below the status bar. This ::before fills that gap so the header looks
+   * like a native iOS nav bar that covers the status bar area.
+   */
+  .dashboard-shell-header::before {
+    content: '';
+    position: absolute;
+    top: calc(-1 * env(safe-area-inset-top, 0px));
+    left: 0;
+    right: 0;
+    height: env(safe-area-inset-top, 0px);
+    background-color: inherit;
+    backdrop-filter: inherit;
+    -webkit-backdrop-filter: inherit;
+    z-index: -1;
+  }
+
   .dashboard-shell-header--scrolled {
     background-color: color-mix(in srgb, var(--background) 74%, transparent);
     box-shadow:
