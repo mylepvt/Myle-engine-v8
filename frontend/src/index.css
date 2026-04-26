@@ -565,6 +565,25 @@
     -webkit-backdrop-filter: saturate(132%) blur(9px);
   }
 
+  /*
+   * Extend header frosted-glass background behind the iOS status bar.
+   * The wrapper div has pt-[env(safe-area-inset-top)] so the header starts
+   * below the status bar. This ::before fills that gap so the header looks
+   * like a native iOS nav bar that covers the status bar area.
+   */
+  .dashboard-shell-header::before {
+    content: '';
+    position: absolute;
+    top: calc(-1 * env(safe-area-inset-top, 0px));
+    left: 0;
+    right: 0;
+    height: env(safe-area-inset-top, 0px);
+    background-color: inherit;
+    backdrop-filter: inherit;
+    -webkit-backdrop-filter: inherit;
+    z-index: -1;
+  }
+
   .dashboard-shell-header--scrolled {
     background-color: color-mix(in srgb, var(--background) 74%, transparent);
     box-shadow:
@@ -589,6 +608,7 @@
     backdrop-filter: saturate(128%) blur(6px);
     -webkit-backdrop-filter: saturate(128%) blur(6px);
   }
+
 
   .dashboard-shell :is(
       input:not([type='checkbox']):not([type='radio']),
@@ -748,6 +768,26 @@ html.perf-low-end .watch-gauge-needle {
   animation: none !important;
 }
 
+/* ─── iOS PWA standalone fixes ───────────────────────────────────────────── */
+
+/* Prevent rubber-band / overscroll bounce in installed PWA */
+html.pwa-standalone,
+html.pwa-standalone body {
+  overscroll-behavior: none;
+}
+
+/* Prevent callout popup on long-press for interactive elements in PWA */
+html.pwa-standalone button,
+html.pwa-standalone a,
+html.pwa-standalone [role='button'] {
+  -webkit-touch-callout: none;
+}
+
+/* Prevent text selection flicker on tap in PWA */
+html.pwa-standalone * {
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* Premium smooth interactions */
 @layer components {
   /* Smooth transitions on all interactive elements */
@@ -818,5 +858,19 @@ html.perf-low-end .watch-gauge-needle {
       box-shadow: none !important;
       transform: none !important;
     }
+  }
+}
+
+/*
+ * Unlayered — wins over all @layer blocks including Tailwind utilities.
+ * iOS Safari zooms the entire page when a focused input has font-size < 16px.
+ * Any Tailwind text-* class (text-sm = 14px, text-xs = 12px) can trigger this.
+ * This rule forces 1rem on all touch devices, overriding per-element classes.
+ */
+@media (pointer: coarse) {
+  .dashboard-shell input:not([type='checkbox']):not([type='radio']),
+  .dashboard-shell select,
+  .dashboard-shell textarea {
+    font-size: 1rem;
   }
 }

@@ -48,7 +48,7 @@ export function DashboardMobileTabBar({
   scrolled = false,
 }: Props) {
   const barClass = cn(
-    'dashboard-mobile-tabbar shrink-0 pb-[env(safe-area-inset-bottom)] md:hidden',
+    'dashboard-mobile-tabbar shrink-0 pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] md:hidden',
     keyboardOpen && 'dashboard-mobile-tabbar--keyboard-open',
     scrolled && 'dashboard-mobile-tabbar--scrolled',
   )
