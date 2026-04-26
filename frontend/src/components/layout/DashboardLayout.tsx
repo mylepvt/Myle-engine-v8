@@ -702,6 +702,32 @@ export function DashboardLayout() {
           </div>
         ) : null}
 
+        {me?.compliance_level === 'final_warning' ? (
+          <div
+            role="alert"
+            aria-live="assertive"
+            className="flex shrink-0 items-center gap-3 border-b border-red-600/40 bg-red-600/10 px-3 py-3 dark:border-red-500/30 dark:bg-red-500/10"
+          >
+            <span className="shrink-0 text-lg" aria-hidden>⚠️</span>
+            <p className="min-w-0 flex-1 text-sm text-red-900 dark:text-red-100">
+              <span className="font-bold">Final Warning — You will be removed tomorrow.</span>
+              {me.compliance_summary ? ` ${me.compliance_summary}` : ' You have not met your daily targets for 3 days in a row. Complete today\'s calls and daily report before midnight to avoid removal.'}
+            </p>
+          </div>
+        ) : me?.compliance_level === 'strong_warning' ? (
+          <div
+            role="alert"
+            aria-live="polite"
+            className="flex shrink-0 items-center gap-3 border-b border-orange-500/40 bg-orange-500/10 px-3 py-2.5 dark:border-orange-400/30 dark:bg-orange-400/10"
+          >
+            <span className="shrink-0 text-base" aria-hidden>⚠️</span>
+            <p className="min-w-0 flex-1 text-sm text-orange-900 dark:text-orange-100">
+              <span className="font-semibold">Strong Warning.</span>
+              {me.compliance_summary ? ` ${me.compliance_summary}` : ' 2 days of missed targets. One more day and you will receive a final warning.'}
+            </p>
+          </div>
+        ) : null}
+
         <main
           className={cn(
             'content-dashboard-main relative min-h-0 min-w-0 flex-1 touch-pan-y overflow-y-auto overflow-x-hidden bg-background p-4 md:p-6 lg:p-8',

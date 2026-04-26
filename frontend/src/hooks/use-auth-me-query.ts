@@ -22,6 +22,10 @@ export type MeResponse = {
   registration_status: string | null
   /** Profile image path (use with `apiUrl()`). */
   avatar_url: string | null
+  /** clear | warning | strong_warning | final_warning | grace | grace_ending | removed | not_applicable */
+  compliance_level: string | null
+  /** Human-readable explanation of current discipline state. */
+  compliance_summary: string | null
 }
 
 const UNAUTH: MeResponse = {
@@ -37,6 +41,8 @@ const UNAUTH: MeResponse = {
   training_required: null,
   registration_status: null,
   avatar_url: null,
+  compliance_level: null,
+  compliance_summary: null,
 }
 
 export async function fetchAuthMe(): Promise<MeResponse> {
@@ -65,6 +71,10 @@ export async function fetchAuthMe(): Promise<MeResponse> {
       typeof raw.avatar_url === 'string' && raw.avatar_url.length > 0
         ? raw.avatar_url
         : null,
+    compliance_level:
+      typeof raw.compliance_level === 'string' ? raw.compliance_level : null,
+    compliance_summary:
+      typeof raw.compliance_summary === 'string' ? raw.compliance_summary : null,
   })
 
   const readNormalized = async (): Promise<MeResponse | null> => {
