@@ -16,11 +16,12 @@ const TEAM_FORBIDDEN: ReadonlySet<LeadStatus> = new Set([
 ])
 
 const NON_ADMIN_HIDDEN: ReadonlySet<LeadStatus> = new Set(LEGACY_COMPAT_STATUSES)
+const DIRECT_PICK_HIDDEN: ReadonlySet<LeadStatus> = new Set(['whatsapp_sent'])
 
 const LEADER_STAGE_VISIBILITY: Partial<Record<LeadStatus, LeadStatus[]>> = {
   new_lead: ['new_lead', 'contacted', 'invited'],
-  contacted: ['contacted', 'invited', 'whatsapp_sent'],
-  invited: ['invited', 'whatsapp_sent', 'video_sent'],
+  contacted: ['contacted', 'invited', 'video_sent'],
+  invited: ['invited', 'video_sent'],
   whatsapp_sent: ['whatsapp_sent', 'video_sent', 'video_watched'],
   video_sent: ['video_sent', 'video_watched', 'paid'],
   video_watched: ['video_watched', 'paid', 'mindset_lock'],
@@ -40,8 +41,8 @@ const LEADER_STAGE_VISIBILITY: Partial<Record<LeadStatus, LeadStatus[]>> = {
 
 const TEAM_STAGE_VISIBILITY: Partial<Record<LeadStatus, LeadStatus[]>> = {
   new_lead: ['new_lead', 'contacted', 'invited'],
-  contacted: ['contacted', 'invited', 'whatsapp_sent'],
-  invited: ['invited', 'whatsapp_sent', 'video_sent'],
+  contacted: ['contacted', 'invited', 'video_sent'],
+  invited: ['invited', 'video_sent'],
   whatsapp_sent: ['whatsapp_sent', 'video_sent', 'video_watched'],
   video_sent: ['video_sent', 'video_watched'],
   video_watched: ['video_watched', 'paid'],
@@ -61,12 +62,13 @@ export function teamLeadStatusSelectOptions(
   role: 'admin' | 'leader' | 'team' | null,
   all: { value: LeadStatus; label: string }[],
 ): { value: LeadStatus; label: string }[] {
-  if (role === 'admin') return all
-  if (role === 'leader') return all.filter((o) => !NON_ADMIN_HIDDEN.has(o.value))
+  const withoutDirectHidden = all.filter((o) => !DIRECT_PICK_HIDDEN.has(o.value))
+  if (role === 'admin') return withoutDirectHidden
+  if (role === 'leader') return withoutDirectHidden.filter((o) => !NON_ADMIN_HIDDEN.has(o.value))
   if (role === 'team') {
-    return all.filter((o) => !TEAM_FORBIDDEN.has(o.value) && !NON_ADMIN_HIDDEN.has(o.value))
+    return withoutDirectHidden.filter((o) => !TEAM_FORBIDDEN.has(o.value) && !NON_ADMIN_HIDDEN.has(o.value))
   }
-  return all.filter((o) => !NON_ADMIN_HIDDEN.has(o.value))
+  return withoutDirectHidden.filter((o) => !NON_ADMIN_HIDDEN.has(o.value))
 }
 
 export function leadStatusSelectOptionsForLead(
@@ -82,6 +84,10 @@ export function leadStatusSelectOptionsForLead(
   visible.add(currentStatus)
   USER_OUTCOME_STATUSES.forEach((status) => visible.add(status))
 
-  const scoped = roleFiltered.filter((option) => visible.has(option.value))
+  const currentOption = all.find((option) => option.value === currentStatus)
+  const scoped = [
+    ...(currentOption && !roleFiltered.some((option) => option.value === currentStatus) ? [currentOption] : []),
+    ...roleFiltered.filter((option) => visible.has(option.value)),
+  ]
   return scoped.length > 0 ? scoped : roleFiltered
 }

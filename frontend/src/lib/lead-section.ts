@@ -9,7 +9,7 @@ export type LeadSectionInfo = {
 const NEXT_STATUS_BY_STATUS: Partial<Record<string, string>> = {
   new_lead: 'invited',
   contacted: 'invited',
-  invited: 'whatsapp_sent',
+  invited: 'video_sent',
   whatsapp_sent: 'video_sent',
   video_sent: 'video_watched',
   video_watched: 'paid',

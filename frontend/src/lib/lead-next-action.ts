@@ -9,7 +9,7 @@ export const LEAD_PIPELINE_ORDER: readonly string[] = [
 const PRIMARY_NEXT_BY_STATUS: Record<string, string> = {
   new_lead: 'invited',
   contacted: 'invited',
-  invited: 'whatsapp_sent',
+  invited: 'video_sent',
   whatsapp_sent: 'video_sent',
   video_sent: 'video_watched',
   video_watched: 'paid',
@@ -39,6 +39,9 @@ function orderIndex(slug: string): number {
  */
 export function pickPrimaryNextTransition(currentSlug: string, availableTargets: string[]): string | null {
   if (!availableTargets.length) return null
+  if (currentSlug === 'invited' && (availableTargets.includes('whatsapp_sent') || availableTargets.includes('video_sent'))) {
+    return 'video_sent'
+  }
   const preferred = PRIMARY_NEXT_BY_STATUS[currentSlug]
   if (preferred && availableTargets.includes(preferred)) {
     return preferred
@@ -70,7 +73,6 @@ export function primaryActionLabel(targetSlug: string): string {
     new_lead: 'Set to New lead',
     contacted: 'Mark contacted',
     invited: 'Mark invited',
-    whatsapp_sent: 'Mark WhatsApp sent',
     video_sent: 'Send video (WhatsApp) → mark sent',
     video_watched: 'Mark video watched',
     paid: 'Mark paid ₹196',

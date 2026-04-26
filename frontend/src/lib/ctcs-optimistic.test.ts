@@ -50,6 +50,13 @@ describe('applyCtcsOptimisticToLead', () => {
     const out = applyCtcsOptimisticToLead(baseLead(), 'not_picked')
     expect(out.status).toBe('contacted')
     expect(out.heat_score).toBe(5)
+    expect(out.call_status).toBe('not_called')
+  })
+
+  it('interested does not auto-change call status', () => {
+    const out = applyCtcsOptimisticToLead(baseLead(), 'interested')
+    expect(out.status).toBe('video_sent')
+    expect(out.call_status).toBe('not_called')
   })
 
   it('call_later uses custom followupAt', () => {

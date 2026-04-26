@@ -27,7 +27,6 @@ export function applyCtcsOptimisticToLead(
       return {
         ...lead,
         status: 'video_sent',
-        call_status: 'video_sent',
         heat_score: clampHeat(h + 20),
         last_action_at: stageAnchorForStatusChange(lead, 'video_sent', now),
         whatsapp_sent_at: now,
@@ -40,7 +39,6 @@ export function applyCtcsOptimisticToLead(
         next_followup_at: next,
         heat_score: clampHeat(h + 10 - 5),
         last_action_at: stageAnchorForStatusChange(lead, 'contacted', now),
-        call_status: 'no_answer',
       }
     }
     case 'call_later': {

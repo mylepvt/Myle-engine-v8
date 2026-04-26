@@ -616,8 +616,6 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
       setBatchError('Could not open Day 2 evaluation WhatsApp share.')
       return
     }
-    await pm.mutateAsync({ id: lead.id, body: { whatsapp_sent: true } })
-    await qc.refetchQueries({ queryKey: ['workboard'] })
   }
 
   return (

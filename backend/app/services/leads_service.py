@@ -938,13 +938,6 @@ class LeadsService:
         now = event.called_at
         lead.call_count = (lead.call_count or 0) + 1
         lead.last_called_at = now
-        lead.call_status = {
-            "answered": "called",
-            "no_answer": "not_called",
-            "busy": "not_called",
-            "callback_requested": "callback_requested",
-            "wrong_number": "not_called",
-        }.get(body.outcome, "called")
         await self._repository.add_call_activity(
             user_id=user.user_id,
             event_id=event.id,
@@ -1088,7 +1081,6 @@ class LeadsService:
             lead.heat_score = clamp_ctcs_heat(
                 int(lead.heat_score or 0) + settings.ctcs_heat_interested_bonus,
             )
-            lead.call_status = "video_sent"
             lead.whatsapp_sent_at = now
             if settings.ctcs_whatsapp_async and background_tasks is not None:
                 background_tasks.add_task(_deliver_ctcs_interested_whatsapp, lead.id, lead.phone)
@@ -1107,7 +1099,6 @@ class LeadsService:
             lead.heat_score = clamp_ctcs_heat(
                 int(lead.heat_score or 0) - settings.ctcs_heat_not_picked_penalty,
             )
-            lead.call_status = "no_answer"
             self._session.add(
                 FollowUp(
                     lead_id=lead.id,
