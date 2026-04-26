@@ -27,7 +27,6 @@ from app.middleware.auth_rate_limit import AuthRateLimitMiddleware
 from app.middleware.request_id import RequestIdMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.services.scheduled_jobs import (
-    job_day3_auto_inactive,
     job_enrollment_proof_alert,
     job_weekly_compliance_digest,
 )
@@ -37,14 +36,6 @@ _scheduler = AsyncIOScheduler(timezone="Asia/Kolkata")
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    # day3 → inactive: check every hour
-    _scheduler.add_job(
-        job_day3_auto_inactive,
-        IntervalTrigger(hours=1),
-        id="day3_auto_inactive",
-        replace_existing=True,
-        misfire_grace_time=300,
-    )
     # enrollment proof pending > 2h: check every 30 min
     _scheduler.add_job(
         job_enrollment_proof_alert,

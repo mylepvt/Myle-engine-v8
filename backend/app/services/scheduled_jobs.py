@@ -1,8 +1,7 @@
 """Scheduled cron jobs for Myle automation.
 
 Jobs (all IST-aware):
-- day3_auto_inactive     : hourly  — leads stuck in day3 > 24h → inactive + notify owner
-- enrollment_proof_alert : every 30min — pending proof > 2h → push admin/leaders
+- enrollment_proof_alert  : every 30min — pending proof > 2h → push admin/leaders
 - weekly_compliance_digest: Monday 09:00 IST — compliance summary to leaders
 """
 from __future__ import annotations
@@ -10,10 +9,9 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import and_, select, update
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.time_ist import IST, today_ist
 from app.db.session import AsyncSessionLocal
 from app.models.lead import Lead
 from app.models.user import User
@@ -24,71 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Job 1: day3 → inactive after 24 h
-# ---------------------------------------------------------------------------
-
-async def job_day3_auto_inactive() -> None:
-    """Mark leads stuck in day3 > 24h as inactive and push the owner."""
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
-    try:
-        async with AsyncSessionLocal() as session:
-            rows = (
-                await session.execute(
-                    select(Lead).where(
-                        and_(
-                            Lead.status == "day3",
-                            Lead.day3_entered_at.isnot(None),
-                            Lead.day3_entered_at < cutoff,
-                            Lead.deleted_at.is_(None),
-                            Lead.archived_at.is_(None),
-                        )
-                    )
-                )
-            ).scalars().all()
-
-            if not rows:
-                return
-
-            for lead in rows:
-                lead.status = "inactive"
-                lead.last_action_at = datetime.now(timezone.utc)
-
-            await session.flush()
-
-            # Notify each owner
-            owner_ids = {lead.created_by_user_id for lead in rows}
-            lead_names = {lead.created_by_user_id: [] for lead in rows}
-            for lead in rows:
-                lead_names[lead.created_by_user_id].append(lead.name or f"Lead #{lead.id}")
-
-            for owner_id in owner_ids:
-                names = lead_names[owner_id]
-                count = len(names)
-                body = (
-                    f"{names[0]} moved to inactive (no progress after Day 3)."
-                    if count == 1
-                    else f"{count} leads moved to inactive (no progress after Day 3)."
-                )
-                try:
-                    await send_push_to_user(
-                        session,
-                        owner_id,
-                        title="Leads marked inactive",
-                        body=body,
-                        url="/dashboard/leads",
-                    )
-                except Exception:
-                    pass
-
-            await session.commit()
-            logger.info("day3_auto_inactive: %d leads marked inactive", len(rows))
-
-    except Exception as exc:
-        logger.error("job_day3_auto_inactive failed: %s", exc)
-
-
-# ---------------------------------------------------------------------------
-# Job 2: enrollment proof pending > 2h → alert admin + leaders
+# Job 1: enrollment proof pending > 2h → alert admin + leaders
 # ---------------------------------------------------------------------------
 
 async def job_enrollment_proof_alert() -> None:
