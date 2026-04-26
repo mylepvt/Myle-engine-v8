@@ -22,7 +22,7 @@ const boxMd =
 const BLOCKED_LEVELS = new Set(['strong_warning', 'final_warning'])
 
 /**
- * Phone dial + WhatsApp chat  -  same deep links as legacy (`tel:` / `wa.me`).
+ * Phone dial + WhatsApp chat - same deep links as legacy (`tel:` / `wa.me`).
  * Hidden when there is no usable phone string.
  * Blocked (with reason tooltip) for users under strong/final compliance warning.
  */
@@ -101,7 +101,7 @@ export function LeadContactActions({
           href={wa}
           target="_blank"
           rel="noopener noreferrer"
-          title="WhatsApp  -  opens WhatsApp or WhatsApp Business on this number"
+          title="WhatsApp - opens WhatsApp or WhatsApp Business on this number"
           className={cn(box, 'hover:border-green-400/40 hover:text-green-400')}
         >
           <MessageCircle aria-hidden />
