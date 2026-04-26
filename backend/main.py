@@ -11,6 +11,10 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
+
 from app.api.deps import get_db
 from app.api.invoice_public import router as invoice_public_router
 from app.api.v1 import api_router
@@ -22,11 +26,54 @@ from app.middleware.access_log import AccessLogMiddleware
 from app.middleware.auth_rate_limit import AuthRateLimitMiddleware
 from app.middleware.request_id import RequestIdMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
+from app.services.scheduled_jobs import (
+    job_call_target_reminder,
+    job_daily_report_reminder,
+    job_enrollment_proof_alert,
+    job_weekly_compliance_digest,
+)
+
+import os as _os
+
+_scheduler = AsyncIOScheduler(timezone="Asia/Kolkata")
+_SCHEDULER_ENABLED = _os.environ.get("DISABLE_SCHEDULER", "").lower() not in {"1", "true", "yes"}
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    if _SCHEDULER_ENABLED:
+        _scheduler.add_job(
+            job_enrollment_proof_alert,
+            IntervalTrigger(minutes=30),
+            id="enrollment_proof_alert",
+            replace_existing=True,
+            misfire_grace_time=120,
+        )
+        _scheduler.add_job(
+            job_weekly_compliance_digest,
+            CronTrigger(day_of_week="mon", hour=9, minute=0),
+            id="weekly_compliance_digest",
+            replace_existing=True,
+            misfire_grace_time=3600,
+        )
+        _scheduler.add_job(
+            job_daily_report_reminder,
+            CronTrigger(hour=20, minute=0),
+            id="daily_report_reminder",
+            replace_existing=True,
+            misfire_grace_time=1800,
+        )
+        _scheduler.add_job(
+            job_call_target_reminder,
+            CronTrigger(hour=17, minute=0),
+            id="call_target_reminder",
+            replace_existing=True,
+            misfire_grace_time=1800,
+        )
+        _scheduler.start()
     yield
+    if _SCHEDULER_ENABLED:
+        _scheduler.shutdown(wait=False)
     await engine.dispose()
 
 

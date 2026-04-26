@@ -15,6 +15,9 @@ os.close(_TEST_DB_FD)
 _TEST_DB_PATH = Path(_TEST_DB_NAME)
 sys.path.insert(0, str(_BACKEND))
 
+# Disable APScheduler background jobs during tests — prevents DB connection hangs
+os.environ.setdefault("DISABLE_SCHEDULER", "1")
+
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.db.base import Base

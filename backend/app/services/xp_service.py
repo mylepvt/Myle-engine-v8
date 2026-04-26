@@ -24,6 +24,7 @@ from app.models.lead import Lead
 from app.models.user import User
 from app.models.xp_event import XpEvent
 from app.models.xp_monthly_archive import XpMonthlyArchive
+from app.services.push_service import send_push_to_user
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -248,8 +249,21 @@ async def grant_xp(
     event = XpEvent(user_id=user_id, action=action, xp=actual_xp, lead_id=lead_id)
     session.add(event)
 
+    prev_level = user.xp_level or "rookie"
     user.xp_total = (user.xp_total or 0) + actual_xp
     user.xp_level = _calculate_level(user.xp_total)
+
+    if user.xp_level != prev_level:
+        try:
+            await send_push_to_user(
+                session,
+                user.id,
+                title="Level Up! 🎉",
+                body=f"You reached {user.xp_level.title()} level. Keep it up!",
+                url="/dashboard",
+            )
+        except Exception:
+            pass
 
     await session.flush()
     return actual_xp
