@@ -324,17 +324,6 @@ export function LeadDetailPage({ leadId }: Props) {
     }
   }
 
-  async function toggleWhatsapp(current: string | null) {
-    try {
-      await patchMut.mutateAsync({
-        leadId,
-        body: { whatsapp_sent: !current },
-      })
-    } catch {
-      /* surfaced by patchMut.isError */
-    }
-  }
-
   async function handleResetStageClock() {
     if (surfaceRole !== 'admin' || !lead) return
     setResetClockError('')
@@ -579,21 +568,6 @@ export function LeadDetailPage({ leadId }: Props) {
                   ) : null}
                 </label>
               ))}
-              <label className="flex cursor-pointer items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={!!lead.whatsapp_sent_at}
-                  disabled={patchMut.isPending}
-                  onChange={() => void toggleWhatsapp(lead.whatsapp_sent_at)}
-                  className="h-4 w-4 rounded border-white/12 bg-white/[0.05] accent-primary"
-                />
-                <span className="text-foreground">WhatsApp sent</span>
-                {lead.whatsapp_sent_at ? (
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(lead.whatsapp_sent_at).toLocaleDateString()}
-                  </span>
-                ) : null}
-              </label>
             </div>
           </div>
         </div>

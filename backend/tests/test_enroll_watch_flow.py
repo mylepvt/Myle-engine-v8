@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from app.api.v1.enroll import _watch_page_payload
+from app.api.v1.enroll import _sync_lead_for_send, _watch_page_payload
 from app.models.enroll_share_link import EnrollShareLink
 from app.models.lead import Lead
 from app.services import enrollment_video
@@ -71,6 +71,26 @@ def test_watch_page_payload_includes_room_snapshot() -> None:
     assert payload.total_seats == 50
     assert payload.seats_left == 12
     assert payload.trust_note == "Private room access is limited to the current batch window."
+
+
+def test_sync_lead_for_send_does_not_auto_change_call_status() -> None:
+    now = datetime.now(timezone.utc)
+    lead = Lead(
+        id=9,
+        name="Test Prospect",
+        phone="9999900001",
+        status="whatsapp_sent",
+        call_status="not_called",
+        created_by_user_id=1,
+    )
+
+    changed = _sync_lead_for_send(lead, now=now)
+
+    assert changed is True
+    assert lead.status == "video_sent"
+    assert lead.call_status == "not_called"
+    assert lead.whatsapp_sent_at == now
+    assert lead.last_action_at == now
 
 
 def test_normalize_video_source_url_encodes_legacy_upload_paths() -> None:

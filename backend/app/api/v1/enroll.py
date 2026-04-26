@@ -69,9 +69,6 @@ _POST_VIDEO_SENT_STATUSES = {
     "lost",
     "inactive",
 }
-_POST_SENT_CALL_STATUSES = {"video_watched", "payment_done"}
-
-
 async def _get_lead_or_404(session: AsyncSession, lead_id: int) -> Lead:
     lead = await session.get(Lead, lead_id)
     if lead is None or lead.deleted_at is not None:
@@ -92,8 +89,6 @@ def _sync_lead_for_send(lead: Lead, *, now: datetime) -> bool:
     previous_status = lead.status
     if lead.status not in _POST_VIDEO_SENT_STATUSES and lead.status != _VIDEO_SENT_STATUS:
         lead.status = _VIDEO_SENT_STATUS
-    if (lead.call_status or "").strip() not in _POST_SENT_CALL_STATUSES:
-        lead.call_status = _VIDEO_SENT_STATUS
     lead.whatsapp_sent_at = now
     if lead.status != previous_status:
         lead.last_action_at = now

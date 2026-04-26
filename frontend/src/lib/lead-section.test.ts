@@ -44,4 +44,10 @@ describe('lead-section', () => {
       nextSectionForLead({ status: 'contacted', archived_at: null } as const, 'leader'),
     ).toBeNull()
   })
+
+  it('skips the manual whatsapp-sent step after invitation', () => {
+    expect(
+      nextSectionForLead({ status: 'invited', archived_at: null } as const, 'team'),
+    ).toBeNull()
+  })
 })
