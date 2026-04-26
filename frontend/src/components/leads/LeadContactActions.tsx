@@ -9,7 +9,7 @@ type Props = {
   className?: string
   /** Dense tables vs workboard cards */
   size?: 'sm' | 'md'
-  /** Use inside clickable rows/cards so tel/wa clicks don’t toggle selection */
+  /** Use inside clickable rows/cards so tel/wa clicks don't toggle selection */
   stopPropagation?: boolean
 }
 
@@ -19,7 +19,7 @@ const boxMd =
   'flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-white/12 bg-white/[0.05] text-foreground transition [&_svg]:h-4 [&_svg]:w-4'
 
 /**
- * Phone dial + WhatsApp chat — same deep links as legacy (`tel:` / `wa.me`).
+ * Phone dial + WhatsApp chat - same deep links as legacy (`tel:` / `wa.me`).
  * Hidden when there is no usable phone string.
  */
 export function LeadContactActions({
@@ -58,7 +58,7 @@ export function LeadContactActions({
           href={wa}
           target="_blank"
           rel="noopener noreferrer"
-          title="WhatsApp — opens WhatsApp or WhatsApp Business on this number"
+          title="WhatsApp - opens WhatsApp or WhatsApp Business on this number"
           className={cn(box, 'hover:border-green-400/40 hover:text-green-400')}
         >
           <MessageCircle aria-hidden />
