@@ -96,8 +96,10 @@ async def read_me(
     if isinstance(tr_raw, bool):
         tr_b = tr_raw
     avatar_url_s: str | None = None
+    compliance_level_s: str | None = None
+    compliance_summary_s: str | None = None
     if user_id is not None:
-        await ensure_user_compliance_snapshot(session, user_id=user_id, apply_actions=True)
+        compliance_snapshot = await ensure_user_compliance_snapshot(session, user_id=user_id, apply_actions=True)
         row = await session.get(User, user_id)
         if row is not None:
             try:
@@ -114,6 +116,9 @@ async def read_me(
             ts_s = row.training_status
             tr_b = bool(row.training_required)
             rs_s = row.registration_status
+            if compliance_snapshot is not None:
+                compliance_level_s = compliance_snapshot.compliance_level
+                compliance_summary_s = compliance_snapshot.compliance_summary
         else:
             clear_session_cookies(response)
             return MeResponse()
@@ -130,6 +135,8 @@ async def read_me(
         training_required=tr_b,
         registration_status=rs_s,
         avatar_url=avatar_url_s,
+        compliance_level=compliance_level_s,
+        compliance_summary=compliance_summary_s,
     )
 
 

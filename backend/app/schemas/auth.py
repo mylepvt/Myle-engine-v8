@@ -45,6 +45,14 @@ class MeResponse(BaseModel):
         default=None,
         description="Profile image URL path when set (same-origin /api/v1/media/avatar/…)",
     )
+    compliance_level: Optional[str] = Field(
+        default=None,
+        description="clear | warning | strong_warning | final_warning | grace | grace_ending | removed | not_applicable",
+    )
+    compliance_summary: Optional[str] = Field(
+        default=None,
+        description="Human-readable explanation of current discipline state",
+    )
 
 
 class DevLoginRequest(BaseModel):
