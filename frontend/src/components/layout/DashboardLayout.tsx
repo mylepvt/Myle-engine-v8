@@ -23,6 +23,7 @@ import { notifyDashboardMainScrolled } from '@/lib/main-scroll-gate'
 import { useEnrollmentApprovalsAlertBanner } from '@/hooks/use-enrollment-approvals-alert'
 import { useNoticeBoardUnread } from '@/hooks/use-notice-board-unread'
 import { useEnrollmentApprovalsPendingQuery } from '@/hooks/use-team-query'
+import { usePushNotifications } from '@/hooks/use-push-notifications'
 import { useAuthStore } from '@/stores/auth-store'
 import { useShellPreviewStore } from '@/stores/shell-preview-store'
 import { useShellStore } from '@/stores/shell-store'
@@ -67,6 +68,12 @@ export function DashboardLayout() {
   const theme = useUiFeedbackStore((s) => s.theme)
   const logout = useAuthStore((s) => s.logout)
   const { unread: noticeBoardUnread } = useNoticeBoardUnread()
+  const push = usePushNotifications()
+  const showPushPrompt =
+    Boolean(me?.authenticated) &&
+    push.isSupported &&
+    !push.isSubscribed &&
+    push.permission !== 'denied'
   const enrollmentPending = useEnrollmentApprovalsPendingQuery()
   const pendingEnrollCount = enrollmentPending.data?.total ?? 0
   const approverForEnroll =
@@ -725,6 +732,34 @@ export function DashboardLayout() {
               <span className="font-semibold">Strong Warning.</span>
               {me.compliance_summary ? ` ${me.compliance_summary}` : ' 2 days of missed targets. One more day and you will receive a final warning.'}
             </p>
+          </div>
+        ) : null}
+
+        {showPushPrompt ? (
+          <div
+            role="status"
+            className="flex shrink-0 items-center justify-between gap-3 border-b border-blue-500/30 bg-blue-500/10 px-3 py-2.5 dark:border-blue-400/25 dark:bg-blue-400/10"
+          >
+            <div className="flex min-w-0 items-center gap-2">
+              <Bell className="size-4 shrink-0 text-blue-700 dark:text-blue-300" aria-hidden />
+              <p className="min-w-0 text-sm text-blue-900 dark:text-blue-100">
+                <span className="font-semibold">Enable notifications</span>
+                {' — '}
+                {push.requiresStandaloneInstall
+                  ? push.supportMessage
+                  : 'Get reminders for daily targets, reports, and compliance alerts.'}
+              </p>
+            </div>
+            {!push.requiresStandaloneInstall ? (
+              <button
+                type="button"
+                onClick={() => void push.subscribe()}
+                disabled={push.isLoading}
+                className="shrink-0 rounded-md bg-blue-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60 dark:bg-blue-500 dark:hover:bg-blue-400"
+              >
+                {push.isLoading ? 'Enabling…' : 'Enable'}
+              </button>
+            ) : null}
           </div>
         ) : null}
 
