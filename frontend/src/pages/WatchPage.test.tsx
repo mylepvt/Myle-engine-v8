@@ -62,7 +62,7 @@ describe('WatchPage', () => {
       expect(screen.getByText('A quick introduction to Myle')).toBeInTheDocument()
     })
 
-    expect(screen.getByText('Good morning, Rahul')).toBeInTheDocument()
+    expect(screen.getByText(/Good (morning|afternoon|evening|night), Rahul/)).toBeInTheDocument()
     expect(screen.getByText('282 applications reviewed • 18 places currently available')).toBeInTheDocument()
     expect(screen.getByText('Private room access is limited to the current batch window.')).toBeInTheDocument()
     expect(screen.queryByText('EARN 30K USING INSTAGRAM MONTHLY | MYLE COMMUNITY')).not.toBeInTheDocument()

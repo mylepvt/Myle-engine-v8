@@ -215,3 +215,18 @@ class LeadControlManualReassignOut(BaseModel):
     assigned_to_name: str
     owner_user_id: Optional[int] = None
     owner_name: str = ""
+
+
+class LeadControlBulkReassignIn(BaseModel):
+    lead_ids: list[int] = Field(min_length=1, max_length=100)
+    to_user_id: int = Field(ge=1)
+    reason: Optional[str] = Field(default=None, max_length=500)
+
+
+class LeadControlBulkReassignOut(BaseModel):
+    success: bool = True
+    message: str
+    reassigned_count: int
+    lead_ids: list[int] = Field(default_factory=list)
+    assigned_to_user_id: int
+    assigned_to_name: str

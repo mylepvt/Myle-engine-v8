@@ -10,7 +10,6 @@ import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import {
   createTeamMember,
   useTeamMembersQuery,
-  useResetAllMembersPasswordMutation,
   useResetMemberPasswordMutation,
   useUpdateMemberComplianceMutation,
   useUpdateMemberRoleMutation,
@@ -635,7 +634,6 @@ export function TeamMembersPage({ title }: Props) {
   const [resetTarget, setResetTarget] = useState<ResetTarget | null>(null)
   const [profileTarget, setProfileTarget] = useState<TeamMemberPublic | null>(null)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
-  const bulkResetMut = useResetAllMembersPasswordMutation()
   const deferredMemberQuery = useDeferredValue(memberQuery)
   const searchActive = memberQuery.trim().length > 0
   const filteredMembers = data
@@ -662,7 +660,7 @@ export function TeamMembersPage({ title }: Props) {
   })
 
   return (
-    <div className="max-w-3xl space-y-5">
+    <div className="min-w-0 max-w-4xl space-y-5 overflow-x-hidden pb-[max(6rem,calc(env(safe-area-inset-bottom)+5rem))]">
       <div className="space-y-2">
         <Badge variant="primary" className="w-fit px-3 py-1">
           Member directory
@@ -674,7 +672,7 @@ export function TeamMembersPage({ title }: Props) {
       </div>
 
       {isAdmin ? (
-        <div className="surface-elevated p-5 text-sm md:p-6">
+        <div className="surface-elevated min-w-0 overflow-hidden p-4 text-sm sm:p-5 md:p-6">
           <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className="font-medium text-foreground">Add user</h2>
@@ -739,38 +737,16 @@ export function TeamMembersPage({ title }: Props) {
         </div>
       ) : null}
       {data ? (
-        <div className="surface-elevated p-5 text-sm md:p-6">
+        <div className="surface-elevated min-w-0 overflow-hidden p-4 text-sm sm:p-5 md:p-6">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
+            <div className="min-w-0">
               <p className="font-medium text-foreground">Total: {data.total}</p>
               <p className="mt-1 text-ds-caption text-muted-foreground">
                 Responsive member cards with wrapped details and quick actions.
               </p>
             </div>
-            {isAdmin ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full justify-center sm:w-auto"
-                disabled={bulkResetMut.isPending}
-                onClick={() => {
-                  const ok = window.confirm('Reset password for ALL users to Myle@2323 ?')
-                  if (!ok) return
-                  bulkResetMut.mutate(
-                    { newPassword: 'Myle@2323' },
-                    {
-                      onSuccess: (d) => setToastMsg(`Password reset done for ${d.updated} users`),
-                      onError: (e: Error) => setToastMsg(`Bulk reset failed: ${e.message}`),
-                    },
-                  )
-                }}
-              >
-                {bulkResetMut.isPending ? 'Resetting…' : 'Set all passwords: Myle@2323'}
-              </Button>
-            ) : null}
           </div>
-          <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="mb-5 flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <ListSearchInput
               value={memberQuery}
               onValueChange={setMemberQuery}
@@ -778,7 +754,7 @@ export function TeamMembersPage({ title }: Props) {
               aria-label="Search members"
               wrapperClassName="w-full lg:max-w-md"
             />
-            <p className="text-ds-caption text-muted-foreground">
+            <p className="min-w-0 text-ds-caption text-muted-foreground">
               {searchActive
                 ? `Showing ${filteredMembers.length} of ${data.total} members.`
                 : 'Search works across FBO ID, username, email, role, and upline.'}
@@ -786,11 +762,11 @@ export function TeamMembersPage({ title }: Props) {
           </div>
 
           {filteredMembers.length ? (
-            <ul className="space-y-3">
+            <ul className="space-y-3 overflow-x-hidden">
               {filteredMembers.map((m) => (
                 <li
                   key={m.id}
-                  className="surface-inset overflow-hidden rounded-2xl border border-white/5 px-4 py-3 text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+                  className="surface-inset min-w-0 overflow-hidden rounded-2xl border border-white/5 px-4 py-3 text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0 flex-1">
@@ -858,7 +834,7 @@ export function TeamMembersPage({ title }: Props) {
                       </div>
                     </div>
 
-                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[10.5rem]">
+                    <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:min-w-[10.5rem]">
                       {isAdmin ? (
                         <Button
                           type="button"
@@ -912,7 +888,7 @@ export function TeamMembersPage({ title }: Props) {
       ) : null}
 
       {toastMsg ? (
-        <div className="fixed bottom-24 right-4 z-[85] rounded-md border border-emerald-400/35 bg-emerald-400/15 px-3 py-2 text-ds-caption font-semibold text-emerald-200 shadow-lg">
+        <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] right-4 z-[85] max-w-[min(22rem,calc(100vw-2rem))] rounded-md border border-emerald-400/35 bg-emerald-400/15 px-3 py-2 text-ds-caption font-semibold text-emerald-200 shadow-lg">
           {toastMsg}
         </div>
       ) : null}

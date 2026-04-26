@@ -18,6 +18,8 @@ from app.schemas.execution_enforcement import (
     Day2ReviewOut,
     DownlineExecutionStatsOut,
     FollowUpAttackRow,
+    LeadControlBulkReassignIn,
+    LeadControlBulkReassignOut,
     LeakMapOut,
     LeadControlManualReassignIn,
     LeadControlManualReassignOut,
@@ -221,6 +223,34 @@ async def execution_manual_reassign(
         )
     except ValueError as exc:
         detail = str(exc).strip() or "Unable to reassign lead"
+        status_code = (
+            http_status.HTTP_404_NOT_FOUND
+            if detail == "Lead not found"
+            else http_status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=status_code, detail=detail) from exc
+    await notify_topics("leads", "workboard", "team_tracking")
+    return result
+
+
+@router.post("/lead-control/reassign-bulk", response_model=LeadControlBulkReassignOut)
+async def execution_bulk_manual_reassign(
+    body: LeadControlBulkReassignIn,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> LeadControlBulkReassignOut:
+    """Admin: manually bulk reassign queued archived completed-watch stale leads."""
+    _require_admin(user)
+    try:
+        result = await enf.admin_manual_bulk_reassign_archived_completed_watch_leads(
+            session,
+            admin_user_id=user.user_id,
+            lead_ids=body.lead_ids,
+            to_user_id=body.to_user_id,
+            reason=body.reason,
+        )
+    except ValueError as exc:
+        detail = str(exc).strip() or "Unable to bulk reassign leads"
         status_code = (
             http_status.HTTP_404_NOT_FOUND
             if detail == "Lead not found"

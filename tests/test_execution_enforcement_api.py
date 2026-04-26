@@ -7,12 +7,13 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 
 from app.core.time_ist import today_ist
 from app.models.activity_log import ActivityLog
 from app.models.batch_day_submission import BatchDaySubmission
 from app.models.call_event import CallEvent
+from app.models.crm_outbox import CrmOutbox
 from app.models.enroll_share_link import EnrollShareLink
 from app.models.lead import Lead
 from app.models.user import User
@@ -33,6 +34,7 @@ async def _reset_execution_tables() -> None:
         await session.execute(delete(BatchDaySubmission))
         await session.execute(delete(EnrollShareLink))
         await session.execute(delete(CallEvent))
+        await session.execute(delete(CrmOutbox))
         await session.execute(delete(ActivityLog))
         await session.execute(delete(Lead))
         await session.execute(delete(User).where(User.id > 3))
@@ -199,6 +201,26 @@ async def _seed_lead_control_data() -> dict[str, int]:
             "team_target_id": team_target.id,
             "leader_target_id": leader_target.id,
         }
+
+
+async def _seed_active_non_queue_lead() -> int:
+    factory = get_test_session_factory()
+    now = datetime.now(timezone.utc)
+    async with factory() as session:
+        lead = Lead(
+            name="Active Calling Lead",
+            status="new_lead",
+            created_by_user_id=3,
+            owner_user_id=3,
+            assigned_to_user_id=3,
+            archived_at=None,
+            created_at=now - timedelta(hours=3),
+            last_action_at=now - timedelta(hours=1),
+            phone="9666666666",
+        )
+        session.add(lead)
+        await session.commit()
+        return int(lead.id)
 
 
 def test_team_funnel_requires_team_role(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -396,5 +418,127 @@ def test_admin_manual_reassign_preserves_owner_and_creates_soft_log(
         assert history_body["history_total"] >= 1
         assert history_body["history"][0]["mode"] == "manual"
         assert history_body["history"][0]["assigned_to_user_id"] == seeded["team_target_id"]
+    finally:
+        asyncio.run(_reset_execution_tables())
+
+
+def test_admin_bulk_manual_reassign_moves_only_stale_queue_leads(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(_reset_execution_tables())
+    try:
+        seeded = asyncio.run(_seed_lead_control_data())
+        second_stale_id = asyncio.run(_seed_active_non_queue_lead())
+
+        async def _promote_to_stale_queue() -> int:
+            factory = get_test_session_factory()
+            now = datetime.now(timezone.utc)
+            async with factory() as session:
+                lead = await session.get(Lead, second_stale_id)
+                assert lead is not None
+                lead.status = "video_watched"
+                lead.archived_at = now - timedelta(hours=27)
+                lead.last_action_at = now - timedelta(hours=40)
+                session.add(
+                    EnrollShareLink(
+                        token="second-stale-watch-token",
+                        lead_id=lead.id,
+                        created_by_user_id=1,
+                        youtube_url="https://cdn.example.com/enrollment.mp4",
+                        status_synced=True,
+                        first_viewed_at=now - timedelta(hours=40),
+                        last_viewed_at=now - timedelta(hours=40),
+                        expires_at=now + timedelta(minutes=30),
+                    )
+                )
+                await session.commit()
+                return int(lead.id)
+
+        second_queue_id = asyncio.run(_promote_to_stale_queue())
+
+        c = _client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        response = c.post(
+            "/api/v1/execution/lead-control/reassign-bulk",
+            json={
+                "lead_ids": [seeded["lead_id"], second_queue_id],
+                "to_user_id": seeded["team_target_id"],
+                "reason": "Bulk stale cleanup.",
+            },
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["success"] is True
+        assert body["reassigned_count"] == 2
+        assert set(body["lead_ids"]) == {seeded["lead_id"], second_queue_id}
+
+        async def _assert_db() -> None:
+            factory = get_test_session_factory()
+            async with factory() as session:
+                first = await session.get(Lead, seeded["lead_id"])
+                second = await session.get(Lead, second_queue_id)
+                assert first is not None and second is not None
+                assert first.owner_user_id == 3
+                assert second.owner_user_id == 3
+                assert first.assigned_to_user_id == seeded["team_target_id"]
+                assert second.assigned_to_user_id == seeded["team_target_id"]
+                assert first.archived_at is None
+                assert second.archived_at is None
+                logs = (
+                    await session.execute(
+                        select(ActivityLog)
+                        .where(ActivityLog.action == "lead.manual_watch_reassigned")
+                        .order_by(ActivityLog.id.asc())
+                    )
+                ).scalars().all()
+                assert len(logs) == 2
+
+        asyncio.run(_assert_db())
+    finally:
+        asyncio.run(_reset_execution_tables())
+
+
+def test_admin_bulk_manual_reassign_rejects_any_non_queue_active_lead(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(_reset_execution_tables())
+    try:
+        seeded = asyncio.run(_seed_lead_control_data())
+        active_lead_id = asyncio.run(_seed_active_non_queue_lead())
+        c = _client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        response = c.post(
+            "/api/v1/execution/lead-control/reassign-bulk",
+            json={
+                "lead_ids": [seeded["lead_id"], active_lead_id],
+                "to_user_id": seeded["team_target_id"],
+                "reason": "Should fail.",
+            },
+        )
+        assert response.status_code == 400
+        assert "Only stale archived completed-watch leads can be reassigned here" in response.text
+
+        async def _assert_unchanged() -> None:
+            factory = get_test_session_factory()
+            async with factory() as session:
+                queued = await session.get(Lead, seeded["lead_id"])
+                active = await session.get(Lead, active_lead_id)
+                assert queued is not None and active is not None
+                assert queued.assigned_to_user_id == 3
+                assert queued.archived_at is not None
+                assert active.assigned_to_user_id == 3
+                count = int(
+                    (
+                        await session.execute(
+                            select(func.count())
+                            .select_from(ActivityLog)
+                            .where(ActivityLog.action == "lead.manual_watch_reassigned")
+                        )
+                    ).scalar_one()
+                    or 0
+                )
+                assert count == 0
+
+        asyncio.run(_assert_unchanged())
     finally:
         asyncio.run(_reset_execution_tables())
