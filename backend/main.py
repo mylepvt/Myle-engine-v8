@@ -27,6 +27,8 @@ from app.middleware.auth_rate_limit import AuthRateLimitMiddleware
 from app.middleware.request_id import RequestIdMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.services.scheduled_jobs import (
+    job_call_target_reminder,
+    job_daily_report_reminder,
     job_enrollment_proof_alert,
     job_weekly_compliance_digest,
 )
@@ -51,6 +53,22 @@ async def lifespan(_app: FastAPI):
         id="weekly_compliance_digest",
         replace_existing=True,
         misfire_grace_time=3600,
+    )
+    # daily report reminder: 20:00 IST
+    _scheduler.add_job(
+        job_daily_report_reminder,
+        CronTrigger(hour=20, minute=0),
+        id="daily_report_reminder",
+        replace_existing=True,
+        misfire_grace_time=1800,
+    )
+    # call target reminder: 17:00 IST
+    _scheduler.add_job(
+        job_call_target_reminder,
+        CronTrigger(hour=17, minute=0),
+        id="call_target_reminder",
+        replace_existing=True,
+        misfire_grace_time=1800,
     )
     _scheduler.start()
     yield

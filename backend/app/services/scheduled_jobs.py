@@ -3,6 +3,8 @@
 Jobs (all IST-aware):
 - enrollment_proof_alert  : every 30min — pending proof > 2h → push admin/leaders
 - weekly_compliance_digest: Monday 09:00 IST — compliance summary to leaders
+- daily_report_reminder   : 20:00 IST daily — push eligible users who haven't submitted report
+- call_target_reminder    : 17:00 IST daily — push eligible users short on calls
 """
 from __future__ import annotations
 
@@ -12,9 +14,12 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.time_ist import today_ist
 from app.db.session import AsyncSessionLocal
+from app.models.daily_report import DailyReport
 from app.models.lead import Lead
 from app.models.user import User
+from app.services.live_metrics import fresh_call_counts_by_user, get_daily_call_target
 from app.services.member_compliance import build_compliance_snapshots
 from app.services.push_service import send_push_to_role, send_push_to_user
 
@@ -152,3 +157,110 @@ async def _send_digest_for_leader(session: AsyncSession, leader_id: int) -> None
         )
     except Exception:
         pass
+
+
+# ---------------------------------------------------------------------------
+# Job 3: daily report reminder — 20:00 IST
+# ---------------------------------------------------------------------------
+
+_ELIGIBLE_ROLES = {"team", "leader"}
+
+
+async def _get_eligible_users(session: AsyncSession) -> list[User]:
+    rows = (
+        await session.execute(
+            select(User).where(
+                User.role.in_(list(_ELIGIBLE_ROLES)),
+                User.registration_status == "approved",
+                User.access_blocked.is_(False),
+                User.removed_at.is_(None),
+                User.training_required.is_(False),
+            )
+        )
+    ).scalars().all()
+    return [
+        u for u in rows
+        if (u.training_status or "").strip().lower() in {"completed", "not_required"}
+    ]
+
+
+async def job_daily_report_reminder() -> None:
+    """Push eligible users who haven't submitted today's daily report (runs 20:00 IST)."""
+    try:
+        async with AsyncSessionLocal() as session:
+            today = today_ist()
+            users = await _get_eligible_users(session)
+            if not users:
+                return
+
+            user_ids = [u.id for u in users]
+            submitted = {
+                int(uid)
+                for (uid,) in (
+                    await session.execute(
+                        select(DailyReport.user_id).where(
+                            DailyReport.user_id.in_(user_ids),
+                            DailyReport.report_date == today,
+                        )
+                    )
+                ).all()
+            }
+
+            missing = [u for u in users if u.id not in submitted]
+            for user in missing:
+                try:
+                    await send_push_to_user(
+                        session,
+                        user.id,
+                        title="Daily report pending ⚠️",
+                        body="You haven't submitted today's daily report yet. Submit before midnight to avoid a compliance warning.",
+                        url="/dashboard/work/report",
+                    )
+                except Exception:
+                    pass
+
+            logger.info("daily_report_reminder: pushed %d users", len(missing))
+
+    except Exception as exc:
+        logger.error("job_daily_report_reminder failed: %s", exc)
+
+
+# ---------------------------------------------------------------------------
+# Job 4: call target reminder — 17:00 IST
+# ---------------------------------------------------------------------------
+
+async def job_call_target_reminder() -> None:
+    """Push eligible users who are short on calls for today (runs 17:00 IST)."""
+    try:
+        async with AsyncSessionLocal() as session:
+            today = today_ist()
+            users = await _get_eligible_users(session)
+            if not users:
+                return
+
+            user_ids = [u.id for u in users]
+            call_target = await get_daily_call_target(session)
+            calls_today = await fresh_call_counts_by_user(session, user_ids, today)
+
+            short = [
+                u for u in users
+                if int(calls_today.get(u.id, 0)) < call_target
+            ]
+            for user in short:
+                done = int(calls_today.get(user.id, 0))
+                remaining = call_target - done
+                try:
+                    await send_push_to_user(
+                        session,
+                        user.id,
+                        title="Call target reminder 📞",
+                        body=f"You've made {done}/{call_target} calls today. {remaining} more needed to stay on track.",
+                        url="/dashboard/work/leads",
+                    )
+                except Exception:
+                    pass
+
+            logger.info("call_target_reminder: pushed %d users short on calls", len(short))
+
+    except Exception as exc:
+        logger.error("job_call_target_reminder failed: %s", exc)
