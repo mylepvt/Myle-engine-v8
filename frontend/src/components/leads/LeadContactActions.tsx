@@ -22,7 +22,7 @@ const boxMd =
 const BLOCKED_LEVELS = new Set([‘strong_warning’, ‘final_warning’])
 
 /**
- * Phone dial + WhatsApp chat — same deep links as legacy (`tel:` / `wa.me`).
+ * Phone dial + WhatsApp chat  -  same deep links as legacy (`tel:` / `wa.me`).
  * Hidden when there is no usable phone string.
  * Blocked (with reason tooltip) for users under strong/final compliance warning.
  */
@@ -49,14 +49,14 @@ export function LeadContactActions({
 
   const blockedReason =
     me?.compliance_level === ‘final_warning’
-      ? ‘Calls and WhatsApp blocked — Final Warning active. Complete today\’s calls and daily report before midnight or you will be removed.’
-      : ‘Calls and WhatsApp blocked — Strong Warning active. You have missed targets for 2 days. Meet today\’s targets to restore access.’
+      ? ‘Calls and WhatsApp blocked  -  Final Warning active. Complete today\’s calls and daily report before midnight or you will be removed.’
+      : ‘Calls and WhatsApp blocked  -  Strong Warning active. You have missed targets for 2 days. Meet today\’s targets to restore access.’
 
   if (complianceBlocked) {
     return (
       <div
         role="group"
-        aria-label="Phone and WhatsApp — blocked"
+        aria-label="Phone and WhatsApp  -  blocked"
         className={cn(‘inline-flex items-center gap-1.5’, className)}
         onClick={stop}
         title={blockedReason}
@@ -66,14 +66,14 @@ export function LeadContactActions({
           className={cn(box, ‘cursor-not-allowed opacity-35’)}
         >
           <Phone aria-hidden />
-          <span className="sr-only">Call blocked — {blockedReason}</span>
+          <span className="sr-only">Call blocked  -  {blockedReason}</span>
         </span>
         <span
           aria-disabled="true"
           className={cn(box, ‘cursor-not-allowed opacity-35’)}
         >
           <MessageCircle aria-hidden />
-          <span className="sr-only">WhatsApp blocked — {blockedReason}</span>
+          <span className="sr-only">WhatsApp blocked  -  {blockedReason}</span>
         </span>
       </div>
     )
@@ -101,7 +101,7 @@ export function LeadContactActions({
           href={wa}
           target="_blank"
           rel="noopener noreferrer"
-          title="WhatsApp — opens WhatsApp or WhatsApp Business on this number"
+          title="WhatsApp  -  opens WhatsApp or WhatsApp Business on this number"
           className={cn(box, ‘hover:border-green-400/40 hover:text-green-400’)}
         >
           <MessageCircle aria-hidden />
