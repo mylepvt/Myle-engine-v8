@@ -5,7 +5,11 @@ import { ArrowRightLeft, Clock3, ShieldCheck, UserCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states'
-import { useLeadControlManualReassignMutation, useLeadControlQuery } from '@/hooks/use-lead-control-query'
+import {
+  useLeadControlBulkReassignMutation,
+  useLeadControlManualReassignMutation,
+  useLeadControlQuery,
+} from '@/hooks/use-lead-control-query'
 import { LEAD_STATUS_OPTIONS } from '@/hooks/use-leads-query'
 
 type Props = {
@@ -57,12 +61,14 @@ function StatCard({
 export function LeadControlPage({ title }: Props) {
   const query = useLeadControlQuery()
   const manualReassign = useLeadControlManualReassignMutation()
+  const bulkReassign = useLeadControlBulkReassignMutation()
   const queue = query.data?.queue ?? []
   const assignableUsers = query.data?.assignable_users ?? []
   const historySummary = query.data?.history_summary ?? []
   const history = query.data?.history ?? []
 
   const [selectedLeadId, setSelectedLeadId] = useState<number | null>(null)
+  const [selectedLeadIds, setSelectedLeadIds] = useState<number[]>([])
   const [selectedUserId, setSelectedUserId] = useState('')
   const [reason, setReason] = useState('')
   const [submitError, setSubmitError] = useState('')
@@ -78,15 +84,35 @@ export function LeadControlPage({ title }: Props) {
     }
   }, [queue, selectedLeadId])
 
+  useEffect(() => {
+    const queueIds = new Set(queue.map((lead) => lead.lead_id))
+    setSelectedLeadIds((current) => current.filter((leadId) => queueIds.has(leadId)))
+  }, [queue])
+
   const selectedLead = useMemo(
     () => queue.find((lead) => lead.lead_id === selectedLeadId) ?? null,
     [queue, selectedLeadId],
   )
 
+  const selectedBulkLeads = useMemo(
+    () => queue.filter((lead) => selectedLeadIds.includes(lead.lead_id)),
+    [queue, selectedLeadIds],
+  )
+
+  const bulkMode = selectedBulkLeads.length > 0
+
   const targetOptions = useMemo(() => {
+    if (bulkMode) {
+      const excludedAssigneeIds = new Set(
+        selectedBulkLeads
+          .map((lead) => lead.assigned_to_user_id)
+          .filter((userId): userId is number => userId != null),
+      )
+      return assignableUsers.filter((user) => !excludedAssigneeIds.has(user.user_id))
+    }
     if (!selectedLead) return []
     return assignableUsers.filter((user) => user.user_id !== selectedLead.assigned_to_user_id)
-  }, [assignableUsers, selectedLead])
+  }, [assignableUsers, bulkMode, selectedBulkLeads, selectedLead])
 
   useEffect(() => {
     if (targetOptions.length === 0) {
@@ -120,6 +146,49 @@ export function LeadControlPage({ title }: Props) {
       setSubmitMessage(result.message)
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'Could not reassign this lead right now.')
+    }
+  }
+
+  function toggleLeadSelection(leadId: number, checked: boolean) {
+    setSelectedLeadIds((current) => {
+      if (checked) {
+        return current.includes(leadId) ? current : [...current, leadId]
+      }
+      return current.filter((id) => id !== leadId)
+    })
+    setSubmitError('')
+    setSubmitMessage('')
+  }
+
+  function toggleSelectAll(checked: boolean) {
+    setSelectedLeadIds(checked ? queue.map((lead) => lead.lead_id) : [])
+    setSubmitError('')
+    setSubmitMessage('')
+  }
+
+  async function handleBulkReassign(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (selectedBulkLeads.length === 0) {
+      setSubmitError('Choose at least one stale queued lead first.')
+      return
+    }
+    if (!selectedUserId) {
+      setSubmitError('Choose a member to receive these leads.')
+      return
+    }
+    setSubmitError('')
+    setSubmitMessage('')
+    try {
+      const result = await bulkReassign.mutateAsync({
+        leadIds: selectedBulkLeads.map((lead) => lead.lead_id),
+        toUserId: Number(selectedUserId),
+        reason: reason.trim() || undefined,
+      })
+      setReason('')
+      setSelectedLeadIds([])
+      setSubmitMessage(result.message)
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Could not bulk reassign these leads right now.')
     }
   }
 
@@ -200,13 +269,28 @@ export function LeadControlPage({ title }: Props) {
           <section className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
             <Card className="surface-elevated overflow-hidden border-white/[0.08]">
               <CardHeader className="border-b border-white/[0.08] px-5 py-4">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <ArrowRightLeft className="size-4" />
-                  Reassignment Queue
-                </CardTitle>
-                <CardDescription>
-                  Leads leave this list as soon as admin manually reassigns them or the auto cycle moves them.
-                </CardDescription>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <ArrowRightLeft className="size-4" />
+                      Reassignment Queue
+                    </CardTitle>
+                    <CardDescription>
+                      Leads leave this list as soon as admin manually reassigns them or the auto cycle moves them.
+                    </CardDescription>
+                  </div>
+                  {queue.length > 0 ? (
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={selectedLeadIds.length === queue.length}
+                        onChange={(event) => toggleSelectAll(event.target.checked)}
+                        className="size-4 rounded border-white/[0.16] bg-background accent-primary"
+                      />
+                      Select all stale leads
+                    </label>
+                  ) : null}
+                </div>
               </CardHeader>
               <CardContent className="p-0">
                 {queue.length === 0 ? (
@@ -234,7 +318,19 @@ export function LeadControlPage({ title }: Props) {
                           }`}
                         >
                           <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div className="space-y-1">
+                            <div className="flex items-start gap-3">
+                              <input
+                                type="checkbox"
+                                checked={selectedLeadIds.includes(lead.lead_id)}
+                                onChange={(event) => {
+                                  event.stopPropagation()
+                                  toggleLeadSelection(lead.lead_id, event.target.checked)
+                                }}
+                                onClick={(event) => event.stopPropagation()}
+                                className="mt-1 size-4 rounded border-white/[0.16] bg-background accent-primary"
+                                aria-label={`Select ${lead.lead_name}`}
+                              />
+                              <div className="space-y-1">
                               <div className="flex flex-wrap items-center gap-2">
                                 <p className="font-medium text-foreground">{lead.lead_name}</p>
                                 <span className="rounded-full border border-white/[0.12] px-2 py-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">
@@ -250,6 +346,7 @@ export function LeadControlPage({ title }: Props) {
                               <p className="text-xs text-muted-foreground">
                                 {lead.phone || 'No phone on file'}
                               </p>
+                            </div>
                             </div>
                             <div className="space-y-1 text-right text-xs text-muted-foreground">
                               <p>Archived {formatHoursAgo(lead.archived_at)}</p>
@@ -268,50 +365,74 @@ export function LeadControlPage({ title }: Props) {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <UserCheck className="size-4" />
-                  Manual Reassignment
+                  {bulkMode ? 'Bulk Reassignment' : 'Manual Reassignment'}
                 </CardTitle>
                 <CardDescription>
-                  Owner remains unchanged. Only the current working assignee moves.
+                  Owner remains unchanged. Only the current working assignee moves, and only stale archived watch leads can leave this queue.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {selectedLead ? (
-                  <form className="space-y-4" onSubmit={(event) => void handleManualReassign(event)}>
-                    <div className="surface-inset space-y-2 rounded-xl p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
+                {bulkMode || selectedLead ? (
+                  <form className="space-y-4" onSubmit={(event) => void (bulkMode ? handleBulkReassign(event) : handleManualReassign(event))}>
+                    {bulkMode ? (
+                      <div className="surface-inset space-y-3 rounded-xl p-4">
                         <div>
-                          <p className="font-medium text-foreground">{selectedLead.lead_name}</p>
+                          <p className="font-medium text-foreground">{selectedBulkLeads.length} stale leads selected</p>
                           <p className="text-xs text-muted-foreground">
-                            {statusLabel(selectedLead.status)} · archived {formatDateTime(selectedLead.archived_at)}
+                            Bulk assign works only on this stale archived queue. Active leads are blocked in the API as well.
                           </p>
                         </div>
-                        <Button asChild size="sm" variant="secondary">
-                          <Link to={`/dashboard/work/leads/${selectedLead.lead_id}`}>Open lead</Link>
-                        </Button>
-                      </div>
-                      <div className="grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">
-                        <div>
-                          <p className="text-xs uppercase tracking-wide">Current assignee</p>
-                          <p className="mt-1 text-foreground">{selectedLead.assigned_to_name}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs uppercase tracking-wide">Owner</p>
-                          <p className="mt-1 text-foreground">{selectedLead.owner_name}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs uppercase tracking-wide">Watch completed</p>
-                          <p className="mt-1 text-foreground">{formatDateTime(selectedLead.watch_completed_at)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs uppercase tracking-wide">Phone</p>
-                          <p className="mt-1 text-foreground">{selectedLead.phone || 'No phone on file'}</p>
+                        <div className="max-h-48 space-y-2 overflow-y-auto pr-1">
+                          {selectedBulkLeads.map((lead) => (
+                            <div key={lead.lead_id} className="rounded-xl border border-white/[0.08] px-3 py-2 text-sm">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <p className="font-medium text-foreground">{lead.lead_name}</p>
+                                <span className="text-xs text-muted-foreground">{statusLabel(lead.status)}</span>
+                              </div>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {lead.assigned_to_name} · archived {formatDateTime(lead.archived_at)}
+                              </p>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                    </div>
+                    ) : selectedLead ? (
+                      <div className="surface-inset space-y-2 rounded-xl p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="font-medium text-foreground">{selectedLead.lead_name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {statusLabel(selectedLead.status)} · archived {formatDateTime(selectedLead.archived_at)}
+                            </p>
+                          </div>
+                          <Button asChild size="sm" variant="secondary">
+                            <Link to={`/dashboard/work/leads/${selectedLead.lead_id}`}>Open lead</Link>
+                          </Button>
+                        </div>
+                        <div className="grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">
+                          <div>
+                            <p className="text-xs uppercase tracking-wide">Current assignee</p>
+                            <p className="mt-1 text-foreground">{selectedLead.assigned_to_name}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase tracking-wide">Owner</p>
+                            <p className="mt-1 text-foreground">{selectedLead.owner_name}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase tracking-wide">Watch completed</p>
+                            <p className="mt-1 text-foreground">{formatDateTime(selectedLead.watch_completed_at)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase tracking-wide">Phone</p>
+                            <p className="mt-1 text-foreground">{selectedLead.phone || 'No phone on file'}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
 
                     <label className="block space-y-2">
                       <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Move lead to
+                        {bulkMode ? 'Move selected leads to' : 'Move lead to'}
                       </span>
                       <select
                         value={selectedUserId}
@@ -353,15 +474,21 @@ export function LeadControlPage({ title }: Props) {
 
                     <Button
                       type="submit"
-                      disabled={manualReassign.isPending || targetOptions.length === 0}
+                      disabled={manualReassign.isPending || bulkReassign.isPending || targetOptions.length === 0}
                     >
-                      {manualReassign.isPending ? 'Reassigning...' : 'Reassign lead'}
+                      {bulkMode
+                        ? bulkReassign.isPending
+                          ? 'Reassigning leads...'
+                          : `Reassign ${selectedBulkLeads.length} lead${selectedBulkLeads.length === 1 ? '' : 's'}`
+                        : manualReassign.isPending
+                          ? 'Reassigning...'
+                          : 'Reassign lead'}
                     </Button>
                   </form>
                 ) : (
                   <EmptyState
                     title="Choose a queued lead"
-                    description="Pick one lead from the left to manually move it to another approved member."
+                    description="Pick one lead from the left, or tick multiple stale leads to bulk move them to another approved member."
                   />
                 )}
               </CardContent>

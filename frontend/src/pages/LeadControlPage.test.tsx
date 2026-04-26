@@ -6,11 +6,14 @@ import { LeadControlPage } from '@/pages/LeadControlPage'
 
 const mockUseLeadControlQuery = vi.fn()
 const mockMutateAsync = vi.fn()
+const mockBulkMutateAsync = vi.fn()
 const mockUseLeadControlManualReassignMutation = vi.fn()
+const mockUseLeadControlBulkReassignMutation = vi.fn()
 
 vi.mock('@/hooks/use-lead-control-query', () => ({
   useLeadControlQuery: () => mockUseLeadControlQuery(),
   useLeadControlManualReassignMutation: () => mockUseLeadControlManualReassignMutation(),
+  useLeadControlBulkReassignMutation: () => mockUseLeadControlBulkReassignMutation(),
 }))
 
 vi.mock('@/hooks/use-leads-query', () => ({
@@ -96,6 +99,10 @@ describe('LeadControlPage', () => {
       mutateAsync: mockMutateAsync,
       isPending: false,
     })
+    mockUseLeadControlBulkReassignMutation.mockReturnValue({
+      mutateAsync: mockBulkMutateAsync,
+      isPending: false,
+    })
 
     render(
       <MemoryRouter>
@@ -165,6 +172,10 @@ describe('LeadControlPage', () => {
       mutateAsync: mockMutateAsync,
       isPending: false,
     })
+    mockUseLeadControlBulkReassignMutation.mockReturnValue({
+      mutateAsync: mockBulkMutateAsync,
+      isPending: false,
+    })
 
     render(
       <MemoryRouter>
@@ -182,6 +193,98 @@ describe('LeadControlPage', () => {
         leadId: 9,
         toUserId: 7,
         reason: 'Fresh follow-up needed.',
+      })
+    })
+  })
+
+  it('submits a bulk reassignment only from selected stale queue leads', async () => {
+    mockUseLeadControlQuery.mockReturnValue({
+      data: {
+        note: 'Admin-only control surface.',
+        queue_total: 2,
+        queue: [
+          {
+            lead_id: 9,
+            lead_name: 'Queued Watch Lead',
+            phone: '9777777777',
+            status: 'video_sent',
+            owner_user_id: 3,
+            owner_name: 'Team User',
+            assigned_to_user_id: 3,
+            assigned_to_name: 'Current Assignee',
+            archived_at: '2026-04-25T04:00:00Z',
+            watch_completed_at: '2026-04-24T04:00:00Z',
+            last_action_at: '2026-04-24T04:00:00Z',
+          },
+          {
+            lead_id: 10,
+            lead_name: 'Second Queued Watch Lead',
+            phone: '9888888888',
+            status: 'video_watched',
+            owner_user_id: 3,
+            owner_name: 'Team User',
+            assigned_to_user_id: 5,
+            assigned_to_name: 'Another Assignee',
+            archived_at: '2026-04-25T03:00:00Z',
+            watch_completed_at: '2026-04-24T03:00:00Z',
+            last_action_at: '2026-04-24T03:00:00Z',
+          },
+        ],
+        assignable_users: [
+          {
+            user_id: 7,
+            display_name: 'Fresh Team',
+            role: 'team',
+            fbo_id: 'fbo-team-007',
+            username: 'fresh_team',
+            active_leads_count: 6,
+            xp_total: 400,
+          },
+        ],
+        history_total: 0,
+        history_summary: [],
+        history: [],
+      },
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    })
+    mockUseLeadControlManualReassignMutation.mockReturnValue({
+      mutateAsync: mockMutateAsync,
+      isPending: false,
+    })
+    mockBulkMutateAsync.mockResolvedValue({
+      success: true,
+      message: '2 stale archived completed-watch lead(s) reassigned successfully. Owners stayed unchanged.',
+      reassigned_count: 2,
+      lead_ids: [9, 10],
+      assigned_to_user_id: 7,
+      assigned_to_name: 'Fresh Team',
+    })
+    mockUseLeadControlBulkReassignMutation.mockReturnValue({
+      mutateAsync: mockBulkMutateAsync,
+      isPending: false,
+    })
+
+    render(
+      <MemoryRouter>
+        <LeadControlPage title="Lead Control" />
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(screen.getByLabelText('Select Queued Watch Lead'))
+    fireEvent.click(screen.getByLabelText('Select Second Queued Watch Lead'))
+    fireEvent.change(screen.getByPlaceholderText('Why are you manually moving this lead?'), {
+      target: { value: 'Bulk cleanup.' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Reassign 2 leads' }))
+
+    await waitFor(() => {
+      expect(mockBulkMutateAsync).toHaveBeenCalledWith({
+        leadIds: [9, 10],
+        toUserId: 7,
+        reason: 'Bulk cleanup.',
       })
     })
   })

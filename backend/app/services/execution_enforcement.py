@@ -41,6 +41,7 @@ from app.schemas.execution_enforcement import (
     Day2ReviewSubmissionRow,
     LeakMapOut,
     LeadControlAssignableUser,
+    LeadControlBulkReassignOut,
     LeadControlHistoryRow,
     LeadControlHistorySummaryRow,
     LeadControlManualReassignOut,
@@ -844,6 +845,56 @@ async def _get_manual_assignable_users(
     return out
 
 
+async def _get_manual_reassignment_target_user(
+    session: AsyncSession,
+    *,
+    to_user_id: int,
+) -> User:
+    target_user = (
+        await session.execute(
+            select(User).where(
+                User.id == int(to_user_id),
+                User.role.in_(("leader", "team")),
+                User.registration_status == "approved",
+                User.removed_at.is_(None),
+                User.access_blocked.is_(False),
+            )
+        )
+    ).scalar_one_or_none()
+    if target_user is None:
+        raise ValueError("Select an active approved leader or team member")
+    return target_user
+
+
+async def _get_manual_reassignment_queue_leads(
+    session: AsyncSession,
+    *,
+    lead_ids: list[int],
+    stale_hours: int = _DEFAULT_WATCH_ARCHIVE_AFTER_HOURS,
+) -> list[Lead]:
+    unique_ids = sorted({int(lead_id) for lead_id in lead_ids if int(lead_id) > 0})
+    if not unique_ids:
+        raise ValueError("Choose at least one queued lead")
+    stale_cutoff = datetime.now(timezone.utc) - timedelta(hours=max(1, int(stale_hours)))
+    leads = (
+        await session.execute(
+            select(Lead)
+            .where(
+                Lead.id.in_(unique_ids),
+                _redistribution_eligible_filters(),
+                Lead.status.in_(tuple(_WATCH_PIPELINE_STATUSES)),
+                _completed_watch_exists(),
+                Lead.archived_at <= stale_cutoff,
+            )
+            .order_by(Lead.archived_at.asc(), Lead.id.asc())
+        )
+    ).scalars().all()
+    found_ids = {int(lead.id) for lead in leads}
+    if len(found_ids) != len(unique_ids):
+        raise ValueError("Only stale archived completed-watch leads can be reassigned here")
+    return leads
+
+
 async def auto_archive_completed_watch_leads(
     session: AsyncSession,
     *,
@@ -1455,55 +1506,24 @@ async def admin_manual_reassign_archived_completed_watch_lead(
     to_user_id: int,
     reason: str | None = None,
 ) -> LeadControlManualReassignOut:
-    lead = await session.get(Lead, int(lead_id))
-    if lead is None or lead.deleted_at is not None or lead.in_pool:
-        raise ValueError("Lead not found")
-    if lead.archived_at is None:
-        raise ValueError("Lead is not in the archived reassignment queue")
-    if lead.status not in _WATCH_PIPELINE_STATUSES:
-        raise ValueError("Only completed-watch archived leads can be reassigned here")
-    watch_completed = bool(
-        (
-            await session.execute(
-                select(func.count())
-                .select_from(EnrollShareLink)
-                .where(
-                    EnrollShareLink.lead_id == lead.id,
-                    EnrollShareLink.status_synced.is_(True),
-                )
-            )
-        ).scalar_one()
-        or 0
-    )
-    if not watch_completed:
-        raise ValueError("Lead has not completed the enrollment watch flow")
-
-    target_user = (
-        await session.execute(
-            select(User).where(
-                User.id == int(to_user_id),
-                User.role.in_(("leader", "team")),
-                User.registration_status == "approved",
-                User.removed_at.is_(None),
-                User.access_blocked.is_(False),
-            )
-        )
-    ).scalar_one_or_none()
-    if target_user is None:
-        raise ValueError("Select an active approved leader or team member")
-
+    leads = await _get_manual_reassignment_queue_leads(session, lead_ids=[lead_id])
+    target_user = await _get_manual_reassignment_target_user(session, to_user_id=to_user_id)
+    lead = leads[0]
     from_user_id = int(lead.assigned_to_user_id) if lead.assigned_to_user_id is not None else None
     if from_user_id == int(target_user.id):
         raise ValueError("Lead is already assigned to that member")
-
-    involved_user_ids = {int(target_user.id), int(admin_user_id)}
-    if from_user_id is not None:
-        involved_user_ids.add(from_user_id)
-    if lead.owner_user_id is not None:
-        involved_user_ids.add(int(lead.owner_user_id))
-    users_by_id = await _load_users_by_ids(session, involved_user_ids)
+    users_by_id = await _load_users_by_ids(
+        session,
+        {
+            int(target_user.id),
+            int(admin_user_id),
+            int(from_user_id) if from_user_id is not None else 0,
+            int(lead.owner_user_id) if lead.owner_user_id is not None else 0,
+        },
+    )
 
     now = datetime.now(timezone.utc)
+    reason_text = (reason or "").strip() or None
     lead.assigned_to_user_id = int(target_user.id)
     lead.archived_at = None
     lead.in_pool = False
@@ -1522,7 +1542,7 @@ async def admin_manual_reassign_archived_completed_watch_lead(
                 "owner_user_id": int(lead.owner_user_id) if lead.owner_user_id is not None else None,
                 "source_bucket": _STALE_WATCH_BUCKET,
                 "owner_preserved": True,
-                "reason": (reason or "").strip() or None,
+                "reason": reason_text,
                 "status": lead.status,
                 "manual": True,
             },
@@ -1556,6 +1576,78 @@ async def admin_manual_reassign_archived_completed_watch_lead(
             users_by_id.get(int(lead.owner_user_id)) if lead.owner_user_id is not None else None,
             lead.owner_user_id,
         ),
+    )
+
+
+async def admin_manual_bulk_reassign_archived_completed_watch_leads(
+    session: AsyncSession,
+    *,
+    admin_user_id: int,
+    lead_ids: list[int],
+    to_user_id: int,
+    reason: str | None = None,
+) -> LeadControlBulkReassignOut:
+    leads = await _get_manual_reassignment_queue_leads(session, lead_ids=lead_ids)
+    target_user = await _get_manual_reassignment_target_user(session, to_user_id=to_user_id)
+    target_user_id = int(target_user.id)
+
+    for lead in leads:
+        if lead.assigned_to_user_id is not None and int(lead.assigned_to_user_id) == target_user_id:
+            raise ValueError(f"Lead '{lead.name}' is already assigned to that member")
+
+    now = datetime.now(timezone.utc)
+    reason_text = (reason or "").strip() or None
+    moved_lead_ids: list[int] = []
+    for lead in leads:
+        from_user_id = int(lead.assigned_to_user_id) if lead.assigned_to_user_id is not None else None
+        lead.assigned_to_user_id = target_user_id
+        lead.archived_at = None
+        lead.in_pool = False
+        lead.last_action_at = now
+        moved_lead_ids.append(int(lead.id))
+        enqueue_lead_shadow_upsert(session, lead)
+        session.add(
+            ActivityLog(
+                user_id=int(admin_user_id),
+                action=_MANUAL_REASSIGNMENT_ACTION,
+                entity_type="lead",
+                entity_id=int(lead.id),
+                meta={
+                    "actor": "admin.manual_reassign_bulk",
+                    "previous_assignee_user_id": from_user_id,
+                    "assigned_to_user_id": target_user_id,
+                    "owner_user_id": int(lead.owner_user_id) if lead.owner_user_id is not None else None,
+                    "source_bucket": _STALE_WATCH_BUCKET,
+                    "owner_preserved": True,
+                    "reason": reason_text,
+                    "status": lead.status,
+                    "manual": True,
+                    "bulk": True,
+                },
+            )
+        )
+    await session.commit()
+    try:
+        await send_push_to_user(
+            session,
+            target_user_id,
+            title="Leads Reassigned",
+            body=f"{len(moved_lead_ids)} archived stale lead(s) have been moved into your Calling Board by admin.",
+            url="/dashboard/work/leads",
+        )
+    except Exception:  # noqa: BLE001
+        logger.exception("Failed to send manual bulk reassignment push for leads %s", moved_lead_ids)
+
+    return LeadControlBulkReassignOut(
+        success=True,
+        message=(
+            f"{len(moved_lead_ids)} stale archived completed-watch lead(s) reassigned successfully. "
+            "Owners stayed unchanged."
+        ),
+        reassigned_count=len(moved_lead_ids),
+        lead_ids=moved_lead_ids,
+        assigned_to_user_id=target_user_id,
+        assigned_to_name=_user_label(target_user),
     )
 
 
