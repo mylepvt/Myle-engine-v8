@@ -285,6 +285,8 @@ async def build_compliance_snapshots(
         for user in rows
         if (user.role or "").strip().lower() in _ELIGIBLE_ROLES
         and (user.registration_status or "").strip().lower() == "approved"
+        and not user.training_required
+        and (user.training_status or "").strip().lower() in {"completed", "not_required"}
     ]
 
     fresh_leads_by_day: dict[date, dict[int, int]] = {}
