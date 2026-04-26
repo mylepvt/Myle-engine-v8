@@ -136,6 +136,10 @@ class Lead(Base):
         DateTime(timezone=True),
         nullable=True,
     )
+    day3_entered_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
     # Workboard batch slots (M/A/E per day — leader/admin Day 1; team Day 2 per blueprint)
     d1_morning: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))

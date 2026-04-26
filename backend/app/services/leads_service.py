@@ -184,6 +184,7 @@ def _apply_status_side_effects(
 
     if new_status == "day3":
         lead.day3_completed_at = None
+        lead.day3_entered_at = now
     elif new_status == "converted" and previous_status in {"day3", "interview", "track_selected", "seat_hold"}:
         if lead.day3_completed_at is None:
             lead.day3_completed_at = now

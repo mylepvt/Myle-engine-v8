@@ -11,6 +11,10 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
+
 from app.api.deps import get_db
 from app.api.invoice_public import router as invoice_public_router
 from app.api.v1 import api_router
@@ -22,11 +26,44 @@ from app.middleware.access_log import AccessLogMiddleware
 from app.middleware.auth_rate_limit import AuthRateLimitMiddleware
 from app.middleware.request_id import RequestIdMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
+from app.services.scheduled_jobs import (
+    job_day3_auto_inactive,
+    job_enrollment_proof_alert,
+    job_weekly_compliance_digest,
+)
+
+_scheduler = AsyncIOScheduler(timezone="Asia/Kolkata")
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    # day3 → inactive: check every hour
+    _scheduler.add_job(
+        job_day3_auto_inactive,
+        IntervalTrigger(hours=1),
+        id="day3_auto_inactive",
+        replace_existing=True,
+        misfire_grace_time=300,
+    )
+    # enrollment proof pending > 2h: check every 30 min
+    _scheduler.add_job(
+        job_enrollment_proof_alert,
+        IntervalTrigger(minutes=30),
+        id="enrollment_proof_alert",
+        replace_existing=True,
+        misfire_grace_time=120,
+    )
+    # weekly compliance digest: every Monday at 09:00 IST
+    _scheduler.add_job(
+        job_weekly_compliance_digest,
+        CronTrigger(day_of_week="mon", hour=9, minute=0),
+        id="weekly_compliance_digest",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
+    _scheduler.start()
     yield
+    _scheduler.shutdown(wait=False)
     await engine.dispose()
 
 
