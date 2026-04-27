@@ -79,6 +79,14 @@ class Settings(BaseSettings):
         validation_alias="DISCIPLINE_ROLLOUT_START_DATE",
         description="Calendar date from which call/report discipline starts counting. Older activity is ignored.",
     )
+    discipline_warning_pause_until: Optional[date] = Field(
+        default=date(2026, 5, 4),
+        validation_alias="DISCIPLINE_WARNING_PAUSE_UNTIL",
+        description=(
+            "Exclusive calendar date until which inactivity warnings stay muted during development. "
+            "For example, 2026-05-04 keeps warnings off through 2026-05-03."
+        ),
+    )
     app_environment: str = Field(
         default="development",
         validation_alias="APP_ENV",

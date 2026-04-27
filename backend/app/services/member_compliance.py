@@ -56,6 +56,27 @@ def _normalize_user_ids(user_ids: Iterable[int]) -> list[int]:
     return sorted({int(uid) for uid in user_ids if uid is not None})
 
 
+def discipline_warnings_paused(today: date | None = None) -> bool:
+    pause_until = settings.discipline_warning_pause_until
+    if pause_until is None:
+        return False
+    current_day = today or today_ist()
+    return current_day < pause_until
+
+
+def discipline_warning_pause_note(today: date | None = None) -> str | None:
+    if not discipline_warnings_paused(today):
+        return None
+    pause_until = settings.discipline_warning_pause_until
+    if pause_until is None:
+        return None
+    muted_through = pause_until - timedelta(days=1)
+    return (
+        "Development pause active. "
+        f"Inactivity warnings are muted through {muted_through.isoformat()}."
+    )
+
+
 def _completed_business_days(today: date, *, count: int = _DISCIPLINE_WINDOW_DAYS) -> list[date]:
     return [today - timedelta(days=offset) for offset in range(1, count + 1)]
 
@@ -277,6 +298,8 @@ async def build_compliance_snapshots(
 
     today_date = today or today_ist()
     policy_start_date = settings.discipline_rollout_start_date
+    warnings_paused = discipline_warnings_paused(today_date)
+    pause_note = discipline_warning_pause_note(today_date)
     completed_days = _completed_business_days(today_date)
     call_target = await get_daily_call_target(session)
 
@@ -365,6 +388,13 @@ async def build_compliance_snapshots(
             snapshot.compliance_level = "removed"
             snapshot.compliance_title = "Removed from system"
             snapshot.compliance_summary = snapshot.removal_reason or "Access is blocked for this member."
+            snapshots[user.id] = snapshot
+            continue
+
+        if warnings_paused:
+            snapshot.compliance_level = "clear"
+            snapshot.compliance_title = "Clear"
+            snapshot.compliance_summary = pause_note or "No active discipline warning."
             snapshots[user.id] = snapshot
             continue
 
