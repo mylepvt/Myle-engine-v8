@@ -21,7 +21,12 @@ from app.services.live_metrics import (
     get_daily_call_target,
     pending_payment_proof_count,
 )
-from app.services.member_compliance import build_compliance_snapshots, count_submitted_reports_for_day
+from app.services.member_compliance import (
+    build_compliance_snapshots,
+    count_submitted_reports_for_day,
+    discipline_warning_pause_note,
+    discipline_warnings_paused,
+)
 from app.core.time_ist import today_ist
 
 
@@ -91,6 +96,8 @@ async def build_gate_assistant(session: AsyncSession, user: AuthUser) -> GateAss
     team_final_warning_count = 0
     team_removed_count = 0
     team_grace_count = 0
+    pause_note = discipline_warning_pause_note(today)
+    warnings_paused = discipline_warnings_paused(today)
 
     if user.role in {"team", "leader"}:
         member = await session.get(User, user.user_id)
@@ -104,24 +111,38 @@ async def build_gate_assistant(session: AsyncSession, user: AuthUser) -> GateAss
             False,
         )
         effective_call_target = daily_call_target if fresh_leads_today > 0 else 0
-        checklist = [
-            GateChecklistItem(
-                id="daily_call_target",
-                label=(
-                    f"{daily_call_target} fresh calls on today's leads ({calls_today}/{effective_call_target or daily_call_target})"
-                    if fresh_leads_today > 0
-                    else "Fresh-call gate starts after today's claim/import/add-lead"
+        if warnings_paused:
+            checklist = [
+                GateChecklistItem(
+                    id="daily_call_target",
+                    label="Fresh-call inactivity warning paused during development window",
+                    done=True,
                 ),
-                done=effective_call_target == 0 or calls_today >= effective_call_target,
-                href="work/leads",
-            ),
-            GateChecklistItem(
-                id="daily_report_submitted",
-                label="Submit today's daily report",
-                done=bool(report_submitted_today),
-                href="other/daily-report",
-            ),
-        ]
+                GateChecklistItem(
+                    id="daily_report_submitted",
+                    label="Daily-report inactivity warning paused during development window",
+                    done=True,
+                ),
+            ]
+        else:
+            checklist = [
+                GateChecklistItem(
+                    id="daily_call_target",
+                    label=(
+                        f"{daily_call_target} fresh calls on today's leads ({calls_today}/{effective_call_target or daily_call_target})"
+                        if fresh_leads_today > 0
+                        else "Fresh-call gate starts after today's claim/import/add-lead"
+                    ),
+                    done=effective_call_target == 0 or calls_today >= effective_call_target,
+                    href="work/leads",
+                ),
+                GateChecklistItem(
+                    id="daily_report_submitted",
+                    label="Submit today's daily report",
+                    done=bool(report_submitted_today),
+                    href="other/daily-report",
+                ),
+            ]
         if compliance is not None:
             compliance_level = compliance.compliance_level
             compliance_title = compliance.compliance_title
@@ -139,7 +160,17 @@ async def build_gate_assistant(session: AsyncSession, user: AuthUser) -> GateAss
             grace_request_pending = True
             grace_request_end_date = member.grace_request_end_date.isoformat()
             grace_request_reason = (member.grace_request_reason or "").strip() or None
-        if compliance_level == "final_warning":
+        if warnings_paused:
+            risk = "green"
+            next_action = pause_note or "Development pause active for inactivity warnings."
+            next_href = None
+            next_label = None
+            compliance_level = "clear"
+            compliance_title = "Clear"
+            compliance_summary = pause_note or "No active discipline warning."
+            calls_short_streak = 0
+            missing_report_streak = 0
+        elif compliance_level == "final_warning":
             risk = "red"
             next_action = compliance_summary or "Final warning active."
             next_href = "other/daily-report" if missing_report_streak >= calls_short_streak else "work/leads"
@@ -300,5 +331,5 @@ async def build_gate_assistant(session: AsyncSession, user: AuthUser) -> GateAss
         team_final_warning_count=team_final_warning_count,
         team_removed_count=team_removed_count,
         team_grace_count=team_grace_count,
-        note=None,
+        note=pause_note if user.role in {"team", "leader"} and warnings_paused else None,
     )
