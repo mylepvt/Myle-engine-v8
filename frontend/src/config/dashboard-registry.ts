@@ -95,6 +95,7 @@ export type FullUiSurface =
   | { kind: 'settings-org-tree' }
   | { kind: 'all-members' }
   | { kind: 'flp-rank' }
+  | { kind: 'dream-capture' }
   /** Loads `ShellStubPage` with a GET that returns `SystemStubResponse` (items + note). */
   | { kind: 'shell-api'; apiPath: string }
 
@@ -460,6 +461,14 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('team/flp-rank'),
     surface: 'full',
     ui: { kind: 'flp-rank' },
+  },
+  {
+    path: 'other/my-dream',
+    section: { id: 'other', label: 'Community' },
+    label: 'My Dream',
+    roles: routeRoles('other/my-dream'),
+    surface: 'full',
+    ui: { kind: 'dream-capture' },
   },
 ]
 

@@ -14,6 +14,7 @@ from app.api.v1 import (
     enroll,
     execution,
     finance_surfaces,
+    dreams,
     flp_rank,
     follow_ups,
     gate_assistant,
@@ -83,5 +84,6 @@ api_router.include_router(payments.router, prefix="/payments", tags=["payments"]
 api_router.include_router(wallet_enhanced.router, prefix="/wallet", tags=["wallet-enhanced"])
 api_router.include_router(crm_proxy.router, tags=["crm"])
 api_router.include_router(xp.router, prefix="/xp", tags=["xp"])
+api_router.include_router(dreams.router, prefix="/dreams", tags=["dreams"])
 api_router.include_router(flp_rank.router, prefix="/flp", tags=["flp"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
