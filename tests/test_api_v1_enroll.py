@@ -72,7 +72,7 @@ def _error_message(body: dict) -> str:
     return str(body)
 
 
-def test_send_enrollment_video_creates_expiring_secure_link_and_updates_lead(
+def test_send_enrollment_video_creates_secure_link_without_starting_expiry_until_open(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     asyncio.run(_clear_state())
@@ -90,8 +90,7 @@ def test_send_enrollment_video_creates_expiring_secure_link_and_updates_lead(
         assert body["delivery"]["channel"] == "whatsapp_stub"
         assert "wa.me" in (body["delivery"]["manual_share_url"] or "")
 
-        expires_at = datetime.fromisoformat(body["link"]["expires_at"].replace("Z", "+00:00"))
-        assert timedelta(minutes=29) <= (expires_at - datetime.now(timezone.utc)) <= timedelta(minutes=31)
+        assert body["link"]["expires_at"] is None
 
         async def _assert_db() -> None:
             factory = test_conftest.get_test_session_factory()
@@ -99,12 +98,11 @@ def test_send_enrollment_video_creates_expiring_secure_link_and_updates_lead(
                 lead = await session.get(Lead, 1)
                 assert lead is not None
                 assert lead.status == "video_sent"
-                assert lead.call_status == "video_sent"
+                assert lead.call_status == "not_called"
                 assert lead.whatsapp_sent_at is not None
                 link = (await session.execute(select(EnrollShareLink))).scalar_one()
                 assert link.youtube_url == "https://cdn.example.com/private/enrollment.mp4"
-                expiry = link.expires_at.replace(tzinfo=timezone.utc) if link.expires_at.tzinfo is None else link.expires_at
-                assert expiry > datetime.now(timezone.utc)
+                assert link.expires_at is None
 
         asyncio.run(_assert_db())
     finally:
@@ -128,6 +126,10 @@ def test_watch_link_requires_matching_phone_and_marks_completion_time(
         assert initial.status_code == 200
         assert initial.json()["access_granted"] is False
         assert initial.json()["masked_phone"].endswith("210")
+        expires_at = datetime.fromisoformat(initial.json()["expires_at"])
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        assert timedelta(minutes=49) <= (expires_at - datetime.now(timezone.utc)) <= timedelta(minutes=51)
 
         wrong = client.post(f"/api/v1/watch/{token}/unlock", json={"phone": "9999999999"})
         assert wrong.status_code == 403
@@ -150,7 +152,7 @@ def test_watch_link_requires_matching_phone_and_marks_completion_time(
                 lead = await session.get(Lead, 1)
                 assert lead is not None
                 assert lead.status == "video_sent"
-                assert lead.call_status == "video_sent"
+                assert lead.call_status == "not_called"
                 assert lead.last_action_at is not None
                 link = (await session.execute(select(EnrollShareLink))).scalar_one()
                 assert link.status_synced is True
@@ -162,7 +164,7 @@ def test_watch_link_requires_matching_phone_and_marks_completion_time(
         asyncio.run(_clear_state())
 
 
-def test_watch_link_expires_after_thirty_minutes(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_watch_link_expires_after_fifty_minutes(monkeypatch: pytest.MonkeyPatch) -> None:
     asyncio.run(_clear_state())
     asyncio.run(_seed_lead())
     asyncio.run(_set_app_setting("enrollment_video_source_url", "https://cdn.example.com/private/enrollment.mp4"))
@@ -172,6 +174,8 @@ def test_watch_link_expires_after_thirty_minutes(monkeypatch: pytest.MonkeyPatch
         send_res = client.post("/api/v1/enroll/send", json={"lead_id": 1})
         assert send_res.status_code == 201, send_res.text
         token = send_res.json()["link"]["token"]
+        initial = client.get(f"/api/v1/watch/{token}")
+        assert initial.status_code == 200
 
         async def _expire() -> None:
             factory = test_conftest.get_test_session_factory()

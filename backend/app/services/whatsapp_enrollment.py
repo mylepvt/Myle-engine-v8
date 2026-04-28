@@ -33,7 +33,7 @@ def build_secure_enrollment_message(*, lead_name: str, watch_url: str) -> str:
     return (
         f"Hi {first_name},\n"
         "Your private Myle enrollment room is ready.\n"
-        "This link is valid for 30 minutes and opens only with your registered number.\n\n"
+        "Your 50-minute private access window starts when you open this link, and it opens only with your registered number.\n\n"
         f"{watch_url}"
     )
 
@@ -51,7 +51,7 @@ async def send_enrollment_video_whatsapp(
     phone: str | None,
     lead_name: str,
     watch_url: str,
-    expires_at: datetime,
+    expires_at: datetime | None,
     title: str,
 ) -> dict[str, Any]:
     message = build_secure_enrollment_message(lead_name=lead_name, watch_url=watch_url)
@@ -74,7 +74,7 @@ async def send_enrollment_video_whatsapp(
         "phone": phone,
         "lead_name": lead_name,
         "watch_url": watch_url,
-        "expires_at": expires_at.isoformat(),
+        "expires_at": expires_at.isoformat() if expires_at else None,
         "title": title,
         "template": _DEFAULT_TEMPLATE,
         "message": message,

@@ -10,7 +10,7 @@ from urllib.parse import quote, unquote, urlparse, urlsplit, urlunsplit
 
 import jwt
 from fastapi import HTTPException, Request, Response
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
@@ -19,7 +19,7 @@ from app.models.app_setting import AppSetting
 from app.models.enroll_share_link import EnrollShareLink
 from app.models.lead import Lead
 
-ENROLL_LINK_TTL_MINUTES = 30
+ENROLL_LINK_TTL_MINUTES = 50
 ENROLL_WATCH_COOKIE = "myle_enroll_watch"
 
 _PHONE_DIGIT_RE = re.compile(r"\D")
@@ -184,6 +184,12 @@ def enrollment_expires_at(now: datetime | None = None) -> datetime:
     return anchor + timedelta(minutes=ENROLL_LINK_TTL_MINUTES)
 
 
+def resolve_effective_expiry(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    return ensure_utc_datetime(value)
+
+
 def ensure_utc_datetime(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
@@ -283,7 +289,25 @@ async def expire_active_links_for_lead(
         update(EnrollShareLink)
         .where(
             EnrollShareLink.lead_id == lead_id,
-            EnrollShareLink.expires_at > now,
+            or_(
+                EnrollShareLink.expires_at.is_(None),
+                EnrollShareLink.expires_at > now,
+            ),
         )
         .values(expires_at=now)
     )
+
+
+async def ensure_watch_timer_started(
+    session: AsyncSession,
+    *,
+    link: EnrollShareLink,
+    now: datetime | None = None,
+) -> EnrollShareLink:
+    if link.expires_at is not None:
+        return link
+    started_at = now or datetime.now(timezone.utc)
+    link.expires_at = enrollment_expires_at(started_at)
+    await session.commit()
+    await session.refresh(link)
+    return link

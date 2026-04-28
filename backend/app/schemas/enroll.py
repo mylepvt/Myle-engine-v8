@@ -24,16 +24,18 @@ class EnrollShareLinkPublic(BaseModel):
     last_viewed_at: Optional[datetime]
     status_synced: bool
     created_at: datetime
-    expires_at: datetime
+    expires_at: Optional[datetime]
     share_url: str = ""
     is_expired: bool = False
 
     @model_validator(mode="after")
     def set_share_url(self) -> "EnrollShareLinkPublic":
-        expiry = self.expires_at.replace(tzinfo=timezone.utc) if self.expires_at.tzinfo is None else self.expires_at.astimezone(timezone.utc)
-        self.expires_at = expiry
+        expiry = None
+        if self.expires_at is not None:
+            expiry = self.expires_at.replace(tzinfo=timezone.utc) if self.expires_at.tzinfo is None else self.expires_at.astimezone(timezone.utc)
+            self.expires_at = expiry
         self.share_url = f"/watch/{self.token}"
-        self.is_expired = expiry <= datetime.now(timezone.utc)
+        self.is_expired = bool(expiry and expiry <= datetime.now(timezone.utc))
         return self
 
 
@@ -65,7 +67,7 @@ class WatchPageData(BaseModel):
     title: str
     lead_name: str  # first name only for privacy
     masked_phone: str
-    expires_at: datetime
+    expires_at: Optional[datetime]
     access_granted: bool
     stream_url: Optional[str] = None
     watch_started: bool = False
