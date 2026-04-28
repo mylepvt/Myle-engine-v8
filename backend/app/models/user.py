@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, func, text
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -129,3 +129,17 @@ class User(Base):
     # Season tracking — which year/month this user's xp_total belongs to (migration 0032)
     xp_season_year: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     xp_season_month: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    # FLP rank & CC tracking (migration 0045)
+    # Ranks: none | preferred_customer | fbo | assistant_supervisor | supervisor | assistant_manager | manager
+    flp_rank: Mapped[str] = mapped_column(
+        String(32), nullable=False, server_default=text("'none'"), default="none"
+    )
+    # Running cumulative personal CC total (used for rank threshold checks)
+    flp_cumulative_cc: Mapped[float] = mapped_column(
+        Float, nullable=False, server_default=text("0"), default=0.0
+    )
+    # YYYY-MM of first qualifying active month (for AS 2-consecutive-months rule)
+    flp_active_month_1: Mapped[Optional[str]] = mapped_column(String(7), nullable=True)
+    # YYYY-MM of second consecutive active month (both set = AS qualified)
+    flp_active_month_2: Mapped[Optional[str]] = mapped_column(String(7), nullable=True)
