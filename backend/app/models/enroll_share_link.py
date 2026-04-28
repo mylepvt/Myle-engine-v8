@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func, text
@@ -50,6 +50,6 @@ class EnrollShareLink(Base):
     )
     expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        nullable=False,
-        default=lambda: datetime.now(timezone.utc) + timedelta(minutes=30),
+        nullable=True,
+        default=None,
     )

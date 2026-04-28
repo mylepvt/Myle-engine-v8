@@ -14,7 +14,7 @@ export type EnrollShareLink = {
   last_viewed_at: string | null
   status_synced: boolean
   created_at: string
-  expires_at: string
+  expires_at: string | null
   share_url: string
   is_expired: boolean
 }

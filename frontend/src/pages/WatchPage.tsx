@@ -11,7 +11,7 @@ type WatchPageData = {
   title: string
   lead_name: string
   masked_phone: string
-  expires_at: string
+  expires_at: string | null
   access_granted: boolean
   stream_url: string | null
   watch_started: boolean
@@ -39,7 +39,8 @@ function resolveWish(date: Date): string {
   return 'Good night'
 }
 
-function formatRemaining(expiresAt: string, nowMs: number): string {
+function formatRemaining(expiresAt: string | null, nowMs: number): string {
+  if (!expiresAt) return '50m starts when this room opens'
   const diff = new Date(expiresAt).getTime() - nowMs
   if (diff <= 0) return 'Expired'
   const totalSeconds = Math.ceil(diff / 1000)

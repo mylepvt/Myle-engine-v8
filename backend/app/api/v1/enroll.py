@@ -32,6 +32,7 @@ from app.services.enrollment_video import (
     absolute_video_source_url,
     build_enrollment_stream_source_candidates,
     clear_watch_cookie,
+    ensure_watch_timer_started,
     enrollment_expires_at,
     ensure_utc_datetime,
     expire_active_links_for_lead,
@@ -141,7 +142,6 @@ async def _prepare_share_link(
         created_by_user_id=user.user_id,
         youtube_url=source_url,
         title=title,
-        expires_at=enrollment_expires_at(now),
     )
     session.add(link)
     return link
@@ -159,7 +159,8 @@ async def _get_watch_link_and_lead(
     ).scalar_one_or_none()
     if link is None:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Link not found")
-    if ensure_utc_datetime(link.expires_at) <= datetime.now(timezone.utc):
+    expiry = ensure_utc_datetime(link.expires_at) if link.expires_at is not None else None
+    if expiry is not None and expiry <= datetime.now(timezone.utc):
         raise HTTPException(status_code=http_status.HTTP_410_GONE, detail="This private video link has expired.")
     lead = await session.get(Lead, link.lead_id)
     if lead is None or lead.deleted_at is not None:
@@ -306,6 +307,7 @@ async def watch_video(
     except HTTPException:
         clear_watch_cookie(response)
         raise
+    link = await ensure_watch_timer_started(session, link=link)
     access_granted = has_watch_access(request, link=link, lead=lead)
     if not access_granted:
         clear_watch_cookie(response)
@@ -327,6 +329,7 @@ async def unlock_watch_video(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> WatchPageData:
     link, lead = await _get_watch_link_and_lead(session, token)
+    link = await ensure_watch_timer_started(session, link=link)
     expected_phone = normalize_phone_for_match(lead.phone)
     provided_phone = normalize_phone_for_match(body.phone)
     if expected_phone is None or provided_phone != expected_phone:
