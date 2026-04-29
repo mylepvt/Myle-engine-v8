@@ -328,7 +328,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                 <DeskShortcut
                   to="/dashboard/team/enrollment-approvals"
                   title="Enroll approvals"
-                  description="Review payment proofs and keep the funnel moving."
+                  description="Review FLP invoices and keep the funnel moving."
                   icon={<ClipboardCheck className="size-4" />}
                   badge={enrollmentPending.data?.total ?? 0}
                 />

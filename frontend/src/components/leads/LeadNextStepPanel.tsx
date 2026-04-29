@@ -50,17 +50,17 @@ export function LeadNextStepPanel({ lead, className }: Props) {
   function paidGateCopy(): string {
     if (role === 'admin') {
       if (lead.paymentStatus === 'proof_uploaded') {
-        return 'Enroll proof review me hai. Approvals se approve hote hi Paid unlock ho jayega.'
+        return 'FLP invoice review me hai. Approvals se approve hote hi Paid unlock ho jayega.'
       }
-      return 'Enroll proof leader ya team work/leads flow se upload hota hai. Approval ke baad hi Paid move sahi chalega.'
+      return 'FLP invoice leader ya team work/leads flow se upload hota hai. Approval ke baad hi Paid move sahi chalega.'
     }
     if (lead.paymentStatus === 'proof_uploaded') {
-      return 'Enroll proof review me hai. Admin approval ke baad Paid unlock ho jayega.'
+      return 'FLP invoice review me hai. Admin approval ke baad Paid unlock ho jayega.'
     }
     if (lead.paymentStatus === 'rejected') {
-      return `Enroll proof reject ho gaya hai. Naya screenshot ${workLeadsLabel} se upload karo.`
+      return `FLP invoice reject ho gayi hai. Naya invoice ${workLeadsLabel} se upload karo.`
     }
-    return `Enroll proof pehle ${workLeadsLabel} se upload karo. Admin approval ke baad Paid unlock hoga.`
+    return `FLP invoice pehle ${workLeadsLabel} se upload karo. Admin approval ke baad Paid unlock hoga.`
   }
 
   async function runTransition(target: string) {

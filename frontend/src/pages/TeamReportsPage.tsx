@@ -139,7 +139,7 @@ const TILES: { key: keyof TeamReportsLiveSummary; label: string; color: string }
   { key: 'enrolled_today', label: 'Proof uploaded (day)', color: 'text-amber-400' },
   {
     key: 'payment_proofs_approved_today',
-    label: 'Enroll proof approved (day)',
+    label: 'FLP invoice approved (day)',
     color: 'text-teal-400',
   },
   { key: 'day1_total', label: 'In Day 1', color: 'text-sky-400' },

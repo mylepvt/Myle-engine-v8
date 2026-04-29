@@ -385,11 +385,11 @@ export function CtcsLeadCard({
             >
               <MoreHorizontal className="size-3" aria-hidden />
             </button>
-            {/* Enroll proof upload */}
+            {/* FLP invoice upload */}
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,application/pdf"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0]
@@ -400,14 +400,14 @@ export function CtcsLeadCard({
             {showProofControl ? (
               proofApproved ? (
                 <span
-                  title="Proof approved"
+                  title="Invoice approved"
                   className="flex size-8 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-400/12 text-emerald-300"
                 >
                   <CheckCircle2 className="size-3.5" />
                 </span>
               ) : proofPending ? (
                 <span
-                  title="Proof pending review"
+                  title="Invoice pending review"
                   className="flex size-8 items-center justify-center rounded-full border border-sky-400/30 bg-sky-400/12 text-sky-300"
                 >
                   <CheckCircle2 className="size-3.5" />
@@ -415,7 +415,7 @@ export function CtcsLeadCard({
               ) : mayUploadProof ? (
                 <button
                   type="button"
-                  title={uploading ? 'Uploading…' : uploadError ? `Retry — ${uploadError}` : 'Upload Enroll proof'}
+                  title={uploading ? 'Uploading…' : uploadError ? `Retry — ${uploadError}` : 'Upload FLP invoice'}
                   disabled={uploading}
                   onClick={() => fileInputRef.current?.click()}
                   className={cn(

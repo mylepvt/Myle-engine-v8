@@ -383,11 +383,11 @@ const LeadCard = memo(function LeadCard({
                 ) : null}
               </>
             ) : null}
-            {/* Enroll proof upload */}
+            {/* FLP invoice upload */}
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,application/pdf"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0]
@@ -397,17 +397,17 @@ const LeadCard = memo(function LeadCard({
             />
             {showProofControl ? (
               proofApproved ? (
-                <span title="Proof approved" className="flex h-10 w-10 items-center justify-center rounded-lg border border-emerald-400/30 bg-emerald-400/12 text-emerald-300">
+                <span title="Invoice approved" className="flex h-10 w-10 items-center justify-center rounded-lg border border-emerald-400/30 bg-emerald-400/12 text-emerald-300">
                   <CheckCircle2 className="h-3.5 w-3.5" />
                 </span>
               ) : proofPending ? (
-                <span title="Proof pending review" className="flex h-10 w-10 items-center justify-center rounded-lg border border-sky-400/30 bg-sky-400/12 text-sky-300">
+                <span title="Invoice pending review" className="flex h-10 w-10 items-center justify-center rounded-lg border border-sky-400/30 bg-sky-400/12 text-sky-300">
                   <CheckCircle2 className="h-3.5 w-3.5" />
                 </span>
               ) : mayUploadProof ? (
                 <button
                   type="button"
-                  title={uploading ? 'Uploading…' : uploadError ? `Retry — ${uploadError}` : 'Upload Enroll proof'}
+                  title={uploading ? 'Uploading…' : uploadError ? `Retry — ${uploadError}` : 'Upload FLP invoice'}
                   disabled={uploading}
                   onClick={() => fileInputRef.current?.click()}
                   className={cn(

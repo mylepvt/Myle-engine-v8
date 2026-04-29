@@ -78,7 +78,7 @@ function PaymentStatusBadge({ status }: { status: string }) {
   }
   const labels: Record<string, string> = {
     pending: 'Pending',
-    proof_uploaded: 'Proof Uploaded',
+    proof_uploaded: 'Invoice Uploaded',
     approved: 'Approved ✓',
     rejected: 'Rejected',
   }
@@ -783,7 +783,7 @@ export function LeadDetailPage({ leadId }: Props) {
                     <p className="text-xs text-muted-foreground leading-relaxed">
                       {surfaceRole === 'team' ? (
                         <>
-                          Enroll proof upload sirf{' '}
+                          FLP invoice upload sirf{' '}
                           <Link
                             to="/dashboard/work/leads"
                             className="font-medium text-primary underline-offset-2 hover:underline"
@@ -794,7 +794,7 @@ export function LeadDetailPage({ leadId }: Props) {
                         </>
                       ) : surfaceRole === 'leader' ? (
                         <>
-                          Enroll proof upload sirf{' '}
+                          FLP invoice upload sirf{' '}
                           <Link
                             to="/dashboard/work/leads"
                             className="font-medium text-primary underline-offset-2 hover:underline"
@@ -805,7 +805,7 @@ export function LeadDetailPage({ leadId }: Props) {
                         </>
                       ) : (
                         <>
-                          Enroll proof leader ya team work/leads flow se upload karte hain; admin yahan se sirf status dekh
+                          FLP invoice leader ya team work/leads flow se upload karte hain; admin yahan se sirf status dekh
                           ya{' '}
                           <Link
                             to="/dashboard/team/enrollment-approvals"

@@ -686,8 +686,8 @@ export function DashboardLayout() {
             <p className="min-w-0 text-sm text-amber-950 dark:text-amber-50">
               <span className="font-semibold">New Enroll approval request</span>
               {enrollmentAlert.delta === 1
-                ? ' — 1 payment proof needs review.'
-                : ` — ${enrollmentAlert.delta} payment proofs need review.`}
+                ? ' — 1 FLP invoice needs review.'
+                : ` — ${enrollmentAlert.delta} FLP invoices need review.`}
             </p>
             <div className="flex shrink-0 items-center gap-2">
               <Link
