@@ -39,6 +39,5 @@
   "finance/recharge-request": ["admin", "leader", "team"],
   "finance/recharge-admin": ["admin"],
   "analytics": ["admin", "leader", "team"],
-  "team/flp-rank": ["admin", "leader", "team"],
-  "other/my-dream": ["admin", "leader", "team"]
+  "team/flp-rank": ["admin", "leader", "team"]
 }

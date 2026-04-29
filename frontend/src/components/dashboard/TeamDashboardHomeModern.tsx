@@ -9,7 +9,6 @@ import {
   Video,
 } from 'lucide-react'
 
-import { DreamCard } from '@/components/dashboard/DreamCard'
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
 import { XpBadge } from '@/components/xp/XpBadge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -258,8 +257,6 @@ export function TeamDashboardHomeModern({
           ) : null}
         </div>
       </section>
-
-      <DreamCard />
 
       <XpBadge />
 

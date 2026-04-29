@@ -48,7 +48,6 @@ import { SettingsOrgTreePage } from '@/pages/SettingsOrgTreePage'
 import { AllMembersPage } from '@/pages/AllMembersPage'
 import { AdminInvoicesPage } from '@/pages/AdminInvoicesPage'
 import { FLPRankPage } from '@/pages/FLPRankPage'
-import { DreamCapturePage } from '@/pages/DreamCapturePage'
 
 function renderFullUi(ui: FullUiSurface, title: string) {
   switch (ui.kind) {
@@ -124,8 +123,6 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <AllMembersPage title={title} />
     case 'flp-rank':
       return <FLPRankPage title={title} />
-    case 'dream-capture':
-      return <DreamCapturePage title={title} />
     case 'shell-api':
       return <ShellStubPage title={title} apiPath={ui.apiPath} />
     default: {
