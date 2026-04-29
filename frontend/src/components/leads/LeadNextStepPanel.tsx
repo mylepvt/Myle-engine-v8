@@ -50,17 +50,17 @@ export function LeadNextStepPanel({ lead, className }: Props) {
   function paidGateCopy(): string {
     if (role === 'admin') {
       if (lead.paymentStatus === 'proof_uploaded') {
-        return '₹196 proof review me hai. Approvals se approve hote hi Paid unlock ho jayega.'
+        return 'Enroll proof review me hai. Approvals se approve hote hi Paid unlock ho jayega.'
       }
-      return '₹196 proof leader ya team work/leads flow se upload hota hai. Approval ke baad hi Paid move sahi chalega.'
+      return 'Enroll proof leader ya team work/leads flow se upload hota hai. Approval ke baad hi Paid move sahi chalega.'
     }
     if (lead.paymentStatus === 'proof_uploaded') {
-      return '₹196 proof review me hai. Admin approval ke baad Paid unlock ho jayega.'
+      return 'Enroll proof review me hai. Admin approval ke baad Paid unlock ho jayega.'
     }
     if (lead.paymentStatus === 'rejected') {
-      return `₹196 proof reject ho gaya hai. Naya screenshot ${workLeadsLabel} se upload karo.`
+      return `Enroll proof reject ho gaya hai. Naya screenshot ${workLeadsLabel} se upload karo.`
     }
-    return `₹196 proof pehle ${workLeadsLabel} se upload karo. Admin approval ke baad Paid unlock hoga.`
+    return `Enroll proof pehle ${workLeadsLabel} se upload karo. Admin approval ke baad Paid unlock hoga.`
   }
 
   async function runTransition(target: string) {
@@ -147,7 +147,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
               to="/dashboard/team/enrollment-approvals"
               className="mt-2 inline-flex font-semibold text-primary underline-offset-2 hover:underline"
             >
-              Open ₹196 Approvals
+              Open Enroll Approvals
             </Link>
           )}
         </div>

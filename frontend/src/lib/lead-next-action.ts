@@ -75,7 +75,7 @@ export function primaryActionLabel(targetSlug: string): string {
     invited: 'Mark invited',
     video_sent: 'Send video (WhatsApp) → mark sent',
     video_watched: 'Mark video watched',
-    paid: 'Mark paid ₹196',
+    paid: 'Mark paid Enroll',
     mindset_lock: 'Start mindset lock',
     day1: 'Move to Day 1',
     day2: 'Move to Day 2',

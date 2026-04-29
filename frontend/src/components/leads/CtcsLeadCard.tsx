@@ -385,7 +385,7 @@ export function CtcsLeadCard({
             >
               <MoreHorizontal className="size-3" aria-hidden />
             </button>
-            {/* ₹196 proof upload */}
+            {/* Enroll proof upload */}
             <input
               ref={fileInputRef}
               type="file"
@@ -415,7 +415,7 @@ export function CtcsLeadCard({
               ) : mayUploadProof ? (
                 <button
                   type="button"
-                  title={uploading ? 'Uploading…' : uploadError ? `Retry — ${uploadError}` : 'Upload ₹196 proof'}
+                  title={uploading ? 'Uploading…' : uploadError ? `Retry — ${uploadError}` : 'Upload Enroll proof'}
                   disabled={uploading}
                   onClick={() => fileInputRef.current?.click()}
                   className={cn(

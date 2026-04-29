@@ -593,7 +593,7 @@ export function DashboardLayout() {
                 <Link
                   to="/dashboard/team/enrollment-approvals"
                   className="relative flex size-10 items-center justify-center rounded-full transition-colors duration-200 hover:bg-muted active:opacity-80"
-                  aria-label={`₹196 approvals — ${pendingEnrollCount} pending`}
+                  aria-label={`Enroll approvals — ${pendingEnrollCount} pending`}
                 >
                   <ClipboardCheck className="size-[1.15rem] md:size-[1.25rem] text-emerald-400" />
                 </Link>
@@ -684,7 +684,7 @@ export function DashboardLayout() {
             className="flex shrink-0 items-center justify-between gap-3 border-b border-amber-500/35 bg-amber-500/10 px-3 py-2.5 text-amber-950 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-50"
           >
             <p className="min-w-0 text-sm text-amber-950 dark:text-amber-50">
-              <span className="font-semibold">New ₹196 approval request</span>
+              <span className="font-semibold">New Enroll approval request</span>
               {enrollmentAlert.delta === 1
                 ? ' — 1 payment proof needs review.'
                 : ` — ${enrollmentAlert.delta} payment proofs need review.`}

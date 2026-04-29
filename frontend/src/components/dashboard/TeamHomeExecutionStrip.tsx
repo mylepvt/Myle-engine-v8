@@ -91,7 +91,7 @@ export function TeamHomeExecutionStrip({
                 <p className="mt-0.5 text-xs text-muted-foreground">{pct(data.pct_proof_vs_video)} of video</p>
               </div>
               <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3">
-                <p className="text-ds-caption text-muted-foreground">Paid ₹196</p>
+                <p className="text-ds-caption text-muted-foreground">Paid Enroll</p>
                 <p className="mt-1 font-heading text-2xl font-semibold tabular-nums">{data.paid_196}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">{pct(data.pct_enrolled_vs_claimed)} of claimed</p>
               </div>

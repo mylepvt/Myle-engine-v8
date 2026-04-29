@@ -39,7 +39,7 @@ export type TeamReportsLiveSummary = {
   leads_claimed_today: number
   calls_made_today: number
   enrolled_today: number
-  /** ₹196 payment proofs approved today (Asia/Kolkata calendar day). */
+  /** Enroll payment proofs approved today (Asia/Kolkata calendar day). */
   payment_proofs_approved_today: number
   day1_total: number
   day2_total: number

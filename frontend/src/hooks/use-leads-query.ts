@@ -41,7 +41,7 @@ export const LEAD_STATUS_OPTIONS: { value: LeadStatus; label: string }[] = [
   { value: 'whatsapp_sent',  label: 'WhatsApp Sent' },
   { value: 'video_sent',     label: 'Sent Enroll Video' },
   { value: 'video_watched',  label: 'Video Watched' },
-  { value: 'paid',           label: 'Paid ₹196' },
+  { value: 'paid',           label: 'Paid Enroll' },
   { value: 'mindset_lock',   label: 'Mindset Lock' },
   { value: 'day1',           label: 'Day 1' },
   { value: 'day2',           label: 'Day 2' },

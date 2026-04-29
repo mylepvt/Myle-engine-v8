@@ -783,7 +783,7 @@ export function LeadDetailPage({ leadId }: Props) {
                     <p className="text-xs text-muted-foreground leading-relaxed">
                       {surfaceRole === 'team' ? (
                         <>
-                          ₹196 proof upload sirf{' '}
+                          Enroll proof upload sirf{' '}
                           <Link
                             to="/dashboard/work/leads"
                             className="font-medium text-primary underline-offset-2 hover:underline"
@@ -794,7 +794,7 @@ export function LeadDetailPage({ leadId }: Props) {
                         </>
                       ) : surfaceRole === 'leader' ? (
                         <>
-                          ₹196 proof upload sirf{' '}
+                          Enroll proof upload sirf{' '}
                           <Link
                             to="/dashboard/work/leads"
                             className="font-medium text-primary underline-offset-2 hover:underline"
@@ -805,7 +805,7 @@ export function LeadDetailPage({ leadId }: Props) {
                         </>
                       ) : (
                         <>
-                          ₹196 proof leader ya team work/leads flow se upload karte hain; admin yahan se sirf status dekh
+                          Enroll proof leader ya team work/leads flow se upload karte hain; admin yahan se sirf status dekh
                           ya{' '}
                           <Link
                             to="/dashboard/team/enrollment-approvals"

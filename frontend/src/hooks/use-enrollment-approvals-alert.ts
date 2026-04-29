@@ -6,7 +6,7 @@ function isEnrollmentApprovalsPath(pathname: string): boolean {
 }
 
 /**
- * When pending ₹196 count increases while the user is not on the approvals page,
+ * When pending Enroll count increases while the user is not on the approvals page,
  * surfaces an in-app banner. Optionally fires `Notification` if permission is already granted.
  */
 export function useEnrollmentApprovalsAlertBanner(
@@ -36,7 +36,7 @@ export function useEnrollmentApprovalsAlertBanner(
         setOpen(true)
         if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
           try {
-            new Notification('Myle — ₹196 approvals', {
+            new Notification('Myle — Enroll approvals', {
               body:
                 d === 1
                   ? '1 new payment proof needs review.'
