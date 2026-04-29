@@ -1,4 +1,4 @@
-import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react'
+import { type FormEvent, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import {
   CheckCircle2,
@@ -123,13 +123,13 @@ export function BatchWatchPage() {
   const [videoFile, setVideoFile] = useState<File | null>(null)
   const [notesText, setNotesText] = useState('')
 
-  const loadPayload = async () => {
+  const loadPayload = useCallback(async () => {
     if (!slot || !version || !token) return
     const res = await fetch(apiUrl(`/api/v1/watch/batch/${slot}/${version}/payload?token=${encodeURIComponent(token)}`))
     if (!res.ok) throw new Error(await readJsonError(res))
     const payload = (await res.json()) as BatchWatchData
     setData(payload)
-  }
+  }, [slot, version, token])
 
   useEffect(() => {
     if (!slot || !version || !token) {
@@ -148,7 +148,7 @@ export function BatchWatchPage() {
         setError(err instanceof Error ? err.message : 'Could not open this batch page.')
         setLoading(false)
       })
-  }, [slot, token, version])
+  }, [slot, token, version, loadPayload])
 
   const playerEmbedUrl = useMemo(
     () => buildEmbeddableVideoUrl(toAbsoluteUrl(data?.youtube_url), data?.video_id),
