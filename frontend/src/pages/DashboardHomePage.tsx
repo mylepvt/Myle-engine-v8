@@ -315,7 +315,7 @@ export function DashboardHomePage() {
                   <CardContent className="pt-5 pb-5">
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
-                        Today&apos;s ₹196 approvals
+                        Today&apos;s Enroll approvals
                       </p>
                       <ClipboardCheck className="size-5 shrink-0 text-emerald-400" aria-hidden />
                     </div>

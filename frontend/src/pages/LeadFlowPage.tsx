@@ -77,7 +77,7 @@ export function LeadFlowPage({ title }: Props) {
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
           After <span className="font-medium text-foreground">Video Watched</span>, the team uploads payment proof,
-          admin approves it, and only then the lead may enter <span className="font-medium text-foreground">Paid ₹196</span>.
+          admin approves it, and only then the lead may enter <span className="font-medium text-foreground">Paid Enroll</span>.
           Post-day-3 execution continues through <span className="font-medium text-foreground">Interview</span>,{' '}
           <span className="font-medium text-foreground">Track Selected</span>, and{' '}
           <span className="font-medium text-foreground">Seat Hold</span> before conversion.

@@ -235,9 +235,9 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
   {
     path: 'team/enrollment-approvals',
     section: { id: 'team', label: 'Team' },
-    label: '₹196 Approvals',
+    label: 'Enroll Approvals',
     labelByRole: {
-      admin: '₹196 Approvals (all teams)',
+      admin: 'Enroll Approvals (all teams)',
     },
     roles: routeRoles('team/enrollment-approvals'),
     surface: 'full',

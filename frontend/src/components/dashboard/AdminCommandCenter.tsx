@@ -287,7 +287,7 @@ export function AdminCommandCenter({ firstName }: Props) {
               hint="Self-serve signups waiting for admin approval."
             />
             <StatCard
-              label="₹196 Approvals"
+              label="Enroll Approvals"
               value={enrollmentPending.data?.total ?? 0}
               hint="Payment proofs pending review right now."
             />
@@ -327,7 +327,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                 />
                 <DeskShortcut
                   to="/dashboard/team/enrollment-approvals"
-                  title="₹196 approvals"
+                  title="Enroll approvals"
                   description="Review payment proofs and keep the funnel moving."
                   icon={<ClipboardCheck className="size-4" />}
                   badge={enrollmentPending.data?.total ?? 0}

@@ -43,8 +43,8 @@ export function EnrollmentApprovalsPage({ title }: Props) {
       <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
       <p className="text-sm text-muted-foreground">
         {isAdmin
-          ? 'Pending ₹196 payment proofs from every leader and team member appear here for approval.'
-          : 'Review pending ₹196 payment proofs for your downline. Admin approves or rejects them here.'}
+          ? 'Pending Enroll payment proofs from every leader and team member appear here for approval.'
+          : 'Review pending Enroll payment proofs for your downline. Admin approves or rejects them here.'}
       </p>
 
       {isPending ? (
@@ -168,7 +168,7 @@ export function EnrollmentApprovalsPage({ title }: Props) {
           <div>
             <h2 className="text-sm font-semibold text-foreground">Proof History</h2>
             <p className="text-xs text-muted-foreground">
-              Calendar-wise approvals and rejections for ₹196 payment proofs.
+              Calendar-wise approvals and rejections for Enroll payment proofs.
             </p>
           </div>
           <div className="min-w-[11rem]">
