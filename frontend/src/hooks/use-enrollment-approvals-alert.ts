@@ -39,8 +39,8 @@ export function useEnrollmentApprovalsAlertBanner(
             new Notification('Myle — Enroll approvals', {
               body:
                 d === 1
-                  ? '1 new payment proof needs review.'
-                  : `${d} new payment proofs need review.`,
+                  ? '1 new FLP invoice needs review.'
+                  : `${d} new FLP invoices need review.`,
             })
           } catch {
             /* ignore */
