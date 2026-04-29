@@ -23,9 +23,6 @@ from app.models.training_test_attempt import TrainingTestAttempt
 from app.models.lead_note import LeadNote
 from app.models.training_day_note import TrainingDayNote
 from app.models.user_presence_session import UserPresenceSession
-from app.models.flp_cc_entry import FLPCCEntry
-from app.models.flp_monthly_cc import FLPMonthlyCC
-from app.models.dream_entry import DreamEntry
 
 __all__ = [
     "Announcement",
@@ -53,7 +50,4 @@ __all__ = [
     "LeadNote",
     "TrainingDayNote",
     "UserPresenceSession",
-    "FLPCCEntry",
-    "FLPMonthlyCC",
-    "DreamEntry",
 ]
