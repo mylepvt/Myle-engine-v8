@@ -97,12 +97,12 @@ describe('CtcsLeadCard proof gating', () => {
   it('shows the upload proof control after video_watched', () => {
     renderCard(makeLead('video_watched'))
 
-    expect(screen.getByTitle('Upload ₹196 proof')).toBeInTheDocument()
+    expect(screen.getByTitle('Upload FLP invoice')).toBeInTheDocument()
   })
 
   it('keeps the upload proof control hidden before video_watched', () => {
     renderCard(makeLead('video_sent'))
 
-    expect(screen.queryByTitle('Upload ₹196 proof')).not.toBeInTheDocument()
+    expect(screen.queryByTitle('Upload FLP invoice')).not.toBeInTheDocument()
   })
 })
