@@ -38,6 +38,5 @@
   "settings/profile": ["admin", "leader", "team"],
   "finance/recharge-request": ["admin", "leader", "team"],
   "finance/recharge-admin": ["admin"],
-  "analytics": ["admin", "leader", "team"],
-  "team/flp-rank": ["admin", "leader", "team"]
+  "analytics": ["admin", "leader", "team"]
 }
