@@ -185,21 +185,12 @@ export function LivePremierePage() {
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [videoPaused, setVideoPaused] = useState(false)
   const videoRef = useRef<HTMLVideoElement | null>(null)
-  const autoplayedRef = useRef(false)
   const lastTimeRef = useRef(0)
 
   useEffect(() => {
     const id = window.setInterval(() => setNowMs(Date.now()), 500)
     return () => window.clearInterval(id)
   }, [])
-
-  useEffect(() => {
-    if (data?.state === 'live' && videoRef.current && !autoplayedRef.current) {
-      autoplayedRef.current = true
-      void videoRef.current.play().catch(() => { /* browser policy */ })
-    }
-    if (data?.state !== 'live') autoplayedRef.current = false
-  }, [data?.state])
 
   const state = data?.state ?? 'upcoming'
   const videoSrc = data?.video_url ?? null
@@ -332,6 +323,14 @@ export function LivePremierePage() {
                       onContextMenu={(e) => e.preventDefault()}
                       onTimeUpdate={(e) => { lastTimeRef.current = e.currentTarget.currentTime }}
                       onSeeking={(e) => { e.currentTarget.currentTime = lastTimeRef.current }}
+                      onLoadedMetadata={(e) => {
+                        const v = e.currentTarget
+                        const offsetSec = (Date.now() - new Date(data.live_starts_at).getTime()) / 1000
+                        const target = Math.min(Math.max(0, offsetSec), v.duration - 0.5)
+                        lastTimeRef.current = target
+                        v.currentTime = target
+                        void v.play().catch(() => {})
+                      }}
                       onPlay={() => setVideoPaused(false)}
                       onPause={() => setVideoPaused(true)}
                       onClick={(e) => {
