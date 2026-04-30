@@ -185,6 +185,7 @@ export function LivePremierePage() {
   const [nowMs, setNowMs] = useState(() => Date.now())
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const autoplayedRef = useRef(false)
+  const lastTimeRef = useRef(0)
 
   useEffect(() => {
     const id = window.setInterval(() => setNowMs(Date.now()), 500)
@@ -327,8 +328,11 @@ export function LivePremierePage() {
                       src={videoSrc}
                       playsInline
                       controls
-                      controlsList="nodownload noplaybackrate"
+                      controlsList="nodownload noplaybackrate nofullscreen"
+                      disableRemotePlayback
                       onContextMenu={(e) => e.preventDefault()}
+                      onTimeUpdate={(e) => { lastTimeRef.current = e.currentTarget.currentTime }}
+                      onSeeking={(e) => { e.currentTarget.currentTime = lastTimeRef.current }}
                     />
                   ) : (
                     <div className="flex aspect-video w-full items-center justify-center rounded-[1.4rem] bg-black">
