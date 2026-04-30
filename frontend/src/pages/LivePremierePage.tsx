@@ -183,6 +183,7 @@ export function LivePremierePage() {
 
   const [prospect, setProspect] = useState<ProspectInfo | null>(() => loadProspect())
   const [nowMs, setNowMs] = useState(() => Date.now())
+  const [videoPaused, setVideoPaused] = useState(false)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const autoplayedRef = useRef(false)
   const lastTimeRef = useRef(0)
@@ -327,12 +328,17 @@ export function LivePremierePage() {
                       className="aspect-video w-full rounded-[1.4rem] bg-black object-contain"
                       src={videoSrc}
                       playsInline
-                      controls
-                      controlsList="nodownload noplaybackrate nofullscreen"
                       disableRemotePlayback
                       onContextMenu={(e) => e.preventDefault()}
                       onTimeUpdate={(e) => { lastTimeRef.current = e.currentTarget.currentTime }}
                       onSeeking={(e) => { e.currentTarget.currentTime = lastTimeRef.current }}
+                      onPlay={() => setVideoPaused(false)}
+                      onPause={() => setVideoPaused(true)}
+                      onClick={(e) => {
+                        const v = e.currentTarget
+                        if (v.paused) void v.play()
+                        else void v.pause()
+                      }}
                     />
                   ) : (
                     <div className="flex aspect-video w-full items-center justify-center rounded-[1.4rem] bg-black">
@@ -340,6 +346,20 @@ export function LivePremierePage() {
                     </div>
                   )}
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 rounded-b-[1.4rem] bg-gradient-to-t from-[#030806] to-transparent" />
+                  {videoPaused && (
+                    <button
+                      type="button"
+                      aria-label="Play"
+                      className="absolute inset-0 flex items-center justify-center rounded-[1.4rem] bg-black/40"
+                      onClick={() => { void videoRef.current?.play() }}
+                    >
+                      <span className="flex size-16 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
+                        <svg className="size-7 translate-x-0.5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </span>
+                    </button>
+                  )}
                 </div>
 
                 <div className="mt-4 rounded-[1.4rem] border border-white/10 bg-white/[0.045] px-5 py-4">
