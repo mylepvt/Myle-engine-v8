@@ -48,12 +48,12 @@ export function DashboardMobileTabBar({
   scrolled = false,
 }: Props) {
   const barClass = cn(
-    'dashboard-mobile-tabbar shrink-0 pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] md:hidden',
+    'dashboard-mobile-tabbar shrink-0 pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] md:hidden',
     keyboardOpen && 'dashboard-mobile-tabbar--keyboard-open',
     scrolled && 'dashboard-mobile-tabbar--scrolled',
   )
   const innerClass =
-    'dashboard-mobile-tabbar__inner mx-auto flex h-[3.85rem] max-w-lg items-stretch justify-around gap-1 px-1.5 min-[390px]:h-[4.25rem] min-[390px]:px-2'
+    'dashboard-mobile-tabbar__inner mx-auto flex h-[60px] max-w-lg items-stretch justify-around gap-1 px-1.5 min-[390px]:px-2'
   const tabClass =
     'dashboard-mobile-tabbar__tab flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[1rem] px-1 py-1 text-[0.6rem] font-medium leading-none transition-colors active:opacity-70 min-[390px]:text-[0.65rem]'
   const iconClass = 'size-5 shrink-0 min-[390px]:size-[22px]'

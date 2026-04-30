@@ -42,8 +42,8 @@ export function App() {
     <div
       className={
         isDashboardRoute
-          ? 'flex w-full min-h-0 flex-1 flex-col overflow-hidden'
-          : 'flex min-h-screen w-full flex-col overflow-x-hidden overflow-y-visible'
+          ? 'flex min-h-[100dvh] w-full min-w-0 flex-1 flex-col overflow-hidden'
+          : 'flex min-h-[100dvh] w-full flex-col overflow-x-hidden overflow-y-visible'
       }
     >
       <Routes>
