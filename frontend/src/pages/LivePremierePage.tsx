@@ -200,7 +200,7 @@ export function LivePremierePage() {
   }, [data?.state])
 
   const state = data?.state ?? 'upcoming'
-  const streamSrc = apiUrl('/api/v1/other/premiere/stream')
+  const videoSrc = data?.video_url ?? null
   const firstName = prospect?.name.trim().split(/\s+/)[0] ?? ''
   const wish = resolveWish()
 
@@ -320,15 +320,21 @@ export function LivePremierePage() {
             <section className="w-full overflow-hidden rounded-[2.1rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.025))] shadow-[0_38px_140px_-88px_rgba(0,0,0,0.96)] backdrop-blur-2xl">
               <div className="bg-[#070d1d] p-3 sm:p-4">
                 <div className="relative">
-                  <video
-                    ref={videoRef}
-                    className="aspect-video w-full rounded-[1.4rem] bg-black object-contain"
-                    src={streamSrc}
-                    playsInline
-                    controls
-                    controlsList="nodownload noplaybackrate"
-                    onContextMenu={(e) => e.preventDefault()}
-                  />
+                  {videoSrc ? (
+                    <video
+                      ref={videoRef}
+                      className="aspect-video w-full rounded-[1.4rem] bg-black object-contain"
+                      src={videoSrc}
+                      playsInline
+                      controls
+                      controlsList="nodownload noplaybackrate"
+                      onContextMenu={(e) => e.preventDefault()}
+                    />
+                  ) : (
+                    <div className="flex aspect-video w-full items-center justify-center rounded-[1.4rem] bg-black">
+                      <p className="text-sm text-[#7a94c4]">Video not configured — set <code className="text-xs">premiere_video_url</code> in Settings.</p>
+                    </div>
+                  )}
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 rounded-b-[1.4rem] bg-gradient-to-t from-[#030806] to-transparent" />
                 </div>
 
