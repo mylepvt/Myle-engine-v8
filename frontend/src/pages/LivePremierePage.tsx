@@ -360,6 +360,16 @@ export function LivePremierePage() {
                       </span>
                     </button>
                   )}
+                  <button
+                    type="button"
+                    aria-label="Fullscreen"
+                    className="absolute bottom-3 right-3 flex size-9 items-center justify-center rounded-xl bg-black/50 text-white backdrop-blur-sm transition hover:bg-black/70"
+                    onClick={() => { void videoRef.current?.requestFullscreen() }}
+                  >
+                    <svg className="size-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+                    </svg>
+                  </button>
                 </div>
 
                 <div className="mt-4 rounded-[1.4rem] border border-white/10 bg-white/[0.045] px-5 py-4">
