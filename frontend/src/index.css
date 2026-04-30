@@ -759,6 +759,22 @@ html.pwa-standalone body {
   overscroll-behavior: none;
 }
 
+html.pwa-standalone,
+html.pwa-standalone body,
+html.pwa-standalone #root {
+  min-height: 100lvh;
+}
+
+html.pwa-standalone .dashboard-shell,
+html.pwa-standalone .dashboard-mobile-drawer {
+  height: 100lvh;
+  max-height: 100lvh;
+}
+
+html.pwa-standalone .keyboard-safe-sheet {
+  max-height: calc(100lvh - env(safe-area-inset-top, 0px) - var(--keyboard-inset-height, 0px) - 0.5rem);
+}
+
 /* Prevent callout popup on long-press for interactive elements in PWA */
 html.pwa-standalone button,
 html.pwa-standalone a,
