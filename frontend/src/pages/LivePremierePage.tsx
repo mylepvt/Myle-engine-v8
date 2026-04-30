@@ -85,44 +85,6 @@ function resolveWish(): string {
   return 'Good night'
 }
 
-function startAmbient(ctx: AudioContext): () => void {
-  const master = ctx.createGain()
-  master.gain.setValueAtTime(0, ctx.currentTime)
-  master.gain.linearRampToValueAtTime(0.055, ctx.currentTime + 5)
-  master.connect(ctx.destination)
-
-  const freqs = [110, 165, 220, 277.18, 329.63]
-  const oscs = freqs.map((freq, i) => {
-    const osc = ctx.createOscillator()
-    const g = ctx.createGain()
-    osc.type = 'sine'
-    osc.frequency.value = freq + (Math.random() - 0.5) * 0.4
-    g.gain.value = i === 0 ? 0.35 : 0.22
-    osc.connect(g)
-    g.connect(master)
-    osc.start()
-    const lfo = ctx.createOscillator()
-    const lfoGain = ctx.createGain()
-    lfo.frequency.value = 0.18 + i * 0.04
-    lfoGain.gain.value = freq * 0.003
-    lfo.connect(lfoGain)
-    lfoGain.connect(osc.frequency)
-    lfo.start()
-    return { osc, lfo }
-  })
-
-  return () => {
-    master.gain.linearRampToValueAtTime(0, ctx.currentTime + 2.5)
-    setTimeout(() => {
-      oscs.forEach(({ osc, lfo }) => {
-        try { osc.stop() } catch { /* ignore */ }
-        try { lfo.stop() } catch { /* ignore */ }
-      })
-      try { ctx.close() } catch { /* ignore */ }
-    }, 3000)
-  }
-}
-
 function ProspectForm({ onSubmit }: { onSubmit: (info: ProspectInfo) => void }) {
   const [name, setName] = useState('')
   const [city, setCity] = useState('')
@@ -140,11 +102,7 @@ function ProspectForm({ onSubmit }: { onSubmit: (info: ProspectInfo) => void }) 
       return
     }
     setError('')
-    const info: ProspectInfo = {
-      name: name.trim(),
-      city: city.trim(),
-      phone: phone.trim(),
-    }
+    const info: ProspectInfo = { name: name.trim(), city: city.trim(), phone: phone.trim() }
     saveProspect(info)
     onSubmit(info)
   }
@@ -162,9 +120,7 @@ function ProspectForm({ onSubmit }: { onSubmit: (info: ProspectInfo) => void }) 
 
         <form className="mt-7 space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-[#c9d9ff]" htmlFor="p-name">
-              Full name
-            </label>
+            <label className="block text-xs font-semibold text-[#c9d9ff]" htmlFor="p-name">Full name</label>
             <input
               id="p-name"
               type="text"
@@ -177,9 +133,7 @@ function ProspectForm({ onSubmit }: { onSubmit: (info: ProspectInfo) => void }) 
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-[#c9d9ff]" htmlFor="p-city">
-              City
-            </label>
+            <label className="block text-xs font-semibold text-[#c9d9ff]" htmlFor="p-city">City</label>
             <input
               id="p-city"
               type="text"
@@ -192,9 +146,7 @@ function ProspectForm({ onSubmit }: { onSubmit: (info: ProspectInfo) => void }) 
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-[#c9d9ff]" htmlFor="p-phone">
-              WhatsApp number
-            </label>
+            <label className="block text-xs font-semibold text-[#c9d9ff]" htmlFor="p-phone">WhatsApp number</label>
             <input
               id="p-phone"
               type="tel"
@@ -207,9 +159,7 @@ function ProspectForm({ onSubmit }: { onSubmit: (info: ProspectInfo) => void }) 
             />
           </div>
 
-          {error && (
-            <p className="text-xs text-[#ffb8bd]" role="alert">{error}</p>
-          )}
+          {error && <p className="text-xs text-[#ffb8bd]" role="alert">{error}</p>}
 
           <button
             type="submit"
@@ -233,10 +183,6 @@ export function LivePremierePage() {
 
   const [prospect, setProspect] = useState<ProspectInfo | null>(() => loadProspect())
   const [nowMs, setNowMs] = useState(() => Date.now())
-  const [soundEnabled, setSoundEnabled] = useState(false)
-  const [muted, setMuted] = useState(false)
-  const audioCtxRef = useRef<AudioContext | null>(null)
-  const stopAmbientRef = useRef<(() => void) | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const autoplayedRef = useRef(false)
 
@@ -250,30 +196,8 @@ export function LivePremierePage() {
       autoplayedRef.current = true
       void videoRef.current.play().catch(() => { /* browser policy */ })
     }
-    if (data?.state !== 'live') {
-      autoplayedRef.current = false
-    }
+    if (data?.state !== 'live') autoplayedRef.current = false
   }, [data?.state])
-
-  useEffect(() => {
-    if (data?.state === 'waiting' && soundEnabled && !muted) {
-      if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
-        const ctx = new AudioContext()
-        audioCtxRef.current = ctx
-        stopAmbientRef.current = startAmbient(ctx)
-      }
-    } else {
-      if (stopAmbientRef.current) {
-        stopAmbientRef.current()
-        stopAmbientRef.current = null
-        audioCtxRef.current = null
-      }
-    }
-  }, [data?.state, soundEnabled, muted])
-
-  useEffect(() => {
-    return () => { stopAmbientRef.current?.() }
-  }, [])
 
   const state = data?.state ?? 'upcoming'
   const streamSrc = apiUrl('/api/v1/other/premiere/stream')
@@ -300,6 +224,7 @@ export function LivePremierePage() {
       )}
 
       <div className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-6 sm:px-6 sm:py-8">
+
         {/* Header */}
         <header className="rounded-[2rem] border border-white/10 bg-white/[0.04] px-5 py-4 shadow-[0_32px_120px_-72px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -316,15 +241,6 @@ export function LivePremierePage() {
                   </span>
                   Live
                 </span>
-              )}
-              {state === 'waiting' && (
-                <button
-                  type="button"
-                  onClick={soundEnabled ? () => setMuted((p) => !p) : () => { setSoundEnabled(true); setMuted(false) }}
-                  className="flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] px-3 py-1.5 text-[11px] font-semibold text-[#c9d9ff] transition hover:bg-white/[0.1]"
-                >
-                  {!soundEnabled ? '🔇 Enable sound' : muted ? '🔇 Unmute' : '🔊 Mute'}
-                </button>
               )}
               {data && (
                 <p className="rounded-full border border-[#3f537d] bg-[#0b1120] px-4 py-2 text-[11px] font-semibold text-[#c9d9ff]">
@@ -388,32 +304,14 @@ export function LivePremierePage() {
 
           {/* WAITING ROOM */}
           {state === 'waiting' && data && (
-            <section className="w-full max-w-2xl rounded-[2.25rem] border border-indigo-500/20 bg-[linear-gradient(160deg,rgba(99,102,241,0.08),rgba(255,255,255,0.03))] px-8 py-12 text-center shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl">
-              <p className="text-xs font-semibold uppercase tracking-widest text-[#a5b4fc]">Starting in</p>
-              <p className="mt-4 text-[clamp(3.5rem,10vw,6rem)] font-bold tabular-nums tracking-tight text-[#f7f9ff]">
+            <section className="w-full max-w-2xl rounded-[2.25rem] border border-indigo-500/20 bg-[linear-gradient(160deg,rgba(99,102,241,0.08),rgba(255,255,255,0.03))] px-8 py-14 text-center shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#a5b4fc]">Starting in</p>
+              <p className="mt-6 text-[clamp(4rem,12vw,7rem)] font-bold tabular-nums leading-none tracking-tight text-[#f7f9ff]">
                 {formatCountdown(data.live_starts_at, nowMs)}
               </p>
-              <p className="mt-3 text-sm font-medium text-[#818cf8]">
+              <p className="mt-6 text-sm font-medium text-[#818cf8]">
                 Your session is about to go live, {firstName}
               </p>
-
-              {!soundEnabled ? (
-                <button
-                  type="button"
-                  onClick={() => { setSoundEnabled(true); setMuted(false) }}
-                  className="mt-8 inline-flex items-center gap-2 rounded-2xl border border-indigo-400/30 bg-indigo-500/15 px-5 py-2.5 text-sm font-semibold text-indigo-200 transition hover:bg-indigo-500/25"
-                >
-                  🎵 Enable waiting room music
-                </button>
-              ) : (
-                <p className="mt-8 flex items-center justify-center gap-2 text-sm text-[#818cf8]">
-                  <span className="relative flex size-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-60" />
-                    <span className="relative inline-flex size-2 rounded-full bg-indigo-400" />
-                  </span>
-                  {muted ? 'Music muted' : 'Ambient music playing'}
-                </p>
-              )}
             </section>
           )}
 
@@ -457,9 +355,7 @@ export function LivePremierePage() {
           {state === 'ended' && (
             <section className="w-full max-w-2xl rounded-[2.25rem] border border-white/8 bg-white/[0.03] px-8 py-12 text-center backdrop-blur-2xl">
               <p className="text-2xl font-semibold text-[#f7f9ff]">Today's session has ended</p>
-              <p className="mt-3 text-base text-[#7a94c4]">
-                Reach out to your team contact for next steps.
-              </p>
+              <p className="mt-3 text-base text-[#7a94c4]">Reach out to your team contact for next steps.</p>
             </section>
           )}
         </main>
