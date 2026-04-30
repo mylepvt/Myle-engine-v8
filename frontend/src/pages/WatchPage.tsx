@@ -148,6 +148,17 @@ export function WatchPage() {
   }, [])
 
   useEffect(() => {
+    if (!playing || !token || !data?.access_granted) return
+    const id = window.setInterval(() => {
+      void fetch(apiUrl(`/api/v1/watch/${token}/heartbeat`), {
+        method: 'POST',
+        credentials: 'include',
+      })
+    }, 15_000)
+    return () => window.clearInterval(id)
+  }, [playing, token, data?.access_granted])
+
+  useEffect(() => {
     if (!token) {
       setError('Invalid link.')
       setLoading(false)
@@ -372,11 +383,22 @@ export function WatchPage() {
               <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#9db0d6]">Myle</p>
               <h1 className="mt-1 text-xl font-semibold tracking-tight text-[#f5f8ff]">Your private introduction</h1>
             </div>
-            {data ? (
-              <p className="rounded-full border border-[#3f537d] bg-[#0b1120] px-4 py-2 text-sm font-semibold text-[#c9d9ff] shadow-[0_14px_34px_-24px_rgba(132,165,255,0.35)]">
-                {countdown}
-              </p>
-            ) : null}
+            <div className="flex items-center gap-3">
+              {data?.access_granted ? (
+                <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-white shadow-[0_0_14px_rgba(220,38,38,0.55)]">
+                  <span className="relative flex size-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                    <span className="relative inline-flex size-2 rounded-full bg-red-400" />
+                  </span>
+                  Live
+                </span>
+              ) : null}
+              {data ? (
+                <p className="rounded-full border border-[#3f537d] bg-[#0b1120] px-4 py-2 text-sm font-semibold text-[#c9d9ff] shadow-[0_14px_34px_-24px_rgba(132,165,255,0.35)]">
+                  {countdown}
+                </p>
+              ) : null}
+            </div>
           </div>
         </header>
 

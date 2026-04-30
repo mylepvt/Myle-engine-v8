@@ -5,6 +5,50 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useShellStubQuery } from '@/hooks/use-shell-stub-query'
 import { isSafeHttpUrl } from '@/lib/safe-http-url'
 
+function PremiereSharePanel() {
+  const [copied, setCopied] = useState(false)
+  const link = `${window.location.origin}/premiere`
+
+  function handleCopy() {
+    void navigator.clipboard.writeText(link).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  return (
+    <div className="surface-elevated space-y-4 p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Daily premiere link</p>
+          <h3 className="mt-1 text-sm font-semibold text-foreground">Prospects ke saath share karo — daily 6 PM par video live hoti hai</h3>
+        </div>
+        <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-white">
+          <span className="relative flex size-1.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+            <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
+          </span>
+          Live daily
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="break-all text-sm font-medium text-[#c9d9ff]">{link}</p>
+        <Button type="button" size="sm" variant="secondary" onClick={handleCopy} className="shrink-0">
+          {copied ? 'Copied!' : 'Copy link'}
+        </Button>
+      </div>
+
+      <ul className="space-y-1 text-xs text-muted-foreground">
+        <li>• 5:50 PM — Waiting room opens (countdown + music)</li>
+        <li>• 6:00 PM — Video auto-starts</li>
+        <li>• 6:49 PM — Session ends</li>
+        <li>• Same link works daily. Admin sets video once in Settings → <code className="rounded bg-white/10 px-1">premiere_video_url</code></li>
+      </ul>
+    </div>
+  )
+}
+
 type Props = { title: string }
 
 async function copyToClipboard(text: string) {
@@ -50,6 +94,7 @@ export function LiveSessionPage({ title }: Props) {
   return (
     <div className="max-w-2xl space-y-6">
       <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+      <PremiereSharePanel />
       <div className="surface-elevated space-y-2 p-4 text-xs text-muted-foreground">
         <p className="font-medium text-foreground/90">Where to configure session links (admin)</p>
         <ul className="list-inside list-disc space-y-1">

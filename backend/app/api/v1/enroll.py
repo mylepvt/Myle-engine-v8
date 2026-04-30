@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 import httpx
@@ -18,6 +18,7 @@ from app.api.deps import AuthUser, get_db, require_auth_user
 from app.models.enroll_share_link import EnrollShareLink
 from app.models.lead import Lead
 from app.schemas.enroll import (
+    ActiveWatcherPublic,
     EnrollShareLinkCreate,
     EnrollShareLinkListResponse,
     EnrollShareLinkPublic,
@@ -457,3 +458,53 @@ async def stream_watch_video(
         headers=headers,
         background=BackgroundTask(_close_upstream, upstream, client),
     )
+
+
+@watch_router.post("/watch/{token}/heartbeat", response_model=WatchEventResponse)
+async def heartbeat_watch(
+    token: str,
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> WatchEventResponse:
+    link, lead = await _get_watch_link_and_lead(session, token)
+    if not has_watch_access(request, link=link, lead=lead):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Verify your number to continue.")
+    link.last_viewed_at = datetime.now(timezone.utc)
+    await session.commit()
+    return WatchEventResponse(
+        ok=True,
+        watch_started=link.first_viewed_at is not None,
+        watch_completed=bool(link.status_synced),
+    )
+
+
+@router.get("/viewers", response_model=list[ActiveWatcherPublic])
+async def list_active_watchers(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> list[ActiveWatcherPublic]:
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=45)
+    rows = (
+        await session.execute(
+            select(EnrollShareLink, Lead)
+            .join(Lead, EnrollShareLink.lead_id == Lead.id)
+            .where(
+                EnrollShareLink.created_by_user_id == user.user_id,
+                EnrollShareLink.last_viewed_at >= cutoff,
+                Lead.deleted_at.is_(None),
+            )
+            .order_by(EnrollShareLink.last_viewed_at.desc())
+        )
+    ).all()
+    return [
+        ActiveWatcherPublic(
+            token=link.token,
+            lead_name=(lead.name or "").split()[0] or "Lead",
+            masked_phone=mask_phone(lead.phone),
+            share_url=f"/watch/{link.token}",
+            first_viewed_at=link.first_viewed_at,
+            last_seen_at=link.last_viewed_at,
+            watch_completed=bool(link.status_synced),
+        )
+        for link, lead in rows
+    ]
