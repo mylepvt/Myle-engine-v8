@@ -2,6 +2,16 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
 
+export type ActiveWatcher = {
+  token: string
+  lead_name: string
+  masked_phone: string
+  share_url: string
+  first_viewed_at: string | null
+  last_seen_at: string | null
+  watch_completed: boolean
+}
+
 export type EnrollShareLink = {
   id: number
   token: string
@@ -86,11 +96,12 @@ async function postSendEnrollmentVideo(leadId: number): Promise<EnrollmentVideoS
   return res.json() as Promise<EnrollmentVideoSendResponse>
 }
 
-export function useLeadShareLinksQuery(leadId: number) {
+export function useLeadShareLinksQuery(leadId: number, opts?: { refetchInterval?: number }) {
   return useQuery({
     queryKey: ['enroll', 'lead', leadId],
     queryFn: () => fetchLeadShareLinks(leadId),
     enabled: leadId > 0,
+    refetchInterval: opts?.refetchInterval,
   })
 }
 
@@ -102,6 +113,20 @@ export function useGenerateShareLinkMutation() {
       void qc.invalidateQueries({ queryKey: ['enroll', 'lead', body.lead_id] })
       void qc.invalidateQueries({ queryKey: ['lead-detail', body.lead_id] })
     },
+  })
+}
+
+async function fetchActiveWatchers(): Promise<ActiveWatcher[]> {
+  const res = await apiFetch('/api/v1/enroll/viewers')
+  if (!res.ok) await parseError(res)
+  return res.json() as Promise<ActiveWatcher[]>
+}
+
+export function useActiveWatchersQuery() {
+  return useQuery({
+    queryKey: ['enroll', 'viewers'],
+    queryFn: fetchActiveWatchers,
+    refetchInterval: 15_000,
   })
 }
 

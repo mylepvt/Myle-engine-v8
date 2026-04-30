@@ -13,6 +13,7 @@ import { RegisterPage } from '@/pages/RegisterPage'
 import { BatchWatchPage } from '@/pages/BatchWatchPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { WatchPage } from '@/pages/WatchPage'
+import { LivePremierePage } from '@/pages/LivePremierePage'
 import { t } from '@/lib/i18n'
 
 const DashboardNestedPage = lazy(async () => {
@@ -52,6 +53,7 @@ export function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/watch/batch/:slot/:version" element={<BatchWatchPage />} />
         <Route path="/watch/:token" element={<WatchPage />} />
+        <Route path="/premiere" element={<LivePremierePage />} />
 
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardLayout />}>

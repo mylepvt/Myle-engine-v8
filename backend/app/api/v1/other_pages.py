@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import os
-from datetime import date, datetime
-from typing import Annotated, Optional
+from datetime import date, datetime, timedelta
+from typing import Annotated, Literal, Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+import httpx
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.background import BackgroundTask
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
@@ -383,4 +386,151 @@ async def other_daily_report(
         items=items,
         total=len(items),
         note="Submit or update your numbers via the daily report form (POST /api/v1/reports/daily).",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Premiere (daily scheduled video session)
+# ---------------------------------------------------------------------------
+
+class PremiereStateResponse(BaseModel):
+    state: Literal["upcoming", "waiting", "live", "ended"]
+    video_url: Optional[str]
+    waiting_starts_at: str
+    live_starts_at: str
+    live_ends_at: str
+    premiere_link: str
+
+
+async def _get_premiere_window(session: AsyncSession) -> tuple[datetime, datetime, datetime]:
+    """Return (waiting_start, live_start, live_end) in IST for today."""
+    async def _s(key: str) -> str:
+        row = await session.get(AppSetting, key)
+        return (row.value or "").strip() if row else ""
+
+    start_hhmm = await _s("premiere_start_hhmm") or "18:00"
+    waiting_min = await _s("premiere_waiting_minutes") or "10"
+    duration_min = await _s("premiere_duration_minutes") or "49"
+
+    try:
+        h, m = map(int, start_hhmm.split(":"))
+    except (ValueError, AttributeError):
+        h, m = 18, 0
+
+    wmin = max(1, int(waiting_min) if waiting_min.isdigit() else 10)
+    dmin = max(1, int(duration_min) if duration_min.isdigit() else 49)
+
+    today = datetime.now(IST).date()
+    live_start = datetime(today.year, today.month, today.day, h, m, tzinfo=IST)
+    return live_start - timedelta(minutes=wmin), live_start, live_start + timedelta(minutes=dmin)
+
+
+@router.get("/premiere", response_model=PremiereStateResponse)
+async def get_premiere_state(
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> PremiereStateResponse:
+    """Public — no auth. Returns premiere state for the daily scheduled session."""
+    waiting_start, live_start, live_end = await _get_premiere_window(session)
+    now = datetime.now(IST)
+
+    if now < waiting_start:
+        state: Literal["upcoming", "waiting", "live", "ended"] = "upcoming"
+    elif now < live_start:
+        state = "waiting"
+    elif now <= live_end:
+        state = "live"
+    else:
+        state = "ended"
+
+    async def _s(key: str) -> str:
+        row = await session.get(AppSetting, key)
+        return (row.value or "").strip() if row else ""
+
+    video_url: Optional[str] = None
+    if state == "live":
+        video_url = (
+            await _s("premiere_video_url")
+            or await _s("enrollment_video_source_url")
+            or None
+        )
+
+    return PremiereStateResponse(
+        state=state,
+        video_url=video_url,
+        waiting_starts_at=waiting_start.isoformat(),
+        live_starts_at=live_start.isoformat(),
+        live_ends_at=live_end.isoformat(),
+        premiere_link="/premiere",
+    )
+
+
+@router.get("/premiere/stream")
+async def stream_premiere_video(
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> StreamingResponse:
+    """Public — no auth. Time-gated: only serves video during the live window."""
+    waiting_start, live_start, live_end = await _get_premiere_window(session)
+    now = datetime.now(IST)
+
+    if not (live_start <= now <= live_end):
+        raise HTTPException(
+            status_code=http_status.HTTP_423_LOCKED,
+            detail="Premiere is not live right now.",
+        )
+
+    async def _s(key: str) -> str:
+        row = await session.get(AppSetting, key)
+        return (row.value or "").strip() if row else ""
+
+    video_url = (
+        await _s("premiere_video_url")
+        or await _s("enrollment_video_source_url")
+        or ""
+    )
+    if not video_url:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail="Premiere video not configured.",
+        )
+
+    if video_url.startswith("/"):
+        base = str(request.base_url).rstrip("/")
+        video_url = base + video_url
+
+    forward: dict[str, str] = {}
+    if request.headers.get("range"):
+        forward["Range"] = request.headers["range"]
+
+    client = httpx.AsyncClient(follow_redirects=True, timeout=httpx.Timeout(60.0, connect=10.0))
+    try:
+        upstream = await client.send(
+            client.build_request("GET", video_url, headers=forward),
+            stream=True,
+        )
+    except httpx.HTTPError as exc:
+        await client.aclose()
+        raise HTTPException(status_code=http_status.HTTP_502_BAD_GATEWAY, detail="Could not fetch premiere video.") from exc
+
+    if upstream.status_code not in {200, 206}:
+        await upstream.aclose()
+        await client.aclose()
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Premiere video unavailable.")
+
+    headers: dict[str, str] = {"Cache-Control": "private, no-store"}
+    for key in ("content-type", "content-length", "content-range", "accept-ranges"):
+        val = upstream.headers.get(key)
+        if val:
+            headers[key] = val
+
+    async def _close(u: httpx.Response, c: httpx.AsyncClient) -> None:
+        await u.aclose()
+        await c.aclose()
+
+    return StreamingResponse(
+        upstream.aiter_bytes(),
+        status_code=upstream.status_code,
+        media_type=upstream.headers.get("content-type", "video/mp4"),
+        headers=headers,
+        background=BackgroundTask(_close, upstream, client),
     )

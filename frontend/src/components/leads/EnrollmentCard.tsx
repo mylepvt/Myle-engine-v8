@@ -63,8 +63,13 @@ function shareLinkState(link: {
   }
 }
 
+function isWatchingNow(lastViewedAt: string | null | undefined): boolean {
+  if (!lastViewedAt) return false
+  return Date.now() - new Date(lastViewedAt).getTime() < 45_000
+}
+
 export function EnrollmentCard({ leadId }: Props) {
-  const shareLinksQuery = useLeadShareLinksQuery(leadId)
+  const shareLinksQuery = useLeadShareLinksQuery(leadId, { refetchInterval: 15_000 })
   const sendMut = useSendEnrollmentVideoMutation()
   const [actionError, setActionError] = useState('')
   const [actionHint, setActionHint] = useState('')
@@ -175,7 +180,18 @@ export function EnrollmentCard({ leadId }: Props) {
                       </p>
                     ) : null}
                   </div>
-                  <span className={state.className}>{state.label}</span>
+                  <div className="flex items-center gap-2">
+                    {isWatchingNow(link.last_viewed_at) ? (
+                      <span className="flex items-center gap-1 rounded-full bg-red-600/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white">
+                        <span className="relative flex size-1.5">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                          <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
+                        </span>
+                        Watching now
+                      </span>
+                    ) : null}
+                    <span className={state.className}>{state.label}</span>
+                  </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 text-xs">
                   <button

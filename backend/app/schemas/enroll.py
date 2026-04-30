@@ -86,3 +86,13 @@ class WatchEventResponse(BaseModel):
     ok: bool = True
     watch_started: bool = False
     watch_completed: bool = False
+
+
+class ActiveWatcherPublic(BaseModel):
+    token: str
+    lead_name: str
+    masked_phone: str
+    share_url: str
+    first_viewed_at: Optional[datetime]
+    last_seen_at: Optional[datetime]
+    watch_completed: bool
