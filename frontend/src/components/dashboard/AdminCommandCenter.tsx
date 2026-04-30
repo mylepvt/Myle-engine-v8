@@ -33,6 +33,7 @@ import { useInvoicesQuery } from '@/hooks/use-invoices-query'
 import { useLeadControlQuery } from '@/hooks/use-lead-control-query'
 import { LEAD_STATUS_OPTIONS, useLeadsQuery, type LeadPublic } from '@/hooks/use-leads-query'
 import { useLeadPoolQuery } from '@/hooks/use-lead-pool-query'
+import { useActiveWatchersQuery } from '@/hooks/use-enroll-query'
 import { apiFetch } from '@/lib/api'
 import { messageFromApiErrorPayload } from '@/lib/http-error-message'
 
@@ -212,6 +213,7 @@ export function AdminCommandCenter({ firstName }: Props) {
   })
   const appSettings = useAppSettingsQuery(activeTab === 'content')
   const day2Review = useDay2ReviewQuery()
+  const activeWatchers = useActiveWatchersQuery()
   const leadSearchResults = useLeadsQuery(
     deferredLeadSearch.length > 0,
     { q: deferredLeadSearch, status: '' },
@@ -383,6 +385,66 @@ export function AdminCommandCenter({ firstName }: Props) {
               </CardContent>
             </Card>
           </section>
+
+          <Card className="surface-elevated border-white/[0.08]">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <span className="relative flex size-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                  <span className="relative inline-flex size-2 rounded-full bg-red-500" />
+                </span>
+                Live Right Now
+              </CardTitle>
+              <CardDescription>Prospects actively watching enrollment videos — refreshes every 15 seconds.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {activeWatchers.isPending ? (
+                <div className="space-y-2">
+                  <div className="surface-inset h-14 animate-pulse rounded-2xl" />
+                  <div className="surface-inset h-14 animate-pulse rounded-2xl" />
+                </div>
+              ) : activeWatchers.isError ? (
+                <EmptyState title="Could not load watchers" description="Refresh to try again." />
+              ) : (activeWatchers.data ?? []).length === 0 ? (
+                <EmptyState title="No one watching right now" description="Active viewers will appear here within 15 seconds of opening their private room." />
+              ) : (
+                <div className="space-y-3">
+                  {(activeWatchers.data ?? []).map((watcher) => (
+                    <div key={watcher.token} className="surface-inset flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4">
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-medium text-foreground">{watcher.lead_name}</p>
+                          <span className="flex items-center gap-1 rounded-full bg-red-600/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white">
+                            <span className="relative flex size-1.5">
+                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                              <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
+                            </span>
+                            Watching now
+                          </span>
+                          {watcher.watch_completed ? (
+                            <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-300">
+                              Completed
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {watcher.masked_phone}
+                          {watcher.last_seen_at
+                            ? ` · Last seen ${new Date(watcher.last_seen_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`
+                            : ''}
+                        </p>
+                      </div>
+                      <Button asChild size="sm" variant="secondary">
+                        <a href={watcher.share_url} target="_blank" rel="noopener noreferrer">
+                          Open room
+                        </a>
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="leads" className="space-y-6">
