@@ -154,10 +154,10 @@ function ProspectForm({ onSubmit }: { onSubmit: (info: ProspectInfo) => void }) 
       <div className="rounded-[2.25rem] border border-white/10 bg-[linear-gradient(160deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] px-7 py-9 shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl">
         <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-[#9db0d6]">Myle · Private Session</p>
         <h2 className="mt-3 text-2xl font-bold leading-snug tracking-tight text-[#f7f9ff]">
-          Is exclusive session ke liye apni details dalo
+          Register for today's exclusive session
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-[#8a9ec4]">
-          Yeh ek exclusive session hai — sirf invited prospects ke liye. Apni details dalo aur session mein join ho jao.
+          This is a private, invitation-only session. Enter your details to get access.
         </p>
 
         <form className="mt-7 space-y-4" onSubmit={handleSubmit}>
@@ -171,7 +171,7 @@ function ProspectForm({ onSubmit }: { onSubmit: (info: ProspectInfo) => void }) 
               autoComplete="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Apna naam likho"
+              placeholder="Your full name"
               className="h-12 w-full rounded-2xl border border-[#26385d] bg-[#0a1120] px-4 text-sm text-[#f7f9ff] outline-none transition placeholder:text-[#7887a3] focus:border-[#8eb0ff] focus:ring-2 focus:ring-[#8eb0ff]/20"
             />
           </div>
@@ -186,7 +186,7 @@ function ProspectForm({ onSubmit }: { onSubmit: (info: ProspectInfo) => void }) 
               autoComplete="address-level2"
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              placeholder="Apna shehar likho"
+              placeholder="Your city"
               className="h-12 w-full rounded-2xl border border-[#26385d] bg-[#0a1120] px-4 text-sm text-[#f7f9ff] outline-none transition placeholder:text-[#7887a3] focus:border-[#8eb0ff] focus:ring-2 focus:ring-[#8eb0ff]/20"
             />
           </div>
@@ -215,7 +215,7 @@ function ProspectForm({ onSubmit }: { onSubmit: (info: ProspectInfo) => void }) 
             type="submit"
             className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[#dce7ff] px-5 text-sm font-bold text-[#0a1530] transition hover:bg-[#c6d8ff]"
           >
-            Session mein join karo →
+            Join the session →
           </button>
         </form>
       </div>
@@ -362,7 +362,7 @@ export function LivePremierePage() {
                   {formatTimeIST(data.live_starts_at)}
                 </p>
                 <p className="mt-3 text-sm font-medium text-[#7a94c4]">
-                  Waiting room {formatTimeIST(data.waiting_starts_at)} se khuljayega — thoda pehle aa jana
+                  Waiting room opens at {formatTimeIST(data.waiting_starts_at)} — join a few minutes early
                 </p>
               </div>
 
@@ -375,12 +375,12 @@ export function LivePremierePage() {
                 <div className="rounded-[1.4rem] border border-white/8 bg-white/[0.03] px-4 py-4 text-center backdrop-blur-xl">
                   <p className="text-xs font-semibold uppercase tracking-wide text-[#9db0d6]">Access</p>
                   <p className="mt-2 text-sm font-semibold text-[#f0f4ff]">Private link</p>
-                  <p className="mt-0.5 text-xs text-[#7a94c4]">Sirf invited log</p>
+                  <p className="mt-0.5 text-xs text-[#7a94c4]">Invited only</p>
                 </div>
                 <div className="rounded-[1.4rem] border border-white/8 bg-white/[0.03] px-4 py-4 text-center backdrop-blur-xl">
                   <p className="text-xs font-semibold uppercase tracking-wide text-[#9db0d6]">Action</p>
                   <p className="mt-2 text-sm font-semibold text-[#f0f4ff]">Join on time</p>
-                  <p className="mt-0.5 text-xs text-[#7a94c4]">Seats limited hain</p>
+                  <p className="mt-0.5 text-xs text-[#7a94c4]">Limited seats</p>
                 </div>
               </div>
             </section>
@@ -389,12 +389,12 @@ export function LivePremierePage() {
           {/* WAITING ROOM */}
           {state === 'waiting' && data && (
             <section className="w-full max-w-2xl rounded-[2.25rem] border border-indigo-500/20 bg-[linear-gradient(160deg,rgba(99,102,241,0.08),rgba(255,255,255,0.03))] px-8 py-12 text-center shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl">
-              <p className="text-xs font-semibold uppercase tracking-widest text-[#a5b4fc]">Session shuru hone mein</p>
+              <p className="text-xs font-semibold uppercase tracking-widest text-[#a5b4fc]">Starting in</p>
               <p className="mt-4 text-[clamp(3.5rem,10vw,6rem)] font-bold tabular-nums tracking-tight text-[#f7f9ff]">
                 {formatCountdown(data.live_starts_at, nowMs)}
               </p>
               <p className="mt-3 text-sm font-medium text-[#818cf8]">
-                Aaj {firstName} ke liye yeh session specially live ho rahi hai
+                Your session is about to go live, {firstName}
               </p>
 
               {!soundEnabled ? (
@@ -403,7 +403,7 @@ export function LivePremierePage() {
                   onClick={() => { setSoundEnabled(true); setMuted(false) }}
                   className="mt-8 inline-flex items-center gap-2 rounded-2xl border border-indigo-400/30 bg-indigo-500/15 px-5 py-2.5 text-sm font-semibold text-indigo-200 transition hover:bg-indigo-500/25"
                 >
-                  🎵 Waiting room music chalu karo
+                  🎵 Enable waiting room music
                 </button>
               ) : (
                 <p className="mt-8 flex items-center justify-center gap-2 text-sm text-[#818cf8]">
@@ -411,7 +411,7 @@ export function LivePremierePage() {
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-60" />
                     <span className="relative inline-flex size-2 rounded-full bg-indigo-400" />
                   </span>
-                  {muted ? 'Music muted' : 'Ambient music chal rahi hai'}
+                  {muted ? 'Music muted' : 'Ambient music playing'}
                 </p>
               )}
             </section>
@@ -437,8 +437,8 @@ export function LivePremierePage() {
                 <div className="mt-4 rounded-[1.4rem] border border-white/10 bg-white/[0.045] px-5 py-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="text-base font-semibold text-white">Ab dekh rahe ho, {firstName}</p>
-                      <p className="mt-0.5 text-sm text-[#b6c6e7]">Yeh session sirf ek baar live hoti hai — dhyan se dekho</p>
+                      <p className="text-base font-semibold text-white">You're in, {firstName}</p>
+                      <p className="mt-0.5 text-sm text-[#b6c6e7]">This session is live right now — watch till the end</p>
                     </div>
                     <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-white">
                       <span className="relative flex size-2">
@@ -456,9 +456,9 @@ export function LivePremierePage() {
           {/* ENDED */}
           {state === 'ended' && (
             <section className="w-full max-w-2xl rounded-[2.25rem] border border-white/8 bg-white/[0.03] px-8 py-12 text-center backdrop-blur-2xl">
-              <p className="text-2xl font-semibold text-[#f7f9ff]">Aaj ki session khatam ho gayi</p>
+              <p className="text-2xl font-semibold text-[#f7f9ff]">Today's session has ended</p>
               <p className="mt-3 text-base text-[#7a94c4]">
-                Apne team member se contact karo agle steps ke liye.
+                Reach out to your team contact for next steps.
               </p>
             </section>
           )}

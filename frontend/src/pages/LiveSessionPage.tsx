@@ -21,7 +21,7 @@ function PremiereSharePanel() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Private live session link</p>
-          <h3 className="mt-1 text-sm font-semibold text-foreground">Prospects ke saath share karo — 6 PM par exclusive session live hoti hai</h3>
+          <h3 className="mt-1 text-sm font-semibold text-foreground">Share with prospects — exclusive session goes live at 6 PM</h3>
         </div>
         <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-white">
           <span className="relative flex size-1.5">
