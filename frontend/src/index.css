@@ -157,6 +157,9 @@
 
   html {
     background-color: var(--background);
+    margin: 0;
+    padding: 0;
+    min-height: 100dvh;
     /* Stop horizontal rubber-band / sideways “slide” on iOS/Android */
     max-width: 100%;
     overflow-x: clip;
@@ -185,7 +188,8 @@
 
   body {
     @apply bg-background font-sans text-ds-body text-foreground antialiased;
-    /* height: 100% lets .dashboard-shell fill the viewport via h-full on the inner wrappers */
+    margin: 0;
+    padding: 0;
     height: 100%;
     min-height: 100vh;
     min-height: 100dvh;
@@ -229,10 +233,8 @@
   }
 
   #root {
-    /* Fill viewport; --app-layout-height is set in index.html for Android / vv accuracy */
     min-height: 100vh;
     min-height: 100dvh;
-    min-height: var(--app-layout-height, 100dvh);
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -479,41 +481,20 @@
 
 @layer utilities {
   /**
-   * dashboard-shell — locks the entire shell to exactly the visible viewport.
-   *
-   * Uses dvh (dynamic viewport height) so the shell doesn't resize when the
-   * mobile browser address bar shows/hides.
-   * Falls back to 100vh for browsers without dvh (Chrome < 108, FF < 101, Safari < 15.4).
-   * The `overflow-hidden` here is critical — it prevents the outer wrapper from
-   * ever growing taller than the viewport; scrolling happens only in <main>.
+   * dashboard-shell — lock the app shell to the visible viewport and keep
+   * scrolling inside the content pane.
    */
   .dashboard-shell {
-    /*
-     * Height cascade:
-     *   1. 100vh / -webkit-fill-available / 100dvh — static fallbacks when --app-layout-height absent
-     *   2. var(--app-layout-height, 100dvh) — px from index.html (visualViewport + keyboard heuristic)
-     *      fixes Android “half screen” / empty band under the mobile tab bar when dvh ≠ painted area.
-     */
-    height: 100vh;
-    height: -webkit-fill-available; /* iOS Safari PWA + browser */
     height: 100dvh;
-    height: var(--app-layout-height, 100dvh);
-    max-height: 100vh;
-    max-height: -webkit-fill-available;
     max-height: 100dvh;
-    max-height: var(--app-layout-height, 100dvh);
     overflow: hidden;
     position: relative;
   }
 
   @media (max-width: 767px) {
     .dashboard-mobile-drawer {
-      height: 100vh;
-      height: -webkit-fill-available;
       height: 100dvh;
-      height: var(--app-layout-height, 100dvh);
       max-height: 100dvh;
-      max-height: var(--app-layout-height, 100dvh);
     }
   }
 
@@ -639,7 +620,7 @@
   }
 
   .keyboard-safe-sheet {
-    max-height: calc(var(--app-layout-height, 100dvh) - env(safe-area-inset-top, 0px) - var(--keyboard-inset-height, 0px) - 0.5rem);
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - var(--keyboard-inset-height, 0px) - 0.5rem);
   }
 
   /* ─── Mobile bottom tab bar ──────────────────────────────────────────────── */
@@ -647,6 +628,8 @@
   .dashboard-mobile-tabbar {
     position: relative;
     isolation: isolate;
+    min-height: calc(60px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     /* Dark mode: use --card (#070a12) so bar is visually distinct from
        --background (#000000). Light mode: semi-transparent background. */
     background-color: color-mix(in srgb, var(--card) 94%, transparent);
