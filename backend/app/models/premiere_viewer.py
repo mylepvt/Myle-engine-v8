@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Float, Integer, String, func, text
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, UniqueConstraint, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -11,10 +11,14 @@ from app.db.base import Base
 
 class PremiereViewer(Base):
     __tablename__ = "premiere_viewers"
+    __table_args__ = (
+        UniqueConstraint("viewer_id", "session_date", "session_hour", name="uq_premiere_viewer_slot"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    viewer_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    viewer_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     session_date: Mapped[str] = mapped_column(String(10), nullable=False, index=True)  # YYYY-MM-DD IST
+    session_hour: Mapped[int] = mapped_column(Integer, nullable=False, index=True)     # 0-23
 
     name: Mapped[str] = mapped_column(String(200), nullable=False, default="")
     city: Mapped[str] = mapped_column(String(200), nullable=False, default="")
