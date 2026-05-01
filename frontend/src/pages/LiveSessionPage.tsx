@@ -1,9 +1,136 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useShellStubQuery } from '@/hooks/use-shell-stub-query'
 import { isSafeHttpUrl } from '@/lib/safe-http-url'
+import { apiFetch } from '@/lib/api'
+
+type ScheduleSlot = {
+  hour: number
+  label: string
+  state: 'past' | 'upcoming' | 'waiting' | 'live'
+  live_starts_at: string
+  live_ends_at: string
+  viewer_count_today: number
+}
+
+type ScheduleResponse = {
+  slots: ScheduleSlot[]
+  premiere_link: string
+  active_hour: number | null
+}
+
+async function fetchSchedule(): Promise<ScheduleResponse> {
+  const res = await apiFetch('/api/v1/other/premiere/schedule')
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<ScheduleResponse>
+}
+
+function PremiereSchedulePanel() {
+  const { data, isPending } = useQuery({
+    queryKey: ['premiere', 'schedule'],
+    queryFn: fetchSchedule,
+    refetchInterval: 30_000,
+  })
+
+  const link = `${window.location.origin}/premiere`
+  const [copied, setCopied] = useState(false)
+
+  function handleCopy() {
+    void navigator.clipboard.writeText(link).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  return (
+    <div className="surface-elevated space-y-4 p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Daily Premiere Schedule</p>
+          <h3 className="mt-1 text-sm font-semibold text-foreground">11 sessions daily — same link for all</h3>
+        </div>
+        {data?.active_hour != null && (
+          <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-white">
+            <span className="relative flex size-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
+            </span>
+            Live now
+          </span>
+        )}
+      </div>
+
+      {/* Permanent link */}
+      <div className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="break-all text-sm font-medium text-[#c9d9ff]">{link}</p>
+        <Button type="button" size="sm" variant="secondary" onClick={handleCopy} className="shrink-0">
+          {copied ? 'Copied!' : 'Copy link'}
+        </Button>
+      </div>
+
+      {/* Schedule table */}
+      {isPending ? (
+        <Skeleton className="h-48 w-full" />
+      ) : data ? (
+        <div className="overflow-hidden rounded-xl border border-white/10">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-white/10 bg-white/[0.03]">
+                <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Time</th>
+                <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Status</th>
+                <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Ends</th>
+                <th className="px-3 py-2 text-right font-semibold text-muted-foreground">Viewers</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.slots.map((slot) => (
+                <tr
+                  key={slot.hour}
+                  className={`border-b border-white/[0.06] last:border-0 ${slot.state === 'live' ? 'bg-red-500/[0.06]' : slot.state === 'waiting' ? 'bg-indigo-500/[0.06]' : ''}`}
+                >
+                  <td className="px-3 py-2 font-medium text-foreground">{slot.label}</td>
+                  <td className="px-3 py-2">
+                    {slot.state === 'live' ? (
+                      <span className="flex items-center gap-1 text-red-400 font-semibold">
+                        <span className="relative flex size-1.5">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                          <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
+                        </span>
+                        Live
+                      </span>
+                    ) : slot.state === 'waiting' ? (
+                      <span className="text-indigo-400 font-semibold">Waiting</span>
+                    ) : slot.state === 'past' ? (
+                      <span className="text-muted-foreground">Done</span>
+                    ) : (
+                      <span className="text-muted-foreground">Upcoming</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-muted-foreground">
+                    {new Date(slot.live_ends_at).toLocaleTimeString('en-IN', {
+                      hour: '2-digit', minute: '2-digit',
+                      timeZone: 'Asia/Kolkata', hour12: true,
+                    })}
+                  </td>
+                  <td className="px-3 py-2 text-right text-muted-foreground">
+                    {slot.viewer_count_today > 0 ? slot.viewer_count_today : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
+      <p className="text-xs text-muted-foreground">
+        Prospect sees only current/next session — schedule is hidden from them. Configure via <code className="rounded bg-white/10 px-1">premiere_session_hours</code> in Settings.
+      </p>
+    </div>
+  )
+}
 
 function PremiereSharePanel() {
   const [copied, setCopied] = useState(false)
@@ -94,6 +221,7 @@ export function LiveSessionPage({ title }: Props) {
   return (
     <div className="max-w-2xl space-y-6">
       <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+      <PremiereSchedulePanel />
       <PremiereSharePanel />
       <div className="surface-elevated space-y-2 p-4 text-xs text-muted-foreground">
         <p className="font-medium text-foreground/90">Where to configure session links (admin)</p>

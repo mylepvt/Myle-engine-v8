@@ -22,6 +22,7 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("viewer_id", sa.String(64), nullable=False),
         sa.Column("session_date", sa.String(10), nullable=False),
+        sa.Column("session_hour", sa.Integer(), nullable=False),
         sa.Column("name", sa.String(200), nullable=False, server_default=""),
         sa.Column("city", sa.String(200), nullable=False, server_default=""),
         sa.Column("phone", sa.String(30), nullable=False, server_default=""),
@@ -35,12 +36,15 @@ def upgrade() -> None:
         sa.Column("lead_score", sa.Integer(), nullable=False, server_default=sa.text("0")),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("viewer_id", "session_date", "session_hour", name="uq_premiere_viewer_slot"),
     )
-    op.create_index("ix_premiere_viewers_viewer_id", "premiere_viewers", ["viewer_id"], unique=True)
+    op.create_index("ix_premiere_viewers_viewer_id", "premiere_viewers", ["viewer_id"])
     op.create_index("ix_premiere_viewers_session_date", "premiere_viewers", ["session_date"])
+    op.create_index("ix_premiere_viewers_session_hour", "premiere_viewers", ["session_hour"])
 
 
 def downgrade() -> None:
+    op.drop_index("ix_premiere_viewers_session_hour", table_name="premiere_viewers")
     op.drop_index("ix_premiere_viewers_session_date", table_name="premiere_viewers")
     op.drop_index("ix_premiere_viewers_viewer_id", table_name="premiere_viewers")
     op.drop_table("premiere_viewers")

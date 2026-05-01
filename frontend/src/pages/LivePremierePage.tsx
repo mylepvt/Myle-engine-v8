@@ -14,6 +14,7 @@ type PremiereData = {
   waiting_starts_at: string
   live_starts_at: string
   live_ends_at: string
+  session_hour: number
   server_now: string
   viewer_count: number
 }
@@ -351,30 +352,35 @@ export function LivePremierePage() {
     return () => window.clearInterval(id)
   }, [])
 
-  // Register viewer when prospect + state known
+  // Register viewer when prospect + state known — re-register on session_hour change
+  const lastRegisteredHour = useRef<number | null>(null)
   useEffect(() => {
-    if (!prospect || !data || registeredRef.current) return
-    registeredRef.current = true
+    if (!prospect || !data) return
+    if (lastRegisteredHour.current === data.session_hour) return
+    lastRegisteredHour.current = data.session_hour
     void postSilent('/api/v1/other/premiere/register', {
       viewer_id: prospect.viewer_id,
       name: prospect.name,
       city: prospect.city,
       phone: prospect.phone,
+      session_hour: data.session_hour,
       state: data.state,
     })
   }, [prospect, data])
 
   // Heartbeat every 15s
   useEffect(() => {
-    if (!prospect || (state !== 'waiting' && state !== 'live')) return
+    if (!prospect || !data || (state !== 'waiting' && state !== 'live')) return
+    const sessionHour = data.session_hour
     const id = window.setInterval(() => {
       void postSilent('/api/v1/other/premiere/heartbeat', {
         viewer_id: prospect.viewer_id,
+        session_hour: sessionHour,
         state,
       })
     }, 15_000)
     return () => window.clearInterval(id)
-  }, [prospect, state])
+  }, [prospect, data, state])
 
   // Registration form gate
   if (!prospect) {
@@ -555,6 +561,7 @@ function LiveSection({
 
   // Progress tracking every 25s
   useEffect(() => {
+    const sessionHour = data.session_hour
     const id = window.setInterval(() => {
       const v = videoRef.current
       if (!v || !v.duration) return
@@ -562,6 +569,7 @@ function LiveSection({
       const completed = pct >= 0.95
       void postSilent('/api/v1/other/premiere/progress', {
         viewer_id: viewerId,
+        session_hour: sessionHour,
         current_time_sec: v.currentTime,
         percentage_watched: pct,
         watch_completed: completed,
