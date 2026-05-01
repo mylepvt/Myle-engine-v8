@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Annotated, Literal, Optional
 
 import httpx
@@ -18,6 +18,7 @@ from starlette import status as http_status
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.models.announcement import Announcement
 from app.models.app_setting import AppSetting
+from app.models.premiere_viewer import PremiereViewer
 from app.models.daily_report import DailyReport
 from app.models.daily_score import DailyScore
 from app.models.training_day_note import TrainingDayNote
@@ -400,6 +401,41 @@ class PremiereStateResponse(BaseModel):
     live_starts_at: str
     live_ends_at: str
     premiere_link: str
+    server_now: str
+    viewer_count: int  # boosted social-proof count
+
+
+class PremiereRegisterBody(BaseModel):
+    viewer_id: str
+    name: str
+    city: str
+    phone: str
+    state: str  # "waiting" or "live" — for scoring
+
+
+class PremiereHeartbeatBody(BaseModel):
+    viewer_id: str
+    state: str
+
+
+class PremiereProgressBody(BaseModel):
+    viewer_id: str
+    current_time_sec: float
+    percentage_watched: float
+    watch_completed: bool = False
+
+
+class PremiereViewerOut(BaseModel):
+    viewer_id: str
+    name: str
+    masked_phone: str
+    city: str
+    percentage_watched: float
+    current_time_sec: float
+    last_seen_at: Optional[str]
+    lead_score: int
+    watch_completed: bool
+    rejoined: bool
 
 
 async def _get_premiere_window(session: AsyncSession) -> tuple[datetime, datetime, datetime]:
@@ -454,6 +490,19 @@ async def get_premiere_state(
             or None
         )
 
+    # Real viewer count (last 45s) + boost to 250-300 range for social proof
+    now_utc = datetime.now(timezone.utc)
+    cutoff = now_utc - timedelta(seconds=45)
+    real_count_row = await session.execute(
+        select(func.count()).select_from(PremiereViewer).where(
+            PremiereViewer.session_date == datetime.now(IST).date().isoformat(),
+            PremiereViewer.last_seen_at >= cutoff,
+        )
+    )
+    real_count = int(real_count_row.scalar_one())
+    # Boost: min 250 floor, cap 300, +real on top but clamped
+    boosted = min(300, max(250, 250 + real_count))
+
     return PremiereStateResponse(
         state=state,
         video_url=video_url,
@@ -461,7 +510,163 @@ async def get_premiere_state(
         live_starts_at=live_start.isoformat(),
         live_ends_at=live_end.isoformat(),
         premiere_link="/premiere",
+        server_now=datetime.now(IST).isoformat(),
+        viewer_count=boosted if state in ("waiting", "live") else 0,
     )
+
+
+def _mask_phone(phone: str) -> str:
+    digits = "".join(c for c in phone if c.isdigit())
+    if len(digits) >= 4:
+        return digits[:2] + "****" + digits[-2:]
+    return "****"
+
+
+def _compute_score(viewer: PremiereViewer) -> int:
+    score = 0
+    if viewer.joined_waiting:
+        score += 10
+    if viewer.percentage_watched >= 0.70:
+        score += 40
+    elif viewer.current_time_sec >= 600:  # 10 min
+        score += 20
+    if viewer.watch_completed:
+        score += 30
+    if viewer.rejoined:
+        score += 60
+    return score
+
+
+@router.post("/premiere/register", status_code=201)
+async def premiere_register(
+    body: PremiereRegisterBody,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Public — no auth. Upsert viewer registration for today's session."""
+    today = datetime.now(IST).date().isoformat()
+    now = datetime.now(timezone.utc)
+    viewer = (
+        await session.execute(
+            select(PremiereViewer).where(PremiereViewer.viewer_id == body.viewer_id)
+        )
+    ).scalar_one_or_none()
+
+    if viewer is None:
+        viewer = PremiereViewer(
+            viewer_id=body.viewer_id,
+            session_date=today,
+            name=body.name.strip()[:200],
+            city=body.city.strip()[:200],
+            phone=body.phone.strip()[:30],
+            first_seen_at=now,
+            last_seen_at=now,
+        )
+        session.add(viewer)
+    else:
+        viewer.name = body.name.strip()[:200]
+        viewer.city = body.city.strip()[:200]
+        viewer.phone = body.phone.strip()[:30]
+        viewer.last_seen_at = now
+        if viewer.session_date != today:
+            # New day — reset progress but mark rejoin
+            viewer.session_date = today
+            viewer.rejoined = True
+            viewer.current_time_sec = 0.0
+            viewer.percentage_watched = 0.0
+            viewer.watch_completed = False
+            viewer.first_seen_at = now
+
+    if body.state == "waiting" and not viewer.joined_waiting:
+        viewer.joined_waiting = True
+
+    viewer.lead_score = _compute_score(viewer)
+    await session.commit()
+    return {"ok": True}
+
+
+@router.post("/premiere/heartbeat")
+async def premiere_heartbeat(
+    body: PremiereHeartbeatBody,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Public — no auth. Update last_seen_at for active viewer."""
+    now = datetime.now(timezone.utc)
+    today = datetime.now(IST).date().isoformat()
+    viewer = (
+        await session.execute(
+            select(PremiereViewer).where(PremiereViewer.viewer_id == body.viewer_id)
+        )
+    ).scalar_one_or_none()
+    if viewer is None:
+        return {"ok": False}
+
+    if body.state == "waiting" and not viewer.joined_waiting:
+        viewer.joined_waiting = True
+    viewer.last_seen_at = now
+    if viewer.session_date != today:
+        viewer.session_date = today
+        viewer.rejoined = True
+    viewer.lead_score = _compute_score(viewer)
+    await session.commit()
+    return {"ok": True}
+
+
+@router.post("/premiere/progress")
+async def premiere_progress(
+    body: PremiereProgressBody,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Public — no auth. Update watch progress."""
+    now = datetime.now(timezone.utc)
+    viewer = (
+        await session.execute(
+            select(PremiereViewer).where(PremiereViewer.viewer_id == body.viewer_id)
+        )
+    ).scalar_one_or_none()
+    if viewer is None:
+        return {"ok": False}
+
+    viewer.current_time_sec = max(viewer.current_time_sec, body.current_time_sec)
+    viewer.percentage_watched = max(viewer.percentage_watched, min(1.0, body.percentage_watched))
+    if body.watch_completed:
+        viewer.watch_completed = True
+    viewer.last_seen_at = now
+    viewer.lead_score = _compute_score(viewer)
+    await session.commit()
+    return {"ok": True}
+
+
+@router.get("/premiere/viewers", response_model=list[PremiereViewerOut])
+async def premiere_viewers(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> list[PremiereViewerOut]:
+    """Admin/leader only — list all viewers for today's session."""
+    if user.role not in ("admin", "leader"):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    today = datetime.now(IST).date().isoformat()
+    rows = (
+        await session.execute(
+            select(PremiereViewer)
+            .where(PremiereViewer.session_date == today)
+            .order_by(PremiereViewer.lead_score.desc(), PremiereViewer.last_seen_at.desc())
+        )
+    ).scalars().all()
+    return [
+        PremiereViewerOut(
+            viewer_id=v.viewer_id,
+            name=v.name,
+            masked_phone=_mask_phone(v.phone),
+            city=v.city,
+            percentage_watched=round(v.percentage_watched * 100, 1),
+            current_time_sec=v.current_time_sec,
+            last_seen_at=v.last_seen_at.isoformat() if v.last_seen_at else None,
+            lead_score=v.lead_score,
+            watch_completed=v.watch_completed,
+            rejoined=v.rejoined,
+        )
+        for v in rows
+    ]
 
 
 @router.get("/premiere/stream")

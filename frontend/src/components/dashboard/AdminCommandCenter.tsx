@@ -34,11 +34,51 @@ import { useLeadControlQuery } from '@/hooks/use-lead-control-query'
 import { LEAD_STATUS_OPTIONS, useLeadsQuery, type LeadPublic } from '@/hooks/use-leads-query'
 import { useLeadPoolQuery } from '@/hooks/use-lead-pool-query'
 import { useActiveWatchersQuery } from '@/hooks/use-enroll-query'
-import { apiFetch } from '@/lib/api'
+import { apiFetch, apiUrl } from '@/lib/api'
 import { messageFromApiErrorPayload } from '@/lib/http-error-message'
 
 type Props = {
   firstName: string
+}
+
+type PremiereViewerRow = {
+  viewer_id: string
+  name: string
+  masked_phone: string
+  city: string
+  percentage_watched: number
+  current_time_sec: number
+  last_seen_at: string | null
+  lead_score: number
+  watch_completed: boolean
+  rejoined: boolean
+}
+
+async function fetchPremiereViewers(): Promise<PremiereViewerRow[]> {
+  const res = await apiFetch('/api/v1/other/premiere/viewers')
+  const body = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(messageFromApiErrorPayload(body, `HTTP ${res.status}`))
+  return body as PremiereViewerRow[]
+}
+
+function usePremiereViewersQuery(enabled: boolean) {
+  return useQuery({
+    queryKey: ['premiere', 'viewers'],
+    queryFn: fetchPremiereViewers,
+    enabled,
+    refetchInterval: 15_000,
+  })
+}
+
+function isActiveNow(lastSeenAt: string | null): boolean {
+  if (!lastSeenAt) return false
+  return Date.now() - new Date(lastSeenAt).getTime() < 45_000
+}
+
+function fmtTime(sec: number): string {
+  const m = Math.floor(sec / 60)
+  const s = Math.floor(sec % 60)
+  return `${m}m ${String(s).padStart(2, '0')}s`
 }
 
 type PendingRegistrationRow = {
@@ -213,6 +253,7 @@ export function AdminCommandCenter({ firstName }: Props) {
   })
   const appSettings = useAppSettingsQuery(activeTab === 'content')
   const day2Review = useDay2ReviewQuery()
+  const premiereViewers = usePremiereViewersQuery(activeTab === 'premiere')
   const activeWatchers = useActiveWatchersQuery()
   const leadSearchResults = useLeadsQuery(
     deferredLeadSearch.length > 0,
@@ -275,6 +316,7 @@ export function AdminCommandCenter({ firstName }: Props) {
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-2 rounded-2xl bg-muted/50 p-2">
           <TabsTrigger value="today">Today</TabsTrigger>
           <TabsTrigger value="leads">Leads</TabsTrigger>
+          <TabsTrigger value="premiere">Premiere</TabsTrigger>
           <TabsTrigger value="team">Team</TabsTrigger>
           <TabsTrigger value="finance">Finance</TabsTrigger>
           <TabsTrigger value="content">Content</TabsTrigger>
@@ -792,6 +834,121 @@ export function AdminCommandCenter({ firstName }: Props) {
               </CardContent>
             </Card>
           </section>
+        </TabsContent>
+
+        <TabsContent value="premiere" className="space-y-6">
+          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard label="Total Viewers Today" value={premiereViewers.data?.length ?? 0} hint="Unique registered viewers for today's premiere session." />
+            <StatCard label="Watching Now" value={(premiereViewers.data ?? []).filter((v) => isActiveNow(v.last_seen_at)).length} hint="Active in last 45 seconds." />
+            <StatCard label="Completed Session" value={(premiereViewers.data ?? []).filter((v) => v.watch_completed).length} hint="Watched 95%+ of the session." />
+            <StatCard label="Top Lead Score" value={(premiereViewers.data ?? []).reduce((max, v) => Math.max(max, v.lead_score), 0)} hint="Highest lead score from today's viewers." />
+          </section>
+
+          <Card className="surface-elevated border-white/[0.08]">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <span className="relative flex size-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                  <span className="relative inline-flex size-2 rounded-full bg-red-500" />
+                </span>
+                Premiere Viewers — Today
+              </CardTitle>
+              <CardDescription>
+                All registered viewers for today's session with watch progress and lead scores. Refreshes every 15s.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {premiereViewers.isPending ? (
+                <div className="space-y-2">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="surface-inset h-20 animate-pulse rounded-2xl" />
+                  ))}
+                </div>
+              ) : premiereViewers.isError ? (
+                <ErrorState
+                  title="Could not load premiere viewers"
+                  message={premiereViewers.error instanceof Error ? premiereViewers.error.message : 'Please try again.'}
+                  onRetry={() => void premiereViewers.refetch()}
+                />
+              ) : (premiereViewers.data ?? []).length === 0 ? (
+                <EmptyState
+                  title="No viewers yet today"
+                  description="Viewers appear here as soon as they register on the premiere page."
+                />
+              ) : (
+                <div className="space-y-3">
+                  {(premiereViewers.data ?? []).map((v) => (
+                    <div key={v.viewer_id} className="surface-inset rounded-2xl p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-medium text-foreground">{v.name}</p>
+                            {isActiveNow(v.last_seen_at) && (
+                              <span className="flex items-center gap-1 rounded-full bg-red-600/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white">
+                                <span className="relative flex size-1.5">
+                                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                                  <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
+                                </span>
+                                Live
+                              </span>
+                            )}
+                            {v.watch_completed && (
+                              <Badge variant="success">Completed</Badge>
+                            )}
+                            {v.rejoined && (
+                              <Badge variant="outline">Rejoined</Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {v.masked_phone} · {v.city}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Watched {v.percentage_watched.toFixed(1)}% · {fmtTime(v.current_time_sec)}
+                            {v.last_seen_at ? ` · Last seen ${formatDateTime(v.last_seen_at)}` : ''}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1.5">
+                          <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
+                            Score {v.lead_score}
+                          </span>
+                          {/* Progress bar */}
+                          <div className="h-1.5 w-28 overflow-hidden rounded-full bg-white/10">
+                            <div
+                              className="h-full rounded-full bg-primary/70 transition-all"
+                              style={{ width: `${Math.min(100, v.percentage_watched)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="surface-elevated border-white/[0.08]">
+            <CardHeader>
+              <CardTitle className="text-lg">Lead Scoring Guide</CardTitle>
+              <CardDescription>How scores are computed for premiere viewers.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                {([
+                  ['+10', 'Joined waiting room'],
+                  ['+20', 'Watched 10+ minutes'],
+                  ['+40', 'Watched 70%+'],
+                  ['+30', 'Watched till end'],
+                  ['+60', 'Rejoined session'],
+                ] as const).map(([pts, label]) => (
+                  <div key={label} className="surface-inset flex items-center gap-3 rounded-2xl p-3">
+                    <span className="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">{pts}</span>
+                    <p className="text-sm text-foreground">{label}</p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="audit" className="space-y-6">
