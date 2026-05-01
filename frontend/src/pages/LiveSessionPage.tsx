@@ -131,7 +131,7 @@ function SlotCard({ slot, link }: { slot: ScheduleSlot; link: string }) {
 type Props = { title: string }
 
 export function LiveSessionPage({ title }: Props) {
-  const { data, isPending } = useQuery({
+  const { data, isPending, isError, error } = useQuery({
     queryKey: ['premiere', 'schedule'],
     queryFn: fetchSchedule,
     refetchInterval: 30_000,
@@ -175,6 +175,10 @@ export function LiveSessionPage({ title }: Props) {
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
           </div>
+        ) : isError ? (
+          <p className="text-sm text-destructive">
+            {error instanceof Error ? error.message : 'Could not load schedule'}
+          </p>
         ) : data ? (
           <div className="space-y-2">
             {data.slots.map((slot) => (
