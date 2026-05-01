@@ -484,18 +484,17 @@ async def list_active_watchers(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[ActiveWatcherPublic]:
     cutoff = datetime.now(timezone.utc) - timedelta(seconds=45)
-    rows = (
-        await session.execute(
-            select(EnrollShareLink, Lead)
-            .join(Lead, EnrollShareLink.lead_id == Lead.id)
-            .where(
-                EnrollShareLink.created_by_user_id == user.user_id,
-                EnrollShareLink.last_viewed_at >= cutoff,
-                Lead.deleted_at.is_(None),
-            )
-            .order_by(EnrollShareLink.last_viewed_at.desc())
+    q = (
+        select(EnrollShareLink, Lead)
+        .join(Lead, EnrollShareLink.lead_id == Lead.id)
+        .where(
+            EnrollShareLink.last_viewed_at >= cutoff,
+            Lead.deleted_at.is_(None),
         )
-    ).all()
+    )
+    if user.role not in ("admin", "leader"):
+        q = q.where(EnrollShareLink.created_by_user_id == user.user_id)
+    rows = (await session.execute(q.order_by(EnrollShareLink.last_viewed_at.desc()))).all()
     return [
         ActiveWatcherPublic(
             token=link.token,
