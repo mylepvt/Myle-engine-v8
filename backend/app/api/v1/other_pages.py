@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Upl
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import and_, desc, func, select
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.background import BackgroundTask
 from starlette import status as http_status
@@ -91,6 +92,19 @@ def _acting_label(user: AuthUser) -> str:
     if user.email and "@" in user.email:
         return user.email.split("@", 1)[0]
     return str(user.user_id)
+
+
+def _is_missing_premiere_viewers_table_error(exc: Exception) -> bool:
+    parts = [str(exc).lower()]
+    original = getattr(exc, "orig", None)
+    if original is not None:
+        parts.append(str(original).lower())
+    message = " ".join(parts)
+    return "premiere_viewers" in message and (
+        "no such table" in message
+        or "does not exist" in message
+        or "undefinedtable" in message
+    )
 
 
 @router.get("/leaderboard", response_model=SystemStubResponse)
@@ -571,13 +585,18 @@ async def get_premiere_state(
     # Social proof viewer count (real + floor boost)
     cutoff = datetime.now(timezone.utc) - timedelta(seconds=45)
     today_str = now.date().isoformat()
-    real_count = int((await db.execute(
-        select(func.count()).select_from(PremiereViewer).where(
-            PremiereViewer.session_date == today_str,
-            PremiereViewer.session_hour == session_hour,
-            PremiereViewer.last_seen_at >= cutoff,
-        )
-    )).scalar_one())
+    try:
+        real_count = int((await db.execute(
+            select(func.count()).select_from(PremiereViewer).where(
+                PremiereViewer.session_date == today_str,
+                PremiereViewer.session_hour == session_hour,
+                PremiereViewer.last_seen_at >= cutoff,
+            )
+        )).scalar_one())
+    except (OperationalError, ProgrammingError) as exc:
+        if not _is_missing_premiere_viewers_table_error(exc):
+            raise
+        real_count = 0
     boosted = min(300, max(250, 250 + real_count)) if state in ("waiting", "live") else 0
 
     return PremiereStateResponse(
@@ -605,12 +624,17 @@ async def get_premiere_schedule(
     today_str = today.isoformat()
 
     # Viewer counts per hour for today
-    counts_rows = (await db.execute(
-        select(PremiereViewer.session_hour, func.count().label("cnt"))
-        .where(PremiereViewer.session_date == today_str)
-        .group_by(PremiereViewer.session_hour)
-    )).all()
-    counts: dict[int, int] = {r.session_hour: r.cnt for r in counts_rows}
+    try:
+        counts_rows = (await db.execute(
+            select(PremiereViewer.session_hour, func.count().label("cnt"))
+            .where(PremiereViewer.session_date == today_str)
+            .group_by(PremiereViewer.session_hour)
+        )).all()
+        counts: dict[int, int] = {r.session_hour: r.cnt for r in counts_rows}
+    except (OperationalError, ProgrammingError) as exc:
+        if not _is_missing_premiere_viewers_table_error(exc):
+            raise
+        counts = {}
 
     slots: list[PremiereSlot] = []
     active_hour: Optional[int] = None
@@ -655,44 +679,50 @@ async def premiere_register(
     today = datetime.now(IST).date().isoformat()
     now = datetime.now(timezone.utc)
 
-    viewer = (await db.execute(
-        select(PremiereViewer).where(
-            PremiereViewer.viewer_id == body.viewer_id,
-            PremiereViewer.session_date == today,
-            PremiereViewer.session_hour == body.session_hour,
-        )
-    )).scalar_one_or_none()
-
-    if viewer is None:
-        # Check if same viewer has ANY record today (different slot) → mark rejoin
-        prev = (await db.execute(
-            select(PremiereViewer.id).where(
+    try:
+        viewer = (await db.execute(
+            select(PremiereViewer).where(
                 PremiereViewer.viewer_id == body.viewer_id,
                 PremiereViewer.session_date == today,
+                PremiereViewer.session_hour == body.session_hour,
             )
         )).scalar_one_or_none()
-        viewer = PremiereViewer(
-            viewer_id=body.viewer_id,
-            session_date=today,
-            session_hour=body.session_hour,
-            name=body.name.strip()[:200],
-            city=body.city.strip()[:200],
-            phone=body.phone.strip()[:30],
-            first_seen_at=now,
-            last_seen_at=now,
-            rejoined=prev is not None,
-        )
-        db.add(viewer)
-    else:
-        viewer.name = body.name.strip()[:200]
-        viewer.city = body.city.strip()[:200]
-        viewer.phone = body.phone.strip()[:30]
-        viewer.last_seen_at = now
 
-    if body.state == "waiting" and not viewer.joined_waiting:
-        viewer.joined_waiting = True
-    viewer.lead_score = _compute_score(viewer)
-    await db.commit()
+        if viewer is None:
+            # Check if same viewer has ANY record today (different slot) → mark rejoin
+            prev = (await db.execute(
+                select(PremiereViewer.id).where(
+                    PremiereViewer.viewer_id == body.viewer_id,
+                    PremiereViewer.session_date == today,
+                )
+            )).scalar_one_or_none()
+            viewer = PremiereViewer(
+                viewer_id=body.viewer_id,
+                session_date=today,
+                session_hour=body.session_hour,
+                name=body.name.strip()[:200],
+                city=body.city.strip()[:200],
+                phone=body.phone.strip()[:30],
+                first_seen_at=now,
+                last_seen_at=now,
+                rejoined=prev is not None,
+            )
+            db.add(viewer)
+        else:
+            viewer.name = body.name.strip()[:200]
+            viewer.city = body.city.strip()[:200]
+            viewer.phone = body.phone.strip()[:30]
+            viewer.last_seen_at = now
+
+        if body.state == "waiting" and not viewer.joined_waiting:
+            viewer.joined_waiting = True
+        viewer.lead_score = _compute_score(viewer)
+        await db.commit()
+    except (OperationalError, ProgrammingError) as exc:
+        if not _is_missing_premiere_viewers_table_error(exc):
+            raise
+        await db.rollback()
+        return {"ok": False, "tracking_disabled": True}
     return {"ok": True}
 
 
@@ -704,20 +734,26 @@ async def premiere_heartbeat(
     """Public — no auth."""
     now = datetime.now(timezone.utc)
     today = datetime.now(IST).date().isoformat()
-    viewer = (await db.execute(
-        select(PremiereViewer).where(
-            PremiereViewer.viewer_id == body.viewer_id,
-            PremiereViewer.session_date == today,
-            PremiereViewer.session_hour == body.session_hour,
-        )
-    )).scalar_one_or_none()
-    if viewer is None:
-        return {"ok": False}
-    if body.state == "waiting" and not viewer.joined_waiting:
-        viewer.joined_waiting = True
-    viewer.last_seen_at = now
-    viewer.lead_score = _compute_score(viewer)
-    await db.commit()
+    try:
+        viewer = (await db.execute(
+            select(PremiereViewer).where(
+                PremiereViewer.viewer_id == body.viewer_id,
+                PremiereViewer.session_date == today,
+                PremiereViewer.session_hour == body.session_hour,
+            )
+        )).scalar_one_or_none()
+        if viewer is None:
+            return {"ok": False}
+        if body.state == "waiting" and not viewer.joined_waiting:
+            viewer.joined_waiting = True
+        viewer.last_seen_at = now
+        viewer.lead_score = _compute_score(viewer)
+        await db.commit()
+    except (OperationalError, ProgrammingError) as exc:
+        if not _is_missing_premiere_viewers_table_error(exc):
+            raise
+        await db.rollback()
+        return {"ok": False, "tracking_disabled": True}
     return {"ok": True}
 
 
@@ -729,22 +765,28 @@ async def premiere_progress(
     """Public — no auth."""
     now = datetime.now(timezone.utc)
     today = datetime.now(IST).date().isoformat()
-    viewer = (await db.execute(
-        select(PremiereViewer).where(
-            PremiereViewer.viewer_id == body.viewer_id,
-            PremiereViewer.session_date == today,
-            PremiereViewer.session_hour == body.session_hour,
-        )
-    )).scalar_one_or_none()
-    if viewer is None:
-        return {"ok": False}
-    viewer.current_time_sec = max(viewer.current_time_sec, body.current_time_sec)
-    viewer.percentage_watched = max(viewer.percentage_watched, min(1.0, body.percentage_watched))
-    if body.watch_completed:
-        viewer.watch_completed = True
-    viewer.last_seen_at = now
-    viewer.lead_score = _compute_score(viewer)
-    await db.commit()
+    try:
+        viewer = (await db.execute(
+            select(PremiereViewer).where(
+                PremiereViewer.viewer_id == body.viewer_id,
+                PremiereViewer.session_date == today,
+                PremiereViewer.session_hour == body.session_hour,
+            )
+        )).scalar_one_or_none()
+        if viewer is None:
+            return {"ok": False}
+        viewer.current_time_sec = max(viewer.current_time_sec, body.current_time_sec)
+        viewer.percentage_watched = max(viewer.percentage_watched, min(1.0, body.percentage_watched))
+        if body.watch_completed:
+            viewer.watch_completed = True
+        viewer.last_seen_at = now
+        viewer.lead_score = _compute_score(viewer)
+        await db.commit()
+    except (OperationalError, ProgrammingError) as exc:
+        if not _is_missing_premiere_viewers_table_error(exc):
+            raise
+        await db.rollback()
+        return {"ok": False, "tracking_disabled": True}
     return {"ok": True}
 
 
@@ -761,9 +803,14 @@ async def premiere_viewers(
     q = select(PremiereViewer).where(PremiereViewer.session_date == today)
     if hour is not None:
         q = q.where(PremiereViewer.session_hour == hour)
-    rows = (await db.execute(
-        q.order_by(PremiereViewer.lead_score.desc(), PremiereViewer.last_seen_at.desc())
-    )).scalars().all()
+    try:
+        rows = (await db.execute(
+            q.order_by(PremiereViewer.lead_score.desc(), PremiereViewer.last_seen_at.desc())
+        )).scalars().all()
+    except (OperationalError, ProgrammingError) as exc:
+        if not _is_missing_premiere_viewers_table_error(exc):
+            raise
+        return []
     return [
         PremiereViewerOut(
             viewer_id=v.viewer_id,

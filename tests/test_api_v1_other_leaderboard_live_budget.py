@@ -143,6 +143,33 @@ def test_other_live_session_zoom_legacy_keys(monkeypatch: pytest.MonkeyPatch) ->
     assert "zoom" in (body.get("note") or "").lower() or "live_session" in (body.get("note") or "").lower()
 
 
+def test_premiere_schedule_survives_missing_viewer_table(monkeypatch: pytest.MonkeyPatch) -> None:
+    team = _client_role(monkeypatch, "team")
+    r = team.get("/api/v1/other/premiere/schedule")
+    assert r.status_code == 200
+    body = r.json()
+    assert isinstance(body["slots"], list)
+    assert len(body["slots"]) >= 1
+    assert all(slot["viewer_count_today"] == 0 for slot in body["slots"])
+
+
+def test_premiere_register_survives_missing_viewer_table() -> None:
+    c = TestClient(app)
+    r = c.post(
+        "/api/v1/other/premiere/register",
+        json={
+            "viewer_id": "viewer-missing-table",
+            "name": "Prospect",
+            "city": "Delhi",
+            "phone": "9999999999",
+            "session_hour": 11,
+            "state": "waiting",
+        },
+    )
+    assert r.status_code == 201
+    assert r.json() == {"ok": False, "tracking_disabled": True}
+
+
 def test_finance_budget_export_admin_returns_hierarchy(monkeypatch: pytest.MonkeyPatch) -> None:
     asyncio.run(_seed_budget_hierarchy())
 
