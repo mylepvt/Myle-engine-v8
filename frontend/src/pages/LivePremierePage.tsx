@@ -277,7 +277,16 @@ function PremiereVideoPlayer({
         onPlay={() => setPaused(false)}
         onPause={() => setPaused(true)}
         onTimeUpdate={(e) => { lastTimeRef.current = e.currentTarget.currentTime }}
-        onSeeking={(e) => { if (e.currentTarget.currentTime < lastTimeRef.current - 1) e.currentTarget.currentTime = lastTimeRef.current }}
+        onSeeking={(e) => { lastTimeRef.current = e.currentTarget.currentTime }}
+        onSeeked={(e) => {
+          const v = e.currentTarget
+          const expectedSec = (Date.now() - new Date(liveStartsAt).getTime()) / 1000
+          if (v.currentTime < expectedSec - 120 || v.currentTime > expectedSec + 30) {
+            const target = Math.min(Math.max(0, expectedSec), v.duration - 0.5)
+            lastTimeRef.current = target
+            v.currentTime = target
+          }
+        }}
         onClick={togglePlay}
       />
 
@@ -715,7 +724,16 @@ function PremiereVideoPlayerWithRef({
         onPlay={() => setPaused(false)}
         onPause={() => setPaused(true)}
         onTimeUpdate={(e) => { lastTimeRef.current = e.currentTarget.currentTime }}
-        onSeeking={(e) => { if (e.currentTarget.currentTime < lastTimeRef.current - 1) e.currentTarget.currentTime = lastTimeRef.current }}
+        onSeeking={(e) => { lastTimeRef.current = e.currentTarget.currentTime }}
+        onSeeked={(e) => {
+          const v = e.currentTarget
+          const expectedSec = (Date.now() - new Date(liveStartsAt).getTime()) / 1000
+          if (v.currentTime < expectedSec - 120 || v.currentTime > expectedSec + 30) {
+            const target = Math.min(Math.max(0, expectedSec), v.duration - 0.5)
+            lastTimeRef.current = target
+            v.currentTime = target
+          }
+        }}
         onClick={togglePlay}
       />
 
