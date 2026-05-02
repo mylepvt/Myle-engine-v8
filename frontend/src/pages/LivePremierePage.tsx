@@ -212,6 +212,7 @@ function PremiereVideoPlayer({
   const hlsRef = useRef<Hls | null>(null)
   const lastTimeRef = useRef(0)
   const [paused, setPaused] = useState(false)
+  const [muted, setMuted] = useState(true)
   const [showCta, setShowCta] = useState(false)
 
   useEffect(() => {
@@ -225,6 +226,7 @@ function PremiereVideoPlayer({
       const target = Math.min(Math.max(0, offsetSec), video.duration - 0.5)
       lastTimeRef.current = target
       video.currentTime = target
+      video.muted = true
       void video.play().catch(() => {})
     }
 
@@ -256,12 +258,20 @@ function PremiereVideoPlayer({
     else void v.pause()
   }
 
+  function unmute() {
+    const v = videoRef.current
+    if (!v) return
+    v.muted = false
+    setMuted(false)
+  }
+
   return (
     <div className="relative w-full bg-black" style={{ aspectRatio: '16/9' }}>
       <video
         ref={videoRef}
         className="h-full w-full rounded-[1.4rem] object-contain"
         playsInline
+        muted
         disableRemotePlayback
         onContextMenu={(e) => e.preventDefault()}
         onPlay={() => setPaused(false)}
@@ -290,6 +300,22 @@ function PremiereVideoPlayer({
               <path d="M8 5v14l11-7z" />
             </svg>
           </span>
+        </button>
+      )}
+
+      {/* Unmute prompt — shown while video plays muted */}
+      {muted && !paused && (
+        <button
+          type="button"
+          aria-label="Unmute"
+          className="absolute left-1/2 top-5 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/75 px-4 py-2 text-xs font-semibold text-white backdrop-blur-sm ring-1 ring-white/20 transition hover:bg-black/90 active:scale-95"
+          onClick={unmute}
+        >
+          <svg className="size-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+          </svg>
+          Tap to unmute
         </button>
       )}
 
@@ -625,6 +651,7 @@ function PremiereVideoPlayerWithRef({
 }) {
   const lastTimeRef = useRef(0)
   const [paused, setPaused] = useState(false)
+  const [muted, setMuted] = useState(true)
   const [showCta, setShowCta] = useState(false)
   const hlsRef = useRef<Hls | null>(null)
 
@@ -638,6 +665,7 @@ function PremiereVideoPlayerWithRef({
       const target = Math.min(Math.max(0, offsetSec), video.duration - 0.5)
       lastTimeRef.current = target
       video.currentTime = target
+      video.muted = true
       void video.play().catch(() => {})
     }
 
@@ -668,12 +696,20 @@ function PremiereVideoPlayerWithRef({
     else void v.pause()
   }
 
+  function unmute() {
+    const v = externalRef.current
+    if (!v) return
+    v.muted = false
+    setMuted(false)
+  }
+
   return (
     <div className="relative bg-black" style={{ aspectRatio: '16/9' }}>
       <video
         ref={externalRef}
         className="h-full w-full rounded-[1.4rem] object-contain"
         playsInline
+        muted
         disableRemotePlayback
         onContextMenu={(e) => e.preventDefault()}
         onPlay={() => setPaused(false)}
@@ -698,6 +734,22 @@ function PremiereVideoPlayerWithRef({
               <path d="M8 5v14l11-7z" />
             </svg>
           </span>
+        </button>
+      )}
+
+      {/* Unmute prompt — shown while video plays muted */}
+      {muted && !paused && (
+        <button
+          type="button"
+          aria-label="Unmute"
+          className="absolute left-1/2 top-5 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/75 px-4 py-2 text-xs font-semibold text-white backdrop-blur-sm ring-1 ring-white/20 transition hover:bg-black/90 active:scale-95"
+          onClick={unmute}
+        >
+          <svg className="size-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+          </svg>
+          Tap to unmute
         </button>
       )}
 
