@@ -21,6 +21,7 @@ from app.schemas.workboard import (
     WorkboardStaleResponse,
     WorkboardSummaryResponse,
 )
+from app.services.execution_enforcement import run_completed_watch_pipeline_maintenance
 from app.services.lead_payloads import build_lead_public_payloads
 from app.services.lead_scope import lead_execution_visibility_where
 
@@ -37,6 +38,9 @@ class WorkboardService:
         self._repository = repository
         self._session = session
 
+    async def _run_watch_maintenance(self) -> None:
+        await run_completed_watch_pipeline_maintenance(self._session)
+
     def _active_scope(self, user: AuthUser):
         scope = and_(
             Lead.archived_at.is_(None),
@@ -49,6 +53,7 @@ class WorkboardService:
         return scope
 
     async def get_leads(self, *, user: AuthUser, limit_per_column: int, max_rows: int) -> WorkboardLeadsResponse:
+        await self._run_watch_maintenance()
         scope = self._active_scope(user)
         totals = await self._repository.get_workboard_counts(condition=scope)
         buckets: dict[str, list[LeadPublic]] = {s: [] for s in WORKBOARD_COLUMNS}
@@ -67,6 +72,7 @@ class WorkboardService:
         )
 
     async def get_stale(self, *, user: AuthUser, stale_hours: int, limit: int) -> WorkboardStaleResponse:
+        await self._run_watch_maintenance()
         scope = self._active_scope(user)
         stale_before = datetime.now(timezone.utc) - timedelta(hours=stale_hours)
         stale_rows = await self._repository.get_stale_leads(
@@ -99,6 +105,7 @@ class WorkboardService:
         if use_cache and cached is not None and now - cached[0] <= _SUMMARY_CACHE_TTL_SECONDS:
             return cached[1]
 
+        await self._run_watch_maintenance()
         scope = self._active_scope(user)
         # Legacy parity: leader workboard hides pending/video action counters (they execute via leads views).
         if user.role == "leader":
