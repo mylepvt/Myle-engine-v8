@@ -195,6 +195,10 @@ export function TrainingDayView({
                   controls
                   src={resolvedAudioUrl}
                   className="w-full max-w-full"
+                  controlsList="noplaybackrate nodownload"
+                  onRateChange={(e) => {
+                    if (e.currentTarget.playbackRate !== 1) e.currentTarget.playbackRate = 1
+                  }}
                   onError={() => setAudioFailed(true)}
                 />
                 <p className="mt-2 text-xs text-muted-foreground">

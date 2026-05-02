@@ -586,7 +586,7 @@ export function WatchPage() {
                           </div>
 
                           <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-white/70">
-                            <span>{progressLabel}</span>
+                            <span>{currentSeconds > 0 || watchCompleted ? progressLabel : null}</span>
                             <span>{watchCompleted ? 'Thanks for watching.' : 'Please watch through to the end.'}</span>
                           </div>
 
