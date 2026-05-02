@@ -7,6 +7,12 @@ from app.services.member_compliance import (
 )
 
 
+def test_discipline_warnings_are_unpaused_by_default() -> None:
+    assert settings.discipline_warning_pause_until is None
+    assert discipline_warnings_paused(date(2026, 5, 2)) is False
+    assert discipline_warning_pause_note(date(2026, 5, 2)) is None
+
+
 def test_discipline_warnings_pause_window_is_active_through_may_3() -> None:
     original = settings.discipline_warning_pause_until
     settings.discipline_warning_pause_until = date(2026, 5, 4)

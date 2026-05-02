@@ -233,6 +233,64 @@ def test_password_login_restores_same_day_auto_removed_user_on_rollout_start(
         asyncio.run(cleanup_user())
 
 
+def test_password_login_restores_legacy_auto_removed_user_without_removed_at(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    patch_jwt_settings(monkeypatch)
+    _patch_compliance_rollout_start(monkeypatch)
+    fbo = "discipline-auto-removed-no-date"
+    email = "discipline-auto-removed-no-date@test.local"
+
+    async def seed_user() -> None:
+        factory = get_test_session_factory()
+        async with factory() as session:
+            session.add(
+                User(
+                    fbo_id=fbo,
+                    email=email,
+                    role="team",
+                    hashed_password=hash_password(DEV_LOGIN_PASSWORD_PLAIN),
+                    upline_user_id=2,
+                    registration_status="approved",
+                    created_at=datetime.now(timezone.utc) - timedelta(days=6),
+                    access_blocked=True,
+                    discipline_status="removed",
+                    removal_reason="Removed for repeated non-compliance.",
+                )
+            )
+            await session.commit()
+
+    async def cleanup_user() -> None:
+        factory = get_test_session_factory()
+        async with factory() as session:
+            await session.execute(delete(User).where(User.fbo_id == fbo))
+            await session.commit()
+
+    try:
+        asyncio.run(seed_user())
+        res = client.post(
+            "/api/v1/auth/login",
+            json={"fbo_id": fbo, "password": DEV_LOGIN_PASSWORD_PLAIN},
+        )
+        assert res.status_code == 200
+        assert res.json() == {"ok": True}
+
+        async def assert_restored() -> None:
+            factory = get_test_session_factory()
+            async with factory() as session:
+                row = (
+                    await session.execute(select(User).where(User.fbo_id == fbo))
+                ).scalar_one()
+                assert row.access_blocked is False
+                assert row.discipline_status == "active"
+                assert row.removal_reason is None
+                assert row.discipline_reset_on == today_ist()
+
+        asyncio.run(assert_restored())
+    finally:
+        asyncio.run(cleanup_user())
+
+
 def test_password_login_blocks_after_four_missed_reports_once_rollout_window_has_passed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

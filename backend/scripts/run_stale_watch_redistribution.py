@@ -43,6 +43,7 @@ async def _run(args: argparse.Namespace) -> None:
             stale_hours=args.stale_hours,
             top_n=args.top_n,
             limit=args.limit,
+            auto_reassign=True,
         )
     print(
         "watch_pipeline_maintenance:",

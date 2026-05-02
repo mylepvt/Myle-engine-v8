@@ -165,11 +165,11 @@ async def execution_leak_map(
 async def execution_stale_redistribute(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
-    stale_hours: int = Query(default=48, ge=1, le=720),
+    stale_hours: int = Query(default=24, ge=1, le=720),
     top_n: int = Query(default=10, ge=1, le=50),
     limit: int = Query(default=500, ge=1, le=500),
 ) -> StaleRedistributeOut:
-    """Admin: auto-cycle completed-watch stale leads into the top-XP team pool."""
+    """Admin: redistribute leads that have already spent `stale_hours` inside archived watch queue."""
     _require_admin(user)
     return await enf.stale_redistribute(
         session, stale_hours=stale_hours, top_n=top_n, limit=limit

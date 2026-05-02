@@ -99,6 +99,7 @@ _WATCH_ARCHIVE_BUCKET = "completed_watch_archived_leads"
 _STALE_WATCH_BUCKET = "archived_completed_watch_stale_leads"
 _DEFAULT_MAX_ACTIVE_LEADS_PER_WORKER = 50
 _DEFAULT_WATCH_ARCHIVE_AFTER_HOURS = 24
+_DEFAULT_ARCHIVED_WATCH_REASSIGN_AFTER_HOURS = 24
 _AUTO_REASSIGNMENT_ACTION = "lead.stale_watch_reassigned"
 _MANUAL_REASSIGNMENT_ACTION = "lead.manual_watch_reassigned"
 _REASSIGNMENT_HISTORY_ACTIONS = (_AUTO_REASSIGNMENT_ACTION, _MANUAL_REASSIGNMENT_ACTION)
@@ -948,10 +949,11 @@ async def run_completed_watch_pipeline_maintenance(
     session: AsyncSession,
     *,
     archive_after_hours: int = _DEFAULT_WATCH_ARCHIVE_AFTER_HOURS,
-    stale_hours: int = _DEFAULT_WATCH_ARCHIVE_AFTER_HOURS,
+    stale_hours: int = _DEFAULT_ARCHIVED_WATCH_REASSIGN_AFTER_HOURS,
     top_n: int = 10,
     limit: int = 500,
     now: datetime | None = None,
+    auto_reassign: bool = False,
 ) -> dict[str, int]:
     ts = _ensure_utc_datetime(now) or datetime.now(timezone.utc)
     auto_archived = await auto_archive_completed_watch_leads(
@@ -960,17 +962,22 @@ async def run_completed_watch_pipeline_maintenance(
         limit=limit,
         now=ts,
     )
-    redistribution = await stale_redistribute(
-        session,
-        stale_hours=stale_hours,
-        top_n=top_n,
-        limit=limit,
-        now=ts,
-    )
+    redistributed = 0
+    skipped = 0
+    if auto_reassign:
+        redistribution = await stale_redistribute(
+            session,
+            stale_hours=stale_hours,
+            top_n=top_n,
+            limit=limit,
+            now=ts,
+        )
+        redistributed = int(redistribution.assigned)
+        skipped = int(redistribution.skipped)
     return {
         "auto_archived": int(auto_archived),
-        "reassigned": int(redistribution.assigned),
-        "skipped": int(redistribution.skipped),
+        "reassigned": redistributed,
+        "skipped": skipped,
     }
 
 
@@ -1059,7 +1066,7 @@ def _assign_leads(
 async def stale_redistribute(
     session: AsyncSession,
     *,
-    stale_hours: int = _DEFAULT_WATCH_ARCHIVE_AFTER_HOURS,
+    stale_hours: int = _DEFAULT_ARCHIVED_WATCH_REASSIGN_AFTER_HOURS,
     top_n: int = 10,
     limit: int = 500,
     now: datetime | None = None,
@@ -1173,10 +1180,16 @@ async def stale_redistribute(
 async def admin_lead_control_snapshot(
     session: AsyncSession,
     *,
-    stale_hours: int = _DEFAULT_WATCH_ARCHIVE_AFTER_HOURS,
+    stale_hours: int = _DEFAULT_ARCHIVED_WATCH_REASSIGN_AFTER_HOURS,
     queue_limit: int = 100,
     history_limit: int = 80,
 ) -> LeadControlOut:
+    await run_completed_watch_pipeline_maintenance(
+        session,
+        archive_after_hours=_DEFAULT_WATCH_ARCHIVE_AFTER_HOURS,
+        stale_hours=stale_hours,
+        auto_reassign=False,
+    )
     stale_cutoff = datetime.now(timezone.utc) - timedelta(hours=max(1, int(stale_hours)))
     queue = await _get_completed_watch_stale_leads(
         session,
@@ -1374,8 +1387,9 @@ async def admin_lead_control_snapshot(
 
     return LeadControlOut(
         note=(
-            "Admin-only control surface. Owner never changes here; only the working assignee can move. "
-            "Archived completed-watch leads appear once they are stale for reassignment."
+            "Admin-only control surface. Watch complete + 24h moves a lead into archived. "
+            "After 24h more inside archived, it appears here for reassignment. Owner never changes; "
+            "only the working assignee can move."
         ),
         queue=queue_rows,
         queue_total=queue_total,
