@@ -172,9 +172,12 @@ def _is_rollout_grandfathered_auto_removal(user: User, policy_start_date: date) 
     if user.removed_by_user_id is not None:
         return False
     removed_on = _datetime_to_ist_date(user.removed_at)
-    if removed_on is None:
+    status = (user.discipline_status or "").strip().lower()
+    if status != "removed":
         return False
-    return removed_on <= policy_start_date and (user.discipline_status or "").strip().lower() == "removed"
+    if removed_on is None:
+        return bool(user.access_blocked)
+    return removed_on <= policy_start_date
 
 
 def _restore_rollout_grandfathered_auto_removal(

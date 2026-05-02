@@ -75,16 +75,16 @@ class Settings(BaseSettings):
         description="Max POSTs per client IP per minute on auth login paths; 0 disables.",
     )
     discipline_rollout_start_date: date = Field(
-        default=date(2026, 4, 24),
+        default=date(2026, 5, 2),
         validation_alias="DISCIPLINE_ROLLOUT_START_DATE",
         description="Calendar date from which call/report discipline starts counting. Older activity is ignored.",
     )
     discipline_warning_pause_until: Optional[date] = Field(
-        default=date(2026, 5, 4),
+        default=None,
         validation_alias="DISCIPLINE_WARNING_PAUSE_UNTIL",
         description=(
-            "Exclusive calendar date until which inactivity warnings stay muted during development. "
-            "For example, 2026-05-04 keeps warnings off through 2026-05-03."
+            "Exclusive calendar date until which inactivity warnings stay muted. "
+            "Leave unset to keep discipline gates active."
         ),
     )
     app_environment: str = Field(
