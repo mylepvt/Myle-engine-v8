@@ -227,7 +227,7 @@ def test_completed_watch_pipeline_archives_then_reassigns_without_changing_owner
                 before_wallet_count = int(
                     (await session.execute(select(func.count()).select_from(WalletLedgerEntry))).scalar_one()
                 )
-                result = await run_completed_watch_pipeline_maintenance(session)
+                result = await run_completed_watch_pipeline_maintenance(session, auto_reassign=True)
                 assert result == {
                     "auto_archived": 2,
                     "reassigned": 2,
@@ -302,6 +302,50 @@ def test_completed_watch_pipeline_archives_then_reassigns_without_changing_owner
         asyncio.run(_reset_state())
 
 
+def test_completed_watch_pipeline_default_maintenance_only_archives() -> None:
+    asyncio.run(_reset_state())
+    seeded = asyncio.run(_seed_cycle_data())
+    try:
+        async def _exercise() -> None:
+            factory = test_conftest.get_test_session_factory()
+            async with factory() as session:
+                result = await run_completed_watch_pipeline_maintenance(session)
+                assert result == {
+                    "auto_archived": 2,
+                    "reassigned": 0,
+                    "skipped": 0,
+                }
+
+                archive_only = await session.get(Lead, seeded["archive_only_id"])
+                assert archive_only is not None
+                assert archive_only.owner_user_id == 3
+                assert archive_only.assigned_to_user_id == 3
+                assert archive_only.archived_at is not None
+
+                archive_and_reassign = await session.get(Lead, seeded["archive_and_reassign_id"])
+                assert archive_and_reassign is not None
+                assert archive_and_reassign.owner_user_id == 3
+                assert archive_and_reassign.assigned_to_user_id == 3
+                assert archive_and_reassign.archived_at is not None
+
+                already_archived_stale = await session.get(Lead, seeded["already_archived_stale_id"])
+                assert already_archived_stale is not None
+                assert already_archived_stale.owner_user_id == 3
+                assert already_archived_stale.assigned_to_user_id == 3
+                assert already_archived_stale.archived_at is not None
+
+                reassign_logs = (
+                    await session.execute(
+                        select(ActivityLog).where(ActivityLog.action == "lead.stale_watch_reassigned")
+                    )
+                ).scalars().all()
+                assert reassign_logs == []
+
+        asyncio.run(_exercise())
+    finally:
+        asyncio.run(_reset_state())
+
+
 def test_execution_stale_redistribute_endpoint_exposes_archived_watch_cycle_contract(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -315,5 +359,54 @@ def test_execution_stale_redistribute_endpoint_exposes_archived_watch_cycle_cont
         assert body["implemented"] is True
         assert body["source_bucket"] == "archived_completed_watch_stale_leads"
         assert body["max_active_per_worker"] == 50
+    finally:
+        asyncio.run(_reset_state())
+
+
+def test_admin_lead_control_shows_48h_total_reassign_queue_and_manual_reassign_preserves_owner(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(_reset_state())
+    seeded = asyncio.run(_seed_cycle_data())
+    try:
+        c = _client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+
+        res = c.get("/api/v1/execution/lead-control")
+        assert res.status_code == 200
+        body = res.json()
+
+        queue_ids = {row["lead_id"] for row in body["queue"]}
+        incubation_ids = {row["lead_id"] for row in body["incubation_queue"]}
+
+        assert seeded["archive_and_reassign_id"] in queue_ids
+        assert seeded["already_archived_stale_id"] in queue_ids
+        assert seeded["archive_only_id"] in incubation_ids
+        assert seeded["stale_without_watch_id"] not in queue_ids
+        assert seeded["stale_without_watch_id"] not in incubation_ids
+
+        manual = c.post(
+            "/api/v1/execution/lead-control/reassign",
+            json={
+                "lead_id": seeded["archive_and_reassign_id"],
+                "to_user_id": 2,
+                "reason": "Admin queue handoff",
+            },
+        )
+        assert manual.status_code == 200
+        payload = manual.json()
+        assert payload["assigned_to_user_id"] == 2
+        assert payload["owner_user_id"] == 3
+
+        async def _verify_db() -> None:
+            factory = test_conftest.get_test_session_factory()
+            async with factory() as session:
+                lead = await session.get(Lead, seeded["archive_and_reassign_id"])
+                assert lead is not None
+                assert lead.owner_user_id == 3
+                assert lead.assigned_to_user_id == 2
+                assert lead.archived_at is None
+
+        asyncio.run(_verify_db())
     finally:
         asyncio.run(_reset_state())
