@@ -277,7 +277,7 @@ function PremiereVideoPlayer({
         onPlay={() => setPaused(false)}
         onPause={() => setPaused(true)}
         onTimeUpdate={(e) => { lastTimeRef.current = e.currentTarget.currentTime }}
-        onSeeking={(e) => { e.currentTarget.currentTime = lastTimeRef.current }}
+        onSeeking={(e) => { if (e.currentTarget.currentTime < lastTimeRef.current - 1) e.currentTarget.currentTime = lastTimeRef.current }}
         onClick={togglePlay}
       />
 
@@ -715,7 +715,7 @@ function PremiereVideoPlayerWithRef({
         onPlay={() => setPaused(false)}
         onPause={() => setPaused(true)}
         onTimeUpdate={(e) => { lastTimeRef.current = e.currentTarget.currentTime }}
-        onSeeking={(e) => { e.currentTarget.currentTime = lastTimeRef.current }}
+        onSeeking={(e) => { if (e.currentTarget.currentTime < lastTimeRef.current - 1) e.currentTarget.currentTime = lastTimeRef.current }}
         onClick={togglePlay}
       />
 
