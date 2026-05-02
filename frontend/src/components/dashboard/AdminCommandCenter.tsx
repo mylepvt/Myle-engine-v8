@@ -159,11 +159,11 @@ function StatCard({
   hint: string
 }) {
   return (
-    <Card className="surface-elevated border-white/[0.08]">
-      <CardContent className="space-y-2 p-4">
-        <p className="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">{label}</p>
-        <p className="font-heading text-3xl text-foreground">{value}</p>
-        <p className="text-xs text-muted-foreground">{hint}</p>
+    <Card className="border-t-2 border-t-primary/40 bg-gradient-to-b from-primary/[0.05] to-transparent">
+      <CardContent className="space-y-2.5 p-4">
+        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+        <p className="font-heading text-[2rem] font-bold leading-none tabular-nums text-foreground">{value}</p>
+        <p className="text-xs leading-relaxed text-muted-foreground">{hint}</p>
       </CardContent>
     </Card>
   )
@@ -400,22 +400,22 @@ export function AdminCommandCenter({ firstName }: Props) {
               </CardHeader>
               <CardContent className="grid gap-3 md:grid-cols-2">
                 <div className="surface-inset rounded-2xl p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Claimed today</p>
-                  <p className="mt-2 text-2xl font-semibold text-foreground">{liveSummary?.leads_claimed_today ?? 0}</p>
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Claimed today</p>
+                  <p className="mt-2 text-[1.75rem] font-bold leading-none tabular-nums text-foreground">{liveSummary?.leads_claimed_today ?? 0}</p>
                 </div>
                 <div className="surface-inset rounded-2xl p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Approved today</p>
-                  <p className="mt-2 text-2xl font-semibold text-foreground">
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Approved today</p>
+                  <p className="mt-2 text-[1.75rem] font-bold leading-none tabular-nums text-foreground">
                     {liveSummary?.payment_proofs_approved_today ?? 0}
                   </p>
                 </div>
                 <div className="surface-inset rounded-2xl p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Lead pool visible</p>
-                  <p className="mt-2 text-2xl font-semibold text-foreground">{leadPool.data?.total ?? 0}</p>
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Lead pool visible</p>
+                  <p className="mt-2 text-[1.75rem] font-bold leading-none tabular-nums text-foreground">{leadPool.data?.total ?? 0}</p>
                 </div>
                 <div className="surface-inset rounded-2xl p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Latest reassignment</p>
-                  <p className="mt-2 text-sm font-medium text-foreground">
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Latest reassignment</p>
+                  <p className="mt-2 text-sm font-semibold text-foreground">
                     {leadControl.data?.history?.[0]?.lead_name ?? 'No movement yet'}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
