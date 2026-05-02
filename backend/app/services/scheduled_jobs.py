@@ -1,10 +1,11 @@
 """Scheduled cron jobs for Myle automation.
 
 Jobs (all IST-aware):
-- enrollment_proof_alert  : every 30min — pending proof > 2h → push admin/leaders
-- weekly_compliance_digest: Monday 09:00 IST — compliance summary to leaders
-- daily_report_reminder   : 20:00 IST daily — push eligible users who haven't submitted report
-- call_target_reminder    : 17:00 IST daily — push eligible users short on calls
+- enrollment_proof_alert      : every 30min — pending proof > 2h → push admin/leaders
+- weekly_compliance_digest    : Monday 09:00 IST — compliance summary to leaders
+- daily_report_reminder       : 20:00 IST daily — push eligible users who haven't submitted report
+- call_target_reminder        : 17:00 IST daily — push eligible users short on calls
+- watch_archive_maintenance   : every 30min — archive completed-watch leads > 24h + redistribute stale
 """
 from __future__ import annotations
 
@@ -22,6 +23,7 @@ from app.models.user import User
 from app.services.live_metrics import fresh_call_counts_by_user, get_daily_call_target
 from app.services.member_compliance import build_compliance_snapshots
 from app.services.push_service import send_push_to_role, send_push_to_user
+from app.services import execution_enforcement as enf
 
 logger = logging.getLogger(__name__)
 
@@ -264,3 +266,22 @@ async def job_call_target_reminder() -> None:
 
     except Exception as exc:
         logger.error("job_call_target_reminder failed: %s", exc)
+
+
+# ---------------------------------------------------------------------------
+# Job 5: watch archive maintenance — every 30min
+# ---------------------------------------------------------------------------
+
+async def job_watch_archive_maintenance() -> None:
+    """Archive completed-watch leads older than 24h and redistribute stale ones."""
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await enf.run_completed_watch_pipeline_maintenance(session)
+            logger.info(
+                "watch_archive_maintenance: archived=%d reassigned=%d skipped=%d",
+                result["auto_archived"],
+                result["reassigned"],
+                result["skipped"],
+            )
+    except Exception as exc:
+        logger.error("job_watch_archive_maintenance failed: %s", exc)
