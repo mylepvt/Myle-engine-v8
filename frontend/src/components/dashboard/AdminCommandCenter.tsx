@@ -332,9 +332,9 @@ export function AdminCommandCenter({ firstName }: Props) {
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       {/* ── Hero header ── */}
-      <div className="relative overflow-hidden rounded-[1.75rem] border border-white/[0.07] bg-gradient-to-br from-[#0d0d14] via-[#0e0d18] to-[#0a0b11] px-6 py-8 md:px-8">
-        <div className="pointer-events-none absolute -top-24 right-0 size-80 rounded-full bg-primary/[0.18] blur-3xl" />
-        <div className="pointer-events-none absolute bottom-0 left-1/3 size-48 rounded-full bg-primary/[0.08] blur-2xl" />
+      <div className="relative overflow-hidden rounded-[1.75rem] border border-border bg-gradient-to-br from-muted/60 via-background to-primary/[0.04] px-6 py-8 dark:border-white/[0.07] dark:from-[#0d0d14] dark:via-[#0e0d18] dark:to-[#0a0b11] md:px-8">
+        <div className="pointer-events-none absolute -top-24 right-0 size-80 rounded-full bg-primary/[0.08] blur-3xl dark:bg-primary/[0.18]" />
+        <div className="pointer-events-none absolute bottom-0 left-1/3 size-48 rounded-full bg-primary/[0.04] blur-2xl dark:bg-primary/[0.08]" />
         <div className="relative space-y-3">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary/70">Admin Command Center</p>
           <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">
@@ -346,28 +346,28 @@ export function AdminCommandCenter({ firstName }: Props) {
           </p>
           <div className="flex flex-wrap gap-2.5 pt-1">
             {pendingTotal > 0 && (
-              <div className="flex items-center gap-2 rounded-full border border-amber-400/20 bg-amber-400/[0.07] px-4 py-1.5 text-sm">
+              <div className="flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/[0.08] px-4 py-1.5 text-sm dark:border-amber-400/20 dark:bg-amber-400/[0.07]">
                 <span className="relative flex size-1.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
                   <span className="relative inline-flex size-1.5 rounded-full bg-amber-400" />
                 </span>
-                <span className="font-semibold text-amber-200">{pendingTotal}</span>
-                <span className="text-amber-300/70">pending actions</span>
+                <span className="font-semibold text-amber-700 dark:text-amber-200">{pendingTotal}</span>
+                <span className="text-amber-600/80 dark:text-amber-300/70">pending actions</span>
               </div>
             )}
             {liveWatcherCount > 0 && (
-              <div className="flex items-center gap-2 rounded-full border border-red-400/20 bg-red-500/[0.07] px-4 py-1.5 text-sm">
+              <div className="flex items-center gap-2 rounded-full border border-red-400/30 bg-red-500/[0.08] px-4 py-1.5 text-sm dark:border-red-400/20 dark:bg-red-500/[0.07]">
                 <span className="relative flex size-1.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
                   <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
                 </span>
-                <span className="font-semibold text-red-200">{liveWatcherCount}</span>
-                <span className="text-red-300/70">watching live</span>
+                <span className="font-semibold text-red-700 dark:text-red-200">{liveWatcherCount}</span>
+                <span className="text-red-600/80 dark:text-red-300/70">watching live</span>
               </div>
             )}
           </div>
         </div>
-        <div className="relative mt-6 flex flex-wrap gap-2 border-t border-white/[0.07] pt-5">
+        <div className="relative mt-6 flex flex-wrap gap-2 border-t border-border/60 pt-5 dark:border-white/[0.07]">
           <Button asChild variant="secondary" size="sm">
             <Link to="/dashboard/system/lead-control">Open lead control</Link>
           </Button>
