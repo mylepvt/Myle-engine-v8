@@ -291,7 +291,7 @@ export function AdminCommandCenter({ firstName }: Props) {
   })
   const appSettings = useAppSettingsQuery(activeTab === 'content')
   const day2Review = useDay2ReviewQuery()
-  const premiereViewers = usePremiereViewersQuery(activeTab === 'premiere')
+  const premiereViewers = usePremiereViewersQuery(true)
   const activeWatchers = useActiveWatchersQuery()
   const leadSearchResults = useLeadsQuery(
     deferredLeadSearch.length > 0,
@@ -331,6 +331,7 @@ export function AdminCommandCenter({ firstName }: Props) {
     pendingRechargeItems.length
 
   const liveWatcherCount = activeWatchers.data?.length ?? 0
+  const premiereActiveCount = (premiereViewers.data ?? []).filter((v) => isActiveNow(v.last_seen_at)).length
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -367,6 +368,16 @@ export function AdminCommandCenter({ firstName }: Props) {
                 </span>
                 <span className="font-bold text-red-700 dark:text-red-200">{liveWatcherCount}</span>
                 <span className="text-red-600 dark:text-red-300/70">watching live</span>
+              </div>
+            )}
+            {premiereActiveCount > 0 && (
+              <div className="flex items-center gap-2 rounded-full border border-red-400/40 bg-red-50 px-4 py-1.5 text-sm shadow-sm dark:border-red-400/20 dark:bg-red-500/[0.07] dark:shadow-none">
+                <span className="relative flex size-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
+                  <span className="relative inline-flex size-1.5 rounded-full bg-red-500" />
+                </span>
+                <span className="font-bold text-red-700 dark:text-red-200">{premiereActiveCount}</span>
+                <span className="text-red-600 dark:text-red-300/70">on premiere live</span>
               </div>
             )}
           </div>
