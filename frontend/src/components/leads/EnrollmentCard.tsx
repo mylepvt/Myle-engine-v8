@@ -113,21 +113,21 @@ export function EnrollmentCard({ leadId }: Props) {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+        <div className="rounded-xl border border-white/10 bg-muted/40 p-3">
           <ShieldCheck className="size-4 text-cyan-300" />
           <p className="mt-2 text-xs font-semibold text-foreground">Phone locked</p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             Link sirf lead ke registered number se unlock hota hai.
           </p>
         </div>
-        <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+        <div className="rounded-xl border border-white/10 bg-muted/40 p-3">
           <TimerReset className="size-4 text-amber-300" />
           <p className="mt-2 text-xs font-semibold text-foreground">50-minute expiry</p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             Timer tabhi start hota hai jab prospect pehli baar link open kare. Har naya send purane links ko immediately expire kar deta hai.
           </p>
         </div>
-        <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+        <div className="rounded-xl border border-white/10 bg-muted/40 p-3">
           <MessageCircle className="size-4 text-emerald-300" />
           <p className="mt-2 text-xs font-semibold text-foreground">WhatsApp delivery</p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">

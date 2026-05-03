@@ -157,7 +157,7 @@ export default function AnalyticsPage() {
       </Tabs>
 
       {/* Export Options */}
-      <div className="mt-8 rounded-lg bg-gray-50 p-4 dark:bg-white/[0.03]">
+      <div className="mt-8 rounded-lg bg-gray-50 p-4 dark:bg-muted/30">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-medium">Export Data</h3>

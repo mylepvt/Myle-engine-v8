@@ -87,7 +87,7 @@ export function XpBadge() {
 
         {/* Last month result */}
         {lastMonth && (
-          <div className="mt-3 rounded-xl border border-white/[0.07] bg-white/[0.03] px-3 py-2 text-xs text-muted-foreground">
+          <div className="mt-3 rounded-xl border border-white/[0.07] bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
             Last month ({MONTH_NAMES[lastMonth.month - 1]}):&nbsp;
             <span className="font-semibold text-foreground">
               {lastMonth.final_xp.toLocaleString()} XP

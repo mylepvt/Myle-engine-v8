@@ -56,7 +56,7 @@ function OrgBranch({ node, depth }: { node: OrgTreeNode; depth: number }) {
         onClick={() => hasChildren && setOpen((o) => !o)}
         className={cn(
           'surface-inset w-full min-w-0 rounded-xl px-3 py-3 text-left transition-colors',
-          hasChildren ? 'hover:border-primary/25 hover:bg-white/[0.05]' : 'cursor-default',
+          hasChildren ? 'hover:border-primary/25 hover:bg-muted/50' : 'cursor-default',
         )}
       >
         <div className="flex items-start gap-3">
@@ -80,7 +80,7 @@ function OrgBranch({ node, depth }: { node: OrgTreeNode; depth: number }) {
           </div>
 
           {hasChildren ? (
-            <div className="shrink-0 rounded-full border border-white/10 bg-white/[0.03] p-1 text-muted-foreground">
+            <div className="shrink-0 rounded-full border border-white/10 bg-muted/30 p-1 text-muted-foreground">
               {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
             </div>
           ) : null}

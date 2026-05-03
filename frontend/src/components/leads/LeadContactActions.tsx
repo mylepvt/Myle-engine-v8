@@ -15,9 +15,9 @@ type Props = {
 }
 
 const boxSm =
-  'flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-white/12 bg-white/[0.05] text-foreground transition [&_svg]:h-3.5 [&_svg]:w-3.5'
+  'flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-white/12 bg-muted/50 text-foreground transition [&_svg]:h-3.5 [&_svg]:w-3.5'
 const boxMd =
-  'flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-white/12 bg-white/[0.05] text-foreground transition [&_svg]:h-4 [&_svg]:w-4'
+  'flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-white/12 bg-muted/50 text-foreground transition [&_svg]:h-4 [&_svg]:w-4'
 
 const BLOCKED_LEVELS = new Set(['strong_warning', 'final_warning'])
 

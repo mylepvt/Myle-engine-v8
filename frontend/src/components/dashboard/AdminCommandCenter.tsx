@@ -438,9 +438,9 @@ export function AdminCommandCenter({ firstName }: Props) {
               to="/dashboard/team/approvals"
             />
             <StatCard
-              label="Enroll Approvals"
+              label="Min. FLP Billing"
               value={enrollmentPending.data?.total ?? 0}
-              hint="Payment proofs pending review right now."
+              hint="Min. FLP billing approvals pending review right now."
               variant="warning"
               to="/dashboard/team/enrollment-approvals"
             />
@@ -484,8 +484,8 @@ export function AdminCommandCenter({ firstName }: Props) {
                 />
                 <DeskShortcut
                   to="/dashboard/team/enrollment-approvals"
-                  title="Enroll approvals"
-                  description="Review FLP invoices and keep the funnel moving."
+                  title="Min. FLP Billing"
+                  description="Review minimum FLP billing proofs and keep the funnel moving."
                   icon={<ClipboardCheck className="size-4" />}
                   badge={enrollmentPending.data?.total ?? 0}
                 />
@@ -620,7 +620,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                   value={leadSearch}
                   onChange={(event) => setLeadSearch(event.target.value)}
                   placeholder="Search any lead across active, archived, retarget, and more"
-                  className="w-full rounded-xl border border-white/[0.08] bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary/40"
+                  className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary/40"
                 />
               </label>
               {deferredLeadSearch.length === 0 ? (

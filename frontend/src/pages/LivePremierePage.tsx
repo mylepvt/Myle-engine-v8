@@ -445,7 +445,7 @@ export function LivePremierePage() {
       <div className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-6 sm:px-6 sm:py-8">
 
         {/* Header */}
-        <header className="rounded-[2rem] border border-white/10 bg-white/[0.04] px-5 py-4 backdrop-blur-2xl">
+        <header className="rounded-[2rem] border border-white/10 bg-muted/40 px-5 py-4 backdrop-blur-2xl">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#9db0d6]">Myle</p>
@@ -515,7 +515,7 @@ export function LivePremierePage() {
                   ['Access', 'Private link', 'Invited only'],
                   ['Action', 'Join on time', 'Limited seats'],
                 ] as const).map(([label, title, sub]) => (
-                  <div key={label} className="rounded-[1.4rem] border border-white/8 bg-white/[0.03] px-4 py-4 text-center backdrop-blur-xl">
+                  <div key={label} className="rounded-[1.4rem] border border-white/8 bg-muted/30 px-4 py-4 text-center backdrop-blur-xl">
                     <p className="text-xs font-semibold uppercase tracking-wide text-[#9db0d6]">{label}</p>
                     <p className="mt-2 text-sm font-semibold text-[#f0f4ff]">{title}</p>
                     <p className="mt-0.5 text-xs text-[#7a94c4]">{sub}</p>
@@ -549,14 +549,14 @@ export function LivePremierePage() {
             />
           )}
           {state === 'live' && !data?.video_url && (
-            <div className="w-full max-w-2xl rounded-[2.25rem] border border-white/8 bg-white/[0.03] px-8 py-12 text-center">
+            <div className="w-full max-w-2xl rounded-[2.25rem] border border-white/8 bg-muted/30 px-8 py-12 text-center">
               <p className="text-sm text-[#7a94c4]">Video not configured — set <code className="text-xs">premiere_video_url</code> in Settings.</p>
             </div>
           )}
 
           {/* ENDED */}
           {state === 'ended' && (
-            <section className="w-full max-w-2xl space-y-5 rounded-[2.25rem] border border-white/8 bg-white/[0.03] px-8 py-12 text-center backdrop-blur-2xl">
+            <section className="w-full max-w-2xl space-y-5 rounded-[2.25rem] border border-white/8 bg-muted/30 px-8 py-12 text-center backdrop-blur-2xl">
               <p className="text-2xl font-semibold text-[#f7f9ff]">Today's session has ended</p>
               <p className="text-base text-[#7a94c4]">You've taken the first step. Reach out to your mentor to move forward.</p>
               <button

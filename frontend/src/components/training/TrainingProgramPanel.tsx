@@ -137,7 +137,7 @@ function TrainingDaysBlock({
 
   if (vids.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] px-5 py-8 text-center">
+      <div className="rounded-2xl border border-dashed border-white/10 bg-muted/30 px-5 py-8 text-center">
         <p className="text-base font-medium text-foreground">Training is not available yet</p>
         <p className="mt-2 text-sm text-muted-foreground">
           Please try again later. If this keeps happening, contact support.
@@ -308,9 +308,9 @@ function TrainingCertificationBlock({
       {questions ? (
         <div className="mt-4 space-y-3">
           {questions.map((q, index) => (
-            <fieldset key={q.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+            <fieldset key={q.id} className="rounded-xl border border-white/10 bg-muted/30 p-4">
               <legend className="flex items-start gap-2 text-sm font-medium text-foreground">
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-xs text-muted-foreground">
+                <span className="rounded-full border border-white/10 bg-muted/40 px-2 py-0.5 text-xs text-muted-foreground">
                   {index + 1}
                 </span>
                 <span className="pt-0.5">{q.question}</span>
@@ -417,7 +417,7 @@ export function TrainingProgramPanel({ data }: Props) {
   return (
     <div className="surface-elevated space-y-5 p-4 text-sm text-muted-foreground md:p-5">
       {data.note ? (
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-foreground/90">
+        <div className="rounded-xl border border-white/10 bg-muted/30 px-4 py-3 text-sm text-foreground/90">
           {data.note}
         </div>
       ) : null}

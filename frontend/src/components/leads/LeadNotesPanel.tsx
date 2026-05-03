@@ -91,7 +91,7 @@ export function LeadNotesPanel({ leadId }: Props) {
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={2}
-          className="w-full rounded-md border border-white/12 bg-white/[0.05] px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 resize-none"
+          className="w-full rounded-md border border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 resize-none"
           placeholder="Add a note (call notes, follow-up notes…)"
         />
         {addError ? (

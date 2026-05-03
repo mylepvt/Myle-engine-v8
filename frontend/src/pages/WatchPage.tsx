@@ -377,7 +377,7 @@ export function WatchPage() {
       <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_top,rgba(160,195,255,0.18),transparent_58%)]" />
       <div className="pointer-events-none absolute left-1/2 top-24 h-72 w-72 -translate-x-1/2 rounded-full bg-[#3158a4]/16 blur-3xl" />
       <div className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-6 sm:px-6 sm:py-8">
-        <header className="rounded-[2rem] border border-white/10 bg-white/[0.04] px-5 py-4 shadow-[0_32px_120px_-72px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
+        <header className="rounded-[2rem] border border-white/10 bg-muted/40 px-5 py-4 shadow-[0_32px_120px_-72px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#9db0d6]">Myle</p>
@@ -405,8 +405,8 @@ export function WatchPage() {
         <main className="flex flex-1 flex-col gap-5 py-5">
           {loading ? (
             <>
-              <Skeleton className="h-28 w-full rounded-[2rem] bg-white/[0.06]" />
-              <Skeleton className="h-[24rem] w-full rounded-[2rem] bg-white/[0.06]" />
+              <Skeleton className="h-28 w-full rounded-[2rem] bg-muted/60" />
+              <Skeleton className="h-[24rem] w-full rounded-[2rem] bg-muted/60" />
             </>
           ) : error ? (
             <section

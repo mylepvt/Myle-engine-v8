@@ -271,7 +271,7 @@ export function SettingsAppPage({ title }: Props) {
                     }))
                   }
                   placeholder={field.placeholder}
-                  className="w-full rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                  className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
                 />
                 <span className="mt-1 block text-muted-foreground/80">{field.help}</span>
               </label>
@@ -324,7 +324,7 @@ export function SettingsAppPage({ title }: Props) {
                     }))
                   }
                   placeholder={field.placeholder}
-                  className="w-full rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                  className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
                 />
                 <span className="mt-1 block text-muted-foreground/80">{field.help}</span>
                 <span className="mt-1 block font-mono text-[10px] text-muted-foreground/80">{field.key}</span>
@@ -334,7 +334,7 @@ export function SettingsAppPage({ title }: Props) {
         )}
 
         {appSettingsPending || appSettingsError ? null : (
-          <details className="rounded-xl border border-white/[0.1] bg-white/[0.04] p-4">
+          <details className="rounded-xl border border-border bg-muted/40 p-4">
             <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Room Snapshot Optional
             </summary>
@@ -352,7 +352,7 @@ export function SettingsAppPage({ title }: Props) {
                     }
                     inputMode={field.inputMode ?? undefined}
                     placeholder={field.placeholder}
-                    className="w-full rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                    className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
                   />
                   <span className="mt-1 block text-muted-foreground/80">{field.help}</span>
                 </label>
@@ -406,7 +406,7 @@ export function SettingsAppPage({ title }: Props) {
                     }))
                   }
                   placeholder="https://youtube.com/watch?v=... or https://cdn.example.com/video.mp4"
-                  className="w-full rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                  className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
                 />
                 <span className="mt-1 block font-mono text-[10px] text-muted-foreground/80">{key}</span>
               </label>
@@ -436,7 +436,7 @@ export function SettingsAppPage({ title }: Props) {
               type="button"
               disabled={appSettingsPending}
               onClick={() => void refetchAppSettings()}
-              className="rounded-md bg-white/[0.05] px-2.5 py-1 text-xs text-muted-foreground hover:bg-white/[0.08] disabled:opacity-50"
+              className="rounded-md bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground hover:bg-white/[0.08] disabled:opacity-50"
             >
               {appSettingsPending ? 'Refreshing…' : 'Refresh'}
             </button>
@@ -447,7 +447,7 @@ export function SettingsAppPage({ title }: Props) {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search…"
-              className="w-full rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+              className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
             />
           </label>
           <div className="surface-elevated max-h-[min(32rem,70vh)] overflow-auto p-3">

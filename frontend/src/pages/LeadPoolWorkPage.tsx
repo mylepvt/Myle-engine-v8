@@ -256,7 +256,7 @@ export function LeadPoolWorkPage({ title }: Props) {
               placeholder="₹ per claim"
               value={defaultRupees}
               onChange={(e) => setDefaultRupees(e.target.value)}
-              className="w-40 rounded-md border border-white/12 bg-white/[0.05] px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+              className="w-40 rounded-md border border-white/12 bg-muted/50 px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
             />
             <Button
               type="button"
@@ -379,7 +379,7 @@ export function LeadPoolWorkPage({ title }: Props) {
           ) : null}
 
           {batchPreview != null ? (
-            <div className="mb-4 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs">
+            <div className="mb-4 rounded-lg border border-white/10 bg-muted/30 p-3 text-xs">
               <p className="font-medium text-foreground">Bulk claim (FIFO, max 50)</p>
               <p className="mt-1 text-muted-foreground">
                 Server picks the oldest leads in the pool first and returns the exact combined price for this request.
@@ -422,7 +422,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                       step={1}
                       value={batchCountStr}
                       onChange={(e) => setBatchCountStr(e.target.value)}
-                      className="w-20 rounded-md border border-white/12 bg-white/[0.05] px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+                      className="w-20 rounded-md border border-white/12 bg-muted/50 px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
                     />
                     <span className="ml-2 text-muted-foreground">(max {maxBatch})</span>
                   </div>
@@ -508,7 +508,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                           placeholder={`Override ₹ — row ${isFree ? 'free' : formatRupeesInput(price)} · saved default ₹${formatRupeesInput(poolDefaults?.default_pool_price_cents ?? 0)}`}
                           value={priceInputs[l.id] ?? ''}
                           onChange={(e) => setPriceInputs((p) => ({ ...p, [l.id]: e.target.value }))}
-                          className="w-40 rounded-md border border-white/12 bg-white/[0.05] px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+                          className="w-40 rounded-md border border-white/12 bg-muted/50 px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
                         />
                         <Button
                           type="button"

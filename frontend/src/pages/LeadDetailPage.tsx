@@ -113,7 +113,7 @@ function BatchSubmissionCard({ submission }: { submission: LeadBatchSubmission }
           <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
             {batchSubmissionLabel(submission.slot)}
           </span>
-          <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-0.5 text-xs text-muted-foreground">
+          <span className="rounded-full border border-white/10 bg-muted/50 px-2.5 py-0.5 text-xs text-muted-foreground">
             Day {submission.day_number}
           </span>
         </div>
@@ -123,7 +123,7 @@ function BatchSubmissionCard({ submission }: { submission: LeadBatchSubmission }
       </div>
 
       {submission.notes_text ? (
-        <div className="rounded-md border border-white/10 bg-white/[0.04] p-3">
+        <div className="rounded-md border border-white/10 bg-muted/40 p-3">
           <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             <MessageSquareText className="size-3.5" />
             Lead message
@@ -133,7 +133,7 @@ function BatchSubmissionCard({ submission }: { submission: LeadBatchSubmission }
       ) : null}
 
       <div className="grid gap-3">
-        <div className="rounded-md border border-white/10 bg-white/[0.04] p-3">
+        <div className="rounded-md border border-white/10 bg-muted/40 p-3">
           <div className="flex items-center gap-2 text-sm font-medium text-foreground">
             <NotebookPen className="size-4" />
             Notes file
@@ -152,7 +152,7 @@ function BatchSubmissionCard({ submission }: { submission: LeadBatchSubmission }
           )}
         </div>
 
-        <div className="rounded-md border border-white/10 bg-white/[0.04] p-3">
+        <div className="rounded-md border border-white/10 bg-muted/40 p-3">
           <div className="flex items-center gap-2 text-sm font-medium text-foreground">
             <Headphones className="size-4" />
             Voice note
@@ -164,7 +164,7 @@ function BatchSubmissionCard({ submission }: { submission: LeadBatchSubmission }
           )}
         </div>
 
-        <div className="rounded-md border border-white/10 bg-white/[0.04] p-3">
+        <div className="rounded-md border border-white/10 bg-muted/40 p-3">
           <div className="flex items-center gap-2 text-sm font-medium text-foreground">
             <Video className="size-4" />
             Practice video
@@ -471,7 +471,7 @@ export function LeadDetailPage({ leadId }: Props) {
                   id="pipeline-status"
                   value={pipelineStatus}
                   onChange={(e) => setPipelineStatus(e.target.value)}
-                  className="w-full rounded-md border border-white/12 bg-white/[0.05] px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+                  className="w-full rounded-md border border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
                 >
                   {pipelineStatusOptions.map((o) => (
                     <option key={o.value} value={o.value}>
@@ -491,7 +491,7 @@ export function LeadDetailPage({ leadId }: Props) {
                   id="pipeline-call-status"
                   value={pipelineCallStatus}
                   onChange={(e) => setPipelineCallStatus(e.target.value)}
-                  className="w-full rounded-md border border-white/12 bg-white/[0.05] px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+                  className="w-full rounded-md border border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
                 >
                   <option value="">None</option>
                   {pipelineCallStatusOptions.map((o) => (
@@ -558,7 +558,7 @@ export function LeadDetailPage({ leadId }: Props) {
                     checked={!!lead[field]}
                     disabled={patchMut.isPending}
                     onChange={() => void toggleDayCompleted(field, lead[field])}
-                    className="h-4 w-4 rounded border-white/12 bg-white/[0.05] accent-primary"
+                    className="h-4 w-4 rounded border-white/12 bg-muted/50 accent-primary"
                   />
                   <span className="text-foreground">{label}</span>
                   {lead[field] ? (
@@ -606,7 +606,7 @@ export function LeadDetailPage({ leadId }: Props) {
                     id="call-outcome"
                     value={callOutcome}
                     onChange={(e) => setCallOutcome(e.target.value)}
-                    className="w-full rounded-md border border-white/12 bg-white/[0.05] px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+                    className="w-full rounded-md border border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
                   >
                     {CALL_OUTCOME_OPTIONS.map((o) => (
                       <option key={o.value} value={o.value}>
@@ -628,7 +628,7 @@ export function LeadDetailPage({ leadId }: Props) {
                     min="0"
                     value={callDuration}
                     onChange={(e) => setCallDuration(e.target.value)}
-                    className="w-full rounded-md border border-white/12 bg-white/[0.05] px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+                    className="w-full rounded-md border border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
                     placeholder="e.g. 120"
                   />
                 </div>
@@ -644,7 +644,7 @@ export function LeadDetailPage({ leadId }: Props) {
                     value={callNotes}
                     onChange={(e) => setCallNotes(e.target.value)}
                     rows={2}
-                    className="w-full rounded-md border border-white/12 bg-white/[0.05] px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 resize-none"
+                    className="w-full rounded-md border border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 resize-none"
                     placeholder="What was discussed…"
                   />
                 </div>
@@ -699,7 +699,7 @@ export function LeadDetailPage({ leadId }: Props) {
               value={notes}
               onChange={(e) => handleNotesChange(e.target.value)}
               rows={4}
-              className="w-full rounded-md border border-white/12 bg-white/[0.05] px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 resize-none"
+              className="w-full rounded-md border border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 resize-none"
               placeholder="Add notes about this lead…"
             />
             <div className="flex items-center gap-3">

@@ -86,7 +86,7 @@ function statCards(
       iconClass: 'text-violet-400/70',
     },
     {
-      label: 'Paid 196',
+      label: 'Min. FLP Billing',
       value: funnel?.paid_196 ?? 0,
       sub: 'Enrolled',
       Icon: IndianRupee,
