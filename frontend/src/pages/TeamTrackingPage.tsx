@@ -59,7 +59,7 @@ type MetricPanelProps = {
 }
 
 const SELECT_CLASSNAME =
-  'h-10 rounded-xl border border-white/[0.12] bg-white/[0.06] px-3 text-sm text-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20'
+  'h-10 rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20'
 
 function todayIsoLocal() {
   const d = new Date()
@@ -298,23 +298,41 @@ function updateParam(
 
 function MetricPanel({ icon: Icon, label, value, tone = 'default' }: MetricPanelProps) {
   return (
-    <Card className="surface-elevated overflow-hidden border-white/[0.08]">
+    <Card
+      className={cn(
+        'border-t-2 bg-gradient-to-b to-transparent',
+        tone === 'success' && 'border-t-emerald-400/50 from-emerald-400/[0.06]',
+        tone === 'warning' && 'border-t-amber-400/50 from-amber-400/[0.06]',
+        tone === 'danger' && 'border-t-rose-400/50 from-rose-400/[0.06]',
+        tone === 'default' && 'border-t-primary/40 from-primary/[0.05]',
+      )}
+    >
       <CardContent className="relative p-4">
         <div
           className={cn(
-            'absolute right-3 top-3 rounded-2xl p-2',
-            tone === 'success' && 'bg-emerald-400/12 text-emerald-300',
-            tone === 'warning' && 'bg-amber-400/12 text-amber-300',
-            tone === 'danger' && 'bg-rose-400/12 text-rose-300',
-            tone === 'default' && 'bg-white/[0.06] text-muted-foreground',
+            'absolute right-3 top-3 rounded-xl p-1.5',
+            tone === 'success' && 'bg-emerald-400/15 text-emerald-500 dark:text-emerald-300',
+            tone === 'warning' && 'bg-amber-400/15 text-amber-600 dark:text-amber-300',
+            tone === 'danger' && 'bg-rose-400/15 text-rose-500 dark:text-rose-300',
+            tone === 'default' && 'bg-primary/10 text-primary',
           )}
         >
           <Icon className="size-4" />
         </div>
-        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
           {label}
         </p>
-        <p className="mt-4 text-3xl font-semibold tracking-tight text-foreground">{value}</p>
+        <p
+          className={cn(
+            'mt-3 text-[2rem] font-bold leading-none tabular-nums',
+            tone === 'success' && 'text-emerald-600 dark:text-emerald-300',
+            tone === 'warning' && 'text-amber-600 dark:text-amber-300',
+            tone === 'danger' && 'text-rose-600 dark:text-rose-300',
+            tone === 'default' && 'text-foreground',
+          )}
+        >
+          {value}
+        </p>
       </CardContent>
     </Card>
   )
@@ -324,7 +342,7 @@ function LiveMemberRow({ item, dateIso }: { item: TeamTrackingMemberSummary; dat
   return (
     <Link
       to={`/dashboard/team/tracking/${item.user_id}?date=${encodeURIComponent(dateIso)}`}
-      className="group flex items-start justify-between gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 transition hover:border-primary/30 hover:bg-white/[0.05]"
+      className="group flex items-start justify-between gap-3 rounded-2xl border border-border bg-card/40 px-4 py-3 transition hover:border-primary/30 hover:bg-primary/[0.03]"
     >
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
@@ -454,35 +472,44 @@ export function TeamTrackingPage({ title }: Props) {
 
   return (
     <div className="max-w-[88rem] space-y-5">
-      <section className="surface-elevated overflow-hidden px-5 py-5 md:px-6 md:py-6">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-          <div className="space-y-2">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+      <Card className="px-5 py-5 md:px-6 md:py-6">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
               {title}
             </h1>
-            <p className="max-w-3xl text-sm text-muted-foreground">
+            <p className="max-w-xl text-sm text-muted-foreground">
               Live status, activity, and daily performance for the selected team.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <Badge variant="secondary" className="bg-white/[0.06] text-foreground">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-3 py-1.5 text-xs font-medium text-foreground">
+              <span className="size-1.5 rounded-full bg-primary/60" />
               {filteredItems.length} visible
-            </Badge>
-            <Badge variant="secondary" className="bg-white/[0.06] text-foreground">
+            </div>
+            <div className="flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300">
+              <span className="relative flex size-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex size-1.5 rounded-full bg-emerald-500" />
+              </span>
               {filteredLiveCount} live now
-            </Badge>
-            <Badge variant="secondary" className="bg-white/[0.06] text-foreground">
+            </div>
+            <div className="flex items-center gap-1.5 rounded-full border border-rose-400/30 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 dark:bg-rose-400/10 dark:text-rose-300">
               {flagged.length} need attention
-            </Badge>
-            <Badge variant="secondary" className="bg-white/[0.06] text-foreground">
-              High {filteredHighCount} · Medium {filteredMediumCount} · Low {filteredLowCount}
-            </Badge>
+            </div>
+            <div className="rounded-full border border-border bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground">
+              <span className="font-semibold text-emerald-600 dark:text-emerald-400">H{filteredHighCount}</span>
+              {' · '}
+              <span className="font-semibold text-amber-600 dark:text-amber-400">M{filteredMediumCount}</span>
+              {' · '}
+              <span className="font-semibold text-rose-600 dark:text-rose-400">L{filteredLowCount}</span>
+            </div>
           </div>
         </div>
-      </section>
+      </Card>
 
-      <section className="surface-elevated space-y-4 border border-white/[0.08] px-4 py-4">
+      <Card className="space-y-4 px-4 py-4">
         <div className="grid gap-3 xl:grid-cols-[minmax(18rem,1.25fr)_12rem]">
           <ListSearchInput
             value={searchQuery}
@@ -567,10 +594,10 @@ export function TeamTrackingPage({ title }: Props) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <Badge variant="secondary" className="bg-white/[0.06] text-foreground">
+          <Badge variant="secondary">
             {data?.scope_total_members ?? filteredItems.length} members
           </Badge>
-          <Badge variant="secondary" className="bg-white/[0.06] text-foreground">
+          <Badge variant="secondary">
             Timezone {data?.timezone ?? 'Asia/Kolkata'}
           </Badge>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -588,7 +615,7 @@ export function TeamTrackingPage({ title }: Props) {
             </Button>
           ) : null}
         </div>
-      </section>
+      </Card>
 
       {isPending ? (
         <div className="space-y-4">
@@ -655,8 +682,8 @@ export function TeamTrackingPage({ title }: Props) {
           </div>
 
           <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-            <section className="surface-elevated overflow-hidden rounded-2xl border border-white/[0.08]">
-              <div className="flex items-center justify-between gap-3 border-b border-white/[0.08] px-5 py-4">
+            <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-card)]">
+              <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
                 <div>
                   <p className="text-sm font-semibold text-foreground">Live floor</p>
                   <p className="text-xs text-muted-foreground">
@@ -676,8 +703,8 @@ export function TeamTrackingPage({ title }: Props) {
               </div>
             </section>
 
-            <section className="surface-elevated overflow-hidden rounded-2xl border border-white/[0.08]">
-              <div className="flex items-center justify-between gap-3 border-b border-white/[0.08] px-5 py-4">
+            <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-card)]">
+              <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
                 <div>
                   <p className="text-sm font-semibold text-foreground">Attention queue</p>
                   <p className="text-xs text-muted-foreground">
@@ -698,8 +725,8 @@ export function TeamTrackingPage({ title }: Props) {
             </section>
           </div>
 
-          <section className="surface-elevated overflow-hidden rounded-2xl border border-white/[0.08]">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] px-5 py-4">
+          <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-card)]">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
               <div>
                 <p className="text-sm font-semibold text-foreground">Leader health</p>
                 <p className="text-xs text-muted-foreground">
@@ -718,7 +745,7 @@ export function TeamTrackingPage({ title }: Props) {
             ) : (
               <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
                 {leaderHealth.map((leader) => (
-                  <Card key={leader.key} className="border-white/[0.08] bg-white/[0.03]">
+                  <Card key={leader.key} className="border-border/60 bg-muted/30">
                     <CardHeader className="space-y-2 pb-3">
                       <CardTitle className="text-base">{leader.label}</CardTitle>
                       <CardDescription>
@@ -755,8 +782,8 @@ export function TeamTrackingPage({ title }: Props) {
             )}
           </section>
 
-          <section className="surface-elevated overflow-hidden rounded-2xl border border-white/[0.08]">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] px-5 py-4">
+          <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-card)]">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
               <div>
                 <p className="text-sm font-semibold text-foreground">All members</p>
                 <p className="text-xs text-muted-foreground">
