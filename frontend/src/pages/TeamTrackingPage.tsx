@@ -700,7 +700,7 @@ export function TeamTrackingPage({ title }: Props) {
               </div>
               <div className="grid gap-3 p-4 md:grid-cols-2">
                 {liveNow.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-white/[0.1] px-4 py-10 text-center text-sm text-muted-foreground md:col-span-2">
+                  <div className="rounded-2xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground md:col-span-2">
                     No live members match these filters right now.
                   </div>
                 ) : (
@@ -721,7 +721,7 @@ export function TeamTrackingPage({ title }: Props) {
               </div>
               <div className="space-y-3 p-4">
                 {flagged.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-white/[0.1] px-4 py-10 text-center text-sm text-muted-foreground">
+                  <div className="rounded-2xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">
                     Nothing urgent in the current filter set.
                   </div>
                 ) : (
@@ -739,7 +739,7 @@ export function TeamTrackingPage({ title }: Props) {
                   Which lanes are healthy, live, and slipping.
                 </p>
               </div>
-              <Badge variant="secondary" className="bg-white/[0.06] text-foreground">
+              <Badge variant="secondary" className="bg-muted/60 text-foreground">
                 Ranked by attention load
               </Badge>
             </div>
@@ -760,13 +760,13 @@ export function TeamTrackingPage({ title }: Props) {
                     </CardHeader>
                     <CardContent className="space-y-3 text-sm">
                       <div className="grid grid-cols-2 gap-2">
-                        <div className="rounded-xl bg-white/[0.04] px-3 py-2">
+                        <div className="rounded-xl bg-muted/40 px-3 py-2">
                           <p className="text-[0.68rem] uppercase tracking-[0.18em] text-muted-foreground">
                             Live
                           </p>
                           <p className="mt-1 text-lg font-semibold text-foreground">{leader.liveCount}</p>
                         </div>
-                        <div className="rounded-xl bg-white/[0.04] px-3 py-2">
+                        <div className="rounded-xl bg-muted/40 px-3 py-2">
                           <p className="text-[0.68rem] uppercase tracking-[0.18em] text-muted-foreground">
                             Avg score
                           </p>
@@ -796,7 +796,7 @@ export function TeamTrackingPage({ title }: Props) {
                   Dense table for quick scanning, sorting, and drill-down.
                 </p>
               </div>
-              <Badge variant="secondary" className="bg-white/[0.06] text-foreground">
+              <Badge variant="secondary" className="bg-muted/60 text-foreground">
                 {filteredItems.length} rows
               </Badge>
             </div>

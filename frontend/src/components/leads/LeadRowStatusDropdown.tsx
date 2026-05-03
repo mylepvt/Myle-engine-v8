@@ -183,7 +183,7 @@ export const LeadRowStatusDropdown = memo(function LeadRowStatusDropdown({
           setOpen((o) => !o)
         }}
         className={cn(
-          'flex h-8 w-full max-w-full items-center justify-between gap-1 rounded-md border border-white/12 bg-white/[0.05] px-2 text-left text-xs text-foreground shadow-glass-inset',
+          'flex h-8 w-full max-w-full items-center justify-between gap-1 rounded-md border border-white/12 bg-muted/50 px-2 text-left text-xs text-foreground shadow-glass-inset',
           'focus:outline-none focus:ring-2 focus:ring-primary/35',
           (disabled || busy) && 'cursor-not-allowed opacity-60',
         )}

@@ -169,7 +169,7 @@ export function TrainingDayAdmin({ video }: Props) {
 
         <label className="block md:col-span-2">
           <span className="field-label">Audio file</span>
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+          <div className="rounded-xl border border-white/10 bg-muted/30 p-3">
             <input
               ref={audioRef}
               type="file"

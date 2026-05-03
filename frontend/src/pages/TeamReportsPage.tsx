@@ -179,7 +179,7 @@ export function TeamReportsPage({ title }: Props) {
             type="date"
             value={dateIso}
             onChange={(e) => setDateIso(e.target.value)}
-            className="rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-foreground"
+            className="rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground"
           />
         </label>
         <span className="text-xs text-muted-foreground">
@@ -247,7 +247,7 @@ export function TeamReportsPage({ title }: Props) {
               {TILES.map((tile) => (
                 <div
                   key={tile.key}
-                  className="surface-elevated rounded-xl border border-white/[0.08] py-3 text-center"
+                  className="surface-elevated rounded-xl border border-border/60 py-3 text-center"
                 >
                   <div className={cn('text-2xl font-bold tabular-nums', tile.color)}>
                     {data.live_summary[tile.key]}

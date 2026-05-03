@@ -29,7 +29,7 @@ export function InvoiceDownloadLink({ invoiceNumber, kind, amountCents, classNam
       target="_blank"
       rel="noreferrer"
       className={cn(
-        'inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-lg border border-white/12 bg-white/[0.06] px-2.5 py-1.5 text-left text-xs font-medium text-primary shadow-glass-inset transition-colors hover:border-primary/40 hover:bg-primary/10',
+        'inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-lg border border-white/12 bg-muted/60 px-2.5 py-1.5 text-left text-xs font-medium text-primary shadow-glass-inset transition-colors hover:border-primary/40 hover:bg-primary/10',
         className,
       )}
       title={`${label} — opens in a new tab; use browser Print → Save as PDF if needed.`}

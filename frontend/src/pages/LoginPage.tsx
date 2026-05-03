@@ -214,7 +214,7 @@ export function LoginPage() {
     <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-y-auto px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
         <div className="absolute -left-24 top-[12%] h-80 w-80 rounded-full bg-primary/[0.09] blur-3xl" />
-        <div className="absolute -right-16 bottom-[18%] h-72 w-72 rounded-full bg-white/[0.03] blur-3xl" />
+        <div className="absolute -right-16 bottom-[18%] h-72 w-72 rounded-full bg-muted/30 blur-3xl" />
       </div>
 
       <div className="relative z-[1] w-full max-w-[min(100%,26rem)]">
@@ -330,7 +330,7 @@ export function LoginPage() {
           >
             <div
               className={cn(
-                devLoginAllowed ? 'border-t border-white/[0.08] pt-5' : '',
+                devLoginAllowed ? 'border-t border-border/60 pt-5' : '',
               )}
             >
               {devLoginAllowed ? (
@@ -392,7 +392,7 @@ export function LoginPage() {
                         type="button"
                         tabIndex={-1}
                         onClick={() => setShowPassword((s) => !s)}
-                        className="flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+                        className="flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
                         aria-label={showPassword ? 'Hide password' : 'Show password'}
                       >
                         {showPassword ? (

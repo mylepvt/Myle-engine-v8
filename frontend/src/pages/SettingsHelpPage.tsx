@@ -27,7 +27,7 @@ function HelpArticleCard({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-white/[0.03] transition-colors"
+        className="flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-muted/30 transition-colors"
         aria-expanded={open}
       >
         <span className="text-lg" aria-hidden="true">
@@ -42,7 +42,7 @@ function HelpArticleCard({
         </span>
       </button>
       {open ? (
-        <div className="border-t border-white/[0.08] px-4 pb-4 pt-3">
+        <div className="border-t border-border/60 px-4 pb-4 pt-3">
           <p className="text-sm leading-relaxed text-muted-foreground">{detail}</p>
         </div>
       ) : null}
@@ -81,7 +81,7 @@ export function SettingsHelpPage({ title }: Props) {
       {data ? (
         <div className="space-y-4">
           {data.note ? (
-            <p className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-muted-foreground">
+            <p className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
               {data.note}
             </p>
           ) : null}

@@ -620,7 +620,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                   value={leadSearch}
                   onChange={(event) => setLeadSearch(event.target.value)}
                   placeholder="Search any lead across active, archived, retarget, and more"
-                  className="w-full rounded-xl border border-white/[0.08] bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary/40"
+                  className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary/40"
                 />
               </label>
               {deferredLeadSearch.length === 0 ? (

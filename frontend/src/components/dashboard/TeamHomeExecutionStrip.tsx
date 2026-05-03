@@ -76,21 +76,21 @@ export function TeamHomeExecutionStrip({
               )}
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3">
+              <div className="rounded-xl border border-white/10 bg-muted/40 px-3 py-3">
                 <p className="text-ds-caption text-muted-foreground">Claimed (active)</p>
                 <p className="mt-1 font-heading text-2xl font-semibold tabular-nums">{data.claimed}</p>
               </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3">
+              <div className="rounded-xl border border-white/10 bg-muted/40 px-3 py-3">
                 <p className="text-ds-caption text-muted-foreground">Video reached</p>
                 <p className="mt-1 font-heading text-2xl font-semibold tabular-nums">{data.video_reached}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">{pct(data.pct_video_vs_claimed)} of claimed</p>
               </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3">
+              <div className="rounded-xl border border-white/10 bg-muted/40 px-3 py-3">
                 <p className="text-ds-caption text-muted-foreground">Proof pending</p>
                 <p className="mt-1 font-heading text-2xl font-semibold tabular-nums">{data.proof_pending}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">{pct(data.pct_proof_vs_video)} of video</p>
               </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3">
+              <div className="rounded-xl border border-white/10 bg-muted/40 px-3 py-3">
                 <p className="text-ds-caption text-muted-foreground">Paid Enroll</p>
                 <p className="mt-1 font-heading text-2xl font-semibold tabular-nums">{data.paid_196}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">{pct(data.pct_enrolled_vs_claimed)} of claimed</p>

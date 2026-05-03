@@ -43,7 +43,7 @@ function StatCard({
   hint: string
 }) {
   return (
-    <Card className="surface-elevated border-white/[0.08]">
+    <Card className="surface-elevated border-border/60">
       <CardContent className="space-y-2 p-4">
         <p className="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">{label}</p>
         <p className="font-heading text-3xl text-foreground">{value}</p>
@@ -124,7 +124,7 @@ export function Day2ReviewPage({ title }: Props) {
             />
           </section>
 
-          <Card className="surface-elevated border-white/[0.08]">
+          <Card className="surface-elevated border-border/60">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <MessageSquareText className="size-4" />
@@ -170,7 +170,7 @@ export function Day2ReviewPage({ title }: Props) {
                         </div>
 
                         {submission.notes_text_preview ? (
-                          <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
+                          <div className="rounded-xl border border-border/60 bg-muted/30 p-3">
                             <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                               Notes preview
                             </p>

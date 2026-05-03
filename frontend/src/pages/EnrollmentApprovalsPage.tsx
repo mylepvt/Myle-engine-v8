@@ -95,7 +95,7 @@ export function EnrollmentApprovalsPage({ title }: Props) {
               return (
                 <li
                   key={row.lead_id}
-                  className="surface-elevated flex flex-col gap-3 rounded-xl border border-white/[0.08] p-4 text-sm sm:flex-row sm:items-center sm:justify-between"
+                  className="surface-elevated flex flex-col gap-3 rounded-xl border border-border/60 p-4 text-sm sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
@@ -180,7 +180,7 @@ export function EnrollmentApprovalsPage({ title }: Props) {
               type="date"
               value={historyDate}
               onChange={(e) => setHistoryDate(e.target.value)}
-              className="w-full rounded-md border border-white/[0.12] bg-white/[0.05] px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+              className="w-full rounded-md border border-white/[0.12] bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
             />
           </div>
         </div>
@@ -227,7 +227,7 @@ export function EnrollmentApprovalsPage({ title }: Props) {
                 return (
                   <li
                     key={`${row.lead_id}-${row.review_action}-${row.reviewed_at}`}
-                    className="surface-elevated flex flex-col gap-3 rounded-xl border border-white/[0.08] p-4 text-sm"
+                    className="surface-elevated flex flex-col gap-3 rounded-xl border border-border/60 p-4 text-sm"
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-semibold text-foreground">{row.lead_name}</p>

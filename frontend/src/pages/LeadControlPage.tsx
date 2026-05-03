@@ -48,7 +48,7 @@ function StatCard({
   hint: string
 }) {
   return (
-    <Card className="surface-elevated border-white/[0.08]">
+    <Card className="surface-elevated border-border/60">
       <CardContent className="space-y-2 p-4">
         <p className="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">{label}</p>
         <p className="font-heading text-3xl text-foreground">{value}</p>
@@ -267,8 +267,8 @@ export function LeadControlPage({ title }: Props) {
           </section>
 
           <section className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-            <Card className="surface-elevated overflow-hidden border-white/[0.08]">
-              <CardHeader className="border-b border-white/[0.08] px-5 py-4">
+            <Card className="surface-elevated overflow-hidden border-border/60">
+              <CardHeader className="border-b border-border/60 px-5 py-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <CardTitle className="flex items-center gap-2 text-lg">
@@ -314,7 +314,7 @@ export function LeadControlPage({ title }: Props) {
                             setSubmitMessage('')
                           }}
                           className={`w-full px-5 py-4 text-left transition ${
-                            active ? 'bg-primary/10' : 'hover:bg-white/[0.03]'
+                            active ? 'bg-primary/10' : 'hover:bg-muted/30'
                           }`}
                         >
                           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -361,7 +361,7 @@ export function LeadControlPage({ title }: Props) {
               </CardContent>
             </Card>
 
-            <Card className="surface-elevated border-white/[0.08]">
+            <Card className="surface-elevated border-border/60">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <UserCheck className="size-4" />
@@ -384,7 +384,7 @@ export function LeadControlPage({ title }: Props) {
                         </div>
                         <div className="max-h-48 space-y-2 overflow-y-auto pr-1">
                           {selectedBulkLeads.map((lead) => (
-                            <div key={lead.lead_id} className="rounded-xl border border-white/[0.08] px-3 py-2 text-sm">
+                            <div key={lead.lead_id} className="rounded-xl border border-border/60 px-3 py-2 text-sm">
                               <div className="flex flex-wrap items-center justify-between gap-2">
                                 <p className="font-medium text-foreground">{lead.lead_name}</p>
                                 <span className="text-xs text-muted-foreground">{statusLabel(lead.status)}</span>
@@ -437,7 +437,7 @@ export function LeadControlPage({ title }: Props) {
                       <select
                         value={selectedUserId}
                         onChange={(event) => setSelectedUserId(event.target.value)}
-                        className="h-12 w-full rounded-xl border border-white/[0.08] bg-background px-3 text-sm text-foreground outline-none ring-0 transition focus:border-primary/40"
+                        className="h-12 w-full rounded-xl border border-border/60 bg-background px-3 text-sm text-foreground outline-none ring-0 transition focus:border-primary/40"
                       >
                         {targetOptions.map((user) => (
                           <option key={user.user_id} value={user.user_id}>
@@ -457,7 +457,7 @@ export function LeadControlPage({ title }: Props) {
                         rows={4}
                         maxLength={500}
                         placeholder="Why are you manually moving this lead?"
-                        className="w-full rounded-xl border border-white/[0.08] bg-background px-3 py-3 text-sm text-foreground outline-none ring-0 transition focus:border-primary/40"
+                        className="w-full rounded-xl border border-border/60 bg-background px-3 py-3 text-sm text-foreground outline-none ring-0 transition focus:border-primary/40"
                       />
                     </label>
 
@@ -496,7 +496,7 @@ export function LeadControlPage({ title }: Props) {
           </section>
 
           <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-            <Card className="surface-elevated border-white/[0.08]">
+            <Card className="surface-elevated border-border/60">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <ShieldCheck className="size-4" />
@@ -524,13 +524,13 @@ export function LeadControlPage({ title }: Props) {
                           </p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 text-xs">
-                          <span className="rounded-full border border-white/[0.1] px-2.5 py-1 text-foreground">
+                          <span className="rounded-full border border-border px-2.5 py-1 text-foreground">
                             Total {row.total_received}
                           </span>
-                          <span className="rounded-full border border-white/[0.1] px-2.5 py-1 text-muted-foreground">
+                          <span className="rounded-full border border-border px-2.5 py-1 text-muted-foreground">
                             Auto {row.auto_received}
                           </span>
-                          <span className="rounded-full border border-white/[0.1] px-2.5 py-1 text-muted-foreground">
+                          <span className="rounded-full border border-border px-2.5 py-1 text-muted-foreground">
                             Manual {row.manual_received}
                           </span>
                         </div>
@@ -541,7 +541,7 @@ export function LeadControlPage({ title }: Props) {
               </CardContent>
             </Card>
 
-            <Card className="surface-elevated border-white/[0.08]">
+            <Card className="surface-elevated border-border/60">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Clock3 className="size-4" />
@@ -566,7 +566,7 @@ export function LeadControlPage({ title }: Props) {
                               Owner {row.owner_name || 'Unknown'} · {formatDateTime(row.occurred_at)}
                             </p>
                           </div>
-                          <span className="rounded-full border border-white/[0.1] px-2.5 py-1 text-xs text-foreground">
+                          <span className="rounded-full border border-border px-2.5 py-1 text-xs text-foreground">
                             {row.mode === 'manual' ? 'Manual' : 'Auto'}
                           </span>
                         </div>

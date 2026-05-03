@@ -89,7 +89,7 @@ export function InAppVideoPlayer({
   if (!playbackSource || playbackSource.kind === 'unsupported') {
     if (!fallbackUrl) {
       return (
-        <div className="flex aspect-video items-center justify-center rounded-[2rem] border border-white/10 bg-white/[0.04] text-sm text-white/55">
+        <div className="flex aspect-video items-center justify-center rounded-[2rem] border border-white/10 bg-muted/40 text-sm text-white/55">
           Video link is being prepared.
         </div>
       )
@@ -165,7 +165,7 @@ export function InAppVideoPlayer({
           allowFullScreen
         />
       )}
-      <div className="border-t border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-white/55">
+      <div className="border-t border-white/10 bg-muted/30 px-4 py-3 text-xs text-white/55">
         {playbackSource.kind === 'native'
           ? 'Playback stays inside Myle with native controls and fullscreen available from the player.'
           : 'Playback stays inside Myle. If the video pauses, tap once inside the player.'}

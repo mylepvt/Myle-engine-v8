@@ -113,7 +113,7 @@ function SlotCard({ slot, link }: { slot: ScheduleSlot; link: string }) {
       </div>
 
       {slot.state !== 'past' && (
-        <div className="mt-2 flex items-center gap-2 rounded-lg border border-white/[0.08] bg-black/20 px-3 py-2">
+        <div className="mt-2 flex items-center gap-2 rounded-lg border border-border/60 bg-black/20 px-3 py-2">
           <p className="flex-1 truncate text-xs text-[#c9d9ff]">{link}</p>
           <button
             type="button"
@@ -200,7 +200,7 @@ export function LiveSessionPage({ title }: Props) {
               {msgCopied ? '✓ Copied!' : 'Copy for WhatsApp'}
             </Button>
           </div>
-          <pre className="overflow-x-auto whitespace-pre-wrap rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-xs text-[#c9d9ff]">
+          <pre className="overflow-x-auto whitespace-pre-wrap rounded-xl border border-white/10 bg-muted/40 px-4 py-3 text-xs text-[#c9d9ff]">
             {buildWhatsAppMessage(data.slots, link)}
           </pre>
         </div>
