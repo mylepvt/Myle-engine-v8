@@ -23,7 +23,7 @@ import {
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardLink, CardTitle } from '@/components/ui/card'
 import { EmptyState, ErrorState } from '@/components/ui/states'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAppSettingsQuery, useSystemUsersSummaryQuery } from '@/hooks/use-settings-query'
@@ -181,22 +181,25 @@ function StatCard({
   value,
   hint,
   variant = 'default',
+  to,
 }: {
   label: string
   value: string | number
   hint: string
   variant?: StatVariant
+  to?: string
 }) {
   const styles = STAT_VARIANT_STYLES[variant]
-  return (
-    <Card className={`border-t-2 bg-gradient-to-b to-transparent ${styles.border} ${styles.bg}`}>
-      <CardContent className="space-y-2.5 p-4">
-        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
-        <p className={`font-heading text-[2rem] font-bold leading-none tabular-nums ${styles.value}`}>{value}</p>
-        <p className="text-xs leading-relaxed text-muted-foreground">{hint}</p>
-      </CardContent>
-    </Card>
+  const cls = `border-t-2 bg-gradient-to-b to-transparent ${styles.border} ${styles.bg}`
+  const inner = (
+    <CardContent className="space-y-2.5 p-4">
+      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+      <p className={`font-heading text-[2rem] font-bold leading-none tabular-nums ${styles.value}`}>{value}</p>
+      <p className="text-xs leading-relaxed text-muted-foreground">{hint}</p>
+    </CardContent>
   )
+  if (to) return <CardLink to={to} className={cls}>{inner}</CardLink>
+  return <Card className={cls}>{inner}</Card>
 }
 
 function DeskShortcut({
@@ -432,28 +435,33 @@ export function AdminCommandCenter({ firstName }: Props) {
               value={pendingRegistrations.data?.total ?? 0}
               hint="Self-serve signups waiting for admin approval."
               variant="warning"
+              to="/dashboard/team/approvals"
             />
             <StatCard
               label="Enroll Approvals"
               value={enrollmentPending.data?.total ?? 0}
               hint="Payment proofs pending review right now."
               variant="warning"
+              to="/dashboard/team/enrollment-approvals"
             />
             <StatCard
               label="Recharge Requests"
               value={pendingRechargeItems.length}
               hint="Wallet requests still waiting for finance approval."
               variant="warning"
+              to="/dashboard/finance/recharge-admin"
             />
             <StatCard
               label="Reassign Ready"
               value={leadControl.data?.queue_total ?? 0}
               hint="Archived watch leads already eligible for redistribution."
+              to="/dashboard/system/lead-control"
             />
             <StatCard
               label="Archive Incubation"
               value={leadControl.data?.incubation_total ?? 0}
               hint="Archived watch leads still counting down toward stale reassignment."
+              to="/dashboard/system/lead-control"
             />
           </section>
 
@@ -732,22 +740,26 @@ export function AdminCommandCenter({ firstName }: Props) {
               value={systemUsersSummary.data?.total_users ?? 0}
               hint="Approved + pending + blocked users in the system summary."
               variant="success"
+              to="/dashboard/team/members"
             />
             <StatCard
               label="Leaders"
               value={systemUsersSummary.data?.by_role?.leader ?? 0}
               hint="Current approved leader seats."
+              to="/dashboard/team/members"
             />
             <StatCard
               label="Team Members"
               value={systemUsersSummary.data?.by_role?.team ?? 0}
               hint="Current approved team execution layer."
+              to="/dashboard/team/members"
             />
             <StatCard
               label="Blocked Users"
               value={systemUsersSummary.data?.blocked_users ?? 0}
               hint="Users currently blocked from normal access."
               variant="danger"
+              to="/dashboard/team/members"
             />
           </section>
 
@@ -825,23 +837,27 @@ export function AdminCommandCenter({ firstName }: Props) {
               value={formatInr(budgetSummary.data?.grand_totals.current_balance_cents ?? 0)}
               hint="Current visible wallet balance across the export view."
               variant="success"
+              to="/dashboard/finance/budget-export"
             />
             <StatCard
               label="Month Recharge"
               value={formatInr(budgetSummary.data?.grand_totals.period_recharge_cents ?? 0)}
               hint="Current month recharge volume."
               variant="success"
+              to="/dashboard/finance/budget-export"
             />
             <StatCard
               label="Month Spend"
               value={formatInr(budgetSummary.data?.grand_totals.period_spend_cents ?? 0)}
               hint="Current month spend volume."
+              to="/dashboard/finance/budget-export"
             />
             <StatCard
               label="Pending Recharges"
               value={pendingRechargeItems.length}
               hint="Recharge approvals still pending."
               variant="warning"
+              to="/dashboard/finance/recharge-admin"
             />
           </section>
 
@@ -917,22 +933,26 @@ export function AdminCommandCenter({ firstName }: Props) {
               value={settingsMap.enrollment_video_source_url ? 'Ready' : 'Missing'}
               hint="Secure enrollment video setup status."
               variant={settingsMap.enrollment_video_source_url ? 'success' : 'warning'}
+              to="/dashboard/settings/app"
             />
             <StatCard
               label="Live Session"
               value={settingsMap.live_session_url ? 'Ready' : 'Missing'}
               hint="Community live-session join link status."
               variant={settingsMap.live_session_url ? 'success' : 'warning'}
+              to="/dashboard/settings/app"
             />
             <StatCard
               label="Batch Links"
               value={configuredBatchKeys}
               hint="Configured D1/D2 batch watch links."
+              to="/dashboard/settings/app"
             />
             <StatCard
               label="Day 2 Items"
               value={day2Review.data?.total ?? 0}
               hint="Stored Day 2 submissions in the review wall."
+              to="/dashboard/system/day2-review"
             />
           </section>
 
@@ -1002,23 +1022,27 @@ export function AdminCommandCenter({ firstName }: Props) {
               label="Total Viewers Today"
               value={premiereViewers.data?.length ?? 0}
               hint="Unique registered viewers for today's premiere session."
+              to="/dashboard/other/live-session"
             />
             <StatCard
               label="Watching Now"
               value={(premiereViewers.data ?? []).filter((v) => isActiveNow(v.last_seen_at)).length}
               hint="Active in last 45 seconds."
               variant={(premiereViewers.data ?? []).filter((v) => isActiveNow(v.last_seen_at)).length > 0 ? 'danger' : 'default'}
+              to="/dashboard/other/live-session"
             />
             <StatCard
               label="Completed Session"
               value={(premiereViewers.data ?? []).filter((v) => v.watch_completed).length}
               hint="Watched 95%+ of the session."
               variant="success"
+              to="/dashboard/other/live-session"
             />
             <StatCard
               label="Top Lead Score"
               value={(premiereViewers.data ?? []).reduce((max, v) => Math.max(max, v.lead_score), 0)}
               hint="Highest lead score from today's viewers."
+              to="/dashboard/other/live-session"
             />
           </section>
 
@@ -1134,21 +1158,25 @@ export function AdminCommandCenter({ firstName }: Props) {
               label="History Rows"
               value={leadControl.data?.history_total ?? 0}
               hint="Auto + manual reassignment entries in the soft audit trail."
+              to="/dashboard/system/lead-control"
             />
             <StatCard
               label="Receiving Members"
               value={leadControl.data?.history_summary.length ?? 0}
               hint="How many members have received reassigned leads."
+              to="/dashboard/system/lead-control"
             />
             <StatCard
               label="Latest Manual"
               value={leadControl.data?.history?.find((row) => row.mode === 'manual') ? 'Yes' : 'No'}
               hint="Whether a manual reassignment exists in recent history."
+              to="/dashboard/system/lead-control"
             />
             <StatCard
               label="Activity Log"
               value="Linked"
               hint="Full append-only activity log stays available as the deep audit page."
+              to="/dashboard/analytics/activity-log"
             />
           </section>
 

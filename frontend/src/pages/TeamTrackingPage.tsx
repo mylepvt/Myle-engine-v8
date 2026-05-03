@@ -11,7 +11,7 @@ import {
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardLink, CardTitle } from '@/components/ui/card'
 import { ListSearchInput } from '@/components/ui/list-search-input'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -56,6 +56,7 @@ type MetricPanelProps = {
   label: string
   value: string | number
   tone?: 'default' | 'success' | 'warning' | 'danger'
+  to?: string
 }
 
 const SELECT_CLASSNAME =
@@ -296,46 +297,45 @@ function updateParam(
   setParams(next, { replace: true })
 }
 
-function MetricPanel({ icon: Icon, label, value, tone = 'default' }: MetricPanelProps) {
-  return (
-    <Card
-      className={cn(
-        'border-t-2 bg-gradient-to-b to-transparent',
-        tone === 'success' && 'border-t-emerald-400/50 from-emerald-400/[0.06]',
-        tone === 'warning' && 'border-t-amber-400/50 from-amber-400/[0.06]',
-        tone === 'danger' && 'border-t-rose-400/50 from-rose-400/[0.06]',
-        tone === 'default' && 'border-t-primary/40 from-primary/[0.05]',
-      )}
-    >
-      <CardContent className="relative p-4">
-        <div
-          className={cn(
-            'absolute right-3 top-3 rounded-xl p-1.5',
-            tone === 'success' && 'bg-emerald-400/15 text-emerald-500 dark:text-emerald-300',
-            tone === 'warning' && 'bg-amber-400/15 text-amber-600 dark:text-amber-300',
-            tone === 'danger' && 'bg-rose-400/15 text-rose-500 dark:text-rose-300',
-            tone === 'default' && 'bg-primary/10 text-primary',
-          )}
-        >
-          <Icon className="size-4" />
-        </div>
-        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-          {label}
-        </p>
-        <p
-          className={cn(
-            'mt-3 text-[2rem] font-bold leading-none tabular-nums',
-            tone === 'success' && 'text-emerald-600 dark:text-emerald-300',
-            tone === 'warning' && 'text-amber-600 dark:text-amber-300',
-            tone === 'danger' && 'text-rose-600 dark:text-rose-300',
-            tone === 'default' && 'text-foreground',
-          )}
-        >
-          {value}
-        </p>
-      </CardContent>
-    </Card>
+function MetricPanel({ icon: Icon, label, value, tone = 'default', to }: MetricPanelProps) {
+  const cls = cn(
+    'border-t-2 bg-gradient-to-b to-transparent',
+    tone === 'success' && 'border-t-emerald-400/50 from-emerald-400/[0.06]',
+    tone === 'warning' && 'border-t-amber-400/50 from-amber-400/[0.06]',
+    tone === 'danger' && 'border-t-rose-400/50 from-rose-400/[0.06]',
+    tone === 'default' && 'border-t-primary/40 from-primary/[0.05]',
   )
+  const inner = (
+    <CardContent className="relative p-4">
+      <div
+        className={cn(
+          'absolute right-3 top-3 rounded-xl p-1.5',
+          tone === 'success' && 'bg-emerald-400/15 text-emerald-500 dark:text-emerald-300',
+          tone === 'warning' && 'bg-amber-400/15 text-amber-600 dark:text-amber-300',
+          tone === 'danger' && 'bg-rose-400/15 text-rose-500 dark:text-rose-300',
+          tone === 'default' && 'bg-primary/10 text-primary',
+        )}
+      >
+        <Icon className="size-4" />
+      </div>
+      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+        {label}
+      </p>
+      <p
+        className={cn(
+          'mt-3 text-[2rem] font-bold leading-none tabular-nums',
+          tone === 'success' && 'text-emerald-600 dark:text-emerald-300',
+          tone === 'warning' && 'text-amber-600 dark:text-amber-300',
+          tone === 'danger' && 'text-rose-600 dark:text-rose-300',
+          tone === 'default' && 'text-foreground',
+        )}
+      >
+        {value}
+      </p>
+    </CardContent>
+  )
+  if (to) return <CardLink to={to} className={cls}>{inner}</CardLink>
+  return <Card className={cls}>{inner}</Card>
 }
 
 function LiveMemberRow({ item, dateIso }: { item: TeamTrackingMemberSummary; dateIso: string }) {
@@ -649,35 +649,41 @@ export function TeamTrackingPage({ title }: Props) {
               icon={Users}
               label="Members in scope"
               value={data.scope_total_members}
+              to="/dashboard/team/members"
             />
             <MetricPanel
               icon={Activity}
               label="Live now"
               value={filteredLiveCount}
               tone="success"
+              to={`/dashboard/team/tracking?presence=online&date=${dateIso}`}
             />
             <MetricPanel
               icon={ShieldAlert}
               label="Need attention"
               value={flagged.length}
               tone="danger"
+              to={`/dashboard/team/tracking?sort=attention&date=${dateIso}`}
             />
             <MetricPanel
               icon={Gauge}
               label="Average score"
               value={averageScore(filteredItems)}
               tone="warning"
+              to={`/dashboard/team/tracking?sort=score-asc&date=${dateIso}`}
             />
             <MetricPanel
               icon={Activity}
               label="High performers"
               value={filteredHighCount}
               tone="success"
+              to={`/dashboard/team/tracking?band=high&date=${dateIso}`}
             />
             <MetricPanel
               icon={Layers3}
               label="Leader lanes"
               value={leaderHealth.length}
+              to={`/dashboard/team/tracking?date=${dateIso}`}
             />
           </div>
 
