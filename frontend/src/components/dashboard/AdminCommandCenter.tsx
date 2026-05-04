@@ -8,6 +8,7 @@ import {
   CalendarDays,
   ChevronRight,
   ClipboardCheck,
+  Clock,
   CreditCard,
   FileDown,
   FileText,
@@ -288,7 +289,7 @@ export function AdminCommandCenter({ firstName }: Props) {
   const teamReports = useTeamReportsQuery('', true)
 
   const systemUsersSummary = useSystemUsersSummaryQuery(activeTab === 'team')
-  const teamMembers = useTeamMembersQuery(activeTab === 'team')
+  const teamMembers = useTeamMembersQuery()
   const invoices = useInvoicesQuery({ limit: 5, offset: 0 }, activeTab === 'finance')
   const budgetSummary = useQuery({
     queryKey: ['finance', 'budget-export', 'command-center'],
@@ -336,10 +337,16 @@ export function AdminCommandCenter({ firstName }: Props) {
     [settingsMap],
   )
 
+  const pendingGraceCount = useMemo(
+    () => (teamMembers.data?.items ?? []).filter((m) => m.grace_request_end_date != null).length,
+    [teamMembers.data?.items],
+  )
+
   const pendingTotal =
     (pendingRegistrations.data?.total ?? 0) +
     (enrollmentPending.data?.total ?? 0) +
-    pendingRechargeItems.length
+    pendingRechargeItems.length +
+    pendingGraceCount
 
   const liveWatcherCount = activeWatchers.data?.length ?? 0
   const premiereActiveCount = (premiereViewers.data ?? []).filter((v) => isActiveNow(v.last_seen_at)).length
@@ -430,6 +437,11 @@ export function AdminCommandCenter({ firstName }: Props) {
           <TabsTrigger value="team" className="flex items-center gap-1.5">
             <Users className="size-3.5" />
             Team
+            {pendingGraceCount > 0 && (
+              <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
+                {pendingGraceCount}
+              </span>
+            )}
           </TabsTrigger>
           <TabsTrigger value="finance" className="flex items-center gap-1.5">
             <Wallet className="size-3.5" />
@@ -451,7 +463,7 @@ export function AdminCommandCenter({ firstName }: Props) {
         </TabsList>
 
         <TabsContent value="today" className="space-y-6">
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <StatCard
               label="Pending Registrations"
               value={pendingRegistrations.data?.total ?? 0}
@@ -472,6 +484,13 @@ export function AdminCommandCenter({ firstName }: Props) {
               hint="Wallet requests still waiting for finance approval."
               variant="warning"
               to="/dashboard/finance/recharge-admin"
+            />
+            <StatCard
+              label="Grace Requests"
+              value={pendingGraceCount}
+              hint="Team members with a pending grace period request awaiting review."
+              variant={pendingGraceCount > 0 ? 'warning' : 'default'}
+              to="/dashboard/team/members"
             />
             <StatCard
               label="Reassign Ready"
@@ -517,6 +536,13 @@ export function AdminCommandCenter({ firstName }: Props) {
                   description="Approve or reject pending wallet recharges."
                   icon={<Wallet className="size-4" />}
                   badge={pendingRechargeItems.length}
+                />
+                <DeskShortcut
+                  to="/dashboard/team/members"
+                  title="Grace requests"
+                  description="Review and approve or reject pending grace period requests from team members."
+                  icon={<Clock className="size-4" />}
+                  badge={pendingGraceCount}
                 />
                 <DeskShortcut
                   to="/dashboard/system/lead-control"
