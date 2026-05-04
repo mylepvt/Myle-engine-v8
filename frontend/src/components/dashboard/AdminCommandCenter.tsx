@@ -29,7 +29,7 @@ import { EmptyState, ErrorState } from '@/components/ui/states'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAppSettingsQuery, useSystemUsersSummaryQuery } from '@/hooks/use-settings-query'
 import { useDay2ReviewQuery } from '@/hooks/use-day2-review-query'
-import { useEnrollmentApprovalsPendingQuery, useTeamMembersQuery } from '@/hooks/use-team-query'
+import { useEnrollmentApprovalsPendingQuery, useTeamMembersQuery, useUpdateMemberComplianceMutation, type TeamMemberPublic } from '@/hooks/use-team-query'
 import { useTeamReportsQuery } from '@/hooks/use-team-reports-query'
 import { useWalletRechargeRequestsQuery } from '@/hooks/use-wallet-recharge-query'
 import { useInvoicesQuery } from '@/hooks/use-invoices-query'
@@ -271,6 +271,53 @@ function LeadResultRow({ lead }: { lead: LeadPublic }) {
   )
 }
 
+function GraceRequestRow({ member }: { member: TeamMemberPublic }) {
+  const mut = useUpdateMemberComplianceMutation()
+  const busy = mut.isPending
+
+  function act(action: 'approve_grace_request' | 'reject_grace_request') {
+    mut.mutate({ userId: member.id, action, graceEndDate: null, reason: null })
+  }
+
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-3 rounded-[1.1rem] border border-border/60 bg-card/40 p-3.5">
+      <div className="min-w-0 flex-1 space-y-0.5">
+        <p className="text-sm font-semibold text-foreground">
+          {member.username ?? member.fbo_id}
+          <span className="ml-2 text-xs font-normal text-muted-foreground">{member.fbo_id}</span>
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Till {member.grace_request_end_date ? new Date(member.grace_request_end_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+          {member.grace_request_reason ? ` · ${member.grace_request_reason}` : ''}
+        </p>
+        {mut.isError && (
+          <p className="text-xs text-destructive">{(mut.error as Error).message}</p>
+        )}
+      </div>
+      <div className="flex shrink-0 gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          className="border-emerald-500/40 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-400/10"
+          disabled={busy}
+          onClick={() => act('approve_grace_request')}
+        >
+          Approve
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="border-destructive/40 text-destructive hover:bg-destructive/10"
+          disabled={busy}
+          onClick={() => act('reject_grace_request')}
+        >
+          Reject
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 export function AdminCommandCenter({ firstName }: Props) {
   const [activeTab, setActiveTab] = useState('today')
   const [leadSearch, setLeadSearch] = useState('')
@@ -337,10 +384,11 @@ export function AdminCommandCenter({ firstName }: Props) {
     [settingsMap],
   )
 
-  const pendingGraceCount = useMemo(
-    () => (teamMembers.data?.items ?? []).filter((m) => m.grace_request_end_date != null).length,
+  const pendingGraceMembers = useMemo(
+    () => (teamMembers.data?.items ?? []).filter((m) => m.grace_request_end_date != null),
     [teamMembers.data?.items],
   )
+  const pendingGraceCount = pendingGraceMembers.length
 
   const pendingTotal =
     (pendingRegistrations.data?.total ?? 0) +
@@ -588,6 +636,26 @@ export function AdminCommandCenter({ firstName }: Props) {
               </CardContent>
             </Card>
           </section>
+
+          {pendingGraceCount > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Clock className="size-4" />
+                  Pending Grace Requests
+                  <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-xs font-bold text-amber-400">
+                    {pendingGraceCount}
+                  </span>
+                </CardTitle>
+                <CardDescription>Review and action each request without leaving the dashboard.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2.5">
+                {pendingGraceMembers.map((member) => (
+                  <GraceRequestRow key={member.id} member={member} />
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader>
