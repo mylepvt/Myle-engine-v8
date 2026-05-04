@@ -19,6 +19,7 @@ from starlette import status as http_status
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.models.announcement import Announcement
 from app.models.app_setting import AppSetting
+from app.models.lead import Lead
 from app.models.premiere_viewer import PremiereViewer
 from app.models.daily_report import DailyReport
 from app.models.daily_score import DailyScore
@@ -28,6 +29,7 @@ from app.models.training_video import TrainingVideo
 from app.models.user import User
 from app.schemas.notice_board import AnnouncementCreate, AnnouncementOut, NoticeBoardResponse
 from app.schemas.system_surface import SystemStubResponse, TrainingSurfaceResponse
+from app.services.enrollment_video import normalize_phone_for_match
 from app.services.team_reports_metrics import IST
 from app.services.training_surface import build_training_surface
 from app.services.training_uploads import save_training_notes_image
@@ -451,13 +453,16 @@ class PremiereViewerOut(BaseModel):
     name: str
     masked_phone: str
     city: str
+    session_date: str
     session_hour: int
     percentage_watched: float
     current_time_sec: float
     last_seen_at: Optional[str]
+    first_seen_at: Optional[str]
     lead_score: int
     watch_completed: bool
     rejoined: bool
+    referred_by_name: Optional[str] = None
 
 
 class PremiereSlot(BaseModel):
@@ -790,17 +795,45 @@ async def premiere_progress(
     return {"ok": True}
 
 
+async def _build_phone_to_owner_map(db: AsyncSession, raw_phones: list[str]) -> dict[str, str]:
+    """Return {10-digit-phone: owner_name} for viewers whose phone matches a lead."""
+    norm_to_raw: dict[str, str] = {}
+    for p in raw_phones:
+        n = normalize_phone_for_match(p)
+        if n:
+            norm_to_raw[n] = p
+
+    if not norm_to_raw:
+        return {}
+
+    # Fetch all leads that have a non-null phone + their owner name
+    q = (
+        select(Lead.phone, User.name)
+        .join(User, User.id == Lead.owner_user_id, isouter=True)
+        .where(Lead.phone.isnot(None))
+    )
+    lead_rows = (await db.execute(q)).all()
+
+    result: dict[str, str] = {}
+    for lead_phone, owner_name in lead_rows:
+        n = normalize_phone_for_match(lead_phone)
+        if n and n in norm_to_raw and owner_name:
+            result[norm_to_raw[n]] = owner_name
+    return result
+
+
 @router.get("/premiere/viewers", response_model=list[PremiereViewerOut])
 async def premiere_viewers(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     hour: Optional[int] = Query(default=None, description="Filter by session hour (omit for all today)"),
+    date: Optional[str] = Query(default=None, description="Session date YYYY-MM-DD (omit for today)"),
 ) -> list[PremiereViewerOut]:
-    """Admin/leader only."""
+    """Admin/leader only. Supports date param for historical view."""
     if user.role not in ("admin", "leader"):
         raise HTTPException(status_code=403, detail="Forbidden")
-    today = datetime.now(IST).date().isoformat()
-    q = select(PremiereViewer).where(PremiereViewer.session_date == today)
+    target_date = date or datetime.now(IST).date().isoformat()
+    q = select(PremiereViewer).where(PremiereViewer.session_date == target_date)
     if hour is not None:
         q = q.where(PremiereViewer.session_hour == hour)
     try:
@@ -811,19 +844,25 @@ async def premiere_viewers(
         if not _is_missing_premiere_viewers_table_error(exc):
             raise
         return []
+
+    phone_to_owner = await _build_phone_to_owner_map(db, [v.phone for v in rows])
+
     return [
         PremiereViewerOut(
             viewer_id=v.viewer_id,
             name=v.name,
             masked_phone=_mask_phone(v.phone),
             city=v.city,
+            session_date=v.session_date,
             session_hour=v.session_hour,
             percentage_watched=round(v.percentage_watched * 100, 1),
             current_time_sec=v.current_time_sec,
+            first_seen_at=v.first_seen_at.isoformat() if v.first_seen_at else None,
             last_seen_at=v.last_seen_at.isoformat() if v.last_seen_at else None,
             lead_score=v.lead_score,
             watch_completed=v.watch_completed,
             rejoined=v.rejoined,
+            referred_by_name=phone_to_owner.get(v.phone),
         )
         for v in rows
     ]

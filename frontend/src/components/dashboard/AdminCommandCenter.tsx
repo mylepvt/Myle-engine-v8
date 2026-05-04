@@ -48,27 +48,32 @@ type PremiereViewerRow = {
   name: string
   masked_phone: string
   city: string
+  session_date: string
+  session_hour: number
   percentage_watched: number
   current_time_sec: number
+  first_seen_at: string | null
   last_seen_at: string | null
   lead_score: number
   watch_completed: boolean
   rejoined: boolean
+  referred_by_name: string | null
 }
 
-async function fetchPremiereViewers(): Promise<PremiereViewerRow[]> {
-  const res = await apiFetch('/api/v1/other/premiere/viewers')
+async function fetchPremiereViewers(date?: string): Promise<PremiereViewerRow[]> {
+  const params = date ? `?date=${encodeURIComponent(date)}` : ''
+  const res = await apiFetch(`/api/v1/other/premiere/viewers${params}`)
   const body = await res.json().catch(() => null)
   if (!res.ok) throw new Error(messageFromApiErrorPayload(body, `HTTP ${res.status}`))
   return body as PremiereViewerRow[]
 }
 
-function usePremiereViewersQuery(enabled: boolean) {
+function usePremiereViewersQuery(enabled: boolean, date?: string) {
   return useQuery({
-    queryKey: ['premiere', 'viewers'],
-    queryFn: fetchPremiereViewers,
+    queryKey: ['premiere', 'viewers', date ?? 'today'],
+    queryFn: () => fetchPremiereViewers(date),
     enabled,
-    refetchInterval: 15_000,
+    refetchInterval: date ? false : 15_000,
   })
 }
 
@@ -269,6 +274,7 @@ export function AdminCommandCenter({ firstName }: Props) {
   const [activeTab, setActiveTab] = useState('today')
   const [leadSearch, setLeadSearch] = useState('')
   const deferredLeadSearch = useDeferredValue(leadSearch.trim())
+  const [viewerHistoryDate, setViewerHistoryDate] = useState<string>(() => new Date().toISOString().slice(0, 10))
 
   const pendingRegistrations = useQuery({
     queryKey: ['team', 'pending-registrations'],
@@ -292,6 +298,7 @@ export function AdminCommandCenter({ firstName }: Props) {
   const appSettings = useAppSettingsQuery(activeTab === 'content')
   const day2Review = useDay2ReviewQuery()
   const premiereViewers = usePremiereViewersQuery(true)
+  const premiereHistory = usePremiereViewersQuery(activeTab === 'premiere', viewerHistoryDate)
   const activeWatchers = useActiveWatchersQuery()
   const leadSearchResults = useLeadsQuery(
     deferredLeadSearch.length > 0,
@@ -1028,6 +1035,7 @@ export function AdminCommandCenter({ firstName }: Props) {
         </TabsContent>
 
         <TabsContent value="premiere" className="space-y-6">
+          {/* Today's live stats — always-fresh */}
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <StatCard
               label="Total Viewers Today"
@@ -1057,41 +1065,53 @@ export function AdminCommandCenter({ firstName }: Props) {
             />
           </section>
 
+          {/* Date picker + viewer history */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <span className="relative flex size-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                  <span className="relative inline-flex size-2 rounded-full bg-red-500" />
-                </span>
-                Premiere Viewers — Today
-              </CardTitle>
-              <CardDescription>
-                All registered viewers for today's session with watch progress and lead scores. Refreshes every 15s.
-              </CardDescription>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <span className="relative flex size-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                      <span className="relative inline-flex size-2 rounded-full bg-red-500" />
+                    </span>
+                    Viewer History
+                  </CardTitle>
+                  <CardDescription>
+                    Date-wise viewer list with team member association. Refreshes live for today.
+                  </CardDescription>
+                </div>
+                <input
+                  type="date"
+                  value={viewerHistoryDate}
+                  max={new Date().toISOString().slice(0, 10)}
+                  onChange={(e) => setViewerHistoryDate(e.target.value)}
+                  className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
             </CardHeader>
             <CardContent>
-              {premiereViewers.isPending ? (
+              {premiereHistory.isPending ? (
                 <div className="space-y-2">
                   {[1, 2, 3].map((i) => (
                     <div key={i} className="surface-inset h-20 animate-pulse rounded-2xl" />
                   ))}
                 </div>
-              ) : premiereViewers.isError ? (
+              ) : premiereHistory.isError ? (
                 <ErrorState
-                  title="Could not load premiere viewers"
-                  message={premiereViewers.error instanceof Error ? premiereViewers.error.message : 'Please try again.'}
-                  onRetry={() => void premiereViewers.refetch()}
+                  title="Could not load viewers"
+                  message={premiereHistory.error instanceof Error ? premiereHistory.error.message : 'Please try again.'}
+                  onRetry={() => void premiereHistory.refetch()}
                 />
-              ) : (premiereViewers.data ?? []).length === 0 ? (
+              ) : (premiereHistory.data ?? []).length === 0 ? (
                 <EmptyState
-                  title="No viewers yet today"
-                  description="Viewers appear here as soon as they register on the premiere page."
+                  title="No viewers on this date"
+                  description="No one registered for a premiere session on this date."
                 />
               ) : (
-                <div className="space-y-3">
-                  {(premiereViewers.data ?? []).map((v) => (
-                    <div key={v.viewer_id} className="surface-inset rounded-2xl p-4">
+                <div className="space-y-2">
+                  {(premiereHistory.data ?? []).map((v) => (
+                    <div key={`${v.viewer_id}-${v.session_hour}`} className="surface-inset rounded-2xl p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="space-y-1">
                           <div className="flex flex-wrap items-center gap-2">
@@ -1105,26 +1125,30 @@ export function AdminCommandCenter({ firstName }: Props) {
                                 Live
                               </span>
                             )}
-                            {v.watch_completed && (
-                              <Badge variant="success">Completed</Badge>
-                            )}
-                            {v.rejoined && (
-                              <Badge variant="outline">Rejoined</Badge>
-                            )}
+                            {v.watch_completed && <Badge variant="success">Completed</Badge>}
+                            {v.rejoined && <Badge variant="outline">Rejoined</Badge>}
                           </div>
                           <p className="text-xs text-muted-foreground">
                             {v.masked_phone} · {v.city}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Watched {v.percentage_watched.toFixed(1)}% · {fmtTime(v.current_time_sec)}
-                            {v.last_seen_at ? ` · Last seen ${formatDateTime(v.last_seen_at)}` : ''}
+                            Session {v.session_date} · {v.session_hour}:00
+                            {v.first_seen_at ? ` · Joined ${formatDateTime(v.first_seen_at)}` : ''}
                           </p>
+                          <p className="text-xs text-muted-foreground">
+                            Watched {v.percentage_watched.toFixed(1)}% · {fmtTime(v.current_time_sec)}
+                          </p>
+                          {v.referred_by_name && (
+                            <p className="text-xs font-medium text-primary">
+                              Team: {v.referred_by_name}
+                            </p>
+                          )}
                         </div>
                         <div className="flex flex-col items-end gap-1.5">
                           <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
                             Score {v.lead_score}
                           </span>
-                          <div className="h-1.5 w-28 overflow-hidden rounded-full bg-white/10">
+                          <div className="h-1.5 w-28 overflow-hidden rounded-full bg-muted">
                             <div
                               className="h-full rounded-full bg-primary/70 transition-all"
                               style={{ width: `${Math.min(100, v.percentage_watched)}%` }}
