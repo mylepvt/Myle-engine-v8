@@ -274,7 +274,8 @@ export function AdminCommandCenter({ firstName }: Props) {
   const [activeTab, setActiveTab] = useState('today')
   const [leadSearch, setLeadSearch] = useState('')
   const deferredLeadSearch = useDeferredValue(leadSearch.trim())
-  const [viewerHistoryDate, setViewerHistoryDate] = useState<string>(() => new Date().toISOString().slice(0, 10))
+  const todayIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  const [viewerHistoryDate, setViewerHistoryDate] = useState<string>(todayIST)
 
   const pendingRegistrations = useQuery({
     queryKey: ['team', 'pending-registrations'],
@@ -298,7 +299,10 @@ export function AdminCommandCenter({ firstName }: Props) {
   const appSettings = useAppSettingsQuery(activeTab === 'content')
   const day2Review = useDay2ReviewQuery()
   const premiereViewers = usePremiereViewersQuery(true)
-  const premiereHistory = usePremiereViewersQuery(activeTab === 'premiere', viewerHistoryDate)
+  const isHistoryToday = viewerHistoryDate === todayIST
+  const premiereHistory = usePremiereViewersQuery(activeTab === 'premiere' && !isHistoryToday, viewerHistoryDate)
+  // Today's history = already-loaded premiereViewers; past dates = premiereHistory
+  const historyData = isHistoryToday ? premiereViewers : premiereHistory
   const activeWatchers = useActiveWatchersQuery()
   const leadSearchResults = useLeadsQuery(
     deferredLeadSearch.length > 0,
@@ -1091,26 +1095,26 @@ export function AdminCommandCenter({ firstName }: Props) {
               </div>
             </CardHeader>
             <CardContent>
-              {premiereHistory.isPending ? (
+              {historyData.isPending ? (
                 <div className="space-y-2">
                   {[1, 2, 3].map((i) => (
                     <div key={i} className="surface-inset h-20 animate-pulse rounded-2xl" />
                   ))}
                 </div>
-              ) : premiereHistory.isError ? (
+              ) : historyData.isError ? (
                 <ErrorState
                   title="Could not load viewers"
-                  message={premiereHistory.error instanceof Error ? premiereHistory.error.message : 'Please try again.'}
-                  onRetry={() => void premiereHistory.refetch()}
+                  message={historyData.error instanceof Error ? historyData.error.message : 'Please try again.'}
+                  onRetry={() => void historyData.refetch()}
                 />
-              ) : (premiereHistory.data ?? []).length === 0 ? (
+              ) : (historyData.data ?? []).length === 0 ? (
                 <EmptyState
                   title="No viewers on this date"
                   description="No one registered for a premiere session on this date."
                 />
               ) : (
                 <div className="space-y-2">
-                  {(premiereHistory.data ?? []).map((v) => (
+                  {(historyData.data ?? []).map((v) => (
                     <div key={`${v.viewer_id}-${v.session_hour}`} className="surface-inset rounded-2xl p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="space-y-1">
