@@ -52,6 +52,20 @@ const LIVE_SESSION_SETTING_FIELDS = [
   },
 ] as const
 
+const LIVE_SESSION_SLOT_FIELDS: readonly SettingsTextField[] = [
+  { key: 'live_session_slot_11_00', label: '11:00 AM video', placeholder: 'https://media.example.com/live-11am.mp4', help: 'Sent Enroll Video chooser me 11:00 AM slot ke liye direct hosted video link.' },
+  { key: 'live_session_slot_12_00', label: '12:00 PM video', placeholder: 'https://media.example.com/live-12pm.mp4', help: '12:00 PM slot video link.' },
+  { key: 'live_session_slot_13_00', label: '1:00 PM video', placeholder: 'https://media.example.com/live-1pm.mp4', help: '1:00 PM slot video link.' },
+  { key: 'live_session_slot_14_00', label: '2:00 PM video', placeholder: 'https://media.example.com/live-2pm.mp4', help: '2:00 PM slot video link.' },
+  { key: 'live_session_slot_15_00', label: '3:00 PM video', placeholder: 'https://media.example.com/live-3pm.mp4', help: '3:00 PM slot video link.' },
+  { key: 'live_session_slot_16_00', label: '4:00 PM video', placeholder: 'https://media.example.com/live-4pm.mp4', help: '4:00 PM slot video link.' },
+  { key: 'live_session_slot_17_00', label: '5:00 PM video', placeholder: 'https://media.example.com/live-5pm.mp4', help: '5:00 PM slot video link.' },
+  { key: 'live_session_slot_18_00', label: '6:00 PM video', placeholder: 'https://media.example.com/live-6pm.mp4', help: '6:00 PM slot video link.' },
+  { key: 'live_session_slot_19_00', label: '7:00 PM video', placeholder: 'https://media.example.com/live-7pm.mp4', help: '7:00 PM slot video link.' },
+  { key: 'live_session_slot_20_00', label: '8:00 PM video', placeholder: 'https://media.example.com/live-8pm.mp4', help: '8:00 PM slot video link.' },
+  { key: 'live_session_slot_21_00', label: '9:00 PM video', placeholder: 'https://media.example.com/live-9pm.mp4', help: '9:00 PM slot video link.' },
+] as const
+
 const ENROLLMENT_VIDEO_SETTING_FIELDS: readonly SettingsTextField[] = [
   {
     key: 'enrollment_video_source_url',
@@ -225,6 +239,10 @@ export function SettingsAppPage({ title }: Props) {
         const value = resolvedLiveSessionValue(field.key).trim()
         await updateAppSetting.mutateAsync({ key: field.key, value })
       }
+      for (const field of LIVE_SESSION_SLOT_FIELDS) {
+        const value = resolvedLiveSessionValue(field.key).trim()
+        await updateAppSetting.mutateAsync({ key: field.key, value })
+      }
       setLiveSessionEdits({})
       setLiveSessionSaveMsg('Live session settings updated successfully.')
       void refetchAppSettings()
@@ -259,7 +277,7 @@ export function SettingsAppPage({ title }: Props) {
           </div>
         ) : (
           <div className="grid gap-3">
-            {LIVE_SESSION_SETTING_FIELDS.map((field) => (
+                {LIVE_SESSION_SETTING_FIELDS.map((field) => (
               <label key={field.key} className="block text-xs">
                 <span className="mb-1 block text-muted-foreground">{field.label}</span>
                 <input
@@ -465,6 +483,30 @@ export function SettingsAppPage({ title }: Props) {
                     <td className="py-2 break-all text-muted-foreground">{r.value || '—'}</td>
                   </tr>
                 ))}
+                <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                  <p className="text-sm font-semibold text-foreground">Sent Enroll Video slot chooser</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    Team/leader jab `Sent Enroll Video` choose karega to current time ke baad wale configured slots hi dikhेंगे.
+                  </p>
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    {LIVE_SESSION_SLOT_FIELDS.map((field) => (
+                      <label key={field.key} className="grid gap-1.5">
+                        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{field.label}</span>
+                        <input
+                          value={resolvedLiveSessionValue(field.key)}
+                          onChange={(event) => {
+                            setLiveSessionSaveMsg(null)
+                            setLiveSessionErrorMsg(null)
+                            setLiveSessionEdits((prev) => ({ ...prev, [field.key]: event.target.value }))
+                          }}
+                          placeholder={field.placeholder}
+                          className="rounded-xl border border-white/[0.08] bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary/40"
+                        />
+                        <span className="text-xs text-muted-foreground">{field.help}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
               </tbody>
             </table>
             {rows.length === 0 ? (

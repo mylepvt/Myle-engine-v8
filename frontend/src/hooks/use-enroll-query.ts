@@ -9,7 +9,10 @@ export type EnrollShareLink = {
   created_by_user_id: number
   youtube_url: string | null
   title: string | null
+  viewer_name: string | null
+  viewer_phone: string | null
   view_count: number
+  unlocked_at: string | null
   first_viewed_at: string | null
   last_viewed_at: string | null
   status_synced: boolean
@@ -21,6 +24,22 @@ export type EnrollShareLink = {
 
 type EnrollShareLinkListResponse = {
   items: EnrollShareLink[]
+  total: number
+}
+
+export type ActiveWatcher = {
+  lead_id: number
+  lead_name: string
+  viewer_name: string | null
+  viewer_phone: string | null
+  unlocked_at: string | null
+  started_at: string | null
+  last_seen_at: string
+  watch_completed: boolean
+}
+
+export type ActiveWatcherListResponse = {
+  items: ActiveWatcher[]
   total: number
 }
 
@@ -42,6 +61,7 @@ export type EnrollmentVideoSendResponse = {
 
 type GenerateShareLinkBody = {
   lead_id: number
+  live_session_slot_key?: string
 }
 
 async function parseError(res: Response): Promise<never> {
@@ -76,14 +96,25 @@ async function postGenerateShareLink(body: GenerateShareLinkBody): Promise<Enrol
   return res.json() as Promise<EnrollShareLink>
 }
 
-async function postSendEnrollmentVideo(leadId: number): Promise<EnrollmentVideoSendResponse> {
+function normalizeSendBody(input: number | GenerateShareLinkBody): GenerateShareLinkBody {
+  return typeof input === 'number' ? { lead_id: input } : input
+}
+
+async function postSendEnrollmentVideo(body: number | GenerateShareLinkBody): Promise<EnrollmentVideoSendResponse> {
+  const payload = normalizeSendBody(body)
   const res = await apiFetch('/api/v1/enroll/send', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ lead_id: leadId }),
+    body: JSON.stringify(payload),
   })
   if (!res.ok) await parseError(res)
   return res.json() as Promise<EnrollmentVideoSendResponse>
+}
+
+async function fetchActiveWatchers(): Promise<ActiveWatcherListResponse> {
+  const res = await apiFetch('/api/v1/enroll/live-watchers')
+  if (!res.ok) await parseError(res)
+  return res.json() as Promise<ActiveWatcherListResponse>
 }
 
 export function useLeadShareLinksQuery(leadId: number) {
@@ -108,12 +139,22 @@ export function useGenerateShareLinkMutation() {
 export function useSendEnrollmentVideoMutation() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (leadId: number) => postSendEnrollmentVideo(leadId),
-    onSuccess: (_data, leadId) => {
-      void qc.invalidateQueries({ queryKey: ['enroll', 'lead', leadId] })
-      void qc.invalidateQueries({ queryKey: ['lead-detail', leadId] })
+    mutationFn: (body: number | GenerateShareLinkBody) => postSendEnrollmentVideo(body),
+    onSuccess: (_data, body) => {
+      const payload = normalizeSendBody(body)
+      void qc.invalidateQueries({ queryKey: ['enroll', 'lead', payload.lead_id] })
+      void qc.invalidateQueries({ queryKey: ['lead-detail', payload.lead_id] })
       void qc.invalidateQueries({ queryKey: ['leads'] })
       void qc.invalidateQueries({ queryKey: ['workboard'] })
     },
+  })
+}
+
+export function useActiveWatchersQuery(enabled: boolean) {
+  return useQuery({
+    queryKey: ['enroll', 'live-watchers'],
+    queryFn: fetchActiveWatchers,
+    enabled,
+    refetchInterval: 15_000,
   })
 }

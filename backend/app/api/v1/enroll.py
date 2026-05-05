@@ -5,11 +5,12 @@ from __future__ import annotations
 import secrets
 from datetime import datetime, timezone
 from typing import Annotated
+from zoneinfo import ZoneInfo
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 from starlette.background import BackgroundTask
@@ -18,6 +19,8 @@ from app.api.deps import AuthUser, get_db, require_auth_user
 from app.models.enroll_share_link import EnrollShareLink
 from app.models.lead import Lead
 from app.schemas.enroll import (
+    ActiveWatcherListResponse,
+    ActiveWatcherPublic,
     EnrollShareLinkCreate,
     EnrollShareLinkListResponse,
     EnrollShareLinkPublic,
@@ -56,6 +59,20 @@ router = APIRouter()
 watch_router = APIRouter()
 
 _VIDEO_SENT_STATUS = "video_sent"
+_LIVE_SESSION_SLOT_ORDER = (
+    ("live_session_slot_11_00", "11:00 AM"),
+    ("live_session_slot_12_00", "12:00 PM"),
+    ("live_session_slot_13_00", "1:00 PM"),
+    ("live_session_slot_14_00", "2:00 PM"),
+    ("live_session_slot_15_00", "3:00 PM"),
+    ("live_session_slot_16_00", "4:00 PM"),
+    ("live_session_slot_17_00", "5:00 PM"),
+    ("live_session_slot_18_00", "6:00 PM"),
+    ("live_session_slot_19_00", "7:00 PM"),
+    ("live_session_slot_20_00", "8:00 PM"),
+    ("live_session_slot_21_00", "9:00 PM"),
+)
+_IST = ZoneInfo("Asia/Kolkata")
 _POST_VIDEO_SENT_STATUSES = {
     "video_watched",
     "paid",
@@ -132,19 +149,61 @@ async def _prepare_share_link(
     lead: Lead,
     user: AuthUser,
     now: datetime,
+    source_url: str | None = None,
+    title: str | None = None,
 ) -> EnrollShareLink:
-    source_url = await require_secure_enrollment_video_source(session)
-    title = await get_enrollment_video_title(session)
+    resolved_source_url = source_url or await require_secure_enrollment_video_source(session)
+    resolved_title = title or await get_enrollment_video_title(session)
     await expire_active_links_for_lead(session, lead_id=lead.id, now=now)
     link = EnrollShareLink(
         token=secrets.token_urlsafe(32),
         lead_id=lead.id,
         created_by_user_id=user.user_id,
-        youtube_url=source_url,
-        title=title,
+        youtube_url=resolved_source_url,
+        title=resolved_title,
     )
     session.add(link)
     return link
+
+
+def _slot_time_from_key(slot_key: str) -> tuple[int, int] | None:
+    for key, _label in _LIVE_SESSION_SLOT_ORDER:
+        if key != slot_key:
+            continue
+        suffix = key.removeprefix("live_session_slot_")
+        hour_text, minute_text = suffix.split("_", 1)
+        return int(hour_text), int(minute_text)
+    return None
+
+
+def _slot_label_from_key(slot_key: str) -> str | None:
+    for key, label in _LIVE_SESSION_SLOT_ORDER:
+        if key == slot_key:
+            return label
+    return None
+
+
+async def _resolve_selected_live_session_source(
+    session: AsyncSession,
+    slot_key: str | None,
+) -> tuple[str | None, str | None]:
+    clean_key = (slot_key or "").strip()
+    if not clean_key:
+        return None, None
+    slot_label = _slot_label_from_key(clean_key)
+    if slot_label is None:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Invalid live session slot")
+    source_url = (await get_app_setting(session, clean_key)).strip()
+    if not source_url:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=f"{slot_label} live session video is not configured.")
+    normalized_source = normalize_video_source_url(source_url)
+    if not normalized_source or is_youtube_like_url(normalized_source):
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail=f"{slot_label} live session video must be a direct hosted link, not YouTube.",
+        )
+    base_title = (await get_app_setting(session, "live_session_title")).strip() or "Live Session"
+    return normalized_source, f"{base_title} • {slot_label}"
 
 
 async def _get_watch_link_and_lead(
@@ -187,6 +246,8 @@ def _watch_page_payload(
         stream_url=f"/api/v1/watch/{link.token}/stream" if access_granted else None,
         watch_started=link.first_viewed_at is not None,
         watch_completed=bool(link.status_synced),
+        viewer_name=link.viewer_name,
+        viewer_phone=link.viewer_phone,
         social_proof_count=snapshot.get("social_proof_count"),
         total_seats=snapshot.get("total_seats"),
         seats_left=snapshot.get("seats_left"),
@@ -212,7 +273,15 @@ async def generate_share_link(
         raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Lead phone number is required.")
 
     now = datetime.now(timezone.utc)
-    link = await _prepare_share_link(session=session, lead=lead, user=user, now=now)
+    selected_source, selected_title = await _resolve_selected_live_session_source(session, body.live_session_slot_key)
+    link = await _prepare_share_link(
+        session=session,
+        lead=lead,
+        user=user,
+        now=now,
+        source_url=selected_source,
+        title=selected_title,
+    )
     should_sync_lead = _sync_lead_for_send(lead, now=now)
 
     await session.flush()
@@ -237,7 +306,15 @@ async def send_enrollment_video(
         raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Lead phone number is required.")
 
     now = datetime.now(timezone.utc)
-    link = await _prepare_share_link(session=session, lead=lead, user=user, now=now)
+    selected_source, selected_title = await _resolve_selected_live_session_source(session, body.live_session_slot_key)
+    link = await _prepare_share_link(
+        session=session,
+        lead=lead,
+        user=user,
+        now=now,
+        source_url=selected_source,
+        title=selected_title,
+    )
     public_app_url = await resolve_public_app_url(session, request)
     watch_url = f"{public_app_url}/watch/{link.token}"
 
@@ -295,6 +372,47 @@ async def list_lead_share_links(
     return EnrollShareLinkListResponse(items=[_build_public_link(row) for row in rows], total=total)
 
 
+@router.get("/live-watchers", response_model=ActiveWatcherListResponse)
+async def live_watchers(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ActiveWatcherListResponse:
+    if user.role != "admin":
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    now = datetime.now(timezone.utc)
+    cutoff = datetime.fromtimestamp(now.timestamp() - 35, tz=timezone.utc)
+    rows = (
+        await session.execute(
+            select(EnrollShareLink, Lead)
+            .join(Lead, Lead.id == EnrollShareLink.lead_id)
+            .where(
+                EnrollShareLink.first_viewed_at.is_not(None),
+                EnrollShareLink.last_viewed_at.is_not(None),
+                EnrollShareLink.last_viewed_at >= cutoff,
+                Lead.deleted_at.is_(None),
+            )
+            .order_by(desc(EnrollShareLink.last_viewed_at))
+            .limit(25)
+        )
+    ).all()
+
+    items = [
+        ActiveWatcherPublic(
+            lead_id=lead.id,
+            lead_name=lead.name or "Prospect",
+            viewer_name=(link.viewer_name or "").strip() or (lead.name or None),
+            viewer_phone=(link.viewer_phone or "").strip() or (lead.phone or None),
+            unlocked_at=link.unlocked_at,
+            started_at=link.first_viewed_at,
+            last_seen_at=link.last_viewed_at or now,
+            watch_completed=bool(link.status_synced),
+        )
+        for link, lead in rows
+    ]
+    return ActiveWatcherListResponse(items=items, total=len(items))
+
+
 @watch_router.get("/watch/{token}", response_model=WatchPageData)
 async def watch_video(
     token: str,
@@ -337,6 +455,16 @@ async def unlock_watch_video(
             status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Use the same number that is registered on this lead.",
         )
+    now = datetime.now(timezone.utc)
+    clean_name = (body.name or "").strip()
+    if clean_name:
+        link.viewer_name = clean_name[:120]
+    elif not (link.viewer_name or "").strip() and (lead.name or "").strip():
+        link.viewer_name = (lead.name or "").strip()[:120]
+    link.viewer_phone = provided_phone
+    if link.unlocked_at is None:
+        link.unlocked_at = now
+    await session.commit()
     issue_watch_cookie(response, token=link.token, lead=lead, expires_at=link.expires_at)
     room_snapshot = await _load_watch_room_snapshot(session)
     return _watch_page_payload(
@@ -364,6 +492,25 @@ async def mark_watch_started(
         link.view_count = int(link.view_count or 0) + 1
     link.last_viewed_at = now
 
+    await session.commit()
+    return WatchEventResponse(ok=True, watch_started=True, watch_completed=bool(link.status_synced))
+
+
+@watch_router.post("/watch/{token}/heartbeat", response_model=WatchEventResponse)
+async def mark_watch_heartbeat(
+    token: str,
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> WatchEventResponse:
+    link, lead = await _get_watch_link_and_lead(session, token)
+    if not has_watch_access(request, link=link, lead=lead):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Verify your number to continue.")
+
+    now = datetime.now(timezone.utc)
+    if link.first_viewed_at is None:
+        link.first_viewed_at = now
+        link.view_count = int(link.view_count or 0) + 1
+    link.last_viewed_at = now
     await session.commit()
     return WatchEventResponse(ok=True, watch_started=True, watch_completed=bool(link.status_synced))
 

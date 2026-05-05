@@ -23,11 +23,17 @@ class EnrollShareLink(Base):
         server_default=text("'Watch this important video'"),
         default="Watch this important video",
     )
+    viewer_name: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    viewer_phone: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     view_count: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
         server_default=text("0"),
         default=0,
+    )
+    unlocked_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
     )
     first_viewed_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True),

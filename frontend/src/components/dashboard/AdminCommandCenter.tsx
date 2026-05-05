@@ -26,6 +26,7 @@ import { EmptyState, ErrorState } from '@/components/ui/states'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAppSettingsQuery, useSystemUsersSummaryQuery } from '@/hooks/use-settings-query'
 import { useDay2ReviewQuery } from '@/hooks/use-day2-review-query'
+import { useActiveWatchersQuery } from '@/hooks/use-enroll-query'
 import { useEnrollmentApprovalsPendingQuery, useTeamMembersQuery } from '@/hooks/use-team-query'
 import { useTeamReportsQuery } from '@/hooks/use-team-reports-query'
 import { useWalletRechargeRequestsQuery } from '@/hooks/use-wallet-recharge-query'
@@ -200,6 +201,7 @@ export function AdminCommandCenter({ firstName }: Props) {
   const leadControl = useLeadControlQuery()
   const leadPool = useLeadPoolQuery(true)
   const teamReports = useTeamReportsQuery('', true)
+  const activeWatchers = useActiveWatchersQuery(activeTab === 'today')
 
   const systemUsersSummary = useSystemUsersSummaryQuery(activeTab === 'team')
   const teamMembers = useTeamMembersQuery(activeTab === 'team')
@@ -383,6 +385,49 @@ export function AdminCommandCenter({ firstName }: Props) {
               </CardContent>
             </Card>
           </section>
+
+          <Card className="surface-elevated border-white/[0.08]">
+            <CardHeader>
+              <CardTitle className="text-lg">Live Right Now</CardTitle>
+              <CardDescription>Prospects actively watching enrollment videos. Refreshes every 15 seconds.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {activeWatchers.isError ? (
+                <ErrorState
+                  title="Could not load live viewers"
+                  message={activeWatchers.error instanceof Error ? activeWatchers.error.message : 'Please try again.'}
+                  onRetry={() => void activeWatchers.refetch()}
+                />
+              ) : (activeWatchers.data?.items ?? []).length === 0 ? (
+                <EmptyState
+                  title="No one watching right now"
+                  description="Active viewers will appear here within 15 seconds of opening their private room."
+                />
+              ) : (
+                <div className="space-y-3">
+                  {activeWatchers.data?.items.map((item) => (
+                    <div key={`${item.lead_id}-${item.last_seen_at}`} className="surface-inset rounded-2xl p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <p className="font-medium text-foreground">{item.viewer_name || item.lead_name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Lead: {item.lead_name}
+                            {item.viewer_phone ? ` · ${item.viewer_phone}` : ''}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Last seen {formatDateTime(item.last_seen_at)}
+                          </p>
+                        </div>
+                        <Badge variant={item.watch_completed ? 'success' : 'outline'}>
+                          {item.watch_completed ? 'Watch completed' : 'Watching now'}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="leads" className="space-y-6">

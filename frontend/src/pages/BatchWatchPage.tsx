@@ -28,6 +28,9 @@ type BatchWatchData = {
   title: string
   subtitle: string
   lead_name: string
+  access_open: boolean
+  opens_at: string | null
+  gate_message: string | null
   youtube_url: string | null
   video_id: string | null
   watch_complete: boolean
@@ -104,6 +107,16 @@ function UploadCard({
   )
 }
 
+function formatGateTime(value: string | null): string {
+  if (!value) return 'your scheduled batch time'
+  return new Date(value).toLocaleString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: 'short',
+  })
+}
+
 export function BatchWatchPage() {
   const { slot, version } = useParams<{ slot: string; version: string }>()
   const [searchParams] = useSearchParams()
@@ -160,6 +173,7 @@ export function BatchWatchPage() {
   )
 
   const watchComplete = !!data?.watch_complete
+  const accessOpen = data?.access_open !== false
   const submission = data?.submission
 
   const handleMarkComplete = async () => {
@@ -288,25 +302,40 @@ export function BatchWatchPage() {
                       Video stays inside the Myle experience instead of kicking you out to YouTube.
                     </p>
                   </div>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={completionBusy || watchComplete}
-                    onClick={() => void handleMarkComplete()}
-                  >
-                    {watchComplete ? 'Watch tracked' : completionBusy ? 'Saving...' : 'I watched this'}
-                  </Button>
+                  {accessOpen ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={completionBusy || watchComplete}
+                      onClick={() => void handleMarkComplete()}
+                    >
+                      {watchComplete ? 'Watch tracked' : completionBusy ? 'Saving...' : 'I watched this'}
+                    </Button>
+                  ) : null}
                 </div>
 
-                <InAppVideoPlayer
-                  embedUrl={playerEmbedUrl}
-                  title={data.title}
-                  fallbackUrl={playerExternalUrl}
-                  previewEyebrow="Batch player primed"
-                  previewTitle={data.title}
-                  previewDescription="Tap play to start the batch inside Myle without showing external video clutter before the session begins."
-                  playLabel="Start batch now"
-                />
+                {accessOpen ? (
+                  <InAppVideoPlayer
+                    embedUrl={playerEmbedUrl}
+                    title={data.title}
+                    fallbackUrl={playerExternalUrl}
+                    previewEyebrow="Batch player primed"
+                    previewTitle={data.title}
+                    previewDescription="Tap play to start the batch inside Myle without showing external video clutter before the session begins."
+                    playLabel="Start batch now"
+                  />
+                ) : (
+                  <div className="rounded-[1.6rem] border border-amber-300/20 bg-amber-400/[0.08] px-5 py-6 text-left">
+                    <p className="text-sm font-semibold uppercase tracking-[0.24em] text-amber-200/80">Scheduled access</p>
+                    <p className="mt-3 text-2xl font-semibold text-white">This batch room is locked for now</p>
+                    <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/72">
+                      {data.gate_message ?? 'Please open this room only at your scheduled batch time so the correct live session appears.'}
+                    </p>
+                    <p className="mt-3 text-sm text-amber-100">
+                      Opens at {formatGateTime(data.opens_at)}
+                    </p>
+                  </div>
+                )}
 
                 {completionError ? (
                   <p className="mt-3 text-sm text-red-300">{completionError}</p>
@@ -315,11 +344,11 @@ export function BatchWatchPage() {
                     <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
                     <p>{greetingCopy?.completionMessage ?? 'This batch was marked watched successfully. You can continue from this same room.'}</p>
                   </div>
-                ) : (
+                ) : accessOpen ? (
                   <p className="mt-3 text-sm text-white/58">
                     Video starting me issue ho to screen par play tap kariye. Button fallback bhi diya hua hai.
                   </p>
-                )}
+                ) : null}
               </section>
 
               <section className="order-2 rounded-[2rem] border border-white/10 bg-white/[0.05] p-5 shadow-[0_24px_80px_-38px_rgba(34,211,238,0.55)] backdrop-blur-xl md:p-7 lg:order-1">

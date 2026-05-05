@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
 import { Button } from '@/components/ui/button'
 import {
   pickPrimaryNextTransition,
@@ -37,6 +38,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
   const sendMut = useSendEnrollmentVideoMutation()
   const [showAll, setShowAll] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   const primary = transitions?.length
     ? pickPrimaryNextTransition(lead.status, transitions)
@@ -77,9 +79,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
     setLocalError(null)
     try {
       if (primary === 'video_sent') {
-        const result = await sendMut.mutateAsync(lead.id)
-        const manualUrl = result.delivery.manual_share_url?.trim()
-        openExternalShareUrl(manualUrl)
+        setPickerOpen(true)
         return
       }
       await runTransition(primary)
@@ -188,6 +188,24 @@ export function LeadNextStepPanel({ lead, className }: Props) {
           ) : null}
         </div>
       ) : null}
+
+      <LiveSessionSlotPicker
+        open={pickerOpen}
+        busy={sendMut.isPending}
+        onClose={() => setPickerOpen(false)}
+        onConfirm={(slotKey) => {
+          setLocalError(null)
+          void sendMut
+            .mutateAsync({ lead_id: lead.id, live_session_slot_key: slotKey })
+            .then((result) => {
+              openExternalShareUrl(result.delivery.manual_share_url?.trim())
+              setPickerOpen(false)
+            })
+            .catch((e) => {
+              setLocalError(e instanceof Error ? e.message : 'Could not update stage')
+            })
+        }}
+      />
     </div>
   )
 }

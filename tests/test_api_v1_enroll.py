@@ -134,10 +134,12 @@ def test_watch_link_requires_matching_phone_and_marks_completion_time(
         wrong = client.post(f"/api/v1/watch/{token}/unlock", json={"phone": "9999999999"})
         assert wrong.status_code == 403
 
-        unlocked = client.post(f"/api/v1/watch/{token}/unlock", json={"phone": "9876543210"})
+        unlocked = client.post(f"/api/v1/watch/{token}/unlock", json={"name": "Priya Sharma", "phone": "9876543210"})
         assert unlocked.status_code == 200, unlocked.text
         assert unlocked.json()["access_granted"] is True
         assert unlocked.json()["stream_url"] == f"/api/v1/watch/{token}/stream"
+        assert unlocked.json()["viewer_name"] == "Priya Sharma"
+        assert unlocked.json()["viewer_phone"] == "9876543210"
 
         played = client.post(f"/api/v1/watch/{token}/play")
         assert played.status_code == 200, played.text
@@ -156,10 +158,46 @@ def test_watch_link_requires_matching_phone_and_marks_completion_time(
                 assert lead.last_action_at is not None
                 link = (await session.execute(select(EnrollShareLink))).scalar_one()
                 assert link.status_synced is True
+                assert link.viewer_name == "Priya Sharma"
+                assert link.viewer_phone == "9876543210"
+                assert link.unlocked_at is not None
                 assert link.first_viewed_at is not None
                 assert link.view_count == 1
 
         asyncio.run(_assert_db())
+    finally:
+        asyncio.run(_clear_state())
+
+
+def test_admin_live_watchers_surface_updates_after_heartbeat(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(_clear_state())
+    asyncio.run(_seed_lead(name="Asha Kapoor", phone="9876543210"))
+    asyncio.run(_set_app_setting("enrollment_video_source_url", "https://cdn.example.com/private/enrollment.mp4"))
+
+    try:
+        leader = _authed("leader", monkeypatch)
+        send_res = leader.post("/api/v1/enroll/send", json={"lead_id": 1})
+        assert send_res.status_code == 201, send_res.text
+        token = send_res.json()["link"]["token"]
+
+        assert leader.get(f"/api/v1/watch/{token}").status_code == 200
+        unlock = leader.post(f"/api/v1/watch/{token}/unlock", json={"name": "Asha Kapoor", "phone": "9876543210"})
+        assert unlock.status_code == 200, unlock.text
+        assert leader.post(f"/api/v1/watch/{token}/play").status_code == 200
+        heartbeat = leader.post(f"/api/v1/watch/{token}/heartbeat")
+        assert heartbeat.status_code == 200, heartbeat.text
+
+        admin = _authed("admin", monkeypatch)
+        live = admin.get("/api/v1/enroll/live-watchers")
+        assert live.status_code == 200, live.text
+        body = live.json()
+        assert body["total"] == 1
+        assert body["items"][0]["lead_name"] == "Asha Kapoor"
+        assert body["items"][0]["viewer_name"] == "Asha Kapoor"
+        assert body["items"][0]["viewer_phone"] == "9876543210"
+        assert body["items"][0]["watch_completed"] is False
     finally:
         asyncio.run(_clear_state())
 
@@ -202,5 +240,34 @@ def test_send_enrollment_video_rejects_youtube_source(monkeypatch: pytest.Monkey
         res = client.post("/api/v1/enroll/send", json={"lead_id": 1})
         assert res.status_code == 400
         assert "direct hosted video" in _error_message(res.json()).lower()
+    finally:
+        asyncio.run(_clear_state())
+
+
+def test_send_enrollment_video_uses_selected_live_session_slot_when_provided(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(_clear_state())
+    asyncio.run(_seed_lead())
+    asyncio.run(_set_app_setting("live_session_title", "Enrollment Live Session"))
+    asyncio.run(_set_app_setting("live_session_slot_12_00", "https://cdn.example.com/private/live-12.mp4"))
+
+    try:
+        client = _authed("leader", monkeypatch)
+        res = client.post(
+          "/api/v1/enroll/send",
+          json={"lead_id": 1, "live_session_slot_key": "live_session_slot_12_00"},
+        )
+        assert res.status_code == 201, res.text
+        assert res.json()["link"]["title"] == "Enrollment Live Session • 12:00 PM"
+
+        async def _assert_db() -> None:
+            factory = test_conftest.get_test_session_factory()
+            async with factory() as session:
+                link = (await session.execute(select(EnrollShareLink))).scalar_one()
+                assert link.youtube_url == "https://cdn.example.com/private/live-12.mp4"
+                assert link.title == "Enrollment Live Session • 12:00 PM"
+
+        asyncio.run(_assert_db())
     finally:
         asyncio.run(_clear_state())

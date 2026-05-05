@@ -1276,6 +1276,53 @@ def test_watch_batch_token_marks_slot_done_after_completion_callback(
         asyncio.run(_clear_leads())
 
 
+def test_batch_watch_payload_waits_until_slot_time(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.api.v1 import leads as leads_routes
+
+    asyncio.run(
+        _seed_one_lead(
+            user_id=2,
+            name="Batch Gate Lead",
+            lead_status="day1",
+            assigned_to_user_id=2,
+        )
+    )
+    fac = test_conftest.get_test_session_factory()
+
+    async def _seed_video_setting() -> None:
+        async with fac() as session:
+            session.add(
+                AppSetting(
+                    key="batch_d1_evening_v1",
+                    value="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                )
+            )
+            await session.commit()
+
+    asyncio.run(_seed_video_setting())
+    monkeypatch.setattr(
+        leads_routes,
+        "now_ist",
+        lambda: datetime(2026, 5, 5, 14, 30, tzinfo=leads_routes.IST),
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        share = c.post("/api/v1/leads/1/batch-share-url", json={"slot": "d1_evening"})
+        token = share.json()["watch_url_v1"].split("token=")[-1]
+
+        payload = c.get(f"/api/v1/watch/batch/d1_evening/1/payload", params={"token": token})
+        assert payload.status_code == 200
+        body = payload.json()
+        assert body["access_open"] is False
+        assert body["youtube_url"] is None
+        assert "unlocks at" in body["gate_message"].lower()
+    finally:
+        asyncio.run(_clear_leads())
+
+
 def test_archived_and_deleted_only_mutually_exclusive(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
