@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Filter, Mail, MapPin, Phone, Plus, Search, Share2, Upload, UserPlus, X } from 'lucide-react'
 
 import { CtcsWorkSurface } from '@/components/leads/CtcsWorkSurface'
+import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
 import { LeadsVirtualizedBody } from '@/components/leads/LeadsVirtualizedBody'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -81,6 +82,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const [advancedTableOpen, setAdvancedTableOpen] = useState(false)
   const [filterOpen, setFilterOpen] = useState(false)
   const [quickAddOpen, setQuickAddOpen] = useState(false)
+  const [slotPickerLeadId, setSlotPickerLeadId] = useState<number | null>(null)
   const [importHint, setImportHint] = useState<string | null>(null)
   const importFileRef = useRef<HTMLInputElement>(null)
   const importMut = useImportLeadsFileMutation()
@@ -141,18 +143,12 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const onPatchStatus = useCallback(
     (id: number, status: LeadStatus) => {
       if (status === 'video_sent') {
-        void sendEnrollmentMut
-          .mutateAsync(id)
-          .then((result) => {
-            const manualUrl = result.delivery.manual_share_url?.trim()
-            openExternalShareUrl(manualUrl)
-          })
-          .catch(() => {})
+        setSlotPickerLeadId(id)
         return
       }
       void patchMut.mutateAsync({ id, body: { status } })
     },
-    [patchMut, sendEnrollmentMut],
+    [patchMut],
   )
   const onPatchPool = useCallback(
     (id: number) => void patchMut.mutateAsync({ id, body: { in_pool: true } }),
@@ -165,6 +161,22 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const onDeleteLead = useCallback(
     (id: number) => void deleteMut.mutateAsync(id),
     [deleteMut],
+  )
+  const handleSendEnrollment = useCallback(
+    async (slotKey: string) => {
+      if (slotPickerLeadId == null) return
+      try {
+        const result = await sendEnrollmentMut.mutateAsync({
+          lead_id: slotPickerLeadId,
+          live_session_slot_key: slotKey,
+        })
+        openExternalShareUrl(result.delivery.manual_share_url?.trim())
+        setSlotPickerLeadId(null)
+      } catch {
+        /* mutation state renders the error */
+      }
+    },
+    [sendEnrollmentMut, slotPickerLeadId],
   )
 
   async function handleImportFilePick(e: ChangeEvent<HTMLInputElement>) {
@@ -217,18 +229,19 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
 
   if (archivedOnly) {
     return (
-      <div className="mx-auto max-w-6xl space-y-6">
-        <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
-          <h1 className="min-w-0 max-w-full truncate text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-            {title}
-          </h1>
-          <Link
-            to="/dashboard/work/leads"
-            className="text-sm text-primary underline-offset-2 hover:underline"
-          >
-            ← Active leads
-          </Link>
-        </div>
+      <>
+        <div className="mx-auto max-w-6xl space-y-6">
+          <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+            <h1 className="min-w-0 max-w-full truncate text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+              {title}
+            </h1>
+            <Link
+              to="/dashboard/work/leads"
+              className="text-sm text-primary underline-offset-2 hover:underline"
+            >
+              ← Active leads
+            </Link>
+          </div>
 
         <p className="text-sm text-muted-foreground">
           Restore a lead to send it back to your main list and workboard.
@@ -255,8 +268,8 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
           </div>
         ) : null}
 
-        {data ? (
-          <div className="surface-elevated p-4 text-sm text-muted-foreground">
+          {data ? (
+            <div className="surface-elevated p-4 text-sm text-muted-foreground">
             <p className="mb-3 break-words font-medium text-foreground">
               Archived list — Total: {total}
               {total > items.length ? (
@@ -309,15 +322,23 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                 {sendEnrollmentMut.error instanceof Error ? sendEnrollmentMut.error.message : 'Enrollment send failed'}
               </p>
             ) : null}
-          </div>
-        ) : null}
-      </div>
+            </div>
+          ) : null}
+        </div>
+        <LiveSessionSlotPicker
+          open={slotPickerLeadId != null}
+          busy={sendEnrollmentMut.isPending}
+          onClose={() => setSlotPickerLeadId(null)}
+          onConfirm={(slotKey) => void handleSendEnrollment(slotKey)}
+        />
+      </>
     )
   }
 
   return (
-    <div className="mx-auto max-w-6xl">
-      <div className="mx-auto min-h-[50dvh] max-w-[430px] bg-background pb-8 text-foreground transition-colors md:max-w-[480px]">
+    <>
+      <div className="mx-auto max-w-6xl">
+        <div className="mx-auto min-h-[50dvh] max-w-[430px] bg-background pb-8 text-foreground transition-colors md:max-w-[480px]">
         <div className="border-b border-border/60 bg-card/55 px-4 pb-2 pt-2 supports-[backdrop-filter]:bg-card/40">
           <div className="flex flex-wrap items-center gap-2">
             <div className="surface-inset flex h-9 min-w-0 basis-full items-center gap-1.5 rounded-lg px-2.5 min-[360px]:basis-0 min-[360px]:flex-1">
@@ -519,10 +540,10 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
             View archived leads
           </Link>
         </div>
-      </div>
+        </div>
 
-      {quickAddOpen ? (
-        <div
+        {quickAddOpen ? (
+          <div
           className="keyboard-safe-modal fixed inset-0 z-[60] flex items-end justify-center bg-background/80 p-0 backdrop-blur-sm sm:items-center sm:p-4 dark:bg-black/60"
           role="presentation"
           onClick={() => setQuickAddOpen(false)}
@@ -714,8 +735,15 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
               </form>
             </div>
           </div>
-        </div>
-      ) : null}
-    </div>
+          </div>
+        ) : null}
+      </div>
+      <LiveSessionSlotPicker
+        open={slotPickerLeadId != null}
+        busy={sendEnrollmentMut.isPending}
+        onClose={() => setSlotPickerLeadId(null)}
+        onConfirm={(slotKey) => void handleSendEnrollment(slotKey)}
+      />
+    </>
   )
 }

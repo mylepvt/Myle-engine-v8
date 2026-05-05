@@ -15,6 +15,7 @@ import {
   useResetStageClockMutation,
 } from '@/hooks/use-lead-detail-query'
 import { EnrollmentCard } from '@/components/leads/EnrollmentCard'
+import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LeadNextStepPanel } from '@/components/leads/LeadNextStepPanel'
 import { LeadNotesPanel } from '@/components/leads/LeadNotesPanel'
@@ -215,6 +216,7 @@ export function LeadDetailPage({ leadId }: Props) {
   const [pipelineStatus, setPipelineStatus] = useState('')
   const [pipelineCallStatus, setPipelineCallStatus] = useState('')
   const [pipelineError, setPipelineError] = useState('')
+  const [pipelineSlotPickerOpen, setPipelineSlotPickerOpen] = useState(false)
   const [resetClockError, setResetClockError] = useState('')
 
   // Notes card
@@ -250,9 +252,7 @@ export function LeadDetailPage({ leadId }: Props) {
     setPipelineError('')
     try {
       if (pipelineStatus === 'video_sent') {
-        const result = await sendEnrollmentMut.mutateAsync(leadId)
-        const manualUrl = result.delivery.manual_share_url?.trim()
-        openExternalShareUrl(manualUrl)
+        setPipelineSlotPickerOpen(true)
         return
       }
       await patchMut.mutateAsync({
@@ -383,6 +383,7 @@ export function LeadDetailPage({ leadId }: Props) {
     lead.status === 'mindset_lock' ? 'Reset Mindset Lock Clock' : `Reset ${currentStageLabel} Clock`
 
   return (
+    <>
     <div className="max-w-4xl space-y-6">
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -825,5 +826,23 @@ export function LeadDetailPage({ leadId }: Props) {
         </div>
       </div>
     </div>
+    <LiveSessionSlotPicker
+      open={pipelineSlotPickerOpen}
+      busy={sendEnrollmentMut.isPending}
+      onClose={() => setPipelineSlotPickerOpen(false)}
+      onConfirm={(slotKey) => {
+        setPipelineError('')
+        void sendEnrollmentMut
+          .mutateAsync({ lead_id: leadId, live_session_slot_key: slotKey })
+          .then((result) => {
+            openExternalShareUrl(result.delivery.manual_share_url?.trim())
+            setPipelineSlotPickerOpen(false)
+          })
+          .catch((e) => {
+            setPipelineError(e instanceof Error ? e.message : 'Save failed')
+          })
+      }}
+    />
+    </>
   )
 }
