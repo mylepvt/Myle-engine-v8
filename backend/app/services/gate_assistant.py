@@ -243,7 +243,7 @@ async def build_gate_assistant(session: AsyncSession, user: AuthUser) -> GateAss
         checklist = [
             GateChecklistItem(
                 id="payment_proofs_pending",
-                label=f"Rs 196 proofs waiting for review ({pending_proof_count})",
+                label=f"Min. FLP Billing proofs waiting for review ({pending_proof_count})",
                 done=pending_proof_count == 0,
                 href="team/enrollment-approvals",
             ),

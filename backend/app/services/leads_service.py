@@ -47,7 +47,7 @@ from app.services.whatsapp_ctcs import send_interested_enrollment_assets
 from app.services.execution_enforcement import run_completed_watch_pipeline_maintenance
 from app.validators.leads_validator import lead_list_conditions, parse_status_query, validate_list_flags
 
-# Only the Paid ₹196 entry point requires approved payment proof.
+# Only the Min. FLP Billing entry point requires approved payment proof.
 # Once a lead has entered the post-paid flow, mindset/day/close stages must not
 # re-check the proof gate.
 _PAYMENT_REQUIRED_STATUSES: frozenset[str] = frozenset(
@@ -776,7 +776,7 @@ class LeadsService:
             )
             if not ok:
                 raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
-            # Only entering Paid ₹196 is payment-gated; post-paid stages stay unlocked.
+            # Only entering Min. FLP Billing is payment-gated; post-paid stages stay unlocked.
             if body.status in _PAYMENT_REQUIRED_STATUSES and user.role != "admin":
                 if lead.payment_status != "approved":
                     raise HTTPException(
@@ -1015,7 +1015,7 @@ class LeadsService:
         )
         if not ok:
             raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
-        # Only entering Paid ₹196 is payment-gated; post-paid stages stay unlocked.
+        # Only entering Min. FLP Billing is payment-gated; post-paid stages stay unlocked.
         if body.target_status in _PAYMENT_REQUIRED_STATUSES and user.role != "admin":
             if lead.payment_status != "approved":
                 raise HTTPException(

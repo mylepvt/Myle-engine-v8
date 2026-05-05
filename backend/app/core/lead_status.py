@@ -13,7 +13,7 @@ LEAD_STATUS_SEQUENCE: tuple[str, ...] = (
     "whatsapp_sent",      # WhatsApp message sent before video share
     "video_sent",         # Enrollment link shared
     "video_watched",      # Prospect watched the video
-    "paid",               # ₹196 enrollment fee paid & approved
+    "paid",               # Min. FLP Billing paid & approved
     "mindset_lock",       # 5-minute mindset lock before leader handoff
     "day1",               # Attending Day 1 session
     "day2",               # Attending Day 2 session
@@ -59,7 +59,7 @@ LEAD_STATUS_LABELS: dict[str, str] = {
     "whatsapp_sent":  "WhatsApp Sent",
     "video_sent":     "Video Sent",
     "video_watched":  "Video Watched",
-    "paid":           "Paid ₹196",
+    "paid":           "Min. FLP Billing",
     "mindset_lock":   "Mindset Lock",
     "day1":           "Day 1",
     "day2":           "Day 2",

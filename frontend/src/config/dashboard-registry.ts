@@ -62,6 +62,7 @@ export type FullUiSurface =
   | { kind: 'recycle-bin' }
   | { kind: 'team-members' }
   | { kind: 'team-tracking' }
+  | { kind: 'leader-os' }
   | { kind: 'my-team' }
   | { kind: 'team-approvals' }
   | { kind: 'enrollment-approvals' }
@@ -231,6 +232,14 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('team/tracking'),
     surface: 'full',
     ui: { kind: 'team-tracking' },
+  },
+  {
+    path: 'team/los',
+    section: { id: 'team', label: 'Team' },
+    label: 'Leader OS',
+    roles: routeRoles('team/los'),
+    surface: 'full',
+    ui: { kind: 'leader-os' },
   },
   {
     path: 'team/enrollment-approvals',

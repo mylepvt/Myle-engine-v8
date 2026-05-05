@@ -52,7 +52,7 @@ STATUSES = [
     "WhatsApp Sent",
     "Video Sent",
     "Video Watched",
-    "Paid ₹196",
+    "Min. FLP Billing",
     "Mindset Lock",
     "Day 1",
     "Day 2",
@@ -80,7 +80,7 @@ WORKING_ENROLLMENT_STATUSES = (
     "Video Sent",
     "Video Watched",
 )
-WORKING_ENROLLED_STATUSES = ("Paid ₹196", "Mindset Lock")
+WORKING_ENROLLED_STATUSES = ("Min. FLP Billing", "Mindset Lock")
 WORKING_SIDE_PIPELINE_STATUSES = (
     "Retarget",
     "Inactive",
@@ -112,7 +112,7 @@ ADMIN_PIPELINE_BUCKET_ENROLLMENT = (
     "WhatsApp Sent",
     "Video Sent",
     "Video Watched",
-    "Paid ₹196",
+    "Min. FLP Billing",
     "Mindset Lock",
 )
 ADMIN_PIPELINE_BUCKET_TRAINING = (
@@ -294,24 +294,24 @@ def _proof_on_file(row: Any) -> bool:
     return bool(path) and payment_proof_approval_status_value(row) == "approved"
 
 
-def rupees_196_execution_blocked_for_role(
+def flp_billing_execution_blocked_for_role(
     row: Any,
     *,
     role: str,
     acting_user_id: Optional[int],
     current_status: str,
-    is_transition_to_paid_196_funnel: bool,
+    is_transition_to_flp_billing_funnel: bool,
     gate_enabled: bool = True,
 ) -> tuple[bool, str]:
     """
-    ₹196 gate: proof + approval before entering Paid ₹196 funnel (legacy messages).
+    Min. FLP Billing gate: proof + approval before entering Min. FLP Billing funnel.
 
     Works with legacy rows and vl2 ``Lead``-shaped dicts (``payment_proof_url``,
     ``payment_status``).
     """
     if not gate_enabled:
         return False, ""
-    if not is_transition_to_paid_196_funnel:
+    if not is_transition_to_flp_billing_funnel:
         return False, ""
     if role == "admin":
         return False, ""
@@ -324,34 +324,34 @@ def rupees_196_execution_blocked_for_role(
         return False, ""
 
     if role == "team":
-        if cur_n == "Paid ₹196":
+        if cur_n == "Min. FLP Billing":
             return False, ""
         if not proof:
-            return True, "₹196 payment proof screenshot upload karo, phir Paid ₹196 set karo."
+            return True, "₹1500 payment proof screenshot upload karo, phir Min. FLP Billing set karo."
         if ap != "approved":
             if ap == "pending":
                 return True, (
-                    "Apne leader se ₹196 proof approve hone ka wait karo — tab hi Paid / Payment Done allowed."
+                    "Apne leader se ₹1500 proof approve hone ka wait karo — tab hi Paid / Payment Done allowed."
                 )
             return True, (
-                "₹196 proof reject ho chuka hai — naya screenshot upload karo aur leader se dubara approve karwao."
+                "₹1500 proof reject ho chuka hai — naya screenshot upload karo aur leader se dubara approve karwao."
             )
         return False, ""
 
     if role == "leader" and leader_own_assigned_lead(row, acting_user_id):
-        if cur_n == "Paid ₹196":
+        if cur_n == "Min. FLP Billing":
             return False, ""
         if not proof:
             return True, (
-                "₹196 payment proof screenshot upload karo (leader — apni claimed / import / quick-add lead)."
+                "₹1500 payment proof screenshot upload karo (leader — apni claimed / import / quick-add lead)."
             )
         if ap != "approved":
             if ap == "pending":
                 return True, (
-                    "Admin se ₹196 proof approve hone ka wait karo — tab hi Paid / Day 1 / Payment Done allowed."
+                    "Admin se ₹1500 proof approve hone ka wait karo — tab hi Paid / Day 1 / Payment Done allowed."
                 )
             return True, (
-                "₹196 proof reject ho chuka hai — naya screenshot upload karo aur dubara admin se approve karwao."
+                "₹1500 proof reject ho chuka hai — naya screenshot upload karo aur dubara admin se approve karwao."
             )
         return False, ""
 
