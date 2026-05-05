@@ -218,6 +218,14 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     ui: { kind: 'lead-flow' },
   },
   {
+    path: 'team/los',
+    section: { id: 'team', label: 'Team' },
+    label: 'Leader OS',
+    roles: routeRoles('team/los'),
+    surface: 'full',
+    ui: { kind: 'leader-os' },
+  },
+  {
     path: 'team/members',
     section: { id: 'team', label: 'Team' },
     label: 'Members',
@@ -232,14 +240,6 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('team/tracking'),
     surface: 'full',
     ui: { kind: 'team-tracking' },
-  },
-  {
-    path: 'team/los',
-    section: { id: 'team', label: 'Team' },
-    label: 'Leader OS',
-    roles: routeRoles('team/los'),
-    surface: 'full',
-    ui: { kind: 'leader-os' },
   },
   {
     path: 'team/enrollment-approvals',
