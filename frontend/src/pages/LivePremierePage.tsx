@@ -4,6 +4,12 @@ import { useQuery } from '@tanstack/react-query'
 
 import { apiUrl } from '@/lib/api'
 
+function getSlotParam(): number | null {
+  const v = new URLSearchParams(window.location.search).get('slot')
+  const n = v !== null ? parseInt(v, 10) : NaN
+  return !isNaN(n) && n >= 0 && n <= 23 ? n : null
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type PremiereState = 'upcoming' | 'waiting' | 'live' | 'ended'
@@ -52,7 +58,11 @@ function genViewerId(): string {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 async function fetchPremiereState(): Promise<PremiereData> {
-  const res = await fetch(apiUrl('/api/v1/other/premiere'))
+  const slotParam = getSlotParam()
+  const url = slotParam !== null
+    ? apiUrl(`/api/v1/other/premiere?slot=${slotParam}`)
+    : apiUrl('/api/v1/other/premiere')
+  const res = await fetch(url)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<PremiereData>
 }

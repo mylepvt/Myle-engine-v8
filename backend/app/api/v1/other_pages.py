@@ -557,30 +557,43 @@ def _compute_score(viewer: PremiereViewer) -> int:
 @router.get("/premiere", response_model=PremiereStateResponse)
 async def get_premiere_state(
     db: Annotated[AsyncSession, Depends(get_db)],
+    slot: Optional[int] = Query(default=None, ge=0, le=23, description="Pin to a specific session hour (0-23). Used for slot-specific invite links."),
 ) -> PremiereStateResponse:
-    """Public — no auth. Returns current/next session state."""
+    """Public — no auth. Returns current/next session state.
+
+    When `slot` param is provided (e.g. /premiere?slot=19), the response is
+    pinned to that specific hour regardless of current time. This enables
+    per-slot invite links so prospects always see the session they were invited to.
+    """
     hours, wmin, dmin = await _get_session_config(db)
     now = datetime.now(IST)
-    slot = _find_active_slot(hours, now, wmin, dmin)
 
-    if slot is None:
-        # All sessions done for today — show last slot as ended
+    if slot is not None:
+        # Slot-specific link: always show this hour's session window
+        session_hour = slot
         today = now.date()
-        last_h = hours[-1] if hours else 21
-        ws, ls, le = _slot_window(today, last_h, wmin, dmin)
-        return PremiereStateResponse(
-            state="ended",
-            video_url=None,
-            waiting_starts_at=ws.isoformat(),
-            live_starts_at=ls.isoformat(),
-            live_ends_at=le.isoformat(),
-            session_hour=last_h,
-            premiere_link="/premiere",
-            server_now=now.isoformat(),
-            viewer_count=0,
-        )
-
-    waiting_start, live_start, live_end, session_hour = slot
+        waiting_start, live_start, live_end = _slot_window(today, session_hour, wmin, dmin)
+        premiere_link = f"/premiere?slot={session_hour}"
+    else:
+        active = _find_active_slot(hours, now, wmin, dmin)
+        if active is None:
+            # All sessions done for today — show last slot as ended
+            today = now.date()
+            last_h = hours[-1] if hours else 21
+            ws, ls, le = _slot_window(today, last_h, wmin, dmin)
+            return PremiereStateResponse(
+                state="ended",
+                video_url=None,
+                waiting_starts_at=ws.isoformat(),
+                live_starts_at=ls.isoformat(),
+                live_ends_at=le.isoformat(),
+                session_hour=last_h,
+                premiere_link="/premiere",
+                server_now=now.isoformat(),
+                viewer_count=0,
+            )
+        waiting_start, live_start, live_end, session_hour = active
+        premiere_link = "/premiere"
 
     if now < waiting_start:
         state: Literal["upcoming", "waiting", "live", "ended"] = "upcoming"
@@ -623,7 +636,7 @@ async def get_premiere_state(
         live_starts_at=live_start.isoformat(),
         live_ends_at=live_end.isoformat(),
         session_hour=session_hour,
-        premiere_link="/premiere",
+        premiere_link=premiere_link,
         server_now=now.isoformat(),
         viewer_count=boosted,
     )
