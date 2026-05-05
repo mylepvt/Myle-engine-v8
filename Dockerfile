@@ -26,4 +26,4 @@ COPY --from=vite /src/dist ./frontend_dist
 EXPOSE 8000
 
 # Render sets PORT; WEB_CONCURRENCY optional (default 1). Alternative: gunicorn -c gunicorn.conf.py asgi:app
-CMD ["/bin/sh", "-c", "alembic upgrade head && exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${WEB_CONCURRENCY:-1}"]
+CMD ["/bin/sh", "-c", "alembic upgrade heads && exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${WEB_CONCURRENCY:-1}"]

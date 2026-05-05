@@ -4,4 +4,4 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT/backend"
-exec alembic upgrade head
+exec alembic upgrade heads
