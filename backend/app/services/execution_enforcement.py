@@ -1833,14 +1833,16 @@ async def leader_los_snapshot(
 
     today = dt_type.strptime(today_iso, "%Y-%m-%d").date()
 
-    res = await session.execute(select(User.id).where(User.role == "team"))
-    team_ids = [int(x) for x in res.scalars().all()]
-
-    user_rows = (
-        await session.execute(
-            select(User.id, User.email, User.username).where(User.id.in_(team_ids))
+    res = await session.execute(
+        select(User.id, User.email, User.username).where(
+            User.upline_user_id == leader_user_id,
+            User.role == "team",
+            User.registration_status == "approved",
+            User.removed_at.is_(None),
         )
-    ).all()
+    )
+    user_rows = res.all()
+    team_ids = [int(r.id) for r in user_rows]
     name_map: dict[int, tuple[str, str | None]] = {
         int(r.id): (r.username or r.email, r.username) for r in user_rows
     }
