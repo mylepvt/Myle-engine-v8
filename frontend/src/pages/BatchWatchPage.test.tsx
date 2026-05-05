@@ -125,4 +125,48 @@ describe('BatchWatchPage', () => {
     expect(screen.getByText('Latest upload for this batch')).toBeInTheDocument()
     expect(screen.getByText('Ready for old test link flow')).toBeInTheDocument()
   })
+
+  it('shows a locked state before the scheduled slot opens', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          token: 'demo-token',
+          slot: 'd1_evening',
+          version: 1,
+          day_number: 1,
+          slot_label: 'Evening',
+          title: 'Day 1 Evening Batch',
+          subtitle: 'Watch inside Myle.',
+          lead_name: 'rahul sharma',
+          access_open: false,
+          opens_at: '2026-05-05T13:30:00Z',
+          gate_message: 'This evening batch unlocks at 07:00 PM IST. Please come back at your scheduled batch time.',
+          youtube_url: null,
+          video_id: null,
+          watch_complete: false,
+          day2_evaluation_ready: false,
+          submission_enabled: false,
+          submission: null,
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <MemoryRouter initialEntries={['/watch/batch/d1_evening/1?token=demo-token']}>
+        <Routes>
+          <Route path="/watch/batch/:slot/:version" element={<BatchWatchPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('This batch room is locked for now')).toBeInTheDocument()
+    })
+
+    expect(screen.getByText(/unlocks at 07:00 PM IST/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Send selected video' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'I watched this' })).not.toBeInTheDocument()
+  })
 })

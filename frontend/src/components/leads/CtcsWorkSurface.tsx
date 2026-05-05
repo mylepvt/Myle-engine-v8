@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { CtcsLeadCard } from '@/components/leads/CtcsLeadCard'
 import { CtcsOutcomeModal } from '@/components/leads/CtcsOutcomeModal'
+import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
 import { LEAD_SLA_SMOOTH_REFRESH_MS } from '@/lib/lead-sla'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -51,6 +52,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
   const [tab, setTab] = useState<CtcsTab>('all')
   const [nowMs, setNowMs] = useState(() => Date.now())
+  const [slotPickerLeadId, setSlotPickerLeadId] = useState<number | null>(null)
   const searchMode =
     filters.q.trim().length > 0 && (surfaceRole === 'admin' || surfaceRole === 'leader')
   const ctcsOpts = useMemo(
@@ -94,15 +96,9 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
 
   const onSendEnrollment = useCallback(
     (id: number) => {
-      void sendEnrollmentMut
-        .mutateAsync(id)
-        .then((result) => {
-          const manualUrl = result.delivery.manual_share_url?.trim()
-          openExternalShareUrl(manualUrl)
-        })
-        .catch(() => {})
+      setSlotPickerLeadId(id)
     },
-    [sendEnrollmentMut],
+    [],
   )
 
   const onPatchStatus = useCallback(
@@ -162,8 +158,10 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
 
   const actionBusy = ctcsMut.isPending || callLogMut.isPending
   const sendBusyLeadId =
-    sendEnrollmentMut.isPending && typeof sendEnrollmentMut.variables === 'number'
-      ? sendEnrollmentMut.variables
+    sendEnrollmentMut.isPending &&
+    sendEnrollmentMut.variables &&
+    typeof sendEnrollmentMut.variables === 'object'
+      ? sendEnrollmentMut.variables.lead_id
       : null
 
   return (
@@ -257,6 +255,22 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
           </button>
         </div>
       ) : null}
+
+      <LiveSessionSlotPicker
+        open={slotPickerLeadId != null}
+        busy={sendEnrollmentMut.isPending}
+        onClose={() => setSlotPickerLeadId(null)}
+        onConfirm={(slotKey) => {
+          if (slotPickerLeadId == null) return
+          void sendEnrollmentMut
+            .mutateAsync({ lead_id: slotPickerLeadId, live_session_slot_key: slotKey })
+            .then((result) => {
+              openExternalShareUrl(result.delivery.manual_share_url?.trim())
+              setSlotPickerLeadId(null)
+            })
+            .catch(() => {})
+        }}
+      />
 
       <CtcsOutcomeModal
         key={outcomeLeadId ?? 'closed'}

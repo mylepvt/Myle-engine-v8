@@ -23,6 +23,9 @@ class BatchWatchPageData(BaseModel):
     title: str
     subtitle: str
     lead_name: str
+    access_open: bool = True
+    opens_at: Optional[datetime] = None
+    gate_message: Optional[str] = None
     youtube_url: Optional[str] = None
     video_id: Optional[str] = None
     watch_complete: bool = False

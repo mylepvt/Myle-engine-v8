@@ -16,6 +16,8 @@ type WatchPageData = {
   stream_url: string | null
   watch_started: boolean
   watch_completed: boolean
+  viewer_name: string | null
+  viewer_phone: string | null
   social_proof_count: number | null
   total_seats: number | null
   seats_left: number | null
@@ -131,6 +133,7 @@ export function WatchPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [phone, setPhone] = useState('')
+  const [name, setName] = useState('')
   const [unlocking, setUnlocking] = useState(false)
   const [unlockError, setUnlockError] = useState<string | null>(null)
   const [playMarked, setPlayMarked] = useState(false)
@@ -260,7 +263,7 @@ export function WatchPage() {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ name, phone }),
       })
       if (!res.ok) throw await readJsonError(res, 'Could not verify number.')
       const payload = (await res.json()) as WatchPageData
@@ -274,6 +277,7 @@ export function WatchPage() {
       setPlayerError(null)
       setCurrentSeconds(0)
       setDurationSeconds(0)
+      setName('')
       setPhone('')
     } catch (err) {
       setUnlockError(err instanceof Error ? err.message : 'Could not verify number.')
@@ -372,6 +376,17 @@ export function WatchPage() {
     }
   }
 
+  useEffect(() => {
+    if (!token || !data?.access_granted || !playing) return
+    const id = window.setInterval(() => {
+      void fetch(apiUrl(`/api/v1/watch/${token}/heartbeat`), {
+        method: 'POST',
+        credentials: 'include',
+      })
+    }, 12_000)
+    return () => window.clearInterval(id)
+  }, [data?.access_granted, playing, token])
+
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top,#233f74_0%,#101b39_28%,#060a17_66%,#02040a_100%)] text-[#f3f7ff]">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_top,rgba(160,195,255,0.18),transparent_58%)]" />
@@ -465,12 +480,24 @@ export function WatchPage() {
                     <div>
                       <p className="text-lg font-semibold text-[#f7f9ff]">Continue with your number</p>
                       <p className="mt-1 text-sm leading-relaxed text-[#aab8d3]">
-                        Use the same mobile number you shared with your team.
+                        Enter your name and use the same mobile number you shared with your team.
                       </p>
                     </div>
                   </div>
 
                   <form className="mt-5 space-y-3" onSubmit={(e) => void handleUnlock(e)}>
+                    <label className="block text-sm font-medium text-[#dfe8ff]" htmlFor="watch-name">
+                      Your name
+                    </label>
+                    <input
+                      id="watch-name"
+                      type="text"
+                      autoComplete="name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Enter your full name"
+                      className="h-12 w-full rounded-2xl border border-[#26385d] bg-[#0a1120] px-4 text-base text-[#f7f9ff] outline-none transition placeholder:text-[#7887a3] focus:border-[#8eb0ff] focus:ring-2 focus:ring-[#8eb0ff]/20"
+                    />
                     <label className="block text-sm font-medium text-[#dfe8ff]" htmlFor="watch-phone">
                       Registered mobile number
                     </label>
@@ -491,7 +518,7 @@ export function WatchPage() {
                     ) : null}
                     <button
                       type="submit"
-                      disabled={unlocking}
+                      disabled={unlocking || !name.trim() || !phone.trim()}
                       className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[#dce7ff] px-5 text-sm font-semibold text-[#0a1530] transition hover:bg-[#c6d8ff] disabled:opacity-60"
                     >
                       {unlocking ? 'Verifying…' : 'Continue'}
@@ -567,6 +594,11 @@ export function WatchPage() {
                             <div>
                               <p className="text-base font-semibold text-white">{playerStatusTitle}</p>
                               <p className="mt-1 text-sm leading-relaxed text-[#b6c6e7]">{playerStatusBody}</p>
+                              {data.viewer_name || data.viewer_phone ? (
+                                <p className="mt-2 text-xs text-white/55">
+                                  Watching as {[data.viewer_name, data.viewer_phone].filter(Boolean).join(' · ')}
+                                </p>
+                              ) : null}
                             </div>
                             <button
                               type="button"

@@ -6,6 +6,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { AdminCommandCenter } from '@/components/dashboard/AdminCommandCenter'
 
 const mockUseQuery = vi.fn()
+const mockUseActiveWatchersQuery = vi.fn()
 const mockUseAppSettingsQuery = vi.fn()
 const mockUseSystemUsersSummaryQuery = vi.fn()
 const mockUseDay2ReviewQuery = vi.fn()
@@ -29,6 +30,10 @@ vi.mock('@tanstack/react-query', async () => {
 vi.mock('@/hooks/use-settings-query', () => ({
   useAppSettingsQuery: (...args: unknown[]) => mockUseAppSettingsQuery(...args),
   useSystemUsersSummaryQuery: (...args: unknown[]) => mockUseSystemUsersSummaryQuery(...args),
+}))
+
+vi.mock('@/hooks/use-enroll-query', () => ({
+  useActiveWatchersQuery: (...args: unknown[]) => mockUseActiveWatchersQuery(...args),
 }))
 
 vi.mock('@/hooks/use-day2-review-query', () => ({
@@ -246,6 +251,27 @@ describe('AdminCommandCenter', () => {
       error: null,
       refetch: vi.fn(),
     })
+    mockUseActiveWatchersQuery.mockReturnValue({
+      data: {
+        total: 1,
+        items: [
+          {
+            lead_id: 91,
+            lead_name: 'Watching Prospect',
+            viewer_name: 'Watching Prospect',
+            viewer_phone: '9876543210',
+            unlocked_at: '2026-04-25T05:00:00Z',
+            started_at: '2026-04-25T05:00:00Z',
+            last_seen_at: '2026-04-25T05:05:00Z',
+            watch_completed: false,
+          },
+        ],
+      },
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    })
     mockUseSystemUsersSummaryQuery.mockReturnValue({
       data: {
         total_users: 40,
@@ -406,6 +432,8 @@ describe('AdminCommandCenter', () => {
 
     expect(screen.getByText('Admin Command Center')).toBeInTheDocument()
     expect(screen.getByText('Today Queue')).toBeInTheDocument()
+    expect(screen.getByText('Live Right Now')).toBeInTheDocument()
+    expect(screen.getByText('Watching Prospect')).toBeInTheDocument()
     expect(screen.getByText('Reassign Ready')).toBeInTheDocument()
     expect(screen.getByText('Archive Incubation')).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Leads' })).toBeInTheDocument()

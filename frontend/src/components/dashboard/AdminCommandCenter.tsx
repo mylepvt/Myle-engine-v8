@@ -29,6 +29,7 @@ import { EmptyState, ErrorState } from '@/components/ui/states'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAppSettingsQuery, useSystemUsersSummaryQuery } from '@/hooks/use-settings-query'
 import { useDay2ReviewQuery } from '@/hooks/use-day2-review-query'
+import { useActiveWatchersQuery } from '@/hooks/use-enroll-query'
 import { useEnrollmentApprovalsPendingQuery, useTeamMembersQuery, useUpdateMemberComplianceMutation, type TeamMemberPublic } from '@/hooks/use-team-query'
 import { useTeamReportsQuery } from '@/hooks/use-team-reports-query'
 import { useWalletRechargeRequestsQuery } from '@/hooks/use-wallet-recharge-query'
@@ -36,7 +37,6 @@ import { useInvoicesQuery } from '@/hooks/use-invoices-query'
 import { useLeadControlQuery } from '@/hooks/use-lead-control-query'
 import { LEAD_STATUS_OPTIONS, useLeadsQuery, type LeadPublic } from '@/hooks/use-leads-query'
 import { useLeadPoolQuery } from '@/hooks/use-lead-pool-query'
-import { useActiveWatchersQuery } from '@/hooks/use-enroll-query'
 import { apiFetch, apiUrl } from '@/lib/api'
 import { messageFromApiErrorPayload } from '@/lib/http-error-message'
 
@@ -334,6 +334,7 @@ export function AdminCommandCenter({ firstName }: Props) {
   const leadControl = useLeadControlQuery()
   const leadPool = useLeadPoolQuery(true)
   const teamReports = useTeamReportsQuery('', true)
+  const activeWatchers = useActiveWatchersQuery(activeTab === 'today')
 
   const systemUsersSummary = useSystemUsersSummaryQuery(activeTab === 'team')
   const teamMembers = useTeamMembersQuery()
@@ -351,7 +352,6 @@ export function AdminCommandCenter({ firstName }: Props) {
   const premiereHistory = usePremiereViewersQuery(activeTab === 'premiere' && !isHistoryToday, viewerHistoryDate)
   // Today's history = already-loaded premiereViewers; past dates = premiereHistory
   const historyData = isHistoryToday ? premiereViewers : premiereHistory
-  const activeWatchers = useActiveWatchersQuery()
   const leadSearchResults = useLeadsQuery(
     deferredLeadSearch.length > 0,
     { q: deferredLeadSearch, status: '' },
@@ -396,7 +396,7 @@ export function AdminCommandCenter({ firstName }: Props) {
     pendingRechargeItems.length +
     pendingGraceCount
 
-  const liveWatcherCount = activeWatchers.data?.length ?? 0
+  const liveWatcherCount = activeWatchers.data?.total ?? 0
   const premiereActiveCount = (premiereViewers.data ?? []).filter((v) => isActiveNow(v.last_seen_at)).length
 
   return (
@@ -657,7 +657,7 @@ export function AdminCommandCenter({ firstName }: Props) {
             </Card>
           )}
 
-          <Card>
+          <Card className="surface-elevated border-white/[0.08]">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <span className="relative flex size-2">
@@ -675,41 +675,50 @@ export function AdminCommandCenter({ firstName }: Props) {
                   <div className="surface-inset h-14 animate-pulse rounded-2xl" />
                 </div>
               ) : activeWatchers.isError ? (
-                <EmptyState title="Could not load watchers" description="Refresh to try again." />
-              ) : (activeWatchers.data ?? []).length === 0 ? (
-                <EmptyState title="No one watching right now" description="Active viewers will appear here within 15 seconds of opening their private room." />
+                <ErrorState
+                  title="Could not load live viewers"
+                  message={activeWatchers.error instanceof Error ? activeWatchers.error.message : 'Please try again.'}
+                  onRetry={() => void activeWatchers.refetch()}
+                />
+              ) : (activeWatchers.data?.items ?? []).length === 0 ? (
+                <EmptyState
+                  title="No one watching right now"
+                  description="Active viewers will appear here within 15 seconds of opening their private room."
+                />
               ) : (
                 <div className="space-y-3">
-                  {(activeWatchers.data ?? []).map((watcher) => (
-                    <div key={watcher.token} className="surface-inset flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4">
-                      <div className="space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="font-medium text-foreground">{watcher.lead_name}</p>
-                          <span className="flex items-center gap-1 rounded-full bg-red-600/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white">
-                            <span className="relative flex size-1.5">
-                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                              <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
-                            </span>
-                            Watching now
-                          </span>
-                          {watcher.watch_completed ? (
-                            <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-300">
-                              Completed
-                            </span>
+                  {(activeWatchers.data?.items ?? []).map((watcher) => (
+                    <div key={`${watcher.lead_id}-${watcher.last_seen_at}`} className="surface-inset rounded-2xl p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-medium text-foreground">{watcher.viewer_name || watcher.lead_name}</p>
+                            <Badge variant={watcher.watch_completed ? 'success' : 'outline'}>
+                              {watcher.watch_completed ? 'Watch completed' : 'Watching now'}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Lead: {watcher.lead_name}
+                            {watcher.viewer_phone ? ` · ${watcher.viewer_phone}` : ''}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {watcher.started_at ? `Started ${formatDateTime(watcher.started_at)} · ` : ''}
+                            Last seen {formatDateTime(watcher.last_seen_at)}
+                          </p>
+                          {watcher.unlocked_at ? (
+                            <p className="text-xs text-muted-foreground">
+                              Verified {formatDateTime(watcher.unlocked_at)}
+                            </p>
                           ) : null}
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          {watcher.masked_phone}
-                          {watcher.last_seen_at
-                            ? ` · Last seen ${new Date(watcher.last_seen_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`
-                            : ''}
-                        </p>
+                        <span className="flex items-center gap-1 rounded-full bg-red-600/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white">
+                          <span className="relative flex size-1.5">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                            <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
+                          </span>
+                          Watching now
+                        </span>
                       </div>
-                      <Button asChild size="sm" variant="secondary">
-                        <a href={watcher.share_url} target="_blank" rel="noopener noreferrer">
-                          Open room
-                        </a>
-                      </Button>
                     </div>
                   ))}
                 </div>

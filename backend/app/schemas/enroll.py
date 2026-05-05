@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 class EnrollShareLinkCreate(BaseModel):
     lead_id: int
+    live_session_slot_key: Optional[str] = None
 
 
 class EnrollShareLinkPublic(BaseModel):
@@ -19,7 +20,10 @@ class EnrollShareLinkPublic(BaseModel):
     created_by_user_id: int
     youtube_url: Optional[str]
     title: Optional[str]
+    viewer_name: Optional[str]
+    viewer_phone: Optional[str]
     view_count: int
+    unlocked_at: Optional[datetime]
     first_viewed_at: Optional[datetime]
     last_viewed_at: Optional[datetime]
     status_synced: bool
@@ -72,6 +76,8 @@ class WatchPageData(BaseModel):
     stream_url: Optional[str] = None
     watch_started: bool = False
     watch_completed: bool = False
+    viewer_name: Optional[str] = None
+    viewer_phone: Optional[str] = None
     social_proof_count: Optional[int] = None
     total_seats: Optional[int] = None
     seats_left: Optional[int] = None
@@ -79,6 +85,7 @@ class WatchPageData(BaseModel):
 
 
 class WatchUnlockRequest(BaseModel):
+    name: str = Field(default="", max_length=120)
     phone: str = Field(min_length=10, max_length=32)
 
 
@@ -89,10 +96,16 @@ class WatchEventResponse(BaseModel):
 
 
 class ActiveWatcherPublic(BaseModel):
-    token: str
+    lead_id: int
     lead_name: str
-    masked_phone: str
-    share_url: str
-    first_viewed_at: Optional[datetime]
-    last_seen_at: Optional[datetime]
-    watch_completed: bool
+    viewer_name: Optional[str] = None
+    viewer_phone: Optional[str] = None
+    unlocked_at: Optional[datetime] = None
+    started_at: Optional[datetime] = None
+    last_seen_at: datetime
+    watch_completed: bool = False
+
+
+class ActiveWatcherListResponse(BaseModel):
+    items: list[ActiveWatcherPublic]
+    total: int

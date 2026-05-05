@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { MessageCircle, ShieldCheck, TimerReset } from 'lucide-react'
 
+import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -27,6 +28,7 @@ function formatDateTime(value: string | null | undefined): string {
 function shareLinkState(link: {
   status_synced: boolean
   is_expired: boolean
+  unlocked_at: string | null
   first_viewed_at: string | null
   expires_at: string | null
 }): {
@@ -49,6 +51,12 @@ function shareLinkState(link: {
     return {
       label: 'Started',
       className: 'rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 text-[11px] font-semibold text-cyan-300',
+    }
+  }
+  if (link.unlocked_at) {
+    return {
+      label: 'Verified',
+      className: 'rounded-full border border-violet-400/30 bg-violet-400/10 px-2 py-0.5 text-[11px] font-semibold text-violet-300',
     }
   }
   if (!link.expires_at) {
@@ -74,12 +82,13 @@ export function EnrollmentCard({ leadId }: Props) {
   const [actionError, setActionError] = useState('')
   const [actionHint, setActionHint] = useState('')
   const [copiedToken, setCopiedToken] = useState<string | null>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
 
-  async function handleSend() {
+  async function handleSend(slotKey: string) {
     setActionError('')
     setActionHint('')
     try {
-      const result = await sendMut.mutateAsync(leadId)
+      const result = await sendMut.mutateAsync({ lead_id: leadId, live_session_slot_key: slotKey })
       const manualUrl = result.delivery.manual_share_url?.trim()
       openExternalShareUrl(manualUrl)
       setActionHint(
@@ -87,6 +96,7 @@ export function EnrollmentCard({ leadId }: Props) {
           ? 'Secure enrollment video WhatsApp par bhej diya gaya.'
           : 'Secure private room ready hai. WhatsApp share window bhi open kar di gayi hai.',
       )
+      setPickerOpen(false)
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Could not send enrollment video')
     }
@@ -137,7 +147,7 @@ export function EnrollmentCard({ leadId }: Props) {
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="button" size="sm" disabled={sendMut.isPending} onClick={() => void handleSend()}>
+        <Button type="button" size="sm" disabled={sendMut.isPending} onClick={() => setPickerOpen(true)}>
           {sendMut.isPending ? 'Sending…' : 'Send secure enrollment video'}
         </Button>
         {actionHint ? <p className="text-xs text-emerald-400">{actionHint}</p> : null}
@@ -179,6 +189,13 @@ export function EnrollmentCard({ leadId }: Props) {
                         Started {formatDateTime(link.first_viewed_at)}
                       </p>
                     ) : null}
+                    {link.unlocked_at ? (
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        Verified {formatDateTime(link.unlocked_at)}
+                        {link.viewer_name ? ` · ${link.viewer_name}` : ''}
+                        {link.viewer_phone ? ` · ${link.viewer_phone}` : ''}
+                      </p>
+                    ) : null}
                   </div>
                   <div className="flex items-center gap-2">
                     {isWatchingNow(link.last_viewed_at) ? (
@@ -215,6 +232,13 @@ export function EnrollmentCard({ leadId }: Props) {
           })}
         </ul>
       ) : null}
+
+      <LiveSessionSlotPicker
+        open={pickerOpen}
+        busy={sendMut.isPending}
+        onClose={() => setPickerOpen(false)}
+        onConfirm={(slotKey) => void handleSend(slotKey)}
+      />
     </div>
   )
 }

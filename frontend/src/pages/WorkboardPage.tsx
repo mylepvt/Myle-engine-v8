@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { CheckCircle2, CheckSquare, Eye, Pencil, Search, Send, Upload, Video } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
+import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
@@ -190,6 +191,7 @@ const LeadCard = memo(function LeadCard({
   const [uploadDone, setUploadDone] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [sendError, setSendError] = useState<string | null>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
   const qc = useQueryClient()
   const sendMut = useSendEnrollmentVideoMutation()
   const stageOpsCard = stageKey != null
@@ -220,12 +222,13 @@ const LeadCard = memo(function LeadCard({
     }
   }
 
-  async function handleSendEnrollmentVideo() {
+  async function handleSendEnrollmentVideo(slotKey: string) {
     setSendError(null)
     try {
-      const result = await sendMut.mutateAsync(lead.id)
+      const result = await sendMut.mutateAsync({ lead_id: lead.id, live_session_slot_key: slotKey })
       const manualUrl = result.delivery.manual_share_url?.trim()
       openExternalShareUrl(manualUrl)
+      setPickerOpen(false)
     } catch (err) {
       setSendError(err instanceof Error ? err.message : 'Could not send enrollment video')
     }
@@ -377,7 +380,7 @@ const LeadCard = memo(function LeadCard({
                 <LeadContactActions phone={lead.phone} />
                 {!stageOpsCard ? (
                   <IconBtn title="Send Video" colorHover="hover:border-indigo-400/40 hover:text-indigo-400 disabled:opacity-50"
-                    onClick={() => void handleSendEnrollmentVideo()}>
+                    onClick={() => setPickerOpen(true)}>
                     <Video className="h-3.5 w-3.5"/>
                   </IconBtn>
                 ) : null}
@@ -490,6 +493,12 @@ const LeadCard = memo(function LeadCard({
             </button>
           </div>
         ) : null}
+        <LiveSessionSlotPicker
+          open={pickerOpen}
+          busy={sendMut.isPending}
+          onClose={() => setPickerOpen(false)}
+          onConfirm={(slotKey) => void handleSendEnrollmentVideo(slotKey)}
+        />
         {stageKey ? (
           <StageAdvanceSection
             lead={lead}

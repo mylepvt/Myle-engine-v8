@@ -1,5 +1,5 @@
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, time, timezone
 from typing import Annotated, Optional
 import re
 from urllib.parse import parse_qs, urlparse
@@ -12,6 +12,7 @@ from starlette import status as http_status
 
 from app.api.deps import get_db
 from app.api.deps import AuthUser, require_auth_user
+from app.core.time_ist import IST, now_ist
 from app.core.realtime_hub import notify_topics
 from app.models.app_setting import AppSetting
 from app.models.batch_day_submission import BatchDaySubmission
@@ -71,6 +72,11 @@ _YOUTUBE_ID_RE = re.compile(
     re.IGNORECASE,
 )
 _YOUTUBE_ID_ONLY_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
+_BATCH_SLOT_DEFAULT_STARTS_IST: dict[str, time] = {
+    "morning": time(hour=11, minute=0),
+    "afternoon": time(hour=15, minute=0),
+    "evening": time(hour=19, minute=0),
+}
 
 
 async def _get_setting_value(session: AsyncSession, key: str) -> str:
@@ -132,6 +138,50 @@ def _batch_day_number(slot: str) -> int:
 
 def _batch_slot_label(slot: str) -> str:
     return slot.split("_", 1)[1].replace("_", " ").title()
+
+
+def _batch_slot_period(slot: str) -> str:
+    if "morning" in slot:
+        return "morning"
+    if "afternoon" in slot:
+        return "afternoon"
+    if "evening" in slot:
+        return "evening"
+    raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Invalid slot")
+
+
+def _parse_batch_slot_time(raw_value: str, fallback: time) -> time:
+    value = (raw_value or "").strip()
+    if not value:
+        return fallback
+    try:
+        hour_text, minute_text = value.split(":", 1)
+        hour = int(hour_text)
+        minute = int(minute_text)
+    except (ValueError, AttributeError):
+        return fallback
+    if hour < 0 or hour > 23 or minute < 0 or minute > 59:
+        return fallback
+    return time(hour=hour, minute=minute)
+
+
+async def _batch_slot_gate(session: AsyncSession, slot: str) -> tuple[bool, datetime | None, str | None]:
+    period = _batch_slot_period(slot)
+    default_start = _BATCH_SLOT_DEFAULT_STARTS_IST[period]
+    configured_start = _parse_batch_slot_time(
+        await _get_setting_value(session, f"batch_{period}_start_ist"),
+        default_start,
+    )
+    now_local = now_ist()
+    opens_at = datetime.combine(now_local.date(), configured_start, tzinfo=IST)
+    if now_local >= opens_at:
+        return True, opens_at.astimezone(timezone.utc), None
+    readable = opens_at.strftime("%I:%M %p").lstrip("0")
+    return (
+        False,
+        opens_at.astimezone(timezone.utc),
+        f"This {period} batch unlocks at {readable} IST. Please come back at your scheduled batch time.",
+    )
 
 
 def _to_batch_submission_public(
@@ -563,8 +613,13 @@ async def watch_batch_video_payload(
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Invalid link")
 
     link, lead = await _resolve_batch_watch_context(session=session, slot=slot, token=token)
-    video_url = await _resolve_batch_video_url(session, slot, v)
     day_number = _batch_day_number(slot)
+    access_open, opens_at, gate_message = await _batch_slot_gate(session, slot)
+    watch_complete = bool(getattr(lead, slot, False))
+    if watch_complete:
+        access_open = True
+        gate_message = None
+    video_url = await _resolve_batch_video_url(session, slot, v) if access_open else None
     submission = (
         await session.execute(
             select(BatchDaySubmission).where(
@@ -592,9 +647,12 @@ async def watch_batch_video_payload(
             else "Watch your batch inside Myle with the same premium experience throughout."
         ),
         lead_name=lead_first_name,
+        access_open=access_open,
+        opens_at=opens_at,
+        gate_message=gate_message,
         youtube_url=video_url,
         video_id=_youtube_video_id(video_url),
-        watch_complete=bool(getattr(lead, slot, False)),
+        watch_complete=watch_complete,
         day2_evaluation_ready=day2_evaluation_ready,
         submission_enabled=day_number == 2,
         submission=_to_batch_submission_public(submission),
