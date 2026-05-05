@@ -32,6 +32,7 @@ import { LEAD_STATUS_OPTIONS, type LeadPublic, type LeadStatus, usePatchLeadMuta
 import { useTeamReportsQuery } from '@/hooks/use-team-reports-query'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
 import { usePingLoginMutation } from '@/hooks/use-xp-query'
+import { useLosQuery } from '@/hooks/use-los-query'
 import { cn } from '@/lib/utils'
 
 /** Canonical stage labels — same source as leads/workboard (legacy parity; all roles). */
@@ -146,6 +147,7 @@ export function DashboardHomePage() {
   const teamToday = useTeamTodayStatsQuery(sessionReady && role === 'team')
   const pool = useLeadPoolQuery(sessionReady && role === 'admin')
   const adminReports = useTeamReportsQuery('', sessionReady && role === 'admin')
+  const los = useLosQuery(sessionReady && role === 'leader')
   const pingLogin = usePingLoginMutation()
 
   useEffect(() => {
@@ -347,6 +349,54 @@ export function DashboardHomePage() {
           onRetry={() => void wb.refetch()}
         />
       ) : null}
+
+      {role === 'leader' && (
+        <Link
+          to="/dashboard/team/los"
+          className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+        >
+          <Card className={cn(
+            'border transition-colors hover:border-opacity-50',
+            !los.data ? 'border-primary/20' :
+            los.data.leader_tier === 'strong' ? 'border-emerald-500/30 bg-gradient-to-r from-emerald-500/[0.06] to-transparent' :
+            los.data.leader_tier === 'average' ? 'border-amber-500/30 bg-gradient-to-r from-amber-500/[0.06] to-transparent' :
+            'border-red-500/30 bg-gradient-to-r from-red-500/[0.06] to-transparent',
+          )}>
+            <CardContent className="flex items-center justify-between gap-4 px-5 py-4">
+              <div className="flex items-center gap-4 min-w-0">
+                <div className={cn(
+                  'flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold tabular-nums',
+                  !los.data ? 'bg-muted text-muted-foreground' :
+                  los.data.leader_tier === 'strong' ? 'bg-emerald-500/15 text-emerald-400' :
+                  los.data.leader_tier === 'average' ? 'bg-amber-500/15 text-amber-400' :
+                  'bg-red-500/15 text-red-400',
+                )}>
+                  {los.data ? los.data.leader_score : '—'}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Leader OS</p>
+                  {los.isPending ? (
+                    <p className="mt-0.5 text-sm text-muted-foreground">Loading team data…</p>
+                  ) : los.data ? (
+                    <p className="mt-0.5 text-sm font-medium text-foreground">
+                      {los.data.active_count} active · {los.data.total_calls_today}/{los.data.calls_team_target} calls ·{' '}
+                      <span className={cn(
+                        los.data.leader_tier === 'strong' ? 'text-emerald-400' :
+                        los.data.leader_tier === 'average' ? 'text-amber-400' : 'text-red-400',
+                      )}>
+                        {los.data.leader_tier === 'strong' ? 'Strong' : los.data.leader_tier === 'average' ? 'Average' : 'At Risk'}
+                      </span>
+                    </p>
+                  ) : (
+                    <p className="mt-0.5 text-sm text-muted-foreground">View team snapshot</p>
+                  )}
+                </div>
+              </div>
+              <ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+            </CardContent>
+          </Card>
+        </Link>
+      )}
 
       <div>
         <h2 className="mb-3 font-heading text-ds-h2 text-foreground">
