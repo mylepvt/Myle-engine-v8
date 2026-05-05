@@ -32,15 +32,15 @@ export default {
         /* iOS large title feel on web (scaled for dashboard density) */
         'ds-h1': [
           '1.625rem',
-          { lineHeight: '2rem', fontWeight: '600', letterSpacing: '-0.03em' },
+          { lineHeight: '2rem', fontWeight: '700', letterSpacing: '-0.035em' },
         ],
         'ds-h2': [
           '1.25rem',
-          { lineHeight: '1.625rem', fontWeight: '600', letterSpacing: '-0.022em' },
+          { lineHeight: '1.625rem', fontWeight: '700', letterSpacing: '-0.025em' },
         ],
         'ds-h3': [
           '1rem',
-          { lineHeight: '1.375rem', fontWeight: '500', letterSpacing: '-0.012em' },
+          { lineHeight: '1.375rem', fontWeight: '600', letterSpacing: '-0.015em' },
         ],
         'ds-body': [
           '0.9375rem',
@@ -48,7 +48,11 @@ export default {
         ],
         'ds-caption': [
           '0.8125rem',
-          { lineHeight: '1.2rem', fontWeight: '400' },
+          { lineHeight: '1.2rem', fontWeight: '500' },
+        ],
+        'ds-label': [
+          '0.6875rem',
+          { lineHeight: '1rem', fontWeight: '600', letterSpacing: '0.07em' },
         ],
       },
       spacing: {

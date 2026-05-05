@@ -86,8 +86,8 @@ function statCards(
       iconClass: 'text-violet-400/70',
     },
     {
-      label: 'Paid 196',
-      value: funnel?.paid_196 ?? 0,
+      label: 'Min. FLP Billing',
+      value: funnel?.paid_flp ?? 0,
       sub: 'Enrolled',
       Icon: IndianRupee,
       accent: 'text-emerald-400',
@@ -129,7 +129,7 @@ export function TeamDashboardHomeModern({
   const greeting = greetingForCurrentTime()
   const enrolledPct =
     funnel?.claimed && funnel.claimed > 0
-      ? Math.round((funnel.paid_196 / funnel.claimed) * 100)
+      ? Math.round((funnel.paid_flp / funnel.claimed) * 100)
       : 0
 
   return (

@@ -31,6 +31,36 @@ const BATCH_SETTING_KEYS = [
   'batch_d2_evening_v2',
 ] as const
 
+const PREMIERE_SETTING_FIELDS: readonly SettingsTextField[] = [
+  {
+    key: 'premiere_video_url',
+    label: 'Premiere video URL',
+    placeholder: 'https://cdn.example.com/premiere.mp4',
+    help: 'Direct hosted MP4 / HLS URL. Viewers on /premiere watch this during live session. No YouTube.',
+  },
+  {
+    key: 'premiere_session_hours',
+    label: 'Session hours (IST)',
+    placeholder: '11,14,18,21',
+    inputMode: 'text',
+    help: 'Comma-separated 24h hours when premiere goes live (e.g. 11,14,18,21). Default: 11 AM – 9 PM every hour.',
+  },
+  {
+    key: 'premiere_waiting_minutes',
+    label: 'Waiting room opens (minutes before live)',
+    placeholder: '30',
+    inputMode: 'numeric',
+    help: 'How many minutes before each session the waiting room opens. Default: 30. Set 20-30 to match when you share the link.',
+  },
+  {
+    key: 'premiere_duration_minutes',
+    label: 'Session duration (minutes)',
+    placeholder: '49',
+    inputMode: 'numeric',
+    help: 'How long each premiere session runs. Default: 49 minutes.',
+  },
+]
+
 const LIVE_SESSION_SETTING_FIELDS = [
   {
     key: 'live_session_url',
@@ -157,12 +187,15 @@ export function SettingsAppPage({ title }: Props) {
   const [q, setQ] = useState('')
   const [enrollmentVideoEdits, setEnrollmentVideoEdits] = useState<Record<string, string>>({})
   const [liveSessionEdits, setLiveSessionEdits] = useState<Record<string, string>>({})
+  const [premiereEdits, setPremiereEdits] = useState<Record<string, string>>({})
   const [batchEdits, setBatchEdits] = useState<Record<string, string>>({})
   const [enrollmentVideoSaveMsg, setEnrollmentVideoSaveMsg] = useState<string | null>(null)
   const [liveSessionSaveMsg, setLiveSessionSaveMsg] = useState<string | null>(null)
+  const [premiereSaveMsg, setPremiereSaveMsg] = useState<string | null>(null)
   const [saveMsg, setSaveMsg] = useState<string | null>(null)
   const [enrollmentVideoErrorMsg, setEnrollmentVideoErrorMsg] = useState<string | null>(null)
   const [liveSessionErrorMsg, setLiveSessionErrorMsg] = useState<string | null>(null)
+  const [premiereErrorMsg, setPremiereErrorMsg] = useState<string | null>(null)
   const [batchErrorMsg, setBatchErrorMsg] = useState<string | null>(null)
   const enrollmentVideoSource = appSettingsData?.settings ?? {}
   const resolvedEnrollmentVideoValue = (key: string): string =>
@@ -174,6 +207,11 @@ export function SettingsAppPage({ title }: Props) {
     Object.prototype.hasOwnProperty.call(liveSessionEdits, key)
       ? (liveSessionEdits[key] ?? '')
       : (liveSessionSource[key] ?? '')
+  const premiereSource = appSettingsData?.settings ?? {}
+  const resolvedPremiereValue = (key: string): string =>
+    Object.prototype.hasOwnProperty.call(premiereEdits, key)
+      ? (premiereEdits[key] ?? '')
+      : (premiereSource[key] ?? '')
   const batchSource = appSettingsData?.settings ?? {}
   const resolvedBatchValue = (key: string): string =>
     Object.prototype.hasOwnProperty.call(batchEdits, key) ? (batchEdits[key] ?? '') : (batchSource[key] ?? '')
@@ -251,6 +289,27 @@ export function SettingsAppPage({ title }: Props) {
     }
   }
 
+  const handleSavePremiere = async () => {
+    setPremiereSaveMsg(null)
+    setPremiereErrorMsg(null)
+    const videoUrl = resolvedPremiereValue('premiere_video_url').trim()
+    if (videoUrl && looksLikeYouTubeUrl(videoUrl)) {
+      setPremiereErrorMsg('YouTube link allowed nahi hai. Direct hosted .mp4 / HLS URL use karein.')
+      return
+    }
+    try {
+      for (const field of PREMIERE_SETTING_FIELDS) {
+        const value = resolvedPremiereValue(field.key).trim()
+        await updateAppSetting.mutateAsync({ key: field.key, value })
+      }
+      setPremiereEdits({})
+      setPremiereSaveMsg('Premiere settings updated successfully.')
+      void refetchAppSettings()
+    } catch (error) {
+      setPremiereErrorMsg(error instanceof Error ? error.message : 'Could not update premiere settings.')
+    }
+  }
+
   return (
     <div className="max-w-4xl space-y-6">
       <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
@@ -289,7 +348,7 @@ export function SettingsAppPage({ title }: Props) {
                     }))
                   }
                   placeholder={field.placeholder}
-                  className="w-full rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                  className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
                 />
                 <span className="mt-1 block text-muted-foreground/80">{field.help}</span>
               </label>
@@ -310,6 +369,61 @@ export function SettingsAppPage({ title }: Props) {
           {liveSessionErrorMsg ? <p className="text-xs text-destructive">{liveSessionErrorMsg}</p> : null}
         </div>
       </section>
+
+      {/* Premiere Settings */}
+      <section className="surface-elevated space-y-3 p-4">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">Live Premiere</h2>
+          <p className="text-xs text-muted-foreground">
+            Prospects <code className="rounded bg-white/10 px-1 text-[10px]">/premiere</code> page ka config.
+            Video URL set karo aur session hours define karo. Admin premiere tab mein viewers real-time dikhenge.
+          </p>
+        </div>
+
+        {appSettingsPending ? (
+          <Skeleton className="h-9 w-full" />
+        ) : appSettingsError ? (
+          <div className="text-sm text-destructive" role="alert">
+            {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load app settings.'}
+          </div>
+        ) : (
+          <div className="grid gap-3">
+            {PREMIERE_SETTING_FIELDS.map((field) => (
+              <label key={field.key} className="block text-sm">
+                <span className="mb-1 block text-ds-caption text-muted-foreground">{field.label}</span>
+                <input
+                  type="text"
+                  inputMode={field.inputMode}
+                  value={resolvedPremiereValue(field.key)}
+                  onChange={(e) =>
+                    setPremiereEdits((prev) => ({
+                      ...prev,
+                      [field.key]: e.target.value,
+                    }))
+                  }
+                  placeholder={field.placeholder}
+                  className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                />
+                <span className="mt-1 block text-muted-foreground/80">{field.help}</span>
+              </label>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            disabled={updateAppSetting.isPending || appSettingsPending || appSettingsError}
+            onClick={() => void handleSavePremiere()}
+            className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-medium text-primary disabled:opacity-50"
+          >
+            {updateAppSetting.isPending ? 'Saving...' : 'Save premiere settings'}
+          </button>
+          {premiereSaveMsg ? <p className="text-xs text-emerald-400">{premiereSaveMsg}</p> : null}
+          {premiereErrorMsg ? <p className="text-xs text-destructive">{premiereErrorMsg}</p> : null}
+        </div>
+      </section>
+
       <section className="surface-elevated space-y-3 p-4">
         <div>
           <h2 className="text-sm font-semibold text-foreground">Enrollment Video</h2>
@@ -342,7 +456,7 @@ export function SettingsAppPage({ title }: Props) {
                     }))
                   }
                   placeholder={field.placeholder}
-                  className="w-full rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                  className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
                 />
                 <span className="mt-1 block text-muted-foreground/80">{field.help}</span>
                 <span className="mt-1 block font-mono text-[10px] text-muted-foreground/80">{field.key}</span>
@@ -352,7 +466,7 @@ export function SettingsAppPage({ title }: Props) {
         )}
 
         {appSettingsPending || appSettingsError ? null : (
-          <details className="rounded-xl border border-white/[0.1] bg-white/[0.04] p-4">
+          <details className="rounded-xl border border-border bg-muted/40 p-4">
             <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Room Snapshot Optional
             </summary>
@@ -370,7 +484,7 @@ export function SettingsAppPage({ title }: Props) {
                     }
                     inputMode={field.inputMode ?? undefined}
                     placeholder={field.placeholder}
-                    className="w-full rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                    className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
                   />
                   <span className="mt-1 block text-muted-foreground/80">{field.help}</span>
                 </label>
@@ -424,7 +538,7 @@ export function SettingsAppPage({ title }: Props) {
                     }))
                   }
                   placeholder="https://youtube.com/watch?v=... or https://cdn.example.com/video.mp4"
-                  className="w-full rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                  className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
                 />
                 <span className="mt-1 block font-mono text-[10px] text-muted-foreground/80">{key}</span>
               </label>
@@ -454,7 +568,7 @@ export function SettingsAppPage({ title }: Props) {
               type="button"
               disabled={appSettingsPending}
               onClick={() => void refetchAppSettings()}
-              className="rounded-md bg-white/[0.05] px-2.5 py-1 text-xs text-muted-foreground hover:bg-white/[0.08] disabled:opacity-50"
+              className="rounded-md bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground hover:bg-white/[0.08] disabled:opacity-50"
             >
               {appSettingsPending ? 'Refreshing…' : 'Refresh'}
             </button>
@@ -465,7 +579,7 @@ export function SettingsAppPage({ title }: Props) {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search…"
-              className="w-full rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+              className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
             />
           </label>
           <div className="surface-elevated max-h-[min(32rem,70vh)] overflow-auto p-3">

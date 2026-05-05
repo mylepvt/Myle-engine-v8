@@ -90,7 +90,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
 
   if (isPending) {
     return (
-      <div className={cn('rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 text-ds-caption text-muted-foreground', className)}>
+      <div className={cn('rounded-xl border border-border/60 bg-muted/30 p-3 text-ds-caption text-muted-foreground', className)}>
         Loading next step…
       </div>
     )
@@ -109,7 +109,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
 
   if (!transitions?.length || !primary) {
     return (
-      <div className={cn('rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 text-ds-caption text-muted-foreground', className)}>
+      <div className={cn('rounded-xl border border-border/60 bg-muted/30 p-3 text-ds-caption text-muted-foreground', className)}>
         No next move available for your role from this stage (or lead is terminal). Use full status controls if your
         role allows.
       </div>

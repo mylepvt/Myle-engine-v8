@@ -71,8 +71,13 @@ function shareLinkState(link: {
   }
 }
 
+function isWatchingNow(lastViewedAt: string | null | undefined): boolean {
+  if (!lastViewedAt) return false
+  return Date.now() - new Date(lastViewedAt).getTime() < 45_000
+}
+
 export function EnrollmentCard({ leadId }: Props) {
-  const shareLinksQuery = useLeadShareLinksQuery(leadId)
+  const shareLinksQuery = useLeadShareLinksQuery(leadId, { refetchInterval: 15_000 })
   const sendMut = useSendEnrollmentVideoMutation()
   const [actionError, setActionError] = useState('')
   const [actionHint, setActionHint] = useState('')
@@ -118,21 +123,21 @@ export function EnrollmentCard({ leadId }: Props) {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+        <div className="rounded-xl border border-white/10 bg-muted/40 p-3">
           <ShieldCheck className="size-4 text-cyan-300" />
           <p className="mt-2 text-xs font-semibold text-foreground">Phone locked</p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             Link sirf lead ke registered number se unlock hota hai.
           </p>
         </div>
-        <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+        <div className="rounded-xl border border-white/10 bg-muted/40 p-3">
           <TimerReset className="size-4 text-amber-300" />
           <p className="mt-2 text-xs font-semibold text-foreground">50-minute expiry</p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             Timer tabhi start hota hai jab prospect pehli baar link open kare. Har naya send purane links ko immediately expire kar deta hai.
           </p>
         </div>
-        <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+        <div className="rounded-xl border border-white/10 bg-muted/40 p-3">
           <MessageCircle className="size-4 text-emerald-300" />
           <p className="mt-2 text-xs font-semibold text-foreground">WhatsApp delivery</p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
@@ -192,7 +197,18 @@ export function EnrollmentCard({ leadId }: Props) {
                       </p>
                     ) : null}
                   </div>
-                  <span className={state.className}>{state.label}</span>
+                  <div className="flex items-center gap-2">
+                    {isWatchingNow(link.last_viewed_at) ? (
+                      <span className="flex items-center gap-1 rounded-full bg-red-600/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white">
+                        <span className="relative flex size-1.5">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                          <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
+                        </span>
+                        Watching now
+                      </span>
+                    ) : null}
+                    <span className={state.className}>{state.label}</span>
+                  </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 text-xs">
                   <button

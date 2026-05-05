@@ -2,6 +2,22 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
 
+export type ActiveWatcher = {
+  lead_id: number
+  lead_name: string
+  viewer_name: string | null
+  viewer_phone: string | null
+  unlocked_at: string | null
+  started_at: string | null
+  last_seen_at: string
+  watch_completed: boolean
+}
+
+export type ActiveWatcherListResponse = {
+  items: ActiveWatcher[]
+  total: number
+}
+
 export type EnrollShareLink = {
   id: number
   token: string
@@ -24,22 +40,6 @@ export type EnrollShareLink = {
 
 type EnrollShareLinkListResponse = {
   items: EnrollShareLink[]
-  total: number
-}
-
-export type ActiveWatcher = {
-  lead_id: number
-  lead_name: string
-  viewer_name: string | null
-  viewer_phone: string | null
-  unlocked_at: string | null
-  started_at: string | null
-  last_seen_at: string
-  watch_completed: boolean
-}
-
-export type ActiveWatcherListResponse = {
-  items: ActiveWatcher[]
   total: number
 }
 
@@ -117,11 +117,12 @@ async function fetchActiveWatchers(): Promise<ActiveWatcherListResponse> {
   return res.json() as Promise<ActiveWatcherListResponse>
 }
 
-export function useLeadShareLinksQuery(leadId: number) {
+export function useLeadShareLinksQuery(leadId: number, opts?: { refetchInterval?: number }) {
   return useQuery({
     queryKey: ['enroll', 'lead', leadId],
     queryFn: () => fetchLeadShareLinks(leadId),
     enabled: leadId > 0,
+    refetchInterval: opts?.refetchInterval,
   })
 }
 
@@ -150,7 +151,7 @@ export function useSendEnrollmentVideoMutation() {
   })
 }
 
-export function useActiveWatchersQuery(enabled: boolean) {
+export function useActiveWatchersQuery(enabled = true) {
   return useQuery({
     queryKey: ['enroll', 'live-watchers'],
     queryFn: fetchActiveWatchers,

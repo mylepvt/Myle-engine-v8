@@ -110,7 +110,7 @@ function seedBaseMocks(role: 'team' | 'leader' | 'admin') {
       claimed: 0,
       video_reached: 0,
       proof_pending: 0,
-      paid_196: 0,
+      paid_flp: 0,
     },
     isPending: false,
     isError: false,

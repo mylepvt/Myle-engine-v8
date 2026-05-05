@@ -1,127 +1,208 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useShellStubQuery } from '@/hooks/use-shell-stub-query'
-import { isSafeHttpUrl } from '@/lib/safe-http-url'
+import { apiFetch } from '@/lib/api'
+
+type ScheduleSlot = {
+  hour: number
+  label: string
+  state: 'past' | 'upcoming' | 'waiting' | 'live'
+  live_starts_at: string
+  live_ends_at: string
+  viewer_count_today: number
+}
+
+type ScheduleResponse = {
+  slots: ScheduleSlot[]
+  premiere_link: string
+  active_hour: number | null
+}
+
+async function fetchSchedule(): Promise<ScheduleResponse> {
+  const res = await apiFetch('/api/v1/other/premiere/schedule')
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<ScheduleResponse>
+}
+
+function slotLink(baseOrigin: string, hour: number): string {
+  return `${baseOrigin}/premiere?slot=${hour}`
+}
+
+function buildWhatsAppMessage(slots: ScheduleSlot[], baseOrigin: string): string {
+  const today = new Date().toLocaleDateString('en-IN', {
+    weekday: 'long', day: 'numeric', month: 'long',
+    timeZone: 'Asia/Kolkata',
+  })
+
+  const upcoming = slots.filter((s) => s.state !== 'past')
+
+  const lines = upcoming.map((s) => {
+    const start = new Date(s.live_starts_at).toLocaleTimeString('en-IN', {
+      hour: '2-digit', minute: '2-digit',
+      timeZone: 'Asia/Kolkata', hour12: true,
+    })
+    const badge = s.state === 'live' ? '🔴 LIVE NOW' : s.state === 'waiting' ? '⏳ Starting soon' : '🎯'
+    return `${badge} *${start}* — ${slotLink(baseOrigin, s.hour)}`
+  })
+
+  return [
+    `🎬 *Myle Private Live Session — ${today}*`,
+    ``,
+    `📅 *Aaj ke sessions (apne time ka link share karo):*`,
+    ...lines,
+    ``,
+    `_Session 49 minute ka hai. Time pe join karo — no replay._`,
+  ].join('\n')
+}
+
+function SlotCard({ slot, baseOrigin }: { slot: ScheduleSlot; baseOrigin: string }) {
+  const [copied, setCopied] = useState(false)
+  const link = slotLink(baseOrigin, slot.hour)
+
+  const startTime = new Date(slot.live_starts_at).toLocaleTimeString('en-IN', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata', hour12: true,
+  })
+  const endTime = new Date(slot.live_ends_at).toLocaleTimeString('en-IN', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata', hour12: true,
+  })
+
+  function handleCopy() {
+    void navigator.clipboard.writeText(link).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  return (
+    <div
+      className={`rounded-xl border px-4 py-3 transition-colors ${
+        slot.state === 'live'
+          ? 'border-red-500/30 bg-red-500/[0.06]'
+          : slot.state === 'waiting'
+          ? 'border-indigo-500/30 bg-indigo-500/[0.06]'
+          : slot.state === 'past'
+          ? 'border-white/[0.06] opacity-50'
+          : 'border-white/10 bg-white/[0.02]'
+      }`}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-semibold text-foreground">{startTime}</span>
+          <span className="text-xs text-muted-foreground">→ {endTime}</span>
+          {slot.viewer_count_today > 0 && (
+            <span className="text-xs text-muted-foreground">· {slot.viewer_count_today} viewers</span>
+          )}
+        </div>
+        {slot.state === 'live' ? (
+          <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-red-400">
+            <span className="relative flex size-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
+            </span>
+            Live
+          </span>
+        ) : slot.state === 'waiting' ? (
+          <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-400">Starting soon</span>
+        ) : slot.state === 'past' ? (
+          <span className="text-[10px] text-muted-foreground">Done</span>
+        ) : null}
+      </div>
+
+      {slot.state !== 'past' && (
+        <div className="mt-2 flex items-center gap-2 rounded-lg border border-border/60 bg-muted/50 px-3 py-2">
+          <p className="flex-1 truncate text-xs text-primary">{link}</p>
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="shrink-0 rounded-md bg-muted px-2.5 py-1 text-[10px] font-semibold text-foreground transition-colors hover:bg-muted/80"
+          >
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
 
 type Props = { title: string }
 
-async function copyToClipboard(text: string) {
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text)
-    return
-  }
-
-  const textarea = document.createElement('textarea')
-  textarea.value = text
-  textarea.setAttribute('readonly', 'true')
-  textarea.style.position = 'fixed'
-  textarea.style.opacity = '0'
-  document.body.appendChild(textarea)
-  textarea.select()
-  const copied = document.execCommand('copy')
-  document.body.removeChild(textarea)
-  if (!copied) {
-    throw new Error('Copy failed')
-  }
-}
-
 export function LiveSessionPage({ title }: Props) {
-  const { data, isPending, isError, error, refetch } = useShellStubQuery('/api/v1/other/live-session')
-  const [copyState, setCopyState] = useState<'idle' | 'done' | 'error'>('idle')
+  const { data, isPending, isError, error } = useQuery({
+    queryKey: ['premiere', 'schedule'],
+    queryFn: fetchSchedule,
+    refetchInterval: 30_000,
+  })
 
-  const first = data?.items[0]
-  const rawHref = first && typeof first.external_href === 'string' ? first.external_href.trim() : ''
-  const href = isSafeHttpUrl(rawHref) ? rawHref : ''
-  const sessionTitle = first && typeof first.title === 'string' ? first.title : 'Live session'
-  const detail = first && typeof first.detail === 'string' ? first.detail : ''
+  const baseOrigin = window.location.origin
+  const [msgCopied, setMsgCopied] = useState(false)
 
-  const handleCopy = async () => {
-    if (!rawHref) return
-    try {
-      await copyToClipboard(rawHref)
-      setCopyState('done')
-    } catch {
-      setCopyState('error')
-    }
+  function handleCopyMessage() {
+    if (!data) return
+    const msg = buildWhatsAppMessage(data.slots, baseOrigin)
+    void navigator.clipboard.writeText(msg).then(() => {
+      setMsgCopied(true)
+      setTimeout(() => setMsgCopied(false), 2000)
+    })
   }
 
   return (
     <div className="max-w-2xl space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
-      <div className="surface-elevated space-y-2 p-4 text-xs text-muted-foreground">
-        <p className="font-medium text-foreground/90">Where to configure session links (admin)</p>
-        <ul className="list-inside list-disc space-y-1">
-          <li>
-            <strong>Settings → General</strong> (table): keys{' '}
-            <code className="rounded bg-white/10 px-1">live_session_url</code>,{' '}
-            <code className="rounded bg-white/10 px-1">live_session_title</code>,{' '}
-            <code className="rounded bg-white/10 px-1">live_session_schedule</code>
-          </li>
-          <li>
-            Legacy import keys: <code className="rounded bg-white/10 px-1">zoom_link</code>,{' '}
-            <code className="rounded bg-white/10 px-1">zoom_title</code>,{' '}
-            <code className="rounded bg-white/10 px-1">zoom_time</code>,{' '}
-            <code className="rounded bg-white/10 px-1">paper_plan_link</code> (also read by the API).
-          </li>
-        </ul>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+        {data?.active_hour != null && (
+          <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white">
+            <span className="relative flex size-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
+            </span>
+            Live now
+          </span>
+        )}
       </div>
 
-      {isPending ? (
-        <div className="space-y-2">
-          <Skeleton className="h-9 w-full" />
+      {/* Today's schedule — each slot with its own link */}
+      <div className="surface-elevated space-y-3 p-5">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Today's Schedule</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Har slot ka alag link — prospect ko usi session ka link bhejo jis time bulaya hai</p>
         </div>
-      ) : null}
-      {isError ? (
-        <div className="text-sm text-destructive" role="alert">
-          <span>{error instanceof Error ? error.message : 'Could not load'} </span>
-          <button type="button" className="underline underline-offset-2" onClick={() => void refetch()}>
-            Retry
-          </button>
-        </div>
-      ) : null}
-      {data ? (
-        <div className="surface-elevated space-y-5 p-6">
-          {data.note ? <p className="text-sm text-muted-foreground">{data.note}</p> : null}
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">{sessionTitle}</h2>
-            {detail ? <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{detail}</p> : null}
+
+        {isPending ? (
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
           </div>
-          {rawHref && !href ? (
-            <p className="text-sm text-destructive" role="alert">
-              Meeting link is set but is not a valid http(s) URL. Update{' '}
-              <code className="rounded bg-white/10 px-1 text-xs">live_session_url</code> in app settings.
-            </p>
-          ) : null}
-          {href ? (
-            <div className="space-y-3">
-              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                <Button asChild size="lg" className="w-full sm:w-auto">
-                  <a href={href} target="_blank" rel="noopener noreferrer">
-                    Join live session
-                  </a>
-                </Button>
-                <Button type="button" variant="secondary" size="lg" className="w-full sm:w-auto" onClick={() => void handleCopy()}>
-                  {copyState === 'done' ? 'Link copied' : 'Copy link'}
-                </Button>
-              </div>
-              <p className="break-all text-xs text-muted-foreground">{rawHref}</p>
-              {copyState === 'error' ? (
-                <p className="text-xs text-destructive" role="alert">
-                  Could not copy automatically. You can still copy the link shown above.
-                </p>
-              ) : null}
+        ) : isError ? (
+          <p className="text-sm text-destructive">
+            {error instanceof Error ? error.message : 'Could not load schedule'}
+          </p>
+        ) : data ? (
+          <div className="space-y-2">
+            {data.slots.map((slot) => (
+              <SlotCard key={slot.hour} slot={slot} baseOrigin={baseOrigin} />
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      {/* WhatsApp message */}
+      {data && (
+        <div className="surface-elevated space-y-4 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">WhatsApp Message</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">Copy and paste into your group — includes today's upcoming sessions and join link</p>
             </div>
-          ) : !rawHref ? (
-            <p className="text-sm text-amber-300/90">
-              Meeting link not published yet. Ask an admin to set{' '}
-              <code className="rounded bg-white/10 px-1 text-xs">live_session_url</code> in app settings
-              (Settings → General).
-            </p>
-          ) : null}
+            <Button type="button" size="sm" variant="secondary" onClick={handleCopyMessage} disabled={!data}>
+              {msgCopied ? '✓ Copied!' : 'Copy for WhatsApp'}
+            </Button>
+          </div>
+          <pre className="overflow-x-auto whitespace-pre-wrap rounded-xl border border-border/60 bg-muted/40 px-4 py-3 text-xs text-foreground">
+            {buildWhatsAppMessage(data.slots, link)}
+          </pre>
         </div>
-      ) : null}
+      )}
     </div>
   )
 }

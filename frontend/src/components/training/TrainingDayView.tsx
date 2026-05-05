@@ -91,16 +91,16 @@ export function TrainingDayView({
 
   if (!effectivelyUnlocked) {
     return (
-      <div className="surface-inset flex items-start gap-3 border-white/10 bg-white/[0.03] px-4 py-4 opacity-80">
-        <div className="rounded-xl border border-white/10 bg-white/[0.04] p-2 text-muted-foreground">
+      <div className="surface-inset flex items-start gap-3 border-white/10 bg-muted/30 px-4 py-4 opacity-80">
+        <div className="rounded-xl border border-white/10 bg-muted/40 p-2 text-muted-foreground">
           <Lock className="size-4" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="border-white/10 bg-white/[0.03] text-foreground">
+            <Badge variant="outline" className="border-white/10 bg-muted/30 text-foreground">
               Day {day_number}
             </Badge>
-            <Badge variant="outline" className="border-white/10 bg-white/[0.03] text-muted-foreground">
+            <Badge variant="outline" className="border-white/10 bg-muted/30 text-muted-foreground">
               Locked
             </Badge>
           </div>
@@ -130,11 +130,11 @@ export function TrainingDayView({
   const resolvedAudioUrl = resolveUrl(audio_url)
 
   return (
-    <div className="surface-inset overflow-hidden border-white/10 bg-white/[0.04] px-4 py-4 md:px-5 md:py-5">
+    <div className="surface-inset overflow-hidden border-white/10 bg-muted/40 px-4 py-4 md:px-5 md:py-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="border-white/10 bg-white/[0.03] text-foreground">
+            <Badge variant="outline" className="border-white/10 bg-muted/30 text-foreground">
               Day {day_number}
             </Badge>
             {completed ? <Badge variant="success">Done</Badge> : <Badge variant="primary">In progress</Badge>}
@@ -146,7 +146,7 @@ export function TrainingDayView({
             </p>
           </div>
         </div>
-        <div className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-muted-foreground">
+        <div className="rounded-full border border-white/10 bg-muted/30 px-3 py-1 text-xs text-muted-foreground">
           One day at a time
         </div>
       </div>
@@ -184,7 +184,7 @@ export function TrainingDayView({
         </div>
 
         <div className="space-y-3">
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+          <div className="rounded-xl border border-white/10 bg-muted/30 p-3">
             <div className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
               <Headphones className="size-4 text-primary" />
               <span>Listen</span>
@@ -195,6 +195,10 @@ export function TrainingDayView({
                   controls
                   src={resolvedAudioUrl}
                   className="w-full max-w-full"
+                  controlsList="noplaybackrate nodownload"
+                  onRateChange={(e) => {
+                    if (e.currentTarget.playbackRate !== 1) e.currentTarget.playbackRate = 1
+                  }}
                   onError={() => setAudioFailed(true)}
                 />
                 <p className="mt-2 text-xs text-muted-foreground">
@@ -210,7 +214,7 @@ export function TrainingDayView({
             )}
           </div>
 
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+          <div className="rounded-xl border border-white/10 bg-muted/30 p-3">
             <div className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
               <FileImage className="size-4 text-primary" />
               <span>Your notes</span>
@@ -266,7 +270,7 @@ export function TrainingDayView({
               </div>
             </div>
           ) : (
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+            <div className="rounded-xl border border-white/10 bg-muted/30 p-3">
               <p className="text-sm font-medium text-foreground">Finish this day</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Mark this day as done after your notes photo is uploaded.

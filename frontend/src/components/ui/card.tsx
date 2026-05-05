@@ -1,6 +1,10 @@
 import * as React from 'react'
+import { Link, type LinkProps } from 'react-router-dom'
 
 import { cn } from '@/lib/utils'
+
+const cardBase =
+  'rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-[var(--shadow-card)] transition-[box-shadow,transform] duration-200'
 
 const Card = React.forwardRef<
   HTMLDivElement,
@@ -9,13 +13,32 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      'rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-[var(--shadow-card)]',
+      cardBase,
+      'hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-px',
       className,
     )}
     {...props}
   />
 ))
 Card.displayName = 'Card'
+
+const CardLink = React.forwardRef<
+  HTMLAnchorElement,
+  Omit<LinkProps, 'className'> & { className?: string }
+>(({ className, ...props }, ref) => (
+  <Link
+    ref={ref}
+    className={cn(
+      cardBase,
+      'block cursor-pointer no-underline',
+      'hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-[3px]',
+      'active:translate-y-0 active:shadow-[var(--shadow-card)]',
+      className,
+    )}
+    {...props}
+  />
+))
+CardLink.displayName = 'CardLink'
 
 const CardHeader = React.forwardRef<
   HTMLDivElement,
@@ -73,4 +96,4 @@ const CardFooter = React.forwardRef<
 ))
 CardFooter.displayName = 'CardFooter'
 
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
+export { Card, CardLink, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }

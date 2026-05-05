@@ -604,3 +604,4 @@ async def stream_watch_video(
         headers=headers,
         background=BackgroundTask(_close_upstream, upstream, client),
     )
+

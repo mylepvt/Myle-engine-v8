@@ -32,7 +32,7 @@ class PaymentService:
     @staticmethod
     def _restore_execution_owner(lead: Lead) -> None:
         # Workboard execution is assignee-scoped; legacy/imported leads can arrive
-        # with a creator but no assignee, which makes approved ₹196 leads "disappear".
+        # with a creator but no assignee, which makes approved Min. FLP Billing leads "disappear".
         if lead.assigned_to_user_id is None:
             lead.assigned_to_user_id = resolved_owner_user_id(lead)
 

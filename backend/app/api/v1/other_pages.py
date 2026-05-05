@@ -3,18 +3,24 @@
 from __future__ import annotations
 
 import os
-from datetime import date, datetime
-from typing import Annotated, Optional
+from datetime import date, datetime, timedelta, timezone
+from typing import Annotated, Literal, Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+import httpx
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import and_, desc, func, select
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.background import BackgroundTask
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.models.announcement import Announcement
 from app.models.app_setting import AppSetting
+from app.models.lead import Lead
+from app.models.premiere_viewer import PremiereViewer
 from app.models.daily_report import DailyReport
 from app.models.daily_score import DailyScore
 from app.models.training_day_note import TrainingDayNote
@@ -23,6 +29,7 @@ from app.models.training_video import TrainingVideo
 from app.models.user import User
 from app.schemas.notice_board import AnnouncementCreate, AnnouncementOut, NoticeBoardResponse
 from app.schemas.system_surface import SystemStubResponse, TrainingSurfaceResponse
+from app.services.enrollment_video import normalize_phone_for_match
 from app.services.team_reports_metrics import IST
 from app.services.training_surface import build_training_surface
 from app.services.training_uploads import save_training_notes_image
@@ -87,6 +94,19 @@ def _acting_label(user: AuthUser) -> str:
     if user.email and "@" in user.email:
         return user.email.split("@", 1)[0]
     return str(user.user_id)
+
+
+def _is_missing_premiere_viewers_table_error(exc: Exception) -> bool:
+    parts = [str(exc).lower()]
+    original = getattr(exc, "orig", None)
+    if original is not None:
+        parts.append(str(original).lower())
+    message = " ".join(parts)
+    return "premiere_viewers" in message and (
+        "no such table" in message
+        or "does not exist" in message
+        or "undefinedtable" in message
+    )
 
 
 @router.get("/leaderboard", response_model=SystemStubResponse)
@@ -384,3 +404,490 @@ async def other_daily_report(
         total=len(items),
         note="Submit or update your numbers via the daily report form (POST /api/v1/reports/daily).",
     )
+
+
+# ---------------------------------------------------------------------------
+# Premiere — multi-session (hourly slots, prospect sees only current/next)
+# ---------------------------------------------------------------------------
+
+DEFAULT_SESSION_HOURS = [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
+
+
+class PremiereStateResponse(BaseModel):
+    state: Literal["upcoming", "waiting", "live", "ended"]
+    video_url: Optional[str]
+    waiting_starts_at: str
+    live_starts_at: str
+    live_ends_at: str
+    session_hour: int
+    premiere_link: str
+    server_now: str
+    viewer_count: int
+
+
+class PremiereRegisterBody(BaseModel):
+    viewer_id: str
+    name: str
+    city: str
+    phone: str
+    session_hour: int
+    state: str
+
+
+class PremiereHeartbeatBody(BaseModel):
+    viewer_id: str
+    session_hour: int
+    state: str
+
+
+class PremiereProgressBody(BaseModel):
+    viewer_id: str
+    session_hour: int
+    current_time_sec: float
+    percentage_watched: float
+    watch_completed: bool = False
+
+
+class PremiereViewerOut(BaseModel):
+    viewer_id: str
+    name: str
+    masked_phone: str
+    city: str
+    session_date: str
+    session_hour: int
+    percentage_watched: float
+    current_time_sec: float
+    last_seen_at: Optional[str]
+    first_seen_at: Optional[str]
+    lead_score: int
+    watch_completed: bool
+    rejoined: bool
+    referred_by_name: Optional[str] = None
+
+
+class PremiereSlot(BaseModel):
+    hour: int
+    label: str          # "11:00 AM"
+    state: Literal["past", "upcoming", "waiting", "live"]
+    waiting_starts_at: str
+    live_starts_at: str
+    live_ends_at: str
+    viewer_count_today: int
+
+
+class PremiereScheduleResponse(BaseModel):
+    slots: list[PremiereSlot]
+    premiere_link: str
+    active_hour: Optional[int]  # currently live/waiting hour
+
+
+async def _get_session_config(db: AsyncSession) -> tuple[list[int], int, int]:
+    """Return (sorted hours list, waiting_minutes, duration_minutes)."""
+    async def _s(key: str) -> str:
+        row = await db.get(AppSetting, key)
+        return (row.value or "").strip() if row else ""
+
+    raw_hours = await _s("premiere_session_hours") or ""
+    if raw_hours.strip():
+        try:
+            hours = sorted({int(x.strip()) for x in raw_hours.split(",") if x.strip().isdigit()})
+        except ValueError:
+            hours = DEFAULT_SESSION_HOURS
+    else:
+        hours = DEFAULT_SESSION_HOURS
+
+    wmin_raw = await _s("premiere_waiting_minutes") or "30"
+    dmin_raw = await _s("premiere_duration_minutes") or "49"
+    wmin = max(1, int(wmin_raw) if wmin_raw.isdigit() else 30)
+    dmin = max(1, int(dmin_raw) if dmin_raw.isdigit() else 49)
+    return hours, wmin, dmin
+
+
+def _slot_window(today_ist: date, hour: int, wmin: int, dmin: int) -> tuple[datetime, datetime, datetime]:
+    live_start = datetime(today_ist.year, today_ist.month, today_ist.day, hour, 0, tzinfo=IST)
+    return live_start - timedelta(minutes=wmin), live_start, live_start + timedelta(minutes=dmin)
+
+
+def _find_active_slot(
+    hours: list[int], now: datetime, wmin: int, dmin: int
+) -> tuple[datetime, datetime, datetime, int] | None:
+    """Return (waiting_start, live_start, live_end, hour) for current or next slot.
+
+    Prefer a slot whose WAITING window contains now (ws <= now < ls) over a
+    currently-live earlier slot. This ensures users who receive a link 20-30 min
+    before the next session see the correct waiting room rather than the tail of
+    the previous live session.
+    """
+    today = now.date()
+    # Priority 1: slot currently in waiting window (ws <= now < live_start)
+    for h in hours:
+        ws, ls, le = _slot_window(today, h, wmin, dmin)
+        if ws <= now < ls:
+            return ws, ls, le, h
+    # Priority 2: first slot not yet ended (live or upcoming)
+    for h in hours:
+        ws, ls, le = _slot_window(today, h, wmin, dmin)
+        if now <= le:
+            return ws, ls, le, h
+    return None
+
+
+def _mask_phone(phone: str) -> str:
+    digits = "".join(c for c in phone if c.isdigit())
+    if len(digits) >= 4:
+        return digits[:2] + "****" + digits[-2:]
+    return "****"
+
+
+def _compute_score(viewer: PremiereViewer) -> int:
+    score = 0
+    if viewer.joined_waiting:
+        score += 10
+    if viewer.percentage_watched >= 0.70:
+        score += 40
+    elif viewer.current_time_sec >= 600:
+        score += 20
+    if viewer.watch_completed:
+        score += 30
+    if viewer.rejoined:
+        score += 60
+    return score
+
+
+@router.get("/premiere", response_model=PremiereStateResponse)
+async def get_premiere_state(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    slot: Optional[int] = Query(default=None, ge=0, le=23, description="Pin to a specific session hour (0-23). Used for slot-specific invite links."),
+) -> PremiereStateResponse:
+    """Public — no auth. Returns current/next session state.
+
+    When `slot` param is provided (e.g. /premiere?slot=19), the response is
+    pinned to that specific hour regardless of current time. This enables
+    per-slot invite links so prospects always see the session they were invited to.
+    """
+    hours, wmin, dmin = await _get_session_config(db)
+    now = datetime.now(IST)
+
+    if slot is not None:
+        # Slot-specific link: always show this hour's session window
+        session_hour = slot
+        today = now.date()
+        waiting_start, live_start, live_end = _slot_window(today, session_hour, wmin, dmin)
+        premiere_link = f"/premiere?slot={session_hour}"
+    else:
+        active = _find_active_slot(hours, now, wmin, dmin)
+        if active is None:
+            # All sessions done for today — show last slot as ended
+            today = now.date()
+            last_h = hours[-1] if hours else 21
+            ws, ls, le = _slot_window(today, last_h, wmin, dmin)
+            return PremiereStateResponse(
+                state="ended",
+                video_url=None,
+                waiting_starts_at=ws.isoformat(),
+                live_starts_at=ls.isoformat(),
+                live_ends_at=le.isoformat(),
+                session_hour=last_h,
+                premiere_link="/premiere",
+                server_now=now.isoformat(),
+                viewer_count=0,
+            )
+        waiting_start, live_start, live_end, session_hour = active
+        premiere_link = "/premiere"
+
+    if now < waiting_start:
+        state: Literal["upcoming", "waiting", "live", "ended"] = "upcoming"
+    elif now < live_start:
+        state = "waiting"
+    elif now <= live_end:
+        state = "live"
+    else:
+        state = "ended"
+
+    async def _s(key: str) -> str:
+        row = await db.get(AppSetting, key)
+        return (row.value or "").strip() if row else ""
+
+    video_url: Optional[str] = None
+    if state == "live":
+        video_url = await _s("premiere_video_url") or await _s("enrollment_video_source_url") or None
+
+    # Social proof viewer count (real + floor boost)
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=45)
+    today_str = now.date().isoformat()
+    try:
+        real_count = int((await db.execute(
+            select(func.count()).select_from(PremiereViewer).where(
+                PremiereViewer.session_date == today_str,
+                PremiereViewer.session_hour == session_hour,
+                PremiereViewer.last_seen_at >= cutoff,
+            )
+        )).scalar_one())
+    except (OperationalError, ProgrammingError) as exc:
+        if not _is_missing_premiere_viewers_table_error(exc):
+            raise
+        real_count = 0
+    boosted = min(300, max(250, 250 + real_count)) if state in ("waiting", "live") else 0
+
+    return PremiereStateResponse(
+        state=state,
+        video_url=video_url,
+        waiting_starts_at=waiting_start.isoformat(),
+        live_starts_at=live_start.isoformat(),
+        live_ends_at=live_end.isoformat(),
+        session_hour=session_hour,
+        premiere_link=premiere_link,
+        server_now=now.isoformat(),
+        viewer_count=boosted,
+    )
+
+
+@router.get("/premiere/schedule", response_model=PremiereScheduleResponse)
+async def get_premiere_schedule(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> PremiereScheduleResponse:
+    """Auth required (team/leader/admin). Full daily schedule — not shown to prospects."""
+    hours, wmin, dmin = await _get_session_config(db)
+    now = datetime.now(IST)
+    today = now.date()
+    today_str = today.isoformat()
+
+    # Viewer counts per hour for today
+    try:
+        counts_rows = (await db.execute(
+            select(PremiereViewer.session_hour, func.count().label("cnt"))
+            .where(PremiereViewer.session_date == today_str)
+            .group_by(PremiereViewer.session_hour)
+        )).all()
+        counts: dict[int, int] = {r.session_hour: r.cnt for r in counts_rows}
+    except (OperationalError, ProgrammingError) as exc:
+        if not _is_missing_premiere_viewers_table_error(exc):
+            raise
+        counts = {}
+
+    slots: list[PremiereSlot] = []
+    active_hour: Optional[int] = None
+
+    for h in hours:
+        ws, ls, le = _slot_window(today, h, wmin, dmin)
+        if now < ws:
+            slot_state: Literal["past", "upcoming", "waiting", "live"] = "upcoming"
+        elif now < ls:
+            slot_state = "waiting"
+            active_hour = h
+        elif now <= le:
+            slot_state = "live"
+            active_hour = h
+        else:
+            slot_state = "past"
+
+        label = ls.strftime("%-I:%M %p") if hasattr(ls, 'strftime') else f"{h}:00"
+        slots.append(PremiereSlot(
+            hour=h,
+            label=label,
+            state=slot_state,
+            waiting_starts_at=ws.isoformat(),
+            live_starts_at=ls.isoformat(),
+            live_ends_at=le.isoformat(),
+            viewer_count_today=counts.get(h, 0),
+        ))
+
+    return PremiereScheduleResponse(
+        slots=slots,
+        premiere_link="/premiere",
+        active_hour=active_hour,
+    )
+
+
+@router.post("/premiere/register", status_code=201)
+async def premiere_register(
+    body: PremiereRegisterBody,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Public — no auth. Upsert viewer registration for this session slot."""
+    today = datetime.now(IST).date().isoformat()
+    now = datetime.now(timezone.utc)
+
+    try:
+        viewer = (await db.execute(
+            select(PremiereViewer).where(
+                PremiereViewer.viewer_id == body.viewer_id,
+                PremiereViewer.session_date == today,
+                PremiereViewer.session_hour == body.session_hour,
+            )
+        )).scalar_one_or_none()
+
+        if viewer is None:
+            # Check if same viewer has ANY record today (different slot) → mark rejoin
+            prev = (await db.execute(
+                select(PremiereViewer.id).where(
+                    PremiereViewer.viewer_id == body.viewer_id,
+                    PremiereViewer.session_date == today,
+                )
+            )).scalar_one_or_none()
+            viewer = PremiereViewer(
+                viewer_id=body.viewer_id,
+                session_date=today,
+                session_hour=body.session_hour,
+                name=body.name.strip()[:200],
+                city=body.city.strip()[:200],
+                phone=body.phone.strip()[:30],
+                first_seen_at=now,
+                last_seen_at=now,
+                rejoined=prev is not None,
+            )
+            db.add(viewer)
+        else:
+            viewer.name = body.name.strip()[:200]
+            viewer.city = body.city.strip()[:200]
+            viewer.phone = body.phone.strip()[:30]
+            viewer.last_seen_at = now
+
+        if body.state == "waiting" and not viewer.joined_waiting:
+            viewer.joined_waiting = True
+        viewer.lead_score = _compute_score(viewer)
+        await db.commit()
+    except (OperationalError, ProgrammingError) as exc:
+        if not _is_missing_premiere_viewers_table_error(exc):
+            raise
+        await db.rollback()
+        return {"ok": False, "tracking_disabled": True}
+    return {"ok": True}
+
+
+@router.post("/premiere/heartbeat")
+async def premiere_heartbeat(
+    body: PremiereHeartbeatBody,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Public — no auth."""
+    now = datetime.now(timezone.utc)
+    today = datetime.now(IST).date().isoformat()
+    try:
+        viewer = (await db.execute(
+            select(PremiereViewer).where(
+                PremiereViewer.viewer_id == body.viewer_id,
+                PremiereViewer.session_date == today,
+                PremiereViewer.session_hour == body.session_hour,
+            )
+        )).scalar_one_or_none()
+        if viewer is None:
+            return {"ok": False}
+        if body.state == "waiting" and not viewer.joined_waiting:
+            viewer.joined_waiting = True
+        viewer.last_seen_at = now
+        viewer.lead_score = _compute_score(viewer)
+        await db.commit()
+    except (OperationalError, ProgrammingError) as exc:
+        if not _is_missing_premiere_viewers_table_error(exc):
+            raise
+        await db.rollback()
+        return {"ok": False, "tracking_disabled": True}
+    return {"ok": True}
+
+
+@router.post("/premiere/progress")
+async def premiere_progress(
+    body: PremiereProgressBody,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Public — no auth."""
+    now = datetime.now(timezone.utc)
+    today = datetime.now(IST).date().isoformat()
+    try:
+        viewer = (await db.execute(
+            select(PremiereViewer).where(
+                PremiereViewer.viewer_id == body.viewer_id,
+                PremiereViewer.session_date == today,
+                PremiereViewer.session_hour == body.session_hour,
+            )
+        )).scalar_one_or_none()
+        if viewer is None:
+            return {"ok": False}
+        viewer.current_time_sec = max(viewer.current_time_sec, body.current_time_sec)
+        viewer.percentage_watched = max(viewer.percentage_watched, min(1.0, body.percentage_watched))
+        if body.watch_completed:
+            viewer.watch_completed = True
+        viewer.last_seen_at = now
+        viewer.lead_score = _compute_score(viewer)
+        await db.commit()
+    except (OperationalError, ProgrammingError) as exc:
+        if not _is_missing_premiere_viewers_table_error(exc):
+            raise
+        await db.rollback()
+        return {"ok": False, "tracking_disabled": True}
+    return {"ok": True}
+
+
+async def _build_phone_to_owner_map(db: AsyncSession, raw_phones: list[str]) -> dict[str, str]:
+    """Return {10-digit-phone: owner_name} for viewers whose phone matches a lead."""
+    norm_to_raw: dict[str, str] = {}
+    for p in raw_phones:
+        n = normalize_phone_for_match(p)
+        if n:
+            norm_to_raw[n] = p
+
+    if not norm_to_raw:
+        return {}
+
+    # Fetch all leads that have a non-null phone + their owner name
+    q = (
+        select(Lead.phone, User.name)
+        .join(User, User.id == Lead.owner_user_id, isouter=True)
+        .where(Lead.phone.isnot(None))
+    )
+    lead_rows = (await db.execute(q)).all()
+
+    result: dict[str, str] = {}
+    for lead_phone, owner_name in lead_rows:
+        n = normalize_phone_for_match(lead_phone)
+        if n and n in norm_to_raw and owner_name:
+            result[norm_to_raw[n]] = owner_name
+    return result
+
+
+@router.get("/premiere/viewers", response_model=list[PremiereViewerOut])
+async def premiere_viewers(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    hour: Optional[int] = Query(default=None, description="Filter by session hour (omit for all today)"),
+    date: Optional[str] = Query(default=None, description="Session date YYYY-MM-DD (omit for today)"),
+) -> list[PremiereViewerOut]:
+    """Admin/leader only. Supports date param for historical view."""
+    if user.role not in ("admin", "leader"):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    target_date = date or datetime.now(IST).date().isoformat()
+    q = select(PremiereViewer).where(PremiereViewer.session_date == target_date)
+    if hour is not None:
+        q = q.where(PremiereViewer.session_hour == hour)
+    try:
+        rows = (await db.execute(
+            q.order_by(PremiereViewer.lead_score.desc(), PremiereViewer.last_seen_at.desc())
+        )).scalars().all()
+    except (OperationalError, ProgrammingError) as exc:
+        if not _is_missing_premiere_viewers_table_error(exc):
+            raise
+        return []
+
+    phone_to_owner = await _build_phone_to_owner_map(db, [v.phone for v in rows])
+
+    return [
+        PremiereViewerOut(
+            viewer_id=v.viewer_id,
+            name=v.name,
+            masked_phone=_mask_phone(v.phone),
+            city=v.city,
+            session_date=v.session_date,
+            session_hour=v.session_hour,
+            percentage_watched=round(v.percentage_watched * 100, 1),
+            current_time_sec=v.current_time_sec,
+            first_seen_at=v.first_seen_at.isoformat() if v.first_seen_at else None,
+            last_seen_at=v.last_seen_at.isoformat() if v.last_seen_at else None,
+            lead_score=v.lead_score,
+            watch_completed=v.watch_completed,
+            rejoined=v.rejoined,
+            referred_by_name=phone_to_owner.get(v.phone),
+        )
+        for v in rows
+    ]

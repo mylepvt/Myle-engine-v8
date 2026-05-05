@@ -590,7 +590,7 @@ async def transition_lead_status(
     if not await service._repository.can_mutate_lead(user, lead):
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    # Only entering Paid ₹196 is payment-gated here; later stages must stay unlocked.
+    # Only entering Min. FLP Billing is payment-gated here; later stages must stay unlocked.
     if body.target_status in _PAYMENT_REQUIRED_STATUSES and user.role != "admin":
         if lead.payment_status != "approved":
             raise HTTPException(

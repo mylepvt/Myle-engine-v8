@@ -24,8 +24,8 @@ describe('dashboard-registry', () => {
   })
 
   it('resolveTitleForPath uses labelByRole for admin on team/enrollment-approvals', () => {
-    expect(resolveTitleForPath('team/enrollment-approvals', 'admin')).toBe('₹196 Approvals (all teams)')
-    expect(resolveTitleForPath('team/enrollment-approvals', 'leader')).toBe('₹196 Approvals')
+    expect(resolveTitleForPath('team/enrollment-approvals', 'admin')).toBe('Min. FLP Billing (all teams)')
+    expect(resolveTitleForPath('team/enrollment-approvals', 'leader')).toBe('Min. FLP Billing')
   })
 
   it('routeDefAccessible allows valid route for allowed role', () => {

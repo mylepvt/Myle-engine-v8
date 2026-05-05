@@ -129,7 +129,7 @@ export function DailyReportFormPage({ title }: Props) {
             value={dateIso}
             onChange={(e) => setDateIso(e.target.value)}
             disabled={mut.isPending || !canPickDate}
-            className="rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-foreground disabled:opacity-50"
+            className="rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground disabled:opacity-50"
           />
         </label>
       </div>
@@ -161,7 +161,7 @@ export function DailyReportFormPage({ title }: Props) {
                   setInts((prev) => ({ ...prev, [key]: Math.max(0, parseInt(e.target.value, 10) || 0) }))
                 }
                 className={cn(
-                  'rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 tabular-nums text-foreground disabled:opacity-50',
+                  'rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 tabular-nums text-foreground disabled:opacity-50',
                 )}
               />
             </label>
@@ -174,7 +174,7 @@ export function DailyReportFormPage({ title }: Props) {
             onChange={(e) => setRemarks(e.target.value)}
             rows={3}
             disabled={mut.isPending}
-            className="rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-foreground disabled:opacity-50"
+            className="rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground disabled:opacity-50"
           />
         </label>
         <button

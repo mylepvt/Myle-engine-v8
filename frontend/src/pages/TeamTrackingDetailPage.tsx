@@ -70,7 +70,7 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
               next.set('date', e.target.value)
               setParams(next)
             }}
-            className="rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-foreground"
+            className="rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground"
           />
         </label>
       </div>

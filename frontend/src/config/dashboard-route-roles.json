@@ -12,6 +12,7 @@
   "work/recycle-bin": ["admin", "leader", "team"],
   "team/members": ["admin"],
   "team/tracking": ["admin", "leader"],
+  "team/los": ["leader"],
   "team/reports": ["admin", "leader"],
   "team/approvals": ["admin"],
   "team/enrollment-approvals": ["admin", "leader"],

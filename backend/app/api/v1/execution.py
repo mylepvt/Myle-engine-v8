@@ -24,6 +24,7 @@ from app.schemas.execution_enforcement import (
     LeadControlManualReassignIn,
     LeadControlManualReassignOut,
     LeadControlOut,
+    LosSnapshotOut,
     MemberExecutionStats,
     StaleRedistributeOut,
     TeamPersonalFunnelOut,
@@ -124,6 +125,24 @@ async def execution_downline_stats(
         )
         tags[str(uid)] = enf.bottleneck_tags_for_member(d, calls_today=d["calls_today"])
     return DownlineExecutionStatsOut(stats=stats, bottleneck_tags=tags)
+
+
+@router.get("/los-snapshot", response_model=LosSnapshotOut)
+async def execution_los_snapshot(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    today: Optional[str] = Query(default=None),
+    activations_target: int = Query(default=5, ge=1, le=100),
+) -> LosSnapshotOut:
+    """Leader OS: team execution snapshot — calls, activations, billing, leader score."""
+    _require_leader(user)
+    day = today or enf.default_today_iso()
+    return await enf.leader_los_snapshot(
+        session,
+        leader_user_id=user.user_id,
+        today_iso=day,
+        activations_target=activations_target,
+    )
 
 
 @router.get("/at-risk-leads", response_model=list[AtRiskLeadRow])

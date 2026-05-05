@@ -47,6 +47,7 @@ import { SettingsHelpPage } from '@/pages/SettingsHelpPage'
 import { SettingsOrgTreePage } from '@/pages/SettingsOrgTreePage'
 import { AllMembersPage } from '@/pages/AllMembersPage'
 import { AdminInvoicesPage } from '@/pages/AdminInvoicesPage'
+import { LeaderOSPage } from '@/pages/LeaderOSPage'
 
 function renderFullUi(ui: FullUiSurface, title: string) {
   switch (ui.kind) {
@@ -68,6 +69,8 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <TeamMembersPage title={title} />
     case 'team-tracking':
       return <TeamTrackingPage title={title} />
+    case 'leader-os':
+      return <LeaderOSPage />
     case 'team-approvals':
       return <TeamApprovalsPage title={title} />
     case 'my-team':

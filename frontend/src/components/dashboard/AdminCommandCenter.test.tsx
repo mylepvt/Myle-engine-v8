@@ -317,7 +317,7 @@ describe('AdminCommandCenter', () => {
             user_id: 7,
             member_name: 'Fresh Team',
             member_username: 'fresh_team',
-            total_cents: 19600,
+            total_cents: 150000,
             currency: 'INR',
             issued_at: '2026-04-25T07:00:00Z',
           },

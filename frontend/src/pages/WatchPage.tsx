@@ -151,6 +151,17 @@ export function WatchPage() {
   }, [])
 
   useEffect(() => {
+    if (!playing || !token || !data?.access_granted) return
+    const id = window.setInterval(() => {
+      void fetch(apiUrl(`/api/v1/watch/${token}/heartbeat`), {
+        method: 'POST',
+        credentials: 'include',
+      })
+    }, 15_000)
+    return () => window.clearInterval(id)
+  }, [playing, token, data?.access_granted])
+
+  useEffect(() => {
     if (!token) {
       setError('Invalid link.')
       setLoading(false)
@@ -381,25 +392,36 @@ export function WatchPage() {
       <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_top,rgba(160,195,255,0.18),transparent_58%)]" />
       <div className="pointer-events-none absolute left-1/2 top-24 h-72 w-72 -translate-x-1/2 rounded-full bg-[#3158a4]/16 blur-3xl" />
       <div className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-6 sm:px-6 sm:py-8">
-        <header className="rounded-[2rem] border border-white/10 bg-white/[0.04] px-5 py-4 shadow-[0_32px_120px_-72px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
+        <header className="rounded-[2rem] border border-white/10 bg-muted/40 px-5 py-4 shadow-[0_32px_120px_-72px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#9db0d6]">Myle</p>
               <h1 className="mt-1 text-xl font-semibold tracking-tight text-[#f5f8ff]">Your private introduction</h1>
             </div>
-            {data ? (
-              <p className="rounded-full border border-[#3f537d] bg-[#0b1120] px-4 py-2 text-sm font-semibold text-[#c9d9ff] shadow-[0_14px_34px_-24px_rgba(132,165,255,0.35)]">
-                {countdown}
-              </p>
-            ) : null}
+            <div className="flex items-center gap-3">
+              {data?.access_granted ? (
+                <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-white shadow-[0_0_14px_rgba(220,38,38,0.55)]">
+                  <span className="relative flex size-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                    <span className="relative inline-flex size-2 rounded-full bg-red-400" />
+                  </span>
+                  Live
+                </span>
+              ) : null}
+              {data ? (
+                <p className="rounded-full border border-[#3f537d] bg-[#0b1120] px-4 py-2 text-sm font-semibold text-[#c9d9ff] shadow-[0_14px_34px_-24px_rgba(132,165,255,0.35)]">
+                  {countdown}
+                </p>
+              ) : null}
+            </div>
           </div>
         </header>
 
         <main className="flex flex-1 flex-col gap-5 py-5">
           {loading ? (
             <>
-              <Skeleton className="h-28 w-full rounded-[2rem] bg-white/[0.06]" />
-              <Skeleton className="h-[24rem] w-full rounded-[2rem] bg-white/[0.06]" />
+              <Skeleton className="h-28 w-full rounded-[2rem] bg-muted/60" />
+              <Skeleton className="h-[24rem] w-full rounded-[2rem] bg-muted/60" />
             </>
           ) : error ? (
             <section
@@ -596,7 +618,7 @@ export function WatchPage() {
                           </div>
 
                           <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-white/70">
-                            <span>{progressLabel}</span>
+                            <span>{currentSeconds > 0 || watchCompleted ? progressLabel : null}</span>
                             <span>{watchCompleted ? 'Thanks for watching.' : 'Please watch through to the end.'}</span>
                           </div>
 

@@ -62,6 +62,7 @@ export type FullUiSurface =
   | { kind: 'recycle-bin' }
   | { kind: 'team-members' }
   | { kind: 'team-tracking' }
+  | { kind: 'leader-os' }
   | { kind: 'my-team' }
   | { kind: 'team-approvals' }
   | { kind: 'enrollment-approvals' }
@@ -217,6 +218,14 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     ui: { kind: 'lead-flow' },
   },
   {
+    path: 'team/los',
+    section: { id: 'team', label: 'Team' },
+    label: 'Leader OS',
+    roles: routeRoles('team/los'),
+    surface: 'full',
+    ui: { kind: 'leader-os' },
+  },
+  {
     path: 'team/members',
     section: { id: 'team', label: 'Team' },
     label: 'Members',
@@ -235,9 +244,9 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
   {
     path: 'team/enrollment-approvals',
     section: { id: 'team', label: 'Team' },
-    label: 'Enroll Approvals',
+    label: 'Min. FLP Billing',
     labelByRole: {
-      admin: 'Enroll Approvals (all teams)',
+      admin: 'Min. FLP Billing (all teams)',
     },
     roles: routeRoles('team/enrollment-approvals'),
     surface: 'full',

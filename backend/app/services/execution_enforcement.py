@@ -47,6 +47,8 @@ from app.schemas.execution_enforcement import (
     LeadControlManualReassignOut,
     LeadControlOut,
     LeadControlQueueLead,
+    LosMemberRow,
+    LosSnapshotOut,
     MemberExecutionStats,
     StatusHistogramRow,
     StaleRedistributeOut,
@@ -93,8 +95,9 @@ _ENROLLED_SIGNAL_STATUSES = frozenset(
     }
 )
 _WATCH_PIPELINE_STATUSES = frozenset({"video_sent", "video_watched"})
-# ₹196 in paise/cents as stored (rupees × 100).
-RUPEES_196_CENTS = 196 * 100
+# ₹1500 minimum FLP billing threshold in paise (rupees × 100).
+RUPEES_1500_CENTS = 1500 * 100
+RUPEES_196_CENTS = RUPEES_1500_CENTS  # policy: ₹196 replaced by Min. FLP Billing ₹1500
 _WATCH_ARCHIVE_BUCKET = "completed_watch_archived_leads"
 _STALE_WATCH_BUCKET = "archived_completed_watch_stale_leads"
 _DEFAULT_MAX_ACTIVE_LEADS_PER_WORKER = 50
@@ -296,7 +299,7 @@ async def team_personal_funnel(session: AsyncSession, user_id: int) -> TeamPerso
         claimed=claimed,
         video_reached=video,
         proof_pending=proof,
-        paid_196=paid,
+        paid_flp=paid,
         enrolled_total=paid,
         pct_video_vs_claimed=_pct(video, claimed),
         pct_proof_vs_video=_pct(proof, video),
@@ -1779,6 +1782,165 @@ async def admin_leak_map(session: AsyncSession) -> LeakMapOut:
             )
         prev = (st, c)
     return LeakMapOut(histogram=hist_list, funnel_drops=drops)
+
+
+async def _leader_team_basics_streak(
+    session: AsyncSession,
+    team_ids: list[int],
+    today: "date_type",
+    daily_call_target: int,
+    *,
+    max_window: int = 14,
+) -> int:
+    """
+    Consecutive days (backwards from yesterday) where team's active members
+    collectively missed the call target. Stateless — derived from call history.
+    """
+    from datetime import date as date_type, timedelta  # local to avoid circular
+
+    streak = 0
+    for offset in range(1, max_window + 1):
+        day = today - timedelta(days=offset)
+        fresh_leads_map = await fresh_lead_counts_by_user(session, team_ids, day)
+        calls_map = await fresh_call_counts_by_user(session, team_ids, day)
+
+        active_ids_that_day = [
+            uid for uid in team_ids
+            if int(fresh_leads_map.get(uid, 0)) > 0
+        ]
+        if not active_ids_that_day:
+            break
+
+        total_calls = sum(int(calls_map.get(uid, 0)) for uid in active_ids_that_day)
+        target = daily_call_target * len(active_ids_that_day)
+        if total_calls < target:
+            streak += 1
+        else:
+            break
+    return streak
+
+
+async def leader_los_snapshot(
+    session: AsyncSession,
+    leader_user_id: int,
+    today_iso: str,
+    *,
+    activations_target: int = 5,
+) -> LosSnapshotOut:
+    """Leader OS daily snapshot: per-member execution + aggregated leader score."""
+    from datetime import date as date_type
+    from datetime import datetime as dt_type
+
+    today = dt_type.strptime(today_iso, "%Y-%m-%d").date()
+
+    res = await session.execute(
+        select(User.id, User.email, User.username).where(
+            User.upline_user_id == leader_user_id,
+            User.role == "team",
+            User.registration_status == "approved",
+            User.removed_at.is_(None),
+        )
+    )
+    user_rows = res.all()
+    team_ids = [int(r.id) for r in user_rows]
+    name_map: dict[int, tuple[str, str | None]] = {
+        int(r.id): (r.username or r.email, r.username) for r in user_rows
+    }
+
+    # Downline count per member — from org tree (upline_user_id)
+    downline_rows = (
+        await session.execute(
+            select(User.upline_user_id, func.count(User.id).label("cnt"))
+            .where(
+                User.upline_user_id.in_(team_ids),
+                User.role.in_(("team", "leader")),
+            )
+            .group_by(User.upline_user_id)
+        )
+    ).all()
+    downline_map: dict[int, int] = {int(r.upline_user_id): int(r.cnt) for r in downline_rows}
+
+    raw = await downline_member_execution_stats(session, team_ids, today_iso)
+    daily_call_target = await get_daily_call_target(session)
+
+    members: list[LosMemberRow] = []
+    total_calls = 0
+    total_activations = 0
+    total_fu = 0
+    active_count = 0
+
+    for uid in team_ids:
+        d = raw.get(uid, {
+            "calls_today": 0, "call_target": daily_call_target,
+            "call_gate_met": False, "enrollments": 0, "fu_due": 0,
+        })
+        calls_today = int(d.get("calls_today", 0))
+        call_target = int(d.get("call_target", daily_call_target)) or daily_call_target
+        enrollments = int(d.get("enrollments", 0))
+        fu_due = int(d.get("fu_due", 0))
+        is_active = calls_today >= call_target
+
+        name, username = name_map.get(uid, (str(uid), None))
+        members.append(LosMemberRow(
+            user_id=uid,
+            name=name,
+            username=username,
+            calls_today=calls_today,
+            call_target=call_target,
+            call_gate_met=bool(d.get("call_gate_met", is_active)),
+            enrollments=enrollments,
+            fu_due=fu_due,
+            is_active=is_active,
+            downline_count=downline_map.get(uid, 0),
+        ))
+        total_calls += calls_today
+        total_activations += enrollments
+        total_fu += fu_due
+        if is_active:
+            active_count += 1
+
+    total_members = len(team_ids)
+    inactive_count = total_members - active_count
+
+    # Target based on ACTIVE members only (not total)
+    calls_team_target = daily_call_target * max(active_count, 1)
+
+    # Basics streak — consecutive days active team missed target
+    basics_streak = await _leader_team_basics_streak(
+        session, team_ids, today, daily_call_target
+    )
+
+    # Leader score: 40% calls + 40% activations + 20% active team %
+    calls_pct = min(100.0, 100.0 * total_calls / calls_team_target) if calls_team_target > 0 else 0.0
+    act_pct = min(100.0, 100.0 * total_activations / activations_target) if activations_target > 0 else 0.0
+    active_pct = 100.0 * active_count / max(total_members, 1)
+    leader_score = int(round(calls_pct * 0.4 + act_pct * 0.4 + active_pct * 0.2))
+
+    if leader_score >= 80:
+        tier: str = "strong"
+    elif leader_score >= 50:
+        tier = "average"
+    else:
+        tier = "at_risk"
+
+    members.sort(key=lambda m: (m.is_active, m.calls_today), reverse=False)
+
+    return LosSnapshotOut(
+        date=today_iso,
+        active_count=active_count,
+        inactive_count=inactive_count,
+        total_members=total_members,
+        total_calls_today=total_calls,
+        calls_team_target=calls_team_target,
+        activations_today=total_activations,
+        activations_target=activations_target,
+        billing_today_rupees=total_activations * 1500,
+        follow_ups_pending=total_fu,
+        members=members,
+        leader_score=leader_score,
+        leader_tier=tier,  # type: ignore[arg-type]
+        basics_streak=basics_streak,
+    )
 
 
 def default_today_iso() -> str:

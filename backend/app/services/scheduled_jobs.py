@@ -1,10 +1,12 @@
 """Scheduled cron jobs for Myle automation.
 
 Jobs (all IST-aware):
-- enrollment_proof_alert  : every 30min — pending proof > 2h → push admin/leaders
-- weekly_compliance_digest: Monday 09:00 IST — compliance summary to leaders
-- daily_report_reminder   : 20:00 IST daily — push eligible users who haven't submitted report
-- call_target_reminder    : 17:00 IST daily — push eligible users short on calls
+- enrollment_proof_alert      : every 30min — pending proof > 2h → push admin/leaders
+- weekly_compliance_digest    : Monday 09:00 IST — compliance summary to leaders
+- daily_report_reminder       : 20:00 IST daily — push eligible users who haven't submitted report
+- call_target_reminder        : 17:00 IST daily — push eligible users short on calls
+- watch_archive_maintenance   : every 30min — archive completed-watch leads > 24h + redistribute stale
+- leader_basics_enforcement   : 23:30 IST daily — warn/lock leaders whose team missed basics 7/14 days
 """
 from __future__ import annotations
 
@@ -22,6 +24,7 @@ from app.models.user import User
 from app.services.live_metrics import fresh_call_counts_by_user, get_daily_call_target
 from app.services.member_compliance import build_compliance_snapshots
 from app.services.push_service import send_push_to_role, send_push_to_user
+from app.services import execution_enforcement as enf
 
 logger = logging.getLogger(__name__)
 
@@ -264,3 +267,137 @@ async def job_call_target_reminder() -> None:
 
     except Exception as exc:
         logger.error("job_call_target_reminder failed: %s", exc)
+
+
+# ---------------------------------------------------------------------------
+# Job 5: watch archive maintenance — every 30min
+# ---------------------------------------------------------------------------
+
+async def job_watch_archive_maintenance() -> None:
+    """Archive completed-watch leads older than 24h and redistribute stale ones."""
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await enf.run_completed_watch_pipeline_maintenance(session)
+            logger.info(
+                "watch_archive_maintenance: archived=%d reassigned=%d skipped=%d",
+                result["auto_archived"],
+                result["reassigned"],
+                result["skipped"],
+            )
+    except Exception as exc:
+        logger.error("job_watch_archive_maintenance failed: %s", exc)
+
+
+# ---------------------------------------------------------------------------
+# Job 6: leader basics enforcement — 23:30 IST daily
+# ---------------------------------------------------------------------------
+
+_LEADER_WARN_STREAK = 7   # consecutive days team missed target → warning
+_LEADER_LOCK_STREAK = 14  # consecutive days → access locked
+
+
+async def job_leader_basics_enforcement() -> None:
+    """
+    Daily: for each leader, compute consecutive days their team missed call targets.
+    - 7 days consecutive → push warning
+    - 14 days consecutive → lock leader access (access_blocked = True)
+    """
+    try:
+        async with AsyncSessionLocal() as session:
+            today = today_ist()
+            daily_call_target = await get_daily_call_target(session)
+
+            leaders = (
+                await session.execute(
+                    select(User).where(
+                        User.role == "leader",
+                        User.registration_status == "approved",
+                        User.removed_at.is_(None),
+                        User.access_blocked.is_(False),
+                    )
+                )
+            ).scalars().all()
+
+            if not leaders:
+                return
+
+            locked_count = 0
+            warned_count = 0
+
+            for leader in leaders:
+                team_ids_rows = (
+                    await session.execute(
+                        select(User.id).where(
+                            User.upline_user_id == leader.id,
+                            User.role == "team",
+                            User.registration_status == "approved",
+                            User.removed_at.is_(None),
+                        )
+                    )
+                ).scalars().all()
+                team_ids = [int(uid) for uid in team_ids_rows]
+
+                if not team_ids:
+                    continue
+
+                streak = await enf._leader_team_basics_streak(
+                    session,
+                    team_ids,
+                    today,
+                    daily_call_target,
+                    max_window=_LEADER_LOCK_STREAK,
+                )
+
+                if streak >= _LEADER_LOCK_STREAK:
+                    leader.access_blocked = True
+                    leader.discipline_status = "removed"
+                    from datetime import timezone as tz
+                    leader.removed_at = datetime.now(tz.utc)
+                    leader.removed_by_user_id = None
+                    leader.removal_reason = (
+                        f"Leader basics not met: team missed call targets for "
+                        f"{streak} consecutive days."
+                    )
+                    locked_count += 1
+                    try:
+                        await send_push_to_user(
+                            session,
+                            leader.id,
+                            title="Account locked — basics not met",
+                            body=(
+                                f"Your team has missed daily call targets for {streak} days. "
+                                "Your account has been locked. Contact admin to restore access."
+                            ),
+                            url="/dashboard/team/los",
+                        )
+                    except Exception:
+                        pass
+
+                elif streak >= _LEADER_WARN_STREAK:
+                    warned_count += 1
+                    try:
+                        await send_push_to_user(
+                            session,
+                            leader.id,
+                            title="⚠️ Leader basics warning",
+                            body=(
+                                f"Your team has missed daily call targets for {streak} days. "
+                                f"Account will be locked in {_LEADER_LOCK_STREAK - streak} day(s) "
+                                "if basics are not restored."
+                            ),
+                            url="/dashboard/team/los",
+                        )
+                    except Exception:
+                        pass
+
+            if locked_count or warned_count:
+                await session.commit()
+
+            logger.info(
+                "leader_basics_enforcement: warned=%d locked=%d",
+                warned_count,
+                locked_count,
+            )
+
+    except Exception as exc:
+        logger.error("job_leader_basics_enforcement failed: %s", exc)

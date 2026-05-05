@@ -77,9 +77,9 @@ function UploadCard({
   onChange: (file: File | null) => void
 }) {
   return (
-    <label className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 text-left transition hover:border-cyan-300/20 hover:bg-white/[0.06]">
+    <label className="rounded-[1.5rem] border border-white/10 bg-muted/40 p-4 text-left transition hover:border-cyan-300/20 hover:bg-muted/60">
       <div className="flex items-start gap-3">
-        <div className="mt-0.5 rounded-2xl border border-white/10 bg-white/[0.06] p-2 text-cyan-200">
+        <div className="mt-0.5 rounded-2xl border border-white/10 bg-muted/60 p-2 text-cyan-200">
           {icon}
         </div>
         <div className="min-w-0 flex-1">
@@ -267,7 +267,7 @@ export function BatchWatchPage() {
             <p className="text-xs uppercase tracking-[0.32em] text-cyan-200/70">Myle Experience</p>
             <p className="mt-1 text-lg font-semibold tracking-tight text-white">Batch Watch Room</p>
           </div>
-          <Badge variant="outline" className="border-white/15 bg-white/[0.05] text-white/70">
+          <Badge variant="outline" className="border-white/15 bg-muted/50 text-white/70">
             Trusted in-app playback
           </Badge>
         </div>
@@ -294,7 +294,7 @@ export function BatchWatchPage() {
         ) : data ? (
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1.18fr)_22rem]">
             <div className="flex flex-col gap-6">
-              <section className="order-1 rounded-[2rem] border border-white/10 bg-white/[0.05] p-4 backdrop-blur-xl md:p-5 lg:order-2">
+              <section className="order-1 rounded-[2rem] border border-white/10 bg-muted/50 p-4 backdrop-blur-xl md:p-5 lg:order-2">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-white">In-app player</p>
@@ -351,13 +351,13 @@ export function BatchWatchPage() {
                 ) : null}
               </section>
 
-              <section className="order-2 rounded-[2rem] border border-white/10 bg-white/[0.05] p-5 shadow-[0_24px_80px_-38px_rgba(34,211,238,0.55)] backdrop-blur-xl md:p-7 lg:order-1">
+              <section className="order-2 rounded-[2rem] border border-white/10 bg-muted/50 p-5 shadow-[0_24px_80px_-38px_rgba(34,211,238,0.55)] backdrop-blur-xl md:p-7 lg:order-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="primary">Day {data.day_number}</Badge>
-                  <Badge variant="outline" className="border-white/15 bg-white/[0.04] text-white/75">
+                  <Badge variant="outline" className="border-white/15 bg-muted/40 text-white/75">
                     {data.slot_label}
                   </Badge>
-                  <Badge variant="outline" className="border-white/15 bg-white/[0.04] text-white/75">
+                  <Badge variant="outline" className="border-white/15 bg-muted/40 text-white/75">
                     Video {data.version}
                   </Badge>
                   {greetingCopy ? (
@@ -386,17 +386,17 @@ export function BatchWatchPage() {
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-3">
-                      <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-3">
+                      <div className="rounded-[1.35rem] border border-white/10 bg-muted/40 px-4 py-3">
                         <p className="text-xs uppercase tracking-[0.22em] text-white/45">Playback</p>
                         <p className="mt-2 text-sm font-semibold text-white">Inside Myle</p>
                       </div>
-                      <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-3">
+                      <div className="rounded-[1.35rem] border border-white/10 bg-muted/40 px-4 py-3">
                         <p className="text-xs uppercase tracking-[0.22em] text-white/45">Batch</p>
                         <p className="mt-2 text-sm font-semibold text-white">
                           {greetingCopy?.privateRoomBadge ?? data.title}
                         </p>
                       </div>
-                      <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-3">
+                      <div className="rounded-[1.35rem] border border-white/10 bg-muted/40 px-4 py-3">
                         <p className="text-xs uppercase tracking-[0.22em] text-white/45">Trust Layer</p>
                         <p className="mt-2 text-sm font-semibold text-white">Private room</p>
                       </div>
@@ -417,10 +417,10 @@ export function BatchWatchPage() {
               </section>
 
               {data.submission_enabled ? (
-                <section className="order-3 rounded-[2rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl md:p-6">
+                <section className="order-3 rounded-[2rem] border border-white/10 bg-muted/50 p-5 backdrop-blur-xl md:p-6">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="primary">Post-batch upload</Badge>
-                    <Badge variant="outline" className="border-white/15 bg-white/[0.04] text-white/75">
+                    <Badge variant="outline" className="border-white/15 bg-muted/40 text-white/75">
                       Notes + voice + video + message
                     </Badge>
                   </div>
@@ -450,7 +450,7 @@ export function BatchWatchPage() {
                           className={`rounded-[1.25rem] border px-4 py-3 text-left ${
                             noteUrl
                               ? 'border-cyan-300/20 bg-cyan-300/[0.08] text-white'
-                              : 'border-white/10 bg-white/[0.03] text-white/42'
+                              : 'border-white/10 bg-muted/30 text-white/42'
                           }`}
                         >
                           <div className="flex items-center gap-2 text-sm font-semibold">
@@ -468,7 +468,7 @@ export function BatchWatchPage() {
                           className={`rounded-[1.25rem] border px-4 py-3 text-left ${
                             voiceUrl
                               ? 'border-cyan-300/20 bg-cyan-300/[0.08] text-white'
-                              : 'border-white/10 bg-white/[0.03] text-white/42'
+                              : 'border-white/10 bg-muted/30 text-white/42'
                           }`}
                         >
                           <div className="flex items-center gap-2 text-sm font-semibold">
@@ -486,7 +486,7 @@ export function BatchWatchPage() {
                           className={`rounded-[1.25rem] border px-4 py-3 text-left ${
                             submittedVideoUrl
                               ? 'border-cyan-300/20 bg-cyan-300/[0.08] text-white'
-                              : 'border-white/10 bg-white/[0.03] text-white/42'
+                              : 'border-white/10 bg-muted/30 text-white/42'
                           }`}
                         >
                           <div className="flex items-center gap-2 text-sm font-semibold">
@@ -499,7 +499,7 @@ export function BatchWatchPage() {
                         </a>
                       </div>
                       {submission?.notes_text ? (
-                        <div className="mt-4 rounded-[1.25rem] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/72">
+                        <div className="mt-4 rounded-[1.25rem] border border-white/10 bg-muted/40 px-4 py-3 text-sm text-white/72">
                           {submission.notes_text}
                         </div>
                       ) : null}
@@ -562,10 +562,10 @@ export function BatchWatchPage() {
               ) : null}
 
               {isDay2 ? (
-                <section className="order-4 rounded-[2rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl md:p-6">
+                <section className="order-4 rounded-[2rem] border border-white/10 bg-muted/50 p-5 backdrop-blur-xl md:p-6">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="primary">Next step after final Day 2 batch</Badge>
-                    <Badge variant="outline" className="border-white/15 bg-white/[0.04] text-white/75">
+                    <Badge variant="outline" className="border-white/15 bg-muted/40 text-white/75">
                       Old app test flow
                     </Badge>
                   </div>
@@ -616,9 +616,9 @@ export function BatchWatchPage() {
             </div>
 
             <aside className="space-y-4">
-              <section className="rounded-[2rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl">
+              <section className="rounded-[2rem] border border-white/10 bg-muted/50 p-5 backdrop-blur-xl">
                 <div className="flex items-center gap-3">
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-3 text-cyan-200">
+                  <div className="rounded-2xl border border-white/10 bg-muted/50 p-3 text-cyan-200">
                     <ShieldCheck className="size-5" />
                   </div>
                   <div>
@@ -631,7 +631,7 @@ export function BatchWatchPage() {
                 </div>
               </section>
 
-              <section className="rounded-[2rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl">
+              <section className="rounded-[2rem] border border-white/10 bg-muted/50 p-5 backdrop-blur-xl">
                 <p className="text-sm font-semibold text-white">What happens here</p>
                 <div className="mt-4 space-y-3">
                   <div className="rounded-[1.25rem] border border-white/10 bg-black/20 px-4 py-3">
@@ -655,7 +655,7 @@ export function BatchWatchPage() {
                 </div>
               </section>
 
-              <section className="rounded-[2rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl">
+              <section className="rounded-[2rem] border border-white/10 bg-muted/50 p-5 backdrop-blur-xl">
                 <div className="flex items-center gap-2 text-sm font-semibold text-white">
                   <PlayCircle className="size-4 text-cyan-200" />
                   Batch signals
