@@ -131,7 +131,7 @@ def test_public_payment_proof_upload_reaches_admin_queue(
             files={"proof_file": ("proof.png", _PNG_BYTES, "image/png")},
             data={
                 "lead_id": "1",
-                "payment_amount_cents": "19600",
+                "payment_amount_cents": "150000",
                 "notes": "proof",
             },
         )
@@ -184,7 +184,7 @@ def test_payment_approval_restores_missing_assignee_for_workboard_route(
             files={"proof_file": ("proof.png", _PNG_BYTES, "image/png")},
             data={
                 "lead_id": "1",
-                "payment_amount_cents": "19600",
+                "payment_amount_cents": "150000",
                 "notes": "proof",
             },
         )
@@ -261,7 +261,7 @@ def test_flp_min_billing_flow_keeps_paid_to_mindset_to_day2_to_day3_intact(
             files={"proof_file": ("proof.png", _PNG_BYTES, "image/png")},
             data={
                 "lead_id": "1",
-                "payment_amount_cents": "19600",
+                "payment_amount_cents": "150000",
                 "notes": "proof",
             },
         )

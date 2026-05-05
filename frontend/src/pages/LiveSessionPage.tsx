@@ -199,7 +199,7 @@ export function LiveSessionPage({ title }: Props) {
             </Button>
           </div>
           <pre className="overflow-x-auto whitespace-pre-wrap rounded-xl border border-border/60 bg-muted/40 px-4 py-3 text-xs text-foreground">
-            {buildWhatsAppMessage(data.slots, link)}
+            {buildWhatsAppMessage(data.slots, baseOrigin)}
           </pre>
         </div>
       )}

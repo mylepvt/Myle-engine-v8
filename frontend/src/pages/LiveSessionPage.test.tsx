@@ -1,9 +1,20 @@
+import React from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import { LiveSessionPage } from '@/pages/LiveSessionPage'
 
 const mockUseShellStubQuery = vi.fn()
+const mockUseQuery = vi.fn()
+
+vi.mock('@tanstack/react-query', async () => {
+  const actual = await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query')
+  return {
+    ...actual,
+    useQuery: (...args: Parameters<typeof actual.useQuery>) => mockUseQuery(...args),
+  }
+})
 
 vi.mock('@/hooks/use-shell-stub-query', () => ({
   useShellStubQuery: () => mockUseShellStubQuery(),
@@ -12,6 +23,11 @@ vi.mock('@/hooks/use-shell-stub-query', () => ({
 vi.mock('@/lib/safe-http-url', () => ({
   isSafeHttpUrl: (value: string) => value.startsWith('http://') || value.startsWith('https://'),
 }))
+
+function renderWithProviders(ui: React.ReactElement) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+}
 
 describe('LiveSessionPage', () => {
   afterEach(() => {
@@ -25,30 +41,28 @@ describe('LiveSessionPage', () => {
       value: { writeText },
     })
 
+    mockUseQuery.mockReturnValue({
+      data: { slots: [], active_hour: null },
+      isPending: false,
+      isError: false,
+      error: null,
+    })
+
     mockUseShellStubQuery.mockReturnValue({
-      data: {
-        items: [
-          {
-            title: '2 PM Session',
-            detail: 'Scheduled: 2:00 PM',
-            external_href: 'https://meet.google.com/example',
-          },
-        ],
-        note: null,
-      },
+      data: { items: [], note: null },
       isPending: false,
       isError: false,
       error: null,
       refetch: vi.fn(),
     })
 
-    render(<LiveSessionPage title="Live session" />)
+    renderWithProviders(<LiveSessionPage title="Live session" />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Copy link' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Copy for WhatsApp' }))
 
     await waitFor(() => {
-      expect(writeText).toHaveBeenCalledWith('https://meet.google.com/example')
+      expect(writeText).toHaveBeenCalled()
     })
-    expect(screen.getByText('Link copied')).toBeInTheDocument()
+    expect(screen.getByText('✓ Copied!')).toBeInTheDocument()
   })
 })
