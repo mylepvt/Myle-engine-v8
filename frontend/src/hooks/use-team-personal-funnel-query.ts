@@ -6,7 +6,7 @@ export type TeamPersonalFunnel = {
   claimed: number
   video_reached: number
   proof_pending: number
-  paid_196: number
+  paid_flp: number
   enrolled_total: number
   pct_video_vs_claimed: number
   pct_proof_vs_video: number

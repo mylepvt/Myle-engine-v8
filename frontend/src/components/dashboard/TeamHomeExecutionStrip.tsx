@@ -92,7 +92,7 @@ export function TeamHomeExecutionStrip({
               </div>
               <div className="rounded-xl border border-white/10 bg-muted/40 px-3 py-3">
                 <p className="text-ds-caption text-muted-foreground">Min. FLP Billing</p>
-                <p className="mt-1 font-heading text-2xl font-semibold tabular-nums">{data.paid_196}</p>
+                <p className="mt-1 font-heading text-2xl font-semibold tabular-nums">{data.paid_flp}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">{pct(data.pct_enrolled_vs_claimed)} of claimed</p>
               </div>
             </div>

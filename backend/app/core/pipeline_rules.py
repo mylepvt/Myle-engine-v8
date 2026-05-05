@@ -62,7 +62,7 @@ STATUS_TO_STAGE = {
     "WhatsApp Sent": "prospecting",
     "Video Sent": "prospecting",
     "Video Watched": "prospecting",
-    "Paid ₹196": "enrolled",
+    "Min. FLP Billing": "enrolled",
     "Mindset Lock": "enrolled",
     "Day 1": "day1",
     "Day 2": "day2",
@@ -83,7 +83,7 @@ STATUS_TO_STAGE = {
 
 STAGE_TO_DEFAULT_STATUS = {
     "enrollment": "New Lead",
-    "enrolled": "Paid ₹196",
+    "enrolled": "Min. FLP Billing",
     "day1": "Day 1",
     "day2": "Day 2",
     "day3": "Day 3",
@@ -120,7 +120,7 @@ TEAM_ALLOWED_STATUSES = (
     "WhatsApp Sent",
     "Video Sent",
     "Video Watched",
-    "Paid ₹196",
+    "Min. FLP Billing",
     "Mindset Lock",
     "Lost",
     "Retarget",
@@ -135,7 +135,7 @@ STATUS_FLOW_ORDER = [
     "WhatsApp Sent",
     "Video Sent",
     "Video Watched",
-    "Paid ₹196",
+    "Min. FLP Billing",
     "Mindset Lock",
     "Day 1",
     "Day 2",
@@ -201,8 +201,8 @@ def is_valid_forward_status_transition(
     - Backward / same / statuses outside STATUS_FLOW_ORDER: allowed (legacy/admin fixes).
     - Admin (admin_may_skip_fsm=True): any forward jump within the ordered flow.
     - Leader (default): forward exactly +1 step.
-    - Team (for_team=True): any forward jump before Paid ₹196;
-      Paid ₹196 only from Video Watched or already Paid ₹196.
+    - Team (for_team=True): any forward jump before Min. FLP Billing;
+      Min. FLP Billing only from Video Watched or already Min. FLP Billing.
     """
     cur = normalize_flow_status(current_status)
     tgt = normalize_flow_status(target_status)
@@ -216,11 +216,11 @@ def is_valid_forward_status_transition(
     if admin_may_skip_fsm:
         return True
     if for_team:
-        paid_i = flow_idx.get("Paid ₹196")
-        if tgt == "Paid ₹196":
-            return cur in ("Video Watched", "Paid ₹196")
+        paid_i = flow_idx.get("Min. FLP Billing")
+        if tgt == "Min. FLP Billing":
+            return cur in ("Video Watched", "Min. FLP Billing")
         if tgt == "Mindset Lock":
-            return cur in ("Paid ₹196", "Mindset Lock")
+            return cur in ("Min. FLP Billing", "Mindset Lock")
         if paid_i is not None and flow_idx[tgt] < paid_i:
             return flow_idx[tgt] > flow_idx[cur]
         return False
@@ -238,7 +238,7 @@ def validate_vl2_status_transition_for_role(
 
     - Admin: any forward jump within ``STATUS_FLOW_ORDER`` (and backward/same as before).
     - Leader: forward +1 only (unless backward/outside flow).
-    - Team: jump rules before ``Paid ₹196``; cannot set ``TEAM_FORBIDDEN_STATUS_SLUGS``.
+    - Team: jump rules before ``Min. FLP Billing``; cannot set ``TEAM_FORBIDDEN_STATUS_SLUGS``.
     """
     from app.core.lead_status import LEAD_STATUS_LABELS, TEAM_FORBIDDEN_STATUS_SLUGS
 

@@ -14,7 +14,7 @@ class TeamPersonalFunnelOut(BaseModel):
     claimed: int
     video_reached: int
     proof_pending: int
-    paid_196: int
+    paid_flp: int
     enrolled_total: int
     pct_video_vs_claimed: float
     pct_proof_vs_video: float
@@ -230,3 +230,35 @@ class LeadControlBulkReassignOut(BaseModel):
     lead_ids: list[int] = Field(default_factory=list)
     assigned_to_user_id: int
     assigned_to_name: str
+
+
+class LosMemberRow(BaseModel):
+    user_id: int
+    name: str
+    username: Optional[str] = None
+    calls_today: int
+    call_target: int
+    call_gate_met: bool
+    enrollments: int
+    fu_due: int
+    is_active: bool
+    downline_count: int = 0
+
+
+class LosSnapshotOut(BaseModel):
+    """Leader Operating System daily snapshot — team execution aggregate."""
+
+    date: str
+    active_count: int
+    inactive_count: int
+    total_members: int
+    total_calls_today: int
+    calls_team_target: int
+    activations_today: int
+    activations_target: int
+    billing_today_rupees: int
+    follow_ups_pending: int
+    members: list[LosMemberRow] = Field(default_factory=list)
+    leader_score: int
+    leader_tier: Literal["strong", "average", "at_risk"]
+    basics_streak: int = 0

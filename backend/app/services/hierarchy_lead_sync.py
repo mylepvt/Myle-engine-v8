@@ -2,7 +2,7 @@
 When admin sets or changes upline so a member sits under a parent:
 
 - **Team:** pipeline execution (leads.assigned_user_id) follows the same rules
-  as the ₹196 handoff / Day‑1 routing. Permanent claimer (leads.current_owner)
+  as the Min. FLP Billing handoff / Day‑1 routing. Permanent claimer (leads.current_owner)
   is never updated (DB also blocks changing it after claim).
 
 - **Team or leader:** daily_reports rows with a blank upline_name get that
@@ -96,7 +96,7 @@ def nearest_approved_leader_username(db, start_username: str) -> str | None:
     Walk upline (FBO-aware) until the first approved user with role=leader.
     Returns None if there is no leader above (e.g. chain ends at admin or broken link).
 
-    Use this for ₹196 / Day 1 execution handoff and hierarchy sync so behavior matches
+    Use this for Min. FLP Billing / Day 1 execution handoff and hierarchy sync so behavior matches
     org-tree downline visibility (leader sees nested team); direct-upline-only resolution
     would wrongly route execution to an intermediate team member.
     """

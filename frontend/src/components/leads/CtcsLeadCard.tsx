@@ -93,7 +93,7 @@ export function CtcsLeadCard({
       const fd = new FormData()
       fd.append('proof_file', file)
       fd.append('lead_id', String(lead.id))
-      fd.append('payment_amount_cents', '19600')
+      fd.append('payment_amount_cents', '150000')
       await apiFetch('/api/v1/payments/proof/upload', { method: 'POST', body: fd })
       setUploadDone(true)
       void qc.invalidateQueries({ queryKey: ['workboard'] })

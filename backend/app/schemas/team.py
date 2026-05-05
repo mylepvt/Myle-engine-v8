@@ -113,7 +113,7 @@ class TeamEnrollmentRequestItem(BaseModel):
 
 
 class TeamEnrollmentListResponse(BaseModel):
-    """₹196 proof approval queue for admin / leader review."""
+    """Min. FLP Billing proof approval queue for admin / leader review."""
 
     items: list[TeamEnrollmentRequestItem] = Field(default_factory=list)
     total: int = 0

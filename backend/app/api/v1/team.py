@@ -410,7 +410,7 @@ async def list_enrollment_requests(
     limit: int = Query(default=_DEFAULT_LIMIT, ge=1, le=_MAX_LIMIT),
     offset: int = Query(default=0, ge=0),
 ) -> TeamEnrollmentListResponse:
-    """₹196 proof approval queue for admin/leader review."""
+    """Min. FLP Billing proof approval queue for admin/leader review."""
     _require_admin_or_leader(user)
     service = PaymentService(session)
     items = await service.get_pending_payment_proofs(user.user_id, user.role)
@@ -967,8 +967,8 @@ async def team_approvals(
                 "href": "team/approvals",
             },
             {
-                "title": "₹196 enrollment queue",
-                "detail": "Enrollment proof + approvals: Team → ₹196 Approvals.",
+                "title": "Min. FLP Billing queue",
+                "detail": "Enrollment proof + approvals: Team → Min. FLP Billing Approvals.",
                 "href": "team/enrollment-approvals",
             },
         ],

@@ -7,7 +7,7 @@ from starlette import status as http_status
 from app.api.deps import AuthUser
 
 APPROVER_ROLES = frozenset({"leader", "admin"})  # view-only for leader
-STANDARD_AMOUNT_CENTS = 19_600  # ₹196 enrollment fee
+STANDARD_AMOUNT_CENTS = 150_000  # ₹1500 min. FLP billing
 
 
 def require_approver_role(user: AuthUser) -> None:

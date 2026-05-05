@@ -1809,8 +1809,8 @@ export interface components {
             video_reached: number;
             /** Proof Pending */
             proof_pending: number;
-            /** Paid 196 */
-            paid_196: number;
+            /** Paid FLP - Min. FLP Billing */
+            paid_flp: number;
             /** Enrolled Total */
             enrolled_total: number;
             /** Pct Video Vs Claimed */

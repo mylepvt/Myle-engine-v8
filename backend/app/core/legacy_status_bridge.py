@@ -23,7 +23,7 @@ _LEGACY_VL2_CONTACTED = frozenset(
 )
 _LEGACY_VL2_QUALIFIED = frozenset(
     {
-        "Paid ₹196",
+        "Min. FLP Billing",
         "Day 1",
         "Day 2",
         "Interview",
