@@ -496,9 +496,9 @@ async def _get_session_config(db: AsyncSession) -> tuple[list[int], int, int]:
     else:
         hours = DEFAULT_SESSION_HOURS
 
-    wmin_raw = await _s("premiere_waiting_minutes") or "10"
+    wmin_raw = await _s("premiere_waiting_minutes") or "30"
     dmin_raw = await _s("premiere_duration_minutes") or "49"
-    wmin = max(1, int(wmin_raw) if wmin_raw.isdigit() else 10)
+    wmin = max(1, int(wmin_raw) if wmin_raw.isdigit() else 30)
     dmin = max(1, int(dmin_raw) if dmin_raw.isdigit() else 49)
     return hours, wmin, dmin
 
@@ -511,8 +511,20 @@ def _slot_window(today_ist: date, hour: int, wmin: int, dmin: int) -> tuple[date
 def _find_active_slot(
     hours: list[int], now: datetime, wmin: int, dmin: int
 ) -> tuple[datetime, datetime, datetime, int] | None:
-    """Return (waiting_start, live_start, live_end, hour) for current or next slot."""
+    """Return (waiting_start, live_start, live_end, hour) for current or next slot.
+
+    Prefer a slot whose WAITING window contains now (ws <= now < ls) over a
+    currently-live earlier slot. This ensures users who receive a link 20-30 min
+    before the next session see the correct waiting room rather than the tail of
+    the previous live session.
+    """
     today = now.date()
+    # Priority 1: slot currently in waiting window (ws <= now < live_start)
+    for h in hours:
+        ws, ls, le = _slot_window(today, h, wmin, dmin)
+        if ws <= now < ls:
+            return ws, ls, le, h
+    # Priority 2: first slot not yet ended (live or upcoming)
     for h in hours:
         ws, ls, le = _slot_window(today, h, wmin, dmin)
         if now <= le:

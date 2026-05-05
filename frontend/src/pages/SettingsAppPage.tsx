@@ -48,9 +48,9 @@ const PREMIERE_SETTING_FIELDS: readonly SettingsTextField[] = [
   {
     key: 'premiere_waiting_minutes',
     label: 'Waiting room opens (minutes before live)',
-    placeholder: '10',
+    placeholder: '30',
     inputMode: 'numeric',
-    help: 'How many minutes before each session the waiting room opens. Default: 10.',
+    help: 'How many minutes before each session the waiting room opens. Default: 30. Set 20-30 to match when you share the link.',
   },
   {
     key: 'premiere_duration_minutes',
