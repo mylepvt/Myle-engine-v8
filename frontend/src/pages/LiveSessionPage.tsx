@@ -26,7 +26,11 @@ async function fetchSchedule(): Promise<ScheduleResponse> {
   return res.json() as Promise<ScheduleResponse>
 }
 
-function buildWhatsAppMessage(slots: ScheduleSlot[], link: string): string {
+function slotLink(baseOrigin: string, hour: number): string {
+  return `${baseOrigin}/premiere?slot=${hour}`
+}
+
+function buildWhatsAppMessage(slots: ScheduleSlot[], baseOrigin: string): string {
   const today = new Date().toLocaleDateString('en-IN', {
     weekday: 'long', day: 'numeric', month: 'long',
     timeZone: 'Asia/Kolkata',
@@ -39,29 +43,23 @@ function buildWhatsAppMessage(slots: ScheduleSlot[], link: string): string {
       hour: '2-digit', minute: '2-digit',
       timeZone: 'Asia/Kolkata', hour12: true,
     })
-    const end = new Date(s.live_ends_at).toLocaleTimeString('en-IN', {
-      hour: '2-digit', minute: '2-digit',
-      timeZone: 'Asia/Kolkata', hour12: true,
-    })
     const badge = s.state === 'live' ? '🔴 LIVE NOW' : s.state === 'waiting' ? '⏳ Starting soon' : '🎯'
-    return `${badge} *${start}* – ${end}`
+    return `${badge} *${start}* — ${slotLink(baseOrigin, s.hour)}`
   })
 
   return [
     `🎬 *Myle Private Live Session — ${today}*`,
     ``,
-    `📅 *Today's Schedule:*`,
+    `📅 *Aaj ke sessions (apne time ka link share karo):*`,
     ...lines,
     ``,
-    `🔗 *Join link (same for all sessions):*`,
-    link,
-    ``,
-    `_Session runs for 49 minutes. Join on time — no replay._`,
+    `_Session 49 minute ka hai. Time pe join karo — no replay._`,
   ].join('\n')
 }
 
-function SlotCard({ slot, link }: { slot: ScheduleSlot; link: string }) {
+function SlotCard({ slot, baseOrigin }: { slot: ScheduleSlot; baseOrigin: string }) {
   const [copied, setCopied] = useState(false)
+  const link = slotLink(baseOrigin, slot.hour)
 
   const startTime = new Date(slot.live_starts_at).toLocaleTimeString('en-IN', {
     hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata', hour12: true,
@@ -137,12 +135,12 @@ export function LiveSessionPage({ title }: Props) {
     refetchInterval: 30_000,
   })
 
-  const link = `${window.location.origin}/premiere`
+  const baseOrigin = window.location.origin
   const [msgCopied, setMsgCopied] = useState(false)
 
   function handleCopyMessage() {
     if (!data) return
-    const msg = buildWhatsAppMessage(data.slots, link)
+    const msg = buildWhatsAppMessage(data.slots, baseOrigin)
     void navigator.clipboard.writeText(msg).then(() => {
       setMsgCopied(true)
       setTimeout(() => setMsgCopied(false), 2000)
@@ -168,7 +166,7 @@ export function LiveSessionPage({ title }: Props) {
       <div className="surface-elevated space-y-3 p-5">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Today's Schedule</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">Same link for all sessions — copy per slot to share with prospect</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Har slot ka alag link — prospect ko usi session ka link bhejo jis time bulaya hai</p>
         </div>
 
         {isPending ? (
@@ -182,7 +180,7 @@ export function LiveSessionPage({ title }: Props) {
         ) : data ? (
           <div className="space-y-2">
             {data.slots.map((slot) => (
-              <SlotCard key={slot.hour} slot={slot} link={link} />
+              <SlotCard key={slot.hour} slot={slot} baseOrigin={baseOrigin} />
             ))}
           </div>
         ) : null}
