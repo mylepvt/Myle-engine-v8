@@ -29,10 +29,12 @@ def alembic_head_revisions() -> list[str]:
 
 
 async def db_alembic_revision(session: AsyncSession) -> str | None:
-    """Current revision from ``alembic_version`` table, if present."""
+    """Current revision(s) from ``alembic_version`` table, if present."""
     try:
         r = await session.execute(text("SELECT version_num FROM alembic_version"))
-        row = r.fetchone()
-        return str(row[0]) if row else None
+        rows = r.fetchall()
+        if not rows:
+            return None
+        return ",".join(str(row[0]) for row in rows)
     except Exception:
         return None
