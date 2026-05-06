@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { MessageCircle, ShieldCheck, TimerReset } from 'lucide-react'
 
-import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -82,13 +81,12 @@ export function EnrollmentCard({ leadId }: Props) {
   const [actionError, setActionError] = useState('')
   const [actionHint, setActionHint] = useState('')
   const [copiedToken, setCopiedToken] = useState<string | null>(null)
-  const [pickerOpen, setPickerOpen] = useState(false)
 
-  async function handleSend(slotKey: string) {
+  async function handleSend() {
     setActionError('')
     setActionHint('')
     try {
-      const result = await sendMut.mutateAsync({ lead_id: leadId, live_session_slot_key: slotKey })
+      const result = await sendMut.mutateAsync(leadId)
       const manualUrl = result.delivery.manual_share_url?.trim()
       openExternalShareUrl(manualUrl)
       setActionHint(
@@ -96,7 +94,6 @@ export function EnrollmentCard({ leadId }: Props) {
           ? 'Secure enrollment video WhatsApp par bhej diya gaya.'
           : 'Secure private room ready hai. WhatsApp share window bhi open kar di gayi hai.',
       )
-      setPickerOpen(false)
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Could not send enrollment video')
     }
@@ -147,7 +144,7 @@ export function EnrollmentCard({ leadId }: Props) {
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="button" size="sm" disabled={sendMut.isPending} onClick={() => setPickerOpen(true)}>
+        <Button type="button" size="sm" disabled={sendMut.isPending} onClick={() => void handleSend()}>
           {sendMut.isPending ? 'Sending…' : 'Send secure enrollment video'}
         </Button>
         {actionHint ? <p className="text-xs text-emerald-400">{actionHint}</p> : null}
@@ -233,12 +230,6 @@ export function EnrollmentCard({ leadId }: Props) {
         </ul>
       ) : null}
 
-      <LiveSessionSlotPicker
-        open={pickerOpen}
-        busy={sendMut.isPending}
-        onClose={() => setPickerOpen(false)}
-        onConfirm={(slotKey) => void handleSend(slotKey)}
-      />
     </div>
   )
 }

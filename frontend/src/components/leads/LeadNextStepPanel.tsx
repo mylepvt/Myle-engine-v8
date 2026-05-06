@@ -13,10 +13,10 @@ import { LEAD_STATUS_OPTIONS } from '@/hooks/use-leads-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { cn } from '@/lib/utils'
 import { ChevronDown, ChevronUp, MessageCircle } from 'lucide-react'
-import { useSendEnrollmentVideoMutation } from '@/hooks/use-enroll-query'
 import {
   openExternalShareUrl,
 } from '@/lib/external-share-window'
+import { buildLiveSessionWhatsAppUrl, type LiveSessionSlotOption } from '@/lib/live-session-slots'
 
 type LeadMini = {
   id: number
@@ -35,7 +35,6 @@ export function LeadNextStepPanel({ lead, className }: Props) {
   const { role } = useDashboardShellRole()
   const { data: transitions, isPending, isError, error, refetch } = useAvailableTransitionsQuery(lead.id)
   const mut = useTransitionLeadMutation()
-  const sendMut = useSendEnrollmentVideoMutation()
   const [showAll, setShowAll] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -69,6 +68,20 @@ export function LeadNextStepPanel({ lead, className }: Props) {
     setLocalError(null)
     try {
       await mut.mutateAsync({ leadId: lead.id, targetStatus: target })
+    } catch (e) {
+      setLocalError(e instanceof Error ? e.message : 'Could not update stage')
+    }
+  }
+
+  async function handleSendSelectedSession(option: LiveSessionSlotOption) {
+    setLocalError(null)
+    try {
+      await runTransition('video_sent')
+      const shareUrl = buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option)
+      if (!shareUrl || !openExternalShareUrl(shareUrl)) {
+        throw new Error('Could not open WhatsApp share window')
+      }
+      setPickerOpen(false)
     } catch (e) {
       setLocalError(e instanceof Error ? e.message : 'Could not update stage')
     }
@@ -123,7 +136,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
         <Button
           type="button"
           className="h-11 w-full justify-center gap-2 rounded-xl border border-primary/35 bg-primary/15 text-sm font-semibold text-primary shadow-sm transition-transform active:scale-[0.98] hover:bg-primary/25"
-          disabled={mut.isPending || sendMut.isPending}
+          disabled={mut.isPending}
           onClick={() => void onPrimaryClick()}
         >
           {primary === 'video_sent' ? (
@@ -191,20 +204,9 @@ export function LeadNextStepPanel({ lead, className }: Props) {
 
       <LiveSessionSlotPicker
         open={pickerOpen}
-        busy={sendMut.isPending}
+        busy={mut.isPending}
         onClose={() => setPickerOpen(false)}
-        onConfirm={(slotKey) => {
-          setLocalError(null)
-          void sendMut
-            .mutateAsync({ lead_id: lead.id, live_session_slot_key: slotKey })
-            .then((result) => {
-              openExternalShareUrl(result.delivery.manual_share_url?.trim())
-              setPickerOpen(false)
-            })
-            .catch((e) => {
-              setLocalError(e instanceof Error ? e.message : 'Could not update stage')
-            })
-        }}
+        onConfirm={(option) => void handleSendSelectedSession(option)}
       />
     </div>
   )

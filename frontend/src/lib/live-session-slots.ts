@@ -1,57 +1,71 @@
-const LIVE_SESSION_SLOT_CONFIG = [
-  { key: 'live_session_slot_11_00', label: '11:00 AM', hour24: 11, minute: 0 },
-  { key: 'live_session_slot_12_00', label: '12:00 PM', hour24: 12, minute: 0 },
-  { key: 'live_session_slot_13_00', label: '1:00 PM', hour24: 13, minute: 0 },
-  { key: 'live_session_slot_14_00', label: '2:00 PM', hour24: 14, minute: 0 },
-  { key: 'live_session_slot_15_00', label: '3:00 PM', hour24: 15, minute: 0 },
-  { key: 'live_session_slot_16_00', label: '4:00 PM', hour24: 16, minute: 0 },
-  { key: 'live_session_slot_17_00', label: '5:00 PM', hour24: 17, minute: 0 },
-  { key: 'live_session_slot_18_00', label: '6:00 PM', hour24: 18, minute: 0 },
-  { key: 'live_session_slot_19_00', label: '7:00 PM', hour24: 19, minute: 0 },
-  { key: 'live_session_slot_20_00', label: '8:00 PM', hour24: 20, minute: 0 },
-  { key: 'live_session_slot_21_00', label: '9:00 PM', hour24: 21, minute: 0 },
-] as const
+import { apiFetch } from '@/lib/api'
+import { whatsAppChatWithTextHref } from '@/lib/phone-links'
 
 export type LiveSessionSlotOption = {
-  key: string
+  hour: number
   label: string
-  url: string
+  link: string
+  liveStartsAt: string
+  liveEndsAt: string
+  state: 'upcoming' | 'waiting'
 }
 
-function nowInIstParts(now = new Date()): { hour: number; minute: number } {
-  const formatter = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Asia/Kolkata',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
-  const parts = formatter.formatToParts(now)
-  const hour = Number(parts.find((part) => part.type === 'hour')?.value ?? '0')
-  const minute = Number(parts.find((part) => part.type === 'minute')?.value ?? '0')
-  return { hour, minute }
+type ScheduleSlot = {
+  hour: number
+  label: string
+  state: 'past' | 'upcoming' | 'waiting' | 'live'
+  live_starts_at: string
+  live_ends_at: string
 }
 
-export function upcomingLiveSessionSlots(
-  settings: Record<string, string>,
-  now = new Date(),
-): LiveSessionSlotOption[] {
-  const { hour, minute } = nowInIstParts(now)
-  const currentMinutes = hour * 60 + minute
+type ScheduleResponse = {
+  slots: ScheduleSlot[]
+}
 
-  return LIVE_SESSION_SLOT_CONFIG
-    .filter((slot) => {
-      const url = (settings[slot.key] ?? '').trim()
-      if (!url) return false
-      const slotMinutes = slot.hour24 * 60 + slot.minute
-      return slotMinutes >= currentMinutes
-    })
+function baseOrigin(): string {
+  return window.location.origin.replace(/\/$/, '')
+}
+
+export function buildLiveSessionSlotLink(hour: number): string {
+  return `${baseOrigin()}/premiere?slot=${hour}`
+}
+
+export async function fetchUpcomingLiveSessionSlots(): Promise<LiveSessionSlotOption[]> {
+  const res = await apiFetch('/api/v1/other/premiere/schedule')
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const data = (await res.json()) as ScheduleResponse
+
+  return (data.slots ?? [])
+    .filter((slot) => slot.state === 'waiting' || slot.state === 'upcoming')
     .map((slot) => ({
-      key: slot.key,
+      hour: slot.hour,
       label: slot.label,
-      url: (settings[slot.key] ?? '').trim(),
+      link: buildLiveSessionSlotLink(slot.hour),
+      liveStartsAt: slot.live_starts_at,
+      liveEndsAt: slot.live_ends_at,
+      state: slot.state,
     }))
 }
 
-export function allLiveSessionSlotKeys(): string[] {
-  return LIVE_SESSION_SLOT_CONFIG.map((slot) => slot.key)
+export function buildLiveSessionWhatsAppUrl(
+  phone: string | null | undefined,
+  leadName: string | null | undefined,
+  option: LiveSessionSlotOption,
+): string | null {
+  const name = (leadName || 'there').trim() || 'there'
+  const start = new Date(option.liveStartsAt).toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'Asia/Kolkata',
+  })
+  const message = [
+    `Hi ${name},`,
+    '',
+    `Your Myle live session is scheduled for ${start}.`,
+    `Please join from this link at your session time:`,
+    option.link,
+  ].join('\n')
+  const href = whatsAppChatWithTextHref(phone, message)
+  return href === '#' ? null : href
 }

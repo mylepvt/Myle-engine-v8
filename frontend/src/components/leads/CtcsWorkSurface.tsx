@@ -17,12 +17,12 @@ import {
   useLeadsInfiniteQuery,
   usePatchLeadMutation,
 } from '@/hooks/use-leads-query'
-import { useSendEnrollmentVideoMutation } from '@/hooks/use-enroll-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import {
   openExternalShareUrl,
 } from '@/lib/external-share-window'
+import { buildLiveSessionWhatsAppUrl, type LiveSessionSlotOption } from '@/lib/live-session-slots'
 import { useCallToCloseStore } from '@/stores/call-to-close-store'
 
 function nextLeadId(items: LeadPublic[], current: number | null): number | null {
@@ -72,7 +72,6 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   const total = leadsQ.data?.pages[0]?.total ?? 0
 
   const patchMut = usePatchLeadMutation()
-  const sendEnrollmentMut = useSendEnrollmentVideoMutation()
   const ctcsMut = useLeadCtcsActionMutation()
   const callLogMut = useLeadCallLogMutation()
 
@@ -94,12 +93,9 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
     [items, outcomeLeadId],
   )
 
-  const onSendEnrollment = useCallback(
-    (id: number) => {
-      setSlotPickerLeadId(id)
-    },
-    [],
-  )
+  const onSendEnrollment = useCallback((id: number) => {
+    setSlotPickerLeadId(id)
+  }, [])
 
   const onPatchStatus = useCallback(
     (id: number, status: LeadStatus) => {
@@ -157,12 +153,19 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   )
 
   const actionBusy = ctcsMut.isPending || callLogMut.isPending
-  const sendBusyLeadId =
-    sendEnrollmentMut.isPending &&
-    sendEnrollmentMut.variables &&
-    typeof sendEnrollmentMut.variables === 'object'
-      ? sendEnrollmentMut.variables.lead_id
-      : null
+  const sendBusyLeadId = slotPickerLeadId
+
+  async function handleSendSelectedSession(option: LiveSessionSlotOption) {
+    if (slotPickerLeadId == null) return
+    const lead = items.find((item) => item.id === slotPickerLeadId)
+    if (!lead) return
+    await patchMut.mutateAsync({ id: lead.id, body: { status: 'video_sent' } })
+    const shareUrl = buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option)
+    if (!shareUrl || !openExternalShareUrl(shareUrl)) {
+      throw new Error('Could not open WhatsApp share window')
+    }
+    setSlotPickerLeadId(null)
+  }
 
   return (
     <div className="space-y-4">
@@ -258,17 +261,10 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
 
       <LiveSessionSlotPicker
         open={slotPickerLeadId != null}
-        busy={sendEnrollmentMut.isPending}
+        busy={patchMut.isPending}
         onClose={() => setSlotPickerLeadId(null)}
-        onConfirm={(slotKey) => {
-          if (slotPickerLeadId == null) return
-          void sendEnrollmentMut
-            .mutateAsync({ lead_id: slotPickerLeadId, live_session_slot_key: slotKey })
-            .then((result) => {
-              openExternalShareUrl(result.delivery.manual_share_url?.trim())
-              setSlotPickerLeadId(null)
-            })
-            .catch(() => {})
+        onConfirm={(option) => {
+          void handleSendSelectedSession(option).catch(() => {})
         }}
       />
 

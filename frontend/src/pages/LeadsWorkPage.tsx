@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   LEAD_STATUS_GROUPS,
   LEAD_STATUS_OPTIONS,
+  type LeadPublic,
   type LeadListFilters,
   type LeadStatus,
   useCreateLeadMutation,
@@ -18,12 +19,12 @@ import {
   useLeadsInfiniteQuery,
   usePatchLeadMutation,
 } from '@/hooks/use-leads-query'
-import { useSendEnrollmentVideoMutation } from '@/hooks/use-enroll-query'
 import {
   openExternalShareUrl,
 } from '@/lib/external-share-window'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
+import { buildLiveSessionWhatsAppUrl, type LiveSessionSlotOption } from '@/lib/live-session-slots'
 import { teamLeadStatusSelectOptions } from '@/lib/team-lead-status'
 import type { Role } from '@/types/role'
 
@@ -127,7 +128,6 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const createMut = useCreateLeadMutation()
   const deleteMut = useDeleteLeadMutation()
   const patchMut = usePatchLeadMutation()
-  const sendEnrollmentMut = useSendEnrollmentVideoMutation()
   const patchBusyLeadId =
     patchMut.isPending && patchMut.variables && typeof patchMut.variables.id === 'number'
       ? patchMut.variables.id
@@ -163,20 +163,22 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
     [deleteMut],
   )
   const handleSendEnrollment = useCallback(
-    async (slotKey: string) => {
+    async (option: LiveSessionSlotOption) => {
       if (slotPickerLeadId == null) return
-      try {
-        const result = await sendEnrollmentMut.mutateAsync({
-          lead_id: slotPickerLeadId,
-          live_session_slot_key: slotKey,
-        })
-        openExternalShareUrl(result.delivery.manual_share_url?.trim())
-        setSlotPickerLeadId(null)
-      } catch {
-        /* mutation state renders the error */
+      const allVisibleItems: LeadPublic[] = [
+        ...items,
+        ...(classicLeadsQ.data?.pages.flatMap((page) => page.items) ?? []),
+      ]
+      const lead = allVisibleItems.find((item) => item.id === slotPickerLeadId)
+      if (!lead) return
+      await patchMut.mutateAsync({ id: lead.id, body: { status: 'video_sent' } })
+      const shareUrl = buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option)
+      if (!shareUrl || !openExternalShareUrl(shareUrl)) {
+        throw new Error('Could not open WhatsApp share window')
       }
+      setSlotPickerLeadId(null)
     },
-    [sendEnrollmentMut, slotPickerLeadId],
+    [classicLeadsQ.data?.pages, items, patchMut, slotPickerLeadId],
   )
 
   async function handleImportFilePick(e: ChangeEvent<HTMLInputElement>) {
@@ -317,20 +319,15 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                 {patchMut.error instanceof Error ? patchMut.error.message : 'Update failed'}
               </p>
             ) : null}
-            {sendEnrollmentMut.isError ? (
-              <p className="mt-2 text-xs text-destructive" role="alert">
-                {sendEnrollmentMut.error instanceof Error ? sendEnrollmentMut.error.message : 'Enrollment send failed'}
-              </p>
-            ) : null}
-            </div>
-          ) : null}
-        </div>
-        <LiveSessionSlotPicker
-          open={slotPickerLeadId != null}
-          busy={sendEnrollmentMut.isPending}
-          onClose={() => setSlotPickerLeadId(null)}
-          onConfirm={(slotKey) => void handleSendEnrollment(slotKey)}
-        />
+          </div>
+        ) : null}
+      </div>
+      <LiveSessionSlotPicker
+        open={slotPickerLeadId != null}
+        busy={patchMut.isPending}
+        onClose={() => setSlotPickerLeadId(null)}
+        onConfirm={(option) => void handleSendEnrollment(option).catch(() => {})}
+      />
       </>
     )
   }
@@ -526,12 +523,6 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
             {patchMut.error instanceof Error ? patchMut.error.message : 'Update failed'}
           </p>
         ) : null}
-        {sendEnrollmentMut.isError ? (
-          <p className="mt-2 px-4 text-xs text-destructive" role="alert">
-            {sendEnrollmentMut.error instanceof Error ? sendEnrollmentMut.error.message : 'Enrollment send failed'}
-          </p>
-        ) : null}
-
         <div className="mt-6 px-4 text-center md:hidden">
           <Link
             to="/dashboard/work/archived"
@@ -740,9 +731,9 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
       </div>
       <LiveSessionSlotPicker
         open={slotPickerLeadId != null}
-        busy={sendEnrollmentMut.isPending}
+        busy={patchMut.isPending}
         onClose={() => setSlotPickerLeadId(null)}
-        onConfirm={(slotKey) => void handleSendEnrollment(slotKey)}
+        onConfirm={(option) => void handleSendEnrollment(option).catch(() => {})}
       />
     </>
   )

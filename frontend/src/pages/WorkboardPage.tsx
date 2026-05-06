@@ -17,7 +17,6 @@ import {
   usePatchLeadMutation,
 } from '@/hooks/use-leads-query'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
-import { useSendEnrollmentVideoMutation } from '@/hooks/use-enroll-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { apiFetch } from '@/lib/api'
 import { callStatusSelectOptions } from '@/lib/call-status-options'
@@ -32,6 +31,7 @@ import {
 } from '@/lib/external-share-window'
 import { getMindsetLockSendState } from '@/lib/mindset-lock'
 import { LEAD_SLA_SMOOTH_REFRESH_MS, formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
+import { buildLiveSessionWhatsAppUrl, type LiveSessionSlotOption } from '@/lib/live-session-slots'
 import { whatsappDigits } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
 
@@ -193,7 +193,6 @@ const LeadCard = memo(function LeadCard({
   const [sendError, setSendError] = useState<string | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
   const qc = useQueryClient()
-  const sendMut = useSendEnrollmentVideoMutation()
   const stageOpsCard = stageKey != null
 
   const proofApproved = lead.payment_status === 'approved'
@@ -222,12 +221,14 @@ const LeadCard = memo(function LeadCard({
     }
   }
 
-  async function handleSendEnrollmentVideo(slotKey: string) {
+  async function handleSendEnrollmentVideo(option: LiveSessionSlotOption) {
     setSendError(null)
     try {
-      const result = await sendMut.mutateAsync({ lead_id: lead.id, live_session_slot_key: slotKey })
-      const manualUrl = result.delivery.manual_share_url?.trim()
-      openExternalShareUrl(manualUrl)
+      await pm.mutateAsync({ id: lead.id, body: { status: 'video_sent' } })
+      const shareUrl = buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option)
+      if (!shareUrl || !openExternalShareUrl(shareUrl)) {
+        throw new Error('Could not open WhatsApp share window')
+      }
       setPickerOpen(false)
     } catch (err) {
       setSendError(err instanceof Error ? err.message : 'Could not send enrollment video')
@@ -495,9 +496,9 @@ const LeadCard = memo(function LeadCard({
         ) : null}
         <LiveSessionSlotPicker
           open={pickerOpen}
-          busy={sendMut.isPending}
+          busy={pm.isPending}
           onClose={() => setPickerOpen(false)}
-          onConfirm={(slotKey) => void handleSendEnrollmentVideo(slotKey)}
+          onConfirm={(option) => void handleSendEnrollmentVideo(option)}
         />
         {stageKey ? (
           <StageAdvanceSection

@@ -10,8 +10,6 @@ const mockUseLeadsInfiniteQuery = vi.fn()
 const mockUsePatchLeadMutation = vi.fn()
 const mockUseLeadCtcsActionMutation = vi.fn()
 const mockUseLeadCallLogMutation = vi.fn()
-const mockUseSendEnrollmentVideoMutation = vi.fn()
-const mockUseAppSettingsQuery = vi.fn()
 
 vi.mock('@/hooks/use-dashboard-shell-role', () => ({
   useDashboardShellRole: () => ({ role: 'team', serverRole: 'team' }),
@@ -27,14 +25,6 @@ vi.mock('@/hooks/use-leads-query', async () => {
     useLeadCallLogMutation: (...args: unknown[]) => mockUseLeadCallLogMutation(...args),
   }
 })
-
-vi.mock('@/hooks/use-enroll-query', () => ({
-  useSendEnrollmentVideoMutation: (...args: unknown[]) => mockUseSendEnrollmentVideoMutation(...args),
-}))
-
-vi.mock('@/hooks/use-settings-query', () => ({
-  useAppSettingsQuery: (...args: unknown[]) => mockUseAppSettingsQuery(...args),
-}))
 
 vi.mock('@/stores/call-to-close-store', () => ({
   useCallToCloseStore: (selector: (state: Record<string, unknown>) => unknown) =>
@@ -124,12 +114,10 @@ describe('CtcsWorkSurface', () => {
   afterEach(() => {
     vi.clearAllMocks()
     vi.useRealTimers()
+    vi.unstubAllGlobals()
   })
 
-  it('opens the live session slot picker when Sent Enroll Video is selected', () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-05-05T11:20:00+05:30'))
-
+  it('opens the live session slot picker when Sent Enroll Video is selected', async () => {
     mockUseLeadsInfiniteQuery.mockReturnValue({
       data: { pages: [{ items: [makeLead()], total: 1 }] },
       isPending: false,
@@ -152,21 +140,39 @@ describe('CtcsWorkSurface', () => {
       isPending: false,
       mutateAsync: vi.fn(),
     })
-    mockUseSendEnrollmentVideoMutation.mockReturnValue({
-      isPending: false,
-      mutateAsync: vi.fn(),
-      variables: null,
-    })
-    mockUseAppSettingsQuery.mockReturnValue({
-      isPending: false,
-      isError: false,
-      data: {
-        settings: {
-          live_session_slot_12_00: 'https://cdn.myle.in/live/12pm.mp4',
-          live_session_slot_13_00: 'https://cdn.myle.in/live/1pm.mp4',
-        },
-      },
-    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            slots: [
+              {
+                hour: 11,
+                label: '11:00 AM',
+                state: 'live',
+                live_starts_at: '2026-05-05T11:00:00+05:30',
+                live_ends_at: '2026-05-05T11:49:00+05:30',
+              },
+              {
+                hour: 12,
+                label: '12:00 PM',
+                state: 'upcoming',
+                live_starts_at: '2026-05-05T12:00:00+05:30',
+                live_ends_at: '2026-05-05T12:49:00+05:30',
+              },
+              {
+                hour: 13,
+                label: '1:00 PM',
+                state: 'upcoming',
+                live_starts_at: '2026-05-05T13:00:00+05:30',
+                live_ends_at: '2026-05-05T13:49:00+05:30',
+              },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      ),
+    )
 
     renderSurface()
 
@@ -174,6 +180,6 @@ describe('CtcsWorkSurface', () => {
 
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByText('Choose which time slot to send')).toBeInTheDocument()
-    expect(screen.getByText('https://cdn.myle.in/live/12pm.mp4')).toBeInTheDocument()
+    expect(await screen.findByText(/premiere\?slot=12/i)).toBeInTheDocument()
   })
 })
