@@ -844,6 +844,15 @@ async def update_member_compliance(
                 status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="No pending grace request",
             )
+        today = datetime.now(IST).date()
+        if target.grace_request_end_date < today:
+            raise HTTPException(
+                status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"Grace request date ({target.grace_request_end_date.isoformat()}) is in the past. "
+                    "Use 'Grant Grace' with a future date instead."
+                ),
+            )
         grace_reason = (body.reason or target.grace_request_reason or "").strip() or None
         target.access_blocked = False
         target.discipline_status = "grace"
