@@ -19,6 +19,7 @@ const SHORT_LABEL: Record<string, string> = {
   'work/leads': 'Calls',
   'work/workboard': 'Board',
   'work/follow-ups': 'Tasks',
+  'team/members': 'Members',
 }
 
 type Props = {
@@ -35,6 +36,10 @@ function defForPath(path: string) {
 }
 
 function fourthTabDef(role: Role): DashboardRouteDef | undefined {
+  if (role === 'admin') {
+    const members = defForPath('team/members')
+    if (members && routeDefAccessible(members, role)) return members
+  }
   const followUps = defForPath('work/follow-ups')
   if (followUps && routeDefAccessible(followUps, role)) return followUps
   return undefined

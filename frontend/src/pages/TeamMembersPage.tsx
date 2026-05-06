@@ -1,4 +1,3 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useDeferredValue, useEffect, useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
@@ -8,7 +7,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { InvoiceDownloadLink } from '@/components/wallet/InvoiceDownloadLink'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import {
-  createTeamMember,
   useTeamMembersQuery,
   useResetMemberPasswordMutation,
   useUpdateMemberComplianceMutation,
@@ -616,20 +614,13 @@ function MemberProfileModal({
 }
 
 export function TeamMembersPage({ title }: Props) {
-  const queryClient = useQueryClient()
   const { data: me } = useAuthMeQuery()
   const isAdmin = me?.authenticated && me.role === 'admin'
   const isAdminOrLeader =
     me?.authenticated && (me.role === 'admin' || me.role === 'leader')
   const { data, isPending, isError, error, refetch } = useTeamMembersQuery()
 
-  const [fboId, setFboId] = useState('')
-  const [username, setUsername] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [newRole, setNewRole] = useState<Role>('team')
   const [memberQuery, setMemberQuery] = useState('')
-  const [createError, setCreateError] = useState<string | null>(null)
 
   const [resetTarget, setResetTarget] = useState<ResetTarget | null>(null)
   const [profileTarget, setProfileTarget] = useState<TeamMemberPublic | null>(null)
@@ -646,19 +637,6 @@ export function TeamMembersPage({ title }: Props) {
     return () => window.clearTimeout(id)
   }, [toastMsg])
 
-  const createMut = useMutation({
-    mutationFn: createTeamMember,
-    onSuccess: async () => {
-      setCreateError(null)
-      setFboId('')
-      setUsername('')
-      setEmail('')
-      setPassword('')
-      await queryClient.invalidateQueries({ queryKey: ['team', 'members'] })
-    },
-    onError: (e: Error) => setCreateError(e.message),
-  })
-
   return (
     <div className="min-w-0 max-w-4xl space-y-5 overflow-x-hidden pb-[max(6rem,calc(env(safe-area-inset-bottom)+5rem))]">
       <div className="space-y-2">
@@ -670,59 +648,6 @@ export function TeamMembersPage({ title }: Props) {
           All accounts in this environment from the users table. Passwords are never exposed through this API.
         </p>
       </div>
-
-      {isAdmin ? (
-        <div className="surface-elevated min-w-0 overflow-hidden p-4 text-sm sm:p-5 md:p-6">
-          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h2 className="font-medium text-foreground">Add user</h2>
-              <p className="mt-1 text-ds-caption text-muted-foreground">
-                Create a password-login account with a clean role assignment. Admin only.
-              </p>
-            </div>
-            <Badge variant="warning" className="w-fit">
-              Admin tools
-            </Badge>
-          </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-            <label className="block min-w-[10rem] flex-1">
-              <span className="mb-1 block text-ds-caption text-muted-foreground">FBO ID (unique)</span>
-              <input autoComplete="off" value={fboId} onChange={(e) => setFboId(e.target.value)} disabled={createMut.isPending} className="field-input" />
-            </label>
-            <label className="block min-w-[10rem] flex-1">
-              <span className="mb-1 block text-ds-caption text-muted-foreground">Username (optional)</span>
-              <input autoComplete="off" value={username} onChange={(e) => setUsername(e.target.value)} disabled={createMut.isPending} className="field-input" />
-            </label>
-            <label className="block min-w-[12rem] flex-1">
-              <span className="mb-1 block text-ds-caption text-muted-foreground">Email</span>
-              <input type="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} disabled={createMut.isPending} className="field-input" />
-            </label>
-            <label className="block min-w-[10rem] flex-1">
-              <span className="mb-1 block text-ds-caption text-muted-foreground">Password</span>
-              <input type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} disabled={createMut.isPending} className="field-input" />
-            </label>
-            <label className="block w-full min-w-[8rem] sm:w-auto">
-              <span className="mb-1 block text-ds-caption text-muted-foreground">Role</span>
-              <select value={newRole} onChange={(e) => setNewRole(e.target.value as Role)} disabled={createMut.isPending} className="field-input sm:w-36">
-                {ROLES.map((r) => (
-                  <option key={r} value={r}>{roleShortLabel(r)}</option>
-                ))}
-              </select>
-            </label>
-            <Button
-              type="button"
-              className="w-full sm:w-auto"
-              disabled={createMut.isPending || !fboId.trim() || !email.trim() || password.length < 8}
-              onClick={() => createMut.mutate({ fbo_id: fboId.trim(), username: username.trim() || null, email: email.trim(), password, role: newRole })}
-            >
-              {createMut.isPending ? '…' : 'Create'}
-            </Button>
-          </div>
-          {createError ? (
-            <p className="mt-2 text-ds-caption text-destructive" role="alert">{createError}</p>
-          ) : null}
-        </div>
-      ) : null}
 
       {isPending ? (
         <div className="space-y-2">
