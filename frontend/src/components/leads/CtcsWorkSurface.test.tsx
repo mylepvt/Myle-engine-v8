@@ -179,7 +179,7 @@ describe('CtcsWorkSurface', () => {
     fireEvent.change(screen.getByLabelText('Lead status'), { target: { value: 'video_sent' } })
 
     expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByText('Choose which time slot to send')).toBeInTheDocument()
+    expect(screen.getByText('Choose session slot')).toBeInTheDocument()
     expect(await screen.findByText(/premiere\?slot=12/i)).toBeInTheDocument()
   })
 })

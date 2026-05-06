@@ -21,69 +21,81 @@ export function LiveSessionSlotPicker({ open, busy = false, onClose, onConfirm }
   })
 
   useEffect(() => {
-    if (!open) {
-      setSelectedHour(null)
-    }
+    if (!open) setSelectedHour(null)
   }, [open])
 
   if (!open) return null
 
   const options = scheduleQuery.data ?? []
-  const selectedOption = options.find((option) => option.hour === selectedHour) ?? null
-  const canConfirm = !!selectedOption && !busy
+  const selectedOption = options.find((o) => o.hour === selectedHour) ?? null
+
+  const firstHour = options[0]?.hour ?? null
+  const effectiveHour = selectedHour ?? firstHour
+  const effectiveOption = options.find((o) => o.hour === effectiveHour) ?? null
+  const canConfirm = !!effectiveOption && !busy
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center"
+      onClick={onClose}
+    >
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-lg rounded-[1.6rem] border border-white/10 bg-[#0a1020] p-5 shadow-[0_32px_120px_-70px_rgba(0,0,0,0.95)]"
+        className="w-full max-w-sm rounded-t-[1.4rem] border border-white/10 bg-[#0a1020] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-5 shadow-2xl sm:rounded-[1.4rem]"
+        onClick={(e) => e.stopPropagation()}
       >
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/80">Sent Enroll Video</p>
-        <h3 className="mt-2 text-xl font-semibold text-white">Choose which time slot to send</h3>
-        <p className="mt-2 text-sm leading-relaxed text-white/65">
-          Existing Live Session schedule me se sirf next available slots yahan dikh rahe hain.
-        </p>
+        {/* drag handle */}
+        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/20 sm:hidden" />
 
-        <div className="mt-4 space-y-2">
+        <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-primary/70">
+          Sent Enroll Video
+        </p>
+        <h3 className="mt-1 text-base font-semibold text-white">Choose session slot</h3>
+
+        <div className="mt-4">
           {scheduleQuery.isPending ? (
-            <p className="text-sm text-white/60">Loading available slots…</p>
+            <p className="text-sm text-white/50">Loading…</p>
           ) : scheduleQuery.isError ? (
-            <p className="text-sm text-red-300">Could not load live session slots.</p>
+            <p className="text-sm text-red-300">Could not load slots.</p>
           ) : options.length === 0 ? (
-            <p className="text-sm text-amber-200">
-              Abhi next live-session slots available nahi hain. Live Session schedule check karo.
-            </p>
+            <p className="text-sm text-amber-200">No upcoming slots available.</p>
           ) : (
-            options.map((option) => (
-              <button
-                key={option.hour}
-                type="button"
-                onClick={() => setSelectedHour(option.hour)}
-                className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
-                  selectedHour === option.hour
-                    ? 'border-primary/50 bg-primary/15 text-white'
-                    : 'border-white/10 bg-white/[0.03] text-white/80 hover:bg-white/[0.06]'
-                }`}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-medium">{option.label}</p>
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-white/45">
-                    {option.state === 'waiting' ? 'Starting soon' : 'Upcoming'}
-                  </span>
-                </div>
-                <p className="mt-1 break-all text-xs text-white/50">{option.link}</p>
-              </button>
-            ))
+            <select
+              className="w-full rounded-xl border border-white/15 bg-white/[0.06] px-3 py-3 text-sm font-medium text-white focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/40"
+              value={effectiveHour ?? ''}
+              onChange={(e) => setSelectedHour(Number(e.target.value))}
+            >
+              {options.map((opt) => (
+                <option key={opt.hour} value={opt.hour}>
+                  {opt.label}{opt.state === 'waiting' ? ' — Starting soon' : ''}
+                </option>
+              ))}
+            </select>
           )}
         </div>
 
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onClose} disabled={busy}>
+        {effectiveOption && (
+          <p className="mt-2 truncate text-[0.7rem] text-white/40">{effectiveOption.link}</p>
+        )}
+
+        <div className="mt-5 flex gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            className="flex-1"
+            onClick={onClose}
+            disabled={busy}
+          >
             Cancel
           </Button>
-          <Button type="button" onClick={() => selectedOption && onConfirm(selectedOption)} disabled={!canConfirm}>
-            {busy ? 'Sending…' : 'Send selected video'}
+          <Button
+            type="button"
+            className="flex-1"
+            disabled={!canConfirm}
+            onClick={() => effectiveOption && onConfirm(effectiveOption)}
+          >
+            {busy ? 'Sending…' : 'Send video'}
           </Button>
         </div>
       </div>
