@@ -12,6 +12,30 @@ type ScheduleSlot = {
   live_starts_at: string
   live_ends_at: string
   viewer_count_today: number
+  live_viewer_count: number
+}
+
+type ViewerRecord = {
+  viewer_id: string
+  name: string
+  masked_phone: string
+  city: string
+  session_date: string
+  session_hour: number
+  percentage_watched: number
+  watch_completed: boolean
+  lead_score: number
+  first_seen_at: string | null
+  last_seen_at: string | null
+  referred_by_name: string | null
+}
+
+async function fetchViewers(date: string, hour: number | null): Promise<ViewerRecord[]> {
+  const params = new URLSearchParams({ date })
+  if (hour !== null) params.set('hour', String(hour))
+  const res = await apiFetch(`/api/v1/other/premiere/viewers?${params}`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<ViewerRecord[]>
 }
 
 type ScheduleResponse = {
@@ -91,9 +115,17 @@ function SlotCard({ slot, baseOrigin }: { slot: ScheduleSlot; baseOrigin: string
         <div className="flex items-center gap-3">
           <span className="text-sm font-semibold text-foreground">{startTime}</span>
           <span className="text-xs text-muted-foreground">→ {endTime}</span>
-          {slot.viewer_count_today > 0 && (
-            <span className="text-xs text-muted-foreground">· {slot.viewer_count_today} viewers</span>
-          )}
+          {slot.live_viewer_count > 0 ? (
+            <span className="flex items-center gap-1 text-xs font-semibold text-red-400">
+              <span className="relative flex size-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
+              </span>
+              {slot.live_viewer_count} live
+            </span>
+          ) : slot.viewer_count_today > 0 ? (
+            <span className="text-xs text-muted-foreground">· {slot.viewer_count_today} registered</span>
+          ) : null}
         </div>
         {slot.state === 'live' ? (
           <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-red-400">
@@ -120,6 +152,97 @@ function SlotCard({ slot, baseOrigin }: { slot: ScheduleSlot; baseOrigin: string
           >
             {copied ? 'Copied!' : 'Copy'}
           </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AttendanceHistory({ slots }: { slots: ScheduleSlot[] }) {
+  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+  const [histDate, setHistDate] = useState(todayStr)
+  const [histHour, setHistHour] = useState<number | null>(null)
+
+  const viewersQ = useQuery({
+    queryKey: ['premiere', 'viewers', histDate, histHour],
+    queryFn: () => fetchViewers(histDate, histHour),
+    staleTime: 20_000,
+  })
+
+  const viewers = viewersQ.data ?? []
+
+  return (
+    <div className="surface-elevated space-y-4 p-5">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Attendance History</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">Slot-wise prospects jo session mein aaye</p>
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        <input
+          type="date"
+          value={histDate}
+          max={todayStr}
+          onChange={(e) => setHistDate(e.target.value)}
+          className="rounded-lg border border-border bg-muted/40 px-3 py-1.5 text-sm text-foreground focus:border-primary/50 focus:outline-none"
+        />
+        <select
+          value={histHour ?? ''}
+          onChange={(e) => setHistHour(e.target.value === '' ? null : Number(e.target.value))}
+          className="rounded-lg border border-border bg-muted/40 px-3 py-1.5 text-sm text-foreground focus:border-primary/50 focus:outline-none"
+        >
+          <option value="">All slots</option>
+          {slots.map((s) => (
+            <option key={s.hour} value={s.hour}>{s.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {viewersQ.isPending ? (
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+        </div>
+      ) : viewersQ.isError ? (
+        <p className="text-sm text-destructive">Could not load viewers</p>
+      ) : viewers.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Koi viewer nahi mila is slot ke liye.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-border/60 text-left text-muted-foreground">
+                <th className="pb-2 pr-4 font-medium">Name</th>
+                <th className="pb-2 pr-4 font-medium">Phone</th>
+                <th className="pb-2 pr-4 font-medium">Slot</th>
+                <th className="pb-2 pr-4 font-medium">Watched</th>
+                <th className="pb-2 pr-4 font-medium">Score</th>
+                <th className="pb-2 font-medium">Leader</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/40">
+              {viewers.map((v) => (
+                <tr key={`${v.viewer_id}-${v.session_hour}`} className="text-foreground">
+                  <td className="py-2 pr-4 font-medium">{v.name || '—'}</td>
+                  <td className="py-2 pr-4 text-muted-foreground">{v.masked_phone}</td>
+                  <td className="py-2 pr-4 text-muted-foreground">{v.session_hour}:00</td>
+                  <td className="py-2 pr-4">
+                    {v.watch_completed ? (
+                      <span className="text-green-400">✓ Full</span>
+                    ) : (
+                      <span className="text-muted-foreground">{v.percentage_watched.toFixed(0)}%</span>
+                    )}
+                  </td>
+                  <td className="py-2 pr-4">
+                    <span className={`font-semibold ${v.lead_score >= 60 ? 'text-green-400' : v.lead_score >= 30 ? 'text-amber-400' : 'text-muted-foreground'}`}>
+                      {v.lead_score}
+                    </span>
+                  </td>
+                  <td className="py-2 text-muted-foreground">{v.referred_by_name || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-2 text-[10px] text-muted-foreground">{viewers.length} viewers</p>
         </div>
       )}
     </div>
@@ -203,6 +326,9 @@ export function LiveSessionPage({ title }: Props) {
           </pre>
         </div>
       )}
+
+      {/* Attendance history */}
+      <AttendanceHistory slots={data?.slots ?? []} />
     </div>
   )
 }

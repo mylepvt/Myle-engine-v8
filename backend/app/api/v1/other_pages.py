@@ -473,6 +473,7 @@ class PremiereSlot(BaseModel):
     live_starts_at: str
     live_ends_at: str
     viewer_count_today: int
+    live_viewer_count: int  # heartbeat-fresh (last 45 s); non-zero only for waiting/live
 
 
 class PremiereScheduleResponse(BaseModel):
@@ -654,6 +655,7 @@ async def get_premiere_schedule(
     today_str = today.isoformat()
 
     # Viewer counts per hour for today
+    heartbeat_cutoff = datetime.now(timezone.utc) - timedelta(seconds=45)
     try:
         counts_rows = (await db.execute(
             select(PremiereViewer.session_hour, func.count().label("cnt"))
@@ -661,10 +663,21 @@ async def get_premiere_schedule(
             .group_by(PremiereViewer.session_hour)
         )).all()
         counts: dict[int, int] = {r.session_hour: r.cnt for r in counts_rows}
+
+        live_counts_rows = (await db.execute(
+            select(PremiereViewer.session_hour, func.count().label("cnt"))
+            .where(
+                PremiereViewer.session_date == today_str,
+                PremiereViewer.last_seen_at >= heartbeat_cutoff,
+            )
+            .group_by(PremiereViewer.session_hour)
+        )).all()
+        live_counts: dict[int, int] = {r.session_hour: r.cnt for r in live_counts_rows}
     except (OperationalError, ProgrammingError) as exc:
         if not _is_missing_premiere_viewers_table_error(exc):
             raise
         counts = {}
+        live_counts = {}
 
     slots: list[PremiereSlot] = []
     active_hour: Optional[int] = None
@@ -683,6 +696,7 @@ async def get_premiere_schedule(
             slot_state = "past"
 
         label = ls.strftime("%-I:%M %p") if hasattr(ls, 'strftime') else f"{h}:00"
+        is_active = slot_state in ("waiting", "live")
         slots.append(PremiereSlot(
             hour=h,
             label=label,
@@ -691,6 +705,7 @@ async def get_premiere_schedule(
             live_starts_at=ls.isoformat(),
             live_ends_at=le.isoformat(),
             viewer_count_today=counts.get(h, 0),
+            live_viewer_count=live_counts.get(h, 0) if is_active else 0,
         ))
 
     return PremiereScheduleResponse(
