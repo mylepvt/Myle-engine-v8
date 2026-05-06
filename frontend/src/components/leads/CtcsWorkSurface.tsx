@@ -159,12 +159,17 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
     if (slotPickerLeadId == null) return
     const lead = items.find((item) => item.id === slotPickerLeadId)
     if (!lead) return
-    await patchMut.mutateAsync({ id: lead.id, body: { status: 'video_sent' } })
-    const shareUrl = buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option)
-    if (!shareUrl || !openExternalShareUrl(shareUrl)) {
-      throw new Error('Could not open WhatsApp share window')
+    try {
+      await patchMut.mutateAsync({ id: lead.id, body: { status: 'video_sent' } })
+      const shareUrl = buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option)
+      if (!shareUrl || !openExternalShareUrl(shareUrl)) {
+        window.alert('WhatsApp link nahi bana. Lead ka phone number check karo.')
+        return
+      }
+      setSlotPickerLeadId(null)
+    } catch (err) {
+      window.alert('Status update failed: ' + (err instanceof Error ? err.message : 'Unknown error'))
     }
-    setSlotPickerLeadId(null)
   }
 
   return (
@@ -264,7 +269,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
         busy={patchMut.isPending}
         onClose={() => setSlotPickerLeadId(null)}
         onConfirm={(option) => {
-          void handleSendSelectedSession(option).catch(() => {})
+          void handleSendSelectedSession(option)
         }}
       />
 

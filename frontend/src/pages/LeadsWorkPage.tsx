@@ -171,12 +171,17 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
       ]
       const lead = allVisibleItems.find((item) => item.id === slotPickerLeadId)
       if (!lead) return
-      await patchMut.mutateAsync({ id: lead.id, body: { status: 'video_sent' } })
-      const shareUrl = buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option)
-      if (!shareUrl || !openExternalShareUrl(shareUrl)) {
-        throw new Error('Could not open WhatsApp share window')
+      try {
+        await patchMut.mutateAsync({ id: lead.id, body: { status: 'video_sent' } })
+        const shareUrl = buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option)
+        if (!shareUrl || !openExternalShareUrl(shareUrl)) {
+          window.alert('WhatsApp link nahi bana. Lead ka phone number check karo.')
+          return
+        }
+        setSlotPickerLeadId(null)
+      } catch (err) {
+        window.alert('Status update failed: ' + (err instanceof Error ? err.message : 'Unknown error'))
       }
-      setSlotPickerLeadId(null)
     },
     [classicLeadsQ.data?.pages, items, patchMut, slotPickerLeadId],
   )
@@ -326,7 +331,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
         open={slotPickerLeadId != null}
         busy={patchMut.isPending}
         onClose={() => setSlotPickerLeadId(null)}
-        onConfirm={(option) => void handleSendEnrollment(option).catch(() => {})}
+        onConfirm={(option) => void handleSendEnrollment(option)}
       />
       </>
     )
@@ -733,7 +738,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
         open={slotPickerLeadId != null}
         busy={patchMut.isPending}
         onClose={() => setSlotPickerLeadId(null)}
-        onConfirm={(option) => void handleSendEnrollment(option).catch(() => {})}
+        onConfirm={(option) => void handleSendEnrollment(option)}
       />
     </>
   )

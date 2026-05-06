@@ -32,15 +32,11 @@ export function LiveSessionSlotPicker({ open, busy = false, onClose, onConfirm }
   const canConfirm = !!effectiveOption && !busy
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-5"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-5">
       <div
         role="dialog"
         aria-modal="true"
         className="w-full max-w-xs rounded-2xl border border-white/10 bg-[#0d1526] p-5 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
       >
         <p className="text-[0.65rem] font-bold uppercase tracking-[0.22em] text-primary/70">
           Sent Enroll Video
