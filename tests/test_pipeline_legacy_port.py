@@ -44,11 +44,14 @@ def test_team_forward_jump_before_paid() -> None:
     )
 
 
-def test_leader_single_step_forward() -> None:
+def test_leader_pre_enrollment_jump() -> None:
+    # Leader can skip steps within pre-enrollment (same as team).
     assert is_valid_forward_status_transition("New Lead", "Contacted", for_team=False)
-    assert not is_valid_forward_status_transition(
-        "New Lead", "Invited", for_team=False
-    )
+    assert is_valid_forward_status_transition("New Lead", "Invited", for_team=False)
+    assert is_valid_forward_status_transition("Contacted", "Video Sent", for_team=False)
+    # Leader still cannot jump directly to Min. FLP Billing unless from Video Watched.
+    assert not is_valid_forward_status_transition("New Lead", "Min. FLP Billing", for_team=False)
+    assert is_valid_forward_status_transition("Video Watched", "Min. FLP Billing", for_team=False)
 
 
 @pytest.mark.parametrize(

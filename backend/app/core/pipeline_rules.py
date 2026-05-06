@@ -197,12 +197,11 @@ def is_valid_forward_status_transition(
     admin_may_skip_fsm: bool = False,
 ) -> bool:
     """
-    Canonical FSM flow rules (legacy semantics).
-    - Backward / same / statuses outside STATUS_FLOW_ORDER: allowed (legacy/admin fixes).
-    - Admin (admin_may_skip_fsm=True): any forward jump within the ordered flow.
-    - Leader (default): forward exactly +1 step.
-    - Team (for_team=True): any forward jump before Min. FLP Billing;
-      Min. FLP Billing only from Video Watched or already Min. FLP Billing.
+    Canonical FSM flow rules.
+    - Backward / same / statuses outside STATUS_FLOW_ORDER: allowed.
+    - Admin (admin_may_skip_fsm=True): any forward jump.
+    - Team and Leader: any forward jump before Min. FLP Billing;
+      Min. FLP Billing only from Video Watched; post-enrollment leader is +1.
     """
     cur = normalize_flow_status(current_status)
     tgt = normalize_flow_status(target_status)
@@ -215,15 +214,20 @@ def is_valid_forward_status_transition(
         return True
     if admin_may_skip_fsm:
         return True
-    if for_team:
-        paid_i = flow_idx.get("Min. FLP Billing")
-        if tgt == "Min. FLP Billing":
+    paid_i = flow_idx.get("Min. FLP Billing")
+    if tgt == "Min. FLP Billing":
+        # Only team/leader can set paid from Video Watched; leader cannot jump past paid.
+        if for_team:
             return cur in ("Video Watched", "Min. FLP Billing")
-        if tgt == "Mindset Lock":
-            return cur in ("Min. FLP Billing", "Mindset Lock")
-        if paid_i is not None and flow_idx[tgt] < paid_i:
-            return flow_idx[tgt] > flow_idx[cur]
+        return cur in ("Video Watched", "Min. FLP Billing")
+    if tgt == "Mindset Lock":
+        return cur in ("Min. FLP Billing", "Mindset Lock")
+    # Pre-enrollment forward jumps: both team and leader may skip steps.
+    if paid_i is not None and flow_idx[tgt] < paid_i:
+        return flow_idx[tgt] > flow_idx[cur]
+    if for_team:
         return False
+    # Leader: +1 for post-enrollment stages only.
     return flow_idx[tgt] == flow_idx[cur] + 1
 
 
