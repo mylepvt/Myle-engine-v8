@@ -1,6 +1,6 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { CheckCircle2, CheckSquare, Eye, Pencil, Search, Send, Upload, Video } from 'lucide-react'
+import { CheckSquare, Eye, Pencil, Search, Send, Video } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
@@ -72,9 +72,9 @@ const ADMIN_STAGE_TABS: {
   nextStatus?: LeadStatus
   nextLabel?: string
 }[] = [
-  { id: 'day1', label: 'Day 1', statuses: ['day1'], stageKey: 'day1', nextStatus: 'day2', nextLabel: 'Move to Day 2 →' },
-  { id: 'day2', label: 'Day 2', statuses: ['day2'], stageKey: 'day2', nextStatus: 'day3', nextLabel: 'Move to Day 3 →' },
-  { id: 'day3', label: 'Day 3', statuses: ['day3'], stageKey: 'day3', nextStatus: 'interview', nextLabel: 'Move to Interview →' },
+  { id: 'day1', label: 'Day 2', statuses: ['day1'], stageKey: 'day1', nextStatus: 'day2', nextLabel: 'Move to Day 3 →' },
+  { id: 'day2', label: 'Day 3', statuses: ['day2'], stageKey: 'day2', nextStatus: 'day3', nextLabel: 'Move to Pending AS →' },
+  { id: 'day3', label: 'Pending AS', statuses: ['day3'], stageKey: 'day3', nextStatus: 'interview', nextLabel: 'Move to Interview →' },
   { id: 'interview', label: 'Interview', statuses: ['interview'], stageKey: 'interview', nextStatus: 'track_selected', nextLabel: 'Move to Track Selected →' },
   { id: 'track_selected', label: 'Track', statuses: ['track_selected'], stageKey: 'track_selected', nextStatus: 'seat_hold', nextLabel: 'Move to Seat Hold →' },
   { id: 'seat_hold', label: 'Seat Hold', statuses: ['seat_hold'], stageKey: 'seat_hold', nextStatus: 'converted', nextLabel: 'Mark converted →' },
@@ -94,6 +94,8 @@ function mmss(totalSeconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+const SLOT_TIME_LABEL: Record<'M' | 'A' | 'E', string> = { M: '5pm', A: '6pm', E: '7pm' }
+
 function workboardBatchWhatsAppUrl(
   lead: LeadPublic,
   dayKey: 1 | 2 | 3,
@@ -103,12 +105,13 @@ function workboardBatchWhatsAppUrl(
   const digits = whatsappDigits(lead.phone ?? '')
   if (!digits) return null
   const name = (lead.name || 'Participant').trim()
+  const timeLabel = SLOT_TIME_LABEL[slot]
   const linkBlock =
     (links?.v1 ? `📹 Video 1:\n${links.v1}\n` : '') +
     (links?.v2 ? `📹 Video 2:\n${links.v2}\n` : '')
   const msg =
     `Hi ${name},\n` +
-    `Your Day ${dayKey} ${slot} batch is starting now.\n` +
+    `Your Day ${dayKey} ${timeLabel} session is starting now.\n` +
     (linkBlock ? `\n${linkBlock}` : '\n') +
     'Please watch and confirm.'
   return `https://wa.me/${digits}?text=${encodeURIComponent(msg)}`
@@ -185,41 +188,10 @@ const LeadCard = memo(function LeadCard({
 }) {
   const { role, serverRole } = useDashboardShellRole()
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
-  // ── Proof upload ──────────────────────────────────────────────────────────────
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [uploading, setUploading] = useState(false)
-  const [uploadDone, setUploadDone] = useState(false)
-  const [uploadError, setUploadError] = useState<string | null>(null)
   const [sendError, setSendError] = useState<string | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
   const qc = useQueryClient()
   const stageOpsCard = stageKey != null
-
-  const proofApproved = lead.payment_status === 'approved'
-  const proofPending = lead.payment_status === 'proof_uploaded' || uploadDone
-  const proofRejected = lead.payment_status === 'rejected'
-  const showProofControl = !stageOpsCard && (lead.status === 'video_watched' || proofPending || proofApproved || proofRejected)
-  const mayUploadProof = lead.status === 'video_watched' || proofRejected
-
-  async function handleProofFile(file: File) {
-    setUploading(true)
-    setUploadError(null)
-    try {
-      const fd = new FormData()
-      fd.append('proof_file', file)
-      fd.append('lead_id', String(lead.id))
-      fd.append('payment_amount_cents', '150000')
-      await apiFetch('/api/v1/payments/proof/upload', { method: 'POST', body: fd })
-      setUploadDone(true)
-      void qc.invalidateQueries({ queryKey: ['workboard'] })
-      void qc.invalidateQueries({ queryKey: ['team', 'enrollment-requests'] })
-      void qc.invalidateQueries({ queryKey: ['leads'] })
-    } catch (err) {
-      setUploadError(err instanceof Error ? err.message : 'Upload failed')
-    } finally {
-      setUploading(false)
-    }
-  }
 
   async function handleSendEnrollmentVideo(option: LiveSessionSlotOption) {
     setSendError(null)
@@ -245,14 +217,10 @@ const LeadCard = memo(function LeadCard({
   const { hourAngle: slaHourAngle, minuteAngle: slaMinuteAngle, secondAngle: slaSecondAngle } =
     leadSlaClockAngles(slaOverdue ? 0 : slaMs)
   const mindsetStartable =
-    lead.status === 'paid' &&
-    !!(lead.payment_proof_url ?? '').trim() &&
-    lead.payment_status === 'approved' &&
+    lead.status === 'day1' &&
     !lead.mindset_started_at
   const mindsetReady =
     lead.status === 'mindset_lock' &&
-    !!(lead.payment_proof_url ?? '').trim() &&
-    lead.payment_status === 'approved' &&
     lead.mindset_lock_state !== 'leader_assigned'
   const startedAtMs = lead.mindset_started_at ? new Date(lead.mindset_started_at).getTime() : null
   const elapsedSeconds = startedAtMs ? Math.max(0, Math.floor((nowMs - startedAtMs) / 1000)) : 0
@@ -387,44 +355,6 @@ const LeadCard = memo(function LeadCard({
                 ) : null}
               </>
             ) : null}
-            {/* FLP invoice upload */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*,application/pdf"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0]
-                if (file) void handleProofFile(file)
-                e.target.value = ''
-              }}
-            />
-            {showProofControl ? (
-              proofApproved ? (
-                <span title="Invoice approved" className="flex h-10 w-10 items-center justify-center rounded-lg border border-emerald-400/30 bg-emerald-400/12 text-emerald-300">
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                </span>
-              ) : proofPending ? (
-                <span title="Invoice pending review" className="flex h-10 w-10 items-center justify-center rounded-lg border border-sky-400/30 bg-sky-400/12 text-sky-300">
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                </span>
-              ) : mayUploadProof ? (
-                <button
-                  type="button"
-                  title={uploading ? 'Uploading…' : uploadError ? `Retry — ${uploadError}` : 'Upload FLP invoice'}
-                  disabled={uploading}
-                  onClick={() => fileInputRef.current?.click()}
-                  className={cn(
-                    'flex h-10 w-10 items-center justify-center rounded-lg border bg-muted/30 transition disabled:opacity-50',
-                    uploadError
-                      ? 'border-red-400/40 text-red-400 hover:bg-red-400/10'
-                      : 'border-border text-foreground hover:border-amber-400/40 hover:text-amber-400',
-                  )}
-                >
-                  <Upload className="h-3.5 w-3.5" />
-                </button>
-              ) : null
-            ) : null}
             <Link to={`/dashboard/work/leads/${lead.id}`} title="Edit"
               className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-muted/30 transition hover:border-primary/40 hover:text-primary">
               <Pencil className="h-3.5 w-3.5"/>
@@ -435,8 +365,8 @@ const LeadCard = memo(function LeadCard({
           <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 px-2 py-2">
             <p className="text-ds-caption text-muted-foreground">
               {isLeaderMindsetFlow
-                ? 'Payment approved. Start the 5-minute mindset lock before Day 1.'
-                : 'Payment approved. Start the 5-minute mindset lock before leader handoff.'}
+                ? 'Start the 5-minute mindset lock before Day 2.'
+                : 'Start the 5-minute mindset lock before leader handoff.'}
             </p>
             <button
               type="button"
@@ -536,7 +466,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
 
   if (stageKey === 'day3' || stageKey === 'interview' || stageKey === 'track_selected' || stageKey === 'seat_hold') {
     const copy: Record<Exclude<WorkboardStageKey, 'day1' | 'day2'>, string> = {
-      day3: 'Day 3 closer stage. Confirm completion when this lead is ready for interview.',
+      day3: 'Pending AS stage. Confirm completion when this lead is ready for interview.',
       interview: 'Interview stage. Move ahead once the interview has been completed.',
       track_selected: 'Track selected stage. Advance once the track choice is finalized.',
       seat_hold: 'Seat hold stage. Move ahead after the seat hold is confirmed.',
@@ -628,12 +558,15 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     }
   }
 
+  const slotTimeLabels = (['5pm', '6pm', '7pm'] as const)
+
   return (
     <div className="space-y-1.5 border-t border-border/40 pt-1.5">
       <div className="flex items-center gap-2">
         <span className="text-ds-caption text-muted-foreground">Links:</span>
         {batchSlots.map((slotKey, i) => {
           const slot = (['M', 'A', 'E'] as const)[i]
+          const timeLabel = slotTimeLabels[i]
           const slotDone = lead[slotKey]
           const busy = sharingSlot === slotKey
           return (
@@ -643,13 +576,13 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
               disabled={leadPatchBusy || busy}
               onClick={() => void handleBatchShare(slot, slotKey)}
               className={cn(
-                'flex h-6 min-w-8 items-center justify-center rounded px-1.5 text-ds-caption font-semibold transition disabled:opacity-50',
+                'flex h-6 min-w-10 items-center justify-center rounded px-1.5 text-ds-caption font-semibold transition disabled:opacity-50',
                 slotDone
                   ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
                   : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
               )}
             >
-              {busy ? '...' : slot}
+              {busy ? '...' : timeLabel}
             </button>
           )
         })}
@@ -657,7 +590,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
       <div className="flex items-center gap-2">
         <span className="text-ds-caption text-muted-foreground">Check:</span>
         {batchSlots.map((slotKey, i) => {
-          const slot = (['M', 'A', 'E'] as const)[i]
+          const timeLabel = slotTimeLabels[i]
           const slotDone = lead[slotKey]
           const busy = toggleSlot === slotKey
           return (
@@ -667,13 +600,13 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
               disabled={leadPatchBusy || busy}
               onClick={() => void handleBatchToggle(slotKey)}
               className={cn(
-                'flex h-6 min-w-8 items-center justify-center rounded px-1.5 text-ds-caption font-semibold transition disabled:opacity-50',
+                'flex h-6 min-w-10 items-center justify-center rounded px-1.5 text-ds-caption font-semibold transition disabled:opacity-50',
                 slotDone
                   ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
                   : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
               )}
             >
-              {busy ? '...' : slotDone ? <CheckSquare className="h-3 w-3" /> : <span>{slot}</span>}
+              {busy ? '...' : slotDone ? <CheckSquare className="h-3 w-3" /> : <span>{timeLabel}</span>}
             </button>
           )
         })}
@@ -829,10 +762,10 @@ function MindsetQueueView({
   const needle = search.trim().toLowerCase()
   const allowLead = (lead: LeadPublic) =>
     queueRole !== 'leader' || (currentUserId != null && lead.assigned_to_user_id === currentUserId)
-  const paidLeads = (byS.paid?.items ?? []).filter(
+  const day1Leads = (byS.day1?.items ?? []).filter(
     (l) =>
       allowLead(l) &&
-      l.payment_status === 'approved' &&
+      !l.mindset_started_at &&
       (!needle || l.name.toLowerCase().includes(needle) || (l.phone ?? '').includes(needle)),
   )
   const mindsetLeads = (byS.mindset_lock?.items ?? []).filter(
@@ -840,13 +773,11 @@ function MindsetQueueView({
       allowLead(l) &&
       (!needle || l.name.toLowerCase().includes(needle) || (l.phone ?? '').includes(needle)),
   )
-  const mindsetQueue = [...paidLeads, ...mindsetLeads]
+  const mindsetQueue = [...day1Leads, ...mindsetLeads]
   useEffect(() => {
     mindsetLeads.forEach((lead) => {
       const ready =
         lead.status === 'mindset_lock' &&
-        !!(lead.payment_proof_url ?? '').trim() &&
-        lead.payment_status === 'approved' &&
         lead.mindset_lock_state !== 'leader_assigned'
       if (!ready) return
       if (Object.prototype.hasOwnProperty.call(mindsetPreviewByLeadId, lead.id)) return
@@ -871,8 +802,8 @@ function MindsetQueueView({
         onRequestMindsetSend={onRequestMindsetSend}
         empty={
           queueRole === 'leader'
-            ? 'No personal paid or mindset-lock leads yet'
-            : 'No paid or mindset-lock leads yet'
+            ? 'No personal Day 1 or mindset-lock leads yet'
+            : 'No Day 1 or mindset-lock leads yet'
         }
         nowMs={nowMs}
       />
@@ -968,7 +899,7 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance
       <Tabs tabs={tabs} active={tab} onChange={(id) => onTabChange(id as ATab)}/>
       {active?.id === 'day2' ? (
         <div className="space-y-3">
-          {/* Day 2 summary chips */}
+          {/* Day 3 summary chips */}
           <div className="flex flex-wrap gap-2">
             {[['Complete', day2.filter((l) => !!l.day2_completed_at).length, 'bg-emerald-400/15 text-emerald-300 border-emerald-400/25'],
               ['In Progress', day2.filter((l) => !l.day2_completed_at && !!l.day1_completed_at).length, 'bg-amber-400/15 text-amber-300 border-amber-400/25'],
@@ -980,7 +911,7 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance
             leads={day2}
             stageKey="day2"
             nextStatus={allowStageAdvance ? 'day3' : undefined}
-            nextLabel={allowStageAdvance ? 'Move to Day 3 →' : undefined}
+            nextLabel={allowStageAdvance ? 'Move to Pending AS →' : undefined}
             pm={pm}
             patchBusyLeadId={patchBusyLeadId}
             nowMs={nowMs}
@@ -1107,7 +1038,7 @@ export function WorkboardPage({ title }: Props) {
         delete next[leadId]
         return next
       })
-      setToastMsg('Lead moved to Day 1')
+      setToastMsg('Lead moved to Day 2')
     } catch (e) {
       setMindsetErr(e instanceof Error ? e.message : 'Could not complete mindset lock')
     } finally {
@@ -1236,19 +1167,19 @@ export function WorkboardPage({ title }: Props) {
         <div className="keyboard-safe-modal fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4">
           <div className="keyboard-safe-sheet w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-4 shadow-2xl">
             <h3 className="text-base font-semibold text-foreground">
-              {surfaceRole === 'leader' ? 'Start Day 1?' : 'Send to Leader?'}
+              {surfaceRole === ‘leader’ ? ‘Start Day 2?’ : ‘Send to Leader?’}
             </h3>
             <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-              {surfaceRole === 'leader' ? (
+              {surfaceRole === ‘leader’ ? (
                 <>
                   <li>You have completed mindset call (5–10 min)</li>
-                  <li>This action will move the lead into your Day 1 queue</li>
-                  <li>You can continue execution from the Day 1 tab</li>
+                  <li>This action will move the lead into your Day 2 queue</li>
+                  <li>You can continue execution from the Day 2 tab</li>
                 </>
               ) : (
                 <>
                   <li>You have completed mindset call (5–10 min)</li>
-                  <li>This action will move the lead to Day 1 under your leader</li>
+                  <li>This action will move the lead to Day 2 under your leader</li>
                   <li>You won’t be able to edit after this</li>
                 </>
               )}
@@ -1267,7 +1198,7 @@ export function WorkboardPage({ title }: Props) {
                     ? 'Starting…'
                     : 'Sending…'
                   : surfaceRole === 'leader'
-                    ? 'Confirm & Start Day 1'
+                    ? 'Confirm & Start Day 2'
                     : 'Confirm & Send'}
               </Button>
             </div>

@@ -1,10 +1,8 @@
 import { Link } from 'react-router-dom'
-import { useRef, useState } from 'react'
-import { CheckCircle2, ChevronRight, MessageCircle, MoreHorizontal, Phone, Upload } from 'lucide-react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import { ChevronRight, MessageCircle, MoreHorizontal, Phone } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
-import { apiFetch } from '@/lib/api'
 import { callStatusSelectOptions, type CallStatusApi } from '@/lib/call-status-options'
 import { currentSectionForLead, nextSectionForLead } from '@/lib/lead-section'
 import { formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
@@ -71,40 +69,7 @@ export function CtcsLeadCard({
 }: Props) {
   const { role, serverRole } = useDashboardShellRole()
   const selectBusy = patchBusy || actionBusy
-
-  // ── Proof upload ───────────────────────────────────────────────────────────
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [uploading, setUploading] = useState(false)
-  const [uploadDone, setUploadDone] = useState(false)
-  const [uploadError, setUploadError] = useState<string | null>(null)
-  const qc = useQueryClient()
-
-  const proofApproved = lead.payment_status === 'approved'
-  const proofPending = lead.payment_status === 'proof_uploaded' || uploadDone
-  const proofRejected = lead.payment_status === 'rejected'
-  const showProofControl = lead.status === 'video_watched' || proofPending || proofApproved || proofRejected
   const currentRole = resolveDashboardSurfaceRole(role, serverRole) ?? 'team'
-  const mayUploadProof = (currentRole === 'leader' || currentRole === 'team') && (lead.status === 'video_watched' || proofRejected)
-
-  async function handleProofFile(file: File) {
-    setUploading(true)
-    setUploadError(null)
-    try {
-      const fd = new FormData()
-      fd.append('proof_file', file)
-      fd.append('lead_id', String(lead.id))
-      fd.append('payment_amount_cents', '150000')
-      await apiFetch('/api/v1/payments/proof/upload', { method: 'POST', body: fd })
-      setUploadDone(true)
-      void qc.invalidateQueries({ queryKey: ['workboard'] })
-      void qc.invalidateQueries({ queryKey: ['team', 'enrollment-requests'] })
-      void qc.invalidateQueries({ queryKey: ['leads'] })
-    } catch (err) {
-      setUploadError(err instanceof Error ? err.message : 'Upload failed')
-    } finally {
-      setUploading(false)
-    }
-  }
 
   const ms = timerRemainingMs(lead.last_action_at ?? null, lead.created_at, nowMs)
   const overdue = ms < 0
@@ -385,50 +350,6 @@ export function CtcsLeadCard({
             >
               <MoreHorizontal className="size-3" aria-hidden />
             </button>
-            {/* FLP invoice upload */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*,application/pdf"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0]
-                if (file) void handleProofFile(file)
-                e.target.value = ''
-              }}
-            />
-            {showProofControl ? (
-              proofApproved ? (
-                <span
-                  title="Invoice approved"
-                  className="flex size-8 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-400/12 text-emerald-300"
-                >
-                  <CheckCircle2 className="size-3.5" />
-                </span>
-              ) : proofPending ? (
-                <span
-                  title="Invoice pending review"
-                  className="flex size-8 items-center justify-center rounded-full border border-sky-400/30 bg-sky-400/12 text-sky-300"
-                >
-                  <CheckCircle2 className="size-3.5" />
-                </span>
-              ) : mayUploadProof ? (
-                <button
-                  type="button"
-                  title={uploading ? 'Uploading…' : uploadError ? `Retry — ${uploadError}` : 'Upload FLP invoice'}
-                  disabled={uploading}
-                  onClick={() => fileInputRef.current?.click()}
-                  className={cn(
-                    'flex size-8 items-center justify-center rounded-full border transition disabled:opacity-50 active:scale-95',
-                    uploadError
-                      ? 'border-red-400/40 bg-muted/30 text-red-400 hover:bg-red-400/10'
-                      : 'border-border bg-muted/30 text-muted-foreground hover:border-amber-400/40 hover:text-amber-400',
-                  )}
-                >
-                  <Upload className="size-3.5" />
-                </button>
-              ) : null
-            ) : null}
           </div>
         </div>
 
