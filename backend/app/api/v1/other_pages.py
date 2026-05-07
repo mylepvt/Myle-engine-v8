@@ -410,7 +410,7 @@ async def other_daily_report(
 # Premiere — multi-session (hourly slots, prospect sees only current/next)
 # ---------------------------------------------------------------------------
 
-DEFAULT_SESSION_HOURS = [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
+DEFAULT_SESSION_HOURS = [17, 18, 19]
 
 
 class PremiereStateResponse(BaseModel):
@@ -431,18 +431,21 @@ class PremiereRegisterBody(BaseModel):
     city: str
     phone: str
     session_hour: int
+    session_day: int = 1
     state: str
 
 
 class PremiereHeartbeatBody(BaseModel):
     viewer_id: str
     session_hour: int
+    session_day: int = 1
     state: str
 
 
 class PremiereProgressBody(BaseModel):
     viewer_id: str
     session_hour: int
+    session_day: int = 1
     current_time_sec: float
     percentage_watched: float
     watch_completed: bool = False
@@ -559,6 +562,7 @@ def _compute_score(viewer: PremiereViewer) -> int:
 async def get_premiere_state(
     db: Annotated[AsyncSession, Depends(get_db)],
     slot: Optional[int] = Query(default=None, ge=0, le=23, description="Pin to a specific session hour (0-23). Used for slot-specific invite links."),
+    day: Optional[int] = Query(default=None, ge=1, le=3, description="Session day (1, 2, or 3). Used for day-specific invite links."),
 ) -> PremiereStateResponse:
     """Public — no auth. Returns current/next session state.
 
@@ -569,12 +573,14 @@ async def get_premiere_state(
     hours, wmin, dmin = await _get_session_config(db)
     now = datetime.now(IST)
 
+    session_day = day if day is not None else 1
     if slot is not None:
         # Slot-specific link: always show this hour's session window
         session_hour = slot
         today = now.date()
         waiting_start, live_start, live_end = _slot_window(today, session_hour, wmin, dmin)
-        premiere_link = f"/premiere?slot={session_hour}"
+        day_param = f"&day={session_day}" if day is not None else ""
+        premiere_link = f"/premiere?slot={session_hour}{day_param}"
     else:
         active = _find_active_slot(hours, now, wmin, dmin)
         if active is None:
@@ -611,7 +617,12 @@ async def get_premiere_state(
 
     video_url: Optional[str] = None
     if state == "live":
-        video_url = await _s("premiere_video_url") or await _s("enrollment_video_source_url") or None
+        video_url = (
+            await _s(f"premiere_day{session_day}_video_url")
+            or await _s("premiere_video_url")
+            or await _s("enrollment_video_source_url")
+            or None
+        )
 
     # Social proof viewer count (real + floor boost)
     cutoff = datetime.now(timezone.utc) - timedelta(seconds=45)
@@ -730,6 +741,7 @@ async def premiere_register(
                 PremiereViewer.viewer_id == body.viewer_id,
                 PremiereViewer.session_date == today,
                 PremiereViewer.session_hour == body.session_hour,
+                PremiereViewer.session_day == body.session_day,
             )
         )).scalar_one_or_none()
 
@@ -745,6 +757,7 @@ async def premiere_register(
                 viewer_id=body.viewer_id,
                 session_date=today,
                 session_hour=body.session_hour,
+                session_day=body.session_day,
                 name=body.name.strip()[:200],
                 city=body.city.strip()[:200],
                 phone=body.phone.strip()[:30],
@@ -785,6 +798,7 @@ async def premiere_heartbeat(
                 PremiereViewer.viewer_id == body.viewer_id,
                 PremiereViewer.session_date == today,
                 PremiereViewer.session_hour == body.session_hour,
+                PremiereViewer.session_day == body.session_day,
             )
         )).scalar_one_or_none()
         if viewer is None:
@@ -816,6 +830,7 @@ async def premiere_progress(
                 PremiereViewer.viewer_id == body.viewer_id,
                 PremiereViewer.session_date == today,
                 PremiereViewer.session_hour == body.session_hour,
+                PremiereViewer.session_day == body.session_day,
             )
         )).scalar_one_or_none()
         if viewer is None:

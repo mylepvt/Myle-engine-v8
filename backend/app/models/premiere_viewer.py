@@ -19,6 +19,7 @@ class PremiereViewer(Base):
     viewer_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     session_date: Mapped[str] = mapped_column(String(10), nullable=False, index=True)  # YYYY-MM-DD IST
     session_hour: Mapped[int] = mapped_column(Integer, nullable=False, index=True)     # 0-23
+    session_day: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"), default=1, index=True)  # 1-3
 
     name: Mapped[str] = mapped_column(String(200), nullable=False, default="")
     city: Mapped[str] = mapped_column(String(200), nullable=False, default="")

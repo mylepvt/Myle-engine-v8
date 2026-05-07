@@ -39,9 +39,9 @@ export function LiveSessionSlotPicker({ open, busy = false, onClose, onConfirm }
         className="w-full max-w-xs rounded-2xl border border-white/10 bg-[#0d1526] p-5 shadow-2xl"
       >
         <p className="text-[0.65rem] font-bold uppercase tracking-[0.22em] text-primary/70">
-          Sent Enroll Video
+          Sent Day 1 Video
         </p>
-        <h3 className="mt-0.5 text-base font-semibold text-white">Choose session slot</h3>
+        <h3 className="mt-0.5 text-base font-semibold text-white">Choose Day 1 slot</h3>
 
         <div className="mt-4">
           {scheduleQuery.isPending ? (

@@ -26,11 +26,11 @@ function baseOrigin(): string {
   return window.location.origin.replace(/\/$/, '')
 }
 
-export function buildLiveSessionSlotLink(hour: number): string {
-  return `${baseOrigin()}/premiere?slot=${hour}`
+export function buildLiveSessionSlotLink(hour: number, day = 1): string {
+  return `${baseOrigin()}/premiere?day=${day}&slot=${hour}`
 }
 
-export async function fetchUpcomingLiveSessionSlots(): Promise<LiveSessionSlotOption[]> {
+export async function fetchUpcomingLiveSessionSlots(day = 1): Promise<LiveSessionSlotOption[]> {
   const res = await apiFetch('/api/v1/other/premiere/schedule')
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const data = (await res.json()) as ScheduleResponse
@@ -40,7 +40,7 @@ export async function fetchUpcomingLiveSessionSlots(): Promise<LiveSessionSlotOp
     .map((slot) => ({
       hour: slot.hour,
       label: slot.label,
-      link: buildLiveSessionSlotLink(slot.hour),
+      link: buildLiveSessionSlotLink(slot.hour, day),
       liveStartsAt: slot.live_starts_at,
       liveEndsAt: slot.live_ends_at,
       state: slot.state,
@@ -62,7 +62,7 @@ export function buildLiveSessionWhatsAppUrl(
   const message = [
     `Hi ${name},`,
     '',
-    `Your Myle live session is scheduled for ${start}.`,
+    `Your Myle Day 1 live session is scheduled for ${start}.`,
     `Please join from this link at your session time:`,
     option.link,
   ].join('\n')

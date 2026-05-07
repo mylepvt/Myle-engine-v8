@@ -33,24 +33,36 @@ const BATCH_SETTING_KEYS = [
 
 const PREMIERE_SETTING_FIELDS: readonly SettingsTextField[] = [
   {
-    key: 'premiere_video_url',
-    label: 'Premiere video URL',
-    placeholder: 'https://cdn.example.com/premiere.mp4',
-    help: 'Direct hosted MP4 / HLS URL. Viewers on /premiere watch this during live session. No YouTube.',
+    key: 'premiere_day1_video_url',
+    label: 'Day 1 video URL (Power of Digital India)',
+    placeholder: 'https://cdn.example.com/day1.mp4',
+    help: 'Cloudflare R2 / HLS URL for Day 1 premiere session. Plays at 5pm, 6pm, 7pm.',
+  },
+  {
+    key: 'premiere_day2_video_url',
+    label: 'Day 2 video URL (Secret Industry Reveal)',
+    placeholder: 'https://cdn.example.com/day2.mp4',
+    help: 'Cloudflare R2 / HLS URL for Day 2 premiere session. Plays at 5pm, 6pm, 7pm.',
+  },
+  {
+    key: 'premiere_day3_video_url',
+    label: 'Day 3 video URL (Final Day)',
+    placeholder: 'https://cdn.example.com/day3.mp4',
+    help: 'Cloudflare R2 / HLS URL for Day 3 premiere session. Plays at 5pm, 6pm, 7pm.',
   },
   {
     key: 'premiere_session_hours',
     label: 'Session hours (IST)',
-    placeholder: '11,14,18,21',
+    placeholder: '17,18,19',
     inputMode: 'text',
-    help: 'Comma-separated 24h hours when premiere goes live (e.g. 11,14,18,21). Default: 11 AM – 9 PM every hour.',
+    help: 'Comma-separated 24h hours when premiere goes live. Default: 5 PM, 6 PM, 7 PM (17,18,19).',
   },
   {
     key: 'premiere_waiting_minutes',
     label: 'Waiting room opens (minutes before live)',
     placeholder: '30',
     inputMode: 'numeric',
-    help: 'How many minutes before each session the waiting room opens. Default: 30. Set 20-30 to match when you share the link.',
+    help: 'How many minutes before each session the waiting room opens. Default: 30.',
   },
   {
     key: 'premiere_duration_minutes',
@@ -151,13 +163,13 @@ function batchSettingLabel(key: string): string {
   return key
     .replace('batch_', '')
     .replaceAll('_', ' ')
-    .replace(/\bd1\b/i, 'Day 1')
-    .replace(/\bd2\b/i, 'Day 2')
+    .replace(/\bd1\b/i, 'Day 2')
+    .replace(/\bd2\b/i, 'Day 3')
     .replace(/\bv1\b/i, 'V1')
     .replace(/\bv2\b/i, 'V2')
-    .replace(/\bmorning\b/i, 'Morning')
-    .replace(/\bafternoon\b/i, 'Afternoon')
-    .replace(/\bevening\b/i, 'Evening')
+    .replace(/\bmorning\b/i, '5pm')
+    .replace(/\bafternoon\b/i, '6pm')
+    .replace(/\bevening\b/i, '7pm')
 }
 
 export function SettingsAppPage({ title }: Props) {
