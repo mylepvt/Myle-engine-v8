@@ -1167,10 +1167,10 @@ export function WorkboardPage({ title }: Props) {
         <div className="keyboard-safe-modal fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4">
           <div className="keyboard-safe-sheet w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-4 shadow-2xl">
             <h3 className="text-base font-semibold text-foreground">
-              {surfaceRole === ‘leader’ ? ‘Start Day 2?’ : ‘Send to Leader?’}
+              {surfaceRole === 'leader' ? 'Start Day 2?' : 'Send to Leader?'}
             </h3>
             <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-              {surfaceRole === ‘leader’ ? (
+              {surfaceRole === 'leader' ? (
                 <>
                   <li>You have completed mindset call (5–10 min)</li>
                   <li>This action will move the lead into your Day 2 queue</li>
@@ -1180,7 +1180,7 @@ export function WorkboardPage({ title }: Props) {
                 <>
                   <li>You have completed mindset call (5–10 min)</li>
                   <li>This action will move the lead to Day 2 under your leader</li>
-                  <li>You won’t be able to edit after this</li>
+                  <li>You won't be able to edit after this</li>
                 </>
               )}
             </ul>
