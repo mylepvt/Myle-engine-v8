@@ -457,6 +457,8 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
   const [sharingSlot, setSharingSlot] = useState<BatchSlotKey | null>(null)
   const [toggleSlot, setToggleSlot] = useState<BatchSlotKey | null>(null)
   const [batchError, setBatchError] = useState<string | null>(null)
+  const [eveningPickerOpen, setEveningPickerOpen] = useState(false)
+  const [eveningPickerBusy, setEveningPickerBusy] = useState(false)
 
   if (stageKey === 'day3' || stageKey === 'interview' || stageKey === 'track_selected' || stageKey === 'seat_hold') {
     const copy: Record<Exclude<WorkboardStageKey, 'day1' | 'day2'>, string> = {
@@ -552,6 +554,29 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     }
   }
 
+  // Day 2 tab → premier day 2 slots; Day 3 tab → premier day 3 slots
+  const eveningSlotDay = stageKey === 'day1' ? 2 : 3
+  const eveningSlotKey: BatchSlotKey = stageKey === 'day1' ? 'd1_evening' : 'd2_evening'
+
+  const handleEveningSlotConfirm = async (option: LiveSessionSlotOption) => {
+    setEveningPickerBusy(true)
+    setBatchError(null)
+    try {
+      const shareUrl = buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option, eveningSlotDay)
+      if (!shareUrl || !openExternalShareUrl(shareUrl)) {
+        setBatchError('WhatsApp link nahi bana. Lead ka phone number check karo.')
+        return
+      }
+      await pm.mutateAsync({ id: lead.id, body: { [eveningSlotKey]: true } })
+      await qc.refetchQueries({ queryKey: ['workboard'] })
+      setEveningPickerOpen(false)
+    } catch (err) {
+      setBatchError(err instanceof Error ? err.message : 'Could not send evening slot')
+    } finally {
+      setEveningPickerBusy(false)
+    }
+  }
+
   const slotTimeLabels = (['5pm', '6pm', '7pm'] as const)
 
   return (
@@ -562,18 +587,21 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
           const slot = (['M', 'A', 'E'] as const)[i]
           const timeLabel = slotTimeLabels[i]
           const slotDone = lead[slotKey]
+          const isEvening = i === 2
           const busy = sharingSlot === slotKey
           return (
             <button
               key={`share-${slotKey}`}
               type="button"
-              disabled={leadPatchBusy || busy}
-              onClick={() => void handleBatchShare(slot, slotKey)}
+              disabled={leadPatchBusy || busy || (isEvening && eveningPickerBusy)}
+              onClick={() => isEvening ? setEveningPickerOpen(true) : void handleBatchShare(slot, slotKey)}
               className={cn(
                 'flex h-6 min-w-10 items-center justify-center rounded px-1.5 text-ds-caption font-semibold transition disabled:opacity-50',
                 slotDone
                   ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
-                  : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
+                  : isEvening
+                    ? 'border border-indigo-400/40 bg-indigo-400/10 text-indigo-300 hover:bg-indigo-400/20'
+                    : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
               )}
             >
               {busy ? '...' : timeLabel}
@@ -619,6 +647,13 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
           {nextLabel ?? 'Move to next stage →'}
         </button>
       )}
+      <LiveSessionSlotPicker
+        open={eveningPickerOpen}
+        busy={eveningPickerBusy}
+        day={eveningSlotDay}
+        onClose={() => setEveningPickerOpen(false)}
+        onConfirm={(option) => void handleEveningSlotConfirm(option)}
+      />
     </div>
   )
 }
