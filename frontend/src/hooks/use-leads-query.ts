@@ -39,7 +39,7 @@ export const LEAD_STATUS_OPTIONS: { value: LeadStatus; label: string }[] = [
   { value: 'contacted',      label: 'Contacted' },
   { value: 'invited',        label: 'Invited' },
   { value: 'whatsapp_sent',  label: 'WhatsApp Sent' },
-  { value: 'video_sent',     label: 'Sent Enroll Video' },
+  { value: 'video_sent',     label: 'Sent Day 1 Video' },
   { value: 'video_watched',  label: 'Video Watched' },
   { value: 'paid',           label: 'Paid Enroll' },
   { value: 'mindset_lock',   label: 'Mindset Lock' },
