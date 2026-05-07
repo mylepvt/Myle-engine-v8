@@ -47,14 +47,7 @@ from app.services.whatsapp_ctcs import send_interested_enrollment_assets
 from app.services.execution_enforcement import run_completed_watch_pipeline_maintenance
 from app.validators.leads_validator import lead_list_conditions, parse_status_query, validate_list_flags
 
-# Only the Min. FLP Billing entry point requires approved payment proof.
-# Once a lead has entered the post-paid flow, mindset/day/close stages must not
-# re-check the proof gate.
-_PAYMENT_REQUIRED_STATUSES: frozenset[str] = frozenset(
-    {
-        "paid",
-    }
-)
+_PAYMENT_REQUIRED_STATUSES: frozenset[str] = frozenset()
 
 _POOL_CLAIM_ROLES: frozenset[str] = frozenset({"team", "leader", "admin"})
 _POOL_SINGLE_CLAIM_ROLES: frozenset[str] = frozenset({"admin"})
@@ -120,7 +113,6 @@ def _ctcs_filter_clause(ctcs_filter: Optional[str]) -> Any:
             (
                 "converted",
                 "seat_hold",
-                "paid",
                 "mindset_lock",
                 "day1",
                 "day2",
@@ -162,13 +154,7 @@ def _apply_status_side_effects(
         # Legacy parity: terminal retarget/lost moves clear pending follow-up timers.
         lead.next_followup_at = None
 
-    if new_status == "paid":
-        lead.mindset_lock_state = None
-        lead.mindset_started_at = None
-        lead.mindset_completed_at = None
-        lead.mindset_completed_by_user_id = None
-        lead.mindset_leader_user_id = None
-    elif new_status == "mindset_lock":
+    if new_status == "mindset_lock":
         lead.mindset_lock_state = "mindset_lock"
         lead.mindset_started_at = now
         lead.mindset_completed_at = None
@@ -280,7 +266,7 @@ class LeadsService:
             condition = and_(condition, extra) if condition is not None else extra
         if pre_enrollment_only:
             pre_enroll = Lead.status.in_(
-                ["new_lead", "contacted", "invited", "whatsapp_sent", "video_sent", "video_watched"]
+                ["new_lead", "contacted", "invited", "whatsapp_sent", "video_sent"]
             )
             condition = and_(condition, pre_enroll) if condition is not None else pre_enroll
         total = await self._repository.count_leads(condition)
@@ -776,13 +762,6 @@ class LeadsService:
             )
             if not ok:
                 raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
-            # Only entering Min. FLP Billing is payment-gated; post-paid stages stay unlocked.
-            if body.status in _PAYMENT_REQUIRED_STATUSES and user.role != "admin":
-                if lead.payment_status != "approved":
-                    raise HTTPException(
-                        status_code=http_status.HTTP_400_BAD_REQUEST,
-                        detail="Payment proof must be approved before moving to this status.",
-                    )
             prev_status = lead.status
             lead.status = body.status
             bump_heat_on_entering_contacted(lead, prev_status)
@@ -1126,22 +1105,6 @@ class LeadsService:
             lead.heat_score = 0
             lead.archived_at = now
             lead.in_pool = False
-        elif action == "paid":
-            # Only admin/leader can mark payment as paid via CTCS action.
-            if user.role == "team":
-                raise HTTPException(
-                    status_code=http_status.HTTP_403_FORBIDDEN,
-                    detail="Team members cannot mark payment as paid. Upload payment proof for admin approval.",
-                )
-            # Require actual approved proof before advancing to post-payment status.
-            if lead.payment_status != "approved":
-                raise HTTPException(
-                    status_code=http_status.HTTP_400_BAD_REQUEST,
-                    detail="Payment proof must be approved before using the 'paid' action.",
-                )
-            advance_lead_status_toward(lead=lead, target_slug="paid", role=user.role)
-            lead.heat_score = clamp_ctcs_heat(int(lead.heat_score or 0) + settings.ctcs_heat_paid_bonus)
-
         if lead.status != prev_status:
             _apply_status_side_effects(
                 lead,

@@ -121,7 +121,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
         id,
         action,
         followupAt: opts?.followupAt,
-        paidStatus: 'paid',
+        paidStatus: 'day1',
       })
       const ref = await leadsQ.refetch()
       const fresh = ref.data?.pages.flatMap((p) => p.items) ?? []

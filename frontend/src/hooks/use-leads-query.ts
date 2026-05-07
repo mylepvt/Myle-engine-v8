@@ -15,8 +15,6 @@ export type LeadStatus =
   | 'invited'
   | 'whatsapp_sent'
   | 'video_sent'
-  | 'video_watched'
-  | 'paid'
   | 'mindset_lock'
   | 'day1'
   | 'day2'
@@ -40,8 +38,6 @@ export const LEAD_STATUS_OPTIONS: { value: LeadStatus; label: string }[] = [
   { value: 'invited',        label: 'Invited' },
   { value: 'whatsapp_sent',  label: 'WhatsApp Sent' },
   { value: 'video_sent',     label: 'Sent Day 1 Video' },
-  { value: 'video_watched',  label: 'Video Watched' },
-  { value: 'paid',           label: 'Paid Enroll' },
   { value: 'mindset_lock',   label: 'Mindset Lock' },
   { value: 'day1',           label: 'Day 1' },
   { value: 'day2',           label: 'Day 2' },
@@ -65,8 +61,6 @@ export const PRIMARY_USER_FLOW_STATUSES: LeadStatus[] = [
   'invited',
   'whatsapp_sent',
   'video_sent',
-  'video_watched',
-  'paid',
   'mindset_lock',
   'day1',
   'day2',
@@ -188,7 +182,7 @@ export type LeadsListMode = 'active' | 'archived' | 'recycle'
 
 export type CtcsTab = 'all' | 'today' | 'followups' | 'hot' | 'converted'
 
-export type CtcsAction = 'not_picked' | 'interested' | 'call_later' | 'not_interested' | 'paid'
+export type CtcsAction = 'not_picked' | 'interested' | 'call_later' | 'not_interested'
 
 export type CtcsListOptions = {
   ctcsFilter?: CtcsTab | null
@@ -612,7 +606,7 @@ export type LeadCtcsActionMutationVars = {
   id: number
   action: CtcsAction
   followupAt?: string | null
-  paidStatus?: 'paid' | 'day1'
+  paidStatus?: 'day1'
 }
 
 export function useLeadCtcsActionMutation() {

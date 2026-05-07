@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { CheckSquare, Eye, Pencil, Search, Send, Video } from 'lucide-react'
+import { CheckSquare, Pencil, Search, Send, Video } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
@@ -46,8 +46,6 @@ const BADGE: Record<string, string> = {
   invited:        'bg-violet-400/15 text-violet-300 border-violet-400/25',
   whatsapp_sent:  'bg-pink-400/15 text-pink-300 border-pink-400/25',
   video_sent:     'bg-indigo-400/15 text-indigo-300 border-indigo-400/25',
-  video_watched:  'bg-blue-400/15 text-blue-300 border-blue-400/25',
-  paid:           'bg-amber-400/15 text-amber-300 border-amber-400/25',
   mindset_lock:   'bg-fuchsia-400/15 text-fuchsia-300 border-fuchsia-400/25',
   day1:           'bg-orange-400/15 text-orange-300 border-orange-400/25',
   day2:           'bg-yellow-400/15 text-yellow-300 border-yellow-400/25',
@@ -211,8 +209,7 @@ const LeadCard = memo(function LeadCard({
   }
 
   const badge = BADGE[lead.status] ?? 'bg-muted/30 text-muted-foreground border-white/10'
-  const isWatched = lead.status === 'video_watched' || lead.call_status === 'video_watched'
-  const isSent    = !isWatched && (lead.status === 'video_sent' || lead.call_status === 'video_sent')
+  const isSent = lead.status === 'video_sent' || lead.call_status === 'video_sent'
   const slaMs = timerRemainingMs(lead.last_action_at ?? null, lead.created_at, nowMs)
   const slaOverdue = slaMs < 0
   const slaRemainingSec = Math.max(0, Math.floor(slaMs / 1000))
@@ -270,12 +267,6 @@ const LeadCard = memo(function LeadCard({
           </div>
           <span className={cn('self-start rounded-full border px-2 py-0.5 text-ds-caption font-semibold', badge)}>{STATUS_TAB_LABEL[lead.status as LeadStatus] ?? slabel(lead.status)}</span>
         </div>
-        {!stageOpsCard && isWatched ? (
-          <div className="flex items-center gap-1.5 rounded-md bg-blue-400/10 px-2 py-1 text-ds-caption font-medium text-blue-300">
-            <Eye className="size-3.5 shrink-0" aria-hidden />
-            <span>Prospect watched the video — call now!</span>
-          </div>
-        ) : null}
         {!stageOpsCard && isSent ? (
           <div className="flex items-center gap-1.5 rounded-md bg-indigo-400/10 px-2 py-1 text-ds-caption font-medium text-indigo-300">
             <Send className="size-3.5 shrink-0" aria-hidden />
