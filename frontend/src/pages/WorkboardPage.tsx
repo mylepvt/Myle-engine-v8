@@ -72,14 +72,19 @@ const ADMIN_STAGE_TABS: {
   nextStatus?: LeadStatus
   nextLabel?: string
 }[] = [
-  { id: 'day1', label: 'Day 2', statuses: ['day1'], stageKey: 'day1', nextStatus: 'day2', nextLabel: 'Move to Day 3 →' },
-  { id: 'day2', label: 'Day 3', statuses: ['day2'], stageKey: 'day2', nextStatus: 'day3', nextLabel: 'Move to Pending AS →' },
-  { id: 'day3', label: 'Pending AS', statuses: ['day3'], stageKey: 'day3', nextStatus: 'interview', nextLabel: 'Move to Interview →' },
-  { id: 'interview', label: 'Interview', statuses: ['interview'], stageKey: 'interview', nextStatus: 'track_selected', nextLabel: 'Move to Track Selected →' },
-  { id: 'track_selected', label: 'Track', statuses: ['track_selected'], stageKey: 'track_selected', nextStatus: 'seat_hold', nextLabel: 'Move to Seat Hold →' },
-  { id: 'seat_hold', label: 'Seat Hold', statuses: ['seat_hold'], stageKey: 'seat_hold', nextStatus: 'converted', nextLabel: 'Mark converted →' },
-  { id: 'closing', label: 'Closing', statuses: CLOSE },
+  { id: 'day1',          label: 'Day 2',   statuses: ['day1'],                        stageKey: 'day1',          nextStatus: 'day2',      nextLabel: 'Move to Day 3 →' },
+  { id: 'day2',          label: 'Day 3',   statuses: ['day2'],                        stageKey: 'day2',          nextStatus: 'day3',      nextLabel: 'Move to Day 4 →' },
+  { id: 'day3',          label: 'Day 4',   statuses: ['day3'],                        stageKey: 'day3',          nextStatus: 'interview', nextLabel: 'Move to Day 5 →' },
+  { id: 'interview',     label: 'Day 5',   statuses: ['interview'],                   stageKey: 'interview',     nextStatus: 'track_selected', nextLabel: 'Move to Day 6 →' },
+  { id: 'track_selected',label: 'Day 6',   statuses: ['track_selected', 'seat_hold'], stageKey: 'track_selected',nextStatus: 'converted', nextLabel: 'Mark Converted →' },
+  { id: 'closing',       label: 'Closing', statuses: CLOSE },
 ]
+
+const STATUS_TAB_LABEL: Partial<Record<LeadStatus, string>> = {
+  day1: 'Day 2', day2: 'Day 3', day3: 'Day 4',
+  interview: 'Day 5', track_selected: 'Day 6', seat_hold: 'Day 6',
+  converted: 'Closing', lost: 'Closing',
+}
 type ATab = WorkboardStageKey | 'closing'
 
 function parseAdminTab(value: string | null): ATab {
@@ -146,8 +151,6 @@ function Tabs({ tabs, active, onChange }: {
           className={cn('shrink-0 -mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition',
             active === t.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground')}>
           {t.label}
-          {t.count !== undefined &&
-            <span className="ml-1.5 rounded-full bg-white/10 px-1.5 py-0.5 text-ds-caption tabular-nums">{t.count}</span>}
         </button>
       ))}
     </div>
@@ -235,11 +238,11 @@ const LeadCard = memo(function LeadCard({
   const targetName = isLeaderMindsetFlow && previewName === 'Leader will be assigned on send' ? 'You' : previewName
   const mindsetFlowCopy = unlocked
     ? isLeaderMindsetFlow
-      ? '5-minute call complete. Start Day 1 now.'
-      : '5-minute call complete. Send now to move this lead into Day 1.'
+      ? '5-minute call complete. Start Day 2 now.'
+      : '5-minute call complete. Send now to move this lead into Day 2.'
     : isLeaderMindsetFlow
-      ? 'Complete the full 5-minute call to unlock Day 1 start.'
-      : 'Complete the full 5-minute call to unlock Day 1 handoff.'
+      ? 'Complete the full 5-minute call to unlock Day 2 start.'
+      : 'Complete the full 5-minute call to unlock Day 2 handoff.'
   const callOptions = callStatusSelectOptions(surfaceRole ?? null, lead.status as LeadStatus)
   const rawCallStatus = (lead.call_status ?? '').trim()
   const callValue = callOptions.some((option) => option.value === rawCallStatus)
@@ -265,7 +268,7 @@ const LeadCard = memo(function LeadCard({
             <p className="break-words text-sm font-semibold leading-tight text-foreground sm:text-base">{lead.name}</p>
             {lead.city && <p className="mt-0.5 break-words text-ds-caption text-muted-foreground">{lead.city}</p>}
           </div>
-          <span className={cn('self-start rounded-full border px-2 py-0.5 text-ds-caption font-semibold', badge)}>{slabel(lead.status)}</span>
+          <span className={cn('self-start rounded-full border px-2 py-0.5 text-ds-caption font-semibold', badge)}>{STATUS_TAB_LABEL[lead.status as LeadStatus] ?? slabel(lead.status)}</span>
         </div>
         {!stageOpsCard && isWatched ? (
           <div className="flex items-center gap-1.5 rounded-md bg-blue-400/10 px-2 py-1 text-ds-caption font-medium text-blue-300">
@@ -388,7 +391,7 @@ const LeadCard = memo(function LeadCard({
               {mindsetFlowCopy}
             </p>
             <p className="text-ds-caption text-muted-foreground">
-              {isLeaderMindsetFlow ? 'Day 1 owner' : 'Day 1 handoff'}:{' '}
+              {isLeaderMindsetFlow ? 'Day 2 owner' : 'Day 2 handoff'}:{' '}
               <span className="font-semibold text-foreground">{targetName}</span>
             </p>
             <button
@@ -396,11 +399,11 @@ const LeadCard = memo(function LeadCard({
               title={
                 !canSend
                   ? isLeaderMindsetFlow
-                    ? 'Complete at least 5 minutes call before starting Day 1'
+                    ? 'Complete at least 5 minutes call before starting Day 2'
                     : 'Complete at least 5 minutes call before sending'
                   : isLeaderMindsetFlow
-                    ? 'Start Day 1 now'
-                    : 'Send to leader and move to Day 1'
+                    ? 'Start Day 2 now'
+                    : 'Send to leader and move to Day 2'
               }
               disabled={!canSend || mindsetBusy}
               onClick={() => onRequestMindsetSend?.(lead)}
@@ -418,7 +421,7 @@ const LeadCard = memo(function LeadCard({
                     ? 'Starting...'
                     : 'Sending...'
                   : isLeaderMindsetFlow
-                    ? 'Lock & Start Day 1'
+                    ? 'Lock & Start Day 2'
                     : 'Lock & Send to Leader'}
               </span>
             </button>
@@ -466,10 +469,10 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
 
   if (stageKey === 'day3' || stageKey === 'interview' || stageKey === 'track_selected' || stageKey === 'seat_hold') {
     const copy: Record<Exclude<WorkboardStageKey, 'day1' | 'day2'>, string> = {
-      day3: 'Pending AS stage. Confirm completion when this lead is ready for interview.',
-      interview: 'Interview stage. Move ahead once the interview has been completed.',
-      track_selected: 'Track selected stage. Advance once the track choice is finalized.',
-      seat_hold: 'Seat hold stage. Move ahead after the seat hold is confirmed.',
+      day3: 'Day 4 stage. Confirm completion when this lead is ready to move ahead.',
+      interview: 'Day 5 stage. Move ahead once the session has been completed.',
+      track_selected: 'Day 6 stage. Advance once this stage is finalized.',
+      seat_hold: 'Day 6 stage. Move ahead after this stage is confirmed.',
     }
     return (
       <div className="space-y-1.5 border-t border-border/40 pt-1.5">
@@ -802,8 +805,8 @@ function MindsetQueueView({
         onRequestMindsetSend={onRequestMindsetSend}
         empty={
           queueRole === 'leader'
-            ? 'No personal Day 1 or mindset-lock leads yet'
-            : 'No Day 1 or mindset-lock leads yet'
+            ? 'No personal Day 2 or mindset-lock leads yet'
+            : 'No Day 2 or mindset-lock leads yet'
         }
         nowMs={nowMs}
       />
@@ -911,7 +914,7 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance
             leads={day2}
             stageKey="day2"
             nextStatus={allowStageAdvance ? 'day3' : undefined}
-            nextLabel={allowStageAdvance ? 'Move to Pending AS →' : undefined}
+            nextLabel={allowStageAdvance ? 'Move to Day 4 →' : undefined}
             pm={pm}
             patchBusyLeadId={patchBusyLeadId}
             nowMs={nowMs}
