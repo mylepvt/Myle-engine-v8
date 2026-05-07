@@ -51,6 +51,7 @@ export function buildLiveSessionWhatsAppUrl(
   phone: string | null | undefined,
   leadName: string | null | undefined,
   option: LiveSessionSlotOption,
+  day = 1,
 ): string | null {
   const name = (leadName || 'there').trim() || 'there'
   const start = new Date(option.liveStartsAt).toLocaleTimeString('en-IN', {
@@ -62,7 +63,7 @@ export function buildLiveSessionWhatsAppUrl(
   const message = [
     `Hi ${name},`,
     '',
-    `Your Myle Day 1 live session is scheduled for ${start}.`,
+    `Your Myle Day ${day} live session is scheduled for ${start}.`,
     `Please join from this link at your session time:`,
     option.link,
   ].join('\n')

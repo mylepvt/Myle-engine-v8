@@ -53,6 +53,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   const [tab, setTab] = useState<CtcsTab>('all')
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [slotPickerLeadId, setSlotPickerLeadId] = useState<number | null>(null)
+  const [slotPickerTargetStatus, setSlotPickerTargetStatus] = useState<LeadStatus>('video_sent')
   const searchMode =
     filters.q.trim().length > 0 && (surfaceRole === 'admin' || surfaceRole === 'leader')
   const ctcsOpts = useMemo(
@@ -93,14 +94,15 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
     [items, outcomeLeadId],
   )
 
-  const onSendEnrollment = useCallback((id: number) => {
+  const onSendEnrollment = useCallback((id: number, targetStatus: LeadStatus = 'video_sent') => {
+    setSlotPickerTargetStatus(targetStatus)
     setSlotPickerLeadId(id)
   }, [])
 
   const onPatchStatus = useCallback(
     (id: number, status: LeadStatus) => {
-      if (status === 'video_sent') {
-        onSendEnrollment(id)
+      if (status === 'video_sent' || status === 'day1') {
+        onSendEnrollment(id, status)
         return
       }
       void patchMut.mutateAsync({ id, body: { status } })
@@ -160,8 +162,9 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
     const lead = items.find((item) => item.id === slotPickerLeadId)
     if (!lead) return
     try {
-      await patchMut.mutateAsync({ id: lead.id, body: { status: 'video_sent' } })
-      const shareUrl = buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option)
+      await patchMut.mutateAsync({ id: lead.id, body: { status: slotPickerTargetStatus } })
+      const day = slotPickerTargetStatus === 'day2' ? 2 : slotPickerTargetStatus === 'day3' ? 3 : 1
+      const shareUrl = buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option, day)
       if (!shareUrl || !openExternalShareUrl(shareUrl)) {
         window.alert('WhatsApp link nahi bana. Lead ka phone number check karo.')
         return
@@ -267,6 +270,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
       <LiveSessionSlotPicker
         open={slotPickerLeadId != null}
         busy={patchMut.isPending}
+        day={slotPickerTargetStatus === 'day2' ? 2 : slotPickerTargetStatus === 'day3' ? 3 : 1}
         onClose={() => setSlotPickerLeadId(null)}
         onConfirm={(option) => {
           void handleSendSelectedSession(option)
