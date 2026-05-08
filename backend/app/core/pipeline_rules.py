@@ -209,6 +209,17 @@ def is_valid_forward_status_transition(
         return True
     if admin_may_skip_fsm:
         return True
+    if tgt == "Min. FLP Billing":
+        # Only team/leader can set paid from Video Watched; leader cannot jump past paid.
+        if for_team:
+            return cur in ("Video Watched", "Min. FLP Billing")
+        return cur in ("Video Watched", "Min. FLP Billing")
+    if tgt == "Day 1":
+        return cur in ("Min. FLP Billing", "Mindset Lock", "Day 1")
+    if tgt == "Mindset Lock":
+        return cur in ("Min. FLP Billing", "Day 1", "Mindset Lock")
+    if tgt == "Day 2" and cur == "Mindset Lock":
+        return True
     mindset_i = flow_idx.get("Mindset Lock", 999)
     # Pre-Mindset Lock: both team and leader may skip steps freely.
     if flow_idx[tgt] <= mindset_i:

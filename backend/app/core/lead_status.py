@@ -12,6 +12,8 @@ LEAD_STATUS_SEQUENCE: tuple[str, ...] = (
     "invited",            # Invited to watch enrollment video
     "whatsapp_sent",      # WhatsApp message sent before video share
     "video_sent",         # Day 1 video link shared
+    "video_watched",      # Prospect watched the video
+    "paid",               # Min. FLP Billing paid & approved
     "mindset_lock",       # 5-minute mindset lock before leader handoff
     "day1",               # Attending Day 1 session
     "day2",               # Attending Day 2 session
@@ -56,6 +58,8 @@ LEAD_STATUS_LABELS: dict[str, str] = {
     "invited":        "Invited",
     "whatsapp_sent":  "WhatsApp Sent",
     "video_sent":     "Video Sent",
+    "video_watched":  "Video Watched",
+    "paid":           "Min. FLP Billing",
     "mindset_lock":   "Mindset Lock",
     "day1":           "Day 1",
     "day2":           "Day 2",
@@ -81,6 +85,8 @@ WORKBOARD_COLUMNS: tuple[str, ...] = (
     "invited",
     "whatsapp_sent",
     "video_sent",
+    "video_watched",
+    "paid",
     "mindset_lock",
     "day1",
     "day2",
@@ -88,6 +94,9 @@ WORKBOARD_COLUMNS: tuple[str, ...] = (
     "interview",
     "track_selected",
     "seat_hold",
+    "plan_2cc",
+    "pending",
+    "level_up",
     "converted",
     "lost",
 )

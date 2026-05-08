@@ -84,6 +84,7 @@ class LeadPublic(BaseModel):
     d2_morning: bool = False
     d2_afternoon: bool = False
     d2_evening: bool = False
+    process_tracking: Optional[dict[str, dict[str, bool]]] = None
     no_response_attempt_count: int = 0
 
     # CTCS fields (nullable for legacy rows until touched)
@@ -228,6 +229,9 @@ class LeadUpdate(BaseModel):
     d2_morning: Optional[bool] = Field(default=None, description="Day 2 morning batch")
     d2_afternoon: Optional[bool] = Field(default=None, description="Day 2 afternoon batch")
     d2_evening: Optional[bool] = Field(default=None, description="Day 2 evening batch")
+    process_stage: Optional[str] = Field(default=None, max_length=64)
+    process_task: Optional[str] = Field(default=None, max_length=128)
+    process_task_done: Optional[bool] = Field(default=None)
     no_response_attempt_count: Optional[int] = Field(default=None, ge=0, description="Optional counter")
     next_followup_at: Optional[datetime] = Field(
         default=None,
@@ -261,6 +265,9 @@ class LeadUpdate(BaseModel):
             self.d2_morning,
             self.d2_afternoon,
             self.d2_evening,
+            self.process_stage,
+            self.process_task,
+            self.process_task_done,
             self.no_response_attempt_count,
             self.next_followup_at,
         ]
@@ -268,6 +275,13 @@ class LeadUpdate(BaseModel):
             raise ValueError("At least one field must be provided for update")
         if self.restored is False:
             raise ValueError("restored must be true or omitted")
+        return self
+
+    @model_validator(mode="after")
+    def process_task_fields_coherent(self) -> LeadUpdate:
+        trio = (self.process_stage, self.process_task, self.process_task_done)
+        if any(v is not None for v in trio) and not all(v is not None for v in trio):
+            raise ValueError("process_stage, process_task, and process_task_done must be provided together")
         return self
 
     @field_validator("status")

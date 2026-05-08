@@ -51,6 +51,8 @@ const BASE_ORDER: CallStatusApi[] = [
 
 const VIDEO_SENT_STAGES = new Set<LeadStatus>([
   'video_sent',
+  'video_watched',
+  'paid',
   'mindset_lock',
   'day1',
   'day2',
@@ -58,9 +60,29 @@ const VIDEO_SENT_STAGES = new Set<LeadStatus>([
   'interview',
   'track_selected',
   'seat_hold',
+  'plan_2cc',
+  'pending',
+  'level_up',
   'converted',
 ])
 
+const VIDEO_WATCHED_STAGES = new Set<LeadStatus>([
+  'video_watched',
+  'paid',
+  'mindset_lock',
+  'day1',
+  'day2',
+  'day3',
+  'interview',
+  'track_selected',
+  'seat_hold',
+  'plan_2cc',
+  'pending',
+  'level_up',
+  'converted',
+])
+
+const PAYMENT_DONE_STAGES = new Set<LeadStatus>([])
 export function callStatusSelectOptions(
   role: Role | null,
   currentStatus?: LeadStatus | string | null,

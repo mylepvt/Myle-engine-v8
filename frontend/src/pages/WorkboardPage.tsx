@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { CheckSquare, Pencil, Search, Send, Video } from 'lucide-react'
+import { CheckSquare, Eye, Pencil, Search, Send, Video } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
@@ -30,6 +30,7 @@ import {
   reserveExternalShareWindow,
 } from '@/lib/external-share-window'
 import { getMindsetLockSendState } from '@/lib/mindset-lock'
+import { checklistForStage } from '@/lib/lead-process-map'
 import { LEAD_SLA_SMOOTH_REFRESH_MS, formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
 import { buildLiveSessionWhatsAppUrl, type LiveSessionSlotOption } from '@/lib/live-session-slots'
 import { whatsappDigits } from '@/lib/phone-links'
@@ -46,6 +47,8 @@ const BADGE: Record<string, string> = {
   invited:        'bg-violet-400/15 text-violet-300 border-violet-400/25',
   whatsapp_sent:  'bg-pink-400/15 text-pink-300 border-pink-400/25',
   video_sent:     'bg-indigo-400/15 text-indigo-300 border-indigo-400/25',
+  video_watched:  'bg-blue-400/15 text-blue-300 border-blue-400/25',
+  paid:           'bg-amber-400/15 text-amber-300 border-amber-400/25',
   mindset_lock:   'bg-fuchsia-400/15 text-fuchsia-300 border-fuchsia-400/25',
   day1:           'bg-orange-400/15 text-orange-300 border-orange-400/25',
   day2:           'bg-yellow-400/15 text-yellow-300 border-yellow-400/25',
@@ -59,7 +62,16 @@ const BADGE: Record<string, string> = {
 const CLOSE:  LeadStatus[] = ['converted','lost']
 const MIN_MINDSET_SECONDS = 300
 type BatchSlotKey = 'd1_morning' | 'd1_afternoon' | 'd1_evening' | 'd2_morning' | 'd2_afternoon' | 'd2_evening'
-type WorkboardStageKey = 'day1' | 'day2' | 'day3' | 'interview' | 'track_selected' | 'seat_hold'
+type WorkboardStageKey =
+  | 'day1'
+  | 'day2'
+  | 'day3'
+  | 'interview'
+  | 'track_selected'
+  | 'seat_hold'
+  | 'plan_2cc'
+  | 'pending'
+  | 'level_up'
 const slabel  = (s: string) => LEAD_STATUS_OPTIONS.find((o) => o.value === s)?.label ?? s
 
 const ADMIN_STAGE_TABS: {
@@ -70,12 +82,16 @@ const ADMIN_STAGE_TABS: {
   nextStatus?: LeadStatus
   nextLabel?: string
 }[] = [
-  { id: 'day1',          label: 'Day 2',   statuses: ['day1'],                        stageKey: 'day1',          nextStatus: 'day2',      nextLabel: 'Move to Day 3 →' },
-  { id: 'day2',          label: 'Day 3',   statuses: ['day2'],                        stageKey: 'day2',          nextStatus: 'day3',      nextLabel: 'Move to Day 4 →' },
-  { id: 'day3',          label: 'Day 4',   statuses: ['day3'],                        stageKey: 'day3',          nextStatus: 'interview', nextLabel: 'Move to Day 5 →' },
-  { id: 'interview',     label: 'Day 5',   statuses: ['interview'],                   stageKey: 'interview',     nextStatus: 'track_selected', nextLabel: 'Move to Day 6 →' },
-  { id: 'track_selected',label: 'Day 6',   statuses: ['track_selected', 'seat_hold'], stageKey: 'track_selected',nextStatus: 'converted', nextLabel: 'Mark Converted →' },
-  { id: 'closing',       label: 'Closing', statuses: CLOSE },
+  { id: 'day1', label: 'Day 1', statuses: ['day1'], stageKey: 'day1' },
+  { id: 'day2', label: 'Day 2', statuses: ['day2'], stageKey: 'day2', nextStatus: 'day3', nextLabel: 'Push to Day 3' },
+  { id: 'day3', label: 'Day 3', statuses: ['day3'], stageKey: 'day3', nextStatus: 'interview', nextLabel: 'Push to Day 4' },
+  { id: 'interview', label: 'Day 4', statuses: ['interview'], stageKey: 'interview', nextStatus: 'track_selected', nextLabel: 'Push to Day 5' },
+  { id: 'track_selected', label: 'Day 5', statuses: ['track_selected'], stageKey: 'track_selected', nextStatus: 'seat_hold', nextLabel: 'Push to Day 6' },
+  { id: 'seat_hold', label: 'Day 6', statuses: ['seat_hold'], stageKey: 'seat_hold', nextStatus: 'plan_2cc', nextLabel: 'Push to Pending Process' },
+  { id: 'plan_2cc', label: '2CC Plan', statuses: ['plan_2cc'], stageKey: 'plan_2cc', nextStatus: 'pending', nextLabel: 'Push to Next 3 Days' },
+  { id: 'pending', label: 'Next 3 Days', statuses: ['pending'], stageKey: 'pending', nextStatus: 'level_up', nextLabel: 'Push to Final Stage' },
+  { id: 'level_up', label: 'Final Stage', statuses: ['level_up'], stageKey: 'level_up', nextStatus: 'converted', nextLabel: 'Mark converted' },
+  { id: 'closing', label: 'Closing', statuses: CLOSE },
 ]
 
 const STATUS_TAB_LABEL: Partial<Record<LeadStatus, string>> = {
@@ -132,6 +148,16 @@ async function readResponseError(res: Response): Promise<string> {
     }
   }
   return res.statusText || `HTTP ${res.status}`
+}
+
+function processTaskDone(lead: LeadPublic, stage: string, task: string): boolean {
+  return Boolean(lead.process_tracking?.[stage]?.[task])
+}
+
+function stageChecklistComplete(lead: LeadPublic, stage: string): boolean {
+  const def = checklistForStage(stage)
+  if (!def) return true
+  return def.tasks.every((task) => processTaskDone(lead, stage, task.key))
 }
 
 // ── Tiny shared primitives ─────────────────────────────────────────────────────
@@ -209,7 +235,8 @@ const LeadCard = memo(function LeadCard({
   }
 
   const badge = BADGE[lead.status] ?? 'bg-muted/30 text-muted-foreground border-white/10'
-  const isSent = lead.status === 'video_sent' || lead.call_status === 'video_sent'
+  const isWatched = lead.status === 'video_watched' || lead.call_status === 'video_watched'
+  const isSent = !isWatched && (lead.status === 'video_sent' || lead.call_status === 'video_sent')
   const slaMs = timerRemainingMs(lead.last_action_at ?? null, lead.created_at, nowMs)
   const slaOverdue = slaMs < 0
   const slaRemainingSec = Math.max(0, Math.floor(slaMs / 1000))
@@ -233,12 +260,13 @@ const LeadCard = memo(function LeadCard({
   const isLeaderMindsetFlow = surfaceRole === 'leader'
   const lockLineClass = unlocked ? 'text-emerald-300' : 'text-red-300'
   const targetName = isLeaderMindsetFlow && previewName === 'Leader will be assigned on send' ? 'You' : previewName
+  const mindsetChecklistDone = stageChecklistComplete(lead, 'mindset_lock')
   const mindsetFlowCopy = unlocked
     ? isLeaderMindsetFlow
-      ? '5-minute call complete. Start Day 2 now.'
+      ? '5-minute call complete. Push this lead into Day 2 once the Day 1 checklist is done.'
       : '5-minute call complete. Send now to move this lead into Day 2.'
     : isLeaderMindsetFlow
-      ? 'Complete the full 5-minute call to unlock Day 2 start.'
+      ? 'Complete the full 5-minute call to unlock Day 2 push.'
       : 'Complete the full 5-minute call to unlock Day 2 handoff.'
   const callOptions = callStatusSelectOptions(surfaceRole ?? null, lead.status as LeadStatus)
   const rawCallStatus = (lead.call_status ?? '').trim()
@@ -267,6 +295,12 @@ const LeadCard = memo(function LeadCard({
           </div>
           <span className={cn('self-start rounded-full border px-2 py-0.5 text-ds-caption font-semibold', badge)}>{STATUS_TAB_LABEL[lead.status as LeadStatus] ?? slabel(lead.status)}</span>
         </div>
+        {!stageOpsCard && isWatched ? (
+          <div className="flex items-center gap-1.5 rounded-md bg-blue-400/10 px-2 py-1 text-ds-caption font-medium text-blue-300">
+            <Eye className="size-3.5 shrink-0" aria-hidden />
+            <span>Prospect watched the video — call now!</span>
+          </div>
+        ) : null}
         {!stageOpsCard && isSent ? (
           <div className="flex items-center gap-1.5 rounded-md bg-indigo-400/10 px-2 py-1 text-ds-caption font-medium text-indigo-300">
             <Send className="size-3.5 shrink-0" aria-hidden />
@@ -359,8 +393,8 @@ const LeadCard = memo(function LeadCard({
           <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 px-2 py-2">
             <p className="text-ds-caption text-muted-foreground">
               {isLeaderMindsetFlow
-                ? 'Start the 5-minute mindset lock before Day 2.'
-                : 'Start the 5-minute mindset lock before leader handoff.'}
+                ? 'Start the After Day 1 mindset lock before pushing to Day 2.'
+                : 'Start the After Day 1 mindset lock before leader handoff.'}
             </p>
             <button
               type="button"
@@ -375,6 +409,12 @@ const LeadCard = memo(function LeadCard({
         ) : null}
         {mindsetReady ? (
           <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 px-2 py-2">
+            <ProcessChecklistSection
+              lead={lead}
+              stage="mindset_lock"
+              pm={pm}
+              leadPatchBusy={leadPatchBusy}
+            />
             <p className={cn('text-ds-caption font-semibold', lockLineClass)}>
               Minimum call time: {mmss(remainingSeconds)}
             </p>
@@ -388,15 +428,17 @@ const LeadCard = memo(function LeadCard({
             <button
               type="button"
               title={
-                !canSend
+                !mindsetChecklistDone
+                  ? 'Complete all After Day 1 tasks before pushing to Day 2'
+                  : !canSend
                   ? isLeaderMindsetFlow
-                    ? 'Complete at least 5 minutes call before starting Day 2'
+                    ? 'Complete at least 5 minutes call before pushing to Day 2'
                     : 'Complete at least 5 minutes call before sending'
                   : isLeaderMindsetFlow
-                    ? 'Start Day 2 now'
+                    ? 'Push this lead into Day 2'
                     : 'Send to leader and move to Day 2'
               }
-              disabled={!canSend || mindsetBusy}
+              disabled={!canSend || !mindsetChecklistDone || mindsetBusy}
               onClick={() => onRequestMindsetSend?.(lead)}
               className={cn(
                 'flex h-8 w-full items-center justify-center gap-1 rounded-md border px-2 text-ds-caption font-semibold transition disabled:cursor-not-allowed disabled:opacity-50',
@@ -412,7 +454,7 @@ const LeadCard = memo(function LeadCard({
                     ? 'Starting...'
                     : 'Sending...'
                   : isLeaderMindsetFlow
-                    ? 'Lock & Start Day 2'
+                    ? 'Lock & Push to Day 2'
                     : 'Lock & Send to Leader'}
               </span>
             </button>
@@ -444,6 +486,150 @@ const LeadCard = memo(function LeadCard({
   )
 })
 
+function ProcessChecklistSection({
+  lead,
+  stage,
+  pm,
+  leadPatchBusy,
+  onMoveNext,
+  nextLabel,
+}: {
+  lead: LeadPublic
+  stage: string
+  pm: PM
+  leadPatchBusy: boolean
+  onMoveNext?: () => void
+  nextLabel?: string
+}) {
+  const qc = useQueryClient()
+  const [busyTask, setBusyTask] = useState<string | null>(null)
+  const [taskError, setTaskError] = useState<string | null>(null)
+  const def = checklistForStage(stage)
+
+  if (!def) return null
+
+  async function toggleTask(taskKey: string, done: boolean) {
+    setTaskError(null)
+    setBusyTask(taskKey)
+    try {
+      await pm.mutateAsync({
+        id: lead.id,
+        body: {
+          process_stage: stage,
+          process_task: taskKey,
+          process_task_done: done,
+        },
+      })
+      await qc.refetchQueries({ queryKey: ['workboard'] })
+    } catch (err) {
+      setTaskError(err instanceof Error ? err.message : 'Could not update process task')
+    } finally {
+      setBusyTask(null)
+    }
+  }
+
+  async function shareDay2Video(taskKey: string) {
+    setTaskError(null)
+    setBusyTask(taskKey)
+    const popup = reserveExternalShareWindow('Preparing Day 2 video...')
+    try {
+      const res = await apiFetch(`/api/v1/leads/${lead.id}/batch-share-url`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slot: 'd2_morning' }),
+      })
+      if (!res.ok) {
+        throw new Error(await readResponseError(res))
+      }
+      const body = (await res.json()) as { watch_url_v1?: string; watch_url_v2?: string }
+      const waUrl = workboardBatchWhatsAppUrl(lead, 2, 'M', {
+        v1: body.watch_url_v1,
+        v2: body.watch_url_v2,
+      })
+      if (!waUrl) {
+        throw new Error('Phone number missing for Day 2 video share.')
+      }
+      if (!completeExternalShareWindow(popup, waUrl)) {
+        throw new Error('Could not open WhatsApp share window.')
+      }
+      await toggleTask(taskKey, true)
+    } catch (err) {
+      closeExternalShareWindow(popup)
+      setTaskError(err instanceof Error ? err.message : 'Could not share Day 2 video')
+      setBusyTask(null)
+    }
+  }
+
+  const allDone = stageChecklistComplete(lead, stage)
+
+  return (
+    <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 p-3">
+      <div className="space-y-1">
+        <p className="text-ds-caption font-semibold uppercase tracking-wide text-muted-foreground">{def.title}</p>
+        <p className="text-ds-caption text-muted-foreground">{def.helper}</p>
+      </div>
+      <div className="space-y-1.5">
+        {def.tasks.map((task) => {
+          const done = processTaskDone(lead, stage, task.key)
+          const busy = busyTask === task.key
+          return (
+            <div
+              key={task.key}
+              className="flex items-center justify-between gap-3 rounded-lg border border-border/50 bg-card/40 px-3 py-2"
+            >
+              <div className="min-w-0">
+                <p className={cn('text-sm font-medium', done ? 'text-foreground' : 'text-foreground/90')}>
+                  {task.label}
+                </p>
+              </div>
+              {task.kind === 'share_video' ? (
+                <button
+                  type="button"
+                  disabled={leadPatchBusy || busy}
+                  onClick={() => void shareDay2Video(task.key)}
+                  className={cn(
+                    'shrink-0 rounded-md border px-2 py-1 text-ds-caption font-semibold transition disabled:opacity-50',
+                    done
+                      ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
+                      : 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/20',
+                  )}
+                >
+                  {busy ? 'Sharing…' : done ? 'Shared' : 'Share'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={leadPatchBusy || busy}
+                  onClick={() => void toggleTask(task.key, !done)}
+                  className={cn(
+                    'shrink-0 rounded-md border px-2 py-1 text-ds-caption font-semibold transition disabled:opacity-50',
+                    done
+                      ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
+                      : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
+                  )}
+                >
+                  {busy ? '...' : done ? 'Done' : 'Tick'}
+                </button>
+              )}
+            </div>
+          )
+        })}
+      </div>
+      {taskError ? <p className="text-ds-caption text-destructive">{taskError}</p> : null}
+      {allDone && onMoveNext ? (
+        <button
+          type="button"
+          disabled={leadPatchBusy}
+          onClick={onMoveNext}
+          className="w-full rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50"
+        >
+          {nextLabel ?? def.nextLabel ?? 'Move to next stage'}
+        </button>
+      ) : null}
+    </div>
+  )
+}
+
 // ── StageAdvanceSection — day flow + post-Day-3 progression ──────────────────
 function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, nextLabel }: {
   lead: LeadPublic
@@ -453,37 +639,25 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
   onMoveNext?: () => void
   nextLabel?: string
 }) {
+  if (stageKey !== 'day1') {
+    return (
+      <ProcessChecklistSection
+        lead={lead}
+        stage={stageKey}
+        pm={pm}
+        leadPatchBusy={leadPatchBusy}
+        onMoveNext={onMoveNext}
+        nextLabel={nextLabel}
+      />
+    )
+  }
+
   const qc = useQueryClient()
   const [sharingSlot, setSharingSlot] = useState<BatchSlotKey | null>(null)
   const [toggleSlot, setToggleSlot] = useState<BatchSlotKey | null>(null)
   const [batchError, setBatchError] = useState<string | null>(null)
   const [eveningPickerOpen, setEveningPickerOpen] = useState(false)
   const [eveningPickerBusy, setEveningPickerBusy] = useState(false)
-
-  if (stageKey === 'day3' || stageKey === 'interview' || stageKey === 'track_selected' || stageKey === 'seat_hold') {
-    const copy: Record<Exclude<WorkboardStageKey, 'day1' | 'day2'>, string> = {
-      day3: 'Day 4 stage. Confirm completion when this lead is ready to move ahead.',
-      interview: 'Day 5 stage. Move ahead once the session has been completed.',
-      track_selected: 'Day 6 stage. Advance once this stage is finalized.',
-      seat_hold: 'Day 6 stage. Move ahead after this stage is confirmed.',
-    }
-    return (
-      <div className="space-y-1.5 border-t border-border/40 pt-1.5">
-        <p className="text-ds-caption text-muted-foreground">{copy[stageKey]}</p>
-        {onMoveNext ? (
-          <button
-            type="button"
-            disabled={leadPatchBusy}
-            onClick={onMoveNext}
-            className="w-full rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50"
-          >
-            {nextLabel ?? 'Move to next stage →'}
-          </button>
-        ) : null}
-      </div>
-    )
-  }
-
   const dayKey = stageKey === 'day1' ? 1 : 2
   const batchSlots = stageKey === 'day1'
     ? (['d1_morning', 'd1_afternoon', 'd1_evening'] as const)
@@ -1201,13 +1375,13 @@ export function WorkboardPage({ title }: Props) {
             <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
               {surfaceRole === 'leader' ? (
                 <>
-                  <li>You have completed mindset call (5–10 min)</li>
+                  <li>You have completed the After Day 1 checklist and mindset call</li>
                   <li>This action will move the lead into your Day 2 queue</li>
                   <li>You can continue execution from the Day 2 tab</li>
                 </>
               ) : (
                 <>
-                  <li>You have completed mindset call (5–10 min)</li>
+                  <li>You have completed the After Day 1 checklist and mindset call</li>
                   <li>This action will move the lead to Day 2 under your leader</li>
                   <li>You won't be able to edit after this</li>
                 </>

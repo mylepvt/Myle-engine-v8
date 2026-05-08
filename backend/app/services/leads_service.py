@@ -180,6 +180,20 @@ def _sync_stage_anchor(lead: Lead, *, previous_status: str, now: datetime) -> No
         lead.last_action_at = now
 
 
+def _toggle_process_task(
+    lead: Lead,
+    *,
+    stage: str,
+    task: str,
+    done: bool,
+) -> None:
+    tracking = dict(lead.process_tracking or {})
+    current_stage = dict(tracking.get(stage) or {})
+    current_stage[task] = done
+    tracking[stage] = current_stage
+    lead.process_tracking = tracking
+
+
 class LeadsService:
     def __init__(
         self,
@@ -618,7 +632,7 @@ class LeadsService:
                 )
             leader_id, leader_name = leader
         from_uid = lead.assigned_to_user_id
-        lead.status = "day1"
+        lead.status = "day2"
         lead.assigned_to_user_id = leader_id
         lead.last_action_at = now
         lead.mindset_completed_at = now
@@ -634,6 +648,7 @@ class LeadsService:
                 "to_user_id": leader_id,
                 "team_user_id": user.user_id,
                 "leader_id": leader_id,
+                "target_status": "day2",
                 "mindset_started_at": started_at.isoformat(),
                 "mindset_completed_at": now.isoformat(),
                 "duration_seconds": duration_seconds,
@@ -818,6 +833,17 @@ class LeadsService:
         _sync_stage_anchor(lead, previous_status=stage_status_before, now=now)
         if body.no_response_attempt_count is not None:
             lead.no_response_attempt_count = body.no_response_attempt_count
+        if (
+            body.process_stage is not None
+            and body.process_task is not None
+            and body.process_task_done is not None
+        ):
+            _toggle_process_task(
+                lead,
+                stage=body.process_stage.strip(),
+                task=body.process_task.strip(),
+                done=body.process_task_done,
+            )
         explicit_d1 = (body.d1_morning, body.d1_afternoon, body.d1_evening)
         if any(x is not None for x in explicit_d1):
             if body.d1_morning is not None:

@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, event, func, inspect as sa_inspect, text
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, event, func, inspect as sa_inspect, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+
+_ProcessJSON = JSON().with_variant(JSONB(), "postgresql")
 
 
 class Lead(Base):
@@ -144,6 +148,11 @@ class Lead(Base):
     d2_morning: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     d2_afternoon: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     d2_evening: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    process_tracking: Mapped[Optional[dict[str, Any]]] = mapped_column(
+        _ProcessJSON,
+        nullable=True,
+        comment="Per-stage business checklist state keyed by stage slug and task slug.",
+    )
     no_response_attempt_count: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
