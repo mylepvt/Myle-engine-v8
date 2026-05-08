@@ -61,8 +61,6 @@ STATUS_TO_STAGE = {
     "Invited": "prospecting",
     "WhatsApp Sent": "prospecting",
     "Video Sent": "prospecting",
-    "Video Watched": "prospecting",
-    "Min. FLP Billing": "enrolled",
     "Mindset Lock": "enrolled",
     "Day 1": "day1",
     "Day 2": "day2",
@@ -119,8 +117,6 @@ TEAM_ALLOWED_STATUSES = (
     "Invited",
     "WhatsApp Sent",
     "Video Sent",
-    "Video Watched",
-    "Min. FLP Billing",
     "Mindset Lock",
     "Lost",
     "Retarget",
@@ -134,8 +130,6 @@ STATUS_FLOW_ORDER = [
     "Invited",
     "WhatsApp Sent",
     "Video Sent",
-    "Video Watched",
-    "Min. FLP Billing",
     "Mindset Lock",
     "Day 1",
     "Day 2",
@@ -200,8 +194,9 @@ def is_valid_forward_status_transition(
     Canonical FSM flow rules.
     - Backward / same / statuses outside STATUS_FLOW_ORDER: allowed.
     - Admin (admin_may_skip_fsm=True): any forward jump.
-    - Team and Leader: any forward jump before Min. FLP Billing;
-      Min. FLP Billing only from Video Watched; post-enrollment leader is +1.
+    - Team: any forward jump up to and including Mindset Lock; blocked post-Mindset Lock.
+    - Leader: +1 forward for post-Mindset Lock stages.
+    Flow: New Lead → ... → Video Sent → Mindset Lock → Day 1 → Day 2 → Day 3 → Fully Converted
     """
     cur = normalize_flow_status(current_status)
     tgt = normalize_flow_status(target_status)
@@ -214,20 +209,13 @@ def is_valid_forward_status_transition(
         return True
     if admin_may_skip_fsm:
         return True
-    paid_i = flow_idx.get("Min. FLP Billing")
-    if tgt == "Min. FLP Billing":
-        # Only team/leader can set paid from Video Watched; leader cannot jump past paid.
-        if for_team:
-            return cur in ("Video Watched", "Min. FLP Billing")
-        return cur in ("Video Watched", "Min. FLP Billing")
-    if tgt == "Mindset Lock":
-        return cur in ("Min. FLP Billing", "Mindset Lock")
-    # Pre-enrollment forward jumps: both team and leader may skip steps.
-    if paid_i is not None and flow_idx[tgt] < paid_i:
+    mindset_i = flow_idx.get("Mindset Lock", 999)
+    # Pre-Mindset Lock: both team and leader may skip steps freely.
+    if flow_idx[tgt] <= mindset_i:
         return flow_idx[tgt] > flow_idx[cur]
     if for_team:
         return False
-    # Leader: +1 for post-enrollment stages only.
+    # Leader: +1 for post-Mindset Lock stages only.
     return flow_idx[tgt] == flow_idx[cur] + 1
 
 
@@ -238,11 +226,11 @@ def validate_vl2_status_transition_for_role(
     role: str,
 ) -> tuple[bool, str]:
     """
-    Validate a ``Lead.status`` change (vl2 slug) using legacy FSM + team forbidden set.
+    Validate a ``Lead.status`` change (vl2 slug) using FSM + team forbidden set.
 
-    - Admin: any forward jump within ``STATUS_FLOW_ORDER`` (and backward/same as before).
-    - Leader: forward +1 only (unless backward/outside flow).
-    - Team: jump rules before ``Min. FLP Billing``; cannot set ``TEAM_FORBIDDEN_STATUS_SLUGS``.
+    - Admin: any forward jump.
+    - Leader: +1 forward post-Mindset Lock; free jumps before.
+    - Team: free jumps up to Mindset Lock; cannot set ``TEAM_FORBIDDEN_STATUS_SLUGS``.
     """
     from app.core.lead_status import LEAD_STATUS_LABELS, TEAM_FORBIDDEN_STATUS_SLUGS
 

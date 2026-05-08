@@ -73,77 +73,6 @@ const PREMIERE_SETTING_FIELDS: readonly SettingsTextField[] = [
   },
 ]
 
-const LIVE_SESSION_SETTING_FIELDS = [
-  {
-    key: 'live_session_url',
-    label: 'Join link',
-    placeholder: 'https://zoom.us/j/...',
-    help: 'Paste the Zoom or Meet join URL shown on Community -> Live session.',
-  },
-  {
-    key: 'live_session_title',
-    label: 'Title',
-    placeholder: "Today's Live Session",
-    help: 'Short heading shown on the live session card.',
-  },
-  {
-    key: 'live_session_schedule',
-    label: 'Schedule / details',
-    placeholder: 'Daily · 8:00 PM IST',
-    help: 'Shown below the title. You can include time, topic, or host details.',
-  },
-] as const
-
-const ENROLLMENT_VIDEO_SETTING_FIELDS: readonly SettingsTextField[] = [
-  {
-    key: 'enrollment_video_source_url',
-    label: 'Video URL',
-    placeholder: 'https://media.example.com/enrollment.mp4',
-    help: 'Cloudflare R2 / CDN ka public MP4 URL yahan paste karein. Lead ko raw URL nahi, tokenized Myle room hi jata hai.',
-  },
-  {
-    key: 'enrollment_video_title',
-    label: 'Room title',
-    placeholder: 'Welcome to Myle enrollment',
-    help: 'Private watch room par clean heading dikhane ke liye optional title.',
-  },
-  {
-    key: 'public_app_url',
-    label: 'Public app URL',
-    placeholder: 'https://app.example.com',
-    help: 'Optional. Sirf tab jab API aur frontend alag domains par deployed hon aur WhatsApp link ko public app domain par khulna ho.',
-  },
-] as const
-
-const ENROLLMENT_VIDEO_OPTIONAL_FIELDS: readonly SettingsTextField[] = [
-  {
-    key: 'enrollment_social_proof_count',
-    label: 'Forms received',
-    placeholder: '300',
-    help: 'Optional. Enrollment room me social-proof counter ke liye current form volume.',
-    inputMode: 'numeric',
-  },
-  {
-    key: 'enrollment_total_seats',
-    label: 'Batch seats',
-    placeholder: '50',
-    help: 'Optional. Current batch me total seats kitni hain.',
-    inputMode: 'numeric',
-  },
-  {
-    key: 'enrollment_seats_left',
-    label: 'Seats left',
-    placeholder: '12',
-    help: 'Optional. Enrollment room me currently kitni seats left dikhani hain.',
-    inputMode: 'numeric',
-  },
-  {
-    key: 'enrollment_trust_note',
-    label: 'Trust note',
-    placeholder: 'Private room access is limited to the current batch window.',
-    help: 'Optional. Clean trust-building line jo video ke upar snapshot section me dikhani ho.',
-  },
-] as const
 
 const YOUTUBE_HOSTS = new Set(['youtube.com', 'youtu.be', 'youtube-nocookie.com'])
 
@@ -183,28 +112,12 @@ export function SettingsAppPage({ title }: Props) {
   const updateAppSetting = useAppSettingUpdateMutation()
 
   const [q, setQ] = useState('')
-  const [enrollmentVideoEdits, setEnrollmentVideoEdits] = useState<Record<string, string>>({})
-  const [liveSessionEdits, setLiveSessionEdits] = useState<Record<string, string>>({})
   const [premiereEdits, setPremiereEdits] = useState<Record<string, string>>({})
   const [batchEdits, setBatchEdits] = useState<Record<string, string>>({})
-  const [enrollmentVideoSaveMsg, setEnrollmentVideoSaveMsg] = useState<string | null>(null)
-  const [liveSessionSaveMsg, setLiveSessionSaveMsg] = useState<string | null>(null)
   const [premiereSaveMsg, setPremiereSaveMsg] = useState<string | null>(null)
   const [saveMsg, setSaveMsg] = useState<string | null>(null)
-  const [enrollmentVideoErrorMsg, setEnrollmentVideoErrorMsg] = useState<string | null>(null)
-  const [liveSessionErrorMsg, setLiveSessionErrorMsg] = useState<string | null>(null)
   const [premiereErrorMsg, setPremiereErrorMsg] = useState<string | null>(null)
   const [batchErrorMsg, setBatchErrorMsg] = useState<string | null>(null)
-  const enrollmentVideoSource = appSettingsData?.settings ?? {}
-  const resolvedEnrollmentVideoValue = (key: string): string =>
-    Object.prototype.hasOwnProperty.call(enrollmentVideoEdits, key)
-      ? (enrollmentVideoEdits[key] ?? '')
-      : (enrollmentVideoSource[key] ?? '')
-  const liveSessionSource = appSettingsData?.settings ?? {}
-  const resolvedLiveSessionValue = (key: string): string =>
-    Object.prototype.hasOwnProperty.call(liveSessionEdits, key)
-      ? (liveSessionEdits[key] ?? '')
-      : (liveSessionSource[key] ?? '')
   const premiereSource = appSettingsData?.settings ?? {}
   const resolvedPremiereValue = (key: string): string =>
     Object.prototype.hasOwnProperty.call(premiereEdits, key)
@@ -242,47 +155,6 @@ export function SettingsAppPage({ title }: Props) {
     }
   }
 
-  const handleSaveEnrollmentVideo = async () => {
-    setEnrollmentVideoSaveMsg(null)
-    setEnrollmentVideoErrorMsg(null)
-
-    const sourceUrl = resolvedEnrollmentVideoValue('enrollment_video_source_url').trim()
-    if (looksLikeYouTubeUrl(sourceUrl)) {
-      setEnrollmentVideoErrorMsg('YouTube link yahan allowed nahi hai. Direct hosted .mp4 / HLS / app file URL use karein.')
-      return
-    }
-
-    try {
-      for (const field of ENROLLMENT_VIDEO_SETTING_FIELDS) {
-        const value = resolvedEnrollmentVideoValue(field.key).trim()
-        await updateAppSetting.mutateAsync({ key: field.key, value })
-      }
-      setEnrollmentVideoEdits({})
-      setEnrollmentVideoSaveMsg('Enrollment video settings updated successfully.')
-      void refetchAppSettings()
-    } catch (error) {
-      setEnrollmentVideoErrorMsg(
-        error instanceof Error ? error.message : 'Could not update enrollment video settings.',
-      )
-    }
-  }
-
-  const handleSaveLiveSession = async () => {
-    setLiveSessionSaveMsg(null)
-    setLiveSessionErrorMsg(null)
-    try {
-      for (const field of LIVE_SESSION_SETTING_FIELDS) {
-        const value = resolvedLiveSessionValue(field.key).trim()
-        await updateAppSetting.mutateAsync({ key: field.key, value })
-      }
-      setLiveSessionEdits({})
-      setLiveSessionSaveMsg('Live session settings updated successfully.')
-      void refetchAppSettings()
-    } catch (error) {
-      setLiveSessionErrorMsg(error instanceof Error ? error.message : 'Could not update live session settings.')
-    }
-  }
-
   const handleSavePremiere = async () => {
     setPremiereSaveMsg(null)
     setPremiereErrorMsg(null)
@@ -312,58 +184,6 @@ export function SettingsAppPage({ title }: Props) {
         secrets should stay in server environment variables — this table is for product toggles and
         copy (e.g. live session text).
       </p>
-      <section className="surface-elevated space-y-3 p-4">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">Live Session</h2>
-          <p className="text-xs text-muted-foreground">
-            Admin join details for <strong>Community → Live session</strong>. These
-            <code className="mx-1 rounded bg-white/10 px-1 text-[10px]">live_session_*</code>
-            keys are the preferred vl2 settings.
-          </p>
-        </div>
-
-        {appSettingsPending ? (
-          <Skeleton className="h-9 w-full" />
-        ) : appSettingsError ? (
-          <div className="text-sm text-destructive" role="alert">
-            {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load app settings.'}
-          </div>
-        ) : (
-          <div className="grid gap-3">
-                {LIVE_SESSION_SETTING_FIELDS.map((field) => (
-              <label key={field.key} className="block text-xs">
-                <span className="mb-1 block text-muted-foreground">{field.label}</span>
-                <input
-                  value={resolvedLiveSessionValue(field.key)}
-                  onChange={(e) =>
-                    setLiveSessionEdits((prev) => ({
-                      ...prev,
-                      [field.key]: e.target.value,
-                    }))
-                  }
-                  placeholder={field.placeholder}
-                  className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
-                />
-                <span className="mt-1 block text-muted-foreground/80">{field.help}</span>
-              </label>
-            ))}
-          </div>
-        )}
-
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            disabled={updateAppSetting.isPending || appSettingsPending || appSettingsError}
-            onClick={() => void handleSaveLiveSession()}
-            className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-medium text-primary disabled:opacity-50"
-          >
-            {updateAppSetting.isPending ? 'Saving...' : 'Save live session'}
-          </button>
-          {liveSessionSaveMsg ? <p className="text-xs text-emerald-400">{liveSessionSaveMsg}</p> : null}
-          {liveSessionErrorMsg ? <p className="text-xs text-destructive">{liveSessionErrorMsg}</p> : null}
-        </div>
-      </section>
-
       {/* Premiere Settings */}
       <section className="surface-elevated space-y-3 p-4">
         <div>
@@ -415,89 +235,6 @@ export function SettingsAppPage({ title }: Props) {
           </button>
           {premiereSaveMsg ? <p className="text-xs text-emerald-400">{premiereSaveMsg}</p> : null}
           {premiereErrorMsg ? <p className="text-xs text-destructive">{premiereErrorMsg}</p> : null}
-        </div>
-      </section>
-
-      <section className="surface-elevated space-y-3 p-4">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">Enrollment Video</h2>
-          <p className="text-xs text-muted-foreground">
-            Yahan Cloudflare R2 ya kisi bhi CDN ka public MP4 URL set karein. App DB me sirf URL save hota hai,
-            video file nahi.
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            <strong>Sent Enroll Video</strong> par lead ko raw R2 link nahi, private Myle watch room hi bheja jata hai.
-          </p>
-        </div>
-
-        {appSettingsPending ? (
-          <Skeleton className="h-9 w-full" />
-        ) : appSettingsError ? (
-          <div className="text-sm text-destructive" role="alert">
-            {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load app settings.'}
-          </div>
-        ) : (
-          <div className="grid gap-3">
-            {ENROLLMENT_VIDEO_SETTING_FIELDS.map((field) => (
-              <label key={field.key} className="block text-xs">
-                <span className="mb-1 block text-muted-foreground">{field.label}</span>
-                <input
-                  value={resolvedEnrollmentVideoValue(field.key)}
-                  onChange={(e) =>
-                    setEnrollmentVideoEdits((prev) => ({
-                      ...prev,
-                      [field.key]: e.target.value,
-                    }))
-                  }
-                  placeholder={field.placeholder}
-                  className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
-                />
-                <span className="mt-1 block text-muted-foreground/80">{field.help}</span>
-                <span className="mt-1 block font-mono text-[10px] text-muted-foreground/80">{field.key}</span>
-              </label>
-            ))}
-          </div>
-        )}
-
-        {appSettingsPending || appSettingsError ? null : (
-          <details className="rounded-xl border border-border bg-muted/40 p-4">
-            <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Room Snapshot Optional
-            </summary>
-            <div className="mt-4 grid gap-3">
-              {ENROLLMENT_VIDEO_OPTIONAL_FIELDS.map((field) => (
-                <label key={field.key} className="block text-xs">
-                  <span className="mb-1 block text-muted-foreground">{field.label}</span>
-                  <input
-                    value={resolvedEnrollmentVideoValue(field.key)}
-                    onChange={(e) =>
-                      setEnrollmentVideoEdits((prev) => ({
-                        ...prev,
-                        [field.key]: e.target.value,
-                      }))
-                    }
-                    inputMode={field.inputMode ?? undefined}
-                    placeholder={field.placeholder}
-                    className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
-                  />
-                  <span className="mt-1 block text-muted-foreground/80">{field.help}</span>
-                </label>
-              ))}
-            </div>
-          </details>
-        )}
-
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            disabled={updateAppSetting.isPending || appSettingsPending || appSettingsError}
-            onClick={() => void handleSaveEnrollmentVideo()}
-            className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-medium text-primary disabled:opacity-50"
-          >
-            {updateAppSetting.isPending ? 'Saving...' : 'Save video setup'}
-          </button>
-          {enrollmentVideoSaveMsg ? <p className="text-xs text-emerald-400">{enrollmentVideoSaveMsg}</p> : null}
-          {enrollmentVideoErrorMsg ? <p className="text-xs text-destructive">{enrollmentVideoErrorMsg}</p> : null}
         </div>
       </section>
 

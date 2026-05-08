@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { CheckSquare, Eye, Pencil, Search, Send, Video } from 'lucide-react'
+import { CheckSquare, Pencil, Search, Send, Video } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
@@ -46,8 +46,6 @@ const BADGE: Record<string, string> = {
   invited:        'bg-violet-400/15 text-violet-300 border-violet-400/25',
   whatsapp_sent:  'bg-pink-400/15 text-pink-300 border-pink-400/25',
   video_sent:     'bg-indigo-400/15 text-indigo-300 border-indigo-400/25',
-  video_watched:  'bg-blue-400/15 text-blue-300 border-blue-400/25',
-  paid:           'bg-amber-400/15 text-amber-300 border-amber-400/25',
   mindset_lock:   'bg-fuchsia-400/15 text-fuchsia-300 border-fuchsia-400/25',
   day1:           'bg-orange-400/15 text-orange-300 border-orange-400/25',
   day2:           'bg-yellow-400/15 text-yellow-300 border-yellow-400/25',
@@ -72,14 +70,19 @@ const ADMIN_STAGE_TABS: {
   nextStatus?: LeadStatus
   nextLabel?: string
 }[] = [
-  { id: 'day1', label: 'Day 2', statuses: ['day1'], stageKey: 'day1', nextStatus: 'day2', nextLabel: 'Move to Day 3 →' },
-  { id: 'day2', label: 'Day 3', statuses: ['day2'], stageKey: 'day2', nextStatus: 'day3', nextLabel: 'Move to Pending AS →' },
-  { id: 'day3', label: 'Pending AS', statuses: ['day3'], stageKey: 'day3', nextStatus: 'interview', nextLabel: 'Move to Interview →' },
-  { id: 'interview', label: 'Interview', statuses: ['interview'], stageKey: 'interview', nextStatus: 'track_selected', nextLabel: 'Move to Track Selected →' },
-  { id: 'track_selected', label: 'Track', statuses: ['track_selected'], stageKey: 'track_selected', nextStatus: 'seat_hold', nextLabel: 'Move to Seat Hold →' },
-  { id: 'seat_hold', label: 'Seat Hold', statuses: ['seat_hold'], stageKey: 'seat_hold', nextStatus: 'converted', nextLabel: 'Mark converted →' },
-  { id: 'closing', label: 'Closing', statuses: CLOSE },
+  { id: 'day1',          label: 'Day 2',   statuses: ['day1'],                        stageKey: 'day1',          nextStatus: 'day2',      nextLabel: 'Move to Day 3 →' },
+  { id: 'day2',          label: 'Day 3',   statuses: ['day2'],                        stageKey: 'day2',          nextStatus: 'day3',      nextLabel: 'Move to Day 4 →' },
+  { id: 'day3',          label: 'Day 4',   statuses: ['day3'],                        stageKey: 'day3',          nextStatus: 'interview', nextLabel: 'Move to Day 5 →' },
+  { id: 'interview',     label: 'Day 5',   statuses: ['interview'],                   stageKey: 'interview',     nextStatus: 'track_selected', nextLabel: 'Move to Day 6 →' },
+  { id: 'track_selected',label: 'Day 6',   statuses: ['track_selected', 'seat_hold'], stageKey: 'track_selected',nextStatus: 'converted', nextLabel: 'Mark Converted →' },
+  { id: 'closing',       label: 'Closing', statuses: CLOSE },
 ]
+
+const STATUS_TAB_LABEL: Partial<Record<LeadStatus, string>> = {
+  day1: 'Day 2', day2: 'Day 3', day3: 'Day 4',
+  interview: 'Day 5', track_selected: 'Day 6', seat_hold: 'Day 6',
+  converted: 'Closing', lost: 'Closing',
+}
 type ATab = WorkboardStageKey | 'closing'
 
 function parseAdminTab(value: string | null): ATab {
@@ -146,8 +149,6 @@ function Tabs({ tabs, active, onChange }: {
           className={cn('shrink-0 -mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition',
             active === t.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground')}>
           {t.label}
-          {t.count !== undefined &&
-            <span className="ml-1.5 rounded-full bg-white/10 px-1.5 py-0.5 text-ds-caption tabular-nums">{t.count}</span>}
         </button>
       ))}
     </div>
@@ -208,8 +209,7 @@ const LeadCard = memo(function LeadCard({
   }
 
   const badge = BADGE[lead.status] ?? 'bg-muted/30 text-muted-foreground border-white/10'
-  const isWatched = lead.status === 'video_watched' || lead.call_status === 'video_watched'
-  const isSent    = !isWatched && (lead.status === 'video_sent' || lead.call_status === 'video_sent')
+  const isSent = lead.status === 'video_sent' || lead.call_status === 'video_sent'
   const slaMs = timerRemainingMs(lead.last_action_at ?? null, lead.created_at, nowMs)
   const slaOverdue = slaMs < 0
   const slaRemainingSec = Math.max(0, Math.floor(slaMs / 1000))
@@ -235,11 +235,11 @@ const LeadCard = memo(function LeadCard({
   const targetName = isLeaderMindsetFlow && previewName === 'Leader will be assigned on send' ? 'You' : previewName
   const mindsetFlowCopy = unlocked
     ? isLeaderMindsetFlow
-      ? '5-minute call complete. Start Day 1 now.'
-      : '5-minute call complete. Send now to move this lead into Day 1.'
+      ? '5-minute call complete. Start Day 2 now.'
+      : '5-minute call complete. Send now to move this lead into Day 2.'
     : isLeaderMindsetFlow
-      ? 'Complete the full 5-minute call to unlock Day 1 start.'
-      : 'Complete the full 5-minute call to unlock Day 1 handoff.'
+      ? 'Complete the full 5-minute call to unlock Day 2 start.'
+      : 'Complete the full 5-minute call to unlock Day 2 handoff.'
   const callOptions = callStatusSelectOptions(surfaceRole ?? null, lead.status as LeadStatus)
   const rawCallStatus = (lead.call_status ?? '').trim()
   const callValue = callOptions.some((option) => option.value === rawCallStatus)
@@ -265,14 +265,8 @@ const LeadCard = memo(function LeadCard({
             <p className="break-words text-sm font-semibold leading-tight text-foreground sm:text-base">{lead.name}</p>
             {lead.city && <p className="mt-0.5 break-words text-ds-caption text-muted-foreground">{lead.city}</p>}
           </div>
-          <span className={cn('self-start rounded-full border px-2 py-0.5 text-ds-caption font-semibold', badge)}>{slabel(lead.status)}</span>
+          <span className={cn('self-start rounded-full border px-2 py-0.5 text-ds-caption font-semibold', badge)}>{STATUS_TAB_LABEL[lead.status as LeadStatus] ?? slabel(lead.status)}</span>
         </div>
-        {!stageOpsCard && isWatched ? (
-          <div className="flex items-center gap-1.5 rounded-md bg-blue-400/10 px-2 py-1 text-ds-caption font-medium text-blue-300">
-            <Eye className="size-3.5 shrink-0" aria-hidden />
-            <span>Prospect watched the video — call now!</span>
-          </div>
-        ) : null}
         {!stageOpsCard && isSent ? (
           <div className="flex items-center gap-1.5 rounded-md bg-indigo-400/10 px-2 py-1 text-ds-caption font-medium text-indigo-300">
             <Send className="size-3.5 shrink-0" aria-hidden />
@@ -388,7 +382,7 @@ const LeadCard = memo(function LeadCard({
               {mindsetFlowCopy}
             </p>
             <p className="text-ds-caption text-muted-foreground">
-              {isLeaderMindsetFlow ? 'Day 1 owner' : 'Day 1 handoff'}:{' '}
+              {isLeaderMindsetFlow ? 'Day 2 owner' : 'Day 2 handoff'}:{' '}
               <span className="font-semibold text-foreground">{targetName}</span>
             </p>
             <button
@@ -396,11 +390,11 @@ const LeadCard = memo(function LeadCard({
               title={
                 !canSend
                   ? isLeaderMindsetFlow
-                    ? 'Complete at least 5 minutes call before starting Day 1'
+                    ? 'Complete at least 5 minutes call before starting Day 2'
                     : 'Complete at least 5 minutes call before sending'
                   : isLeaderMindsetFlow
-                    ? 'Start Day 1 now'
-                    : 'Send to leader and move to Day 1'
+                    ? 'Start Day 2 now'
+                    : 'Send to leader and move to Day 2'
               }
               disabled={!canSend || mindsetBusy}
               onClick={() => onRequestMindsetSend?.(lead)}
@@ -418,7 +412,7 @@ const LeadCard = memo(function LeadCard({
                     ? 'Starting...'
                     : 'Sending...'
                   : isLeaderMindsetFlow
-                    ? 'Lock & Start Day 1'
+                    ? 'Lock & Start Day 2'
                     : 'Lock & Send to Leader'}
               </span>
             </button>
@@ -463,13 +457,15 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
   const [sharingSlot, setSharingSlot] = useState<BatchSlotKey | null>(null)
   const [toggleSlot, setToggleSlot] = useState<BatchSlotKey | null>(null)
   const [batchError, setBatchError] = useState<string | null>(null)
+  const [eveningPickerOpen, setEveningPickerOpen] = useState(false)
+  const [eveningPickerBusy, setEveningPickerBusy] = useState(false)
 
   if (stageKey === 'day3' || stageKey === 'interview' || stageKey === 'track_selected' || stageKey === 'seat_hold') {
     const copy: Record<Exclude<WorkboardStageKey, 'day1' | 'day2'>, string> = {
-      day3: 'Pending AS stage. Confirm completion when this lead is ready for interview.',
-      interview: 'Interview stage. Move ahead once the interview has been completed.',
-      track_selected: 'Track selected stage. Advance once the track choice is finalized.',
-      seat_hold: 'Seat hold stage. Move ahead after the seat hold is confirmed.',
+      day3: 'Day 4 stage. Confirm completion when this lead is ready to move ahead.',
+      interview: 'Day 5 stage. Move ahead once the session has been completed.',
+      track_selected: 'Day 6 stage. Advance once this stage is finalized.',
+      seat_hold: 'Day 6 stage. Move ahead after this stage is confirmed.',
     }
     return (
       <div className="space-y-1.5 border-t border-border/40 pt-1.5">
@@ -558,6 +554,29 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     }
   }
 
+  // Day 2 tab → premier day 2 slots; Day 3 tab → premier day 3 slots
+  const eveningSlotDay = stageKey === 'day1' ? 2 : 3
+  const eveningSlotKey: BatchSlotKey = stageKey === 'day1' ? 'd1_evening' : 'd2_evening'
+
+  const handleEveningSlotConfirm = async (option: LiveSessionSlotOption) => {
+    setEveningPickerBusy(true)
+    setBatchError(null)
+    try {
+      const shareUrl = buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option, eveningSlotDay)
+      if (!shareUrl || !openExternalShareUrl(shareUrl)) {
+        setBatchError('WhatsApp link nahi bana. Lead ka phone number check karo.')
+        return
+      }
+      await pm.mutateAsync({ id: lead.id, body: { [eveningSlotKey]: true } })
+      await qc.refetchQueries({ queryKey: ['workboard'] })
+      setEveningPickerOpen(false)
+    } catch (err) {
+      setBatchError(err instanceof Error ? err.message : 'Could not send evening slot')
+    } finally {
+      setEveningPickerBusy(false)
+    }
+  }
+
   const slotTimeLabels = (['5pm', '6pm', '7pm'] as const)
 
   return (
@@ -568,18 +587,21 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
           const slot = (['M', 'A', 'E'] as const)[i]
           const timeLabel = slotTimeLabels[i]
           const slotDone = lead[slotKey]
+          const isEvening = i === 2
           const busy = sharingSlot === slotKey
           return (
             <button
               key={`share-${slotKey}`}
               type="button"
-              disabled={leadPatchBusy || busy}
-              onClick={() => void handleBatchShare(slot, slotKey)}
+              disabled={leadPatchBusy || busy || (isEvening && eveningPickerBusy)}
+              onClick={() => isEvening ? setEveningPickerOpen(true) : void handleBatchShare(slot, slotKey)}
               className={cn(
                 'flex h-6 min-w-10 items-center justify-center rounded px-1.5 text-ds-caption font-semibold transition disabled:opacity-50',
                 slotDone
                   ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
-                  : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
+                  : isEvening
+                    ? 'border border-indigo-400/40 bg-indigo-400/10 text-indigo-300 hover:bg-indigo-400/20'
+                    : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
               )}
             >
               {busy ? '...' : timeLabel}
@@ -625,6 +647,13 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
           {nextLabel ?? 'Move to next stage →'}
         </button>
       )}
+      <LiveSessionSlotPicker
+        open={eveningPickerOpen}
+        busy={eveningPickerBusy}
+        day={eveningSlotDay}
+        onClose={() => setEveningPickerOpen(false)}
+        onConfirm={(option) => void handleEveningSlotConfirm(option)}
+      />
     </div>
   )
 }
@@ -802,8 +831,8 @@ function MindsetQueueView({
         onRequestMindsetSend={onRequestMindsetSend}
         empty={
           queueRole === 'leader'
-            ? 'No personal Day 1 or mindset-lock leads yet'
-            : 'No Day 1 or mindset-lock leads yet'
+            ? 'No personal Day 2 or mindset-lock leads yet'
+            : 'No Day 2 or mindset-lock leads yet'
         }
         nowMs={nowMs}
       />
@@ -911,7 +940,7 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance
             leads={day2}
             stageKey="day2"
             nextStatus={allowStageAdvance ? 'day3' : undefined}
-            nextLabel={allowStageAdvance ? 'Move to Pending AS →' : undefined}
+            nextLabel={allowStageAdvance ? 'Move to Day 4 →' : undefined}
             pm={pm}
             patchBusyLeadId={patchBusyLeadId}
             nowMs={nowMs}

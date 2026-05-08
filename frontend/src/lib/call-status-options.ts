@@ -11,8 +11,6 @@ export const CALL_STATUS_API_VALUES = [
   'called',
   'callback_requested',
   'video_sent',
-  'video_watched',
-  'payment_done',
   'converted',
 ] as const
 
@@ -27,8 +25,6 @@ const LABEL: Record<CallStatusApi, string> = {
   called: 'Called - Busy',
   callback_requested: 'Call Back',
   video_sent: 'Sent Day 1 Video',
-  video_watched: 'Video Watched',
-  payment_done: 'Payment Done',
   converted: 'Already / Converted',
 }
 
@@ -55,8 +51,6 @@ const BASE_ORDER: CallStatusApi[] = [
 
 const VIDEO_SENT_STAGES = new Set<LeadStatus>([
   'video_sent',
-  'video_watched',
-  'paid',
   'mindset_lock',
   'day1',
   'day2',
@@ -66,21 +60,6 @@ const VIDEO_SENT_STAGES = new Set<LeadStatus>([
   'seat_hold',
   'converted',
 ])
-
-const VIDEO_WATCHED_STAGES = new Set<LeadStatus>([
-  'video_watched',
-  'paid',
-  'mindset_lock',
-  'day1',
-  'day2',
-  'day3',
-  'interview',
-  'track_selected',
-  'seat_hold',
-  'converted',
-])
-
-const PAYMENT_DONE_STAGES = new Set<LeadStatus>([])
 
 export function callStatusSelectOptions(
   role: Role | null,
@@ -97,8 +76,6 @@ export function callStatusSelectOptions(
 
   const visible = new Set<CallStatusApi>(BASE_ORDER)
   if (VIDEO_SENT_STAGES.has(status)) visible.add('video_sent')
-  if (VIDEO_WATCHED_STAGES.has(status)) visible.add('video_watched')
-  if (PAYMENT_DONE_STAGES.has(status)) visible.add('payment_done')
   if (status === 'converted') visible.add('converted')
 
   return CALL_STATUS_API_VALUES
