@@ -257,7 +257,7 @@ def validate_vl2_status_transition_for_role(
         cur_h,
         tgt_h,
         for_team=(role == "team"),
-        admin_may_skip_fsm=(role == "admin"),
+        admin_may_skip_fsm=(role in ("admin", "leader")),
     )
     if not ok:
         return False, "Invalid status transition for your role"
