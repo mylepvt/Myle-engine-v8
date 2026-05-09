@@ -481,6 +481,7 @@ class PremiereViewerOut(BaseModel):
     viewer_id: str
     name: str
     masked_phone: str
+    phone: Optional[str] = None  # full phone — admin only
     city: str
     session_date: str
     session_hour: int
@@ -933,6 +934,7 @@ async def premiere_viewers(
             viewer_id=v.viewer_id,
             name=v.name,
             masked_phone=_mask_phone(v.phone),
+            phone=v.phone or None,
             city=v.city,
             session_date=v.session_date,
             session_hour=v.session_hour,
