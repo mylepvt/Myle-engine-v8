@@ -22,10 +22,8 @@ const LEADER_STAGE_VISIBILITY: Partial<Record<LeadStatus, LeadStatus[]>> = {
   new_lead: ['new_lead', 'contacted', 'invited'],
   contacted: ['contacted', 'invited', 'video_sent'],
   invited: ['invited', 'video_sent'],
-  whatsapp_sent: ['whatsapp_sent', 'video_sent', 'video_watched'],
-  video_sent: ['video_sent', 'video_watched', 'paid'],
-  video_watched: ['video_watched', 'paid', 'day1'],
-  paid: ['paid', 'day1', 'mindset_lock'],
+  whatsapp_sent: ['whatsapp_sent', 'video_sent'],
+  video_sent: ['video_sent', 'mindset_lock'],
   mindset_lock: ['mindset_lock', 'day2'],
   day1: ['day1', 'mindset_lock'],
   day2: ['day2', 'day3', 'interview'],
@@ -46,10 +44,8 @@ const TEAM_STAGE_VISIBILITY: Partial<Record<LeadStatus, LeadStatus[]>> = {
   new_lead: ['new_lead', 'contacted', 'invited'],
   contacted: ['contacted', 'invited', 'video_sent'],
   invited: ['invited', 'video_sent'],
-  whatsapp_sent: ['whatsapp_sent', 'video_sent', 'video_watched'],
-  video_sent: ['video_sent', 'video_watched'],
-  video_watched: ['video_watched', 'paid'],
-  paid: ['paid', 'day1'],
+  whatsapp_sent: ['whatsapp_sent', 'video_sent'],
+  video_sent: ['video_sent', 'mindset_lock'],
   mindset_lock: ['mindset_lock'],
   lost: ['lost', 'retarget', 'inactive'],
   retarget: ['retarget', 'contacted', 'invited'],
@@ -81,8 +77,15 @@ export function leadStatusSelectOptionsForLead(
 ): { value: LeadStatus; label: string }[] {
   const roleFiltered = teamLeadStatusSelectOptions(role, all)
   if (role === 'admin') return roleFiltered
+  if (role === 'leader') {
+    const currentOption = all.find((o) => o.value === currentStatus)
+    if (currentOption && !roleFiltered.some((o) => o.value === currentStatus)) {
+      return [currentOption, ...roleFiltered]
+    }
+    return roleFiltered
+  }
 
-  const stageMap = role === 'team' ? TEAM_STAGE_VISIBILITY : LEADER_STAGE_VISIBILITY
+  const stageMap = TEAM_STAGE_VISIBILITY
   const visible = new Set<LeadStatus>(stageMap[currentStatus] ?? [currentStatus])
   visible.add(currentStatus)
   USER_OUTCOME_STATUSES.forEach((status) => visible.add(status))

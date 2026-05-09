@@ -16,20 +16,26 @@ type SettingsTextField = {
   inputMode?: HTMLAttributes<HTMLInputElement>['inputMode']
 }
 
-const BATCH_SETTING_KEYS = [
-  'batch_d1_morning_v1',
-  'batch_d1_morning_v2',
-  'batch_d1_afternoon_v1',
-  'batch_d1_afternoon_v2',
-  'batch_d1_evening_v1',
-  'batch_d1_evening_v2',
-  'batch_d2_morning_v1',
-  'batch_d2_morning_v2',
-  'batch_d2_afternoon_v1',
-  'batch_d2_afternoon_v2',
-  'batch_d2_evening_v1',
-  'batch_d2_evening_v2',
-] as const
+const CONTENT_LINK_FIELDS: readonly SettingsTextField[] = [
+  {
+    key: 'content.esbi_model',
+    label: 'ESBI Model Video',
+    placeholder: 'https://youtube.com/watch?v=...',
+    help: 'Mindset Lock me ESBI Model task ka Watch button is link pe jaata hai.',
+  },
+  {
+    key: 'content.power_of_network',
+    label: 'Power of Network Video',
+    placeholder: 'https://youtube.com/watch?v=...',
+    help: 'Mindset Lock me Power of Network task ka Watch button is link pe jaata hai.',
+  },
+  {
+    key: 'content.manik_expose',
+    label: 'Expose Video (Manik Aggarwal)',
+    placeholder: 'https://youtube.com/watch?v=...',
+    help: 'Day 2 me Expose Video Share button WhatsApp pe yahi link bhejta hai.',
+  },
+]
 
 const PREMIERE_SETTING_FIELDS: readonly SettingsTextField[] = [
   {
@@ -88,18 +94,6 @@ function looksLikeYouTubeUrl(rawValue: string): boolean {
   }
 }
 
-function batchSettingLabel(key: string): string {
-  return key
-    .replace('batch_', '')
-    .replaceAll('_', ' ')
-    .replace(/\bd1\b/i, 'Day 2')
-    .replace(/\bd2\b/i, 'Day 3')
-    .replace(/\bv1\b/i, 'V1')
-    .replace(/\bv2\b/i, 'V2')
-    .replace(/\bmorning\b/i, '5pm')
-    .replace(/\bafternoon\b/i, '6pm')
-    .replace(/\bevening\b/i, '7pm')
-}
 
 export function SettingsAppPage({ title }: Props) {
   const {
@@ -113,19 +107,18 @@ export function SettingsAppPage({ title }: Props) {
 
   const [q, setQ] = useState('')
   const [premiereEdits, setPremiereEdits] = useState<Record<string, string>>({})
-  const [batchEdits, setBatchEdits] = useState<Record<string, string>>({})
+  const [contentEdits, setContentEdits] = useState<Record<string, string>>({})
   const [premiereSaveMsg, setPremiereSaveMsg] = useState<string | null>(null)
-  const [saveMsg, setSaveMsg] = useState<string | null>(null)
+  const [contentSaveMsg, setContentSaveMsg] = useState<string | null>(null)
   const [premiereErrorMsg, setPremiereErrorMsg] = useState<string | null>(null)
-  const [batchErrorMsg, setBatchErrorMsg] = useState<string | null>(null)
-  const premiereSource = appSettingsData?.settings ?? {}
+  const [contentErrorMsg, setContentErrorMsg] = useState<string | null>(null)
+  const settingsSource = appSettingsData?.settings ?? {}
   const resolvedPremiereValue = (key: string): string =>
     Object.prototype.hasOwnProperty.call(premiereEdits, key)
       ? (premiereEdits[key] ?? '')
-      : (premiereSource[key] ?? '')
-  const batchSource = appSettingsData?.settings ?? {}
-  const resolvedBatchValue = (key: string): string =>
-    Object.prototype.hasOwnProperty.call(batchEdits, key) ? (batchEdits[key] ?? '') : (batchSource[key] ?? '')
+      : (settingsSource[key] ?? '')
+  const resolvedContentValue = (key: string): string =>
+    Object.prototype.hasOwnProperty.call(contentEdits, key) ? (contentEdits[key] ?? '') : (settingsSource[key] ?? '')
 
   const rows = useMemo(() => {
     const settings = appSettingsData?.settings ?? {}
@@ -139,19 +132,19 @@ export function SettingsAppPage({ title }: Props) {
     )
   }, [appSettingsData, q])
 
-  const handleSaveBatchLinks = async () => {
-    setSaveMsg(null)
-    setBatchErrorMsg(null)
+  const handleSaveContentLinks = async () => {
+    setContentSaveMsg(null)
+    setContentErrorMsg(null)
     try {
-      for (const key of BATCH_SETTING_KEYS) {
-        const value = resolvedBatchValue(key).trim()
-        await updateAppSetting.mutateAsync({ key, value })
+      for (const field of CONTENT_LINK_FIELDS) {
+        const value = resolvedContentValue(field.key).trim()
+        await updateAppSetting.mutateAsync({ key: field.key, value })
       }
-      setBatchEdits({})
-      setSaveMsg('Batch links updated successfully.')
+      setContentEdits({})
+      setContentSaveMsg('Content links saved.')
       void refetchAppSettings()
     } catch (error) {
-      setBatchErrorMsg(error instanceof Error ? error.message : 'Could not update batch links.')
+      setContentErrorMsg(error instanceof Error ? error.message : 'Could not save content links.')
     }
   }
 
@@ -240,12 +233,9 @@ export function SettingsAppPage({ title }: Props) {
 
       <section className="surface-elevated space-y-3 p-4">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">Batch Video Links</h2>
+          <h2 className="text-sm font-semibold text-foreground">Content Links</h2>
           <p className="text-xs text-muted-foreground">
-            Update WhatsApp watch links for D1/D2 batches. Admin YouTube link ya direct hosted `.mp4/.webm` link dono use kar sakta hai.
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Direct file link use karoge to in-app native player chalega with fullscreen and without YouTube bottom clutter.
+            ESBI Model, Power of Network, aur Expose Video ke links yahan set karo. Ye links Mindset Lock aur Day 2 cards mein directly use hote hain.
           </p>
         </div>
 
@@ -256,22 +246,18 @@ export function SettingsAppPage({ title }: Props) {
             {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load app settings.'}
           </div>
         ) : (
-          <div className="grid gap-3 md:grid-cols-2">
-            {BATCH_SETTING_KEYS.map((key) => (
-              <label key={key} className="block text-xs">
-                <span className="mb-1 block text-muted-foreground">{batchSettingLabel(key)}</span>
+          <div className="grid gap-3">
+            {CONTENT_LINK_FIELDS.map((field) => (
+              <label key={field.key} className="block text-sm">
+                <span className="mb-1 block text-ds-caption text-muted-foreground">{field.label}</span>
                 <input
-                  value={resolvedBatchValue(key)}
-                  onChange={(e) =>
-                    setBatchEdits((prev) => ({
-                      ...prev,
-                      [key]: e.target.value,
-                    }))
-                  }
-                  placeholder="https://youtube.com/watch?v=... or https://cdn.example.com/video.mp4"
+                  type="text"
+                  value={resolvedContentValue(field.key)}
+                  onChange={(e) => setContentEdits((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                  placeholder={field.placeholder}
                   className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
                 />
-                <span className="mt-1 block font-mono text-[10px] text-muted-foreground/80">{key}</span>
+                <span className="mt-1 block text-muted-foreground/80">{field.help}</span>
               </label>
             ))}
           </div>
@@ -281,13 +267,13 @@ export function SettingsAppPage({ title }: Props) {
           <button
             type="button"
             disabled={updateAppSetting.isPending || appSettingsPending || appSettingsError}
-            onClick={() => void handleSaveBatchLinks()}
+            onClick={() => void handleSaveContentLinks()}
             className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-medium text-primary disabled:opacity-50"
           >
-            {updateAppSetting.isPending ? 'Saving...' : 'Save batch links'}
+            {updateAppSetting.isPending ? 'Saving...' : 'Save content links'}
           </button>
-          {saveMsg ? <p className="text-xs text-emerald-400">{saveMsg}</p> : null}
-          {batchErrorMsg ? <p className="text-xs text-destructive">{batchErrorMsg}</p> : null}
+          {contentSaveMsg ? <p className="text-xs text-emerald-400">{contentSaveMsg}</p> : null}
+          {contentErrorMsg ? <p className="text-xs text-destructive">{contentErrorMsg}</p> : null}
         </div>
       </section>
 
