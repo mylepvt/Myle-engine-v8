@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { CheckSquare, Eye, Pencil, Search, Send, Video } from 'lucide-react'
+import { Check, CheckSquare, Eye, Pencil, Search, Send, Video } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
@@ -441,6 +441,38 @@ const LeadCard = memo(function LeadCard({
   )
 })
 
+function Checkbox({
+  done,
+  busy,
+  disabled,
+  onClick,
+}: {
+  done: boolean
+  busy: boolean
+  disabled: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        'flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition disabled:opacity-50',
+        done
+          ? 'border-emerald-400 bg-emerald-400/20 text-emerald-400'
+          : 'border-border bg-transparent text-transparent hover:border-primary/60',
+      )}
+    >
+      {busy ? (
+        <span className="h-2.5 w-2.5 animate-spin rounded-full border border-current border-t-transparent" />
+      ) : done ? (
+        <Check className="h-3 w-3" />
+      ) : null}
+    </button>
+  )
+}
+
 function ProcessChecklistSection({
   lead,
   stage,
@@ -541,7 +573,7 @@ function ProcessChecklistSection({
                   {busy ? 'Sharing…' : done ? 'Shared' : 'Share'}
                 </button>
               ) : task.kind === 'open_video' ? (
-                <div className="flex shrink-0 items-center gap-1.5">
+                <div className="flex shrink-0 items-center gap-2">
                   {task.settingKey && contentLinks?.[task.settingKey] ? (
                     <a
                       href={contentLinks[task.settingKey]}
@@ -554,34 +586,12 @@ function ProcessChecklistSection({
                   ) : (
                     <span className="text-ds-caption text-muted-foreground/60">No link set</span>
                   )}
-                  <button
-                    type="button"
-                    disabled={leadPatchBusy || busy}
-                    onClick={() => void toggleTask(task.key, !done)}
-                    className={cn(
-                      'shrink-0 rounded-md border px-2 py-1 text-ds-caption font-semibold transition disabled:opacity-50',
-                      done
-                        ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
-                        : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
-                    )}
-                  >
-                    {busy ? '...' : done ? 'Done' : 'Tick'}
-                  </button>
+                  <Checkbox done={done} busy={busy} disabled={leadPatchBusy || busy}
+                    onClick={() => void toggleTask(task.key, !done)} />
                 </div>
               ) : (
-                <button
-                  type="button"
-                  disabled={leadPatchBusy || busy}
-                  onClick={() => void toggleTask(task.key, !done)}
-                  className={cn(
-                    'shrink-0 rounded-md border px-2 py-1 text-ds-caption font-semibold transition disabled:opacity-50',
-                    done
-                      ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
-                      : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
-                  )}
-                >
-                  {busy ? '...' : done ? 'Done' : 'Tick'}
-                </button>
+                <Checkbox done={done} busy={busy} disabled={leadPatchBusy || busy}
+                  onClick={() => void toggleTask(task.key, !done)} />
               )}
             </div>
           )
