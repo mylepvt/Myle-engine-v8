@@ -910,8 +910,8 @@ async def premiere_viewers(
     hour: Optional[int] = Query(default=None, description="Filter by session hour (omit for all today)"),
     date: Optional[str] = Query(default=None, description="Session date YYYY-MM-DD (omit for today)"),
 ) -> list[PremiereViewerOut]:
-    """Admin/leader only. Supports date param for historical view."""
-    if user.role not in ("admin", "leader"):
+    """Admin only. Supports date param for historical view."""
+    if user.role != "admin":
         raise HTTPException(status_code=403, detail="Forbidden")
     target_date = date or datetime.now(IST).date().isoformat()
     q = select(PremiereViewer).where(PremiereViewer.session_date == target_date)

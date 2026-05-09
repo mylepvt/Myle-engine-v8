@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { apiFetch } from '@/lib/api'
+import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 
 type ScheduleSlot = {
   hour: number
@@ -325,6 +326,8 @@ export function LiveSessionPage({ title }: Props) {
     queryFn: fetchSchedule,
     refetchInterval: 30_000,
   })
+  const authMe = useAuthMeQuery()
+  const isAdmin = authMe.data?.role === 'admin'
 
   const baseOrigin = window.location.origin
 
@@ -356,8 +359,8 @@ export function LiveSessionPage({ title }: Props) {
         />
       ))}
 
-      {/* Attendance history */}
-      <AttendanceHistory slots={data?.slots ?? []} />
+      {/* Attendance history — admin only */}
+      {isAdmin && <AttendanceHistory slots={data?.slots ?? []} />}
     </div>
   )
 }
