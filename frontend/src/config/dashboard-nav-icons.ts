@@ -66,6 +66,7 @@ const BY_PATH: Record<string, LucideIcon> = {
   'other/training': GraduationCap,
   'other/live-session': Video,
   'other/daily-report': ClipboardList,
+  'other/downloads': FileDown,
   'settings/app': Settings,
   'settings/help': HelpCircle,
   'settings/all-members': UsersRound,

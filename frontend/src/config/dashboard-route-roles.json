@@ -33,6 +33,7 @@
   "other/training": ["admin", "leader", "team"],
   "other/live-session": ["admin", "leader", "team"],
   "other/daily-report": ["leader", "team"],
+  "other/downloads": ["admin", "leader", "team"],
   "settings/app": ["admin"],
   "settings/help": ["admin"],
   "settings/all-members": ["admin"],
