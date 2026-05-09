@@ -945,13 +945,13 @@ function MindsetQueueView({
   onRequestMindsetSend?: (lead: LeadPublic) => void
   search: string
   nowMs: number
-  queueRole: 'team' | 'leader'
+  queueRole: 'team' | 'leader' | 'admin'
   currentUserId: number | null
 }) {
   const byS = Object.fromEntries(cols.map((c) => [c.status, c]))
   const needle = search.trim().toLowerCase()
   const allowLead = (lead: LeadPublic) =>
-    queueRole !== 'leader' || (currentUserId != null && lead.assigned_to_user_id === currentUserId)
+    queueRole === 'admin' || queueRole !== 'leader' || (currentUserId != null && lead.assigned_to_user_id === currentUserId)
   const day1Leads = (byS.day1?.items ?? []).filter(
     (l) =>
       allowLead(l) &&
@@ -974,6 +974,49 @@ function MindsetQueueView({
       ensureMindsetPreview(lead)
     })
   }, [mindsetLeads, mindsetPreviewByLeadId, ensureMindsetPreview])
+
+  if (queueRole === 'admin') {
+    const grouped = mindsetQueue.reduce<Record<string, LeadPublic[]>>((acc, lead) => {
+      const ownerKey = lead.owner_name ?? `User #${lead.owner_user_id ?? '?'}`
+      ;(acc[ownerKey] ??= []).push(lead)
+      return acc
+    }, {})
+    const entries = Object.entries(grouped).sort((a, b) => a[0].localeCompare(b[0]))
+    return (
+      <div id="mindset-lock" className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-muted-foreground">Mindset Lock — All Team</h2>
+          <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-ds-caption font-semibold tabular-nums text-muted-foreground">
+            {mindsetQueue.length}
+          </span>
+        </div>
+        {mindsetQueue.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No mindset-lock leads across team.</p>
+        ) : (
+          entries.map(([ownerName, leads]) => (
+            <div key={ownerName} className="space-y-2">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-foreground">{ownerName}</h3>
+                <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-ds-caption font-semibold tabular-nums text-muted-foreground">
+                  {leads.length}
+                </span>
+              </div>
+              <Grid
+                leads={leads}
+                pm={pm}
+                patchBusyLeadId={patchBusyLeadId}
+                mindsetBusyLeadId={mindsetBusyLeadId}
+                mindsetPreviewByLeadId={mindsetPreviewByLeadId}
+                onRequestMindsetSend={onRequestMindsetSend}
+                empty=""
+                nowMs={nowMs}
+              />
+            </div>
+          ))
+        )}
+      </div>
+    )
+  }
 
   return (
     <div id="mindset-lock" className="space-y-3">
@@ -1191,7 +1234,9 @@ export function WorkboardPage({ title, mode = 'pipeline' }: Props) {
           <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
             {mode === 'mindset-lock'
-              ? surfaceRole === 'leader'
+              ? surfaceRole === 'admin'
+                ? 'All team mindset-lock leads — grouped by member.'
+                : surfaceRole === 'leader'
                 ? 'Your assigned leads ready for mindset lock — complete before Day 2.'
                 : 'Complete mindset lock for your leads before they move to Day 2.'
               : surfaceRole === 'admin'
@@ -1257,7 +1302,7 @@ export function WorkboardPage({ title, mode = 'pipeline' }: Props) {
               onRequestMindsetSend={(lead) => setConfirmLead(lead)}
               search={search}
               nowMs={nowMs}
-              queueRole={surfaceRole === 'leader' ? 'leader' : 'team'}
+              queueRole={surfaceRole === 'admin' ? 'admin' : surfaceRole === 'leader' ? 'leader' : 'team'}
               currentUserId={currentUserId}
             />
           )
