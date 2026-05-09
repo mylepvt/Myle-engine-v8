@@ -68,6 +68,9 @@ export const PRIMARY_USER_FLOW_STATUSES: LeadStatus[] = [
   'interview',
   'track_selected',
   'seat_hold',
+  'plan_2cc',
+  'pending',
+  'level_up',
   'converted',
 ]
 
@@ -77,9 +80,6 @@ export const INTERNAL_OPS_STATUSES: LeadStatus[] = ['contacted']
 
 export const LEGACY_COMPAT_STATUSES: LeadStatus[] = [
   'training',
-  'plan_2cc',
-  'level_up',
-  'pending',
   'new',
 ]
 
