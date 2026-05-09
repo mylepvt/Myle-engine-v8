@@ -67,7 +67,15 @@ class SqlAlchemyLeadsRepository:
         return {str(status): int(total) for status, total in rows}
 
     async def get_workboard_leads(self, *, condition: Any, limit: int) -> list[Lead]:
-        stmt = select(Lead).order_by(Lead.created_at.desc()).limit(limit)
+        stmt = (
+            select(Lead)
+            .order_by(
+                func.coalesce(Lead.last_action_at, Lead.created_at).desc(),
+                Lead.created_at.desc(),
+                Lead.id.desc(),
+            )
+            .limit(limit)
+        )
         if condition is not None:
             stmt = stmt.where(condition)
         return (await self._session.execute(stmt)).scalars().all()

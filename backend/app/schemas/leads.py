@@ -54,6 +54,7 @@ class LeadPublic(BaseModel):
     # Assignment
     assigned_to_user_id: Optional[int] = None
     assigned_to_name: Optional[str] = None
+    assigned_to_role: Optional[str] = None
     leader_user_id: Optional[int] = None
     leader_name: Optional[str] = None
 

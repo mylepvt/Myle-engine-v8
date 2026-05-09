@@ -109,6 +109,9 @@ export type LeadPublic = {
   // Assignment
   assigned_to_user_id: number | null
   assigned_to_name?: string | null
+  assigned_to_role?: string | null
+  leader_user_id?: number | null
+  leader_name?: string | null
   // Call tracking
   call_status: string | null
   call_count: number

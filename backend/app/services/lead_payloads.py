@@ -47,5 +47,6 @@ async def build_lead_public_payloads(
         payload.leader_user_id = leader_entry.id if leader_entry is not None else None
         payload.leader_name = leader_entry.display_name if leader_entry is not None else None
         payload.assigned_to_name = assignee_entry.display_name if assignee_entry is not None else None
+        payload.assigned_to_role = assignee_entry.role if assignee_entry is not None else None
         items.append(payload)
     return items
