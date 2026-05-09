@@ -106,13 +106,6 @@ function parseAdminTab(value: string | null): ATab {
   return (match?.id ?? 'day2') as ATab
 }
 
-function mmss(totalSeconds: number): string {
-  const sec = Math.max(0, totalSeconds)
-  const m = Math.floor(sec / 60)
-  const s = sec % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
-
 const SLOT_TIME_LABEL: Record<'M' | 'A' | 'E', string> = { M: '5pm', A: '6pm', E: '7pm' }
 
 function workboardBatchWhatsAppUrl(
@@ -251,22 +244,13 @@ const LeadCard = memo(function LeadCard({
   const startedAtMs = lead.mindset_started_at ? new Date(lead.mindset_started_at).getTime() : null
   const elapsedSeconds = startedAtMs ? Math.max(0, Math.floor((nowMs - startedAtMs) / 1000)) : 0
   const remainingSeconds = Math.max(0, MIN_MINDSET_SECONDS - elapsedSeconds)
-  const { unlocked, canSend, leaderName: previewName } = getMindsetLockSendState({
+  const { canSend } = getMindsetLockSendState({
     mindsetReady,
     remainingSeconds,
     preview: mindsetPreview,
   })
   const isLeaderMindsetFlow = surfaceRole === 'leader'
-  const lockLineClass = unlocked ? 'text-emerald-300' : 'text-red-300'
-  const targetName = isLeaderMindsetFlow && previewName === 'Leader will be assigned on send' ? 'You' : previewName
   const mindsetChecklistDone = stageChecklistComplete(lead, 'mindset_lock')
-  const mindsetFlowCopy = unlocked
-    ? isLeaderMindsetFlow
-      ? '5-minute call complete. Push this lead into Day 2 once the Day 1 checklist is done.'
-      : '5-minute call complete. Send now to move this lead into Day 2.'
-    : isLeaderMindsetFlow
-      ? 'Complete the full 5-minute call to unlock Day 2 push.'
-      : 'Complete the full 5-minute call to unlock Day 2 handoff.'
   const callOptions = callStatusSelectOptions(surfaceRole ?? null, lead.status as LeadStatus)
   const rawCallStatus = (lead.call_status ?? '').trim()
   const callValue = callOptions.some((option) => option.value === rawCallStatus)
@@ -414,47 +398,20 @@ const LeadCard = memo(function LeadCard({
               pm={pm}
               leadPatchBusy={leadPatchBusy}
             />
-            <p className={cn('text-ds-caption font-semibold', lockLineClass)}>
-              Minimum call time: {mmss(remainingSeconds)}
-            </p>
-            <p className="text-ds-caption text-muted-foreground">
-              {mindsetFlowCopy}
-            </p>
-            <p className="text-ds-caption text-muted-foreground">
-              {isLeaderMindsetFlow ? 'Day 2 owner' : 'Day 2 handoff'}:{' '}
-              <span className="font-semibold text-foreground">{targetName}</span>
-            </p>
             <button
               type="button"
-              title={
-                !mindsetChecklistDone
-                  ? 'Complete all Mindset Lock tasks before pushing to Day 2'
-                  : !canSend
-                  ? isLeaderMindsetFlow
-                    ? 'Complete at least 5 minutes call before pushing to Day 2'
-                    : 'Complete at least 5 minutes call before sending'
-                  : isLeaderMindsetFlow
-                    ? 'Push this lead into Day 2'
-                    : 'Send to leader and move to Day 2'
-              }
               disabled={!canSend || !mindsetChecklistDone || mindsetBusy}
               onClick={() => onRequestMindsetSend?.(lead)}
               className={cn(
                 'flex h-8 w-full items-center justify-center gap-1 rounded-md border px-2 text-ds-caption font-semibold transition disabled:cursor-not-allowed disabled:opacity-50',
-                canSend
+                canSend && mindsetChecklistDone
                   ? 'border-emerald-400/40 bg-emerald-400/12 text-emerald-300 hover:bg-emerald-400/20'
-                  : 'border-red-400/30 bg-red-400/10 text-red-300',
+                  : 'border-border bg-muted/30 text-muted-foreground',
               )}
             >
               <CheckSquare className="h-3.5 w-3.5" />
               <span>
-                {mindsetBusy
-                  ? isLeaderMindsetFlow
-                    ? 'Starting...'
-                    : 'Sending...'
-                  : isLeaderMindsetFlow
-                    ? 'Lock & Push to Day 2'
-                    : 'Lock & Send to Leader'}
+                {mindsetBusy ? 'Moving...' : isLeaderMindsetFlow ? 'Push to Day 2' : 'Send to Leader'}
               </span>
             </button>
           </div>
