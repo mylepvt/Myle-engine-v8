@@ -484,34 +484,18 @@ function ProcessChecklistSection({
     }
   }
 
-  async function shareDay2Video(taskKey: string) {
+  async function shareContentVideo(taskKey: string, videoUrl: string) {
     setTaskError(null)
     setBusyTask(taskKey)
-    const popup = reserveExternalShareWindow('Preparing Day 2 video...')
     try {
-      const res = await apiFetch(`/api/v1/leads/${lead.id}/batch-share-url`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slot: 'd2_morning' }),
-      })
-      if (!res.ok) {
-        throw new Error(await readResponseError(res))
-      }
-      const body = (await res.json()) as { watch_url_v1?: string; watch_url_v2?: string }
-      const waUrl = workboardBatchWhatsAppUrl(lead, 2, 'M', {
-        v1: body.watch_url_v1,
-        v2: body.watch_url_v2,
-      })
-      if (!waUrl) {
-        throw new Error('Phone number missing for Day 2 video share.')
-      }
-      if (!completeExternalShareWindow(popup, waUrl)) {
-        throw new Error('Could not open WhatsApp share window.')
-      }
+      const digits = (lead.phone ?? '').replace(/\D/g, '')
+      if (!digits) throw new Error('Phone number missing.')
+      const msg = `Hi ${lead.name || 'there'},\n\nWatch this video:\n${videoUrl}`
+      const waUrl = `https://wa.me/${digits}?text=${encodeURIComponent(msg)}`
+      if (!openExternalShareUrl(waUrl)) throw new Error('Could not open WhatsApp.')
       await toggleTask(taskKey, true)
     } catch (err) {
-      closeExternalShareWindow(popup)
-      setTaskError(err instanceof Error ? err.message : 'Could not share Day 2 video')
+      setTaskError(err instanceof Error ? err.message : 'Could not share video')
       setBusyTask(null)
     }
   }
@@ -542,7 +526,11 @@ function ProcessChecklistSection({
                 <button
                   type="button"
                   disabled={leadPatchBusy || busy}
-                  onClick={() => void shareDay2Video(task.key)}
+                  onClick={() => {
+                    const url = task.settingKey ? (contentLinks?.[task.settingKey] ?? '') : ''
+                    if (url) void shareContentVideo(task.key, url)
+                    else void toggleTask(task.key, !done)
+                  }}
                   className={cn(
                     'shrink-0 rounded-md border px-2 py-1 text-ds-caption font-semibold transition disabled:opacity-50',
                     done
