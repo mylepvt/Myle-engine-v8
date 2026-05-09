@@ -11,6 +11,7 @@ from app.api.v1 import (
     auth,
     media,
     certificate,
+    downloads,
     enroll,
     execution,
     finance_surfaces,
@@ -83,3 +84,4 @@ api_router.include_router(wallet_enhanced.router, prefix="/wallet", tags=["walle
 api_router.include_router(crm_proxy.router, tags=["crm"])
 api_router.include_router(xp.router, prefix="/xp", tags=["xp"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
+api_router.include_router(downloads.router, prefix="/downloads", tags=["downloads"])

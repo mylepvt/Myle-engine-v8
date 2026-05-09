@@ -48,6 +48,7 @@ import { SettingsOrgTreePage } from '@/pages/SettingsOrgTreePage'
 import { AllMembersPage } from '@/pages/AllMembersPage'
 import { AdminInvoicesPage } from '@/pages/AdminInvoicesPage'
 import { LeaderOSPage } from '@/pages/LeaderOSPage'
+import { DownloadsPage } from '@/pages/DownloadsPage'
 
 function renderFullUi(ui: FullUiSurface, title: string) {
   switch (ui.kind) {
@@ -115,6 +116,8 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <LiveSessionPage title={title} />
     case 'community-training':
       return <CommunityTrainingPage title={title} />
+    case 'downloads':
+      return <DownloadsPage title={title} />
     case 'budget-export':
       return <BudgetExportPage title={title} />
     case 'settings-app':

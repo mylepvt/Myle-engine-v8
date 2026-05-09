@@ -91,6 +91,7 @@ export type FullUiSurface =
   | { kind: 'live-session' }
   /** Legacy Other → Training (`/training`) — leader/team; same catalog as system training. */
   | { kind: 'community-training' }
+  | { kind: 'downloads' }
   | { kind: 'budget-export' }
   | { kind: 'settings-app' }
   | { kind: 'settings-help' }
@@ -419,6 +420,14 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('other/daily-report'),
     surface: 'full',
     ui: { kind: 'daily-report-form' },
+  },
+  {
+    path: 'other/downloads',
+    section: { id: 'other', label: 'Community' },
+    label: 'Downloads',
+    roles: routeRoles('other/downloads'),
+    surface: 'full',
+    ui: { kind: 'downloads' },
   },
   {
     path: 'settings/app',
