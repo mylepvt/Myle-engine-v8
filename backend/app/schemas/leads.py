@@ -84,6 +84,9 @@ class LeadPublic(BaseModel):
     d2_morning: bool = False
     d2_afternoon: bool = False
     d2_evening: bool = False
+    d3_morning: bool = False
+    d3_afternoon: bool = False
+    d3_evening: bool = False
     process_tracking: Optional[dict[str, dict[str, bool]]] = None
     no_response_attempt_count: int = 0
 
@@ -229,6 +232,9 @@ class LeadUpdate(BaseModel):
     d2_morning: Optional[bool] = Field(default=None, description="Day 2 morning batch")
     d2_afternoon: Optional[bool] = Field(default=None, description="Day 2 afternoon batch")
     d2_evening: Optional[bool] = Field(default=None, description="Day 2 evening batch")
+    d3_morning: Optional[bool] = Field(default=None, description="Day 3 morning batch")
+    d3_afternoon: Optional[bool] = Field(default=None, description="Day 3 afternoon batch")
+    d3_evening: Optional[bool] = Field(default=None, description="Day 3 evening batch")
     process_stage: Optional[str] = Field(default=None, max_length=64)
     process_task: Optional[str] = Field(default=None, max_length=128)
     process_task_done: Optional[bool] = Field(default=None)
@@ -265,6 +271,9 @@ class LeadUpdate(BaseModel):
             self.d2_morning,
             self.d2_afternoon,
             self.d2_evening,
+            self.d3_morning,
+            self.d3_afternoon,
+            self.d3_evening,
             self.process_stage,
             self.process_task,
             self.process_task_done,
@@ -335,6 +344,9 @@ BatchSlot = Literal[
     "d2_morning",
     "d2_afternoon",
     "d2_evening",
+    "d3_morning",
+    "d3_afternoon",
+    "d3_evening",
 ]
 
 
