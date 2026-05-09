@@ -481,6 +481,7 @@ class PremiereViewerOut(BaseModel):
     viewer_id: str
     name: str
     masked_phone: str
+    phone: Optional[str] = None  # full phone — admin only
     city: str
     session_date: str
     session_hour: int
@@ -910,8 +911,8 @@ async def premiere_viewers(
     hour: Optional[int] = Query(default=None, description="Filter by session hour (omit for all today)"),
     date: Optional[str] = Query(default=None, description="Session date YYYY-MM-DD (omit for today)"),
 ) -> list[PremiereViewerOut]:
-    """Admin/leader only. Supports date param for historical view."""
-    if user.role not in ("admin", "leader"):
+    """Admin only. Supports date param for historical view."""
+    if user.role != "admin":
         raise HTTPException(status_code=403, detail="Forbidden")
     target_date = date or datetime.now(IST).date().isoformat()
     q = select(PremiereViewer).where(PremiereViewer.session_date == target_date)
@@ -933,6 +934,7 @@ async def premiere_viewers(
             viewer_id=v.viewer_id,
             name=v.name,
             masked_phone=_mask_phone(v.phone),
+            phone=v.phone or None,
             city=v.city,
             session_date=v.session_date,
             session_hour=v.session_hour,

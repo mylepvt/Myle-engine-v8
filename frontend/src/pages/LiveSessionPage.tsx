@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { apiFetch } from '@/lib/api'
+import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 
 type ScheduleSlot = {
   hour: number
@@ -19,6 +20,7 @@ type ViewerRecord = {
   viewer_id: string
   name: string
   masked_phone: string
+  phone: string | null
   city: string
   session_date: string
   session_hour: number
@@ -223,7 +225,7 @@ function AttendanceHistory({ slots }: { slots: ScheduleSlot[] }) {
               {viewers.map((v) => (
                 <tr key={`${v.viewer_id}-${v.session_hour}`} className="text-foreground">
                   <td className="py-2 pr-4 font-medium">{v.name || '—'}</td>
-                  <td className="py-2 pr-4 text-muted-foreground">{v.masked_phone}</td>
+                  <td className="py-2 pr-4 font-mono text-muted-foreground">{v.phone ?? v.masked_phone}</td>
                   <td className="py-2 pr-4 text-muted-foreground">{v.session_hour}:00</td>
                   <td className="py-2 pr-4">
                     {v.watch_completed ? (
@@ -325,6 +327,8 @@ export function LiveSessionPage({ title }: Props) {
     queryFn: fetchSchedule,
     refetchInterval: 30_000,
   })
+  const authMe = useAuthMeQuery()
+  const isAdmin = authMe.data?.role === 'admin'
 
   const baseOrigin = window.location.origin
 
@@ -356,8 +360,8 @@ export function LiveSessionPage({ title }: Props) {
         />
       ))}
 
-      {/* Attendance history */}
-      <AttendanceHistory slots={data?.slots ?? []} />
+      {/* Attendance history — admin only */}
+      {isAdmin && <AttendanceHistory slots={data?.slots ?? []} />}
     </div>
   )
 }
