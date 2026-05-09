@@ -37,13 +37,12 @@ export const PROCESS_STAGE_DEFS: Record<string, ProcessStageDef> = {
   day2: {
     status: 'day2',
     title: 'Day 2',
-    helper: 'Leader runs the Day 2 expose flow, follows up, and confirms ID creation before moving forward.',
+    helper: 'Send Day 2 live session link, share expose video, follow up, confirm ID creation.',
     nextStatus: 'day3',
     nextLabel: 'Push to Day 3',
     tasks: [
-      { key: 'manik_aggarwal_expose_video', label: 'Manik Aggarwal Expose Video', kind: 'share_video' },
+      { key: 'manik_aggarwal_expose_video', label: 'Expose Video', kind: 'share_video' },
       { key: 'day2_follow_up', label: 'Follow-up' },
-      { key: 'expose_video_follow_up', label: 'Expose Video Follow-up' },
       { key: 'id_create', label: 'ID Create' },
     ],
   },
