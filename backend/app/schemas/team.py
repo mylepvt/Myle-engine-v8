@@ -25,6 +25,7 @@ class TeamMemberPublic(BaseModel):
     leader_name: Optional[str] = None
     training_required: Optional[bool] = None
     training_status: Optional[str] = None
+    training_gate_until: Optional[date] = None
     access_blocked: Optional[bool] = None
     discipline_status: Optional[str] = None
     grace_end_date: Optional[date] = None

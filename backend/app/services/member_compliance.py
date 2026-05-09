@@ -313,6 +313,7 @@ async def build_compliance_snapshots(
         and (user.registration_status or "").strip().lower() == "approved"
         and not user.training_required
         and (user.training_status or "").strip().lower() in {"completed", "not_required"}
+        and not (user.training_gate_until is not None and user.training_gate_until >= today_date)
     ]
 
     fresh_leads_by_day: dict[date, dict[int, int]] = {}
@@ -400,6 +401,22 @@ async def build_compliance_snapshots(
             snapshot.compliance_level = "clear"
             snapshot.compliance_title = "Clear"
             snapshot.compliance_summary = pause_note or "No active discipline warning."
+            snapshots[user.id] = snapshot
+            continue
+
+        # Pending grace request acts as a hold: don't remove until requested date passes.
+        if (
+            user.grace_request_end_date is not None
+            and user.grace_request_end_date >= today_date
+        ):
+            snapshot.compliance_level = "grace"
+            snapshot.compliance_title = "Grace request pending"
+            detail = f"Grace requested until {user.grace_request_end_date.isoformat()} — awaiting admin approval."
+            if user.grace_request_reason:
+                detail = f"{detail} | {user.grace_request_reason}"
+            snapshot.compliance_summary = detail
+            snapshot.grace_end_date = user.grace_request_end_date
+            snapshot.grace_active = True
             snapshots[user.id] = snapshot
             continue
 

@@ -170,6 +170,8 @@ _ELIGIBLE_ROLES = {"team", "leader"}
 
 
 async def _get_eligible_users(session: AsyncSession) -> list[User]:
+    from app.core.time_ist import today_ist as _today_ist
+    today = _today_ist()
     rows = (
         await session.execute(
             select(User).where(
@@ -184,6 +186,7 @@ async def _get_eligible_users(session: AsyncSession) -> list[User]:
     return [
         u for u in rows
         if (u.training_status or "").strip().lower() in {"completed", "not_required"}
+        and not (u.training_gate_until is not None and u.training_gate_until >= today)
     ]
 
 

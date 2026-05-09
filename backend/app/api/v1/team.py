@@ -909,6 +909,33 @@ async def update_member_compliance(
     return item
 
 
+class TrainingGateBody(BaseModel):
+    gate_until: Optional[date] = None  # None clears the gate
+
+
+@router.patch("/members/{target_user_id}/training-gate")
+async def set_training_gate(
+    target_user_id: int,
+    body: TrainingGateBody,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Admin: set (or clear) the training gate date for a member.
+    While training_gate_until >= today, discipline rules do not apply.
+    """
+    _require_admin(user)
+    target = await session.get(User, target_user_id)
+    if target is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    target.training_gate_until = body.gate_until
+    await session.commit()
+    return {
+        "user_id": target.id,
+        "fbo_id": target.fbo_id,
+        "training_gate_until": target.training_gate_until.isoformat() if target.training_gate_until else None,
+    }
+
+
 class TrainingToggleBody(BaseModel):
     locked: bool  # True = require training (lock), False = skip/unlock training
 
