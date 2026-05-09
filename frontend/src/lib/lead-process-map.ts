@@ -28,10 +28,10 @@ export const PROCESS_STAGE_DEFS: Record<string, ProcessStageDef> = {
     nextLabel: 'Push to Day 2',
     tasks: [
       { key: 'esbi_model_session', label: 'ESBI Model', kind: 'open_video', settingKey: 'content.esbi_model' },
-      { key: 'esbi_notes_follow_up', label: 'ESBI Notes Follow-up' },
-      { key: 'power_of_network_follow_up', label: 'Power of Network', kind: 'open_video', settingKey: 'content.power_of_network' },
-      { key: 'hype_create_day2', label: 'Hype Create for Day 2' },
-      { key: 'leader_follow_up', label: 'Leader Follow-up' },
+      { key: 'esbi_follow_up', label: 'Follow-up' },
+      { key: 'power_of_network_session', label: 'Power of Network', kind: 'open_video', settingKey: 'content.power_of_network' },
+      { key: 'power_of_network_follow_up', label: 'Follow-up' },
+      { key: 'hype_create_day2_leader', label: 'Hype Create for Day 2 + Leader' },
     ],
   },
   day2: {
