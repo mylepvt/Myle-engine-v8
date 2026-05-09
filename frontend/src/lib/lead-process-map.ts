@@ -1,11 +1,13 @@
 import type { LeadStatus } from '@/hooks/use-leads-query'
 
-export type ProcessTaskKind = 'check' | 'share_video'
+export type ProcessTaskKind = 'check' | 'share_video' | 'open_video'
 
 export type ProcessTaskDef = {
   key: string
   label: string
   kind?: ProcessTaskKind
+  /** AppSetting key for video URL — used by open_video kind */
+  settingKey?: string
 }
 
 export type ProcessStageDef = {
@@ -25,9 +27,9 @@ export const PROCESS_STAGE_DEFS: Record<string, ProcessStageDef> = {
     nextStatus: 'day2',
     nextLabel: 'Push to Day 2',
     tasks: [
-      { key: 'esbi_model_session', label: 'ESBI Model Session' },
+      { key: 'esbi_model_session', label: 'ESBI Model', kind: 'open_video', settingKey: 'content.esbi_model' },
       { key: 'esbi_notes_follow_up', label: 'ESBI Notes Follow-up' },
-      { key: 'power_of_network_follow_up', label: 'Power of Network Follow-up' },
+      { key: 'power_of_network_follow_up', label: 'Power of Network', kind: 'open_video', settingKey: 'content.power_of_network' },
       { key: 'hype_create_day2', label: 'Hype Create for Day 2' },
       { key: 'leader_follow_up', label: 'Leader Follow-up' },
     ],
@@ -41,6 +43,7 @@ export const PROCESS_STAGE_DEFS: Record<string, ProcessStageDef> = {
     tasks: [
       { key: 'manik_aggarwal_expose_video', label: 'Manik Aggarwal Expose Video', kind: 'share_video' },
       { key: 'day2_follow_up', label: 'Follow-up' },
+      { key: 'expose_video_follow_up', label: 'Expose Video Follow-up' },
       { key: 'id_create', label: 'ID Create' },
     ],
   },

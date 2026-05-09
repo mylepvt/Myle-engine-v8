@@ -41,7 +41,7 @@ function sectionForStatus(status: string, role: Role | null): LeadSectionInfo {
     return { label: 'Retarget', path: '/dashboard/work/retarget' }
   }
   if (status === 'mindset_lock') {
-    return { label: 'Workboard -> Mindset Lock', path: '/dashboard/work/workboard#mindset-lock' }
+    return { label: 'Mindset Lock', path: '/dashboard/work/mindset-lock' }
   }
   if (status === 'paid') {
     return { label: 'Workboard -> Day 1', path: workboardTabPath('day1') }

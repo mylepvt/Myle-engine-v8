@@ -25,8 +25,8 @@ describe('lead-section', () => {
     expect(
       nextSectionForLead({ status: 'video_watched', archived_at: null } as const, 'admin'),
     ).toEqual({
-      label: 'Workboard -> Mindset Lock',
-      path: '/dashboard/work/workboard#mindset-lock',
+      label: 'Workboard -> Day 1',
+      path: '/dashboard/work/workboard?tab=day1#pipeline',
     })
   })
 
@@ -34,8 +34,8 @@ describe('lead-section', () => {
     expect(
       nextSectionForLead({ status: 'day1', archived_at: null } as const, 'leader'),
     ).toEqual({
-      label: 'Workboard -> Day 2',
-      path: '/dashboard/work/workboard?tab=day2#pipeline',
+      label: 'Mindset Lock',
+      path: '/dashboard/work/mindset-lock',
     })
   })
 

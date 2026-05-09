@@ -36,6 +36,32 @@ from app.services.training_uploads import save_training_notes_image
 
 router = APIRouter()
 
+_CONTENT_LINK_KEYS = [
+    "content.esbi_model",
+    "content.power_of_network",
+    "content.manik_expose",
+]
+
+
+class ContentLinksResponse(BaseModel):
+    links: dict[str, str]
+
+
+@router.get("/content-links", response_model=ContentLinksResponse)
+async def get_content_links(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ContentLinksResponse:
+    rows = (
+        await session.execute(
+            select(AppSetting.key, AppSetting.value).where(
+                AppSetting.key.in_(_CONTENT_LINK_KEYS)
+            )
+        )
+    ).all()
+    links = {key: (value or "") for key, value in rows}
+    return ContentLinksResponse(links=links)
+
 
 def _require_leader_or_team(user: AuthUser) -> None:
     if user.role not in ("leader", "team"):

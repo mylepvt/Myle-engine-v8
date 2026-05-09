@@ -30,6 +30,7 @@ import {
   reserveExternalShareWindow,
 } from '@/lib/external-share-window'
 import { getMindsetLockSendState } from '@/lib/mindset-lock'
+import { useContentLinksQuery } from '@/hooks/use-content-links-query'
 import { checklistForStage } from '@/lib/lead-process-map'
 import { LEAD_SLA_SMOOTH_REFRESH_MS, formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
 import { buildLiveSessionWhatsAppUrl, type LiveSessionSlotOption } from '@/lib/live-session-slots'
@@ -37,7 +38,7 @@ import { whatsappDigits } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-type Props = { title: string }
+type Props = { title: string; mode?: 'mindset-lock' | 'pipeline' }
 type Col = { status: string; total: number; items: LeadPublic[] }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -61,7 +62,7 @@ const BADGE: Record<string, string> = {
 }
 const CLOSE:  LeadStatus[] = ['converted','lost']
 const MIN_MINDSET_SECONDS = 300
-type BatchSlotKey = 'd1_morning' | 'd1_afternoon' | 'd1_evening' | 'd2_morning' | 'd2_afternoon' | 'd2_evening'
+type BatchSlotKey = 'd1_morning' | 'd1_afternoon' | 'd1_evening' | 'd2_morning' | 'd2_afternoon' | 'd2_evening' | 'd3_morning' | 'd3_afternoon' | 'd3_evening'
 type WorkboardStageKey =
   | 'day1'
   | 'day2'
@@ -216,7 +217,6 @@ const LeadCard = memo(function LeadCard({
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
   const [sendError, setSendError] = useState<string | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
-  const qc = useQueryClient()
   const stageOpsCard = stageKey != null
 
   async function handleSendEnrollmentVideo(option: LiveSessionSlotOption) {
@@ -503,6 +503,7 @@ function ProcessChecklistSection({
   const qc = useQueryClient()
   const [busyTask, setBusyTask] = useState<string | null>(null)
   const [taskError, setTaskError] = useState<string | null>(null)
+  const { data: contentLinks = {} } = useContentLinksQuery()
   const def = checklistForStage(stage)
 
   if (!def) return null
@@ -595,6 +596,34 @@ function ProcessChecklistSection({
                 >
                   {busy ? 'Sharing…' : done ? 'Shared' : 'Share'}
                 </button>
+              ) : task.kind === 'open_video' ? (
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {task.settingKey && contentLinks?.[task.settingKey] ? (
+                    <a
+                      href={contentLinks[task.settingKey]}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="shrink-0 rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20"
+                    >
+                      Watch
+                    </a>
+                  ) : (
+                    <span className="text-ds-caption text-muted-foreground/60">No link set</span>
+                  )}
+                  <button
+                    type="button"
+                    disabled={leadPatchBusy || busy}
+                    onClick={() => void toggleTask(task.key, !done)}
+                    className={cn(
+                      'shrink-0 rounded-md border px-2 py-1 text-ds-caption font-semibold transition disabled:opacity-50',
+                      done
+                        ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
+                        : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
+                    )}
+                  >
+                    {busy ? '...' : done ? 'Done' : 'Tick'}
+                  </button>
+                </div>
               ) : (
                 <button
                   type="button"
@@ -638,36 +667,27 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
   onMoveNext?: () => void
   nextLabel?: string
 }) {
-  if (stageKey !== 'day1') {
-    return (
-      <ProcessChecklistSection
-        lead={lead}
-        stage={stageKey}
-        pm={pm}
-        leadPatchBusy={leadPatchBusy}
-        onMoveNext={onMoveNext}
-        nextLabel={nextLabel}
-      />
-    )
-  }
-
+  // Hooks always at top — no conditional returns before these
   const qc = useQueryClient()
   const [sharingSlot, setSharingSlot] = useState<BatchSlotKey | null>(null)
   const [toggleSlot, setToggleSlot] = useState<BatchSlotKey | null>(null)
   const [batchError, setBatchError] = useState<string | null>(null)
   const [eveningPickerOpen, setEveningPickerOpen] = useState(false)
   const [eveningPickerBusy, setEveningPickerBusy] = useState(false)
-  const dayKey = stageKey === 'day1' ? 1 : 2
-  const batchSlots = stageKey === 'day1'
-    ? (['d1_morning', 'd1_afternoon', 'd1_evening'] as const)
-    : (['d2_morning', 'd2_afternoon', 'd2_evening'] as const)
-  const done = batchSlots.every((k) => lead[k])
-  const showDay2TestSend = stageKey === 'day2' && done
-  const day2EvaluationWhatsAppUrl = showDay2TestSend
-    ? buildDay2BusinessTestWhatsAppUrl({
-        leadName: lead.name,
-        phone: lead.phone,
-      })
+
+  const hasBatchSlots = stageKey === 'day1' || stageKey === 'day2' || stageKey === 'day3'
+  const dayKey = stageKey === 'day3' ? 3 : stageKey === 'day2' ? 2 : 1
+  const batchSlots: readonly BatchSlotKey[] =
+    stageKey === 'day2'
+      ? (['d2_morning', 'd2_afternoon', 'd2_evening'] as const)
+      : stageKey === 'day3'
+      ? (['d3_morning', 'd3_afternoon', 'd3_evening'] as const)
+      : (['d1_morning', 'd1_afternoon', 'd1_evening'] as const)
+
+  const allSlotsDone = hasBatchSlots && batchSlots.every((k) => lead[k])
+  const showDay2EvalSend = stageKey === 'day2' && allSlotsDone
+  const day2EvaluationWhatsAppUrl = showDay2EvalSend
+    ? buildDay2BusinessTestWhatsAppUrl({ leadName: lead.name, phone: lead.phone })
     : null
 
   const handleBatchShare = async (slot: 'M' | 'A' | 'E', slotKey: BatchSlotKey) => {
@@ -680,18 +700,12 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slot: slotKey }),
       })
-      if (!res.ok) {
-        throw new Error(await readResponseError(res))
-      }
+      if (!res.ok) throw new Error(await readResponseError(res))
       const body = (await res.json()) as { watch_url_v1?: string; watch_url_v2?: string }
       const tokenizedLinks = { v1: body.watch_url_v1, v2: body.watch_url_v2 }
       const waUrl = workboardBatchWhatsAppUrl(lead, dayKey, slot, tokenizedLinks)
-      if (!waUrl) {
-        throw new Error('Phone number missing for WhatsApp batch share.')
-      }
-      if (!completeExternalShareWindow(popup, waUrl)) {
-        throw new Error('Could not open WhatsApp share window.')
-      }
+      if (!waUrl) throw new Error('Phone number missing for WhatsApp batch share.')
+      if (!completeExternalShareWindow(popup, waUrl)) throw new Error('Could not open WhatsApp share window.')
       await pm.mutateAsync({ id: lead.id, body: { [slotKey]: true } })
       await qc.refetchQueries({ queryKey: ['workboard'] })
     } catch (err) {
@@ -727,9 +741,10 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     }
   }
 
-  // Day 2 tab → premier day 2 slots; Day 3 tab → premier day 3 slots
+  // day1 → opens day2 premiere; day2 → day3 premiere; day3 → day3 premiere
   const eveningSlotDay = stageKey === 'day1' ? 2 : 3
-  const eveningSlotKey: BatchSlotKey = stageKey === 'day1' ? 'd1_evening' : 'd2_evening'
+  const eveningSlotKey: BatchSlotKey =
+    stageKey === 'day3' ? 'd3_evening' : stageKey === 'day2' ? 'd2_evening' : 'd1_evening'
 
   const handleEveningSlotConfirm = async (option: LiveSessionSlotOption) => {
     setEveningPickerBusy(true)
@@ -750,9 +765,23 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     }
   }
 
+  // Stages without batch slots → only process checklist
+  if (!hasBatchSlots) {
+    return (
+      <ProcessChecklistSection
+        lead={lead}
+        stage={stageKey}
+        pm={pm}
+        leadPatchBusy={leadPatchBusy}
+        onMoveNext={onMoveNext}
+        nextLabel={nextLabel}
+      />
+    )
+  }
+
   const slotTimeLabels = (['5pm', '6pm', '7pm'] as const)
 
-  return (
+  const slotSection = (
     <div className="space-y-1.5 border-t border-border/40 pt-1.5">
       <div className="flex items-center gap-2">
         <span className="text-ds-caption text-muted-foreground">Links:</span>
@@ -807,19 +836,50 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
         })}
       </div>
       {batchError ? <p className="text-ds-caption text-destructive">{batchError}</p> : null}
-      {showDay2TestSend && (
+      {showDay2EvalSend && (
         <button type="button" disabled={leadPatchBusy}
           onClick={() => void handleDay2EvaluationShare()}
           className="w-full rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-ds-caption font-semibold text-emerald-300 transition hover:bg-emerald-400/20 disabled:opacity-50">
           Send Day 2 Evaluation Update
         </button>
       )}
-      {done && onMoveNext && (
-        <button type="button" disabled={leadPatchBusy} onClick={onMoveNext}
-          className="w-full rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50">
-          {nextLabel ?? 'Move to next stage →'}
-        </button>
-      )}
+    </div>
+  )
+
+  // day1: slots only — move-next when all slots done
+  if (stageKey === 'day1') {
+    return (
+      <div className="space-y-1.5">
+        {slotSection}
+        {allSlotsDone && onMoveNext && (
+          <button type="button" disabled={leadPatchBusy} onClick={onMoveNext}
+            className="w-full rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50">
+            {nextLabel ?? 'Move to next stage →'}
+          </button>
+        )}
+        <LiveSessionSlotPicker
+          open={eveningPickerOpen}
+          busy={eveningPickerBusy}
+          day={eveningSlotDay}
+          onClose={() => setEveningPickerOpen(false)}
+          onConfirm={(option) => void handleEveningSlotConfirm(option)}
+        />
+      </div>
+    )
+  }
+
+  // day2/day3: slots section + process checklist (checklist owns the move-next button)
+  return (
+    <div className="space-y-1.5">
+      {slotSection}
+      <ProcessChecklistSection
+        lead={lead}
+        stage={stageKey}
+        pm={pm}
+        leadPatchBusy={leadPatchBusy}
+        onMoveNext={onMoveNext}
+        nextLabel={nextLabel}
+      />
       <LiveSessionSlotPicker
         open={eveningPickerOpen}
         busy={eveningPickerBusy}
@@ -1013,60 +1073,6 @@ function MindsetQueueView({
   )
 }
 
-function LeaderView({
-  cols,
-  pm,
-  patchBusyLeadId,
-  mindsetBusyLeadId,
-  mindsetPreviewByLeadId,
-  ensureMindsetPreview,
-  onRequestMindsetSend,
-  search,
-  nowMs,
-  currentUserId,
-  adminTab,
-  onAdminTabChange,
-}: {
-  cols: Col[]
-  pm: PM
-  patchBusyLeadId: number | null
-  mindsetBusyLeadId: number | null
-  mindsetPreviewByLeadId: Record<number, MindsetLockPreviewResponse | undefined>
-  ensureMindsetPreview: (lead: LeadPublic) => void
-  onRequestMindsetSend?: (lead: LeadPublic) => void
-  search: string
-  nowMs: number
-  currentUserId: number | null
-  adminTab: ATab
-  onAdminTabChange: (tab: ATab) => void
-}) {
-  return (
-    <div className="space-y-6">
-      <MindsetQueueView
-        cols={cols}
-        pm={pm}
-        patchBusyLeadId={patchBusyLeadId}
-        mindsetBusyLeadId={mindsetBusyLeadId}
-        mindsetPreviewByLeadId={mindsetPreviewByLeadId}
-        ensureMindsetPreview={ensureMindsetPreview}
-        onRequestMindsetSend={onRequestMindsetSend}
-        search={search}
-        nowMs={nowMs}
-        queueRole="leader"
-        currentUserId={currentUserId}
-      />
-      <AdminView
-        cols={cols}
-        pm={pm}
-        patchBusyLeadId={patchBusyLeadId}
-        search={search}
-        nowMs={nowMs}
-        tab={adminTab}
-        onTabChange={onAdminTabChange}
-      />
-    </div>
-  )
-}
 
 // ── AdminView ──────────────────────────────────────────────────────────────────
 function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance = true, tab, onTabChange }: {
@@ -1151,7 +1157,7 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance
 }
 
 // ── Page ───────────────────────────────────────────────────────────────────────
-export function WorkboardPage({ title }: Props) {
+export function WorkboardPage({ title, mode = 'pipeline' }: Props) {
   const [searchParams, setSearchParams] = useSearchParams()
   const { role, serverRole } = useDashboardShellRole()
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
@@ -1256,11 +1262,13 @@ export function WorkboardPage({ title }: Props) {
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            {surfaceRole === 'admin'
-              ? 'Organization view — all active leads.'
-              : surfaceRole === 'leader'
-                ? 'Your personal mindset queue plus execution pipeline.'
-                : 'Your personal pipeline.'}
+            {mode === 'mindset-lock'
+              ? surfaceRole === 'leader'
+                ? 'Your assigned leads ready for mindset lock — complete before Day 2.'
+                : 'Complete mindset lock for your leads before they move to Day 2.'
+              : surfaceRole === 'admin'
+                ? 'Organization pipeline — Day 2 onwards.'
+                : 'Day 2 onwards execution pipeline.'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -1309,61 +1317,34 @@ export function WorkboardPage({ title }: Props) {
 
       {/* Main content */}
       {data && !isPending && (
-        surfaceRole === 'team'
+        mode === 'mindset-lock'
           ? (
-            <div className="space-y-6">
-              <MindsetQueueView
-                cols={cols}
-                pm={pm}
-                patchBusyLeadId={patchBusyLeadId}
-                mindsetBusyLeadId={mindsetBusyLeadId}
-                mindsetPreviewByLeadId={mindsetPreviewByLeadId}
-                ensureMindsetPreview={ensureMindsetPreview}
-                onRequestMindsetSend={(lead) => setConfirmLead(lead)}
-                search={search}
-                nowMs={nowMs}
-                queueRole="team"
-                currentUserId={currentUserId}
-              />
-              <AdminView
-                cols={cols}
-                pm={pm}
-                patchBusyLeadId={patchBusyLeadId}
-                search={search}
-                nowMs={nowMs}
-                allowStageAdvance={false}
-                tab={adminTab}
-                onTabChange={setAdminTab}
-              />
-            </div>
+            <MindsetQueueView
+              cols={cols}
+              pm={pm}
+              patchBusyLeadId={patchBusyLeadId}
+              mindsetBusyLeadId={mindsetBusyLeadId}
+              mindsetPreviewByLeadId={mindsetPreviewByLeadId}
+              ensureMindsetPreview={ensureMindsetPreview}
+              onRequestMindsetSend={(lead) => setConfirmLead(lead)}
+              search={search}
+              nowMs={nowMs}
+              queueRole={surfaceRole === 'leader' ? 'leader' : 'team'}
+              currentUserId={currentUserId}
+            />
           )
-          : surfaceRole === 'leader'
-            ? (
-              <LeaderView
-                cols={cols}
-                pm={pm}
-                patchBusyLeadId={patchBusyLeadId}
-                mindsetBusyLeadId={mindsetBusyLeadId}
-                mindsetPreviewByLeadId={mindsetPreviewByLeadId}
-                ensureMindsetPreview={ensureMindsetPreview}
-                onRequestMindsetSend={(lead) => setConfirmLead(lead)}
-                search={search}
-                nowMs={nowMs}
-                currentUserId={currentUserId}
-                adminTab={adminTab}
-                onAdminTabChange={setAdminTab}
-              />
-            )
-            : <AdminView
-                cols={cols}
-                pm={pm}
-                patchBusyLeadId={patchBusyLeadId}
-                search={search}
-                nowMs={nowMs}
-                allowStageAdvance
-                tab={adminTab}
-                onTabChange={setAdminTab}
-              />
+          : (
+            <AdminView
+              cols={cols}
+              pm={pm}
+              patchBusyLeadId={patchBusyLeadId}
+              search={search}
+              nowMs={nowMs}
+              allowStageAdvance={surfaceRole !== 'team'}
+              tab={adminTab}
+              onTabChange={setAdminTab}
+            />
+          )
       )}
       {confirmLead ? (
         <div className="keyboard-safe-modal fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4">
