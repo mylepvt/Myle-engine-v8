@@ -41,7 +41,7 @@ export const PROCESS_STAGE_DEFS: Record<string, ProcessStageDef> = {
     nextStatus: 'day3',
     nextLabel: 'Push to Day 3',
     tasks: [
-      { key: 'manik_aggarwal_expose_video', label: 'Expose Video', kind: 'share_video' },
+      { key: 'manik_aggarwal_expose_video', label: 'Expose Video', kind: 'share_video', settingKey: 'content.manik_expose' },
       { key: 'day2_follow_up', label: 'Follow-up' },
       { key: 'id_create', label: 'ID Create' },
     ],
