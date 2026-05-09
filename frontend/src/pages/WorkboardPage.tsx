@@ -21,7 +21,6 @@ import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { apiFetch } from '@/lib/api'
 import { callStatusSelectOptions } from '@/lib/call-status-options'
 import { formatCountdown, timerRemainingMs } from '@/lib/ctcs-timer'
-import { buildDay2BusinessTestWhatsAppUrl } from '@/lib/day2-business-test'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import {
   closeExternalShareWindow,
@@ -104,13 +103,6 @@ type ATab = WorkboardStageKey | 'closing'
 function parseAdminTab(value: string | null): ATab {
   const match = ADMIN_STAGE_TABS.find((tab) => tab.id === value)
   return (match?.id ?? 'day2') as ATab
-}
-
-function mmss(totalSeconds: number): string {
-  const sec = Math.max(0, totalSeconds)
-  const m = Math.floor(sec / 60)
-  const s = sec % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
 }
 
 const SLOT_TIME_LABEL: Record<'M' | 'A' | 'E', string> = { M: '5pm', A: '6pm', E: '7pm' }
@@ -251,22 +243,13 @@ const LeadCard = memo(function LeadCard({
   const startedAtMs = lead.mindset_started_at ? new Date(lead.mindset_started_at).getTime() : null
   const elapsedSeconds = startedAtMs ? Math.max(0, Math.floor((nowMs - startedAtMs) / 1000)) : 0
   const remainingSeconds = Math.max(0, MIN_MINDSET_SECONDS - elapsedSeconds)
-  const { unlocked, canSend, leaderName: previewName } = getMindsetLockSendState({
+  const { canSend } = getMindsetLockSendState({
     mindsetReady,
     remainingSeconds,
     preview: mindsetPreview,
   })
   const isLeaderMindsetFlow = surfaceRole === 'leader'
-  const lockLineClass = unlocked ? 'text-emerald-300' : 'text-red-300'
-  const targetName = isLeaderMindsetFlow && previewName === 'Leader will be assigned on send' ? 'You' : previewName
   const mindsetChecklistDone = stageChecklistComplete(lead, 'mindset_lock')
-  const mindsetFlowCopy = unlocked
-    ? isLeaderMindsetFlow
-      ? '5-minute call complete. Push this lead into Day 2 once the Day 1 checklist is done.'
-      : '5-minute call complete. Send now to move this lead into Day 2.'
-    : isLeaderMindsetFlow
-      ? 'Complete the full 5-minute call to unlock Day 2 push.'
-      : 'Complete the full 5-minute call to unlock Day 2 handoff.'
   const callOptions = callStatusSelectOptions(surfaceRole ?? null, lead.status as LeadStatus)
   const rawCallStatus = (lead.call_status ?? '').trim()
   const callValue = callOptions.some((option) => option.value === rawCallStatus)
@@ -414,47 +397,20 @@ const LeadCard = memo(function LeadCard({
               pm={pm}
               leadPatchBusy={leadPatchBusy}
             />
-            <p className={cn('text-ds-caption font-semibold', lockLineClass)}>
-              Minimum call time: {mmss(remainingSeconds)}
-            </p>
-            <p className="text-ds-caption text-muted-foreground">
-              {mindsetFlowCopy}
-            </p>
-            <p className="text-ds-caption text-muted-foreground">
-              {isLeaderMindsetFlow ? 'Day 2 owner' : 'Day 2 handoff'}:{' '}
-              <span className="font-semibold text-foreground">{targetName}</span>
-            </p>
             <button
               type="button"
-              title={
-                !mindsetChecklistDone
-                  ? 'Complete all Mindset Lock tasks before pushing to Day 2'
-                  : !canSend
-                  ? isLeaderMindsetFlow
-                    ? 'Complete at least 5 minutes call before pushing to Day 2'
-                    : 'Complete at least 5 minutes call before sending'
-                  : isLeaderMindsetFlow
-                    ? 'Push this lead into Day 2'
-                    : 'Send to leader and move to Day 2'
-              }
               disabled={!canSend || !mindsetChecklistDone || mindsetBusy}
               onClick={() => onRequestMindsetSend?.(lead)}
               className={cn(
                 'flex h-8 w-full items-center justify-center gap-1 rounded-md border px-2 text-ds-caption font-semibold transition disabled:cursor-not-allowed disabled:opacity-50',
-                canSend
+                canSend && mindsetChecklistDone
                   ? 'border-emerald-400/40 bg-emerald-400/12 text-emerald-300 hover:bg-emerald-400/20'
-                  : 'border-red-400/30 bg-red-400/10 text-red-300',
+                  : 'border-border bg-muted/30 text-muted-foreground',
               )}
             >
               <CheckSquare className="h-3.5 w-3.5" />
               <span>
-                {mindsetBusy
-                  ? isLeaderMindsetFlow
-                    ? 'Starting...'
-                    : 'Sending...'
-                  : isLeaderMindsetFlow
-                    ? 'Lock & Push to Day 2'
-                    : 'Lock & Send to Leader'}
+                {mindsetBusy ? 'Moving...' : isLeaderMindsetFlow ? 'Push to Day 2' : 'Send to Leader'}
               </span>
             </button>
           </div>
@@ -667,13 +623,12 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
   onMoveNext?: () => void
   nextLabel?: string
 }) {
-  // Hooks always at top — no conditional returns before these
   const qc = useQueryClient()
   const [sharingSlot, setSharingSlot] = useState<BatchSlotKey | null>(null)
   const [toggleSlot, setToggleSlot] = useState<BatchSlotKey | null>(null)
   const [batchError, setBatchError] = useState<string | null>(null)
-  const [eveningPickerOpen, setEveningPickerOpen] = useState(false)
-  const [eveningPickerBusy, setEveningPickerBusy] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [pickerBusy, setPickerBusy] = useState(false)
 
   const hasBatchSlots = stageKey === 'day1' || stageKey === 'day2' || stageKey === 'day3'
   const dayKey = stageKey === 'day3' ? 3 : stageKey === 'day2' ? 2 : 1
@@ -685,11 +640,8 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
       : (['d1_morning', 'd1_afternoon', 'd1_evening'] as const)
 
   const allSlotsDone = hasBatchSlots && batchSlots.every((k) => lead[k])
-  const showDay2EvalSend = stageKey === 'day2' && allSlotsDone
-  const day2EvaluationWhatsAppUrl = showDay2EvalSend
-    ? buildDay2BusinessTestWhatsAppUrl({ leadName: lead.name, phone: lead.phone })
-    : null
 
+  // day1 M/A slots — tokenized batch link
   const handleBatchShare = async (slot: 'M' | 'A' | 'E', slotKey: BatchSlotKey) => {
     setBatchError(null)
     setSharingSlot(slotKey)
@@ -702,8 +654,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
       })
       if (!res.ok) throw new Error(await readResponseError(res))
       const body = (await res.json()) as { watch_url_v1?: string; watch_url_v2?: string }
-      const tokenizedLinks = { v1: body.watch_url_v1, v2: body.watch_url_v2 }
-      const waUrl = workboardBatchWhatsAppUrl(lead, dayKey, slot, tokenizedLinks)
+      const waUrl = workboardBatchWhatsAppUrl(lead, dayKey, slot, { v1: body.watch_url_v1, v2: body.watch_url_v2 })
       if (!waUrl) throw new Error('Phone number missing for WhatsApp batch share.')
       if (!completeExternalShareWindow(popup, waUrl)) throw new Error('Could not open WhatsApp share window.')
       await pm.mutateAsync({ id: lead.id, body: { [slotKey]: true } })
@@ -729,43 +680,39 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     }
   }
 
-  const handleDay2EvaluationShare = async () => {
-    setBatchError(null)
-    if (!day2EvaluationWhatsAppUrl) {
-      setBatchError('Phone number missing for Day 2 evaluation WhatsApp share.')
-      return
-    }
-    if (!openExternalShareUrl(day2EvaluationWhatsAppUrl)) {
-      setBatchError('Could not open Day 2 evaluation WhatsApp share.')
-      return
-    }
+  // day1-evening + day2/day3-all: live session slot picker → WhatsApp premiere link
+  const slotKeyForHour = (hour: number): BatchSlotKey | null => {
+    const p = stageKey === 'day3' ? 'd3' : stageKey === 'day2' ? 'd2' : 'd1'
+    if (hour === 17) return `${p}_morning` as BatchSlotKey
+    if (hour === 18) return `${p}_afternoon` as BatchSlotKey
+    if (hour === 19) return `${p}_evening` as BatchSlotKey
+    return null
   }
 
-  // day1 → opens day2 premiere; day2 → day3 premiere; day3 → day3 premiere
-  const eveningSlotDay = stageKey === 'day1' ? 2 : 3
-  const eveningSlotKey: BatchSlotKey =
-    stageKey === 'day3' ? 'd3_evening' : stageKey === 'day2' ? 'd2_evening' : 'd1_evening'
-
-  const handleEveningSlotConfirm = async (option: LiveSessionSlotOption) => {
-    setEveningPickerBusy(true)
+  const handlePickerConfirm = async (option: LiveSessionSlotOption) => {
+    setPickerBusy(true)
     setBatchError(null)
     try {
-      const shareUrl = buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option, eveningSlotDay)
+      // day1 evening sends day2 premiere; day2/day3 send their own day premiere
+      const targetDay = stageKey === 'day1' ? 2 : dayKey
+      const shareUrl = buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option, targetDay)
       if (!shareUrl || !openExternalShareUrl(shareUrl)) {
-        setBatchError('WhatsApp link nahi bana. Lead ka phone number check karo.')
+        setBatchError('WhatsApp link nahi bana. Phone number check karo.')
         return
       }
-      await pm.mutateAsync({ id: lead.id, body: { [eveningSlotKey]: true } })
-      await qc.refetchQueries({ queryKey: ['workboard'] })
-      setEveningPickerOpen(false)
+      const slotKey = slotKeyForHour(option.hour)
+      if (slotKey) {
+        await pm.mutateAsync({ id: lead.id, body: { [slotKey]: true } })
+        await qc.refetchQueries({ queryKey: ['workboard'] })
+      }
+      setPickerOpen(false)
     } catch (err) {
-      setBatchError(err instanceof Error ? err.message : 'Could not send evening slot')
+      setBatchError(err instanceof Error ? err.message : 'Could not send live session')
     } finally {
-      setEveningPickerBusy(false)
+      setPickerBusy(false)
     }
   }
 
-  // Stages without batch slots → only process checklist
   if (!hasBatchSlots) {
     return (
       <ProcessChecklistSection
@@ -781,97 +728,84 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
 
   const slotTimeLabels = (['5pm', '6pm', '7pm'] as const)
 
-  const slotSection = (
-    <div className="space-y-1.5 border-t border-border/40 pt-1.5">
-      <div className="flex items-center gap-2">
-        <span className="text-ds-caption text-muted-foreground">Links:</span>
-        {batchSlots.map((slotKey, i) => {
-          const slot = (['M', 'A', 'E'] as const)[i]
-          const timeLabel = slotTimeLabels[i]
-          const slotDone = lead[slotKey]
-          const isEvening = i === 2
-          const busy = sharingSlot === slotKey
-          return (
-            <button
-              key={`share-${slotKey}`}
-              type="button"
-              disabled={leadPatchBusy || busy || (isEvening && eveningPickerBusy)}
-              onClick={() => isEvening ? setEveningPickerOpen(true) : void handleBatchShare(slot, slotKey)}
-              className={cn(
-                'flex h-6 min-w-10 items-center justify-center rounded px-1.5 text-ds-caption font-semibold transition disabled:opacity-50',
-                slotDone
-                  ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
-                  : isEvening
-                    ? 'border border-indigo-400/40 bg-indigo-400/10 text-indigo-300 hover:bg-indigo-400/20'
-                    : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
-              )}
-            >
-              {busy ? '...' : timeLabel}
-            </button>
-          )
-        })}
-      </div>
-      <div className="flex items-center gap-2">
-        <span className="text-ds-caption text-muted-foreground">Check:</span>
-        {batchSlots.map((slotKey, i) => {
-          const timeLabel = slotTimeLabels[i]
-          const slotDone = lead[slotKey]
-          const busy = toggleSlot === slotKey
-          return (
-            <button
-              key={`toggle-${slotKey}`}
-              type="button"
-              disabled={leadPatchBusy || busy}
-              onClick={() => void handleBatchToggle(slotKey)}
-              className={cn(
-                'flex h-6 min-w-10 items-center justify-center rounded px-1.5 text-ds-caption font-semibold transition disabled:opacity-50',
-                slotDone
-                  ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
-                  : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
-              )}
-            >
-              {busy ? '...' : slotDone ? <CheckSquare className="h-3 w-3" /> : <span>{timeLabel}</span>}
-            </button>
-          )
-        })}
-      </div>
-      {batchError ? <p className="text-ds-caption text-destructive">{batchError}</p> : null}
-      {showDay2EvalSend && (
-        <button type="button" disabled={leadPatchBusy}
-          onClick={() => void handleDay2EvaluationShare()}
-          className="w-full rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-ds-caption font-semibold text-emerald-300 transition hover:bg-emerald-400/20 disabled:opacity-50">
-          Send Day 2 Evaluation Update
-        </button>
-      )}
-    </div>
-  )
-
-  // day1: slots only — move-next when all slots done
+  // day1: M/A = batch tokenized links, E = premiere picker
   if (stageKey === 'day1') {
     return (
       <div className="space-y-1.5">
-        {slotSection}
-        {allSlotsDone && onMoveNext && (
-          <button type="button" disabled={leadPatchBusy} onClick={onMoveNext}
-            className="w-full rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50">
-            {nextLabel ?? 'Move to next stage →'}
-          </button>
-        )}
-        <LiveSessionSlotPicker
-          open={eveningPickerOpen}
-          busy={eveningPickerBusy}
-          day={eveningSlotDay}
-          onClose={() => setEveningPickerOpen(false)}
-          onConfirm={(option) => void handleEveningSlotConfirm(option)}
-        />
+        <div className="space-y-1.5 border-t border-border/40 pt-1.5">
+          <div className="flex items-center gap-2">
+            <span className="text-ds-caption text-muted-foreground">Links:</span>
+            {batchSlots.map((slotKey, i) => {
+              const slot = (['M', 'A', 'E'] as const)[i]
+              const timeLabel = slotTimeLabels[i]
+              const slotDone = lead[slotKey]
+              const isEvening = i === 2
+              const busy = sharingSlot === slotKey
+              return (
+                <button key={`share-${slotKey}`} type="button"
+                  disabled={leadPatchBusy || busy || (isEvening && pickerBusy)}
+                  onClick={() => isEvening ? setPickerOpen(true) : void handleBatchShare(slot, slotKey)}
+                  className={cn(
+                    'flex h-6 min-w-10 items-center justify-center rounded px-1.5 text-ds-caption font-semibold transition disabled:opacity-50',
+                    slotDone
+                      ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
+                      : isEvening
+                        ? 'border border-indigo-400/40 bg-indigo-400/10 text-indigo-300 hover:bg-indigo-400/20'
+                        : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
+                  )}>
+                  {busy ? '...' : timeLabel}
+                </button>
+              )
+            })}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-ds-caption text-muted-foreground">Check:</span>
+            {batchSlots.map((slotKey, i) => {
+              const slotDone = lead[slotKey]
+              const busy = toggleSlot === slotKey
+              return (
+                <button key={`toggle-${slotKey}`} type="button"
+                  disabled={leadPatchBusy || busy}
+                  onClick={() => void handleBatchToggle(slotKey)}
+                  className={cn(
+                    'flex h-6 min-w-10 items-center justify-center rounded px-1.5 text-ds-caption font-semibold transition disabled:opacity-50',
+                    slotDone
+                      ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
+                      : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
+                  )}>
+                  {busy ? '...' : slotDone ? <CheckSquare className="h-3 w-3" /> : <span>{slotTimeLabels[i]}</span>}
+                </button>
+              )
+            })}
+          </div>
+          {batchError ? <p className="text-ds-caption text-destructive">{batchError}</p> : null}
+          {allSlotsDone && onMoveNext && (
+            <button type="button" disabled={leadPatchBusy} onClick={onMoveNext}
+              className="w-full rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50">
+              {nextLabel ?? 'Move to next stage →'}
+            </button>
+          )}
+        </div>
+        <LiveSessionSlotPicker open={pickerOpen} busy={pickerBusy} day={2}
+          onClose={() => setPickerOpen(false)}
+          onConfirm={(option) => void handlePickerConfirm(option)} />
       </div>
     )
   }
 
-  // day2/day3: slots section + process checklist (checklist owns the move-next button)
+  // day2/day3: single "Send Live" button (same picker as calling board) + checklist
   return (
     <div className="space-y-1.5">
-      {slotSection}
+      <div className="border-t border-border/40 pt-1.5 space-y-1.5">
+        <button type="button"
+          disabled={leadPatchBusy || pickerBusy}
+          onClick={() => setPickerOpen(true)}
+          className="flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-indigo-400/40 bg-indigo-400/10 px-2 text-ds-caption font-semibold text-indigo-300 transition hover:bg-indigo-400/20 disabled:opacity-50">
+          <Video className="h-3.5 w-3.5" />
+          {pickerBusy ? 'Sending...' : `Send Day ${dayKey} Live Session`}
+        </button>
+        {batchError ? <p className="text-ds-caption text-destructive">{batchError}</p> : null}
+      </div>
       <ProcessChecklistSection
         lead={lead}
         stage={stageKey}
@@ -880,13 +814,9 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
         onMoveNext={onMoveNext}
         nextLabel={nextLabel}
       />
-      <LiveSessionSlotPicker
-        open={eveningPickerOpen}
-        busy={eveningPickerBusy}
-        day={eveningSlotDay}
-        onClose={() => setEveningPickerOpen(false)}
-        onConfirm={(option) => void handleEveningSlotConfirm(option)}
-      />
+      <LiveSessionSlotPicker open={pickerOpen} busy={pickerBusy} day={dayKey}
+        onClose={() => setPickerOpen(false)}
+        onConfirm={(option) => void handlePickerConfirm(option)} />
     </div>
   )
 }
