@@ -82,7 +82,6 @@ const ADMIN_STAGE_TABS: {
   nextStatus?: LeadStatus
   nextLabel?: string
 }[] = [
-  { id: 'day1', label: 'Day 1', statuses: ['day1'], stageKey: 'day1' },
   { id: 'day2', label: 'Day 2', statuses: ['day2'], stageKey: 'day2', nextStatus: 'day3', nextLabel: 'Push to Day 3' },
   { id: 'day3', label: 'Day 3', statuses: ['day3'], stageKey: 'day3', nextStatus: 'interview', nextLabel: 'Push to Day 4' },
   { id: 'interview', label: 'Day 4', statuses: ['interview'], stageKey: 'interview', nextStatus: 'track_selected', nextLabel: 'Push to Day 5' },
@@ -103,7 +102,7 @@ type ATab = WorkboardStageKey | 'closing'
 
 function parseAdminTab(value: string | null): ATab {
   const match = ADMIN_STAGE_TABS.find((tab) => tab.id === value)
-  return (match?.id ?? 'day1') as ATab
+  return (match?.id ?? 'day2') as ATab
 }
 
 function mmss(totalSeconds: number): string {
@@ -393,7 +392,7 @@ const LeadCard = memo(function LeadCard({
           <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 px-2 py-2">
             <p className="text-ds-caption text-muted-foreground">
               {isLeaderMindsetFlow
-                ? 'Start the After Day 1 mindset lock before pushing to Day 2.'
+                ? 'Start Mindset Lock before pushing this lead into Day 2.'
                 : 'Start the After Day 1 mindset lock before leader handoff.'}
             </p>
             <button
@@ -429,7 +428,7 @@ const LeadCard = memo(function LeadCard({
               type="button"
               title={
                 !mindsetChecklistDone
-                  ? 'Complete all After Day 1 tasks before pushing to Day 2'
+                  ? 'Complete all Mindset Lock tasks before pushing to Day 2'
                   : !canSend
                   ? isLeaderMindsetFlow
                     ? 'Complete at least 5 minutes call before pushing to Day 2'
@@ -1005,8 +1004,8 @@ function MindsetQueueView({
         onRequestMindsetSend={onRequestMindsetSend}
         empty={
           queueRole === 'leader'
-            ? 'No personal Day 2 or mindset-lock leads yet'
-            : 'No Day 2 or mindset-lock leads yet'
+            ? 'No personal mindset-lock leads yet'
+            : 'No mindset-lock leads yet'
         }
         nowMs={nowMs}
       />
@@ -1114,7 +1113,7 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance
             leads={day2}
             stageKey="day2"
             nextStatus={allowStageAdvance ? 'day3' : undefined}
-            nextLabel={allowStageAdvance ? 'Move to Day 4 →' : undefined}
+            nextLabel={allowStageAdvance ? 'Push to Day 3' : undefined}
             pm={pm}
             patchBusyLeadId={patchBusyLeadId}
             nowMs={nowMs}
@@ -1218,7 +1217,7 @@ export function WorkboardPage({ title }: Props) {
 
   const setAdminTab = useCallback((tab: ATab) => {
     const next = new URLSearchParams(searchParams)
-    if (tab === 'day1') {
+    if (tab === 'day2') {
       next.delete('tab')
     } else {
       next.set('tab', tab)
@@ -1241,7 +1240,7 @@ export function WorkboardPage({ title }: Props) {
         delete next[leadId]
         return next
       })
-      setToastMsg('Lead moved to Day 2')
+      setToastMsg('Mindset Lock complete. Lead moved to Day 2')
     } catch (e) {
       setMindsetErr(e instanceof Error ? e.message : 'Could not complete mindset lock')
     } finally {
@@ -1370,19 +1369,19 @@ export function WorkboardPage({ title }: Props) {
         <div className="keyboard-safe-modal fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4">
           <div className="keyboard-safe-sheet w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-4 shadow-2xl">
             <h3 className="text-base font-semibold text-foreground">
-              {surfaceRole === 'leader' ? 'Start Day 2?' : 'Send to Leader?'}
+              {surfaceRole === 'leader' ? 'Complete Mindset Lock?' : 'Send to Leader?'}
             </h3>
             <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
               {surfaceRole === 'leader' ? (
                 <>
                   <li>You have completed the After Day 1 checklist and mindset call</li>
-                  <li>This action will move the lead into your Day 2 queue</li>
+                  <li>This action will complete Mindset Lock and move the lead into your Day 2 queue</li>
                   <li>You can continue execution from the Day 2 tab</li>
                 </>
               ) : (
                 <>
                   <li>You have completed the After Day 1 checklist and mindset call</li>
-                  <li>This action will move the lead to Day 2 under your leader</li>
+                  <li>This action will complete Mindset Lock and move the lead to Day 2 under your leader</li>
                   <li>You won't be able to edit after this</li>
                 </>
               )}

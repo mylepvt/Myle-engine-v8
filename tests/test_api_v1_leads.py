@@ -1008,7 +1008,7 @@ def test_mindset_lock_preview_uses_persisted_started_at_after_reconnect(
         asyncio.run(_clear_leads())
 
 
-def test_mindset_lock_complete_handles_persisted_started_at_after_reconnect(
+def test_mindset_lock_complete_handles_persisted_started_at_after_reconnect_into_day2(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     started_at = datetime.now(timezone.utc) - timedelta(minutes=6)
@@ -1034,7 +1034,7 @@ def test_mindset_lock_complete_handles_persisted_started_at_after_reconnect(
         lead = c.get("/api/v1/leads/1")
         assert lead.status_code == 200
         lead_body = lead.json()
-        assert lead_body["status"] == "day1"
+        assert lead_body["status"] == "day2"
         assert lead_body["owner_user_id"] == 3
         assert lead_body["assigned_to_user_id"] == 2
         assert lead_body["mindset_lock_state"] == "leader_assigned"
@@ -1071,7 +1071,7 @@ def test_leader_can_preview_personal_mindset_lock(
         asyncio.run(_clear_leads())
 
 
-def test_leader_can_complete_personal_mindset_lock_into_day1(
+def test_leader_can_complete_personal_mindset_lock_into_day2(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     started_at = datetime.now(timezone.utc) - timedelta(minutes=6)
@@ -1098,7 +1098,7 @@ def test_leader_can_complete_personal_mindset_lock_into_day1(
         lead = c.get("/api/v1/leads/1")
         assert lead.status_code == 200
         lead_body = lead.json()
-        assert lead_body["status"] == "day1"
+        assert lead_body["status"] == "day2"
         assert lead_body["owner_user_id"] == 2
         assert lead_body["assigned_to_user_id"] == 2
         assert lead_body["mindset_lock_state"] == "leader_assigned"

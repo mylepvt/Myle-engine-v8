@@ -20,8 +20,8 @@ export type ProcessStageDef = {
 export const PROCESS_STAGE_DEFS: Record<string, ProcessStageDef> = {
   mindset_lock: {
     status: 'mindset_lock',
-    title: 'After Day 1',
-    helper: 'Team completes post-Day-1 momentum tasks here, then hands the lead into Day 2 for the leader.',
+    title: 'Mindset Lock',
+    helper: 'Bridge between Calling Board Day 1 and Workboard Day 2. Team completes these tasks here before leader handoff.',
     nextStatus: 'day2',
     nextLabel: 'Push to Day 2',
     tasks: [

@@ -7,9 +7,9 @@ import conftest as test_conftest
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import delete
-
 from app.core.lead_status import WORKBOARD_COLUMNS
 from app.models.lead import Lead
+from app.models.user import User
 from main import app
 
 from util_jwt_patch import patch_jwt_settings
@@ -52,6 +52,32 @@ async def _clear_leads() -> None:
     fac = test_conftest.get_test_session_factory()
     async with fac() as session:
         await session.execute(delete(Lead))
+        await session.commit()
+
+
+async def _seed_user(
+    *,
+    user_id: int,
+    email: str,
+    role: str,
+    upline_user_id: int | None,
+) -> None:
+    fac = test_conftest.get_test_session_factory()
+    async with fac() as session:
+        existing = await session.get(User, user_id)
+        if existing is not None:
+            return
+        session.add(
+            User(
+                id=user_id,
+                email=email,
+                fbo_id=f"test-{user_id}",
+                role=role,
+                hashed_password="dev",
+                upline_user_id=upline_user_id,
+                registration_status="approved",
+            )
+        )
         await session.commit()
 
 
@@ -298,6 +324,39 @@ def test_leader_workboard_shows_downline_unassigned_paid_lead_via_creator_fallba
         by_status = {col["status"]: col for col in body["columns"]}
         assert by_status["paid"]["total"] == 1
         assert by_status["paid"]["items"][0]["name"] == "Downline Paid But Unassigned"
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_leader_workboard_hides_outside_team_leads(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(_seed_user(user_id=4, email="outside-team@myle.local", role="team", upline_user_id=1))
+    asyncio.run(
+        _seed_lead(
+            user_id=4,
+            name="Outside Team Lead",
+            lead_status="day2",
+            created_by_user_id=4,
+            assigned_to_user_id=4,
+        )
+    )
+    asyncio.run(
+        _seed_lead(
+            user_id=3,
+            name="Downline Lead",
+            lead_status="day2",
+            created_by_user_id=3,
+            assigned_to_user_id=3,
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        body = c.get("/api/v1/workboard/leads").json()
+        by_status = {col["status"]: col for col in body["columns"]}
+        assert by_status["day2"]["total"] == 1
+        assert by_status["day2"]["items"][0]["name"] == "Downline Lead"
     finally:
         asyncio.run(_clear_leads())
 
