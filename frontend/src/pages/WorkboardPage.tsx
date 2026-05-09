@@ -152,6 +152,22 @@ function stageChecklistComplete(lead: LeadPublic, stage: string): boolean {
   return def.tasks.every((task) => processTaskDone(lead, stage, task.key))
 }
 
+function cleanPersonName(value: string | null | undefined): string | null {
+  const name = value?.trim()
+  return name ? name : null
+}
+
+function workboardPeopleLabels(lead: LeadPublic): { ownerName: string | null; leaderName: string | null } {
+  const ownerName = cleanPersonName(lead.owner_name)
+  const assignedRole = cleanPersonName(lead.assigned_to_role)?.toLowerCase()
+  const assignedLeaderName = assignedRole === 'leader' ? cleanPersonName(lead.assigned_to_name) : null
+  const leaderName = assignedLeaderName ?? cleanPersonName(lead.leader_name) ?? cleanPersonName(lead.assigned_to_name)
+  return {
+    ownerName,
+    leaderName: leaderName && leaderName !== ownerName ? leaderName : null,
+  }
+}
+
 // ── Tiny shared primitives ─────────────────────────────────────────────────────
 type PM = ReturnType<typeof usePatchLeadMutation>
 
@@ -256,6 +272,7 @@ const LeadCard = memo(function LeadCard({
     ? rawCallStatus
     : (callOptions[0]?.value ?? 'not_called')
   const showLeadContactActions = !stageOpsCard || surfaceRole === 'leader' || surfaceRole === 'admin'
+  const { ownerName, leaderName } = workboardPeopleLabels(lead)
   return (
     <article
       className={cn(
@@ -274,6 +291,13 @@ const LeadCard = memo(function LeadCard({
           <div className="min-w-0 flex-1">
             <p className="break-words text-sm font-semibold leading-tight text-foreground sm:text-base">{lead.name}</p>
             {lead.city && <p className="mt-0.5 break-words text-ds-caption text-muted-foreground">{lead.city}</p>}
+            {(ownerName || leaderName) && (
+              <p className="mt-0.5 text-ds-caption text-muted-foreground/70">
+                {ownerName && <span>Owner: {ownerName}</span>}
+                {ownerName && leaderName && <span> · </span>}
+                {leaderName && <span>Leader: {leaderName}</span>}
+              </p>
+            )}
           </div>
           <span className={cn('self-start rounded-full border px-2 py-0.5 text-ds-caption font-semibold', badge)}>{STATUS_TAB_LABEL[lead.status as LeadStatus] ?? slabel(lead.status)}</span>
         </div>

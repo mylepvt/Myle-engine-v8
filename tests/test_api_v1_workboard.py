@@ -28,23 +28,30 @@ async def _seed_lead(
     call_status: str | None = None,
     created_by_user_id: int | None = None,
     assigned_to_user_id: int | None = None,
+    owner_user_id: int | None = None,
+    created_at: datetime | None = None,
+    last_action_at: datetime | None = None,
 ) -> None:
     fac = test_conftest.get_test_session_factory()
     cb = created_by_user_id if created_by_user_id is not None else user_id
     at = assigned_to_user_id if assigned_to_user_id is not None else user_id
     async with fac() as session:
-        session.add(
-            Lead(
-                name=name,
-                status=lead_status,
-                created_by_user_id=cb,
-                assigned_to_user_id=at,
-                archived_at=archived_at,
-                in_pool=in_pool,
-                deleted_at=deleted_at,
-                call_status=call_status,
-            )
+        lead_kwargs = dict(
+            name=name,
+            status=lead_status,
+            created_by_user_id=cb,
+            owner_user_id=owner_user_id,
+            assigned_to_user_id=at,
+            archived_at=archived_at,
+            in_pool=in_pool,
+            deleted_at=deleted_at,
+            call_status=call_status,
         )
+        if created_at is not None:
+            lead_kwargs["created_at"] = created_at
+        if last_action_at is not None:
+            lead_kwargs["last_action_at"] = last_action_at
+        session.add(Lead(**lead_kwargs))
         await session.commit()
 
 
@@ -213,6 +220,73 @@ def test_leader_sees_downline_created_leads(
         assert by_status["new_lead"]["total"] == 1
         assert len(by_status["new_lead"]["items"]) == 1
         assert by_status["new_lead"]["items"][0]["name"] == "FromTeamMember"
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_workboard_orders_each_column_by_stage_arrival_newest_first(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _seed_lead(
+            user_id=2,
+            name="Older Stage Arrival",
+            lead_status="day2",
+            created_at=datetime(2024, 1, 8, tzinfo=timezone.utc),
+            last_action_at=datetime(2024, 1, 9, tzinfo=timezone.utc),
+        )
+    )
+    asyncio.run(
+        _seed_lead(
+            user_id=2,
+            name="Recent Stage Arrival",
+            lead_status="day2",
+            created_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            last_action_at=datetime(2024, 1, 10, tzinfo=timezone.utc),
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        res = c.get("/api/v1/workboard")
+        assert res.status_code == 200
+        by_status = {col["status"]: col for col in res.json()["columns"]}
+        assert [item["name"] for item in by_status["day2"]["items"]] == [
+            "Recent Stage Arrival",
+            "Older Stage Arrival",
+        ]
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_workboard_payload_includes_owner_and_working_leader_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _seed_lead(
+            user_id=3,
+            name="Team Owner Leader Working",
+            lead_status="day2",
+            created_by_user_id=3,
+            owner_user_id=3,
+            assigned_to_user_id=2,
+        )
+    )
+    try:
+        for role in ("leader", "admin"):
+            c = _authed_client(monkeypatch)
+            assert c.post("/api/v1/auth/dev-login", json={"role": role}).status_code == 200
+            res = c.get("/api/v1/workboard/leads")
+            assert res.status_code == 200
+            by_status = {col["status"]: col for col in res.json()["columns"]}
+            item = by_status["day2"]["items"][0]
+            assert item["owner_user_id"] == 3
+            assert item["owner_name"] == "dev-team"
+            assert item["assigned_to_user_id"] == 2
+            assert item["assigned_to_name"] == "TestLeaderDisplay"
+            assert item["assigned_to_role"] == "leader"
+            assert item["leader_user_id"] == 2
+            assert item["leader_name"] == "TestLeaderDisplay"
     finally:
         asyncio.run(_clear_leads())
 
