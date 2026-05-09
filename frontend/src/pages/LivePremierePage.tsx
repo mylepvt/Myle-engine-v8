@@ -10,6 +10,12 @@ function getSlotParam(): number | null {
   return !isNaN(n) && n >= 0 && n <= 23 ? n : null
 }
 
+function getDayParam(): number {
+  const v = new URLSearchParams(window.location.search).get('day')
+  const n = v !== null ? parseInt(v, 10) : NaN
+  return !isNaN(n) && n >= 1 && n <= 3 ? n : 1
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type PremiereState = 'upcoming' | 'waiting' | 'live' | 'ended'
@@ -59,10 +65,11 @@ function genViewerId(): string {
 
 async function fetchPremiereState(): Promise<PremiereData> {
   const slotParam = getSlotParam()
-  const url = slotParam !== null
-    ? apiUrl(`/api/v1/other/premiere?slot=${slotParam}`)
-    : apiUrl('/api/v1/other/premiere')
-  const res = await fetch(url)
+  const day = getDayParam()
+  const params = new URLSearchParams()
+  if (slotParam !== null) params.set('slot', String(slotParam))
+  params.set('day', String(day))
+  const res = await fetch(apiUrl(`/api/v1/other/premiere?${params.toString()}`))
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<PremiereData>
 }
@@ -375,8 +382,9 @@ function PremiereVideoPlayer({
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export function LivePremierePage() {
+  const sessionDay = getDayParam()
   const { data, isError } = useQuery({
-    queryKey: ['premiere', 'state'],
+    queryKey: ['premiere', 'state', sessionDay],
     queryFn: fetchPremiereState,
     refetchInterval: 10_000,
     refetchIntervalInBackground: true,
@@ -409,6 +417,7 @@ export function LivePremierePage() {
       city: prospect.city,
       phone: prospect.phone,
       session_hour: data.session_hour,
+      session_day: sessionDay,
       state: data.state,
     })
   }, [prospect, data])
@@ -421,6 +430,7 @@ export function LivePremierePage() {
       void postSilent('/api/v1/other/premiere/heartbeat', {
         viewer_id: prospect.viewer_id,
         session_hour: sessionHour,
+        session_day: sessionDay,
         state,
       })
     }, 15_000)
@@ -555,6 +565,7 @@ export function LivePremierePage() {
               liveStartsAt={data.live_starts_at}
               firstName={firstName}
               viewerId={prospect.viewer_id}
+              sessionDay={sessionDay}
               data={data}
             />
           )}
@@ -593,12 +604,14 @@ function LiveSection({
   liveStartsAt,
   firstName,
   viewerId,
+  sessionDay,
   data,
 }: {
   videoUrl: string
   liveStartsAt: string
   firstName: string
   viewerId: string
+  sessionDay: number
   data: PremiereData
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -615,6 +628,7 @@ function LiveSection({
       void postSilent('/api/v1/other/premiere/progress', {
         viewer_id: viewerId,
         session_hour: sessionHour,
+        session_day: sessionDay,
         current_time_sec: v.currentTime,
         percentage_watched: pct,
         watch_completed: completed,

@@ -50,11 +50,11 @@ async function fetchSchedule(): Promise<ScheduleResponse> {
   return res.json() as Promise<ScheduleResponse>
 }
 
-function slotLink(baseOrigin: string, hour: number): string {
-  return `${baseOrigin}/premiere?slot=${hour}`
+function slotLink(baseOrigin: string, hour: number, day: number): string {
+  return `${baseOrigin}/premiere?day=${day}&slot=${hour}`
 }
 
-function buildWhatsAppMessage(slots: ScheduleSlot[], baseOrigin: string): string {
+function buildWhatsAppMessage(slots: ScheduleSlot[], baseOrigin: string, day: number): string {
   const today = new Date().toLocaleDateString('en-IN', {
     weekday: 'long', day: 'numeric', month: 'long',
     timeZone: 'Asia/Kolkata',
@@ -68,11 +68,11 @@ function buildWhatsAppMessage(slots: ScheduleSlot[], baseOrigin: string): string
       timeZone: 'Asia/Kolkata', hour12: true,
     })
     const badge = s.state === 'live' ? '🔴 LIVE NOW' : s.state === 'waiting' ? '⏳ Starting soon' : '🎯'
-    return `${badge} *${start}* — ${slotLink(baseOrigin, s.hour)}`
+    return `${badge} *${start}* — ${slotLink(baseOrigin, s.hour, day)}`
   })
 
   return [
-    `🎬 *Myle Private Live Session — ${today}*`,
+    `🎬 *Myle Day ${day} Live Session — ${today}*`,
     ``,
     `📅 *Aaj ke sessions (apne time ka link share karo):*`,
     ...lines,
@@ -81,9 +81,9 @@ function buildWhatsAppMessage(slots: ScheduleSlot[], baseOrigin: string): string
   ].join('\n')
 }
 
-function SlotCard({ slot, baseOrigin }: { slot: ScheduleSlot; baseOrigin: string }) {
+function SlotCard({ slot, baseOrigin, day }: { slot: ScheduleSlot; baseOrigin: string; day: number }) {
   const [copied, setCopied] = useState(false)
-  const link = slotLink(baseOrigin, slot.hour)
+  const link = slotLink(baseOrigin, slot.hour, day)
 
   const startTime = new Date(slot.live_starts_at).toLocaleTimeString('en-IN', {
     hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata', hour12: true,
@@ -251,6 +251,74 @@ function AttendanceHistory({ slots }: { slots: ScheduleSlot[] }) {
 
 type Props = { title: string }
 
+const DAY_LABELS: Record<number, string> = {
+  1: 'Day 1 — Power of Digital India',
+  2: 'Day 2 — Secret Industry Reveal',
+  3: 'Day 3 — Final Day',
+}
+
+function DayScheduleSection({
+  day,
+  slots,
+  baseOrigin,
+  isPending,
+  isError,
+  error,
+}: {
+  day: number
+  slots: ScheduleSlot[]
+  baseOrigin: string
+  isPending: boolean
+  isError: boolean
+  error: Error | null
+}) {
+  const [msgCopied, setMsgCopied] = useState(false)
+
+  function handleCopyMessage() {
+    const msg = buildWhatsAppMessage(slots, baseOrigin, day)
+    void navigator.clipboard.writeText(msg).then(() => {
+      setMsgCopied(true)
+      setTimeout(() => setMsgCopied(false), 2000)
+    })
+  }
+
+  return (
+    <div className="surface-elevated space-y-3 p-5">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {DAY_LABELS[day] ?? `Day ${day}`}
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Prospect ko Day {day} ka link bhejo — har slot ka alag link
+          </p>
+        </div>
+        {slots.length > 0 && (
+          <Button type="button" size="sm" variant="secondary" onClick={handleCopyMessage}>
+            {msgCopied ? '✓ Copied!' : `Copy D${day} WA msg`}
+          </Button>
+        )}
+      </div>
+
+      {isPending ? (
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+        </div>
+      ) : isError ? (
+        <p className="text-sm text-destructive">
+          {error instanceof Error ? error.message : 'Could not load schedule'}
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {slots.map((slot) => (
+            <SlotCard key={slot.hour} slot={slot} baseOrigin={baseOrigin} day={day} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function LiveSessionPage({ title }: Props) {
   const { data, isPending, isError, error } = useQuery({
     queryKey: ['premiere', 'schedule'],
@@ -259,16 +327,6 @@ export function LiveSessionPage({ title }: Props) {
   })
 
   const baseOrigin = window.location.origin
-  const [msgCopied, setMsgCopied] = useState(false)
-
-  function handleCopyMessage() {
-    if (!data) return
-    const msg = buildWhatsAppMessage(data.slots, baseOrigin)
-    void navigator.clipboard.writeText(msg).then(() => {
-      setMsgCopied(true)
-      setTimeout(() => setMsgCopied(false), 2000)
-    })
-  }
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -285,47 +343,18 @@ export function LiveSessionPage({ title }: Props) {
         )}
       </div>
 
-      {/* Today's schedule — each slot with its own link */}
-      <div className="surface-elevated space-y-3 p-5">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Today's Schedule</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">Har slot ka alag link — prospect ko usi session ka link bhejo jis time bulaya hai</p>
-        </div>
-
-        {isPending ? (
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
-          </div>
-        ) : isError ? (
-          <p className="text-sm text-destructive">
-            {error instanceof Error ? error.message : 'Could not load schedule'}
-          </p>
-        ) : data ? (
-          <div className="space-y-2">
-            {data.slots.map((slot) => (
-              <SlotCard key={slot.hour} slot={slot} baseOrigin={baseOrigin} />
-            ))}
-          </div>
-        ) : null}
-      </div>
-
-      {/* WhatsApp message */}
-      {data && (
-        <div className="surface-elevated space-y-4 p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">WhatsApp Message</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">Copy and paste into your group — includes today's upcoming sessions and join link</p>
-            </div>
-            <Button type="button" size="sm" variant="secondary" onClick={handleCopyMessage} disabled={!data}>
-              {msgCopied ? '✓ Copied!' : 'Copy for WhatsApp'}
-            </Button>
-          </div>
-          <pre className="overflow-x-auto whitespace-pre-wrap rounded-xl border border-border/60 bg-muted/40 px-4 py-3 text-xs text-foreground">
-            {buildWhatsAppMessage(data.slots, baseOrigin)}
-          </pre>
-        </div>
-      )}
+      {/* 3 day sections — same time slots, different day param in links */}
+      {([1, 2, 3] as const).map((day) => (
+        <DayScheduleSection
+          key={day}
+          day={day}
+          slots={data?.slots ?? []}
+          baseOrigin={baseOrigin}
+          isPending={isPending}
+          isError={isError}
+          error={error instanceof Error ? error : null}
+        />
+      ))}
 
       {/* Attendance history */}
       <AttendanceHistory slots={data?.slots ?? []} />
