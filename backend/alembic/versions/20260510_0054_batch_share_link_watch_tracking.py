@@ -1,13 +1,13 @@
 """batch_share_link watch tracking columns
 
-Revision ID: 0054_batch_share_link_watch_tracking
+Revision ID: 20260510_0054
 Revises: 20260510_0053_free_lead_pool_type
 Create Date: 2026-05-10
 """
 from alembic import op
 import sqlalchemy as sa
 
-revision = "0054_batch_share_link_watch_tracking"
+revision = "20260510_0054"
 down_revision = "20260510_0053"
 branch_labels = None
 depends_on = None
