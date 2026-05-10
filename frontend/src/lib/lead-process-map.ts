@@ -1,6 +1,6 @@
 import type { LeadStatus } from '@/hooks/use-leads-query'
 
-export type ProcessTaskKind = 'check' | 'share_video' | 'open_video'
+export type ProcessTaskKind = 'check' | 'share_video' | 'open_video' | 'whatsapp_video'
 
 export type ProcessTaskDef = {
   key: string
@@ -27,9 +27,9 @@ export const PROCESS_STAGE_DEFS: Record<string, ProcessStageDef> = {
     nextStatus: 'day2',
     nextLabel: 'Push to Day 2',
     tasks: [
-      { key: 'esbi_model_session', label: 'ESBI Model', kind: 'open_video', settingKey: 'content.esbi_model' },
+      { key: 'esbi_model_session', label: 'ESBI Model', kind: 'whatsapp_video', settingKey: 'content.esbi_model' },
       { key: 'esbi_follow_up', label: 'Follow-up' },
-      { key: 'power_of_network_session', label: 'Power of Network', kind: 'open_video', settingKey: 'content.power_of_network' },
+      { key: 'power_of_network_session', label: 'Power of Network', kind: 'whatsapp_video', settingKey: 'content.power_of_network' },
       { key: 'power_of_network_follow_up', label: 'Follow-up' },
       { key: 'hype_create_day2_leader', label: 'Hype Create for Day 2 + Leader' },
     ],

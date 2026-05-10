@@ -11,6 +11,7 @@ import { HomePage } from '@/pages/HomePage'
 import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { BatchWatchPage } from '@/pages/BatchWatchPage'
+import { ContentWatchPage } from '@/pages/ContentWatchPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { WatchPage } from '@/pages/WatchPage'
 import { LivePremierePage } from '@/pages/LivePremierePage'
@@ -52,6 +53,7 @@ export function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/watch/batch/:slot/:version" element={<BatchWatchPage />} />
+        <Route path="/watch/content" element={<ContentWatchPage />} />
         <Route path="/watch/:token" element={<WatchPage />} />
         <Route path="/premiere" element={<LivePremierePage />} />
 
