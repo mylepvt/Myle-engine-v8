@@ -131,15 +131,6 @@ def _sync_batch_completion_timestamps(lead: Lead, now: datetime) -> None:
     if lead.d1_morning and lead.d1_afternoon and lead.d1_evening:
         if lead.day1_completed_at is None:
             lead.day1_completed_at = now
-        # Auto-advance to mindset_lock once all Day 1 batches are sent/watched.
-        if lead.status in ("paid", "day1") and not lead.mindset_started_at:
-            lead.status = "mindset_lock"
-            lead.mindset_lock_state = "mindset_lock"
-            lead.mindset_started_at = now
-            lead.mindset_completed_at = None
-            lead.mindset_completed_by_user_id = None
-            lead.mindset_leader_user_id = None
-            lead.last_action_at = now
     else:
         lead.day1_completed_at = None
     if lead.d2_morning and lead.d2_afternoon and lead.d2_evening:
