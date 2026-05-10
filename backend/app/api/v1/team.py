@@ -40,9 +40,11 @@ from app.schemas.team import (
     TeamReportsResponse,
     TeamSelfGraceRequestBody,
 )
+from app.schemas.promotion import PromotionEligibilityOut
 from app.services.downline import is_user_in_downline_of
 from app.services.lead_owner import lead_owner_clause
 from app.services.member_compliance import build_compliance_snapshots
+from app.services.promotion_service import check_leader_promotion_eligibility
 from app.services.payment_service import PaymentService
 from app.services.team_reports_metrics import IST, compute_live_summary
 from app.services.user_hierarchy import (
@@ -1010,4 +1012,84 @@ async def team_approvals(
         ],
         total=2,
         note="Registration approve/reject is on the Approvals page; this endpoint stays for shell parity.",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Leader promotion eligibility
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/members/{target_user_id}/promotion-eligibility",
+    response_model=PromotionEligibilityOut,
+)
+async def get_member_promotion_eligibility(
+    target_user_id: int,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> PromotionEligibilityOut:
+    """Return leader-promotion checklist for a team member. Admin only."""
+    _require_admin(user)
+    target = await session.get(User, target_user_id)
+    if target is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    if (target.role or "").lower() != "team":
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="Promotion eligibility applies only to team members.",
+        )
+    result = await check_leader_promotion_eligibility(session, target)
+    return PromotionEligibilityOut(
+        user_id=result.user_id,
+        eligible=result.eligible,
+        passed_count=result.passed_count,
+        total_count=result.total_count,
+        criteria=[
+            {
+                "key": c.key,
+                "label": c.label,
+                "passed": c.passed,
+                "detail": c.detail,
+                "current_value": c.current_value,
+                "required_value": c.required_value,
+            }
+            for c in result.criteria
+        ],
+    )
+
+
+@router.get(
+    "/me/promotion-eligibility",
+    response_model=PromotionEligibilityOut,
+)
+async def get_my_promotion_eligibility(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> PromotionEligibilityOut:
+    """Return leader-promotion checklist for the logged-in team member."""
+    me = await session.get(User, user.user_id)
+    if me is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    if (me.role or "").lower() != "team":
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="Promotion eligibility applies only to team members.",
+        )
+    result = await check_leader_promotion_eligibility(session, me)
+    return PromotionEligibilityOut(
+        user_id=result.user_id,
+        eligible=result.eligible,
+        passed_count=result.passed_count,
+        total_count=result.total_count,
+        criteria=[
+            {
+                "key": c.key,
+                "label": c.label,
+                "passed": c.passed,
+                "detail": c.detail,
+                "current_value": c.current_value,
+                "required_value": c.required_value,
+            }
+            for c in result.criteria
+        ],
     )
