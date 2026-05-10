@@ -66,23 +66,6 @@ const VIDEO_SENT_STAGES = new Set<LeadStatus>([
   'converted',
 ])
 
-const VIDEO_WATCHED_STAGES = new Set<LeadStatus>([
-  'video_watched',
-  'paid',
-  'mindset_lock',
-  'day1',
-  'day2',
-  'day3',
-  'interview',
-  'track_selected',
-  'seat_hold',
-  'plan_2cc',
-  'pending',
-  'level_up',
-  'converted',
-])
-
-const PAYMENT_DONE_STAGES = new Set<LeadStatus>([])
 export function callStatusSelectOptions(
   role: Role | null,
   currentStatus?: LeadStatus | string | null,
