@@ -136,7 +136,7 @@ export function LoginPage() {
         return
       }
       login()
-      if (pushPermission === 'granted' || Notification.permission === 'granted') {
+      if (pushPermission === 'granted') {
         void syncPushSubscriptionSilently().catch(() => undefined)
       }
       const displayName =
@@ -179,7 +179,7 @@ export function LoginPage() {
         return
       }
       login()
-      if (pushPermission === 'granted' || Notification.permission === 'granted') {
+      if (pushPermission === 'granted') {
         void syncPushSubscriptionSilently().catch(() => undefined)
       }
       const displayName =
