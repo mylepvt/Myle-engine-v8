@@ -18,27 +18,6 @@ const TEAM_FORBIDDEN: ReadonlySet<LeadStatus> = new Set([
 const NON_ADMIN_HIDDEN: ReadonlySet<LeadStatus> = new Set(LEGACY_COMPAT_STATUSES)
 const DIRECT_PICK_HIDDEN: ReadonlySet<LeadStatus> = new Set(['whatsapp_sent'])
 
-const LEADER_STAGE_VISIBILITY: Partial<Record<LeadStatus, LeadStatus[]>> = {
-  new_lead: ['new_lead', 'contacted', 'invited'],
-  contacted: ['contacted', 'invited', 'video_sent'],
-  invited: ['invited', 'video_sent'],
-  whatsapp_sent: ['whatsapp_sent', 'video_sent'],
-  video_sent: ['video_sent', 'mindset_lock'],
-  mindset_lock: ['mindset_lock', 'day2'],
-  day1: ['day1', 'mindset_lock'],
-  day2: ['day2', 'day3', 'interview'],
-  day3: ['day3', 'interview', 'track_selected'],
-  interview: ['interview', 'track_selected', 'seat_hold'],
-  track_selected: ['track_selected', 'seat_hold', 'plan_2cc'],
-  seat_hold: ['seat_hold', 'plan_2cc', 'pending'],
-  plan_2cc: ['plan_2cc', 'pending', 'level_up'],
-  pending: ['pending', 'level_up', 'converted'],
-  level_up: ['level_up', 'converted'],
-  converted: ['converted'],
-  lost: ['lost', 'retarget', 'inactive'],
-  retarget: ['retarget', 'contacted', 'invited'],
-  inactive: ['inactive', 'retarget'],
-}
 
 const TEAM_STAGE_VISIBILITY: Partial<Record<LeadStatus, LeadStatus[]>> = {
   new_lead: ['new_lead', 'contacted', 'invited'],
