@@ -596,6 +596,24 @@ function ProcessChecklistSection({
                 >
                   {busy ? 'Sharing…' : done ? 'Shared' : 'Share'}
                 </button>
+              ) : task.kind === 'whatsapp_video' ? (
+                <button
+                  type="button"
+                  disabled={leadPatchBusy || busy}
+                  onClick={() => {
+                    const url = task.settingKey ? (contentLinks?.[task.settingKey] ?? '') : ''
+                    if (url) void shareContentVideo(task.key, url)
+                    else void toggleTask(task.key, !done)
+                  }}
+                  className={cn(
+                    'shrink-0 rounded-md border px-2 py-1 text-ds-caption font-semibold transition disabled:opacity-50',
+                    done
+                      ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
+                      : 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/20',
+                  )}
+                >
+                  {busy ? 'Opening…' : done ? 'Sent' : 'Watch'}
+                </button>
               ) : task.kind === 'open_video' ? (
                 <div className="flex shrink-0 items-center gap-2">
                   {task.settingKey && contentLinks?.[task.settingKey] ? (
