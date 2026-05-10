@@ -30,7 +30,7 @@ export function ContentWatchPage() {
     phone && videoUrl
       ? whatsAppChatWithTextHref(
           phone,
-          `Hi ${leadName || 'there'},\n\n${title} video dekho:\n${videoUrl}`,
+          `Hi ${leadName || 'there'},\n\nHere is your session video for ${title}:\n${videoUrl}`,
         )
       : null
 
@@ -43,7 +43,7 @@ export function ContentWatchPage() {
           </p>
           <h1 className="mt-3 text-3xl font-bold leading-tight md:text-4xl">{greetLine}</h1>
           <p className="mt-2 text-base text-white/55">
-            Aapka session ready hai — neeche dekho.
+            Your session is ready — watch it below.
           </p>
         </div>
 
@@ -53,8 +53,8 @@ export function ContentWatchPage() {
           fallbackUrl={videoUrl || null}
           previewEyebrow={greetLine}
           previewTitle={title}
-          previewDescription={`${title} — tap play karke app ke andar hi dekho.`}
-          playLabel="Abhi Dekho"
+          previewDescription={`Watch ${title} right here inside the app.`}
+          playLabel="Watch Now"
         />
 
         {waHref ? (
@@ -66,7 +66,7 @@ export function ContentWatchPage() {
               className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-sm font-semibold text-emerald-300 transition hover:bg-emerald-400/20"
             >
               <MessageCircle className="size-4" />
-              {firstName ? `${firstName} ko WhatsApp karo` : 'Lead ko WhatsApp karo'}
+              {firstName ? `Send to ${firstName} on WhatsApp` : 'Send on WhatsApp'}
             </a>
           </div>
         ) : null}
