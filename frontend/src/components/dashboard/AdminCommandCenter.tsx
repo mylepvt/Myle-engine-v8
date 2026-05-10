@@ -40,7 +40,7 @@ import { useInvoicesQuery } from '@/hooks/use-invoices-query'
 import { useLeadControlQuery } from '@/hooks/use-lead-control-query'
 import { LEAD_STATUS_OPTIONS, useLeadsQuery, type LeadPublic } from '@/hooks/use-leads-query'
 import { useLeadPoolQuery } from '@/hooks/use-lead-pool-query'
-import { apiFetch, apiUrl } from '@/lib/api'
+import { apiFetch } from '@/lib/api'
 import { messageFromApiErrorPayload } from '@/lib/http-error-message'
 
 type Props = {
@@ -87,11 +87,6 @@ function isActiveNow(lastSeenAt: string | null): boolean {
   return Date.now() - new Date(lastSeenAt).getTime() < 45_000
 }
 
-function fmtTime(sec: number): string {
-  const m = Math.floor(sec / 60)
-  const s = Math.floor(sec % 60)
-  return `${m}m ${String(s).padStart(2, '0')}s`
-}
 
 type PendingRegistrationRow = {
   id: number
@@ -454,7 +449,7 @@ export function AdminCommandCenter({ firstName }: Props) {
   const [activeTab, setActiveTab] = useState('today')
   const [leadSearch, setLeadSearch] = useState('')
   const deferredLeadSearch = useDeferredValue(leadSearch.trim())
-  const todayIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  const [todayIST] = useState(() => new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10))
   const [viewerHistoryDate, setViewerHistoryDate] = useState<string>(todayIST)
 
   const pendingRegistrations = useQuery({
@@ -482,8 +477,6 @@ export function AdminCommandCenter({ firstName }: Props) {
   const leaderHealth = useLeaderHealthQuery(activeTab === 'leaders')
   const premiereViewers = usePremiereViewersQuery(true)
   const isHistoryToday = viewerHistoryDate === todayIST
-  const premiereHistory = usePremiereViewersQuery(activeTab === 'premiere' && !isHistoryToday, viewerHistoryDate)
-  const historyData = isHistoryToday ? premiereViewers : premiereHistory
   const batchLiveToday = useBatchLiveWatchersQuery(true)
   const batchLiveHistory = useBatchLiveWatchersQuery(activeTab === 'premiere' && !isHistoryToday, viewerHistoryDate)
   const batchHistoryData = isHistoryToday ? batchLiveToday : batchLiveHistory

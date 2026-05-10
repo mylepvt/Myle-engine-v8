@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom'
-import { useState } from 'react'
 import { ChevronRight, MessageCircle, MoreHorizontal, Phone } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
