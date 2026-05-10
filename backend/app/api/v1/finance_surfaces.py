@@ -518,11 +518,13 @@ async def finance_budget_export(
             ],
             key=lambda row: (row.role != "leader", row.display_name.lower()),
         )
-        team_balance = sum(member.current_balance_cents for member in members)
-        team_recharge = sum(member.period_recharge_cents for member in members)
-        team_spend = sum(member.period_spend_cents for member in members)
-        team_adjustment = sum(member.period_adjustment_cents for member in members)
-        team_net = sum(member.period_net_change_cents for member in members)
+        team_balance = team_recharge = team_spend = team_adjustment = team_net = 0
+        for _m in members:
+            team_balance += _m.current_balance_cents
+            team_recharge += _m.period_recharge_cents
+            team_spend += _m.period_spend_cents
+            team_adjustment += _m.period_adjustment_cents
+            team_net += _m.period_net_change_cents
         leader_groups.append(
             BudgetLeaderGroup(
                 leader=leader_row,
@@ -543,12 +545,13 @@ async def finance_budget_export(
             for member in members
         )
 
+    grouped_leader_ids = {group.leader.user_id for group in leader_groups}
     for user in visible_users:
         uid = int(user.id)
         if user.role == "leader":
             continue
         leader_id = leader_lookup.get(uid)
-        if leader_id is not None and any(group.leader.user_id == leader_id for group in leader_groups):
+        if leader_id is not None and leader_id in grouped_leader_ids:
             continue
         row = rows_by_id[uid]
         unlinked_members.append(row)
@@ -556,17 +559,28 @@ async def finance_budget_export(
 
     leader_rows = [group.leader for group in leader_groups]
     visible_member_rows = [rows_by_id[int(user.id)] for user in visible_users if user.role == "team"]
+
+    gt_balance = gt_recharge = gt_spend = gt_adjustment = gt_net = 0
+    for _r in rows_by_id.values():
+        gt_balance += _r.current_balance_cents
+        gt_recharge += _r.period_recharge_cents
+        gt_spend += _r.period_spend_cents
+        gt_adjustment += _r.period_adjustment_cents
+        gt_net += _r.period_net_change_cents
+    team_balance_total = sum(_r.current_balance_cents for _r in visible_member_rows)
+    leader_balance_total = sum(_r.current_balance_cents for _r in leader_rows)
+
     grand_totals = BudgetGrandTotals(
         total_visible_users=len(visible_users),
         total_visible_leaders=len(leader_rows),
         total_visible_team_members=len(visible_member_rows),
-        current_balance_cents=sum(row.current_balance_cents for row in rows_by_id.values()),
-        team_balance_cents=sum(row.current_balance_cents for row in visible_member_rows),
-        leader_personal_balance_cents=sum(row.current_balance_cents for row in leader_rows),
-        period_recharge_cents=sum(row.period_recharge_cents for row in rows_by_id.values()),
-        period_spend_cents=sum(row.period_spend_cents for row in rows_by_id.values()),
-        period_adjustment_cents=sum(row.period_adjustment_cents for row in rows_by_id.values()),
-        period_net_change_cents=sum(row.period_net_change_cents for row in rows_by_id.values()),
+        current_balance_cents=gt_balance,
+        team_balance_cents=team_balance_total,
+        leader_personal_balance_cents=leader_balance_total,
+        period_recharge_cents=gt_recharge,
+        period_spend_cents=gt_spend,
+        period_adjustment_cents=gt_adjustment,
+        period_net_change_cents=gt_net,
     )
 
     return BudgetExportResponse(

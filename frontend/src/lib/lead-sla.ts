@@ -7,7 +7,7 @@ export type LeadSlaTone = {
   leftBorder: string
 }
 
-export const LEAD_SLA_SMOOTH_REFRESH_MS = 100
+export const LEAD_SLA_SMOOTH_REFRESH_MS = 1000
 
 export type LeadSlaClockAngles = {
   hourAngle: number
