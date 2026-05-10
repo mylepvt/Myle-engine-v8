@@ -217,7 +217,7 @@ def is_valid_forward_status_transition(
     if tgt == "Day 1":
         return cur in ("Min. FLP Billing", "Mindset Lock", "Day 1")
     if tgt == "Mindset Lock":
-        return cur in ("Min. FLP Billing", "Day 1", "Mindset Lock")
+        return cur in ("New Lead", "Contacted", "Invited", "WhatsApp Sent", "Video Sent", "Min. FLP Billing", "Day 1", "Mindset Lock")
     if tgt == "Day 2" and cur == "Mindset Lock":
         return True
     mindset_i = flow_idx.get("Mindset Lock", 999)
