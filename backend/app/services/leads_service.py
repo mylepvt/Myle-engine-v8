@@ -263,6 +263,7 @@ class LeadsService:
         ctcs_priority_sort: bool = False,
         pre_enrollment_only: bool = False,
         search_all_sections: bool = False,
+        leader_all_scope: bool = False,
     ) -> LeadListResponse:
         await run_completed_watch_pipeline_maintenance(self._session)
         validate_list_flags(archived_only=archived_only, deleted_only=deleted_only, user=user)
@@ -274,11 +275,13 @@ class LeadsService:
             archived_only=archived_only,
             deleted_only=deleted_only,
             search_all_sections=cross_section_search,
+            leader_all_scope=leader_all_scope and user.role == "leader",
         )
         extra = _ctcs_filter_clause(ctcs_filter)
         if extra is not None:
             condition = and_(condition, extra) if condition is not None else extra
-        if pre_enrollment_only:
+        # leader_all_scope shows all statuses — skip pre_enrollment_only restriction
+        if pre_enrollment_only and not (leader_all_scope and user.role == "leader"):
             pre_enroll = Lead.status.in_(
                 ["new_lead", "contacted", "invited", "whatsapp_sent", "video_sent"]
             )

@@ -309,6 +309,10 @@ async def list_leads(
         default=False,
         description="When true with a search query, admin/leader search spans active and archived sections.",
     ),
+    leader_all_scope: bool = Query(
+        default=False,
+        description="When true, leader sees all team leads across all states (active, inactive, archived) in the All board tab.",
+    ),
 ) -> LeadListResponse:
     return await service.list_leads(
         user=user,
@@ -322,6 +326,7 @@ async def list_leads(
         ctcs_priority_sort=ctcs_priority_sort,
         pre_enrollment_only=pre_enrollment_only,
         search_all_sections=search_all_sections,
+        leader_all_scope=leader_all_scope,
     )
 
 
