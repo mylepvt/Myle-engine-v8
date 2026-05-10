@@ -2,7 +2,7 @@
   "": ["admin", "leader", "team"],
   "work/leads": ["admin", "leader", "team"],
   "work/mindset-lock": ["admin", "leader", "team"],
-  "work/workboard": ["admin", "leader", "team"],
+  "work/workboard": ["admin", "leader"],
   "work/follow-ups": ["admin", "leader"],
   "work/retarget": ["admin", "leader", "team"],
   "work/lead-flow": ["leader", "team"],
