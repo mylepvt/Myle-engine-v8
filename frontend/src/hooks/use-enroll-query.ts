@@ -159,3 +159,19 @@ export function useActiveWatchersQuery(enabled = true) {
     refetchInterval: 15_000,
   })
 }
+
+async function fetchBatchLiveWatchers(date?: string): Promise<ActiveWatcherListResponse> {
+  const params = date ? `?date=${encodeURIComponent(date)}` : ''
+  const res = await apiFetch(`/api/v1/enroll/batch-live-watchers${params}`)
+  if (!res.ok) await parseError(res)
+  return res.json() as Promise<ActiveWatcherListResponse>
+}
+
+export function useBatchLiveWatchersQuery(enabled = true, date?: string) {
+  return useQuery({
+    queryKey: ['enroll', 'batch-live-watchers', date ?? 'today'],
+    queryFn: () => fetchBatchLiveWatchers(date),
+    enabled,
+    refetchInterval: 20_000,
+  })
+}
