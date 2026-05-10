@@ -51,6 +51,7 @@ type PremiereViewerRow = {
   viewer_id: string
   name: string
   masked_phone: string
+  phone: string | null
   city: string
   session_date: string
   session_hour: number
@@ -1540,7 +1541,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                             {v.rejoined && <Badge variant="outline">Rejoined</Badge>}
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            {v.masked_phone} · {v.city}
+                            {v.phone ?? v.masked_phone} · {v.city}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             Session {v.session_date} · {v.session_hour}:00
