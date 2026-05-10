@@ -602,22 +602,17 @@ function ProcessChecklistSection({
                   disabled={leadPatchBusy || busy}
                   onClick={() => {
                     const url = task.settingKey ? (contentLinks?.[task.settingKey] ?? '') : ''
-                    const p = new URLSearchParams()
-                    if (url) p.set('video', url)
-                    p.set('name', lead.name ?? '')
-                    p.set('title', task.label)
-                    if (lead.phone) p.set('phone', lead.phone)
-                    window.open(`/watch/content?${p.toString()}`, '_blank', 'noopener,noreferrer')
-                    void toggleTask(task.key, !done)
+                    if (url) void shareContentVideo(task.key, url)
+                    else void toggleTask(task.key, !done)
                   }}
                   className={cn(
                     'shrink-0 rounded-md border px-2 py-1 text-ds-caption font-semibold transition disabled:opacity-50',
                     done
                       ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
-                      : 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/20',
+                      : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20',
                   )}
                 >
-                  {busy ? 'Opening…' : done ? 'Watched' : 'Watch'}
+                  {busy ? 'Sending…' : done ? 'Sent ✓' : 'Send to WhatsApp'}
                 </button>
               ) : task.kind === 'open_video' ? (
                 <div className="flex shrink-0 items-center gap-2">
