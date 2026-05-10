@@ -24,7 +24,7 @@ export function ContentWatchPage() {
   const greetLine = firstName ? `${greeting}, ${firstName}!` : `${greeting}!`
 
   // Convert raw YouTube watch URL → embed URL; native video URLs pass through as-is
-  const embedUrl = buildEmbeddableVideoUrl(videoUrl || null, null) ?? videoUrl || null
+  const embedUrl = buildEmbeddableVideoUrl(videoUrl || null, null) ?? (videoUrl || null)
 
   const waHref =
     phone && videoUrl
