@@ -89,6 +89,16 @@ def _format_rupees_exact(cents: int) -> str:
 def _lead_pool_available_clause() -> Any:
     return and_(
         Lead.in_pool.is_(True),
+        Lead.pool_type == "paid",
+        Lead.deleted_at.is_(None),
+        Lead.archived_at.is_(None),
+    )
+
+
+def _free_pool_available_clause() -> Any:
+    return and_(
+        Lead.in_pool.is_(True),
+        Lead.pool_type == "free",
         Lead.deleted_at.is_(None),
         Lead.archived_at.is_(None),
     )
@@ -520,6 +530,66 @@ class LeadsService:
             await self._session.refresh(lead)
         await self._notifier("leads", "wallet")
         return claimed, total_price_cents
+
+    async def preview_free_lead_pool_batch(
+        self,
+        *,
+        count: int,
+        user: AuthUser,
+    ) -> tuple[int, int]:
+        if user.role not in _POOL_CLAIM_ROLES:
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        cap = max(1, min(int(count), 50))
+        cond = _free_pool_available_clause()
+        total_available = int(
+            (await self._session.execute(select(func.count()).select_from(Lead).where(cond))).scalar_one()
+        )
+        preview_rows = (
+            await self._session.execute(
+                select(Lead.id).where(cond).order_by(Lead.created_at.asc(), Lead.id.asc()).limit(cap)
+            )
+        ).scalars().all()
+        return total_available, len(preview_rows)
+
+    async def claim_free_lead_pool_batch(
+        self,
+        *,
+        count: int,
+        user: AuthUser,
+    ) -> list[Lead]:
+        if user.role not in _POOL_CLAIM_ROLES:
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        cap = max(1, min(int(count), 50))
+        stmt = (
+            select(Lead)
+            .where(_free_pool_available_clause())
+            .order_by(Lead.created_at.asc(), Lead.id.asc())
+            .limit(cap)
+            .with_for_update()
+        )
+        leads = list((await self._session.execute(stmt)).scalars().all())
+        if not leads:
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="No leads available in the free pool",
+            )
+        claimed: list[Lead] = []
+        for lead in leads:
+            await self._repository.mark_lead_claimed(lead, user.user_id)
+            await self._repository.add_lead_activity(
+                user_id=user.user_id,
+                action="lead.claimed_free",
+                lead_id=lead.id,
+                meta={"free_pool": True, "batch_claim_count": len(leads)},
+            )
+            await self._session.flush()
+            enqueue_lead_shadow_upsert(self._session, lead)
+            claimed.append(lead)
+        await self._repository.commit()
+        for lead in claimed:
+            await self._session.refresh(lead)
+        await self._notifier("leads")
+        return claimed
 
     async def preview_mindset_lock(self, *, lead_id: int, user: AuthUser) -> MindsetLockPreviewResponse:
         if user.role not in {"team", "leader"}:

@@ -49,6 +49,13 @@ class Lead(Base):
         nullable=True,
         comment="Cost in paise (INR) to claim from pool; NULL = free",
     )
+    pool_type: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        server_default=text("'paid'"),
+        default="paid",
+        comment="'paid' = paid lead pool; 'free' = free lead pool (no wallet debit)",
+    )
 
     # Contact info
     phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)

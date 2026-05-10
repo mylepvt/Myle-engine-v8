@@ -17,6 +17,10 @@ import {
   useLeadPoolQuery,
   type PoolLead,
 } from '@/hooks/use-lead-pool-query'
+import {
+  useFreePoolBatchClaimMutation,
+  useFreePoolBatchPreviewQuery,
+} from '@/hooks/use-free-lead-pool-query'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { useWalletMeQuery } from '@/hooks/use-wallet-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
@@ -72,6 +76,22 @@ export function LeadPoolWorkPage({ title }: Props) {
   const patchMut = usePatchLeadMutation()
   const claimBusy = claimMut.isPending || batchClaimMut.isPending
   const claimError = claimMut.error ?? batchClaimMut.error
+
+  // Free pool hooks
+  const [freeBatchCountStr, setFreeBatchCountStr] = useState('1')
+  const [freeBatchConfirmOpen, setFreeBatchConfirmOpen] = useState(false)
+  const [freeImportFile, setFreeImportFile] = useState<File | null>(null)
+  const [freeImportBusy, setFreeImportBusy] = useState(false)
+  const [freeImportNote, setFreeImportNote] = useState<string | null>(null)
+  const requestedFreeBatchCount = Math.min(50, Math.max(1, Number.parseInt(freeBatchCountStr, 10) || 1))
+  const {
+    data: freePoolPreview,
+    isPending: isFreePoolPreviewPending,
+    isError: isFreePoolPreviewError,
+    error: freePoolPreviewError,
+    refetch: refetchFreePoolPreview,
+  } = useFreePoolBatchPreviewQuery(requestedFreeBatchCount, canClaimPool)
+  const freeClaimMut = useFreePoolBatchClaimMutation()
 
   // Confirm dialog state: which lead is being claimed
   const [confirmId, setConfirmId] = useState<number | null>(null)
@@ -184,6 +204,43 @@ export function LeadPoolWorkPage({ title }: Props) {
       setImportNote(e instanceof Error ? e.message : 'Import failed')
     } finally {
       setImportBusy(false)
+    }
+  }
+
+  async function handleFreePoolImport() {
+    if (!freeImportFile) return
+    setFreeImportBusy(true)
+    setFreeImportNote(null)
+    try {
+      const fd = new FormData()
+      fd.append('file', freeImportFile)
+      const res = await apiFetch('/api/v1/free-lead-pool/import', { method: 'POST', body: fd })
+      const body = (await res.json().catch(() => ({}))) as {
+        created?: number
+        warnings?: string[]
+        error?: { message?: string }
+      }
+      if (!res.ok) {
+        throw new Error(body.error?.message ?? res.statusText)
+      }
+      const w = body.warnings?.length ? ` ${body.warnings.join(' ')}` : ''
+      setFreeImportNote(`Imported ${body.created ?? 0} free lead(s).${w}`)
+      setFreeImportFile(null)
+      await qc.invalidateQueries({ queryKey: ['free-lead-pool'] })
+    } catch (e) {
+      setFreeImportNote(e instanceof Error ? e.message : 'Import failed')
+    } finally {
+      setFreeImportBusy(false)
+    }
+  }
+
+  async function handleFreePoolBatchClaim() {
+    try {
+      await freeClaimMut.mutateAsync(requestedFreeBatchCount)
+      playAppSound('cashier')
+      setFreeBatchConfirmOpen(false)
+    } catch {
+      /* surfaced below */
     }
   }
 
@@ -590,6 +647,154 @@ export function LeadPoolWorkPage({ title }: Props) {
           ) : null}
         </div>
       ) : null}
+      {/* ── FREE LEAD POOL SECTION ── */}
+      <div className="surface-elevated p-4 text-sm">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="font-semibold text-foreground">
+            Free Lead Pool{' '}
+            <span className="ml-1 rounded-full bg-[hsl(142_71%_45%)]/15 px-2 py-0.5 text-xs font-medium text-[hsl(142_71%_45%)]">
+              Free
+            </span>
+          </p>
+          <span className="text-xs text-muted-foreground">
+            No wallet balance needed — claim for free
+          </span>
+        </div>
+
+        <p className="mb-4 text-xs text-muted-foreground">
+          Admin ne yahan free leads add ki hain — claim karo bina kisi wallet debit ke. Server oldest leads pehle
+          deta hai (FIFO). Max 50 per request.
+        </p>
+
+        {/* Admin: import free pool leads */}
+        {canManagePool ? (
+          <div className="surface-inset mb-4 space-y-3 p-4 text-sm">
+            <p className="font-medium text-foreground">Admin: Free Pool mein leads import karo (Excel)</p>
+            <p className="text-xs text-muted-foreground">
+              Same format jaise paid pool — .xlsx with Full Name, Phone, City, Age, Gender, AD Name columns.
+              Yeh leads bilkul free hain — koi price set nahi hogi.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <label htmlFor="free-pool-import-file" className="sr-only">
+                Choose Excel file for free pool
+              </label>
+              <input
+                id="free-pool-import-file"
+                type="file"
+                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                className="max-w-full text-xs file:mr-2 file:rounded-md file:border-0 file:bg-[hsl(142_71%_45%)] file:px-2 file:py-1 file:text-xs file:font-medium file:text-white"
+                onChange={(e) => setFreeImportFile(e.target.files?.[0] ?? null)}
+              />
+              <Button
+                type="button"
+                size="sm"
+                disabled={!freeImportFile || freeImportBusy}
+                onClick={() => void handleFreePoolImport()}
+              >
+                {freeImportBusy ? 'Importing…' : 'Import to Free Pool'}
+              </Button>
+            </div>
+            {freeImportNote ? (
+              <p className="text-xs text-muted-foreground" role="status">
+                {freeImportNote}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* Preview + claim */}
+        {canClaimPool ? (
+          <>
+            {isFreePoolPreviewPending ? (
+              <Skeleton className="mb-3 h-20 w-full" />
+            ) : null}
+
+            {isFreePoolPreviewError ? (
+              <div className="mb-3 text-xs text-destructive" role="alert">
+                <span>{freePoolPreviewError instanceof Error ? freePoolPreviewError.message : 'Could not load free pool preview'} </span>
+                <button type="button" className="underline underline-offset-2" onClick={() => void refetchFreePoolPreview()}>
+                  Retry
+                </button>
+              </div>
+            ) : null}
+
+            {freePoolPreview != null ? (
+              <div className="rounded-lg border border-[hsl(142_71%_45%)]/25 bg-[hsl(142_71%_45%)]/5 p-3 text-xs">
+                <p className="font-medium text-foreground">
+                  Available free leads:{' '}
+                  <span className="tabular-nums text-[hsl(142_71%_45%)]">
+                    {freePoolPreview.available_count}
+                  </span>
+                </p>
+
+                {freePoolPreview.available_count === 0 ? (
+                  <p className="mt-2 text-muted-foreground">Abhi koi free lead available nahi hai.</p>
+                ) : freeBatchConfirmOpen ? (
+                  <div className="mt-3 space-y-2 rounded-md border border-[hsl(142_71%_45%)]/30 bg-[hsl(142_71%_45%)]/10 p-2">
+                    <p className="text-foreground">
+                      <strong className="tabular-nums">{freePoolPreview.claim_count}</strong> free lead(s) claim
+                      karna chahte ho? Bilkul free — wallet se kuch nahi katega.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={freeClaimMut.isPending || freePoolPreview.claim_count < 1}
+                        onClick={() => void handleFreePoolBatchClaim()}
+                      >
+                        {freeClaimMut.isPending ? 'Claiming…' : 'Confirm — Claim Free'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setFreeBatchConfirmOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-3 flex flex-wrap items-end gap-2">
+                    <div>
+                      <label htmlFor="free-pool-batch-count" className="sr-only">
+                        Number of free leads to claim
+                      </label>
+                      <input
+                        id="free-pool-batch-count"
+                        type="number"
+                        min={1}
+                        max={Math.max(1, Math.min(50, freePoolPreview.available_count))}
+                        step={1}
+                        value={freeBatchCountStr}
+                        onChange={(e) => setFreeBatchCountStr(e.target.value)}
+                        className="w-20 rounded-md border border-white/12 bg-muted/50 px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-[hsl(142_71%_45%)]/35"
+                      />
+                      <span className="ml-2 text-muted-foreground">
+                        (max {Math.min(50, freePoolPreview.available_count)})
+                      </span>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={freeClaimMut.isPending || freePoolPreview.claim_count < 1}
+                      onClick={() => setFreeBatchConfirmOpen(true)}
+                    >
+                      Claim Free Leads
+                    </Button>
+                  </div>
+                )}
+
+                {freeClaimMut.isError ? (
+                  <p className="mt-2 text-xs text-destructive" role="alert">
+                    {freeClaimMut.error instanceof Error ? freeClaimMut.error.message : 'Claim failed'}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+          </>
+        ) : null}
+      </div>
     </div>
   )
 }
