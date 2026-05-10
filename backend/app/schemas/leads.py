@@ -40,6 +40,7 @@ class LeadPublic(BaseModel):
     deleted_at: Optional[datetime] = None
     in_pool: bool = False
     pool_price_cents: Optional[int] = None
+    pool_type: str = "paid"
 
     # Contact info
     phone: Optional[str] = None

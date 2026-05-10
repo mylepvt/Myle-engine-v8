@@ -17,6 +17,7 @@ from app.api.v1 import (
     execution,
     finance_surfaces,
     follow_ups,
+    free_lead_pool,
     gate_assistant,
     hello,
     lead_notes,
@@ -68,6 +69,7 @@ api_router.include_router(
 api_router.include_router(wallet.router, prefix="/wallet", tags=["wallet"])
 api_router.include_router(invoices.router, tags=["invoices"])
 api_router.include_router(lead_pool.router, prefix="/lead-pool", tags=["lead-pool"])
+api_router.include_router(free_lead_pool.router, prefix="/free-lead-pool", tags=["free-lead-pool"])
 api_router.include_router(retarget.router, prefix="/retarget", tags=["retarget"])
 api_router.include_router(follow_ups.router, prefix="/follow-ups", tags=["follow-ups"])
 api_router.include_router(lead_notes.router, prefix="/leads", tags=["lead-notes"])
