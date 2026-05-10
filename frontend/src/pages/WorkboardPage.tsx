@@ -768,7 +768,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
 
   const slotTimeLabels = (['5pm', '6pm', '7pm'] as const)
 
-  // day1: M/A = batch tokenized links, E = premiere picker
+  // day1: all three slots (5pm/6pm/7pm) send tokenized batch links
   if (stageKey === 'day1') {
     return (
       <div className="space-y-1.5">
@@ -779,19 +779,16 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
               const slot = (['M', 'A', 'E'] as const)[i]
               const timeLabel = slotTimeLabels[i]
               const slotDone = lead[slotKey]
-              const isEvening = i === 2
               const busy = sharingSlot === slotKey
               return (
                 <button key={`share-${slotKey}`} type="button"
-                  disabled={leadPatchBusy || busy || (isEvening && pickerBusy)}
-                  onClick={() => isEvening ? setPickerOpen(true) : void handleBatchShare(slot, slotKey)}
+                  disabled={leadPatchBusy || busy}
+                  onClick={() => void handleBatchShare(slot, slotKey)}
                   className={cn(
                     'flex h-6 min-w-10 items-center justify-center rounded px-1.5 text-ds-caption font-semibold transition disabled:opacity-50',
                     slotDone
                       ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
-                      : isEvening
-                        ? 'border border-indigo-400/40 bg-indigo-400/10 text-indigo-300 hover:bg-indigo-400/20'
-                        : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
+                      : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
                   )}>
                   {busy ? '...' : timeLabel}
                 </button>
@@ -826,9 +823,6 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
             </button>
           )}
         </div>
-        <LiveSessionSlotPicker open={pickerOpen} busy={pickerBusy} day={2}
-          onClose={() => setPickerOpen(false)}
-          onConfirm={(option) => void handlePickerConfirm(option)} />
       </div>
     )
   }
