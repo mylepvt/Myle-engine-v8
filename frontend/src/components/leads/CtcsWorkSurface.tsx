@@ -56,13 +56,17 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   const [slotPickerTargetStatus, setSlotPickerTargetStatus] = useState<LeadStatus>('video_sent')
   const searchMode =
     filters.q.trim().length > 0 && (surfaceRole === 'admin' || surfaceRole === 'leader')
-  const ctcsOpts = useMemo(
-    () =>
-      searchMode
-        ? ({ searchAllSections: true as const })
-        : ({ ctcsFilter: tab, ctcsPrioritySort: true as const, preEnrollmentOnly: true as const }),
-    [searchMode, tab],
-  )
+  const ctcsOpts = useMemo(() => {
+    if (searchMode) return { searchAllSections: true as const }
+    if (tab === 'all') {
+      return {
+        ctcsFilter: 'all' as const,
+        ctcsPrioritySort: true as const,
+        leaderAllScope: surfaceRole === 'leader',
+      }
+    }
+    return { ctcsFilter: tab, ctcsPrioritySort: true as const, preEnrollmentOnly: true as const }
+  }, [searchMode, tab, surfaceRole])
   useEffect(() => {
     const id = window.setInterval(() => setNowMs(Date.now()), LEAD_SLA_SMOOTH_REFRESH_MS)
     return () => window.clearInterval(id)

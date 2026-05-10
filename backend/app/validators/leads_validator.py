@@ -45,9 +45,13 @@ def lead_list_conditions(
     archived_only: bool,
     deleted_only: bool,
     search_all_sections: bool = False,
+    leader_all_scope: bool = False,
 ):
     parts: list = []
-    if search_all_sections:
+    if leader_all_scope and user.role == "leader":
+        # Leader "All" board tab: full team visibility across all lead states
+        visibility = lead_management_visible_to_leader_clause(user.user_id)
+    elif search_all_sections:
         visibility = (
             None
             if user.role == "admin"
@@ -67,7 +71,10 @@ def lead_list_conditions(
     else:
         parts.append(Lead.deleted_at.is_(None))
         parts.append(Lead.in_pool.is_(False))
-        if not search_all_sections:
+        if leader_all_scope and user.role == "leader":
+            # Include active, inactive, and archived leads — no archived_at filter
+            pass
+        elif not search_all_sections:
             if archived_only:
                 parts.append(Lead.archived_at.is_not(None))
             else:
