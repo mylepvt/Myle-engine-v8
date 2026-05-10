@@ -3,6 +3,7 @@ import { MessageCircle } from 'lucide-react'
 
 import { InAppVideoPlayer } from '@/components/watch/InAppVideoPlayer'
 import { whatsAppChatWithTextHref } from '@/lib/phone-links'
+import { buildEmbeddableVideoUrl } from '@/lib/youtube'
 
 function timeGreeting(): string {
   const h = new Date().getHours()
@@ -21,6 +22,9 @@ export function ContentWatchPage() {
   const greeting = timeGreeting()
   const firstName = leadName.split(/\s+/)[0] ?? ''
   const greetLine = firstName ? `${greeting}, ${firstName}!` : `${greeting}!`
+
+  // Convert raw YouTube watch URL → embed URL; native video URLs pass through as-is
+  const embedUrl = buildEmbeddableVideoUrl(videoUrl || null, null) ?? videoUrl || null
 
   const waHref =
     phone && videoUrl
@@ -44,7 +48,7 @@ export function ContentWatchPage() {
         </div>
 
         <InAppVideoPlayer
-          embedUrl={videoUrl}
+          embedUrl={embedUrl}
           title={title}
           fallbackUrl={videoUrl || null}
           previewEyebrow={greetLine}
