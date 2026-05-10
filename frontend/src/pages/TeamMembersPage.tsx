@@ -132,7 +132,7 @@ function ResetPasswordModal({
       onClick={onClose}
     >
       <div
-        className="keyboard-safe-sheet surface-elevated max-h-[90dvh] w-full max-w-sm overflow-y-auto rounded-xl p-6 text-sm shadow-xl"
+        className="keyboard-safe-sheet surface-elevated max-h-[90dvh] w-full max-w-sm overflow-y-auto rounded-xl p-6 text-sm shadow-xl scroll-ios"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="mb-1 font-semibold text-foreground">Reset Password</h2>
@@ -275,7 +275,7 @@ function MemberProfileModal({
       onClick={onClose}
     >
       <div
-        className="keyboard-safe-sheet surface-elevated max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-xl p-6 text-sm shadow-xl"
+        className="keyboard-safe-sheet surface-elevated max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-xl p-6 text-sm shadow-xl scroll-ios"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
