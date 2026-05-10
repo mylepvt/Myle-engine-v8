@@ -73,6 +73,20 @@ class AtRiskLeadRow(BaseModel):
     proof_state: str = "none"
 
 
+class IdleLeadMemberRow(BaseModel):
+    user_id: int
+    name: str
+    username: Optional[str] = None
+    idle_lead_count: int
+    oldest_idle_days: float = 0.0
+
+
+class LeaderTeamIdleOut(BaseModel):
+    stale_hours: int
+    members: list[IdleLeadMemberRow] = Field(default_factory=list)
+    total_idle_leads: int = 0
+
+
 class WeakMemberRow(BaseModel):
     username: Optional[str] = None
     role: str
