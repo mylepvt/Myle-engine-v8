@@ -163,6 +163,21 @@ export function BatchWatchPage() {
       })
   }, [slot, token, version])
 
+  // Heartbeat every 20s so admin Premiere tab shows live viewers
+  useEffect(() => {
+    if (!slot || !token) return
+    const beat = () => {
+      void fetch(apiUrl('/api/v1/watch/batch/heartbeat'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, slot }),
+      }).catch(() => undefined)
+    }
+    beat()
+    const id = setInterval(beat, 20_000)
+    return () => clearInterval(id)
+  }, [slot, token])
+
   const playerEmbedUrl = useMemo(
     () => buildEmbeddableVideoUrl(toAbsoluteUrl(data?.youtube_url), data?.video_id),
     [data?.video_id, data?.youtube_url],

@@ -413,6 +413,71 @@ async def live_watchers(
     return ActiveWatcherListResponse(items=items, total=len(items))
 
 
+_D1_SLOTS = {"d1_morning", "d1_afternoon", "d1_evening"}
+_LIVE_CUTOFF_SECONDS = 45
+
+
+@router.get("/batch-live-watchers", response_model=ActiveWatcherListResponse)
+async def batch_live_watchers(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    date: str | None = None,
+) -> ActiveWatcherListResponse:
+    """Admin only. Returns Day 1 batch watch viewers for a given date (default today)."""
+    from app.models.batch_share_link import BatchShareLink
+    from app.core.time_ist import IST
+    from datetime import timedelta
+
+    if user.role != "admin":
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    now = datetime.now(timezone.utc)
+    if date:
+        try:
+            from datetime import date as date_type
+            target = datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=ZoneInfo("Asia/Kolkata"))
+        except ValueError:
+            raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Invalid date")
+        day_start = target.astimezone(timezone.utc)
+        day_end = day_start + timedelta(days=1)
+    else:
+        today_ist = datetime.now(IST).replace(hour=0, minute=0, second=0, microsecond=0)
+        day_start = today_ist.astimezone(timezone.utc)
+        day_end = day_start + timedelta(days=1)
+
+    rows = (
+        await session.execute(
+            select(BatchShareLink, Lead)
+            .join(Lead, Lead.id == BatchShareLink.lead_id)
+            .where(
+                BatchShareLink.slot.in_(_D1_SLOTS),
+                BatchShareLink.first_accessed_at.is_not(None),
+                BatchShareLink.first_accessed_at >= day_start,
+                BatchShareLink.first_accessed_at < day_end,
+                Lead.deleted_at.is_(None),
+            )
+            .order_by(desc(BatchShareLink.last_seen_at))
+        )
+    ).all()
+
+    live_cutoff = now - timedelta(seconds=_LIVE_CUTOFF_SECONDS)
+    items = [
+        ActiveWatcherPublic(
+            lead_id=lead.id,
+            lead_name=lead.name or "Lead",
+            viewer_name=lead.name or None,
+            viewer_phone=lead.phone or None,
+            unlocked_at=None,
+            started_at=link.first_accessed_at,
+            last_seen_at=link.last_seen_at or link.first_accessed_at or now,
+            watch_completed=bool(link.used),
+        )
+        for link, lead in rows
+        if link.last_seen_at is not None or link.first_accessed_at is not None
+    ]
+    return ActiveWatcherListResponse(items=items, total=len(items))
+
+
 @watch_router.get("/watch/{token}", response_model=WatchPageData)
 async def watch_video(
     token: str,

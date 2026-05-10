@@ -623,6 +623,11 @@ async def watch_batch_video_payload(
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Invalid link")
 
     link, lead = await _resolve_batch_watch_context(session=session, slot=slot, token=token)
+    now = datetime.now(timezone.utc)
+    if link.first_accessed_at is None:
+        link.first_accessed_at = now
+    link.last_seen_at = now
+    await session.commit()
     day_number = _batch_day_number(slot)
     access_open, opens_at, gate_message = await _batch_slot_gate(session, slot)
     watch_complete = bool(getattr(lead, slot, False))
@@ -743,6 +748,28 @@ async def submit_batch_day_submission(
 
     await session.commit()
     return _to_batch_submission_public(submission) or BatchWatchSubmissionPublic()
+
+
+@watch_router.post("/watch/batch/heartbeat")
+async def batch_watch_heartbeat(
+    payload: dict,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict[str, bool]:
+    token = str(payload.get("token") or "").strip()
+    slot = str(payload.get("slot") or "").strip()
+    if not token or slot not in _BATCH_SLOTS:
+        return {"ok": False}
+    link = (
+        await session.execute(select(BatchShareLink).where(BatchShareLink.token == token))
+    ).scalar_one_or_none()
+    if link is None or link.slot != slot:
+        return {"ok": False}
+    now = datetime.now(timezone.utc)
+    if link.first_accessed_at is None:
+        link.first_accessed_at = now
+    link.last_seen_at = now
+    await session.commit()
+    return {"ok": True}
 
 
 @watch_router.post("/watch/batch/complete")

@@ -31,7 +31,7 @@ import { EmptyState, ErrorState } from '@/components/ui/states'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAppSettingsQuery, useSystemUsersSummaryQuery } from '@/hooks/use-settings-query'
 import { useDay2ReviewQuery } from '@/hooks/use-day2-review-query'
-import { useActiveWatchersQuery } from '@/hooks/use-enroll-query'
+import { useActiveWatchersQuery, useBatchLiveWatchersQuery } from '@/hooks/use-enroll-query'
 import { useEnrollmentApprovalsPendingQuery, useTeamMembersQuery, useUpdateMemberComplianceMutation, type TeamMemberPublic } from '@/hooks/use-team-query'
 import { useTeamReportsQuery } from '@/hooks/use-team-reports-query'
 import { useLeaderHealthQuery, type LeaderHealthItem } from '@/hooks/use-admin-leader-health-query'
@@ -483,8 +483,10 @@ export function AdminCommandCenter({ firstName }: Props) {
   const premiereViewers = usePremiereViewersQuery(true)
   const isHistoryToday = viewerHistoryDate === todayIST
   const premiereHistory = usePremiereViewersQuery(activeTab === 'premiere' && !isHistoryToday, viewerHistoryDate)
-  // Today's history = already-loaded premiereViewers; past dates = premiereHistory
   const historyData = isHistoryToday ? premiereViewers : premiereHistory
+  const batchLiveToday = useBatchLiveWatchersQuery(true)
+  const batchLiveHistory = useBatchLiveWatchersQuery(activeTab === 'premiere' && !isHistoryToday, viewerHistoryDate)
+  const batchHistoryData = isHistoryToday ? batchLiveToday : batchLiveHistory
   const leadSearchResults = useLeadsQuery(
     deferredLeadSearch.length > 0,
     { q: deferredLeadSearch, status: '' },
@@ -1447,33 +1449,24 @@ export function AdminCommandCenter({ firstName }: Props) {
         </TabsContent>
 
         <TabsContent value="premiere" className="space-y-6">
-          {/* Today's live stats — always-fresh */}
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {/* Day 1 batch live stats */}
+          <section className="grid gap-4 md:grid-cols-3">
             <StatCard
               label="Total Viewers Today"
-              value={premiereViewers.data?.length ?? 0}
-              hint="Unique registered viewers for today's premiere session."
-              to="/dashboard/other/live-session"
+              value={batchLiveToday.data?.total ?? 0}
+              hint="Unique leads who opened a Day 1 batch link today (5pm / 6pm / 7pm)."
             />
             <StatCard
               label="Watching Now"
-              value={(premiereViewers.data ?? []).filter((v) => isActiveNow(v.last_seen_at)).length}
+              value={(batchLiveToday.data?.items ?? []).filter((v) => isActiveNow(v.last_seen_at)).length}
               hint="Active in last 45 seconds."
-              variant={(premiereViewers.data ?? []).filter((v) => isActiveNow(v.last_seen_at)).length > 0 ? 'danger' : 'default'}
-              to="/dashboard/other/live-session"
+              variant={(batchLiveToday.data?.items ?? []).filter((v) => isActiveNow(v.last_seen_at)).length > 0 ? 'danger' : 'default'}
             />
             <StatCard
-              label="Completed Session"
-              value={(premiereViewers.data ?? []).filter((v) => v.watch_completed).length}
-              hint="Watched 95%+ of the session."
+              label="Completed"
+              value={(batchLiveToday.data?.items ?? []).filter((v) => v.watch_completed).length}
+              hint="Marked watch complete."
               variant="success"
-              to="/dashboard/other/live-session"
-            />
-            <StatCard
-              label="Top Lead Score"
-              value={(premiereViewers.data ?? []).reduce((max, v) => Math.max(max, v.lead_score), 0)}
-              hint="Highest lead score from today's viewers."
-              to="/dashboard/other/live-session"
             />
           </section>
 
@@ -1490,7 +1483,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                     Viewer History
                   </CardTitle>
                   <CardDescription>
-                    Date-wise viewer list with team member association. Refreshes live for today.
+                    Date-wise list of leads who watched Day 1 batch (5pm / 6pm / 7pm). Refreshes live for today.
                   </CardDescription>
                 </div>
                 <input
@@ -1503,31 +1496,31 @@ export function AdminCommandCenter({ firstName }: Props) {
               </div>
             </CardHeader>
             <CardContent>
-              {historyData.isPending ? (
+              {batchHistoryData.isPending ? (
                 <div className="space-y-2">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="surface-inset h-20 animate-pulse rounded-2xl" />
+                    <div key={i} className="surface-inset h-16 animate-pulse rounded-2xl" />
                   ))}
                 </div>
-              ) : historyData.isError ? (
+              ) : batchHistoryData.isError ? (
                 <ErrorState
                   title="Could not load viewers"
-                  message={historyData.error instanceof Error ? historyData.error.message : 'Please try again.'}
-                  onRetry={() => void historyData.refetch()}
+                  message={batchHistoryData.error instanceof Error ? batchHistoryData.error.message : 'Please try again.'}
+                  onRetry={() => void batchHistoryData.refetch()}
                 />
-              ) : (historyData.data ?? []).length === 0 ? (
+              ) : (batchHistoryData.data?.items ?? []).length === 0 ? (
                 <EmptyState
                   title="No viewers on this date"
-                  description="No one registered for a premiere session on this date."
+                  description="No lead opened a Day 1 batch link on this date."
                 />
               ) : (
                 <div className="space-y-2">
-                  {(historyData.data ?? []).map((v) => (
-                    <div key={`${v.viewer_id}-${v.session_hour}`} className="surface-inset rounded-2xl p-4">
+                  {(batchHistoryData.data?.items ?? []).map((v) => (
+                    <div key={`${v.lead_id}-${v.started_at}`} className="surface-inset rounded-2xl p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="space-y-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-medium text-foreground">{v.name}</p>
+                            <p className="font-medium text-foreground">{v.lead_name}</p>
                             {isActiveNow(v.last_seen_at) && (
                               <span className="flex items-center gap-1 rounded-full bg-red-600/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white">
                                 <span className="relative flex size-1.5">
@@ -1538,34 +1531,14 @@ export function AdminCommandCenter({ firstName }: Props) {
                               </span>
                             )}
                             {v.watch_completed && <Badge variant="success">Completed</Badge>}
-                            {v.rejoined && <Badge variant="outline">Rejoined</Badge>}
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            {v.phone ?? v.masked_phone} · {v.city}
+                            {v.viewer_phone ?? '—'}
+                            {v.started_at ? ` · Opened ${formatDateTime(v.started_at)}` : ''}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Session {v.session_date} · {v.session_hour}:00
-                            {v.first_seen_at ? ` · Joined ${formatDateTime(v.first_seen_at)}` : ''}
+                            Last seen {formatDateTime(v.last_seen_at)}
                           </p>
-                          <p className="text-xs text-muted-foreground">
-                            Watched {v.percentage_watched.toFixed(1)}% · {fmtTime(v.current_time_sec)}
-                          </p>
-                          {v.referred_by_name && (
-                            <p className="text-xs font-medium text-primary">
-                              Team: {v.referred_by_name}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex flex-col items-end gap-1.5">
-                          <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
-                            Score {v.lead_score}
-                          </span>
-                          <div className="h-1.5 w-28 overflow-hidden rounded-full bg-muted">
-                            <div
-                              className="h-full rounded-full bg-primary/70 transition-all"
-                              style={{ width: `${Math.min(100, v.percentage_watched)}%` }}
-                            />
-                          </div>
                         </div>
                       </div>
                     </div>
@@ -1577,22 +1550,13 @@ export function AdminCommandCenter({ firstName }: Props) {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Lead Scoring Guide</CardTitle>
-              <CardDescription>How scores are computed for premiere viewers.</CardDescription>
+              <CardTitle className="text-lg">Batch Schedule</CardTitle>
+              <CardDescription>Day 1 runs daily at 5pm, 6pm, 7pm via calling board batch links.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                {([
-                  ['+10', 'Joined waiting room'],
-                  ['+20', 'Watched 10+ minutes'],
-                  ['+40', 'Watched 70%+'],
-                  ['+30', 'Watched till end'],
-                  ['+60', 'Rejoined session'],
-                ] as const).map(([pts, label]) => (
-                  <div key={label} className="surface-inset flex items-center gap-3 rounded-2xl p-3">
-                    <span className="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">{pts}</span>
-                    <p className="text-sm text-foreground">{label}</p>
-                  </div>
+              <div className="grid gap-2 sm:grid-cols-3">
+                {(['5pm — d1_morning', '6pm — d1_afternoon', '7pm — d1_evening'] as const).map((slot) => (
+                  <div key={slot} className="surface-inset rounded-2xl p-3 text-sm text-foreground">{slot}</div>
                 ))}
               </div>
             </CardContent>
