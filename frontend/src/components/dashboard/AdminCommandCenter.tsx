@@ -2,6 +2,7 @@ import { useDeferredValue, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
+  Activity,
   ArrowRightLeft,
   Banknote,
   BellRing,
@@ -14,6 +15,7 @@ import {
   FileText,
   GraduationCap,
   Layers3,
+  PhoneCall,
   Search,
   Settings,
   ShieldCheck,
@@ -32,6 +34,7 @@ import { useDay2ReviewQuery } from '@/hooks/use-day2-review-query'
 import { useActiveWatchersQuery } from '@/hooks/use-enroll-query'
 import { useEnrollmentApprovalsPendingQuery, useTeamMembersQuery, useUpdateMemberComplianceMutation, type TeamMemberPublic } from '@/hooks/use-team-query'
 import { useTeamReportsQuery } from '@/hooks/use-team-reports-query'
+import { useLeaderHealthQuery, type LeaderHealthItem } from '@/hooks/use-admin-leader-health-query'
 import { useWalletRechargeRequestsQuery } from '@/hooks/use-wallet-recharge-query'
 import { useInvoicesQuery } from '@/hooks/use-invoices-query'
 import { useLeadControlQuery } from '@/hooks/use-lead-control-query'
@@ -271,6 +274,134 @@ function LeadResultRow({ lead }: { lead: LeadPublic }) {
   )
 }
 
+function LeaderRingCard({ leader }: { leader: LeaderHealthItem }) {
+  const score = leader.personal_consistency_score
+  const radius = 36
+  const circumference = 2 * Math.PI * radius
+  const offset = circumference - (score / 100) * circumference
+
+  const ringColor =
+    leader.personal_consistency_band === 'high'
+      ? '#10b981'
+      : leader.personal_consistency_band === 'medium'
+        ? '#f59e0b'
+        : '#ef4444'
+
+  const presenceDot =
+    leader.presence_status === 'online'
+      ? 'bg-emerald-500'
+      : leader.presence_status === 'idle'
+        ? 'bg-amber-400'
+        : 'bg-muted-foreground/30'
+
+  return (
+    <div className="relative flex flex-col items-center gap-3 rounded-[1.4rem] border border-border/60 bg-card/50 p-5">
+      {/* Presence indicator */}
+      <div className="absolute right-4 top-4 flex items-center gap-1.5">
+        <span className={`size-2 rounded-full ${presenceDot}`} />
+        <span className="text-[10px] capitalize text-muted-foreground">{leader.presence_status}</span>
+      </div>
+
+      {/* Progress ring */}
+      <div className="relative flex items-center justify-center">
+        <svg width="96" height="96" viewBox="0 0 96 96" className="-rotate-90">
+          <circle
+            cx="48"
+            cy="48"
+            r={radius}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="7"
+            className="text-muted/30"
+          />
+          <circle
+            cx="48"
+            cy="48"
+            r={radius}
+            fill="none"
+            stroke={ringColor}
+            strokeWidth="7"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+            style={{ transition: 'stroke-dashoffset 0.5s ease' }}
+          />
+        </svg>
+        <div className="absolute text-center">
+          <p className="text-xl font-bold leading-none tabular-nums text-foreground">{score}</p>
+          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">score</p>
+        </div>
+      </div>
+
+      {/* Name */}
+      <div className="text-center">
+        <p className="font-semibold text-foreground">{leader.leader_name}</p>
+        <p className="text-xs text-muted-foreground">{leader.fbo_id}</p>
+      </div>
+
+      {/* Personal stats */}
+      <div className="w-full space-y-1.5 rounded-xl border border-border/40 bg-muted/20 p-3">
+        <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground">Personal Today</p>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div>
+            <p className="text-base font-bold tabular-nums text-foreground">{leader.personal_calls_today}</p>
+            <p className="text-[9px] text-muted-foreground">Calls</p>
+          </div>
+          <div>
+            <p className="text-base font-bold tabular-nums text-foreground">{leader.personal_leads_added}</p>
+            <p className="text-[9px] text-muted-foreground">Leads</p>
+          </div>
+          <div>
+            <p className="text-base font-bold tabular-nums text-foreground">{leader.personal_followups_done}</p>
+            <p className="text-[9px] text-muted-foreground">Followups</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Team stats */}
+      <div className="w-full space-y-1.5 rounded-xl border border-border/40 bg-muted/20 p-3">
+        <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground">Team</p>
+        <div className="grid grid-cols-2 gap-2 text-center">
+          <div>
+            <p className="text-base font-bold tabular-nums text-foreground">{leader.team_calls_today}</p>
+            <p className="text-[9px] text-muted-foreground">Calls Today</p>
+          </div>
+          <div>
+            <p className="text-base font-bold tabular-nums text-foreground">{leader.team_size}</p>
+            <p className="text-[9px] text-muted-foreground">Members</p>
+          </div>
+          <div>
+            <p className="text-base font-bold tabular-nums text-foreground">{leader.team_online_count}</p>
+            <p className="text-[9px] text-muted-foreground">Online Now</p>
+          </div>
+          <div>
+            <p className="text-base font-bold tabular-nums text-foreground">{leader.team_avg_score}</p>
+            <p className="text-[9px] text-muted-foreground">Avg Score</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Day 2 indicator */}
+      <div
+        className={`w-full rounded-xl border p-2.5 text-center ${
+          leader.day2_leads_count > 0
+            ? 'border-violet-400/30 bg-violet-400/[0.07]'
+            : 'border-border/30 bg-muted/10'
+        }`}
+      >
+        <p
+          className={`text-sm font-bold tabular-nums ${
+            leader.day2_leads_count > 0 ? 'text-violet-400' : 'text-muted-foreground'
+          }`}
+        >
+          {leader.day2_leads_count}
+        </p>
+        <p className="text-[9px] text-muted-foreground">Day 2 Leads Active</p>
+      </div>
+    </div>
+  )
+}
+
 function GraceRequestRow({ member }: { member: TeamMemberPublic }) {
   const mut = useUpdateMemberComplianceMutation()
   const busy = mut.isPending
@@ -347,6 +478,7 @@ export function AdminCommandCenter({ firstName }: Props) {
   })
   const appSettings = useAppSettingsQuery(activeTab === 'content')
   const day2Review = useDay2ReviewQuery()
+  const leaderHealth = useLeaderHealthQuery(activeTab === 'leaders')
   const premiereViewers = usePremiereViewersQuery(true)
   const isHistoryToday = viewerHistoryDate === todayIST
   const premiereHistory = usePremiereViewersQuery(activeTab === 'premiere' && !isHistoryToday, viewerHistoryDate)
@@ -491,6 +623,10 @@ export function AdminCommandCenter({ firstName }: Props) {
               </span>
             )}
           </TabsTrigger>
+          <TabsTrigger value="leaders" className="flex items-center gap-1.5">
+            <Activity className="size-3.5" />
+            Leaders
+          </TabsTrigger>
           <TabsTrigger value="finance" className="flex items-center gap-1.5">
             <Wallet className="size-3.5" />
             Finance
@@ -511,6 +647,28 @@ export function AdminCommandCenter({ firstName }: Props) {
         </TabsList>
 
         <TabsContent value="today" className="space-y-6">
+          {/* Today's live pipeline pulse */}
+          <section className="grid gap-4 md:grid-cols-3">
+            <StatCard
+              label="Calls Today"
+              value={liveSummary?.calls_made_today ?? 0}
+              hint="Total calls logged by the entire team today (IST)."
+              variant="default"
+            />
+            <StatCard
+              label="Day 1 Pipeline"
+              value={liveSummary?.day1_total ?? 0}
+              hint="Leads currently in Day 1 stage — sent for initial follow-up."
+              variant="success"
+            />
+            <StatCard
+              label="Day 2 with Leader"
+              value={liveSummary?.day2_total ?? 0}
+              hint="Leads currently in Day 2 stage — in a leader's hands."
+              variant="default"
+            />
+          </section>
+
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <StatCard
               label="Pending Registrations"
@@ -953,6 +1111,152 @@ export function AdminCommandCenter({ firstName }: Props) {
               </CardContent>
             </Card>
           </section>
+        </TabsContent>
+
+        <TabsContent value="leaders" className="space-y-6">
+          {/* Summary bar */}
+          {leaderHealth.data && (
+            <section className="grid gap-4 md:grid-cols-4">
+              <StatCard
+                label="Total Leaders"
+                value={leaderHealth.data.leaders.length}
+                hint="Approved leaders in the system."
+                variant="default"
+              />
+              <StatCard
+                label="Online Now"
+                value={leaderHealth.data.leaders.filter((l) => l.presence_status === 'online').length}
+                hint="Leaders currently active on the platform."
+                variant="success"
+              />
+              <StatCard
+                label="High Consistency"
+                value={leaderHealth.data.leaders.filter((l) => l.personal_consistency_band === 'high').length}
+                hint="Leaders with consistency score ≥ 75 today."
+                variant="success"
+              />
+              <StatCard
+                label="Day 2 Leads Active"
+                value={leaderHealth.data.leaders.reduce((s, l) => s + l.day2_leads_count, 0)}
+                hint="Total leads currently in Day 2 stage across all leaders."
+                variant="default"
+              />
+            </section>
+          )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Activity className="size-4" />
+                Leader Health Rings
+              </CardTitle>
+              <CardDescription>
+                Progress ring = personal consistency score. Green ≥ 75 · Amber 40–74 · Red &lt; 40. Refreshes every minute.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {leaderHealth.isPending ? (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="h-80 animate-pulse rounded-[1.4rem] bg-muted/40" />
+                  ))}
+                </div>
+              ) : leaderHealth.isError ? (
+                <ErrorState
+                  title="Could not load leader health"
+                  message={leaderHealth.error instanceof Error ? leaderHealth.error.message : 'Please try again.'}
+                  onRetry={() => void leaderHealth.refetch()}
+                />
+              ) : (leaderHealth.data?.leaders ?? []).length === 0 ? (
+                <EmptyState
+                  title="No leaders found"
+                  description="Approved leaders will appear here with their daily health metrics."
+                />
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {leaderHealth.data!.leaders.map((leader) => (
+                    <LeaderRingCard key={leader.leader_id} leader={leader} />
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Team calling breakdown per leader */}
+          {(leaderHealth.data?.leaders ?? []).length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <PhoneCall className="size-4" />
+                  Calling Leaderboard
+                </CardTitle>
+                <CardDescription>
+                  Side-by-side comparison of personal and team calls for each leader today.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {[...leaderHealth.data!.leaders]
+                  .sort((a, b) => b.personal_calls_today + b.team_calls_today - (a.personal_calls_today + a.team_calls_today))
+                  .map((leader) => {
+                    const total = leader.personal_calls_today + leader.team_calls_today
+                    const maxTotal = Math.max(
+                      1,
+                      ...leaderHealth.data!.leaders.map((l) => l.personal_calls_today + l.team_calls_today),
+                    )
+                    return (
+                      <div key={leader.leader_id} className="surface-inset rounded-2xl p-4">
+                        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`size-2 rounded-full ${
+                                leader.presence_status === 'online'
+                                  ? 'bg-emerald-500'
+                                  : leader.presence_status === 'idle'
+                                    ? 'bg-amber-400'
+                                    : 'bg-muted-foreground/30'
+                              }`}
+                            />
+                            <p className="font-medium text-foreground">{leader.leader_name}</p>
+                          </div>
+                          <div className="flex gap-3 text-xs text-muted-foreground">
+                            <span>
+                              Personal: <span className="font-semibold text-foreground">{leader.personal_calls_today}</span>
+                            </span>
+                            <span>
+                              Team: <span className="font-semibold text-foreground">{leader.team_calls_today}</span>
+                            </span>
+                            <span>
+                              Total: <span className="font-bold text-primary">{total}</span>
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex h-2 overflow-hidden rounded-full bg-muted/40">
+                          <div
+                            className="h-full bg-primary/70 transition-all"
+                            style={{ width: `${(leader.personal_calls_today / maxTotal) * 100}%` }}
+                          />
+                          <div
+                            className="h-full bg-primary/30 transition-all"
+                            style={{ width: `${(leader.team_calls_today / maxTotal) * 100}%` }}
+                          />
+                        </div>
+                        <div className="mt-1.5 flex gap-4 text-[10px] text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <span className="inline-block size-2 rounded-sm bg-primary/70" />
+                            Personal
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className="inline-block size-2 rounded-sm bg-primary/30" />
+                            Team
+                          </span>
+                          <span className="ml-auto">{leader.team_size} team member{leader.team_size !== 1 ? 's' : ''}</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="finance" className="space-y-6">
