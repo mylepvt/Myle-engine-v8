@@ -121,24 +121,144 @@ function resolveWish(): string {
   return 'Good night'
 }
 
-// Smooth fake viewer count: drifts ±1-3 every 8-12s
-function useViewerCount(serverCount: number, active: boolean): number {
-  const [count, setCount] = useState(serverCount || 267)
-  const baseRef = useRef(serverCount || 267)
+// Realistic live viewer count simulation:
+// - State-aware trend: climb during waiting, surge at live start, gradual decay, fast drop at end
+// - Multi-frequency: micro ticks (3-7s, ±1) + macro shifts (35-65s, ±9)
+// - Burst joins (every 2-4 min, +8-20) with decay trail
+// - Non-round ceiling: stable random offset keeps count off exact max
+// - Irregular timing: all intervals randomised
+// - Re-anchors smoothly when server sends updated count
+function useViewerCount(
+  serverCount: number,
+  state: string,
+  liveStartsAt: string,
+  liveEndsAt: string,
+  waitingStartsAt: string,
+): number {
+  const active = state === 'waiting' || state === 'live'
+
+  // Stable non-round offset so we never sit on exact ceiling
+  const offsetRef = useRef(Math.floor(Math.random() * 5) + 3)
+  const countRef  = useRef(serverCount ? serverCount - offsetRef.current : 267)
+  const aliveRef  = useRef(false)
+
+  const [display, setDisplay] = useState(countRef.current)
+
+  // Mutable refs so closures always read latest values without re-triggering effects
+  const stateRef          = useRef(state)
+  const serverCountRef    = useRef(serverCount)
+  const liveStartsAtRef   = useRef(liveStartsAt)
+  const liveEndsAtRef     = useRef(liveEndsAt)
+  const waitingStartsAtRef = useRef(waitingStartsAt)
+  useEffect(() => { stateRef.current = state },                [state])
+  useEffect(() => { serverCountRef.current = serverCount },    [serverCount])
+  useEffect(() => { liveStartsAtRef.current = liveStartsAt },  [liveStartsAt])
+  useEffect(() => { liveEndsAtRef.current = liveEndsAt },      [liveEndsAt])
+  useEffect(() => { waitingStartsAtRef.current = waitingStartsAt }, [waitingStartsAt])
+
+  function getTarget(): number {
+    const sc = serverCountRef.current
+    const st = stateRef.current
+    if (!sc) return countRef.current
+    const base = sc - offsetRef.current
+    const now  = Date.now()
+
+    if (st === 'waiting') {
+      const waitStart = new Date(waitingStartsAtRef.current).getTime()
+      const liveStart = new Date(liveStartsAtRef.current).getTime()
+      const dur       = Math.max(1, liveStart - waitStart)
+      const progress  = Math.min(1, Math.max(0, (now - waitStart) / dur))
+      // Climb from 65% → 100% of base as waiting room fills up
+      return Math.round(base * (0.65 + 0.35 * progress))
+    }
+
+    if (st === 'live') {
+      const liveStart = new Date(liveStartsAtRef.current).getTime()
+      const liveEnd   = new Date(liveEndsAtRef.current).getTime()
+      const dur       = Math.max(1, liveEnd - liveStart)
+      const progress  = Math.min(1, Math.max(0, (now - liveStart) / dur))
+
+      // 0-15%: excitement surge +5%
+      if (progress < 0.15) return Math.round(base * (1.00 + 0.05 * (progress / 0.15)))
+      // 15-50%: plateau decay back to base
+      if (progress < 0.50) return Math.round(base * (1.05 - 0.05 * ((progress - 0.15) / 0.35)))
+      // 50-80%: gradual drop -10%
+      if (progress < 0.80) return Math.round(base * (1.00 - 0.10 * ((progress - 0.50) / 0.30)))
+      // 80-100%: faster tail drop -15% more
+      return Math.round(base * (0.90 - 0.15 * ((progress - 0.80) / 0.20)))
+    }
+
+    return base
+  }
 
   useEffect(() => {
     if (!active) return
-    baseRef.current = serverCount || baseRef.current
-    const tick = () => {
-      const delta = Math.floor(Math.random() * 5) - 2  // -2 to +2
-      setCount((prev) => Math.min(300, Math.max(250, prev + delta)))
-    }
-    const delay = 8000 + Math.random() * 4000
-    const id = window.setTimeout(tick, delay)
-    return () => window.clearTimeout(id)
-  }, [serverCount, active, count])
+    aliveRef.current = true
 
-  return count
+    const init = getTarget()
+    countRef.current = init
+    setDisplay(init)
+
+    const after = (fn: () => void, lo: number, hi: number) =>
+      window.setTimeout(fn, lo + Math.random() * (hi - lo))
+
+    function microTick() {
+      if (!aliveRef.current) return
+      const target = getTarget()
+      const delta  = Math.floor(Math.random() * 3) - 1  // -1 to +1
+      countRef.current = Math.min(target + 3, Math.max(Math.max(1, target - 15), countRef.current + delta))
+      setDisplay(countRef.current)
+      after(microTick, 3000, 7000)
+    }
+
+    function macroTick() {
+      if (!aliveRef.current) return
+      const target = getTarget()
+      const delta  = Math.floor(Math.random() * 19) - 9  // -9 to +9
+      countRef.current = Math.min(target + 5, Math.max(Math.max(1, target - 20), countRef.current + delta))
+      setDisplay(countRef.current)
+      after(macroTick, 35000, 65000)
+    }
+
+    function burstTick() {
+      if (!aliveRef.current) return
+      if (stateRef.current === 'live') {
+        const target = getTarget()
+        const burst  = Math.floor(Math.random() * 13) + 8  // +8 to +20
+        countRef.current = Math.min(target + 6, countRef.current + burst)
+        setDisplay(countRef.current)
+        let d = 0
+        function decayStep() {
+          if (!aliveRef.current) return
+          if (d >= 5) { after(burstTick, 120000, 240000); return }
+          countRef.current = Math.max(1, countRef.current - Math.floor(Math.random() * 3 + 1))
+          setDisplay(countRef.current)
+          d++
+          after(decayStep, 4000, 7000)
+        }
+        after(decayStep, 4000, 7000)
+      } else {
+        after(burstTick, 60000, 120000)
+      }
+    }
+
+    after(microTick, 3000,   7000)
+    after(macroTick, 35000, 65000)
+    after(burstTick, 120000, 240000)
+
+    return () => { aliveRef.current = false }
+  }, [active])  // restart only when active flips
+
+  // Smooth re-anchor when server count updates (blend toward new target)
+  useEffect(() => {
+    if (serverCount && active) {
+      const target = getTarget()
+      countRef.current = Math.round((countRef.current + target) / 2)
+      setDisplay(countRef.current)
+    }
+  }, [serverCount])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  return display
 }
 
 // ─── Registration Form ───────────────────────────────────────────────────────
@@ -232,7 +352,13 @@ export function LivePremierePage() {
   const registeredRef = useRef(false)
 
   const state = data?.state ?? 'upcoming'
-  const viewerCount = useViewerCount(data?.viewer_count ?? 0, state === 'waiting' || state === 'live')
+  const viewerCount = useViewerCount(
+    data?.viewer_count ?? 0,
+    state,
+    data?.live_starts_at ?? '',
+    data?.live_ends_at ?? '',
+    data?.waiting_starts_at ?? '',
+  )
   const firstName = prospect?.name.trim().split(/\s+/)[0] ?? ''
   const wish = resolveWish()
 
