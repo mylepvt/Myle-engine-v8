@@ -177,12 +177,12 @@ function Tabs({ tabs, active, onChange }: {
   onChange: (id: string) => void
 }) {
   return (
-    <div className="flex gap-1 overflow-x-auto border-b border-white/10">
+    <div className="flex flex-wrap gap-1 border-b border-white/10">
       {tabs.map((t) => (
         <button key={t.id} type="button" onClick={() => onChange(t.id)}
-          className={cn('shrink-0 -mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition',
+          className={cn('-mb-px shrink-0 border-b-2 px-2.5 py-2 text-ds-caption font-medium transition min-[400px]:px-3 sm:px-4 sm:text-sm',
             active === t.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground')}>
-          {t.label}
+          {t.label}{t.count != null ? <span className="ml-1 tabular-nums text-muted-foreground/60">({t.count})</span> : null}
         </button>
       ))}
     </div>

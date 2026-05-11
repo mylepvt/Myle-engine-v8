@@ -759,6 +759,10 @@ html.pwa-standalone .dashboard-mobile-drawer {
   max-height: 100lvh;
 }
 
+html.pwa-standalone .keyboard-safe-modal {
+  height: 100lvh;
+}
+
 html.pwa-standalone .keyboard-safe-sheet {
   max-height: calc(100lvh - env(safe-area-inset-top, 0px) - var(--keyboard-inset-height, 0px) - 0.5rem);
 }
