@@ -666,7 +666,12 @@ async def get_premiere_state(
         if not _is_missing_premiere_viewers_table_error(exc):
             raise
         real_count = 0
-    boosted = min(300, max(250, 250 + real_count)) if state in ("waiting", "live") else 0
+    # Day-based social proof floors: Day1=600, Day2=300, Day3=150
+    _day_floor = {1: 550, 2: 250, 3: 120}
+    _day_ceil  = {1: 600, 2: 300, 3: 150}
+    _floor = _day_floor.get(session_day, 250)
+    _ceil  = _day_ceil.get(session_day, 300)
+    boosted = min(_ceil, max(_floor, _floor + real_count)) if state in ("waiting", "live") else 0
 
     return PremiereStateResponse(
         state=state,
