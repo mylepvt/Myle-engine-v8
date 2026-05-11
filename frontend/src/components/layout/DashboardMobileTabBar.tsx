@@ -60,7 +60,7 @@ export function DashboardMobileTabBar({
   const innerClass =
     'dashboard-mobile-tabbar__inner mx-auto flex h-[60px] max-w-lg items-stretch justify-around gap-1 px-1.5 min-[390px]:px-2'
   const tabClass =
-    'dashboard-mobile-tabbar__tab flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[1rem] px-1 py-1 text-[0.6rem] font-medium leading-none transition-colors active:opacity-70 min-[390px]:text-[0.65rem]'
+    'dashboard-mobile-tabbar__tab flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[1rem] px-1 py-1 text-ds-label font-medium transition-colors active:opacity-70'
   const iconClass = 'size-5 shrink-0 min-[390px]:size-[22px]'
 
   if (trainingLocked) {

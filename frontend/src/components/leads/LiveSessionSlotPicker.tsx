@@ -39,7 +39,7 @@ export function LiveSessionSlotPicker({ open, busy = false, day = 1, onClose, on
         aria-modal="true"
         className="w-full max-w-xs rounded-2xl border border-white/10 bg-[#0d1526] p-5 shadow-2xl"
       >
-        <p className="text-[0.65rem] font-bold uppercase tracking-[0.22em] text-primary/70">
+        <p className="text-ds-label font-bold uppercase text-primary/70">
           Day {day} Video
         </p>
         <h3 className="mt-0.5 text-base font-semibold text-white">Choose Day {day} slot</h3>

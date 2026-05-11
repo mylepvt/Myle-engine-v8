@@ -97,8 +97,8 @@ export function InAppVideoPlayer({
 
     return (
       <div className="flex aspect-video flex-col items-center justify-center rounded-[2rem] border border-amber-300/20 bg-amber-300/[0.06] px-6 text-center">
-        <p className="text-base font-semibold text-white">Video could not be played cleanly inside this room.</p>
-        <p className="mt-2 max-w-md text-sm leading-relaxed text-white/65">
+        <p className="text-ds-h3 text-white">Video could not be played cleanly inside this room.</p>
+        <p className="mt-2 max-w-md text-ds-body text-white/65">
           For the cleanest in-app player, use a direct hosted video file link like `.mp4` or `.webm` instead of a
           share-page URL.
         </p>
@@ -121,11 +121,11 @@ export function InAppVideoPlayer({
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.2),transparent_34%)]" />
         <div className="relative flex aspect-video flex-col justify-end p-5 md:p-7">
           <div className="max-w-xl">
-            <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/75">{previewEyebrow}</p>
-            <h3 className="mt-3 text-2xl font-semibold leading-tight text-white md:text-[2rem]">
+            <p className="text-ds-label uppercase tracking-[0.28em] text-cyan-200/75">{previewEyebrow}</p>
+            <h3 className="mt-3 text-ds-h3 text-white">
               {previewTitle ?? title}
             </h3>
-            <p className="mt-3 text-sm leading-relaxed text-white/68 md:text-base">
+            <p className="mt-3 text-ds-body text-white/68 md:text-base">
               {previewDescription}
             </p>
             <Button

@@ -25,7 +25,7 @@ export function InstallAppBanner() {
         </div>
         <div className="min-w-0 flex-1">
           <p className="font-heading text-ds-h3 text-foreground">Install Myle</p>
-          <p className="mt-1 text-ds-caption leading-relaxed text-muted-foreground">
+          <p className="mt-1 text-ds-caption text-muted-foreground">
             Opens full screen from your home screen — same sign-in for leader, team,
             and admin.
           </p>

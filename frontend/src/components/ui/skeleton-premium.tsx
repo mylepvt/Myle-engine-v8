@@ -165,7 +165,7 @@ const LoadingStatePremium = ({
     </div>
     <div className="space-y-1 text-center">
       <ShimmerText className="font-medium">{message}</ShimmerText>
-      {subMessage ? <p className="text-sm text-muted-foreground/60">{subMessage}</p> : null}
+      {subMessage ? <p className="text-ds-caption text-muted-foreground/60">{subMessage}</p> : null}
     </div>
   </div>
 )

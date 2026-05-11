@@ -171,7 +171,7 @@ export function SettingsAppPage({ title }: Props) {
 
   return (
     <div className="max-w-4xl space-y-6">
-      <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
+      <h1 className="text-ds-h2">{title}</h1>
       <p className="text-sm text-muted-foreground">
         All rows from <code className="rounded bg-white/10 px-1 text-xs">app_settings</code>. Sensitive
         secrets should stay in server environment variables — this table is for product toggles and

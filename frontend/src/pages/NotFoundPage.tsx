@@ -11,7 +11,7 @@ export function NotFoundPage() {
         <h1 className="text-4xl font-semibold tabular-nums tracking-tight text-foreground">
           404
         </h1>
-        <p className="text-sm leading-relaxed text-muted-foreground">
+        <p className="text-ds-body text-muted-foreground">
           This page does not exist or has not been enabled for your account yet.
         </p>
         <Button asChild className="w-full gap-2">

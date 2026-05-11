@@ -158,7 +158,7 @@ export function MyTeamPage({ title }: Props) {
               My team
             </Badge>
             <div className="space-y-1">
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+              <h1 className="text-ds-h1">{title}</h1>
               <p className="max-w-2xl text-sm text-muted-foreground">
                 {isLeader
                   ? 'See everyone under you, open the team map, and quickly check who reports to whom.'
@@ -175,15 +175,15 @@ export function MyTeamPage({ title }: Props) {
         {isLeader && data ? (
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
             <div className="surface-inset rounded-xl px-4 py-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">People under you</p>
+              <p className="text-ds-label uppercase text-muted-foreground">People under you</p>
               <p className="mt-1 text-2xl font-semibold text-foreground">{data.total_downline ?? 0}</p>
             </div>
             <div className="surface-inset rounded-xl px-4 py-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Direct reports</p>
+              <p className="text-ds-label uppercase text-muted-foreground">Direct reports</p>
               <p className="mt-1 text-2xl font-semibold text-foreground">{data.direct_members ?? 0}</p>
             </div>
             <div className="surface-inset rounded-xl px-4 py-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Shown here</p>
+              <p className="text-ds-label uppercase text-muted-foreground">Shown here</p>
               <p className="mt-1 text-2xl font-semibold text-foreground">{data.total}</p>
             </div>
           </div>

@@ -59,15 +59,15 @@ function TrainingOverviewCard({
             Training
           </Badge>
           <div className="space-y-1">
-            <h2 className="text-lg font-semibold tracking-tight text-foreground">
+            <h2 className="text-ds-h2">
               Stay consistent. Finish one clear step at a time.
             </h2>
-            <p className="max-w-2xl text-sm text-muted-foreground">
+            <p className="max-w-2xl text-ds-body text-muted-foreground">
               Watch the lesson, play the audio, upload one clear notes photo, then mark the day as
               done. Each day unlocks the next step.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+          <div className="flex flex-wrap gap-2 text-ds-caption text-muted-foreground">
             <div className="surface-inset inline-flex items-center gap-2 px-3 py-1.5">
               <BookOpenCheck className="size-3.5 text-primary" />
               <span>{totalDays} lessons</span>
@@ -81,22 +81,22 @@ function TrainingOverviewCard({
 
         <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[25rem]">
           <div className="surface-inset px-4 py-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Done</p>
+            <p className="text-ds-caption uppercase tracking-wide text-muted-foreground">Done</p>
             <p className="mt-1 text-2xl font-semibold text-foreground">{completedDays}</p>
           </div>
           <div className="surface-inset px-4 py-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Left</p>
+            <p className="text-ds-caption uppercase tracking-wide text-muted-foreground">Left</p>
             <p className="mt-1 text-2xl font-semibold text-foreground">{remainingDays}</p>
           </div>
           <div className="surface-inset px-4 py-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Next</p>
+            <p className="text-ds-caption uppercase tracking-wide text-muted-foreground">Next</p>
             <p className="mt-1 text-lg font-semibold text-foreground">{nextStep}</p>
           </div>
         </div>
       </div>
 
       <div className="mt-4 space-y-2">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="flex items-center justify-between text-ds-caption text-muted-foreground">
           <span>Progress</span>
           <span>{progressPercent}%</span>
         </div>
@@ -139,7 +139,7 @@ function TrainingDaysBlock({
     return (
       <div className="rounded-2xl border border-dashed border-white/10 bg-muted/30 px-5 py-8 text-center">
         <p className="text-base font-medium text-foreground">Training is not available yet</p>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-2 text-ds-body text-muted-foreground">
           Please try again later. If this keeps happening, contact support.
         </p>
       </div>
@@ -156,8 +156,8 @@ function TrainingDaysBlock({
       />
 
       <div className="space-y-2">
-        <p className="text-sm font-medium text-foreground">Your 7-day plan</p>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-ds-body font-medium text-foreground">Your 7-day plan</p>
+        <p className="text-ds-body text-muted-foreground">
           One day at a time: watch the lesson, play the audio, add a clear photo of your notes, then
           mark that day as done.
         </p>
@@ -190,7 +190,7 @@ function CertificateDownloadBlock() {
         <Award className="size-5" />
       </div>
       <p className="mt-3 text-base font-semibold text-foreground">You're done with training</p>
-      <p className="mt-1 text-sm text-muted-foreground">
+      <p className="mt-1 text-ds-body text-muted-foreground">
         Download your certificate. Your name is added for you.
       </p>
       <Button
@@ -202,7 +202,7 @@ function CertificateDownloadBlock() {
         {downloadMut.isPending ? 'Preparing...' : 'Download certificate'}
       </Button>
       {downloadMut.isError && (
-        <p className="mt-3 text-xs text-destructive" role="alert">
+        <p className="mt-3 text-ds-caption text-destructive" role="alert">
           Could not download. Check your connection and try again.
         </p>
       )}
@@ -287,8 +287,8 @@ function TrainingCertificationBlock({
     <div className="mt-4 border-t border-white/10 pt-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-sm font-medium text-foreground">Final quiz</p>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="text-ds-body font-medium text-foreground">Final quiz</p>
+          <p className="mt-1 text-ds-caption text-muted-foreground">
             Answer all questions, then submit once.
           </p>
         </div>
@@ -300,7 +300,7 @@ function TrainingCertificationBlock({
       </div>
 
       {questions !== null && questions.length === 0 ? (
-        <p className="mt-4 text-sm text-muted-foreground">
+        <p className="mt-4 text-ds-body text-muted-foreground">
           The quiz is not ready yet. Please check back soon.
         </p>
       ) : null}
@@ -309,8 +309,8 @@ function TrainingCertificationBlock({
         <div className="mt-4 space-y-3">
           {questions.map((q, index) => (
             <fieldset key={q.id} className="rounded-xl border border-white/10 bg-muted/30 p-4">
-              <legend className="flex items-start gap-2 text-sm font-medium text-foreground">
-                <span className="rounded-full border border-white/10 bg-muted/40 px-2 py-0.5 text-xs text-muted-foreground">
+              <legend className="flex items-start gap-2 text-ds-body font-medium text-foreground">
+                <span className="rounded-full border border-white/10 bg-muted/40 px-2 py-0.5 text-ds-caption text-muted-foreground">
                   {index + 1}
                 </span>
                 <span className="pt-0.5">{q.question}</span>
@@ -322,7 +322,7 @@ function TrainingCertificationBlock({
                     <label
                       key={letter}
                       className={cn(
-                        'flex min-h-[48px] cursor-pointer items-start gap-2 rounded-xl border px-3 py-3 text-sm transition-colors',
+                        'flex min-h-[48px] cursor-pointer items-start gap-2 rounded-xl border px-3 py-3 text-ds-body transition-colors',
                         selected
                           ? 'border-primary/40 bg-primary/[0.08] text-foreground'
                           : 'border-white/10 bg-white/[0.02] text-muted-foreground hover:border-primary/20 hover:text-foreground',
@@ -353,7 +353,7 @@ function TrainingCertificationBlock({
       ) : null}
 
       {err ? (
-        <p className="mt-3 text-xs text-destructive" role="alert">
+        <p className="mt-3 text-ds-caption text-destructive" role="alert">
           {err}
         </p>
       ) : null}
@@ -367,10 +367,10 @@ function TrainingCertificationBlock({
               : 'border-amber-400/20 bg-amber-400/[0.08]',
           )}
         >
-          <p className="text-sm text-foreground">
+          <p className="text-ds-body text-foreground">
             You scored {result.score} out of {result.total_questions} ({result.percent}%).
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-ds-caption text-muted-foreground">
             {result.passed
               ? 'You passed. Your certificate is ready below.'
               : `You need ${result.pass_mark_percent}% to pass. Try again when you are ready.`}
@@ -415,9 +415,9 @@ export function TrainingProgramPanel({ data }: Props) {
   const trainingComplete = trainingStatus === 'completed'
 
   return (
-    <div className="surface-elevated space-y-5 p-4 text-sm text-muted-foreground md:p-5">
+    <div className="surface-elevated space-y-5 p-4 text-ds-body text-muted-foreground md:p-5">
       {data.note ? (
-        <div className="rounded-xl border border-white/10 bg-muted/30 px-4 py-3 text-sm text-foreground/90">
+        <div className="rounded-xl border border-white/10 bg-muted/30 px-4 py-3 text-ds-body text-foreground/90">
           {data.note}
         </div>
       ) : null}
@@ -439,7 +439,7 @@ export function TrainingProgramPanel({ data }: Props) {
             </div>
             <div className="min-w-0">
               <p className="text-base font-semibold text-foreground">All 7 days are complete</p>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 text-ds-body text-muted-foreground">
                 Take the short quiz next. You need at least 60% to unlock your certificate.
               </p>
             </div>

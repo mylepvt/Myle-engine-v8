@@ -60,7 +60,7 @@ export function Day2ReviewPage({ title }: Props) {
   return (
     <div className="space-y-6">
       <div className="max-w-4xl space-y-2">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
+        <h1 className="text-ds-h2">{title}</h1>
         <p className="text-sm text-muted-foreground">
           Admin-only review wall for Day 2 notes, voice notes, and videos. Reassignment stays in Lead Control.
         </p>
@@ -91,7 +91,7 @@ export function Day2ReviewPage({ title }: Props) {
                   <ShieldCheck className="size-4 text-primary" />
                   Dedicated Day 2 admin review
                 </div>
-                <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
+                <p className="max-w-3xl text-ds-body text-muted-foreground">
                   {query.data.note}
                 </p>
               </div>
@@ -174,7 +174,7 @@ export function Day2ReviewPage({ title }: Props) {
                             <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                               Notes preview
                             </p>
-                            <p className="mt-2 text-sm leading-relaxed text-foreground/90">
+                            <p className="mt-2 text-ds-body text-foreground/90">
                               {submission.notes_text_preview}
                             </p>
                           </div>

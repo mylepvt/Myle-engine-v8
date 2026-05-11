@@ -23,7 +23,7 @@ export function RetargetWorkPage({ title }: Props) {
 
   return (
     <div className="max-w-2xl space-y-4">
-      <h1 className="min-w-0 max-w-full truncate text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+      <h1 className="min-w-0 max-w-full truncate text-ds-h2">
         {title}
       </h1>
       <p className="text-sm text-muted-foreground">

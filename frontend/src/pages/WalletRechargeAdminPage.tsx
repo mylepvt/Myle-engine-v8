@@ -221,7 +221,7 @@ export function WalletRechargeAdminPage({ title }: Props) {
   return (
     <div className="max-w-3xl space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
+        <h1 className="text-ds-h2">{title}</h1>
         <Button
           type="button"
           variant="secondary"

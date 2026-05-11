@@ -53,10 +53,10 @@ export function AuthCard({
             <div className="mx-auto mb-4 flex size-[4.25rem] items-center justify-center rounded-full border border-primary-foreground/25 bg-primary-foreground/15 shadow-inner backdrop-blur-sm">
               {iconNode ?? <Icon className="size-9 text-primary-foreground" aria-hidden />}
             </div>
-            <h1 className="font-heading text-xl font-bold tracking-tight text-primary-foreground">
+            <h1 className="font-heading text-ds-h1 text-primary-foreground">
               {title}
             </h1>
-            <p className="mt-1.5 text-sm font-medium text-primary-foreground/88">
+            <p className="mt-1.5 text-ds-body text-primary-foreground/88">
               {subtitle}
             </p>
           </>
@@ -66,10 +66,10 @@ export function AuthCard({
               <Icon className="size-7 text-primary-foreground" aria-hidden />
             </div>
             <div className="min-w-0 flex-1 pt-0.5 text-left">
-              <h1 className="font-heading text-lg font-bold leading-snug tracking-tight text-primary-foreground sm:text-xl">
+              <h1 className="font-heading text-ds-h1 text-primary-foreground">
                 {title}
               </h1>
-              <p className="mt-1 text-sm font-medium leading-relaxed text-primary-foreground/88">
+              <p className="mt-1 text-ds-body text-primary-foreground/88">
                 {subtitle}
               </p>
             </div>

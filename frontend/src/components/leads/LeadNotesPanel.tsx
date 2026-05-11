@@ -44,7 +44,7 @@ export function LeadNotesPanel({ leadId }: Props) {
 
   return (
     <div className="surface-elevated p-4 space-y-3">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Lead Notes</p>
+      <p className="text-ds-label uppercase text-muted-foreground">Lead Notes</p>
 
       {notesQuery.isPending ? (
         <div className="space-y-2">

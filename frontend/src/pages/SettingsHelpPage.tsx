@@ -43,7 +43,7 @@ function HelpArticleCard({
       </button>
       {open ? (
         <div className="border-t border-border/60 px-4 pb-4 pt-3">
-          <p className="text-sm leading-relaxed text-muted-foreground">{detail}</p>
+          <p className="text-ds-body text-muted-foreground">{detail}</p>
         </div>
       ) : null}
     </li>
@@ -56,7 +56,7 @@ export function SettingsHelpPage({ title }: Props) {
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
+        <h1 className="text-ds-h2">{title}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Common questions and guidance for using the platform.
         </p>
