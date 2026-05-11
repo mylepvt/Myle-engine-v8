@@ -261,6 +261,104 @@ function useViewerCount(
   return display
 }
 
+// ─── Join Feed ───────────────────────────────────────────────────────────────
+
+const FIRST_NAMES = [
+  'Aarav','Vivaan','Aditya','Vihaan','Arjun','Sai','Reyansh','Ayaan',
+  'Krishna','Ishaan','Shaurya','Atharva','Pranav','Advait','Dhruv','Kabir',
+  'Ritvik','Aarush','Veer','Arnav','Harsh','Rohan','Karan','Rahul','Nikhil',
+  'Vikram','Amit','Suresh','Mohit','Sumit','Rajesh','Ramesh','Dinesh','Sunil',
+  'Anil','Vijay','Rakesh','Mahesh','Naresh','Ganesh','Yogesh','Mukesh',
+  'Aanya','Aadhya','Ananya','Pari','Anika','Navya','Diya','Riya','Priya',
+  'Neha','Pooja','Sneha','Nisha','Divya','Anjali','Meera','Kavya','Ishita',
+  'Khushi','Tanvi','Shruti','Sanya','Jiya','Avni','Simran','Radhika','Swati',
+  'Pallavi','Deepika','Sunita','Preeti','Rekha','Usha','Geeta','Seema',
+]
+
+const CITIES = [
+  'Mumbai','Delhi','Bengaluru','Hyderabad','Pune','Chennai','Kolkata',
+  'Jaipur','Surat','Ahmedabad','Lucknow','Kanpur','Nagpur','Indore',
+  'Bhopal','Patna','Vadodara','Ludhiana','Agra','Nashik','Ranchi',
+  'Faridabad','Meerut','Chandigarh','Coimbatore',
+]
+
+type JoinEntry = { id: number; name: string; city: string }
+
+function useJoinFeed(
+  state: string,
+  liveStartsAt: string,
+  liveEndsAt: string,
+): JoinEntry[] {
+  const active = state === 'waiting' || state === 'live'
+  const [entries, setEntries] = useState<JoinEntry[]>([])
+  const idRef      = useRef(0)
+  const aliveRef   = useRef(false)
+  const stateRef   = useRef(state)
+  const liveStartRef = useRef(liveStartsAt)
+  const liveEndRef   = useRef(liveEndsAt)
+  useEffect(() => { stateRef.current = state },         [state])
+  useEffect(() => { liveStartRef.current = liveStartsAt }, [liveStartsAt])
+  useEffect(() => { liveEndRef.current = liveEndsAt },     [liveEndsAt])
+
+  function nextDelay(): number {
+    const st = stateRef.current
+    if (st === 'waiting') return 22000 + Math.random() * 20000   // 22-42s
+    if (st === 'live') {
+      const start    = new Date(liveStartRef.current).getTime()
+      const end      = new Date(liveEndRef.current).getTime()
+      const dur      = Math.max(1, end - start)
+      const progress = Math.min(1, Math.max(0, (Date.now() - start) / dur))
+      if (progress < 0.15) return 5000  + Math.random() * 9000   // 5-14s burst
+      if (progress < 0.75) return 16000 + Math.random() * 18000  // 16-34s mid
+      return 45000 + Math.random() * 45000                        // 45-90s tail
+    }
+    return 30000
+  }
+
+  useEffect(() => {
+    if (!active) return
+    aliveRef.current = true
+
+    function emit() {
+      if (!aliveRef.current) return
+      const name = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)]
+      const city = CITIES[Math.floor(Math.random() * CITIES.length)]
+      setEntries(prev => [...prev.slice(-7), { id: ++idRef.current, name, city }])
+      window.setTimeout(emit, nextDelay())
+    }
+
+    window.setTimeout(emit, 3000 + Math.random() * 5000)
+    return () => { aliveRef.current = false }
+  }, [active]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return entries
+}
+
+function JoinFeed({ entries }: { entries: JoinEntry[] }) {
+  if (entries.length === 0) return null
+  const visible = entries.slice(-5)
+  return (
+    <div className="w-full max-w-2xl overflow-hidden rounded-[1.6rem] border border-white/8 bg-white/[0.03] px-4 py-3 backdrop-blur-xl">
+      <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.25em] text-[#6b83a8]">Live activity</p>
+      <div className="space-y-1.5">
+        {visible.map((e, i) => (
+          <div
+            key={e.id}
+            style={{ opacity: 0.35 + 0.65 * ((i + 1) / visible.length) }}
+            className="flex items-center gap-2 text-[13px]"
+          >
+            <span className="size-1.5 shrink-0 rounded-full bg-emerald-400" />
+            <span className="text-[#c9d9ff]">
+              <span className="font-semibold">{e.name}</span>
+              <span className="text-[#7a94c4]"> from {e.city} joined</span>
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ─── Registration Form ───────────────────────────────────────────────────────
 
 function ProspectForm({ onSubmit }: { onSubmit: (info: ProspectInfo) => void }) {
@@ -358,6 +456,11 @@ export function LivePremierePage() {
     data?.live_starts_at ?? '',
     data?.live_ends_at ?? '',
     data?.waiting_starts_at ?? '',
+  )
+  const joinEntries = useJoinFeed(
+    state,
+    data?.live_starts_at ?? '',
+    data?.live_ends_at ?? '',
   )
   const firstName = prospect?.name.trim().split(/\s+/)[0] ?? ''
   const wish = resolveWish()
@@ -510,15 +613,18 @@ export function LivePremierePage() {
 
           {/* WAITING */}
           {state === 'waiting' && data && (
-            <section className="w-full max-w-2xl rounded-[2.25rem] border border-indigo-500/20 bg-[linear-gradient(160deg,rgba(99,102,241,0.08),rgba(255,255,255,0.03))] px-8 py-14 text-center shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#a5b4fc]">Starting in</p>
-              <p className="mt-6 text-[clamp(4rem,12vw,7rem)] font-bold tabular-nums leading-none tracking-tight text-[#f7f9ff]">
-                {formatCountdown(data.live_starts_at, nowMs)}
-              </p>
-              <p className="mt-6 text-sm font-medium text-[#818cf8]">
-                Your session is about to go live, {firstName}
-              </p>
-            </section>
+            <>
+              <section className="w-full max-w-2xl rounded-[2.25rem] border border-indigo-500/20 bg-[linear-gradient(160deg,rgba(99,102,241,0.08),rgba(255,255,255,0.03))] px-8 py-14 text-center shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl">
+                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#a5b4fc]">Starting in</p>
+                <p className="mt-6 text-[clamp(4rem,12vw,7rem)] font-bold tabular-nums leading-none tracking-tight text-[#f7f9ff]">
+                  {formatCountdown(data.live_starts_at, nowMs)}
+                </p>
+                <p className="mt-6 text-sm font-medium text-[#818cf8]">
+                  Your session is about to go live, {firstName}
+                </p>
+              </section>
+              <JoinFeed entries={joinEntries} />
+            </>
           )}
 
           {/* LIVE */}
@@ -530,6 +636,7 @@ export function LivePremierePage() {
               viewerId={prospect.viewer_id}
               sessionDay={sessionDay}
               data={data}
+              joinEntries={joinEntries}
             />
           )}
           {state === 'live' && !data?.video_url && (
@@ -569,6 +676,7 @@ function LiveSection({
   viewerId,
   sessionDay,
   data,
+  joinEntries,
 }: {
   videoUrl: string
   liveStartsAt: string
@@ -576,6 +684,7 @@ function LiveSection({
   viewerId: string
   sessionDay: number
   data: PremiereData
+  joinEntries: JoinEntry[]
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const progressSentRef = useRef({ pct10: false, pct70: false, completed: false })
@@ -608,31 +717,34 @@ function LiveSection({
   }, [viewerId])
 
   return (
-    <section className="w-full overflow-hidden rounded-[2.1rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.025))] shadow-[0_38px_140px_-88px_rgba(0,0,0,0.96)] backdrop-blur-2xl">
-      <div className="bg-[#070d1d] p-3 sm:p-4">
-        {/* Pass ref externally for progress tracking */}
-        <PremiereVideoPlayerWithRef
-          src={videoUrl}
-          liveStartsAt={liveStartsAt}
-          externalRef={videoRef}
-        />
-        <div className="mt-4 rounded-[1.4rem] border border-white/10 bg-white/[0.045] px-5 py-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-base font-semibold text-white">You're in, {firstName}</p>
-              <p className="mt-0.5 text-sm text-[#b6c6e7]">Session is live right now — watch till the end</p>
-            </div>
-            <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-white">
-              <span className="relative flex size-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                <span className="relative inline-flex size-2 rounded-full bg-red-400" />
+    <div className="w-full space-y-3">
+      <section className="overflow-hidden rounded-[2.1rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.025))] shadow-[0_38px_140px_-88px_rgba(0,0,0,0.96)] backdrop-blur-2xl">
+        <div className="bg-[#070d1d] p-3 sm:p-4">
+          {/* Pass ref externally for progress tracking */}
+          <PremiereVideoPlayerWithRef
+            src={videoUrl}
+            liveStartsAt={liveStartsAt}
+            externalRef={videoRef}
+          />
+          <div className="mt-4 rounded-[1.4rem] border border-white/10 bg-white/[0.045] px-5 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-base font-semibold text-white">You're in, {firstName}</p>
+                <p className="mt-0.5 text-sm text-[#b6c6e7]">Session is live right now — watch till the end</p>
+              </div>
+              <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-white">
+                <span className="relative flex size-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                  <span className="relative inline-flex size-2 rounded-full bg-red-400" />
+                </span>
+                Live
               </span>
-              Live
-            </span>
+            </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+      <JoinFeed entries={joinEntries} />
+    </div>
   )
 }
 
