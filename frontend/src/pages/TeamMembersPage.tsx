@@ -275,11 +275,11 @@ function MemberProfileModal({
       onClick={onClose}
     >
       <div
-        className="keyboard-safe-sheet surface-elevated max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-xl p-4 text-sm shadow-xl md:p-6"
+        className="keyboard-safe-sheet surface-elevated max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-xl text-sm shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="mb-4 flex items-start justify-between gap-3">
+        {/* Sticky header */}
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-3 rounded-t-xl border-b border-border bg-card p-4 md:p-6">
           <div className="min-w-0 flex-1">
             <h2 className="break-all text-base font-semibold text-foreground">{currentMember.fbo_id}</h2>
             {currentMember.username ? (
@@ -293,7 +293,8 @@ function MemberProfileModal({
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 rounded-md px-2 py-1 text-ds-caption text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+            aria-label="Close"
           >
             ✕
           </button>
