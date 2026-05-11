@@ -267,9 +267,10 @@ class Settings(BaseSettings):
             return "lax"
         return "none" if self.session_cookie_secure else "lax"
 
-    def _is_local_origin(origin: str) -> bool:
-        host = (urlparse(origin).hostname or "").strip().lower()
-        return host in {"localhost", "127.0.0.1"} or host.endswith(".local")
+
+def _is_local_origin(origin: str) -> bool:
+    host = (urlparse(origin).hostname or "").strip().lower()
+    return host in {"localhost", "127.0.0.1"} or host.endswith(".local")
 
 
 settings = Settings()
