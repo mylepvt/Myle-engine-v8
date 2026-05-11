@@ -318,59 +318,10 @@
     animation: slideUp 0.2s ease-out forwards;
   }
 
-  .animate-scale-in {
-    animation: scaleIn 0.18s ease-out forwards;
-  }
-
-  .animate-shimmer {
-    animation: shimmer 1.5s ease-in-out infinite;
-    background: linear-gradient(
-      90deg,
-      var(--muted) 25%,
-      color-mix(in srgb, var(--muted) 50%, white 50%) 50%,
-      var(--muted) 75%
-    );
-    background-size: 200% 100%;
-  }
-
-  .animate-count-up {
-    animation: countUp 0.6s ease-out forwards;
-  }
-
-  .animate-press {
-    transition: transform 0.18s ease-out;
-  }
-
-  .animate-press:active {
-    transform: scale(0.96);
-  }
-
-  .animate-lift {
-    transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
-  }
-
-  .animate-lift:hover {
-    transform: translateY(-4px);
-  }
-
-  .animate-glow {
-    transition: box-shadow 0.2s ease-out;
-  }
-
-  .animate-glow:hover {
-    box-shadow: 0 0 20px color-mix(in srgb, var(--primary) 30%, transparent);
-  }
-
-  /* PREMIUM CARD SHADOWS */
-  .shadow-premium {
-    box-shadow: 0 10px 30px color-mix(in srgb, var(--palette-ink) 35%, transparent);
-  }
-
   .shadow-premium-hover {
     box-shadow: 0 20px 40px color-mix(in srgb, var(--palette-ink) 40%, transparent);
   }
 
-  /* RIPPLE EFFECT CONTAINER */
   .ripple-container {
     position: relative;
     overflow: hidden;
@@ -851,15 +802,6 @@ html.pwa-standalone * {
     @apply ring-2 ring-offset-2 ring-offset-background;
   }
 
-  /* Card elevation on hover */
-  .card {
-    @apply transition-all duration-300;
-  }
-
-  .card:hover {
-    @apply shadow-lg;
-  }
-
   /* Input smooth focus */
   input:focus,
   textarea:focus,
@@ -888,9 +830,7 @@ html.pwa-standalone * {
     a:hover,
     [role="button"]:not([disabled]):hover,
     [role="tab"]:hover,
-    .card:hover,
-    .animate-lift:hover,
-    .animate-glow:hover {
+    .card:hover {
       box-shadow: none !important;
       transform: none !important;
     }

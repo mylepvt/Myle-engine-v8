@@ -14,7 +14,7 @@ const Card = React.forwardRef<
     ref={ref}
     className={cn(
       cardBase,
-      'hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-px',
+      'hover:shadow-[var(--shadow-card-hover)]',
       className,
     )}
     {...props}
@@ -31,8 +31,8 @@ const CardLink = React.forwardRef<
     className={cn(
       cardBase,
       'block cursor-pointer no-underline',
-      'hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-[3px]',
-      'active:translate-y-0 active:shadow-[var(--shadow-card)]',
+      'hover:shadow-[var(--shadow-card-hover)]',
+      'active:shadow-[var(--shadow-card)]',
       className,
     )}
     {...props}

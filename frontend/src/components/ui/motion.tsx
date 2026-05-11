@@ -133,7 +133,7 @@ const Pressable = ({ children, className, onClick }: PressableProps) => {
     <div
       className={cn(
         'transition-transform duration-180 ease-out cursor-pointer',
-        'active:scale-[0.96]',
+        'active:scale-[0.97]',
         className
       )}
       onClick={onClick}
