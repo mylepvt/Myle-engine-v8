@@ -855,6 +855,35 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
   )
 }
 
+function LeadCardItem({ lead, stageKey, nextStatus, pm, patchBusyLeadId, mindsetBusyLeadId, mindsetPreviewByLeadId, onRequestMindsetSend, nextLabel, nowMs }: {
+  lead: LeadPublic; stageKey?: WorkboardStageKey; nextStatus?: LeadStatus
+  pm: PM; patchBusyLeadId: number | null; mindsetBusyLeadId: number | null
+  mindsetPreviewByLeadId: Record<number, MindsetLockPreviewResponse | undefined>
+  onRequestMindsetSend?: (lead: LeadPublic) => void
+  nextLabel?: string; nowMs: number
+}) {
+  const onMoveNext = useCallback(
+    stageKey && nextStatus
+      ? () => void pm.mutateAsync({ id: lead.id, body: { status: nextStatus } })
+      : undefined,
+    [stageKey, nextStatus, pm, lead.id],
+  )
+  return (
+    <LeadCard
+      lead={lead}
+      stageKey={stageKey}
+      pm={pm}
+      leadPatchBusy={patchBusyLeadId === lead.id}
+      mindsetBusy={mindsetBusyLeadId === lead.id}
+      mindsetPreview={mindsetPreviewByLeadId[lead.id] ?? null}
+      onRequestMindsetSend={onRequestMindsetSend}
+      onMoveNext={onMoveNext}
+      nextLabel={nextLabel}
+      nowMs={nowMs}
+    />
+  )
+}
+
 function ResponsiveLeadGrid({
   leads,
   pm,
@@ -891,26 +920,21 @@ function ResponsiveLeadGrid({
 
   return (
     <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      {leads.map((lead) => {
-        const onMoveNext = stageKey && nextStatus
-          ? () => void pm.mutateAsync({ id: lead.id, body: { status: nextStatus } })
-          : undefined
-        return (
-          <LeadCard
-            key={lead.id}
-            lead={lead}
-            stageKey={stageKey}
-            pm={pm}
-            leadPatchBusy={patchBusyLeadId === lead.id}
-            mindsetBusy={mindsetBusyLeadId === lead.id}
-            mindsetPreview={mindsetPreviewByLeadId[lead.id] ?? null}
-            onRequestMindsetSend={onRequestMindsetSend}
-            onMoveNext={onMoveNext}
-            nextLabel={nextLabel}
-            nowMs={nowMs}
-          />
-        )
-      })}
+      {leads.map((lead) => (
+        <LeadCardItem
+          key={lead.id}
+          lead={lead}
+          stageKey={stageKey}
+          nextStatus={nextStatus}
+          pm={pm}
+          patchBusyLeadId={patchBusyLeadId}
+          mindsetBusyLeadId={mindsetBusyLeadId}
+          mindsetPreviewByLeadId={mindsetPreviewByLeadId}
+          onRequestMindsetSend={onRequestMindsetSend}
+          nextLabel={nextLabel}
+          nowMs={nowMs}
+        />
+      ))}
     </div>
   )
 }

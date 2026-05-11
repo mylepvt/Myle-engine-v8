@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 
 type Props = {
   sections: DashboardNavSection[]
+  sidebarOpen: boolean
   mobileMenuOpen: boolean
   isMobile: boolean
   setMobileMenuOpen: (v: boolean) => void
@@ -22,6 +23,7 @@ type Props = {
 
 export function DashboardSidebar({
   sections,
+  sidebarOpen,
   mobileMenuOpen,
   isMobile,
   setMobileMenuOpen,
@@ -37,7 +39,7 @@ export function DashboardSidebar({
       className={cn(
         'flex h-full shrink-0 flex-col border-r border-border/80 dashboard-sidebar overflow-y-auto',
         'transition-[transform,width,border-color] duration-300 ease-out',
-        'md:w-[18rem]',
+        sidebarOpen ? 'md:w-[18rem]' : 'md:w-0 md:overflow-hidden md:border-0',
         'dashboard-mobile-drawer max-md:fixed max-md:left-0 max-md:top-0 max-md:z-50 max-md:w-[min(20rem,85vw)] max-md:pt-[env(safe-area-inset-top)]',
         'max-md:shadow-[0_0_60px_rgba(0,0,0,0.4)]',
         mobileMenuOpen
