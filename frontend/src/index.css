@@ -25,16 +25,16 @@
     --popover-foreground: var(--palette-ink);
     --primary: var(--palette-blue);
     --primary-foreground: #f8fafc;
-    --secondary: color-mix(in srgb, var(--palette-mist) 50%, #f1f5f9 50%);
+    --secondary: color-mix(in srgb, var(--palette-mist) 60%, #e2e8f0 40%);
     --secondary-foreground: var(--palette-ink);
-    --muted: color-mix(in srgb, var(--palette-mist) 42%, #f8fafc 58%);
+    --muted: color-mix(in srgb, var(--palette-mist) 55%, #f1f5f9 45%);
     --muted-foreground: color-mix(in srgb, var(--palette-ink) 62%, #64748b 38%);
-    --accent: color-mix(in srgb, var(--palette-cyan-dull) 18%, var(--palette-mist) 82%);
+    --accent: color-mix(in srgb, var(--palette-cyan-dull) 22%, var(--palette-mist) 78%);
     --accent-foreground: var(--palette-ink);
     --destructive: #dc2626;
     --destructive-foreground: #fef2f2;
-    --border: color-mix(in srgb, var(--palette-blue) 22%, var(--palette-mist) 78%);
-    --input: color-mix(in srgb, var(--palette-mist) 48%, white 52%);
+    --border: color-mix(in srgb, var(--palette-ink) 28%, var(--palette-mist) 72%);
+    --input: color-mix(in srgb, var(--palette-mist) 62%, white 38%);
     --ring: var(--palette-blue);
     --radius: 0.625rem;
     --chart-1: var(--palette-blue);
@@ -42,7 +42,7 @@
     --chart-3: color-mix(in srgb, var(--palette-blue) 55%, var(--palette-mist) 45%);
     --chart-4: color-mix(in srgb, var(--palette-mist) 70%, var(--palette-blue) 30%);
     --chart-5: color-mix(in srgb, var(--palette-ink) 40%, var(--palette-mist) 60%);
-    --surface: color-mix(in srgb, var(--palette-mist) 35%, white 65%);
+    --surface: color-mix(in srgb, var(--palette-mist) 45%, #f8fafc 55%);
     --subtle: color-mix(in srgb, var(--palette-ink) 48%, var(--palette-mist) 52%);
     --success: color-mix(in srgb, var(--palette-cyan-dull) 88%, var(--palette-ink) 12%);
     --success-foreground: var(--palette-ink);
@@ -50,17 +50,17 @@
     --warning-foreground: var(--palette-ink);
     --glass-base: color-mix(in srgb, var(--palette-mist) 55%, white 45%);
     --shadow-card:
-      0 1px 2px rgba(0,0,0,0.04),
-      0 4px 14px -2px rgba(0,0,0,0.08),
-      0 12px 28px -8px color-mix(in srgb, var(--palette-blue) 16%, rgba(0,0,0,0.05)),
+      0 1px 2px rgba(0,0,0,0.06),
+      0 4px 14px -2px rgba(0,0,0,0.12),
+      0 14px 32px -8px color-mix(in srgb, var(--palette-blue) 20%, rgba(0,0,0,0.06)),
       inset 0 1px 0 rgba(255,255,255,0.72);
     --shadow-card-hover:
-      0 2px 4px rgba(0,0,0,0.06),
-      0 8px 22px -4px rgba(0,0,0,0.11),
-      0 22px 44px -12px color-mix(in srgb, var(--palette-blue) 24%, rgba(0,0,0,0.06)),
+      0 2px 4px rgba(0,0,0,0.08),
+      0 8px 22px -4px rgba(0,0,0,0.15),
+      0 24px 48px -12px color-mix(in srgb, var(--palette-blue) 28%, rgba(0,0,0,0.08)),
       inset 0 1px 0 rgba(255,255,255,0.78);
     --shadow-ios-bar: 0 0.5px 0 0 color-mix(in srgb, var(--palette-mist) 55%, transparent),
-      0 8px 24px -12px color-mix(in srgb, var(--palette-ink) 18%, transparent);
+      0 8px 24px -12px color-mix(in srgb, var(--palette-ink) 22%, transparent);
 
     /* Palette extensions */
     --palette-blue-light: color-mix(in srgb, var(--palette-blue) 70%, white 30%);
