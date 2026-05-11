@@ -1,4 +1,3 @@
-import Hls from 'hls.js'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
@@ -761,7 +760,7 @@ function PremiereVideoPlayerWithRef({
   const [paused, setPaused] = useState(false)
   const [muted, setMuted] = useState(true)
   const [showCta, setShowCta] = useState(false)
-  const hlsRef = useRef<Hls | null>(null)
+  const hlsRef = useRef<{ destroy: () => void } | null>(null)
 
   useEffect(() => {
     const video = externalRef.current
@@ -777,12 +776,19 @@ function PremiereVideoPlayerWithRef({
       void video.play().catch(() => {})
     }
 
-    if (isHls && Hls.isSupported()) {
-      const hls = new Hls()
-      hlsRef.current = hls
-      hls.loadSource(src)
-      hls.attachMedia(video)
-      hls.on(Hls.Events.MANIFEST_PARSED, onReady)
+    if (isHls) {
+      import('hls.js').then(({ default: Hls }) => {
+        if (!Hls.isSupported()) {
+          video.src = src
+          video.addEventListener('loadedmetadata', onReady, { once: true })
+          return
+        }
+        const hls = new Hls()
+        hlsRef.current = hls
+        hls.loadSource(src)
+        hls.attachMedia(video)
+        hls.on(Hls.Events.MANIFEST_PARSED, onReady)
+      })
     } else {
       video.src = src
       video.addEventListener('loadedmetadata', onReady, { once: true })
@@ -791,9 +797,7 @@ function PremiereVideoPlayerWithRef({
     return () => {
       hlsRef.current?.destroy()
       hlsRef.current = null
-      if (!isHls || !Hls.isSupported()) {
-        video.removeEventListener('loadedmetadata', onReady)
-      }
+      video.removeEventListener('loadedmetadata', onReady)
     }
   }, [src, liveStartsAt, externalRef])
 

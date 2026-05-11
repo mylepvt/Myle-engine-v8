@@ -15,6 +15,7 @@ import { useEnrollmentApprovalsPendingQuery } from '@/hooks/use-team-query'
 import { usePushNotifications } from '@/hooks/use-push-notifications'
 import { useRealtimeInvalidation } from '@/hooks/use-realtime-invalidation'
 import { useSyncRoleFromMe } from '@/hooks/use-sync-role-from-me'
+import { cn } from '@/lib/utils'
 import { authLogout } from '@/lib/auth-api'
 import { notifyDashboardMainScrolled } from '@/lib/main-scroll-gate'
 import { useAuthStore } from '@/stores/auth-store'
@@ -284,6 +285,7 @@ export function DashboardLayout() {
 
       <DashboardSidebar
         sections={sections}
+        sidebarOpen={sidebarOpen}
         mobileMenuOpen={mobileMenuOpen}
         isMobile={isMobile}
         setMobileMenuOpen={setMobileMenuOpen}

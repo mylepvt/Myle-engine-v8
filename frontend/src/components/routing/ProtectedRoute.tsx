@@ -14,10 +14,7 @@ export function ProtectedRoute() {
   const location = useLocation()
   const login = useAuthStore((s) => s.login)
   const logout = useAuthStore((s) => s.logout)
-  const { data, error, isPending, isError, refetch, isRefetching } = useAuthMeQuery({
-    staleTime: 0,
-    refetchOnMount: 'always',
-  })
+  const { data, error, isPending, isError, refetch, isRefetching } = useAuthMeQuery()
   const authErrorCode = isError ? /HTTP\s+(\d+)/.exec(String(error))?.[1] : null
 
   useEffect(() => {
