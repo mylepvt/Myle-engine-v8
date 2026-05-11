@@ -350,6 +350,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                 value={qInput}
                 onChange={(e) => setQInput(e.target.value)}
                 placeholder="Search name, phone, email..."
+                aria-label="Search leads"
                 className="min-w-0 flex-1 bg-transparent text-ds-caption text-foreground outline-none placeholder:text-muted-foreground"
                 autoComplete="off"
               />

@@ -61,7 +61,7 @@ export function DashboardSidebar({
         ) : null}
       </div>
 
-      <nav className="scroll-ios flex flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden px-3 py-4 pb-2">
+      <nav aria-label="Sidebar navigation" className="scroll-ios flex flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden px-3 py-4 pb-2">
         {rolePending && shellRole == null ? (
           <SidebarSkeleton />
         ) : null}

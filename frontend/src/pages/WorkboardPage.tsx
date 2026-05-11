@@ -470,17 +470,20 @@ function Checkbox({
   busy,
   disabled,
   onClick,
+  'aria-label': ariaLabel,
 }: {
   done: boolean
   busy: boolean
   disabled: boolean
   onClick: () => void
+  'aria-label'?: string
 }) {
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
+      aria-label={ariaLabel}
       className={cn(
         'flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition disabled:opacity-50',
         done
@@ -629,10 +632,12 @@ function ProcessChecklistSection({
                     <span className="text-ds-caption text-muted-foreground/60">No link set</span>
                   )}
                   <Checkbox done={done} busy={busy} disabled={leadPatchBusy || busy}
+                    aria-label={done ? `Mark "${task.label}" incomplete` : `Mark "${task.label}" complete`}
                     onClick={() => void toggleTask(task.key, !done)} />
                 </div>
               ) : (
                 <Checkbox done={done} busy={busy} disabled={leadPatchBusy || busy}
+                  aria-label={done ? `Mark "${task.label}" incomplete` : `Mark "${task.label}" complete`}
                   onClick={() => void toggleTask(task.key, !done)} />
               )}
             </div>
@@ -803,6 +808,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
               return (
                 <button key={`toggle-${slotKey}`} type="button"
                   disabled={leadPatchBusy || busy}
+                  aria-label={slotDone ? `Uncheck ${slotTimeLabels[i]}` : `Check ${slotTimeLabels[i]}`}
                   onClick={() => void handleBatchToggle(slotKey)}
                   className={cn(
                     'flex h-6 min-w-10 items-center justify-center rounded px-1.5 text-ds-caption font-semibold transition disabled:opacity-50',
@@ -1317,6 +1323,7 @@ export function WorkboardPage({ title, mode = 'pipeline' }: Props) {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden/>
           <input value={qInput} onChange={(e) => setQInput(e.target.value)}
             placeholder="Search by name or phone…"
+            aria-label="Search leads"
             className="field-input w-full pl-9 pr-3"/>
         </div>
       </div>
