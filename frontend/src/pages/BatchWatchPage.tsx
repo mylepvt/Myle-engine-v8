@@ -290,7 +290,7 @@ export function BatchWatchPage() {
 
       <main className="relative mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-10">
         {loading ? (
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_22rem]">
+          <div className="grid gap-4 md:gap-6 xl:grid-cols-[minmax(0,1.2fr)_22rem]">
             <div className="space-y-6">
               <Skeleton className="h-12 w-72 bg-white/10" />
               <Skeleton className="h-[28rem] w-full rounded-[2rem] bg-white/10" />

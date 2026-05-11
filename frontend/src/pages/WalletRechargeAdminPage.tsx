@@ -219,7 +219,7 @@ export function WalletRechargeAdminPage({ title }: Props) {
     activeTab === 'all' ? allItems : allItems.filter((r) => r.status === activeTab)
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="max-w-3xl space-y-4 md:space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-ds-h2">{title}</h1>
         <Button

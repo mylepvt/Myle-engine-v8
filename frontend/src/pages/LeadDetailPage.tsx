@@ -401,7 +401,7 @@ export function LeadDetailPage({ leadId }: Props) {
 
   return (
     <>
-    <div className="max-w-4xl space-y-6">
+    <div className="max-w-4xl space-y-4 md:space-y-6">
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
@@ -419,7 +419,7 @@ export function LeadDetailPage({ leadId }: Props) {
         </Button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
         {/* LEFT COLUMN */}
         <div className="space-y-4">
           {/* Contact card */}

@@ -131,7 +131,7 @@ function LeadRow(props: RowComponentProps<RowData>): ReactElement | null {
               type="button"
               variant="secondary"
               size="sm"
-              className="h-7 px-2 text-[0.65rem]"
+              className="h-9 px-2 text-ds-label"
               disabled={patchBusy}
               title="Move to shared pool for members to claim"
               onClick={() => onPatchPool(l.id)}
@@ -144,7 +144,7 @@ function LeadRow(props: RowComponentProps<RowData>): ReactElement | null {
               type="button"
               variant="secondary"
               size="sm"
-              className="h-7 px-2 text-[0.65rem]"
+              className="h-9 px-2 text-ds-label"
               disabled={patchBusy}
               onClick={() => onPatchArchive(l.id, false)}
             >
@@ -155,7 +155,7 @@ function LeadRow(props: RowComponentProps<RowData>): ReactElement | null {
               type="button"
               variant="outline"
               size="sm"
-              className="h-7 px-2 text-[0.65rem]"
+              className="h-9 px-2 text-ds-label"
               disabled={patchBusy}
               onClick={() => onPatchArchive(l.id, true)}
             >
@@ -166,7 +166,7 @@ function LeadRow(props: RowComponentProps<RowData>): ReactElement | null {
             type="button"
             variant="ghost"
             size="sm"
-            className="h-7 px-2 text-[0.65rem] text-destructive hover:text-destructive"
+            className="h-9 px-2 text-ds-label text-destructive hover:text-destructive"
             disabled={delBusy}
             onClick={() => onDelete(l.id)}
           >

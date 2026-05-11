@@ -41,7 +41,7 @@ export function LeaderboardPage({ title }: Props) {
   const rest = rows.slice(3)
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="max-w-4xl space-y-4 md:space-y-6">
       <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
 
       {isPending ? (

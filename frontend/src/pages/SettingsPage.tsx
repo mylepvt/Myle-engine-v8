@@ -210,7 +210,7 @@ export default function SettingsPage() {
 
         {/* Profile Tab */}
         <TabsContent value="profile" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             {/* Basic Information */}
             <Card>
               <CardHeader>
@@ -456,7 +456,7 @@ export default function SettingsPage() {
 
         {/* Security Tab */}
         <TabsContent value="security" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             {/* Change Password */}
             <Card>
               <CardHeader>

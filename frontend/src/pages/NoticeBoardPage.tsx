@@ -64,7 +64,7 @@ export function NoticeBoardPage({ title }: Props) {
       {isAdmin ? (
         <form
           onSubmit={(e) => void handlePost(e)}
-          className="surface-elevated space-y-3 p-5 text-sm"
+          className="surface-elevated space-y-3 p-4 text-sm md:p-5"
         >
           <h2 className="font-medium text-foreground">Post announcement</h2>
           <textarea

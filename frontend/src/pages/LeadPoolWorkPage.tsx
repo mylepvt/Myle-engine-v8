@@ -270,7 +270,7 @@ export function LeadPoolWorkPage({ title }: Props) {
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-2xl space-y-4 md:space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <h1 className="text-ds-h2">{title}</h1>
         <Link

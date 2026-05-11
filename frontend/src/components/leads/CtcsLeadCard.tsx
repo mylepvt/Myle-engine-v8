@@ -277,7 +277,7 @@ export function CtcsLeadCard({
                   void onCall(lead)
                 }}
                 className={cn(
-                  'flex size-8 items-center justify-center rounded-full border-2 transition active:scale-95',
+                  'flex size-10 items-center justify-center rounded-full border-2 transition active:scale-95',
                   'border-emerald-600/50 bg-emerald-500/15 text-emerald-900',
                   'shadow-[0_0_10px_rgba(52,211,153,0.35)] ring-1 ring-emerald-500/25',
                   'hover:border-emerald-500 hover:bg-emerald-500/25',
@@ -304,7 +304,7 @@ export function CtcsLeadCard({
                 disabled={selectBusy}
                 onClick={() => onSendEnrollment(lead.id)}
                 className={cn(
-                  'flex size-8 items-center justify-center rounded-full border-2 transition active:scale-95 disabled:opacity-50',
+                  'flex size-10 items-center justify-center rounded-full border-2 transition active:scale-95 disabled:opacity-50',
                   'border-[#128C7E]/60 bg-[#25D366]/15 text-[#065f46]',
                   'shadow-[0_0_10px_rgba(37,211,102,0.28)] ring-1 ring-[#25D366]/25 hover:bg-[#25D366]/25',
                   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#128C7E]/70',
@@ -322,7 +322,7 @@ export function CtcsLeadCard({
                 target="_blank"
                 rel="noopener noreferrer"
                 className={cn(
-                  'flex size-8 items-center justify-center rounded-full border-2 transition active:scale-95',
+                  'flex size-10 items-center justify-center rounded-full border-2 transition active:scale-95',
                   'border-[#128C7E]/60 bg-[#25D366]/15 text-[#065f46]',
                   'shadow-[0_0_10px_rgba(37,211,102,0.28)] ring-1 ring-[#25D366]/25 hover:bg-[#25D366]/25',
                   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#128C7E]/70',
@@ -335,7 +335,7 @@ export function CtcsLeadCard({
                 <MessageCircle className="size-3.5 text-[#047857] dark:text-[#b8f5c4]" aria-hidden />
               </a>
             ) : (
-              <span className="flex size-8 items-center justify-center rounded-full border border-border bg-muted/40 opacity-40">
+              <span className="flex size-10 items-center justify-center rounded-full border border-border bg-muted/40 opacity-40">
                 <MessageCircle className="size-3.5 text-muted-foreground" aria-hidden />
               </span>
             )}
@@ -343,7 +343,7 @@ export function CtcsLeadCard({
               type="button"
               disabled={selectBusy}
               onClick={() => onFollowUp(lead.id)}
-              className="flex size-8 items-center justify-center rounded-full border border-border bg-muted/70 text-muted-foreground transition hover:bg-muted active:scale-95 disabled:opacity-40"
+              className="flex size-10 items-center justify-center rounded-full border border-border bg-muted/70 text-muted-foreground transition hover:bg-muted active:scale-95 disabled:opacity-40"
               title="Follow-up +24h"
               aria-label="Schedule follow-up"
             >

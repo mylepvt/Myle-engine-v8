@@ -586,7 +586,7 @@ export function LivePremierePage() {
           {/* UPCOMING */}
           {state === 'upcoming' && data && (
             <section className="w-full max-w-2xl space-y-4">
-              <div className="rounded-[2.25rem] border border-white/10 bg-[linear-gradient(160deg,rgba(255,255,255,0.07),rgba(255,255,255,0.025))] px-8 py-10 text-center shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl">
+              <div className="rounded-[2.25rem] border border-white/10 bg-[linear-gradient(160deg,rgba(255,255,255,0.07),rgba(255,255,255,0.025))] px-5 py-8 text-center shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl md:px-8 md:py-10">
                 <p className="text-xs font-semibold uppercase tracking-widest text-[#9db0d6]">Exclusive live session</p>
                 <p className="mt-4 text-[clamp(3rem,8vw,5rem)] font-bold tabular-nums tracking-tight text-[#f7f9ff]">
                   {formatTimeIST(data.live_starts_at)}
@@ -614,7 +614,7 @@ export function LivePremierePage() {
           {/* WAITING */}
           {state === 'waiting' && data && (
             <>
-              <section className="w-full max-w-2xl rounded-[2.25rem] border border-indigo-500/20 bg-[linear-gradient(160deg,rgba(99,102,241,0.08),rgba(255,255,255,0.03))] px-8 py-14 text-center shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl">
+              <section className="w-full max-w-2xl rounded-[2.25rem] border border-indigo-500/20 bg-[linear-gradient(160deg,rgba(99,102,241,0.08),rgba(255,255,255,0.03))] px-5 py-10 text-center shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl md:px-8 md:py-14">
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#a5b4fc]">Starting in</p>
                 <p className="mt-6 text-[clamp(4rem,12vw,7rem)] font-bold tabular-nums leading-none tracking-tight text-[#f7f9ff]">
                   {formatCountdown(data.live_starts_at, nowMs)}
@@ -640,14 +640,14 @@ export function LivePremierePage() {
             />
           )}
           {state === 'live' && !data?.video_url && (
-            <div className="w-full max-w-2xl rounded-[2.25rem] border border-white/8 bg-muted/30 px-8 py-12 text-center">
+            <div className="w-full max-w-2xl rounded-[2.25rem] border border-white/8 bg-muted/30 px-5 py-8 text-center md:px-8 md:py-12">
               <p className="text-sm text-[#7a94c4]">Video not configured — set <code className="text-xs">premiere_video_url</code> in Settings.</p>
             </div>
           )}
 
           {/* ENDED */}
           {state === 'ended' && (
-            <section className="w-full max-w-2xl space-y-5 rounded-[2.25rem] border border-white/8 bg-muted/30 px-8 py-12 text-center backdrop-blur-2xl">
+            <section className="w-full max-w-2xl space-y-5 rounded-[2.25rem] border border-white/8 bg-muted/30 px-5 py-8 text-center backdrop-blur-2xl md:px-8 md:py-12">
               <p className="text-2xl font-semibold text-[#f7f9ff]">Today's session has ended</p>
               <p className="text-base text-[#7a94c4]">You've taken the first step. Reach out to your mentor to move forward.</p>
               <button

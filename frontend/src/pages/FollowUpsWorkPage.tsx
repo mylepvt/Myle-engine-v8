@@ -61,7 +61,7 @@ export function FollowUpsWorkPage({ title }: Props) {
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-2xl space-y-4 md:space-y-6">
       <h1 className="text-ds-h2">{title}</h1>
       <p className="text-sm text-muted-foreground">
         Follow-ups are tied to leads you can access (same rules as the Calling Board). Mark done or reopen anytime.

@@ -58,7 +58,7 @@ export function Day2ReviewPage({ title }: Props) {
   const submissions = query.data?.submissions ?? []
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div className="max-w-4xl space-y-2">
         <h1 className="text-ds-h2">{title}</h1>
         <p className="text-sm text-muted-foreground">
