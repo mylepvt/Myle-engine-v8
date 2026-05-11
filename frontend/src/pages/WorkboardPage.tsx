@@ -406,7 +406,7 @@ const LeadCard = memo(function LeadCard({
               type="button"
               disabled={leadPatchBusy}
               onClick={() => void pm.mutateAsync({ id: lead.id, body: { status: 'mindset_lock' as LeadStatus } })}
-              className="flex h-8 w-full items-center justify-center gap-1 rounded-md border border-fuchsia-400/40 bg-fuchsia-400/12 px-2 text-ds-caption font-semibold text-fuchsia-300 transition hover:bg-fuchsia-400/20 disabled:opacity-50"
+              className="flex h-10 w-full items-center justify-center gap-1 rounded-md border border-fuchsia-400/40 bg-fuchsia-400/12 px-3 text-ds-caption font-semibold text-fuchsia-300 transition hover:bg-fuchsia-400/20 disabled:opacity-50"
             >
               <CheckSquare className="h-3.5 w-3.5" />
               <span>Start Mindset Lock</span>
@@ -426,7 +426,7 @@ const LeadCard = memo(function LeadCard({
               disabled={!canSend || !mindsetChecklistDone || mindsetBusy}
               onClick={() => onRequestMindsetSend?.(lead)}
               className={cn(
-                'flex h-8 w-full items-center justify-center gap-1 rounded-md border px-2 text-ds-caption font-semibold transition disabled:cursor-not-allowed disabled:opacity-50',
+                'flex h-10 w-full items-center justify-center gap-1 rounded-md border px-3 text-ds-caption font-semibold transition disabled:cursor-not-allowed disabled:opacity-50',
                 canSend && mindsetChecklistDone
                   ? 'border-emerald-400/40 bg-emerald-400/12 text-emerald-300 hover:bg-emerald-400/20'
                   : 'border-border bg-muted/30 text-muted-foreground',
@@ -834,7 +834,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
         <button type="button"
           disabled={leadPatchBusy || pickerBusy}
           onClick={() => setPickerOpen(true)}
-          className="flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-indigo-400/40 bg-indigo-400/10 px-2 text-ds-caption font-semibold text-indigo-300 transition hover:bg-indigo-400/20 disabled:opacity-50">
+          className="flex h-10 w-full items-center justify-center gap-1.5 rounded-md border border-indigo-400/40 bg-indigo-400/10 px-3 text-ds-caption font-semibold text-indigo-300 transition hover:bg-indigo-400/20 disabled:opacity-50">
           <Video className="h-3.5 w-3.5" />
           {pickerBusy ? 'Sending...' : `Send Day ${dayKey} Live Session`}
         </button>

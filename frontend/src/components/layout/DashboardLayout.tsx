@@ -508,7 +508,7 @@ export function DashboardLayout() {
             type="button"
             variant="ghost"
             size="icon"
-            className="size-9 shrink-0"
+            className="size-10 shrink-0"
             onClick={() => {
               if (isMobile) {
                 setMobileMenuOpen(!mobileMenuOpen)
@@ -533,7 +533,7 @@ export function DashboardLayout() {
                 <select
                   id="header-view-as"
                   className={cn(
-                    'h-9 min-w-[5.5rem] max-w-[9rem] shrink-0 rounded-lg border border-border bg-muted/40 py-0 pl-2 pr-7 text-ds-caption font-medium text-foreground',
+                    'h-10 min-w-[5.5rem] max-w-[9rem] shrink-0 rounded-lg border border-border bg-muted/40 py-0 pl-2 pr-7 text-ds-caption font-medium text-foreground',
                     'focus:outline-none focus:ring-2 focus:ring-primary/30',
                   )}
                   value={viewAsRole ?? 'admin'}
@@ -642,7 +642,7 @@ export function DashboardLayout() {
 
             <Link
               to="/dashboard/settings/profile"
-              className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted text-ds-caption font-semibold text-foreground transition-opacity hover:opacity-90 active:opacity-80"
+              className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted text-ds-caption font-semibold text-foreground transition-opacity hover:opacity-90 active:opacity-80"
               title={
                 me?.fbo_id
                   ? `${me.fbo_id}${me.username ? ` · ${me.username}` : ''}${me.email ? ` · ${me.email}` : ''}`

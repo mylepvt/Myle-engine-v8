@@ -122,7 +122,7 @@ function Day1PipelineRow({
               size="sm"
               variant="default"
               disabled={patching}
-              className="h-7 px-3 text-xs bg-primary/90 hover:bg-primary"
+              className="h-9 px-3 text-ds-caption bg-primary/90 hover:bg-primary"
               onClick={() => onPatch(lead.id, { status: 'day2' as LeadStatus })}
             >
               Push to Day 2 →
@@ -247,7 +247,7 @@ export function DashboardHomePage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-4 md:space-y-6">
       <div className="flex items-center gap-2 px-0.5">
         <h1 className="font-heading text-ds-h2 font-semibold capitalize tracking-tight text-foreground">
           Welcome back, {firstName}

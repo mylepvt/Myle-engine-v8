@@ -197,7 +197,7 @@ export function RegisterPage() {
               </Link>
             </div>
           ) : (
-          <form className="space-y-6" onSubmit={(e) => void handleSubmit(e)} noValidate>
+          <form className="space-y-4 md:space-y-6" onSubmit={(e) => void handleSubmit(e)} noValidate>
             {formError ? (
               <div
                 className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-center text-sm text-destructive"

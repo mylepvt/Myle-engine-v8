@@ -163,7 +163,7 @@ export function TeamReportsPage({ title }: Props) {
   }, [data])
 
   return (
-    <div className="max-w-6xl space-y-6">
+    <div className="max-w-6xl space-y-4 md:space-y-6">
       <div className="space-y-2">
         <h1 className="text-ds-h1">{title}</h1>
         <p className="max-w-3xl text-sm text-muted-foreground">
