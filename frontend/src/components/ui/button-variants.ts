@@ -1,7 +1,7 @@
 import { cva, type VariantProps } from 'class-variance-authority'
 
 export const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[0.625rem] text-sm font-semibold transition-[color,background,opacity,transform] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-45 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 active:scale-[0.97]',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[0.625rem] text-ds-body font-semibold transition-[color,background,opacity,transform] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-45 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 active:scale-[0.97]',
   {
     variants: {
       variant: {
@@ -16,8 +16,8 @@ export const buttonVariants = cva(
       },
       size: {
         default: 'h-11 min-h-[44px] px-4 py-2',
-        sm: 'h-10 min-h-[40px] rounded-md px-3 text-xs',
-        lg: 'h-12 min-h-[48px] rounded-xl px-8 text-base',
+        sm: 'h-10 min-h-[40px] rounded-md px-3 text-ds-caption',
+        lg: 'h-12 min-h-[48px] rounded-xl px-8 text-ds-h3',
         icon: 'h-11 min-h-[44px] w-11 min-w-[44px]',
       },
     },

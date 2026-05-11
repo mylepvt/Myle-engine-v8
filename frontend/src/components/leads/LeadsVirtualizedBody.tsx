@@ -225,24 +225,24 @@ export const LeadsVirtualizedBody = memo(function LeadsVirtualizedBody(props: Le
     <div ref={wrapRef} className="w-full overflow-x-auto">
       <div style={{ minWidth: TABLE_MIN_WIDTH }} className="border-b border-border/60 bg-card/20">
         <div className={props.archivedOnly ? gridArchived : gridActive}>
-          <div className="px-1 py-2 text-right text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground">
+          <div className="px-1 py-2 text-right text-ds-label uppercase text-muted-foreground">
             ID
           </div>
-          <div className="px-1 py-2 text-[0.65rem] font-semibold uppercase tracking-wide text-foreground">Name</div>
-          <div className="px-1 py-2 text-[0.65rem] font-semibold uppercase tracking-wide text-foreground">Phone</div>
-          <div className="px-1 py-2 text-[0.65rem] font-semibold uppercase tracking-wide text-foreground">Stage</div>
-          <div className="px-1 py-2 text-right text-[0.65rem] font-semibold uppercase tracking-wide text-foreground">
+          <div className="px-1 py-2 text-ds-label uppercase text-foreground">Name</div>
+          <div className="px-1 py-2 text-ds-label uppercase text-foreground">Phone</div>
+          <div className="px-1 py-2 text-ds-label uppercase text-foreground">Stage</div>
+          <div className="px-1 py-2 text-right text-ds-label uppercase text-foreground">
             Created
           </div>
           {props.archivedOnly ? (
-            <div className="px-1 py-2 text-right text-[0.65rem] font-semibold uppercase tracking-wide text-foreground">
+            <div className="px-1 py-2 text-right text-ds-label uppercase text-foreground">
               Archived
             </div>
           ) : null}
-          <div className="px-1 py-2 text-[0.65rem] font-semibold uppercase tracking-wide text-foreground">
+          <div className="px-1 py-2 text-ds-label uppercase text-foreground">
             Section
           </div>
-          <div className="px-1 py-2 text-right text-[0.65rem] font-semibold uppercase tracking-wide text-foreground">
+          <div className="px-1 py-2 text-right text-ds-label uppercase text-foreground">
             Actions
           </div>
         </div>

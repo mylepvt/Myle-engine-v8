@@ -10,7 +10,7 @@ export function WatchLiveGauge() {
       aria-hidden
     >
       <div className="flex items-center justify-between px-1 pb-1">
-        <span className="inline-flex items-center gap-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-white/55">
+        <span className="inline-flex items-center gap-1.5 text-ds-label uppercase text-white/55">
           <span className="relative flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/80 opacity-75" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />

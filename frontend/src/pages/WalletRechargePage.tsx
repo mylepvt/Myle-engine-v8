@@ -81,7 +81,7 @@ export function WalletRechargePage({ title }: Props) {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
+      <h1 className="text-ds-h2">{title}</h1>
       <p className="text-sm text-muted-foreground">
         Submit your wallet recharge request below. An admin will review and credit your balance.
       </p>

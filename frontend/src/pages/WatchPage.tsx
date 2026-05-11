@@ -396,7 +396,7 @@ export function WatchPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#9db0d6]">Myle</p>
-              <h1 className="mt-1 text-xl font-semibold tracking-tight text-[#f5f8ff]">Your private introduction</h1>
+              <h1 className="mt-1 text-ds-h2">Your private introduction</h1>
             </div>
             <div className="flex items-center gap-3">
               {data?.access_granted ? (
@@ -464,7 +464,7 @@ export function WatchPage() {
                     <p className="text-sm font-medium text-[#d9e7ff]">{intakeSummary}</p>
                   ) : null}
                   {data.trust_note ? (
-                    <p className={`${intakeSummary ? 'mt-1.5' : ''} text-sm leading-relaxed text-[#9eabc7]`}>
+                    <p className={`${intakeSummary ? 'mt-1.5' : ''} text-ds-body text-[#9eabc7]`}>
                       {data.trust_note}
                     </p>
                   ) : null}
@@ -479,7 +479,7 @@ export function WatchPage() {
                     </div>
                     <div>
                       <p className="text-lg font-semibold text-[#f7f9ff]">Continue with your number</p>
-                      <p className="mt-1 text-sm leading-relaxed text-[#aab8d3]">
+                      <p className="mt-1 text-ds-body text-[#aab8d3]">
                         Enter your name and use the same mobile number you shared with your team.
                       </p>
                     </div>
@@ -593,7 +593,7 @@ export function WatchPage() {
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                               <p className="text-base font-semibold text-white">{playerStatusTitle}</p>
-                              <p className="mt-1 text-sm leading-relaxed text-[#b6c6e7]">{playerStatusBody}</p>
+                              <p className="mt-1 text-ds-body text-[#b6c6e7]">{playerStatusBody}</p>
                               {data.viewer_name || data.viewer_phone ? (
                                 <p className="mt-2 text-xs text-white/55">
                                   Watching as {[data.viewer_name, data.viewer_phone].filter(Boolean).join(' · ')}

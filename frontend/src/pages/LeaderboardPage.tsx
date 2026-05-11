@@ -20,7 +20,7 @@ function LevelBadge({ level }: { level: string }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-wide',
+        'inline-flex items-center rounded-full px-2 py-0.5 text-ds-label uppercase',
         meta.cls,
       )}
     >

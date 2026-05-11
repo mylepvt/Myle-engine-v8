@@ -239,7 +239,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
       <>
         <div className="mx-auto max-w-6xl space-y-6">
           <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
-            <h1 className="min-w-0 max-w-full truncate text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+            <h1 className="min-w-0 max-w-full truncate text-ds-h2">
               {title}
             </h1>
             <Link

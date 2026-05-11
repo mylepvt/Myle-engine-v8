@@ -51,7 +51,7 @@ function MetricCard({
       <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
         {label}
       </p>
-      <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{value}</p>
+      <p className="mt-2 text-ds-h1">{value}</p>
       {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   )
@@ -165,7 +165,7 @@ export function TeamReportsPage({ title }: Props) {
   return (
     <div className="max-w-6xl space-y-6">
       <div className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+        <h1 className="text-ds-h1">{title}</h1>
         <p className="max-w-3xl text-sm text-muted-foreground">
           Date-wise submitted team reports with member details, submission time, and missing follow-up list.
           Live tiles use the same scoped members for the selected day.
@@ -240,7 +240,7 @@ export function TeamReportsPage({ title }: Props) {
           </div>
 
           <div>
-            <p className="mb-2 text-[0.68rem] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="mb-2 text-ds-label uppercase text-muted-foreground">
               Live data (from system)
             </p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
@@ -252,7 +252,7 @@ export function TeamReportsPage({ title }: Props) {
                   <div className={cn('text-2xl font-bold tabular-nums', tile.color)}>
                     {data.live_summary[tile.key]}
                   </div>
-                  <div className="mt-1 px-1 text-[0.62rem] text-muted-foreground">{tile.label}</div>
+                  <div className="mt-1 px-1 text-ds-label text-muted-foreground">{tile.label}</div>
                 </div>
               ))}
             </div>
@@ -284,7 +284,7 @@ export function TeamReportsPage({ title }: Props) {
 
                   <div className="hidden overflow-x-auto md:block">
                     <table className="min-w-full text-sm">
-                      <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                      <thead className="text-left text-ds-caption uppercase tracking-wide text-muted-foreground">
                         <tr className="border-b border-white/10">
                           <th className="pb-3 pr-4 font-medium">Member</th>
                           <th className="pb-3 pr-4 font-medium">Submitted</th>
@@ -419,7 +419,7 @@ export function TeamReportsPage({ title }: Props) {
             </section>
           </div>
 
-          {data.note ? <p className="text-xs leading-relaxed text-muted-foreground">{data.note}</p> : null}
+          {data.note ? <p className="text-ds-caption text-muted-foreground">{data.note}</p> : null}
         </>
       ) : null}
     </div>

@@ -84,7 +84,7 @@ function UploadCard({
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-white">{title}</p>
-          <p className="mt-1 text-xs leading-relaxed text-white/55">{hint}</p>
+          <p className="mt-1 text-ds-caption text-white/55">{hint}</p>
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-white/72">
               <CloudUpload className="size-3.5" />
@@ -280,7 +280,7 @@ export function BatchWatchPage() {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 md:px-6">
           <div>
             <p className="text-xs uppercase tracking-[0.32em] text-cyan-200/70">Myle Experience</p>
-            <p className="mt-1 text-lg font-semibold tracking-tight text-white">Batch Watch Room</p>
+            <p className="mt-1 text-ds-h2">Batch Watch Room</p>
           </div>
           <Badge variant="outline" className="border-white/15 bg-muted/50 text-white/70">
             Trusted in-app playback
@@ -343,7 +343,7 @@ export function BatchWatchPage() {
                   <div className="rounded-[1.6rem] border border-amber-300/20 bg-amber-400/[0.08] px-5 py-6 text-left">
                     <p className="text-sm font-semibold uppercase tracking-[0.24em] text-amber-200/80">Scheduled access</p>
                     <p className="mt-3 text-2xl font-semibold text-white">This batch room is locked for now</p>
-                    <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/72">
+                    <p className="mt-3 max-w-2xl text-ds-body text-white/72">
                       {data.gate_message ?? 'Please open this room only at your scheduled batch time so the correct live session appears.'}
                     </p>
                     <p className="mt-3 text-sm text-amber-100">
@@ -395,7 +395,7 @@ export function BatchWatchPage() {
                       <h1 className="mt-2 text-2xl font-semibold leading-tight text-white sm:text-3xl md:text-[2.6rem]">
                         {greetingCopy?.heroTitle ?? `${data.slot_label} batch ready for ${data.lead_name}.`}
                       </h1>
-                      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/68 md:text-base">
+                      <p className="mt-3 max-w-2xl text-ds-body text-white/68 md:text-base">
                         {greetingCopy?.heroSubtitle ?? data.subtitle}
                       </p>
                     </div>
@@ -443,7 +443,7 @@ export function BatchWatchPage() {
                   <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                     <div>
                       <h2 className="text-xl font-semibold text-white">Upload after this batch</h2>
-                      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/62">
+                      <p className="mt-2 max-w-2xl text-ds-body text-white/62">
                         Is batch ke baad notes, voice note, practice video, ya short message isi page se bhej sakte ho.
                       </p>
                     </div>
@@ -472,7 +472,7 @@ export function BatchWatchPage() {
                             <NotebookPen className="size-4" />
                             Notes
                           </div>
-                          <p className="mt-2 text-xs leading-relaxed">
+                          <p className="mt-2 text-ds-caption">
                             {noteUrl ? 'Open uploaded notes' : 'No notes uploaded yet'}
                           </p>
                         </a>
@@ -490,7 +490,7 @@ export function BatchWatchPage() {
                             <Headphones className="size-4" />
                             Voice note
                           </div>
-                          <p className="mt-2 text-xs leading-relaxed">
+                          <p className="mt-2 text-ds-caption">
                             {voiceUrl ? 'Play uploaded voice note' : 'No voice note uploaded yet'}
                           </p>
                         </a>
@@ -508,7 +508,7 @@ export function BatchWatchPage() {
                             <Video className="size-4" />
                             Practice video
                           </div>
-                          <p className="mt-2 text-xs leading-relaxed">
+                          <p className="mt-2 text-ds-caption">
                             {submittedVideoUrl ? 'Open uploaded video' : 'No practice video uploaded yet'}
                           </p>
                         </a>
@@ -588,7 +588,7 @@ export function BatchWatchPage() {
                   <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                     <div>
                       <h2 className="text-xl font-semibold text-white">Business evaluation stays separate</h2>
-                      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/62">
+                      <p className="mt-2 max-w-2xl text-ds-body text-white/62">
                         Test link alag action hai. Ye final Day 2 batch ke baad old-app style me coordinator share karta hai.
                       </p>
                     </div>
@@ -607,21 +607,21 @@ export function BatchWatchPage() {
                     <div className="rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
                       <p className="text-xs uppercase tracking-[0.22em] text-white/45">Verification</p>
                       <p className="mt-3 text-sm font-semibold text-white">Registered mobile number</p>
-                      <p className="mt-2 text-xs leading-relaxed text-white/58">
+                      <p className="mt-2 text-ds-caption text-white/58">
                         Prospect ko same registered mobile se verify karna hota hai.
                       </p>
                     </div>
                     <div className="rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
                       <p className="text-xs uppercase tracking-[0.22em] text-white/45">Attempts</p>
                       <p className="mt-3 text-sm font-semibold text-white">Max 2 attempts</p>
-                      <p className="mt-2 text-xs leading-relaxed text-white/58">
+                      <p className="mt-2 text-ds-caption text-white/58">
                         Business evaluation old app ke jaise controlled attempts ke saath hi rahega.
                       </p>
                     </div>
                     <div className="rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
                       <p className="text-xs uppercase tracking-[0.22em] text-white/45">Link window</p>
                       <p className="mt-3 text-sm font-semibold text-white">24-hour link</p>
-                      <p className="mt-2 text-xs leading-relaxed text-white/58">
+                      <p className="mt-2 text-ds-caption text-white/58">
                         Test link short window ke liye active rehta hai, bilkul old flow ki tarah.
                       </p>
                     </div>
@@ -638,7 +638,7 @@ export function BatchWatchPage() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-white">Trust-forward room</p>
-                    <p className="mt-1 text-xs leading-relaxed text-white/58">
+                    <p className="mt-1 text-ds-caption text-white/58">
                       {greetingCopy?.trustLine ??
                         'Premium layout, same-domain playback, and direct submission in one branded experience.'}
                     </p>

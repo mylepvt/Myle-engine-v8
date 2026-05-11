@@ -60,7 +60,7 @@ export function FinanceRechargesPage({ title }: Props) {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
+      <h1 className="text-ds-h2">{title}</h1>
 
       {stub.isPending ? <Skeleton className="h-12 w-full" /> : null}
       {stub.data?.note ? (

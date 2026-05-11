@@ -125,11 +125,11 @@ function BatchSubmissionCard({ submission }: { submission: LeadBatchSubmission }
 
       {submission.notes_text ? (
         <div className="rounded-md border border-white/10 bg-muted/40 p-3">
-          <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <div className="mb-2 flex items-center gap-2 text-ds-label uppercase text-muted-foreground">
             <MessageSquareText className="size-3.5" />
             Lead message
           </div>
-          <p className="text-sm leading-relaxed text-foreground">{submission.notes_text}</p>
+          <p className="text-ds-body text-foreground">{submission.notes_text}</p>
         </div>
       ) : null}
 
@@ -411,7 +411,7 @@ export function LeadDetailPage({ leadId }: Props) {
           >
             ← All leads
           </Link>
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">{lead.name}</h1>
+          <h1 className="text-ds-h2">{lead.name}</h1>
           <StatusBadge status={lead.status} />
         </div>
         <Button variant="secondary" size="sm" onClick={() => void refetch()}>
@@ -424,7 +424,7 @@ export function LeadDetailPage({ leadId }: Props) {
         <div className="space-y-4">
           {/* Contact card */}
           <div className="surface-elevated p-4 space-y-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Contact</p>
+            <p className="text-ds-label uppercase text-muted-foreground">Contact</p>
             <div className="space-y-2 text-sm">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-muted-foreground w-14 shrink-0">Phone</span>
@@ -476,12 +476,12 @@ export function LeadDetailPage({ leadId }: Props) {
 
           {/* Pipeline card */}
           <div className="surface-elevated p-4 space-y-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Pipeline (full control)</p>
+            <p className="text-ds-label uppercase text-muted-foreground">Pipeline (full control)</p>
             <div className="space-y-3">
               <div>
                 <label
                   htmlFor="pipeline-status"
-                  className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                  className="mb-1 block text-ds-label uppercase text-muted-foreground"
                 >
                   Status
                 </label>
@@ -501,7 +501,7 @@ export function LeadDetailPage({ leadId }: Props) {
               <div>
                 <label
                   htmlFor="pipeline-call-status"
-                  className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                  className="mb-1 block text-ds-label uppercase text-muted-foreground"
                 >
                   Call status
                 </label>
@@ -561,7 +561,7 @@ export function LeadDetailPage({ leadId }: Props) {
 
           {/* Timeline card */}
           <div className="surface-elevated p-4 space-y-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Timeline</p>
+            <p className="text-ds-label uppercase text-muted-foreground">Timeline</p>
             <div className="space-y-2">
               {(
                 [
@@ -595,7 +595,7 @@ export function LeadDetailPage({ leadId }: Props) {
           {/* Call log card */}
           <div className="surface-elevated p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <p className="text-ds-label uppercase text-muted-foreground">
                 Call log
                 {lead.call_count > 0 ? (
                   <span className="ml-1.5 normal-case">({lead.call_count})</span>
@@ -616,7 +616,7 @@ export function LeadDetailPage({ leadId }: Props) {
                 <div>
                   <label
                     htmlFor="call-outcome"
-                    className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                    className="mb-1 block text-ds-label uppercase text-muted-foreground"
                   >
                     Outcome
                   </label>
@@ -636,7 +636,7 @@ export function LeadDetailPage({ leadId }: Props) {
                 <div>
                   <label
                     htmlFor="call-duration"
-                    className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                    className="mb-1 block text-ds-label uppercase text-muted-foreground"
                   >
                     Duration (seconds, optional)
                   </label>
@@ -653,7 +653,7 @@ export function LeadDetailPage({ leadId }: Props) {
                 <div>
                   <label
                     htmlFor="call-notes"
-                    className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                    className="mb-1 block text-ds-label uppercase text-muted-foreground"
                   >
                     Notes (optional)
                   </label>
@@ -712,7 +712,7 @@ export function LeadDetailPage({ leadId }: Props) {
 
           {/* Notes card */}
           <div className="surface-elevated p-4 space-y-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Notes</p>
+            <p className="text-ds-label uppercase text-muted-foreground">Notes</p>
             <textarea
               value={notes}
               onChange={(e) => handleNotesChange(e.target.value)}
@@ -746,7 +746,7 @@ export function LeadDetailPage({ leadId }: Props) {
 
           <div className="surface-elevated p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Batch submissions</p>
+              <p className="text-ds-label uppercase text-muted-foreground">Batch submissions</p>
               <span className="text-xs text-muted-foreground">Day 2 review wall · also in Day 2 Review</span>
             </div>
             {lead.batch_submissions.length > 0 ? (
@@ -756,7 +756,7 @@ export function LeadDetailPage({ leadId }: Props) {
                 ))}
               </div>
             ) : (
-              <p className="text-sm leading-relaxed text-muted-foreground">
+              <p className="text-ds-body text-muted-foreground">
                 Lead ne abhi Day 2 notes, voice note, video, ya message submit nahi kiya. Jaise hi batch room se submission aayegi,
                 admin yahi ya Day 2 Review page par dekh paayega.
               </p>
@@ -765,7 +765,7 @@ export function LeadDetailPage({ leadId }: Props) {
 
           {/* Payment card */}
           <div className="surface-elevated p-4 space-y-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Payment</p>
+            <p className="text-ds-label uppercase text-muted-foreground">Payment</p>
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-2">
                 <span className="text-muted-foreground w-20 shrink-0">Status</span>

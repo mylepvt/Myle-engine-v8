@@ -56,7 +56,7 @@ export function NoticeBoardPage({ title }: Props) {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+      <h1 className="text-ds-h1">{title}</h1>
       <p className="text-sm text-muted-foreground">
         Organization notices — pinned items appear first (same behavior as the previous app).
       </p>

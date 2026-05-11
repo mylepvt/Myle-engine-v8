@@ -33,7 +33,7 @@ function RequiredMark() {
 function SectionTitle({ children }: { children: string }) {
   return (
     <div className="flex items-center gap-2.5">
-      <span className="whitespace-nowrap text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+      <span className="whitespace-nowrap text-ds-label uppercase text-muted-foreground">
         {children}
       </span>
       <div className="h-px min-w-0 flex-1 bg-white/[0.08]" />
@@ -158,7 +158,7 @@ export function RegisterPage() {
           <div className="flex size-14 items-center justify-center rounded-2xl bg-primary shadow-lg shadow-primary/40">
             <UserPlus className="size-7 text-white" aria-hidden />
           </div>
-          <span className="font-heading text-xl font-bold tracking-tight text-foreground">Myle</span>
+          <span className="font-heading text-ds-h2 text-foreground">Myle</span>
         </div>
 
         <AuthCard
@@ -208,7 +208,7 @@ export function RegisterPage() {
             ) : null}
             <div className="space-y-3.5">
               <SectionTitle>Account</SectionTitle>
-              <p className="text-xs leading-relaxed text-muted-foreground">
+              <p className="text-ds-caption text-muted-foreground">
                 Sign in with your <strong className="font-semibold text-foreground">FBO ID</strong> and password.
                 Display name is how you appear in the app (can match other members).
               </p>
@@ -328,7 +328,7 @@ export function RegisterPage() {
                   <p className="mt-2 text-xs text-muted-foreground">Checking upline…</p>
                 ) : uplineLookup?.message ? (
                   <p
-                    className={`mt-2 flex items-start gap-2 text-xs leading-relaxed ${
+                    className={`mt-2 flex items-start gap-2 text-ds-caption ${
                       uplineLookup.is_valid_upline
                         ? 'text-emerald-400/95'
                         : 'text-amber-200/90'
@@ -368,7 +368,7 @@ export function RegisterPage() {
               </div>
 
               <div className="rounded-2xl border border-border/60 bg-muted/35 p-4">
-                <label className="flex cursor-pointer gap-3 text-sm leading-relaxed text-muted-foreground">
+                <label className="flex cursor-pointer gap-3 text-ds-body text-muted-foreground">
                   <input
                     type="checkbox"
                     checked={newJoining}

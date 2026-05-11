@@ -195,7 +195,7 @@ export function LeadControlPage({ title }: Props) {
   return (
     <div className="space-y-6">
       <div className="max-w-4xl space-y-2">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
+        <h1 className="text-ds-h2">{title}</h1>
         <p className="text-sm text-muted-foreground">
           Admin-only control for archived completed-watch reassignment, manual redistribution, and soft audit history.
         </p>
@@ -226,7 +226,7 @@ export function LeadControlPage({ title }: Props) {
                   <ShieldCheck className="size-4 text-primary" />
                   Owner stays protected
                 </div>
-                <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
+                <p className="max-w-3xl text-ds-body text-muted-foreground">
                   {query.data.note}
                 </p>
                 <p className="text-xs text-muted-foreground">

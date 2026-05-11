@@ -132,7 +132,7 @@ export const LeadRowStatusDropdown = memo(function LeadRowStatusDropdown({
           >
             {LEAD_STATUS_GROUPS.map((g) => (
               <div key={g.label} className="px-1 py-0.5">
-                <p className="px-2 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-muted-foreground">
+                <p className="px-2 py-1 text-ds-label font-bold uppercase text-muted-foreground">
                   {g.label}
                 </p>
                 {g.statuses.map((value) => {

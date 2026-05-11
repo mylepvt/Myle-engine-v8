@@ -56,7 +56,7 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
         <Link to={`/dashboard/team/tracking?date=${encodeURIComponent(dateIso)}`} className="text-sm text-primary underline-offset-2 hover:underline">
           Back to tracking overview
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+        <h1 className="text-ds-h1">{title}</h1>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -131,19 +131,19 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="rounded-xl bg-muted/30 p-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Logins</p>
+                  <p className="text-ds-label uppercase text-muted-foreground">Logins</p>
                   <p className="mt-1 text-xl font-semibold text-foreground">{data.member.login_count}</p>
                 </div>
                 <div className="rounded-xl bg-muted/30 p-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Calls</p>
+                  <p className="text-ds-label uppercase text-muted-foreground">Calls</p>
                   <p className="mt-1 text-xl font-semibold text-foreground">{data.member.calls_count}</p>
                 </div>
                 <div className="rounded-xl bg-muted/30 p-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Leads</p>
+                  <p className="text-ds-label uppercase text-muted-foreground">Leads</p>
                   <p className="mt-1 text-xl font-semibold text-foreground">{data.member.leads_added_count}</p>
                 </div>
                 <div className="rounded-xl bg-muted/30 p-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Follow-ups</p>
+                  <p className="text-ds-label uppercase text-muted-foreground">Follow-ups</p>
                   <p className="mt-1 text-xl font-semibold text-foreground">{data.member.followups_done_count}</p>
                 </div>
               </div>

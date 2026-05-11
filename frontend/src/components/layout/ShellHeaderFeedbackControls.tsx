@@ -42,9 +42,9 @@ export function ShellHeaderFeedbackControls() {
           <Icon className="size-[1.05rem] md:size-4" aria-hidden />
         </Button>
       </div>
-      <div className="hidden max-w-[4rem] truncate text-ds-caption leading-tight text-muted-foreground xl:block">
+      <div className="hidden max-w-[4rem] truncate text-ds-caption text-muted-foreground xl:block">
         <span className="font-medium text-foreground/90">{label}</span>
-        <span className="block text-[0.7rem] opacity-75">Tap · cycle</span>
+        <span className="block text-ds-label opacity-75">Tap · cycle</span>
       </div>
       <div className="mx-0 hidden h-6 w-px bg-border/70 md:mx-0.5 md:block" aria-hidden />
 

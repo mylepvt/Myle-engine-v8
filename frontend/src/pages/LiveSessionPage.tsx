@@ -130,7 +130,7 @@ function SlotCard({ slot, baseOrigin, day }: { slot: ScheduleSlot; baseOrigin: s
           ) : null}
         </div>
         {slot.state === 'live' ? (
-          <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-red-400">
+          <span className="flex items-center gap-1.5 text-ds-label font-bold uppercase text-red-400">
             <span className="relative flex size-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
               <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
@@ -138,7 +138,7 @@ function SlotCard({ slot, baseOrigin, day }: { slot: ScheduleSlot; baseOrigin: s
             Live
           </span>
         ) : slot.state === 'waiting' ? (
-          <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-400">Starting soon</span>
+          <span className="text-ds-label font-bold uppercase text-indigo-400">Starting soon</span>
         ) : slot.state === 'past' ? (
           <span className="text-[10px] text-muted-foreground">Done</span>
         ) : null}
@@ -176,7 +176,7 @@ function AttendanceHistory({ slots }: { slots: ScheduleSlot[] }) {
   return (
     <div className="surface-elevated space-y-4 p-5">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Attendance History</p>
+        <p className="text-ds-label uppercase text-muted-foreground">Attendance History</p>
         <p className="mt-0.5 text-xs text-muted-foreground">Slot-wise prospects jo session mein aaye</p>
       </div>
 
@@ -288,7 +288,7 @@ function DayScheduleSection({
     <div className="surface-elevated space-y-3 p-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="text-ds-label uppercase text-muted-foreground">
             {DAY_LABELS[day] ?? `Day ${day}`}
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
@@ -335,9 +335,9 @@ export function LiveSessionPage({ title }: Props) {
   return (
     <div className="max-w-2xl space-y-6">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+        <h1 className="text-ds-h1">{title}</h1>
         {data?.active_hour != null && (
-          <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white">
+          <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-ds-label font-bold uppercase text-white">
             <span className="relative flex size-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
               <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />

@@ -33,7 +33,7 @@ export function HomePage() {
           <h1 className="bg-gradient-to-br from-foreground via-foreground to-primary bg-clip-text font-heading text-3xl font-semibold tracking-tight text-transparent sm:text-4xl">
             Your team workspace
           </h1>
-          <p className="mx-auto max-w-md text-sm leading-relaxed text-muted-foreground">
+          <p className="mx-auto max-w-md text-ds-body text-muted-foreground">
             {t('appTagline')}
           </p>
         </div>
@@ -82,7 +82,7 @@ export function HomePage() {
         )}
       </header>
 
-      <footer className="mt-auto border-t border-white/[0.06] py-6 text-center text-[0.65rem] text-muted-foreground/80">
+      <footer className="mt-auto border-t border-white/[0.06] py-6 text-center text-ds-caption text-muted-foreground/80">
         © {new Date().getFullYear()} {t('appTitle')} · Internal use
       </footer>
     </div>

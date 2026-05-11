@@ -132,13 +132,13 @@ const MetricCard = ({
     <PremiumCard className={className}>
       <div className="flex items-start justify-between">
         <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <p className="text-ds-caption text-muted-foreground">{title}</p>
           <div className="flex items-baseline gap-2">
-            <span className="font-heading text-3xl font-bold tracking-tight text-foreground">
+            <span className="font-heading text-ds-h1 text-foreground">
               {value}
             </span>
             {change ? (
-              <span className={cn('text-sm font-medium', changeStyles[changeType])}>
+              <span className={cn('text-ds-body font-medium', changeStyles[changeType])}>
                 {trend ? trendIcons[trend] : null} {change}
               </span>
             ) : null}
@@ -179,9 +179,9 @@ const ActionCard = ({
         </div>
       ) : null}
       <div className="min-w-0 flex-1 space-y-2">
-        <h4 className="font-medium text-foreground">{title}</h4>
-        <p className="text-sm text-muted-foreground">{description}</p>
-        <span className="inline-block text-sm font-medium text-primary transition-colors group-hover:text-primary/85">
+        <h4 className="text-ds-h3 text-foreground">{title}</h4>
+        <p className="text-ds-body text-muted-foreground">{description}</p>
+        <span className="inline-block text-ds-body font-medium text-primary transition-colors group-hover:text-primary/85">
           {actionLabel} →
         </span>
       </div>

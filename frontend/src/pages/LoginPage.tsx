@@ -273,7 +273,7 @@ export function LoginPage() {
 
           {devLoginAllowed ? (
             <div className="space-y-3 rounded-2xl border border-amber-500/30 bg-amber-500/[0.07] p-4">
-              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-amber-200/90">
+              <p className="text-ds-label uppercase text-amber-200/90">
                 Quick Access
               </p>
               <label className="field-label" htmlFor="login-role">
@@ -334,7 +334,7 @@ export function LoginPage() {
               )}
             >
               {devLoginAllowed ? (
-                <p className="mb-4 text-center text-xs font-medium leading-relaxed text-muted-foreground sm:text-left">
+                <p className="mb-4 text-center text-ds-caption font-medium text-muted-foreground sm:text-left">
                   Or sign in with your FBO ID and password (username still works if you have one).
                 </p>
               ) : (

@@ -363,7 +363,7 @@ export function DashboardLayout() {
           </Link>
           {envLabel && envLabel !== 'production' ? (
             <span
-              className="ml-2 shrink-0 rounded-md border border-warning/45 bg-warning/12 px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-warning"
+              className="ml-2 shrink-0 rounded-md border border-warning/45 bg-warning/12 px-1.5 py-0.5 text-ds-label uppercase text-warning"
               title="Server-reported environment (APP_ENV)"
             >
               {envLabel}
@@ -379,7 +379,7 @@ export function DashboardLayout() {
             ? sections.map((section) => (
                 <div key={section.id}>
                   {section.label ? (
-                    <p className="mb-2 px-3 text-ds-caption font-bold uppercase tracking-[0.08em] text-muted-foreground/70">
+                    <p className="mb-2 px-3 text-ds-label uppercase text-muted-foreground/70">
                       {section.label}
                     </p>
                   ) : null}
@@ -454,9 +454,9 @@ export function DashboardLayout() {
                                 </div>
                                 <span className="min-w-0 flex-1 truncate">{label}</span>
                                 {item.path === 'team/enrollment-approvals' && pendingEnrollCount > 0 ? (
-                                  <span
-                                    className={cn(
-                                      'relative z-10 shrink-0 rounded-full px-1.5 py-0.5 text-[0.65rem] font-bold tabular-nums leading-none',
+                  <span
+                    className={cn(
+                      'relative z-10 shrink-0 rounded-full px-1.5 py-0.5 text-ds-label font-bold tabular-nums',
                                       isActive
                                         ? 'bg-white/25 text-primary-foreground'
                                         : 'bg-primary text-primary-foreground shadow-sm',
@@ -598,7 +598,7 @@ export function DashboardLayout() {
                   <ClipboardCheck className="size-[1.15rem] md:size-[1.25rem] text-emerald-400" />
                 </Link>
                 <span
-                  className="pointer-events-none absolute right-0.5 top-0.5 flex min-w-[1rem] items-center justify-center rounded-full bg-emerald-600 px-0.5 text-[0.55rem] font-bold leading-none text-white shadow-[0_0_8px_rgba(22,163,74,0.55)]"
+                  className="pointer-events-none absolute right-0.5 top-0.5 flex min-w-[1rem] items-center justify-center rounded-full bg-emerald-600 px-0.5 text-ds-label font-bold text-white shadow-[0_0_8px_rgba(22,163,74,0.55)]"
                   aria-hidden
                 >
                   {pendingEnrollCount > 9 ? '9+' : pendingEnrollCount}
@@ -615,7 +615,7 @@ export function DashboardLayout() {
               </Link>
               {noticeBoardUnread > 0 ? (
                 <span
-                  className="pointer-events-none absolute right-0.5 top-0.5 flex min-w-[1rem] items-center justify-center rounded-full bg-primary px-0.5 text-[0.55rem] font-bold leading-none text-primary-foreground shadow-[0_0_8px_rgba(84,101,255,0.6)] animate-pulse"
+                  className="pointer-events-none absolute right-0.5 top-0.5 flex min-w-[1rem] items-center justify-center rounded-full bg-primary px-0.5 text-ds-label font-bold text-primary-foreground shadow-[0_0_8px_rgba(84,101,255,0.6)] animate-pulse"
                   aria-hidden
                 >
                   {noticeBoardUnread > 9 ? '9+' : noticeBoardUnread}

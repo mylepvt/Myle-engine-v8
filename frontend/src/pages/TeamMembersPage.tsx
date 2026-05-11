@@ -303,7 +303,7 @@ function MemberProfileModal({
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Compliance Control</p>
+                <p className="text-ds-label uppercase text-muted-foreground">Compliance Control</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {currentMember.compliance_title ? (
                     <Badge variant={complianceBadgeVariant(currentMember.compliance_level)}>
@@ -544,7 +544,7 @@ function MemberProfileModal({
 
         {/* Training lock/unlock */}
         <div className="mb-4 rounded-lg border border-border bg-muted/20 p-3">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Training Gate</p>
+          <p className="mb-2 text-ds-label uppercase text-muted-foreground">Training Gate</p>
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-xs text-foreground">
@@ -643,7 +643,7 @@ export function TeamMembersPage({ title }: Props) {
         <Badge variant="primary" className="w-fit px-3 py-1">
           Member directory
         </Badge>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+        <h1 className="text-ds-h1">{title}</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
           All accounts in this environment from the users table. Passwords are never exposed through this API.
         </p>

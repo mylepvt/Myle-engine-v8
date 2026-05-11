@@ -38,10 +38,10 @@ export function ContentWatchPage() {
     <div className="min-h-dvh bg-[#060f20] text-white">
       <div className="mx-auto max-w-3xl px-4 py-10 md:py-16">
         <div className="mb-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-300/70">
+          <p className="text-ds-caption font-semibold uppercase tracking-[0.28em] text-cyan-300/70">
             Myle · {title}
           </p>
-          <h1 className="mt-3 text-3xl font-bold leading-tight md:text-4xl">{greetLine}</h1>
+          <h1 className="mt-3 text-ds-h1">{greetLine}</h1>
           <p className="mt-2 text-base text-white/55">
             Your session is ready — watch it below.
           </p>
@@ -63,7 +63,7 @@ export function ContentWatchPage() {
               href={waHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-sm font-semibold text-emerald-300 transition hover:bg-emerald-400/20"
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-ds-body font-semibold text-emerald-300 transition hover:bg-emerald-400/20"
             >
               <MessageCircle className="size-4" />
               {firstName ? `Send to ${firstName} on WhatsApp` : 'Send on WhatsApp'}

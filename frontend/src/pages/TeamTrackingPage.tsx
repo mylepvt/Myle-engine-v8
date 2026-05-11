@@ -396,7 +396,7 @@ function AttentionRow({ item, dateIso }: { item: TeamTrackingMemberSummary; date
             last activity {formatRelativeTime(item.last_activity_at)}
           </p>
         </div>
-        <div className="rounded-full border border-rose-400/20 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-rose-200">
+        <div className="rounded-full border border-rose-400/20 px-2 py-1 text-ds-label uppercase text-rose-200">
           priority
         </div>
       </div>
@@ -475,7 +475,7 @@ export function TeamTrackingPage({ title }: Props) {
       <Card className="px-5 py-5 md:px-6 md:py-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="space-y-1">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
+            <h1 className="text-ds-h1">
               {title}
             </h1>
             <p className="max-w-xl text-sm text-muted-foreground">

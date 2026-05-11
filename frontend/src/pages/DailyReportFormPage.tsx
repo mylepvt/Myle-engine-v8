@@ -114,7 +114,7 @@ export function DailyReportFormPage({ title }: Props) {
 
   return (
     <div className="max-w-3xl space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+      <h1 className="text-ds-h1">{title}</h1>
       <p className="text-sm text-muted-foreground">
         {canPickDate
           ? 'Submit numbers for a calendar day. First save awards +20 score points for that day (legacy rule); updates keep fields fresh without double-counting.'

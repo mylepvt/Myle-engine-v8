@@ -140,7 +140,7 @@ export function TrainingDayView({
             {completed ? <Badge variant="success">Done</Badge> : <Badge variant="primary">In progress</Badge>}
           </div>
           <div className="min-w-0">
-            <p className="text-base font-semibold leading-tight text-foreground">{cleanTitle || title}</p>
+            <p className="text-ds-h3 text-foreground">{cleanTitle || title}</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Finish the lesson, audio and notes for this day.
             </p>

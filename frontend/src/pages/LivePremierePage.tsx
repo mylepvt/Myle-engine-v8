@@ -392,10 +392,10 @@ function ProspectForm({ onSubmit }: { onSubmit: (info: ProspectInfo) => void }) 
     <div className="relative mx-auto w-full max-w-md">
       <div className="rounded-[2.25rem] border border-white/10 bg-[linear-gradient(160deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] px-7 py-9 shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl">
         <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-[#9db0d6]">Myle · Private Session</p>
-        <h2 className="mt-3 text-2xl font-bold leading-snug tracking-tight text-[#f7f9ff]">
+        <h2 className="mt-3 text-ds-h1 text-[#f7f9ff]">
           Register for today's exclusive session
         </h2>
-        <p className="mt-2 text-sm leading-relaxed text-[#8a9ec4]">
+        <p className="mt-2 text-ds-body text-[#8a9ec4]">
           Private, invitation-only. Enter your details to get access.
         </p>
 
@@ -424,7 +424,7 @@ function ProspectForm({ onSubmit }: { onSubmit: (info: ProspectInfo) => void }) 
 
           <button
             type="submit"
-            className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[#dce7ff] px-5 text-sm font-bold text-[#0a1530] transition hover:bg-[#c6d8ff]"
+            className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[#dce7ff] px-5 text-ds-body font-bold text-[#0a1530] transition hover:bg-[#c6d8ff]"
           >
             Join the session →
           </button>
@@ -535,7 +535,7 @@ export function LivePremierePage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#9db0d6]">Myle</p>
-              <h1 className="mt-1 text-xl font-semibold tracking-tight text-[#f5f8ff]">Private Live Session</h1>
+              <h1 className="mt-1 text-ds-h2">Private Live Session</h1>
             </div>
             <div className="flex items-center gap-3">
               {(state === 'waiting' || state === 'live') && viewerCount > 0 && (
@@ -652,7 +652,7 @@ export function LivePremierePage() {
               <p className="text-base text-[#7a94c4]">You've taken the first step. Reach out to your mentor to move forward.</p>
               <button
                 type="button"
-                className="inline-flex h-13 items-center justify-center rounded-2xl bg-[#dce7ff] px-8 py-3.5 text-sm font-bold text-[#0a1530] transition hover:bg-[#c6d8ff]"
+                className="inline-flex h-13 items-center justify-center rounded-2xl bg-[#dce7ff] px-8 py-3.5 text-ds-body font-bold text-[#0a1530] transition hover:bg-[#c6d8ff]"
                 onClick={() => {
                   const wa = `https://wa.me/?text=Hi, I just watched the Myle session. I'm interested to know more.`
                   window.open(wa, '_blank', 'noopener')

@@ -38,14 +38,14 @@ export function XpBadge() {
           <div className="flex items-center gap-2">
             <span
               className={cn(
-                'inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold',
+                'inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-ds-label font-semibold',
                 colors.bg, colors.text, colors.border,
               )}
             >
               ⚡ {data.level_label.toUpperCase()}
             </span>
             {seasonLabel && (
-              <span className="text-[0.65rem] text-muted-foreground/70 font-medium">
+              <span className="text-ds-label text-muted-foreground/70 font-medium">
                 {seasonLabel}
               </span>
             )}

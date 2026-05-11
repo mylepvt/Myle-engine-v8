@@ -147,7 +147,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
       ) : null}
       {paidGateBlocked ? (
         <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-ds-caption text-amber-200">
-          <p className="leading-relaxed">{paidGateCopy()}</p>
+          <p>{paidGateCopy()}</p>
           {role !== 'admin' ? (
             <Link
               to="/dashboard/work/leads"

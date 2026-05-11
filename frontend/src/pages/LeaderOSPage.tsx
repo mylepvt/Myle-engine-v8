@@ -44,7 +44,7 @@ function ScoreTier({ score, tier }: { score: number; tier: string }) {
   return (
     <div className={cn('flex items-center gap-3 rounded-xl border px-4 py-3', cfg.bg)}>
       <div className="flex-1">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Leader Score</p>
+        <p className="text-ds-label uppercase text-muted-foreground">Leader Score</p>
         <div className="mt-1 flex items-end gap-2">
           <span className={cn('text-4xl font-semibold tabular-nums', cfg.color)}>{score}</span>
           <span className="mb-1 text-sm text-muted-foreground">/ 100</span>

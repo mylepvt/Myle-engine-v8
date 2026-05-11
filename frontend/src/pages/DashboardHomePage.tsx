@@ -374,7 +374,7 @@ export function DashboardHomePage() {
                   {los.data ? los.data.leader_score : '—'}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Leader OS</p>
+                  <p className="text-ds-label uppercase text-muted-foreground">Leader OS</p>
                   {los.isPending ? (
                     <p className="mt-0.5 text-sm text-muted-foreground">Loading team data…</p>
                   ) : los.data ? (
