@@ -416,7 +416,7 @@ export function DashboardLayout() {
                               cn(
                                 'group flex min-h-[48px] items-center gap-3 px-4 py-3 text-sm font-medium',
                                 'transition-[background-color,color,transform] duration-200 ease-out',
-                                'active:scale-[0.98]',
+                                'active:scale-[0.97]',
                                 isActive
                                   ? [
                                       'bg-gradient-to-r from-primary to-primary/90',

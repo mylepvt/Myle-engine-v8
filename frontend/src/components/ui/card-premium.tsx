@@ -12,7 +12,6 @@ import { cn } from '@/lib/utils'
 
 type PremiumCardProps = React.HTMLAttributes<HTMLDivElement> & {
   hoverLift?: boolean
-  glowOnHover?: boolean
   gradientBorder?: boolean
 }
 
@@ -25,7 +24,6 @@ const PremiumCard = React.forwardRef<HTMLDivElement, PremiumCardProps>(
     {
       className,
       hoverLift = true,
-      glowOnHover = false,
       gradientBorder = false,
       children,
       ...props
@@ -36,8 +34,7 @@ const PremiumCard = React.forwardRef<HTMLDivElement, PremiumCardProps>(
       <Card
         ref={ref}
         className={cn(
-          hoverLift && 'transition-transform duration-200 hover:-translate-y-0.5',
-          glowOnHover && 'hover:shadow-md',
+          hoverLift && 'hover:-translate-y-0.5',
           className,
         )}
         {...props}

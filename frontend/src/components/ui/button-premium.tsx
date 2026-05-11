@@ -12,7 +12,6 @@ export type PremiumButtonProps = ButtonProps & {
   isLoading?: boolean
   loadingText?: string
   showRipple?: boolean
-  glowOnHover?: boolean
 }
 
 const PremiumButton = React.forwardRef<HTMLButtonElement, PremiumButtonProps>(
@@ -34,7 +33,6 @@ const PremiumButton = React.forwardRef<HTMLButtonElement, PremiumButtonProps>(
       className={cn(
         'relative overflow-hidden',
         showRipple && 'ripple-container',
-        glowOnHover && 'hover:shadow-md',
         className,
       )}
       disabled={disabled || isLoading}

@@ -135,7 +135,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
       {!paidGateBlocked ? (
         <Button
           type="button"
-          className="h-11 w-full justify-center gap-2 rounded-xl border border-primary/35 bg-primary/15 text-sm font-semibold text-primary shadow-sm transition-transform active:scale-[0.98] hover:bg-primary/25"
+          className="h-11 w-full justify-center gap-2 rounded-xl border border-primary/35 bg-primary/15 text-sm font-semibold text-primary shadow-sm hover:bg-primary/25"
           disabled={mut.isPending}
           onClick={() => void onPrimaryClick()}
         >
