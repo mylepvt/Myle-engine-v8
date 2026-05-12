@@ -1,23 +1,14 @@
 import { Link } from 'react-router-dom'
-import {
-  ArrowRight,
-  Calendar,
-  Clock3,
-  FileCheck,
-  Target,
-  Trophy,
-  Users,
-} from 'lucide-react'
+import { ArrowRight, Clock3 } from 'lucide-react'
 
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
 import { XpBadge } from '@/components/xp/XpBadge'
 import { Card, CardContent } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
 import type { HomeQuickAction } from '@/config/dashboard-home-actions'
 import type { LeadPublic } from '@/hooks/use-leads-query'
 import type { TeamPersonalFunnel } from '@/hooks/use-team-personal-funnel-query'
 import type { TeamTodayStats } from '@/hooks/use-team-today-stats-query'
-import { cn, formatRelativeTimeShort } from '@/lib/utils'
+import { formatRelativeTimeShort } from '@/lib/utils'
 
 
 
@@ -25,92 +16,9 @@ type Props = {
   sessionReady: boolean
   firstName: string
   funnel: TeamPersonalFunnel | undefined
-  funnelPending: boolean
   today: TeamTodayStats | undefined
-  todayPending: boolean
   recentLeads: LeadPublic[]
   quickActions: HomeQuickAction[]
-}
-
-type StageCard = {
-  key: keyof TeamPersonalFunnel
-  label: string
-  sub: string
-  Icon: React.FC<{ className?: string; 'aria-hidden'?: boolean }>
-  accent: string
-  cardClass: string
-  iconClass: string
-}
-
-const STAGE_CARDS: StageCard[] = [
-  {
-    key: 'day2_count',
-    label: 'Day 2',
-    sub: 'Mindset lock done',
-    Icon: Calendar,
-    accent: 'text-sky-400',
-    cardClass:
-      'border-sky-500/20 bg-gradient-to-br from-sky-500/[0.12] via-sky-500/[0.04] to-transparent shadow-[0_18px_40px_-28px_rgba(14,165,233,0.8)] transition hover:border-sky-500/35',
-    iconClass: 'text-sky-400/70',
-  },
-  {
-    key: 'day3_count',
-    label: 'Day 3',
-    sub: 'FLP billing done',
-    Icon: Calendar,
-    accent: 'text-violet-400',
-    cardClass:
-      'border-violet-500/20 bg-gradient-to-br from-violet-500/[0.12] via-violet-500/[0.04] to-transparent shadow-[0_18px_40px_-28px_rgba(139,92,246,0.8)] transition hover:border-violet-500/35',
-    iconClass: 'text-violet-400/70',
-  },
-  {
-    key: 'interview_count',
-    label: 'Interview',
-    sub: 'Scheduled',
-    Icon: Users,
-    accent: 'text-amber-400',
-    cardClass:
-      'border-amber-500/20 bg-gradient-to-br from-amber-500/[0.12] via-amber-500/[0.04] to-transparent shadow-[0_18px_40px_-28px_rgba(245,158,11,0.75)] transition hover:border-amber-500/35',
-    iconClass: 'text-amber-400/70',
-  },
-  {
-    key: 'track_selected_count',
-    label: 'Track Selected',
-    sub: 'Track chosen',
-    Icon: Target,
-    accent: 'text-teal-400',
-    cardClass:
-      'border-teal-500/20 bg-gradient-to-br from-teal-500/[0.12] via-teal-500/[0.04] to-transparent shadow-[0_18px_40px_-28px_rgba(20,184,166,0.8)] transition hover:border-teal-500/35',
-    iconClass: 'text-teal-400/70',
-  },
-  {
-    key: 'seat_hold_count',
-    label: 'Seat Hold',
-    sub: 'Seat confirmed',
-    Icon: FileCheck,
-    accent: 'text-pink-400',
-    cardClass:
-      'border-pink-500/20 bg-gradient-to-br from-pink-500/[0.12] via-pink-500/[0.04] to-transparent shadow-[0_18px_40px_-28px_rgba(236,72,153,0.8)] transition hover:border-pink-500/35',
-    iconClass: 'text-pink-400/70',
-  },
-  {
-    key: 'converted_count',
-    label: 'Converted',
-    sub: 'Fully converted',
-    Icon: Trophy,
-    accent: 'text-emerald-400',
-    cardClass:
-      'border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.12] via-emerald-500/[0.04] to-transparent shadow-[0_18px_40px_-28px_rgba(16,185,129,0.8)] transition hover:border-emerald-500/35',
-    iconClass: 'text-emerald-400/70',
-  },
-]
-
-function statCards(funnel: TeamPersonalFunnel | undefined): StageCard[] {
-  return STAGE_CARDS
-}
-
-function statValue(funnel: TeamPersonalFunnel | undefined, key: keyof TeamPersonalFunnel): number {
-  return funnel?.[key] as number ?? 0
 }
 
 function greetingForCurrentTime() {
@@ -130,14 +38,10 @@ export function TeamDashboardHomeModern({
   sessionReady,
   firstName,
   funnel,
-  funnelPending,
   today,
-  todayPending,
   recentLeads,
   quickActions,
 }: Props) {
-  const loading = funnelPending || todayPending
-  const cards = statCards(funnel)
   const topActions = quickActions.slice(0, 4)
   const primaryAction = topActions[0]
   const secondaryActions = topActions.slice(1, 4)
@@ -213,14 +117,6 @@ export function TeamDashboardHomeModern({
                 {today?.calls_today ?? 0}
               </p>
             </div>
-            <div className="rounded-[1.15rem] border border-white/10 bg-white/[0.08] px-3 py-3 backdrop-blur-sm">
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-blue-100/64">
-                Proofs
-              </p>
-              <p className="mt-2 text-xl font-semibold leading-none text-white">
-                {funnel?.proof_pending ?? 0}
-              </p>
-            </div>
           </div>
 
           {primaryAction ? (
@@ -276,68 +172,6 @@ export function TeamDashboardHomeModern({
       <XpBadge />
 
       <GateAssistantCard sessionReady={sessionReady} />
-
-      <section className="space-y-3">
-        <div className="flex items-center justify-between px-1">
-          <div>
-            <h2 className="text-base font-semibold text-foreground">
-              Lead Stage Progress
-            </h2>
-            <p className="mt-1 text-ds-caption text-muted-foreground">
-              Your leads distributed across the working process stages.
-            </p>
-          </div>
-          <span className="rounded-full border border-border/70 bg-card px-2.5 py-1 text-ds-caption font-medium text-muted-foreground shadow-sm">
-            {funnel ? cards.reduce((s, c) => s + statValue(funnel, c.key), 0) : 0} total
-          </span>
-        </div>
-        {loading ? (
-          <div className="grid grid-cols-2 gap-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 rounded-xl" />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {cards.map((card, index) => (
-              <Card
-                key={card.label}
-                className={cn(
-                  'relative overflow-hidden rounded-[1.35rem] border backdrop-blur-sm',
-                  card.cardClass,
-                  cards.length % 2 === 1 &&
-                    index === cards.length - 1 &&
-                    'col-span-2',
-                )}
-              >
-                <div
-                  className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-white/[0.08] to-transparent"
-                  aria-hidden
-                />
-                <CardContent className="relative px-4 py-3.5">
-                  <div className="mb-2 flex items-center justify-between">
-                    <card.Icon
-                      className={`size-4 ${card.iconClass}`}
-                      aria-hidden
-                    />
-                    <span className="text-ds-caption font-semibold text-muted-foreground">
-                      {card.sub}
-                    </span>
-                  </div>
-                  <p
-                    className={`text-3xl font-semibold tabular-nums ${card.accent}`}
-                  >
-                    {statValue(funnel, card.key)}
-                  </p>
-                  <p className="mt-1 text-ds-caption font-medium text-muted-foreground">
-                    {card.label}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </section>
 
       <section className="space-y-2">
         <div className="flex items-center justify-between px-1">

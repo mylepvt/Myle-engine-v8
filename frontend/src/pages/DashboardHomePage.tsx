@@ -233,9 +233,7 @@ export function DashboardHomePage() {
         sessionReady={sessionReady}
         firstName={firstName}
         funnel={teamFunnel.data}
-        funnelPending={teamFunnel.isPending || teamFunnel.isError}
         today={teamToday.data}
-        todayPending={teamToday.isPending}
         recentLeads={recentLeads}
         quickActions={quickActions}
       />
