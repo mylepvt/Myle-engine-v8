@@ -63,9 +63,9 @@ export const PROCESS_STAGE_DEFS: Record<string, ProcessStageDef> = {
   paid: {
     status: 'paid',
     title: 'Min. FLP Billing',
-    helper: 'Collect ₹1500 payment from lead. Upload proof and approve to unlock Day 4.',
+    helper: 'Collect ₹1500 payment from lead. Upload proof and approve to unlock next stage.',
     nextStatus: 'interview',
-    nextLabel: 'Push to Day 4',
+    nextLabel: 'Push to Day 6',
     tasks: [
       { key: 'payment_collected', label: '₹1500 Payment Collected' },
       { key: 'proof_upload', label: 'Upload Payment Proof' },
@@ -74,10 +74,10 @@ export const PROCESS_STAGE_DEFS: Record<string, ProcessStageDef> = {
   },
   interview: {
     status: 'interview',
-    title: 'Day 3 Closing',
-    helper: 'Leader closes the Day 3 conversion push and records the immediate closing follow-up.',
+    title: 'Day 6 Closing',
+    helper: 'Leader closes the Day 6 conversion push and records the immediate closing follow-up.',
     nextStatus: 'track_selected',
-    nextLabel: 'Push to Day 4',
+    nextLabel: 'Push to Day 5',
     tasks: [
       { key: 'closing_1500', label: '₹1500 Closing' },
       { key: 'follow_up_closing', label: 'Follow-up Closing' },
