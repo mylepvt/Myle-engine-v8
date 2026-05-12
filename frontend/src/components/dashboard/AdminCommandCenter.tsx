@@ -30,7 +30,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardLink, CardTitle } f
 import { EmptyState, ErrorState } from '@/components/ui/states'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAppSettingsQuery, useSystemUsersSummaryQuery } from '@/hooks/use-settings-query'
-import { useActiveWatchersQuery, useBatchLiveWatchersQuery } from '@/hooks/use-enroll-query'
+import { useActiveWatchersQuery } from '@/hooks/use-enroll-query'
 import { useEnrollmentApprovalsPendingQuery, useTeamMembersQuery, useUpdateMemberComplianceMutation, type TeamMemberPublic } from '@/hooks/use-team-query'
 import { useTeamReportsQuery } from '@/hooks/use-team-reports-query'
 import { useLeaderHealthQuery, type LeaderHealthItem } from '@/hooks/use-admin-leader-health-query'
@@ -54,6 +54,7 @@ type PremiereViewerRow = {
   city: string
   session_date: string
   session_hour: number
+  session_day: number
   percentage_watched: number
   current_time_sec: number
   first_seen_at: string | null
@@ -475,9 +476,8 @@ export function AdminCommandCenter({ firstName }: Props) {
   const leaderHealth = useLeaderHealthQuery(activeTab === 'leaders')
   const premiereViewers = usePremiereViewersQuery(true)
   const isHistoryToday = viewerHistoryDate === todayIST
-  const batchLiveToday = useBatchLiveWatchersQuery(true)
-  const batchLiveHistory = useBatchLiveWatchersQuery(activeTab === 'premiere' && !isHistoryToday, viewerHistoryDate)
-  const batchHistoryData = isHistoryToday ? batchLiveToday : batchLiveHistory
+  const premiereViewersHistory = usePremiereViewersQuery(activeTab === 'premiere' && !isHistoryToday, viewerHistoryDate)
+  const premiereData = isHistoryToday ? premiereViewers : premiereViewersHistory
   const leadSearchResults = useLeadsQuery(
     deferredLeadSearch.length > 0,
     { q: deferredLeadSearch, status: '' },
@@ -569,7 +569,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                   <span className="relative inline-flex size-1.5 rounded-full bg-red-500" />
                 </span>
                 <span className="font-bold text-red-700 dark:text-red-200">{premiereActiveCount}</span>
-                <span className="text-red-600 dark:text-red-300/70">on premiere live</span>
+                <span className="text-red-600 dark:text-red-300/70">live attendees</span>
               </div>
             )}
           </div>
@@ -598,10 +598,10 @@ export function AdminCommandCenter({ firstName }: Props) {
           </TabsTrigger>
           <TabsTrigger value="premiere" className="flex items-center gap-1.5">
             <Video className="size-3.5" />
-            Premiere
-            {liveWatcherCount > 0 && (
+            Live Attendees
+            {premiereActiveCount > 0 && (
               <span className="rounded-full bg-red-500/20 px-1.5 py-0.5 text-[10px] font-bold text-red-400">
-                {liveWatcherCount}
+                {premiereActiveCount}
               </span>
             )}
           </TabsTrigger>
@@ -1367,41 +1367,40 @@ export function AdminCommandCenter({ firstName }: Props) {
         </TabsContent>
 
         <TabsContent value="premiere" className="space-y-6">
-          {/* Day 1 batch live stats */}
+          {/* Top stats — all 3 days combined */}
           <section className="grid gap-4 md:grid-cols-3">
             <StatCard
-              label="Total Viewers Today"
-              value={batchLiveToday.data?.total ?? 0}
-              hint="Unique leads who opened a Day 1 batch link today (5pm / 6pm / 7pm)."
+              label="Total Attendees Today"
+              value={(premiereViewers.data ?? []).length}
+              hint="Unique viewers across Day 1, Day 2, Day 3 live sessions."
             />
             <StatCard
               label="Watching Now"
-              value={(batchLiveToday.data?.items ?? []).filter((v) => isActiveNow(v.last_seen_at)).length}
+              value={(premiereViewers.data ?? []).filter((v) => isActiveNow(v.last_seen_at)).length}
               hint="Active in last 45 seconds."
-              variant={(batchLiveToday.data?.items ?? []).filter((v) => isActiveNow(v.last_seen_at)).length > 0 ? 'danger' : 'default'}
+              variant={(premiereViewers.data ?? []).some((v) => isActiveNow(v.last_seen_at)) ? 'danger' : 'default'}
             />
             <StatCard
               label="Completed"
-              value={(batchLiveToday.data?.items ?? []).filter((v) => v.watch_completed).length}
+              value={(premiereViewers.data ?? []).filter((v) => v.watch_completed).length}
               hint="Marked watch complete."
               variant="success"
             />
           </section>
 
-          {/* Date picker + viewer history */}
+          {/* Date picker */}
           <Card>
             <CardHeader>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <span className="relative flex size-2">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                      <span className="relative inline-flex size-2 rounded-full bg-red-500" />
-                    </span>
-                    Viewer History
+                    <Video className="size-4 text-primary" />
+                    Live Attendee History
                   </CardTitle>
                   <CardDescription>
-                    Date-wise list of leads who watched Day 1 batch (5pm / 6pm / 7pm). Refreshes live for today.
+                    {isHistoryToday
+                      ? 'Live-updating view of today\'s Day 1/2/3 session attendees.'
+                      : `Viewers from ${viewerHistoryDate}`}
                   </CardDescription>
                 </div>
                 <input
@@ -1414,67 +1413,150 @@ export function AdminCommandCenter({ firstName }: Props) {
               </div>
             </CardHeader>
             <CardContent>
-              {batchHistoryData.isPending ? (
+              {premiereData.isPending ? (
                 <div className="space-y-2">
                   {[1, 2, 3].map((i) => (
                     <div key={i} className="surface-inset h-16 animate-pulse rounded-2xl" />
                   ))}
                 </div>
-              ) : batchHistoryData.isError ? (
+              ) : premiereData.isError ? (
                 <ErrorState
                   title="Could not load viewers"
-                  message={batchHistoryData.error instanceof Error ? batchHistoryData.error.message : 'Please try again.'}
-                  onRetry={() => void batchHistoryData.refetch()}
+                  message={premiereData.error instanceof Error ? premiereData.error.message : 'Please try again.'}
+                  onRetry={() => void premiereData.refetch()}
                 />
-              ) : (batchHistoryData.data?.items ?? []).length === 0 ? (
+              ) : (premiereData.data ?? []).length === 0 ? (
                 <EmptyState
-                  title="No viewers on this date"
-                  description="No lead opened a Day 1 batch link on this date."
+                  title="No attendees on this date"
+                  description="No live session viewers found for the selected date."
                 />
               ) : (
-                <div className="space-y-2">
-                  {(batchHistoryData.data?.items ?? []).map((v) => (
-                    <div key={`${v.lead_id}-${v.started_at}`} className="surface-inset rounded-2xl p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="space-y-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-medium text-foreground">{v.lead_name}</p>
-                            {isActiveNow(v.last_seen_at) && (
-                              <span className="flex items-center gap-1 rounded-full bg-red-600/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white">
-                                <span className="relative flex size-1.5">
-                                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                                  <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
-                                </span>
-                                Live
+                <div className="space-y-6">
+                  {([1, 2, 3] as const).map((day) => {
+                    const dayViewers = (premiereData.data ?? []).filter((v) => v.session_day === day)
+                    if (dayViewers.length === 0) return null
+
+                    const dayLabel = day === 1 ? 'Calling Board — Day 1' : day === 2 ? 'Workboard — Day 2' : 'Workboard — Day 3'
+                    const dayDesc = day === 1
+                      ? 'Sent via calling board batch links'
+                      : day === 2
+                        ? 'Sent via workboard Send Day 2 Live'
+                        : 'Sent via workboard Send Day 3 Live'
+                    const liveCount = dayViewers.filter((v) => isActiveNow(v.last_seen_at)).length
+                    const completedCount = dayViewers.filter((v) => v.watch_completed).length
+
+                    return (
+                      <section key={day}>
+                        <div className="mb-3 flex flex-wrap items-center gap-2">
+                          <h3 className="text-ds-h3 font-semibold text-foreground">{dayLabel}</h3>
+                          <Badge variant="outline">{dayViewers.length} viewers</Badge>
+                          {liveCount > 0 && (
+                            <Badge variant="danger">
+                              <span className="relative mr-1 flex size-1.5">
+                                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                                <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
                               </span>
-                            )}
-                            {v.watch_completed && <Badge variant="success">Completed</Badge>}
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            {v.viewer_phone ?? '—'}
-                            {v.started_at ? ` · Opened ${formatDateTime(v.started_at)}` : ''}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Last seen {formatDateTime(v.last_seen_at)}
-                          </p>
+                              {liveCount} live
+                            </Badge>
+                          )}
+                          {completedCount > 0 && (
+                            <Badge variant="success">{completedCount} done</Badge>
+                          )}
                         </div>
-                      </div>
-                    </div>
-                  ))}
+                        <p className="mb-3 text-ds-caption text-muted-foreground">{dayDesc}</p>
+
+                        <div className="grid gap-4 md:grid-cols-3">
+                          {([17, 18, 19] as const).map((hour) => {
+                            const slotName = hour === 17 ? '5pm' : hour === 18 ? '6pm' : '7pm'
+                            const slotViewers = dayViewers.filter((v) => v.session_hour === hour)
+                            return (
+                              <div key={`d${day}-h${hour}`} className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <p className="text-ds-caption font-semibold text-muted-foreground">
+                                    {slotName} slot
+                                  </p>
+                                  <span className="text-ds-label text-muted-foreground/70 tabular-nums">
+                                    ({slotViewers.length})
+                                  </span>
+                                </div>
+                                {slotViewers.length === 0 ? (
+                                  <div className="surface-inset rounded-xl px-3 py-3 text-center text-ds-caption text-muted-foreground/60">
+                                    No viewers
+                                  </div>
+                                ) : (
+                                  <div className="space-y-1.5">
+                                    {slotViewers.map((v) => (
+                                      <div key={v.viewer_id} className="surface-inset rounded-xl px-3 py-2.5">
+                                        <div className="flex flex-wrap items-start justify-between gap-2">
+                                          <div className="min-w-0">
+                                            <div className="flex flex-wrap items-center gap-1.5">
+                                              <p className="truncate text-sm font-medium text-foreground">{v.name}</p>
+                                              {isActiveNow(v.last_seen_at) && (
+                                                <span className="flex shrink-0 items-center gap-1 rounded-full bg-red-600/90 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white">
+                                                  <span className="relative flex size-1">
+                                                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                                                    <span className="relative inline-flex size-1 rounded-full bg-red-400" />
+                                                  </span>
+                                                  Live
+                                                </span>
+                                              )}
+                                              {v.watch_completed && (
+                                                <span className="shrink-0 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-400">
+                                                  Done
+                                                </span>
+                                              )}
+                                              {v.rejoined && (
+                                                <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400">
+                                                  Rejoined
+                                                </span>
+                                              )}
+                                            </div>
+                                            <p className="mt-0.5 truncate text-ds-caption text-muted-foreground">
+                                              {v.masked_phone}
+                                              {v.city ? ` · ${v.city}` : ''}
+                                              {v.first_seen_at ? ` · Joined ${formatDateTime(v.first_seen_at)}` : ''}
+                                            </p>
+                                            <p className="mt-0.5 text-ds-label text-muted-foreground/70">
+                                              Watched {v.percentage_watched}%{v.referred_by_name ? ` · Ref: ${v.referred_by_name}` : ''}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </section>
+                    )
+                  })}
                 </div>
               )}
             </CardContent>
           </Card>
 
+          {/* Session Schedule Summary */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Batch Schedule</CardTitle>
-              <CardDescription>Day 1 runs daily at 5pm, 6pm, 7pm via calling board batch links.</CardDescription>
+              <CardTitle className="text-lg">Live Session Schedule</CardTitle>
+              <CardDescription>
+                Day 1 via Calling Board · Day 2 & Day 3 via Workboard — all slots at 5pm, 6pm, 7pm IST.
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-2 sm:grid-cols-3">
-                {(['5pm — d1_morning', '6pm — d1_afternoon', '7pm — d1_evening'] as const).map((slot) => (
-                  <div key={slot} className="surface-inset rounded-2xl p-3 text-sm text-foreground">{slot}</div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {([
+                  { day: 'Day 1', source: 'Calling Board', color: 'border-blue-500/30 bg-blue-500/[0.04]' },
+                  { day: 'Day 2', source: 'Workboard', color: 'border-indigo-500/30 bg-indigo-500/[0.04]' },
+                  { day: 'Day 3', source: 'Workboard (Live)', color: 'border-violet-500/30 bg-violet-500/[0.04]' },
+                ]).map(({ day, source, color }) => (
+                  <div key={day} className={`surface-inset rounded-xl p-3 text-sm ${color}`}>
+                    <p className="font-semibold text-foreground">{day}</p>
+                    <p className="mt-0.5 text-ds-caption text-muted-foreground">{source}</p>
+                    <p className="mt-1 text-ds-label text-muted-foreground/80">5pm · 6pm · 7pm</p>
+                  </div>
                 ))}
               </div>
             </CardContent>

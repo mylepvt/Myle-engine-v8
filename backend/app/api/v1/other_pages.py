@@ -485,6 +485,7 @@ class PremiereViewerOut(BaseModel):
     city: str
     session_date: str
     session_hour: int
+    session_day: int = 1
     percentage_watched: float
     current_time_sec: float
     last_seen_at: Optional[str]
@@ -915,14 +916,17 @@ async def premiere_viewers(
     db: Annotated[AsyncSession, Depends(get_db)],
     hour: Optional[int] = Query(default=None, description="Filter by session hour (omit for all today)"),
     date: Optional[str] = Query(default=None, description="Session date YYYY-MM-DD (omit for today)"),
+    day: Optional[int] = Query(default=None, ge=1, le=5, description="Filter by session day 1-5"),
 ) -> list[PremiereViewerOut]:
-    """Admin only. Supports date param for historical view."""
+    """Admin only. Supports date, hour, and day params for historical / filtered views."""
     if user.role != "admin":
         raise HTTPException(status_code=403, detail="Forbidden")
     target_date = date or datetime.now(IST).date().isoformat()
     q = select(PremiereViewer).where(PremiereViewer.session_date == target_date)
     if hour is not None:
         q = q.where(PremiereViewer.session_hour == hour)
+    if day is not None:
+        q = q.where(PremiereViewer.session_day == day)
     try:
         rows = (await db.execute(
             q.order_by(PremiereViewer.lead_score.desc(), PremiereViewer.last_seen_at.desc())
@@ -943,6 +947,7 @@ async def premiere_viewers(
             city=v.city,
             session_date=v.session_date,
             session_hour=v.session_hour,
+            session_day=v.session_day,
             percentage_watched=round(v.percentage_watched * 100, 1),
             current_time_sec=v.current_time_sec,
             first_seen_at=v.first_seen_at.isoformat() if v.first_seen_at else None,
