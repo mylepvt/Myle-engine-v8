@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom'
 import {
   ArrowRight,
-  Briefcase,
+  Calendar,
   Clock3,
   FileCheck,
-  IndianRupee,
-  Phone,
-  Video,
+  Target,
+  Trophy,
+  Users,
 } from 'lucide-react'
 
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
@@ -32,70 +32,85 @@ type Props = {
   quickActions: HomeQuickAction[]
 }
 
-function statCards(
-  funnel: TeamPersonalFunnel | undefined,
-  today: TeamTodayStats | undefined,
-): {
+type StageCard = {
+  key: keyof TeamPersonalFunnel
   label: string
-  value: number
   sub: string
-  Icon: typeof Briefcase
+  Icon: React.FC<{ className?: string; 'aria-hidden'?: boolean }>
   accent: string
   cardClass: string
   iconClass: string
-}[] {
-  return [
-    {
-      label: "Today's Leads",
-      value: today?.claimed_today ?? 0,
-      sub: 'Fresh today',
-      Icon: Briefcase,
-      accent: 'text-blue-400',
-      cardClass:
-        'border-blue-500/20 bg-gradient-to-br from-blue-500/[0.12] via-blue-500/[0.05] to-transparent shadow-[0_18px_40px_-28px_rgba(37,99,235,0.8)] transition hover:border-blue-500/35',
-      iconClass: 'text-blue-400/70',
-    },
-    {
-      label: 'Calls',
-      value: today?.calls_today ?? 0,
-      sub: 'Today',
-      Icon: Phone,
-      accent: 'text-amber-400',
-      cardClass:
-        'border-amber-500/20 bg-gradient-to-br from-amber-500/[0.12] via-amber-500/[0.04] to-transparent shadow-[0_18px_40px_-28px_rgba(245,158,11,0.75)] transition hover:border-amber-500/35',
-      iconClass: 'text-amber-400/70',
-    },
-    {
-      label: 'Video Reached',
-      value: funnel?.video_reached ?? 0,
-      sub: 'From assigned',
-      Icon: Video,
-      accent: 'text-indigo-400',
-      cardClass:
-        'border-indigo-500/20 bg-gradient-to-br from-indigo-500/[0.12] via-indigo-500/[0.04] to-transparent shadow-[0_18px_40px_-28px_rgba(99,102,241,0.8)] transition hover:border-indigo-500/35',
-      iconClass: 'text-indigo-400/70',
-    },
-    {
-      label: 'Proof Pending',
-      value: funnel?.proof_pending ?? 0,
-      sub: 'Awaiting review',
-      Icon: FileCheck,
-      accent: 'text-violet-400',
-      cardClass:
-        'border-violet-500/20 bg-gradient-to-br from-violet-500/[0.12] via-violet-500/[0.04] to-transparent shadow-[0_18px_40px_-28px_rgba(139,92,246,0.8)] transition hover:border-violet-500/35',
-      iconClass: 'text-violet-400/70',
-    },
-    {
-      label: 'Min. FLP Billing',
-      value: funnel?.paid_flp ?? 0,
-      sub: 'Enrolled',
-      Icon: IndianRupee,
-      accent: 'text-emerald-400',
-      cardClass:
-        'border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.12] via-emerald-500/[0.04] to-transparent shadow-[0_18px_40px_-28px_rgba(16,185,129,0.75)] transition hover:border-emerald-500/35',
-      iconClass: 'text-emerald-400/70',
-    },
-  ]
+}
+
+const STAGE_CARDS: StageCard[] = [
+  {
+    key: 'day2_count',
+    label: 'Day 2',
+    sub: 'Mindset lock done',
+    Icon: Calendar,
+    accent: 'text-sky-400',
+    cardClass:
+      'border-sky-500/20 bg-gradient-to-br from-sky-500/[0.12] via-sky-500/[0.04] to-transparent shadow-[0_18px_40px_-28px_rgba(14,165,233,0.8)] transition hover:border-sky-500/35',
+    iconClass: 'text-sky-400/70',
+  },
+  {
+    key: 'day3_count',
+    label: 'Day 3',
+    sub: 'FLP billing done',
+    Icon: Calendar,
+    accent: 'text-violet-400',
+    cardClass:
+      'border-violet-500/20 bg-gradient-to-br from-violet-500/[0.12] via-violet-500/[0.04] to-transparent shadow-[0_18px_40px_-28px_rgba(139,92,246,0.8)] transition hover:border-violet-500/35',
+    iconClass: 'text-violet-400/70',
+  },
+  {
+    key: 'interview_count',
+    label: 'Interview',
+    sub: 'Scheduled',
+    Icon: Users,
+    accent: 'text-amber-400',
+    cardClass:
+      'border-amber-500/20 bg-gradient-to-br from-amber-500/[0.12] via-amber-500/[0.04] to-transparent shadow-[0_18px_40px_-28px_rgba(245,158,11,0.75)] transition hover:border-amber-500/35',
+    iconClass: 'text-amber-400/70',
+  },
+  {
+    key: 'track_selected_count',
+    label: 'Track Selected',
+    sub: 'Track chosen',
+    Icon: Target,
+    accent: 'text-teal-400',
+    cardClass:
+      'border-teal-500/20 bg-gradient-to-br from-teal-500/[0.12] via-teal-500/[0.04] to-transparent shadow-[0_18px_40px_-28px_rgba(20,184,166,0.8)] transition hover:border-teal-500/35',
+    iconClass: 'text-teal-400/70',
+  },
+  {
+    key: 'seat_hold_count',
+    label: 'Seat Hold',
+    sub: 'Seat confirmed',
+    Icon: FileCheck,
+    accent: 'text-pink-400',
+    cardClass:
+      'border-pink-500/20 bg-gradient-to-br from-pink-500/[0.12] via-pink-500/[0.04] to-transparent shadow-[0_18px_40px_-28px_rgba(236,72,153,0.8)] transition hover:border-pink-500/35',
+    iconClass: 'text-pink-400/70',
+  },
+  {
+    key: 'converted_count',
+    label: 'Converted',
+    sub: 'Fully converted',
+    Icon: Trophy,
+    accent: 'text-emerald-400',
+    cardClass:
+      'border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.12] via-emerald-500/[0.04] to-transparent shadow-[0_18px_40px_-28px_rgba(16,185,129,0.8)] transition hover:border-emerald-500/35',
+    iconClass: 'text-emerald-400/70',
+  },
+]
+
+function statCards(funnel: TeamPersonalFunnel | undefined): StageCard[] {
+  return STAGE_CARDS
+}
+
+function statValue(funnel: TeamPersonalFunnel | undefined, key: keyof TeamPersonalFunnel): number {
+  return funnel?.[key] as number ?? 0
 }
 
 function greetingForCurrentTime() {
@@ -122,7 +137,7 @@ export function TeamDashboardHomeModern({
   quickActions,
 }: Props) {
   const loading = funnelPending || todayPending
-  const cards = statCards(funnel, today)
+  const cards = statCards(funnel)
   const topActions = quickActions.slice(0, 4)
   const primaryAction = topActions[0]
   const secondaryActions = topActions.slice(1, 4)
@@ -266,19 +281,19 @@ export function TeamDashboardHomeModern({
         <div className="flex items-center justify-between px-1">
           <div>
             <h2 className="text-base font-semibold text-foreground">
-              Enrollment Funnel
+              Lead Stage Progress
             </h2>
             <p className="mt-1 text-ds-caption text-muted-foreground">
-              Compact snapshot of your highest-signal pipeline stages.
+              Your leads distributed across the working process stages.
             </p>
           </div>
           <span className="rounded-full border border-border/70 bg-card px-2.5 py-1 text-ds-caption font-medium text-muted-foreground shadow-sm">
-            Assigned active
+            {funnel ? cards.reduce((s, c) => s + statValue(funnel, c.key), 0) : 0} total
           </span>
         </div>
         {loading ? (
           <div className="grid grid-cols-2 gap-3">
-            {Array.from({ length: 4 }).map((_, i) => (
+            {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-24 rounded-xl" />
             ))}
           </div>
@@ -312,7 +327,7 @@ export function TeamDashboardHomeModern({
                   <p
                     className={`text-3xl font-semibold tabular-nums ${card.accent}`}
                   >
-                    {card.value}
+                    {statValue(funnel, card.key)}
                   </p>
                   <p className="mt-1 text-ds-caption font-medium text-muted-foreground">
                     {card.label}

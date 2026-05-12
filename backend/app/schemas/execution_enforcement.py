@@ -20,6 +20,12 @@ class TeamPersonalFunnelOut(BaseModel):
     pct_proof_vs_video: float
     pct_enrolled_vs_video: float
     pct_enrolled_vs_claimed: float
+    day2_count: int = 0
+    day3_count: int = 0
+    interview_count: int = 0
+    track_selected_count: int = 0
+    seat_hold_count: int = 0
+    converted_count: int = 0
 
 
 class TeamTodayStatsOut(BaseModel):
