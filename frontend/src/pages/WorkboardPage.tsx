@@ -83,10 +83,10 @@ const ADMIN_STAGE_TABS: {
   nextLabel?: string
 }[] = [
   { id: 'day2', label: 'Day 2', statuses: ['day2'], stageKey: 'day2', nextStatus: 'day3', nextLabel: 'Push to Day 3' },
-  { id: 'day3', label: 'Day 3', statuses: ['day3'], stageKey: 'day3', nextStatus: 'interview', nextLabel: 'Push to Day 6' },
-  { id: 'interview', label: 'Day 6', statuses: ['interview'], stageKey: 'interview', nextStatus: 'track_selected', nextLabel: 'Push to Day 5' },
-  { id: 'track_selected', label: 'Day 5', statuses: ['track_selected'], stageKey: 'track_selected', nextStatus: 'seat_hold', nextLabel: 'Push to Day 6' },
-  { id: 'seat_hold', label: 'Day 6', statuses: ['seat_hold'], stageKey: 'seat_hold', nextStatus: 'plan_2cc', nextLabel: 'Push to Pending Process' },
+  { id: 'day3', label: 'Day 3', statuses: ['day3'], stageKey: 'day3', nextStatus: 'track_selected', nextLabel: 'Push to Day 4' },
+  { id: 'track_selected', label: 'Day 4', statuses: ['track_selected'], stageKey: 'track_selected', nextStatus: 'seat_hold', nextLabel: 'Push to Day 5' },
+  { id: 'seat_hold', label: 'Day 5', statuses: ['seat_hold'], stageKey: 'seat_hold', nextStatus: 'interview', nextLabel: 'Push to Day 6' },
+  { id: 'interview', label: 'Day 6', statuses: ['interview'], stageKey: 'interview', nextStatus: 'plan_2cc', nextLabel: 'Push to Pending Process' },
   { id: 'plan_2cc', label: '2CC Plan', statuses: ['plan_2cc'], stageKey: 'plan_2cc', nextStatus: 'pending', nextLabel: 'Push to Next 3 Days' },
   { id: 'pending', label: 'Next 3 Days', statuses: ['pending'], stageKey: 'pending', nextStatus: 'level_up', nextLabel: 'Push to Final Stage' },
   { id: 'level_up', label: 'Final Stage', statuses: ['level_up'], stageKey: 'level_up', nextStatus: 'converted', nextLabel: 'Mark converted' },
@@ -94,8 +94,8 @@ const ADMIN_STAGE_TABS: {
 ]
 
 const STATUS_TAB_LABEL: Partial<Record<LeadStatus, string>> = {
-  day1: 'Day 2', day2: 'Day 3', day3: 'Day 4',
-  interview: 'Day 5', track_selected: 'Day 6', seat_hold: 'Day 6',
+  day1: 'Day 2', day2: 'Day 3', day3: 'Day 3',
+  track_selected: 'Day 4', seat_hold: 'Day 5', interview: 'Day 6',
   converted: 'Closing', lost: 'Closing',
 }
 type ATab = WorkboardStageKey | 'closing'

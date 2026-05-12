@@ -50,8 +50,8 @@ export const PROCESS_STAGE_DEFS: Record<string, ProcessStageDef> = {
     status: 'day3',
     title: 'Day 3',
     helper: 'Morning testimony → follow-up → 3rd party → closing mindset → send live session → Min. FLP billing.',
-    nextStatus: 'interview',
-    nextLabel: 'Push to Day 6',
+    nextStatus: 'track_selected',
+    nextLabel: 'Push to Day 4',
     tasks: [
       { key: 'testimony_videos', label: 'Testimony Videos' },
       { key: 'morning_follow_up', label: 'Follow-up' },
@@ -67,8 +67,8 @@ export const PROCESS_STAGE_DEFS: Record<string, ProcessStageDef> = {
     status: 'interview',
     title: 'Day 6 Closing',
     helper: 'Leader closes the Day 6 conversion push and records the immediate closing follow-up.',
-    nextStatus: 'track_selected',
-    nextLabel: 'Push to Day 5',
+    nextStatus: 'plan_2cc',
+    nextLabel: 'Push to Pending Process',
     tasks: [
       { key: 'closing_1500', label: '₹1500 Closing' },
       { key: 'follow_up_closing', label: 'Follow-up Closing' },
@@ -96,7 +96,7 @@ export const PROCESS_STAGE_DEFS: Record<string, ProcessStageDef> = {
     status: 'seat_hold',
     title: 'Day 5',
     helper: 'Track all three Day-5 sessions and their follow-ups before moving into Day 6.',
-    nextStatus: 'plan_2cc',
+    nextStatus: 'interview',
     nextLabel: 'Push to Day 6',
     tasks: [
       { key: 'vishakha_job_vs_business', label: "Vishakha Ma'am Job vs Business" },
