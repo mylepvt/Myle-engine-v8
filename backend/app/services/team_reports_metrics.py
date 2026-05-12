@@ -60,7 +60,7 @@ async def compute_live_summary(
         select(func.count())
         .select_from(ActivityLog)
         .where(
-            ActivityLog.action == "lead.claimed",
+            ActivityLog.action.in_(["lead.claimed", "lead.claimed_free"]),
             ActivityLog.created_at >= start,
             ActivityLog.created_at < end,
         )
