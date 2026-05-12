@@ -295,27 +295,6 @@ async def team_personal_funnel(session: AsyncSession, user_id: int) -> TeamPerso
         or 0
     )
 
-    # Day 2–6 stage counts
-    async def _count_status(status: str) -> int:
-        return int(
-            (
-                await session.execute(
-                    select(func.count())
-                    .select_from(Lead)
-                    .where(base, Lead.status == status)
-                )
-            ).scalar_one()
-            or 0
-        )
-
-    # Run sequentially (simple, few statuses)
-    day2_c = await _count_status("day2")
-    day3_c = await _count_status("day3")
-    interview_c = await _count_status("interview")
-    track_selected_c = await _count_status("track_selected")
-    seat_hold_c = await _count_status("seat_hold")
-    converted_c = await _count_status("converted")
-
     return TeamPersonalFunnelOut(
         claimed=claimed,
         video_reached=video,
@@ -326,12 +305,6 @@ async def team_personal_funnel(session: AsyncSession, user_id: int) -> TeamPerso
         pct_proof_vs_video=_pct(proof, video),
         pct_enrolled_vs_video=_pct(paid, video),
         pct_enrolled_vs_claimed=_pct(paid, claimed),
-        day2_count=day2_c,
-        day3_count=day3_c,
-        interview_count=interview_c,
-        track_selected_count=track_selected_c,
-        seat_hold_count=seat_hold_c,
-        converted_count=converted_c,
     )
 
 

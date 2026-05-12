@@ -12,12 +12,6 @@ export type TeamPersonalFunnel = {
   pct_proof_vs_video: number
   pct_enrolled_vs_video: number
   pct_enrolled_vs_claimed: number
-  day2_count: number
-  day3_count: number
-  interview_count: number
-  track_selected_count: number
-  seat_hold_count: number
-  converted_count: number
 }
 
 async function fetchTeamPersonalFunnel(): Promise<TeamPersonalFunnel> {
