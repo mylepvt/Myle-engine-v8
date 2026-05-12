@@ -36,7 +36,7 @@ export function useEnrollmentApprovalsAlertBanner(
         setOpen(true)
         if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
           try {
-            new Notification('Myle — Enroll approvals', {
+            new Notification('Myle — Min. FLP approvals', {
               body:
                 d === 1
                   ? '1 new FLP invoice needs review.'

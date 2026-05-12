@@ -1300,13 +1300,6 @@ export function AdminCommandCenter({ firstName }: Props) {
         <TabsContent value="content" className="space-y-6">
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <StatCard
-              label="Enrollment Video"
-              value={settingsMap.enrollment_video_source_url ? 'Ready' : 'Missing'}
-              hint="Secure enrollment video setup status."
-              variant={settingsMap.enrollment_video_source_url ? 'success' : 'warning'}
-              to="/dashboard/settings/app"
-            />
-            <StatCard
               label="Live Session"
               value={settingsMap.live_session_url ? 'Ready' : 'Missing'}
               hint="Community live-session join link status."
@@ -1356,8 +1349,7 @@ export function AdminCommandCenter({ firstName }: Props) {
               </CardHeader>
               <CardContent className="space-y-3">
                 {[
-                  ['Enrollment room video', settingsMap.enrollment_video_source_url],
-                  ['Enrollment room title', settingsMap.enrollment_video_title],
+
                   ['Public app URL', settingsMap.public_app_url],
                   ['Live session join link', settingsMap.live_session_url],
                 ].map(([label, value]) => (

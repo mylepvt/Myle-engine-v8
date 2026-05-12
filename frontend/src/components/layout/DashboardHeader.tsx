@@ -57,7 +57,7 @@ export function DashboardHeader({
     !push.isSubscribed &&
     push.permission !== 'denied'
   const approverForEnroll =
-    Boolean(me?.authenticated) && (me?.role === 'admin' || me?.role === 'leader')
+    Boolean(me?.authenticated) && me?.role === 'admin'
 
   return (
     <header
@@ -155,7 +155,7 @@ export function DashboardHeader({
             <Link
               to="/dashboard/team/enrollment-approvals"
               className="relative flex size-10 items-center justify-center rounded-full transition-colors duration-200 hover:bg-muted active:opacity-80"
-              aria-label={`Enroll approvals — ${pendingEnrollCount} pending`}
+              aria-label={`Min. FLP approvals — ${pendingEnrollCount} pending`}
             >
               <ClipboardCheck className="size-[1.15rem] md:size-[1.25rem] text-emerald-400" />
             </Link>

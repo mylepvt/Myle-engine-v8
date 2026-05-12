@@ -16,7 +16,7 @@
   "team/los": ["leader"],
   "team/reports": ["admin", "leader"],
   "team/approvals": ["admin"],
-  "team/enrollment-approvals": ["admin", "leader"],
+  "team/enrollment-approvals": ["admin"],
   "team/my-team": ["leader", "team"],
   "system/training": ["admin", "leader", "team"],
   "system/lead-control": ["admin"],
