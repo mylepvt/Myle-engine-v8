@@ -49,24 +49,15 @@ export const PROCESS_STAGE_DEFS: Record<string, ProcessStageDef> = {
   day3: {
     status: 'day3',
     title: 'Day 3',
-    helper: 'Morning testimony → follow-up → 3rd party sessions → closing mindset → send Day 3 live session → then Min. FLP billing.',
-    nextStatus: 'paid',
-    nextLabel: 'Push to Min. FLP',
+    helper: 'Morning testimony → follow-up → 3rd party → closing mindset → send live session → Min. FLP billing.',
+    nextStatus: 'interview',
+    nextLabel: 'Push to Day 6',
     tasks: [
       { key: 'testimony_videos', label: 'Testimony Videos' },
       { key: 'morning_follow_up', label: 'Follow-up' },
       { key: 'third_party_hype', label: '3rd Party Hype' },
       { key: 'third_party_session', label: '3rd Party Session' },
       { key: 'closing_environment_build_up', label: 'Closing Environment Build-up' },
-    ],
-  },
-  paid: {
-    status: 'paid',
-    title: 'Min. FLP Billing',
-    helper: 'Collect ₹1500 payment from lead. Upload proof and approve to unlock next stage.',
-    nextStatus: 'interview',
-    nextLabel: 'Push to Day 6',
-    tasks: [
       { key: 'payment_collected', label: '₹1500 Payment Collected' },
       { key: 'proof_upload', label: 'Upload Payment Proof' },
       { key: 'approval', label: 'Admin Approval' },
@@ -163,7 +154,6 @@ export const PROCESS_STAGE_DEFS: Record<string, ProcessStageDef> = {
 export const PROCESS_STAGE_ORDER = [
   'day2',
   'day3',
-  'paid',
   'interview',
   'track_selected',
   'seat_hold',
