@@ -247,7 +247,7 @@ export function DashboardHomePage() {
   return (
     <div className="mx-auto max-w-6xl space-y-4 md:space-y-6">
       <div className="flex items-center gap-2 px-0.5">
-        <h1 className="font-heading text-ds-h2 font-semibold capitalize tracking-tight text-foreground">
+        <h1 className="text-ds-h2 font-semibold capitalize tracking-tight text-foreground">
           Welcome back, {firstName}
         </h1>
       </div>
@@ -257,13 +257,13 @@ export function DashboardHomePage() {
           {adminReports.isPending ? (
             <>
               <Card className="border-primary/20">
-                <CardContent className="pt-6">
+                <CardContent>
                   <Skeleton className="mb-2 h-3 w-40" />
                   <Skeleton className="h-9 w-20" />
                 </CardContent>
               </Card>
               <Card className="border-primary/20">
-                <CardContent className="pt-6">
+                <CardContent>
                   <Skeleton className="mb-2 h-3 w-44" />
                   <Skeleton className="h-9 w-16" />
                 </CardContent>
@@ -271,7 +271,7 @@ export function DashboardHomePage() {
             </>
           ) : adminReports.isError ? (
             <Card className="border-destructive/30 sm:col-span-2">
-              <CardContent className="pt-6 text-sm text-destructive" role="alert">
+              <CardContent className="text-sm text-destructive" role="alert">
                 Could not load today&apos;s metrics.{' '}
                 <button
                   type="button"
@@ -289,19 +289,19 @@ export function DashboardHomePage() {
                 className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
               >
                 <Card className="h-full border-border transition-colors hover:border-primary/30">
-                  <CardContent className="pt-5 pb-5">
+                  <CardContent>
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
                         Today&apos;s claimed leads
                       </p>
                       <UserPlus className="size-5 shrink-0 text-amber-400" aria-hidden />
                     </div>
-                    <p className={cn('mt-2 font-heading text-3xl font-bold tabular-nums', adminReports.data.live_summary.leads_claimed_today > 0 ? 'text-amber-400' : 'text-muted-foreground')}>
+                    <p className={cn('mt-2 text-2xl font-bold tabular-nums leading-none', adminReports.data.live_summary.leads_claimed_today > 0 ? 'text-amber-400' : 'text-muted-foreground')}>
                       {adminReports.data.live_summary.leads_claimed_today > 0
                         ? adminReports.data.live_summary.leads_claimed_today
                         : 'None yet'}
                     </p>
-                    <p className="mt-1 text-ds-caption text-subtle">
+                    <p className="mt-1.5 text-ds-caption text-subtle">
                       Pool / ledger claims (IST day)
                     </p>
                   </CardContent>
@@ -312,19 +312,19 @@ export function DashboardHomePage() {
                 className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
               >
                 <Card className="h-full border-border transition-colors hover:border-primary/30">
-                  <CardContent className="pt-5 pb-5">
+                  <CardContent>
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
                         Today&apos;s FLP approvals
                       </p>
                       <ClipboardCheck className="size-5 shrink-0 text-emerald-400" aria-hidden />
                     </div>
-                    <p className={cn('mt-2 font-heading text-3xl font-bold tabular-nums', adminReports.data.live_summary.payment_proofs_approved_today > 0 ? 'text-emerald-400' : 'text-muted-foreground')}>
+                    <p className={cn('mt-2 text-2xl font-bold tabular-nums leading-none', adminReports.data.live_summary.payment_proofs_approved_today > 0 ? 'text-emerald-400' : 'text-muted-foreground')}>
                       {adminReports.data.live_summary.payment_proofs_approved_today > 0
                         ? adminReports.data.live_summary.payment_proofs_approved_today
                         : 'None yet'}
                     </p>
-                    <p className="mt-1 text-ds-caption text-subtle">
+                    <p className="mt-1.5 text-ds-caption text-subtle">
                       Payment proofs approved today (IST)
                     </p>
                   </CardContent>
@@ -397,14 +397,14 @@ export function DashboardHomePage() {
       )}
 
       <div>
-        <h2 className="mb-3 font-heading text-ds-h2 text-foreground">
+        <h2 className="mb-4 font-heading text-ds-h2 text-foreground">
           Overview
         </h2>
         {kpiLoading ? (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <Card key={i} className="border-primary/20">
-                <CardContent className="pt-6">
+                <CardContent>
                   <Skeleton className="mb-2 h-3 w-24" />
                   <Skeleton className="h-8 w-16" />
                   <Skeleton className="mt-2 h-3 w-20" />
@@ -418,31 +418,31 @@ export function DashboardHomePage() {
               to="/dashboard/work/workboard"
               className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2"
             >
-              <Card className="h-full border-blue-500/20 bg-gradient-to-br from-blue-500/[0.08] to-transparent transition-colors hover:border-blue-500/35">
-                <CardContent className="pt-5 pb-5">
+              <Card className="h-full border-blue-500/20 bg-gradient-to-br from-blue-500/[0.08] to-transparent transition-all hover:border-blue-500/35 hover:shadow-[var(--shadow-card-hover)]">
+                <CardContent>
                   <div className="flex items-center justify-between gap-1">
                     <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
                       Active leads
                     </p>
                     <TrendingUp className="size-4 shrink-0 text-blue-400/70" aria-hidden />
                   </div>
-                  <p className="mt-2 font-heading text-3xl font-bold tabular-nums text-blue-400">
+                  <p className="mt-2 text-2xl font-bold tabular-nums leading-none text-blue-400">
                     {metrics.activeTotal}
                   </p>
-                  <p className="mt-1 text-ds-caption text-subtle">
+                  <p className="mt-1.5 text-ds-caption text-subtle">
                     In your scope · open workboard
                   </p>
                 </CardContent>
               </Card>
             </Link>
             {role === 'admin' || role === 'leader' ? (
-              <Link
+                <Link
                 to="/dashboard/work/follow-ups"
                 className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-amber-500/40 focus-visible:ring-offset-2"
               >
-                <Card className="h-full border-amber-500/20 bg-gradient-to-br from-amber-500/[0.08] to-transparent transition-colors hover:border-amber-500/35">
-                  <CardContent className="pt-5 pb-5">
-                    <div className="flex items-center justify-between gap-1">
+                <Card className="h-full border-amber-500/20 bg-gradient-to-br from-amber-500/[0.08] to-transparent transition-all hover:border-amber-500/35 hover:shadow-[var(--shadow-card-hover)]">
+                  <CardContent>
+                  <div className="flex items-center justify-between gap-1">
                       <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
                         Open follow-ups
                       </p>
@@ -450,10 +450,10 @@ export function DashboardHomePage() {
                         <span className="text-xs font-semibold text-amber-400" aria-hidden>↑</span>
                       )}
                     </div>
-                    <p className={cn('mt-2 font-heading text-3xl font-bold tabular-nums', openFollowUps > 0 ? 'text-amber-400' : 'text-muted-foreground')}>
+                    <p className={cn('mt-2 text-2xl font-bold tabular-nums leading-none', openFollowUps > 0 ? 'text-amber-400' : 'text-muted-foreground')}>
                       {openFollowUps}
                     </p>
-                    <p className="mt-1 text-ds-caption text-subtle">
+                    <p className="mt-1.5 text-ds-caption text-subtle">
                       Not completed · open queue
                     </p>
                   </CardContent>
@@ -464,13 +464,13 @@ export function DashboardHomePage() {
                 to="/dashboard/other/live-session"
                 className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
               >
-                <Card className="h-full border-primary/20 transition-colors hover:border-primary/35">
-                  <CardContent className="pt-6">
+                <Card className="h-full border-primary/20 transition-all hover:border-primary/35 hover:shadow-[var(--shadow-card-hover)]">
+                  <CardContent>
                     <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
                       Live session
                     </p>
-                    <p className="mt-2 font-heading text-lg font-semibold text-foreground">Join link and schedule</p>
-                    <p className="mt-1 text-ds-caption text-subtle">
+                    <p className="mt-2 text-lg font-semibold text-foreground">Join link and schedule</p>
+                    <p className="mt-1.5 text-ds-caption text-subtle">
                       Same as legacy zoom block — opens Live Session page
                     </p>
                   </CardContent>
@@ -478,11 +478,11 @@ export function DashboardHomePage() {
               </Link>
             ) : (
               <Card className="border-primary/20">
-                <CardContent className="pt-6">
+                <CardContent>
                   <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
                     Open follow-ups
                   </p>
-                  <p className="mt-1 text-ds-caption text-subtle">Sign in to see your workspace.</p>
+                  <p className="mt-1.5 text-ds-caption text-subtle">Sign in to see your workspace.</p>
                 </CardContent>
               </Card>
             )}
@@ -490,8 +490,8 @@ export function DashboardHomePage() {
               to="/dashboard/work/leads"
               className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2"
             >
-              <Card className="h-full border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.08] to-transparent transition-colors hover:border-emerald-500/35">
-                <CardContent className="pt-5 pb-5">
+              <Card className="h-full border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.08] to-transparent transition-all hover:border-emerald-500/35 hover:shadow-[var(--shadow-card-hover)]">
+                <CardContent>
                   <div className="flex items-center justify-between gap-1">
                     <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
                       Converted
@@ -502,10 +502,10 @@ export function DashboardHomePage() {
                       </span>
                     )}
                   </div>
-                  <p className={cn('mt-2 font-heading text-3xl font-bold tabular-nums', metrics.won > 0 ? 'text-emerald-400' : 'text-muted-foreground')}>
+                  <p className={cn('mt-2 text-2xl font-bold tabular-nums leading-none', metrics.won > 0 ? 'text-emerald-400' : 'text-muted-foreground')}>
                     {metrics.won}
                   </p>
-                  <p className="mt-1 text-ds-caption text-subtle">
+                  <p className="mt-1.5 text-ds-caption text-subtle">
                     {metrics.winRatePct !== null ? `Win rate ${metrics.winRatePct}%` : 'No closed outcomes yet'}
                   </p>
                 </CardContent>
@@ -515,8 +515,8 @@ export function DashboardHomePage() {
               to="/dashboard/work/leads"
               className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-2"
             >
-              <Card className="h-full border-violet-500/20 bg-gradient-to-br from-violet-500/[0.08] to-transparent transition-colors hover:border-violet-500/35">
-                <CardContent className="pt-5 pb-5">
+              <Card className="h-full border-violet-500/20 bg-gradient-to-br from-violet-500/[0.08] to-transparent transition-all hover:border-violet-500/35 hover:shadow-[var(--shadow-card-hover)]">
+                <CardContent>
                   <div className="flex items-center justify-between gap-1">
                     <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
                       New leads
@@ -525,10 +525,10 @@ export function DashboardHomePage() {
                       <span className="text-xs font-semibold text-violet-400/70" aria-hidden>↑</span>
                     )}
                   </div>
-                  <p className="mt-2 font-heading text-3xl font-bold tabular-nums text-violet-400">
+                  <p className="mt-2 text-2xl font-bold tabular-nums leading-none text-violet-400">
                     {metrics.newLeads}
                   </p>
-                  <p className="mt-1 text-ds-caption text-subtle">
+                  <p className="mt-1.5 text-ds-caption text-subtle">
                     New lead stage · open list
                   </p>
                 </CardContent>
@@ -545,8 +545,9 @@ export function DashboardHomePage() {
       <Card className="border-primary/20">
         <CardHeader>
           <CardTitle className="text-ds-h3">Quick actions</CardTitle>
+          <CardDescription>Jump to frequently used sections</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-2 lg:grid-cols-3">
+        <CardContent className="flex flex-col gap-2 sm:grid sm:grid-cols-2 lg:grid-cols-3">
           {quickActions.map((action) => {
             const Icon = action.Icon
             return (

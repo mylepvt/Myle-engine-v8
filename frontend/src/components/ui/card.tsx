@@ -4,7 +4,7 @@ import { Link, type LinkProps } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 
 const cardBase =
-  'rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-[var(--shadow-card)] transition-[box-shadow,transform] duration-200'
+  'rounded-2xl border border-border bg-card text-card-foreground shadow-[var(--shadow-card)] transition-[box-shadow,transform] duration-200'
 
 const Card = React.forwardRef<
   HTMLDivElement,
@@ -80,7 +80,7 @@ const CardContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn('', className)} {...props} />
+  <div ref={ref} className={cn('p-5', className)} {...props} />
 ))
 CardContent.displayName = 'CardContent'
 
