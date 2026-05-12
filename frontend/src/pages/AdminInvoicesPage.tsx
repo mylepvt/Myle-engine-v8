@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -70,6 +71,9 @@ export function AdminInvoicesPage({ title }: Props) {
 
   return (
     <div className="max-w-5xl space-y-6">
+      <Link to="/dashboard/finance/recharge-request" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        ← Recharge
+      </Link>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
         <Button type="button" variant="secondary" size="sm" onClick={() => setBulkOpen((v) => !v)}>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -71,8 +72,8 @@ export default function TrainingTestPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
-            <Button onClick={() => window.history.back()}>
-              Back to Training
+            <Button asChild>
+              <Link to="/dashboard/system/training">Back to Training</Link>
             </Button>
           </CardContent>
         </Card>
