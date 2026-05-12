@@ -104,7 +104,7 @@ function parseAdminTab(value: string | null): ATab {
   return (match?.id ?? 'day2') as ATab
 }
 
-const SLOT_TIME_LABEL: Record<'M' | 'A' | 'E', string> = { M: '5pm', A: '6pm', E: '7pm' }
+const SLOT_TIME_LABEL: Record<'M' | 'A' | 'E', string> = { M: 'M', A: 'A', E: 'E' }
 
 function workboardBatchWhatsAppUrl(
   lead: LeadPublic,
@@ -119,11 +119,12 @@ function workboardBatchWhatsAppUrl(
   const linkBlock =
     (links?.v1 ? `📹 Video 1:\n${links.v1}\n` : '') +
     (links?.v2 ? `📹 Video 2:\n${links.v2}\n` : '')
+  const slotLabel = slot === 'M' ? 'Morning' : slot === 'A' ? 'Afternoon' : 'Evening'
   const msg =
     `Hi ${name},\n` +
-    `Your Day ${dayKey} ${timeLabel} session is starting now.\n` +
+    `Day ${dayKey} — ${slotLabel} Batch\n` +
     (linkBlock ? `\n${linkBlock}` : '\n') +
-    'Please watch and confirm.'
+    'Please watch both videos and reply ✅.'
   return `https://wa.me/${digits}?text=${encodeURIComponent(msg)}`
 }
 
@@ -781,7 +782,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     )
   }
 
-  const slotTimeLabels = (['5pm', '6pm', '7pm'] as const)
+  const slotTimeLabels = (['M', 'A', 'E'] as const)
 
   // day1, day4, day5: all three slots (5pm/6pm/7pm) send tokenized batch links
   if (stageKey === 'day1' || stageKey === 'day4' || stageKey === 'day5') {
