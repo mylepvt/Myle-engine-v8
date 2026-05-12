@@ -18,7 +18,9 @@ LEAD_STATUS_SEQUENCE: tuple[str, ...] = (
     "day1",               # Attending Day 1 session
     "day2",               # Attending Day 2 session
     "day3",               # Day 3 closer stage
-    "interview",          # Post Day2 interview stage
+    "day4",               # Day 4 MAE batches
+    "day5",               # Day 5 MAE batches
+    "interview",          # Post Day5 interview stage
     "track_selected",     # Chose Slow/Medium/Fast track
     "seat_hold",          # Seat hold amount paid
     "converted",          # Fully converted / closed won
@@ -94,6 +96,8 @@ WORKBOARD_COLUMNS: tuple[str, ...] = (
     "day1",
     "day2",
     "day3",
+    "day4",
+    "day5",
     "interview",
     "track_selected",
     "seat_hold",
