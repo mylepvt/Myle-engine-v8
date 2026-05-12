@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
 import { ArrowRightLeft, Clock3, ShieldCheck, UserCheck } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -194,6 +195,9 @@ export function LeadControlPage({ title }: Props) {
 
   return (
     <div className="space-y-4 md:space-y-6">
+      <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="size-4" /> Dashboard
+      </Link>
       <div className="max-w-4xl space-y-2">
         <h1 className="text-ds-h2">{title}</h1>
         <p className="text-sm text-muted-foreground">
@@ -230,11 +234,7 @@ export function LeadControlPage({ title }: Props) {
                   {query.data.note}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Day 2 uploads now live in{' '}
-                  <Link to="/dashboard/system/day2-review" className="text-primary underline-offset-2 hover:underline">
-                    Day 2 Review
-                  </Link>
-                  , so reassignment controls stay focused here.
+                  Day 2 uploads are visible in the admin command center — reassignment controls stay focused here.
                 </p>
               </div>
               <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">

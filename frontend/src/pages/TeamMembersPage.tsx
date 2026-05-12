@@ -1,4 +1,5 @@
 import { useDeferredValue, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -640,6 +641,9 @@ export function TeamMembersPage({ title }: Props) {
 
   return (
     <div className="min-w-0 max-w-4xl space-y-5 overflow-x-hidden pb-[max(6rem,calc(env(safe-area-inset-bottom)+5rem))]">
+      <Link to="/dashboard/settings/app" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        ← Settings
+      </Link>
       <div className="space-y-2">
         <Badge variant="primary" className="w-fit px-3 py-1">
           Member directory

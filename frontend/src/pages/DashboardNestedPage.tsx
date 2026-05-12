@@ -41,7 +41,6 @@ import { LiveSessionPage } from '@/pages/LiveSessionPage'
 import { CommunityTrainingPage } from '@/pages/CommunityTrainingPage'
 import { BudgetExportPage } from '@/pages/BudgetExportPage'
 import { LeadControlPage } from '@/pages/LeadControlPage'
-import { Day2ReviewPage } from '@/pages/Day2ReviewPage'
 import { SettingsAppPage } from '@/pages/SettingsAppPage'
 import { SettingsHelpPage } from '@/pages/SettingsHelpPage'
 import { SettingsOrgTreePage } from '@/pages/SettingsOrgTreePage'
@@ -84,8 +83,6 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <SystemSurfacePage title={title} surface={ui.surface} />
     case 'lead-control':
       return <LeadControlPage title={title} />
-    case 'day2-review':
-      return <Day2ReviewPage title={title} />
     case 'analytics':
       return 'surface' in ui ? (
         <AnalyticsSurfacePage title={title} surface={ui.surface} />

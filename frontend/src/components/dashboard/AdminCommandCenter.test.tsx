@@ -9,7 +9,6 @@ const mockUseQuery = vi.fn()
 const mockUseActiveWatchersQuery = vi.fn()
 const mockUseAppSettingsQuery = vi.fn()
 const mockUseSystemUsersSummaryQuery = vi.fn()
-const mockUseDay2ReviewQuery = vi.fn()
 const mockUseEnrollmentApprovalsPendingQuery = vi.fn()
 const mockUseTeamMembersQuery = vi.fn()
 const mockUseTeamReportsQuery = vi.fn()
@@ -34,10 +33,17 @@ vi.mock('@/hooks/use-settings-query', () => ({
 
 vi.mock('@/hooks/use-enroll-query', () => ({
   useActiveWatchersQuery: (...args: unknown[]) => mockUseActiveWatchersQuery(...args),
+  useBatchLiveWatchersQuery: () => ({ data: [], isPending: false }),
 }))
 
-vi.mock('@/hooks/use-day2-review-query', () => ({
-  useDay2ReviewQuery: (...args: unknown[]) => mockUseDay2ReviewQuery(...args),
+vi.mock('@/hooks/use-admin-leader-health-query', () => ({
+  useLeaderHealthQuery: () => ({
+    data: { leaders: [] },
+    isPending: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
 }))
 
 vi.mock('@/hooks/use-team-query', () => ({
@@ -346,36 +352,6 @@ describe('AdminCommandCenter', () => {
           live_session_url: 'https://zoom.us/live-room',
           batch_day1_url: 'https://app.example.com/day1',
         },
-      },
-      isPending: false,
-      isError: false,
-      error: null,
-      refetch: vi.fn(),
-    })
-    mockUseDay2ReviewQuery.mockReturnValue({
-      data: {
-        note: 'Admin-only Day 2 review surface.',
-        total: 1,
-        notes_count: 1,
-        voice_count: 1,
-        video_count: 1,
-        submissions: [
-          {
-            submission_id: 11,
-            lead_id: 9,
-            lead_name: 'Queued Watch Lead',
-            slot: 'd2_morning',
-            submitted_at: '2026-04-25T05:15:00Z',
-            assigned_to_user_id: 7,
-            assigned_to_name: 'Fresh Team',
-            owner_user_id: 3,
-            owner_name: 'Team User',
-            notes_text_preview: 'Shared Day 2 notes for admin review.',
-            notes_url: '/uploads/day2-note.pdf',
-            voice_note_url: '/uploads/day2-voice.m4a',
-            video_url: '/uploads/day2-video.mp4',
-          },
-        ],
       },
       isPending: false,
       isError: false,

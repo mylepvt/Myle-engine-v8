@@ -30,7 +30,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardLink, CardTitle } f
 import { EmptyState, ErrorState } from '@/components/ui/states'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAppSettingsQuery, useSystemUsersSummaryQuery } from '@/hooks/use-settings-query'
-import { useDay2ReviewQuery } from '@/hooks/use-day2-review-query'
 import { useActiveWatchersQuery, useBatchLiveWatchersQuery } from '@/hooks/use-enroll-query'
 import { useEnrollmentApprovalsPendingQuery, useTeamMembersQuery, useUpdateMemberComplianceMutation, type TeamMemberPublic } from '@/hooks/use-team-query'
 import { useTeamReportsQuery } from '@/hooks/use-team-reports-query'
@@ -473,7 +472,6 @@ export function AdminCommandCenter({ firstName }: Props) {
     staleTime: 30_000,
   })
   const appSettings = useAppSettingsQuery(activeTab === 'content')
-  const day2Review = useDay2ReviewQuery()
   const leaderHealth = useLeaderHealthQuery(activeTab === 'leaders')
   const premiereViewers = usePremiereViewersQuery(true)
   const isHistoryToday = viewerHistoryDate === todayIST
@@ -579,9 +577,6 @@ export function AdminCommandCenter({ firstName }: Props) {
         <div className="relative mt-6 flex flex-wrap gap-2 border-t border-primary/15 pt-5 dark:border-white/[0.07]">
           <Button asChild variant="secondary" size="sm">
             <Link to="/dashboard/system/lead-control">Open lead control</Link>
-          </Button>
-          <Button asChild variant="secondary" size="sm">
-            <Link to="/dashboard/system/day2-review">Open Day 2 review</Link>
           </Button>
         </div>
       </div>
@@ -723,35 +718,30 @@ export function AdminCommandCenter({ firstName }: Props) {
                   title="Pending registrations"
                   description="Approve or reject newly registered users."
                   icon={<Users className="size-4" />}
-                  badge={pendingRegistrations.data?.total ?? 0}
                 />
                 <DeskShortcut
                   to="/dashboard/team/enrollment-approvals"
                   title="Min. FLP Billing"
                   description="Review minimum FLP billing proofs and keep the funnel moving."
                   icon={<ClipboardCheck className="size-4" />}
-                  badge={enrollmentPending.data?.total ?? 0}
                 />
                 <DeskShortcut
                   to="/dashboard/finance/recharge-admin"
                   title="Recharge requests"
                   description="Approve or reject pending wallet recharges."
                   icon={<Wallet className="size-4" />}
-                  badge={pendingRechargeItems.length}
                 />
                 <DeskShortcut
                   to="/dashboard/team/members"
                   title="Grace requests"
                   description="Review and approve or reject pending grace period requests from team members."
                   icon={<Clock className="size-4" />}
-                  badge={pendingGraceCount}
                 />
                 <DeskShortcut
                   to="/dashboard/system/lead-control"
                   title="Reassignment queue"
                   description="Move stale archived watch leads without changing ownership."
                   icon={<ArrowRightLeft className="size-4" />}
-                  badge={leadControl.data?.queue_total ?? 0}
                 />
               </CardContent>
             </Card>
@@ -965,50 +955,7 @@ export function AdminCommandCenter({ firstName }: Props) {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Day 2 Review Wall</CardTitle>
-                <CardDescription>Recent notes, voice notes, and videos from Day 2 without mixing them into reassignment.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {day2Review.isError ? (
-                  <ErrorState
-                    title="Day 2 review failed"
-                    message={day2Review.error instanceof Error ? day2Review.error.message : 'Please try again.'}
-                    onRetry={() => void day2Review.refetch()}
-                  />
-                ) : (day2Review.data?.submissions ?? []).length === 0 ? (
-                  <EmptyState
-                    title="No Day 2 submissions yet"
-                    description="New uploads will show here as soon as leads submit them."
-                  />
-                ) : (
-                  <div className="space-y-3">
-                    {day2Review.data?.submissions.slice(0, 4).map((submission) => (
-                      <div key={submission.submission_id} className="surface-inset rounded-2xl p-4">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div className="space-y-1">
-                            <p className="font-medium text-foreground">{submission.lead_name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {submission.slot.replace(/_/g, ' ')} · {formatDateTime(submission.submitted_at)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Owner {submission.owner_name} · Assignee {submission.assigned_to_name}
-                            </p>
-                          </div>
-                          <Button asChild size="sm" variant="secondary">
-                            <Link to={`/dashboard/work/leads/${submission.lead_id}`}>Open lead</Link>
-                          </Button>
-                        </div>
-                        {submission.notes_text_preview ? (
-                          <p className="mt-3 text-sm text-foreground/90">{submission.notes_text_preview}</p>
-                        ) : null}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+
           </section>
         </TabsContent>
 
@@ -1298,7 +1245,6 @@ export function AdminCommandCenter({ firstName }: Props) {
                   title="Recharge requests"
                   description="Approve pending wallet deposits."
                   icon={<Wallet className="size-4" />}
-                  badge={pendingRechargeItems.length}
                 />
                 <DeskShortcut
                   to="/dashboard/finance/invoices"
@@ -1373,12 +1319,6 @@ export function AdminCommandCenter({ firstName }: Props) {
               hint="Configured D1/D2 batch watch links."
               to="/dashboard/settings/app"
             />
-            <StatCard
-              label="Day 2 Items"
-              value={day2Review.data?.total ?? 0}
-              hint="Stored Day 2 submissions in the review wall."
-              to="/dashboard/system/day2-review"
-            />
           </section>
 
           <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
@@ -1399,13 +1339,6 @@ export function AdminCommandCenter({ firstName }: Props) {
                   title="Training control"
                   description="Review the admin training program configuration."
                   icon={<GraduationCap className="size-4" />}
-                />
-                <DeskShortcut
-                  to="/dashboard/system/day2-review"
-                  title="Day 2 review"
-                  description="Open the full admin wall for notes, voice notes, and videos."
-                  icon={<Video className="size-4" />}
-                  badge={day2Review.data?.total ?? 0}
                 />
                 <DeskShortcut
                   to="/dashboard/other/live-session"

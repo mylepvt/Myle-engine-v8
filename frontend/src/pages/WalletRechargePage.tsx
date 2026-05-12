@@ -1,4 +1,5 @@
 import { type FormEvent, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -81,6 +82,9 @@ export function WalletRechargePage({ title }: Props) {
 
   return (
     <div className="max-w-2xl space-y-4 md:space-y-6">
+      <Link to="/dashboard/finance/wallet" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        ← Wallet
+      </Link>
       <h1 className="text-ds-h2">{title}</h1>
       <p className="text-sm text-muted-foreground">
         Submit your wallet recharge request below. An admin will review and credit your balance.

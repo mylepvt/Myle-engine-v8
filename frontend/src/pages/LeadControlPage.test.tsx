@@ -113,7 +113,7 @@ describe('LeadControlPage', () => {
     expect(screen.getAllByText('Queued Watch Lead').length).toBeGreaterThan(0)
     expect(screen.getByText('Reassignment Queue')).toBeInTheDocument()
     expect(screen.getByText('Recent Reassignment Log')).toBeInTheDocument()
-    expect(screen.getByText('Day 2 Review')).toBeInTheDocument()
+    expect(screen.getByText(/admin command center/i)).toBeInTheDocument()
     expect(screen.getAllByText('Fresh Team').length).toBeGreaterThan(0)
   })
 
