@@ -14,7 +14,6 @@ import {
   usePatchLeadDetailMutation,
   useResetStageClockMutation,
 } from '@/hooks/use-lead-detail-query'
-import { EnrollmentCard } from '@/components/leads/EnrollmentCard'
 import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LeadNextStepPanel } from '@/components/leads/LeadNextStepPanel'
@@ -740,9 +739,6 @@ export function LeadDetailPage({ leadId }: Props) {
 
           {/* Lead Notes */}
           <LeadNotesPanel leadId={leadId} />
-
-          {/* Enrollment card */}
-          <EnrollmentCard leadId={leadId} />
 
           <div className="surface-elevated p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
