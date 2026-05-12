@@ -19,6 +19,8 @@ export type LeadStatus =
   | 'day1'
   | 'day2'
   | 'day3'
+  | 'day4'
+  | 'day5'
   | 'interview'
   | 'track_selected'
   | 'seat_hold'
@@ -41,6 +43,8 @@ export const LEAD_STATUS_OPTIONS: { value: LeadStatus; label: string }[] = [
   { value: 'mindset_lock',   label: 'Mindset Lock' },
   { value: 'day2',           label: 'Day 2' },
   { value: 'day3',           label: 'Day 3' },
+  { value: 'day4',           label: 'Day 4' },
+  { value: 'day5',           label: 'Day 5' },
   { value: 'interview',      label: 'Interview' },
   { value: 'track_selected', label: 'Track Selected' },
   { value: 'seat_hold',      label: 'Seat Hold' },
@@ -63,6 +67,8 @@ export const PRIMARY_USER_FLOW_STATUSES: LeadStatus[] = [
   'mindset_lock',
   'day2',
   'day3',
+  'day4',
+  'day5',
   'interview',
   'track_selected',
   'seat_hold',
@@ -129,6 +135,8 @@ export type LeadPublic = {
   day1_completed_at: string | null
   day2_completed_at: string | null
   day3_completed_at: string | null
+  day4_completed_at: string | null
+  day5_completed_at: string | null
   d1_morning: boolean
   d1_afternoon: boolean
   d1_evening: boolean
@@ -138,6 +146,12 @@ export type LeadPublic = {
   d3_morning: boolean
   d3_afternoon: boolean
   d3_evening: boolean
+  d4_morning: boolean
+  d4_afternoon: boolean
+  d4_evening: boolean
+  d5_morning: boolean
+  d5_afternoon: boolean
+  d5_evening: boolean
   process_tracking?: Record<string, Record<string, boolean>> | null
   no_response_attempt_count: number
   /** Call-to-close (optional until backend touched / migration). */
@@ -301,6 +315,12 @@ export type PatchLeadBody = {
   d3_morning?: boolean
   d3_afternoon?: boolean
   d3_evening?: boolean
+  d4_morning?: boolean
+  d4_afternoon?: boolean
+  d4_evening?: boolean
+  d5_morning?: boolean
+  d5_afternoon?: boolean
+  d5_evening?: boolean
   process_stage?: string
   process_task?: string
   process_task_done?: boolean

@@ -148,6 +148,16 @@ def _sync_batch_completion_timestamps(lead: Lead, now: datetime) -> None:
             lead.day2_completed_at = now
     else:
         lead.day2_completed_at = None
+    if lead.d4_morning and lead.d4_afternoon and lead.d4_evening:
+        if lead.day4_completed_at is None:
+            lead.day4_completed_at = now
+    else:
+        lead.day4_completed_at = None
+    if lead.d5_morning and lead.d5_afternoon and lead.d5_evening:
+        if lead.day5_completed_at is None:
+            lead.day5_completed_at = now
+    else:
+        lead.day5_completed_at = None
 
 
 def _apply_status_side_effects(

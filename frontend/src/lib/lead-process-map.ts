@@ -50,13 +50,37 @@ export const PROCESS_STAGE_DEFS: Record<string, ProcessStageDef> = {
     status: 'day3',
     title: 'Day 3',
     helper: 'Morning → testimony → follow-up → 3rd party → closing mindset → send live session → Min. FLP billing.',
-    nextStatus: 'interview',
-    nextLabel: 'Push to Day 6',
+    nextStatus: 'day4',
+    nextLabel: 'Push to Day 4',
     tasks: [
       { key: 'testimony_videos', label: 'Testimony Videos' },
       { key: 'morning_follow_up', label: 'Follow-up' },
       { key: 'third_party_session', label: '3rd Party' },
       { key: 'closing_environment_build_up', label: 'Closing Environment Build-up' },
+    ],
+  },
+  day4: {
+    status: 'day4',
+    title: 'Day 4',
+    helper: 'Morning → Afternoon → Evening batch videos. All 3 batches done to push to Day 5.',
+    nextStatus: 'day5',
+    nextLabel: 'Push to Day 5',
+    tasks: [
+      { key: 'batch_morning', label: 'Morning Batch Video', kind: 'share_video' },
+      { key: 'batch_afternoon', label: 'Afternoon Batch Video', kind: 'share_video' },
+      { key: 'batch_evening', label: 'Evening Batch Video', kind: 'share_video' },
+    ],
+  },
+  day5: {
+    status: 'day5',
+    title: 'Day 5',
+    helper: 'Morning → Afternoon → Evening batch videos. All 3 batches done to push to Day 6.',
+    nextStatus: 'interview',
+    nextLabel: 'Push to Day 6',
+    tasks: [
+      { key: 'batch_morning', label: 'Morning Batch Video', kind: 'share_video' },
+      { key: 'batch_afternoon', label: 'Afternoon Batch Video', kind: 'share_video' },
+      { key: 'batch_evening', label: 'Evening Batch Video', kind: 'share_video' },
     ],
   },
   interview: {
@@ -115,6 +139,8 @@ export const PROCESS_STAGE_DEFS: Record<string, ProcessStageDef> = {
 export const PROCESS_STAGE_ORDER = [
   'day2',
   'day3',
+  'day4',
+  'day5',
   'interview',
   'plan_2cc',
   'pending',

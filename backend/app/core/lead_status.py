@@ -39,6 +39,8 @@ TEAM_FORBIDDEN_STATUS_SLUGS: frozenset[str] = frozenset(
     {
         "day2",
         "day3",
+        "day4",
+        "day5",
         "interview",
         "track_selected",
         "seat_hold",
@@ -63,6 +65,8 @@ LEAD_STATUS_LABELS: dict[str, str] = {
     "day1":           "Day 1",
     "day2":           "Day 2",
     "day3":           "Day 3",
+    "day4":           "Day 4",
+    "day5":           "Day 5",
     "interview":      "Interview",
     "track_selected": "Track Selected",
     "seat_hold":      "Seat Hold",
