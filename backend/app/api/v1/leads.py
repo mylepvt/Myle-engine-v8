@@ -68,6 +68,12 @@ _BATCH_SLOTS = frozenset(
         "d3_morning",
         "d3_afternoon",
         "d3_evening",
+        "d4_morning",
+        "d4_afternoon",
+        "d4_evening",
+        "d5_morning",
+        "d5_afternoon",
+        "d5_evening",
     }
 )
 _YOUTUBE_ID_RE = re.compile(
@@ -138,6 +144,10 @@ def _batch_day_number(slot: str) -> int:
         return 2
     if slot.startswith("d3_"):
         return 3
+    if slot.startswith("d4_"):
+        return 4
+    if slot.startswith("d5_"):
+        return 5
     raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Invalid slot")
 
 
