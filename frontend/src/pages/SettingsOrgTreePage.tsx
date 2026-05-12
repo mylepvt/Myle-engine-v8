@@ -977,7 +977,7 @@ export function SettingsOrgTreePage({ title }: Props) {
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:w-[32rem]">
+          <div className="grid gap-3 sm:grid-cols-2 xl:max-w-[32rem]">
             <MetricTile
               label="People mapped"
               value={totalMembers}
@@ -1099,7 +1099,7 @@ export function SettingsOrgTreePage({ title }: Props) {
       ) : null}
 
       {!isPending && !isError ? (
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_22rem]">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(16rem,22rem)]">
           <div className="space-y-5">
             {view === 'tree' ? (
               <div className="surface-elevated relative overflow-hidden p-4 md:p-5">

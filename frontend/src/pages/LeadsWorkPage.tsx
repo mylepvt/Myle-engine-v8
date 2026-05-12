@@ -341,7 +341,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
     <>
       <div className="mx-auto max-w-6xl">
         <div className="mx-auto min-h-[50dvh] max-w-[430px] bg-background pb-8 text-foreground transition-colors md:max-w-[480px]">
-        <div className="border-b border-border/60 bg-card/55 px-4 pb-2 pt-2 supports-[backdrop-filter]:bg-card/40">
+        <div className="border-b border-border/60 bg-card/55 overflow-x-hidden px-4 pb-2 pt-2 supports-[backdrop-filter]:bg-card/40">
           <div className="flex flex-wrap items-center gap-2">
             <div className="surface-inset flex h-9 min-w-0 basis-full items-center gap-1.5 rounded-lg px-2.5 min-[360px]:basis-0 min-[360px]:flex-1">
               <Search className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />

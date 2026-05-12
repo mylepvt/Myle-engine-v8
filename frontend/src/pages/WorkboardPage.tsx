@@ -1239,7 +1239,7 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance
           />
         </div>
       ) : active?.id === 'closing' ? (
-        <div className="space-y-6">
+    <div className="min-w-0 max-w-full space-y-6 overflow-x-hidden">
           {CLOSE.map((s) => {
             const items = f([s])
             const badge = BADGE[s] ?? ''

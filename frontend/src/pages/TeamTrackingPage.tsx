@@ -510,7 +510,7 @@ export function TeamTrackingPage({ title }: Props) {
       </Card>
 
       <Card className="space-y-4 px-4 py-4">
-        <div className="grid gap-3 xl:grid-cols-[minmax(18rem,1.25fr)_12rem]">
+        <div className="grid gap-3 xl:grid-cols-[minmax(18rem,1.25fr)_minmax(8rem,12rem)]">
           <ListSearchInput
             value={searchQuery}
             onValueChange={(value) => updateParam(params, setParams, 'q', value)}

@@ -168,7 +168,7 @@ export function FollowUpsWorkPage({ title }: Props) {
                   key={f.id}
                   className="surface-inset px-3 py-2 text-muted-foreground"
                 >
-                  <p className="font-medium text-foreground">{f.note}</p>
+                  <p className="min-w-0 break-words font-medium text-foreground">{f.note}</p>
                   <p className="mt-1 text-xs">
                     {f.lead_name} · #{f.lead_id}
                     {f.due_at ? ` · due ${new Date(f.due_at).toLocaleString()}` : ''}

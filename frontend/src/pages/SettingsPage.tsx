@@ -56,9 +56,9 @@ function BatchLinkInput({ label, settingsKey, value, onSave }: {
   return (
     <div className="space-y-1">
       <Label className="text-ds-caption text-muted-foreground">{label}</Label>
-      <div className="flex gap-1.5">
+      <div className="flex min-w-0 gap-1.5">
         <Input value={draft} onChange={(e) => setDraft(e.target.value)}
-          placeholder="YouTube URL" className="text-xs" />
+          placeholder="YouTube URL" className="min-w-0 flex-1 text-xs" />
         <Button size="sm" variant="outline" onClick={handleSave}
           disabled={saving || draft === value} className="shrink-0">
           {saving ? '...' : 'Save'}
@@ -195,7 +195,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="max-w-5xl space-y-6">
+    <div className="max-w-5xl space-y-6 overflow-x-hidden">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -665,16 +665,18 @@ export default function SettingsPage() {
                 {/* Add New Setting */}
                 <div className="space-y-4">
                   <h4 className="font-medium">Add New Setting</h4>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <Input
                       placeholder="Key"
                       value={newSetting.key}
                       onChange={(e) => { setNewSetting(prev => ({ ...prev, key: e.target.value })); setSettingError(null) }}
+                      className="min-w-0 flex-1"
                     />
                     <Input
                       placeholder="Value"
                       value={newSetting.value}
                       onChange={(e) => { setNewSetting(prev => ({ ...prev, value: e.target.value })); setSettingError(null) }}
+                      className="min-w-0 flex-1"
                     />
                     <Button onClick={handleAppSettingUpdate} disabled={updateAppSetting.isPending}>
                       Add
@@ -691,10 +693,10 @@ export default function SettingsPage() {
                     <h4 className="font-medium">Current Settings</h4>
                     <div className="space-y-2">
                       {Object.entries(appSettings.data.settings).map(([key, value]) => (
-                        <div key={key} className="flex items-center justify-between p-2 border rounded">
-                          <div>
+                        <div key={key} className="flex items-center justify-between gap-2 overflow-hidden rounded p-2 border">
+                          <div className="min-w-0">
                             <div className="font-medium">{key}</div>
-                            <div className="text-sm text-gray-600">{String(value)}</div>
+                            <div className="min-w-0 truncate text-sm text-gray-600">{String(value)}</div>
                           </div>
                           <div className="flex items-center gap-2">
                             {deleteConfirmKey === key ? (
