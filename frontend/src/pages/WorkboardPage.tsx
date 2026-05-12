@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Check, CheckSquare, Eye, Pencil, Search, Send, Video } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -504,6 +504,7 @@ function ProcessChecklistSection({
   leadPatchBusy,
   onMoveNext,
   nextLabel,
+  taskKeys,
 }: {
   lead: LeadPublic
   stage: string
@@ -511,6 +512,7 @@ function ProcessChecklistSection({
   leadPatchBusy: boolean
   onMoveNext?: () => void
   nextLabel?: string
+  taskKeys?: string[]
 }) {
   const qc = useQueryClient()
   const [busyTask, setBusyTask] = useState<string | null>(null)
@@ -556,16 +558,21 @@ function ProcessChecklistSection({
     }
   }
 
-  const allDone = stageChecklistComplete(lead, stage)
+  const displayTasks = taskKeys ? def.tasks.filter((t) => taskKeys.includes(t.key)) : def.tasks
+  const allDone = taskKeys
+    ? displayTasks.every((t) => processTaskDone(lead, stage, t.key))
+    : stageChecklistComplete(lead, stage)
 
   return (
     <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 p-3">
-      <div className="space-y-1">
-        <p className="text-ds-caption font-semibold uppercase tracking-wide text-muted-foreground">{def.title}</p>
-        <p className="text-ds-caption text-muted-foreground">{def.helper}</p>
-      </div>
+      {!taskKeys && (
+        <div className="space-y-1">
+          <p className="text-ds-caption font-semibold uppercase tracking-wide text-muted-foreground">{def.title}</p>
+          <p className="text-ds-caption text-muted-foreground">{def.helper}</p>
+        </div>
+      )}
       <div className="space-y-1.5">
-        {def.tasks.map((task) => {
+        {displayTasks.map((task) => {
           const done = processTaskDone(lead, stage, task.key)
           const busy = busyTask === task.key
           return (
@@ -830,28 +837,94 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     )
   }
 
-  // day2/day3: single "Send Live" button (same picker as calling board) + checklist
+  // day2: Send Live button + checklist
+  if (stageKey === 'day2') {
+    return (
+      <div className="space-y-1.5">
+        <div className="border-t border-border/40 pt-1.5 space-y-1.5">
+          <button type="button"
+            disabled={leadPatchBusy || pickerBusy}
+            onClick={() => setPickerOpen(true)}
+            className="flex h-10 w-full items-center justify-center gap-1.5 rounded-md border border-indigo-400/40 bg-indigo-400/10 px-3 text-ds-caption font-semibold text-indigo-300 transition hover:bg-indigo-400/20 disabled:opacity-50">
+            <Video className="h-3.5 w-3.5" />
+            {pickerBusy ? 'Sending...' : `Send Day ${dayKey} Live Session`}
+          </button>
+          {batchError ? <p className="text-ds-caption text-destructive">{batchError}</p> : null}
+        </div>
+        <ProcessChecklistSection
+          lead={lead}
+          stage={stageKey}
+          pm={pm}
+          leadPatchBusy={leadPatchBusy}
+          onMoveNext={onMoveNext}
+          nextLabel={nextLabel}
+        />
+        <LiveSessionSlotPicker open={pickerOpen} busy={pickerBusy} day={dayKey}
+          onClose={() => setPickerOpen(false)}
+          onConfirm={(option) => void handlePickerConfirm(option)} />
+      </div>
+    )
+  }
+
+  // day3: top tasks → Send Live → FLP billing with upload
+  const day3TopKeys = ['testimony_videos', 'morning_follow_up', 'third_party_session', 'closing_environment_build_up']
+  const day3FlpKeys = ['payment_collected', 'proof_upload', 'approval']
+  const [uploadBusy, setUploadBusy] = useState(false)
+  const [uploadErr, setUploadErr] = useState<string | null>(null)
+
+  async function handleProofUpload(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadBusy(true)
+    setUploadErr(null)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('lead_id', String(lead.id))
+      formData.append('amount_cents', '150000')
+      const res = await apiFetch('/api/v1/proof/upload', { method: 'POST', body: formData })
+      if (!res.ok) throw new Error('Upload failed')
+      await pm.mutateAsync({ id: lead.id, body: { process_stage: stageKey, process_task: 'proof_upload', process_task_done: true } })
+      await qc.refetchQueries({ queryKey: ['workboard'] })
+    } catch (err) {
+      setUploadErr(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setUploadBusy(false)
+    }
+  }
+
   return (
     <div className="space-y-1.5">
+      <ProcessChecklistSection
+        lead={lead} stage={stageKey} pm={pm} leadPatchBusy={leadPatchBusy}
+        taskKeys={day3TopKeys}
+      />
       <div className="border-t border-border/40 pt-1.5 space-y-1.5">
         <button type="button"
           disabled={leadPatchBusy || pickerBusy}
           onClick={() => setPickerOpen(true)}
           className="flex h-10 w-full items-center justify-center gap-1.5 rounded-md border border-indigo-400/40 bg-indigo-400/10 px-3 text-ds-caption font-semibold text-indigo-300 transition hover:bg-indigo-400/20 disabled:opacity-50">
           <Video className="h-3.5 w-3.5" />
-          {pickerBusy ? 'Sending...' : `Send Day ${dayKey} Live Session`}
+          {pickerBusy ? 'Sending...' : 'Send Day 3 Live Session'}
         </button>
         {batchError ? <p className="text-ds-caption text-destructive">{batchError}</p> : null}
       </div>
-      <ProcessChecklistSection
-        lead={lead}
-        stage={stageKey}
-        pm={pm}
-        leadPatchBusy={leadPatchBusy}
-        onMoveNext={onMoveNext}
-        nextLabel={nextLabel}
-      />
-      <LiveSessionSlotPicker open={pickerOpen} busy={pickerBusy} day={dayKey}
+      <div className="space-y-2 rounded-xl border border-amber-400/30 bg-amber-400/[0.05] p-3">
+        <p className="text-ds-caption font-semibold uppercase tracking-wide text-muted-foreground">Min. FLP Billing</p>
+        <p className="text-ds-caption text-muted-foreground">₹1500 payment — upload proof for admin approval.</p>
+        <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-amber-400/40 bg-amber-400/[0.06] px-3 py-3 text-ds-caption font-semibold text-amber-300 transition hover:bg-amber-400/[0.12]">
+          <input type="file" accept="image/*,.pdf" onChange={handleProofUpload} disabled={uploadBusy} className="sr-only" />
+          {uploadBusy ? 'Uploading...' : '📷 Upload Payment Proof'}
+        </label>
+        {uploadErr ? <p className="text-ds-caption text-destructive">{uploadErr}</p> : null}
+        <ProcessChecklistSection
+          lead={lead} stage={stageKey} pm={pm} leadPatchBusy={leadPatchBusy}
+          taskKeys={day3FlpKeys}
+          onMoveNext={onMoveNext}
+          nextLabel={nextLabel}
+        />
+      </div>
+      <LiveSessionSlotPicker open={pickerOpen} busy={pickerBusy} day={3}
         onClose={() => setPickerOpen(false)}
         onConfirm={(option) => void handlePickerConfirm(option)} />
     </div>
