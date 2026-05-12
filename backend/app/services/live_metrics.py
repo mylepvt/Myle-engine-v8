@@ -41,7 +41,7 @@ def _fresh_call_gate_clause(
 ):
     claimed_today = exists(
         select(1).where(
-            ActivityLog.action == "lead.claimed",
+            ActivityLog.action.in_(["lead.claimed", "lead.claimed_free"]),
             ActivityLog.entity_type == "lead",
             ActivityLog.entity_id == CallEvent.lead_id,
             ActivityLog.user_id == CallEvent.user_id,
@@ -163,7 +163,7 @@ async def fresh_lead_counts_by_user(
         )
         .where(
             ActivityLog.user_id.in_(ids),
-            ActivityLog.action == "lead.claimed",
+            ActivityLog.action.in_(["lead.claimed", "lead.claimed_free"]),
             ActivityLog.entity_type == "lead",
             ActivityLog.created_at >= start,
             ActivityLog.created_at < end,
