@@ -39,6 +39,8 @@ TEAM_FORBIDDEN_STATUS_SLUGS: frozenset[str] = frozenset(
     {
         "day2",
         "day3",
+        "day4",
+        "day5",
         "interview",
         "track_selected",
         "seat_hold",

@@ -5,6 +5,8 @@ const TEAM_FORBIDDEN: ReadonlySet<LeadStatus> = new Set([
   'day1',
   'day2',
   'day3',
+  'day4',
+  'day5',
   'interview',
   'track_selected',
   'seat_hold',
