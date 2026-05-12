@@ -66,6 +66,7 @@ type WorkboardStageKey =
   | 'day1'
   | 'day2'
   | 'day3'
+  | 'paid'
   | 'interview'
   | 'track_selected'
   | 'seat_hold'
@@ -83,7 +84,8 @@ const ADMIN_STAGE_TABS: {
   nextLabel?: string
 }[] = [
   { id: 'day2', label: 'Day 2', statuses: ['day2'], stageKey: 'day2', nextStatus: 'day3', nextLabel: 'Push to Day 3' },
-  { id: 'day3', label: 'Day 3', statuses: ['day3'], stageKey: 'day3', nextStatus: 'interview', nextLabel: 'Push to Day 4' },
+  { id: 'day3', label: 'Day 3', statuses: ['day3'], stageKey: 'day3', nextStatus: 'paid', nextLabel: 'Push to Min. FLP' },
+  { id: 'paid', label: 'Min. FLP', statuses: ['paid'], stageKey: 'paid', nextStatus: 'interview', nextLabel: 'Push to Day 4' },
   { id: 'interview', label: 'Day 4', statuses: ['interview'], stageKey: 'interview', nextStatus: 'track_selected', nextLabel: 'Push to Day 5' },
   { id: 'track_selected', label: 'Day 5', statuses: ['track_selected'], stageKey: 'track_selected', nextStatus: 'seat_hold', nextLabel: 'Push to Day 6' },
   { id: 'seat_hold', label: 'Day 6', statuses: ['seat_hold'], stageKey: 'seat_hold', nextStatus: 'plan_2cc', nextLabel: 'Push to Pending Process' },
