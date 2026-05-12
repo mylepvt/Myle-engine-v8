@@ -48,10 +48,10 @@ export const PROCESS_STAGE_DEFS: Record<string, ProcessStageDef> = {
   },
   day3: {
     status: 'day3',
-    title: 'Before Day 3',
-    helper: 'Morning warm-up and hype sequence before the Day 3 close.',
-    nextStatus: 'interview',
-    nextLabel: 'Push to Day 3 Closing',
+    title: 'Day 3',
+    helper: 'Morning testimony → follow-up → 3rd party sessions → closing mindset → send Day 3 live session → then Min. FLP billing.',
+    nextStatus: 'paid',
+    nextLabel: 'Push to Min. FLP',
     tasks: [
       { key: 'testimony_videos', label: 'Testimony Videos' },
       { key: 'morning_follow_up', label: 'Follow-up' },
@@ -60,12 +60,24 @@ export const PROCESS_STAGE_DEFS: Record<string, ProcessStageDef> = {
       { key: 'closing_environment_build_up', label: 'Closing Environment Build-up' },
     ],
   },
+  paid: {
+    status: 'paid',
+    title: 'Min. FLP Billing',
+    helper: 'Collect ₹1500 payment from lead. Upload proof and approve to unlock next stage.',
+    nextStatus: 'interview',
+    nextLabel: 'Push to Day 6',
+    tasks: [
+      { key: 'payment_collected', label: '₹1500 Payment Collected' },
+      { key: 'proof_upload', label: 'Upload Payment Proof' },
+      { key: 'approval', label: 'Admin Approval' },
+    ],
+  },
   interview: {
     status: 'interview',
-    title: 'Day 3 Closing',
-    helper: 'Leader closes the Day 3 conversion push and records the immediate closing follow-up.',
+    title: 'Day 6 Closing',
+    helper: 'Leader closes the Day 6 conversion push and records the immediate closing follow-up.',
     nextStatus: 'track_selected',
-    nextLabel: 'Push to Day 4',
+    nextLabel: 'Push to Day 5',
     tasks: [
       { key: 'closing_1500', label: '₹1500 Closing' },
       { key: 'follow_up_closing', label: 'Follow-up Closing' },
@@ -151,6 +163,7 @@ export const PROCESS_STAGE_DEFS: Record<string, ProcessStageDef> = {
 export const PROCESS_STAGE_ORDER = [
   'day2',
   'day3',
+  'paid',
   'interview',
   'track_selected',
   'seat_hold',
