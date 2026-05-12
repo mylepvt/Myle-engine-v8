@@ -61,11 +61,13 @@ const BADGE: Record<string, string> = {
 }
 const CLOSE:  LeadStatus[] = ['converted','lost']
 const MIN_MINDSET_SECONDS = 300
-type BatchSlotKey = 'd1_morning' | 'd1_afternoon' | 'd1_evening' | 'd2_morning' | 'd2_afternoon' | 'd2_evening' | 'd3_morning' | 'd3_afternoon' | 'd3_evening'
+type BatchSlotKey = 'd1_morning' | 'd1_afternoon' | 'd1_evening' | 'd2_morning' | 'd2_afternoon' | 'd2_evening' | 'd3_morning' | 'd3_afternoon' | 'd3_evening' | 'd4_morning' | 'd4_afternoon' | 'd4_evening' | 'd5_morning' | 'd5_afternoon' | 'd5_evening'
 type WorkboardStageKey =
   | 'day1'
   | 'day2'
   | 'day3'
+  | 'day4'
+  | 'day5'
   | 'interview'
   | 'plan_2cc'
   | 'pending'
@@ -81,9 +83,9 @@ const ADMIN_STAGE_TABS: {
   nextLabel?: string
 }[] = [
   { id: 'day2', label: 'Day 2', statuses: ['day2'], stageKey: 'day2', nextStatus: 'day3', nextLabel: 'Push to Day 3' },
-  { id: 'day3', label: 'Day 3', statuses: ['day3'], stageKey: 'day3', nextStatus: 'interview', nextLabel: 'Push to Day 6' },
-  { id: 'track_selected', label: 'Day 4', statuses: [] },
-  { id: 'seat_hold', label: 'Day 5', statuses: [] },
+  { id: 'day3', label: 'Day 3', statuses: ['day3'], stageKey: 'day3', nextStatus: 'day4', nextLabel: 'Push to Day 4' },
+  { id: 'day4', label: 'Day 4', statuses: ['day4'], stageKey: 'day4', nextStatus: 'day5', nextLabel: 'Push to Day 5' },
+  { id: 'day5', label: 'Day 5', statuses: ['day5'], stageKey: 'day5', nextStatus: 'interview', nextLabel: 'Push to Day 6' },
   { id: 'interview', label: 'Day 6', statuses: ['interview'], stageKey: 'interview', nextStatus: 'plan_2cc', nextLabel: 'Push to Pending Process' },
   { id: 'plan_2cc', label: '2CC Plan', statuses: ['plan_2cc'], stageKey: 'plan_2cc', nextStatus: 'pending', nextLabel: 'Push to Next 3 Days' },
   { id: 'pending', label: 'Next 3 Days', statuses: ['pending'], stageKey: 'pending', nextStatus: 'level_up', nextLabel: 'Push to Final Stage' },
@@ -106,7 +108,7 @@ const SLOT_TIME_LABEL: Record<'M' | 'A' | 'E', string> = { M: '5pm', A: '6pm', E
 
 function workboardBatchWhatsAppUrl(
   lead: LeadPublic,
-  dayKey: 1 | 2 | 3,
+  dayKey: 1 | 2 | 3 | 4 | 5,
   slot: 'M' | 'A' | 'E',
   links?: { v1?: string; v2?: string },
 ): string | null {
@@ -679,13 +681,17 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerBusy, setPickerBusy] = useState(false)
 
-  const hasBatchSlots = stageKey === 'day1' || stageKey === 'day2' || stageKey === 'day3'
-  const dayKey = stageKey === 'day3' ? 3 : stageKey === 'day2' ? 2 : 1
+  const hasBatchSlots = stageKey === 'day1' || stageKey === 'day2' || stageKey === 'day3' || stageKey === 'day4' || stageKey === 'day5'
+  const dayKey = stageKey === 'day5' ? 5 : stageKey === 'day4' ? 4 : stageKey === 'day3' ? 3 : stageKey === 'day2' ? 2 : 1
   const batchSlots: readonly BatchSlotKey[] =
-    stageKey === 'day2'
-      ? (['d2_morning', 'd2_afternoon', 'd2_evening'] as const)
+    stageKey === 'day5'
+      ? (['d5_morning', 'd5_afternoon', 'd5_evening'] as const)
+      : stageKey === 'day4'
+      ? (['d4_morning', 'd4_afternoon', 'd4_evening'] as const)
       : stageKey === 'day3'
       ? (['d3_morning', 'd3_afternoon', 'd3_evening'] as const)
+      : stageKey === 'day2'
+      ? (['d2_morning', 'd2_afternoon', 'd2_evening'] as const)
       : (['d1_morning', 'd1_afternoon', 'd1_evening'] as const)
 
   const allSlotsDone = hasBatchSlots && batchSlots.every((k) => lead[k])
@@ -731,7 +737,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
 
   // day1-evening + day2/day3-all: live session slot picker → WhatsApp premiere link
   const slotKeyForHour = (hour: number): BatchSlotKey | null => {
-    const p = stageKey === 'day3' ? 'd3' : stageKey === 'day2' ? 'd2' : 'd1'
+    const p = stageKey === 'day5' ? 'd5' : stageKey === 'day4' ? 'd4' : stageKey === 'day3' ? 'd3' : stageKey === 'day2' ? 'd2' : 'd1'
     if (hour === 17) return `${p}_morning` as BatchSlotKey
     if (hour === 18) return `${p}_afternoon` as BatchSlotKey
     if (hour === 19) return `${p}_evening` as BatchSlotKey
@@ -742,7 +748,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     setPickerBusy(true)
     setBatchError(null)
     try {
-      // day1 evening sends day2 premiere; day2/day3 send their own day premiere
+      // day1 evening sends day2 premiere; other days send their own day premiere
       const targetDay = stageKey === 'day1' ? 2 : dayKey
       const shareUrl = buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option, targetDay)
       if (!shareUrl || !openExternalShareUrl(shareUrl)) {
@@ -777,8 +783,8 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
 
   const slotTimeLabels = (['5pm', '6pm', '7pm'] as const)
 
-  // day1: all three slots (5pm/6pm/7pm) send tokenized batch links
-  if (stageKey === 'day1') {
+  // day1, day4, day5: all three slots (5pm/6pm/7pm) send tokenized batch links
+  if (stageKey === 'day1' || stageKey === 'day4' || stageKey === 'day5') {
     return (
       <div className="space-y-1.5">
         <div className="space-y-1.5 border-t border-border/40 pt-1.5">

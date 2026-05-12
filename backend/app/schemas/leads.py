@@ -78,6 +78,8 @@ class LeadPublic(BaseModel):
     day1_completed_at: Optional[datetime] = None
     day2_completed_at: Optional[datetime] = None
     day3_completed_at: Optional[datetime] = None
+    day4_completed_at: Optional[datetime] = None
+    day5_completed_at: Optional[datetime] = None
 
     # Batch slots (M/A/E)
     d1_morning: bool = False
@@ -89,6 +91,12 @@ class LeadPublic(BaseModel):
     d3_morning: bool = False
     d3_afternoon: bool = False
     d3_evening: bool = False
+    d4_morning: bool = False
+    d4_afternoon: bool = False
+    d4_evening: bool = False
+    d5_morning: bool = False
+    d5_afternoon: bool = False
+    d5_evening: bool = False
     process_tracking: Optional[dict[str, dict[str, bool]]] = None
     no_response_attempt_count: int = 0
 
@@ -237,6 +245,12 @@ class LeadUpdate(BaseModel):
     d3_morning: Optional[bool] = Field(default=None, description="Day 3 morning batch")
     d3_afternoon: Optional[bool] = Field(default=None, description="Day 3 afternoon batch")
     d3_evening: Optional[bool] = Field(default=None, description="Day 3 evening batch")
+    d4_morning: Optional[bool] = Field(default=None, description="Day 4 morning batch")
+    d4_afternoon: Optional[bool] = Field(default=None, description="Day 4 afternoon batch")
+    d4_evening: Optional[bool] = Field(default=None, description="Day 4 evening batch")
+    d5_morning: Optional[bool] = Field(default=None, description="Day 5 morning batch")
+    d5_afternoon: Optional[bool] = Field(default=None, description="Day 5 afternoon batch")
+    d5_evening: Optional[bool] = Field(default=None, description="Day 5 evening batch")
     process_stage: Optional[str] = Field(default=None, max_length=64)
     process_task: Optional[str] = Field(default=None, max_length=128)
     process_task_done: Optional[bool] = Field(default=None)
@@ -349,6 +363,12 @@ BatchSlot = Literal[
     "d3_morning",
     "d3_afternoon",
     "d3_evening",
+    "d4_morning",
+    "d4_afternoon",
+    "d4_evening",
+    "d5_morning",
+    "d5_afternoon",
+    "d5_evening",
 ]
 
 

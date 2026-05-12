@@ -147,6 +147,14 @@ class Lead(Base):
         DateTime(timezone=True),
         nullable=True,
     )
+    day4_completed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    day5_completed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
     # Workboard batch slots (M/A/E per day — leader/admin Day 1; team Day 2 per blueprint)
     d1_morning: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
@@ -158,6 +166,12 @@ class Lead(Base):
     d3_morning: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     d3_afternoon: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     d3_evening: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    d4_morning: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    d4_afternoon: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    d4_evening: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    d5_morning: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    d5_afternoon: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    d5_evening: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     process_tracking: Mapped[Optional[dict[str, Any]]] = mapped_column(
         _ProcessJSON,
         nullable=True,
