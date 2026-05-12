@@ -37,6 +37,37 @@ import { type Role } from '@/types/role'
 import { cn } from '@/lib/utils'
 import { apiUrl } from '@/lib/api'
 
+function BatchLinkInput({ label, settingsKey, value, onSave }: {
+  label: string
+  settingsKey: string
+  value: string
+  onSave: (val: string) => void
+}) {
+  const [draft, setDraft] = useState(value)
+  const [saving, setSaving] = useState(false)
+  useEffect(() => setDraft(value), [value])
+  const handleSave = async () => {
+    if (draft === value) return
+    setSaving(true)
+    onSave(draft)
+    await new Promise((r) => setTimeout(r, 100))
+    setSaving(false)
+  }
+  return (
+    <div className="space-y-1">
+      <Label className="text-ds-caption text-muted-foreground">{label}</Label>
+      <div className="flex gap-1.5">
+        <Input value={draft} onChange={(e) => setDraft(e.target.value)}
+          placeholder="YouTube URL" className="text-xs" />
+        <Button size="sm" variant="outline" onClick={handleSave}
+          disabled={saving || draft === value} className="shrink-0">
+          {saving ? '...' : 'Save'}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile')
   const { data: authData } = useAuthMeQuery()
@@ -703,6 +734,43 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Day 4 & Day 5 Batch Links */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center">
+                  <Database className="w-5 h-5 mr-2" />
+                  Day 4 & Day 5 Batch Video Links
+                </CardTitle>
+                <CardDescription>
+                  YouTube video URLs for Day 4 and Day 5 MAE batches. Each slot needs v1 (required) and v2 (optional).
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {(['d4', 'd5'] as const).map((day) => (
+                  <div key={day} className="space-y-4">
+                    <h4 className="font-semibold text-foreground">Day {day === 'd4' ? 4 : 5}</h4>
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      {(['morning', 'afternoon', 'evening'] as const).map((slot) => {
+                        const v1Key = `batch_${day}_${slot}_v1`
+                        const v2Key = `batch_${day}_${slot}_v2`
+                        const v1Val = appSettings.data?.settings?.[v1Key] ?? ''
+                        const v2Val = appSettings.data?.settings?.[v2Key] ?? ''
+                        return (
+                          <div key={slot} className="space-y-2 rounded-lg border border-border/60 p-3">
+                            <p className="text-sm font-medium capitalize text-foreground">{slot}</p>
+                            <BatchLinkInput label="Video 1" settingsKey={v1Key}
+                              value={v1Val} onSave={(val) => updateAppSetting.mutate({ key: v1Key, value: val })} />
+                            <BatchLinkInput label="Video 2 (optional)" settingsKey={v2Key}
+                              value={v2Val} onSave={(val) => updateAppSetting.mutate({ key: v2Key, value: val })} />
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           </TabsContent>
