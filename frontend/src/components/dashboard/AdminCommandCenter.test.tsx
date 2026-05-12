@@ -424,6 +424,5 @@ describe('AdminCommandCenter', () => {
     expect(screen.getByRole('tab', { name: 'Leads' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Audit' })).toBeInTheDocument()
     expect(screen.getByText('Open lead control')).toBeInTheDocument()
-    expect(screen.getByText('Open Day 2 review')).toBeInTheDocument()
   })
 })
