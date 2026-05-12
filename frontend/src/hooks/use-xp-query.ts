@@ -1,5 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { apiFetch } from '@/lib/api'
+import { messageFromApiErrorPayload } from '@/lib/http-error-message'
+import { useToastStore } from '@/stores/toast-store'
 
 export type XpMe = {
   xp_total: number
@@ -42,7 +44,13 @@ export function useXpMeQuery() {
     queryKey: ['xp', 'me'],
     queryFn: async () => {
       const res = await apiFetch('/api/v1/xp/me')
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      if (!res.ok) {
+        const text = await res.text()
+        let body: unknown = null
+        try { body = JSON.parse(text) } catch { /* parse error */ }
+        const msg = messageFromApiErrorPayload(body, `HTTP ${res.status}`)
+        throw new Error(msg)
+      }
       return res.json()
     },
     staleTime: 60_000,
@@ -54,7 +62,13 @@ export function useXpLeaderboardQuery() {
     queryKey: ['xp', 'leaderboard'],
     queryFn: async () => {
       const res = await apiFetch('/api/v1/xp/leaderboard')
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      if (!res.ok) {
+        const text = await res.text()
+        let body: unknown = null
+        try { body = JSON.parse(text) } catch { /* parse error */ }
+        const msg = messageFromApiErrorPayload(body, `HTTP ${res.status}`)
+        throw new Error(msg)
+      }
       return res.json()
     },
     staleTime: 30_000,
@@ -66,7 +80,13 @@ export function useXpHistoryQuery() {
     queryKey: ['xp', 'history'],
     queryFn: async () => {
       const res = await apiFetch('/api/v1/xp/me/history')
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      if (!res.ok) {
+        const text = await res.text()
+        let body: unknown = null
+        try { body = JSON.parse(text) } catch { /* parse error */ }
+        const msg = messageFromApiErrorPayload(body, `HTTP ${res.status}`)
+        throw new Error(msg)
+      }
       return res.json()
     },
     staleTime: 300_000,
@@ -77,8 +97,17 @@ export function usePingLoginMutation() {
   return useMutation({
     mutationFn: async () => {
       const res = await apiFetch('/api/v1/xp/ping-login', { method: 'POST' })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      if (!res.ok) {
+        const text = await res.text()
+        let body: unknown = null
+        try { body = JSON.parse(text) } catch { /* parse error */ }
+        const msg = messageFromApiErrorPayload(body, `HTTP ${res.status}`)
+        throw new Error(msg)
+      }
       return res.json()
+    },
+    onError: (error) => {
+      useToastStore.getState().addToast({ type: 'error', message: error instanceof Error ? error.message : 'XP ping failed' })
     },
   })
 }

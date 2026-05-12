@@ -6,7 +6,7 @@ import sys
 import tempfile
 
 import pytest
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Generator
 from pathlib import Path
 
 _BACKEND = Path(__file__).resolve().parents[1] / "backend"
@@ -14,6 +14,16 @@ _TEST_DB_FD, _TEST_DB_NAME = tempfile.mkstemp(prefix="myle-vl2-test-", suffix=".
 os.close(_TEST_DB_FD)
 _TEST_DB_PATH = Path(_TEST_DB_NAME)
 sys.path.insert(0, str(_BACKEND))
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _cleanup_test_db() -> Generator[None, None, None]:
+    yield
+    try:
+        if _TEST_DB_PATH.exists():
+            _TEST_DB_PATH.unlink()
+    except Exception:
+        pass
 
 # Disable APScheduler background jobs during tests — prevents DB connection hangs
 os.environ.setdefault("DISABLE_SCHEDULER", "1")
@@ -113,7 +123,12 @@ def _disable_auth_rate_limit_for_tests(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         cfg,
         "settings",
-        cfg.settings.model_copy(update={"auth_login_rate_limit_per_minute": 0}),
+        cfg.settings.model_copy(
+            update={
+                "auth_login_rate_limit_per_minute": 0,
+                "csrf_enabled": False,
+            }
+        ),
     )
 
 

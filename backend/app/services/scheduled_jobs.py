@@ -10,14 +10,17 @@ Jobs (all IST-aware):
 """
 from __future__ import annotations
 
+import asyncio
 import logging
+import hashlib
 from datetime import datetime, timedelta, timezone
+from typing import Callable, Awaitable
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.time_ist import today_ist
-from app.db.session import AsyncSessionLocal
+from app.db.session import AsyncSessionLocal, engine
 from app.models.daily_report import DailyReport
 from app.models.lead import Lead
 from app.models.user import User
@@ -27,6 +30,43 @@ from app.services.push_service import send_push_to_role, send_push_to_user
 from app.services import execution_enforcement as enf
 
 logger = logging.getLogger(__name__)
+
+_JOB_LOCK_ID_BASE = 0x6D796C65  # "myle" prefix for advisory locks
+
+
+def _job_lock_id(job_name: str) -> int:
+    """Deterministic lock id from job name so all workers compete for the same lock."""
+    h = hashlib.md5(job_name.encode()).hexdigest()[:16]
+    return int(h, 16) % (2**63 - 1)
+
+
+async def with_scheduler_lock(
+    job_name: str,
+    job_fn: Callable[[], Awaitable[None]],
+    lock_timeout: int = 5,
+) -> None:
+    """Run *job_fn* only if this worker can acquire a PostgreSQL advisory lock."""
+    lock_id = _job_lock_id(job_name)
+    try:
+        async with engine.connect() as conn:
+            locked = await conn.scalar(
+                text("SELECT pg_try_advisory_lock(:id)"),
+                {"id": lock_id},
+            )
+            if not locked:
+                logger.debug("Scheduler lock skipped (another instance): %s", job_name)
+                return
+            try:
+                async with engine.connect() as inner_conn:
+                    await inner_conn.execute(
+                        text("SET lock_timeout = :ms"),
+                        {"ms": str(lock_timeout * 1000)},
+                    )
+            except Exception:
+                pass
+            await job_fn()
+    except Exception as exc:
+        logger.error("Scheduler job %s failed: %s", job_name, exc)
 
 
 # ---------------------------------------------------------------------------

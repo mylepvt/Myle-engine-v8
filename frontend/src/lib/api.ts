@@ -36,13 +36,30 @@ export type ApiFetchOptions = RequestInit & {
   skipAuthRetry?: boolean
 }
 
+function getCsrfToken(): string {
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/)
+  return match ? match[1] : ''
+}
+
+function csrfHeaders(init?: RequestInit): Headers {
+  const headers = new Headers(init?.headers)
+  const method = ((init?.method ?? 'GET') as string).toUpperCase()
+  if (!['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method)) {
+    const token = getCsrfToken()
+    if (token) headers.set('X-CSRF-Token', token)
+  }
+  return headers
+}
+
 /** null = network error (server unreachable), false = auth rejected (401/403), true = refreshed ok */
 let refreshInFlight: Promise<boolean | null> | null = null
 
 function fetchWithCookies(path: string, init?: RequestInit): Promise<Response> {
+  const headers = csrfHeaders(init)
   return fetch(apiUrl(path), {
     credentials: 'include',
     ...init,
+    headers,
   })
 }
 

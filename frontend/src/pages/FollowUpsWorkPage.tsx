@@ -3,6 +3,7 @@ import { type FormEvent, useMemo, useState } from 'react'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ErrorState } from '@/components/ui/states'
 import {
   useCreateFollowUpMutation,
   useDeleteFollowUpMutation,
@@ -142,9 +143,10 @@ export function FollowUpsWorkPage({ title }: Props) {
         </div>
       ) : null}
       {fuQ.isError ? (
-        <p className="text-sm text-destructive" role="alert">
-          {fuQ.error instanceof Error ? fuQ.error.message : 'Could not load'}
-        </p>
+        <ErrorState
+          message={fuQ.error instanceof Error ? fuQ.error.message : 'Could not load follow-ups'}
+          onRetry={() => fuQ.refetch()}
+        />
       ) : null}
 
       {fuQ.data ? (

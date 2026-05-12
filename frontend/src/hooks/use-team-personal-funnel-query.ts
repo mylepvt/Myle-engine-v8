@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
+import { messageFromApiErrorPayload } from '@/lib/http-error-message'
 
 export type TeamPersonalFunnel = {
   claimed: number
@@ -17,8 +18,11 @@ export type TeamPersonalFunnel = {
 async function fetchTeamPersonalFunnel(): Promise<TeamPersonalFunnel> {
   const res = await apiFetch('/api/v1/execution/personal-funnel')
   if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throw new Error(t || `HTTP ${res.status}`)
+    const text = await res.text()
+    let body: unknown = null
+    try { body = JSON.parse(text) } catch { /* parse error */ }
+    const msg = messageFromApiErrorPayload(body, `HTTP ${res.status}`)
+    throw new Error(msg)
   }
   return res.json() as Promise<TeamPersonalFunnel>
 }

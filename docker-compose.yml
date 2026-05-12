@@ -1,5 +1,5 @@
 # From repo root: docker compose up --build
-# Frontend: http://localhost:5173  |  API docs: http://localhost:8000/docs  |  CRM: http://localhost:4000
+# Frontend: http://localhost:5174  |  API docs: http://localhost:8000/docs  |  CRM: http://localhost:4000
 # Migrations run on container start (alembic upgrade head / prisma migrate deploy).
 
 services:
@@ -54,7 +54,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      BACKEND_CORS_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173"
+      BACKEND_CORS_ORIGINS: "http://localhost:5174,http://127.0.0.1:5174"
       DATABASE_URL: "postgresql+asyncpg://myle:myle@db:5432/myle"
       SECRET_KEY: "docker-compose-dev-secret-replace-in-real-deploy"
       AUTH_DEV_LOGIN_ENABLED: "true"
@@ -70,7 +70,7 @@ services:
     build:
       context: ./frontend
     ports:
-      - "5173:5173"
+      - "5174:5174"
     environment:
       VITE_API_URL: "http://localhost:8000"
     depends_on:

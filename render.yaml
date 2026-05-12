@@ -27,7 +27,8 @@ services:
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
-        value: "postgresql://myle_db_v2_user:WTmYywzxEuVT2v30OKWZdgkZg0obtPDy@dpg-d7chigpj2pic73btjldg-a.singapore-postgres.render.com/myle_db_v2"
+        sync: false
+        description: Set in Render dashboard → Environment (postgresql://USER:PASS@HOST/DB)
       - key: REDIS_URL
         fromService:
           name: myle-vl2-redis
@@ -51,7 +52,8 @@ services:
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
-        value: "postgresql+asyncpg://myle_db_v2_user:WTmYywzxEuVT2v30OKWZdgkZg0obtPDy@dpg-d7chigpj2pic73btjldg-a.singapore-postgres.render.com/myle_db_v2"
+        sync: false
+        description: Set in Render dashboard → Environment (postgresql+asyncpg://USER:PASS@HOST/DB)
       - key: SECRET_KEY
         generateValue: true
       - key: APP_ENV

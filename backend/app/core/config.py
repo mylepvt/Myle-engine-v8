@@ -33,8 +33,13 @@ class Settings(BaseSettings):
     database_url: str = (
         "postgresql+asyncpg://myle:myle@localhost:5432/myle"
     )
+    redis_url: str = Field(
+        default="redis://localhost:6379",
+        validation_alias="REDIS_URL",
+        description="Redis connection URL for rate limiting, realtime pub/sub, etc.",
+    )
     backend_cors_origins: str = (
-        "http://localhost:5173,http://127.0.0.1:5173"
+        "http://localhost:5174,http://127.0.0.1:5174"
     )
     secret_key: str = Field(
         default="myle-vl2-dev-secret-change-with-SECRET_KEY-env",
@@ -53,6 +58,11 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("AUTH_COOKIE_SAMESITE", "auth_cookie_samesite"),
         description="JWT cookie SameSite. When omitted, vl2 infers ``none`` for secure split-host deploys and ``lax`` for same-origin/local dev.",
+    )
+    csrf_enabled: bool = Field(
+        default=True,
+        validation_alias="CSRF_ENABLED",
+        description="Enable CSRF double-submit cookie protection for state-changing requests.",
     )
     jwt_access_minutes: int = Field(
         default=480,
