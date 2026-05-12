@@ -54,14 +54,14 @@ def _report_to_public(row: DailyReport, *, points_awarded: int = 0) -> DailyRepo
         points_awarded=points_awarded,
         calls_picked=row.calls_picked,
         wrong_numbers=row.wrong_numbers,
-        enrollments_done=row.enrollments_done,
-        pending_enroll=row.pending_enroll,
+        day1_count=row.day1_count,
+        day2_count=row.day2_count,
+        day3_count=row.day3_count,
         underage=row.underage,
         plan_2cc=row.plan_2cc,
         seat_holdings=row.seat_holdings,
         leads_educated=row.leads_educated,
         pdf_covered=row.pdf_covered,
-        videos_sent_actual=row.videos_sent_actual,
         calls_made_actual=row.calls_made_actual,
         payments_actual=row.payments_actual,
     )
@@ -116,14 +116,14 @@ async def submit_daily_report(
             system_verified=False,
             calls_picked=body.calls_picked,
             wrong_numbers=body.wrong_numbers,
-            enrollments_done=body.enrollments_done,
-            pending_enroll=body.pending_enroll,
+            day1_count=body.day1_count,
+            day2_count=body.day2_count,
+            day3_count=body.day3_count,
             underage=body.underage,
             plan_2cc=body.plan_2cc,
             seat_holdings=body.seat_holdings,
             leads_educated=body.leads_educated,
             pdf_covered=body.pdf_covered,
-            videos_sent_actual=body.videos_sent_actual,
             calls_made_actual=body.calls_made_actual,
             payments_actual=body.payments_actual,
         )
@@ -162,14 +162,14 @@ async def submit_daily_report(
         row.submitted_at = now
         row.calls_picked = body.calls_picked
         row.wrong_numbers = body.wrong_numbers
-        row.enrollments_done = body.enrollments_done
-        row.pending_enroll = body.pending_enroll
+        row.day1_count = body.day1_count
+        row.day2_count = body.day2_count
+        row.day3_count = body.day3_count
         row.underage = body.underage
         row.plan_2cc = body.plan_2cc
         row.seat_holdings = body.seat_holdings
         row.leads_educated = body.leads_educated
         row.pdf_covered = body.pdf_covered
-        row.videos_sent_actual = body.videos_sent_actual
         row.calls_made_actual = body.calls_made_actual
         row.payments_actual = body.payments_actual
 

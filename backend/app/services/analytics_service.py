@@ -66,7 +66,7 @@ class AnalyticsService:
                 func.count(DailyReport.id).label("total_reports"),
                 func.sum(DailyReport.total_calling).label("total_calls"),
                 func.sum(DailyReport.calls_picked).label("calls_picked"),
-                func.sum(DailyReport.enrollments_done).label("enrollments"),
+                func.sum(DailyReport.day1_count + DailyReport.day2_count + DailyReport.day3_count).label("enrollments"),
                 func.sum(DailyReport.payments_actual).label("payments"),
                 func.avg(DailyReport.total_calling).label("avg_daily_calls"),
             )
@@ -222,7 +222,7 @@ class AnalyticsService:
             daily_data.append({
                 "date": current_date.isoformat(),
                 "calls": report.total_calling if report else 0,
-                "enrollments": report.enrollments_done if report else 0,
+                "enrollments": (report.day1_count + report.day2_count + report.day3_count) if report else 0,
                 "payments": report.payments_actual if report else 0,
                 "points": 20 if report else 0,  # 20 points per report
             })
@@ -232,7 +232,7 @@ class AnalyticsService:
             "reports": {
                 "total_reports": len(reports),
                 "total_calls": sum(r.total_calling for r in reports),
-                "total_enrollments": sum(r.enrollments_done for r in reports),
+                "total_enrollments": sum(r.day1_count + r.day2_count + r.day3_count for r in reports),
                 "total_payments": sum(r.payments_actual for r in reports),
                 "avg_daily_calls": round(sum(r.total_calling for r in reports) / len(reports), 1) if reports else 0,
             },
@@ -339,7 +339,7 @@ class AnalyticsService:
             select(
                 func.count(DailyReport.id).label("total_reports"),
                 func.sum(DailyReport.total_calling).label("total_calls"),
-                func.sum(DailyReport.enrollments_done).label("total_enrollments"),
+                func.sum(DailyReport.day1_count + DailyReport.day2_count + DailyReport.day3_count).label("total_enrollments"),
                 func.sum(DailyReport.payments_actual).label("total_payments"),
             )
             .where(
@@ -447,7 +447,7 @@ class AnalyticsService:
                 DailyReport.report_date,
                 func.count(DailyReport.id).label("reports_count"),
                 func.sum(DailyReport.total_calling).label("total_calls"),
-                func.sum(DailyReport.enrollments_done).label("total_enrollments"),
+                func.sum(DailyReport.day1_count + DailyReport.day2_count + DailyReport.day3_count).label("total_enrollments"),
                 func.sum(DailyReport.payments_actual).label("total_payments"),
             )
             .where(where_clause)

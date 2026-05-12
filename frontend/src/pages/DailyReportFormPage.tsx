@@ -13,14 +13,14 @@ type DailyReportPublic = {
   remarks: string | null
   calls_picked: number
   wrong_numbers: number
-  enrollments_done: number
-  pending_enroll: number
+  day1_count: number
+  day2_count: number
+  day3_count: number
   underage: number
   plan_2cc: number
   seat_holdings: number
   leads_educated: number
   pdf_covered: number
-  videos_sent_actual: number
   calls_made_actual: number
   payments_actual: number
   points_awarded: number
@@ -38,14 +38,14 @@ const INT_FIELDS: { key: keyof DailyReportPublic; label: string }[] = [
   { key: 'total_calling', label: 'Total calling' },
   { key: 'calls_picked', label: 'Calls picked' },
   { key: 'wrong_numbers', label: 'Wrong numbers' },
-  { key: 'enrollments_done', label: 'Enrollments done' },
-  { key: 'pending_enroll', label: 'Pending enroll' },
+  { key: 'day1_count', label: 'Day 1' },
+  { key: 'day2_count', label: 'Day 2' },
+  { key: 'day3_count', label: 'Day 3' },
   { key: 'underage', label: 'Underage' },
   { key: 'plan_2cc', label: 'Plan 2CC' },
   { key: 'seat_holdings', label: 'Seat holdings' },
   { key: 'leads_educated', label: 'Leads educated' },
   { key: 'pdf_covered', label: 'PDF covered' },
-  { key: 'videos_sent_actual', label: 'Videos sent (actual)' },
   { key: 'calls_made_actual', label: 'Calls made (actual)' },
   { key: 'payments_actual', label: 'Payments (actual)' },
 ]
