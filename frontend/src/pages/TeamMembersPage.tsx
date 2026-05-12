@@ -764,7 +764,7 @@ export function TeamMembersPage({ title }: Props) {
                       </div>
                     </div>
 
-                    <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:min-w-[10.5rem]">
+                    <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:max-w-[10.5rem]">
                       {isAdmin ? (
                         <Button
                           type="button"

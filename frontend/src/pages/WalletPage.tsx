@@ -52,14 +52,14 @@ export function WalletPage({ title }: Props) {
             {me.data.recent_entries.map((e) => (
               <li
                 key={e.id}
-                className="surface-inset flex flex-col gap-2 px-3 py-2 text-muted-foreground sm:flex-row sm:items-start sm:justify-between"
+                className="surface-inset flex min-w-0 flex-col gap-2 overflow-hidden px-3 py-2 text-muted-foreground sm:flex-row sm:items-start sm:justify-between"
               >
                 <div className="min-w-0">
                   <span className={e.amount_cents >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
                     {e.amount_cents >= 0 ? '+' : ''}
                     {(e.amount_cents / 100).toFixed(2)} {e.currency}
                   </span>
-                  {e.note ? <span className="ml-2 text-xs">{e.note}</span> : null}
+                  {e.note ? <span className="ml-2 min-w-0 break-words text-xs">{e.note}</span> : null}
                   <span className="mt-1 block text-xs">{new Date(e.created_at).toLocaleString()}</span>
                 </div>
                 {e.invoice_number ? (
@@ -95,7 +95,7 @@ export function WalletPage({ title }: Props) {
             {ledger.data.items.map((e) => (
               <li
                 key={e.id}
-                className="flex flex-col gap-2 rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-2 sm:flex-row sm:items-center sm:justify-between"
+                className="flex min-w-0 flex-col gap-2 overflow-hidden rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-2 sm:flex-row sm:items-center sm:justify-between"
               >
                 <span className="min-w-0">
                   #{e.id} · {e.amount_cents >= 0 ? '+' : ''}

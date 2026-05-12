@@ -257,7 +257,7 @@ export function TeamReportsPage({ title }: Props) {
             </div>
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(18rem,0.7fr)]">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(12rem,0.7fr)]">
             <section className="surface-elevated p-4 md:p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>

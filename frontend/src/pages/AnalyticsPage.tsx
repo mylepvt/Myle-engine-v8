@@ -65,7 +65,7 @@ export default function AnalyticsPage() {
 
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-4' : canViewTeam ? 'grid-cols-3' : 'grid-cols-2'}`}>
+        <TabsList className="flex h-auto w-full flex-wrap gap-1 p-1">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           {canViewTeam && <TabsTrigger value="team">Team</TabsTrigger>}
           <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
