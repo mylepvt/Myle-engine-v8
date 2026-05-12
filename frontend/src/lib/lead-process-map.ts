@@ -49,14 +49,13 @@ export const PROCESS_STAGE_DEFS: Record<string, ProcessStageDef> = {
   day3: {
     status: 'day3',
     title: 'Day 3',
-    helper: 'Morning testimony → follow-up → 3rd party → closing mindset → send live session → Min. FLP billing.',
+    helper: 'Morning → testimony → follow-up → 3rd party → closing mindset → send live session → Min. FLP billing.',
     nextStatus: 'interview',
     nextLabel: 'Push to Day 6',
     tasks: [
       { key: 'testimony_videos', label: 'Testimony Videos' },
       { key: 'morning_follow_up', label: 'Follow-up' },
-      { key: 'third_party_hype', label: '3rd Party Hype' },
-      { key: 'third_party_session', label: '3rd Party Session' },
+      { key: 'third_party_session', label: '3rd Party' },
       { key: 'closing_environment_build_up', label: 'Closing Environment Build-up' },
       { key: 'payment_collected', label: '₹1500 Payment Collected' },
       { key: 'proof_upload', label: 'Upload Payment Proof' },
