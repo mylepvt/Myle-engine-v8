@@ -53,7 +53,7 @@ export function TeamDashboardHomeModern({
 
   return (
     <div className="mx-auto w-full max-w-[430px] space-y-4 pb-2">
-      <section className="relative overflow-hidden rounded-[1.75rem] border border-primary/20 bg-[radial-gradient(circle_at_top_left,rgba(95,123,255,0.38),transparent_42%),linear-gradient(180deg,#111a35_0%,#0c1328_48%,#09111f_100%)] text-white shadow-[0_32px_80px_-44px_rgba(27,48,120,0.9)]">
+      <section className="relative overflow-hidden rounded-[1.75rem] border border-primary/20 bg-[radial-gradient(circle_at_top_left,color-mix(in_srgb,var(--palette-blue)_38%,transparent),transparent_42%),linear-gradient(180deg,color-mix(in_srgb,var(--palette-ink)_92%,var(--palette-blue)_8%)_0%,color-mix(in_srgb,var(--palette-ink)_89%,var(--palette-blue)_11%)_48%,color-mix(in_srgb,var(--palette-ink)_96%,var(--palette-blue)_4%)_100%)] text-white shadow-[0_32px_80px_-44px_rgba(27,48,120,0.9)]">
         <div
           className="pointer-events-none absolute inset-0 opacity-30"
           aria-hidden
@@ -88,7 +88,7 @@ export function TeamDashboardHomeModern({
             </div>
 
             <div className="shrink-0 rounded-[1.2rem] border border-white/10 bg-white/10 px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md">
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-blue-100/68">
+              <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-blue-100/68">
                 Enrolled
               </p>
               <p className="mt-1 text-2xl font-semibold leading-none text-white">
@@ -102,7 +102,7 @@ export function TeamDashboardHomeModern({
 
           <div className="grid grid-cols-3 gap-2">
             <div className="rounded-[1.15rem] border border-white/10 bg-white/[0.08] px-3 py-3 backdrop-blur-sm">
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-blue-100/64">
+              <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-blue-100/64">
                 Today&apos;s leads
               </p>
               <p className="mt-2 text-xl font-semibold leading-none text-white">
@@ -110,7 +110,7 @@ export function TeamDashboardHomeModern({
               </p>
             </div>
             <div className="rounded-[1.15rem] border border-white/10 bg-white/[0.08] px-3 py-3 backdrop-blur-sm">
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-blue-100/64">
+              <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-blue-100/64">
                 Calls
               </p>
               <p className="mt-2 text-xl font-semibold leading-none text-white">
@@ -125,7 +125,7 @@ export function TeamDashboardHomeModern({
               className="group flex items-center justify-between rounded-[1.25rem] border border-white/10 bg-white/[0.14] px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md transition hover:bg-white/[0.18]"
             >
               <div className="min-w-0">
-                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-blue-100/64">
+                <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-blue-100/64">
                   Primary action
                 </p>
                 <div className="mt-1 flex items-center gap-2">
@@ -187,7 +187,7 @@ export function TeamDashboardHomeModern({
         </div>
         {recentLeads.length === 0 ? (
           <Card className="border-border/70 bg-card/95">
-            <CardContent className="px-4 py-5 text-sm text-muted-foreground">No leads yet</CardContent>
+            <CardContent className="text-sm text-muted-foreground">No leads yet</CardContent>
           </Card>
         ) : (
           <div className="space-y-2.5">
@@ -206,13 +206,13 @@ export function TeamDashboardHomeModern({
                       {lead.source ? <span className="truncate">· {lead.source}</span> : null}
                     </p>
                   </div>
-                  <span className="rounded-full border border-border/70 bg-muted/45 px-2.5 py-1 text-[0.68rem] font-semibold text-muted-foreground">
+                  <span className="rounded-full border border-border/70 bg-muted/45 px-2.5 py-1 text-ds-label font-semibold text-muted-foreground">
                     #{lead.id}
                   </span>
                 </div>
                 <div className="mt-3 flex items-center justify-between gap-3">
                   <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[0.68rem] font-semibold text-primary">
+                    <span className="rounded-full bg-primary/10 px-2.5 py-1 text-ds-label font-semibold text-primary">
                       {humanizeStatus(lead.status)}
                     </span>
                     {lead.phone ? (
