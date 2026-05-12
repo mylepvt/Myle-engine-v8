@@ -1,23 +1,14 @@
 import { Link } from 'react-router-dom'
-import {
-  ArrowRight,
-  Briefcase,
-  Clock3,
-  FileCheck,
-  IndianRupee,
-  Phone,
-  Video,
-} from 'lucide-react'
+import { ArrowRight, Clock3 } from 'lucide-react'
 
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
 import { XpBadge } from '@/components/xp/XpBadge'
 import { Card, CardContent } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
 import type { HomeQuickAction } from '@/config/dashboard-home-actions'
 import type { LeadPublic } from '@/hooks/use-leads-query'
 import type { TeamPersonalFunnel } from '@/hooks/use-team-personal-funnel-query'
 import type { TeamTodayStats } from '@/hooks/use-team-today-stats-query'
-import { cn, formatRelativeTimeShort } from '@/lib/utils'
+import { formatRelativeTimeShort } from '@/lib/utils'
 
 
 
@@ -25,77 +16,9 @@ type Props = {
   sessionReady: boolean
   firstName: string
   funnel: TeamPersonalFunnel | undefined
-  funnelPending: boolean
   today: TeamTodayStats | undefined
-  todayPending: boolean
   recentLeads: LeadPublic[]
   quickActions: HomeQuickAction[]
-}
-
-function statCards(
-  funnel: TeamPersonalFunnel | undefined,
-  today: TeamTodayStats | undefined,
-): {
-  label: string
-  value: number
-  sub: string
-  Icon: typeof Briefcase
-  accent: string
-  cardClass: string
-  iconClass: string
-}[] {
-  return [
-    {
-      label: "Today's Leads",
-      value: today?.claimed_today ?? 0,
-      sub: 'Fresh today',
-      Icon: Briefcase,
-      accent: 'text-blue-400',
-      cardClass:
-        'border-blue-500/20 bg-gradient-to-br from-blue-500/[0.12] via-blue-500/[0.05] to-transparent shadow-[0_18px_40px_-28px_rgba(37,99,235,0.8)] transition hover:border-blue-500/35',
-      iconClass: 'text-blue-400/70',
-    },
-    {
-      label: 'Calls',
-      value: today?.calls_today ?? 0,
-      sub: 'Today',
-      Icon: Phone,
-      accent: 'text-amber-400',
-      cardClass:
-        'border-amber-500/20 bg-gradient-to-br from-amber-500/[0.12] via-amber-500/[0.04] to-transparent shadow-[0_18px_40px_-28px_rgba(245,158,11,0.75)] transition hover:border-amber-500/35',
-      iconClass: 'text-amber-400/70',
-    },
-    {
-      label: 'Video Reached',
-      value: funnel?.video_reached ?? 0,
-      sub: 'From assigned',
-      Icon: Video,
-      accent: 'text-indigo-400',
-      cardClass:
-        'border-indigo-500/20 bg-gradient-to-br from-indigo-500/[0.12] via-indigo-500/[0.04] to-transparent shadow-[0_18px_40px_-28px_rgba(99,102,241,0.8)] transition hover:border-indigo-500/35',
-      iconClass: 'text-indigo-400/70',
-    },
-    {
-      label: 'Proof Pending',
-      value: funnel?.proof_pending ?? 0,
-      sub: 'Awaiting review',
-      Icon: FileCheck,
-      accent: 'text-violet-400',
-      cardClass:
-        'border-violet-500/20 bg-gradient-to-br from-violet-500/[0.12] via-violet-500/[0.04] to-transparent shadow-[0_18px_40px_-28px_rgba(139,92,246,0.8)] transition hover:border-violet-500/35',
-      iconClass: 'text-violet-400/70',
-    },
-    {
-      label: 'Min. FLP Billing',
-      value: funnel?.paid_flp ?? 0,
-      sub: 'Enrolled',
-      Icon: IndianRupee,
-      accent: 'text-emerald-400',
-      cardClass:
-        'border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.12] via-emerald-500/[0.04] to-transparent shadow-[0_18px_40px_-28px_rgba(16,185,129,0.75)] transition hover:border-emerald-500/35',
-      iconClass: 'text-emerald-400/70',
-    },
-  ]
 }
 
 function greetingForCurrentTime() {
@@ -115,14 +38,10 @@ export function TeamDashboardHomeModern({
   sessionReady,
   firstName,
   funnel,
-  funnelPending,
   today,
-  todayPending,
   recentLeads,
   quickActions,
 }: Props) {
-  const loading = funnelPending || todayPending
-  const cards = statCards(funnel, today)
   const topActions = quickActions.slice(0, 4)
   const primaryAction = topActions[0]
   const secondaryActions = topActions.slice(1, 4)
@@ -198,14 +117,6 @@ export function TeamDashboardHomeModern({
                 {today?.calls_today ?? 0}
               </p>
             </div>
-            <div className="rounded-[1.15rem] border border-white/10 bg-white/[0.08] px-3 py-3 backdrop-blur-sm">
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-blue-100/64">
-                Proofs
-              </p>
-              <p className="mt-2 text-xl font-semibold leading-none text-white">
-                {funnel?.proof_pending ?? 0}
-              </p>
-            </div>
           </div>
 
           {primaryAction ? (
@@ -261,68 +172,6 @@ export function TeamDashboardHomeModern({
       <XpBadge />
 
       <GateAssistantCard sessionReady={sessionReady} />
-
-      <section className="space-y-3">
-        <div className="flex items-center justify-between px-1">
-          <div>
-            <h2 className="text-base font-semibold text-foreground">
-              Enrollment Funnel
-            </h2>
-            <p className="mt-1 text-ds-caption text-muted-foreground">
-              Compact snapshot of your highest-signal pipeline stages.
-            </p>
-          </div>
-          <span className="rounded-full border border-border/70 bg-card px-2.5 py-1 text-ds-caption font-medium text-muted-foreground shadow-sm">
-            Assigned active
-          </span>
-        </div>
-        {loading ? (
-          <div className="grid grid-cols-2 gap-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 rounded-xl" />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {cards.map((card, index) => (
-              <Card
-                key={card.label}
-                className={cn(
-                  'relative overflow-hidden rounded-[1.35rem] border backdrop-blur-sm',
-                  card.cardClass,
-                  cards.length % 2 === 1 &&
-                    index === cards.length - 1 &&
-                    'col-span-2',
-                )}
-              >
-                <div
-                  className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-white/[0.08] to-transparent"
-                  aria-hidden
-                />
-                <CardContent className="relative px-4 py-3.5">
-                  <div className="mb-2 flex items-center justify-between">
-                    <card.Icon
-                      className={`size-4 ${card.iconClass}`}
-                      aria-hidden
-                    />
-                    <span className="text-ds-caption font-semibold text-muted-foreground">
-                      {card.sub}
-                    </span>
-                  </div>
-                  <p
-                    className={`text-3xl font-semibold tabular-nums ${card.accent}`}
-                  >
-                    {card.value}
-                  </p>
-                  <p className="mt-1 text-ds-caption font-medium text-muted-foreground">
-                    {card.label}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </section>
 
       <section className="space-y-2">
         <div className="flex items-center justify-between px-1">

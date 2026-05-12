@@ -61,7 +61,7 @@ function recentFromWorkboard(columns: { items?: LeadPublic[] }[] | undefined): L
     .slice(0, 8)
 }
 
-const D1_STAGES = ['invited', 'whatsapp_sent', 'video_sent', 'video_watched', 'paid'] as const
+const D1_STAGES = ['invited', 'whatsapp_sent', 'video_watched', 'paid'] as const
 
 function Day1PipelineRow({
   lead,
@@ -233,9 +233,7 @@ export function DashboardHomePage() {
         sessionReady={sessionReady}
         firstName={firstName}
         funnel={teamFunnel.data}
-        funnelPending={teamFunnel.isPending || teamFunnel.isError}
         today={teamToday.data}
-        todayPending={teamToday.isPending}
         recentLeads={recentLeads}
         quickActions={quickActions}
       />

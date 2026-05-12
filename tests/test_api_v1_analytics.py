@@ -46,7 +46,7 @@ async def _seed_analytics_tables() -> None:
                     report_date=today,
                     total_calling=12,
                     calls_picked=6,
-                    enrollments_done=1,
+                    day1_count=1,
                     payments_actual=1,
                 ),
                 DailyReport(
@@ -54,7 +54,8 @@ async def _seed_analytics_tables() -> None:
                     report_date=today,
                     total_calling=8,
                     calls_picked=4,
-                    enrollments_done=2,
+                    day1_count=1,
+                    day2_count=1,
                     payments_actual=1,
                 ),
                 DailyScore(user_id=2, score_date=today, points=50),

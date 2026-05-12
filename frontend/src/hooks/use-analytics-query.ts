@@ -114,14 +114,14 @@ export type ReportSubmissionRequest = {
   total_calling: number
   calls_picked: number
   wrong_numbers: number
-  enrollments_done: number
-  pending_enroll: number
+  day1_count: number
+  day2_count: number
+  day3_count: number
   underage: number
   plan_2cc: number
   seat_holdings: number
   leads_educated: number
   pdf_covered: number
-  videos_sent_actual: number
   calls_made_actual: number
   payments_actual: number
   remarks?: string

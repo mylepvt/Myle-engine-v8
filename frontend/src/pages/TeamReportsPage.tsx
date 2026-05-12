@@ -83,7 +83,7 @@ function ReportMetric({
 
 function SubmissionCard({ item }: { item: TeamReportItem }) {
   const mismatch =
-    item.calls_made_actual !== item.total_calling || item.payments_actual !== item.enrollments_done
+    item.calls_made_actual !== item.total_calling || item.payments_actual !== (item.day1_count + item.day2_count + item.day3_count)
 
   return (
     <article className="surface-elevated rounded-xl p-4 md:hidden">
@@ -118,12 +118,11 @@ function SubmissionCard({ item }: { item: TeamReportItem }) {
         </div>
         <div className="surface-inset rounded-lg px-2 py-2">
           <p className="text-[0.68rem] uppercase tracking-wide text-muted-foreground">Enroll</p>
-          <ReportMetric reported={item.enrollments_done} system={item.payments_actual} tone="text-amber-300" />
+          <ReportMetric reported={item.day1_count + item.day2_count + item.day3_count} system={item.payments_actual} tone="text-amber-300" />
         </div>
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2 text-[0.68rem] text-muted-foreground">
-        <span className="rounded-full border border-white/10 px-2 py-1">Pending {item.pending_enroll}</span>
         <span className="rounded-full border border-white/10 px-2 py-1">2CC {item.plan_2cc}</span>
         <span className="rounded-full border border-white/10 px-2 py-1">Seat {item.seat_holdings}</span>
       </div>
@@ -158,7 +157,7 @@ export function TeamReportsPage({ title }: Props) {
       scopeTotal: data?.scope_total_members ?? 0,
       missing: data?.missing_members.length ?? 0,
       totalCalls: items.reduce((sum, item) => sum + item.total_calling, 0),
-      totalEnrollments: items.reduce((sum, item) => sum + item.enrollments_done, 0),
+      totalEnrollments: items.reduce((sum, item) => sum + item.day1_count + item.day2_count + item.day3_count, 0),
     }
   }, [data])
 
@@ -300,7 +299,7 @@ export function TeamReportsPage({ title }: Props) {
                         {data.items.map((item) => {
                           const mismatch =
                             item.calls_made_actual !== item.total_calling ||
-                            item.payments_actual !== item.enrollments_done
+                            item.payments_actual !== (item.day1_count + item.day2_count + item.day3_count)
 
                           return (
                             <tr key={item.report_id} className="border-b border-white/[0.06] align-top">
@@ -341,15 +340,10 @@ export function TeamReportsPage({ title }: Props) {
                               </td>
                               <td className="py-4 px-3">
                                 <ReportMetric
-                                  reported={item.enrollments_done}
+                                  reported={item.day1_count + item.day2_count + item.day3_count}
                                   system={item.payments_actual}
                                   tone="text-amber-300"
                                 />
-                              </td>
-                              <td className="py-4 px-3 text-center">
-                                <span className="text-sm font-semibold tabular-nums text-foreground">
-                                  {item.pending_enroll}
-                                </span>
                               </td>
                               <td className="py-4 px-3 text-center">
                                 <span className="text-sm font-semibold tabular-nums text-violet-300">

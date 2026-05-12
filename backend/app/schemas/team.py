@@ -167,14 +167,14 @@ class TeamReportItem(TeamReportsMemberBase):
     total_calling: int
     calls_picked: int
     wrong_numbers: int
-    enrollments_done: int
-    pending_enroll: int
+    day1_count: int
+    day2_count: int
+    day3_count: int
     underage: int
     plan_2cc: int
     seat_holdings: int
     leads_educated: int
     pdf_covered: int
-    videos_sent_actual: int
     calls_made_actual: int
     payments_actual: int
     remarks: Optional[str] = None
