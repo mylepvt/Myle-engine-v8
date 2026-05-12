@@ -4,7 +4,6 @@ from fastapi.testclient import TestClient
 
 import pytest
 
-from app.middleware.auth_rate_limit import _reset_rate_limit_store_for_tests
 from main import app
 
 
@@ -12,12 +11,17 @@ def test_auth_post_rate_limit_returns_429(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import app.core.config as cfg
+    import app.middleware.auth_rate_limit as mod
 
-    _reset_rate_limit_store_for_tests()
+    mod._reset_rate_limit_store_for_tests()
+
     monkeypatch.setattr(
         cfg,
         "settings",
-        cfg.settings.model_copy(update={"auth_login_rate_limit_per_minute": 2}),
+        cfg.settings.model_copy(update={
+            "auth_login_rate_limit_per_minute": 2,
+            "redis_url": "",
+        }),
     )
 
     client = TestClient(app)

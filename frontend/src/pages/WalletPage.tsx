@@ -1,3 +1,4 @@
+import { ErrorState } from '@/components/ui/states'
 import { Skeleton } from '@/components/ui/skeleton'
 import { InvoiceDownloadLink } from '@/components/wallet/InvoiceDownloadLink'
 import { useWalletLedgerQuery, useWalletMeQuery } from '@/hooks/use-wallet-query'
@@ -26,9 +27,10 @@ export function WalletPage({ title }: Props) {
 
       {me.isPending ? <Skeleton className="h-16 w-full" /> : null}
       {me.isError ? (
-        <p className="text-sm text-destructive" role="alert">
-          {me.error instanceof Error ? me.error.message : 'Error'}
-        </p>
+        <ErrorState
+          message={me.error instanceof Error ? me.error.message : 'Could not load wallet'}
+          onRetry={() => me.refetch()}
+        />
       ) : null}
       {me.data ? (
         <div className="surface-elevated p-4">
@@ -78,9 +80,10 @@ export function WalletPage({ title }: Props) {
         <h2 className="mb-2 text-sm font-medium text-foreground">Transaction History</h2>
         {ledger.isPending ? <Skeleton className="h-20 w-full" /> : null}
         {ledger.isError ? (
-          <p className="text-sm text-destructive" role="alert">
-            {ledger.error instanceof Error ? ledger.error.message : 'Error'}
-          </p>
+          <ErrorState
+            message={ledger.error instanceof Error ? ledger.error.message : 'Could not load history'}
+            onRetry={() => ledger.refetch()}
+          />
         ) : null}
         {ledger.data ? (
           <p className="text-xs text-muted-foreground">

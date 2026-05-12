@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
+import { messageFromApiErrorPayload } from '@/lib/http-error-message'
+import { useToastStore } from '@/stores/toast-store'
 
 export type TeamPerformanceResponse = {
   period: string
@@ -138,7 +140,11 @@ export type ReportSubmissionResponse = {
 async function fetchTeamPerformance(days = 30): Promise<TeamPerformanceResponse> {
   const res = await apiFetch(`/api/v1/analytics/team-performance?days=${days}`)
   if (!res.ok) {
-    throw new Error(`Team performance HTTP ${res.status}`)
+    const text = await res.text()
+    let body: unknown = null
+    try { body = JSON.parse(text) } catch { /* parse error */ }
+    const msg = messageFromApiErrorPayload(body, `Team performance HTTP ${res.status}`)
+    throw new Error(msg)
   }
   return res.json()
 }
@@ -149,7 +155,11 @@ async function fetchIndividualPerformance(userId?: number, days = 30): Promise<I
   
   const res = await apiFetch(`/api/v1/analytics/individual-performance?${params}`)
   if (!res.ok) {
-    throw new Error(`Individual performance HTTP ${res.status}`)
+    const text = await res.text()
+    let body: unknown = null
+    try { body = JSON.parse(text) } catch { /* parse error */ }
+    const msg = messageFromApiErrorPayload(body, `Individual performance HTTP ${res.status}`)
+    throw new Error(msg)
   }
   return res.json()
 }
@@ -157,7 +167,11 @@ async function fetchIndividualPerformance(userId?: number, days = 30): Promise<I
 async function fetchLeaderboard(days = 30): Promise<LeaderboardResponse> {
   const res = await apiFetch(`/api/v1/analytics/leaderboard?days=${days}`)
   if (!res.ok) {
-    throw new Error(`Leaderboard HTTP ${res.status}`)
+    const text = await res.text()
+    let body: unknown = null
+    try { body = JSON.parse(text) } catch { /* parse error */ }
+    const msg = messageFromApiErrorPayload(body, `Leaderboard HTTP ${res.status}`)
+    throw new Error(msg)
   }
   return res.json()
 }
@@ -165,7 +179,11 @@ async function fetchLeaderboard(days = 30): Promise<LeaderboardResponse> {
 async function fetchSystemOverview(days = 30): Promise<SystemOverviewResponse> {
   const res = await apiFetch(`/api/v1/analytics/system-overview?days=${days}`)
   if (!res.ok) {
-    throw new Error(`System overview HTTP ${res.status}`)
+    const text = await res.text()
+    let body: unknown = null
+    try { body = JSON.parse(text) } catch { /* parse error */ }
+    const msg = messageFromApiErrorPayload(body, `System overview HTTP ${res.status}`)
+    throw new Error(msg)
   }
   return res.json()
 }
@@ -176,7 +194,11 @@ async function fetchDailyTrends(userId?: number, days = 30): Promise<DailyTrends
   
   const res = await apiFetch(`/api/v1/analytics/daily-trends?${params}`)
   if (!res.ok) {
-    throw new Error(`Daily trends HTTP ${res.status}`)
+    const text = await res.text()
+    let body: unknown = null
+    try { body = JSON.parse(text) } catch { /* parse error */ }
+    const msg = messageFromApiErrorPayload(body, `Daily trends HTTP ${res.status}`)
+    throw new Error(msg)
   }
   return res.json()
 }
@@ -188,7 +210,11 @@ async function submitDailyReport(request: ReportSubmissionRequest): Promise<Repo
     body: JSON.stringify(request),
   })
   if (!res.ok) {
-    throw new Error(`Daily report submission HTTP ${res.status}`)
+    const text = await res.text()
+    let body: unknown = null
+    try { body = JSON.parse(text) } catch { /* parse error */ }
+    const msg = messageFromApiErrorPayload(body, `Daily report submission HTTP ${res.status}`)
+    throw new Error(msg)
   }
   return res.json()
 }
@@ -244,6 +270,9 @@ export function useDailyReportSubmissionMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['analytics'] })
       queryClient.invalidateQueries({ queryKey: ['reports'] })
+    },
+    onError: (error) => {
+      useToastStore.getState().addToast({ type: 'error', message: error instanceof Error ? error.message : 'Report submission failed' })
     },
   })
 }

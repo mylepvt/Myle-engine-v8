@@ -6,6 +6,7 @@ import { PushNotificationBootstrap } from '@/components/notifications/PushNotifi
 import { InstallAppBanner } from '@/components/pwa/InstallAppBanner'
 import { ProtectedRoute } from '@/components/routing/ProtectedRoute'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ToastContainer } from '@/components/ui/toast'
 import { DashboardHomePage } from '@/pages/DashboardHomePage'
 import { HomePage } from '@/pages/HomePage'
 import { LoginPage } from '@/pages/LoginPage'
@@ -75,6 +76,7 @@ export function App() {
       </Routes>
       <PushNotificationBootstrap />
       <InstallAppBanner />
+      <ToastContainer />
     </div>
   )
 }

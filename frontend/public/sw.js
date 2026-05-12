@@ -1,5 +1,7 @@
-/* Minimal SW — PWA install + Web Push notifications */
-const CACHE_VERSION = 'myle-v20260425-1'
+/* PWA service worker — offline caching + Web Push notifications */
+const CACHE_NAME = 'myle-vl2-v20260512'
+const STATIC_ASSETS = [/\.js$/, /\.css$/, /\.woff2?$/, /\.png$/, /\.svg$/, /\.ico$/, /\.webp$/]
+const ASSET_CACHE_MAX = 200
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
@@ -20,34 +22,98 @@ function normalizeNotificationUrl(rawUrl) {
   }
 }
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(self.skipWaiting())
+function isStaticAsset(url) {
+  return STATIC_ASSETS.some((rx) => rx.test(url))
+}
+
+function isApiRequest(url) {
+  return url.includes('/api/')
+}
+
+/* ── Install — pre-cache nothing (cache on first use) ─────────────────── */
+self.addEventListener('install', () => {
+  self.skipWaiting()
 })
+
+/* ── Activate — clean old caches ──────────────────────────────────────── */
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((k) => k !== CACHE_VERSION)
-          .map((k) => caches.delete(k))
-      )
+      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
     ).then(() => self.clients.claim())
     .then(() => {
-      // Tell all open tabs to reload
       self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
         list.forEach((client) => client.postMessage({ type: 'SW_UPDATED' }))
       })
     })
   )
 })
-self.addEventListener('fetch', () => {})
 
+/* ── Fetch — cache-first for static, network-first for nav/API ───────── */
+self.addEventListener('fetch', (event) => {
+  const { request } = event
+  const url = new URL(request.url)
+
+  if (request.method !== 'GET') return
+
+  // Cache-first for static assets (JS, CSS, fonts, images)
+  if (isStaticAsset(url.pathname)) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then((cache) =>
+        cache.match(request).then((cached) => {
+          const fetchPromise = fetch(request).then((response) => {
+            if (response.ok) {
+              event.waitUntil(cache.put(request, response.clone()))
+            }
+            return response
+          }).catch(() => cached)
+          return cached || fetchPromise
+        })
+      )
+    )
+    return
+  }
+
+  // Network-first for navigations & API (show stale if offline)
+  if (request.mode === 'navigate' || isApiRequest(url.pathname)) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok && request.mode === 'navigate') {
+            const clone = response.clone()
+            event.waitUntil(
+              caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
+            )
+          }
+          return response
+        })
+        .catch(() => caches.match(request))
+    )
+    return
+  }
+
+  // Default: network-first
+  event.respondWith(fetch(request).catch(() => caches.match(request)))
+})
+
+/* ── Compact asset cache ──────────────────────────────────────────────── */
+async function trimAssetCache() {
+  const cache = await caches.open(CACHE_NAME)
+  const keys = await cache.keys()
+  if (keys.length > ASSET_CACHE_MAX) {
+    const toDelete = keys.slice(0, keys.length - ASSET_CACHE_MAX)
+    await Promise.all(toDelete.map((k) => cache.delete(k)))
+  }
+}
+
+/* ── Message handler ──────────────────────────────────────────────────── */
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') {
     self.skipWaiting()
   }
 })
 
+/* ── Push notifications ───────────────────────────────────────────────── */
 self.addEventListener('push', (event) => {
   let data = {}
   try { data = event.data?.json() ?? {} } catch { data = { title: 'Myle', body: event.data?.text() ?? '' } }
@@ -111,7 +177,7 @@ self.addEventListener('pushsubscriptionchange', (event) => {
         }),
       })
     } catch {
-      // Best effort only — foreground sync path will retry later.
+      // Best effort — foreground sync path will retry later.
     }
   })())
 })

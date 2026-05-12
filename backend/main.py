@@ -24,6 +24,7 @@ from app.core.errors import register_exception_handlers
 from app.db.session import engine
 from app.middleware.access_log import AccessLogMiddleware
 from app.middleware.auth_rate_limit import AuthRateLimitMiddleware
+from app.middleware.csrf import CsrfMiddleware
 from app.middleware.request_id import RequestIdMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.services.scheduled_jobs import (
@@ -33,7 +34,10 @@ from app.services.scheduled_jobs import (
     job_leader_basics_enforcement,
     job_watch_archive_maintenance,
     job_weekly_compliance_digest,
+    with_scheduler_lock,
 )
+
+from app.core.realtime_hub import start_redis_listener, stop_redis_listener
 
 import os as _os
 
@@ -45,49 +49,51 @@ _SCHEDULER_ENABLED = _os.environ.get("DISABLE_SCHEDULER", "").lower() not in {"1
 async def lifespan(_app: FastAPI):
     if _SCHEDULER_ENABLED:
         _scheduler.add_job(
-            job_enrollment_proof_alert,
+            lambda: with_scheduler_lock("enrollment_proof_alert", job_enrollment_proof_alert),
             IntervalTrigger(minutes=30),
             id="enrollment_proof_alert",
             replace_existing=True,
             misfire_grace_time=120,
         )
         _scheduler.add_job(
-            job_weekly_compliance_digest,
+            lambda: with_scheduler_lock("weekly_compliance_digest", job_weekly_compliance_digest),
             CronTrigger(day_of_week="mon", hour=9, minute=0),
             id="weekly_compliance_digest",
             replace_existing=True,
             misfire_grace_time=3600,
         )
         _scheduler.add_job(
-            job_daily_report_reminder,
+            lambda: with_scheduler_lock("daily_report_reminder", job_daily_report_reminder),
             CronTrigger(hour=20, minute=0),
             id="daily_report_reminder",
             replace_existing=True,
             misfire_grace_time=1800,
         )
         _scheduler.add_job(
-            job_call_target_reminder,
+            lambda: with_scheduler_lock("call_target_reminder", job_call_target_reminder),
             CronTrigger(hour=17, minute=0),
             id="call_target_reminder",
             replace_existing=True,
             misfire_grace_time=1800,
         )
         _scheduler.add_job(
-            job_watch_archive_maintenance,
+            lambda: with_scheduler_lock("watch_archive_maintenance", job_watch_archive_maintenance),
             IntervalTrigger(minutes=30),
             id="watch_archive_maintenance",
             replace_existing=True,
             misfire_grace_time=120,
         )
         _scheduler.add_job(
-            job_leader_basics_enforcement,
+            lambda: with_scheduler_lock("leader_basics_enforcement", job_leader_basics_enforcement),
             CronTrigger(hour=23, minute=30),
             id="leader_basics_enforcement",
             replace_existing=True,
             misfire_grace_time=1800,
         )
         _scheduler.start()
+    await start_redis_listener()
     yield
+    await stop_redis_listener()
     if _SCHEDULER_ENABLED:
         _scheduler.shutdown(wait=False)
     await engine.dispose()
@@ -101,6 +107,7 @@ app.add_middleware(AccessLogMiddleware)
 app.add_middleware(AuthRateLimitMiddleware)
 app.add_middleware(RequestIdMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(CsrfMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,

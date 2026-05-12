@@ -1,5 +1,10 @@
 .git
+.gitignore
 .github
+.gitattributes
+.claude
+.cursor
+.code-review-graph
 **/.pytest_cache
 **/node_modules
 frontend/dist
@@ -9,3 +14,10 @@ backend/.venv
 *.pyc
 .env
 .env.*
+output/
+tmp/
+tests/
+docs/
+*.md
+!README.md
+.DS_Store

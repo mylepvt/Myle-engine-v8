@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
 import { messageFromApiErrorPayload } from '@/lib/http-error-message'
+import { useToastStore } from '@/stores/toast-store'
 
 export type TrainingVideo = {
   day_number: number
@@ -53,7 +54,11 @@ export type TrainingTestResult = {
 export async function fetchTrainingSurface(): Promise<TrainingSurfaceResponse> {
   const res = await apiFetch('/api/v1/system/training')
   if (!res.ok) {
-    throw new Error(`Training surface HTTP ${res.status}`)
+    const text = await res.text()
+    let body: unknown = null
+    try { body = JSON.parse(text) } catch { /* parse error */ }
+    const msg = messageFromApiErrorPayload(body, `Training surface HTTP ${res.status}`)
+    throw new Error(msg)
   }
   return res.json()
 }
@@ -61,7 +66,11 @@ export async function fetchTrainingSurface(): Promise<TrainingSurfaceResponse> {
 export async function fetchTrainingTestQuestions(): Promise<TrainingTestQuestion[]> {
   const res = await apiFetch('/api/v1/system/training-test/questions')
   if (!res.ok) {
-    throw new Error(`Training test questions HTTP ${res.status}`)
+    const text = await res.text()
+    let body: unknown = null
+    try { body = JSON.parse(text) } catch { /* parse error */ }
+    const msg = messageFromApiErrorPayload(body, `Training test questions HTTP ${res.status}`)
+    throw new Error(msg)
   }
   return res.json()
 }
@@ -73,7 +82,11 @@ export async function submitTrainingTest(answers: Record<string, string>): Promi
     body: JSON.stringify({ answers }),
   })
   if (!res.ok) {
-    throw new Error(`Training test submit HTTP ${res.status}`)
+    const text = await res.text()
+    let body: unknown = null
+    try { body = JSON.parse(text) } catch { /* parse error */ }
+    const msg = messageFromApiErrorPayload(body, `Training test submit HTTP ${res.status}`)
+    throw new Error(msg)
   }
   return res.json()
 }
@@ -159,6 +172,9 @@ export function useMarkTrainingDayMutation() {
     onSuccess: (data) => {
       queryClient.setQueryData(['training', 'surface'], data)
     },
+    onError: (error) => {
+      useToastStore.getState().addToast({ type: 'error', message: error instanceof Error ? error.message : 'Operation failed' })
+    },
   })
 }
 
@@ -171,6 +187,9 @@ export function useUploadTrainingNotesMutation() {
       queryClient.invalidateQueries({ queryKey: ['training', 'surface'] })
       queryClient.invalidateQueries({ queryKey: ['system', 'training'] })
       queryClient.invalidateQueries({ queryKey: ['other', 'training'] })
+    },
+    onError: (error) => {
+      useToastStore.getState().addToast({ type: 'error', message: error instanceof Error ? error.message : 'Operation failed' })
     },
   })
 }
@@ -185,6 +204,9 @@ export function useUploadTrainingAudioMutation() {
       queryClient.invalidateQueries({ queryKey: ['system', 'training'] })
       queryClient.invalidateQueries({ queryKey: ['other', 'training'] })
     },
+    onError: (error) => {
+      useToastStore.getState().addToast({ type: 'error', message: error instanceof Error ? error.message : 'Operation failed' })
+    },
   })
 }
 
@@ -198,6 +220,9 @@ export function useUpdateTrainingDayMutation() {
       queryClient.invalidateQueries({ queryKey: ['system', 'training'] })
       queryClient.invalidateQueries({ queryKey: ['other', 'training'] })
     },
+    onError: (error) => {
+      useToastStore.getState().addToast({ type: 'error', message: error instanceof Error ? error.message : 'Operation failed' })
+    },
   })
 }
 
@@ -209,6 +234,9 @@ export function useSubmitTrainingTestMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['training', 'surface'] })
       queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
+    },
+    onError: (error) => {
+      useToastStore.getState().addToast({ type: 'error', message: error instanceof Error ? error.message : 'Operation failed' })
     },
   })
 }
@@ -230,7 +258,11 @@ export type CertificateStatus = {
 export async function fetchCertificateStatus(): Promise<CertificateStatus> {
   const res = await apiFetch('/api/v1/training/certificate/status')
   if (!res.ok) {
-    throw new Error(`Certificate status HTTP ${res.status}`)
+    const text = await res.text()
+    let body: unknown = null
+    try { body = JSON.parse(text) } catch { /* parse error */ }
+    const msg = messageFromApiErrorPayload(body, `Certificate status HTTP ${res.status}`)
+    throw new Error(msg)
   }
   return res.json()
 }
@@ -238,7 +270,11 @@ export async function fetchCertificateStatus(): Promise<CertificateStatus> {
 export async function downloadCertificate(): Promise<Blob> {
   const res = await apiFetch('/api/v1/training/certificate')
   if (!res.ok) {
-    throw new Error(`Certificate download HTTP ${res.status}`)
+    const text = await res.text()
+    let body: unknown = null
+    try { body = JSON.parse(text) } catch { /* parse error */ }
+    const msg = messageFromApiErrorPayload(body, `Certificate download HTTP ${res.status}`)
+    throw new Error(msg)
   }
   return res.blob()
 }
@@ -264,6 +300,9 @@ export function useDownloadCertificateMutation() {
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     },
+    onError: (error) => {
+      useToastStore.getState().addToast({ type: 'error', message: error instanceof Error ? error.message : 'Operation failed' })
+    },
   })
 }
 
@@ -275,8 +314,10 @@ export async function uploadCertificate(file: File): Promise<{ ok: boolean; cert
     body: form,
   })
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    const msg = (err as { detail?: string }).detail ?? `HTTP ${res.status}`
+    const text = await res.text()
+    let body: unknown = null
+    try { body = JSON.parse(text) } catch { /* parse error */ }
+    const msg = messageFromApiErrorPayload(body, `Upload certificate HTTP ${res.status}`)
     throw new Error(msg)
   }
   return res.json()
@@ -289,6 +330,9 @@ export function useUploadCertificateMutation() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
       void queryClient.invalidateQueries({ queryKey: ['training', 'surface'] })
+    },
+    onError: (error) => {
+      useToastStore.getState().addToast({ type: 'error', message: error instanceof Error ? error.message : 'Operation failed' })
     },
   })
 }
