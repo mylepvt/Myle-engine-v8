@@ -57,9 +57,6 @@ export const PROCESS_STAGE_DEFS: Record<string, ProcessStageDef> = {
       { key: 'morning_follow_up', label: 'Follow-up' },
       { key: 'third_party_session', label: '3rd Party' },
       { key: 'closing_environment_build_up', label: 'Closing Environment Build-up' },
-      { key: 'payment_collected', label: '₹1500 Payment Collected' },
-      { key: 'proof_upload', label: 'Upload Payment Proof' },
-      { key: 'approval', label: 'Admin Approval' },
     ],
   },
   interview: {
