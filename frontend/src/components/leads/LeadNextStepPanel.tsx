@@ -160,7 +160,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
               to="/dashboard/team/enrollment-approvals"
               className="mt-2 inline-flex font-semibold text-primary underline-offset-2 hover:underline"
             >
-              Open Enroll Approvals
+              Open Min. FLP Approvals
             </Link>
           )}
         </div>

@@ -72,7 +72,7 @@ export function EnrollmentApprovalsPage({ title }: Props) {
       {data && data.total === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-white/[0.12] py-14 text-center">
           <ClipboardList className="size-10 text-muted-foreground/50" />
-          <p className="text-sm font-medium text-foreground">No pending enrollment requests</p>
+          <p className="text-sm font-medium text-foreground">No pending FLP billing requests</p>
           <p className="text-xs text-muted-foreground">New requests will appear here for your review.</p>
         </div>
       ) : null}

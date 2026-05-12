@@ -315,7 +315,7 @@ export function DashboardLayout() {
             className="flex shrink-0 items-center justify-between gap-3 border-b border-amber-500/35 bg-amber-500/10 px-3 py-2.5 text-amber-950 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-50"
           >
             <p className="min-w-0 text-sm text-amber-950 dark:text-amber-50">
-              <span className="font-semibold">New Enroll approval request</span>
+              <span className="font-semibold">New Min. FLP approval request</span>
               {enrollmentAlert.delta === 1
                 ? ' — 1 FLP invoice needs review.'
                 : ` — ${enrollmentAlert.delta} FLP invoices need review.`}
