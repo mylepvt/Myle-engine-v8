@@ -57,7 +57,7 @@ export function DashboardHeader({
     !push.isSubscribed &&
     push.permission !== 'denied'
   const approverForEnroll =
-    Boolean(me?.authenticated) && (me?.role === 'admin' || me?.role === 'leader')
+    Boolean(me?.authenticated) && me?.role === 'admin'
 
   return (
     <header

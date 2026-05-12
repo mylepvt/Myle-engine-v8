@@ -59,7 +59,7 @@ export function DashboardLayout() {
   const enrollmentPending = useEnrollmentApprovalsPendingQuery()
   const pendingEnrollCount = enrollmentPending.data?.total ?? 0
   const approverForEnroll =
-    Boolean(me?.authenticated) && (me?.role === 'admin' || me?.role === 'leader')
+    Boolean(me?.authenticated) && me?.role === 'admin'
   const enrollmentAlert = useEnrollmentApprovalsAlertBanner(pendingEnrollCount, {
     enabled: approverForEnroll,
   })

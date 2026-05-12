@@ -231,7 +231,7 @@ export function useEnrollmentHistoryQuery(date: string, enabled = true) {
 export function useEnrollmentApprovalsPendingQuery() {
   const { data: me, isPending: mePending } = useAuthMeQuery()
   const isApprover =
-    Boolean(me?.authenticated) && (me?.role === 'admin' || me?.role === 'leader')
+    Boolean(me?.authenticated) && me?.role === 'admin'
 
   return useQuery({
     queryKey: ['team', 'enrollment-requests'],
