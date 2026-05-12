@@ -46,14 +46,14 @@ export function LeadNextStepPanel({ lead, className }: Props) {
   const others =
     transitions && primary ? visibleAlternativeTransitions(lead.status, transitions).filter((t) => t !== primary) : []
   const paidGateBlocked = primary === 'paid' && lead.paymentStatus !== 'approved'
-  const workLeadsLabel = role === 'admin' ? 'All Leads' : 'Calling Board'
+  const workLeadsLabel = role === 'admin' ? 'All Leads' : 'Workboard'
 
   function paidGateCopy(): string {
     if (role === 'admin') {
       if (lead.paymentStatus === 'proof_uploaded') {
         return 'FLP invoice review me hai. Approvals se approve hote hi Paid unlock ho jayega.'
       }
-      return 'FLP invoice leader ya team work/leads flow se upload hota hai. Approval ke baad hi Paid move sahi chalega.'
+      return 'FLP invoice leader Workboard se upload karta hai. Approval ke baad hi Paid move sahi chalega.'
     }
     if (lead.paymentStatus === 'proof_uploaded') {
       return 'FLP invoice review me hai. Admin approval ke baad Paid unlock ho jayega.'
@@ -150,7 +150,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
           <p>{paidGateCopy()}</p>
           {role !== 'admin' ? (
             <Link
-              to="/dashboard/work/leads"
+              to="/dashboard/work/workboard"
               className="mt-2 inline-flex font-semibold text-primary underline-offset-2 hover:underline"
             >
               Open {workLeadsLabel}

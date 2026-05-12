@@ -801,29 +801,22 @@ export function LeadDetailPage({ leadId }: Props) {
                     <p className="text-xs text-muted-foreground leading-relaxed">
                       {surfaceRole === 'team' ? (
                         <>
-                          FLP invoice upload sirf{' '}
-                          <Link
-                            to="/dashboard/work/leads"
-                            className="font-medium text-primary underline-offset-2 hover:underline"
-                          >
-                            Calling Board
-                          </Link>{' '}
-                          me hota hai.
+                          FLP billing ab leader/admin Workboard par handle karte hain. Koi action required nahi.
                         </>
                       ) : surfaceRole === 'leader' ? (
                         <>
-                          FLP invoice upload sirf{' '}
+                          FLP invoice upload{' '}
                           <Link
-                            to="/dashboard/work/leads"
+                            to="/dashboard/work/workboard"
                             className="font-medium text-primary underline-offset-2 hover:underline"
                           >
-                            Calling Board
+                            Workboard
                           </Link>{' '}
-                          me hota hai.
+                          par Day 3 ke baad karo.
                         </>
                       ) : (
                         <>
-                          FLP invoice leader ya team work/leads flow se upload karte hain; admin yahan se sirf status dekh
+                          FLP invoice leader Workboard par upload karta hai. Yahan se sirf status dekh
                           ya{' '}
                           <Link
                             to="/dashboard/team/enrollment-approvals"
