@@ -3,27 +3,31 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import sys
 import uuid
 from typing import Any
 
 from app.core.config import settings
 
+_OBS_LOG_FILE = os.environ.get("PHASE1_OBS_LOG_FILE", "/tmp/phase1_observation.log")
+
 logger = logging.getLogger("observation")
 if not logger.handlers:
-    _handler = logging.StreamHandler(sys.stdout)
+    _handler = logging.FileHandler(_OBS_LOG_FILE, mode="a")
     _handler.setFormatter(logging.Formatter("%(asctime)s PHASE1_OBSERVATION %(message)s"))
     logger.addHandler(_handler)
+    _fallback = logging.StreamHandler(sys.stdout)
+    _fallback.setFormatter(logging.Formatter("%(asctime)s PHASE1_OBSERVATION %(message)s"))
+    logger.addHandler(_fallback)
     logger.setLevel(logging.INFO)
     logger.propagate = False
 
-_QUEUE_MAXSIZE = 2000
-_DRAIN_TIMEOUT = 0.5
-
-logger.info("module_loaded enabled=%s sample_rate=%s queue_maxsize=%s",
+logger.info("module_loaded enabled=%s sample_rate=%s queue_maxsize=%s log_file=%s",
             settings.phase1_observation_enabled,
             settings.phase1_observation_sample_rate,
-            _QUEUE_MAXSIZE)
+            _QUEUE_MAXSIZE,
+            _OBS_LOG_FILE)
 
 _queue: asyncio.Queue[dict[str, Any]] | None = None
 _drain_task: asyncio.Task[None] | None = None
@@ -78,6 +82,11 @@ def emit_observation(record: dict[str, Any]) -> None:
         return
     line = json.dumps(record, default=str)
     logger.info("PHASE1_OBS %s", line)
+    try:
+        with open(_OBS_LOG_FILE, "a") as _f:
+            _f.write(f"PHASE1_OBS {line}\n")
+    except Exception:
+        pass
     try:
         q = _ensure_queue()
         _ensure_drain_task()
