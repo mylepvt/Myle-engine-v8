@@ -38,4 +38,5 @@ CMD ["/bin/sh", "-c", "\
   npx prisma migrate resolve --applied 20260417120000_lead_escalation_level 2>/dev/null || true && \
   npx prisma migrate resolve --applied 20260418000000_lead_legacy_id 2>/dev/null || true && \
   npx prisma migrate resolve --applied 20260418120000_legacy_lead_view 2>/dev/null || true && \
+  npx prisma migrate resolve --applied 20260420110000_legacy_shadow_fields 2>/dev/null || true && \
   npx prisma migrate deploy && node dist/index.js"]
