@@ -140,7 +140,10 @@ async def _redis_check_and_increment(key: str, limit: int) -> tuple[bool, int]:
         return allowed, current_count
     except Exception as exc:
         logger.warning("Redis rate limit error; falling back to in-memory: %s", exc)
-        return False, 0
+        global _redis_available, _redis
+        _redis_available = False
+        _redis = None
+        return True, 0
 
 
 def _inmemory_check_and_increment(key: str, limit: int) -> tuple[bool, int]:
