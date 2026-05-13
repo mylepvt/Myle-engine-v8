@@ -75,6 +75,8 @@ def _ensure_drain_task() -> asyncio.Task[None] | None:
 def emit_observation(record: dict[str, Any]) -> None:
     if not settings.phase1_observation_enabled:
         return
+    line = json.dumps(record, default=str)
+    print(f"PHASE1_OBS {line}", flush=True)
     try:
         q = _ensure_queue()
         _ensure_drain_task()
