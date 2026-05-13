@@ -17,13 +17,13 @@ if not logger.handlers:
     logger.setLevel(logging.INFO)
     logger.propagate = False
 
+_QUEUE_MAXSIZE = 2000
+_DRAIN_TIMEOUT = 0.5
+
 logger.info("module_loaded enabled=%s sample_rate=%s queue_maxsize=%s",
             settings.phase1_observation_enabled,
             settings.phase1_observation_sample_rate,
             _QUEUE_MAXSIZE)
-
-_QUEUE_MAXSIZE = 2000
-_DRAIN_TIMEOUT = 0.5
 
 _queue: asyncio.Queue[dict[str, Any]] | None = None
 _drain_task: asyncio.Task[None] | None = None
