@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from fastapi import BackgroundTasks, Depends, HTTPException
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
@@ -14,6 +14,8 @@ from app.api.deps import AuthUser, get_db
 from app.core.config import settings
 from app.core.pipeline_rules import validate_vl2_status_transition_for_role
 from app.core.realtime_hub import notify_topics
+from app.core.time_ist import today_ist
+from app.models.activity_log import ActivityLog
 from app.models.batch_day_submission import BatchDaySubmission
 from app.models.follow_up import FollowUp
 from app.models.lead import Lead
@@ -41,6 +43,7 @@ from app.services.invoice_records import create_tax_invoice_for_pool_claim, crea
 from app.services.ctcs_heat import bump_heat_on_entering_contacted, clamp_ctcs_heat
 from app.services.ctcs_status_chain import advance_lead_status_toward
 from app.services.lead_payloads import build_lead_public_payloads
+from app.services.live_metrics import ist_day_bounds
 from app.services.team_tracking import refresh_daily_member_stat_after_change
 from app.services.user_hierarchy import nearest_leader_for_user
 from app.services.whatsapp_ctcs import send_interested_enrollment_assets
@@ -104,16 +107,39 @@ def _free_pool_available_clause() -> Any:
     )
 
 
-def _ctcs_filter_clause(ctcs_filter: Optional[str]) -> Any:
+def _fresh_lead_today_clause(user_id: int) -> Any:
+    start, end = ist_day_bounds(today_ist())
+    claimed_today = exists(
+        select(1).where(
+            ActivityLog.action.in_(("lead.claimed", "lead.claimed_free")),
+            ActivityLog.entity_type == "lead",
+            ActivityLog.entity_id == Lead.id,
+            ActivityLog.user_id == user_id,
+            ActivityLog.created_at >= start,
+            ActivityLog.created_at < end,
+        )
+    )
+    created_today = and_(
+        Lead.created_by_user_id == user_id,
+        Lead.created_at >= start,
+        Lead.created_at < end,
+    )
+    return or_(claimed_today, created_today)
+
+
+def _ctcs_filter_clause(ctcs_filter: Optional[str], *, user: AuthUser | None = None) -> Any:
     if ctcs_filter is None:
         return None
-    now = datetime.now(timezone.utc)
-    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     key = ctcs_filter.strip().lower()
     if key in ("", "all"):
         return None
     if key == "today":
-        return Lead.created_at >= day_start
+        if user is None:
+            raise HTTPException(
+                status_code=http_status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="User context required for ctcs_filter=today",
+            )
+        return _fresh_lead_today_clause(user.user_id)
     if key in ("followups", "follow_ups"):
         return Lead.next_followup_at.is_not(None)
     if key == "hot":
@@ -297,7 +323,7 @@ class LeadsService:
             search_all_sections=cross_section_search,
             leader_all_scope=leader_all_scope and user.role == "leader",
         )
-        extra = _ctcs_filter_clause(ctcs_filter)
+        extra = _ctcs_filter_clause(ctcs_filter, user=user)
         if extra is not None:
             condition = and_(condition, extra) if condition is not None else extra
         # leader_all_scope shows all statuses — skip pre_enrollment_only restriction

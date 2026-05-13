@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import delete
 
+from app.models.activity_log import ActivityLog
 from app.models.crm_outbox import CrmOutbox
 from app.models.follow_up import FollowUp
 from app.models.lead import Lead
@@ -23,6 +24,7 @@ async def _clear_leads() -> None:
     async with fac() as session:
         await session.execute(delete(FollowUp))
         await session.execute(delete(CrmOutbox))
+        await session.execute(delete(ActivityLog))
         await session.execute(delete(Lead))
         await session.commit()
 
@@ -38,17 +40,24 @@ async def _seed_lead(
     created_at: datetime | None = None,
     created_by_user_id: int | None = None,
     assigned_to_user_id: int | None = None,
+    in_pool: bool = False,
+    pool_price_cents: int | None = None,
+    pool_type: str = "paid",
 ) -> None:
     fac = test_conftest.get_test_session_factory()
     async with fac() as session:
+        assignee = assigned_to_user_id if assigned_to_user_id is not None else (None if in_pool else user_id)
         lead_kwargs = {
             "name": name,
             "status": status,
             "created_by_user_id": created_by_user_id if created_by_user_id is not None else user_id,
-            "assigned_to_user_id": assigned_to_user_id if assigned_to_user_id is not None else user_id,
+            "assigned_to_user_id": assignee,
             "phone": phone,
             "city": city,
             "last_action_at": last_action_at,
+            "in_pool": in_pool,
+            "pool_price_cents": pool_price_cents,
+            "pool_type": pool_type,
         }
         if created_at is not None:
             lead_kwargs["created_at"] = created_at
@@ -115,6 +124,56 @@ def test_ctcs_list_newest_first_for_calling_board(monkeypatch: pytest.MonkeyPatc
         assert r.status_code == 200, r.text
         names = [item["name"] for item in r.json()["items"][:3]]
         assert names == ["Newest Lead", "Middle Lead", "Oldest Lead"]
+    finally:
+        asyncio.run(_clear_leads())
+
+
+def test_ctcs_today_includes_paid_pool_claims_that_count_in_team_gate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(_clear_leads())
+    asyncio.run(
+        _seed_lead(
+            user_id=1,
+            name="Paid Pool Fresh Claim",
+            phone="9876500100",
+            created_by_user_id=1,
+            assigned_to_user_id=None,
+            created_at=datetime.now(timezone.utc) - timedelta(days=2),
+            in_pool=True,
+            pool_price_cents=0,
+            pool_type="paid",
+        )
+    )
+    try:
+        patch_jwt_settings(monkeypatch, auth_dev_login_enabled=True, csrf_enabled=False)
+        c = TestClient(app)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+
+        claim = c.post("/api/v1/lead-pool/claim", json={"count": 1})
+        assert claim.status_code == 200, claim.text
+        claimed = claim.json()["leads"][0]
+        assert claimed["name"] == "Paid Pool Fresh Claim"
+        assert claimed["last_action_at"] is not None
+
+        stats = c.get("/api/v1/execution/team-today-stats")
+        assert stats.status_code == 200, stats.text
+        stats_body = stats.json()
+        assert stats_body["claimed_today"] == 1
+        assert stats_body["fresh_leads_today"] == 1
+
+        today = c.get(
+            "/api/v1/leads",
+            params={
+                "ctcs_filter": "today",
+                "ctcs_priority_sort": "true",
+                "pre_enrollment_only": "true",
+            },
+        )
+        assert today.status_code == 200, today.text
+        today_body = today.json()
+        assert today_body["total"] == 1
+        assert [item["name"] for item in today_body["items"]] == ["Paid Pool Fresh Claim"]
     finally:
         asyncio.run(_clear_leads())
 

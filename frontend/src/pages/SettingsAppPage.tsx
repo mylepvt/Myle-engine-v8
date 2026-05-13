@@ -16,6 +16,9 @@ type SettingsTextField = {
   inputMode?: HTMLAttributes<HTMLInputElement>['inputMode']
 }
 
+type BatchVideoDayKey = 'd4' | 'd5'
+type BatchVideoSlotKey = 'morning' | 'afternoon' | 'evening'
+
 const CONTENT_LINK_FIELDS: readonly SettingsTextField[] = [
   {
     key: 'content.esbi_model',
@@ -79,6 +82,21 @@ const PREMIERE_SETTING_FIELDS: readonly SettingsTextField[] = [
   },
 ]
 
+const BATCH_VIDEO_DAYS: readonly { dayKey: BatchVideoDayKey; dayNumber: number }[] = [
+  { dayKey: 'd4', dayNumber: 4 },
+  { dayKey: 'd5', dayNumber: 5 },
+]
+
+const BATCH_VIDEO_SLOTS: readonly { slotKey: BatchVideoSlotKey; label: string }[] = [
+  { slotKey: 'morning', label: 'Morning' },
+  { slotKey: 'afternoon', label: 'Afternoon' },
+  { slotKey: 'evening', label: 'Evening' },
+]
+
+function batchVideoSettingKey(dayKey: BatchVideoDayKey, slotKey: BatchVideoSlotKey, version: 1 | 2): string {
+  return `batch_${dayKey}_${slotKey}_v${version}`
+}
+
 
 const YOUTUBE_HOSTS = new Set(['youtube.com', 'youtu.be', 'youtube-nocookie.com'])
 
@@ -108,10 +126,13 @@ export function SettingsAppPage({ title }: Props) {
   const [q, setQ] = useState('')
   const [premiereEdits, setPremiereEdits] = useState<Record<string, string>>({})
   const [contentEdits, setContentEdits] = useState<Record<string, string>>({})
+  const [batchVideoEdits, setBatchVideoEdits] = useState<Record<string, string>>({})
   const [premiereSaveMsg, setPremiereSaveMsg] = useState<string | null>(null)
   const [contentSaveMsg, setContentSaveMsg] = useState<string | null>(null)
+  const [batchVideoSaveMsg, setBatchVideoSaveMsg] = useState<string | null>(null)
   const [premiereErrorMsg, setPremiereErrorMsg] = useState<string | null>(null)
   const [contentErrorMsg, setContentErrorMsg] = useState<string | null>(null)
+  const [batchVideoErrorMsg, setBatchVideoErrorMsg] = useState<string | null>(null)
   const settingsSource = appSettingsData?.settings ?? {}
   const resolvedPremiereValue = (key: string): string =>
     Object.prototype.hasOwnProperty.call(premiereEdits, key)
@@ -119,6 +140,10 @@ export function SettingsAppPage({ title }: Props) {
       : (settingsSource[key] ?? '')
   const resolvedContentValue = (key: string): string =>
     Object.prototype.hasOwnProperty.call(contentEdits, key) ? (contentEdits[key] ?? '') : (settingsSource[key] ?? '')
+  const resolvedBatchVideoValue = (key: string): string =>
+    Object.prototype.hasOwnProperty.call(batchVideoEdits, key)
+      ? (batchVideoEdits[key] ?? '')
+      : (settingsSource[key] ?? '')
 
   const rows = useMemo(() => {
     const settings = appSettingsData?.settings ?? {}
@@ -145,6 +170,26 @@ export function SettingsAppPage({ title }: Props) {
       void refetchAppSettings()
     } catch (error) {
       setContentErrorMsg(error instanceof Error ? error.message : 'Could not save content links.')
+    }
+  }
+
+  const handleSaveBatchVideos = async () => {
+    setBatchVideoSaveMsg(null)
+    setBatchVideoErrorMsg(null)
+    const editedKeys = Object.keys(batchVideoEdits)
+    if (editedKeys.length === 0) {
+      setBatchVideoSaveMsg('No batch video changes to save.')
+      return
+    }
+    try {
+      for (const key of editedKeys) {
+        await updateAppSetting.mutateAsync({ key, value: resolvedBatchVideoValue(key).trim() })
+      }
+      setBatchVideoEdits({})
+      setBatchVideoSaveMsg('Day 4 / Day 5 batch videos saved.')
+      void refetchAppSettings()
+    } catch (error) {
+      setBatchVideoErrorMsg(error instanceof Error ? error.message : 'Could not save batch video links.')
     }
   }
 
@@ -228,6 +273,86 @@ export function SettingsAppPage({ title }: Props) {
           </button>
           {premiereSaveMsg ? <p className="text-xs text-emerald-400">{premiereSaveMsg}</p> : null}
           {premiereErrorMsg ? <p className="text-xs text-destructive">{premiereErrorMsg}</p> : null}
+        </div>
+      </section>
+
+      <section className="surface-elevated space-y-3 p-4">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">Day 4 / Day 5 Batch Videos</h2>
+          <p className="text-xs text-muted-foreground">
+            Ye links <code className="rounded bg-white/10 px-1 text-[10px]">/watch/batch/...</code> room me play hote hain.
+            Agar sirf ek video ho, to usi ko dono batch buttons ke liye fallback kiya jayega.
+          </p>
+        </div>
+
+        {appSettingsPending ? (
+          <Skeleton className="h-9 w-full" />
+        ) : appSettingsError ? (
+          <div className="text-sm text-destructive" role="alert">
+            {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load app settings.'}
+          </div>
+        ) : (
+          <div className="space-y-5">
+            {BATCH_VIDEO_DAYS.map((day) => (
+              <div key={day.dayKey} className="space-y-3">
+                <h3 className="text-sm font-semibold text-foreground">Day {day.dayNumber}</h3>
+                <div className="grid gap-3 lg:grid-cols-3">
+                  {BATCH_VIDEO_SLOTS.map((slot) => {
+                    const v1Key = batchVideoSettingKey(day.dayKey, slot.slotKey, 1)
+                    const v2Key = batchVideoSettingKey(day.dayKey, slot.slotKey, 2)
+                    return (
+                      <div key={slot.slotKey} className="space-y-2 rounded-lg border border-white/[0.12] bg-muted/40 p-3">
+                        <p className="text-ds-caption font-medium text-foreground">{slot.label}</p>
+                        <label className="block text-sm">
+                          <span className="mb-1 block text-ds-caption text-muted-foreground">Video 1</span>
+                          <input
+                            type="text"
+                            value={resolvedBatchVideoValue(v1Key)}
+                            onChange={(e) =>
+                              setBatchVideoEdits((prev) => ({
+                                ...prev,
+                                [v1Key]: e.target.value,
+                              }))
+                            }
+                            placeholder="https://youtube.com/watch?v=... or https://cdn.example.com/day4.mp4"
+                            className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                          />
+                        </label>
+                        <label className="block text-sm">
+                          <span className="mb-1 block text-ds-caption text-muted-foreground">Video 2 (optional)</span>
+                          <input
+                            type="text"
+                            value={resolvedBatchVideoValue(v2Key)}
+                            onChange={(e) =>
+                              setBatchVideoEdits((prev) => ({
+                                ...prev,
+                                [v2Key]: e.target.value,
+                              }))
+                            }
+                            placeholder="Optional second video"
+                            className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                          />
+                        </label>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            disabled={updateAppSetting.isPending || appSettingsPending || appSettingsError}
+            onClick={() => void handleSaveBatchVideos()}
+            className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-medium text-primary disabled:opacity-50"
+          >
+            {updateAppSetting.isPending ? 'Saving...' : 'Save batch videos'}
+          </button>
+          {batchVideoSaveMsg ? <p className="text-xs text-emerald-400">{batchVideoSaveMsg}</p> : null}
+          {batchVideoErrorMsg ? <p className="text-xs text-destructive">{batchVideoErrorMsg}</p> : null}
         </div>
       </section>
 

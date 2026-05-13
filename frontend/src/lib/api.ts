@@ -34,6 +34,7 @@ export function apiUrl(path: string): string {
 
 export type ApiFetchOptions = RequestInit & {
   skipAuthRetry?: boolean
+  skipCsrfRetry?: boolean
 }
 
 function getCsrfToken(): string {
@@ -61,6 +62,16 @@ function fetchWithCookies(path: string, init?: RequestInit): Promise<Response> {
     ...init,
     headers,
   })
+}
+
+async function isCsrfInvalidResponse(response: Response): Promise<boolean> {
+  if (response.status !== 403) return false
+  try {
+    const payload = (await response.clone().json()) as { error?: { code?: string } }
+    return payload?.error?.code === 'csrf_invalid'
+  } catch {
+    return false
+  }
 }
 
 function shouldRetryAfter401(path: string): boolean {
@@ -108,8 +119,11 @@ export async function apiFetch(
   path: string,
   init?: ApiFetchOptions,
 ): Promise<Response> {
-  const { skipAuthRetry = false, ...requestInit } = init ?? {}
+  const { skipAuthRetry = false, skipCsrfRetry = false, ...requestInit } = init ?? {}
   let response = await fetchWithCookies(path, requestInit)
+  if (!skipCsrfRetry && await isCsrfInvalidResponse(response)) {
+    response = await fetchWithCookies(path, requestInit)
+  }
   if (
     skipAuthRetry ||
     response.status !== 401 ||
