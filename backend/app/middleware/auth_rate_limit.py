@@ -1,7 +1,6 @@
 """Sliding-window rate limit for POST /api/v1/auth/login|dev-login|refresh (Redis-backed with in-memory fallback)."""
 from __future__ import annotations
 
-import ipaddress
 import logging
 import re
 import time
@@ -33,6 +32,7 @@ _redis: Optional[object] = None
 _redis_available: Optional[bool] = None
 
 _FORWARDED_FOR_RE = re.compile(r'for=(?:"?\[?)([^;\s,\]"]+)')
+_PROXY_IP_HEADERS = ("cf-connecting-ip", "x-forwarded-for", "x-real-ip")
 
 
 def _get_redis() -> Optional[object]:
@@ -65,34 +65,14 @@ def _reset_rate_limit_store_for_tests() -> None:
     _redis_available = None
 
 
-def _host_looks_like_proxy(host: str) -> bool:
-    host = (host or "").strip()
-    if not host:
-        return True
-    if host in {"localhost", "testclient"}:
-        return True
-    try:
-        ip = ipaddress.ip_address(host)
-    except ValueError:
-        return host.endswith(".internal")
-    return (
-        ip.is_private
-        or ip.is_loopback
-        or ip.is_link_local
-        or ip.is_reserved
-        or ip.is_unspecified
-    )
-
-
 def _extract_forwarded_client_host(request: Request) -> str | None:
-    xff = (request.headers.get("x-forwarded-for") or "").strip()
-    if xff:
-        first = xff.split(",", 1)[0].strip()
+    for header_name in _PROXY_IP_HEADERS:
+        raw_value = (request.headers.get(header_name) or "").strip()
+        if not raw_value:
+            continue
+        first = raw_value.split(",", 1)[0].strip()
         if first:
             return first.strip('"').strip("[]")
-    x_real_ip = (request.headers.get("x-real-ip") or "").strip()
-    if x_real_ip:
-        return x_real_ip.strip('"').strip("[]")
     forwarded = request.headers.get("forwarded") or ""
     match = _FORWARDED_FOR_RE.search(forwarded)
     if match:
@@ -101,12 +81,10 @@ def _extract_forwarded_client_host(request: Request) -> str | None:
 
 
 def _rate_limit_client_host(request: Request) -> str:
-    direct_host = request.client.host if request.client else "unknown"
-    if _host_looks_like_proxy(direct_host):
-        forwarded_host = _extract_forwarded_client_host(request)
-        if forwarded_host:
-            return forwarded_host
-    return direct_host
+    forwarded_host = _extract_forwarded_client_host(request)
+    if forwarded_host:
+        return forwarded_host
+    return request.client.host if request.client else "unknown"
 
 
 async def _redis_check_and_increment(key: str, limit: int) -> tuple[bool, int]:
