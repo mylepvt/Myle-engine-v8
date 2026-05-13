@@ -111,6 +111,24 @@ async def _seed_team_execution_data() -> None:
         await session.commit()
 
 
+async def _seed_old_free_pool_lead() -> None:
+    factory = get_test_session_factory()
+    async with factory() as session:
+        session.add(
+            Lead(
+                name="Free pool lead",
+                status="new_lead",
+                created_by_user_id=1,
+                assigned_to_user_id=None,
+                phone="9444444444",
+                in_pool=True,
+                pool_type="free",
+                created_at=datetime.now(timezone.utc) - timedelta(days=2),
+            )
+        )
+        await session.commit()
+
+
 async def _seed_lead_control_data() -> dict[str, int]:
     factory = get_test_session_factory()
     now = datetime.now(timezone.utc)
@@ -268,6 +286,28 @@ def test_team_today_stats_count_distinct_fresh_calls(monkeypatch: pytest.MonkeyP
         assert body["claimed_today"] == 3
         assert body["fresh_leads_today"] == 3
         assert body["calls_today"] == 3
+        assert body["call_target"] == 15
+    finally:
+        asyncio.run(_reset_execution_tables())
+
+
+def test_team_today_stats_counts_free_pool_claims(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_reset_execution_tables())
+    try:
+        asyncio.run(_seed_old_free_pool_lead())
+        c = _client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
+
+        claim = c.post("/api/v1/free-lead-pool/claim", json={"count": 1})
+        assert claim.status_code == 200, claim.text
+        assert claim.json()["claimed_count"] == 1
+
+        stats = c.get("/api/v1/execution/team-today-stats")
+        assert stats.status_code == 200, stats.text
+        body = stats.json()
+        assert body["claimed_today"] == 1
+        assert body["fresh_leads_today"] == 1
+        assert body["calls_today"] == 0
         assert body["call_target"] == 15
     finally:
         asyncio.run(_reset_execution_tables())
