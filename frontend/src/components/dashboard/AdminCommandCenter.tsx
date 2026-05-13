@@ -195,12 +195,12 @@ function StatCard({
   to?: string
 }) {
   const styles = STAT_VARIANT_STYLES[variant]
-  const cls = `border-t-2 bg-gradient-to-b to-transparent ${styles.border} ${styles.bg}`
+  const cls = `border-t-2 bg-gradient-to-b to-transparent ${styles.border} ${styles.bg} h-full`
   const inner = (
-    <CardContent className="space-y-2.5 p-4">
-      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
-      <p className={`font-heading text-[2rem] font-bold leading-none tabular-nums ${styles.value}`}>{value}</p>
-      <p className="text-xs leading-relaxed text-muted-foreground">{hint}</p>
+    <CardContent className="flex flex-col justify-between gap-1 p-3.5">
+      <p className="text-ds-label uppercase tracking-label-wide text-muted-foreground">{label}</p>
+      <p className={`font-heading text-[1.5rem] font-bold leading-none tabular-nums ${styles.value}`}>{value}</p>
+      <p className="text-[0.65rem] leading-snug text-muted-foreground">{hint}</p>
     </CardContent>
   )
   if (to) return <CardLink to={to} className={cls}>{inner}</CardLink>
@@ -223,21 +223,21 @@ function DeskShortcut({
   return (
     <Link
       to={to}
-      className="group flex items-center gap-3.5 rounded-[1.1rem] border border-border/60 bg-card/40 p-3.5 no-underline transition-all duration-200 hover:border-primary/30 hover:bg-primary/[0.03] hover:shadow-[0_4px_16px_-4px_rgba(84,101,255,0.14)]"
+      className="group flex items-center gap-3 rounded-[0.9rem] border border-border/60 bg-card/40 p-3 no-underline transition-all duration-200 hover:border-primary/30 hover:bg-primary/[0.03] hover:shadow-[0_4px_16px_-4px_rgba(84,101,255,0.14)]"
     >
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted/60 text-primary ring-1 ring-border/40 transition-colors duration-200 group-hover:bg-primary/[0.08] group-hover:ring-primary/30">
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted/60 text-primary ring-1 ring-border/40 transition-colors duration-200 group-hover:bg-primary/[0.08] group-hover:ring-primary/30">
         {icon}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <p className="text-sm font-semibold text-foreground">{title}</p>
+          <p className="text-[0.8125rem] font-semibold leading-tight text-foreground">{title}</p>
           {badge != null && Number(badge) > 0 ? (
             <span className="rounded-full bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
               {badge}
             </span>
           ) : null}
         </div>
-        <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{description}</p>
+        <p className="mt-0.5 text-[0.6875rem] leading-snug text-muted-foreground">{description}</p>
       </div>
       <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-primary/70" />
     </Link>
@@ -526,24 +526,22 @@ export function AdminCommandCenter({ firstName }: Props) {
   const premiereActiveCount = (premiereViewers.data ?? []).filter((v) => isActiveNow(v.last_seen_at)).length
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <div className="mx-auto max-w-7xl space-y-4">
       {/* ── Hero header ── */}
-      <div className="relative overflow-hidden rounded-[1.75rem] border border-primary/20 bg-gradient-to-br from-[#eef0ff] via-[#f4f6ff] to-[#fafaff] px-6 py-8 dark:border-white/[0.07] dark:from-[#0d0d14] dark:via-[#0e0d18] dark:to-[#0a0b11] md:px-8">
-        <div className="pointer-events-none absolute -top-24 right-0 size-80 rounded-full bg-primary/[0.22] blur-3xl dark:bg-primary/[0.18]" />
-        <div className="pointer-events-none absolute bottom-0 left-1/3 size-48 rounded-full bg-violet-400/[0.12] blur-2xl dark:bg-primary/[0.08]" />
-        <div className="pointer-events-none absolute left-0 top-0 size-40 rounded-full bg-blue-300/[0.18] blur-2xl dark:hidden" />
-        <div className="relative space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Admin Command Center</p>
-          <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">
+      <div className="relative overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-[#eef0ff] via-[#f4f6ff] to-[#fafaff] px-5 py-5 dark:border-white/[0.06] dark:from-[#0d0d14] dark:via-[#0e0d18] dark:to-[#0a0b11] md:px-6">
+        <div className="pointer-events-none absolute -top-20 right-0 size-64 rounded-full bg-primary/[0.14] blur-3xl dark:bg-primary/[0.10]" />
+        <div className="pointer-events-none absolute bottom-0 left-1/3 size-32 rounded-full bg-violet-400/[0.08] blur-2xl dark:bg-primary/[0.05]" />
+        <div className="relative space-y-2">
+          <p className="text-ds-label uppercase tracking-[0.16em] text-primary/70">Admin Command Center</p>
+          <h1 className="font-heading text-ds-h2 tracking-tight text-foreground">
             Good day, {firstName}
           </h1>
-          <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            One operational surface for today&apos;s queues, universal lead jump, team controls, finance checkpoints,
-            content readiness, and audit visibility.
+          <p className="max-w-2xl text-ds-caption text-muted-foreground">
+            One surface for today&apos;s queues, lead jump, team, finance, content, and audit.
           </p>
-          <div className="flex flex-wrap gap-2.5 pt-1">
+          <div className="flex flex-wrap gap-2 pt-1">
             {pendingTotal > 0 && (
-              <div className="flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-50 px-4 py-1.5 text-sm shadow-sm dark:border-amber-400/20 dark:bg-amber-400/[0.07] dark:shadow-none">
+              <div className="flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-50 px-3.5 py-1 text-xs shadow-sm dark:border-amber-400/20 dark:bg-amber-400/[0.07] dark:shadow-none">
                 <span className="relative flex size-1.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-500 opacity-75" />
                   <span className="relative inline-flex size-1.5 rounded-full bg-amber-500" />
@@ -553,7 +551,7 @@ export function AdminCommandCenter({ firstName }: Props) {
               </div>
             )}
             {liveWatcherCount > 0 && (
-              <div className="flex items-center gap-2 rounded-full border border-red-400/40 bg-red-50 px-4 py-1.5 text-sm shadow-sm dark:border-red-400/20 dark:bg-red-500/[0.07] dark:shadow-none">
+              <div className="flex items-center gap-2 rounded-full border border-red-400/40 bg-red-50 px-3.5 py-1 text-xs shadow-sm dark:border-red-400/20 dark:bg-red-500/[0.07] dark:shadow-none">
                 <span className="relative flex size-1.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
                   <span className="relative inline-flex size-1.5 rounded-full bg-red-500" />
@@ -563,7 +561,7 @@ export function AdminCommandCenter({ firstName }: Props) {
               </div>
             )}
             {premiereActiveCount > 0 && (
-              <div className="flex items-center gap-2 rounded-full border border-red-400/40 bg-red-50 px-4 py-1.5 text-sm shadow-sm dark:border-red-400/20 dark:bg-red-500/[0.07] dark:shadow-none">
+              <div className="flex items-center gap-2 rounded-full border border-red-400/40 bg-red-50 px-3.5 py-1 text-xs shadow-sm dark:border-red-400/20 dark:bg-red-500/[0.07] dark:shadow-none">
                 <span className="relative flex size-1.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
                   <span className="relative inline-flex size-1.5 rounded-full bg-red-500" />
@@ -574,7 +572,7 @@ export function AdminCommandCenter({ firstName }: Props) {
             )}
           </div>
         </div>
-        <div className="relative mt-6 flex flex-wrap gap-2 border-t border-primary/15 pt-5 dark:border-white/[0.07]">
+        <div className="relative mt-4 flex flex-wrap gap-2 border-t border-primary/10 pt-4 dark:border-white/[0.06]">
           <Button asChild variant="secondary" size="sm">
             <Link to="/dashboard/system/lead-control">Open lead control</Link>
           </Button>
@@ -637,7 +635,7 @@ export function AdminCommandCenter({ firstName }: Props) {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="today" className="space-y-6">
+        <TabsContent value="today" className="space-y-4">
           {/* Today's live pipeline pulse */}
           <section className="grid gap-4 md:grid-cols-3">
             <StatCard
@@ -649,13 +647,13 @@ export function AdminCommandCenter({ firstName }: Props) {
             <StatCard
               label="Day 1 Pipeline"
               value={liveSummary?.day1_total ?? 0}
-              hint="Leads currently in Day 1 stage — sent for initial follow-up."
+              hint="Leads in Day 1 stage — sent for initial follow-up."
               variant="success"
             />
             <StatCard
               label="Day 2 with Leader"
               value={liveSummary?.day2_total ?? 0}
-              hint="Leads currently in Day 2 stage — in a leader's hands."
+              hint="Leads in Day 2 stage — in a leader's hands."
               variant="default"
             />
           </section>
@@ -671,34 +669,34 @@ export function AdminCommandCenter({ firstName }: Props) {
             <StatCard
               label="Min. FLP Billing"
               value={enrollmentPending.data?.total ?? 0}
-              hint="Min. FLP billing approvals pending review right now."
+              hint="Min. FLP billing approvals pending review."
               variant="warning"
               to="/dashboard/team/enrollment-approvals"
             />
             <StatCard
               label="Recharge Requests"
               value={pendingRechargeItems.length}
-              hint="Wallet requests still waiting for finance approval."
+              hint="Wallet requests waiting for finance approval."
               variant="warning"
               to="/dashboard/finance/recharge-admin"
             />
             <StatCard
               label="Grace Requests"
               value={pendingGraceCount}
-              hint="Team members with a pending grace period request awaiting review."
+              hint="Members with pending grace period request."
               variant={pendingGraceCount > 0 ? 'warning' : 'default'}
               to="/dashboard/team/members"
             />
             <StatCard
               label="Reassign Ready"
               value={leadControl.data?.queue_total ?? 0}
-              hint="Archived watch leads already eligible for redistribution."
+              hint="Archived watch leads eligible for redistribution."
               to="/dashboard/system/lead-control"
             />
             <StatCard
               label="Archive Incubation"
               value={leadControl.data?.incubation_total ?? 0}
-              hint="Archived watch leads still counting down toward stale reassignment."
+              hint="Archived watch leads counting down to stale reassignment."
               to="/dashboard/system/lead-control"
             />
           </section>
@@ -706,13 +704,13 @@ export function AdminCommandCenter({ firstName }: Props) {
           <section className="grid gap-4 xl:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
+                <CardTitle className="flex items-center gap-2 text-ds-h3">
                   <BellRing className="size-4" />
                   Today Queue
                 </CardTitle>
                 <CardDescription>Priority approvals and movement queues without jumping across the app.</CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-3">
+              <CardContent className="grid gap-2.5">
                 <DeskShortcut
                   to="/dashboard/team/approvals"
                   title="Pending registrations"
@@ -734,7 +732,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                 <DeskShortcut
                   to="/dashboard/team/members"
                   title="Grace requests"
-                  description="Review and approve or reject pending grace period requests from team members."
+                  description="Review and action pending grace period requests."
                   icon={<Clock className="size-4" />}
                 />
                 <DeskShortcut
@@ -748,30 +746,27 @@ export function AdminCommandCenter({ firstName }: Props) {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Today Snapshot</CardTitle>
+                <CardTitle className="text-ds-h3">Today Snapshot</CardTitle>
                 <CardDescription>Fast operational pulse for the current admin day.</CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-3 md:grid-cols-2">
-                <div className="surface-inset rounded-2xl p-4">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Claimed today</p>
-                  <p className="mt-2 text-[1.75rem] font-bold leading-none tabular-nums text-foreground">{liveSummary?.leads_claimed_today ?? 0}</p>
+              <CardContent className="grid gap-3 sm:grid-cols-2">
+                <div className="surface-inset rounded-xl p-3.5">
+                  <p className="text-ds-label uppercase tracking-label-wide text-muted-foreground">Claimed Today</p>
+                  <p className="mt-1 text-ds-h1 font-bold tabular-nums text-foreground">{liveSummary?.leads_claimed_today ?? 0}</p>
                 </div>
-                <div className="surface-inset rounded-2xl p-4">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Approved today</p>
-                  <p className="mt-2 text-[1.75rem] font-bold leading-none tabular-nums text-foreground">
-                    {liveSummary?.payment_proofs_approved_today ?? 0}
-                  </p>
+                <div className="surface-inset rounded-xl p-3.5">
+                  <p className="text-ds-label uppercase tracking-label-wide text-muted-foreground">Approved Today</p>
+                  <p className="mt-1 text-ds-h1 font-bold tabular-nums text-foreground">{liveSummary?.payment_proofs_approved_today ?? 0}</p>
                 </div>
-                <div className="surface-inset rounded-2xl p-4">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Lead pool visible</p>
-                  <p className="mt-2 text-[1.75rem] font-bold leading-none tabular-nums text-foreground">{leadPool.data?.total ?? 0}</p>
+                <div className="surface-inset rounded-xl p-3.5">
+                  <p className="text-ds-label uppercase tracking-label-wide text-muted-foreground">Lead Pool</p>
+                  <p className="mt-1 text-ds-h1 font-bold tabular-nums text-foreground">{leadPool.data?.total ?? 0}</p>
+                  <p className="mt-0.5 text-[0.65rem] text-muted-foreground">Visible in admin pool</p>
                 </div>
-                <div className="surface-inset rounded-2xl p-4">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Latest reassignment</p>
-                  <p className="mt-2 text-sm font-semibold text-foreground">
-                    {leadControl.data?.history?.[0]?.lead_name ?? 'No movement yet'}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                <div className="surface-inset rounded-xl p-3.5">
+                  <p className="text-ds-label uppercase tracking-label-wide text-muted-foreground">Latest Movement</p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">{leadControl.data?.history?.[0]?.lead_name ?? 'No movement yet'}</p>
+                  <p className="mt-0.5 text-[0.65rem] text-muted-foreground">
                     {leadControl.data?.history?.[0]
                       ? formatDateTime(leadControl.data.history[0].occurred_at)
                       : 'Soft log will appear here.'}
@@ -784,7 +779,7 @@ export function AdminCommandCenter({ firstName }: Props) {
           {pendingGraceCount > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
+                <CardTitle className="flex items-center gap-2 text-ds-h3">
                   <Clock className="size-4" />
                   Pending Grace Requests
                   <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-xs font-bold text-amber-400">
@@ -803,7 +798,7 @@ export function AdminCommandCenter({ firstName }: Props) {
 
           <Card className="surface-elevated border-white/[0.08]">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
+              <CardTitle className="flex items-center gap-2 text-ds-h3">
                 <span className="relative flex size-2">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
                   <span className="relative inline-flex size-2 rounded-full bg-red-500" />
@@ -825,10 +820,15 @@ export function AdminCommandCenter({ firstName }: Props) {
                   onRetry={() => void activeWatchers.refetch()}
                 />
               ) : (activeWatchers.data?.items ?? []).length === 0 ? (
-                <EmptyState
-                  title="No one watching right now"
-                  description="Active viewers will appear here within 15 seconds of opening their private room."
-                />
+                <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-surface/20 px-6 py-8 text-center">
+                  <div className="flex size-12 items-center justify-center rounded-full bg-muted/40">
+                    <Video className="size-5 text-muted-foreground/50" />
+                  </div>
+                  <p className="mt-3 text-sm font-medium text-foreground">No one watching right now</p>
+                  <p className="mt-1 max-w-xs text-ds-caption text-muted-foreground">
+                    Active viewers appear here within 15 seconds of opening their private room.
+                  </p>
+                </div>
               ) : (
                 <div className="space-y-3">
                   {(activeWatchers.data?.items ?? []).map((watcher) => (
@@ -871,15 +871,15 @@ export function AdminCommandCenter({ firstName }: Props) {
           </Card>
         </TabsContent>
 
-        <TabsContent value="leads" className="space-y-6">
+        <TabsContent value="leads" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
+              <CardTitle className="flex items-center gap-2 text-ds-h3">
                 <Search className="size-4" />
                 Universal Lead Search
               </CardTitle>
               <CardDescription>
-                Search all admin-visible sections and jump straight into the lead when needed.
+                Search all admin-visible sections and jump straight into the lead.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -921,10 +921,10 @@ export function AdminCommandCenter({ firstName }: Props) {
           <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Lead Desk</CardTitle>
+                <CardTitle className="text-ds-h3">Lead Desk</CardTitle>
                 <CardDescription>Everything admin needs for movement and storage, without hunting through nav.</CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-3">
+              <CardContent className="grid gap-2.5">
                 <DeskShortcut
                   to="/dashboard/system/lead-control"
                   title="Lead control"
@@ -935,7 +935,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                 <DeskShortcut
                   to="/dashboard/work/archived"
                   title="Archived leads"
-                  description="Review quiet leads and restore them only when needed."
+                  description="Review quiet leads and restore them when needed."
                   icon={<Layers3 className="size-4" />}
                   badge={leadControl.data?.incubation_total ?? 0}
                 />
@@ -959,12 +959,12 @@ export function AdminCommandCenter({ firstName }: Props) {
           </section>
         </TabsContent>
 
-        <TabsContent value="team" className="space-y-6">
+        <TabsContent value="team" className="space-y-4">
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <StatCard
               label="Total Users"
               value={systemUsersSummary.data?.total_users ?? 0}
-              hint="Approved + pending + blocked users in the system summary."
+              hint="Approved + pending + blocked users."
               variant="success"
               to="/dashboard/team/members"
             />
@@ -992,10 +992,10 @@ export function AdminCommandCenter({ firstName }: Props) {
           <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Member Desk</CardTitle>
-                <CardDescription>Role, compliance, password reset, access lock, and training live in one admin member surface.</CardDescription>
+                <CardTitle className="text-ds-h3">Member Desk</CardTitle>
+                <CardDescription>Role, compliance, password reset, access lock, and training in one surface.</CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-3">
+              <CardContent className="grid gap-2.5">
                 <DeskShortcut
                   to="/dashboard/team/members"
                   title="Team members"
@@ -1020,7 +1020,7 @@ export function AdminCommandCenter({ firstName }: Props) {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Members Needing Attention</CardTitle>
+                <CardTitle className="text-ds-h3">Members Needing Attention</CardTitle>
                 <CardDescription>Fast triage list before you open the full member desk.</CardDescription>
               </CardHeader>
               <CardContent>
@@ -1056,7 +1056,7 @@ export function AdminCommandCenter({ firstName }: Props) {
           </section>
         </TabsContent>
 
-        <TabsContent value="leaders" className="space-y-6">
+        <TabsContent value="leaders" className="space-y-4">
           {/* Summary bar */}
           {leaderHealth.data && (
             <section className="grid gap-4 md:grid-cols-4">
@@ -1081,7 +1081,7 @@ export function AdminCommandCenter({ firstName }: Props) {
               <StatCard
                 label="Day 2 Leads Active"
                 value={leaderHealth.data.leaders.reduce((s, l) => s + l.day2_leads_count, 0)}
-                hint="Total leads currently in Day 2 stage across all leaders."
+                hint="Total leads in Day 2 stage across all leaders."
                 variant="default"
               />
             </section>
@@ -1089,7 +1089,7 @@ export function AdminCommandCenter({ firstName }: Props) {
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
+              <CardTitle className="flex items-center gap-2 text-ds-h3">
                 <Activity className="size-4" />
                 Leader Health Rings
               </CardTitle>
@@ -1129,7 +1129,7 @@ export function AdminCommandCenter({ firstName }: Props) {
           {(leaderHealth.data?.leaders ?? []).length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
+                <CardTitle className="flex items-center gap-2 text-ds-h3">
                   <PhoneCall className="size-4" />
                   Calling Leaderboard
                 </CardTitle>
@@ -1202,12 +1202,12 @@ export function AdminCommandCenter({ firstName }: Props) {
           )}
         </TabsContent>
 
-        <TabsContent value="finance" className="space-y-6">
+        <TabsContent value="finance" className="space-y-4">
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <StatCard
               label="Visible Balance"
               value={formatInr(budgetSummary.data?.grand_totals.current_balance_cents ?? 0)}
-              hint="Current visible wallet balance across the export view."
+              hint="Current visible wallet balance."
               variant="success"
               to="/dashboard/finance/budget-export"
             />
@@ -1236,10 +1236,10 @@ export function AdminCommandCenter({ firstName }: Props) {
           <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Finance Desk</CardTitle>
+                <CardTitle className="text-ds-h3">Finance Desk</CardTitle>
                 <CardDescription>Recharge approvals, invoices, and budget hierarchy from one place.</CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-3">
+              <CardContent className="grid gap-2.5">
                 <DeskShortcut
                   to="/dashboard/finance/recharge-admin"
                   title="Recharge requests"
@@ -1264,7 +1264,7 @@ export function AdminCommandCenter({ firstName }: Props) {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Recent Invoices</CardTitle>
+                <CardTitle className="text-ds-h3">Recent Invoices</CardTitle>
                 <CardDescription>Latest finance documents without leaving the command center.</CardDescription>
               </CardHeader>
               <CardContent>
@@ -1297,7 +1297,7 @@ export function AdminCommandCenter({ firstName }: Props) {
           </section>
         </TabsContent>
 
-        <TabsContent value="content" className="space-y-6">
+        <TabsContent value="content" className="space-y-4">
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <StatCard
               label="Live Session"
@@ -1317,10 +1317,10 @@ export function AdminCommandCenter({ firstName }: Props) {
           <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Content & Settings</CardTitle>
+                <CardTitle className="text-ds-h3">Content & Settings</CardTitle>
                 <CardDescription>High-trust content rails and system setup shortcuts.</CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-3">
+              <CardContent className="grid gap-2.5">
                 <DeskShortcut
                   to="/dashboard/settings/app"
                   title="General settings"
@@ -1344,7 +1344,7 @@ export function AdminCommandCenter({ firstName }: Props) {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Configuration Readiness</CardTitle>
+                <CardTitle className="text-ds-h3">Configuration Readiness</CardTitle>
                 <CardDescription>Plain status so admin can see what is configured at a glance.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -1366,13 +1366,13 @@ export function AdminCommandCenter({ firstName }: Props) {
           </section>
         </TabsContent>
 
-        <TabsContent value="premiere" className="space-y-6">
+        <TabsContent value="premiere" className="space-y-4">
           {/* Top stats — all 3 days combined */}
           <section className="grid gap-4 md:grid-cols-3">
             <StatCard
               label="Total Attendees Today"
               value={(premiereViewers.data ?? []).length}
-              hint="Unique viewers across Day 1, Day 2, Day 3 live sessions."
+              hint="Unique viewers across Day 1, Day 2, Day 3 sessions."
             />
             <StatCard
               label="Watching Now"
@@ -1393,7 +1393,7 @@ export function AdminCommandCenter({ firstName }: Props) {
             <CardHeader>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <CardTitle className="flex items-center gap-2 text-lg">
+                  <CardTitle className="flex items-center gap-2 text-ds-h3">
                     <Video className="size-4 text-primary" />
                     Live Attendee History
                   </CardTitle>
@@ -1540,7 +1540,7 @@ export function AdminCommandCenter({ firstName }: Props) {
           {/* Session Schedule Summary */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Live Session Schedule</CardTitle>
+              <CardTitle className="text-ds-h3">Live Session Schedule</CardTitle>
               <CardDescription>
                 Day 1 via Calling Board · Day 2 & Day 3 via Workboard — all slots at 5pm, 6pm, 7pm IST.
               </CardDescription>
@@ -1563,7 +1563,7 @@ export function AdminCommandCenter({ firstName }: Props) {
           </Card>
         </TabsContent>
 
-        <TabsContent value="audit" className="space-y-6">
+        <TabsContent value="audit" className="space-y-4">
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <StatCard
               label="History Rows"
@@ -1574,7 +1574,7 @@ export function AdminCommandCenter({ firstName }: Props) {
             <StatCard
               label="Receiving Members"
               value={leadControl.data?.history_summary.length ?? 0}
-              hint="How many members have received reassigned leads."
+              hint="Members who have received reassigned leads."
               to="/dashboard/system/lead-control"
             />
             <StatCard
@@ -1586,7 +1586,7 @@ export function AdminCommandCenter({ firstName }: Props) {
             <StatCard
               label="Activity Log"
               value="Linked"
-              hint="Full append-only activity log stays available as the deep audit page."
+              hint="Full append-only activity log as the deep audit page."
               to="/dashboard/analytics/activity-log"
             />
           </section>
@@ -1594,10 +1594,10 @@ export function AdminCommandCenter({ firstName }: Props) {
           <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Audit Rail</CardTitle>
+                <CardTitle className="text-ds-h3">Audit Rail</CardTitle>
                 <CardDescription>Soft admin movement log here, full append-only activity log one click away.</CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-3">
+              <CardContent className="grid gap-2.5">
                 <DeskShortcut
                   to="/dashboard/system/lead-control"
                   title="Reassignment audit"
@@ -1616,7 +1616,7 @@ export function AdminCommandCenter({ firstName }: Props) {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Recent Reassignment History</CardTitle>
+                <CardTitle className="text-ds-h3">Recent Reassignment History</CardTitle>
                 <CardDescription>Owner-safe movement history for sensitive reassignment review.</CardDescription>
               </CardHeader>
               <CardContent>
