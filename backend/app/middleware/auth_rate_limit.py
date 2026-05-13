@@ -1,7 +1,9 @@
 """Sliding-window rate limit for POST /api/v1/auth/login|dev-login|refresh (Redis-backed with in-memory fallback)."""
 from __future__ import annotations
 
+import ipaddress
 import logging
+import re
 import time
 from collections import defaultdict
 from typing import Optional
@@ -29,6 +31,8 @@ _store: dict[str, list[float]] = defaultdict(list)
 
 _redis: Optional[object] = None
 _redis_available: Optional[bool] = None
+
+_FORWARDED_FOR_RE = re.compile(r'for=(?:"?\[?)([^;\s,\]"]+)')
 
 
 def _get_redis() -> Optional[object]:
@@ -59,6 +63,50 @@ def _reset_rate_limit_store_for_tests() -> None:
     global _redis, _redis_available
     _redis = None
     _redis_available = None
+
+
+def _host_looks_like_proxy(host: str) -> bool:
+    host = (host or "").strip()
+    if not host:
+        return True
+    if host in {"localhost", "testclient"}:
+        return True
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return host.endswith(".internal")
+    return (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_reserved
+        or ip.is_unspecified
+    )
+
+
+def _extract_forwarded_client_host(request: Request) -> str | None:
+    xff = (request.headers.get("x-forwarded-for") or "").strip()
+    if xff:
+        first = xff.split(",", 1)[0].strip()
+        if first:
+            return first.strip('"').strip("[]")
+    x_real_ip = (request.headers.get("x-real-ip") or "").strip()
+    if x_real_ip:
+        return x_real_ip.strip('"').strip("[]")
+    forwarded = request.headers.get("forwarded") or ""
+    match = _FORWARDED_FOR_RE.search(forwarded)
+    if match:
+        return match.group(1).strip('"').strip("[]")
+    return None
+
+
+def _rate_limit_client_host(request: Request) -> str:
+    direct_host = request.client.host if request.client else "unknown"
+    if _host_looks_like_proxy(direct_host):
+        forwarded_host = _extract_forwarded_client_host(request)
+        if forwarded_host:
+            return forwarded_host
+    return direct_host
 
 
 async def _redis_check_and_increment(key: str, limit: int) -> tuple[bool, int]:
@@ -108,7 +156,7 @@ class AuthRateLimitMiddleware(BaseHTTPMiddleware):
         if request.method != "POST" or request.url.path not in _AUTH_POST_PATHS:
             return await call_next(request)
 
-        client_host = request.client.host if request.client else "unknown"
+        client_host = _rate_limit_client_host(request)
         key = f"ratelimit:auth:{client_host}:{request.url.path}"
 
         if _redis_available is not False:

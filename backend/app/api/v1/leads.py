@@ -237,8 +237,9 @@ async def _resolve_batch_watch_context(
 
 async def _resolve_batch_video_url(session: AsyncSession, slot: str, v: int) -> str:
     video_url = await _get_setting_value(session, f"batch_{slot}_v{v}")
-    if not video_url and v == 1:
-        video_url = await _get_setting_value(session, f"batch_{slot}_v2")
+    if not video_url:
+        fallback_version = 2 if v == 1 else 1
+        video_url = await _get_setting_value(session, f"batch_{slot}_v{fallback_version}")
     if not video_url:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Video not configured")
     return video_url

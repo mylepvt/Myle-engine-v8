@@ -49,6 +49,18 @@ def _extract_cookie_value(request: Request) -> str:
     return ""
 
 
+def _set_csrf_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        _CSRF_COOKIE,
+        token,
+        path="/",
+        samesite=config.settings.auth_cookie_samesite or "lax",
+        secure=config.settings.session_cookie_secure,
+        httponly=False,
+        max_age=86400,
+    )
+
+
 class CsrfMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         if not config.settings.csrf_enabled:
@@ -68,20 +80,13 @@ class CsrfMiddleware(BaseHTTPMiddleware):
                     message="CSRF token missing or invalid.",
                     request=request,
                 )
-                return JSONResponse(status_code=403, content=body)
+                response = JSONResponse(status_code=403, content=body)
+                _set_csrf_cookie(response, _generate_token())
+                return response
 
         response = await call_next(request)
 
         if _extract_cookie_value(request) == "":
-            token = _generate_token()
-            response.set_cookie(
-                _CSRF_COOKIE,
-                token,
-                path="/",
-                samesite=config.settings.auth_cookie_samesite or "lax",
-                secure=config.settings.session_cookie_secure,
-                httponly=False,
-                max_age=86400,
-            )
+            _set_csrf_cookie(response, _generate_token())
 
         return response
