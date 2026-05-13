@@ -241,12 +241,14 @@ class LeadsService:
         return lead
 
     async def _commit_with_shadow_upsert(self, lead: Lead) -> Lead:
-        print(f"COMMIT_SHADOW lead={lead.id} status={lead.status}", flush=True)
+        import logging as _logdbg
+        _LOGGER = _logdbg.getLogger("observation")
+        _LOGGER.info("COMMIT_SHADOW lead=%s status=%s", lead.id, lead.status)
         await self._repository.persist_lead(lead, commit=False, refresh=False)
         enqueue_lead_shadow_upsert(self._session, lead)
         await self._repository.commit()
         await self._session.refresh(lead)
-        print(f"COMMIT_SHADOW_AFTER lead={lead.id} flag={settings.phase1_observation_enabled}", flush=True)
+        _LOGGER.info("COMMIT_SHADOW_AFTER lead=%s flag=%s", lead.id, settings.phase1_observation_enabled)
         if settings.phase1_observation_enabled:
             crm_stage = crm_shadow_stage_for_lead(lead)
             source = "fastapi_commit"
