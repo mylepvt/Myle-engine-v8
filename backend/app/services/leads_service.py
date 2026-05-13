@@ -1119,6 +1119,8 @@ class LeadsService:
         body: LeadTransitionRequest,
         user: AuthUser,
     ) -> LeadTransitionResponse:
+        import logging as _ldb2
+        _ldb2.getLogger("observation").info("TRANSITION_CALLED lead=%s", lead_id)
         lead = await self._get_lead_or_404(lead_id)
         if lead.deleted_at is not None:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
