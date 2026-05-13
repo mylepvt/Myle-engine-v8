@@ -3,12 +3,19 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import sys
 import uuid
 from typing import Any
 
 from app.core.config import settings
 
 logger = logging.getLogger("observation")
+if not logger.handlers:
+    _handler = logging.StreamHandler(sys.stdout)
+    _handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
+    logger.addHandler(_handler)
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
 
 _QUEUE_MAXSIZE = 2000
 _DRAIN_TIMEOUT = 0.5
