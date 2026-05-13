@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { PipelineKind, type Lead } from "@prisma/client";
 import { prisma } from "../db.js";
 import type { AuthUser } from "../lib/auth-context.js";
@@ -8,6 +9,12 @@ import { emitLeadById } from "../realtime/emit.js";
 import { userRoom } from "../realtime/rooms.js";
 import type { Server } from "socket.io";
 import { recordAudit } from "./audit.service.js";
+
+const _PHASE1_OBSERVATION_ENABLED = () => process.env.PHASE1_OBSERVATION_ENABLED === "true";
+
+function _generateObservationLoggerTraceId(): string {
+  return randomBytes(6).toString("hex");
+}
 
 export async function claimFromPool(
   user: AuthUser,
@@ -48,6 +55,21 @@ export async function claimFromPool(
       meta: { priceCents: lead.poolPriceCents, pipelineKind: lead.pipelineKind },
       amountCents: -lead.poolPriceCents,
     });
+
+    if (_PHASE1_OBSERVATION_ENABLED()) {
+      console.log(JSON.stringify({
+        metric: "pool_claim",
+        trace_id: _generateObservationLoggerTraceId(),
+        correlation_id: input.idempotencyKey,
+        lead_id: lead.legacyId ?? lead.id,
+        source: "crm_pool_claim",
+        crm_stage: lead.stage,
+        crm_in_pool: false,
+        crm_handler_id: user.id,
+        fastapi_expected_in_pool: true,
+        timestamp: new Date().toISOString(),
+      }));
+    }
 
     await bumpRealtimeScoreOnActivity(user.id, lead.pipelineKind, 1);
     io?.to(userRoom(user.id)).emit("wallet.claimed", { leadId: lead.id, duplicate: false });
@@ -90,6 +112,22 @@ export async function claimBatchFromPool(
     },
     amountCents: -totalPriceCents,
   });
+
+  if (_PHASE1_OBSERVATION_ENABLED()) {
+    for (const lead of leads) {
+      console.log(JSON.stringify({
+        metric: "pool_claim",
+        trace_id: _generateObservationLoggerTraceId(),
+        correlation_id: `${input.idempotencyKey}:${lead.legacyId ?? lead.id}`,
+        lead_id: lead.legacyId ?? lead.id,
+        source: "crm_pool_claim_batch",
+        crm_stage: lead.stage,
+        crm_in_pool: false,
+        fastapi_expected_in_pool: true,
+        timestamp: new Date().toISOString(),
+      }));
+    }
+  }
 
   await bumpRealtimeScoreOnActivity(user.id, pipelineKind, leads.length);
 

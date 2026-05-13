@@ -10,10 +10,17 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from app.core.config import settings
 from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
 from app.models.user import User
-from app.services.crm_outbox import enqueue_lead_shadow_upsert
+from app.services.crm_outbox import crm_shadow_stage_for_lead, enqueue_lead_shadow_upsert
+from app.services.observation_logger import (
+    correlation_id_for_lead,
+    emit_observation,
+    generate_trace_id,
+    should_sample_observation,
+)
 from app.services.downline import (
     is_user_in_downline_of,
     lead_execution_visible_to_leader_clause,
@@ -40,6 +47,23 @@ class PaymentService:
         await self.session.flush()
         enqueue_lead_shadow_upsert(self.session, lead)
         await self.session.commit()
+        if settings.phase1_observation_enabled:
+            crm_stage = crm_shadow_stage_for_lead(lead)
+            source = "payment_commit"
+            if should_sample_observation(lead_id=lead.id, source=source):
+                version = lead.crm_shadow_version
+                emit_observation({
+                    "metric": "lead_state",
+                    "trace_id": generate_trace_id(),
+                    "correlation_id": correlation_id_for_lead(lead.id, version),
+                    "lead_id": lead.id,
+                    "source": source,
+                    "fastapi_stage": lead.status,
+                    "crm_stage": crm_stage,
+                    "in_pool": lead.in_pool,
+                    "version": version,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                })
 
     async def upload_payment_proof(self, file: UploadFile, *, lead_id: int) -> str:
         """Upload payment proof file and return URL."""

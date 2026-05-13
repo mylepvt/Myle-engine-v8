@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import hashlib
+import json
+import logging
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
@@ -36,7 +38,13 @@ from app.schemas.leads import (
 )
 from app.services.leads_contracts import LeadsRepositoryContract, TopicNotifierContract
 from app.services.auto_handoff import AutoHandoffService
-from app.services.crm_outbox import enqueue_lead_shadow_delete, enqueue_lead_shadow_upsert
+from app.services.crm_outbox import crm_shadow_stage_for_lead, enqueue_lead_shadow_delete, enqueue_lead_shadow_upsert
+from app.services.observation_logger import (
+    correlation_id_for_lead,
+    emit_observation,
+    generate_trace_id,
+    should_sample_observation,
+)
 from app.services.invoice_records import create_tax_invoice_for_pool_claim, create_tax_invoice_for_pool_claims
 from app.services.ctcs_heat import bump_heat_on_entering_contacted, clamp_ctcs_heat
 from app.services.ctcs_status_chain import advance_lead_status_toward
@@ -237,6 +245,23 @@ class LeadsService:
         enqueue_lead_shadow_upsert(self._session, lead)
         await self._repository.commit()
         await self._session.refresh(lead)
+        if settings.phase1_observation_enabled:
+            crm_stage = crm_shadow_stage_for_lead(lead)
+            source = "fastapi_commit"
+            if should_sample_observation(lead_id=lead.id, source=source):
+                version = lead.crm_shadow_version
+                emit_observation({
+                    "metric": "lead_state",
+                    "trace_id": generate_trace_id(),
+                    "correlation_id": correlation_id_for_lead(lead.id, version),
+                    "lead_id": lead.id,
+                    "source": source,
+                    "fastapi_stage": lead.status,
+                    "crm_stage": crm_stage,
+                    "in_pool": lead.in_pool,
+                    "version": version,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                })
         return lead
 
     async def _commit_with_shadow_delete(

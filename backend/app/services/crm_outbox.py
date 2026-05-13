@@ -14,6 +14,11 @@ from sqlalchemy.orm import aliased
 from app.core.config import settings
 from app.models.crm_outbox import CrmOutbox
 from app.models.lead import Lead
+from app.services.observation_logger import (
+    emit_observation,
+    generate_trace_id,
+    should_sample_observation,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -279,6 +284,26 @@ async def deliver_crm_outbox_event(
     )
     if response.status_code >= 400:
         raise RuntimeError(f"CRM shadow sync failed HTTP {response.status_code}: {response.text[:200]}")
+    if settings.phase1_observation_enabled:
+        source = "crm_outbox"
+        if should_sample_observation(lead_id=legacy_id, source=source, is_failure=False):
+            try:
+                crm_data = response.json()
+                emit_observation({
+                    "metric": "shadow_delivery",
+                    "trace_id": generate_trace_id(),
+                    "correlation_id": event.payload.get("idempotencyKey", ""),
+                    "lead_id": legacy_id,
+                    "source": source,
+                    "version": event.version,
+                    "event_type": event.event_type,
+                    "http_status": response.status_code,
+                    "crm_lead_id": crm_data.get("id"),
+                    "crm_stage": crm_data.get("stage"),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                })
+            except Exception:
+                pass
 
 
 async def process_crm_outbox_batch(

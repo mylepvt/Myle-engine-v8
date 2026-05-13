@@ -221,6 +221,20 @@ class Settings(BaseSettings):
         le=100,
         validation_alias="CRM_OUTBOX_MAX_RETRIES",
     )
+    # --- SSOT Migration: Phase 1 observation ---
+    phase1_observation_enabled: bool = Field(
+        default=False,
+        validation_alias="PHASE1_OBSERVATION_ENABLED",
+        description="Phase 1 SSOT migration: enable divergence observation logging between FastAPI and CRM lead state.",
+    )
+    phase1_observation_sample_rate: float = Field(
+        default=0.1,
+        ge=0.0,
+        le=1.0,
+        validation_alias="PHASE1_OBSERVATION_SAMPLE_RATE",
+        description="Phase 1 observation sampling rate (0.0=off, 1.0=all). Successful syncs are sampled; divergences and failures always log.",
+    )
+
     crm_outbox_processing_timeout_seconds: int = Field(
         default=120,
         ge=5,
