@@ -12,10 +12,15 @@ from app.core.config import settings
 logger = logging.getLogger("observation")
 if not logger.handlers:
     _handler = logging.StreamHandler(sys.stdout)
-    _handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
+    _handler.setFormatter(logging.Formatter("%(asctime)s PHASE1_OBSERVATION %(message)s"))
     logger.addHandler(_handler)
     logger.setLevel(logging.INFO)
     logger.propagate = False
+
+logger.info("module_loaded enabled=%s sample_rate=%s queue_maxsize=%s",
+            settings.phase1_observation_enabled,
+            settings.phase1_observation_sample_rate,
+            _QUEUE_MAXSIZE)
 
 _QUEUE_MAXSIZE = 2000
 _DRAIN_TIMEOUT = 0.5
