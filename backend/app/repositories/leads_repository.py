@@ -170,6 +170,7 @@ class SqlAlchemyLeadsRepository:
         lead.owner_user_id = user_id
         lead.assigned_to_user_id = user_id
         lead.in_pool = False
+        lead.last_action_at = datetime.now(timezone.utc)
 
     async def persist_lead(
         self,
