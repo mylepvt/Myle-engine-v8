@@ -80,7 +80,7 @@ class Settings(BaseSettings):
         description="Refresh JWT lifetime when “remember me” is checked (days).",
     )
     auth_login_rate_limit_per_minute: int = Field(
-        default=30,
+        default=100,
         validation_alias="AUTH_LOGIN_RATE_LIMIT_PER_MINUTE",
         description="Max POSTs per client IP per minute on auth login paths; 0 disables.",
     )
