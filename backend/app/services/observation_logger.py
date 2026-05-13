@@ -11,6 +11,8 @@ from typing import Any
 from app.core.config import settings
 
 _OBS_LOG_FILE = os.environ.get("PHASE1_OBS_LOG_FILE", "/tmp/phase1_observation.log")
+_QUEUE_MAXSIZE = 2000
+_DRAIN_TIMEOUT = 0.5
 
 logger = logging.getLogger("observation")
 if not logger.handlers:
