@@ -1,6 +1,7 @@
 """Sliding-window rate limit for POST /api/v1/auth/login|dev-login|refresh (Redis-backed with in-memory fallback)."""
 from __future__ import annotations
 
+import json
 import logging
 import re
 import time
@@ -33,6 +34,7 @@ _redis_available: Optional[bool] = None
 
 _FORWARDED_FOR_RE = re.compile(r'for=(?:"?\[?)([^;\s,\]"]+)')
 _PROXY_IP_HEADERS = ("cf-connecting-ip", "x-forwarded-for", "x-real-ip")
+_IDENTIFIER_FIELDS = ("fbo_id", "username", "email", "role")
 
 
 def _get_redis() -> Optional[object]:
@@ -87,6 +89,33 @@ def _rate_limit_client_host(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+def _extract_rate_limit_identifier(body_bytes: bytes) -> str | None:
+    if not body_bytes:
+        return None
+    try:
+        payload = json.loads(body_bytes)
+    except (json.JSONDecodeError, UnicodeDecodeError, TypeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    for field_name in _IDENTIFIER_FIELDS:
+        raw_value = payload.get(field_name)
+        if not isinstance(raw_value, str):
+            continue
+        normalized = raw_value.strip().lower()
+        if normalized:
+            return f"{field_name}:{normalized}"
+    return None
+
+
+def _rate_limit_key(request: Request, body_bytes: bytes) -> str:
+    client_host = _rate_limit_client_host(request)
+    identifier = _extract_rate_limit_identifier(body_bytes)
+    if identifier:
+        return f"ratelimit:auth:{request.url.path}:{identifier}:{client_host}"
+    return f"ratelimit:auth:{request.url.path}:{client_host}"
+
+
 async def _redis_check_and_increment(key: str, limit: int) -> tuple[bool, int]:
     r = _get_redis()
     if r is None:
@@ -134,8 +163,8 @@ class AuthRateLimitMiddleware(BaseHTTPMiddleware):
         if request.method != "POST" or request.url.path not in _AUTH_POST_PATHS:
             return await call_next(request)
 
-        client_host = _rate_limit_client_host(request)
-        key = f"ratelimit:auth:{client_host}:{request.url.path}"
+        body_bytes = await request.body()
+        key = _rate_limit_key(request, body_bytes)
 
         if _redis_available is not False:
             allowed, count = await _redis_check_and_increment(key, limit)
