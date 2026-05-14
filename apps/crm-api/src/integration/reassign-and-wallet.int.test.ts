@@ -99,7 +99,7 @@ describe.skipIf(!RUN)("CRM integration: reassign + wallet idempotency", () => {
     const balBefore = await walletBalanceCents(h1);
     const ownerBefore = (await prisma.lead.findUniqueOrThrow({ where: { id: leadReassignId } })).ownerId;
 
-    await systemReassignStaleLeadCore(leadReassignId, h2, undefined, { minIdleMs: 48 * 3600000 });
+    await systemReassignStaleLeadCore(leadReassignId, h2, undefined, undefined, { minIdleMs: 48 * 3600000 });
 
     const lead = await prisma.lead.findUniqueOrThrow({ where: { id: leadReassignId } });
     expect(lead.handlerId).toBe(h2);
