@@ -235,13 +235,6 @@ class Settings(BaseSettings):
         description="Phase 1 observation sampling rate (0.0=off, 1.0=all). Successful syncs are sampled; divergences and failures always log.",
     )
 
-    # --- Admin Activity Feed ---
-    admin_activity_feed_enabled: bool = Field(
-        default=False,
-        validation_alias="ADMIN_ACTIVITY_FEED_ENABLED",
-        description="Enable realtime admin activity feed via SSE.",
-    )
-
     crm_outbox_processing_timeout_seconds: int = Field(
         default=120,
         ge=5,

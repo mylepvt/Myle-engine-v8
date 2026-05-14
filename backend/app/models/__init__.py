@@ -1,4 +1,3 @@
-from app.models.admin_activity_feed import AdminActivityFeed
 from app.models.announcement import Announcement
 from app.models.activity_log import ActivityLog
 from app.models.batch_day_submission import BatchDaySubmission
@@ -27,7 +26,6 @@ from app.models.download import Download
 from app.models.user_presence_session import UserPresenceSession
 
 __all__ = [
-    "AdminActivityFeed",
     "Announcement",
     "ActivityLog",
     "BatchDaySubmission",
