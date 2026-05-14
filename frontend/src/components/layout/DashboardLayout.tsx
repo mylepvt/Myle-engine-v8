@@ -35,8 +35,6 @@ export function DashboardLayout() {
   const { data: me } = useAuthMeQuery()
   const {
     role: shellRole,
-    serverRole,
-    isPending: rolePending,
   } = useDashboardShellRole()
   const navigate = useNavigate()
   const {

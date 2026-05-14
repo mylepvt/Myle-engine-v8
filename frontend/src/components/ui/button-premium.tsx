@@ -21,7 +21,6 @@ const PremiumButton = React.forwardRef<HTMLButtonElement, PremiumButtonProps>(
       isLoading = false,
       loadingText,
       showRipple = true,
-      glowOnHover = false,
       disabled,
       children,
       ...props

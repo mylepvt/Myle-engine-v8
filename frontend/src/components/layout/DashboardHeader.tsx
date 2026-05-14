@@ -8,7 +8,6 @@ import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { useEnrollmentApprovalsPendingQuery } from '@/hooks/use-team-query'
 import { useNoticeBoardUnread } from '@/hooks/use-notice-board-unread'
-import { usePushNotifications } from '@/hooks/use-push-notifications'
 import { useShellPreviewStore } from '@/stores/shell-preview-store'
 import { apiUrl } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -51,11 +50,6 @@ export function DashboardHeader({
   const enrollmentPending = useEnrollmentApprovalsPendingQuery()
   const pendingEnrollCount = enrollmentPending.data?.total ?? 0
   const push = usePushNotifications()
-  const showPushPrompt =
-    Boolean(me?.authenticated) &&
-    push.isSupported &&
-    !push.isSubscribed &&
-    push.permission !== 'denied'
   const approverForEnroll =
     Boolean(me?.authenticated) && me?.role === 'admin'
 
