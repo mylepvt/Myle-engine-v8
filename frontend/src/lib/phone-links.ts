@@ -1,10 +1,7 @@
 /**
- * Tel / WhatsApp deep links.
- *
- * Platform handling:
- * - Android: `intent://` scheme bypasses Chrome and opens WhatsApp app directly
- * - iOS: `whatsapp://` scheme opens WhatsApp app directly
- * - Desktop: `api.whatsapp.com/send` falls back to WhatsApp Web
+ * Tel / WhatsApp deep links. `api.whatsapp.com/send` is used instead of `wa.me` because
+ * `wa.me` opens Chrome with a WhatsApp download page on desktop, whereas
+ * `api.whatsapp.com/send` opens WhatsApp Web directly on desktop and WhatsApp app on mobile.
  */
 
 /**
@@ -32,21 +29,11 @@ export function telHref(phone: string | null | undefined): string {
   return `tel:+${d}`
 }
 
-function _isAndroid(): boolean {
-  if (typeof navigator === 'undefined') return false
-  return /Android/i.test(navigator.userAgent)
-}
-
-function _isIOS(): boolean {
-  if (typeof navigator === 'undefined') return false
-  return /iPhone|iPad|iPod/i.test(navigator.userAgent)
-}
-
 /** Opens WhatsApp chat (user can start a voice/video call from the chat screen). */
 export function whatsAppChatHref(phone: string | null | undefined): string {
   const d = whatsappDigits(phone ?? '')
   if (!d) return '#'
-  return _whatsAppUrl(d)
+  return `https://api.whatsapp.com/send?phone=${d}`
 }
 
 /** Same chat link with prefilled message (e.g. support). */
@@ -56,21 +43,9 @@ export function whatsAppChatWithTextHref(
 ): string {
   const d = whatsappDigits(phone ?? '')
   if (!d) return '#'
-  return _whatsAppUrl(d, text)
-}
-
-function _whatsAppUrl(digits: string, text?: string): string {
-  if (_isAndroid()) {
-    const msg = text ? `&text=${encodeURIComponent(text)}` : ''
-    return `intent://send?phone=${digits}${msg}#Intent;scheme=whatsapp;package=com.whatsapp;end`
-  }
-  if (_isIOS()) {
-    return `whatsapp://send?phone=${digits}${text ? `&text=${encodeURIComponent(text)}` : ''}`
-  }
-  // Desktop fallback — WhatsApp Web
   const q = new URLSearchParams()
-  q.set('phone', digits)
-  if (text) q.set('text', text)
+  q.set('phone', d)
+  q.set('text', text)
   return `https://api.whatsapp.com/send?${q.toString()}`
 }
 
