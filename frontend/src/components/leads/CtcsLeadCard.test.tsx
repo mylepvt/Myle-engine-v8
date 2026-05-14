@@ -91,21 +91,21 @@ function makeLead(status: LeadPublic['status']): LeadPublic {
   } as LeadPublic
 }
 
-describe('CtcsLeadCard proof gating', () => {
+describe('CtcsLeadCard enrollment button gating', () => {
   afterEach(() => {
     cleanup()
     vi.clearAllMocks()
   })
 
-  it('shows the upload proof control after video_watched', () => {
-    renderCard(makeLead('video_watched'))
-
-    expect(screen.getByTitle('Upload FLP invoice')).toBeInTheDocument()
-  })
-
-  it('keeps the upload proof control hidden before video_watched', () => {
+  it('shows the secure enrollment WhatsApp button for video_sent', () => {
     renderCard(makeLead('video_sent'))
 
-    expect(screen.queryByTitle('Upload FLP invoice')).not.toBeInTheDocument()
+    expect(screen.getByTitle('Send secure enrollment video on WhatsApp')).toBeInTheDocument()
+  })
+
+  it('hides the secure enrollment WhatsApp button after video_watched', () => {
+    renderCard(makeLead('video_watched'))
+
+    expect(screen.queryByTitle('Send secure enrollment video on WhatsApp')).not.toBeInTheDocument()
   })
 })
