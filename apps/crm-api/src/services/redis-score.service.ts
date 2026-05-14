@@ -1,19 +1,6 @@
-import { createClient, type RedisClientType } from "redis";
 import { PipelineKind } from "@prisma/client";
 import { prisma } from "../db.js";
-
-const REDIS_URL = process.env.CRM_REDIS_URL ?? "redis://127.0.0.1:6379";
-
-let client: RedisClientType | null = null;
-
-async function getRedis(): Promise<RedisClientType> {
-  if (!client) {
-    client = createClient({ url: REDIS_URL });
-    client.on("error", (err) => console.error("[redis-score]", err));
-    await client.connect();
-  }
-  return client;
-}
+import { getRedisV4 } from "../realtime/redis-client.js";
 
 function zsetKey(pipelineKind: PipelineKind) {
   return `crm:perf:z:${pipelineKind}`;
@@ -23,10 +10,9 @@ function userScoreKey(userId: string, pipelineKind: PipelineKind) {
   return `crm:perf:score:${pipelineKind}:${userId}`;
 }
 
-/** Realtime ranking — primary source for Top 10. */
 export async function getRealtimeScore(userId: string, pipelineKind: PipelineKind): Promise<number | null> {
   try {
-    const r = await getRedis();
+    const r = await getRedisV4();
     const v = await r.get(userScoreKey(userId, pipelineKind));
     if (v === null) return null;
     return Number(v);
@@ -36,12 +22,11 @@ export async function getRealtimeScore(userId: string, pipelineKind: PipelineKin
 }
 
 export async function setRealtimeScore(userId: string, pipelineKind: PipelineKind, score: number) {
-  const r = await getRedis();
+  const r = await getRedisV4();
   await r.set(userScoreKey(userId, pipelineKind), String(score));
   await r.zAdd(zsetKey(pipelineKind), [{ score, value: userId }]);
 }
 
-/** Increment realtime score on meaningful activity (FSM transition, claim, etc.). */
 export async function bumpRealtimeScoreOnActivity(
   userId: string,
   pipelineKind: PipelineKind,
@@ -55,11 +40,8 @@ export async function bumpRealtimeScoreOnActivity(
   }
 }
 
-/**
- * Top N user ids by realtime score (Redis ZSET). If Redis is empty or thin, hydrate from DB snapshots then retry.
- */
 export async function getTopUserIdsByRealtimeScore(pipelineKind: PipelineKind, limit = 10): Promise<string[]> {
-  const r = await getRedis();
+  const r = await getRedisV4();
   let ids = await r.zRange(zsetKey(pipelineKind), 0, limit - 1, { REV: true });
   if (ids.length >= Math.min(5, limit)) return ids;
 

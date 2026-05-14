@@ -1,6 +1,6 @@
 import { prisma } from "../db.js";
 
-export type AuditSource = "api" | "worker";
+export type AuditSource = "api" | "worker" | "fastapi";
 
 export async function recordAudit(input: {
   source: AuditSource;

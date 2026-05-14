@@ -3,12 +3,9 @@ import type { ConnectionOptions } from "bullmq";
 import { PipelineKind } from "@prisma/client";
 import { prisma } from "../../db.js";
 import { pickLeastLoadedHandler, recomputeUserPerformance } from "../../services/performance.service.js";
+import { emitAdminActivityWorker } from "../../realtime/emit.js";
 import { JOB_RANK_RECALC, QUEUE_RANKING } from "../names.js";
 
-/**
- * Handler load is derived from active lead counts per handler; `pickLeastLoadedHandler` uses DB groupBy.
- * This job recomputes Redis + DB snapshots so Top‑10 + least-load stay aligned.
- */
 export function createRankingWorker(connection: ConnectionOptions) {
   const concurrency = Number(process.env.CRM_RANKING_WORKER_CONCURRENCY ?? 2);
 
@@ -36,6 +33,14 @@ export function createRankingWorker(connection: ConnectionOptions) {
         teamIds.length > 0
           ? await pickLeastLoadedHandler(PipelineKind.TEAM, teamIds.slice(0, 20))
           : null;
+
+      emitAdminActivityWorker({
+        action: "system:ranking_recalc",
+        targetType: "system",
+        description: `Ranking recalculated for ${n} user-pipeline pairs`,
+        metadata: { usersCount: users.length, recomputedCount: n, leastLoadedHandler: sample },
+        severity: "info",
+      });
 
       return { recomputed: n, sampleLeastLoaded: sample };
     },

@@ -3,6 +3,7 @@ import type { ConnectionOptions } from "bullmq";
 import { prisma } from "../../db.js";
 import { runWalletCreditInTransaction } from "../../services/wallet-execution.service.js";
 import { recordAudit } from "../../services/audit.service.js";
+import { emitAdminActivityWorker } from "../../realtime/emit.js";
 import { JOB_WALLET_CREDIT, QUEUE_WALLET } from "../names.js";
 
 export type WalletCreditJobData = {
@@ -40,6 +41,15 @@ export function createWalletWorker(connection: ConnectionOptions) {
           amountCents: data.amountCents,
           idempotencyKey: `audit:worker:credit:${data.idempotencyKey}`,
           meta: data.auditMeta ?? {},
+        });
+        emitAdminActivityWorker({
+          action: "wallet:credited_worker",
+          actorId: data.userId,
+          targetId: data.userId,
+          targetType: "wallet",
+          description: `Worker credited ₹${(data.amountCents / 100).toFixed(2)} (${data.note ?? "auto"})`,
+          metadata: { amountCents: data.amountCents, note: data.note, idempotencyKey: data.idempotencyKey },
+          severity: "info",
         });
       }
 

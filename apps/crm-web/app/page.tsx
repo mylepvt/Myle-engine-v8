@@ -1,4 +1,5 @@
 import { FunnelShell } from "@/components/funnel-shell";
+import { AdminActivityFeed } from "@/components/admin-activity-feed";
 
 export default function HomePage() {
   return (
@@ -8,6 +9,7 @@ export default function HomePage() {
         <p className="text-sm text-neutral-600">Mobile-first · Button actions · Realtime</p>
       </header>
       <FunnelShell />
+      <AdminActivityFeed />
     </main>
   );
 }

@@ -1,36 +1,6 @@
-import { randomBytes } from "node:crypto";
 import { LeadStage, PipelineKind } from "@prisma/client";
 import { prisma } from "../db.js";
-
-const _PHASE1_OBSERVATION_ENABLED = () => process.env.PHASE1_OBSERVATION_ENABLED === "true";
-const _PHASE1_OBSERVATION_SAMPLE_RATE = () => {
-  const raw = process.env.PHASE1_OBSERVATION_SAMPLE_RATE;
-  if (!raw) return 0.1;
-  const v = parseFloat(raw);
-  return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0.1;
-};
-
-function generateTraceId(): string {
-  return randomBytes(6).toString("hex");
-}
-
-function shouldSampleObservation(leadId: number, source: string, opts?: { isDivergence?: boolean; isFailure?: boolean }): boolean {
-  if (opts?.isDivergence || opts?.isFailure) return true;
-  const rate = _PHASE1_OBSERVATION_SAMPLE_RATE();
-  if (rate >= 1.0) return true;
-  if (rate <= 0.0) return false;
-  const h = hashPair(leadId, source);
-  return (h % 10000) < Math.round(rate * 10000);
-}
-
-function hashPair(a: number, b: string): number {
-  let h = 0 | 0;
-  const s = `${a}:${b}`;
-  for (let i = 0; i < s.length; i++) {
-    h = ((h << 5) - h) + s.charCodeAt(i); h |= 0;
-  }
-  return h & 0x7FFFFFFF;
-}
+import { emitAdminActivityWorker } from "../realtime/emit.js";
 
 export type LegacyShadowSyncInput = {
   legacyId: number;
@@ -164,8 +134,6 @@ export async function syncLeadLegacyShadow(input: LegacyShadowSyncInput) {
       isShadow: true,
       legacyVersion: true,
       legacyIdempotencyKey: true,
-      stage: true,
-      legacyStatus: true,
     },
   });
 
@@ -173,45 +141,40 @@ export async function syncLeadLegacyShadow(input: LegacyShadowSyncInput) {
     if (!existing.isShadow) {
       throw new Error(`Lead ${existing.id} with legacyId ${input.legacyId} is not a shadow lead`);
     }
-    if (_PHASE1_OBSERVATION_ENABLED()) {
-      const divergence = existing.stage !== stage;
-      const source = "crm_shadow_sync";
-      if (shouldSampleObservation(input.legacyId, source, { isDivergence: divergence })) {
-        const record: Record<string, unknown> = {
-          metric: divergence ? "divergence_total" : "shadow_sync",
-          trace_id: generateTraceId(),
-          correlation_id: input.idempotencyKey,
-          lead_id: input.legacyId,
-          source,
-          fastapi_stage: stage,
-          crm_stage: existing.stage,
-          fastapi_legacy_status: input.legacyStatus,
-          crm_legacy_status: existing.legacyStatus,
-          version: input.version,
-          timestamp: new Date().toISOString(),
-        };
-        if (divergence) {
-          record["divergence_by_stage"] = `${stage}->${existing.stage}`;
-        }
-        console.log(JSON.stringify(record));
-      }
-    }
     if (!shouldApplyLegacyShadowVersion(existing.legacyVersion, input.version)) {
       return prisma.lead.findUniqueOrThrow({ where: { id: existing.id } });
     }
-    return prisma.lead.update({
+    const updated = await prisma.lead.update({
       where: { id: existing.id },
       data,
     });
+    emitAdminActivityWorker({
+      action: "lead:shadow_synced",
+      targetId: existing.id,
+      targetType: "lead",
+      description: `Shadow lead #${input.legacyId} updated (ver ${input.version})`,
+      metadata: { legacyId: input.legacyId, version: input.version, stage },
+      severity: "info",
+    });
+    return updated;
   }
 
-  return prisma.lead.create({
+  const created = await prisma.lead.create({
     data: {
       legacyId: input.legacyId,
       ownerId: owner.id,
       ...data,
     },
   });
+  emitAdminActivityWorker({
+    action: "lead:shadow_created",
+    targetId: created.id,
+    targetType: "lead",
+    description: `Shadow lead #${input.legacyId} created (${stage})`,
+    metadata: { legacyId: input.legacyId, version: input.version, stage },
+    severity: "info",
+  });
+  return created;
 }
 
 export async function deleteLeadLegacyShadow(legacyId: number) {
@@ -223,7 +186,7 @@ export async function deleteLeadLegacyShadow(legacyId: number) {
     return null;
   }
   const nextVersion = (existing.legacyVersion ?? 0) + 1;
-  return prisma.lead.update({
+  const deleted = await prisma.lead.update({
     where: { id: existing.id },
     data: {
       stage: LeadStage.CLOSED,
@@ -236,4 +199,13 @@ export async function deleteLeadLegacyShadow(legacyId: number) {
       isShadow: true,
     },
   });
+  emitAdminActivityWorker({
+    action: "lead:shadow_deleted",
+    targetId: existing.id,
+    targetType: "lead",
+    description: `Shadow lead #${legacyId} soft-deleted`,
+    metadata: { legacyId, version: nextVersion },
+    severity: "warning",
+  });
+  return deleted;
 }

@@ -5,6 +5,7 @@ import { requireAuth } from "../lib/auth-context.js";
 import { walletBalanceCents } from "../services/wallet.service.js";
 import { runWalletCreditInTransaction } from "../services/wallet-execution.service.js";
 import { recordAudit } from "../services/audit.service.js";
+import { emitAdminActivity } from "../realtime/emit.js";
 
 const creditBody = z.object({
   amountCents: z.number().int().positive(),
@@ -19,7 +20,6 @@ export async function walletRoutes(fastify: FastifyInstance) {
     return { userId: user.id, balanceCents: bal, currency: "INR" as const };
   });
 
-  /** Dev / admin credit — gated by CRM_INTERNAL_SECRET; idempotent via WalletLedger + audit */
   fastify.post("/wallet/credit", async (req, reply) => {
     const secret = req.headers["x-internal-secret"];
     if (!process.env.CRM_INTERNAL_SECRET || secret !== process.env.CRM_INTERNAL_SECRET) {
@@ -47,6 +47,15 @@ export async function walletRoutes(fastify: FastifyInstance) {
         amountCents: body.amountCents,
         idempotencyKey: `audit:wallet:credit:${body.idempotencyKey}`,
         meta: { note: body.note },
+      });
+      emitAdminActivity(fastify.io, fastify.gateway, {
+        action: "wallet:credited",
+        actorId: user.id,
+        targetId: user.id,
+        targetType: "wallet",
+        description: `Wallet credited ₹${(body.amountCents / 100).toFixed(2)} (${body.note ?? "manual"})`,
+        metadata: { amountCents: body.amountCents, note: body.note },
+        severity: "info",
       });
       return reply.code(201).send(row.row);
     }
