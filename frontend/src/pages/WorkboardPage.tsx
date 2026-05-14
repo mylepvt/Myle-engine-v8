@@ -104,8 +104,6 @@ function parseAdminTab(value: string | null): ATab {
   return (match?.id ?? 'day2') as ATab
 }
 
-const SLOT_TIME_LABEL: Record<'M' | 'A' | 'E', string> = { M: 'M', A: 'A', E: 'E' }
-
 function workboardBatchWhatsAppUrl(
   lead: LeadPublic,
   dayKey: 1 | 2 | 3 | 4 | 5,
@@ -115,7 +113,6 @@ function workboardBatchWhatsAppUrl(
   const digits = whatsappDigits(lead.phone ?? '')
   if (!digits) return null
   const name = (lead.name || 'Participant').trim()
-  const timeLabel = SLOT_TIME_LABEL[slot]
   const linkBlock =
     (links?.v1 ? `📹 Video 1:\n${links.v1}\n` : '') +
     (links?.v2 ? `📹 Video 2:\n${links.v2}\n` : '')
