@@ -8,7 +8,7 @@ import { formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-s
 import { leadStatusSelectOptionsForLead, teamMayChangeLeadStatus } from '@/lib/team-lead-status'
 import { formatCountdown, timerRemainingMs } from '@/lib/ctcs-timer'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
-import { openWhatsApp, telHref, whatsAppChatHref } from '@/lib/phone-links'
+import { telHref, whatsAppChatHref } from '@/lib/phone-links'
 import { LEAD_STATUS_OPTIONS, type LeadPublic, type LeadStatus } from '@/hooks/use-leads-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 
@@ -317,20 +317,23 @@ export function CtcsLeadCard({
                 <MessageCircle className="size-3.5 text-[#047857] dark:text-[#b8f5c4]" aria-hidden />
               </button>
             ) : wa !== '#' ? (
-              <button
-                type="button"
-                onClick={() => openWhatsApp(lead.phone ?? '')}
+              <a
+                href={wa}
+                target="_blank"
+                rel="noopener noreferrer"
                 className={cn(
                   'flex size-10 items-center justify-center rounded-full border-2 transition active:scale-95',
                   'border-[#128C7E]/60 bg-[#25D366]/15 text-[#065f46]',
                   'shadow-[0_0_10px_rgba(37,211,102,0.28)] ring-1 ring-[#25D366]/25 hover:bg-[#25D366]/25',
-                  className,
+                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#128C7E]/70',
+                  'dark:border-[#25D366]/75 dark:bg-[#25D366]/20 dark:text-[#dcf8c6] dark:shadow-[0_0_12px_rgba(37,211,102,0.45)] dark:ring-[#25D366]/35',
+                  'dark:hover:border-[#34eb75] dark:hover:bg-[#25D366]/30',
                 )}
-                title="Open WhatsApp chat"
+                title="WhatsApp"
                 aria-label="Open WhatsApp chat"
               >
                 <MessageCircle className="size-3.5 text-[#047857] dark:text-[#b8f5c4]" aria-hidden />
-              </button>
+              </a>
             ) : (
               <span className="flex size-10 items-center justify-center rounded-full border border-border bg-muted/40 opacity-40">
                 <MessageCircle className="size-3.5 text-muted-foreground" aria-hidden />

@@ -2,7 +2,7 @@ import type { MouseEvent } from 'react'
 import { MessageCircle, Phone } from 'lucide-react'
 
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
-import { openWhatsApp, telHref, whatsAppChatHref } from '@/lib/phone-links'
+import { telHref, whatsAppChatHref } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
 
 type Props = {
@@ -97,15 +97,16 @@ export function LeadContactActions({
         </a>
       ) : null}
       {wa !== '#' ? (
-        <button
-          type="button"
-          onClick={() => openWhatsApp(phone)}
+        <a
+          href={wa}
+          target="_blank"
+          rel="noopener noreferrer"
           title="WhatsApp - opens WhatsApp or WhatsApp Business on this number"
           className={cn(box, 'hover:border-green-400/40 hover:text-green-400')}
         >
           <MessageCircle aria-hidden />
           <span className="sr-only">WhatsApp</span>
-        </button>
+        </a>
       ) : null}
     </div>
   )

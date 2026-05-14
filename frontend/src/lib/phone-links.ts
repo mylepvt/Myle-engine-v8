@@ -48,10 +48,3 @@ export function whatsAppChatWithTextHref(
   q.set('text', text)
   return `https://api.whatsapp.com/send?${q.toString()}`
 }
-
-/** Open WhatsApp in-app (use instead of <a href target=_blank> for PWA compatibility). */
-export function openWhatsApp(phone: string | null | undefined, text?: string): void {
-  const url = whatsAppChatWithTextHref(phone ?? '', text ?? '')
-  if (url === '#') return
-  window.location.href = url
-}
