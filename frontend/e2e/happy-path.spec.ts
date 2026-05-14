@@ -38,7 +38,7 @@ test.describe('happy path (mocked API)', () => {
     const dial = page.getByRole('link', { name: 'Dial and log call' })
     const wa = page.getByRole('link', { name: 'Open WhatsApp chat' })
     await expect(dial).toHaveAttribute('href', /^tel:\+919876543210$/)
-    await expect(wa).toHaveAttribute('href', /^https:\/\/wa\.me\/919876543210$/)
+    await expect(wa).toHaveAttribute('href', /^https:\/\/api\.whatsapp\.com\/send\?phone=919876543210$/)
 
     const setTheme = async (theme: 'light' | 'dark' | 'transparent') => {
       await page.evaluate((t) => {
