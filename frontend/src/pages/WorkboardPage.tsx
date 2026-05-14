@@ -33,7 +33,7 @@ import { useContentLinksQuery } from '@/hooks/use-content-links-query'
 import { checklistForStage } from '@/lib/lead-process-map'
 import { LEAD_SLA_SMOOTH_REFRESH_MS, formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
 import { buildLiveSessionWhatsAppUrl, type LiveSessionSlotOption } from '@/lib/live-session-slots'
-import { whatsappDigits } from '@/lib/phone-links'
+import { whatsAppChatWithTextHref, whatsappDigits } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -125,7 +125,8 @@ function workboardBatchWhatsAppUrl(
     `Day ${dayKey} — ${slotLabel} Batch\n` +
     (linkBlock ? `\n${linkBlock}` : '\n') +
     'Please watch both videos and reply ✅.'
-  return `https://api.whatsapp.com/send?phone=${digits}&text=${encodeURIComponent(msg)}`
+  const url = whatsAppChatWithTextHref(lead.phone, msg)
+  return url === '#' ? null : url
 }
 
 async function readResponseError(res: Response): Promise<string> {
