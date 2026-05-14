@@ -653,7 +653,7 @@ export function LivePremierePage() {
                 type="button"
                 className="inline-flex h-13 items-center justify-center rounded-2xl bg-[#dce7ff] px-8 py-3.5 text-ds-body font-bold text-[#0a1530] transition hover:bg-[#c6d8ff]"
                 onClick={() => {
-                  const wa = `https://wa.me/?text=Hi, I just watched the Myle session. I'm interested to know more.`
+                  const wa = `https://api.whatsapp.com/send?text=Hi, I just watched the Myle session. I'm interested to know more.`
                   window.open(wa, '_blank', 'noopener')
                 }}
               >

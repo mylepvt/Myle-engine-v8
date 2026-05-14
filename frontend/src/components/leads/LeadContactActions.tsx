@@ -22,7 +22,7 @@ const boxMd =
 const BLOCKED_LEVELS = new Set(['strong_warning', 'final_warning'])
 
 /**
- * Phone dial + WhatsApp chat - same deep links as legacy (`tel:` / `wa.me`).
+ * Phone dial + WhatsApp chat - same deep links as legacy (`tel:` / `api.whatsapp.com/send`).
  * Hidden when there is no usable phone string.
  * Blocked (with reason tooltip) for users under strong/final compliance warning.
  */

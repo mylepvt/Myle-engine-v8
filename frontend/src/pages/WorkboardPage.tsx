@@ -125,7 +125,7 @@ function workboardBatchWhatsAppUrl(
     `Day ${dayKey} — ${slotLabel} Batch\n` +
     (linkBlock ? `\n${linkBlock}` : '\n') +
     'Please watch both videos and reply ✅.'
-  return `https://wa.me/${digits}?text=${encodeURIComponent(msg)}`
+  return `https://api.whatsapp.com/send?phone=${digits}&text=${encodeURIComponent(msg)}`
 }
 
 async function readResponseError(res: Response): Promise<string> {
@@ -552,7 +552,7 @@ function ProcessChecklistSection({
       const digits = (lead.phone ?? '').replace(/\D/g, '')
       if (!digits) throw new Error('Phone number missing.')
       const msg = `Hi ${lead.name || 'there'},\n\nWatch this video:\n${videoUrl}`
-      const waUrl = `https://wa.me/${digits}?text=${encodeURIComponent(msg)}`
+      const waUrl = `https://api.whatsapp.com/send?phone=${digits}&text=${encodeURIComponent(msg)}`
       if (!openExternalShareUrl(waUrl)) throw new Error('Could not open WhatsApp.')
       await toggleTask(taskKey, true)
     } catch (err) {
