@@ -104,7 +104,6 @@ function parseAdminTab(value: string | null): ATab {
   return (match?.id ?? 'day2') as ATab
 }
 
-const SLOT_TIME_LABEL: Record<'M' | 'A' | 'E', string> = { M: 'M', A: 'A', E: 'E' }
 
 function workboardBatchWhatsAppUrl(
   lead: LeadPublic,
