@@ -84,7 +84,7 @@ _YOUTUBE_ID_ONLY_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
 _BATCH_SLOT_DEFAULT_STARTS_IST: dict[str, time] = {
     "morning": time(hour=11, minute=0),
     "afternoon": time(hour=15, minute=0),
-    "evening": time(hour=19, minute=0),
+    "evening": time(hour=0, minute=0),
 }
 
 
