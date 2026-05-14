@@ -106,7 +106,14 @@ export function buildWhatsAppVideoUrl(phone: string | null | undefined, leadName
   if (digits.length < 10) return null
   const n = leadName.trim() || 'there'
   const text = `Hi ${n}, watch this 15-min video — link below.\n[your enrollment link]`
-  return `https://api.whatsapp.com/send?phone=${digits}&text=${encodeURIComponent(text)}`
+  const encodedText = encodeURIComponent(text)
+  if (/Android/i.test(typeof navigator !== 'undefined' ? navigator.userAgent : '')) {
+    return `intent://send?phone=${digits}&text=${encodedText}#Intent;scheme=whatsapp;package=com.whatsapp;end`
+  }
+  if (/iPhone|iPad|iPod/i.test(typeof navigator !== 'undefined' ? navigator.userAgent : '')) {
+    return `whatsapp://send?phone=${digits}&text=${encodedText}`
+  }
+  return `https://api.whatsapp.com/send?phone=${digits}&text=${encodedText}`
 }
 
 export function shouldOfferWhatsAppForTransition(
