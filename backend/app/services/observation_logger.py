@@ -247,31 +247,33 @@ def _after_commit_hook(session: SASession) -> None:
     """Automatic observation after every successful SQLAlchemy commit.
 
     Observes Lead changes across ALL code paths — not just those that
-    explicitly call emit_observation(). This is the transaction boundary
-    recommendation: observe at commit, not inside individual methods.
+    explicitly call emit_observation(). Uses session.identity_map to
+    find tracked Lead objects (safe with expire_on_commit=False).
     """
     if not settings.phase1_observation_enabled:
         return
     try:
-        changed = [
-            obj for obj in session
-            if hasattr(obj, "__tablename__") and getattr(obj, "__tablename__", None) in ("leads", "leads")
-        ]
-        for lead in changed:
-            lead_id = getattr(lead, "id", None)
+        tracked = list(session.identity_map.values())
+    except Exception:
+        return
+    for lead in tracked:
+        try:
+            tbl = getattr(lead, "__tablename__", None)
+            if tbl != "leads":
+                continue
+            lead_id = lead.id
             if lead_id is None:
                 continue
-            status = getattr(lead, "status", None) or ""
-            in_pool = getattr(lead, "in_pool", False)
-            if should_sample_observation(lead_id=lead_id, source=_LEAD_TXN_SOURCE):
-                emit_observation({
-                    "metric": _LEAD_TXN_METRIC,
-                    "trace_id": generate_trace_id(),
-                    "correlation_id": f"lead-{lead_id}-commit",
-                    "lead_id": lead_id,
-                    "source": _LEAD_TXN_SOURCE,
-                    "fastapi_stage": status,
-                    "in_pool": in_pool,
-                })
-    except Exception:
-        pass
+            if not should_sample_observation(lead_id=lead_id, source=_LEAD_TXN_SOURCE):
+                continue
+            emit_observation({
+                "metric": _LEAD_TXN_METRIC,
+                "trace_id": generate_trace_id(),
+                "correlation_id": f"lead-{lead_id}-commit",
+                "lead_id": lead_id,
+                "source": _LEAD_TXN_SOURCE,
+                "fastapi_stage": getattr(lead, "status", "") or "",
+                "in_pool": bool(getattr(lead, "in_pool", False)),
+            })
+        except Exception:
+            continue
