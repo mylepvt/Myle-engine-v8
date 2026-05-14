@@ -241,13 +241,10 @@ class LeadsService:
         return lead
 
     async def _commit_with_shadow_upsert(self, lead: Lead) -> Lead:
-        import logging as _ldbg
-        _ldbg.getLogger("observation").info("COMMIT_SHADOW lead=%s status=%s", lead.id, lead.status)
         await self._repository.persist_lead(lead, commit=False, refresh=False)
         enqueue_lead_shadow_upsert(self._session, lead)
         await self._repository.commit()
         await self._session.refresh(lead)
-        _ldbg.getLogger("observation").info("COMMIT_SHADOW_AFTER lead=%s flag=%s", lead.id, settings.phase1_observation_enabled)
         if settings.phase1_observation_enabled:
             crm_stage = crm_shadow_stage_for_lead(lead)
             source = "fastapi_commit"
@@ -1119,8 +1116,6 @@ class LeadsService:
         body: LeadTransitionRequest,
         user: AuthUser,
     ) -> LeadTransitionResponse:
-        import logging as _ldb2
-        _ldb2.getLogger("observation").info("TRANSITION_CALLED lead=%s", lead_id)
         lead = await self._get_lead_or_404(lead_id)
         if lead.deleted_at is not None:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")

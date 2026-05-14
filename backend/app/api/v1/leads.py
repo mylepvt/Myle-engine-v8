@@ -1,11 +1,8 @@
-import logging
 import secrets
 from datetime import datetime, time, timezone
 from typing import Annotated, Optional
 import re
 from urllib.parse import parse_qs, urlparse
-
-_ROUTE_LOG = logging.getLogger("observation")
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import RedirectResponse
@@ -609,7 +606,6 @@ async def transition_lead_status(
     service: Annotated[LeadsService, Depends(get_leads_service)],
 ) -> LeadTransitionResponse:
     """Canonical lead lifecycle transition. FastAPI is the single writer for lead status."""
-    _ROUTE_LOG.info("ROUTE_TRANSITION lead=%s target=%s", lead_id, body.target_status)
     lead = await service._get_lead_or_404(lead_id)
     if not await service._repository.can_mutate_lead(user, lead):
         raise HTTPException(status_code=403, detail="Forbidden")
