@@ -21,5 +21,5 @@ export function buildDay2BusinessTestWhatsAppUrl({
     testUrl || 'Coordinator will share the business evaluation link separately.',
   ]
 
-  return `https://wa.me/${digits}?text=${encodeURIComponent(lines.join('\n'))}`
+  return `https://api.whatsapp.com/send?phone=${digits}&text=${encodeURIComponent(lines.join('\n'))}`
 }

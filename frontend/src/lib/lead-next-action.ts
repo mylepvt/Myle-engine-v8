@@ -106,7 +106,7 @@ export function buildWhatsAppVideoUrl(phone: string | null | undefined, leadName
   if (digits.length < 10) return null
   const n = leadName.trim() || 'there'
   const text = `Hi ${n}, watch this 15-min video — link below.\n[your enrollment link]`
-  return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`
+  return `https://api.whatsapp.com/send?phone=${digits}&text=${encodeURIComponent(text)}`
 }
 
 export function shouldOfferWhatsAppForTransition(
