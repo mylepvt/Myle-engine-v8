@@ -42,7 +42,20 @@ describe('LiveSessionPage', () => {
     })
 
     mockUseQuery.mockReturnValue({
-      data: { slots: [], active_hour: null },
+      data: {
+        slots: [
+          {
+            hour: 11,
+            label: '11:00 AM',
+            state: 'live',
+            live_starts_at: '2026-05-14T05:30:00Z',
+            live_ends_at: '2026-05-14T06:19:00Z',
+            live_viewer_count: 0,
+            viewer_count_today: 0,
+          },
+        ],
+        active_hour: null,
+      },
       isPending: false,
       isError: false,
       error: null,
@@ -58,7 +71,7 @@ describe('LiveSessionPage', () => {
 
     renderWithProviders(<LiveSessionPage title="Live session" />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Copy for WhatsApp' }))
+    fireEvent.click(screen.getAllByRole('button', { name: /Copy D\d WA msg/ })[0]!)
 
     await waitFor(() => {
       expect(writeText).toHaveBeenCalled()
