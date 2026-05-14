@@ -2,12 +2,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useUiStore } from "@/stores/ui-store";
-import { useCrmSocket } from "@/hooks/use-crm-socket";
 
 const API = process.env.NEXT_PUBLIC_CRM_API_URL ?? "http://127.0.0.1:4000";
 
 export function FunnelShell() {
-  useCrmSocket(true);
   const { activeStep, setActiveStep } = useUiStore();
   const health = useQuery({
     queryKey: ["crm-health"],

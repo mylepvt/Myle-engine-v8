@@ -4,9 +4,9 @@ import { runAliveCheckStaleTier, runAliveReassignTier } from "../../services/ali
 import { resolveFsmTransition, type FsmEvent } from "../../domain/fsm.js";
 import { prisma } from "../../db.js";
 import { LeadStage } from "@prisma/client";
+import { emitAdminActivityWorker } from "../../realtime/emit.js";
 import { JOB_CHECK_STALE, JOB_FSM_VALIDATE, JOB_REASSIGN, QUEUE_LEAD } from "../names.js";
 
-/** Optional deep validation job — verifies lead row still matches FSM expectations. */
 export function createLeadWorker(connection: ConnectionOptions) {
   const concurrency = Number(process.env.CRM_LEAD_WORKER_CONCURRENCY ?? 1);
 
@@ -36,6 +36,14 @@ async function runFsmValidateJob(data: { leadId: string; event: FsmEvent }) {
     resolveFsmTransition(lead.stage, data.event);
     return { ok: true, stage: lead.stage };
   } catch {
+    emitAdminActivityWorker({
+      action: "fsm:validation_failed",
+      targetId: data.leadId,
+      targetType: "lead",
+      description: `FSM validation failed: ${lead.stage} → ${data.event}`,
+      metadata: { leadId: data.leadId, event: data.event, currentStage: lead.stage },
+      severity: "warning",
+    });
     return { ok: false, reason: "FSM_REJECT" };
   }
 }

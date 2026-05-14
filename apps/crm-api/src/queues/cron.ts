@@ -6,16 +6,13 @@ import {
   QUEUE_LEAD,
   QUEUE_RANKING,
 } from "./names.js";
+import { emitAdminActivityWorker } from "../realtime/emit.js";
 
 export type CronQueues = {
   lead: Queue;
   ranking: Queue;
 };
 
-/**
- * Every 60s (configurable): REASSIGN tier → CHECK_STALE tier → RANK_RECALC.
- * Lead queue uses concurrency 1 so ordering is preserved within the worker.
- */
 export function startScheduler(queues: CronQueues) {
   const intervalMs = Number(process.env.CRM_SCHEDULER_INTERVAL_MS ?? 60_000);
 
@@ -33,6 +30,13 @@ export function startScheduler(queues: CronQueues) {
         { pipelineKinds: ["TEAM", "PERSONAL"] as const },
         { jobId: `rank-${tickId}`, removeOnComplete: 100 },
       );
+      emitAdminActivityWorker({
+        action: "system:scheduler_tick",
+        targetType: "system",
+        description: `Scheduler cycle: REASSIGN + CHECK_STALE + RANK_RECALC enqueued`,
+        metadata: { tickId, intervalMs },
+        severity: "info",
+      });
     } catch (e) {
       console.error("[crm-scheduler] tick failed", e);
     }

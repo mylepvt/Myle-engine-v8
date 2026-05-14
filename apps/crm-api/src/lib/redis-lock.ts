@@ -1,23 +1,8 @@
-import { Redis } from "ioredis";
+import { getIoredis } from "../realtime/redis-client.js";
 
-const REDIS_URL = process.env.CRM_REDIS_URL ?? "redis://127.0.0.1:6379";
-
-let client: Redis | null = null;
-
-function getRedis(): Redis {
-  if (!client) {
-    client = new Redis(REDIS_URL, { maxRetriesPerRequest: 3 });
-    client.on("error", (e: Error) => console.error("[redis-lock]", e));
-  }
-  return client;
-}
-
-/**
- * Distributed lock — SET key NX EX ttlSeconds. Returns true if lock acquired.
- */
 export async function acquireLock(key: string, ttlSeconds: number): Promise<boolean> {
   try {
-    const r = getRedis();
+    const r = getIoredis();
     const full = `lock:${key}`;
     const res = await r.set(full, "1", "EX", ttlSeconds, "NX");
     return res === "OK";
@@ -29,10 +14,9 @@ export async function acquireLock(key: string, ttlSeconds: number): Promise<bool
 
 export async function releaseLock(key: string): Promise<void> {
   try {
-    const r = getRedis();
+    const r = getIoredis();
     await r.del(`lock:${key}`);
   } catch {
-    /* ignore */
   }
 }
 

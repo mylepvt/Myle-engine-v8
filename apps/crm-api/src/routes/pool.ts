@@ -7,9 +7,7 @@ import { claimBatchFromPool, claimFromPool } from "../services/pool-claim.servic
 
 const claimBody = z
   .object({
-    /** CRM cuid OR numeric FastAPI lead ID (resolved via legacyId). Single-claim mode only. */
     leadId: z.union([z.string(), z.number().int().positive()]).optional(),
-    /** FIFO batch: 1–50 leads in one atomic transaction (mutually exclusive with ``leadId``). */
     count: z.number().int().min(1).max(50).optional(),
     idempotencyKey: z.string().min(8),
     pipelineKind: z.nativeEnum(PipelineKind),
@@ -26,7 +24,6 @@ const claimBody = z
     }
   });
 
-/** Resolve CRM cuid from either a cuid string or a numeric legacyId. */
 async function resolvePoolLeadId(leadId: string | number): Promise<string> {
   if (typeof leadId === "number" || /^\d+$/.test(String(leadId))) {
     const asInt = typeof leadId === "number" ? leadId : parseInt(leadId as string, 10);
@@ -67,6 +64,7 @@ export async function poolRoutes(fastify: FastifyInstance) {
           pipelineKind: body.pipelineKind,
         },
         fastify.io,
+        fastify.gateway,
       );
     }
     const crmLeadId = await resolvePoolLeadId(body.leadId!);
@@ -78,6 +76,7 @@ export async function poolRoutes(fastify: FastifyInstance) {
         pipelineKind: body.pipelineKind,
       },
       fastify.io,
+      fastify.gateway,
     );
   });
 }
