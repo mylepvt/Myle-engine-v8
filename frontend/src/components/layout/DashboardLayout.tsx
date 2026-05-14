@@ -33,11 +33,7 @@ export function DashboardLayout() {
   useRealtimeInvalidation(true)
   const location = useLocation()
   const { data: me } = useAuthMeQuery()
-  const {
-    role: shellRole,
-    serverRole,
-    isPending: rolePending,
-  } = useDashboardShellRole()
+  const { role: shellRole } = useDashboardShellRole()
   const navigate = useNavigate()
   const {
     sidebarOpen,

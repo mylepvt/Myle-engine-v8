@@ -115,7 +115,6 @@ function workboardBatchWhatsAppUrl(
   const digits = whatsappDigits(lead.phone ?? '')
   if (!digits) return null
   const name = (lead.name || 'Participant').trim()
-  const timeLabel = SLOT_TIME_LABEL[slot]
   const linkBlock =
     (links?.v1 ? `📹 Video 1:\n${links.v1}\n` : '') +
     (links?.v2 ? `📹 Video 2:\n${links.v2}\n` : '')
@@ -682,6 +681,8 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
   const [batchError, setBatchError] = useState<string | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerBusy, setPickerBusy] = useState(false)
+  const [uploadBusy, setUploadBusy] = useState(false)
+  const [uploadErr, setUploadErr] = useState<string | null>(null)
 
   const hasBatchSlots = stageKey === 'day1' || stageKey === 'day2' || stageKey === 'day3' || stageKey === 'day4' || stageKey === 'day5'
   const dayKey = stageKey === 'day5' ? 5 : stageKey === 'day4' ? 4 : stageKey === 'day3' ? 3 : stageKey === 'day2' ? 2 : 1
@@ -876,8 +877,6 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
 
   // day3: top tasks → Send Live → FLP billing with upload button
   const proofUploaded = Boolean(lead.payment_proof_url)
-  const [uploadBusy, setUploadBusy] = useState(false)
-  const [uploadErr, setUploadErr] = useState<string | null>(null)
 
   async function handleProofUpload(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -945,12 +944,11 @@ function LeadCardItem({ lead, stageKey, nextStatus, pm, patchBusyLeadId, mindset
   onRequestMindsetSend?: (lead: LeadPublic) => void
   nextLabel?: string; nowMs: number
 }) {
-  const onMoveNext = useCallback(
-    stageKey && nextStatus
-      ? () => void pm.mutateAsync({ id: lead.id, body: { status: nextStatus } })
-      : undefined,
-    [stageKey, nextStatus, pm, lead.id],
+  const _moveNext = useCallback(
+    () => { if (nextStatus) void pm.mutateAsync({ id: lead.id, body: { status: nextStatus } }) },
+    [nextStatus, pm, lead.id],
   )
+  const onMoveNext = stageKey && nextStatus ? _moveNext : undefined
   return (
     <LeadCard
       lead={lead}

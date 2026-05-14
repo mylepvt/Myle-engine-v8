@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { io, type Socket } from 'socket.io-client'
-import { useAdminFeedStore, type AdminActivityEntry } from '@/stores/admin-feed-store'
+import { useAdminFeedStore } from '@/stores/admin-feed-store'
 
 const CRM_SOCKET_URL = import.meta.env.VITE_CRM_SOCKET_URL ?? 'http://127.0.0.1:4000'
 

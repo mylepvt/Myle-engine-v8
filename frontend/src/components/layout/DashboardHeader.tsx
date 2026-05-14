@@ -51,11 +51,6 @@ export function DashboardHeader({
   const enrollmentPending = useEnrollmentApprovalsPendingQuery()
   const pendingEnrollCount = enrollmentPending.data?.total ?? 0
   const push = usePushNotifications()
-  const showPushPrompt =
-    Boolean(me?.authenticated) &&
-    push.isSupported &&
-    !push.isSubscribed &&
-    push.permission !== 'denied'
   const approverForEnroll =
     Boolean(me?.authenticated) && me?.role === 'admin'
 
