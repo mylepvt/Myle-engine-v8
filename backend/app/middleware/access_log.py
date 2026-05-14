@@ -9,6 +9,8 @@ import time
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
+from app.services.observation_logger import set_request_context
+
 logger = logging.getLogger("myle.access")
 logger_perf = logging.getLogger("myle.perf")
 
@@ -17,10 +19,12 @@ SLOW_REQUEST_THRESHOLD_MS = 300
 
 class AccessLogMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        rid = getattr(request.state, "request_id", None)
+        if rid:
+            set_request_context(request_id=str(rid))
         start = time.perf_counter()
         response = await call_next(request)
         duration_ms = int((time.perf_counter() - start) * 1000)
-        rid = getattr(request.state, "request_id", None)
         line = {
             "msg": "http_request",
             "request_id": rid,

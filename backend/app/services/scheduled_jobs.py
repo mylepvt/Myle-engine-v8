@@ -23,6 +23,7 @@ from app.models.lead import Lead
 from app.models.user import User
 from app.services.live_metrics import fresh_call_counts_by_user, get_daily_call_target
 from app.services.member_compliance import build_compliance_snapshots
+from app.services.observation_logger import observe_event
 from app.services.push_service import send_push_to_role, send_push_to_user
 from app.services import execution_enforcement as enf
 
@@ -287,8 +288,14 @@ async def job_watch_archive_maintenance() -> None:
                 result["reassigned"],
                 result["skipped"],
             )
+            observe_event(event_type="scheduler.watch_archive", source="scheduler",
+                          auto_archived=result.get("auto_archived"),
+                          reassigned=result.get("reassigned"),
+                          skipped=result.get("skipped"))
     except Exception as exc:
         logger.error("job_watch_archive_maintenance failed: %s", exc)
+        observe_event(event_type="scheduler.failure", source="scheduler",
+                      job="watch_archive_maintenance", error=str(exc)[:200])
 
 
 # ---------------------------------------------------------------------------
@@ -401,6 +408,11 @@ async def job_leader_basics_enforcement() -> None:
                 warned_count,
                 locked_count,
             )
+            if locked_count or warned_count:
+                observe_event(event_type="scheduler.leader_enforcement", source="scheduler",
+                              warned=warned_count, locked=locked_count)
 
     except Exception as exc:
         logger.error("job_leader_basics_enforcement failed: %s", exc)
+        observe_event(event_type="scheduler.failure", source="scheduler",
+                      job="leader_basics_enforcement", error=str(exc)[:200])

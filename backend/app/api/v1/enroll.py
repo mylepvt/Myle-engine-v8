@@ -31,6 +31,7 @@ from app.schemas.enroll import (
     WatchUnlockRequest,
 )
 from app.services.crm_outbox import enqueue_lead_shadow_upsert
+from app.services.observation_logger import observe_event
 from app.services.enrollment_video import (
     absolute_video_source_url,
     build_enrollment_stream_source_candidates,
@@ -289,6 +290,8 @@ async def generate_share_link(
         enqueue_lead_shadow_upsert(session, lead)
     await session.commit()
     await session.refresh(link)
+    observe_event(event_type="enrollment.link_generated", source="enroll_api",
+                  lead_id=lead.id, link_id=link.id)
     return _build_public_link(link)
 
 

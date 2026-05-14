@@ -23,12 +23,10 @@ from app.models.invoice import Invoice
 from app.models.user import User
 from app.models.wallet_ledger import WalletLedgerEntry
 from app.models.wallet_recharge import WalletRecharge
-from app.services.invoice_records import create_payment_receipt_for_positive_adjustment, create_payment_receipt_for_recharge
-from app.services.push_service import send_push_to_user_bg
+from app.services.observation_logger import observe_event
 from app.schemas.wallet import (
     WalletAdjustmentCreate,
-    WalletLedgerEntryPublic,
-    WalletLedgerListResponse,
+    WalletRechargeApproveRequest,
     WalletRechargeCreate,
     WalletRechargeInstructionsResponse,
     WalletRechargeListResponse,
@@ -276,6 +274,8 @@ async def _fastapi_wallet_adjustment(
         if replay is None:
             raise
         entry = replay
+    observe_event(event_type="wallet.adjustment", source="wallet_api",
+                  user_id=body.user_id, amount_cents=body.amount_cents, entry_id=entry.id)
     await notify_topics("wallet", "leads")
     return WalletLedgerEntryPublic.model_validate(entry)
 
@@ -501,6 +501,9 @@ async def review_recharge_request(
 
     await session.commit()
     await session.refresh(recharge)
+    observe_event(event_type="wallet.recharge_review", source="wallet_api",
+                  recharge_id=recharge.id, status=body.status,
+                  user_id=recharge.user_id, amount_cents=recharge.amount_cents)
     await notify_topics("wallet")
     if body.status == "approved":
         background_tasks.add_task(

@@ -1,15 +1,37 @@
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import json
 import logging
 import os
 import sys
 import uuid
+from datetime import datetime, timezone
 from typing import Any
 
 from app.core.config import settings
 
+# ── deployment identity ─────────────────────────────────────────────────
+_COMMIT_SHA = os.environ.get("RENDER_GIT_COMMIT") or os.environ.get("SOURCE_VERSION", "unknown")[:12]
+_SERVICE_NAME = os.environ.get("RENDER_SERVICE_NAME", "unknown")
+_ENV = settings.app_environment
+
+# ── request context (propagated from middleware) ─────────────────────────
+_request_id_ctx: contextvars.ContextVar[str] = contextvars.ContextVar("obs_request_id", default="")
+_user_id_ctx: contextvars.ContextVar[str] = contextvars.ContextVar("obs_user_id", default="")
+
+
+def set_request_context(*, request_id: str = "", user_id: str = "") -> None:
+    _request_id_ctx.set(request_id)
+    _user_id_ctx.set(user_id)
+
+
+def _request_id() -> str:
+    return _request_id_ctx.get()
+
+
+# ── log file / queue config ─────────────────────────────────────────────
 _OBS_LOG_FILE = os.environ.get("PHASE1_OBS_LOG_FILE", "/tmp/phase1_observation.log")
 _QUEUE_MAXSIZE = 2000
 _DRAIN_TIMEOUT = 0.5
@@ -25,11 +47,12 @@ if not logger.handlers:
     logger.setLevel(logging.INFO)
     logger.propagate = False
 
-logger.info("module_loaded enabled=%s sample_rate=%s queue_maxsize=%s log_file=%s",
+logger.info("module_loaded enabled=%s sample_rate=%s service=%s commit=%s env=%s",
             settings.phase1_observation_enabled,
             settings.phase1_observation_sample_rate,
-            _QUEUE_MAXSIZE,
-            _OBS_LOG_FILE)
+            _SERVICE_NAME,
+            _COMMIT_SHA,
+            _ENV)
 
 _queue: asyncio.Queue[dict[str, Any]] | None = None
 _drain_task: asyncio.Task[None] | None = None
@@ -78,11 +101,38 @@ def _ensure_drain_task() -> asyncio.Task[None] | None:
     return _drain_task
 
 
-def emit_observation(record: dict[str, Any]) -> None:
-    logger.info("EMIT_OBS_CALLED flag=%s", settings.phase1_observation_enabled)
+def _enrich(record: dict[str, Any]) -> dict[str, Any]:
+    rid = _request_id()
+    if rid:
+        record["request_id"] = rid
+    record.setdefault("service", _SERVICE_NAME)
+    record.setdefault("commit", _COMMIT_SHA)
+    record.setdefault("env", _ENV)
+    record.setdefault("timestamp", datetime.now(timezone.utc).isoformat())
+    return record
+
+
+def observe_event(*, event_type: str, lead_id: int | None = None, source: str, **extra: Any) -> None:
+    """Enqueue a non-lead event observation (enrollment, wallet, scheduler)."""
     if not settings.phase1_observation_enabled:
         return
-    line = json.dumps(record, default=str)
+    record = _enrich({
+        "metric": event_type,
+        "lead_id": lead_id,
+        "source": source,
+        **extra,
+    })
+    _emit_json(json.dumps(record, default=str), record)
+
+
+def emit_observation(record: dict[str, Any]) -> None:
+    if not settings.phase1_observation_enabled:
+        return
+    line = json.dumps(_enrich(record), default=str)
+    _emit_json(line, record)
+
+
+def _emit_json(line: str, record: dict[str, Any]) -> None:
     logger.info("PHASE1_OBS %s", line)
     try:
         with open(_OBS_LOG_FILE, "a") as _f:
