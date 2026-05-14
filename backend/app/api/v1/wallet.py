@@ -26,7 +26,6 @@ from app.models.wallet_recharge import WalletRecharge
 from app.services.observation_logger import observe_event
 from app.schemas.wallet import (
     WalletAdjustmentCreate,
-    WalletRechargeApproveRequest,
     WalletRechargeCreate,
     WalletRechargeInstructionsResponse,
     WalletRechargeListResponse,
