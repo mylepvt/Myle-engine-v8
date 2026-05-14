@@ -83,6 +83,7 @@ export function useAdminActivitySSE(enabled: boolean) {
     function connect() {
       if (!mountedRef.current) return
       if (document.visibilityState === 'hidden') return
+      if (typeof EventSource === 'undefined') return   // jsdom / SSR guard
 
       const es = new EventSource(SSE_URL, { withCredentials: true })
       esRef.current = es
