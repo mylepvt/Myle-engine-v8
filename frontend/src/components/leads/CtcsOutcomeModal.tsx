@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { MessageCircle, Phone } from 'lucide-react'
 
 import type { CtcsAction } from '@/hooks/use-leads-query'
-import { telHref, whatsAppChatHref } from '@/lib/phone-links'
+import { openWhatsApp, telHref, whatsAppChatHref } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
 
 const OPTIONS: { action: CtcsAction; label: string }[] = [
@@ -100,11 +100,10 @@ export function CtcsOutcomeModal({ open, leadName, phone, busy, onClose, onPick 
                   Dial
                 </a>
               ) : null}
-              {canWa ? (
-                <a
-                  href={wa}
-                  target="_blank"
-                  rel="noopener noreferrer"
+               {canWa ? (
+                <button
+                  type="button"
+                  onClick={() => openWhatsApp(phone)}
                   className={cn(
                     'inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold transition',
                     'border-2 border-[#128C7E]/55 bg-[#25D366]/14 text-[#065f46] shadow-[0_0_12px_rgba(37,211,102,0.28)] hover:bg-[#25D366]/22',
@@ -113,7 +112,7 @@ export function CtcsOutcomeModal({ open, leadName, phone, busy, onClose, onPick 
                 >
                   <MessageCircle className="size-4 shrink-0" aria-hidden />
                   WhatsApp
-                </a>
+                </button>
               ) : null}
             </div>
           </div>
