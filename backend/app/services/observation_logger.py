@@ -1,5 +1,37 @@
 from __future__ import annotations
 
+"""
+Observation logger — production-safe structured logging with persistent sink.
+
+Architecture:
+─────────────
+HTTP Request → AccessLogMiddleware → set_request_context(request_id)
+    │
+    ▼
+Route → Service → session.commit()
+    │                     │
+    │              SQLAlchemy after_commit event → emit_observation()
+    │                     │
+    │                     ├─ enrich with request_id, service, commit, env
+    │                     ├─ structured JSON → stdout (Render persistent log stream)
+    │                     └─ async queue → drain loop → stdout (overflow protection)
+    │
+    ▼
+Response
+
+Activation:
+───────────
+Env vars:
+  PHASE1_OBSERVATION_ENABLED=true     (default: false)
+  PHASE1_OBSERVATION_SAMPLE_RATE=0.1  (range 0.0-1.0, default 0.1)
+  PHASE1_OBS_LOG_FILE=/tmp/obs.log    (file fallback, default /tmp/phase1_observation.log)
+
+Persistent sink (Render):
+  - stdout logs captured by Render, retained 7+ days
+  - Configure Log Stream → Papertrail/Logtail/Datadog for long-term retention
+  - Log format: one JSON object per line (newline-delimited JSON)
+"""
+
 import asyncio
 import contextvars
 import json
@@ -9,6 +41,9 @@ import sys
 import uuid
 from datetime import datetime, timezone
 from typing import Any
+
+from sqlalchemy import event as sa_event
+from sqlalchemy.orm import Session as SASession
 
 from app.core.config import settings
 
@@ -31,28 +66,45 @@ def _request_id() -> str:
     return _request_id_ctx.get()
 
 
-# ── log file / queue config ─────────────────────────────────────────────
+# ── persistent log sink ────────────────────────────────────────────────
+# Primary: structured JSON to stdout (Render captures this permanently).
+# Fallback: file handler for local debugging.
 _OBS_LOG_FILE = os.environ.get("PHASE1_OBS_LOG_FILE", "/tmp/phase1_observation.log")
 _QUEUE_MAXSIZE = 2000
 _DRAIN_TIMEOUT = 0.5
 
+
+class _JSONFormatter(logging.Formatter):
+    """Outputs one clean JSON object per line — compatible with Logtail/Papertrail/Datadog."""
+    def format(self, record: logging.LogRecord) -> str:
+        raw = record.getMessage()
+        # logger.info("PHASE1_OBS %s", json_str) → extract the json part
+        if raw.startswith("PHASE1_OBS "):
+            return raw[len("PHASE1_OBS "):]
+        return raw
+
+
 logger = logging.getLogger("observation")
 if not logger.handlers:
-    _handler = logging.FileHandler(_OBS_LOG_FILE, mode="a")
-    _handler.setFormatter(logging.Formatter("%(asctime)s PHASE1_OBSERVATION %(message)s"))
-    logger.addHandler(_handler)
-    _fallback = logging.StreamHandler(sys.stdout)
-    _fallback.setFormatter(logging.Formatter("%(asctime)s PHASE1_OBSERVATION %(message)s"))
-    logger.addHandler(_fallback)
+    _stdout = logging.StreamHandler(sys.stdout)
+    _stdout.setFormatter(_JSONFormatter())
+    logger.addHandler(_stdout)
+    _file = logging.FileHandler(_OBS_LOG_FILE, mode="a")
+    _file.setFormatter(logging.Formatter("%(message)s"))
+    logger.addHandler(_file)
     logger.setLevel(logging.INFO)
     logger.propagate = False
 
-logger.info("module_loaded enabled=%s sample_rate=%s service=%s commit=%s env=%s",
-            settings.phase1_observation_enabled,
-            settings.phase1_observation_sample_rate,
-            _SERVICE_NAME,
-            _COMMIT_SHA,
-            _ENV)
+logger.info(json.dumps({
+    "msg": "module_loaded",
+    "phase": "observation_v1",
+    "enabled": settings.phase1_observation_enabled,
+    "sample_rate": settings.phase1_observation_sample_rate,
+    "service": _SERVICE_NAME,
+    "commit": _COMMIT_SHA,
+    "env": _ENV,
+    "log_file": _OBS_LOG_FILE,
+}))
 
 _queue: asyncio.Queue[dict[str, Any]] | None = None
 _drain_task: asyncio.Task[None] | None = None
@@ -133,12 +185,15 @@ def emit_observation(record: dict[str, Any]) -> None:
 
 
 def _emit_json(line: str, record: dict[str, Any]) -> None:
+    # Primary: stdout (Render persistent log stream)
     logger.info("PHASE1_OBS %s", line)
+    # Fallback: file
     try:
         with open(_OBS_LOG_FILE, "a") as _f:
-            _f.write(f"PHASE1_OBS {line}\n")
+            _f.write(f"{line}\n")
     except Exception:
         pass
+    # Overflow protection: async queue
     try:
         q = _ensure_queue()
         _ensure_drain_task()
@@ -156,7 +211,8 @@ async def _drain_loop() -> None:
     while True:
         try:
             record = await asyncio.wait_for(_queue.get(), timeout=_DRAIN_TIMEOUT)
-            logger.info("PHASE1_OBS %s", json.dumps(record, default=str))
+            line = json.dumps(record, default=str)
+            logger.info("PHASE1_OBS %s", line)
             _queue.task_done()
         except asyncio.TimeoutError:
             continue
@@ -177,3 +233,45 @@ async def drain_observation_logger() -> None:
         except (asyncio.TimeoutError, Exception):
             pass
     _drain_task = None
+
+
+# ── SQLAlchemy transaction boundary hook ──────────────────────────────────
+# Fires after every session.commit(). Captures lead_id from the session's
+# new/dirty/deleted Lead objects and emits an observation automatically.
+_LEAD_TXN_METRIC = "commit_boundary"
+_LEAD_TXN_SOURCE = "sa_after_commit"
+
+
+@sa_event.listens_for(SASession, "after_commit")
+def _after_commit_hook(session: SASession) -> None:
+    """Automatic observation after every successful SQLAlchemy commit.
+
+    Observes Lead changes across ALL code paths — not just those that
+    explicitly call emit_observation(). This is the transaction boundary
+    recommendation: observe at commit, not inside individual methods.
+    """
+    if not settings.phase1_observation_enabled:
+        return
+    try:
+        changed = [
+            obj for obj in session
+            if hasattr(obj, "__tablename__") and getattr(obj, "__tablename__", None) in ("leads", "leads")
+        ]
+        for lead in changed:
+            lead_id = getattr(lead, "id", None)
+            if lead_id is None:
+                continue
+            status = getattr(lead, "status", None) or ""
+            in_pool = getattr(lead, "in_pool", False)
+            if should_sample_observation(lead_id=lead_id, source=_LEAD_TXN_SOURCE):
+                emit_observation({
+                    "metric": _LEAD_TXN_METRIC,
+                    "trace_id": generate_trace_id(),
+                    "correlation_id": f"lead-{lead_id}-commit",
+                    "lead_id": lead_id,
+                    "source": _LEAD_TXN_SOURCE,
+                    "fastapi_stage": status,
+                    "in_pool": in_pool,
+                })
+    except Exception:
+        pass
