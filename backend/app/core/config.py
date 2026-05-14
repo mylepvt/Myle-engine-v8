@@ -228,7 +228,7 @@ class Settings(BaseSettings):
         description="Phase 1 SSOT migration: enable divergence observation logging between FastAPI and CRM lead state.",
     )
     phase1_observation_sample_rate: float = Field(
-        default=0.1,
+        default=1.0,
         ge=0.0,
         le=1.0,
         validation_alias="PHASE1_OBSERVATION_SAMPLE_RATE",
