@@ -1,12 +1,13 @@
-# Render Blueprint — Postgres + Redis + CRM API + Backend API + Frontend.
+# Render Blueprint — Postgres + Redis + CRM API + Backend+Frontend (monorepo).
 # Docs: https://render.com/docs/blueprint-spec
 #
 # Apply: Dashboard → New → Blueprint → connect this repo → apply.
 #
 # After first deploy, set these manually in Render dashboard:
-#   myle-vl2-api   → BACKEND_CORS_ORIGINS = https://<your-frontend-url>
-#   myle-vl2-api   → CRM_API_URL          = https://myle-crm-api.onrender.com
-#   myle-crm-api   → (no extra manual vars needed — all wired below)
+#   myle-vl2-api   → CRM_API_URL = https://myle-crm-api.onrender.com
+#
+# Frontend is served by the same service (myle-vl2-api) — same origin,
+# so no CORS or cross-site cookie issues.
 
 services:
   # ── Redis ────────────────────────────────────────────────────────────────
@@ -62,8 +63,6 @@ services:
         value: "true"
       - key: AUTH_COOKIE_SAMESITE
         value: lax
-      - key: BACKEND_CORS_ORIGINS
-        sync: false               # set manually after deploy
       - key: CRM_API_URL
         sync: false               # set to https://myle-crm-api.onrender.com after deploy
       - key: CRM_INTERNAL_SECRET
@@ -75,17 +74,3 @@ services:
         value: "1"
       - key: RENDER
         value: "true"
-
-  # ── React frontend (nginx) ────────────────────────────────────────────────
-  - type: web
-    name: myle-vl2-frontend
-    runtime: docker
-    plan: free
-    region: singapore
-    dockerfilePath: ./frontend/Dockerfile.prod
-    dockerContext: ./frontend
-    envVars:
-      - key: VITE_API_URL
-        value: ""
-      - key: BACKEND_URL
-        value: "https://myle-vl2-api.onrender.com"
