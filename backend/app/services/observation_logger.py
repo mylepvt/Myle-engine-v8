@@ -255,6 +255,30 @@ async def drain_observation_logger() -> None:
     _drain_task = None
 
 
+def _broadcast_to_feed(record: dict[str, Any]) -> None:
+    """Push event to SSE admin feed without sampling gate."""
+    try:
+        from app.services import activity_feed as _af
+        import asyncio as _asyncio
+        event_type = record.get("metric") or record.get("event_type") or "unknown"
+        lead_id = record.get("lead_id")
+        actor_id = record.get("actor_id") or record.get("user_id")
+        enriched = _enrich(dict(record))
+        loop = _af._get_event_loop()
+        if loop and loop.is_running():
+            _asyncio.ensure_future(
+                _af.write_event(
+                    event_type=str(event_type),
+                    lead_id=int(lead_id) if lead_id else None,
+                    actor_id=int(actor_id) if actor_id else None,
+                    metadata=enriched,
+                ),
+                loop=loop,
+            )
+    except Exception:
+        pass
+
+
 # ── SQLAlchemy transaction boundary hook ──────────────────────────────────
 # Fires after every session.commit(). Captures lead_id from the session's
 # new/dirty/deleted Lead objects and emits an observation automatically.
@@ -284,9 +308,7 @@ def _after_commit_hook(session: SASession) -> None:
             lead_id = lead.id
             if lead_id is None:
                 continue
-            if not should_sample_observation(lead_id=lead_id, source=_LEAD_TXN_SOURCE):
-                continue
-            emit_observation({
+            record = {
                 "metric": _LEAD_TXN_METRIC,
                 "trace_id": generate_trace_id(),
                 "correlation_id": f"lead-{lead_id}-commit",
@@ -294,6 +316,12 @@ def _after_commit_hook(session: SASession) -> None:
                 "source": _LEAD_TXN_SOURCE,
                 "fastapi_stage": getattr(lead, "status", "") or "",
                 "in_pool": bool(getattr(lead, "in_pool", False)),
-            })
+            }
+            # Always push to SSE admin feed regardless of sample rate.
+            # Sampling only controls log/file volume, not realtime visibility.
+            _broadcast_to_feed(record)
+            if not should_sample_observation(lead_id=lead_id, source=_LEAD_TXN_SOURCE):
+                continue
+            emit_observation(record)
         except Exception:
             continue
