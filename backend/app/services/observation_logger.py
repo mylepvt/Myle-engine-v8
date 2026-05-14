@@ -208,20 +208,19 @@ def _emit_json(line: str, record: dict[str, Any]) -> None:
     # Activity feed (SSE broadcast to admin dashboard)
     try:
         from app.services import activity_feed as _af
-        import asyncio as _asyncio
         event_type = record.get("metric") or record.get("event_type") or "unknown"
         lead_id = record.get("lead_id")
         actor_id = record.get("actor_id") or record.get("user_id")
         loop = _af._get_event_loop()
         if loop and loop.is_running():
-            _asyncio.ensure_future(
+            # loop.create_task() is the Py 3.10+ safe way (ensure_future loop= removed in 3.12)
+            loop.create_task(
                 _af.write_event(
                     event_type=str(event_type),
                     lead_id=int(lead_id) if lead_id else None,
                     actor_id=int(actor_id) if actor_id else None,
                     metadata=record,
-                ),
-                loop=loop,
+                )
             )
     except Exception:
         pass
@@ -259,21 +258,20 @@ def _broadcast_to_feed(record: dict[str, Any]) -> None:
     """Push event to SSE admin feed without sampling gate."""
     try:
         from app.services import activity_feed as _af
-        import asyncio as _asyncio
         event_type = record.get("metric") or record.get("event_type") or "unknown"
         lead_id = record.get("lead_id")
         actor_id = record.get("actor_id") or record.get("user_id")
         enriched = _enrich(dict(record))
         loop = _af._get_event_loop()
         if loop and loop.is_running():
-            _asyncio.ensure_future(
+            # loop.create_task() is the Py 3.10+ safe way (ensure_future loop= removed in 3.12)
+            loop.create_task(
                 _af.write_event(
                     event_type=str(event_type),
                     lead_id=int(lead_id) if lead_id else None,
                     actor_id=int(actor_id) if actor_id else None,
                     metadata=enriched,
-                ),
-                loop=loop,
+                )
             )
     except Exception:
         pass
