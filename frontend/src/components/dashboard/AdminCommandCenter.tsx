@@ -29,7 +29,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardLink, CardTitle } from '@/components/ui/card'
 import { EmptyState, ErrorState } from '@/components/ui/states'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useAdminActivitySocket } from '@/hooks/use-admin-activity-socket'
+import { useAdminActivitySSE } from '@/hooks/use-admin-activity-sse'
 import { AdminActivityPanel } from '@/components/dashboard/AdminActivityPanel'
 import { useAppSettingsQuery, useSystemUsersSummaryQuery } from '@/hooks/use-settings-query'
 import { useActiveWatchersQuery } from '@/hooks/use-enroll-query'
@@ -454,7 +454,7 @@ export function AdminCommandCenter({ firstName }: Props) {
   const [todayIST] = useState(() => new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10))
   const [viewerHistoryDate, setViewerHistoryDate] = useState<string>(todayIST)
 
-  useAdminActivitySocket(true)
+  useAdminActivitySSE(true)
 
   const pendingRegistrations = useQuery({
     queryKey: ['team', 'pending-registrations'],

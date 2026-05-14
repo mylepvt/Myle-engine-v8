@@ -205,6 +205,26 @@ def _emit_json(line: str, record: dict[str, Any]) -> None:
         q.put_nowait(record)
     except Exception:
         pass
+    # Activity feed (SSE broadcast to admin dashboard)
+    try:
+        from app.services import activity_feed as _af
+        import asyncio as _asyncio
+        event_type = record.get("metric") or record.get("event_type") or "unknown"
+        lead_id = record.get("lead_id")
+        actor_id = record.get("actor_id") or record.get("user_id")
+        loop = _af._get_event_loop()
+        if loop and loop.is_running():
+            _asyncio.ensure_future(
+                _af.write_event(
+                    event_type=str(event_type),
+                    lead_id=int(lead_id) if lead_id else None,
+                    actor_id=int(actor_id) if actor_id else None,
+                    metadata=record,
+                ),
+                loop=loop,
+            )
+    except Exception:
+        pass
 
 
 async def _drain_loop() -> None:
