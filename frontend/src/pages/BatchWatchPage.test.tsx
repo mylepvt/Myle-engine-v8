@@ -12,26 +12,24 @@ describe('BatchWatchPage', () => {
   })
 
   it('renders personalized greeting and only loads the iframe after play is tapped', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          token: 'demo-token',
-          slot: 'd2_morning',
-          version: 1,
-          day_number: 2,
-          slot_label: 'Morning',
-          title: 'Day 2 Morning Batch',
-          subtitle: 'Watch both videos inside Myle and submit your work from the same page.',
-          lead_name: 'rahul sharma',
-          youtube_url: 'https://m.youtube.com/watch?v=dQw4w9WgXcQ&feature=youtu.be',
-          video_id: null,
-          watch_complete: false,
-          day2_evaluation_ready: false,
-          submission_enabled: true,
-          submission: null,
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } },
-      ),
+    const payload = {
+      token: 'demo-token',
+      slot: 'd2_morning',
+      version: 1,
+      day_number: 2,
+      slot_label: 'Morning',
+      title: 'Day 2 Morning Batch',
+      subtitle: 'Watch both videos inside Myle and submit your work from the same page.',
+      lead_name: 'rahul sharma',
+      youtube_url: 'https://m.youtube.com/watch?v=dQw4w9WgXcQ&feature=youtu.be',
+      video_id: null,
+      watch_complete: false,
+      day2_evaluation_ready: false,
+      submission_enabled: true,
+      submission: null,
+    }
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } })),
     )
     vi.stubGlobal('fetch', fetchMock)
 
@@ -70,32 +68,30 @@ describe('BatchWatchPage', () => {
   })
 
   it('uses the native video player for direct hosted video files', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          token: 'demo-token',
-          slot: 'd2_morning',
-          version: 1,
-          day_number: 2,
-          slot_label: 'Morning',
-          title: 'Day 2 Morning Batch',
-          subtitle: 'Watch both videos inside Myle and submit your work from the same page.',
-          lead_name: 'rahul sharma',
-          youtube_url: 'https://cdn.myle.in/videos/day-2-morning.mp4?token=abc123',
-          video_id: null,
-          watch_complete: false,
-          day2_evaluation_ready: true,
-          submission_enabled: true,
-          submission: {
-            notes_url: '/uploads/batch_day_notes/11_d2_morning.jpg',
-            voice_note_url: null,
-            video_url: null,
-            notes_text: 'Done with the main points.',
-            submitted_at: '2026-04-21T12:00:00Z',
-          },
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } },
-      ),
+    const payload = {
+      token: 'demo-token',
+      slot: 'd2_morning',
+      version: 1,
+      day_number: 2,
+      slot_label: 'Morning',
+      title: 'Day 2 Morning Batch',
+      subtitle: 'Watch both videos inside Myle and submit your work from the same page.',
+      lead_name: 'rahul sharma',
+      youtube_url: 'https://cdn.myle.in/videos/day-2-morning.mp4?token=abc123',
+      video_id: null,
+      watch_complete: false,
+      day2_evaluation_ready: true,
+      submission_enabled: true,
+      submission: {
+        notes_url: '/uploads/batch_day_notes/11_d2_morning.jpg',
+        voice_note_url: null,
+        video_url: null,
+        notes_text: 'Done with the main points.',
+        submitted_at: '2026-04-21T12:00:00Z',
+      },
+    }
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } })),
     )
     vi.stubGlobal('fetch', fetchMock)
 
@@ -127,29 +123,27 @@ describe('BatchWatchPage', () => {
   })
 
   it('shows a locked state before the scheduled slot opens', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          token: 'demo-token',
-          slot: 'd1_evening',
-          version: 1,
-          day_number: 1,
-          slot_label: 'Evening',
-          title: 'Day 1 Evening Batch',
-          subtitle: 'Watch inside Myle.',
-          lead_name: 'rahul sharma',
-          access_open: false,
-          opens_at: '2026-05-05T13:30:00Z',
-          gate_message: 'This evening batch unlocks at 07:00 PM IST. Please come back at your scheduled batch time.',
-          youtube_url: null,
-          video_id: null,
-          watch_complete: false,
-          day2_evaluation_ready: false,
-          submission_enabled: false,
-          submission: null,
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } },
-      ),
+    const payload = {
+      token: 'demo-token',
+      slot: 'd1_evening',
+      version: 1,
+      day_number: 1,
+      slot_label: 'Evening',
+      title: 'Day 1 Evening Batch',
+      subtitle: 'Watch inside Myle.',
+      lead_name: 'rahul sharma',
+      access_open: false,
+      opens_at: '2026-05-05T13:30:00Z',
+      gate_message: 'This evening batch unlocks at 07:00 PM IST. Please come back at your scheduled batch time.',
+      youtube_url: null,
+      video_id: null,
+      watch_complete: false,
+      day2_evaluation_ready: false,
+      submission_enabled: false,
+      submission: null,
+    }
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } })),
     )
     vi.stubGlobal('fetch', fetchMock)
 
