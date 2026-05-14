@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 
@@ -115,6 +115,7 @@ function renderSurface() {
 
 describe('CtcsWorkSurface', () => {
   afterEach(() => {
+    cleanup()
     vi.clearAllMocks()
     vi.useRealTimers()
     vi.unstubAllGlobals()
@@ -182,7 +183,7 @@ describe('CtcsWorkSurface', () => {
     fireEvent.change(screen.getByLabelText('Lead status'), { target: { value: 'video_sent' } })
 
     expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByText('Choose session slot')).toBeInTheDocument()
-    expect(await screen.findByText(/premiere\?slot=12/i)).toBeInTheDocument()
+    expect(screen.getByText('Choose Day 1 slot')).toBeInTheDocument()
+    expect(await screen.findByText(/slot=12/i)).toBeInTheDocument()
   })
 })

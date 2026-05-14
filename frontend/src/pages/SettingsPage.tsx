@@ -37,7 +37,7 @@ import { type Role } from '@/types/role'
 import { cn } from '@/lib/utils'
 import { apiUrl } from '@/lib/api'
 
-function BatchLinkInput({ label, settingsKey, value, onSave }: {
+function BatchLinkInput({ label, value, onSave }: {
   label: string
   settingsKey: string
   value: string
