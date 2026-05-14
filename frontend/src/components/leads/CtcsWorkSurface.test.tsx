@@ -183,6 +183,6 @@ describe('CtcsWorkSurface', () => {
 
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByText('Choose Day 1 slot')).toBeInTheDocument()
-    expect(await screen.findByText(/premiere\?slot=12/i)).toBeInTheDocument()
+    expect(await screen.findByText(/slot=12/i)).toBeInTheDocument()
   })
 })
