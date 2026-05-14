@@ -2,12 +2,21 @@ import * as jwt from "jsonwebtoken";
 import type { JwtPayload } from "jsonwebtoken";
 import type { Server } from "socket.io";
 import { SOCKET_ROOMS, leadRoom, teamRoom, userRoom } from "./rooms.js";
+import { PresenceManager } from "./presence.js";
 
-/**
- * Production: CRM_REQUIRE_SOCKET_AUTH !== "false" → JWT mandatory (CRM_JWT_SECRET).
- * Rooms: user:{id}, team:{team_id}, admin, pipeline:*, role:*, lead:* (on join:lead)
- */
+const presence = new PresenceManager();
+
+export function getPresenceManager() {
+  return presence;
+}
+
+export function shutdownSocket() {
+  presence.stop();
+}
+
 export function attachSocketAuth(io: Server) {
+  presence.setIo(io);
+
   io.use((socket, next) => {
     const token = socket.handshake.auth?.token ?? socket.handshake.headers.authorization?.replace(/^Bearer\s+/i, "");
     const requireTok = process.env.CRM_REQUIRE_SOCKET_AUTH !== "false";
@@ -20,13 +29,11 @@ export function attachSocketAuth(io: Server) {
       return next();
     }
 
-    if (!token) {
-      return next(new Error("unauthorized"));
-    }
+    if (!token) return next(new Error("unauthorized"));
+
     const secret = process.env.CRM_JWT_SECRET;
-    if (!secret) {
-      return next(new Error("server_misconfig"));
-    }
+    if (!secret) return next(new Error("server_misconfig"));
+
     try {
       const decoded = jwt.verify(token, secret) as JwtPayload & { team_id?: string };
       if (typeof decoded.sub !== "string" || decoded.sub.length === 0) {
@@ -50,11 +57,21 @@ export function attachSocketAuth(io: Server) {
     if (socket.data.role === "admin") {
       socket.join(SOCKET_ROOMS.adminRoom);
     }
+
+    presence.onConnect(uid, { role: socket.data.role, teamId: socket.data.teamId });
+
     socket.on("join:lead", (leadId: string) => {
       if (typeof leadId === "string" && leadId.length > 0) socket.join(leadRoom(leadId));
     });
+
+    socket.on("crm:heartbeat", () => { presence.heartbeat(uid); });
+
+    socket.on("disconnect", () => { presence.onDisconnect(uid); });
+
     socket.emit("crm:ready", { rooms: Array.from(socket.rooms) });
   });
+
+  presence.startStaleScanner();
 }
 
 function parsePayloadSubUnsafe(token: string | undefined): string | undefined {

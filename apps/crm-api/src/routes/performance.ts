@@ -4,6 +4,7 @@ import { PipelineKind } from "@prisma/client";
 import { prisma } from "../db.js";
 import { requireAuth } from "../lib/auth-context.js";
 import { recomputeUserPerformance } from "../services/performance.service.js";
+import { emitAdminActivity } from "../realtime/emit.js";
 
 export async function performanceRoutes(fastify: FastifyInstance) {
   fastify.get("/performance/snapshots", async (req) => {
@@ -19,10 +20,22 @@ export async function performanceRoutes(fastify: FastifyInstance) {
     const user = requireAuth(req);
     const body = z.object({ pipelineKind: z.nativeEnum(PipelineKind) }).parse(req.body);
     const snap = await recomputeUserPerformance(user.id, body.pipelineKind);
-    fastify.io.to(`user:${user.id}`).emit("performance.updated", {
-      userId: user.id,
-      pipelineKind: body.pipelineKind,
-      compositeScore: snap.compositeScore,
+    const payload = { userId: user.id, pipelineKind: body.pipelineKind, compositeScore: snap.compositeScore };
+    fastify.io.to(`user:${user.id}`).emit("performance.updated", payload);
+    fastify.gateway.publish({
+      type: "performance:score_updated",
+      payload,
+      priority: "medium",
+      idempotencyKey: `perf:score:${user.id}:${body.pipelineKind}:${Date.now()}`,
+    }).catch(() => {});
+    emitAdminActivity(fastify.io, fastify.gateway, {
+      action: "performance:recomputed",
+      actorId: user.id,
+      targetId: user.id,
+      targetType: "user",
+      description: `Performance recomputed for ${body.pipelineKind} (score: ${snap.compositeScore.toFixed(1)})`,
+      metadata: { pipelineKind: body.pipelineKind, compositeScore: snap.compositeScore, breakdown: snap.breakdown },
+      severity: "info",
     });
     return snap;
   });

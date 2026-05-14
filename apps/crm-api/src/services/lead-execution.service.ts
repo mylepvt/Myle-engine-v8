@@ -5,9 +5,10 @@ import type { AuthUser } from "../lib/auth-context.js";
 import type { FsmEvent } from "../domain/fsm.js";
 import { fsmError, optimisticVersionMatch, resolveFsmTransition } from "../domain/fsm.js";
 import { deleteLeadTrackingInTx, journeyResetUpdateData } from "./full-journey-reset.js";
-import { emitLeadDomainEvent, type LeadEmitPayload } from "../realtime/emit.js";
+import { emitLeadDomainEvent, type LeadEmitPayload, emitAdminActivity } from "../realtime/emit.js";
 import { userRoom } from "../realtime/rooms.js";
 import type { Server } from "socket.io";
+import type { EventGateway } from "../realtime/gateway.js";
 import { bumpRealtimeScoreOnActivity } from "./redis-score.service.js";
 import { recordAudit } from "./audit.service.js";
 import { acquireLock, releaseLock } from "../lib/redis-lock.js";
@@ -22,6 +23,7 @@ async function teamScopeForUser(userId: string): Promise<string> {
 
 async function emitLeadChange(
   io: Server | undefined,
+  gateway: EventGateway | undefined,
   lead: {
     id: string;
     pipelineKind: PipelineKind;
@@ -34,7 +36,7 @@ async function emitLeadChange(
   const scopeUserId = lead.handlerId ?? lead.ownerId;
   const teamId = await teamScopeForUser(scopeUserId);
   const merged: LeadEmitPayload = { ...payload, leadId: lead.id };
-  emitLeadDomainEvent(io, {
+  emitLeadDomainEvent(io, gateway, {
     pipelineKind: lead.pipelineKind,
     leadId: lead.id,
     handlerId: lead.handlerId,
@@ -55,6 +57,7 @@ export async function createLead(
   user: AuthUser,
   body: { name: string; phone?: string; pipelineKind: PipelineKind; legacyId?: number },
   io?: Server,
+  gateway?: EventGateway,
 ) {
   const lead = await prisma.lead.create({
     data: {
@@ -77,7 +80,16 @@ export async function createLead(
       meta: { pipelineKind: body.pipelineKind },
     },
   });
-  await emitLeadChange(io, lead, { leadId: lead.id, stage: lead.stage });
+  await emitLeadChange(io, gateway, lead, { leadId: lead.id, stage: lead.stage });
+  emitAdminActivity(io, gateway, {
+    action: "lead:created",
+    actorId: user.id,
+    targetId: lead.id,
+    targetType: "lead",
+    description: `Lead "${lead.name}" created in ${body.pipelineKind} pipeline`,
+    metadata: { pipelineKind: body.pipelineKind, leadName: lead.name },
+    severity: "info",
+  });
   return lead;
 }
 
@@ -103,6 +115,7 @@ export async function transitionLead(
   leadId: string,
   input: { event: FsmEvent; expectedVersion: number },
   io?: Server,
+  gateway?: EventGateway,
 ) {
   const lead = await prisma.lead.findUnique({ where: { id: leadId } });
   if (!lead) throw fsmError("NOT_FOUND", "Lead not found", 404);
@@ -155,7 +168,7 @@ export async function transitionLead(
   }
 
   await bumpRealtimeScoreOnActivity(user.id, lead.pipelineKind, 0.35);
-  await emitLeadChange(io, updated, { leadId, stage: updated.stage });
+  await emitLeadChange(io, gateway, updated, { leadId, stage: updated.stage });
   await recordAudit({
     source: "api",
     action: "fsm.transition",
@@ -163,6 +176,15 @@ export async function transitionLead(
     actorId: user.id,
     idempotencyKey: `audit:fsm:${leadId}:${lead.stageVersion}:${input.event}`,
     meta: { from: lead.stage, to: next, event: input.event },
+  });
+  emitAdminActivity(io, gateway, {
+    action: "lead:transitioned",
+    actorId: user.id,
+    targetId: leadId,
+    targetType: "lead",
+    description: `FSM transition: ${lead.stage} → ${next} (${input.event})`,
+    metadata: { from: lead.stage, to: next, event: input.event },
+    severity: "info",
   });
   return updated;
 }
@@ -207,6 +229,7 @@ export async function reassignLead(
   toUserId: string,
   reason: string | undefined,
   io?: Server,
+  gateway?: EventGateway,
 ) {
   if (!["admin", "leader"].includes(actor.role)) {
     throw fsmError("FORBIDDEN", "Reassign not allowed", 403);
@@ -232,7 +255,8 @@ export async function reassignLead(
     }
 
     io?.to(userRoom(toUserId)).emit("lead.assigned", { leadId, handlerId: toUserId });
-    await emitLeadChange(io, updated, { leadId, stage: updated.stage, reassign: true }, true);
+    gateway?.publish({ type: "lead:assigned", payload: { leadId, handlerId: toUserId, userId: toUserId }, priority: "high", idempotencyKey: `lead:assigned:${leadId}:${Date.now()}` }).catch(() => {});
+    await emitLeadChange(io, gateway, updated, { leadId, stage: updated.stage, reassign: true }, true);
     await recordAudit({
       source: "api",
       action: "reassign",
@@ -241,6 +265,15 @@ export async function reassignLead(
       targetUserId: toUserId,
       idempotencyKey: `audit:reassign:${leadId}:${updated.stageVersion}`,
       meta: { from: prev, to: toUserId, reason: reason ?? "manual" },
+    });
+    emitAdminActivity(io, gateway, {
+      action: "lead:assigned",
+      actorId: actor.id,
+      targetId: leadId,
+      targetType: "lead",
+      description: `Lead reassigned: ${prev} → ${toUserId}`,
+      metadata: { from: prev, to: toUserId, reason: reason ?? "manual" },
+      severity: "warning",
     });
     return updated;
   } finally {
@@ -252,6 +285,7 @@ export async function systemReassignStaleLeadCore(
   leadId: string,
   toUserId: string,
   io: Server | undefined,
+  gateway: EventGateway | undefined,
   opts: { minIdleMs: number },
 ) {
   const lockOk = await acquireLock(`lead:${leadId}:reassign`, 60);
@@ -274,7 +308,8 @@ export async function systemReassignStaleLeadCore(
     }
 
     io?.to(userRoom(toUserId)).emit("lead.assigned", { leadId, handlerId: toUserId });
-    await emitLeadChange(io, updated, { leadId, stage: updated.stage, reassign: true }, true);
+    gateway?.publish({ type: "lead:assigned", payload: { leadId, handlerId: toUserId, userId: toUserId }, priority: "high", idempotencyKey: `lead:assigned:${leadId}:${Date.now()}` }).catch(() => {});
+    await emitLeadChange(io, gateway, updated, { leadId, stage: updated.stage, reassign: true }, true);
     await recordAudit({
       source: "worker",
       action: "escalation.reassign",
@@ -283,17 +318,25 @@ export async function systemReassignStaleLeadCore(
       idempotencyKey: `audit:esc:reassign:${leadId}:${updated.stageVersion}`,
       meta: { from: prev, to: toUserId, escalationLevel: "REASSIGNED" },
     });
+    emitAdminActivity(io, gateway, {
+      action: "lead:auto_reassigned",
+      targetId: leadId,
+      targetType: "lead",
+      description: `Auto-reassign: ${prev} → ${toUserId} (${opts.minIdleMs}ms idle)`,
+      metadata: { from: prev, to: toUserId, idleMs: opts.minIdleMs },
+      severity: "warning",
+    });
     return updated;
   } finally {
     await releaseLock(`lead:${leadId}:reassign`);
   }
 }
 
-export async function systemReassignStaleLead(leadId: string, toUserId: string, io?: Server) {
-  return systemReassignStaleLeadCore(leadId, toUserId, io, { minIdleMs: INACTIVITY_REASSIGN_MS });
+export async function systemReassignStaleLead(leadId: string, toUserId: string, io?: Server, gateway?: EventGateway) {
+  return systemReassignStaleLeadCore(leadId, toUserId, io, gateway, { minIdleMs: INACTIVITY_REASSIGN_MS });
 }
 
-export async function closeLead(user: AuthUser, leadId: string, io?: Server) {
+export async function closeLead(user: AuthUser, leadId: string, io?: Server, gateway?: EventGateway) {
   const lead = await prisma.lead.findUnique({ where: { id: leadId } });
   if (!lead) throw fsmError("NOT_FOUND", "Lead not found", 404);
   assertMutableLeadIsNotShadow(lead);
@@ -321,7 +364,7 @@ export async function closeLead(user: AuthUser, leadId: string, io?: Server) {
     },
   });
   await bumpRealtimeScoreOnActivity(user.id, lead.pipelineKind, 2);
-  await emitLeadChange(io, updated, { leadId, closed: true });
+  await emitLeadChange(io, gateway, updated, { leadId, closed: true });
   await recordAudit({
     source: "api",
     action: "close",
@@ -329,6 +372,15 @@ export async function closeLead(user: AuthUser, leadId: string, io?: Server) {
     actorId: user.id,
     idempotencyKey: `audit:close:${leadId}:${lead.stageVersion}`,
     meta: { stageBefore: lead.stage },
+  });
+  emitAdminActivity(io, gateway, {
+    action: "lead:closed",
+    actorId: user.id,
+    targetId: leadId,
+    targetType: "lead",
+    description: `Lead closed (was: ${lead.stage})`,
+    metadata: { stageBefore: lead.stage, closedBy: user.id },
+    severity: "info",
   });
   return updated;
 }

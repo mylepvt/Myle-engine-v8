@@ -5,6 +5,7 @@ import { walletRoutes } from "./wallet.js";
 import { escalationRoutes } from "./escalation.js";
 import { performanceRoutes } from "./performance.js";
 import { qaRoutes } from "./qa.js";
+import { adminRoutes } from "./admin.js";
 
 export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(leadRoutes, { prefix: "/api/v1" });
@@ -13,4 +14,5 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(escalationRoutes, { prefix: "/api/v1" });
   await fastify.register(performanceRoutes, { prefix: "/api/v1" });
   await fastify.register(qaRoutes, { prefix: "/api/v1" });
+  await fastify.register(adminRoutes, { prefix: "/api/v1" });
 }

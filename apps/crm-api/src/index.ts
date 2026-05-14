@@ -4,16 +4,16 @@ import { Server } from "socket.io";
 import { ZodError } from "zod";
 import { prisma } from "./db.js";
 import { registerRoutes } from "./routes/index.js";
-import { attachSocketAuth } from "./realtime/socket.js";
+import { attachSocketAuth, shutdownSocket } from "./realtime/socket.js";
+import { attachRedisAdapter, detachRedisAdapter } from "./realtime/adapter.js";
+import { EventGateway } from "./realtime/gateway.js";
+import { closeRedis } from "./realtime/redis-client.js";
 
 const PORT = Number(process.env.CRM_API_PORT ?? 4000);
 
 export async function buildApp() {
   const fastify = Fastify({ logger: true });
-  await fastify.register(cors, {
-    origin: true,
-    credentials: true,
-  });
+  await fastify.register(cors, { origin: true, credentials: true });
 
   fastify.decorate("prisma", prisma);
   fastify.addHook("onClose", async () => {
@@ -40,16 +40,22 @@ export async function buildApp() {
     ts: new Date().toISOString(),
   }));
 
-  await registerRoutes(fastify);
-
   const io = new Server(fastify.server, {
     cors: { origin: true, credentials: true },
   });
   attachSocketAuth(io);
 
-  fastify.decorate("io", io);
+  if (process.env.CRM_REDIS_ADAPTER !== "false") {
+    attachRedisAdapter(io);
+  }
 
-  return { fastify, io };
+  const gateway = new EventGateway(io);
+  fastify.decorate("io", io);
+  fastify.decorate("gateway", gateway);
+
+  await registerRoutes(fastify);
+
+  return { fastify, io, gateway };
 }
 
 async function main() {
@@ -58,11 +64,15 @@ async function main() {
   fastify.log.info(`crm-api listening on ${PORT}`);
 
   const shutdown = async () => {
+    fastify.log.info("shutting down...");
+    shutdownSocket();
     await fastify.close();
+    await closeRedis();
     process.exit(0);
   };
-  process.on("SIGINT", shutdown);
-  process.on("SIGTERM", shutdown);
+
+  process.on("SIGINT", () => void shutdown());
+  process.on("SIGTERM", () => void shutdown());
 }
 
 main().catch((err) => {
