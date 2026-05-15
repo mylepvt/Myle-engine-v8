@@ -74,3 +74,9 @@ services:
         value: "1"
       - key: RENDER
         value: "true"
+      - key: ADMIN_ACTIVITY_FEED_ENABLED
+        value: "true"
+      - key: PHASE1_OBSERVATION_ENABLED
+        value: "true"
+      - key: PHASE1_OBSERVATION_SAMPLE_RATE
+        value: "1.0"
