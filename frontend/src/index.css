@@ -438,14 +438,6 @@
     @apply rounded border transition-all duration-100;
     border-color: color-mix(in oklch, var(--border) 85%, transparent);
     background-color: color-mix(in oklch, var(--muted) 45%, transparent);
-<<<<<<< HEAD
-=======
-  }
-
-  .surface-inset:hover {
-    border-color: color-mix(in oklch, var(--border) 100%, transparent);
-    background-color: color-mix(in oklch, var(--muted) 55%, transparent);
->>>>>>> origin/main
   }
 
   .surface-inset:hover {
@@ -695,11 +687,7 @@
   }
 
   html.dark .dashboard-sidebar {
-<<<<<<< HEAD
     background-color: #0f1014;
-=======
-    background-color: #2b2d31;
->>>>>>> origin/main
   }
 }
 
