@@ -145,6 +145,16 @@ async def execution_los_snapshot(
     )
 
 
+@router.get("/stage-counts")
+async def execution_stage_counts(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Admin: active lead counts per pipeline stage + today's movements."""
+    _require_admin(user)
+    return await enf.admin_stage_counts(session)
+
+
 @router.get("/at-risk-leads", response_model=list[AtRiskLeadRow])
 async def execution_at_risk(
     user: Annotated[AuthUser, Depends(require_auth_user)],

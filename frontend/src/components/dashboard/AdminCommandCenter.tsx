@@ -33,6 +33,7 @@ import { useAdminActivitySSE } from '@/hooks/use-admin-activity-sse'
 import { AdminActivityPanel } from '@/components/dashboard/AdminActivityPanel'
 import { LiveTeamActivity } from '@/components/dashboard/LiveTeamActivity'
 import { LiveFunnel } from '@/components/dashboard/LiveFunnel'
+import { LiveOpsDashboard } from '@/components/dashboard/live-ops/LiveOpsDashboard'
 import { useLiveDashboardStore } from '@/stores/live-dashboard-store'
 import { useAppSettingsQuery, useSystemUsersSummaryQuery } from '@/hooks/use-settings-query'
 import { useActiveWatchersQuery } from '@/hooks/use-enroll-query'
@@ -695,6 +696,11 @@ export function AdminCommandCenter({ firstName }: Props) {
         </TabsList>
 
         <TabsContent value="today">
+          {/* Full live ops dashboard */}
+          <div className="mb-6">
+            <LiveOpsDashboard />
+          </div>
+
           <div className="flex gap-4">
             {/* Left column — Live Funnel (sticky on desktop) */}
             <div className="w-[340px] shrink-0 max-xl:hidden">

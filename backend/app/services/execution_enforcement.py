@@ -1945,3 +1945,35 @@ async def leader_los_snapshot(
 
 def default_today_iso() -> str:
     return today_ist().isoformat()
+
+
+async def admin_stage_counts(session: AsyncSession) -> dict:
+    """Admin: active lead counts per pipeline stage + today's arrivals (IST)."""
+    today_start = _start_of_day_ist(today_ist().isoformat())
+
+    # Total active leads per status (exclude deleted, archived, pool)
+    cnt_stmt = (
+        select(Lead.status, func.count(Lead.id).label("n"))
+        .where(Lead.deleted_at.is_(None), Lead.in_pool.is_(False))
+        .group_by(Lead.status)
+    )
+    rows = (await session.execute(cnt_stmt)).all()
+    counts: dict[str, int] = {row[0]: row[1] for row in rows}
+
+    # Leads whose last_action_at is today (IST) — rough "arrived today" proxy
+    today_stmt = (
+        select(Lead.status, func.count(Lead.id).label("n"))
+        .where(
+            Lead.deleted_at.is_(None),
+            Lead.last_action_at >= today_start,
+        )
+        .group_by(Lead.status)
+    )
+    today_rows = (await session.execute(today_stmt)).all()
+    today_counts: dict[str, int] = {row[0]: row[1] for row in today_rows}
+
+    return {
+        "counts": counts,
+        "today_movements": today_counts,
+        "total": sum(counts.values()),
+    }
