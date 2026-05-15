@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
 import { apiUrl } from '@/lib/api'
+import { whatsAppChatWithTextHref } from '@/lib/phone-links'
 
 function getSlotParam(): number | null {
   const v = new URLSearchParams(window.location.search).get('slot')
@@ -653,8 +654,9 @@ export function LivePremierePage() {
                 type="button"
                 className="inline-flex h-13 items-center justify-center rounded-2xl bg-[#dce7ff] px-8 py-3.5 text-ds-body font-bold text-[#0a1530] transition hover:bg-[#c6d8ff]"
                 onClick={() => {
-                  const wa = `https://wa.me/?text=${encodeURIComponent("Hi, I just watched the Myle session. I'm interested to know more.")}`
-                  window.open(wa, '_blank', 'noopener')
+                  const msg = "Hi, I just watched the Myle session. I'm interested to know more."
+                  const wa = prospect ? whatsAppChatWithTextHref(prospect.phone, msg) : null
+                  if (wa && wa !== '#') window.open(wa, '_blank', 'noopener')
                 }}
               >
                 Talk to your mentor →

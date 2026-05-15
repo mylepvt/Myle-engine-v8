@@ -1,8 +1,9 @@
 import type { MouseEvent } from 'react'
+import { useState } from 'react'
 import { MessageCircle, Phone } from 'lucide-react'
 
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
-import { telHref, whatsAppChatHref } from '@/lib/phone-links'
+import { telHref, whatsAppChatHref, whatsAppBusinessChatHref } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
 
 type Props = {
@@ -33,10 +34,12 @@ export function LeadContactActions({
   stopPropagation,
 }: Props) {
   const { data: me } = useAuthMeQuery()
+  const [showWaMenu, setShowWaMenu] = useState(false)
 
   if (!phone?.trim()) return null
   const tel = telHref(phone)
   const wa = whatsAppChatHref(phone)
+  const waBusiness = whatsAppBusinessChatHref(phone)
   if (tel === '#' && wa === '#') return null
 
   const box = size === 'md' ? boxMd : boxSm
@@ -83,7 +86,7 @@ export function LeadContactActions({
     <div
       role="group"
       aria-label="Phone and WhatsApp"
-      className={cn('inline-flex items-center gap-1.5', className)}
+      className={cn('relative inline-flex items-center gap-1.5', className)}
       onClick={stop}
     >
       {tel !== '#' ? (
@@ -97,16 +100,44 @@ export function LeadContactActions({
         </a>
       ) : null}
       {wa !== '#' ? (
-        <a
-          href={wa}
-          target="_blank"
-          rel="noopener noreferrer"
-          title="WhatsApp - opens WhatsApp or WhatsApp Business on this number"
-          className={cn(box, 'hover:border-green-400/40 hover:text-green-400')}
-        >
-          <MessageCircle aria-hidden />
-          <span className="sr-only">WhatsApp</span>
-        </a>
+        <div className="relative">
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              setShowWaMenu(!showWaMenu)
+            }}
+            onBlur={() => setTimeout(() => setShowWaMenu(false), 150)}
+            title="WhatsApp - click to choose between personal or business account"
+            className={cn(box, 'hover:border-green-400/40 hover:text-green-400')}
+          >
+            <MessageCircle aria-hidden />
+            <span className="sr-only">WhatsApp</span>
+          </button>
+          {showWaMenu && (
+            <div className="absolute top-full right-0 mt-1 z-10 bg-muted border border-white/12 rounded-md overflow-hidden shadow-lg">
+              <a
+                href={wa}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setShowWaMenu(false)}
+                className="block px-3 py-2 text-xs whitespace-nowrap hover:bg-white/5 text-foreground"
+              >
+                Personal WhatsApp
+              </a>
+              {waBusiness !== '#' && (
+                <a
+                  href={waBusiness}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setShowWaMenu(false)}
+                  className="block px-3 py-2 text-xs whitespace-nowrap hover:bg-white/5 text-foreground border-t border-white/12"
+                >
+                  WhatsApp Business
+                </a>
+              )}
+            </div>
+          )}
+        </div>
       ) : null}
     </div>
   )

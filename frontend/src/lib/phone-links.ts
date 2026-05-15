@@ -1,7 +1,7 @@
 /**
  * Tel / WhatsApp deep links.
- * `wa.me/{phone}?text=` is used — works with both personal WhatsApp and WhatsApp Business
- * on mobile (opens whichever app is installed) and desktop (WhatsApp Web / Desktop).
+ * `wa.me/{phone}?text=` — personal WhatsApp on mobile, WhatsApp Web/Desktop.
+ * `https://www.whatsapp.com/contact/{phone}` — WhatsApp Business on mobile (if installed).
  */
 
 /**
@@ -29,14 +29,21 @@ export function telHref(phone: string | null | undefined): string {
   return `tel:+${d}`
 }
 
-/** Opens WhatsApp chat — works with personal WhatsApp and WhatsApp Business. */
+/** Opens personal WhatsApp chat via wa.me link. */
 export function whatsAppChatHref(phone: string | null | undefined): string {
   const d = whatsappDigits(phone ?? '')
   if (!d) return '#'
   return `https://wa.me/${d}`
 }
 
-/** Same chat link with prefilled message — works with personal WhatsApp and WhatsApp Business. */
+/** Opens WhatsApp Business chat (Android: WhatsApp Business app; Web: WhatsApp Web). */
+export function whatsAppBusinessChatHref(phone: string | null | undefined): string {
+  const d = whatsappDigits(phone ?? '')
+  if (!d) return '#'
+  return `https://www.whatsapp.com/contact/${d}`
+}
+
+/** Personal WhatsApp chat link with prefilled message. */
 export function whatsAppChatWithTextHref(
   phone: string | null | undefined,
   text: string,
@@ -46,4 +53,16 @@ export function whatsAppChatWithTextHref(
   const q = new URLSearchParams()
   q.set('text', text)
   return `https://wa.me/${d}?${q.toString()}`
+}
+
+/** WhatsApp Business chat link with prefilled message. */
+export function whatsAppBusinessChatWithTextHref(
+  phone: string | null | undefined,
+  text: string,
+): string {
+  const d = whatsappDigits(phone ?? '')
+  if (!d) return '#'
+  const q = new URLSearchParams()
+  q.set('text', text)
+  return `https://www.whatsapp.com/contact/${d}?${q.toString()}`
 }

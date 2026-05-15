@@ -22,7 +22,7 @@ import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import {
   openExternalShareUrl,
 } from '@/lib/external-share-window'
-import { buildLiveSessionWhatsAppUrl, type LiveSessionSlotOption } from '@/lib/live-session-slots'
+import { buildLiveSessionWhatsAppUrl, buildLiveSessionWhatsAppBusinessUrl, type LiveSessionSlotOption } from '@/lib/live-session-slots'
 import { useCallToCloseStore } from '@/stores/call-to-close-store'
 
 function nextLeadId(items: LeadPublic[], current: number | null): number | null {
@@ -161,14 +161,16 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   const actionBusy = ctcsMut.isPending || callLogMut.isPending
   const sendBusyLeadId = slotPickerLeadId
 
-  async function handleSendSelectedSession(option: LiveSessionSlotOption) {
+  async function handleSendSelectedSession(option: LiveSessionSlotOption, useBusinessWhatsApp = false) {
     if (slotPickerLeadId == null) return
     const lead = items.find((item) => item.id === slotPickerLeadId)
     if (!lead) return
     try {
       await patchMut.mutateAsync({ id: lead.id, body: { status: slotPickerTargetStatus } })
       const day = slotPickerTargetStatus === 'day2' ? 2 : slotPickerTargetStatus === 'day3' ? 3 : 1
-      const shareUrl = buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option, day)
+      const shareUrl = useBusinessWhatsApp
+        ? buildLiveSessionWhatsAppBusinessUrl(lead.phone, lead.name, option, day)
+        : buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option, day)
       if (!shareUrl || !openExternalShareUrl(shareUrl)) {
         window.alert('WhatsApp link nahi bana. Lead ka phone number check karo.')
         return
@@ -276,8 +278,8 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
         busy={patchMut.isPending}
         day={slotPickerTargetStatus === 'day2' ? 2 : slotPickerTargetStatus === 'day3' ? 3 : 1}
         onClose={() => setSlotPickerLeadId(null)}
-        onConfirm={(option) => {
-          void handleSendSelectedSession(option)
+        onConfirm={(option, useBusiness) => {
+          void handleSendSelectedSession(option, useBusiness)
         }}
       />
 

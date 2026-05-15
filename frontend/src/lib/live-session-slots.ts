@@ -1,5 +1,5 @@
 import { apiFetch } from '@/lib/api'
-import { whatsAppChatWithTextHref } from '@/lib/phone-links'
+import { whatsAppChatWithTextHref, whatsAppBusinessChatWithTextHref } from '@/lib/phone-links'
 
 export type LiveSessionSlotOption = {
   hour: number
@@ -68,5 +68,29 @@ export function buildLiveSessionWhatsAppUrl(
     option.link,
   ].join('\n')
   const href = whatsAppChatWithTextHref(phone, message)
+  return href === '#' ? null : href
+}
+
+export function buildLiveSessionWhatsAppBusinessUrl(
+  phone: string | null | undefined,
+  leadName: string | null | undefined,
+  option: LiveSessionSlotOption,
+  day = 1,
+): string | null {
+  const name = (leadName || 'there').trim() || 'there'
+  const start = new Date(option.liveStartsAt).toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'Asia/Kolkata',
+  })
+  const message = [
+    `Hi ${name},`,
+    '',
+    `Your Myle Day ${day} live session is scheduled for ${start}.`,
+    `Please join from this link at your session time:`,
+    option.link,
+  ].join('\n')
+  const href = whatsAppBusinessChatWithTextHref(phone, message)
   return href === '#' ? null : href
 }

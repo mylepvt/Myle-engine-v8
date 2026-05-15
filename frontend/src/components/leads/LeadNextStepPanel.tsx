@@ -16,7 +16,7 @@ import { ChevronDown, ChevronUp, MessageCircle } from 'lucide-react'
 import {
   openExternalShareUrl,
 } from '@/lib/external-share-window'
-import { buildLiveSessionWhatsAppUrl, type LiveSessionSlotOption } from '@/lib/live-session-slots'
+import { buildLiveSessionWhatsAppUrl, buildLiveSessionWhatsAppBusinessUrl, type LiveSessionSlotOption } from '@/lib/live-session-slots'
 
 type LeadMini = {
   id: number
@@ -73,11 +73,13 @@ export function LeadNextStepPanel({ lead, className }: Props) {
     }
   }
 
-  async function handleSendSelectedSession(option: LiveSessionSlotOption) {
+  async function handleSendSelectedSession(option: LiveSessionSlotOption, useBusinessWhatsApp = false) {
     setLocalError(null)
     try {
       await runTransition('video_sent')
-      const shareUrl = buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option)
+      const shareUrl = useBusinessWhatsApp
+        ? buildLiveSessionWhatsAppBusinessUrl(lead.phone, lead.name, option)
+        : buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option)
       if (!shareUrl || !openExternalShareUrl(shareUrl)) {
         throw new Error('Could not open WhatsApp share window')
       }
@@ -206,7 +208,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
         open={pickerOpen}
         busy={mut.isPending}
         onClose={() => setPickerOpen(false)}
-        onConfirm={(option) => void handleSendSelectedSession(option)}
+        onConfirm={(option, useBusiness) => void handleSendSelectedSession(option, useBusiness)}
       />
     </div>
   )
