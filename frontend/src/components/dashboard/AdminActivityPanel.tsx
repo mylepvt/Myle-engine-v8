@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Activity, Pause, Play, RefreshCw, Search, X } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAdminFeedStore, type AdminActivityEntry } from '@/stores/admin-feed-store'
@@ -205,13 +206,24 @@ function iconLabel(action: string): string {
   return ACTION_ICONS[action] ?? action.split(':').pop()?.slice(0, 2).toUpperCase() ?? '?'
 }
 
+function activityLink(entry: AdminActivityEntry): string {
+  if (entry.targetType === 'lead' && entry.targetId) return `/dashboard/work/leads/${entry.targetId}`
+  if (entry.action.startsWith('wallet')) return '/dashboard/finance/recharge-admin'
+  if (entry.action.startsWith('enrollment')) return '/dashboard/team/enrollment-approvals'
+  if (entry.action.startsWith('lead:')) return '/dashboard/work/leads'
+  return '/dashboard/analytics/activity-log'
+}
+
 // ── Activity row ─────────────────────────────────────────────────────────────
 function ActivityItem({ entry }: { entry: AdminActivityEntry }) {
   const c = getActionColors(entry.action)
   const time = new Date(entry.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
 
   return (
-    <div className={`flex items-start gap-2.5 rounded-lg border-l-[3px] px-3 py-2.5 transition-all animate-in fade-in slide-in-from-left-2 duration-300 ${c.bg} ${c.border}`}>
+    <Link
+      to={activityLink(entry)}
+      className={`flex items-start gap-2.5 rounded-lg border-l-[3px] px-3 py-2.5 no-underline transition-all animate-in fade-in slide-in-from-left-2 duration-300 hover:brightness-110 active:brightness-125 cursor-pointer ${c.bg} ${c.border}`}
+    >
       {/* colored icon pill */}
       <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${c.pill} ${c.pillText}`}>
         {iconLabel(entry.action)}
@@ -230,7 +242,7 @@ function ActivityItem({ entry }: { entry: AdminActivityEntry }) {
       </div>
 
       <span className="mt-0.5 shrink-0 text-[10px] tabular-nums text-muted-foreground/40">{time}</span>
-    </div>
+    </Link>
   )
 }
 
