@@ -6,7 +6,7 @@
  * Auto-reconnects on error. Pauses when tab is hidden.
  */
 
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useAdminFeedStore, type AdminActivityEntry } from '@/stores/admin-feed-store'
 
 const REST_URL = '/api/v1/admin/activity-feed?limit=50'
@@ -186,23 +186,21 @@ function parseEvent(raw: string): AdminActivityEntry | null {
 export function useAdminActivitySSE(enabled: boolean) {
   const pushEntry = useAdminFeedStore((s) => s.pushEntry)
   const setInitialEntries = useAdminFeedStore((s) => s.setInitialEntries)
+  const setRefreshFn = useAdminFeedStore((s) => s.setRefreshFn)
   const esRef = useRef<EventSource | null>(null)
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const reconnectDelayRef = useRef(RECONNECT_DELAY_MS)
   const mountedRef = useRef(true)
+  const connectRef = useRef<(() => void) | null>(null)
 
-  useEffect(() => {
-    mountedRef.current = true
-    if (!enabled) return
-
-    // Initial load from REST endpoint (populates panel before any live SSE event)
+  const fetchRest = useCallback(() => {
     fetch(REST_URL, { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!mountedRef.current) return
         const events = (data?.events ?? []) as Array<Record<string, unknown>>
-        // REST returns newest-first; reverse so oldest is prepended last (panel shows newest at top)
-        const initial = [...events].reverse()
+        // REST returns newest-first — keep as-is so index 0 = newest (panel renders top-down)
+        const initial = events
           .map(parseEventFromObj)
           .filter((e): e is AdminActivityEntry => e !== null)
         setInitialEntries(initial)
@@ -210,6 +208,28 @@ export function useAdminActivitySSE(enabled: boolean) {
       .catch(() => {
         if (mountedRef.current) setInitialEntries([])
       })
+  }, [setInitialEntries])
+
+  const refresh = useCallback(() => {
+    // Re-fetch latest from REST
+    fetchRest()
+    // Reconnect SSE with reset backoff
+    esRef.current?.close()
+    esRef.current = null
+    clearTimeout(reconnectTimerRef.current ?? undefined)
+    reconnectDelayRef.current = RECONNECT_DELAY_MS
+    connectRef.current?.()
+  }, [fetchRest])
+
+  useEffect(() => {
+    setRefreshFn(refresh)
+  }, [refresh, setRefreshFn])
+
+  useEffect(() => {
+    mountedRef.current = true
+    if (!enabled) return
+
+    fetchRest()
 
     function connect() {
       if (!mountedRef.current) return
@@ -239,6 +259,8 @@ export function useAdminActivitySSE(enabled: boolean) {
       }
     }
 
+    connectRef.current = connect
+
     // Pause/resume on tab visibility
     function onVisibilityChange() {
       if (document.visibilityState === 'visible') {
@@ -261,5 +283,5 @@ export function useAdminActivitySSE(enabled: boolean) {
       esRef.current = null
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }
-  }, [enabled, pushEntry, setInitialEntries])
+  }, [enabled, pushEntry, fetchRest])
 }

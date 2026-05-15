@@ -18,19 +18,23 @@ type AdminFeedState = {
   unreadCount: number
   paused: boolean
   initialized: boolean
+  _refreshFn: (() => void) | null
   pushEntry: (entry: AdminActivityEntry) => void
   setInitialEntries: (entries: AdminActivityEntry[]) => void
   markAllRead: () => void
   setPaused: (v: boolean) => void
+  setRefreshFn: (fn: () => void) => void
+  refresh: () => void
 }
 
 const MAX_ENTRIES = 500
 
-export const useAdminFeedStore = create<AdminFeedState>((set) => ({
+export const useAdminFeedStore = create<AdminFeedState>((set, get) => ({
   entries: [],
   unreadCount: 0,
   paused: false,
   initialized: false,
+  _refreshFn: null,
 
   pushEntry: (entry) => {
     set((s) => {
@@ -49,4 +53,8 @@ export const useAdminFeedStore = create<AdminFeedState>((set) => ({
   markAllRead: () => set({ unreadCount: 0 }),
 
   setPaused: (v) => set({ paused: v }),
+
+  setRefreshFn: (fn) => set({ _refreshFn: fn }),
+
+  refresh: () => get()._refreshFn?.(),
 }))

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Activity, Pause, Play, Search, X } from 'lucide-react'
+import { Activity, Pause, Play, RefreshCw, Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAdminFeedStore, type AdminActivityEntry } from '@/stores/admin-feed-store'
@@ -102,6 +102,7 @@ export function AdminActivityPanel() {
   const initialized = useAdminFeedStore((s) => s.initialized)
   const setPaused = useAdminFeedStore((s) => s.setPaused)
   const markAllRead = useAdminFeedStore((s) => s.markAllRead)
+  const refresh = useAdminFeedStore((s) => s.refresh)
 
   const [search, setSearch] = useState('')
   const [filterAction, setFilterAction] = useState<string | null>(null)
@@ -137,6 +138,9 @@ export function AdminActivityPanel() {
         <div className="flex items-center gap-1">
           <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPaused(!paused)} title={paused ? 'Resume' : 'Pause'}>
             {paused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
+          </Button>
+          <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={refresh} title="Refresh">
+            <RefreshCw className="h-3 w-3" />
           </Button>
           <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={markAllRead} title="Mark all read">
             <Activity className="h-3 w-3" />
