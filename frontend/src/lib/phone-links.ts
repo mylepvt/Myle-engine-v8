@@ -1,7 +1,7 @@
 /**
- * Tel / WhatsApp deep links. `api.whatsapp.com/send` is used instead of `wa.me` because
- * `wa.me` opens Chrome with a WhatsApp download page on desktop, whereas
- * `api.whatsapp.com/send` opens WhatsApp Web directly on desktop and WhatsApp app on mobile.
+ * Tel / WhatsApp deep links.
+ * `wa.me/{phone}?text=` is used — works with both personal WhatsApp and WhatsApp Business
+ * on mobile (opens whichever app is installed) and desktop (WhatsApp Web / Desktop).
  */
 
 /**
@@ -29,14 +29,14 @@ export function telHref(phone: string | null | undefined): string {
   return `tel:+${d}`
 }
 
-/** Opens WhatsApp chat (user can start a voice/video call from the chat screen). */
+/** Opens WhatsApp chat — works with personal WhatsApp and WhatsApp Business. */
 export function whatsAppChatHref(phone: string | null | undefined): string {
   const d = whatsappDigits(phone ?? '')
   if (!d) return '#'
-  return `https://api.whatsapp.com/send?phone=${d}`
+  return `https://wa.me/${d}`
 }
 
-/** Same chat link with prefilled message (e.g. support). */
+/** Same chat link with prefilled message — works with personal WhatsApp and WhatsApp Business. */
 export function whatsAppChatWithTextHref(
   phone: string | null | undefined,
   text: string,
@@ -44,7 +44,6 @@ export function whatsAppChatWithTextHref(
   const d = whatsappDigits(phone ?? '')
   if (!d) return '#'
   const q = new URLSearchParams()
-  q.set('phone', d)
   q.set('text', text)
-  return `https://api.whatsapp.com/send?${q.toString()}`
+  return `https://wa.me/${d}?${q.toString()}`
 }
