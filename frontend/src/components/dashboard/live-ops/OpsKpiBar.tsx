@@ -1,4 +1,5 @@
 import { TrendingUp, TrendingDown, AlertTriangle, Users, Clock, Activity } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useStageCounts } from '@/hooks/use-stage-counts-query'
 import { useLeaderHealthQuery } from '@/hooks/use-admin-leader-health-query'
 import { useTeamReportsQuery } from '@/hooks/use-team-reports-query'
@@ -13,6 +14,7 @@ function KpiCard({
   deltaUp,
   icon,
   urgent,
+  to,
 }: {
   label: string
   value: string | number
@@ -21,14 +23,18 @@ function KpiCard({
   deltaUp?: boolean
   icon: React.ReactNode
   urgent?: boolean
+  to: string
 }) {
   return (
-    <div className={cn(
-      'flex flex-col gap-2 rounded border px-4 py-3',
-      urgent
-        ? 'border-red-500/20 bg-red-500/[0.06]'
-        : 'border-white/[0.06] bg-white/[0.03]',
-    )}>
+    <Link
+      to={to}
+      className={cn(
+        'flex flex-col gap-2 rounded border px-4 py-3 no-underline transition-all duration-150 hover:border-white/20 hover:brightness-110 active:brightness-125 cursor-pointer',
+        urgent
+          ? 'border-red-500/20 bg-red-500/[0.06]'
+          : 'border-white/[0.06] bg-white/[0.03]',
+      )}
+    >
       <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">
         <span className={urgent ? 'text-red-400/70' : 'text-muted-foreground/40'}>{icon}</span>
         {label}
@@ -45,16 +51,19 @@ function KpiCard({
         )}
       </div>
       <p className="text-[10px] text-muted-foreground/40">{sub}</p>
-    </div>
+    </Link>
   )
 }
 
-function StuckChip({ label, value, urgent }: { label: string; value: number; urgent?: boolean }) {
+function StuckChip({ label, value, urgent, to }: { label: string; value: number; urgent?: boolean; to: string }) {
   return (
-    <div className={cn(
-      'flex flex-col gap-1 rounded border px-3 py-2',
-      urgent && value > 0 ? 'border-amber-500/20 bg-amber-500/[0.05]' : 'border-white/[0.04] bg-white/[0.02]',
-    )}>
+    <Link
+      to={to}
+      className={cn(
+        'flex flex-col gap-1 rounded border px-3 py-2 no-underline transition-all duration-150 hover:border-white/20 hover:brightness-110 active:brightness-125 cursor-pointer',
+        urgent && value > 0 ? 'border-amber-500/20 bg-amber-500/[0.05]' : 'border-white/[0.04] bg-white/[0.02]',
+      )}
+    >
       <p className={cn('text-[9px] font-semibold uppercase tracking-wider', urgent && value > 0 ? 'text-amber-400/70' : 'text-muted-foreground/40')}>
         {label}
       </p>
@@ -64,7 +73,7 @@ function StuckChip({ label, value, urgent }: { label: string; value: number; urg
           <span className="ml-1 text-[11px] font-semibold text-amber-400">↑ {Math.floor(value * 0.18)}</span>
         )}
       </p>
-    </div>
+    </Link>
   )
 }
 
@@ -120,6 +129,7 @@ export function OpsKpiBar() {
           deltaUp={false}
           icon={<AlertTriangle className="size-3" />}
           urgent={needAttention > 20}
+          to="/dashboard/work/leads"
         />
         <KpiCard
           label="Today's Movement Rate"
@@ -128,6 +138,7 @@ export function OpsKpiBar() {
           delta={`${(parseFloat(movementRate) * 0.054).toFixed(1)}%`}
           deltaUp
           icon={<Activity className="size-3" />}
+          to="/dashboard/team/reports"
         />
         <KpiCard
           label="Bottleneck Delay (Avg)"
@@ -137,6 +148,7 @@ export function OpsKpiBar() {
           deltaUp={false}
           icon={<Clock className="size-3" />}
           urgent={parseFloat(bottleneckHours) > 24}
+          to="/dashboard/system/lead-control"
         />
         <KpiCard
           label="Live Active Users"
@@ -145,6 +157,7 @@ export function OpsKpiBar() {
           delta={`${Math.max(0, Math.floor(liveActiveUsers * 0.09))}%`}
           deltaUp
           icon={<Users className="size-3" />}
+          to="/dashboard/admin/leaders"
         />
       </div>
 
@@ -154,10 +167,10 @@ export function OpsKpiBar() {
           Stuck Leads
         </span>
         <div className="flex flex-1 gap-2">
-          <StuckChip label=">24h In Stage" value={stuckAt24h} urgent />
-          <StuckChip label="Waiting Interview" value={waitInterview} urgent />
-          <StuckChip label="Inactive (Day 2+)" value={inactiveDay2} />
-          <StuckChip label="No Activity (3d+)" value={noActivity3d} />
+          <StuckChip label=">24h In Stage" value={stuckAt24h} urgent to="/dashboard/work/leads" />
+          <StuckChip label="Waiting Interview" value={waitInterview} urgent to="/dashboard/work/leads" />
+          <StuckChip label="Inactive (Day 2+)" value={inactiveDay2} to="/dashboard/work/workboard" />
+          <StuckChip label="No Activity (3d+)" value={noActivity3d} to="/dashboard/work/leads" />
         </div>
       </div>
     </div>

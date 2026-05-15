@@ -34,7 +34,7 @@ function LeaderCard({ leader, rank }: { leader: LeaderHealthItem; rank: number }
   const color = avatarColor(leader.leader_name)
   const isOnline = leader.presence_status === 'online'
   return (
-    <div className="flex min-w-[136px] flex-1 flex-col items-center gap-2 rounded border border-white/[0.06] bg-white/[0.03] p-3 text-center transition-colors hover:bg-white/[0.05]">
+    <Link to="/dashboard/admin/leaders" className="flex min-w-[136px] flex-1 flex-col items-center gap-2 rounded border border-white/[0.06] bg-white/[0.03] p-3 text-center no-underline transition-all duration-150 hover:border-white/20 hover:bg-white/[0.07] active:bg-white/[0.1] cursor-pointer">
       {/* Rank badge */}
       <div
         className="flex size-5 items-center justify-center rounded-full text-[10px] font-bold text-white shadow"
@@ -80,7 +80,7 @@ function LeaderCard({ leader, rank }: { leader: LeaderHealthItem; rank: number }
           <p className="text-[9px] text-muted-foreground/50">Score</p>
         </div>
       </div>
-    </div>
+    </Link>
   )
 }
 
@@ -89,7 +89,7 @@ function TeamRow({ leader }: { leader: LeaderHealthItem }) {
   const isOnline = leader.presence_status === 'online'
   const color = avatarColor(leader.leader_name)
   return (
-    <div className="flex items-center gap-3 border-b border-white/[0.04] px-4 py-3 transition-colors hover:bg-white/[0.025]">
+    <Link to="/dashboard/admin/leaders" className="flex items-center gap-3 border-b border-white/[0.04] px-4 py-3 no-underline transition-all duration-150 hover:bg-white/[0.05] active:bg-white/[0.08] cursor-pointer">
       {/* Avatar + status */}
       <div className="relative shrink-0">
         <div
@@ -120,8 +120,8 @@ function TeamRow({ leader }: { leader: LeaderHealthItem }) {
         <ActivityChip label="Team Calls" value={leader.team_calls_today} icon="👥" />
         <ActivityChip label="Day 2" value={leader.day2_leads_count} icon="📚" />
       </div>
-      <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/30" />
-    </div>
+      <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/30 transition-transform duration-150 group-hover:translate-x-0.5" />
+    </Link>
   )
 }
 
@@ -190,7 +190,11 @@ function LiveActivityFeed() {
         const color = ACTION_COLORS[entry.action] ?? '#6b7280'
         const icon = ACTION_ICONS[entry.action] ?? '·'
         return (
-          <div key={entry.id} className="flex items-start gap-3 px-4 py-2.5 transition-colors hover:bg-white/[0.025]">
+          <Link
+            key={entry.id}
+            to="/dashboard/analytics/activity-log"
+            className="flex items-start gap-3 px-4 py-2.5 no-underline transition-colors hover:bg-white/[0.05] active:bg-white/[0.08] cursor-pointer"
+          >
             {/* Icon dot */}
             <div
               className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-[11px]"
@@ -213,7 +217,7 @@ function LiveActivityFeed() {
             <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/40">
               {timeAgo(entry.timestamp)}
             </span>
-          </div>
+          </Link>
         )
       })}
     </div>
@@ -289,7 +293,7 @@ export function PeopleOpsPanel() {
             </span>
             <p className="text-[11px] font-semibold text-muted-foreground/70">Live Activity</p>
           </div>
-          <span className="text-[10px] text-muted-foreground/40">All Activity</span>
+          <Link to="/dashboard/analytics/activity-log" className="text-[10px] font-medium text-primary/70 hover:text-primary">All Activity</Link>
         </div>
         <LiveActivityFeed />
       </div>

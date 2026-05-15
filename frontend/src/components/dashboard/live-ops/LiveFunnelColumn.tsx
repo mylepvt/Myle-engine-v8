@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { useStageCounts } from '@/hooks/use-stage-counts-query'
 import { useFunnelActivityStore } from '@/stores/funnel-activity-store'
 import { useLiveDashboardStore } from '@/stores/live-dashboard-store'
@@ -35,6 +36,19 @@ const PIPELINE: Stage[] = [
 // Left edge (0,0)→(3%,100%) + right edge (100%,0)→(97%,100%) = slanted sides.
 // With 6%-per-step container shrink, edges are one continuous diagonal across all stages.
 const TRAP = 'polygon(0% 0%, 100% 0%, 97% 100%, 3% 100%)'
+
+const STAGE_ROUTES: Record<string, string> = {
+  paid:         '/dashboard/team/enrollment-approvals',
+  mindset_lock: '/dashboard/work/workboard',
+  day1:         '/dashboard/work/workboard',
+  day2:         '/dashboard/work/workboard',
+  day3:         '/dashboard/work/workboard',
+  day4:         '/dashboard/work/workboard',
+  day5:         '/dashboard/work/workboard',
+}
+function stageRoute(key: string): string {
+  return STAGE_ROUTES[key] ?? '/dashboard/work/leads'
+}
 
 function sparkPath(seed: number, w = 34, h = 10): string {
   const pts = Array.from({ length: 6 }, (_, i) => {
@@ -110,17 +124,17 @@ export function LiveFunnelColumn() {
         const showTrend     = w >= 34
 
         return (
-          <div
+          <Link
             key={stage.key}
+            to={stageRoute(stage.key)}
+            title={`View ${stage.label} leads`}
             style={{
               width: `${w}%`,
               clipPath: TRAP,
-              // Dark matte fill — clip-path edge IS the visual border
               background: `linear-gradient(170deg, ${stage.color}1e 0%, ${stage.color}0e 55%, ${stage.color}06 100%)`,
-              // Top seam glow + depth shadow below each card
               boxShadow: `inset 0 1px 0 ${stage.color}28, 0 2px 8px ${stage.color}12`,
             }}
-            className="relative transition-all duration-500"
+            className="relative block cursor-pointer no-underline transition-all duration-300 hover:brightness-125 active:brightness-150"
           >
             <div className="relative z-10 flex items-center gap-1.5 px-3 py-[7px]">
 
@@ -173,7 +187,7 @@ export function LiveFunnelColumn() {
               {/* Sparkline */}
               {showSparkline && <Sparkline count={count} color={stage.color} />}
             </div>
-          </div>
+          </Link>
         )
       })}
     </div>

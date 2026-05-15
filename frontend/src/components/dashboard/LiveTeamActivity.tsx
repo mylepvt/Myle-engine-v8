@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { Activity, PhoneCall, UserPlus, ArrowRightLeft, Wallet, CheckCircle2, XCircle } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAdminFeedStore, type AdminActivityEntry } from '@/stores/admin-feed-store'
@@ -108,7 +109,7 @@ export function LiveTeamActivity() {
                 <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-400/70">Active Now</p>
                 <div className="space-y-1">
                   {activeNow.map((item) => (
-                    <div key={item.name} className="flex items-center gap-2 rounded px-2 py-1.5 discord-hover">
+                    <Link key={item.name} to="/dashboard/team/tracking" className="flex min-h-[44px] items-center gap-2 rounded px-2 py-1.5 no-underline transition-colors hover:bg-muted/30 active:bg-muted/50 cursor-pointer discord-hover">
                       <span className="relative flex size-2 shrink-0">
                         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                         <span className="relative inline-flex size-2 rounded-full bg-emerald-400" />
@@ -118,7 +119,7 @@ export function LiveTeamActivity() {
                         {actionIcon(item.action)}
                         {actionLabel(item.action)}
                       </span>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               </div>
@@ -128,11 +129,11 @@ export function LiveTeamActivity() {
                 <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">Recently Active</p>
                 <div className="space-y-0.5">
                   {recentActivity.slice(0, 8).map((item) => (
-                    <div key={item.name} className="flex items-center gap-2 rounded px-2 py-1 text-[11px] text-muted-foreground/70">
+                    <Link key={item.name} to="/dashboard/team/tracking" className="flex min-h-[44px] items-center gap-2 rounded px-2 py-1 no-underline text-[11px] text-muted-foreground/70 transition-colors hover:bg-muted/30 active:bg-muted/50 cursor-pointer">
                       <span className="size-2 shrink-0 rounded-full bg-muted-foreground/30" />
                       <span className="truncate font-medium text-muted-foreground/80">{item.name}</span>
                       <span className="truncate">{actionLabel(item.action)}</span>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               </div>
