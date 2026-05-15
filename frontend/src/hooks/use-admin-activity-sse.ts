@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useAdminFeedStore, type AdminActivityEntry } from '@/stores/admin-feed-store'
 import { useLiveDashboardStore } from '@/stores/live-dashboard-store'
+import { useFunnelActivityStore } from '@/stores/funnel-activity-store'
 import { playFileSound } from '@/lib/app-sounds'
 
 const REST_URL = '/api/v1/admin/activity-feed?limit=50'
@@ -277,6 +278,12 @@ export function useAdminActivitySSE(enabled: boolean) {
           pushEntry(entry)
           activitySound(entry.action)
           useLiveDashboardStore.getState().processEvent(entry.action, entry.metadata)
+          useFunnelActivityStore.getState().processAction(
+            entry.actorId ?? entry.targetId ?? '',
+            entry.actorName ?? 'Unknown',
+            entry.action,
+            String(entry.metadata?.stage ?? entry.metadata?.fastapi_stage ?? ''),
+          )
         }
         // Reset backoff on success
         reconnectDelayRef.current = RECONNECT_DELAY_MS

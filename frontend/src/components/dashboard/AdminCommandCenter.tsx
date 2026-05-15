@@ -32,6 +32,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAdminActivitySSE } from '@/hooks/use-admin-activity-sse'
 import { AdminActivityPanel } from '@/components/dashboard/AdminActivityPanel'
 import { LiveTeamActivity } from '@/components/dashboard/LiveTeamActivity'
+import { LiveFunnel } from '@/components/dashboard/LiveFunnel'
 import { useLiveDashboardStore } from '@/stores/live-dashboard-store'
 import { useAppSettingsQuery, useSystemUsersSummaryQuery } from '@/hooks/use-settings-query'
 import { useActiveWatchersQuery } from '@/hooks/use-enroll-query'
@@ -694,27 +695,21 @@ export function AdminCommandCenter({ firstName }: Props) {
         </TabsList>
 
         <TabsContent value="today" className="space-y-6">
-          {/* Today's live pipeline pulse */}
-          <section className="grid gap-4 md:grid-cols-3">
-            <StatCard
-              label="Calls Today"
-              value={liveSummary?.calls_made_today ?? 0}
-              hint="Total calls logged by the entire team today (IST)."
-              variant="default"
-            />
-            <StatCard
-              label="Day 1 Pipeline"
-              value={liveDash.day1Total || (liveSummary?.day1_total ?? 0)}
-              hint="Leads currently in Day 1 stage — sent for initial follow-up."
-              variant="success"
-            />
-            <StatCard
-              label="Day 2 with Leader"
-              value={liveDash.day2Total || (liveSummary?.day2_total ?? 0)}
-              hint="Leads currently in Day 2 stage — in a leader's hands."
-              variant="default"
-            />
-          </section>
+          {/* Live funnel — real-time pipeline with actor dots */}
+          <Card>
+            <CardHeader className="pb-1">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                <span className="relative flex size-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex size-2 rounded-full bg-emerald-400" />
+                </span>
+                Live Pipeline Funnel
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <LiveFunnel />
+            </CardContent>
+          </Card>
 
           {/* Compact operations panel */}
           <Card className="overflow-hidden">
