@@ -263,7 +263,7 @@ function DeskShortcut({
   return (
     <Link
       to={to}
-      className="group flex items-center gap-3.5 rounded-[1.1rem] border border-border/60 bg-card/40 p-3.5 no-underline transition-all duration-200 hover:border-primary/30 hover:bg-primary/[0.03] hover:shadow-[0_4px_16px_-4px_rgba(84,101,255,0.14)]"
+      className="group flex items-center gap-3.5 rounded border border-border/60 bg-card/40 p-3.5 no-underline transition-[background-color,border-color] duration-100 hover:border-border hover:bg-card"
     >
       <div className="flex size-10 shrink-0 items-center justify-center rounded bg-muted/60 text-primary ring-1 ring-border/40 transition-colors duration-200 group-hover:bg-primary/[0.08] group-hover:ring-primary/30">
         {icon}
@@ -331,7 +331,7 @@ function LeaderRingCard({ leader }: { leader: LeaderHealthItem }) {
         : 'bg-muted-foreground/30'
 
   return (
-    <div className="relative flex flex-col items-center gap-3 rounded-[1.4rem] border border-border/60 bg-card/50 p-5">
+    <div className="relative flex flex-col items-center gap-3 rounded border border-border/60 bg-card/50 p-5">
       {/* Presence indicator */}
       <div className="absolute right-4 top-4 flex items-center gap-1.5">
         <span className={`size-2 rounded-full ${presenceDot}`} />
@@ -447,7 +447,7 @@ function GraceRequestRow({ member }: { member: TeamMemberPublic }) {
   }
 
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3 rounded-[1.1rem] border border-border/60 bg-card/40 p-3.5">
+    <div className="flex flex-wrap items-start justify-between gap-3 rounded border border-border/60 bg-card/40 p-3.5">
       <div className="min-w-0 flex-1 space-y-0.5">
         <p className="text-sm font-semibold text-foreground">
           {member.username ?? member.fbo_id}
@@ -570,53 +570,52 @@ export function AdminCommandCenter({ firstName }: Props) {
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       {/* ── Hero header ── */}
-      <div className="relative overflow-hidden rounded-[1.75rem] border border-primary/20 bg-gradient-to-br from-[#eef0ff] via-[#f4f6ff] to-[#fafaff] px-6 py-8 dark:border-white/[0.07] dark:from-[#0d0d14] dark:via-[#0e0d18] dark:to-[#0a0b11] md:px-8">
-        <div className="pointer-events-none absolute -top-24 right-0 size-80 rounded-full bg-primary/[0.22] blur-3xl dark:bg-primary/[0.18]" />
-        <div className="pointer-events-none absolute bottom-0 left-1/3 size-48 rounded-full bg-violet-400/[0.12] blur-2xl dark:bg-primary/[0.08]" />
-        <div className="pointer-events-none absolute left-0 top-0 size-40 rounded-full bg-blue-300/[0.18] blur-2xl dark:hidden" />
+      <div className="relative overflow-hidden rounded border border-white/[0.06] bg-card px-6 py-7 md:px-8">
+        {/* Very subtle center top vignette — barely visible */}
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_50%_0%,rgba(88,101,242,0.04),transparent)]" />
         <div className="relative space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Admin Command Center</p>
-          <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Admin Command Center</p>
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">
             Good day, {firstName}
           </h1>
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
             One operational surface for today&apos;s queues, universal lead jump, team controls, finance checkpoints,
             content readiness, and audit visibility.
           </p>
-          <div className="flex flex-wrap gap-2.5 pt-1">
+          <div className="flex flex-wrap gap-2 pt-1">
             {pendingTotal > 0 && (
-              <div className="flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-50 px-4 py-1.5 text-sm shadow-sm dark:border-amber-400/20 dark:bg-amber-400/[0.07] dark:shadow-none">
+              <div className="flex items-center gap-2 rounded border border-amber-400/20 bg-amber-400/[0.07] px-3 py-1 text-sm">
                 <span className="relative flex size-1.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-500 opacity-75" />
                   <span className="relative inline-flex size-1.5 rounded-full bg-amber-500" />
                 </span>
-                <span className="font-bold text-amber-700 dark:text-amber-200">{pendingTotal}</span>
-                <span className="text-amber-600 dark:text-amber-300/70">pending actions</span>
+                <span className="font-bold text-amber-200">{pendingTotal}</span>
+                <span className="text-amber-300/70">pending actions</span>
               </div>
             )}
             {liveWatcherCount > 0 && (
-              <div className="flex items-center gap-2 rounded-full border border-red-400/40 bg-red-50 px-4 py-1.5 text-sm shadow-sm dark:border-red-400/20 dark:bg-red-500/[0.07] dark:shadow-none">
+              <div className="flex items-center gap-2 rounded border border-red-400/20 bg-red-500/[0.07] px-3 py-1 text-sm">
                 <span className="relative flex size-1.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
                   <span className="relative inline-flex size-1.5 rounded-full bg-red-500" />
                 </span>
-                <span className="font-bold text-red-700 dark:text-red-200">{liveWatcherCount}</span>
-                <span className="text-red-600 dark:text-red-300/70">watching live</span>
+                <span className="font-bold text-red-200">{liveWatcherCount}</span>
+                <span className="text-red-300/70">watching live</span>
               </div>
             )}
             {premiereActiveCount > 0 && (
-              <div className="flex items-center gap-2 rounded-full border border-red-400/40 bg-red-50 px-4 py-1.5 text-sm shadow-sm dark:border-red-400/20 dark:bg-red-500/[0.07] dark:shadow-none">
+              <div className="flex items-center gap-2 rounded border border-red-400/20 bg-red-500/[0.07] px-3 py-1 text-sm">
                 <span className="relative flex size-1.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
                   <span className="relative inline-flex size-1.5 rounded-full bg-red-500" />
                 </span>
-                <span className="font-bold text-red-700 dark:text-red-200">{premiereActiveCount}</span>
-                <span className="text-red-600 dark:text-red-300/70">live attendees</span>
+                <span className="font-bold text-red-200">{premiereActiveCount}</span>
+                <span className="text-red-300/70">live attendees</span>
               </div>
             )}
           </div>
         </div>
-        <div className="relative mt-6 flex flex-wrap gap-2 border-t border-primary/15 pt-5 dark:border-white/[0.07]">
+        <div className="relative mt-5 flex flex-wrap gap-2 border-t border-white/[0.06] pt-4">
           <Button asChild variant="secondary" size="sm">
             <Link to="/dashboard/system/lead-control">Open lead control</Link>
           </Button>
@@ -1045,7 +1044,7 @@ export function AdminCommandCenter({ firstName }: Props) {
               {leaderHealth.isPending ? (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="h-80 animate-pulse rounded-[1.4rem] bg-muted/40" />
+                    <div key={i} className="h-80 animate-pulse rounded bg-muted/40" />
                   ))}
                 </div>
               ) : leaderHealth.isError ? (
