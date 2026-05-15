@@ -849,6 +849,7 @@ export function AdminCommandCenter({ firstName }: Props) {
               )}
 
               <AdminActivityPanel />
+            </div>
           </div>
         </TabsContent>
 
