@@ -92,7 +92,7 @@ export function TrainingDayView({
   if (!effectivelyUnlocked) {
     return (
       <div className="surface-inset flex items-start gap-3 border-white/10 bg-muted/30 px-4 py-4 opacity-80">
-        <div className="rounded-xl border border-white/10 bg-muted/40 p-2 text-muted-foreground">
+        <div className="rounded border border-white/10 bg-muted/40 p-2 text-muted-foreground">
           <Lock className="size-4" />
         </div>
         <div className="min-w-0 flex-1">
@@ -152,7 +152,7 @@ export function TrainingDayView({
       </div>
 
       <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.95fr)]">
-        <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+        <div className="rounded border border-white/10 bg-black/20 p-3">
           <div className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground">
             <CirclePlay className="size-4 text-primary" />
             <span>Watch</span>
@@ -184,7 +184,7 @@ export function TrainingDayView({
         </div>
 
         <div className="space-y-3">
-          <div className="rounded-xl border border-white/10 bg-muted/30 p-3">
+          <div className="rounded border border-white/10 bg-muted/30 p-3">
             <div className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
               <Headphones className="size-4 text-primary" />
               <span>Listen</span>
@@ -214,7 +214,7 @@ export function TrainingDayView({
             )}
           </div>
 
-          <div className="rounded-xl border border-white/10 bg-muted/30 p-3">
+          <div className="rounded border border-white/10 bg-muted/30 p-3">
             <div className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
               <FileImage className="size-4 text-primary" />
               <span>Your notes</span>
@@ -258,7 +258,7 @@ export function TrainingDayView({
           </div>
 
           {completed ? (
-            <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.08] p-3">
+            <div className="rounded border border-emerald-400/20 bg-emerald-400/[0.08] p-3">
               <div className="flex items-start gap-2">
                 <CheckCircle2 className="mt-0.5 size-4 text-emerald-300" />
                 <div>
@@ -270,7 +270,7 @@ export function TrainingDayView({
               </div>
             </div>
           ) : (
-            <div className="rounded-xl border border-white/10 bg-muted/30 p-3">
+            <div className="rounded border border-white/10 bg-muted/30 p-3">
               <p className="text-sm font-medium text-foreground">Finish this day</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Mark this day as done after your notes photo is uploaded.

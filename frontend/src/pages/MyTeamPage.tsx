@@ -55,12 +55,12 @@ function OrgBranch({ node, depth }: { node: OrgTreeNode; depth: number }) {
         type="button"
         onClick={() => hasChildren && setOpen((o) => !o)}
         className={cn(
-          'surface-inset w-full min-w-0 rounded-xl px-3 py-3 text-left transition-colors',
+          'surface-inset w-full min-w-0 rounded px-3 py-3 text-left transition-colors',
           hasChildren ? 'hover:border-primary/25 hover:bg-muted/50' : 'cursor-default',
         )}
       >
         <div className="flex items-start gap-3">
-          <div className={cn('flex size-10 shrink-0 items-center justify-center rounded-xl text-sm font-semibold', avatarTone(node.role))}>
+          <div className={cn('flex size-10 shrink-0 items-center justify-center rounded text-sm font-semibold', avatarTone(node.role))}>
             {initials(node.name)}
           </div>
 
@@ -102,9 +102,9 @@ function TeamListItem({ member }: { member: TeamMemberPublic }) {
   const displayName = member.username || member.name || member.fbo_id
 
   return (
-    <li className="surface-inset min-w-0 rounded-xl px-3 py-3">
+    <li className="surface-inset min-w-0 rounded px-3 py-3">
       <div className="flex items-start gap-3">
-        <div className={cn('flex size-10 shrink-0 items-center justify-center rounded-xl text-sm font-semibold', avatarTone(member.role))}>
+        <div className={cn('flex size-10 shrink-0 items-center justify-center rounded text-sm font-semibold', avatarTone(member.role))}>
           {initials(displayName)}
         </div>
 
@@ -174,15 +174,15 @@ export function MyTeamPage({ title }: Props) {
 
         {isLeader && data ? (
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <div className="surface-inset rounded-xl px-4 py-3">
+            <div className="surface-inset rounded px-4 py-3">
               <p className="text-ds-label uppercase text-muted-foreground">People under you</p>
               <p className="mt-1 text-2xl font-semibold text-foreground">{data.total_downline ?? 0}</p>
             </div>
-            <div className="surface-inset rounded-xl px-4 py-3">
+            <div className="surface-inset rounded px-4 py-3">
               <p className="text-ds-label uppercase text-muted-foreground">Direct reports</p>
               <p className="mt-1 text-2xl font-semibold text-foreground">{data.direct_members ?? 0}</p>
             </div>
-            <div className="surface-inset rounded-xl px-4 py-3">
+            <div className="surface-inset rounded px-4 py-3">
               <p className="text-ds-label uppercase text-muted-foreground">Shown here</p>
               <p className="mt-1 text-2xl font-semibold text-foreground">{data.total}</p>
             </div>
@@ -200,7 +200,7 @@ export function MyTeamPage({ title }: Props) {
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]">
           <section className="surface-elevated p-4 md:p-5">
             <div className="mb-4 flex items-center gap-2">
-              <div className="rounded-xl border border-primary/20 bg-primary/[0.08] p-2 text-primary">
+              <div className="rounded border border-primary/20 bg-primary/[0.08] p-2 text-primary">
                 <Users className="size-4" />
               </div>
               <div>
@@ -228,7 +228,7 @@ export function MyTeamPage({ title }: Props) {
           <section className="surface-elevated p-4 md:p-5">
             <div className="mb-4 space-y-3">
               <div className="flex items-center gap-2">
-                <div className="rounded-xl border border-primary/20 bg-primary/[0.08] p-2 text-primary">
+                <div className="rounded border border-primary/20 bg-primary/[0.08] p-2 text-primary">
                   <LayoutList className="size-4" />
                 </div>
                 <div>

@@ -23,7 +23,7 @@ function HelpArticleCard({
 }) {
   const [open, setOpen] = useState(false)
   return (
-    <li className="surface-elevated overflow-hidden rounded-xl">
+    <li className="surface-elevated overflow-hidden rounded">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

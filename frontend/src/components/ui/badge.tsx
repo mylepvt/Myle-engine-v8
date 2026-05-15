@@ -4,7 +4,7 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 
 const badgeVariants = cva(
-  'inline-flex items-center rounded-full border px-2.5 py-0.5 text-ds-caption font-medium transition-colors',
+  'inline-flex items-center rounded border px-2 py-0.5 text-ds-caption font-medium transition-colors',
   {
     variants: {
       variant: {
@@ -13,7 +13,7 @@ const badgeVariants = cva(
         secondary:
           'border-transparent bg-secondary text-secondary-foreground',
         destructive:
-          'border-transparent bg-destructive text-destructive-foreground',
+          'border-transparent bg-destructive/20 text-destructive',
         primary:
           'border-transparent bg-primary/15 text-primary',
         success:

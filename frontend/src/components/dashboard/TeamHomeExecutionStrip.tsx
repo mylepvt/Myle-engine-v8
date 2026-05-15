@@ -41,7 +41,7 @@ export function TeamHomeExecutionStrip({
         {isPending ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-20 rounded-xl" />
+              <Skeleton key={i} className="h-20 rounded" />
             ))}
           </div>
         ) : null}
@@ -57,18 +57,18 @@ export function TeamHomeExecutionStrip({
           <div className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-3">
               {todayPending ? (
-                Array.from({ length: 3 }).map((_, i) => <Skeleton key={`today-${i}`} className="h-16 rounded-xl" />)
+                Array.from({ length: 3 }).map((_, i) => <Skeleton key={`today-${i}`} className="h-16 rounded" />)
               ) : (
                 <>
-                  <div className="rounded-xl border border-primary/20 bg-primary/[0.08] px-3 py-3">
+                  <div className="rounded border border-primary/20 bg-primary/[0.08] px-3 py-3">
                     <p className="text-ds-caption text-muted-foreground">Fresh leads today</p>
                     <p className="mt-1 font-heading text-xl font-semibold tabular-nums">{todayStats?.claimed_today ?? 0}</p>
                   </div>
-                  <div className="rounded-xl border border-primary/20 bg-primary/[0.08] px-3 py-3">
+                  <div className="rounded border border-primary/20 bg-primary/[0.08] px-3 py-3">
                     <p className="text-ds-caption text-muted-foreground">Calls today</p>
                     <p className="mt-1 font-heading text-xl font-semibold tabular-nums">{todayStats?.calls_today ?? 0}</p>
                   </div>
-                  <div className="rounded-xl border border-primary/20 bg-primary/[0.08] px-3 py-3">
+                  <div className="rounded border border-primary/20 bg-primary/[0.08] px-3 py-3">
                     <p className="text-ds-caption text-muted-foreground">Enrolled today</p>
                     <p className="mt-1 font-heading text-xl font-semibold tabular-nums">{todayStats?.enrolled_today ?? 0}</p>
                   </div>
@@ -76,21 +76,21 @@ export function TeamHomeExecutionStrip({
               )}
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-xl border border-white/10 bg-muted/40 px-3 py-3">
+              <div className="rounded border border-white/10 bg-muted/40 px-3 py-3">
                 <p className="text-ds-caption text-muted-foreground">Claimed (active)</p>
                 <p className="mt-1 font-heading text-2xl font-semibold tabular-nums">{data.claimed}</p>
               </div>
-              <div className="rounded-xl border border-white/10 bg-muted/40 px-3 py-3">
+              <div className="rounded border border-white/10 bg-muted/40 px-3 py-3">
                 <p className="text-ds-caption text-muted-foreground">Video reached</p>
                 <p className="mt-1 font-heading text-2xl font-semibold tabular-nums">{data.video_reached}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">{pct(data.pct_video_vs_claimed)} of claimed</p>
               </div>
-              <div className="rounded-xl border border-white/10 bg-muted/40 px-3 py-3">
+              <div className="rounded border border-white/10 bg-muted/40 px-3 py-3">
                 <p className="text-ds-caption text-muted-foreground">Proof pending</p>
                 <p className="mt-1 font-heading text-2xl font-semibold tabular-nums">{data.proof_pending}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">{pct(data.pct_proof_vs_video)} of video</p>
               </div>
-              <div className="rounded-xl border border-white/10 bg-muted/40 px-3 py-3">
+              <div className="rounded border border-white/10 bg-muted/40 px-3 py-3">
                 <p className="text-ds-caption text-muted-foreground">Min. FLP Billing</p>
                 <p className="mt-1 font-heading text-2xl font-semibold tabular-nums">{data.paid_flp}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">{pct(data.pct_enrolled_vs_claimed)} of claimed</p>

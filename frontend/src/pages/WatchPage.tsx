@@ -474,7 +474,7 @@ export function WatchPage() {
               {!data.access_granted ? (
                 <section className="mx-auto w-full max-w-xl rounded-[2rem] border border-white/10 bg-[linear-gradient(170deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] px-5 py-6 shadow-[0_34px_120px_-80px_rgba(0,0,0,0.95)] backdrop-blur-2xl sm:px-6">
                   <div className="flex items-start gap-3">
-                    <div className="rounded-2xl bg-[#112549] p-3 text-[#d2e3ff]">
+                    <div className="rounded-md bg-[#112549] p-3 text-[#d2e3ff]">
                       <LockKeyhole className="size-5" />
                     </div>
                     <div>
@@ -496,7 +496,7 @@ export function WatchPage() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Enter your full name"
-                      className="h-12 w-full rounded-2xl border border-[#26385d] bg-[#0a1120] px-4 text-base text-[#f7f9ff] outline-none transition placeholder:text-[#7887a3] focus:border-[#8eb0ff] focus:ring-2 focus:ring-[#8eb0ff]/20"
+                      className="h-12 w-full rounded-md border border-[#26385d] bg-[#0a1120] px-4 text-base text-[#f7f9ff] outline-none transition placeholder:text-[#7887a3] focus:border-[#8eb0ff] focus:ring-2 focus:ring-[#8eb0ff]/20"
                     />
                     <label className="block text-sm font-medium text-[#dfe8ff]" htmlFor="watch-phone">
                       Registered mobile number
@@ -509,7 +509,7 @@ export function WatchPage() {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="Enter the same number"
-                      className="h-12 w-full rounded-2xl border border-[#26385d] bg-[#0a1120] px-4 text-base text-[#f7f9ff] outline-none transition placeholder:text-[#7887a3] focus:border-[#8eb0ff] focus:ring-2 focus:ring-[#8eb0ff]/20"
+                      className="h-12 w-full rounded-md border border-[#26385d] bg-[#0a1120] px-4 text-base text-[#f7f9ff] outline-none transition placeholder:text-[#7887a3] focus:border-[#8eb0ff] focus:ring-2 focus:ring-[#8eb0ff]/20"
                     />
                     {unlockError ? (
                       <p className="text-sm text-[#ffb8bd]" role="alert">
@@ -519,7 +519,7 @@ export function WatchPage() {
                     <button
                       type="submit"
                       disabled={unlocking || !name.trim() || !phone.trim()}
-                      className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[#dce7ff] px-5 text-sm font-semibold text-[#0a1530] transition hover:bg-[#c6d8ff] disabled:opacity-60"
+                      className="inline-flex h-12 w-full items-center justify-center rounded-md bg-[#dce7ff] px-5 text-sm font-semibold text-[#0a1530] transition hover:bg-[#c6d8ff] disabled:opacity-60"
                     >
                       {unlocking ? 'Verifying…' : 'Continue'}
                     </button>
@@ -604,7 +604,7 @@ export function WatchPage() {
                               type="button"
                               onClick={() => void togglePlayback()}
                               disabled={!videoSrc || completing}
-                              className="inline-flex h-11 items-center justify-center rounded-2xl bg-[#dce7ff] px-5 text-sm font-semibold text-[#0a1530] transition hover:bg-[#c6d8ff] disabled:cursor-not-allowed disabled:opacity-60"
+                              className="inline-flex h-11 items-center justify-center rounded-md bg-[#dce7ff] px-5 text-sm font-semibold text-[#0a1530] transition hover:bg-[#c6d8ff] disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               {playerButtonLabel}
                             </button>

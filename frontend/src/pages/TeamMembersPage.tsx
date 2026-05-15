@@ -133,7 +133,7 @@ function ResetPasswordModal({
       onClick={onClose}
     >
       <div
-        className="keyboard-safe-sheet surface-elevated max-h-[90dvh] w-full max-w-sm overflow-y-auto rounded-xl p-4 text-sm shadow-xl md:p-6"
+        className="keyboard-safe-sheet surface-elevated max-h-[90dvh] w-full max-w-sm overflow-y-auto rounded p-4 text-sm shadow-xl md:p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="mb-1 font-semibold text-foreground">Reset Password</h2>
@@ -276,7 +276,7 @@ function MemberProfileModal({
       onClick={onClose}
     >
       <div
-        className="keyboard-safe-sheet surface-elevated max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-xl text-sm shadow-xl"
+        className="keyboard-safe-sheet surface-elevated max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded text-sm shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Sticky header */}
@@ -696,7 +696,7 @@ export function TeamMembersPage({ title }: Props) {
               {filteredMembers.map((m) => (
                 <li
                   key={m.id}
-                  className="surface-inset min-w-0 overflow-hidden rounded-2xl border border-white/5 px-4 py-3 text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+                  className="surface-inset min-w-0 overflow-hidden rounded-md border border-white/5 px-4 py-3 text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0 flex-1">
@@ -793,7 +793,7 @@ export function TeamMembersPage({ title }: Props) {
               ))}
             </ul>
           ) : (
-            <div className="surface-inset rounded-2xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+            <div className="surface-inset rounded-md border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
               {searchActive
                 ? 'No members match this search yet. Try a broader FBO ID, email, or username.'
                 : 'No members found in this environment yet.'}

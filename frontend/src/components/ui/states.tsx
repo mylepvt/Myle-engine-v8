@@ -20,7 +20,7 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        'flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-surface/30 px-6 py-10 text-center',
+        'flex flex-col items-center justify-center rounded border border-dashed border-border bg-surface/30 px-6 py-10 text-center',
         className,
       )}
     >
@@ -75,7 +75,7 @@ export function ErrorState({
   return (
     <div
       className={cn(
-        'flex flex-col items-center justify-center rounded-xl border border-destructive/35 bg-destructive/10 px-6 py-8 text-center',
+        'flex flex-col items-center justify-center rounded border border-destructive/35 bg-destructive/10 px-6 py-8 text-center',
         className,
       )}
       role="alert"

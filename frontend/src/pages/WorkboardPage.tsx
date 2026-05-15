@@ -296,7 +296,7 @@ const LeadCard = memo(function LeadCard({
   return (
     <article
       className={cn(
-        'relative overflow-hidden rounded-2xl border p-3 text-card-foreground backdrop-blur-md sm:p-3.5',
+        'relative overflow-hidden rounded-md border p-3 text-card-foreground backdrop-blur-md sm:p-3.5',
         'bg-card/90 dark:bg-card/80 supports-[backdrop-filter]:bg-card/75 supports-[backdrop-filter]:dark:bg-card/60',
         slaTone.border,
         slaTone.cardGlow,
@@ -587,7 +587,7 @@ function ProcessChecklistSection({
     : stageChecklistComplete(lead, stage)
 
   return (
-    <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 p-3">
+    <div className="space-y-2 rounded border border-border/60 bg-muted/20 p-3">
       {!taskKeys && (
         <div className="space-y-1">
           <p className="text-ds-caption font-semibold uppercase tracking-wide text-muted-foreground">{def.title}</p>
@@ -937,7 +937,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
         </button>
         {batchError ? <p className="text-ds-caption text-destructive">{batchError}</p> : null}
       </div>
-      <div className="space-y-2 rounded-xl border border-amber-400/30 bg-amber-400/[0.05] p-3">
+      <div className="space-y-2 rounded border border-amber-400/30 bg-amber-400/[0.05] p-3">
         <p className="text-ds-caption font-semibold uppercase tracking-wide text-muted-foreground">Min. FLP Billing</p>
         <p className="text-ds-caption text-muted-foreground">₹1500 payment — upload proof for admin approval.</p>
         {proofUploaded ? (
@@ -1428,7 +1428,7 @@ export function WorkboardPage({ title, mode = 'pipeline' }: Props) {
       {/* Loading skeleton */}
       {isPending && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({length:8}).map((_,i) => <Skeleton key={i} className="h-32 rounded-xl"/>)}
+          {Array.from({length:8}).map((_,i) => <Skeleton key={i} className="h-32 rounded"/>)}
         </div>
       )}
 
@@ -1485,7 +1485,7 @@ export function WorkboardPage({ title, mode = 'pipeline' }: Props) {
       )}
       {confirmLead ? (
         <div className="keyboard-safe-modal fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4">
-          <div className="keyboard-safe-sheet w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-4 shadow-2xl">
+          <div className="keyboard-safe-sheet w-full max-w-md overflow-y-auto rounded border border-border bg-card p-4 shadow-2xl">
             <h3 className="text-base font-semibold text-foreground">
               {surfaceRole === 'leader' ? 'Complete Mindset Lock?' : 'Send to Leader?'}
             </h3>

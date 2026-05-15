@@ -39,7 +39,7 @@ const SkeletonPremium = ({
 }
 
 const CardSkeleton = () => (
-  <div className="rounded-2xl border border-border bg-card p-4 shadow-ios-card">
+  <div className="rounded-md border border-border bg-card p-4 shadow-ios-card">
     <div className="flex items-start justify-between">
       <div className="flex-1 space-y-3">
         <SkeletonPremium width="40%" height={14} />
@@ -52,7 +52,7 @@ const CardSkeleton = () => (
 )
 
 const MetricCardSkeleton = () => (
-  <div className="rounded-2xl border border-border bg-card p-4 shadow-ios-card">
+  <div className="rounded-md border border-border bg-card p-4 shadow-ios-card">
     <div className="flex items-start justify-between">
       <div className="space-y-2">
         <SkeletonPremium width={80} height={14} />
@@ -111,7 +111,7 @@ const StatsRowSkeleton = ({ count = 4 }: { count?: number }) => (
 const ContentSectionSkeleton = () => (
   <div className="space-y-4">
     <SkeletonPremium width="30%" height={24} />
-    <div className="rounded-2xl border border-border bg-card p-4 shadow-ios-card">
+    <div className="rounded-md border border-border bg-card p-4 shadow-ios-card">
       {Array.from({ length: 5 }).map((_, i) => (
         <ListItemSkeleton key={i} />
       ))}

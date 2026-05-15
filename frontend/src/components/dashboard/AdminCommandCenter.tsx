@@ -265,7 +265,7 @@ function DeskShortcut({
       to={to}
       className="group flex items-center gap-3.5 rounded-[1.1rem] border border-border/60 bg-card/40 p-3.5 no-underline transition-all duration-200 hover:border-primary/30 hover:bg-primary/[0.03] hover:shadow-[0_4px_16px_-4px_rgba(84,101,255,0.14)]"
     >
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted/60 text-primary ring-1 ring-border/40 transition-colors duration-200 group-hover:bg-primary/[0.08] group-hover:ring-primary/30">
+      <div className="flex size-10 shrink-0 items-center justify-center rounded bg-muted/60 text-primary ring-1 ring-border/40 transition-colors duration-200 group-hover:bg-primary/[0.08] group-hover:ring-primary/30">
         {icon}
       </div>
       <div className="min-w-0 flex-1">
@@ -286,7 +286,7 @@ function DeskShortcut({
 
 function LeadResultRow({ lead }: { lead: LeadPublic }) {
   return (
-    <div className="surface-inset flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4">
+    <div className="surface-inset flex flex-wrap items-center justify-between gap-3 rounded-md p-4">
       <div className="space-y-1">
         <div className="flex flex-wrap items-center gap-2">
           <p className="font-medium text-foreground">{lead.name}</p>
@@ -376,7 +376,7 @@ function LeaderRingCard({ leader }: { leader: LeaderHealthItem }) {
       </div>
 
       {/* Personal stats */}
-      <div className="w-full space-y-1.5 rounded-xl border border-border/40 bg-muted/20 p-3">
+      <div className="w-full space-y-1.5 rounded border border-border/40 bg-muted/20 p-3">
         <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground">Personal Today</p>
         <div className="grid grid-cols-3 gap-2 text-center">
           <div>
@@ -395,7 +395,7 @@ function LeaderRingCard({ leader }: { leader: LeaderHealthItem }) {
       </div>
 
       {/* Team stats */}
-      <div className="w-full space-y-1.5 rounded-xl border border-border/40 bg-muted/20 p-3">
+      <div className="w-full space-y-1.5 rounded border border-border/40 bg-muted/20 p-3">
         <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground">Team</p>
         <div className="grid grid-cols-2 gap-2 text-center">
           <div>
@@ -419,7 +419,7 @@ function LeaderRingCard({ leader }: { leader: LeaderHealthItem }) {
 
       {/* Day 2 indicator */}
       <div
-        className={`w-full rounded-xl border p-2.5 text-center ${
+        className={`w-full rounded border p-2.5 text-center ${
           leader.day2_leads_count > 0
             ? 'border-violet-400/30 bg-violet-400/[0.07]'
             : 'border-border/30 bg-muted/10'
@@ -624,7 +624,7 @@ export function AdminCommandCenter({ firstName }: Props) {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1.5 rounded-2xl bg-muted/40 p-2">
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1.5 rounded-md bg-muted/40 p-2">
           <TabsTrigger value="today" className="flex items-center gap-1.5">
             <CalendarDays className="size-3.5" />
             Today
@@ -763,21 +763,21 @@ export function AdminCommandCenter({ firstName }: Props) {
                 <CardDescription>Fast operational pulse for the current admin day.</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-3 md:grid-cols-2">
-                <div className="surface-inset rounded-2xl p-4">
+                <div className="surface-inset rounded-md p-4">
                   <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Claimed today</p>
                   <p className="mt-2 text-[1.75rem] font-bold leading-none tabular-nums text-foreground">{liveSummary?.leads_claimed_today ?? 0}</p>
                 </div>
-                <div className="surface-inset rounded-2xl p-4">
+                <div className="surface-inset rounded-md p-4">
                   <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Approved today</p>
                   <p className="mt-2 text-[1.75rem] font-bold leading-none tabular-nums text-foreground">
                     {liveSummary?.payment_proofs_approved_today ?? 0}
                   </p>
                 </div>
-                <div className="surface-inset rounded-2xl p-4">
+                <div className="surface-inset rounded-md p-4">
                   <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Lead pool visible</p>
                   <p className="mt-2 text-[1.75rem] font-bold leading-none tabular-nums text-foreground">{leadPool.data?.total ?? 0}</p>
                 </div>
-                <div className="surface-inset rounded-2xl p-4">
+                <div className="surface-inset rounded-md p-4">
                   <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Latest reassignment</p>
                   <p className="mt-2 text-sm font-semibold text-foreground">
                     {leadControl.data?.history?.[0]?.lead_name ?? 'No movement yet'}
@@ -833,7 +833,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                   value={leadSearch}
                   onChange={(event) => setLeadSearch(event.target.value)}
                   placeholder="Search any lead across active, archived, retarget, and more"
-                  className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary/40"
+                  className="w-full rounded border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary/40"
                 />
               </label>
               {deferredLeadSearch.length === 0 ? (
@@ -976,7 +976,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                 ) : (
                   <div className="space-y-3">
                     {flaggedMembers.map((member) => (
-                      <div key={member.id} className="surface-inset flex flex-wrap items-start justify-between gap-3 rounded-2xl p-4">
+                      <div key={member.id} className="surface-inset flex flex-wrap items-start justify-between gap-3 rounded-md p-4">
                         <div className="space-y-1">
                           <p className="font-medium text-foreground">{member.name || member.fbo_id}</p>
                           <p className="text-xs text-muted-foreground">
@@ -1091,7 +1091,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                       ...leaderHealth.data!.leaders.map((l) => l.personal_calls_today + l.team_calls_today),
                     )
                     return (
-                      <div key={leader.leader_id} className="surface-inset rounded-2xl p-4">
+                      <div key={leader.leader_id} className="surface-inset rounded-md p-4">
                         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
                             <span
@@ -1223,7 +1223,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                 ) : (
                   <div className="space-y-3">
                     {invoices.data?.items.map((invoice) => (
-                      <div key={invoice.invoice_number} className="surface-inset rounded-2xl p-4">
+                      <div key={invoice.invoice_number} className="surface-inset rounded-md p-4">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <p className="font-medium text-foreground">{invoice.member_name}</p>
                           <Badge variant="outline">{invoice.doc_type.replace(/_/g, ' ')}</Badge>
@@ -1297,7 +1297,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                   ['Public app URL', settingsMap.public_app_url],
                   ['Live session join link', settingsMap.live_session_url],
                 ].map(([label, value]) => (
-                  <div key={label} className="surface-inset flex items-center justify-between gap-3 rounded-2xl p-4">
+                  <div key={label} className="surface-inset flex items-center justify-between gap-3 rounded-md p-4">
                     <div>
                       <p className="font-medium text-foreground">{label}</p>
                       <p className="text-xs text-muted-foreground">{value ? 'Configured' : 'Missing'}</p>
@@ -1352,7 +1352,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                   value={viewerHistoryDate}
                   max={new Date().toISOString().slice(0, 10)}
                   onChange={(e) => setViewerHistoryDate(e.target.value)}
-                  className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  className="rounded border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
               </div>
             </CardHeader>
@@ -1360,7 +1360,7 @@ export function AdminCommandCenter({ firstName }: Props) {
               {premiereData.isPending ? (
                 <div className="space-y-2">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="surface-inset h-16 animate-pulse rounded-2xl" />
+                    <div key={i} className="surface-inset h-16 animate-pulse rounded-md" />
                   ))}
                 </div>
               ) : premiereData.isError ? (
@@ -1424,13 +1424,13 @@ export function AdminCommandCenter({ firstName }: Props) {
                                   </span>
                                 </div>
                                 {slotViewers.length === 0 ? (
-                                  <div className="surface-inset rounded-xl px-3 py-3 text-center text-ds-caption text-muted-foreground/60">
+                                  <div className="surface-inset rounded px-3 py-3 text-center text-ds-caption text-muted-foreground/60">
                                     No viewers
                                   </div>
                                 ) : (
                                   <div className="space-y-1.5">
                                     {slotViewers.map((v) => (
-                                      <div key={v.viewer_id} className="surface-inset rounded-xl px-3 py-2.5">
+                                      <div key={v.viewer_id} className="surface-inset rounded px-3 py-2.5">
                                         <div className="flex flex-wrap items-start justify-between gap-2">
                                           <div className="min-w-0">
                                             <div className="flex flex-wrap items-center gap-1.5">
@@ -1496,7 +1496,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                   { day: 'Day 2', source: 'Workboard', color: 'border-indigo-500/30 bg-indigo-500/[0.04]' },
                   { day: 'Day 3', source: 'Workboard (Live)', color: 'border-violet-500/30 bg-violet-500/[0.04]' },
                 ]).map(({ day, source, color }) => (
-                  <div key={day} className={`surface-inset rounded-xl p-3 text-sm ${color}`}>
+                  <div key={day} className={`surface-inset rounded p-3 text-sm ${color}`}>
                     <p className="font-semibold text-foreground">{day}</p>
                     <p className="mt-0.5 text-ds-caption text-muted-foreground">{source}</p>
                     <p className="mt-1 text-ds-label text-muted-foreground/80">5pm · 6pm · 7pm</p>
@@ -1578,7 +1578,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                 ) : (
                   <div className="space-y-3">
                     {leadControl.data?.history.slice(0, 6).map((row) => (
-                      <div key={row.activity_id} className="surface-inset rounded-2xl p-4">
+                      <div key={row.activity_id} className="surface-inset rounded-md p-4">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <p className="font-medium text-foreground">{row.lead_name}</p>
                           <Badge variant="outline">{row.mode === 'manual' ? 'Manual' : 'Auto'}</Badge>

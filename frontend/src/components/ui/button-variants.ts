@@ -1,22 +1,24 @@
 import { cva, type VariantProps } from 'class-variance-authority'
 
 export const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded text-ds-body font-semibold transition-[color,background,opacity] duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-45 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded text-ds-body font-semibold transition-[background-color,color,border-color] duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
   {
     variants: {
       variant: {
         default:
-          'bg-primary text-primary-foreground hover:bg-[#4752c4]',
+          'bg-primary text-primary-foreground hover:bg-[#4752c4] active:bg-[#3e45b8]',
         secondary:
-          'bg-secondary text-secondary-foreground hover:bg-[#3f4147]',
+          'bg-secondary text-secondary-foreground hover:bg-[#47484f] active:bg-[#3f4147]',
         ghost:
-          'text-muted-foreground hover:bg-[rgba(255,255,255,0.06)] hover:text-foreground',
+          'text-foreground hover:bg-[rgba(255,255,255,0.08)] active:bg-[rgba(255,255,255,0.12)]',
         outline:
-          'border border-border bg-transparent hover:bg-[rgba(255,255,255,0.06)]',
+          'border border-border bg-transparent text-foreground hover:bg-[rgba(255,255,255,0.06)] active:bg-[rgba(255,255,255,0.09)]',
+        destructive:
+          'bg-destructive text-destructive-foreground hover:bg-[#d42526] active:bg-[#c01f25]',
       },
       size: {
         default: 'h-9 min-h-[36px] px-4 py-2',
-        sm: 'h-8 min-h-[32px] rounded px-3 text-ds-caption',
+        sm: 'h-8 min-h-[32px] px-3 text-ds-caption',
         lg: 'h-10 min-h-[40px] px-6 text-ds-h3',
         icon: 'h-9 min-h-[36px] w-9 min-w-[36px]',
       },

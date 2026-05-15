@@ -70,7 +70,7 @@ export function EnrollmentApprovalsPage({ title }: Props) {
       ) : null}
 
       {data && data.total === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-white/[0.12] py-14 text-center">
+        <div className="flex flex-col items-center gap-3 rounded border border-dashed border-white/[0.12] py-14 text-center">
           <ClipboardList className="size-10 text-muted-foreground/50" />
           <p className="text-sm font-medium text-foreground">No pending FLP billing requests</p>
           <p className="text-xs text-muted-foreground">New requests will appear here for your review.</p>
@@ -95,7 +95,7 @@ export function EnrollmentApprovalsPage({ title }: Props) {
               return (
                 <li
                   key={row.lead_id}
-                  className="surface-elevated flex flex-col gap-3 rounded-xl border border-border/60 p-4 text-sm sm:flex-row sm:items-center sm:justify-between"
+                  className="surface-elevated flex flex-col gap-3 rounded border border-border/60 p-4 text-sm sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
@@ -202,7 +202,7 @@ export function EnrollmentApprovalsPage({ title }: Props) {
         ) : null}
 
         {historyQ.data && historyQ.data.total === 0 ? (
-          <div className="rounded-xl border border-dashed border-white/[0.12] px-4 py-8 text-center text-sm text-muted-foreground">
+          <div className="rounded border border-dashed border-white/[0.12] px-4 py-8 text-center text-sm text-muted-foreground">
             No proof decisions found for {historyDate}.
           </div>
         ) : null}
@@ -227,7 +227,7 @@ export function EnrollmentApprovalsPage({ title }: Props) {
                 return (
                   <li
                     key={`${row.lead_id}-${row.review_action}-${row.reviewed_at}`}
-                    className="surface-elevated flex flex-col gap-3 rounded-xl border border-border/60 p-4 text-sm"
+                    className="surface-elevated flex flex-col gap-3 rounded border border-border/60 p-4 text-sm"
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-semibold text-foreground">{row.lead_name}</p>

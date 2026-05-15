@@ -4,7 +4,7 @@ import { Link, type LinkProps } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 
 const cardBase =
-  'rounded-2xl border border-border bg-card text-card-foreground shadow-[var(--shadow-card)] transition-[box-shadow,transform] duration-200'
+  'rounded border border-border bg-card text-card-foreground transition-[background-color,border-color] duration-100'
 
 const Card = React.forwardRef<
   HTMLDivElement,
@@ -14,7 +14,7 @@ const Card = React.forwardRef<
     ref={ref}
     className={cn(
       cardBase,
-      'hover:shadow-[var(--shadow-card-hover)]',
+      'hover:bg-[color-mix(in_srgb,var(--card)_94%,var(--primary)_6%)]',
       className,
     )}
     {...props}
@@ -31,8 +31,8 @@ const CardLink = React.forwardRef<
     className={cn(
       cardBase,
       'block cursor-pointer no-underline',
-      'hover:shadow-[var(--shadow-card-hover)]',
-      'active:shadow-[var(--shadow-card)]',
+      'hover:bg-[color-mix(in_srgb,var(--card)_92%,var(--primary)_8%)] hover:border-border',
+      'active:bg-[color-mix(in_srgb,var(--card)_88%,var(--primary)_12%)]',
       className,
     )}
     {...props}

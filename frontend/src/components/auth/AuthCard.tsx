@@ -30,8 +30,8 @@ export function AuthCard({
   return (
     <div
       className={cn(
-        'w-full max-w-[min(100%,26rem)] overflow-hidden rounded-[0.875rem] border border-border',
-        'bg-card shadow-ios-card',
+        'w-full max-w-[min(100%,26rem)] overflow-hidden rounded border border-border',
+        'bg-card ',
         className,
       )}
     >

@@ -77,9 +77,9 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
 
       {isPending ? (
         <div className="space-y-3">
-          <Skeleton className="h-40 rounded-xl" />
-          <Skeleton className="h-24 rounded-xl" />
-          <Skeleton className="h-56 rounded-xl" />
+          <Skeleton className="h-40 rounded" />
+          <Skeleton className="h-24 rounded" />
+          <Skeleton className="h-56 rounded" />
         </div>
       ) : null}
 
@@ -130,19 +130,19 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
                 ) : null}
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-xl bg-muted/30 p-3">
+                <div className="rounded bg-muted/30 p-3">
                   <p className="text-ds-label uppercase text-muted-foreground">Logins</p>
                   <p className="mt-1 text-xl font-semibold text-foreground">{data.member.login_count}</p>
                 </div>
-                <div className="rounded-xl bg-muted/30 p-3">
+                <div className="rounded bg-muted/30 p-3">
                   <p className="text-ds-label uppercase text-muted-foreground">Calls</p>
                   <p className="mt-1 text-xl font-semibold text-foreground">{data.member.calls_count}</p>
                 </div>
-                <div className="rounded-xl bg-muted/30 p-3">
+                <div className="rounded bg-muted/30 p-3">
                   <p className="text-ds-label uppercase text-muted-foreground">Leads</p>
                   <p className="mt-1 text-xl font-semibold text-foreground">{data.member.leads_added_count}</p>
                 </div>
-                <div className="rounded-xl bg-muted/30 p-3">
+                <div className="rounded bg-muted/30 p-3">
                   <p className="text-ds-label uppercase text-muted-foreground">Follow-ups</p>
                   <p className="mt-1 text-xl font-semibold text-foreground">{data.member.followups_done_count}</p>
                 </div>
@@ -175,7 +175,7 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
             </CardHeader>
             <CardContent className="space-y-3">
               {data.trend.map((point) => (
-                <div key={point.date} className="rounded-xl border border-border bg-muted/20 p-3">
+                <div key={point.date} className="rounded border border-border bg-muted/20 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-medium text-foreground">{point.date}</p>
                     <Badge variant={scoreVariant(point.consistency_band)}>
@@ -203,7 +203,7 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
               ) : (
                 <div className="space-y-2">
                   {data.recent_activity.map((item, index) => (
-                    <div key={`${item.action}-${item.occurred_at}-${index}`} className="rounded-xl border border-border bg-muted/20 p-3">
+                    <div key={`${item.action}-${item.occurred_at}-${index}`} className="rounded border border-border bg-muted/20 p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="font-medium text-foreground">{item.action}</p>
                         <p className="text-xs text-muted-foreground">{formatDateTime(item.occurred_at)}</p>

@@ -286,7 +286,7 @@ export function DashboardHomePage() {
             <>
               <Link
                 to="/dashboard/team/reports"
-                className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+                className="block rounded no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
               >
                 <Card className="h-full border-border transition-colors hover:border-primary/30">
                   <CardContent>
@@ -309,7 +309,7 @@ export function DashboardHomePage() {
               </Link>
               <Link
                 to="/dashboard/team/enrollment-approvals"
-                className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+                className="block rounded no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
               >
                 <Card className="h-full border-border transition-colors hover:border-primary/30">
                   <CardContent>
@@ -351,7 +351,7 @@ export function DashboardHomePage() {
       {role === 'leader' && (
         <Link
           to="/dashboard/team/los"
-          className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+          className="block rounded no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
         >
           <Card className={cn(
             'border transition-colors hover:border-opacity-50',
@@ -416,7 +416,7 @@ export function DashboardHomePage() {
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Link
               to="/dashboard/work/workboard"
-              className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2"
+              className="block rounded no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2"
             >
               <Card className="h-full border-blue-500/20 bg-gradient-to-br from-blue-500/[0.08] to-transparent transition-all hover:border-blue-500/35 hover:shadow-[var(--shadow-card-hover)]">
                 <CardContent>
@@ -438,7 +438,7 @@ export function DashboardHomePage() {
             {role === 'admin' || role === 'leader' ? (
                 <Link
                 to="/dashboard/work/follow-ups"
-                className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-amber-500/40 focus-visible:ring-offset-2"
+                className="block rounded no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-amber-500/40 focus-visible:ring-offset-2"
               >
                 <Card className="h-full border-amber-500/20 bg-gradient-to-br from-amber-500/[0.08] to-transparent transition-all hover:border-amber-500/35 hover:shadow-[var(--shadow-card-hover)]">
                   <CardContent>
@@ -462,7 +462,7 @@ export function DashboardHomePage() {
             ) : role === 'team' ? (
               <Link
                 to="/dashboard/other/live-session"
-                className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+                className="block rounded no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
               >
                 <Card className="h-full border-primary/20 transition-all hover:border-primary/35 hover:shadow-[var(--shadow-card-hover)]">
                   <CardContent>
@@ -488,7 +488,7 @@ export function DashboardHomePage() {
             )}
             <Link
               to="/dashboard/work/leads"
-              className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2"
+              className="block rounded no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2"
             >
               <Card className="h-full border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.08] to-transparent transition-all hover:border-emerald-500/35 hover:shadow-[var(--shadow-card-hover)]">
                 <CardContent>
@@ -513,7 +513,7 @@ export function DashboardHomePage() {
             </Link>
             <Link
               to="/dashboard/work/leads"
-              className="block rounded-xl no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-2"
+              className="block rounded no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-2"
             >
               <Card className="h-full border-violet-500/20 bg-gradient-to-br from-violet-500/[0.08] to-transparent transition-all hover:border-violet-500/35 hover:shadow-[var(--shadow-card-hover)]">
                 <CardContent>

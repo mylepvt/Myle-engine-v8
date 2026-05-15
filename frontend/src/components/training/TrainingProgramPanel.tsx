@@ -51,7 +51,7 @@ function TrainingOverviewCard({
   else if (completedDays > 0) nextStep = `Day ${Math.min(completedDays + 1, totalDays)}`
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-card via-card to-primary/[0.08] p-5">
+    <div className="overflow-hidden rounded-md border border-primary/20 bg-gradient-to-br from-card via-card to-primary/[0.08] p-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-3">
           <Badge variant="primary" className="w-fit gap-1.5 px-3 py-1">
@@ -137,7 +137,7 @@ function TrainingDaysBlock({
 
   if (vids.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-white/10 bg-muted/30 px-5 py-8 text-center">
+      <div className="rounded-md border border-dashed border-white/10 bg-muted/30 px-5 py-8 text-center">
         <p className="text-base font-medium text-foreground">Training is not available yet</p>
         <p className="mt-2 text-ds-body text-muted-foreground">
           Please try again later. If this keeps happening, contact support.
@@ -185,8 +185,8 @@ function TrainingDaysBlock({
 function CertificateDownloadBlock() {
   const downloadMut = useDownloadCertificateMutation()
   return (
-    <div className="rounded-2xl border border-emerald-400/25 bg-gradient-to-br from-emerald-400/[0.12] to-transparent px-5 py-5 text-center">
-      <div className="mx-auto flex size-12 items-center justify-center rounded-2xl border border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300">
+    <div className="rounded-md border border-emerald-400/25 bg-gradient-to-br from-emerald-400/[0.12] to-transparent px-5 py-5 text-center">
+      <div className="mx-auto flex size-12 items-center justify-center rounded-md border border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300">
         <Award className="size-5" />
       </div>
       <p className="mt-3 text-base font-semibold text-foreground">You're done with training</p>
@@ -308,7 +308,7 @@ function TrainingCertificationBlock({
       {questions ? (
         <div className="mt-4 space-y-3">
           {questions.map((q, index) => (
-            <fieldset key={q.id} className="rounded-xl border border-white/10 bg-muted/30 p-4">
+            <fieldset key={q.id} className="rounded border border-white/10 bg-muted/30 p-4">
               <legend className="flex items-start gap-2 text-ds-body font-medium text-foreground">
                 <span className="rounded-full border border-white/10 bg-muted/40 px-2 py-0.5 text-ds-caption text-muted-foreground">
                   {index + 1}
@@ -322,7 +322,7 @@ function TrainingCertificationBlock({
                     <label
                       key={letter}
                       className={cn(
-                        'flex min-h-[48px] cursor-pointer items-start gap-2 rounded-xl border px-3 py-3 text-ds-body transition-colors',
+                        'flex min-h-[48px] cursor-pointer items-start gap-2 rounded border px-3 py-3 text-ds-body transition-colors',
                         selected
                           ? 'border-primary/40 bg-primary/[0.08] text-foreground'
                           : 'border-white/10 bg-white/[0.02] text-muted-foreground hover:border-primary/20 hover:text-foreground',
@@ -361,7 +361,7 @@ function TrainingCertificationBlock({
       {result ? (
         <div
           className={cn(
-            'mt-4 rounded-xl border px-4 py-4',
+            'mt-4 rounded border px-4 py-4',
             result.passed
               ? 'border-emerald-400/20 bg-emerald-400/[0.08]'
               : 'border-amber-400/20 bg-amber-400/[0.08]',
@@ -417,7 +417,7 @@ export function TrainingProgramPanel({ data }: Props) {
   return (
     <div className="surface-elevated space-y-5 p-4 text-ds-body text-muted-foreground md:p-5">
       {data.note ? (
-        <div className="rounded-xl border border-white/10 bg-muted/30 px-4 py-3 text-ds-body text-foreground/90">
+        <div className="rounded border border-white/10 bg-muted/30 px-4 py-3 text-ds-body text-foreground/90">
           {data.note}
         </div>
       ) : null}
@@ -432,9 +432,9 @@ export function TrainingProgramPanel({ data }: Props) {
       />
 
       {showTest ? (
-        <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/[0.08] to-transparent px-5 py-5">
+        <div className="rounded-md border border-primary/25 bg-gradient-to-br from-primary/[0.08] to-transparent px-5 py-5">
           <div className="flex items-start gap-3">
-            <div className="rounded-2xl border border-primary/20 bg-primary/[0.08] p-3 text-primary">
+            <div className="rounded-md border border-primary/20 bg-primary/[0.08] p-3 text-primary">
               <ClipboardCheck className="size-5" />
             </div>
             <div className="min-w-0">

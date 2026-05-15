@@ -124,7 +124,7 @@ export function NoticeBoardPage({ title }: Props) {
               <li
                 key={row.id}
                 className={cn(
-                  'surface-elevated rounded-xl border p-4 text-sm',
+                  'surface-elevated rounded border p-4 text-sm',
                   row.pin ? 'border-primary/35 bg-primary/[0.06]' : 'border-border/60',
                 )}
               >

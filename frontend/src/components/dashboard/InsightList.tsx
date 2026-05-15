@@ -13,7 +13,7 @@ export function InsightList({ items }: { items: Record<string, unknown>[] }) {
       {items.map((row, i) => (
         <li
           key={i}
-          className="rounded-xl border border-border/70 bg-muted/15 px-4 py-3 text-sm"
+          className="rounded border border-border/70 bg-muted/15 px-4 py-3 text-sm"
         >
           {typeof row.title === 'string' ? (
             <>

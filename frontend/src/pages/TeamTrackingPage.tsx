@@ -60,7 +60,7 @@ type MetricPanelProps = {
 }
 
 const SELECT_CLASSNAME =
-  'h-10 rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20'
+  'h-10 rounded border border-border bg-background px-3 text-sm text-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20'
 
 function todayIsoLocal() {
   const d = new Date()
@@ -309,7 +309,7 @@ function MetricPanel({ icon: Icon, label, value, tone = 'default', to }: MetricP
     <CardContent className="relative p-4">
       <div
         className={cn(
-          'absolute right-3 top-3 rounded-xl p-1.5',
+          'absolute right-3 top-3 rounded p-1.5',
           tone === 'success' && 'bg-emerald-400/15 text-emerald-500 dark:text-emerald-300',
           tone === 'warning' && 'bg-amber-400/15 text-amber-600 dark:text-amber-300',
           tone === 'danger' && 'bg-rose-400/15 text-rose-500 dark:text-rose-300',
@@ -342,7 +342,7 @@ function LiveMemberRow({ item, dateIso }: { item: TeamTrackingMemberSummary; dat
   return (
     <Link
       to={`/dashboard/team/tracking/${item.user_id}?date=${encodeURIComponent(dateIso)}`}
-      className="group flex items-start justify-between gap-3 rounded-2xl border border-border bg-card/40 px-4 py-3 transition hover:border-primary/30 hover:bg-primary/[0.03]"
+      className="group flex items-start justify-between gap-3 rounded-md border border-border bg-card/40 px-4 py-3 transition hover:border-primary/30 hover:bg-primary/[0.03]"
     >
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
@@ -375,7 +375,7 @@ function AttentionRow({ item, dateIso }: { item: TeamTrackingMemberSummary; date
   ].filter(Boolean) as string[]
 
   return (
-    <div className="rounded-2xl border border-rose-400/15 bg-rose-400/[0.05] px-4 py-3">
+    <div className="rounded-md border border-rose-400/15 bg-rose-400/[0.05] px-4 py-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -621,11 +621,11 @@ export function TeamTrackingPage({ title }: Props) {
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
             {Array.from({ length: 6 }).map((_, index) => (
-              <Skeleton key={index} className="h-32 rounded-2xl" />
+              <Skeleton key={index} className="h-32 rounded-md" />
             ))}
           </div>
-          <Skeleton className="h-64 rounded-2xl" />
-          <Skeleton className="h-[32rem] rounded-2xl" />
+          <Skeleton className="h-64 rounded-md" />
+          <Skeleton className="h-[32rem] rounded-md" />
         </div>
       ) : null}
 
@@ -688,7 +688,7 @@ export function TeamTrackingPage({ title }: Props) {
           </div>
 
           <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-            <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-card)]">
+            <section className="overflow-hidden rounded-md border border-border bg-card shadow-[var(--shadow-card)]">
               <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
                 <div>
                   <p className="text-sm font-semibold text-foreground">Live floor</p>
@@ -700,7 +700,7 @@ export function TeamTrackingPage({ title }: Props) {
               </div>
               <div className="grid gap-3 p-4 md:grid-cols-2">
                 {liveNow.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground md:col-span-2">
+                  <div className="rounded-md border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground md:col-span-2">
                     No live members match these filters right now.
                   </div>
                 ) : (
@@ -709,7 +709,7 @@ export function TeamTrackingPage({ title }: Props) {
               </div>
             </section>
 
-            <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-card)]">
+            <section className="overflow-hidden rounded-md border border-border bg-card shadow-[var(--shadow-card)]">
               <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
                 <div>
                   <p className="text-sm font-semibold text-foreground">Attention queue</p>
@@ -721,7 +721,7 @@ export function TeamTrackingPage({ title }: Props) {
               </div>
               <div className="space-y-3 p-4">
                 {flagged.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">
+                  <div className="rounded-md border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">
                     Nothing urgent in the current filter set.
                   </div>
                 ) : (
@@ -731,7 +731,7 @@ export function TeamTrackingPage({ title }: Props) {
             </section>
           </div>
 
-          <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-card)]">
+          <section className="overflow-hidden rounded-md border border-border bg-card shadow-[var(--shadow-card)]">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
               <div>
                 <p className="text-sm font-semibold text-foreground">Leader health</p>
@@ -760,13 +760,13 @@ export function TeamTrackingPage({ title }: Props) {
                     </CardHeader>
                     <CardContent className="space-y-3 text-sm">
                       <div className="grid grid-cols-2 gap-2">
-                        <div className="rounded-xl bg-muted/40 px-3 py-2">
+                        <div className="rounded bg-muted/40 px-3 py-2">
                           <p className="text-[0.68rem] uppercase tracking-[0.18em] text-muted-foreground">
                             Live
                           </p>
                           <p className="mt-1 text-lg font-semibold text-foreground">{leader.liveCount}</p>
                         </div>
-                        <div className="rounded-xl bg-muted/40 px-3 py-2">
+                        <div className="rounded bg-muted/40 px-3 py-2">
                           <p className="text-[0.68rem] uppercase tracking-[0.18em] text-muted-foreground">
                             Avg score
                           </p>
@@ -788,7 +788,7 @@ export function TeamTrackingPage({ title }: Props) {
             )}
           </section>
 
-          <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-card)]">
+          <section className="overflow-hidden rounded-md border border-border bg-card shadow-[var(--shadow-card)]">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
               <div>
                 <p className="text-sm font-semibold text-foreground">All members</p>

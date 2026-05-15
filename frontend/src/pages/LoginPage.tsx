@@ -222,7 +222,7 @@ export function LoginPage() {
           variant="center"
           icon={Network}
           iconNode={
-            <div className="flex size-[3.25rem] items-center justify-center rounded-2xl shadow-lg"
+            <div className="flex size-[3.25rem] items-center justify-center rounded"
               style={{ background: 'linear-gradient(145deg, #1a1008 0%, #0d0904 100%)', boxShadow: '0 4px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(212,175,55,0.15)' }}
               aria-hidden>
               <svg width="30" height="28" viewBox="0 0 30 28" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -254,7 +254,7 @@ export function LoginPage() {
         >
           {showGateBanner ? (
             <div
-              className="flex items-start gap-2 rounded-xl border border-amber-500/35 bg-amber-500/[0.12] px-3 py-2.5 text-left text-sm text-amber-100/95"
+              className="flex items-start gap-2 rounded border border-amber-500/35 bg-amber-500/[0.12] px-3 py-2.5 text-left text-sm text-amber-100/95"
               role="status"
             >
               <span className="min-w-0 flex-1">
@@ -272,7 +272,7 @@ export function LoginPage() {
           ) : null}
 
           {devLoginAllowed ? (
-            <div className="space-y-3 rounded-2xl border border-amber-500/30 bg-amber-500/[0.07] p-4">
+            <div className="space-y-3 rounded border border-amber-500/30 bg-amber-500/[0.07] p-4">
               <p className="text-ds-label uppercase text-amber-200/90">
                 Quick Access
               </p>
@@ -313,7 +313,7 @@ export function LoginPage() {
 
           {error ? (
             <div
-              className="rounded-xl border border-destructive/40 bg-destructive/[0.12] px-3 py-2.5 text-center text-sm text-destructive"
+              className="rounded border border-destructive/40 bg-destructive/[0.12] px-3 py-2.5 text-center text-sm text-destructive"
               role="alert"
             >
               {error}
@@ -392,7 +392,7 @@ export function LoginPage() {
                         type="button"
                         tabIndex={-1}
                         onClick={() => setShowPassword((s) => !s)}
-                        className="flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                        className="flex size-9 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
                         aria-label={showPassword ? 'Hide password' : 'Show password'}
                       >
                         {showPassword ? (
@@ -433,7 +433,7 @@ export function LoginPage() {
                 </button>
               </div>
               {showForgotHint && (
-                <p className="mt-2 rounded-xl border border-primary/25 bg-primary/[0.08] px-3 py-2.5 text-center text-xs text-muted-foreground">
+                <p className="mt-2 rounded border border-primary/25 bg-primary/[0.08] px-3 py-2.5 text-center text-xs text-muted-foreground">
                   Contact your leader or admin to reset your password.
                 </p>
               )}

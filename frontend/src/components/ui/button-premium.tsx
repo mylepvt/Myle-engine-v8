@@ -71,7 +71,7 @@ const GradientButton = React.forwardRef<HTMLButtonElement, GradientButtonProps>(
     return (
       <PremiumButton
         ref={ref}
-        className={cn('shadow-md', gradientStyles[gradient], className)}
+        className={cn(gradientStyles[gradient], className)}
         {...props}
       />
     )
@@ -107,7 +107,7 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
     <PremiumButton
       ref={ref}
       size="icon"
-      className={cn('rounded-full', className)}
+      className={cn('rounded', className)}
       aria-label={label}
       {...props}
     >

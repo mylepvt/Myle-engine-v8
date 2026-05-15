@@ -106,11 +106,11 @@ export function TeamApprovalsPage({ title }: Props) {
         q.data.items.length === 0 ? (
           <p className="text-sm text-muted-foreground">No pending registrations.</p>
         ) : filteredRows.length === 0 ? (
-          <div className="surface-elevated rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+          <div className="surface-elevated rounded border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
             No pending registrations match this search.
           </div>
         ) : (
-          <div className="surface-elevated overflow-hidden rounded-xl border border-border">
+          <div className="surface-elevated overflow-hidden rounded border border-border">
             <Table>
               <TableHeader>
                 <TableRow>

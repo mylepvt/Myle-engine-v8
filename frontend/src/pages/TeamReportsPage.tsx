@@ -47,7 +47,7 @@ function MetricCard({
   hint?: string
 }) {
   return (
-    <div className="surface-elevated rounded-xl px-4 py-4">
+    <div className="surface-elevated rounded px-4 py-4">
       <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
         {label}
       </p>
@@ -86,7 +86,7 @@ function SubmissionCard({ item }: { item: TeamReportItem }) {
     item.calls_made_actual !== item.total_calling || item.payments_actual !== (item.day1_count + item.day2_count + item.day3_count)
 
   return (
-    <article className="surface-elevated rounded-xl p-4 md:hidden">
+    <article className="surface-elevated rounded p-4 md:hidden">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -193,12 +193,12 @@ export function TeamReportsPage({ title }: Props) {
         <>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-28 rounded-xl" />
+              <Skeleton key={i} className="h-28 rounded" />
             ))}
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
             {Array.from({ length: 7 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 rounded-xl" />
+              <Skeleton key={i} className="h-24 rounded" />
             ))}
           </div>
         </>
@@ -246,7 +246,7 @@ export function TeamReportsPage({ title }: Props) {
               {TILES.map((tile) => (
                 <div
                   key={tile.key}
-                  className="surface-elevated rounded-xl border border-border/60 py-3 text-center"
+                  className="surface-elevated rounded border border-border/60 py-3 text-center"
                 >
                   <div className={cn('text-2xl font-bold tabular-nums', tile.color)}>
                     {data.live_summary[tile.key]}
@@ -270,7 +270,7 @@ export function TeamReportsPage({ title }: Props) {
               </div>
 
               {data.items.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-white/12 px-4 py-6 text-sm text-muted-foreground">
+                <div className="rounded border border-dashed border-white/12 px-4 py-6 text-sm text-muted-foreground">
                   No reports submitted for {data.date}.
                 </div>
               ) : (
@@ -377,13 +377,13 @@ export function TeamReportsPage({ title }: Props) {
               </div>
 
               {data.missing_members.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-white/12 px-4 py-6 text-sm text-muted-foreground">
+                <div className="rounded border border-dashed border-white/12 px-4 py-6 text-sm text-muted-foreground">
                   Everyone in scope has submitted for {data.date}.
                 </div>
               ) : (
                 <div className="space-y-3">
                   {data.missing_members.map((member) => (
-                    <div key={member.user_id} className="surface-inset rounded-xl px-3 py-3">
+                    <div key={member.user_id} className="surface-inset rounded px-3 py-3">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
