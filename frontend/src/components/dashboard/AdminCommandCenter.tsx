@@ -198,13 +198,12 @@ function StatCard({
 }) {
   const styles = STAT_VARIANT_STYLES[variant]
   const inner = (
-    <div title={hint} className="flex h-[88px] items-center gap-3.5 px-4">
-      <div className={`h-10 w-1 shrink-0 rounded-full ${styles.accent}`} />
+    <div title={hint} className="flex h-[68px] items-center gap-3 px-4">
+      <div className={`h-7 w-[3px] shrink-0 rounded-full ${styles.accent}`} />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">{label}</p>
-        <p className={`mt-1 font-heading text-[1.85rem] font-bold leading-none tabular-nums ${styles.value}`}>{value}</p>
+        <p className="truncate text-[0.62rem] font-medium tracking-[0.08em] text-muted-foreground/60" style={{ textTransform: 'none' }}>{label}</p>
+        <p className={`mt-0.5 font-heading text-[1.7rem] font-semibold leading-none tabular-nums ${styles.value}`}>{value}</p>
       </div>
-      {to && <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/30" />}
     </div>
   )
   if (to) return (
@@ -213,6 +212,39 @@ function StatCard({
     </CardLink>
   )
   return <Card className="overflow-hidden">{inner}</Card>
+}
+
+// Compact operations panel — replaces 6 individual stat cards
+function OpsRow({
+  label,
+  value,
+  hint,
+  variant = 'default',
+  to,
+}: {
+  label: string
+  value: string | number
+  hint: string
+  variant?: StatVariant
+  to?: string
+}) {
+  const styles = STAT_VARIANT_STYLES[variant]
+  const hasValue = Number(value) > 0
+  const inner = (
+    <div
+      title={hint}
+      className={`flex items-center gap-3 px-4 py-2.5 transition-colors ${to ? 'hover:bg-muted/30' : ''}`}
+    >
+      <div className={`size-1.5 shrink-0 rounded-full ${hasValue ? styles.dot : 'bg-muted-foreground/20'}`} />
+      <p className="flex-1 truncate text-sm text-foreground/75">{label}</p>
+      <p className={`shrink-0 tabular-nums text-sm font-semibold ${hasValue ? styles.value : 'text-muted-foreground/40'}`}>
+        {value}
+      </p>
+      {to && <ChevronRight className="size-3 shrink-0 text-muted-foreground/25" />}
+    </div>
+  )
+  if (to) return <Link to={to} className="block no-underline">{inner}</Link>
+  return <div>{inner}</div>
 }
 
 function DeskShortcut({
@@ -670,48 +702,17 @@ export function AdminCommandCenter({ firstName }: Props) {
             />
           </section>
 
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <StatCard
-              label="Pending Registrations"
-              value={pendingRegistrations.data?.total ?? 0}
-              hint="Self-serve signups waiting for admin approval."
-              variant="warning"
-              to="/dashboard/team/approvals"
-            />
-            <StatCard
-              label="Min. FLP Billing"
-              value={enrollmentPending.data?.total ?? 0}
-              hint="Min. FLP billing approvals pending review right now."
-              variant="warning"
-              to="/dashboard/team/enrollment-approvals"
-            />
-            <StatCard
-              label="Recharge Requests"
-              value={pendingRechargeItems.length}
-              hint="Wallet requests still waiting for finance approval."
-              variant="warning"
-              to="/dashboard/finance/recharge-admin"
-            />
-            <StatCard
-              label="Grace Requests"
-              value={pendingGraceCount}
-              hint="Team members with a pending grace period request awaiting review."
-              variant={pendingGraceCount > 0 ? 'warning' : 'default'}
-              to="/dashboard/team/members"
-            />
-            <StatCard
-              label="Reassign Ready"
-              value={leadControl.data?.queue_total ?? 0}
-              hint="Archived watch leads already eligible for redistribution."
-              to="/dashboard/system/lead-control"
-            />
-            <StatCard
-              label="Archive Incubation"
-              value={leadControl.data?.incubation_total ?? 0}
-              hint="Archived watch leads still counting down toward stale reassignment."
-              to="/dashboard/system/lead-control"
-            />
-          </section>
+          {/* Compact operations panel */}
+          <Card className="overflow-hidden">
+            <div className="divide-y divide-border/40">
+              <OpsRow label="Recharge requests" value={pendingRechargeItems.length} hint="Wallet requests still waiting for finance approval." variant="warning" to="/dashboard/finance/recharge-admin" />
+              <OpsRow label="Pending registrations" value={pendingRegistrations.data?.total ?? 0} hint="Self-serve signups waiting for admin approval." variant="warning" to="/dashboard/team/approvals" />
+              <OpsRow label="Min. FLP billing" value={enrollmentPending.data?.total ?? 0} hint="Min. FLP billing approvals pending review right now." variant="warning" to="/dashboard/team/enrollment-approvals" />
+              <OpsRow label="Grace requests" value={pendingGraceCount} hint="Team members with a pending grace period request awaiting review." variant={pendingGraceCount > 0 ? 'warning' : 'default'} to="/dashboard/team/members" />
+              <OpsRow label="Reassign ready" value={leadControl.data?.queue_total ?? 0} hint="Archived leads eligible for redistribution." variant="default" to="/dashboard/system/lead-control" />
+              <OpsRow label="Archive incubation" value={leadControl.data?.incubation_total ?? 0} hint="Archived leads counting down toward stale reassignment." variant="default" to="/dashboard/system/lead-control" />
+            </div>
+          </Card>
 
           <section className="grid gap-4 xl:grid-cols-2">
             <Card>
