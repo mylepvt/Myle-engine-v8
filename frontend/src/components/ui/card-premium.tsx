@@ -127,11 +127,11 @@ const MetricCard = ({
 
   return (
     <PremiumCard className={className}>
-      <div className="flex items-start justify-between">
-        <div className="space-y-2">
-          <p className="text-ds-caption text-muted-foreground">{title}</p>
+      <div className="px-4 py-3 md:px-5 md:py-4 flex items-start justify-between gap-4">
+        <div className="space-y-2 min-w-0">
+          <p className="text-ds-caption text-muted-foreground leading-normal">{title}</p>
           <div className="flex items-baseline gap-2">
-            <span className="font-heading text-ds-h1 text-foreground">
+            <span className="font-heading text-ds-h1 text-foreground leading-tight">
               {value}
             </span>
             {change ? (
@@ -141,7 +141,7 @@ const MetricCard = ({
             ) : null}
           </div>
         </div>
-        {icon ? <div className="rounded-xl bg-primary/10 p-2.5 text-primary">{icon}</div> : null}
+        {icon ? <div className="shrink-0 rounded-xl bg-primary/10 p-2.5 text-primary">{icon}</div> : null}
       </div>
     </PremiumCard>
   )
@@ -168,7 +168,7 @@ const ActionCard = ({
     <button
       type="button"
       onClick={onAction}
-      className="flex w-full cursor-pointer items-start gap-4 rounded-[inherit] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className="flex w-full cursor-pointer items-start gap-4 px-4 py-3 md:px-5 md:py-4 rounded-[inherit] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       {icon ? (
         <div className="shrink-0 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 p-3 text-primary">
@@ -176,8 +176,8 @@ const ActionCard = ({
         </div>
       ) : null}
       <div className="min-w-0 flex-1 space-y-2">
-        <h4 className="text-ds-h3 text-foreground">{title}</h4>
-        <p className="text-ds-body text-muted-foreground">{description}</p>
+        <h4 className="text-ds-h3 text-foreground leading-tight">{title}</h4>
+        <p className="text-ds-body text-muted-foreground leading-normal">{description}</p>
         <span className="inline-block text-ds-body font-medium text-primary transition-colors group-hover:text-primary/85">
           {actionLabel} →
         </span>
