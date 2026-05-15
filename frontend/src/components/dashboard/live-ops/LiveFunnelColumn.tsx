@@ -8,33 +8,39 @@ type Stage = {
   label: string
   icon: string
   color: string
-  funnelPct: number  // fixed visual funnel shape — wide→narrow
+  widthPct: number
 }
 
-// Fixed decreasing widths create the visual funnel shape regardless of count.
-// Actual counts shown as text next to it.
+// Each stage container shrinks 6% — clip-path insets 3% per side at bottom.
+// Math: adjacent card bottom width = adjacent card container width → edges are geometrically
+// continuous diagonal lines across all 14 stages (true funnel silhouette).
 const PIPELINE: Stage[] = [
-  { key: 'claimed',      label: 'Just Claimed',  icon: '⚑',  color: '#7c3aed', funnelPct: 100 },
-  { key: 'new_lead',     label: 'New Lead',       icon: '📥', color: '#5865f2', funnelPct: 88  },
-  { key: 'contacted',    label: 'Contacted',      icon: '📞', color: '#4f86f7', funnelPct: 77  },
-  { key: 'invited',      label: 'Invited',        icon: '✉️', color: '#38bdf8', funnelPct: 66  },
-  { key: 'video_sent',   label: 'Video Sent',     icon: '▶️', color: '#22d3ee', funnelPct: 57  },
-  { key: 'paid',         label: 'Min. FLP',       icon: '💰', color: '#10b981', funnelPct: 48  },
-  { key: 'mindset_lock', label: 'Mindset Lock',   icon: '🔒', color: '#6ee7b7', funnelPct: 40  },
-  { key: 'day1',         label: 'Day 1',          icon: '🎯', color: '#84cc16', funnelPct: 33  },
-  { key: 'day2',         label: 'Day 2',          icon: '📚', color: '#eab308', funnelPct: 27  },
-  { key: 'day3',         label: 'Day 3',          icon: '📚', color: '#f59e0b', funnelPct: 22  },
-  { key: 'day4',         label: 'Day 4',          icon: '📚', color: '#f97316', funnelPct: 18  },
-  { key: 'day5',         label: 'Day 5',          icon: '📚', color: '#ef4444', funnelPct: 14  },
-  { key: 'interview',    label: 'Interview',      icon: '🎤', color: '#e879f9', funnelPct: 10  },
-  { key: 'converted',    label: 'Converted',      icon: '🏆', color: '#f43f5e', funnelPct: 7   },
+  { key: 'claimed',      label: 'Just Claimed',  icon: '⚑',  color: '#7c3aed', widthPct: 100 },
+  { key: 'new_lead',     label: 'New Lead',       icon: '📥', color: '#5865f2', widthPct: 94  },
+  { key: 'contacted',    label: 'Contacted',      icon: '📞', color: '#4f86f7', widthPct: 88  },
+  { key: 'invited',      label: 'Invited',        icon: '✉️', color: '#38bdf8', widthPct: 82  },
+  { key: 'video_sent',   label: 'Video Sent',     icon: '▶️', color: '#22d3ee', widthPct: 76  },
+  { key: 'paid',         label: 'Min. FLP',       icon: '💰', color: '#10b981', widthPct: 70  },
+  { key: 'mindset_lock', label: 'Mindset Lock',   icon: '🔒', color: '#6ee7b7', widthPct: 64  },
+  { key: 'day1',         label: 'Day 1',          icon: '🎯', color: '#84cc16', widthPct: 58  },
+  { key: 'day2',         label: 'Day 2',          icon: '📚', color: '#eab308', widthPct: 52  },
+  { key: 'day3',         label: 'Day 3',          icon: '📚', color: '#f59e0b', widthPct: 46  },
+  { key: 'day4',         label: 'Day 4',          icon: '📚', color: '#f97316', widthPct: 40  },
+  { key: 'day5',         label: 'Day 5',          icon: '📚', color: '#ef4444', widthPct: 34  },
+  { key: 'interview',    label: 'Interview',      icon: '🎤', color: '#e879f9', widthPct: 28  },
+  { key: 'converted',    label: 'Converted',      icon: '🏆', color: '#f43f5e', widthPct: 22  },
 ]
 
-function sparkPath(seed: number, w = 56, h = 16): string {
-  const pts = Array.from({ length: 7 }, (_, i) => {
-    const x = (i / 6) * w
+// Trapezoid clip-path: full width at top, 3% inset per side at bottom.
+// Left edge slants inward going down. Right edge mirrors it.
+// Combined with 6%-per-step container shrink → edges form one continuous diagonal.
+const TRAP = 'polygon(0% 0%, 100% 0%, 97% 100%, 3% 100%)'
+
+function sparkPath(seed: number, w = 34, h = 10): string {
+  const pts = Array.from({ length: 6 }, (_, i) => {
+    const x = (i / 5) * w
     const noise = Math.sin(i * 2.1 + seed * 0.7) * 0.3
-    const y = h - Math.max(2, Math.min(h - 2, (i / 6 * 0.6 + 0.2 + noise) * h))
+    const y = h - Math.max(1, Math.min(h - 1, (i / 5 * 0.6 + 0.2 + noise) * h))
     return `${x.toFixed(1)},${y.toFixed(1)}`
   })
   return `M ${pts.join(' L ')}`
@@ -42,7 +48,7 @@ function sparkPath(seed: number, w = 56, h = 16): string {
 
 function Sparkline({ count, color }: { count: number; color: string }) {
   return (
-    <svg width={56} height={16} viewBox="0 0 56 16" fill="none" className="shrink-0 opacity-50">
+    <svg width={34} height={10} viewBox="0 0 34 10" fill="none" className="shrink-0 opacity-50">
       <path d={sparkPath(count)} stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
@@ -52,7 +58,7 @@ function StageDots({ stageKey }: { stageKey: string }) {
   const _tick = useFunnelActivityStore((s) => s._tick)
   const getStages = useFunnelActivityStore((s) => s.getStages)
   const dots = useMemo(
-    () => getStages().find((s) => s.key === stageKey)?.dots.slice(0, 3) ?? [],
+    () => getStages().find((s) => s.key === stageKey)?.dots.slice(0, 2) ?? [],
     [_tick, getStages, stageKey],
   )
   if (!dots.length) return null
@@ -62,7 +68,7 @@ function StageDots({ stageKey }: { stageKey: string }) {
         <div
           key={dot.id}
           title={dot.name}
-          className="relative flex size-4 shrink-0 items-center justify-center rounded-full text-[7px] font-bold text-white"
+          className="relative flex size-3.5 items-center justify-center rounded-full text-[6px] font-bold text-white"
           style={{ backgroundColor: dot.color }}
         >
           {dot.name.split(/\s+/)[0]?.[0]?.toUpperCase() ?? '?'}
@@ -90,79 +96,82 @@ export function LiveFunnelColumn() {
   }
 
   return (
-    <div className="flex flex-col">
-      {PIPELINE.map((stage, idx) => {
+    <div className="flex flex-col items-center gap-px py-3 px-2">
+      {PIPELINE.map((stage) => {
         const count = (counts[stage.key] ?? 0) + (liveOverrides[stage.key] ?? 0)
         const movement = (todayMov[stage.key] ?? 0) + (liveOverrides[stage.key] ?? 0)
         const isUp = movement > 0
+        const w = stage.widthPct
+
+        // Content hides progressively as stages narrow
+        const showLabel     = w >= 52
+        const showSparkline = w >= 46
+        const showDots      = w >= 64
+        const showTrend     = w >= 34
 
         return (
           <div
             key={stage.key}
-            className="group relative flex items-center border-b border-white/[0.04] px-2 py-1.5 transition-colors hover:bg-white/[0.03] sm:px-3 sm:py-2"
+            style={{
+              width: `${w}%`,
+              clipPath: TRAP,
+              // Dark matte fill — clip-path edge IS the border (no explicit border needed)
+              background: `linear-gradient(170deg, ${stage.color}1e 0%, ${stage.color}0e 55%, ${stage.color}06 100%)`,
+              // Seam glow between adjacent cards + depth shadow below
+              boxShadow: `inset 0 1px 0 ${stage.color}28, 0 2px 8px ${stage.color}12`,
+            }}
+            className="relative transition-all duration-500"
           >
-            {/* Row # */}
-            <span className="mr-1.5 w-5 shrink-0 text-[10px] tabular-nums text-muted-foreground/25 sm:mr-2 sm:w-6">
-              {String(idx + 1).padStart(2, '0')}
-            </span>
+            <div className="relative z-10 flex items-center gap-1.5 px-3 py-[7px]">
 
-            {/* Stage dot */}
-            <span
-              className="mr-2 block size-1.5 shrink-0 rounded-full"
-              style={{ backgroundColor: stage.color, boxShadow: `0 0 5px ${stage.color}90` }}
-            />
+              {/* Live pulse dot */}
+              <span className="relative flex size-1.5 shrink-0">
+                <span
+                  className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60"
+                  style={{ backgroundColor: stage.color }}
+                />
+                <span
+                  className="relative inline-flex size-1.5 rounded-full"
+                  style={{ backgroundColor: stage.color }}
+                />
+              </span>
 
-            {/* Icon — hidden on very small screens */}
-            <span className="mr-1.5 hidden shrink-0 text-[13px] leading-none sm:mr-2 sm:block">
-              {stage.icon}
-            </span>
+              {/* Stage icon */}
+              <span className="shrink-0 text-[12px] leading-none">{stage.icon}</span>
 
-            {/* Label */}
-            <span className="mr-2 w-24 shrink-0 truncate text-[11px] font-medium text-muted-foreground/75 group-hover:text-foreground/90 sm:w-28">
-              {stage.label}
-            </span>
-
-            {/* Funnel bar — fixed decreasing shape */}
-            <div className="relative mr-2 flex-1 sm:mr-3">
-              <div
-                className="h-6 rounded-r-md transition-all duration-500 sm:rounded-r-full sm:h-7"
-                style={{
-                  width: `${stage.funnelPct}%`,
-                  background: `linear-gradient(90deg, ${stage.color}30, ${stage.color}08)`,
-                  borderLeft: `2px solid ${stage.color}55`,
-                }}
-              />
-            </div>
-
-            {/* Count */}
-            <span className="mr-2 w-10 shrink-0 text-right text-[14px] font-bold tabular-nums text-foreground sm:mr-3 sm:w-12 sm:text-[15px]">
-              {count > 0 ? count.toLocaleString() : '–'}
-            </span>
-
-            {/* Trend */}
-            <div
-              className={`mr-2 flex w-9 shrink-0 items-center gap-0.5 text-[11px] font-semibold tabular-nums sm:mr-2 sm:w-10 ${
-                isUp ? 'text-emerald-400' : movement < 0 ? 'text-red-400' : 'text-muted-foreground/20'
-              }`}
-            >
-              {movement !== 0 ? (
-                <>
-                  <span>{isUp ? '↑' : '↓'}</span>
-                  <span>{Math.abs(movement)}</span>
-                </>
+              {/* Stage label — hidden on narrow stages */}
+              {showLabel ? (
+                <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-foreground/65">
+                  {stage.label}
+                </span>
               ) : (
-                <span>–</span>
+                <div className="flex-1" />
               )}
-            </div>
 
-            {/* Actor dots — hide on mobile */}
-            <div className="mr-1 hidden w-12 shrink-0 sm:mr-2 sm:block">
-              <StageDots stageKey={stage.key} />
-            </div>
+              {/* Live actor dots — only on wide stages */}
+              {showDots && <StageDots stageKey={stage.key} />}
 
-            {/* Sparkline — hide on mobile */}
-            <div className="hidden sm:block">
-              <Sparkline count={count} color={stage.color} />
+              {/* Count */}
+              <span
+                className="shrink-0 text-[13px] font-bold tabular-nums"
+                style={{ color: count > 0 ? stage.color : 'rgba(255,255,255,0.15)' }}
+              >
+                {count > 0 ? count.toLocaleString() : '–'}
+              </span>
+
+              {/* Trend */}
+              {showTrend && (
+                <span
+                  className={`shrink-0 w-[26px] text-right text-[10px] font-semibold tabular-nums ${
+                    isUp ? 'text-emerald-400' : movement < 0 ? 'text-red-400' : 'text-white/10'
+                  }`}
+                >
+                  {movement !== 0 ? `${isUp ? '↑' : '↓'}${Math.abs(movement)}` : '–'}
+                </span>
+              )}
+
+              {/* Sparkline */}
+              {showSparkline && <Sparkline count={count} color={stage.color} />}
             </div>
           </div>
         )
