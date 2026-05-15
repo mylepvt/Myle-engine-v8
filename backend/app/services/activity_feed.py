@@ -100,6 +100,31 @@ async def write_event(
     # Broadcast to SSE subscribers
     await _broadcast_event(event)
 
+    # Persist to DB (fire-and-forget — survives service restarts, backs initial load)
+    asyncio.create_task(_persist_to_db(event_type, lead_id, actor_id, metadata))
+
+
+async def _persist_to_db(
+    event_type: str,
+    lead_id: int | None,
+    actor_id: int | None,
+    metadata: dict[str, Any] | None,
+) -> None:
+    """Save event to admin_activity_feed table.  Non-blocking — silently ignores errors."""
+    try:
+        from app.db.session import AsyncSessionLocal
+        from app.models.admin_activity_feed import AdminActivityFeed as _FeedModel
+        async with AsyncSessionLocal() as session:
+            session.add(_FeedModel(
+                event_type=event_type,
+                lead_id=lead_id,
+                actor_id=actor_id,
+                payload=metadata or {},
+            ))
+            await session.commit()
+    except Exception:
+        pass
+
 
 async def _broadcast_event(event: dict[str, Any]) -> None:
     """Send event to all connected SSE subscribers."""
