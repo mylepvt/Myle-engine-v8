@@ -181,6 +181,9 @@ def _parse_batch_slot_time(raw_value: str, fallback: time) -> time:
 
 
 async def _batch_slot_gate(session: AsyncSession, slot: str) -> tuple[bool, datetime | None, str | None]:
+    day_number = _batch_day_number(slot)
+    if day_number in (4, 5):
+        return True, None, None
     period = _batch_slot_period(slot)
     default_start = _BATCH_SLOT_DEFAULT_STARTS_IST[period]
     configured_start = _parse_batch_slot_time(
