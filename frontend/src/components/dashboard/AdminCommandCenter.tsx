@@ -701,29 +701,7 @@ export function AdminCommandCenter({ firstName }: Props) {
             <LiveOpsDashboard />
           </div>
 
-          <div className="flex gap-4">
-            {/* Left column — Live Funnel (sticky on desktop) */}
-            <div className="w-[340px] shrink-0 max-xl:hidden">
-              <div className="sticky top-4">
-                <Card>
-                  <CardHeader className="pb-1">
-                    <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                      <span className="relative flex size-2">
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                        <span className="relative inline-flex size-2 rounded-full bg-emerald-400" />
-                      </span>
-                      Live Pipeline
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <LiveFunnel />
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-
-            {/* Right column — everything else */}
-            <div className="min-w-0 flex-1 space-y-4">
+          <div className="space-y-4">
               {/* Pipeline stats bar */}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div className="surface-inset rounded px-3 py-2.5">
@@ -856,7 +834,6 @@ export function AdminCommandCenter({ firstName }: Props) {
               )}
 
               <AdminActivityPanel />
-            </div>
           </div>
         </TabsContent>
 
