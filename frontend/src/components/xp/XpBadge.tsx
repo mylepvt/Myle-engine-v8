@@ -31,7 +31,7 @@ export function XpBadge() {
   const lastMonth = history?.[0]
 
   return (
-    <Card className="border-primary/20 rounded-2xl">
+    <Card className="border-primary/20 rounded-md">
       <CardContent className="pt-5 pb-5">
         {/* Header row */}
         <div className="flex items-center justify-between gap-3 mb-3">
@@ -87,7 +87,7 @@ export function XpBadge() {
 
         {/* Last month result */}
         {lastMonth && (
-          <div className="mt-3 rounded-xl border border-white/[0.07] bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          <div className="mt-3 rounded border border-white/[0.07] bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
             Last month ({MONTH_NAMES[lastMonth.month - 1]}):&nbsp;
             <span className="font-semibold text-foreground">
               {lastMonth.final_xp.toLocaleString()} XP

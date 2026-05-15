@@ -415,7 +415,7 @@ function ProspectForm({ onSubmit }: { onSubmit: (info: ProspectInfo) => void }) 
                 value={val}
                 onChange={(ev) => set(ev.target.value)}
                 placeholder={ph}
-                className="h-12 w-full rounded-2xl border border-[#26385d] bg-[#0a1120] px-4 text-sm text-[#f7f9ff] outline-none transition placeholder:text-[#7887a3] focus:border-[#8eb0ff] focus:ring-2 focus:ring-[#8eb0ff]/20"
+                className="h-12 w-full rounded-md border border-[#26385d] bg-[#0a1120] px-4 text-sm text-[#f7f9ff] outline-none transition placeholder:text-[#7887a3] focus:border-[#8eb0ff] focus:ring-2 focus:ring-[#8eb0ff]/20"
               />
             </div>
           ))}
@@ -424,7 +424,7 @@ function ProspectForm({ onSubmit }: { onSubmit: (info: ProspectInfo) => void }) 
 
           <button
             type="submit"
-            className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[#dce7ff] px-5 text-ds-body font-bold text-[#0a1530] transition hover:bg-[#c6d8ff]"
+            className="inline-flex h-12 w-full items-center justify-center rounded-md bg-[#dce7ff] px-5 text-ds-body font-bold text-[#0a1530] transition hover:bg-[#c6d8ff]"
           >
             Join the session →
           </button>
@@ -652,7 +652,7 @@ export function LivePremierePage() {
               <p className="text-base text-[#7a94c4]">You've taken the first step. Reach out to your mentor to move forward.</p>
               <button
                 type="button"
-                className="inline-flex h-13 items-center justify-center rounded-2xl bg-[#dce7ff] px-8 py-3.5 text-ds-body font-bold text-[#0a1530] transition hover:bg-[#c6d8ff]"
+                className="inline-flex h-13 items-center justify-center rounded-md bg-[#dce7ff] px-8 py-3.5 text-ds-body font-bold text-[#0a1530] transition hover:bg-[#c6d8ff]"
                 onClick={() => {
                   const msg = "Hi, I just watched the Myle session. I'm interested to know more."
                   const wa = prospect ? whatsAppChatWithTextHref(prospect.phone, msg) : null
@@ -879,7 +879,7 @@ function PremiereVideoPlayerWithRef({
       <button
         type="button"
         aria-label="Fullscreen"
-        className="absolute bottom-4 right-4 flex size-10 items-center justify-center rounded-xl bg-black/60 text-white backdrop-blur-sm hover:bg-black/80"
+        className="absolute bottom-4 right-4 flex size-10 items-center justify-center rounded bg-black/60 text-white backdrop-blur-sm hover:bg-black/80"
         onClick={() => { void externalRef.current?.requestFullscreen() }}
       >
         <svg className="size-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -890,7 +890,7 @@ function PremiereVideoPlayerWithRef({
       <button
         type="button"
         aria-label="Info"
-        className="absolute bottom-4 left-4 flex size-10 items-center justify-center rounded-xl bg-black/60 text-white backdrop-blur-sm hover:bg-black/80"
+        className="absolute bottom-4 left-4 flex size-10 items-center justify-center rounded bg-black/60 text-white backdrop-blur-sm hover:bg-black/80"
         onClick={() => setShowCta((p) => !p)}
       >
         <svg className="size-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -899,7 +899,7 @@ function PremiereVideoPlayerWithRef({
       </button>
 
       {showCta && (
-        <div className="absolute inset-x-4 bottom-16 rounded-2xl border border-white/10 bg-black/80 px-5 py-4 backdrop-blur-xl">
+        <div className="absolute inset-x-4 bottom-16 rounded-md border border-white/10 bg-black/80 px-5 py-4 backdrop-blur-xl">
           <p className="text-sm font-semibold text-white">Ready to take the next step?</p>
           <p className="mt-1 text-xs text-[#a0b4d6]">Talk to your mentor after this session to get started.</p>
         </div>

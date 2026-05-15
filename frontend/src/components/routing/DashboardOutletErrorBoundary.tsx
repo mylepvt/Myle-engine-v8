@@ -52,7 +52,7 @@ export class DashboardOutletErrorBoundary extends Component<Props, State> {
       const chunkLike = this.isChunkLoadLikeError(msg)
       return (
         <div
-          className="max-w-lg space-y-3 rounded-xl border border-destructive/30 bg-destructive/10 p-6 text-sm"
+          className="max-w-lg space-y-3 rounded border border-destructive/30 bg-destructive/10 p-6 text-sm"
           role="alert"
         >
           <p className="font-semibold text-destructive">This view crashed</p>

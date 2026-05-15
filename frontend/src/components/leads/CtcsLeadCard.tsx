@@ -109,7 +109,7 @@ export function CtcsLeadCard({
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-xl border p-2.5 text-card-foreground backdrop-blur-md',
+        'relative overflow-hidden rounded border p-2.5 text-card-foreground backdrop-blur-md',
         'bg-card/90 dark:bg-card/80 supports-[backdrop-filter]:bg-card/75 supports-[backdrop-filter]:dark:bg-card/60',
         timeColors.border,
         timeColors.cardGlow,

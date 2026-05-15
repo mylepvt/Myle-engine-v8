@@ -103,7 +103,7 @@ function SlotCard({ slot, baseOrigin, day }: { slot: ScheduleSlot; baseOrigin: s
 
   return (
     <div
-      className={`rounded-xl border px-4 py-3 transition-colors ${
+      className={`rounded border px-4 py-3 transition-colors ${
         slot.state === 'live'
           ? 'border-red-500/30 bg-red-500/[0.06]'
           : slot.state === 'waiting'

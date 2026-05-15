@@ -105,7 +105,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
 
   if (isPending) {
     return (
-      <div className={cn('rounded-xl border border-border/60 bg-muted/30 p-3 text-ds-caption text-muted-foreground', className)}>
+      <div className={cn('rounded border border-border/60 bg-muted/30 p-3 text-ds-caption text-muted-foreground', className)}>
         Loading next step…
       </div>
     )
@@ -113,7 +113,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
 
   if (isError) {
     return (
-      <div className={cn('rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-ds-caption text-destructive', className)} role="alert">
+      <div className={cn('rounded border border-destructive/30 bg-destructive/10 p-3 text-ds-caption text-destructive', className)} role="alert">
         {error instanceof Error ? error.message : 'Could not load transitions'}{' '}
         <button type="button" className="underline underline-offset-2" onClick={() => void refetch()}>
           Retry
@@ -124,7 +124,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
 
   if (!transitions?.length || !primary) {
     return (
-      <div className={cn('rounded-xl border border-border/60 bg-muted/30 p-3 text-ds-caption text-muted-foreground', className)}>
+      <div className={cn('rounded border border-border/60 bg-muted/30 p-3 text-ds-caption text-muted-foreground', className)}>
         No next move available for your role from this stage (or lead is terminal). Use full status controls if your
         role allows.
       </div>
@@ -137,7 +137,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
       {!paidGateBlocked ? (
         <Button
           type="button"
-          className="h-11 w-full justify-center gap-2 rounded-xl border border-primary/35 bg-primary/15 text-sm font-semibold text-primary shadow-sm hover:bg-primary/25"
+          className="h-11 w-full justify-center gap-2 rounded border border-primary/35 bg-primary/15 text-sm font-semibold text-primary shadow-sm hover:bg-primary/25"
           disabled={mut.isPending}
           onClick={() => void onPrimaryClick()}
         >
@@ -148,7 +148,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
         </Button>
       ) : null}
       {paidGateBlocked ? (
-        <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-ds-caption text-amber-200">
+        <div className="rounded border border-amber-400/30 bg-amber-400/10 p-3 text-ds-caption text-amber-200">
           <p>{paidGateCopy()}</p>
           {role !== 'admin' ? (
             <Link

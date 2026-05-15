@@ -38,7 +38,7 @@ export function LiveSessionSlotPicker({ open, busy = false, day = 1, onClose, on
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-xs rounded-2xl border border-white/10 bg-[#0d1526] p-5 shadow-2xl"
+        className="w-full max-w-xs rounded-md border border-white/10 bg-[#0d1526] p-5 shadow-2xl"
       >
         <p className="text-ds-label font-bold uppercase text-primary/70">
           Day {day} Video
@@ -54,7 +54,7 @@ export function LiveSessionSlotPicker({ open, busy = false, day = 1, onClose, on
             <p className="text-sm text-amber-200/80">No upcoming slots available.</p>
           ) : (
             <select
-              className="w-full rounded-xl border border-white/15 bg-white/[0.06] px-3 py-3 text-sm font-medium text-white focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/40"
+              className="w-full rounded border border-white/15 bg-white/[0.06] px-3 py-3 text-sm font-medium text-white focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/40"
               value={effectiveHour ?? ''}
               onChange={(e) => setSelectedHour(Number(e.target.value))}
             >

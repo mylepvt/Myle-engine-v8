@@ -155,7 +155,7 @@ export function RegisterPage() {
       <div className="relative z-[1] w-full max-w-[min(100%,26rem)]">
         {/* Brand mark above card */}
         <div className="mb-8 flex flex-col items-center gap-2">
-          <div className="flex size-14 items-center justify-center rounded-2xl bg-primary shadow-lg shadow-primary/40">
+          <div className="flex size-14 items-center justify-center rounded-md bg-primary shadow-lg shadow-primary/40">
             <UserPlus className="size-7 text-white" aria-hidden />
           </div>
           <span className="font-heading text-ds-h2 text-foreground">Myle</span>
@@ -181,7 +181,7 @@ export function RegisterPage() {
         >
           {submitted ? (
             <div
-              className="rounded-xl border border-primary/35 bg-primary/[0.08] px-3 py-3 text-center text-sm text-foreground"
+              className="rounded border border-primary/35 bg-primary/[0.08] px-3 py-3 text-center text-sm text-foreground"
               role="status"
             >
               <p className="font-medium text-foreground">{successMessage}</p>
@@ -200,7 +200,7 @@ export function RegisterPage() {
           <form className="space-y-4 md:space-y-6" onSubmit={(e) => void handleSubmit(e)} noValidate>
             {formError ? (
               <div
-                className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-center text-sm text-destructive"
+                className="rounded border border-destructive/40 bg-destructive/10 px-3 py-2 text-center text-sm text-destructive"
                 role="alert"
               >
                 {formError}
@@ -367,7 +367,7 @@ export function RegisterPage() {
                 />
               </div>
 
-              <div className="rounded-2xl border border-border/60 bg-muted/35 p-4">
+              <div className="rounded-md border border-border/60 bg-muted/35 p-4">
                 <label className="flex cursor-pointer gap-3 text-ds-body text-muted-foreground">
                   <input
                     type="checkbox"

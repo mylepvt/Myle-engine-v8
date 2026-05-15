@@ -134,7 +134,7 @@ export function DailyReportFormPage({ title }: Props) {
         </label>
       </div>
 
-      {q.isPending ? <Skeleton className="h-40 w-full rounded-xl" /> : null}
+      {q.isPending ? <Skeleton className="h-40 w-full rounded" /> : null}
       {q.isError ? (
         <p className="text-sm text-destructive" role="alert">
           {q.error instanceof Error ? q.error.message : 'Failed to load'}

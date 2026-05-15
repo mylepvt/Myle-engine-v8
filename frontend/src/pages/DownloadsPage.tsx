@@ -187,7 +187,7 @@ export function DownloadsPage({ title }: Props) {
             {data.map((row) => (
               <li
                 key={row.id}
-                className="surface-elevated flex items-center gap-3 rounded-xl border border-border/60 p-4 text-sm"
+                className="surface-elevated flex items-center gap-3 rounded border border-border/60 p-4 text-sm"
               >
                 <FileTypeBadge mime={row.mime_type} />
                 <div className="min-w-0 flex-1">

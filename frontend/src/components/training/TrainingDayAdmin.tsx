@@ -104,7 +104,7 @@ export function TrainingDayAdmin({ video }: Props) {
   }
 
   return (
-    <div className="mt-3 min-w-0 overflow-hidden rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.07] via-transparent to-transparent p-4">
+    <div className="mt-3 min-w-0 overflow-hidden rounded border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.07] via-transparent to-transparent p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-amber-300/90">Admin editor</p>
@@ -169,7 +169,7 @@ export function TrainingDayAdmin({ video }: Props) {
 
         <label className="block md:col-span-2">
           <span className="field-label">Audio file</span>
-          <div className="rounded-xl border border-white/10 bg-muted/30 p-3">
+          <div className="rounded border border-white/10 bg-muted/30 p-3">
             <input
               ref={audioRef}
               type="file"

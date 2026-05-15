@@ -19,7 +19,7 @@ export function InstallAppBanner() {
       role="region"
       aria-label="Install app"
     >
-      <div className="mx-auto flex max-w-lg items-start gap-3 rounded-xl border border-primary/30 bg-card/95 p-4 shadow-[0_-8px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+      <div className="mx-auto flex max-w-lg items-start gap-3 rounded border border-primary/30 bg-card/95 p-4 shadow-[0_-8px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl">
         <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
           <Download className="size-5" aria-hidden />
         </div>

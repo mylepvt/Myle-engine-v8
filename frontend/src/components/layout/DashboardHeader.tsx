@@ -56,29 +56,28 @@ export function DashboardHeader({
   return (
     <header
       className={cn(
-        'dashboard-shell-header relative z-20 flex h-[56px] shrink-0 items-center gap-2 border-b border-border/60 bg-background/95 px-3 shadow-ios-bar md:gap-3 md:px-4 supports-[backdrop-filter]:bg-background/92 supports-[backdrop-filter]:backdrop-blur-md',
+        'dashboard-shell-header relative z-20 flex h-[48px] shrink-0 items-center gap-2 border-b border-border bg-background/96 px-3 md:px-4',
+        'supports-[backdrop-filter]:bg-background/90 supports-[backdrop-filter]:backdrop-blur-sm',
         isMainScrolled && 'dashboard-shell-header--scrolled',
       )}
     >
-      <div className="flex min-w-0 shrink-0 items-center gap-1.5">
+      {/* Left: toggle + role picker */}
+      <div className="flex shrink-0 items-center gap-1">
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="size-10 shrink-0"
+          className="size-9"
           onClick={() => {
-            if (isMobile) {
-              setMobileMenuOpen(!mobileMenuOpen)
-            } else {
-              toggleSidebar()
-            }
+            if (isMobile) setMobileMenuOpen(!mobileMenuOpen)
+            else toggleSidebar()
           }}
           aria-label="Toggle sidebar"
         >
           {(isMobile ? mobileMenuOpen : sidebarOpen) ? (
-            <PanelLeftClose className="size-5" />
+            <PanelLeftClose className="size-[18px]" />
           ) : (
-            <Menu className="size-5" />
+            <Menu className="size-[18px]" />
           )}
         </Button>
 
@@ -90,7 +89,7 @@ export function DashboardHeader({
             <select
               id="header-view-as"
               className={cn(
-                'h-10 min-w-[5.5rem] max-w-[9rem] shrink-0 rounded-lg border border-border bg-muted/40 py-0 pl-2 pr-7 text-ds-caption font-medium text-foreground',
+                'h-8 min-w-[5rem] max-w-[8rem] shrink-0 rounded border border-border bg-muted/60 py-0 pl-2 pr-6 text-ds-caption font-medium text-foreground',
                 'focus:outline-none focus:ring-2 focus:ring-primary/30',
               )}
               value={viewAsRole ?? 'admin'}
@@ -108,16 +107,17 @@ export function DashboardHeader({
         ) : null}
       </div>
 
+      {/* Center: search */}
       <form
         className={cn(
-          'relative mx-auto hidden min-w-0 max-w-xl flex-1 sm:block',
+          'relative mx-auto hidden min-w-0 max-w-lg flex-1 sm:block',
           trainingLocked && 'sm:hidden',
         )}
         onSubmit={onSubmitSearch}
         role="search"
       >
         <Search
-          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+          className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
           aria-hidden
         />
         <input
@@ -126,52 +126,58 @@ export function DashboardHeader({
           value={headerSearch}
           onChange={(e) => setHeaderSearch(e.target.value)}
           placeholder="Search leads"
-          className="h-9 w-full rounded-[0.625rem] border border-border bg-muted/50 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/30"
+          className="h-8 w-full rounded border border-border bg-muted/50 pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/20"
           aria-label="Search leads"
           autoComplete="off"
         />
       </form>
+
+      {/* Mobile page label */}
       <div className="hidden min-w-0 flex-1 sm:flex md:hidden">
         <p className="truncate text-sm font-semibold text-foreground">{currentPageLabel}</p>
       </div>
 
-      <div className="ml-auto flex shrink-0 items-center gap-0.5 md:gap-1">
+      {/* Right: actions + avatar */}
+      <div className="ml-auto flex shrink-0 items-center gap-0.5">
         <ShellHeaderFeedbackControls />
+
         <Link
           to="/dashboard/settings/profile"
-          className="relative hidden size-10 items-center justify-center rounded-full transition-colors duration-200 hover:bg-muted active:opacity-80"
+          className="hidden size-9 items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[rgba(255,255,255,0.06)] hover:text-foreground md:flex"
           aria-label="Settings"
         >
-          <Settings className="size-[1.15rem] md:size-[1.25rem]" />
+          <Settings className="size-[17px]" />
         </Link>
+
         {approverForEnroll && pendingEnrollCount > 0 ? (
           <div className="relative">
             <Link
               to="/dashboard/team/enrollment-approvals"
-              className="relative flex size-10 items-center justify-center rounded-full transition-colors duration-200 hover:bg-muted active:opacity-80"
+              className="relative flex size-9 items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[rgba(255,255,255,0.06)] hover:text-foreground"
               aria-label={`Min. FLP approvals — ${pendingEnrollCount} pending`}
             >
-              <ClipboardCheck className="size-[1.15rem] md:size-[1.25rem] text-emerald-400" />
+              <ClipboardCheck className="size-[17px] text-success" />
             </Link>
             <span
-              className="pointer-events-none absolute -right-0.5 -top-0.5 flex min-w-[18px] items-center justify-center rounded-full bg-[#23a55a] px-1 text-[10px] font-bold text-white"
+              className="pointer-events-none absolute -right-0.5 -top-0.5 flex min-w-[16px] items-center justify-center rounded bg-success px-1 text-[10px] font-bold leading-4 text-white"
               aria-hidden
             >
               {pendingEnrollCount > 9 ? '9+' : pendingEnrollCount}
             </span>
           </div>
         ) : null}
+
         <div className="relative">
           <Link
             to="/dashboard/other/notice-board"
-            className="relative flex size-10 items-center justify-center rounded-full transition-colors duration-200 hover:bg-muted active:opacity-80"
+            className="relative flex size-9 items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[rgba(255,255,255,0.06)] hover:text-foreground"
             aria-label={noticeBoardUnread > 0 ? `Notice board — ${noticeBoardUnread} new` : 'Notice board'}
           >
-            <Bell className="size-[1.2rem] md:size-[1.35rem]" />
+            <Bell className="size-[17px]" />
           </Link>
           {noticeBoardUnread > 0 ? (
             <span
-              className="pointer-events-none absolute -right-0.5 -top-0.5 flex min-w-[18px] items-center justify-center rounded-full bg-[#da373c] px-1 text-[10px] font-bold text-white"
+              className="pointer-events-none absolute -right-0.5 -top-0.5 flex min-w-[16px] items-center justify-center rounded bg-destructive px-1 text-[10px] font-bold leading-4 text-white"
               aria-hidden
             >
               {noticeBoardUnread > 9 ? '9+' : noticeBoardUnread}
@@ -181,7 +187,7 @@ export function DashboardHeader({
 
         {shellRole != null ? (
           <span
-            className="hidden max-w-[10rem] truncate rounded-md border border-border bg-muted/35 px-2 py-1 text-center text-ds-caption font-medium text-foreground md:inline-flex"
+            className="hidden rounded border border-border bg-muted/40 px-2 py-0.5 text-ds-caption font-medium text-foreground md:inline-flex"
             title={
               isAdminPreviewing && serverRole === 'admin'
                 ? `Nav as ${roleShortLabel(shellRole)} · signed in as Admin`
@@ -193,12 +199,12 @@ export function DashboardHeader({
               : roleShortLabel(shellRole)}
           </span>
         ) : rolePending ? (
-          <span className="hidden h-8 w-14 animate-pulse rounded-md bg-muted/60 md:inline-block" />
+          <span className="hidden h-7 w-12 animate-pulse rounded bg-muted/60 md:inline-block" />
         ) : null}
 
         <Link
           to="/dashboard/settings/profile"
-          className="relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted text-ds-caption font-semibold text-foreground transition-opacity hover:opacity-90 active:opacity-80"
+          className="relative ml-1 flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted text-ds-caption font-semibold text-foreground transition-opacity hover:opacity-85 active:opacity-70"
           title={
             me?.fbo_id
               ? `${me.fbo_id}${me.username ? ` · ${me.username}` : ''}${me.email ? ` · ${me.email}` : ''}`
@@ -209,16 +215,10 @@ export function DashboardHeader({
           {me?.avatar_url ? (
             <img
               src={apiUrl(me.avatar_url)}
-              alt={
-                me.username
-                  ? `Profile photo for ${me.username}`
-                  : me.email
-                    ? `Profile photo for ${me.email}`
-                    : 'Your profile photo'
-              }
+              alt={me.username ? `Profile photo for ${me.username}` : me.email ? `Profile photo for ${me.email}` : 'Your profile photo'}
               className="size-full object-cover"
-              width={36}
-              height={36}
+              width={32}
+              height={32}
             />
           ) : (
             displayInitial
@@ -236,5 +236,3 @@ export function DashboardHeader({
     </header>
   )
 }
-
-

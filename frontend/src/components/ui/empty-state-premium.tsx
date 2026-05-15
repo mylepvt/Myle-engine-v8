@@ -109,7 +109,7 @@ const EmptyStatePremium = ({
   return (
     <div
       className={cn(
-        'flex flex-col items-center justify-center rounded-2xl',
+        'flex flex-col items-center justify-center rounded-md',
         'bg-gradient-to-b from-surface to-background',
         'border border-border/50',
         'px-8 py-12 text-center',
@@ -120,7 +120,7 @@ const EmptyStatePremium = ({
       {/* Icon Container with gradient background */}
       <div
         className={cn(
-          'mb-6 flex h-20 w-20 items-center justify-center rounded-2xl',
+          'mb-6 flex h-20 w-20 items-center justify-center rounded-md',
           'bg-gradient-to-br from-primary/20 to-accent/10',
           'transition-[box-shadow,opacity] duration-200 hover:opacity-95 hover:shadow-md'
         )}

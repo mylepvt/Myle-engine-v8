@@ -47,7 +47,7 @@ export function LeaderboardPage({ title }: Props) {
       {isPending ? (
         <div className="space-y-2">
           {[...Array(5)].map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full rounded-xl" />
+            <Skeleton key={i} className="h-10 w-full rounded" />
           ))}
         </div>
       ) : null}
@@ -76,7 +76,7 @@ export function LeaderboardPage({ title }: Props) {
                   <div
                     key={r.rank}
                     className={cn(
-                      'flex flex-col items-center gap-1.5 rounded-2xl border p-3 text-center',
+                      'flex flex-col items-center gap-1.5 rounded-md border p-3 text-center',
                       golds[r.rank - 1] ?? 'border-border bg-card/30',
                     )}
                   >
@@ -97,7 +97,7 @@ export function LeaderboardPage({ title }: Props) {
 
           {/* Rest of table */}
           {rest.length > 0 ? (
-            <div className="surface-elevated overflow-x-auto rounded-2xl p-0 text-sm">
+            <div className="surface-elevated overflow-x-auto rounded-md p-0 text-sm">
               <table className="w-full min-w-[28rem] border-collapse text-left">
                 <caption className="sr-only">Full leaderboard</caption>
                 <thead>

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 export function NotFoundPage() {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))]">
-      <div className="surface-elevated w-full max-w-sm space-y-4 rounded-2xl p-5 text-center md:p-8">
+      <div className="surface-elevated w-full max-w-sm space-y-4 rounded-md p-5 text-center md:p-8">
         <p className="text-sm font-medium text-muted-foreground">Error</p>
         <h1 className="text-4xl font-semibold tabular-nums tracking-tight text-foreground">
           404

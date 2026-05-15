@@ -375,7 +375,7 @@ export function LeadControlPage({ title }: Props) {
                 {bulkMode || selectedLead ? (
                   <form className="space-y-4" onSubmit={(event) => void (bulkMode ? handleBulkReassign(event) : handleManualReassign(event))}>
                     {bulkMode ? (
-                      <div className="surface-inset space-y-3 rounded-xl p-4">
+                      <div className="surface-inset space-y-3 rounded p-4">
                         <div>
                           <p className="font-medium text-foreground">{selectedBulkLeads.length} stale leads selected</p>
                           <p className="text-xs text-muted-foreground">
@@ -384,7 +384,7 @@ export function LeadControlPage({ title }: Props) {
                         </div>
                         <div className="max-h-48 space-y-2 overflow-y-auto pr-1">
                           {selectedBulkLeads.map((lead) => (
-                            <div key={lead.lead_id} className="rounded-xl border border-border/60 px-3 py-2 text-sm">
+                            <div key={lead.lead_id} className="rounded border border-border/60 px-3 py-2 text-sm">
                               <div className="flex flex-wrap items-center justify-between gap-2">
                                 <p className="font-medium text-foreground">{lead.lead_name}</p>
                                 <span className="text-xs text-muted-foreground">{statusLabel(lead.status)}</span>
@@ -397,7 +397,7 @@ export function LeadControlPage({ title }: Props) {
                         </div>
                       </div>
                     ) : selectedLead ? (
-                      <div className="surface-inset space-y-2 rounded-xl p-4">
+                      <div className="surface-inset space-y-2 rounded p-4">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
                             <p className="font-medium text-foreground">{selectedLead.lead_name}</p>
@@ -437,7 +437,7 @@ export function LeadControlPage({ title }: Props) {
                       <select
                         value={selectedUserId}
                         onChange={(event) => setSelectedUserId(event.target.value)}
-                        className="h-12 w-full rounded-xl border border-border/60 bg-background px-3 text-sm text-foreground outline-none ring-0 transition focus:border-primary/40"
+                        className="h-12 w-full rounded border border-border/60 bg-background px-3 text-sm text-foreground outline-none ring-0 transition focus:border-primary/40"
                       >
                         {targetOptions.map((user) => (
                           <option key={user.user_id} value={user.user_id}>
@@ -457,17 +457,17 @@ export function LeadControlPage({ title }: Props) {
                         rows={4}
                         maxLength={500}
                         placeholder="Why are you manually moving this lead?"
-                        className="w-full rounded-xl border border-border/60 bg-background px-3 py-3 text-sm text-foreground outline-none ring-0 transition focus:border-primary/40"
+                        className="w-full rounded border border-border/60 bg-background px-3 py-3 text-sm text-foreground outline-none ring-0 transition focus:border-primary/40"
                       />
                     </label>
 
                     {submitMessage ? (
-                      <p className="rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-sm text-primary">
+                      <p className="rounded border border-primary/20 bg-primary/10 px-3 py-2 text-sm text-primary">
                         {submitMessage}
                       </p>
                     ) : null}
                     {submitError ? (
-                      <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                      <p className="rounded border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                         {submitError}
                       </p>
                     ) : null}
@@ -515,7 +515,7 @@ export function LeadControlPage({ title }: Props) {
                     {historySummary.map((row) => (
                       <div
                         key={row.user_id}
-                        className="surface-inset flex flex-wrap items-center justify-between gap-3 rounded-xl p-3"
+                        className="surface-inset flex flex-wrap items-center justify-between gap-3 rounded p-3"
                       >
                         <div>
                           <p className="font-medium text-foreground">{row.display_name}</p>
@@ -558,7 +558,7 @@ export function LeadControlPage({ title }: Props) {
                 ) : (
                   <div className="space-y-3">
                     {history.map((row) => (
-                      <div key={row.activity_id} className="surface-inset rounded-xl p-3">
+                      <div key={row.activity_id} className="surface-inset rounded p-3">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div>
                             <p className="font-medium text-foreground">{row.lead_name}</p>

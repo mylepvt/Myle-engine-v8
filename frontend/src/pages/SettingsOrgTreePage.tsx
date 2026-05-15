@@ -172,7 +172,7 @@ function NodeAvatar({
   return (
     <div
       className={cn(
-        'flex shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br font-semibold shadow-sm',
+        'flex shrink-0 items-center justify-center rounded-md bg-gradient-to-br font-semibold shadow-sm',
         sizeClass,
         avatarTone(role),
       )}
@@ -1105,7 +1105,7 @@ export function SettingsOrgTreePage({ title }: Props) {
               <div className="surface-elevated relative overflow-hidden p-4 md:p-5">
                 <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-primary/35 to-transparent" />
                 <div className="mb-4 flex items-center gap-3">
-                  <div className="rounded-2xl border border-primary/20 bg-primary/[0.08] p-2 text-primary">
+                  <div className="rounded-md border border-primary/20 bg-primary/[0.08] p-2 text-primary">
                     <Network className="size-4" />
                   </div>
                   <div>
@@ -1141,7 +1141,7 @@ export function SettingsOrgTreePage({ title }: Props) {
             {view === 'directory' ? (
               <div className="surface-elevated p-4 md:p-5">
                 <div className="mb-4 flex items-center gap-3">
-                  <div className="rounded-2xl border border-primary/20 bg-primary/[0.08] p-2 text-primary">
+                  <div className="rounded-md border border-primary/20 bg-primary/[0.08] p-2 text-primary">
                     <Layers2 className="size-4" />
                   </div>
                   <div>

@@ -79,7 +79,7 @@ function UploadCard({
   return (
     <label className="rounded-[1.5rem] border border-white/10 bg-muted/40 p-4 text-left transition hover:border-cyan-300/20 hover:bg-muted/60">
       <div className="flex items-start gap-3">
-        <div className="mt-0.5 rounded-2xl border border-white/10 bg-muted/60 p-2 text-cyan-200">
+        <div className="mt-0.5 rounded-md border border-white/10 bg-muted/60 p-2 text-cyan-200">
           {icon}
         </div>
         <div className="min-w-0 flex-1">
@@ -633,7 +633,7 @@ export function BatchWatchPage() {
             <aside className="space-y-4">
               <section className="rounded-[2rem] border border-white/10 bg-muted/50 p-5 backdrop-blur-xl">
                 <div className="flex items-center gap-3">
-                  <div className="rounded-2xl border border-white/10 bg-muted/50 p-3 text-cyan-200">
+                  <div className="rounded-md border border-white/10 bg-muted/50 p-3 text-cyan-200">
                     <ShieldCheck className="size-5" />
                   </div>
                   <div>

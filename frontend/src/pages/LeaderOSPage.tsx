@@ -42,7 +42,7 @@ function ScoreTier({ score, tier }: { score: number; tier: string }) {
   }[tier] ?? { label: tier, color: 'text-muted-foreground', bg: 'bg-muted border-border' }
 
   return (
-    <div className={cn('flex items-center gap-3 rounded-xl border px-4 py-3', cfg.bg)}>
+    <div className={cn('flex items-center gap-3 rounded border px-4 py-3', cfg.bg)}>
       <div className="flex-1">
         <p className="text-ds-label uppercase text-muted-foreground">Leader Score</p>
         <div className="mt-1 flex items-end gap-2">
@@ -117,7 +117,7 @@ export function LeaderOSPage() {
     return (
       <div className="mx-auto w-full max-w-2xl space-y-4 p-4">
         {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-20 rounded-xl" />
+          <Skeleton key={i} className="h-20 rounded" />
         ))}
       </div>
     )
@@ -280,7 +280,7 @@ export function LeaderOSPage() {
 
       {/* Alert: inactive members */}
       {data.inactive_count > 0 && (
-        <div className="flex items-start gap-3 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3">
+        <div className="flex items-start gap-3 rounded border border-red-500/20 bg-red-500/5 px-4 py-3">
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-red-500" aria-hidden />
           <div>
             <p className="text-sm font-semibold text-red-500">
@@ -295,7 +295,7 @@ export function LeaderOSPage() {
 
       {/* Basics streak warnings */}
       {data.basics_streak >= 14 && (
-        <div className="flex items-start gap-3 rounded-xl border border-red-600/40 bg-red-600/10 px-4 py-3">
+        <div className="flex items-start gap-3 rounded border border-red-600/40 bg-red-600/10 px-4 py-3">
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-red-600" aria-hidden />
           <div>
             <p className="text-sm font-bold text-red-600">Account locked — basics not met</p>
@@ -307,7 +307,7 @@ export function LeaderOSPage() {
       )}
 
       {data.basics_streak >= 7 && data.basics_streak < 14 && (
-        <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/8 px-4 py-3">
+        <div className="flex items-start gap-3 rounded border border-amber-500/30 bg-amber-500/8 px-4 py-3">
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-500" aria-hidden />
           <div>
             <p className="text-sm font-bold text-amber-500">Warning — team basics not met</p>
@@ -323,7 +323,7 @@ export function LeaderOSPage() {
       )}
 
       {data.leader_tier === 'strong' && data.basics_streak === 0 && (
-        <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+        <div className="flex items-center gap-3 rounded border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
           <CheckCircle2 className="size-4 shrink-0 text-emerald-500" aria-hidden />
           <p className="text-sm font-semibold text-emerald-500">Team performing strong — keep it up!</p>
         </div>
