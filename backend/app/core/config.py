@@ -237,7 +237,7 @@ class Settings(BaseSettings):
 
     # --- Admin Activity Feed ---
     admin_activity_feed_enabled: bool = Field(
-        default=False,
+        default=True,
         validation_alias="ADMIN_ACTIVITY_FEED_ENABLED",
         description="Enable realtime admin activity feed via SSE.",
     )
