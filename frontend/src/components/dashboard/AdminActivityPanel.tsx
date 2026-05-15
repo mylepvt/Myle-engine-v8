@@ -36,143 +36,127 @@ const ACTION_ICONS: Record<string, string> = {
   'scheduler.leader_enforcement': '⚑',
 }
 
-// ── Color per action type ────────────────────────────────────────────────────
-// Each action gets: card bg tint, left border, icon pill bg, icon text, label text
+// ── Fun pop colours per action type ───────────────────────────────────────────
 type ActionColors = { bg: string; border: string; pill: string; pillText: string; tag: string }
 
 const ACTION_COLORS: Record<string, ActionColors> = {
-  // Blue — general lead update
   'commit_boundary': {
-    bg: 'bg-blue-500/[0.07]', border: 'border-l-blue-500/50',
-    pill: 'bg-blue-500/20', pillText: 'text-blue-300', tag: 'bg-blue-500/15 text-blue-300',
+    bg: 'bg-blue-400/20', border: 'border-l-blue-400',
+    pill: 'bg-blue-400/30', pillText: 'text-blue-200', tag: 'bg-blue-400/25 text-blue-200',
   },
-  // Emerald — new lead (growth)
   'lead:created': {
-    bg: 'bg-emerald-500/[0.07]', border: 'border-l-emerald-500/50',
-    pill: 'bg-emerald-500/20', pillText: 'text-emerald-300', tag: 'bg-emerald-500/15 text-emerald-300',
+    bg: 'bg-emerald-400/20', border: 'border-l-emerald-400',
+    pill: 'bg-emerald-400/30', pillText: 'text-emerald-200', tag: 'bg-emerald-400/25 text-emerald-200',
   },
-  // Violet — stage progression
   'lead:transitioned': {
-    bg: 'bg-violet-500/[0.07]', border: 'border-l-violet-500/50',
-    pill: 'bg-violet-500/20', pillText: 'text-violet-300', tag: 'bg-violet-500/15 text-violet-300',
+    bg: 'bg-fuchsia-400/20', border: 'border-l-fuchsia-400',
+    pill: 'bg-fuchsia-400/30', pillText: 'text-fuchsia-200', tag: 'bg-fuchsia-400/25 text-fuchsia-200',
   },
   'lead_state': {
-    bg: 'bg-violet-500/[0.07]', border: 'border-l-violet-500/50',
-    pill: 'bg-violet-500/20', pillText: 'text-violet-300', tag: 'bg-violet-500/15 text-violet-300',
+    bg: 'bg-fuchsia-400/20', border: 'border-l-fuchsia-400',
+    pill: 'bg-fuchsia-400/30', pillText: 'text-fuchsia-200', tag: 'bg-fuchsia-400/25 text-fuchsia-200',
   },
-  // Cyan — assignment / flow
   'lead:assigned': {
-    bg: 'bg-cyan-500/[0.07]', border: 'border-l-cyan-500/50',
-    pill: 'bg-cyan-500/20', pillText: 'text-cyan-300', tag: 'bg-cyan-500/15 text-cyan-300',
+    bg: 'bg-cyan-400/20', border: 'border-l-cyan-400',
+    pill: 'bg-cyan-400/30', pillText: 'text-cyan-200', tag: 'bg-cyan-400/25 text-cyan-200',
   },
-  // Orange — auto action / system reassign
   'lead:auto_reassigned': {
-    bg: 'bg-orange-500/[0.07]', border: 'border-l-orange-500/50',
-    pill: 'bg-orange-500/20', pillText: 'text-orange-300', tag: 'bg-orange-500/15 text-orange-300',
+    bg: 'bg-orange-400/20', border: 'border-l-orange-400',
+    pill: 'bg-orange-400/30', pillText: 'text-orange-200', tag: 'bg-orange-400/25 text-orange-200',
   },
-  // Green — closed / done
   'lead:closed': {
-    bg: 'bg-green-500/[0.07]', border: 'border-l-green-500/50',
-    pill: 'bg-green-500/20', pillText: 'text-green-300', tag: 'bg-green-500/15 text-green-300',
+    bg: 'bg-lime-400/20', border: 'border-l-lime-400',
+    pill: 'bg-lime-400/30', pillText: 'text-lime-200', tag: 'bg-lime-400/25 text-lime-200',
   },
-  // Indigo — claimed / ownership
   'lead:claimed': {
-    bg: 'bg-indigo-500/[0.07]', border: 'border-l-indigo-500/50',
-    pill: 'bg-indigo-500/20', pillText: 'text-indigo-300', tag: 'bg-indigo-500/15 text-indigo-300',
+    bg: 'bg-indigo-400/20', border: 'border-l-indigo-400',
+    pill: 'bg-indigo-400/30', pillText: 'text-indigo-200', tag: 'bg-indigo-400/25 text-indigo-200',
   },
   'lead:batch_claimed': {
-    bg: 'bg-indigo-500/[0.07]', border: 'border-l-indigo-500/50',
-    pill: 'bg-indigo-500/20', pillText: 'text-indigo-300', tag: 'bg-indigo-500/15 text-indigo-300',
+    bg: 'bg-indigo-400/20', border: 'border-l-indigo-400',
+    pill: 'bg-indigo-400/30', pillText: 'text-indigo-200', tag: 'bg-indigo-400/25 text-indigo-200',
   },
-  // Rose — duplicate / conflict
   'lead:claim_duplicate': {
-    bg: 'bg-rose-500/[0.07]', border: 'border-l-rose-500/50',
-    pill: 'bg-rose-500/20', pillText: 'text-rose-300', tag: 'bg-rose-500/15 text-rose-300',
+    bg: 'bg-rose-400/20', border: 'border-l-rose-400',
+    pill: 'bg-rose-400/30', pillText: 'text-rose-200', tag: 'bg-rose-400/25 text-rose-200',
   },
-  // Sky — data sync
   'lead:shadow_created': {
-    bg: 'bg-sky-500/[0.07]', border: 'border-l-sky-500/50',
-    pill: 'bg-sky-500/20', pillText: 'text-sky-300', tag: 'bg-sky-500/15 text-sky-300',
+    bg: 'bg-sky-400/20', border: 'border-l-sky-400',
+    pill: 'bg-sky-400/30', pillText: 'text-sky-200', tag: 'bg-sky-400/25 text-sky-200',
   },
   'lead:shadow_synced': {
-    bg: 'bg-sky-500/[0.07]', border: 'border-l-sky-500/50',
-    pill: 'bg-sky-500/20', pillText: 'text-sky-300', tag: 'bg-sky-500/15 text-sky-300',
+    bg: 'bg-sky-400/20', border: 'border-l-sky-400',
+    pill: 'bg-sky-400/30', pillText: 'text-sky-200', tag: 'bg-sky-400/25 text-sky-200',
   },
   'shadow_delivery': {
-    bg: 'bg-sky-500/[0.07]', border: 'border-l-sky-500/50',
-    pill: 'bg-sky-500/20', pillText: 'text-sky-300', tag: 'bg-sky-500/15 text-sky-300',
+    bg: 'bg-sky-400/20', border: 'border-l-sky-400',
+    pill: 'bg-sky-400/30', pillText: 'text-sky-200', tag: 'bg-sky-400/25 text-sky-200',
   },
   'LEAD_UPSERT': {
-    bg: 'bg-sky-500/[0.07]', border: 'border-l-sky-500/50',
-    pill: 'bg-sky-500/20', pillText: 'text-sky-300', tag: 'bg-sky-500/15 text-sky-300',
+    bg: 'bg-sky-400/20', border: 'border-l-sky-400',
+    pill: 'bg-sky-400/30', pillText: 'text-sky-200', tag: 'bg-sky-400/25 text-sky-200',
   },
   'lead:shadow_deleted': {
-    bg: 'bg-red-500/[0.07]', border: 'border-l-red-500/50',
-    pill: 'bg-red-500/20', pillText: 'text-red-300', tag: 'bg-red-500/15 text-red-300',
+    bg: 'bg-red-400/20', border: 'border-l-red-400',
+    pill: 'bg-red-400/30', pillText: 'text-red-200', tag: 'bg-red-400/25 text-red-200',
   },
   'LEAD_DELETE': {
-    bg: 'bg-red-500/[0.07]', border: 'border-l-red-500/50',
-    pill: 'bg-red-500/20', pillText: 'text-red-300', tag: 'bg-red-500/15 text-red-300',
+    bg: 'bg-red-400/20', border: 'border-l-red-400',
+    pill: 'bg-red-400/30', pillText: 'text-red-200', tag: 'bg-red-400/25 text-red-200',
   },
-  // Amber — wallet / money
   'wallet:credited': {
-    bg: 'bg-amber-500/[0.07]', border: 'border-l-amber-500/50',
-    pill: 'bg-amber-500/20', pillText: 'text-amber-300', tag: 'bg-amber-500/15 text-amber-300',
+    bg: 'bg-yellow-400/20', border: 'border-l-yellow-400',
+    pill: 'bg-yellow-400/30', pillText: 'text-yellow-200', tag: 'bg-yellow-400/25 text-yellow-200',
   },
   'wallet:credited_worker': {
-    bg: 'bg-amber-500/[0.07]', border: 'border-l-amber-500/50',
-    pill: 'bg-amber-500/20', pillText: 'text-amber-300', tag: 'bg-amber-500/15 text-amber-300',
+    bg: 'bg-yellow-400/20', border: 'border-l-yellow-400',
+    pill: 'bg-yellow-400/30', pillText: 'text-yellow-200', tag: 'bg-yellow-400/25 text-yellow-200',
   },
   'wallet.adjustment': {
-    bg: 'bg-amber-500/[0.07]', border: 'border-l-amber-500/50',
-    pill: 'bg-amber-500/20', pillText: 'text-amber-300', tag: 'bg-amber-500/15 text-amber-300',
+    bg: 'bg-yellow-400/20', border: 'border-l-yellow-400',
+    pill: 'bg-yellow-400/30', pillText: 'text-yellow-200', tag: 'bg-yellow-400/25 text-yellow-200',
   },
   'wallet.recharge_review': {
-    bg: 'bg-amber-500/[0.07]', border: 'border-l-amber-500/50',
-    pill: 'bg-amber-500/20', pillText: 'text-amber-300', tag: 'bg-amber-500/15 text-amber-300',
+    bg: 'bg-amber-400/20', border: 'border-l-amber-400',
+    pill: 'bg-amber-400/30', pillText: 'text-amber-200', tag: 'bg-amber-400/25 text-amber-200',
   },
-  // Teal — enrollment
   'enrollment.link_generated': {
-    bg: 'bg-teal-500/[0.07]', border: 'border-l-teal-500/50',
-    pill: 'bg-teal-500/20', pillText: 'text-teal-300', tag: 'bg-teal-500/15 text-teal-300',
+    bg: 'bg-teal-400/20', border: 'border-l-teal-400',
+    pill: 'bg-teal-400/30', pillText: 'text-teal-200', tag: 'bg-teal-400/25 text-teal-200',
   },
-  // Teal — performance
   'performance:recomputed': {
-    bg: 'bg-teal-500/[0.07]', border: 'border-l-teal-500/50',
-    pill: 'bg-teal-500/20', pillText: 'text-teal-300', tag: 'bg-teal-500/15 text-teal-300',
+    bg: 'bg-teal-400/20', border: 'border-l-teal-400',
+    pill: 'bg-teal-400/30', pillText: 'text-teal-200', tag: 'bg-teal-400/25 text-teal-200',
   },
-  // Pink — ranking
   'system:ranking_recalc': {
-    bg: 'bg-pink-500/[0.07]', border: 'border-l-pink-500/50',
-    pill: 'bg-pink-500/20', pillText: 'text-pink-300', tag: 'bg-pink-500/15 text-pink-300',
+    bg: 'bg-pink-400/20', border: 'border-l-pink-400',
+    pill: 'bg-pink-400/30', pillText: 'text-pink-200', tag: 'bg-pink-400/25 text-pink-200',
   },
-  // Red — errors / blocked
   'fsm:validation_failed': {
-    bg: 'bg-red-500/[0.07]', border: 'border-l-red-500/50',
-    pill: 'bg-red-500/20', pillText: 'text-red-300', tag: 'bg-red-500/15 text-red-300',
+    bg: 'bg-red-400/20', border: 'border-l-red-400',
+    pill: 'bg-red-400/30', pillText: 'text-red-200', tag: 'bg-red-400/25 text-red-200',
   },
   'scheduler.failure': {
-    bg: 'bg-red-500/[0.07]', border: 'border-l-red-500/50',
-    pill: 'bg-red-500/20', pillText: 'text-red-300', tag: 'bg-red-500/15 text-red-300',
+    bg: 'bg-red-400/20', border: 'border-l-red-400',
+    pill: 'bg-red-400/30', pillText: 'text-red-200', tag: 'bg-red-400/25 text-red-200',
   },
-  // Slate — system / auto tasks (neutral)
   'system:scheduler_tick': {
-    bg: 'bg-slate-500/[0.05]', border: 'border-l-slate-500/30',
-    pill: 'bg-slate-500/15', pillText: 'text-slate-400', tag: 'bg-slate-500/10 text-slate-400',
+    bg: 'bg-slate-400/15', border: 'border-l-slate-400',
+    pill: 'bg-slate-400/25', pillText: 'text-slate-200', tag: 'bg-slate-400/20 text-slate-200',
   },
   'scheduler.watch_archive': {
-    bg: 'bg-slate-500/[0.05]', border: 'border-l-slate-500/30',
-    pill: 'bg-slate-500/15', pillText: 'text-slate-400', tag: 'bg-slate-500/10 text-slate-400',
+    bg: 'bg-slate-400/15', border: 'border-l-slate-400',
+    pill: 'bg-slate-400/25', pillText: 'text-slate-200', tag: 'bg-slate-400/20 text-slate-200',
   },
   'scheduler.leader_enforcement': {
-    bg: 'bg-slate-500/[0.05]', border: 'border-l-slate-500/30',
-    pill: 'bg-slate-500/15', pillText: 'text-slate-400', tag: 'bg-slate-500/10 text-slate-400',
+    bg: 'bg-slate-400/15', border: 'border-l-slate-400',
+    pill: 'bg-slate-400/25', pillText: 'text-slate-200', tag: 'bg-slate-400/20 text-slate-200',
   },
 }
 
 const DEFAULT_COLORS: ActionColors = {
-  bg: 'bg-blue-500/[0.06]', border: 'border-l-blue-500/40',
-  pill: 'bg-blue-500/15', pillText: 'text-blue-300', tag: 'bg-blue-500/10 text-blue-300',
+  bg: 'bg-blue-400/15', border: 'border-l-blue-400',
+  pill: 'bg-blue-400/25', pillText: 'text-blue-200', tag: 'bg-blue-400/20 text-blue-200',
 }
 
 function getActionColors(action: string): ActionColors {
@@ -227,7 +211,7 @@ function ActivityItem({ entry }: { entry: AdminActivityEntry }) {
   const time = new Date(entry.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
 
   return (
-    <div className={`flex items-start gap-2.5 rounded-lg border-l-[3px] px-3 py-2.5 transition-all ${c.bg} ${c.border}`}>
+    <div className={`flex items-start gap-2.5 rounded-lg border-l-[3px] px-3 py-2.5 transition-all animate-in fade-in slide-in-from-left-2 duration-300 ${c.bg} ${c.border}`}>
       {/* colored icon pill */}
       <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${c.pill} ${c.pillText}`}>
         {iconLabel(entry.action)}
