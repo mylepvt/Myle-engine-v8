@@ -324,6 +324,7 @@ async def job_leader_basics_enforcement() -> None:
                         User.registration_status == "approved",
                         User.removed_at.is_(None),
                         User.access_blocked.is_(False),
+                        User.training_required.is_(False),
                     )
                 )
             ).scalars().all()
