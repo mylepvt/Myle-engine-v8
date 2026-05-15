@@ -28,6 +28,7 @@ const ACTION_ICONS: Record<string, string> = {
 // Human-readable label for each action type (shown in chips + activity row)
 const ACTION_LABELS: Record<string, string> = {
   'commit_boundary': 'Lead Update',
+  'lead_state': 'Stage Change',
   'lead:created': 'New Lead',
   'lead:transitioned': 'Stage Change',
   'lead:assigned': 'Assigned',
@@ -39,19 +40,28 @@ const ACTION_LABELS: Record<string, string> = {
   'lead:shadow_created': 'CRM Sync',
   'lead:shadow_synced': 'CRM Sync',
   'lead:shadow_deleted': 'CRM Removed',
+  'shadow_delivery': 'CRM Delivered',
+  'LEAD_UPSERT': 'CRM Sync',
+  'LEAD_DELETE': 'CRM Remove',
   'wallet:credited': 'Wallet Credit',
   'wallet:credited_worker': 'Wallet Credit',
+  'wallet.adjustment': 'Wallet Adjust',
+  'wallet.recharge_review': 'Recharge Review',
+  'enrollment.link_generated': 'Enrollment Link',
   'performance:recomputed': 'Performance',
   'system:ranking_recalc': 'Ranking',
   'system:scheduler_tick': 'Scheduler',
   'fsm:validation_failed': 'Validation Error',
+  'scheduler.watch_archive': 'Archive Check',
+  'scheduler.failure': 'Scheduler Error',
+  'scheduler.leader_enforcement': 'Leader Check',
 }
 
 function friendlyLabel(action: string): string {
   if (ACTION_LABELS[action]) return ACTION_LABELS[action]
-  // Fallback: strip prefix, title-case remainder
+  // Fallback: strip prefix, title-case remainder, clean underscores/dots
   const part = action.includes(':') ? action.split(':').pop()! : action
-  return part.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  return part.replace(/[._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 const SEVERITY_COLORS: Record<string, string> = {

@@ -62,8 +62,9 @@ function describeEvent(eventType: string, payload: Record<string, unknown>): str
     case eventType === 'lead:created':
       return leadRef ? `New lead added: ${leadRef}` : 'New lead added'
 
-    case eventType === 'lead:transitioned' || (eventType === 'lead_state' && !!stage):
-      return `${leadRef || 'Lead'} moved to ${stageLabel(stage)}${crmStage && crmStage !== stage ? ` (CRM: ${stageLabel(crmStage)})` : ''}`
+    case eventType === 'lead:transitioned' || eventType === 'lead_state':
+      if (stage) return `${leadRef || 'Lead'} moved to ${stageLabel(stage)}${crmStage && crmStage !== stage ? ` (CRM: ${stageLabel(crmStage)})` : ''}`
+      return leadRef ? `${leadRef} status updated` : 'Lead status updated'
 
     case eventType === 'lead:assigned':
       return leadRef ? `${leadRef} assigned to team` : 'Lead assigned'
@@ -89,6 +90,13 @@ function describeEvent(eventType: string, payload: Record<string, unknown>): str
     case eventType === 'shadow_delivery':
       return leadRef ? `CRM sync delivered: ${leadRef}` : 'CRM sync delivered'
 
+    // CRM outbox events (uppercase constants from crm_outbox.py)
+    case eventType === 'LEAD_UPSERT':
+      return leadRef ? `${leadRef} synced to CRM` : 'Lead synced to CRM'
+
+    case eventType === 'LEAD_DELETE':
+      return leadRef ? `${leadRef} removed from CRM` : 'Lead removed from CRM'
+
     case eventType === 'wallet:credited' || eventType === 'wallet:credited_worker':
       return leadRef ? `Wallet credited for ${leadRef}` : 'Wallet credited'
 
@@ -104,11 +112,29 @@ function describeEvent(eventType: string, payload: Record<string, unknown>): str
     case eventType === 'fsm:validation_failed':
       return leadRef ? `Stage validation failed: ${leadRef}` : 'Stage validation failed'
 
+    case eventType === 'scheduler.watch_archive':
+      return 'Archive check ran'
+
+    case eventType === 'scheduler.failure':
+      return 'Scheduler job failed'
+
+    case eventType === 'scheduler.leader_enforcement':
+      return 'Leader assignment checked'
+
     case eventType.startsWith('scheduler.'):
       return `Scheduler: ${eventType.replace('scheduler.', '').replace(/_/g, ' ')}`
 
+    case eventType === 'wallet.adjustment':
+      return leadRef ? `Wallet adjusted for ${leadRef}` : 'Wallet adjusted'
+
+    case eventType === 'wallet.recharge_review':
+      return leadRef ? `Recharge review for ${leadRef}` : 'Recharge under review'
+
     case eventType.startsWith('wallet.'):
       return `Wallet: ${eventType.replace('wallet.', '').replace(/_/g, ' ')}${leadRef ? ` — ${leadRef}` : ''}`
+
+    case eventType === 'enrollment.link_generated':
+      return leadRef ? `Enrollment link created for ${leadRef}` : 'Enrollment link created'
 
     case eventType.startsWith('enrollment.'):
       return `Enrollment: ${eventType.replace('enrollment.', '').replace(/_/g, ' ')}${leadRef ? ` — ${leadRef}` : ''}`
