@@ -160,26 +160,26 @@ async function fetchJson<T>(path: string): Promise<T> {
 
 type StatVariant = 'default' | 'warning' | 'success' | 'danger'
 
-const STAT_VARIANT_STYLES: Record<StatVariant, { border: string; bg: string; value: string }> = {
+const STAT_VARIANT_STYLES: Record<StatVariant, { accent: string; value: string; dot: string }> = {
   default: {
-    border: 'border-t-primary/40',
-    bg: 'from-primary/[0.05]',
+    accent: 'bg-primary/60',
     value: 'text-foreground',
+    dot: 'bg-primary/40',
   },
   warning: {
-    border: 'border-t-amber-400/50',
-    bg: 'from-amber-400/[0.06]',
+    accent: 'bg-amber-400/70',
     value: 'text-amber-300',
+    dot: 'bg-amber-400/50',
   },
   success: {
-    border: 'border-t-emerald-400/50',
-    bg: 'from-emerald-400/[0.06]',
+    accent: 'bg-emerald-400/70',
     value: 'text-emerald-300',
+    dot: 'bg-emerald-400/50',
   },
   danger: {
-    border: 'border-t-red-400/50',
-    bg: 'from-red-400/[0.06]',
+    accent: 'bg-red-400/70',
     value: 'text-red-300',
+    dot: 'bg-red-400/50',
   },
 }
 
@@ -197,16 +197,22 @@ function StatCard({
   to?: string
 }) {
   const styles = STAT_VARIANT_STYLES[variant]
-  const cls = `border-t-2 bg-gradient-to-b to-transparent ${styles.border} ${styles.bg}`
   const inner = (
-    <CardContent className="space-y-2.5 p-4">
-      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
-      <p className={`font-heading text-[2rem] font-bold leading-none tabular-nums ${styles.value}`}>{value}</p>
-      <p className="text-xs leading-relaxed text-muted-foreground">{hint}</p>
-    </CardContent>
+    <div title={hint} className="flex h-[88px] items-center gap-3.5 px-4">
+      <div className={`h-10 w-1 shrink-0 rounded-full ${styles.accent}`} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">{label}</p>
+        <p className={`mt-1 font-heading text-[1.85rem] font-bold leading-none tabular-nums ${styles.value}`}>{value}</p>
+      </div>
+      {to && <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/30" />}
+    </div>
   )
-  if (to) return <CardLink to={to} className={cls}>{inner}</CardLink>
-  return <Card className={cls}>{inner}</Card>
+  if (to) return (
+    <CardLink to={to} className="overflow-hidden transition-all hover:border-border/80 hover:shadow-sm">
+      {inner}
+    </CardLink>
+  )
+  return <Card className="overflow-hidden">{inner}</Card>
 }
 
 function DeskShortcut({
