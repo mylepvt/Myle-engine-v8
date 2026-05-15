@@ -3,17 +3,16 @@
 @tailwind utilities;
 
 /*
- * Myle — COLOR COMBO 05 (app-wide)
- * Ink #050208 · Blue #5465FF · Mist #D2DDFF · Cyan #00FFD4 dulled via color-mix
+ * Myle — Discord-inspired theme
+ * Blurple #5865F2 · Warm greys #313338 / #2b2d31 · 4px radius
  */
 @layer base {
   :root {
     /* Raw palette */
     --palette-ink: #050208;
-    --palette-blue: #5465ff;
+    --palette-blue: #5865f2;
     --palette-mist: #d2ddff;
     --palette-cyan-neon: #00ffd4;
-    /* Dull neon cyan: blend with slate so it’s not harsh on UI */
     --palette-cyan-dull: color-mix(in srgb, var(--palette-cyan-neon) 52%, #64748b 48%);
 
     color-scheme: light;
@@ -36,7 +35,7 @@
     --border: color-mix(in srgb, var(--palette-ink) 28%, var(--palette-mist) 72%);
     --input: color-mix(in srgb, var(--palette-mist) 62%, white 38%);
     --ring: var(--palette-blue);
-    --radius: 0.625rem;
+    --radius: 0.25rem;
     --chart-1: var(--palette-blue);
     --chart-2: var(--palette-cyan-dull);
     --chart-3: color-mix(in srgb, var(--palette-blue) 55%, var(--palette-mist) 45%);
@@ -44,10 +43,10 @@
     --chart-5: color-mix(in srgb, var(--palette-ink) 40%, var(--palette-mist) 60%);
     --surface: color-mix(in srgb, var(--palette-mist) 45%, #f8fafc 55%);
     --subtle: color-mix(in srgb, var(--palette-ink) 48%, var(--palette-mist) 52%);
-    --success: color-mix(in srgb, var(--palette-cyan-dull) 88%, var(--palette-ink) 12%);
-    --success-foreground: var(--palette-ink);
-    --warning: #d97706;
-    --warning-foreground: var(--palette-ink);
+    --success: #23a55a;
+    --success-foreground: #ffffff;
+    --warning: #f0b232;
+    --warning-foreground: #000000;
     --glass-base: color-mix(in srgb, var(--palette-mist) 55%, white 45%);
     --shadow-card:
       0 1px 2px rgba(0,0,0,0.06),
@@ -62,10 +61,8 @@
     --shadow-ios-bar: 0 0.5px 0 0 color-mix(in srgb, var(--palette-mist) 55%, transparent),
       0 8px 24px -12px color-mix(in srgb, var(--palette-ink) 22%, transparent);
 
-    /* Palette extensions */
     --palette-blue-light: color-mix(in srgb, var(--palette-blue) 70%, white 30%);
 
-    /* Time-urgency stroke colors (CtcsLeadCard clock face) */
     --urgency-safe: #4ade80;
     --urgency-watch: #60a5fa;
     --urgency-caution: #fb923c;
@@ -73,7 +70,6 @@
     --urgency-danger: #dc2626;
     --urgency-critical: #b91c1c;
 
-    /* Urgency glow shadows */
     --urgency-safe-glow: 0 0 12px color-mix(in srgb, var(--urgency-safe) 60%, transparent);
     --urgency-safe-card-glow: 0 0 12px color-mix(in srgb, var(--urgency-safe) 15%, transparent);
     --urgency-watch-glow: 0 0 12px color-mix(in srgb, var(--urgency-watch) 60%, transparent);
@@ -90,78 +86,77 @@
 
   .dark {
     color-scheme: dark;
-    /* True black mode: neutral OLED black base with subtle blue accenting. */
-    --palette-ink: #000000;
-    --background: #000000;
-    --foreground: #edf2ff;
-    --card: #070a12;
-    --card-foreground: #edf2ff;
-    --popover: #090d18;
-    --popover-foreground: #edf2ff;
-    --primary: var(--palette-blue);
-    --primary-foreground: #f4f7ff;
-    --secondary: #0c111d;
-    --secondary-foreground: #dbe5fb;
-    --muted: #0a0f1a;
-    --muted-foreground: #8f9bbb;
-    --accent: color-mix(in srgb, var(--palette-blue) 24%, #070c18 76%);
-    --accent-foreground: #edf2ff;
-    --destructive: #f87171;
-    --destructive-foreground: #12080c;
-    --border: color-mix(in srgb, #7a8fb8 20%, #070b12 80%);
-    --input: #0b111d;
-    --ring: var(--palette-cyan-dull);
-    --chart-1: var(--palette-blue);
-    --chart-2: var(--palette-cyan-dull);
-    --chart-3: color-mix(in srgb, var(--palette-blue) 72%, var(--palette-mist) 28%);
-    --chart-4: color-mix(in srgb, var(--palette-mist) 55%, var(--palette-blue) 45%);
-    --chart-5: color-mix(in srgb, var(--palette-cyan-dull) 65%, var(--palette-mist) 35%);
-    --surface: #050912;
-    --subtle: #94a1bf;
-    --success: var(--palette-cyan-dull);
-    --success-foreground: var(--palette-ink);
-    --warning: #fbbf24;
-    --warning-foreground: var(--palette-ink);
-    --glass-base: #070c14;
+    --palette-ink: #1e1f22;
+    --background: #313338;
+    --foreground: #dbdee1;
+    --card: #2b2d31;
+    --card-foreground: #dbdee1;
+    --popover: #1e1f22;
+    --popover-foreground: #dbdee1;
+    --primary: #5865f2;
+    --primary-foreground: #ffffff;
+    --secondary: #2b2d31;
+    --secondary-foreground: #b5bac1;
+    --muted: #1e1f22;
+    --muted-foreground: #80848e;
+    --accent: #5865f2;
+    --accent-foreground: #ffffff;
+    --destructive: #da373c;
+    --destructive-foreground: #ffffff;
+    --border: #3f4147;
+    --input: #1e1f22;
+    --ring: #5865f2;
+    --chart-1: #5865f2;
+    --chart-2: #23a55a;
+    --chart-3: #4752c4;
+    --chart-4: #b5bac1;
+    --chart-5: #80848e;
+    --surface: #2b2d31;
+    --subtle: #80848e;
+    --success: #23a55a;
+    --success-foreground: #ffffff;
+    --warning: #f0b232;
+    --warning-foreground: #000000;
+    --glass-base: #2b2d31;
     --shadow-card:
-      inset 0 1px 0 rgba(255,255,255,0.055),
-      0 4px 14px rgba(0,0,0,0.44),
-      0 16px 40px -8px rgba(0,0,0,0.54);
+      inset 0 1px 0 rgba(255,255,255,0.04),
+      0 1px 2px rgba(0,0,0,0.24),
+      0 4px 8px rgba(0,0,0,0.28);
     --shadow-card-hover:
-      inset 0 1px 0 rgba(255,255,255,0.08),
-      0 8px 24px rgba(0,0,0,0.50),
-      0 28px 56px -8px rgba(0,0,0,0.60);
-    --shadow-ios-bar: 0 0.5px 0 0 color-mix(in srgb, #9fb1d4 16%, transparent),
-      0 8px 24px -12px rgba(0, 0, 0, 0.65);
+      inset 0 1px 0 rgba(255,255,255,0.06),
+      0 2px 8px rgba(0,0,0,0.32),
+      0 8px 24px rgba(0,0,0,0.40);
+    --shadow-ios-bar: 0 0.5px 0 0 rgba(255,255,255,0.04),
+      0 8px 24px -12px rgba(0,0,0,0.65);
   }
 
   /*
-   * Glass / transparent — same palette, translucent layers over ink + blue glow
+   * Glass / transparent — translucent layers over warm dark grey
    */
   .dark.theme-transparent {
-    --background: color-mix(in srgb, #000000 88%, transparent);
-    --foreground: var(--palette-mist);
-    --card: color-mix(in srgb, var(--palette-blue) 10%, color-mix(in srgb, white 4%, #000000) 90%);
-    --card-foreground: var(--palette-mist);
-    --popover: color-mix(in srgb, var(--palette-blue) 9%, color-mix(in srgb, white 4%, #000000) 91%);
-    --popover-foreground: var(--palette-mist);
-    --secondary: color-mix(in srgb, white 8%, transparent);
-    --muted: color-mix(in srgb, white 6%, transparent);
-    --muted-foreground: color-mix(in srgb, var(--palette-mist) 68%, transparent);
-    --accent: color-mix(in srgb, var(--palette-cyan-dull) 16%, transparent);
-    --border: color-mix(in srgb, var(--palette-mist) 14%, transparent);
-    --input: color-mix(in srgb, white 8%, transparent);
-    --surface: color-mix(in srgb, var(--palette-blue) 8%, color-mix(in srgb, white 4%, #000000) 88%);
-    --glass-base: color-mix(in srgb, var(--palette-cyan-dull) 6%, #000000 94%);
+    --background: color-mix(in srgb, #313338 88%, transparent);
+    --foreground: #dbdee1;
+    --card: color-mix(in srgb, #5865f2 10%, #2b2d31 90%);
+    --card-foreground: #dbdee1;
+    --popover: color-mix(in srgb, #5865f2 8%, #1e1f22 92%);
+    --popover-foreground: #dbdee1;
+    --secondary: rgba(255,255,255,0.05);
+    --muted: rgba(255,255,255,0.04);
+    --muted-foreground: color-mix(in srgb, #b5bac1 68%, transparent);
+    --accent: color-mix(in srgb, #5865f2 16%, transparent);
+    --border: rgba(255,255,255,0.08);
+    --input: rgba(255,255,255,0.06);
+    --surface: color-mix(in srgb, #5865f2 8%, #2b2d31 92%);
+    --glass-base: #2b2d31;
   }
 
   html.dark.theme-transparent {
     background-color: transparent;
     background-image:
-      radial-gradient(1000px 700px at 0% 0%, color-mix(in srgb, var(--palette-blue) 30%, transparent), transparent 58%),
-      radial-gradient(900px 600px at 100% 8%, color-mix(in srgb, var(--palette-cyan-dull) 18%, transparent), transparent 52%),
-      radial-gradient(800px 500px at 50% 100%, color-mix(in srgb, var(--palette-mist) 6%, transparent), transparent 55%),
-      var(--palette-ink);
+      radial-gradient(1000px 700px at 0% 0%, color-mix(in srgb, #5865f2 25%, transparent), transparent 58%),
+      radial-gradient(900px 600px at 100% 8%, color-mix(in srgb, #23a55a 12%, transparent), transparent 52%),
+      radial-gradient(800px 500px at 50% 100%, color-mix(in srgb, #dbdee1 4%, transparent), transparent 55%),
+      #1e1f22;
     background-attachment: fixed;
   }
 }
