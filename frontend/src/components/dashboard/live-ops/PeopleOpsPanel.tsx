@@ -246,17 +246,17 @@ export function PeopleOpsPanel() {
       </div>
 
       {/* Top Leaders */}
-      <div className="border-b border-white/[0.06] p-4">
+      <div className="border-b border-white/[0.06] px-4 py-3">
         <div className="mb-3 flex items-center justify-between">
           <p className="text-[11px] font-semibold text-muted-foreground/70">Top Leaders (Today)</p>
           <Link to="/dashboard/settings/all-members" className="text-[10px] font-medium text-primary/70 hover:text-primary">
             View all
           </Link>
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="flex gap-2 overflow-x-auto scroll-px-1 pb-1">
           {topLeaders.length === 0 &&
             Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="min-w-[136px] flex-1 animate-pulse rounded border border-white/[0.06] bg-white/[0.02] py-12" />
+              <div key={i} className="min-w-[100px] flex-1 animate-pulse rounded border border-white/[0.06] bg-white/[0.02] py-12" />
             ))}
           {topLeaders.map((leader, i) => (
             <LeaderCard key={leader.leader_id} leader={leader} rank={i + 1} />
