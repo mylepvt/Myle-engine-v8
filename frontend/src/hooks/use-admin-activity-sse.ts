@@ -25,22 +25,24 @@ function severityFor(eventType: string): AdminActivityEntry['severity'] {
 // Map backend event payload → human description
 function describeEvent(eventType: string, payload: Record<string, unknown>): string {
   const leadId = payload.lead_id ?? payload.leadId
+  const leadName = (payload.lead_name as string | undefined) || ''
+  const leadRef = leadName ? `${leadName} (#${leadId})` : leadId ? `#${leadId}` : ''
   const stage = payload.fastapi_stage ?? payload.stage
   const crmStage = payload.crm_stage
 
   switch (true) {
     case eventType === 'lead_state' && !!stage:
-      return `Lead #${leadId} → ${stage}${crmStage && crmStage !== stage ? ` (CRM: ${crmStage})` : ''}`
+      return `Lead ${leadRef} → ${stage}${crmStage && crmStage !== stage ? ` (CRM: ${crmStage})` : ''}`
     case eventType === 'shadow_delivery':
-      return `Shadow sync delivered for lead #${leadId}`
+      return `Shadow sync delivered for lead ${leadRef}`
     case eventType.startsWith('scheduler.'):
       return `Scheduler: ${eventType.replace('scheduler.', '').replace(/_/g, ' ')}`
     case eventType.startsWith('wallet.'):
-      return `Wallet: ${eventType.replace('wallet.', '').replace(/_/g, ' ')}${leadId ? ` (Lead #${leadId})` : ''}`
+      return `Wallet: ${eventType.replace('wallet.', '').replace(/_/g, ' ')}${leadRef ? ` (${leadRef})` : ''}`
     case eventType.startsWith('enrollment.'):
-      return `Enrollment: ${eventType.replace('enrollment.', '').replace(/_/g, ' ')}${leadId ? ` (Lead #${leadId})` : ''}`
+      return `Enrollment: ${eventType.replace('enrollment.', '').replace(/_/g, ' ')}${leadRef ? ` (${leadRef})` : ''}`
     default:
-      return `${eventType.replace(/[._]/g, ' ')}${leadId ? ` — Lead #${leadId}` : ''}`
+      return `${eventType.replace(/[._]/g, ' ')}${leadRef ? ` — ${leadRef}` : ''}`
   }
 }
 
@@ -52,12 +54,16 @@ function parseEventFromObj(data: Record<string, unknown>): AdminActivityEntry | 
     const actorId = data.actor_id ?? data.user_id
     const payload = (data.payload as Record<string, unknown>) ?? data
 
+    // actor_name may live at top-level OR inside payload (depends on call path)
+    const actorName = (data.actor_name ?? payload.actor_name ?? '') as string
+
     const id = `${eventType}-${leadId ?? 'sys'}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
 
     return {
       id,
       action: eventType,
       actorId: actorId ? String(actorId) : undefined,
+      actorName: actorName || undefined,
       targetId: leadId ? String(leadId) : undefined,
       targetType: leadId ? 'lead' : undefined,
       description: describeEvent(eventType, { ...payload, lead_id: leadId }),

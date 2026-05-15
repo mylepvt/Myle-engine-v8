@@ -16,6 +16,7 @@ from app.core.jwt_tokens import decode_access_token
 from app.db.session import get_db
 from app.models.user import User
 from app.services.member_compliance import ensure_user_compliance_snapshot
+from app.services.observation_logger import set_request_context
 
 __all__ = ["get_db", "AuthUser", "require_auth_user", "optional_auth_user_from_token"]
 
@@ -92,13 +93,15 @@ async def require_auth_user(
             detail="Authentication required",
         )
     ensure_may_issue_session_cookies(row)
+    display_name = (row.name or row.username or row.fbo_id or "").strip()
+    set_request_context(user_id=str(row.id), actor_name=display_name)
     return AuthUser(
         user_id=row.id,
         role=row.role,
         email=row.email,
         fbo_id=row.fbo_id,
         username=(row.username or "").strip(),
-        display_name=(row.name or row.username or row.fbo_id or "").strip(),
+        display_name=display_name,
         auth_version=token_user.auth_version,
     )
 
