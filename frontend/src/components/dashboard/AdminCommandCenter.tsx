@@ -694,134 +694,164 @@ export function AdminCommandCenter({ firstName }: Props) {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="today" className="space-y-6">
-          {/* Live funnel — real-time pipeline with actor dots */}
-          <Card>
-            <CardHeader className="pb-1">
-              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                <span className="relative flex size-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex size-2 rounded-full bg-emerald-400" />
-                </span>
-                Live Pipeline Funnel
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <LiveFunnel />
-            </CardContent>
-          </Card>
-
-          {/* Compact operations panel */}
-          <Card className="overflow-hidden">
-            <div className="divide-y divide-border/40">
-              <OpsRow label="Recharge requests" value={pendingRechargeItems.length} hint="Wallet requests still waiting for finance approval." variant="warning" to="/dashboard/finance/recharge-admin" />
-              <OpsRow label="Pending registrations" value={pendingRegistrations.data?.total ?? 0} hint="Self-serve signups waiting for admin approval." variant="warning" to="/dashboard/team/approvals" />
-              <OpsRow label="Min. FLP billing" value={enrollmentPending.data?.total ?? 0} hint="Min. FLP billing approvals pending review right now." variant="warning" to="/dashboard/team/enrollment-approvals" />
-              <OpsRow label="Grace requests" value={pendingGraceCount} hint="Team members with a pending grace period request awaiting review." variant={pendingGraceCount > 0 ? 'warning' : 'default'} to="/dashboard/team/members" />
-              <OpsRow label="Reassign ready" value={leadControl.data?.queue_total ?? 0} hint="Archived leads eligible for redistribution." variant="default" to="/dashboard/system/lead-control" />
-              <OpsRow label="Archive incubation" value={leadControl.data?.incubation_total ?? 0} hint="Archived leads counting down toward stale reassignment." variant="default" to="/dashboard/system/lead-control" />
+        <TabsContent value="today">
+          <div className="flex gap-4">
+            {/* Left column — Live Funnel (sticky on desktop) */}
+            <div className="w-[340px] shrink-0 max-xl:hidden">
+              <div className="sticky top-4">
+                <Card>
+                  <CardHeader className="pb-1">
+                    <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                      <span className="relative flex size-2">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                        <span className="relative inline-flex size-2 rounded-full bg-emerald-400" />
+                      </span>
+                      Live Pipeline
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <LiveFunnel />
+                  </CardContent>
+                </Card>
+              </div>
             </div>
-          </Card>
 
-          <section className="grid gap-4 xl:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <BellRing className="size-4" />
-                  Today Queue
-                </CardTitle>
-                <CardDescription>Priority approvals and movement queues without jumping across the app.</CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-3">
-                <DeskShortcut
-                  to="/dashboard/team/approvals"
-                  title="Pending registrations"
-                  description="Approve or reject newly registered users."
-                  icon={<Users className="size-4" />}
-                />
-                <DeskShortcut
-                  to="/dashboard/team/enrollment-approvals"
-                  title="Min. FLP Billing"
-                  description="Review minimum FLP billing proofs and keep the funnel moving."
-                  icon={<ClipboardCheck className="size-4" />}
-                />
-                <DeskShortcut
-                  to="/dashboard/finance/recharge-admin"
-                  title="Recharge requests"
-                  description="Approve or reject pending wallet recharges."
-                  icon={<Wallet className="size-4" />}
-                />
-                <DeskShortcut
-                  to="/dashboard/team/members"
-                  title="Grace requests"
-                  description="Review and approve or reject pending grace period requests from team members."
-                  icon={<Clock className="size-4" />}
-                />
-                <DeskShortcut
-                  to="/dashboard/system/lead-control"
-                  title="Reassignment queue"
-                  description="Move stale archived watch leads without changing ownership."
-                  icon={<ArrowRightLeft className="size-4" />}
-                />
-              </CardContent>
-            </Card>
+            {/* Right column — everything else */}
+            <div className="min-w-0 flex-1 space-y-4">
+              {/* Pipeline stats bar */}
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="surface-inset rounded px-3 py-2.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Calls Today</p>
+                  <p className="mt-0.5 text-xl font-bold tabular-nums text-foreground">{liveSummary?.calls_made_today ?? 0}</p>
+                </div>
+                <div className="surface-inset rounded px-3 py-2.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Day 1</p>
+                  <p className="mt-0.5 text-xl font-bold tabular-nums text-emerald-400">{liveDash.day1Total || (liveSummary?.day1_total ?? 0)}</p>
+                </div>
+                <div className="surface-inset rounded px-3 py-2.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Day 2</p>
+                  <p className="mt-0.5 text-xl font-bold tabular-nums text-foreground">{liveDash.day2Total || (liveSummary?.day2_total ?? 0)}</p>
+                </div>
+                <div className="surface-inset rounded px-3 py-2.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Claims</p>
+                  <p className="mt-0.5 text-xl font-bold tabular-nums text-foreground">{liveDash.claimedToday || (liveSummary?.leads_claimed_today ?? 0)}</p>
+                </div>
+              </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Today Snapshot</CardTitle>
-                <CardDescription>Fast operational pulse for the current admin day.</CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-3 md:grid-cols-2">
-                <div className="surface-inset rounded-md p-4">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Claimed today</p>
-                  <p className="mt-2 text-[1.75rem] font-bold leading-none tabular-nums text-foreground">{liveDash.claimedToday || (liveSummary?.leads_claimed_today ?? 0)}</p>
+              {/* Ops panel */}
+              <Card className="overflow-hidden">
+                <div className="divide-y divide-border/40">
+                  <OpsRow label="Recharge requests" value={pendingRechargeItems.length} hint="Wallet requests still waiting for finance approval." variant="warning" to="/dashboard/finance/recharge-admin" />
+                  <OpsRow label="Pending registrations" value={pendingRegistrations.data?.total ?? 0} hint="Self-serve signups waiting for admin approval." variant="warning" to="/dashboard/team/approvals" />
+                  <OpsRow label="Min. FLP billing" value={enrollmentPending.data?.total ?? 0} hint="Min. FLP billing approvals pending review right now." variant="warning" to="/dashboard/team/enrollment-approvals" />
+                  <OpsRow label="Grace requests" value={pendingGraceCount} hint="Team members with a pending grace period request awaiting review." variant={pendingGraceCount > 0 ? 'warning' : 'default'} to="/dashboard/team/members" />
+                  <OpsRow label="Reassign ready" value={leadControl.data?.queue_total ?? 0} hint="Archived leads eligible for redistribution." variant="default" to="/dashboard/system/lead-control" />
+                  <OpsRow label="Archive incubation" value={leadControl.data?.incubation_total ?? 0} hint="Archived leads counting down toward stale reassignment." variant="default" to="/dashboard/system/lead-control" />
                 </div>
-                <div className="surface-inset rounded-md p-4">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Approved today</p>
-                  <p className="mt-2 text-[1.75rem] font-bold leading-none tabular-nums text-foreground">
-                    {liveDash.approvedToday || (liveSummary?.payment_proofs_approved_today ?? 0)}
-                  </p>
-                </div>
-                <div className="surface-inset rounded-md p-4">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Lead pool visible</p>
-                  <p className="mt-2 text-[1.75rem] font-bold leading-none tabular-nums text-foreground">{leadPool.data?.total ?? 0}</p>
-                </div>
-                <div className="surface-inset rounded-md p-4">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Latest reassignment</p>
-                  <p className="mt-2 text-sm font-semibold text-foreground">
-                    {leadControl.data?.history?.[0]?.lead_name ?? 'No movement yet'}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {leadControl.data?.history?.[0]
-                      ? formatDateTime(leadControl.data.history[0].occurred_at)
-                      : 'Soft log will appear here.'}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
+              </Card>
 
-          {pendingGraceCount > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Clock className="size-4" />
-                  Pending Grace Requests
-                  <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-xs font-bold text-amber-400">
-                    {pendingGraceCount}
-                  </span>
-                </CardTitle>
-                <CardDescription>Review and action each request without leaving the dashboard.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2.5">
-                {pendingGraceMembers.map((member) => (
-                  <GraceRequestRow key={member.id} member={member} />
-                ))}
-              </CardContent>
-            </Card>
-          )}
+              {/* Actions grid */}
+              <section className="grid gap-4 xl:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <BellRing className="size-4" />
+                      Today Queue
+                    </CardTitle>
+                    <CardDescription>Priority approvals and movement queues without jumping across the app.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid gap-3">
+                    <DeskShortcut
+                      to="/dashboard/team/approvals"
+                      title="Pending registrations"
+                      description="Approve or reject newly registered users."
+                      icon={<Users className="size-4" />}
+                    />
+                    <DeskShortcut
+                      to="/dashboard/team/enrollment-approvals"
+                      title="Min. FLP Billing"
+                      description="Review minimum FLP billing proofs and keep the funnel moving."
+                      icon={<ClipboardCheck className="size-4" />}
+                    />
+                    <DeskShortcut
+                      to="/dashboard/finance/recharge-admin"
+                      title="Recharge requests"
+                      description="Approve or reject pending wallet recharges."
+                      icon={<Wallet className="size-4" />}
+                    />
+                    <DeskShortcut
+                      to="/dashboard/team/members"
+                      title="Grace requests"
+                      description="Review and approve or reject pending grace period requests from team members."
+                      icon={<Clock className="size-4" />}
+                    />
+                    <DeskShortcut
+                      to="/dashboard/system/lead-control"
+                      title="Reassignment queue"
+                      description="Move stale archived watch leads without changing ownership."
+                      icon={<ArrowRightLeft className="size-4" />}
+                    />
+                  </CardContent>
+                </Card>
 
-          <AdminActivityPanel />
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Today Snapshot</CardTitle>
+                    <CardDescription>Fast operational pulse for the current admin day.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid gap-3 md:grid-cols-2">
+                    <div className="surface-inset rounded-md p-4">
+                      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Claimed today</p>
+                      <p className="mt-2 text-[1.75rem] font-bold leading-none tabular-nums text-foreground">{liveDash.claimedToday || (liveSummary?.leads_claimed_today ?? 0)}</p>
+                    </div>
+                    <div className="surface-inset rounded-md p-4">
+                      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Approved today</p>
+                      <p className="mt-2 text-[1.75rem] font-bold leading-none tabular-nums text-foreground">
+                        {liveDash.approvedToday || (liveSummary?.payment_proofs_approved_today ?? 0)}
+                      </p>
+                    </div>
+                    <div className="surface-inset rounded-md p-4">
+                      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Lead pool visible</p>
+                      <p className="mt-2 text-[1.75rem] font-bold leading-none tabular-nums text-foreground">{leadPool.data?.total ?? 0}</p>
+                    </div>
+                    <div className="surface-inset rounded-md p-4">
+                      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Latest reassignment</p>
+                      <p className="mt-2 text-sm font-semibold text-foreground">
+                        {leadControl.data?.history?.[0]?.lead_name ?? 'No movement yet'}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {leadControl.data?.history?.[0]
+                          ? formatDateTime(leadControl.data.history[0].occurred_at)
+                          : 'Soft log will appear here.'}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </section>
+
+              {pendingGraceCount > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Clock className="size-4" />
+                      Pending Grace Requests
+                      <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-xs font-bold text-amber-400">
+                        {pendingGraceCount}
+                      </span>
+                    </CardTitle>
+                    <CardDescription>Review and action each request without leaving the dashboard.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2.5">
+                    {pendingGraceMembers.map((member) => (
+                      <GraceRequestRow key={member.id} member={member} />
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
+              <AdminActivityPanel />
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="leads" className="space-y-6">
