@@ -11,8 +11,8 @@ export function LiveOpsDashboard() {
       {/* Mobile: stacked. Desktop lg+: 60/40 flex split — funnel left, people ops right */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
 
-        {/* LEFT — Live Pipeline Funnel — 60% */}
-        <div className="min-w-0 flex-[3] overflow-hidden rounded border border-white/[0.06] bg-[#0d0f12]">
+        {/* LEFT — Live Pipeline Funnel — 50% */}
+        <div className="min-w-0 flex-1 overflow-hidden rounded border border-white/[0.06] bg-[#0d0f12]">
           <div className="flex items-center gap-2 border-b border-white/[0.04] px-4 py-3">
             <span className="relative flex size-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
@@ -26,8 +26,8 @@ export function LiveOpsDashboard() {
           <LiveFunnelColumn />
         </div>
 
-        {/* RIGHT — People Operations — 40% */}
-        <div className="min-w-0 flex-[2] overflow-hidden lg:max-h-[calc(100vh-14rem)] lg:overflow-y-auto">
+        {/* RIGHT — People Operations — 50% */}
+        <div className="min-w-0 flex-1 overflow-hidden lg:max-h-[calc(100vh-14rem)] lg:overflow-y-auto">
           <PeopleOpsPanel />
         </div>
       </div>
