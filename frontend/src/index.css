@@ -78,75 +78,44 @@
 
   .dark {
     color-scheme: dark;
-    --palette-ink: #1e1f22;
-    --background: #313338;
-    --foreground: #dbdee1;
-    --card: #2b2d31;
-    --card-foreground: #dbdee1;
-    --popover: #1e1f22;
-    --popover-foreground: #dbdee1;
+    --palette-ink: #0f1014;
+    /* ── Surfaces ─── deeper than Discord, matte charcoal blacks */
+    --background: #111214;
+    --foreground: #c8ccd0;
+    --card: #1a1c22;
+    --card-foreground: #c8ccd0;
+    --popover: #0f1014;
+    --popover-foreground: #c8ccd0;
     --primary: #5865f2;
     --primary-foreground: #ffffff;
-    --secondary: #2b2d31;
-    --secondary-foreground: #b5bac1;
-    --muted: #1e1f22;
-    --muted-foreground: #80848e;
+    --secondary: #1e2028;
+    --secondary-foreground: #9a9fa8;
+    --muted: #15171c;
+    --muted-foreground: #72767d;
     --accent: #5865f2;
     --accent-foreground: #ffffff;
     --destructive: #da373c;
     --destructive-foreground: #ffffff;
-    --border: #3f4147;
-    --input: #1e1f22;
+    /* ── Borders: extremely subtle — almost invisible */
+    --border: rgba(255,255,255,0.07);
+    --input: #15171c;
     --ring: #5865f2;
     --chart-1: #5865f2;
     --chart-2: #23a55a;
     --chart-3: #4752c4;
-    --chart-4: #b5bac1;
-    --chart-5: #80848e;
-    --surface: #2b2d31;
-    --subtle: #80848e;
+    --chart-4: #9a9fa8;
+    --chart-5: #72767d;
+    --surface: #1e2028;
+    --subtle: #72767d;
     --success: #23a55a;
     --success-foreground: #ffffff;
     --warning: #f0b232;
     --warning-foreground: #000000;
-    --glass-base: #2b2d31;
-    --shadow-card: 0 1px 0 rgba(255,255,255,0.04);
-    --shadow-card-hover: 0 1px 0 rgba(255,255,255,0.06);
-    --shadow-ios-bar: 0 0.5px 0 0 rgba(255,255,255,0.04);
-  }
-
-  html.dark body {
-    background-color: transparent;
-  }
-
-  /*
-   * Glass / transparent — translucent layers over warm dark grey
-   */
-  .dark.theme-transparent {
-    --background: color-mix(in srgb, #313338 88%, transparent);
-    --foreground: #dbdee1;
-    --card: color-mix(in srgb, #5865f2 10%, #2b2d31 90%);
-    --card-foreground: #dbdee1;
-    --popover: color-mix(in srgb, #5865f2 8%, #1e1f22 92%);
-    --popover-foreground: #dbdee1;
-    --secondary: rgba(255,255,255,0.05);
-    --muted: rgba(255,255,255,0.04);
-    --muted-foreground: color-mix(in srgb, #b5bac1 68%, transparent);
-    --accent: color-mix(in srgb, #5865f2 16%, transparent);
-    --border: rgba(255,255,255,0.08);
-    --input: rgba(255,255,255,0.06);
-    --surface: color-mix(in srgb, #5865f2 8%, #2b2d31 92%);
-    --glass-base: #2b2d31;
-  }
-
-  html.dark.theme-transparent {
-    background-color: transparent;
-    background-image:
-      radial-gradient(1000px 700px at 0% 0%, color-mix(in srgb, #5865f2 25%, transparent), transparent 58%),
-      radial-gradient(900px 600px at 100% 8%, color-mix(in srgb, #23a55a 12%, transparent), transparent 52%),
-      radial-gradient(800px 500px at 50% 100%, color-mix(in srgb, #dbdee1 4%, transparent), transparent 55%),
-      #1e1f22;
-    background-attachment: fixed;
+    --glass-base: #1a1c22;
+    /* ── Shadows: use darkness, not light */
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.03);
+    --shadow-card-hover: 0 2px 6px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.04);
+    --shadow-ios-bar: 0 1px 0 rgba(255,255,255,0.03);
   }
 }
 
@@ -180,10 +149,6 @@
     html {
       scroll-behavior: auto;
     }
-  }
-
-  html.dark.theme-transparent body {
-    @apply bg-transparent;
   }
 
   body {
@@ -473,17 +438,19 @@
     @apply rounded border transition-all duration-100;
     border-color: color-mix(in oklch, var(--border) 85%, transparent);
     background-color: color-mix(in oklch, var(--muted) 45%, transparent);
+<<<<<<< HEAD
+=======
   }
 
   .surface-inset:hover {
     border-color: color-mix(in oklch, var(--border) 100%, transparent);
     background-color: color-mix(in oklch, var(--muted) 55%, transparent);
+>>>>>>> origin/main
   }
 
-  html.dark.theme-transparent .surface-elevated,
-  html.dark.theme-transparent .surface-inset {
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+  .surface-inset:hover {
+    border-color: color-mix(in oklch, var(--border) 100%, transparent);
+    background-color: color-mix(in oklch, var(--muted) 55%, transparent);
   }
 
   .field-label {
@@ -700,10 +667,8 @@
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background:
-      linear-gradient(180deg, color-mix(in srgb, white 10%, transparent), transparent 44%),
-      linear-gradient(90deg, color-mix(in srgb, var(--primary) 6%, transparent), transparent 58%);
-    opacity: 0.7;
+    background: linear-gradient(180deg, rgba(255,255,255,0.025), transparent 40%);
+    opacity: 1;
     z-index: -1;
   }
 
@@ -730,7 +695,11 @@
   }
 
   html.dark .dashboard-sidebar {
+<<<<<<< HEAD
+    background-color: #0f1014;
+=======
     background-color: #2b2d31;
+>>>>>>> origin/main
   }
 }
 
@@ -760,12 +729,6 @@ html.perf-low-end .animate-pulse {
 html.perf-low-end .transition-all {
   transition-property: opacity, transform, border-color;
   transition-duration: 0.12s;
-}
-
-html.perf-low-end.dark.theme-transparent .surface-elevated,
-html.perf-low-end.dark.theme-transparent .surface-inset {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
 }
 
 html.perf-low-end .shadow-ios-bar {
