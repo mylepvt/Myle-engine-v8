@@ -31,6 +31,7 @@ import { EmptyState, ErrorState } from '@/components/ui/states'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAdminActivitySSE } from '@/hooks/use-admin-activity-sse'
 import { AdminActivityPanel } from '@/components/dashboard/AdminActivityPanel'
+import { useLiveDashboardStore } from '@/stores/live-dashboard-store'
 import { useAppSettingsQuery, useSystemUsersSummaryQuery } from '@/hooks/use-settings-query'
 import { useActiveWatchersQuery } from '@/hooks/use-enroll-query'
 import { useEnrollmentApprovalsPendingQuery, useTeamMembersQuery, useUpdateMemberComplianceMutation, type TeamMemberPublic } from '@/hooks/use-team-query'
@@ -501,9 +502,23 @@ export function AdminCommandCenter({ firstName }: Props) {
   const enrollmentPending = useEnrollmentApprovalsPendingQuery()
   const rechargeRequests = useWalletRechargeRequestsQuery()
   const leadControl = useLeadControlQuery()
+  const liveDash = useLiveDashboardStore()
   const leadPool = useLeadPoolQuery(true)
   const teamReports = useTeamReportsQuery('', true)
   const activeWatchers = useActiveWatchersQuery(activeTab === 'today')
+
+  // Seed live dashboard store from REST data once loaded
+  const liveSummary = teamReports.data?.live_summary
+  if (liveSummary && !liveDash.day1Total && !liveDash.day2Total) {
+    liveDash.setInitial({
+      callsToday: liveSummary.calls_made_today,
+      day1Total: liveSummary.day1_total,
+      day2Total: liveSummary.day2_total,
+      claimedToday: liveSummary.leads_claimed_today,
+      approvedToday: liveSummary.payment_proofs_approved_today,
+      enrolledToday: liveSummary.enrolled_today,
+    })
+  }
 
   const systemUsersSummary = useSystemUsersSummaryQuery(activeTab === 'team')
   const teamMembers = useTeamMembersQuery()
@@ -545,7 +560,6 @@ export function AdminCommandCenter({ firstName }: Props) {
       .slice(0, 8)
   }, [teamMembers.data?.items])
 
-  const liveSummary = teamReports.data?.live_summary
   const settingsMap = appSettings.data?.settings ?? {}
   const configuredBatchKeys = useMemo(
     () => Object.keys(settingsMap).filter((key) => key.startsWith('batch_') && settingsMap[key].trim()).length,
@@ -689,13 +703,13 @@ export function AdminCommandCenter({ firstName }: Props) {
             />
             <StatCard
               label="Day 1 Pipeline"
-              value={liveSummary?.day1_total ?? 0}
+              value={liveDash.day1Total || (liveSummary?.day1_total ?? 0)}
               hint="Leads currently in Day 1 stage — sent for initial follow-up."
               variant="success"
             />
             <StatCard
               label="Day 2 with Leader"
-              value={liveSummary?.day2_total ?? 0}
+              value={liveDash.day2Total || (liveSummary?.day2_total ?? 0)}
               hint="Leads currently in Day 2 stage — in a leader's hands."
               variant="default"
             />
@@ -764,12 +778,12 @@ export function AdminCommandCenter({ firstName }: Props) {
               <CardContent className="grid gap-3 md:grid-cols-2">
                 <div className="surface-inset rounded-md p-4">
                   <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Claimed today</p>
-                  <p className="mt-2 text-[1.75rem] font-bold leading-none tabular-nums text-foreground">{liveSummary?.leads_claimed_today ?? 0}</p>
+                  <p className="mt-2 text-[1.75rem] font-bold leading-none tabular-nums text-foreground">{liveDash.claimedToday || (liveSummary?.leads_claimed_today ?? 0)}</p>
                 </div>
                 <div className="surface-inset rounded-md p-4">
                   <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Approved today</p>
                   <p className="mt-2 text-[1.75rem] font-bold leading-none tabular-nums text-foreground">
-                    {liveSummary?.payment_proofs_approved_today ?? 0}
+                    {liveDash.approvedToday || (liveSummary?.payment_proofs_approved_today ?? 0)}
                   </p>
                 </div>
                 <div className="surface-inset rounded-md p-4">

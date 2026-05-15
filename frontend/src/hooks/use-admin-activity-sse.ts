@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useRef } from 'react'
 import { useAdminFeedStore, type AdminActivityEntry } from '@/stores/admin-feed-store'
+import { useLiveDashboardStore } from '@/stores/live-dashboard-store'
 import { playFileSound } from '@/lib/app-sounds'
 
 const REST_URL = '/api/v1/admin/activity-feed?limit=50'
@@ -275,6 +276,7 @@ export function useAdminActivitySSE(enabled: boolean) {
         if (entry) {
           pushEntry(entry)
           activitySound(entry.action)
+          useLiveDashboardStore.getState().processEvent(entry.action, entry.metadata)
         }
         // Reset backoff on success
         reconnectDelayRef.current = RECONNECT_DELAY_MS
