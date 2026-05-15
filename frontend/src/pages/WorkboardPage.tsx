@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Check, CheckSquare, Eye, Pencil, Search, Send, Video } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
@@ -1292,6 +1292,7 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 export function WorkboardPage({ title, mode = 'pipeline' }: Props) {
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { role, serverRole } = useDashboardShellRole()
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
@@ -1394,6 +1395,7 @@ export function WorkboardPage({ title, mode = 'pipeline' }: Props) {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
+          <button type="button" onClick={() => navigate(-1)} className="mb-1 text-sm text-primary underline-offset-2 hover:underline">← Back</button>
           <h1 className="text-ds-h2">{title}</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
             {mode === 'mindset-lock'
