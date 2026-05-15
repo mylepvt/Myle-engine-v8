@@ -116,8 +116,7 @@ export function DashboardSidebar({
                                   ]
                                 : [
                                     'text-foreground/80 hover:text-foreground',
-                                    'hover:bg-muted/60',
-                                    'hover:translate-x-0.5',
+                                    'discord-hover',
                                   ],
                             )
                           }

@@ -4,6 +4,7 @@ import { Bell, ClipboardCheck, Home, Menu, PanelLeftClose, Search, Settings } fr
 
 import { ShellHeaderFeedbackControls } from '@/components/layout/ShellHeaderFeedbackControls'
 import { Button } from '@/components/ui/button'
+import { StatusDot } from '@/components/ui/status-dot'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { useEnrollmentApprovalsPendingQuery } from '@/hooks/use-team-query'
@@ -153,7 +154,7 @@ export function DashboardHeader({
               <ClipboardCheck className="size-[1.15rem] md:size-[1.25rem] text-emerald-400" />
             </Link>
             <span
-              className="pointer-events-none absolute right-0.5 top-0.5 flex min-w-[1rem] items-center justify-center rounded-full bg-emerald-600 px-0.5 text-ds-label font-bold text-white shadow-[0_0_8px_rgba(22,163,74,0.55)]"
+              className="pointer-events-none absolute -right-0.5 -top-0.5 flex min-w-[18px] items-center justify-center rounded-full bg-[#23a55a] px-1 text-[10px] font-bold text-white"
               aria-hidden
             >
               {pendingEnrollCount > 9 ? '9+' : pendingEnrollCount}
@@ -170,7 +171,7 @@ export function DashboardHeader({
           </Link>
           {noticeBoardUnread > 0 ? (
             <span
-              className="pointer-events-none absolute right-0.5 top-0.5 flex min-w-[1rem] items-center justify-center rounded-full bg-primary px-0.5 text-ds-label font-bold text-primary-foreground shadow-[0_0_8px_rgba(84,101,255,0.6)] animate-pulse"
+              className="pointer-events-none absolute -right-0.5 -top-0.5 flex min-w-[18px] items-center justify-center rounded-full bg-[#da373c] px-1 text-[10px] font-bold text-white"
               aria-hidden
             >
               {noticeBoardUnread > 9 ? '9+' : noticeBoardUnread}
@@ -197,7 +198,7 @@ export function DashboardHeader({
 
         <Link
           to="/dashboard/settings/profile"
-          className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted text-ds-caption font-semibold text-foreground transition-opacity hover:opacity-90 active:opacity-80"
+          className="relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted text-ds-caption font-semibold text-foreground transition-opacity hover:opacity-90 active:opacity-80"
           title={
             me?.fbo_id
               ? `${me.fbo_id}${me.username ? ` · ${me.username}` : ''}${me.email ? ` · ${me.email}` : ''}`
@@ -222,6 +223,7 @@ export function DashboardHeader({
           ) : (
             displayInitial
           )}
+          <StatusDot status="online" />
         </Link>
 
         <Button variant="ghost" size="sm" asChild className="hidden lg:inline-flex">

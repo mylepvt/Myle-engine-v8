@@ -530,6 +530,55 @@
     background: rgba(255,255,255,0.14);
   }
 
+  /* ── Discord-style status dots ──────────────────────────────────── */
+  .status-dot {
+    @apply absolute bottom-0 right-0 z-10 size-3 rounded-full border-2 border-background;
+  }
+  .status-dot.online {
+    background: #23a55a;
+  }
+  .status-dot.idle {
+    background: #f0b232;
+  }
+  .status-dot.dnd {
+    background: #da373c;
+  }
+  .status-dot.offline {
+    background: #80848e;
+  }
+
+  /* ── Discord modal animations ───────────────────────────────────── */
+  .keyboard-safe-modal {
+    animation: dcFadeIn 0.12s ease-out;
+  }
+  .keyboard-safe-sheet {
+    animation: dcSlideUp 0.15s ease-out;
+  }
+  @keyframes dcFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes dcSlideUp {
+    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* ── Discord shimmer skeleton ───────────────────────────────────── */
+  @keyframes dcShimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      rgba(255,255,255,0.04) 25%,
+      rgba(255,255,255,0.08) 50%,
+      rgba(255,255,255,0.04) 75%
+    );
+    background-size: 200% 100%;
+    animation: dcShimmer 1.5s ease-in-out infinite;
+  }
+
   .dashboard-shell-header {
     transition: background-color 0.2s ease, backdrop-filter 0.24s ease, box-shadow 0.24s ease;
     backdrop-filter: saturate(132%) blur(9px);
@@ -839,7 +888,7 @@ html.pwa-standalone * {
     select,
     textarea {
       transition-property: background-color, border-color, color, opacity, transform;
-      transition-duration: 120ms;
+      transition-duration: 100ms;
     }
 
     button:not([disabled]):hover,
