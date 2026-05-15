@@ -638,7 +638,7 @@ export function AdminCommandCenter({ firstName }: Props) {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1.5 rounded-md bg-muted/40 p-2">
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-px rounded bg-muted/40 p-1">
           <TabsTrigger value="today" className="flex items-center gap-1.5">
             <CalendarDays className="size-3.5" />
             Today
@@ -664,11 +664,7 @@ export function AdminCommandCenter({ firstName }: Props) {
           <TabsTrigger value="team" className="flex items-center gap-1.5">
             <Users className="size-3.5" />
             Team
-          <section className="xl:col-span-1">
-            <LiveTeamActivity />
-          </section>
-
-          {pendingGraceCount > 0 && (
+            {pendingGraceCount > 0 && (
               <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
                 {pendingGraceCount}
               </span>
@@ -951,7 +947,9 @@ export function AdminCommandCenter({ firstName }: Props) {
             />
           </section>
 
-          <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+          <section className="grid gap-4 xl:grid-cols-[1fr_2fr]">
+            <LiveTeamActivity />
+            <div className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Member Desk</CardTitle>
@@ -1015,6 +1013,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                 )}
               </CardContent>
             </Card>
+            </div>
           </section>
         </TabsContent>
 
