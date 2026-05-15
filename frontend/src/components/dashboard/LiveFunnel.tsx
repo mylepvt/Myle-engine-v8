@@ -27,7 +27,7 @@ export function LiveFunnel() {
             {/* Funnel bar */}
             <div className="relative flex h-8 flex-1 items-center">
               <div
-                className="flex h-7 items-center gap-1 rounded-r-full px-2 transition-all duration-500"
+                className="flex h-7 items-center gap-1 rounded-r-full px-2"
                 style={{
                   width: `${barWidth}%`,
                   background: `linear-gradient(90deg, rgba(88,101,242,0.2), rgba(88,101,242,0.08))`,

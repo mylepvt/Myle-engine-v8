@@ -141,7 +141,7 @@ export default {
         'status-pulse': 'statusPulse 1.5s ease-in-out infinite',
         'sidebar-indicator': 'sidebarIndicator 0.15s ease-out forwards',
         'dc-spinner': 'dcSpinner 0.8s steps(4) infinite',
-        'dot-in': 'dotIn 0.4s ease-out both',
+        'dot-in': 'dotIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both',
       },
       keyframes: {
         fadeIn: {
@@ -185,7 +185,7 @@ export default {
           '100%': { transform: 'translateY(0)' },
         },
         dotIn: {
-          '0%': { opacity: '0', transform: 'translateY(-6px) scale(0.5)' },
+          '0%': { opacity: '0', transform: 'translateY(-8px) scale(0.6)' },
           '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
         },
       },
