@@ -82,20 +82,19 @@ function describeEvent(eventType: string, payload: Record<string, unknown>): str
       return leadRef ? `${leadRef} closed` : 'Lead closed'
 
     case eventType === 'lead:shadow_created' || eventType === 'lead:shadow_synced':
-      return leadRef ? `${leadRef} synced to CRM` : 'Lead synced to CRM'
+      return leadRef ? `${leadRef} data saved` : 'Lead data saved'
 
     case eventType === 'lead:shadow_deleted':
-      return leadRef ? `${leadRef} removed from CRM` : 'Lead removed from CRM'
+      return leadRef ? `${leadRef} data removed` : 'Lead data removed'
 
     case eventType === 'shadow_delivery':
-      return leadRef ? `CRM sync delivered: ${leadRef}` : 'CRM sync delivered'
+      return leadRef ? `${leadRef} data updated` : 'Lead data updated'
 
-    // CRM outbox events (uppercase constants from crm_outbox.py)
     case eventType === 'LEAD_UPSERT':
-      return leadRef ? `${leadRef} synced to CRM` : 'Lead synced to CRM'
+      return leadRef ? `${leadRef} data saved` : 'Lead data saved'
 
     case eventType === 'LEAD_DELETE':
-      return leadRef ? `${leadRef} removed from CRM` : 'Lead removed from CRM'
+      return leadRef ? `${leadRef} data removed` : 'Lead data removed'
 
     case eventType === 'wallet:credited' || eventType === 'wallet:credited_worker':
       return leadRef ? `Wallet credited for ${leadRef}` : 'Wallet credited'
@@ -110,34 +109,34 @@ function describeEvent(eventType: string, payload: Record<string, unknown>): str
       return 'Scheduler ran'
 
     case eventType === 'fsm:validation_failed':
-      return leadRef ? `Stage validation failed: ${leadRef}` : 'Stage validation failed'
+      return leadRef ? `Stage change blocked for ${leadRef}` : 'Stage change blocked'
 
     case eventType === 'scheduler.watch_archive':
-      return 'Archive check ran'
+      return 'Auto cleanup ran'
 
     case eventType === 'scheduler.failure':
-      return 'Scheduler job failed'
+      return 'Auto task failed'
 
     case eventType === 'scheduler.leader_enforcement':
-      return 'Leader assignment checked'
+      return 'Team leader check ran'
 
     case eventType.startsWith('scheduler.'):
-      return `Scheduler: ${eventType.replace('scheduler.', '').replace(/_/g, ' ')}`
+      return 'Auto task ran'
 
     case eventType === 'wallet.adjustment':
-      return leadRef ? `Wallet adjusted for ${leadRef}` : 'Wallet adjusted'
+      return leadRef ? `Points adjusted for ${leadRef}` : 'Points adjusted'
 
     case eventType === 'wallet.recharge_review':
-      return leadRef ? `Recharge review for ${leadRef}` : 'Recharge under review'
+      return leadRef ? `Payment review for ${leadRef}` : 'Payment under review'
 
     case eventType.startsWith('wallet.'):
-      return `Wallet: ${eventType.replace('wallet.', '').replace(/_/g, ' ')}${leadRef ? ` — ${leadRef}` : ''}`
+      return leadRef ? `Points updated for ${leadRef}` : 'Points updated'
 
     case eventType === 'enrollment.link_generated':
-      return leadRef ? `Enrollment link created for ${leadRef}` : 'Enrollment link created'
+      return leadRef ? `Join link created for ${leadRef}` : 'Join link created'
 
     case eventType.startsWith('enrollment.'):
-      return `Enrollment: ${eventType.replace('enrollment.', '').replace(/_/g, ' ')}${leadRef ? ` — ${leadRef}` : ''}`
+      return leadRef ? `Enrollment update for ${leadRef}` : 'Enrollment updated'
 
     default:
       // Fallback: clean up any remaining snake_case / dots
