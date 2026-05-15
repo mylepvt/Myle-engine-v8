@@ -157,5 +157,5 @@ export function useAdminActivitySSE(enabled: boolean) {
       esRef.current = null
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }
-  }, [enabled, pushEntry])
+  }, [enabled, pushEntry, setInitialEntries])
 }
