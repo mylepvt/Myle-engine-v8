@@ -501,6 +501,14 @@
   }
   .status-dot.online {
     background: #23a55a;
+    box-shadow: 0 0 6px rgba(35,165,90,0.5);
+  }
+  .status-dot.online::before {
+    content: '';
+    @apply absolute inset-0 rounded-full;
+    animation: statusPulse 1.5s ease-in-out infinite;
+    background: #23a55a;
+    opacity: 0.4;
   }
   .status-dot.idle {
     background: #f0b232;

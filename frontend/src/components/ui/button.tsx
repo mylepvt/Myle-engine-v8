@@ -2,6 +2,7 @@ import { Slot } from '@radix-ui/react-slot'
 import * as React from 'react'
 
 import { type ButtonVariantProps, buttonVariants } from '@/components/ui/button-variants'
+import { playFileSound } from '@/lib/app-sounds'
 import { cn } from '@/lib/utils'
 
 export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
@@ -16,6 +17,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
+        onClick={(e) => {
+          playFileSound('tap', 0.3)
+          props.onClick?.(e)
+        }}
         {...props}
       />
     )
