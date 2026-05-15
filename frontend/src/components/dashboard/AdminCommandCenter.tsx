@@ -31,6 +31,7 @@ import { EmptyState, ErrorState } from '@/components/ui/states'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAdminActivitySSE } from '@/hooks/use-admin-activity-sse'
 import { AdminActivityPanel } from '@/components/dashboard/AdminActivityPanel'
+import { LiveTeamActivity } from '@/components/dashboard/LiveTeamActivity'
 import { useLiveDashboardStore } from '@/stores/live-dashboard-store'
 import { useAppSettingsQuery, useSystemUsersSummaryQuery } from '@/hooks/use-settings-query'
 import { useActiveWatchersQuery } from '@/hooks/use-enroll-query'
@@ -663,7 +664,11 @@ export function AdminCommandCenter({ firstName }: Props) {
           <TabsTrigger value="team" className="flex items-center gap-1.5">
             <Users className="size-3.5" />
             Team
-            {pendingGraceCount > 0 && (
+          <section className="xl:col-span-1">
+            <LiveTeamActivity />
+          </section>
+
+          {pendingGraceCount > 0 && (
               <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
                 {pendingGraceCount}
               </span>
