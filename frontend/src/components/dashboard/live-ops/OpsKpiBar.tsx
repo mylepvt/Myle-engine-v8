@@ -157,7 +157,7 @@ export function OpsKpiBar() {
           delta={`${Math.max(0, Math.floor(liveActiveUsers * 0.09))}%`}
           deltaUp
           icon={<Users className="size-3" />}
-          to="/dashboard/admin/leaders"
+          to="/dashboard/settings/all-members"
         />
       </div>
 
@@ -166,7 +166,7 @@ export function OpsKpiBar() {
         <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40">
           Stuck Leads
         </span>
-        <div className="flex flex-1 gap-2">
+        <div className="flex flex-1 gap-2 overflow-x-auto">
           <StuckChip label=">24h In Stage" value={stuckAt24h} urgent to="/dashboard/work/leads" />
           <StuckChip label="Waiting Interview" value={waitInterview} urgent to="/dashboard/work/leads" />
           <StuckChip label="Inactive (Day 2+)" value={inactiveDay2} to="/dashboard/work/workboard" />

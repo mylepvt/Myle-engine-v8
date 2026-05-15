@@ -34,7 +34,7 @@ function LeaderCard({ leader, rank }: { leader: LeaderHealthItem; rank: number }
   const color = avatarColor(leader.leader_name)
   const isOnline = leader.presence_status === 'online'
   return (
-    <Link to="/dashboard/admin/leaders" className="flex min-w-[136px] flex-1 flex-col items-center gap-2 rounded border border-white/[0.06] bg-white/[0.03] p-3 text-center no-underline transition-all duration-150 hover:border-white/20 hover:bg-white/[0.07] active:bg-white/[0.1] cursor-pointer">
+    <Link to="/dashboard/settings/all-members" className="flex min-w-[100px] flex-1 flex-col items-center gap-2 rounded border border-white/[0.06] bg-white/[0.03] p-3 text-center no-underline transition-all duration-150 hover:border-white/20 hover:bg-white/[0.07] active:bg-white/[0.1] cursor-pointer">
       {/* Rank badge */}
       <div
         className="flex size-5 items-center justify-center rounded-full text-[10px] font-bold text-white shadow"
@@ -89,7 +89,7 @@ function TeamRow({ leader }: { leader: LeaderHealthItem }) {
   const isOnline = leader.presence_status === 'online'
   const color = avatarColor(leader.leader_name)
   return (
-    <Link to="/dashboard/admin/leaders" className="flex items-center gap-3 border-b border-white/[0.04] px-4 py-3 no-underline transition-all duration-150 hover:bg-white/[0.05] active:bg-white/[0.08] cursor-pointer">
+    <Link to="/dashboard/settings/all-members" className="flex items-center gap-3 border-b border-white/[0.04] px-4 py-3 no-underline transition-all duration-150 hover:bg-white/[0.05] active:bg-white/[0.08] cursor-pointer">
       {/* Avatar + status */}
       <div className="relative shrink-0">
         <div
@@ -246,17 +246,17 @@ export function PeopleOpsPanel() {
       </div>
 
       {/* Top Leaders */}
-      <div className="border-b border-white/[0.06] p-4">
+      <div className="border-b border-white/[0.06] px-4 py-3">
         <div className="mb-3 flex items-center justify-between">
           <p className="text-[11px] font-semibold text-muted-foreground/70">Top Leaders (Today)</p>
-          <Link to="/dashboard/admin/leaders" className="text-[10px] font-medium text-primary/70 hover:text-primary">
+          <Link to="/dashboard/settings/all-members" className="text-[10px] font-medium text-primary/70 hover:text-primary">
             View all
           </Link>
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="flex gap-2 overflow-x-auto scroll-px-1 pb-1">
           {topLeaders.length === 0 &&
             Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="min-w-[136px] flex-1 animate-pulse rounded border border-white/[0.06] bg-white/[0.02] py-12" />
+              <div key={i} className="min-w-[100px] flex-1 animate-pulse rounded border border-white/[0.06] bg-white/[0.02] py-12" />
             ))}
           {topLeaders.map((leader, i) => (
             <LeaderCard key={leader.leader_id} leader={leader} rank={i + 1} />
@@ -268,7 +268,7 @@ export function PeopleOpsPanel() {
       <div className="border-b border-white/[0.06]">
         <div className="flex items-center justify-between px-4 py-3">
           <p className="text-[11px] font-semibold text-muted-foreground/70">Teams Live Overview</p>
-          <Link to="/dashboard/admin/leaders" className="text-[10px] font-medium text-primary/70 hover:text-primary">
+          <Link to="/dashboard/settings/all-members" className="text-[10px] font-medium text-primary/70 hover:text-primary">
             View all
           </Link>
         </div>
