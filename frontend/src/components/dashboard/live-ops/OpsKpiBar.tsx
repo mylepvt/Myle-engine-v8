@@ -157,7 +157,7 @@ export function OpsKpiBar() {
           delta={`${Math.max(0, Math.floor(liveActiveUsers * 0.09))}%`}
           deltaUp
           icon={<Users className="size-3" />}
-          to="/dashboard/admin/leaders"
+          to="/dashboard/settings/all-members"
         />
       </div>
 
