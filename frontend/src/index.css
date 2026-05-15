@@ -115,24 +115,7 @@
     --shadow-ios-bar: 0 0.5px 0 0 rgba(255,255,255,0.04);
   }
 
-  /*
-   * Dark mode — blurple ambient background gradients
-   */
-  html.dark {
-    background-image:
-      radial-gradient(ellipse 900px 700px at 0% 0%, color-mix(in srgb, #5865f2 18%, transparent), transparent 60%),
-      radial-gradient(ellipse 700px 500px at 100% 0%, color-mix(in srgb, #4752c4 10%, transparent), transparent 55%),
-      radial-gradient(ellipse 600px 400px at 50% 100%, color-mix(in srgb, #5865f2 7%, transparent), transparent 50%);
-    background-attachment: fixed;
-    background-color: #1e1f22;
-  }
-
   html.dark body {
-    background-color: transparent;
-  }
-
-  html.dark .dashboard-shell,
-  html.dark .content-dashboard-main {
     background-color: transparent;
   }
 
