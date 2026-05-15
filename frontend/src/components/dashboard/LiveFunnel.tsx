@@ -44,7 +44,7 @@ export function LiveFunnel() {
                 {stage.dots.slice(0, 6).map((dot) => (
                   <div
                     key={dot.id}
-                    className="relative flex size-6 items-center justify-center rounded-full text-[9px] font-bold text-white shadow-lg transition-all duration-500 hover:z-10 hover:scale-125"
+                    className="relative flex size-6 items-center justify-center rounded-full text-[9px] font-bold text-white shadow-lg transition-all duration-500 hover:z-10 hover:scale-125 animate-dot-in"
                     style={{ backgroundColor: dot.color }}
                     title={`${dot.name} — ${dot.stageLabel}`}
                   >
