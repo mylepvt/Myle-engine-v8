@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -15,6 +16,7 @@ import { ClipboardList, ExternalLink } from 'lucide-react'
 type Props = { title: string }
 
 export function EnrollmentApprovalsPage({ title }: Props) {
+  const navigate = useNavigate()
   const { data: me } = useAuthMeQuery()
   const decide = useEnrollmentDecisionMutation()
   const { data, isPending, isError, error, refetch } = useEnrollmentRequestsQuery()
@@ -40,7 +42,10 @@ export function EnrollmentApprovalsPage({ title }: Props) {
 
   return (
     <div className="max-w-2xl space-y-4 md:space-y-6">
-      <h1 className="text-ds-h2">{title}</h1>
+      <div className="space-y-1">
+        <button type="button" onClick={() => navigate(-1)} className="text-sm text-primary underline-offset-2 hover:underline">← Back</button>
+        <h1 className="text-ds-h2">{title}</h1>
+      </div>
       <p className="text-sm text-muted-foreground">
         {isAdmin
           ? 'Pending FLP invoices from every leader and team member appear here for approval.'
