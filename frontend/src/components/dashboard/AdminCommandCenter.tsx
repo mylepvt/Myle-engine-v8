@@ -696,12 +696,27 @@ export function AdminCommandCenter({ firstName }: Props) {
         </TabsList>
 
         <TabsContent value="today">
-          {/* Full live ops dashboard */}
-          <div className="mb-6">
-            <LiveOpsDashboard />
-          </div>
+          <div className="flex flex-col gap-4 lg:flex-row">
+            {/* Left column — Live Funnel (72% on desktop) */}
+            <div className="w-full lg:w-[72%]">
+              <Card>
+                <CardHeader className="pb-1">
+                  <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                    <span className="relative flex size-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex size-2 rounded-full bg-emerald-400" />
+                    </span>
+                    Live Pipeline
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-3 py-3 sm:px-4 sm:py-4 lg:px-5">
+                  <LiveFunnel />
+                </CardContent>
+              </Card>
+            </div>
 
-          <div className="space-y-4">
+            {/* Right column — operations panel (28% on desktop) */}
+            <div className="w-full lg:w-[28%] space-y-4">
               {/* Pipeline stats bar */}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div className="surface-inset rounded px-3 py-2.5">
