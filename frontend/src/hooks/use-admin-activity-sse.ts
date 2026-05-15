@@ -27,16 +27,27 @@ const STAGE_LABELS: Record<string, string> = {
   new: 'New',
   contacted: 'Contacted',
   mindset_lock: 'Mindset Lock',
+  day1: 'Day 1',
+  day2: 'Day 2',
+  day3: 'Day 3',
+  day4: 'Day 4',
+  day5: 'Day 5',
+  day6: 'Day 6',
   day1_pending: 'Day 1 Pending',
   day1_attended: 'Day 1 Attended',
   day2_pending: 'Day 2 Pending',
   day2_attended: 'Day 2 Attended',
+  day3_pending: 'Day 3 Pending',
+  day3_attended: 'Day 3 Attended',
+  interview: 'Interview',
   enrolled: 'Enrolled',
   closed: 'Closed',
   rejected: 'Rejected',
   pool: 'In Pool',
   assigned: 'Assigned',
   unassigned: 'Unassigned',
+  archive: 'Archived',
+  archived: 'Archived',
 }
 
 function stageLabel(stage: unknown): string {
@@ -63,7 +74,7 @@ function describeEvent(eventType: string, payload: Record<string, unknown>): str
       return leadRef ? `New lead added: ${leadRef}` : 'New lead added'
 
     case eventType === 'lead:transitioned' || eventType === 'lead_state':
-      if (stage) return `${leadRef || 'Lead'} moved to ${stageLabel(stage)}${crmStage && crmStage !== stage ? ` (CRM: ${stageLabel(crmStage)})` : ''}`
+      if (stage) return `${leadRef || 'Lead'} moved to ${stageLabel(stage)}`
       return leadRef ? `${leadRef} status updated` : 'Lead status updated'
 
     case eventType === 'lead:assigned':
