@@ -4,8 +4,9 @@ import { useFunnelActivityStore } from '@/stores/funnel-activity-store'
 const MAX_BAR_WIDTH = 100
 
 export function LiveFunnel() {
+  const _tick = useFunnelActivityStore((s) => s._tick)
   const getStages = useFunnelActivityStore((s) => s.getStages)
-  const stages = useMemo(() => getStages(), [getStages])
+  const stages = useMemo(() => getStages(), [_tick, getStages])
 
   const maxCount = useMemo(
     () => Math.max(...stages.map((s) => s.count), 1),

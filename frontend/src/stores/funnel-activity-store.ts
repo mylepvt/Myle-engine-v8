@@ -83,66 +83,71 @@ const DOT_TTL = 120_000 // 2 minutes — dot disappears if inactive
 type FunnelState = {
   actors: Map<string, ActorDot>
   stages: string[]
+  _tick: number
   getStages: () => FunnelStage[]
   processAction: (actorId: string, actorName: string, action: string, stage?: string) => void
   cleanup: () => void
 }
 
-export const useFunnelActivityStore = create<FunnelState>((set, get) => ({
-  actors: new Map(),
-  stages: FUNNEL_STAGES.map((s) => s.key),
+export const useFunnelActivityStore = create<FunnelState>((set, get) => {
+  return {
+    actors: new Map(),
+    stages: FUNNEL_STAGES.map((s) => s.key),
+    _tick: 0,
 
-  getStages: () => {
-    const { actors } = get()
-    const now = Date.now()
-    return FUNNEL_STAGES.map((s) => {
-      const stageDots: ActorDot[] = []
-      for (const [_, dot] of actors) {
-        if (now - dot.lastSeen > DOT_TTL) continue
-        if (dot.stage === s.key) {
-          stageDots.push(dot)
+    getStages: () => {
+      const { actors } = get()
+      const now = Date.now()
+      return FUNNEL_STAGES.map((s) => {
+        const stageDots: ActorDot[] = []
+        for (const entry of actors) {
+          const dot = entry[1]
+          if (now - dot.lastSeen > DOT_TTL) continue
+          if (dot.stage === s.key) {
+            stageDots.push(dot)
+          }
         }
-      }
-      return { ...s, dots: stageDots, count: stageDots.length }
-    })
-  },
-
-  processAction: (actorId, actorName, action, stage) => {
-    if (!actorId || !actorName) return
-    const color = actorColor(actorId)
-    let targetStage = STAGE_MAP[action] || stage || 'new_lead'
-
-    // For transition events, use the target stage from metadata
-    if ((action === 'lead:transitioned' || action === 'lead_state') && stage) {
-      targetStage = stage
-    }
-
-    set((s) => {
-      const next = new Map(s.actors)
-      next.set(actorId, {
-        id: actorId,
-        name: actorName,
-        color,
-        stage: targetStage,
-        stageLabel: STAGE_LABEL[action] || action,
-        lastSeen: Date.now(),
-        action,
+        return { ...s, dots: stageDots, count: stageDots.length }
       })
-      return { actors: next }
-    })
-  },
+    },
 
-  cleanup: () => {
-    const now = Date.now()
-    set((s) => {
-      const next = new Map(s.actors)
-      for (const [id, dot] of next) {
-        if (now - dot.lastSeen > DOT_TTL) next.delete(id)
+    processAction: (actorId, actorName, action, stage) => {
+      if (!actorId || !actorName) return
+      const color = actorColor(actorId)
+      let targetStage = STAGE_MAP[action] || stage || 'new_lead'
+
+      if ((action === 'lead:transitioned' || action === 'lead_state') && stage) {
+        targetStage = stage
       }
-      return { actors: next }
-    })
-  },
-}))
+
+      set((s) => {
+        const next = new Map(s.actors)
+        next.set(actorId, {
+          id: actorId,
+          name: actorName,
+          color,
+          stage: targetStage,
+          stageLabel: STAGE_LABEL[action] || action,
+          lastSeen: Date.now(),
+          action,
+        })
+        return { actors: next, _tick: s._tick + 1 }
+      })
+    },
+
+    cleanup: () => {
+      const now = Date.now()
+      set((s) => {
+        const next = new Map(s.actors)
+        for (const entry of next) {
+          const dot = entry[1]
+          if (now - dot.lastSeen > DOT_TTL) next.delete(entry[0])
+        }
+        return { actors: next, _tick: s._tick + 1 }
+      })
+    },
+  }
+});
 
 // Auto-cleanup every 30 seconds
 if (typeof window !== 'undefined') {
