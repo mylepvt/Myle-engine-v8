@@ -5,23 +5,53 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAdminFeedStore, type AdminActivityEntry } from '@/stores/admin-feed-store'
 
 const ACTION_ICONS: Record<string, string> = {
+  'commit_boundary': '↻',
   'lead:created': '+',
-  'lead:transitioned': '>',
-  'lead:assigned': '<>',
+  'lead:transitioned': '→',
+  'lead:assigned': '⇄',
   'lead:auto_reassigned': '!',
-  'lead:closed': 'OK',
-  'lead:claimed': 'D',
-  'lead:batch_claimed': 'D',
-  'lead:claim_duplicate': '!',
+  'lead:closed': '✓',
+  'lead:claimed': '⚑',
+  'lead:batch_claimed': '⚑',
+  'lead:claim_duplicate': '!!',
   'lead:shadow_created': 'S',
   'lead:shadow_synced': 'S',
-  'lead:shadow_deleted': 'X',
-  'wallet:credited': 'R',
-  'wallet:credited_worker': 'R',
+  'lead:shadow_deleted': '✕',
+  'wallet:credited': '₹',
+  'wallet:credited_worker': '₹',
   'performance:recomputed': 'P',
-  'system:ranking_recalc': 'RC',
-  'system:scheduler_tick': 'SC',
-  'fsm:validation_failed': 'X',
+  'system:ranking_recalc': '↑',
+  'system:scheduler_tick': '⏱',
+  'fsm:validation_failed': '✕',
+}
+
+// Human-readable label for each action type (shown in chips + activity row)
+const ACTION_LABELS: Record<string, string> = {
+  'commit_boundary': 'Lead Update',
+  'lead:created': 'New Lead',
+  'lead:transitioned': 'Stage Change',
+  'lead:assigned': 'Assigned',
+  'lead:auto_reassigned': 'Auto Reassigned',
+  'lead:closed': 'Closed',
+  'lead:claimed': 'Claimed',
+  'lead:batch_claimed': 'Batch Claim',
+  'lead:claim_duplicate': 'Duplicate Claim',
+  'lead:shadow_created': 'CRM Sync',
+  'lead:shadow_synced': 'CRM Sync',
+  'lead:shadow_deleted': 'CRM Removed',
+  'wallet:credited': 'Wallet Credit',
+  'wallet:credited_worker': 'Wallet Credit',
+  'performance:recomputed': 'Performance',
+  'system:ranking_recalc': 'Ranking',
+  'system:scheduler_tick': 'Scheduler',
+  'fsm:validation_failed': 'Validation Error',
+}
+
+function friendlyLabel(action: string): string {
+  if (ACTION_LABELS[action]) return ACTION_LABELS[action]
+  // Fallback: strip prefix, title-case remainder
+  const part = action.includes(':') ? action.split(':').pop()! : action
+  return part.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -46,7 +76,7 @@ function ActivityItem({ entry }: { entry: AdminActivityEntry }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           {entry.actorName && <span className="truncate font-medium text-inherit">{entry.actorName}</span>}
-          <span className="shrink-0 text-[10px] opacity-60">{entry.action.split(':').pop()}</span>
+          <span className="shrink-0 text-[10px] opacity-60">{friendlyLabel(entry.action)}</span>
         </div>
         <p className="mt-0.5 truncate text-[11px] opacity-80">{entry.description}</p>
       </div>
@@ -131,7 +161,7 @@ export function AdminActivityPanel() {
                   filterAction === action ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'
                 }`}
               >
-                {action.split(':').pop()} ({count})
+                {friendlyLabel(action)} ({count})
               </button>
             ))}
           </div>

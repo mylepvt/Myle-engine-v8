@@ -17,32 +17,105 @@ const MAX_RECONNECT_DELAY_MS = 30_000
 
 // Map backend event_type → severity
 function severityFor(eventType: string): AdminActivityEntry['severity'] {
-  if (eventType.includes('failure') || eventType.includes('error')) return 'error'
-  if (eventType.includes('warn') || eventType.includes('reject')) return 'warning'
+  if (eventType.includes('failure') || eventType.includes('error') || eventType.includes('failed')) return 'error'
+  if (eventType.includes('warn') || eventType.includes('reject') || eventType.includes('duplicate')) return 'warning'
   return 'info'
+}
+
+// Map raw stage keys → human labels
+const STAGE_LABELS: Record<string, string> = {
+  new: 'New',
+  contacted: 'Contacted',
+  mindset_lock: 'Mindset Lock',
+  day1_pending: 'Day 1 Pending',
+  day1_attended: 'Day 1 Attended',
+  day2_pending: 'Day 2 Pending',
+  day2_attended: 'Day 2 Attended',
+  enrolled: 'Enrolled',
+  closed: 'Closed',
+  rejected: 'Rejected',
+  pool: 'In Pool',
+  assigned: 'Assigned',
+  unassigned: 'Unassigned',
+}
+
+function stageLabel(stage: unknown): string {
+  if (!stage) return ''
+  const s = String(stage)
+  return STAGE_LABELS[s] ?? s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 // Map backend event payload → human description
 function describeEvent(eventType: string, payload: Record<string, unknown>): string {
   const leadId = payload.lead_id ?? payload.leadId
   const leadName = (payload.lead_name as string | undefined) || ''
-  const leadRef = leadName ? `${leadName} (#${leadId})` : leadId ? `#${leadId}` : ''
+  const leadRef = leadName ? leadName : leadId ? `Lead #${leadId}` : ''
   const stage = payload.fastapi_stage ?? payload.stage
   const crmStage = payload.crm_stage
 
   switch (true) {
-    case eventType === 'lead_state' && !!stage:
-      return `Lead ${leadRef} → ${stage}${crmStage && crmStage !== stage ? ` (CRM: ${crmStage})` : ''}`
+    // commit_boundary = SQLAlchemy after-commit hook fires on every lead DB write
+    case eventType === 'commit_boundary':
+      if (stage) return `${leadRef || 'Lead'} → ${stageLabel(stage)}`
+      return leadRef ? `${leadRef} updated` : 'Lead updated'
+
+    case eventType === 'lead:created':
+      return leadRef ? `New lead added: ${leadRef}` : 'New lead added'
+
+    case eventType === 'lead:transitioned' || (eventType === 'lead_state' && !!stage):
+      return `${leadRef || 'Lead'} moved to ${stageLabel(stage)}${crmStage && crmStage !== stage ? ` (CRM: ${stageLabel(crmStage)})` : ''}`
+
+    case eventType === 'lead:assigned':
+      return leadRef ? `${leadRef} assigned to team` : 'Lead assigned'
+
+    case eventType === 'lead:auto_reassigned':
+      return leadRef ? `${leadRef} auto-reassigned` : 'Lead auto-reassigned'
+
+    case eventType === 'lead:claimed' || eventType === 'lead:batch_claimed':
+      return leadRef ? `${leadRef} claimed` : 'Lead claimed'
+
+    case eventType === 'lead:claim_duplicate':
+      return leadRef ? `Duplicate claim attempt: ${leadRef}` : 'Duplicate claim attempt'
+
+    case eventType === 'lead:closed':
+      return leadRef ? `${leadRef} closed` : 'Lead closed'
+
+    case eventType === 'lead:shadow_created' || eventType === 'lead:shadow_synced':
+      return leadRef ? `${leadRef} synced to CRM` : 'Lead synced to CRM'
+
+    case eventType === 'lead:shadow_deleted':
+      return leadRef ? `${leadRef} removed from CRM` : 'Lead removed from CRM'
+
     case eventType === 'shadow_delivery':
-      return `Shadow sync delivered for lead ${leadRef}`
+      return leadRef ? `CRM sync delivered: ${leadRef}` : 'CRM sync delivered'
+
+    case eventType === 'wallet:credited' || eventType === 'wallet:credited_worker':
+      return leadRef ? `Wallet credited for ${leadRef}` : 'Wallet credited'
+
+    case eventType === 'performance:recomputed':
+      return 'Performance scores updated'
+
+    case eventType === 'system:ranking_recalc':
+      return 'Team ranking recalculated'
+
+    case eventType === 'system:scheduler_tick':
+      return 'Scheduler ran'
+
+    case eventType === 'fsm:validation_failed':
+      return leadRef ? `Stage validation failed: ${leadRef}` : 'Stage validation failed'
+
     case eventType.startsWith('scheduler.'):
       return `Scheduler: ${eventType.replace('scheduler.', '').replace(/_/g, ' ')}`
+
     case eventType.startsWith('wallet.'):
-      return `Wallet: ${eventType.replace('wallet.', '').replace(/_/g, ' ')}${leadRef ? ` (${leadRef})` : ''}`
+      return `Wallet: ${eventType.replace('wallet.', '').replace(/_/g, ' ')}${leadRef ? ` — ${leadRef}` : ''}`
+
     case eventType.startsWith('enrollment.'):
-      return `Enrollment: ${eventType.replace('enrollment.', '').replace(/_/g, ' ')}${leadRef ? ` (${leadRef})` : ''}`
+      return `Enrollment: ${eventType.replace('enrollment.', '').replace(/_/g, ' ')}${leadRef ? ` — ${leadRef}` : ''}`
+
     default:
-      return `${eventType.replace(/[._]/g, ' ')}${leadRef ? ` — ${leadRef}` : ''}`
+      // Fallback: clean up any remaining snake_case / dots
+      return `${eventType.replace(/[._:]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}${leadRef ? ` — ${leadRef}` : ''}`
   }
 }
 
