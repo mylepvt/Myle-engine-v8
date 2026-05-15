@@ -586,56 +586,50 @@ export function AdminCommandCenter({ firstName }: Props) {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
-      {/* ── Hero header ── */}
-      <div className="relative overflow-hidden rounded border border-white/[0.06] bg-card px-6 py-7 md:px-8">
-        {/* Very subtle center top vignette — barely visible */}
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_50%_0%,rgba(88,101,242,0.04),transparent)]" />
-        <div className="relative space-y-3">
-          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Admin Command Center</p>
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">
-            Good day, {firstName}
-          </h1>
-          <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            One operational surface for today&apos;s queues, universal lead jump, team controls, finance checkpoints,
-            content readiness, and audit visibility.
-          </p>
-          <div className="flex flex-wrap gap-2 pt-1">
-            {pendingTotal > 0 && (
-              <div className="flex items-center gap-2 rounded border border-amber-400/20 bg-amber-400/[0.07] px-3 py-1 text-sm">
-                <span className="relative flex size-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-500 opacity-75" />
-                  <span className="relative inline-flex size-1.5 rounded-full bg-amber-500" />
+      {/* ── Compact operational summary ── */}
+      <div className="rounded border border-border/60 bg-card px-3 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <p className="text-sm font-medium text-foreground">Good day, {firstName}</p>
+              {pendingTotal > 0 && (
+                <span className="flex items-center gap-1 rounded border border-amber-400/20 bg-amber-400/[0.07] px-1.5 py-0.5 text-[10px]">
+                  <span className="relative flex size-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-500 opacity-75" />
+                    <span className="relative inline-flex size-1.5 rounded-full bg-amber-500" />
+                  </span>
+                  <span className="font-semibold text-amber-300">{pendingTotal} pending</span>
                 </span>
-                <span className="font-bold text-amber-200">{pendingTotal}</span>
-                <span className="text-amber-300/70">pending actions</span>
-              </div>
-            )}
-            {liveWatcherCount > 0 && (
-              <div className="flex items-center gap-2 rounded border border-red-400/20 bg-red-500/[0.07] px-3 py-1 text-sm">
-                <span className="relative flex size-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
-                  <span className="relative inline-flex size-1.5 rounded-full bg-red-500" />
+              )}
+              {liveWatcherCount > 0 && (
+                <span className="flex items-center gap-1 rounded border border-red-400/20 bg-red-500/[0.07] px-1.5 py-0.5 text-[10px]">
+                  <span className="relative flex size-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
+                    <span className="relative inline-flex size-1.5 rounded-full bg-red-500" />
+                  </span>
+                  <span className="font-semibold text-red-300">{liveWatcherCount} watching</span>
                 </span>
-                <span className="font-bold text-red-200">{liveWatcherCount}</span>
-                <span className="text-red-300/70">watching live</span>
-              </div>
-            )}
-            {premiereActiveCount > 0 && (
-              <div className="flex items-center gap-2 rounded border border-red-400/20 bg-red-500/[0.07] px-3 py-1 text-sm">
-                <span className="relative flex size-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
-                  <span className="relative inline-flex size-1.5 rounded-full bg-red-500" />
+              )}
+              {premiereActiveCount > 0 && (
+                <span className="flex items-center gap-1 rounded border border-red-400/20 bg-red-500/[0.07] px-1.5 py-0.5 text-[10px]">
+                  <span className="relative flex size-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
+                    <span className="relative inline-flex size-1.5 rounded-full bg-red-500" />
+                  </span>
+                  <span className="font-semibold text-red-300">{premiereActiveCount} live</span>
                 </span>
-                <span className="font-bold text-red-200">{premiereActiveCount}</span>
-                <span className="text-red-300/70">live attendees</span>
-              </div>
-            )}
+              )}
+            </div>
+            <p className="mt-0.5 text-[11px] text-muted-foreground/60">Queues · leads · team · finance · content · audit</p>
           </div>
-        </div>
-        <div className="relative mt-5 flex flex-wrap gap-2 border-t border-white/[0.06] pt-4">
-          <Button asChild variant="secondary" size="sm">
-            <Link to="/dashboard/system/lead-control">Open lead control</Link>
-          </Button>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Button asChild variant="secondary" size="sm" className="h-7 px-2.5 text-xs">
+              <Link to="/dashboard/work/leads">Open Leads</Link>
+            </Button>
+            <Button asChild variant="secondary" size="sm" className="h-7 px-2.5 text-xs">
+              <Link to="/dashboard/finance/recharge-admin">Finance</Link>
+            </Button>
+          </div>
         </div>
       </div>
 
