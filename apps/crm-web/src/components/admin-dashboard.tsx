@@ -43,8 +43,8 @@ function ActivityRow({ entry }: { entry: AdminActivityEntry }) {
     hour: "2-digit", minute: "2-digit",
   });
   return (
-    <div className={`flex items-start gap-3 px-4 py-2.5 border-b border-zinc-800/50 transition ${styles.bg}`}>
-      <span className={`mt-2 h-1.5 w-1.5 rounded-full shrink-0 ${styles.dot}`} />
+    <div className={`flex items-start gap-3 px-4 md:px-5 py-3 border-b border-zinc-800/50 transition ${styles.bg}`}>
+      <span className={`mt-1 h-1.5 w-1.5 rounded-full shrink-0 ${styles.dot}`} />
       <ActivityIcon action={entry.action} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 text-sm">
@@ -54,7 +54,7 @@ function ActivityRow({ entry }: { entry: AdminActivityEntry }) {
           <span className="text-zinc-300 truncate">{entry.description}</span>
         </div>
         {entry.targetId && (
-          <div className="text-[11px] text-zinc-600 font-mono mt-0.5">
+          <div className="text-[11px] text-zinc-600 font-mono mt-1">
             {entry.targetType} / {entry.targetId}
           </div>
         )}
@@ -82,30 +82,30 @@ function PresencePanel() {
   });
 
   return (
-    <div className="rounded-xl border border-zinc-700 bg-zinc-900 p-4">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-3">Live Presence</h3>
+    <div className="rounded-xl border border-zinc-700 bg-zinc-900 p-4 md:p-5">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-4">Live Presence</h3>
       {isLoading ? (
         <p className="text-sm text-zinc-600">Loading...</p>
       ) : (
         <>
-          <div className="flex gap-4 mb-3">
+          <div className="flex flex-col gap-2.5 mb-4">
             <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
               <span className="text-sm text-zinc-300">{data?.online ?? 0} online</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-amber-500" />
+              <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
               <span className="text-sm text-zinc-300">{data?.idle ?? 0} idle</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-zinc-600" />
+              <span className="h-2 w-2 rounded-full bg-zinc-600 shrink-0" />
               <span className="text-sm text-zinc-300">{data?.total ?? 0} total</span>
             </div>
           </div>
-          <div className="space-y-1 max-h-48 overflow-y-auto">
+          <div className="space-y-2 max-h-48 overflow-y-auto">
             {data?.users.slice(0, 20).map((u) => (
               <div key={u.userId} className="flex items-center gap-2 text-xs text-zinc-400">
-                <span className={`h-1.5 w-1.5 rounded-full ${
+                <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${
                   u.status === "online" ? "bg-emerald-500" : u.status === "idle" ? "bg-amber-500" : "bg-zinc-700"
                 }`} />
                 <span className="truncate flex-1">{u.name ?? u.userId.slice(0, 12)}</span>
@@ -134,23 +134,23 @@ function QuickStats() {
   }, [entries]);
 
   return (
-    <div className="rounded-xl border border-zinc-700 bg-zinc-900 p-4">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-3">Activity Stats</h3>
-      <div className="grid grid-cols-2 gap-3 mb-3">
+    <div className="rounded-xl border border-zinc-700 bg-zinc-900 p-4 md:p-5">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-4">Activity Stats</h3>
+      <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
-          <div className="text-2xl font-bold text-zinc-100">{last5min}</div>
-          <div className="text-[11px] text-zinc-500">Last 5 min</div>
+          <div className="text-2xl font-bold text-zinc-100 leading-tight">{last5min}</div>
+          <div className="text-[11px] text-zinc-500 mt-1">Last 5 min</div>
         </div>
         <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
-          <div className="text-2xl font-bold text-zinc-100">{last1hour}</div>
-          <div className="text-[11px] text-zinc-500">Last hour</div>
+          <div className="text-2xl font-bold text-zinc-100 leading-tight">{last1hour}</div>
+          <div className="text-[11px] text-zinc-500 mt-1">Last hour</div>
         </div>
       </div>
-      <div className="space-y-1">
+      <div className="space-y-2">
         {byAction.map(([action, count]) => (
           <div key={action} className="flex items-center justify-between text-xs text-zinc-400">
             <span className="truncate">{action}</span>
-            <span className="text-zinc-500 ml-2">{count}</span>
+            <span className="text-zinc-500 ml-2 shrink-0">{count}</span>
           </div>
         ))}
       </div>
@@ -188,19 +188,19 @@ export function AdminDashboard() {
   }, [entries]);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6">
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-zinc-100">Admin Control Center</h1>
-        <p className="text-sm text-zinc-500 mt-1">
+    <div className="mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-8">
+      <div className="mb-8">
+        <h1 className="text-xl font-semibold text-zinc-100 leading-tight">Admin Control Center</h1>
+        <p className="text-sm text-zinc-500 mt-2 leading-normal">
           Realtime activity · {entries.length} events · {unreadCount > 0 && `${unreadCount} unread`}
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-3 space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5 md:gap-6">
+        <div className="lg:col-span-3 space-y-5 md:space-y-6">
           {/* Filter bar */}
           <div className="rounded-xl border border-zinc-700 bg-zinc-900">
-            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-zinc-800">
+            <div className="flex items-center gap-2 px-4 md:px-5 py-3 border-b border-zinc-800">
               <button
                 type="button"
                 onClick={() => useAdminFeedStore.getState().setPaused(!paused)}
@@ -236,7 +236,7 @@ export function AdminDashboard() {
             </div>
 
             {/* Action filter chips */}
-            <div className="flex flex-wrap gap-1.5 px-4 py-2 border-b border-zinc-800/50 overflow-x-auto">
+            <div className="flex flex-wrap gap-1.5 px-4 md:px-5 py-3 border-b border-zinc-800/50 overflow-x-auto">
               {actionCounts.map(([action, count]) => (
                 <button
                   key={action}
@@ -271,7 +271,7 @@ export function AdminDashboard() {
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-4">
+        <div className="space-y-5 md:space-y-6">
           <QuickStats />
           <PresencePanel />
         </div>
