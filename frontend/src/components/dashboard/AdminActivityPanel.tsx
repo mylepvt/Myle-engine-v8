@@ -25,9 +25,9 @@ const ACTION_ICONS: Record<string, string> = {
 }
 
 const SEVERITY_COLORS: Record<string, string> = {
-  info: 'text-blue-600 bg-blue-50 border-blue-200',
-  warning: 'text-amber-600 bg-amber-50 border-amber-200',
-  error: 'text-red-600 bg-red-50 border-red-200',
+  info: 'text-blue-600 bg-blue-50 border-blue-200 dark:text-blue-400 dark:bg-blue-950/40 dark:border-blue-800',
+  warning: 'text-amber-600 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-950/40 dark:border-amber-800',
+  error: 'text-red-600 bg-red-50 border-red-200 dark:text-red-400 dark:bg-red-950/40 dark:border-red-800',
 }
 
 function iconLabel(action: string): string {
