@@ -1948,23 +1948,36 @@ def default_today_iso() -> str:
 
 
 async def admin_stage_counts(session: AsyncSession) -> dict:
-    """Admin: active lead counts per pipeline stage + today's arrivals (IST)."""
+    """Admin: active lead counts per pipeline stage + today's arrivals (IST).
+
+    Only leads with last_action_at within 24 h are counted — leads silent for
+    longer than 24 h are either already archived by the SQL watch or will be
+    soon, so including them would inflate funnel numbers.
+    """
+    now_utc = datetime.now(timezone.utc)
+    cutoff_24h = now_utc - timedelta(hours=24)
     today_start = _start_of_day_ist(today_ist().isoformat())
 
-    # Total active leads per status (exclude deleted, archived, pool)
+    # Active leads that moved within the last 24 h (exclude deleted, archived, pool)
     cnt_stmt = (
         select(Lead.status, func.count(Lead.id).label("n"))
-        .where(Lead.deleted_at.is_(None), Lead.in_pool.is_(False))
+        .where(
+            Lead.deleted_at.is_(None),
+            Lead.archived_at.is_(None),
+            Lead.in_pool.is_(False),
+            Lead.last_action_at >= cutoff_24h,
+        )
         .group_by(Lead.status)
     )
     rows = (await session.execute(cnt_stmt)).all()
     counts: dict[str, int] = {row[0]: row[1] for row in rows}
 
-    # Leads whose last_action_at is today (IST) — rough "arrived today" proxy
+    # Leads whose last_action_at is today (IST) — stage arrivals today
     today_stmt = (
         select(Lead.status, func.count(Lead.id).label("n"))
         .where(
             Lead.deleted_at.is_(None),
+            Lead.archived_at.is_(None),
             Lead.last_action_at >= today_start,
         )
         .group_by(Lead.status)
