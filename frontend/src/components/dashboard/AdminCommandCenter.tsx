@@ -805,74 +805,7 @@ export function AdminCommandCenter({ firstName }: Props) {
             </Card>
           )}
 
-          <Card className="surface-elevated border-white/[0.08]">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <span className="relative flex size-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                  <span className="relative inline-flex size-2 rounded-full bg-red-500" />
-                </span>
-                Live Right Now
-              </CardTitle>
-              <CardDescription>Prospects actively watching enrollment videos — refreshes every 15 seconds.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {activeWatchers.isPending ? (
-                <div className="space-y-2">
-                  <div className="surface-inset h-14 animate-pulse rounded-2xl" />
-                  <div className="surface-inset h-14 animate-pulse rounded-2xl" />
-                </div>
-              ) : activeWatchers.isError ? (
-                <ErrorState
-                  title="Could not load live viewers"
-                  message={activeWatchers.error instanceof Error ? activeWatchers.error.message : 'Please try again.'}
-                  onRetry={() => void activeWatchers.refetch()}
-                />
-              ) : (activeWatchers.data?.items ?? []).length === 0 ? (
-                <EmptyState
-                  title="No one watching right now"
-                  description="Active viewers will appear here within 15 seconds of opening their private room."
-                />
-              ) : (
-                <div className="space-y-3">
-                  {(activeWatchers.data?.items ?? []).map((watcher) => (
-                    <div key={`${watcher.lead_id}-${watcher.last_seen_at}`} className="surface-inset rounded-2xl p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="space-y-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-medium text-foreground">{watcher.viewer_name || watcher.lead_name}</p>
-                            <Badge variant={watcher.watch_completed ? 'success' : 'outline'}>
-                              {watcher.watch_completed ? 'Watch completed' : 'Watching now'}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            Lead: {watcher.lead_name}
-                            {watcher.viewer_phone ? ` · ${watcher.viewer_phone}` : ''}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {watcher.started_at ? `Started ${formatDateTime(watcher.started_at)} · ` : ''}
-                            Last seen {formatDateTime(watcher.last_seen_at)}
-                          </p>
-                          {watcher.unlocked_at ? (
-                            <p className="text-xs text-muted-foreground">
-                              Verified {formatDateTime(watcher.unlocked_at)}
-                            </p>
-                          ) : null}
-                        </div>
-                        <span className="flex items-center gap-1 rounded-full bg-red-600/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white">
-                          <span className="relative flex size-1.5">
-                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                            <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
-                          </span>
-                          Watching now
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <AdminActivityPanel />
         </TabsContent>
 
         <TabsContent value="leads" className="space-y-6">
