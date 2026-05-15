@@ -1,24 +1,24 @@
 import { cva, type VariantProps } from 'class-variance-authority'
 
 export const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[0.625rem] text-ds-body font-semibold transition-[color,background,opacity,transform] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-45 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 active:scale-[0.97]',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded text-ds-body font-semibold transition-[color,background,opacity] duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-45 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
   {
     variants: {
       variant: {
         default:
-          'bg-primary text-primary-foreground shadow-sm hover:opacity-92 active:opacity-88',
+          'bg-primary text-primary-foreground hover:bg-[#4752c4]',
         secondary:
-          'bg-secondary text-secondary-foreground hover:bg-muted active:opacity-90',
+          'bg-secondary text-secondary-foreground hover:bg-[#3f4147]',
         ghost:
-          'text-muted-foreground hover:bg-muted/70 hover:text-foreground',
+          'text-muted-foreground hover:bg-[rgba(255,255,255,0.06)] hover:text-foreground',
         outline:
-          'border border-border bg-transparent hover:bg-muted/50 active:opacity-90',
+          'border border-border bg-transparent hover:bg-[rgba(255,255,255,0.06)]',
       },
       size: {
-        default: 'h-11 min-h-[44px] px-4 py-2',
-        sm: 'h-10 min-h-[40px] rounded-md px-3 text-ds-caption',
-        lg: 'h-12 min-h-[48px] rounded-xl px-8 text-ds-h3',
-        icon: 'h-11 min-h-[44px] w-11 min-w-[44px]',
+        default: 'h-9 min-h-[36px] px-4 py-2',
+        sm: 'h-8 min-h-[32px] rounded px-3 text-ds-caption',
+        lg: 'h-10 min-h-[40px] px-6 text-ds-h3',
+        icon: 'h-9 min-h-[36px] w-9 min-w-[36px]',
       },
     },
     defaultVariants: {
