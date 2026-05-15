@@ -112,12 +112,14 @@ export const useFunnelActivityStore = create<FunnelState>((set, get) => {
     },
 
     processAction: (actorId, actorName, action, stage) => {
-      if (!actorId || !actorName) return
+      if (!actorId) return
       const color = actorColor(actorId)
-      let targetStage = STAGE_MAP[action] || stage || 'new_lead'
+      // Normalize legacy "new" alias → "new_lead"
+      const normalizedStage = stage === 'new' ? 'new_lead' : stage
+      let targetStage = STAGE_MAP[action] || normalizedStage || 'new_lead'
 
-      if ((action === 'lead:transitioned' || action === 'lead_state') && stage) {
-        targetStage = stage
+      if ((action === 'lead:transitioned' || action === 'lead_state') && normalizedStage) {
+        targetStage = normalizedStage
       }
 
       set((s) => {
