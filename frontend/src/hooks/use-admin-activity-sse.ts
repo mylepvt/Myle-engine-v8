@@ -48,6 +48,11 @@ const STAGE_LABELS: Record<string, string> = {
   unassigned: 'Unassigned',
   archive: 'Archived',
   archived: 'Archived',
+  lost: 'Lost',
+  retarget: 'Retarget',
+  follow_up: 'Follow Up',
+  interview: 'Interview',
+  converted: 'Converted',
 }
 
 function stageLabel(stage: unknown): string {

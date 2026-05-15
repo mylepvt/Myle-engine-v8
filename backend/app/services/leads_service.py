@@ -255,6 +255,7 @@ class LeadsService:
                     "trace_id": generate_trace_id(),
                     "correlation_id": correlation_id_for_lead(lead.id, version),
                     "lead_id": lead.id,
+                    "lead_name": lead.name or "",
                     "source": source,
                     "fastapi_stage": lead.status,
                     "crm_stage": crm_stage,
