@@ -9,6 +9,8 @@
 import { useEffect, useRef } from 'react'
 import { useAdminFeedStore, type AdminActivityEntry } from '@/stores/admin-feed-store'
 
+const REST_URL = '/api/v1/admin/activity-feed?limit=50'
+
 const SSE_URL = '/api/v1/admin/activity-stream'
 const RECONNECT_DELAY_MS = 3000
 const MAX_RECONNECT_DELAY_MS = 30_000
@@ -42,10 +44,9 @@ function describeEvent(eventType: string, payload: Record<string, unknown>): str
   }
 }
 
-// Parse raw SSE data → AdminActivityEntry
-function parseEvent(raw: string): AdminActivityEntry | null {
+// Parse an already-parsed event object → AdminActivityEntry (shared by SSE + REST)
+function parseEventFromObj(data: Record<string, unknown>): AdminActivityEntry | null {
   try {
-    const data = JSON.parse(raw) as Record<string, unknown>
     const eventType = (data.event_type ?? data.metric ?? 'unknown') as string
     const leadId = data.lead_id ?? data.leadId
     const actorId = data.actor_id ?? data.user_id
@@ -69,8 +70,18 @@ function parseEvent(raw: string): AdminActivityEntry | null {
   }
 }
 
+// Parse raw SSE data string → AdminActivityEntry
+function parseEvent(raw: string): AdminActivityEntry | null {
+  try {
+    return parseEventFromObj(JSON.parse(raw) as Record<string, unknown>)
+  } catch {
+    return null
+  }
+}
+
 export function useAdminActivitySSE(enabled: boolean) {
   const pushEntry = useAdminFeedStore((s) => s.pushEntry)
+  const setInitialEntries = useAdminFeedStore((s) => s.setInitialEntries)
   const esRef = useRef<EventSource | null>(null)
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const reconnectDelayRef = useRef(RECONNECT_DELAY_MS)
@@ -79,6 +90,22 @@ export function useAdminActivitySSE(enabled: boolean) {
   useEffect(() => {
     mountedRef.current = true
     if (!enabled) return
+
+    // Initial load from REST endpoint (populates panel before any live SSE event)
+    fetch(REST_URL, { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!mountedRef.current) return
+        const events = (data?.events ?? []) as Array<Record<string, unknown>>
+        // REST returns newest-first; reverse so oldest is prepended last (panel shows newest at top)
+        const initial = [...events].reverse()
+          .map(parseEventFromObj)
+          .filter((e): e is AdminActivityEntry => e !== null)
+        setInitialEntries(initial)
+      })
+      .catch(() => {
+        if (mountedRef.current) setInitialEntries([])
+      })
 
     function connect() {
       if (!mountedRef.current) return

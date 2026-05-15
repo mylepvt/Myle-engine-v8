@@ -59,6 +59,7 @@ export function AdminActivityPanel() {
   const entries = useAdminFeedStore((s) => s.entries)
   const unreadCount = useAdminFeedStore((s) => s.unreadCount)
   const paused = useAdminFeedStore((s) => s.paused)
+  const initialized = useAdminFeedStore((s) => s.initialized)
   const setPaused = useAdminFeedStore((s) => s.setPaused)
   const markAllRead = useAdminFeedStore((s) => s.markAllRead)
 
@@ -139,7 +140,7 @@ export function AdminActivityPanel() {
         <div className="max-h-[400px] space-y-1.5 overflow-y-auto">
           {filtered.length === 0 ? (
             <p className="py-8 text-center text-xs text-muted-foreground">
-              {entries.length === 0 ? 'Connecting to realtime stream...' : 'No matching activity'}
+              {!initialized ? 'Connecting to realtime stream...' : entries.length === 0 ? 'No activity yet' : 'No matching activity'}
             </p>
           ) : (
             filtered.slice(0, 100).map((entry) => <ActivityItem key={entry.id} entry={entry} />)

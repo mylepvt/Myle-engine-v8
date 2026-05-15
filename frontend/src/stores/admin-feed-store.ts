@@ -17,7 +17,9 @@ type AdminFeedState = {
   entries: AdminActivityEntry[]
   unreadCount: number
   paused: boolean
+  initialized: boolean
   pushEntry: (entry: AdminActivityEntry) => void
+  setInitialEntries: (entries: AdminActivityEntry[]) => void
   markAllRead: () => void
   setPaused: (v: boolean) => void
 }
@@ -28,16 +30,21 @@ export const useAdminFeedStore = create<AdminFeedState>((set) => ({
   entries: [],
   unreadCount: 0,
   paused: false,
+  initialized: false,
 
   pushEntry: (entry) => {
     set((s) => {
       const next = [entry, ...s.entries].slice(0, MAX_ENTRIES)
       return {
         entries: next,
+        initialized: true,
         unreadCount: s.paused ? s.unreadCount + 1 : 0,
       }
     })
   },
+
+  setInitialEntries: (initial) =>
+    set({ entries: initial.slice(0, MAX_ENTRIES), initialized: true }),
 
   markAllRead: () => set({ unreadCount: 0 }),
 
