@@ -12,7 +12,7 @@ export function LiveOpsDashboard() {
         Mobile:  funnel full width, people ops stacked below
         Desktop (lg+): funnel dominates at flex-[3], panel supports at flex-[1] max-320px
       */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start">
 
         {/* LEFT — Live Pipeline Funnel: dominant, flex-[3] */}
         <div className="min-w-0 flex-[3] overflow-hidden rounded border border-white/[0.06] bg-[#0d0f12]">
@@ -30,7 +30,7 @@ export function LiveOpsDashboard() {
         </div>
 
         {/* RIGHT — People Operations: supporting role, narrower */}
-        <div className="w-full overflow-hidden lg:max-w-[320px] lg:flex-1 lg:shrink-0 lg:max-h-[calc(100vh-14rem)] lg:overflow-y-auto">
+        <div className="w-full overflow-hidden md:max-w-[300px] md:flex-1 md:shrink-0 md:max-h-[calc(100vh-14rem)] md:overflow-y-auto">
           <PeopleOpsPanel />
         </div>
       </div>
