@@ -55,11 +55,13 @@ _ENV = settings.app_environment
 # ── request context (propagated from middleware) ─────────────────────────
 _request_id_ctx: contextvars.ContextVar[str] = contextvars.ContextVar("obs_request_id", default="")
 _user_id_ctx: contextvars.ContextVar[str] = contextvars.ContextVar("obs_user_id", default="")
+_actor_name_ctx: contextvars.ContextVar[str] = contextvars.ContextVar("obs_actor_name", default="")
 
 
-def set_request_context(*, request_id: str = "", user_id: str = "") -> None:
+def set_request_context(*, request_id: str = "", user_id: str = "", actor_name: str = "") -> None:
     _request_id_ctx.set(request_id)
     _user_id_ctx.set(user_id)
+    _actor_name_ctx.set(actor_name)
 
 
 def _request_id() -> str:
@@ -306,11 +308,16 @@ def _after_commit_hook(session: SASession) -> None:
             lead_id = lead.id
             if lead_id is None:
                 continue
+            actor_id_str = _user_id_ctx.get()
+            actor_name = _actor_name_ctx.get()
             record = {
                 "metric": _LEAD_TXN_METRIC,
                 "trace_id": generate_trace_id(),
                 "correlation_id": f"lead-{lead_id}-commit",
                 "lead_id": lead_id,
+                "lead_name": getattr(lead, "name", "") or "",
+                "actor_id": int(actor_id_str) if actor_id_str else None,
+                "actor_name": actor_name,
                 "source": _LEAD_TXN_SOURCE,
                 "fastapi_stage": getattr(lead, "status", "") or "",
                 "in_pool": bool(getattr(lead, "in_pool", False)),
