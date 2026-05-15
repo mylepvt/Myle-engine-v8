@@ -32,8 +32,8 @@ import { getMindsetLockSendState } from '@/lib/mindset-lock'
 import { useContentLinksQuery } from '@/hooks/use-content-links-query'
 import { checklistForStage } from '@/lib/lead-process-map'
 import { LEAD_SLA_SMOOTH_REFRESH_MS, formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
-import { buildLiveSessionWhatsAppUrl, type LiveSessionSlotOption } from '@/lib/live-session-slots'
-import { whatsAppChatWithTextHref, whatsappDigits } from '@/lib/phone-links'
+import { buildLiveSessionWhatsAppUrl, buildLiveSessionWhatsAppBusinessUrl, type LiveSessionSlotOption } from '@/lib/live-session-slots'
+import { whatsAppChatWithTextHref, whatsAppBusinessChatWithTextHref, whatsappDigits } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -122,6 +122,27 @@ function workboardBatchWhatsAppUrl(
     (linkBlock ? `\n${linkBlock}` : '\n') +
     'Please watch both videos and reply ✅.'
   const url = whatsAppChatWithTextHref(lead.phone, msg)
+  return url === '#' ? null : url
+}
+
+function workboardBatchWhatsAppBusinessUrl(
+  lead: LeadPublic,
+  dayKey: 1 | 2 | 3 | 4 | 5,
+  slot: 'M' | 'A' | 'E',
+  links?: { v1?: string; v2?: string },
+): string | null {
+  if (!whatsappDigits(lead.phone ?? '')) return null
+  const name = (lead.name || 'Participant').trim()
+  const linkBlock =
+    (links?.v1 ? `📹 Video 1:\n${links.v1}\n` : '') +
+    (links?.v2 ? `📹 Video 2:\n${links.v2}\n` : '')
+  const slotLabel = slot === 'M' ? 'Morning' : slot === 'A' ? 'Afternoon' : 'Evening'
+  const msg =
+    `Hi ${name},\n` +
+    `Day ${dayKey} — ${slotLabel} Batch\n` +
+    (linkBlock ? `\n${linkBlock}` : '\n') +
+    'Please watch both videos and reply ✅.'
+  const url = whatsAppBusinessChatWithTextHref(lead.phone, msg)
   return url === '#' ? null : url
 }
 
@@ -224,11 +245,13 @@ const LeadCard = memo(function LeadCard({
   const [pickerOpen, setPickerOpen] = useState(false)
   const stageOpsCard = stageKey != null
 
-  async function handleSendEnrollmentVideo(option: LiveSessionSlotOption) {
+  async function handleSendEnrollmentVideo(option: LiveSessionSlotOption, useBusinessWhatsApp = false) {
     setSendError(null)
     try {
       await pm.mutateAsync({ id: lead.id, body: { status: 'video_sent' } })
-      const shareUrl = buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option)
+      const shareUrl = useBusinessWhatsApp
+        ? buildLiveSessionWhatsAppBusinessUrl(lead.phone, lead.name, option)
+        : buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option)
       if (!shareUrl || !openExternalShareUrl(shareUrl)) {
         throw new Error('Could not open WhatsApp share window')
       }
@@ -440,7 +463,7 @@ const LeadCard = memo(function LeadCard({
           open={pickerOpen}
           busy={pm.isPending}
           onClose={() => setPickerOpen(false)}
-          onConfirm={(option) => void handleSendEnrollmentVideo(option)}
+          onConfirm={(option, useBusiness) => void handleSendEnrollmentVideo(option, useBusiness)}
         />
         {stageKey ? (
           <StageAdvanceSection
@@ -744,13 +767,15 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     return null
   }
 
-  const handlePickerConfirm = async (option: LiveSessionSlotOption) => {
+  const handlePickerConfirm = async (option: LiveSessionSlotOption, useBusinessWhatsApp = false) => {
     setPickerBusy(true)
     setBatchError(null)
     try {
       // day1 evening sends day2 premiere; other days send their own day premiere
       const targetDay = stageKey === 'day1' ? 2 : dayKey
-      const shareUrl = buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option, targetDay)
+      const shareUrl = useBusinessWhatsApp
+        ? buildLiveSessionWhatsAppBusinessUrl(lead.phone, lead.name, option, targetDay)
+        : buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option, targetDay)
       if (!shareUrl || !openExternalShareUrl(shareUrl)) {
         setBatchError('WhatsApp link nahi bana. Phone number check karo.')
         return
@@ -867,7 +892,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
         />
         <LiveSessionSlotPicker open={pickerOpen} busy={pickerBusy} day={dayKey}
           onClose={() => setPickerOpen(false)}
-          onConfirm={(option) => void handlePickerConfirm(option)} />
+          onConfirm={(option, useBusiness) => void handlePickerConfirm(option, useBusiness)} />
       </div>
     )
   }
@@ -929,7 +954,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
       </div>
       <LiveSessionSlotPicker open={pickerOpen} busy={pickerBusy} day={3}
         onClose={() => setPickerOpen(false)}
-        onConfirm={(option) => void handlePickerConfirm(option)} />
+        onConfirm={(option, useBusiness) => void handlePickerConfirm(option, useBusiness)} />
     </div>
   )
 }

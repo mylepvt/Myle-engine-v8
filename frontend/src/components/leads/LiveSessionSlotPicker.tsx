@@ -9,11 +9,12 @@ type Props = {
   busy?: boolean
   day?: number
   onClose: () => void
-  onConfirm: (option: LiveSessionSlotOption) => void
+  onConfirm: (option: LiveSessionSlotOption, useBusinessWhatsApp?: boolean) => void
 }
 
 export function LiveSessionSlotPicker({ open, busy = false, day = 1, onClose, onConfirm }: Props) {
   const [selectedHour, setSelectedHour] = useState<number | null>(null)
+  const [useBusinessWhatsApp, setUseBusinessWhatsApp] = useState(false)
   const scheduleQuery = useQuery({
     queryKey: ['premiere', 'schedule', 'picker', day],
     queryFn: () => fetchUpcomingLiveSessionSlots(day),
@@ -70,6 +71,18 @@ export function LiveSessionSlotPicker({ open, busy = false, day = 1, onClose, on
           <p className="mt-2 truncate text-[0.65rem] text-white/30">{effectiveOption.link}</p>
         )}
 
+        <div className="mt-4 flex items-center gap-2">
+          <label className="flex items-center gap-2 text-sm text-white/70">
+            <input
+              type="checkbox"
+              checked={useBusinessWhatsApp}
+              onChange={(e) => setUseBusinessWhatsApp(e.target.checked)}
+              className="rounded"
+            />
+            WhatsApp Business
+          </label>
+        </div>
+
         <div className="mt-5 flex gap-2">
           <Button type="button" variant="secondary" className="flex-1" onClick={onClose} disabled={busy}>
             Cancel
@@ -78,7 +91,7 @@ export function LiveSessionSlotPicker({ open, busy = false, day = 1, onClose, on
             type="button"
             className="flex-1"
             disabled={!canConfirm}
-            onClick={() => effectiveOption && onConfirm(effectiveOption)}
+            onClick={() => effectiveOption && onConfirm(effectiveOption, useBusinessWhatsApp)}
           >
             {busy ? 'Sending…' : 'Send video'}
           </Button>
