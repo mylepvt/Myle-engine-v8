@@ -67,8 +67,9 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
   const [searchParams] = useSearchParams()
   const qParam = searchParams.get('q') ?? ''
+  const stageParam = searchParams.get('stage') ?? ''
   const [qInput, setQInput] = useState(qParam)
-  const [filters, setFilters] = useState<LeadListFilters>({ ...emptyFilters, q: qParam })
+  const [filters, setFilters] = useState<LeadListFilters>({ ...emptyFilters, q: qParam, status: stageParam })
   const crossSectionSearch =
     !archivedOnly &&
     filters.q.trim().length > 0 &&

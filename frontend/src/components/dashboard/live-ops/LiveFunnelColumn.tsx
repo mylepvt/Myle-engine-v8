@@ -27,13 +27,20 @@ const PIPELINE: Stage[] = [
 ]
 
 const STAGE_ROUTES: Record<string, string> = {
+  claimed:      '/dashboard/work/leads?stage=claimed',
+  new_lead:     '/dashboard/work/leads?stage=new_lead',
+  contacted:    '/dashboard/work/leads?stage=contacted',
+  invited:      '/dashboard/work/leads?stage=invited',
+  video_sent:   '/dashboard/work/leads?stage=video_sent',
   paid:         '/dashboard/team/enrollment-approvals',
   mindset_lock: '/dashboard/work/workboard',
   day1:         '/dashboard/work/workboard',
-  day2:         '/dashboard/work/workboard',
-  day3:         '/dashboard/work/workboard',
-  day4:         '/dashboard/work/workboard',
-  day5:         '/dashboard/work/workboard',
+  day2:         '/dashboard/work/workboard?tab=day2',
+  day3:         '/dashboard/work/workboard?tab=day3',
+  day4:         '/dashboard/work/workboard?tab=day4',
+  day5:         '/dashboard/work/workboard?tab=day5',
+  interview:    '/dashboard/work/workboard?tab=interview',
+  converted:    '/dashboard/work/leads?stage=converted',
 }
 function stageRoute(key: string): string {
   return STAGE_ROUTES[key] ?? '/dashboard/work/leads'
