@@ -118,16 +118,9 @@
     --warning: #f0b232;
     --warning-foreground: #000000;
     --glass-base: #2b2d31;
-    --shadow-card:
-      inset 0 1px 0 rgba(255,255,255,0.04),
-      0 1px 2px rgba(0,0,0,0.24),
-      0 4px 8px rgba(0,0,0,0.28);
-    --shadow-card-hover:
-      inset 0 1px 0 rgba(255,255,255,0.06),
-      0 2px 8px rgba(0,0,0,0.32),
-      0 8px 24px rgba(0,0,0,0.40);
-    --shadow-ios-bar: 0 0.5px 0 0 rgba(255,255,255,0.04),
-      0 8px 24px -12px rgba(0,0,0,0.65);
+    --shadow-card: 0 1px 0 rgba(255,255,255,0.04);
+    --shadow-card-hover: 0 1px 0 rgba(255,255,255,0.06);
+    --shadow-ios-bar: 0 0.5px 0 0 rgba(255,255,255,0.04);
   }
 
   /*
@@ -465,19 +458,20 @@
 }
 
 @layer components {
+  /* Discord-style flat card (no blur, minimal shadow) */
   .surface-elevated {
-    @apply rounded-[0.75rem] border border-border bg-card text-card-foreground shadow-ios-card;
+    @apply rounded border border-border bg-card text-card-foreground;
   }
 
+  .surface-elevated:hover {
+    border-color: color-mix(in oklch, var(--border) 130%, transparent);
+  }
+
+  /* Discord-style inset surface (flat, no inset shadow) */
   .surface-inset {
-    @apply rounded-[0.625rem] border;
+    @apply rounded border;
     border-color: color-mix(in oklch, var(--border) 80%, transparent);
     background-color: color-mix(in oklch, var(--muted) 50%, transparent);
-    box-shadow: inset 0 1.5px 4px rgba(0,0,0,0.06), inset 0 -1px 0 rgba(255,255,255,0.03);
-  }
-
-  html.dark .surface-inset {
-    box-shadow: inset 0 1.5px 4px rgba(0,0,0,0.22), inset 0 -1px 0 rgba(255,255,255,0.02);
   }
 
   html.dark.theme-transparent .surface-elevated,
@@ -491,20 +485,49 @@
     letter-spacing: 0.01em;
   }
 
+  /* Discord-style input (flat, 4px radius) */
   .field-input {
-    @apply h-11 min-h-[44px] w-full rounded-[0.625rem] border border-border bg-input px-3 py-0 text-ds-body text-foreground transition-[border-color,box-shadow] placeholder:text-muted-foreground focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply h-11 min-h-[44px] w-full rounded border border-border bg-input px-3 py-0 text-ds-body text-foreground transition-[border-color] placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-50;
     letter-spacing: 0.004em;
     background-color: color-mix(in srgb, var(--input) 84%, transparent);
-    box-shadow: inset 0 1px 0 color-mix(in srgb, white 8%, transparent);
   }
 
   .field-input:focus {
-    border-color: color-mix(in oklch, var(--primary) 70%, var(--border));
-    --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width)
-      var(--tw-ring-offset-color);
-    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width))
-      color-mix(in oklch, var(--primary) 35%, transparent);
-    box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+    border-color: var(--primary);
+  }
+
+  /* ── Discord-style interactive modifiers ─────────────────────────── */
+  .discord-hover {
+    transition: background-color 0.1s ease;
+  }
+  .discord-hover:hover {
+    background-color: rgba(255,255,255,0.06);
+  }
+  .discord-hover:active {
+    background-color: rgba(255,255,255,0.09);
+  }
+  html.dark .discord-hover-active {
+    background-color: rgba(255,255,255,0.09);
+  }
+  html.dark .discord-hover-selected {
+    background-color: rgba(255,255,255,0.12);
+  }
+
+  /* Discord-style minimal scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+    border: none;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.08);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.14);
   }
 
   .dashboard-shell-header {
@@ -547,16 +570,13 @@
       textarea
     ) {
     border-color: color-mix(in srgb, var(--border) 84%, transparent);
-    background-color: color-mix(in srgb, var(--input) 78%, transparent);
+    background-color: var(--input);
     color: var(--foreground);
     font-size: 0.9375rem;
     line-height: 1.45;
     letter-spacing: 0.004em;
-    box-shadow: inset 0 1px 0 color-mix(in srgb, white 10%, transparent);
-    backdrop-filter: saturate(128%) blur(6px);
-    -webkit-backdrop-filter: saturate(128%) blur(6px);
+    border-radius: 4px;
   }
-
 
   .dashboard-shell :is(
       input:not([type='checkbox']):not([type='radio']),
@@ -571,10 +591,7 @@
       select,
       textarea
     ):focus {
-    border-color: color-mix(in srgb, var(--primary) 66%, var(--border));
-    box-shadow:
-      0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent),
-      inset 0 1px 0 color-mix(in srgb, white 20%, transparent);
+    border-color: var(--primary);
   }
 
   .dashboard-shell label {
