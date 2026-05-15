@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useRef } from 'react'
 import { useAdminFeedStore, type AdminActivityEntry } from '@/stores/admin-feed-store'
+import { playFileSound } from '@/lib/app-sounds'
 
 const REST_URL = '/api/v1/admin/activity-feed?limit=50'
 
@@ -190,6 +191,18 @@ function parseEventFromObj(data: Record<string, unknown>): AdminActivityEntry | 
   }
 }
 
+// ── Activity sounds ──────────────────────────────────────────────────────────
+function activitySound(action: string) {
+  if (action === 'lead:created') playFileSound('pop', 0.5)
+  else if (action === 'lead:transitioned' || action === 'lead_state') playFileSound('notify', 0.4)
+  else if (action === 'lead:closed') playFileSound('ching', 0.5)
+  else if (action === 'lead:claimed' || action === 'lead:batch_claimed') playFileSound('ching', 0.4)
+  else if (action.startsWith('wallet:')) playFileSound('paySuccess', 0.5)
+  else if (action === 'enrollment.link_generated') playFileSound('success', 0.4)
+  else if (action === 'lead:assigned') playFileSound('pop', 0.35)
+  else if (action.includes('failure') || action.includes('duplicate')) playFileSound('click', 0.3)
+}
+
 // Parse raw SSE data string → AdminActivityEntry
 function parseEvent(raw: string): AdminActivityEntry | null {
   try {
@@ -259,7 +272,10 @@ export function useAdminActivitySSE(enabled: boolean) {
         // Ignore heartbeat comments
         if (!e.data || e.data.trim() === '') return
         const entry = parseEvent(e.data)
-        if (entry) pushEntry(entry)
+        if (entry) {
+          pushEntry(entry)
+          activitySound(entry.action)
+        }
         // Reset backoff on success
         reconnectDelayRef.current = RECONNECT_DELAY_MS
       }
