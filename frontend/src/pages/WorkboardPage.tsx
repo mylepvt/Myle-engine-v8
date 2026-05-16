@@ -1009,6 +1009,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
 
   // day3: top tasks → Send Live → FLP billing with upload button
   const proofUploaded = Boolean(lead.payment_proof_url)
+  const paymentApproved = lead.payment_status === 'approved'
 
   async function handleProofUpload(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -1030,11 +1031,14 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     }
   }
 
+  // Block Day 4 push until admin has approved the billing proof
+  const gatedMoveNext = paymentApproved ? onMoveNext : undefined
+
   return (
     <div className="space-y-1.5">
       <ProcessChecklistSection
         lead={lead} stage={stageKey} pm={pm} leadPatchBusy={leadPatchBusy}
-        onMoveNext={onMoveNext}
+        onMoveNext={gatedMoveNext}
         nextLabel={nextLabel}
       />
       <div className="border-t border-border/40 pt-1.5 space-y-1.5">
@@ -1050,15 +1054,22 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
       <div className="space-y-2 rounded border border-amber-400/30 bg-amber-400/[0.05] p-3">
         <p className="text-ds-caption font-semibold uppercase tracking-wide text-muted-foreground">Min. FLP Billing</p>
         <p className="text-ds-caption text-muted-foreground">₹1500 payment — upload proof for admin approval.</p>
-        {proofUploaded ? (
+        {paymentApproved ? (
           <div className="flex items-center gap-2 rounded-md border border-emerald-400/30 bg-emerald-400/[0.08] px-3 py-2 text-ds-caption font-semibold text-emerald-300">
-            ✅ Proof uploaded — awaiting admin approval
+            ✅ Payment approved — lead can be pushed to Day 4
+          </div>
+        ) : proofUploaded ? (
+          <div className="flex items-center gap-2 rounded-md border border-amber-400/30 bg-amber-400/[0.08] px-3 py-2 text-ds-caption font-semibold text-amber-300">
+            ⏳ Proof uploaded — awaiting admin approval before Day 4
           </div>
         ) : (
-          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-amber-400/40 bg-amber-400/[0.06] px-3 py-3 text-ds-caption font-semibold text-amber-300 transition hover:bg-amber-400/[0.12]">
-            <input type="file" accept="image/*,.pdf" onChange={handleProofUpload} disabled={uploadBusy} className="sr-only" />
-            {uploadBusy ? 'Uploading...' : '📷 Upload Payment Proof'}
-          </label>
+          <>
+            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-amber-400/40 bg-amber-400/[0.06] px-3 py-3 text-ds-caption font-semibold text-amber-300 transition hover:bg-amber-400/[0.12]">
+              <input type="file" accept="image/*,.pdf" onChange={handleProofUpload} disabled={uploadBusy} className="sr-only" />
+              {uploadBusy ? 'Uploading...' : '📷 Upload Payment Proof'}
+            </label>
+            <p className="text-ds-caption text-destructive/80">⚠️ Proof upload required — Day 4 push blocked until approved</p>
+          </>
         )}
         {uploadErr ? <p className="text-ds-caption text-destructive">{uploadErr}</p> : null}
       </div>
