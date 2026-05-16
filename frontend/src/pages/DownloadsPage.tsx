@@ -9,8 +9,10 @@ import {
   useDownloadsQuery,
   type DownloadItem,
 } from '@/hooks/use-downloads-query'
+import { useAppSettingsQuery } from '@/hooks/use-settings-query'
+import { useTrainingQuery } from '@/hooks/use-training-query'
 import { cn } from '@/lib/utils'
-import { Download, FileText, Trash2, Upload } from 'lucide-react'
+import { Download, ExternalLink, FileText, Trash2, Upload } from 'lucide-react'
 
 type Props = { title: string }
 
@@ -52,9 +54,21 @@ function FileTypeBadge({ mime }: { mime: string }) {
   )
 }
 
+const CONTENT_VIDEO_LABELS: Array<{ key: string; label: string }> = [
+  { key: 'content.esbi_model', label: 'ESBI Model Video' },
+  { key: 'content.power_of_network', label: 'Power of Network Video' },
+  { key: 'content.manik_expose', label: 'Expose Video (Manik Aggarwal)' },
+]
+
 export function DownloadsPage({ title }: Props) {
   const { data: me } = useAuthMeQuery()
   const isAdmin = me?.authenticated && me.role === 'admin'
+  const isLeader = me?.authenticated && me.role === 'leader'
+  const showLinks = isAdmin || isLeader
+
+  const { data: trainingData } = useTrainingQuery()
+  const { data: appSettingsData } = useAppSettingsQuery(showLinks)
+
   const { data, isPending, isError, error, refetch } = useDownloadsQuery()
   const { upload, remove } = useDownloadsMutations()
 
@@ -109,6 +123,55 @@ export function DownloadsPage({ title }: Props) {
       <p className="text-sm text-muted-foreground">
         Download documents shared by admin.
       </p>
+
+      {showLinks ? (
+        <div className="surface-elevated space-y-3 p-5">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <ExternalLink className="h-4 w-4" /> Video Links
+          </h2>
+          <ul className="space-y-2 text-sm">
+            {trainingData?.videos
+              .filter((v) => v.youtube_url)
+              .sort((a, b) => a.day_number - b.day_number)
+              .map((v) => (
+                <li key={`day-${v.day_number}`} className="flex items-center gap-3">
+                  <span className="flex h-7 w-14 shrink-0 items-center justify-center rounded bg-primary/15 text-[10px] font-bold tracking-wide text-primary">
+                    Day {v.day_number}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-muted-foreground">{v.title}</span>
+                  <a
+                    href={v.youtube_url!}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 rounded border border-primary/30 px-2.5 py-1 text-xs text-primary hover:bg-primary/10"
+                  >
+                    Open
+                  </a>
+                </li>
+              ))}
+            {CONTENT_VIDEO_LABELS.map(({ key, label }) => {
+              const url = appSettingsData?.settings[key]
+              if (!url) return null
+              return (
+                <li key={key} className="flex items-center gap-3">
+                  <span className="flex h-7 w-14 shrink-0 items-center justify-center rounded bg-amber-500/15 text-[10px] font-bold tracking-wide text-amber-400">
+                    Link
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-muted-foreground">{label}</span>
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 rounded border border-primary/30 px-2.5 py-1 text-xs text-primary hover:bg-primary/10"
+                  >
+                    Open
+                  </a>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      ) : null}
 
       {isAdmin ? (
         <form
