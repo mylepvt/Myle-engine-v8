@@ -45,6 +45,5 @@ export function useLosQuery(enabled: boolean, activationsTarget = 5) {
     queryFn: () => fetchLosSnapshot(activationsTarget),
     enabled,
     staleTime: 60_000,
-    refetchInterval: enabled ? 120_000 : false,
   })
 }

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel
 
@@ -32,3 +32,14 @@ class BatchWatchPageData(BaseModel):
     day2_evaluation_ready: bool = False
     submission_enabled: bool = False
     submission: Optional[BatchWatchSubmissionPublic] = None
+
+
+class Day6LivePageData(BaseModel):
+    lead_name: str
+    slot: str
+    state: Literal["upcoming", "waiting", "live", "ended"]
+    video_url: Optional[str] = None
+    waiting_starts_at: str
+    live_starts_at: str
+    live_ends_at: str
+    viewer_count: int

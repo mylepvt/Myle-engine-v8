@@ -238,7 +238,6 @@ export function useEnrollmentApprovalsPendingQuery() {
     queryFn: fetchEnrollmentRequests,
     enabled: isApprover && !mePending,
     staleTime: 15_000,
-    refetchInterval: isApprover ? 90_000 : false,
   })
 }
 

@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Check, CheckSquare, Eye, Pencil, Search, Send, Video } from 'lucide-react'
+import { Check, CheckSquare, Eye, Pencil, Search, Send, Square, Video } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
@@ -33,7 +33,7 @@ import { useContentLinksQuery } from '@/hooks/use-content-links-query'
 import { checklistForStage } from '@/lib/lead-process-map'
 import { LEAD_SLA_SMOOTH_REFRESH_MS, formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
 import { buildLiveSessionWhatsAppUrl, buildLiveSessionWhatsAppBusinessUrl, type LiveSessionSlotOption } from '@/lib/live-session-slots'
-import { whatsAppChatWithTextHref, whatsappDigits } from '@/lib/phone-links'
+import { whatsAppChatWithTextHref, whatsAppBusinessChatWithTextHref, whatsappDigits } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -61,7 +61,7 @@ const BADGE: Record<string, string> = {
 }
 const CLOSE:  LeadStatus[] = ['converted','lost']
 const MIN_MINDSET_SECONDS = 300
-type BatchSlotKey = 'd1_morning' | 'd1_afternoon' | 'd1_evening' | 'd2_morning' | 'd2_afternoon' | 'd2_evening' | 'd3_morning' | 'd3_afternoon' | 'd3_evening' | 'd4_morning' | 'd4_afternoon' | 'd4_evening' | 'd5_morning' | 'd5_afternoon' | 'd5_evening'
+type BatchSlotKey = 'd1_morning' | 'd1_afternoon' | 'd1_evening' | 'd2_morning' | 'd2_afternoon' | 'd2_evening' | 'd3_morning' | 'd3_afternoon' | 'd3_evening' | 'd4_morning' | 'd4_afternoon' | 'd4_evening' | 'd5_morning' | 'd5_afternoon' | 'd5_evening' | 'd6_6pm' | 'd6_8pm'
 type WorkboardStageKey =
   | 'day1'
   | 'day2'
@@ -69,7 +69,6 @@ type WorkboardStageKey =
   | 'day4'
   | 'day5'
   | 'interview'
-  | 'plan_2cc'
   | 'pending'
   | 'level_up'
 const slabel  = (s: string) => LEAD_STATUS_OPTIONS.find((o) => o.value === s)?.label ?? s
@@ -86,15 +85,14 @@ const ADMIN_STAGE_TABS: {
   { id: 'day3', label: 'Day 3', statuses: ['day3'], stageKey: 'day3', nextStatus: 'day4', nextLabel: 'Push to Day 4' },
   { id: 'day4', label: 'Day 4', statuses: ['day4'], stageKey: 'day4', nextStatus: 'day5', nextLabel: 'Push to Day 5' },
   { id: 'day5', label: 'Day 5', statuses: ['day5'], stageKey: 'day5', nextStatus: 'interview', nextLabel: 'Push to Day 6' },
-  { id: 'interview', label: 'Day 6', statuses: ['interview'], stageKey: 'interview', nextStatus: 'plan_2cc', nextLabel: 'Push to Pending Process' },
-  { id: 'plan_2cc', label: '2CC Plan', statuses: ['plan_2cc'], stageKey: 'plan_2cc', nextStatus: 'pending', nextLabel: 'Push to Next 3 Days' },
+  { id: 'interview', label: 'Day 6', statuses: ['interview', 'plan_2cc'], stageKey: 'interview', nextStatus: 'pending', nextLabel: 'Push to Next 3 Days' },
   { id: 'pending', label: 'Next 3 Days', statuses: ['pending'], stageKey: 'pending', nextStatus: 'level_up', nextLabel: 'Push to Final Stage' },
   { id: 'level_up', label: 'Final Stage', statuses: ['level_up'], stageKey: 'level_up', nextStatus: 'converted', nextLabel: 'Mark converted' },
   { id: 'closing', label: 'Closing', statuses: CLOSE },
 ]
 
 const STATUS_TAB_LABEL: Partial<Record<LeadStatus, string>> = {
-  day1: 'Day 2', day2: 'Day 3', day3: 'Day 3', interview: 'Day 6',
+  day1: 'Day 2', day2: 'Day 3', day3: 'Day 3', interview: 'Day 6', plan_2cc: 'Day 6',
   converted: 'Closing', lost: 'Closing',
 }
 type ATab = WorkboardStageKey | 'closing'
@@ -106,25 +104,47 @@ function parseAdminTab(value: string | null): ATab {
 
 function workboardBatchWhatsAppUrl(
   lead: LeadPublic,
-  dayKey: 1 | 2 | 3 | 4 | 5,
-  slot: 'M' | 'A' | 'E',
+  dayKey: 1 | 2 | 3 | 4 | 5 | 6,
+  slot: 'M' | 'A' | 'E' | '6PM' | '8PM',
   links?: { v1?: string; v2?: string },
 ): string | null {
   if (!whatsappDigits(lead.phone ?? '')) return null
   const name = (lead.name || 'Participant').trim()
-  const linkBlock =
-    (links?.v1 ? `📹 Video 1:\n${links.v1}\n` : '') +
-    (links?.v2 ? `📹 Video 2:\n${links.v2}\n` : '')
-  const slotLabel = slot === 'M' ? 'Morning' : slot === 'A' ? 'Afternoon' : 'Evening'
+  const isDay6 = dayKey === 6
+  const slotLabel = slot === 'M' ? 'Morning' : slot === 'A' ? 'Afternoon' : slot === 'E' ? 'Evening' : slot === '6PM' ? '6 PM' : '8 PM'
+  const linkBlock = isDay6
+    ? (links?.v1 ? `📹 Final Video:\n${links.v1}\n` : '')
+    : (links?.v1 ? `📹 Video 1:\n${links.v1}\n` : '') + (links?.v2 ? `📹 Video 2:\n${links.v2}\n` : '')
   const msg =
     `Hi ${name},\n` +
     `Day ${dayKey} — ${slotLabel} Batch\n` +
     (linkBlock ? `\n${linkBlock}` : '\n') +
-    'Please watch both videos and reply ✅.'
+    (isDay6 ? 'Please watch the final video and reply ✅.' : 'Please watch both videos and reply ✅.')
   const url = whatsAppChatWithTextHref(lead.phone, msg)
   return url === '#' ? null : url
 }
 
+function workboardBatchWhatsAppBusinessUrl(
+  lead: LeadPublic,
+  dayKey: 1 | 2 | 3 | 4 | 5 | 6,
+  slot: 'M' | 'A' | 'E' | '6PM' | '8PM',
+  links?: { v1?: string; v2?: string },
+): string | null {
+  if (!whatsappDigits(lead.phone ?? '')) return null
+  const name = (lead.name || 'Participant').trim()
+  const isDay6 = dayKey === 6
+  const slotLabel = slot === 'M' ? 'Morning' : slot === 'A' ? 'Afternoon' : slot === 'E' ? 'Evening' : slot === '6PM' ? '6 PM' : '8 PM'
+  const linkBlock = isDay6
+    ? (links?.v1 ? `📹 Final Video:\n${links.v1}\n` : '')
+    : (links?.v1 ? `📹 Video 1:\n${links.v1}\n` : '') + (links?.v2 ? `📹 Video 2:\n${links.v2}\n` : '')
+  const msg =
+    `Hi ${name},\n` +
+    `Day ${dayKey} — ${slotLabel} Batch\n` +
+    (linkBlock ? `\n${linkBlock}` : '\n') +
+    (isDay6 ? 'Please watch the final video and reply ✅.' : 'Please watch both videos and reply ✅.')
+  const url = whatsAppBusinessChatWithTextHref(lead.phone, msg)
+  return url === '#' ? null : url
+}
 
 async function readResponseError(res: Response): Promise<string> {
   const body = await res.json().catch(() => ({}))
@@ -690,10 +710,12 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
   const [uploadBusy, setUploadBusy] = useState(false)
   const [uploadErr, setUploadErr] = useState<string | null>(null)
 
-  const hasBatchSlots = stageKey === 'day1' || stageKey === 'day2' || stageKey === 'day3' || stageKey === 'day4' || stageKey === 'day5'
-  const dayKey = stageKey === 'day5' ? 5 : stageKey === 'day4' ? 4 : stageKey === 'day3' ? 3 : stageKey === 'day2' ? 2 : 1
+  const hasBatchSlots = stageKey === 'day1' || stageKey === 'day2' || stageKey === 'day3' || stageKey === 'day4' || stageKey === 'day5' || stageKey === 'interview'
+  const dayKey = stageKey === 'interview' ? 6 : stageKey === 'day5' ? 5 : stageKey === 'day4' ? 4 : stageKey === 'day3' ? 3 : stageKey === 'day2' ? 2 : 1
   const batchSlots: readonly BatchSlotKey[] =
-    stageKey === 'day5'
+    stageKey === 'interview'
+      ? (['d6_6pm', 'd6_8pm'] as const)
+      : stageKey === 'day5'
       ? (['d5_morning', 'd5_afternoon', 'd5_evening'] as const)
       : stageKey === 'day4'
       ? (['d4_morning', 'd4_afternoon', 'd4_evening'] as const)
@@ -706,7 +728,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
   const allSlotsDone = hasBatchSlots && batchSlots.every((k) => lead[k])
 
   // day1 M/A slots — tokenized batch link
-  const handleBatchShare = async (slot: 'M' | 'A' | 'E', slotKey: BatchSlotKey) => {
+  const handleBatchShare = async (slot: 'M' | 'A' | 'E' | '6PM' | '8PM', slotKey: BatchSlotKey) => {
     setBatchError(null)
     setSharingSlot(slotKey)
     const popup = reserveExternalShareWindow('Preparing batch share...')
@@ -792,9 +814,111 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     )
   }
 
+  // interview (Day 6): interview checkbox + Send Day 6 2CC Live Session
+  if (stageKey === 'interview') {
+    const interviewDone = !!lead.process_tracking?.['interview']?.['interview_done']
+
+    const handleInterviewToggle = async () => {
+      try {
+        await pm.mutateAsync({ id: lead.id, body: {
+          process_stage: 'interview',
+          process_task: 'interview_done',
+          process_task_done: !interviewDone,
+        }})
+        await qc.refetchQueries({ queryKey: ['workboard'] })
+      } catch { /* handled by pm */ }
+    }
+
+    return (
+      <div className="space-y-1.5 border-t border-border/40 pt-1.5">
+        <button
+          type="button"
+          disabled={leadPatchBusy}
+          onClick={() => void handleInterviewToggle()}
+          className={cn(
+            'flex h-6 items-center gap-1.5 rounded px-2 text-ds-caption font-semibold transition disabled:opacity-50',
+            interviewDone
+              ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
+              : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
+          )}
+        >
+          {interviewDone ? <CheckSquare className="h-3 w-3" /> : <Square className="h-3 w-3" />}
+          Interview
+        </button>
+
+        {!pickerOpen ? (
+          <button
+            type="button"
+            disabled={leadPatchBusy || pickerBusy}
+            onClick={() => setPickerOpen(true)}
+            className="flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-indigo-400/40 bg-indigo-400/10 px-3 text-ds-caption font-semibold text-indigo-300 transition hover:bg-indigo-400/20 disabled:opacity-50"
+          >
+            <Video className="h-3.5 w-3.5" />
+            Send Day 6 2CC Live Session
+          </button>
+        ) : (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <span className="text-ds-caption text-muted-foreground">Links:</span>
+              {(['6PM', '8PM'] as const).map((slotLabel) => {
+                const slotKey = slotLabel === '6PM' ? 'd6_6pm' as const : 'd6_8pm' as const
+                const busy = sharingSlot === slotKey
+                const done = lead[slotKey]
+                return (
+                  <button key={slotKey} type="button"
+                    disabled={leadPatchBusy || busy}
+                    onClick={() => void handleBatchShare(slotLabel, slotKey)}
+                    className={cn(
+                      'flex h-6 min-w-12 items-center justify-center rounded px-1.5 text-ds-caption font-semibold transition disabled:opacity-50',
+                      done
+                        ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
+                        : 'border border-indigo-400/40 bg-indigo-400/10 text-indigo-300 hover:bg-indigo-400/20',
+                    )}>
+                    {busy ? '...' : slotLabel}
+                  </button>
+                )
+              })}
+              <button type="button" onClick={() => setPickerOpen(false)}
+                className="text-ds-caption text-muted-foreground hover:text-foreground">✕</button>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-ds-caption text-muted-foreground">Check:</span>
+              {(['d6_6pm', 'd6_8pm'] as const).map((slotKey) => {
+                const done = lead[slotKey]
+                const busy = toggleSlot === slotKey
+                const label = slotKey === 'd6_6pm' ? '6PM' : '8PM'
+                return (
+                  <button key={slotKey} type="button"
+                    disabled={leadPatchBusy || busy}
+                    onClick={() => void handleBatchToggle(slotKey)}
+                    className={cn(
+                      'flex h-6 min-w-10 items-center justify-center rounded px-1.5 text-ds-caption font-semibold transition disabled:opacity-50',
+                      done
+                        ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
+                        : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
+                    )}>
+                    {busy ? '...' : done ? <CheckSquare className="h-3 w-3" /> : <span>{label}</span>}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {batchError ? <p className="text-ds-caption text-destructive">{batchError}</p> : null}
+        {onMoveNext && (
+          <button type="button" disabled={leadPatchBusy} onClick={onMoveNext}
+            className="w-full rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50">
+            {nextLabel ?? 'Move to next stage →'}
+          </button>
+        )}
+      </div>
+    )
+  }
+
   const slotTimeLabels = (['M', 'A', 'E'] as const)
 
-  // day1, day4, day5: all three slots (5pm/6pm/7pm) send tokenized batch links
+  // day1, day4, day5: send tokenized batch links
   if (stageKey === 'day1' || stageKey === 'day4' || stageKey === 'day5') {
     return (
       <div className="space-y-1.5">
@@ -802,7 +926,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
           <div className="flex items-center gap-2">
             <span className="text-ds-caption text-muted-foreground">Links:</span>
             {batchSlots.map((slotKey, i) => {
-              const slot = (['M', 'A', 'E'] as const)[i]
+              const slot = (slotTimeLabels as readonly string[])[i] as 'M' | 'A' | 'E' | '6PM' | '8PM'
               const timeLabel = slotTimeLabels[i]
               const slotDone = lead[slotKey]
               const busy = sharingSlot === slotKey

@@ -152,6 +152,8 @@ export type LeadPublic = {
   d5_morning: boolean
   d5_afternoon: boolean
   d5_evening: boolean
+  d6_6pm: boolean
+  d6_8pm: boolean
   process_tracking?: Record<string, Record<string, boolean>> | null
   no_response_attempt_count: number
   /** Call-to-close (optional until backend touched / migration). */
@@ -321,6 +323,8 @@ export type PatchLeadBody = {
   d5_morning?: boolean
   d5_afternoon?: boolean
   d5_evening?: boolean
+  d6_6pm?: boolean
+  d6_8pm?: boolean
   process_stage?: string
   process_task?: string
   process_task_done?: boolean

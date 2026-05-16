@@ -53,6 +53,7 @@ function applyTopics(qc: QueryClient, topics: string[]) {
     void qc.invalidateQueries({ queryKey: ['analytics'] })
     void qc.invalidateQueries({ queryKey: ['system'] })
     void qc.invalidateQueries({ queryKey: ['team', 'tracking'] })
+    void qc.invalidateQueries({ queryKey: ['execution'] })
   }
   if (t.has('follow_ups')) {
     void qc.invalidateQueries({ queryKey: ['follow-ups'] })
@@ -60,12 +61,17 @@ function applyTopics(qc: QueryClient, topics: string[]) {
   }
   if (t.has('team')) {
     void qc.invalidateQueries({ queryKey: ['team'] })
+    void qc.invalidateQueries({ queryKey: ['team', 'enrollment-requests'] })
   }
   if (t.has('team_tracking') || t.has('team_tracking.presence')) {
     void qc.invalidateQueries({ queryKey: ['team', 'tracking'] })
+    void qc.invalidateQueries({ queryKey: ['admin', 'leader-health'] })
   }
   if (t.has('wallet')) {
     void qc.invalidateQueries({ queryKey: ['wallet'] })
+  }
+  if (t.has('enroll')) {
+    void qc.invalidateQueries({ queryKey: ['enroll'] })
   }
 }
 
