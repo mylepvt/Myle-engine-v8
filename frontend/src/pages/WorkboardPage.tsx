@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Check, CheckSquare, Eye, Pencil, Search, Send, Video } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
@@ -33,7 +33,7 @@ import { useContentLinksQuery } from '@/hooks/use-content-links-query'
 import { checklistForStage } from '@/lib/lead-process-map'
 import { LEAD_SLA_SMOOTH_REFRESH_MS, formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
 import { buildLiveSessionWhatsAppUrl, buildLiveSessionWhatsAppBusinessUrl, type LiveSessionSlotOption } from '@/lib/live-session-slots'
-import { whatsAppChatWithTextHref, whatsAppBusinessChatWithTextHref, whatsappDigits } from '@/lib/phone-links'
+import { whatsAppChatWithTextHref, whatsappDigits } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -125,26 +125,6 @@ function workboardBatchWhatsAppUrl(
   return url === '#' ? null : url
 }
 
-function workboardBatchWhatsAppBusinessUrl(
-  lead: LeadPublic,
-  dayKey: 1 | 2 | 3 | 4 | 5,
-  slot: 'M' | 'A' | 'E',
-  links?: { v1?: string; v2?: string },
-): string | null {
-  if (!whatsappDigits(lead.phone ?? '')) return null
-  const name = (lead.name || 'Participant').trim()
-  const linkBlock =
-    (links?.v1 ? `📹 Video 1:\n${links.v1}\n` : '') +
-    (links?.v2 ? `📹 Video 2:\n${links.v2}\n` : '')
-  const slotLabel = slot === 'M' ? 'Morning' : slot === 'A' ? 'Afternoon' : 'Evening'
-  const msg =
-    `Hi ${name},\n` +
-    `Day ${dayKey} — ${slotLabel} Batch\n` +
-    (linkBlock ? `\n${linkBlock}` : '\n') +
-    'Please watch both videos and reply ✅.'
-  const url = whatsAppBusinessChatWithTextHref(lead.phone, msg)
-  return url === '#' ? null : url
-}
 
 async function readResponseError(res: Response): Promise<string> {
   const body = await res.json().catch(() => ({}))
@@ -587,10 +567,10 @@ function ProcessChecklistSection({
     : stageChecklistComplete(lead, stage)
 
   return (
-    <div className="space-y-2 rounded border border-border/60 bg-muted/20 p-3">
+    <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 p-3">
       {!taskKeys && (
-        <div className="space-y-1">
-          <p className="text-ds-caption font-semibold uppercase tracking-wide text-muted-foreground">{def.title}</p>
+        <div className="space-y-0.5">
+          <p className="text-ds-caption font-bold uppercase tracking-wider text-foreground/70">{def.title}</p>
           <p className="text-ds-caption text-muted-foreground">{def.helper}</p>
         </div>
       )}
@@ -601,10 +581,16 @@ function ProcessChecklistSection({
           return (
             <div
               key={task.key}
-              className="flex items-center justify-between gap-3 rounded-lg border border-border/50 bg-card/40 px-3 py-2"
+              className={cn(
+                'flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 transition-all',
+                done
+                  ? 'border-emerald-400/20 bg-emerald-400/[0.06]'
+                  : 'border-border/50 bg-card/40',
+              )}
             >
-              <div className="min-w-0">
-                <p className={cn('text-sm font-medium', done ? 'text-foreground' : 'text-foreground/90')}>
+              <div className="flex min-w-0 items-center gap-2">
+                {done && <Check className="h-3.5 w-3.5 shrink-0 text-emerald-400" aria-hidden />}
+                <p className={cn('text-sm font-medium', done ? 'text-emerald-300/80' : 'text-foreground/90')}>
                   {task.label}
                 </p>
               </div>
@@ -876,9 +862,9 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
           <button type="button"
             disabled={leadPatchBusy || pickerBusy}
             onClick={() => setPickerOpen(true)}
-            className="flex h-10 w-full items-center justify-center gap-1.5 rounded-md border border-indigo-400/40 bg-indigo-400/10 px-3 text-ds-caption font-semibold text-indigo-300 transition hover:bg-indigo-400/20 disabled:opacity-50">
-            <Video className="h-3.5 w-3.5" />
-            {pickerBusy ? 'Sending...' : `Send Day ${dayKey} Live Session`}
+            className="relative flex h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-xl border border-indigo-400/40 bg-gradient-to-r from-indigo-400/15 to-violet-400/10 px-3 text-sm font-bold text-indigo-200 shadow-[0_0_16px_-6px_rgba(99,102,241,0.5)] transition hover:border-indigo-400/60 hover:from-indigo-400/20 hover:to-violet-400/15 disabled:opacity-50">
+            <Video className="h-4 w-4 shrink-0" />
+            <span>{pickerBusy ? 'Sending...' : `Send Day ${dayKey} Live Session`}</span>
           </button>
           {batchError ? <p className="text-ds-caption text-destructive">{batchError}</p> : null}
         </div>
@@ -931,9 +917,9 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
         <button type="button"
           disabled={leadPatchBusy || pickerBusy}
           onClick={() => setPickerOpen(true)}
-          className="flex h-10 w-full items-center justify-center gap-1.5 rounded-md border border-indigo-400/40 bg-indigo-400/10 px-3 text-ds-caption font-semibold text-indigo-300 transition hover:bg-indigo-400/20 disabled:opacity-50">
-          <Video className="h-3.5 w-3.5" />
-          {pickerBusy ? 'Sending...' : 'Send Day 3 Live Session'}
+          className="relative flex h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-xl border border-indigo-400/40 bg-gradient-to-r from-indigo-400/15 to-violet-400/10 px-3 text-sm font-bold text-indigo-200 shadow-[0_0_16px_-6px_rgba(99,102,241,0.5)] transition hover:border-indigo-400/60 hover:from-indigo-400/20 hover:to-violet-400/15 disabled:opacity-50">
+          <Video className="h-4 w-4 shrink-0" />
+          <span>{pickerBusy ? 'Sending...' : 'Send Day 3 Live Session'}</span>
         </button>
         {batchError ? <p className="text-ds-caption text-destructive">{batchError}</p> : null}
       </div>
@@ -1292,6 +1278,7 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 export function WorkboardPage({ title, mode = 'pipeline' }: Props) {
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { role, serverRole } = useDashboardShellRole()
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
@@ -1394,6 +1381,7 @@ export function WorkboardPage({ title, mode = 'pipeline' }: Props) {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
+          <button type="button" onClick={() => navigate(-1)} className="mb-1 text-sm text-primary underline-offset-2 hover:underline">← Back</button>
           <h1 className="text-ds-h2">{title}</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
             {mode === 'mindset-lock'

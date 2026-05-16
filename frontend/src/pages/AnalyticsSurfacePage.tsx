@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { InsightList } from '@/components/dashboard/InsightList'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -11,11 +12,15 @@ type Props = {
 }
 
 export function AnalyticsSurfacePage({ title, surface }: Props) {
+  const navigate = useNavigate()
   const { data, isPending, isError, error, refetch } = useAnalyticsSurfaceQuery(surface)
 
   return (
     <div className="max-w-2xl space-y-6">
-      <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
+      <div className="space-y-1">
+        <button type="button" onClick={() => navigate(-1)} className="text-sm text-primary underline-offset-2 hover:underline">← Back</button>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
+      </div>
 
       {isPending ? (
         <div className="space-y-2">

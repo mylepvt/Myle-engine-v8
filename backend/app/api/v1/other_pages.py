@@ -883,6 +883,30 @@ async def premiere_progress(
     return {"ok": True}
 
 
+@router.get("/premiere/pool")
+async def premiere_pool(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[dict]:
+    """Public — no auth. Shuffled first-name + city pool from today's registered viewers.
+    Used by join-feed animation on the prospect premiere page — no PII beyond first name.
+    """
+    today = datetime.now(IST).date().isoformat()
+    try:
+        rows = (await db.execute(
+            select(PremiereViewer.name, PremiereViewer.city)
+            .where(
+                PremiereViewer.session_date == today,
+                PremiereViewer.name != "",
+                PremiereViewer.city != "",
+            )
+            .order_by(func.random())
+            .limit(200)
+        )).all()
+        return [{"name": r.name.strip().split()[0], "city": r.city.strip()} for r in rows]
+    except (OperationalError, ProgrammingError):
+        return []
+
+
 async def _build_phone_to_owner_map(db: AsyncSession, raw_phones: list[str]) -> dict[str, str]:
     """Return {10-digit-phone: owner_name} for viewers whose phone matches a lead."""
     norm_to_raw: dict[str, str] = {}

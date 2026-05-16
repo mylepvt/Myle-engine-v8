@@ -26,17 +26,28 @@ function getTodayDate() {
   return d.toISOString().slice(0, 10)
 }
 
+function getStorage(): Storage | null {
+  if (typeof window === 'undefined') return null
+  try {
+    return window.localStorage ?? null
+  } catch {
+    return null
+  }
+}
+
 function checkDailyReset() {
-  const stored = localStorage.getItem(DAILY_RESET_KEY)
+  const storage = getStorage()
+  if (!storage) return false
+  const stored = storage.getItem(DAILY_RESET_KEY)
   const today = getTodayDate()
   if (stored !== today) {
-    localStorage.setItem(DAILY_RESET_KEY, today)
+    storage.setItem(DAILY_RESET_KEY, today)
     return true
   }
   return false
 }
 
-export const useLiveDashboardStore = create<LiveDashboardState>((set) => {
+export const useLiveDashboardStore = create<LiveDashboardState>(() => {
   if (checkDailyReset()) {
     return {
       callsToday: 0, day1Total: 0, day2Total: 0, day3Total: 0, day4Total: 0, day5Total: 0,
@@ -58,7 +69,6 @@ export const useLiveDashboardStore = create<LiveDashboardState>((set) => {
 })
 
 const update = useLiveDashboardStore.setState
-const get = useLiveDashboardStore.getState
 
 useLiveDashboardStore.setState({
   processEvent: (action, metadata) => {
@@ -102,7 +112,7 @@ useLiveDashboardStore.setState({
   },
 
   resetDaily: () => {
-    localStorage.setItem(DAILY_RESET_KEY, getTodayDate())
+    getStorage()?.setItem(DAILY_RESET_KEY, getTodayDate())
     update({
       callsToday: 0, day1Total: 0, day2Total: 0, day3Total: 0, day4Total: 0, day5Total: 0,
       claimedToday: 0, approvedToday: 0, newLeadsToday: 0, enrolledToday: 0, walletCreditsToday: 0,

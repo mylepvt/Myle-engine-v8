@@ -1,5 +1,5 @@
 import { type ChangeEvent, type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Filter, Mail, MapPin, Phone, Plus, Search, Share2, Upload, UserPlus, X } from 'lucide-react'
 
 import { CtcsWorkSurface } from '@/components/leads/CtcsWorkSurface'
@@ -65,10 +65,12 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const leadsListMode = listMode === 'archived' ? 'archived' : 'active'
   const { role, serverRole } = useDashboardShellRole()
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const qParam = searchParams.get('q') ?? ''
+  const stageParam = searchParams.get('stage') ?? ''
   const [qInput, setQInput] = useState(qParam)
-  const [filters, setFilters] = useState<LeadListFilters>({ ...emptyFilters, q: qParam })
+  const [filters, setFilters] = useState<LeadListFilters>({ ...emptyFilters, q: qParam, status: stageParam })
   const crossSectionSearch =
     !archivedOnly &&
     filters.q.trim().length > 0 &&
@@ -341,6 +343,9 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
     <>
       <div className="mx-auto max-w-6xl">
         <div className="mx-auto min-h-[50dvh] max-w-[430px] bg-background pb-8 text-foreground transition-colors md:max-w-[480px]">
+        <div className="border-b border-border/30 bg-card/30 px-4 py-1.5">
+          <button type="button" onClick={() => navigate(-1)} className="text-sm text-primary underline-offset-2 hover:underline">← Back</button>
+        </div>
         <div className="border-b border-border/60 bg-card/55 px-4 pb-2 pt-2 supports-[backdrop-filter]:bg-card/40">
           <div className="flex flex-wrap items-center gap-2">
             <div className="surface-inset flex h-9 min-w-0 basis-full items-center gap-1.5 rounded-lg px-2.5 min-[360px]:basis-0 min-[360px]:flex-1">

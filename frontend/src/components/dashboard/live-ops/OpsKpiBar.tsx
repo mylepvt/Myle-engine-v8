@@ -2,8 +2,6 @@ import { TrendingUp, TrendingDown, AlertTriangle, Users, Clock, Activity } from 
 import { Link } from 'react-router-dom'
 import { useStageCounts } from '@/hooks/use-stage-counts-query'
 import { useLeaderHealthQuery } from '@/hooks/use-admin-leader-health-query'
-import { useTeamReportsQuery } from '@/hooks/use-team-reports-query'
-import { useLiveDashboardStore } from '@/stores/live-dashboard-store'
 import { cn } from '@/lib/utils'
 
 function KpiCard({
@@ -80,12 +78,8 @@ function StuckChip({ label, value, urgent, to }: { label: string; value: number;
 export function OpsKpiBar() {
   const stageCounts = useStageCounts()
   const leaderHealth = useLeaderHealthQuery()
-  const teamReports = useTeamReportsQuery('', true)
-  const liveDash = useLiveDashboardStore()
-
   const counts = stageCounts.data?.counts ?? {}
   const todayMov = stageCounts.data?.today_movements ?? {}
-  const liveSummary = teamReports.data?.live_summary
 
   // Live active users: sum of online team members across all leaders
   const liveActiveUsers = (leaderHealth.data?.leaders ?? []).reduce(
@@ -112,10 +106,6 @@ export function OpsKpiBar() {
   const waitInterview = counts['interview'] ?? 0
   const inactiveDay2 = Math.floor((counts['day2'] ?? 0) * 0.35)
   const noActivity3d = Math.floor(totalActive * 0.007)
-
-  // Today claims delta
-  const claimedDelta = liveDash.claimedToday || (liveSummary?.leads_claimed_today ?? 0)
-  const claimedYesterday = Math.max(0, claimedDelta - Math.floor(claimedDelta * 0.05))
 
   return (
     <div className="space-y-3">
@@ -157,7 +147,7 @@ export function OpsKpiBar() {
           delta={`${Math.max(0, Math.floor(liveActiveUsers * 0.09))}%`}
           deltaUp
           icon={<Users className="size-3" />}
-          to="/dashboard/admin/leaders"
+          to="/dashboard/settings/all-members"
         />
       </div>
 
@@ -166,7 +156,7 @@ export function OpsKpiBar() {
         <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40">
           Stuck Leads
         </span>
-        <div className="flex flex-1 gap-2">
+        <div className="flex flex-1 gap-2 overflow-x-auto">
           <StuckChip label=">24h In Stage" value={stuckAt24h} urgent to="/dashboard/work/leads" />
           <StuckChip label="Waiting Interview" value={waitInterview} urgent to="/dashboard/work/leads" />
           <StuckChip label="Inactive (Day 2+)" value={inactiveDay2} to="/dashboard/work/workboard" />
