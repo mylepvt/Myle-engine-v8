@@ -251,6 +251,8 @@ class LeadUpdate(BaseModel):
     d5_morning: Optional[bool] = Field(default=None, description="Day 5 morning batch")
     d5_afternoon: Optional[bool] = Field(default=None, description="Day 5 afternoon batch")
     d5_evening: Optional[bool] = Field(default=None, description="Day 5 evening batch")
+    d6_6pm: Optional[bool] = Field(default=None, description="Day 6 6 PM batch")
+    d6_8pm: Optional[bool] = Field(default=None, description="Day 6 8 PM batch")
     process_stage: Optional[str] = Field(default=None, max_length=64)
     process_task: Optional[str] = Field(default=None, max_length=128)
     process_task_done: Optional[bool] = Field(default=None)
@@ -296,6 +298,8 @@ class LeadUpdate(BaseModel):
             self.d5_morning,
             self.d5_afternoon,
             self.d5_evening,
+            self.d6_6pm,
+            self.d6_8pm,
             self.process_stage,
             self.process_task,
             self.process_task_done,
@@ -375,6 +379,8 @@ BatchSlot = Literal[
     "d5_morning",
     "d5_afternoon",
     "d5_evening",
+    "d6_6pm",
+    "d6_8pm",
 ]
 
 

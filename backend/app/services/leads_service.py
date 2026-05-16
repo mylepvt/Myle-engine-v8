@@ -989,6 +989,10 @@ class LeadsService:
             lead.day3_completed_at = now
         elif body.day3_completed is False:
             lead.day3_completed_at = None
+        if body.d6_6pm is not None:
+            lead.d6_6pm = body.d6_6pm
+        if body.d6_8pm is not None:
+            lead.d6_8pm = body.d6_8pm
         _sync_batch_completion_timestamps(lead, now)
         lead = await self._commit_with_shadow_upsert(lead)
         await self._notifier("leads")

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowUpRight, PlayCircle } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,7 @@ type InAppVideoPlayerProps = {
   previewTitle?: string
   previewDescription?: string
   playLabel?: string
+  seekPrevention?: boolean
 }
 
 const NATIVE_VIDEO_MIME_TYPES: Record<string, string> = {
@@ -78,12 +79,15 @@ export function InAppVideoPlayer({
   previewTitle,
   previewDescription = 'Tap play to start the session inside the app without showing raw YouTube UI upfront.',
   playLabel = 'Play inside Myle',
+  seekPrevention = false,
 }: InAppVideoPlayerProps) {
   const [playerActivated, setPlayerActivated] = useState(false)
+  const maxAllowedTimeRef = useRef(0)
   const playbackSource = resolvePlaybackSource(embedUrl)
 
   useEffect(() => {
     setPlayerActivated(false)
+    maxAllowedTimeRef.current = 0
   }, [embedUrl, fallbackUrl, title])
 
   if (!playbackSource || playbackSource.kind === 'unsupported') {
@@ -152,7 +156,18 @@ export function InAppVideoPlayer({
           controls
           playsInline
           preload="metadata"
-          controlsList="nodownload noplaybackrate"
+          controlsList={seekPrevention ? 'nodownload nofullscreen noplaybackrate noremoteplayback' : 'nodownload noplaybackrate'}
+          disablePictureInPicture={seekPrevention}
+          onContextMenu={seekPrevention ? (e) => e.preventDefault() : undefined}
+          onTimeUpdate={seekPrevention ? (e) => {
+            maxAllowedTimeRef.current = Math.max(maxAllowedTimeRef.current, e.currentTarget.currentTime || 0)
+          } : undefined}
+          onSeeking={seekPrevention ? (e) => {
+            const video = e.currentTarget
+            if (video.currentTime > maxAllowedTimeRef.current + 0.35) {
+              video.currentTime = maxAllowedTimeRef.current
+            }
+          } : undefined}
         >
           {playbackSource.mimeType ? <source src={playbackSource.src} type={playbackSource.mimeType} /> : null}
         </video>
