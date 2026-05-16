@@ -509,6 +509,7 @@ export function TeamTrackingPage({ title }: Props) {
       lines.push(`   Phone: ${item.member_phone ?? 'N/A'}`)
       lines.push(`   FBO ID: ${item.member_fbo_id}`)
       if (item.leader_name) lines.push(`   Leader: ${item.leader_name}`)
+      if (item.compliance_summary) lines.push(`   Reason: ${item.compliance_summary}`)
       lines.push('')
     })
     lines.push('─'.repeat(32))
@@ -829,6 +830,12 @@ export function TeamTrackingPage({ title }: Props) {
                           <p>
                             <span className="text-foreground/60">Leader:</span>{' '}
                             {item.leader_name}
+                          </p>
+                        ) : null}
+                        {item.compliance_summary ? (
+                          <p className="mt-1 border-t border-rose-400/15 pt-1">
+                            <span className="text-foreground/60">Reason:</span>{' '}
+                            <span className="text-rose-600 dark:text-rose-400">{item.compliance_summary}</span>
                           </p>
                         ) : null}
                       </div>
