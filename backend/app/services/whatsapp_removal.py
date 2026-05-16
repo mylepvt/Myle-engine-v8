@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models.member_removal_outreach import MemberRemovalOutreach
 from app.models.user import User
+from app.services.settings_service import SettingsService
 
 logger = logging.getLogger(__name__)
 
@@ -64,30 +65,55 @@ def _post_json_sync(
 
 
 # ---------------------------------------------------------------------------
-# Meta Cloud API sender
+# DB-backed config helpers (DB settings override env vars)
 # ---------------------------------------------------------------------------
 
-def _meta_api_configured() -> bool:
-    return bool(
-        (settings.whatsapp_meta_phone_number_id or "").strip()
-        and (settings.whatsapp_meta_access_token or "").strip()
+async def get_meta_config(session: AsyncSession) -> tuple[str, str, str]:
+    """
+    Returns (phone_number_id, access_token, api_version).
+    DB app_settings take precedence over env vars.
+    """
+    svc = SettingsService(session)
+    phone_number_id = (
+        (await svc.get_app_setting("whatsapp.meta.phone_number_id") or "").strip()
+        or (settings.whatsapp_meta_phone_number_id or "").strip()
+    )
+    access_token = (
+        (await svc.get_app_setting("whatsapp.meta.access_token") or "").strip()
+        or (settings.whatsapp_meta_access_token or "").strip()
+    )
+    api_version = (
+        (await svc.get_app_setting("whatsapp.meta.api_version") or "").strip()
+        or (settings.whatsapp_meta_api_version or "").strip()
+        or "v19.0"
+    )
+    return phone_number_id, access_token, api_version
+
+
+async def get_verify_token(session: AsyncSession) -> str:
+    """Returns Meta webhook verify token — DB first, env var fallback."""
+    svc = SettingsService(session)
+    return (
+        (await svc.get_app_setting("whatsapp.meta.verify_token") or "").strip()
+        or (settings.whatsapp_meta_verify_token or "").strip()
     )
 
 
+# ---------------------------------------------------------------------------
+# Meta Cloud API sender
+# ---------------------------------------------------------------------------
+
 async def _send_via_meta_api(
-    *, phone: str, message: str
+    *, phone: str, message: str, phone_number_id: str, access_token: str, api_version: str
 ) -> dict[str, Any]:
     """
     Send a free-form text message via Meta WhatsApp Cloud API.
 
-    NOTE: Meta allows free-form text only within the 24-hour service window
-    (after the user last messaged your number). For first-time outreach you
-    may need an approved message template. The wa.me fallback link in the
-    outreach record is always available as a manual fallback.
+    NOTE: Meta allows free-form text only within the 24-hour customer service
+    window. For first-time outreach (member never messaged you) you may need
+    an approved template. The manual wa.me link in the outreach record is
+    always available as fallback.
     """
-    phone_number_id = settings.whatsapp_meta_phone_number_id.strip()
-    access_token = settings.whatsapp_meta_access_token.strip()
-    api_version = (settings.whatsapp_meta_api_version or "v19.0").strip()
     digits = _whatsapp_digits(phone)
     if not digits:
         return {"ok": False, "error": "invalid_phone"}
@@ -99,17 +125,13 @@ async def _send_via_meta_api(
         "type": "text",
         "text": {"preview_url": False, "body": message},
     }
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-    }
+    headers = {"Authorization": f"Bearer {access_token}"}
     timeout = float(settings.ctcs_whatsapp_timeout_seconds)
     try:
         status, body = await asyncio.to_thread(_post_json_sync, url, payload, headers, timeout)
         ok = 200 <= status < 300
         if not ok:
-            logger.warning(
-                "meta whatsapp send non-2xx status=%s body=%s", status, body[:300]
-            )
+            logger.warning("meta whatsapp non-2xx status=%s body=%s", status, body[:300])
         return {"ok": ok, "channel": "meta_cloud_api", "http_status": status, "body": body[:500]}
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")[:500] if exc.fp else ""
@@ -183,9 +205,16 @@ async def send_removal_whatsapp(
     session.add(record)
     await session.flush()
 
-    # Priority: Meta Cloud API → webhook → stub
-    if _meta_api_configured() and phone:
-        result = await _send_via_meta_api(phone=phone, message=message)
+    # Priority: Meta Cloud API (DB config or env vars) → webhook → stub
+    phone_number_id, access_token, api_version = await get_meta_config(session)
+    if phone_number_id and access_token and phone:
+        result = await _send_via_meta_api(
+            phone=phone,
+            message=message,
+            phone_number_id=phone_number_id,
+            access_token=access_token,
+            api_version=api_version,
+        )
     elif (settings.ctcs_whatsapp_webhook_url or "").strip():
         result = await _send_via_webhook(
             user=user, phone=phone, message=message, removal_reason=removal_reason

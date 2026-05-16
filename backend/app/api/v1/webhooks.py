@@ -15,7 +15,7 @@ from starlette import status as http_status
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.core.config import settings
 from app.models.member_removal_outreach import MemberRemovalOutreach
-from app.services.whatsapp_removal import record_reply
+from app.services.whatsapp_removal import get_verify_token, record_reply
 
 logger = logging.getLogger(__name__)
 
@@ -28,15 +28,16 @@ router = APIRouter()
 
 @router.get("/webhooks/whatsapp/reply")
 async def verify_meta_webhook(
+    session: Annotated[AsyncSession, Depends(get_db)],
     hub_mode: str = Query("", alias="hub.mode"),
     hub_verify_token: str = Query("", alias="hub.verify_token"),
     hub_challenge: str = Query("", alias="hub.challenge"),
 ) -> PlainTextResponse:
     """
     Meta Developer Console sends a GET request to verify your webhook URL.
-    Set WHATSAPP_META_VERIFY_TOKEN to the same token you enter in Meta console.
+    Set WHATSAPP_META_VERIFY_TOKEN env var OR save it in Settings → App → WhatsApp.
     """
-    expected = (settings.whatsapp_meta_verify_token or "").strip()
+    expected = await get_verify_token(session)
     if hub_mode == "subscribe" and hub_verify_token == expected and expected:
         logger.info("meta webhook verification success")
         return PlainTextResponse(hub_challenge)
