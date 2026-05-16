@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { apiFetch } from '@/lib/api'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
+import { cn } from '@/lib/utils'
 
 type ScheduleSlot = {
   hour: number
@@ -86,6 +87,9 @@ function buildWhatsAppMessage(slots: ScheduleSlot[], baseOrigin: string, day: nu
 function SlotCard({ slot, baseOrigin, day }: { slot: ScheduleSlot; baseOrigin: string; day: number }) {
   const [copied, setCopied] = useState(false)
   const link = slotLink(baseOrigin, slot.hour, day)
+  const isLive = slot.state === 'live'
+  const isWaiting = slot.state === 'waiting'
+  const isPast = slot.state === 'past'
 
   const startTime = new Date(slot.live_starts_at).toLocaleTimeString('en-IN', {
     hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata', hour12: true,
@@ -103,22 +107,47 @@ function SlotCard({ slot, baseOrigin, day }: { slot: ScheduleSlot; baseOrigin: s
 
   return (
     <div
-      className={`rounded border px-4 py-3 transition-colors ${
-        slot.state === 'live'
-          ? 'border-red-500/30 bg-red-500/[0.06]'
-          : slot.state === 'waiting'
-          ? 'border-indigo-500/30 bg-indigo-500/[0.06]'
-          : slot.state === 'past'
-          ? 'border-white/[0.06] opacity-50'
-          : 'border-white/10 bg-white/[0.02]'
-      }`}
+      className={cn(
+        'rounded-xl border p-4 transition-all',
+        isLive ? 'border-red-500/30 bg-red-500/[0.05]' :
+        isWaiting ? 'border-indigo-400/30 bg-indigo-400/[0.05]' :
+        isPast ? 'border-border/40 opacity-50' :
+        'border-border bg-card/40',
+      )}
     >
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold text-foreground">{startTime}</span>
-          <span className="text-xs text-muted-foreground">→ {endTime}</span>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className={cn(
+            'text-[22px] font-black tabular-nums leading-none',
+            isLive ? 'text-red-300' : isWaiting ? 'text-indigo-300' : 'text-foreground',
+          )}>
+            {startTime}
+          </p>
+          <p className="mt-1 text-ds-caption text-muted-foreground">→ {endTime}</p>
+        </div>
+
+        <div className="flex flex-col items-end gap-1.5">
+          {isLive ? (
+            <span className="flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-red-300">
+              <span className="relative flex size-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
+              </span>
+              Live
+            </span>
+          ) : isWaiting ? (
+            <span className="rounded-full border border-indigo-400/25 bg-indigo-400/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-indigo-300">
+              Starting soon
+            </span>
+          ) : isPast ? (
+            <span className="text-[10px] text-muted-foreground/50">Done</span>
+          ) : (
+            <span className="rounded-full border border-border bg-muted/30 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+              Upcoming
+            </span>
+          )}
           {slot.live_viewer_count > 0 ? (
-            <span className="flex items-center gap-1 text-xs font-semibold text-red-400">
+            <span className="flex items-center gap-1 text-[10px] font-semibold text-red-400">
               <span className="relative flex size-1.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
                 <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
@@ -126,33 +155,25 @@ function SlotCard({ slot, baseOrigin, day }: { slot: ScheduleSlot; baseOrigin: s
               {slot.live_viewer_count} live
             </span>
           ) : slot.viewer_count_today > 0 ? (
-            <span className="text-xs text-muted-foreground">· {slot.viewer_count_today} registered</span>
+            <span className="text-[10px] text-muted-foreground">{slot.viewer_count_today} reg.</span>
           ) : null}
         </div>
-        {slot.state === 'live' ? (
-          <span className="flex items-center gap-1.5 text-ds-label font-bold uppercase text-red-400">
-            <span className="relative flex size-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-              <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
-            </span>
-            Live
-          </span>
-        ) : slot.state === 'waiting' ? (
-          <span className="text-ds-label font-bold uppercase text-indigo-400">Starting soon</span>
-        ) : slot.state === 'past' ? (
-          <span className="text-[10px] text-muted-foreground">Done</span>
-        ) : null}
       </div>
 
-      {slot.state !== 'past' && (
-        <div className="mt-2 flex items-center gap-2 rounded-lg border border-border/60 bg-muted/50 px-3 py-2">
-          <p className="flex-1 truncate text-xs text-primary">{link}</p>
+      {!isPast && (
+        <div className="mt-3 flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2">
+          <p className="flex-1 truncate font-mono text-[11px] text-primary">{link}</p>
           <button
             type="button"
             onClick={handleCopy}
-            className="shrink-0 rounded-md bg-muted px-2.5 py-1 text-[10px] font-semibold text-foreground transition-colors hover:bg-muted/80"
+            className={cn(
+              'shrink-0 rounded-md border px-2.5 py-1 text-[11px] font-bold transition-all',
+              copied
+                ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
+                : 'border-border bg-muted/50 text-foreground hover:border-primary/40 hover:text-primary',
+            )}
           >
-            {copied ? 'Copied!' : 'Copy'}
+            {copied ? '✓ Copied' : 'Copy'}
           </button>
         </div>
       )}

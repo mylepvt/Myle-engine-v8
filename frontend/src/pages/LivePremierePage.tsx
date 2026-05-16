@@ -4,6 +4,49 @@ import { useQuery } from '@tanstack/react-query'
 import { apiUrl } from '@/lib/api'
 import { whatsAppChatWithTextHref } from '@/lib/phone-links'
 
+type PoolEntry = { name: string; city: string }
+
+async function fetchPool(): Promise<PoolEntry[]> {
+  try {
+    const res = await fetch(apiUrl('/api/v1/other/premiere/pool'))
+    if (!res.ok) return []
+    return res.json() as Promise<PoolEntry[]>
+  } catch {
+    return []
+  }
+}
+
+// ─── Avatar ──────────────────────────────────────────────────────────────────
+
+const AVATAR_COLORS: [string, string][] = [
+  ['#c5d3ff', '#7d97e6'],
+  ['#ffd8c5', '#e69a7d'],
+  ['#c5ffe1', '#7de6b1'],
+  ['#ffe5c5', '#e6c87d'],
+  ['#e6c5ff', '#a77de6'],
+  ['#c5e9ff', '#7dbde6'],
+  ['#ffc5d9', '#e67da0'],
+]
+
+function Avatar({ name, size = 28 }: { name: string; size?: number }) {
+  const initials = name.split(' ').map(s => s[0]).slice(0, 2).join('').toUpperCase()
+  const idx = ((name.charCodeAt(0) ?? 0) + (name.charCodeAt(name.length - 1) ?? 0)) % AVATAR_COLORS.length
+  const [c1, c2] = AVATAR_COLORS[idx]
+  return (
+    <span
+      style={{
+        width: size, height: size, flexShrink: 0,
+        borderRadius: 999,
+        background: `linear-gradient(135deg, ${c1}, ${c2})`,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: size * 0.4, fontWeight: 600, color: '#0a1226',
+        border: '1px solid rgba(255,255,255,0.10)',
+        boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+      }}
+    >{initials}</span>
+  )
+}
+
 function getSlotParam(): number | null {
   const v = new URLSearchParams(window.location.search).get('slot')
   const n = v !== null ? parseInt(v, 10) : NaN
@@ -288,29 +331,41 @@ function useJoinFeed(
   state: string,
   liveStartsAt: string,
   liveEndsAt: string,
+  pool: PoolEntry[],
 ): JoinEntry[] {
   const active = state === 'waiting' || state === 'live'
   const [entries, setEntries] = useState<JoinEntry[]>([])
-  const idRef      = useRef(0)
-  const aliveRef   = useRef(false)
-  const stateRef   = useRef(state)
+  const idRef        = useRef(0)
+  const aliveRef     = useRef(false)
+  const stateRef     = useRef(state)
   const liveStartRef = useRef(liveStartsAt)
   const liveEndRef   = useRef(liveEndsAt)
-  useEffect(() => { stateRef.current = state },         [state])
-  useEffect(() => { liveStartRef.current = liveStartsAt }, [liveStartsAt])
-  useEffect(() => { liveEndRef.current = liveEndsAt },     [liveEndsAt])
+  const poolRef      = useRef(pool)
+  useEffect(() => { stateRef.current = state },             [state])
+  useEffect(() => { liveStartRef.current = liveStartsAt },  [liveStartsAt])
+  useEffect(() => { liveEndRef.current = liveEndsAt },      [liveEndsAt])
+  useEffect(() => { poolRef.current = pool },               [pool])
+
+  function pickEntry(): { name: string; city: string } {
+    const p = poolRef.current
+    if (p.length > 0) return p[Math.floor(Math.random() * p.length)]
+    return {
+      name: FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)],
+      city: CITIES[Math.floor(Math.random() * CITIES.length)],
+    }
+  }
 
   function nextDelay(): number {
     const st = stateRef.current
-    if (st === 'waiting') return 22000 + Math.random() * 20000   // 22-42s
+    if (st === 'waiting') return 22000 + Math.random() * 20000
     if (st === 'live') {
       const start    = new Date(liveStartRef.current).getTime()
       const end      = new Date(liveEndRef.current).getTime()
       const dur      = Math.max(1, end - start)
       const progress = Math.min(1, Math.max(0, (Date.now() - start) / dur))
-      if (progress < 0.15) return 5000  + Math.random() * 9000   // 5-14s burst
-      if (progress < 0.75) return 16000 + Math.random() * 18000  // 16-34s mid
-      return 45000 + Math.random() * 45000                        // 45-90s tail
+      if (progress < 0.15) return 5000  + Math.random() * 9000
+      if (progress < 0.75) return 16000 + Math.random() * 18000
+      return 45000 + Math.random() * 45000
     }
     return 30000
   }
@@ -321,8 +376,7 @@ function useJoinFeed(
 
     function emit() {
       if (!aliveRef.current) return
-      const name = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)]
-      const city = CITIES[Math.floor(Math.random() * CITIES.length)]
+      const { name, city } = pickEntry()
       setEntries(prev => [...prev.slice(-7), { id: ++idRef.current, name, city }])
       window.setTimeout(emit, nextDelay())
     }
@@ -338,23 +392,30 @@ function JoinFeed({ entries }: { entries: JoinEntry[] }) {
   if (entries.length === 0) return null
   const visible = entries.slice(-5)
   return (
-    <div className="w-full max-w-2xl overflow-hidden rounded-[1.6rem] border border-white/8 bg-white/[0.03] px-4 py-3 backdrop-blur-xl">
-      <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.25em] text-[#6b83a8]">Live activity</p>
-      <div className="space-y-1.5">
-        {visible.map((e, i) => (
-          <div
-            key={e.id}
-            style={{ opacity: 0.35 + 0.65 * ((i + 1) / visible.length) }}
-            className="flex items-center gap-2 text-[13px]"
-          >
-            <span className="size-1.5 shrink-0 rounded-full bg-emerald-400" />
-            <span className="text-[#c9d9ff]">
-              <span className="font-semibold">{e.name}</span>
-              <span className="text-[#7a94c4]"> from {e.city} joined</span>
-            </span>
-          </div>
-        ))}
+    <div className="w-full max-w-2xl space-y-2">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-[#7a94c4]">Joining now</span>
+        <span className="text-[10.5px] text-[#7a94c4]">Live feed</span>
       </div>
+      {visible.map((e, i) => (
+        <div
+          key={e.id}
+          style={{ opacity: 0.42 + 0.58 * ((i + 1) / visible.length) }}
+          className="flex items-center justify-between rounded-2xl border border-white/[0.07] bg-white/[0.025] px-3.5 py-2.5"
+        >
+          <div className="flex items-center gap-2.5">
+            <Avatar name={e.name} size={26} />
+            <div className="text-[13px] text-[#f3f7ff]">
+              <span className="font-semibold">{e.name}</span>
+              <span className="text-[#7a94c4]"> from {e.city}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="size-1.5 rounded-full bg-emerald-400" />
+            <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-400">joined</span>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -366,6 +427,8 @@ function ProspectForm({ onSubmit }: { onSubmit: (info: ProspectInfo) => void }) 
   const [city, setCity] = useState('')
   const [phone, setPhone] = useState('')
   const [error, setError] = useState('')
+  const weekAttended = useState(() => 720 + Math.floor(Math.random() * 180))[0]
+  const onlineNow = useState(() => 38 + Math.floor(Math.random() * 40))[0]
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -388,47 +451,136 @@ function ProspectForm({ onSubmit }: { onSubmit: (info: ProspectInfo) => void }) 
     onSubmit(info)
   }
 
+  const sampleNames = ['Aarav S', 'Priya K', 'Neha R', 'Vikram T']
+
   return (
     <div className="relative mx-auto w-full max-w-md">
-      <div className="rounded-[2.25rem] border border-white/10 bg-[linear-gradient(160deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] px-7 py-9 shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-[#9db0d6]">Myle · Private Session</p>
-        <h2 className="mt-3 text-ds-h1 text-[#f7f9ff]">
-          Register for today's exclusive session
-        </h2>
-        <p className="mt-2 text-ds-body text-[#8a9ec4]">
-          Private, invitation-only. Enter your details to get access.
-        </p>
+      {/* Brand + secure row */}
+      <div className="mb-7 flex items-center justify-between">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#9db0d6]">MYLE</span>
+        <div className="flex items-center gap-1.5">
+          <span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_0_0_rgba(34,197,94,0.5)] animate-pulse" />
+          <span className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-[#7a94c4]">SECURE</span>
+        </div>
+      </div>
 
-        <form className="mt-7 space-y-4" onSubmit={handleSubmit}>
-          {([
-            { id: 'p-name', label: 'Full name', type: 'text', ac: 'name', val: name, set: setName, ph: 'Your full name' },
-            { id: 'p-city', label: 'City', type: 'text', ac: 'address-level2', val: city, set: setCity, ph: 'Your city' },
-            { id: 'p-phone', label: 'WhatsApp number', type: 'tel', ac: 'tel', val: phone, set: setPhone, ph: '10-digit number' },
-          ] as const).map(({ id, label, type, ac, val, set, ph }) => (
-            <div key={id} className="space-y-1.5">
-              <label className="block text-xs font-semibold text-[#c9d9ff]" htmlFor={id}>{label}</label>
+      {/* Invitation verified pill */}
+      <div className="mb-5 flex items-center gap-2">
+        <span className="inline-flex items-center gap-2 rounded-full border border-[rgba(142,176,255,0.25)] bg-[rgba(142,176,255,0.08)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#c8d6ff]">
+          <span className="size-1.5 rounded-full bg-emerald-400" />
+          Invitation Verified
+        </span>
+      </div>
+
+      <h2 className="text-[28px] font-bold leading-[1.12] tracking-tight text-white">
+        Register for today's<br />private session.
+      </h2>
+      <p className="mt-2.5 text-[13px] text-[#7a94c4]">
+        Private &nbsp;·&nbsp; Invitation only &nbsp;·&nbsp; Limited access
+      </p>
+
+      {/* Glass form card */}
+      <div className="mt-7 rounded-[2rem] border border-white/[0.09] bg-[rgba(255,255,255,0.04)] px-5 py-5 shadow-[0_40px_80px_-40px_rgba(0,0,0,0.7)] backdrop-blur-2xl">
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <div className="space-y-1.5">
+            <label className="block text-[10.5px] font-semibold uppercase tracking-[0.18em] text-[#7a94c4]" htmlFor="p-name">Full name</label>
+            <input
+              id="p-name"
+              type="text"
+              autoComplete="name"
+              value={name}
+              onChange={(ev) => setName(ev.target.value)}
+              placeholder="Rahul Verma"
+              className="h-[52px] w-full rounded-2xl border border-white/[0.08] bg-white/[0.025] px-4 text-[15px] text-[#f3f7ff] outline-none transition placeholder:text-white/30 focus:border-[rgba(142,176,255,0.45)] focus:bg-[rgba(142,176,255,0.04)] focus:ring-2 focus:ring-[rgba(142,176,255,0.08)]"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-[10.5px] font-semibold uppercase tracking-[0.18em] text-[#7a94c4]" htmlFor="p-city">City</label>
+            <input
+              id="p-city"
+              type="text"
+              autoComplete="address-level2"
+              value={city}
+              onChange={(ev) => setCity(ev.target.value)}
+              placeholder="Mumbai"
+              className="h-[52px] w-full rounded-2xl border border-white/[0.08] bg-white/[0.025] px-4 text-[15px] text-[#f3f7ff] outline-none transition placeholder:text-white/30 focus:border-[rgba(142,176,255,0.45)] focus:bg-[rgba(142,176,255,0.04)] focus:ring-2 focus:ring-[rgba(142,176,255,0.08)]"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-[10.5px] font-semibold uppercase tracking-[0.18em] text-[#7a94c4]" htmlFor="p-phone">WhatsApp number</label>
+            <div className="flex items-stretch gap-2">
+              <div className="flex items-center gap-1.5 rounded-2xl border border-white/[0.08] bg-white/[0.025] px-3 text-[14px] text-[#b8c7e6]">
+                <span className="text-base">🇮🇳</span>
+                <span className="font-medium tabular-nums">+91</span>
+              </div>
               <input
-                id={id}
-                type={type}
-                autoComplete={ac}
-                inputMode={type === 'tel' ? 'numeric' : undefined}
-                value={val}
-                onChange={(ev) => set(ev.target.value)}
-                placeholder={ph}
-                className="h-12 w-full rounded-md border border-[#26385d] bg-[#0a1120] px-4 text-sm text-[#f7f9ff] outline-none transition placeholder:text-[#7887a3] focus:border-[#8eb0ff] focus:ring-2 focus:ring-[#8eb0ff]/20"
+                id="p-phone"
+                type="tel"
+                autoComplete="tel"
+                inputMode="numeric"
+                value={phone}
+                onChange={(ev) => setPhone(ev.target.value)}
+                placeholder="98••• ••••2"
+                className="h-[52px] flex-1 rounded-2xl border border-white/[0.08] bg-white/[0.025] px-4 text-[15px] text-[#f3f7ff] outline-none transition placeholder:text-white/30 focus:border-[rgba(142,176,255,0.45)] focus:bg-[rgba(142,176,255,0.04)] focus:ring-2 focus:ring-[rgba(142,176,255,0.08)]"
               />
             </div>
-          ))}
+          </div>
 
           {error && <p className="text-xs text-[#ffb8bd]" role="alert">{error}</p>}
 
           <button
             type="submit"
-            className="inline-flex h-12 w-full items-center justify-center rounded-md bg-[#dce7ff] px-5 text-ds-body font-bold text-[#0a1530] transition hover:bg-[#c6d8ff]"
+            className="flex h-[54px] w-full items-center justify-center gap-2.5 rounded-2xl bg-[linear-gradient(180deg,#fafbff_0%,#e6ecf8_100%)] text-[15px] font-semibold text-[#07142e] shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_18px_40px_-16px_rgba(142,176,255,0.45)] transition hover:-translate-y-px active:translate-y-px"
           >
-            Join the session →
+            Join the session
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M3 8h10m0 0L9 4m4 4L9 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </button>
+
+          <div className="flex items-center gap-2 text-[11.5px] text-[#7a94c4]">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <rect x="2" y="5" width="8" height="6" rx="1.4" stroke="currentColor" strokeOpacity="0.7" />
+              <path d="M4 5V3.5a2 2 0 014 0V5" stroke="currentColor" strokeOpacity="0.7" />
+            </svg>
+            <span>Your details stay private — used only for session access.</span>
+          </div>
         </form>
+      </div>
+
+      {/* Community strip */}
+      <div className="mt-5 flex items-center justify-between rounded-[1.25rem] border border-white/[0.07] bg-white/[0.025] px-4 py-3 backdrop-blur-xl">
+        <div className="flex items-center gap-3">
+          <div className="flex">
+            {sampleNames.map((n, idx) => (
+              <span key={n} style={{ marginLeft: idx === 0 ? 0 : -8, zIndex: sampleNames.length - idx }}>
+                <Avatar name={n} size={26} />
+              </span>
+            ))}
+          </div>
+          <div>
+            <div className="text-[13px] font-medium text-white">
+              <span className="tabular-nums">{weekAttended}</span> attended this week
+            </div>
+            <div className="text-[11px] text-[#7a94c4]">From 38 cities across India</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_0_0_rgba(34,197,94,0.5)] animate-pulse" />
+          <span className="tabular-nums text-[11px] text-[#b8c7e6]">{onlineNow} online</span>
+        </div>
+      </div>
+
+      {/* Session footer */}
+      <div className="mt-5 flex items-center justify-between text-[10.5px] font-medium uppercase tracking-[0.18em] text-[#7a94c4]">
+        <div className="flex items-center gap-1.5">
+          <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+            <circle cx="5.5" cy="5.5" r="4.5" stroke="currentColor" strokeOpacity="0.5" />
+            <path d="M5.5 3v2.5L7 7" stroke="currentColor" strokeOpacity="0.7" strokeLinecap="round" />
+          </svg>
+          <span>Session · Today 8:00 PM IST</span>
+        </div>
+        <span>Cohort · 26-B</span>
       </div>
     </div>
   )
@@ -450,6 +602,14 @@ export function LivePremierePage() {
   const registeredRef = useRef(false)
 
   const state = data?.state ?? 'upcoming'
+
+  const poolQuery = useQuery({
+    queryKey: ['premiere', 'pool'],
+    queryFn: fetchPool,
+    staleTime: 120_000,
+    enabled: state === 'waiting' || state === 'live',
+  })
+
   const viewerCount = useViewerCount(
     data?.viewer_count ?? 0,
     state,
@@ -461,6 +621,7 @@ export function LivePremierePage() {
     state,
     data?.live_starts_at ?? '',
     data?.live_ends_at ?? '',
+    poolQuery.data ?? [],
   )
   const firstName = prospect?.name.trim().split(/\s+/)[0] ?? ''
   const wish = resolveWish()
@@ -566,13 +727,18 @@ export function LivePremierePage() {
         </header>
 
         {/* Greeting bar */}
-        <div className="mt-4 rounded-[1.6rem] border border-white/8 bg-white/[0.035] px-5 py-4 backdrop-blur-xl">
-          <p className="text-base font-medium text-[#c9d9ff]">
-            {wish}, <span className="font-bold text-[#f7f9ff]">{firstName}</span> 👋
-          </p>
-          <p className="mt-0.5 text-sm text-[#7a94c4]">
-            {prospect.city} · {prospect.phone}
-          </p>
+        <div className="mt-4 flex items-center justify-between rounded-[1.25rem] border border-white/[0.07] bg-white/[0.025] px-4 py-3 backdrop-blur-xl">
+          <div className="flex items-center gap-2.5">
+            <Avatar name={prospect.name || 'M'} size={32} />
+            <div>
+              <p className="text-[13.5px] font-medium text-white">{wish}, {firstName} 👋</p>
+              <p className="text-[11px] text-[#7a94c4]">{prospect.city} · {prospect.phone}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="size-1.5 rounded-full bg-emerald-400" />
+            <span className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-emerald-400">connected</span>
+          </div>
         </div>
 
         <main className="flex flex-1 flex-col items-center justify-center gap-5 py-8">
@@ -613,18 +779,52 @@ export function LivePremierePage() {
 
           {/* WAITING */}
           {state === 'waiting' && data && (
-            <>
-              <section className="w-full max-w-2xl rounded-[2.25rem] border border-indigo-500/20 bg-[linear-gradient(160deg,rgba(99,102,241,0.08),rgba(255,255,255,0.03))] px-5 py-10 text-center shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl md:px-8 md:py-14">
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#a5b4fc]">Starting in</p>
-                <p className="mt-6 text-[clamp(4rem,12vw,7rem)] font-bold tabular-nums leading-none tracking-tight text-[#f7f9ff]">
+            <div className="w-full max-w-2xl space-y-4">
+              {/* Countdown hero */}
+              <section className="rounded-[2.25rem] border border-indigo-500/20 bg-[linear-gradient(160deg,rgba(99,102,241,0.08),rgba(255,255,255,0.03))] px-5 py-10 text-center shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl">
+                <div className="flex justify-center">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-[rgba(142,176,255,0.25)] bg-[rgba(142,176,255,0.08)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c8d6ff]">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                      <circle cx="5" cy="5" r="4" stroke="#c8d6ff" strokeOpacity="0.6" />
+                      <path d="M5 2.5V5l1.6 1.2" stroke="#c8d6ff" strokeLinecap="round" />
+                    </svg>
+                    Session starts in
+                  </span>
+                </div>
+                <p className="mt-6 text-[clamp(5rem,18vw,7rem)] font-black tabular-nums leading-none tracking-[-0.04em] text-white">
                   {formatCountdown(data.live_starts_at, nowMs)}
                 </p>
-                <p className="mt-6 text-sm font-medium text-[#818cf8]">
-                  Your session is about to go live, {firstName}
+                <p className="mt-3 text-[12px] font-medium uppercase tracking-[0.22em] text-[#7a94c4]">
+                  Minutes &nbsp;·&nbsp; Seconds
                 </p>
+                <p className="mt-6 text-[15px] text-white/90">
+                  Your session is about to begin, <span className="font-semibold">{firstName}</span>.
+                </p>
+                <p className="mt-1.5 text-[12.5px] text-[#7a94c4]">Find a quiet spot. Keep a notepad nearby.</p>
               </section>
+
+              {/* Readiness checklist */}
+              <div className="rounded-[1.25rem] border border-white/[0.07] bg-white/[0.025] p-4 backdrop-blur-xl">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-[#7a94c4]">Session readiness</span>
+                  <span className="tabular-nums text-[11px] text-[#7a94c4]">3 of 3</span>
+                </div>
+                <div className="space-y-2.5">
+                  {['Stable connection detected', 'Notifications muted', 'Mentor on standby'].map(txt => (
+                    <div key={txt} className="flex items-center gap-2.5">
+                      <div className="flex size-4 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-400/10">
+                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                          <path d="M1.5 4l1.5 1.5L6.5 2" stroke="#22c55e" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </div>
+                      <span className="text-[13px] text-[#b8c7e6]">{txt}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <JoinFeed entries={joinEntries} />
-            </>
+            </div>
           )}
 
           {/* LIVE */}
@@ -637,6 +837,8 @@ export function LivePremierePage() {
               sessionDay={sessionDay}
               data={data}
               joinEntries={joinEntries}
+              viewerCount={viewerCount}
+              prospect={prospect}
             />
           )}
           {state === 'live' && !data?.video_url && (
@@ -647,20 +849,92 @@ export function LivePremierePage() {
 
           {/* ENDED */}
           {state === 'ended' && (
-            <section className="w-full max-w-2xl space-y-5 rounded-[2.25rem] border border-white/8 bg-muted/30 px-5 py-8 text-center backdrop-blur-2xl md:px-8 md:py-12">
-              <p className="text-2xl font-semibold text-[#f7f9ff]">Today's session has ended</p>
-              <p className="text-base text-[#7a94c4]">You've taken the first step. Reach out to your mentor to move forward.</p>
+            <section className="w-full max-w-2xl space-y-5 text-center">
+              {/* Check ring */}
+              <div className="flex flex-col items-center">
+                <div
+                  className="flex items-center justify-center"
+                  style={{
+                    width: 88, height: 88, borderRadius: 999,
+                    background: 'radial-gradient(circle at center, rgba(34,197,94,0.18), transparent 65%), rgba(34,197,94,0.06)',
+                    border: '1px solid rgba(34,197,94,0.25)',
+                    boxShadow: '0 0 60px rgba(34,197,94,0.12)',
+                  }}
+                >
+                  <svg width="38" height="38" viewBox="0 0 38 38" fill="none">
+                    <path d="M10 19l6 6 12-12" stroke="#22c55e" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+
+                <span className="mt-6 inline-flex items-center gap-2 rounded-full border border-[rgba(142,176,255,0.25)] bg-[rgba(142,176,255,0.08)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#c8d6ff]">
+                  <span className="size-1.5 rounded-full bg-[#8eb0ff]" />
+                  Session complete
+                </span>
+
+                <h2 className="mt-5 text-[28px] font-bold leading-[1.15] tracking-tight text-white">
+                  Today's session<br />has ended.
+                </h2>
+                <p className="mt-3 max-w-[300px] text-[14px] leading-relaxed text-[#7a94c4]">
+                  You've taken the first step. Your mentor is ready to continue the conversation, {firstName}.
+                </p>
+              </div>
+
+              {/* Mentor card */}
+              <div className="rounded-[1.25rem] border border-white/[0.07] bg-white/[0.025] p-4 text-left">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <Avatar name="Vikram Singh" size={48} />
+                    <span className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full border-2 border-[#02040a] bg-emerald-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[14px] font-semibold text-white">Your assigned mentor</p>
+                    <p className="mt-0.5 text-[11.5px] text-[#7a94c4]">Available now</p>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="size-1.5 rounded-full bg-emerald-400" />
+                    <span className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-emerald-400">online</span>
+                  </div>
+                </div>
+                <div className="my-4 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)]" />
+                <div className="flex items-center gap-1.5 text-[11.5px] text-[#7a94c4]">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <circle cx="6" cy="6" r="5" stroke="currentColor" strokeOpacity="0.6" />
+                    <path d="M6 3v3l2 1.2" stroke="currentColor" strokeOpacity="0.8" strokeLinecap="round" />
+                  </svg>
+                  <span>Avg response · under 4 min</span>
+                </div>
+              </div>
+
+              {/* Primary CTA */}
               <button
                 type="button"
-                className="inline-flex h-13 items-center justify-center rounded-md bg-[#dce7ff] px-8 py-3.5 text-ds-body font-bold text-[#0a1530] transition hover:bg-[#c6d8ff]"
+                className="flex h-[54px] w-full items-center justify-center gap-2.5 rounded-2xl bg-[linear-gradient(180deg,#fafbff_0%,#e6ecf8_100%)] text-[15px] font-semibold text-[#07142e] shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_18px_40px_-16px_rgba(142,176,255,0.45)] transition hover:-translate-y-px active:translate-y-px"
                 onClick={() => {
                   const msg = "Hi, I just watched the Myle session. I'm interested to know more."
                   const wa = prospect ? whatsAppChatWithTextHref(prospect.phone, msg) : null
                   if (wa && wa !== '#') window.open(wa, '_blank', 'noopener')
                 }}
               >
-                Talk to your mentor →
+                Talk to your mentor
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M3 8h10m0 0L9 4m4 4L9 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               </button>
+
+              {/* Ghost secondary */}
+              <button
+                type="button"
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.03] text-[13px] font-medium text-[#f3f7ff] transition hover:bg-white/[0.05]"
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M7 1v9m0 0L4 7m3 3l3-3M2 11v1.5h10V11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Save session notes
+              </button>
+
+              <p className="text-[11px] leading-relaxed text-[#7a94c4]">
+                A private session by invitation.
+              </p>
             </section>
           )}
         </main>
@@ -678,6 +952,8 @@ function LiveSection({
   sessionDay,
   data,
   joinEntries,
+  viewerCount,
+  prospect,
 }: {
   videoUrl: string
   liveStartsAt: string
@@ -686,9 +962,53 @@ function LiveSection({
   sessionDay: number
   data: PremiereData
   joinEntries: JoinEntry[]
+  viewerCount: number
+  prospect: { name: string; city: string; phone: string }
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const progressSentRef = useRef({ pct10: false, pct70: false, completed: false })
+  const reactionIdRef = useRef(0)
+
+  const [elapsed, setElapsed] = useState(() => {
+    const diff = Date.now() - new Date(liveStartsAt).getTime()
+    return Math.max(0, Math.floor(diff / 1000))
+  })
+  const [reactions, setReactions] = useState<{ id: number; e: string; left: number; mine: boolean }[]>([])
+  const [myReactions, setMyReactions] = useState<Record<string, number>>({})
+  const [lastTap, setLastTap] = useState<string | null>(null)
+
+  // Elapsed timer
+  useEffect(() => {
+    const id = window.setInterval(() => setElapsed(s => s + 1), 1000)
+    return () => window.clearInterval(id)
+  }, [])
+
+  // Ambient reactions from "other viewers"
+  useEffect(() => {
+    const emojis = ['❤️', '👏', '🔥', '💡', '🙌']
+    let tid: ReturnType<typeof setTimeout>
+    const scheduleNext = () => {
+      tid = setTimeout(() => {
+        const id = reactionIdRef.current++
+        const e = emojis[Math.floor(Math.random() * emojis.length)]
+        const left = 8 + Math.random() * 78
+        setReactions(prev => [...prev.slice(-6), { id, e, left, mine: false }])
+        scheduleNext()
+      }, 900 + Math.random() * 1800)
+    }
+    scheduleNext()
+    return () => clearTimeout(tid)
+  }, [])
+
+  function sendReaction(e: string) {
+    const id = reactionIdRef.current++
+    // eslint-disable-next-line react-hooks/purity
+    const left = 35 + Math.random() * 30
+    setReactions(prev => [...prev.slice(-6), { id, e, left, mine: true }])
+    setMyReactions(prev => ({ ...prev, [e]: (prev[e] ?? 0) + 1 }))
+    setLastTap(e)
+    setTimeout(() => setLastTap(curr => (curr === e ? null : curr)), 320)
+  }
 
   // Progress tracking every 25s
   useEffect(() => {
@@ -706,44 +1026,125 @@ function LiveSection({
         percentage_watched: pct,
         watch_completed: completed,
       })
-      // Score milestones
-      if (!progressSentRef.current.pct70 && pct >= 0.70) {
-        progressSentRef.current.pct70 = true
-      }
-      if (!progressSentRef.current.completed && completed) {
-        progressSentRef.current.completed = true
-      }
+      if (!progressSentRef.current.pct70 && pct >= 0.70) progressSentRef.current.pct70 = true
+      if (!progressSentRef.current.completed && completed) progressSentRef.current.completed = true
     }, 25_000)
     return () => window.clearInterval(id)
   }, [viewerId])
 
+  const totalMyReactions = Object.values(myReactions).reduce((a, b) => a + b, 0)
+  const elapsedMm = String(Math.floor(elapsed / 60)).padStart(2, '0')
+  const elapsedSs = String(elapsed % 60).padStart(2, '0')
+
   return (
     <div className="w-full space-y-3">
-      <section className="overflow-hidden rounded-[2.1rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.025))] shadow-[0_38px_140px_-88px_rgba(0,0,0,0.96)] backdrop-blur-2xl">
-        <div className="bg-[#070d1d] p-3 sm:p-4">
-          {/* Pass ref externally for progress tracking */}
+      {/* Video player card */}
+      <section className="overflow-hidden rounded-[2.1rem] border border-white/10 bg-[#070d1d] shadow-[0_38px_140px_-88px_rgba(0,0,0,0.96)]">
+        <div className="relative p-3 sm:p-4">
           <PremiereVideoPlayerWithRef
             src={videoUrl}
             liveStartsAt={liveStartsAt}
             externalRef={videoRef}
           />
-          <div className="mt-4 rounded-[1.4rem] border border-white/10 bg-white/[0.045] px-5 py-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-base font-semibold text-white">You're in, {firstName}</p>
-                <p className="mt-0.5 text-sm text-[#b6c6e7]">Session is live right now — watch till the end</p>
-              </div>
-              <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-white">
-                <span className="relative flex size-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                  <span className="relative inline-flex size-2 rounded-full bg-red-400" />
-                </span>
-                Live
-              </span>
+          {/* Floating reactions over video */}
+          {reactions.map(r => (
+            <span
+              key={r.id}
+              style={{
+                position: 'absolute',
+                bottom: 72,
+                left: `${r.left}%`,
+                opacity: 0,
+                animation: 'liveBubbleUp 4s ease-out forwards',
+                fontSize: r.mine ? 22 : 18,
+                filter: r.mine ? 'drop-shadow(0 0 10px rgba(142,176,255,0.7))' : undefined,
+                pointerEvents: 'none',
+              }}
+            >{r.e}</span>
+          ))}
+        </div>
+
+        {/* Greeting strip */}
+        <div className="mx-3 mb-3 flex items-center justify-between rounded-[1.25rem] border border-white/[0.07] bg-white/[0.025] px-4 py-3">
+          <div className="flex items-center gap-2.5">
+            <Avatar name={prospect.name || 'M'} size={32} />
+            <div>
+              <p className="text-[13.5px] font-medium text-white">You're in, {firstName} 👋</p>
+              <p className="text-[11px] text-[#7a94c4]">Session is live right now</p>
             </div>
+          </div>
+          <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-white">
+            <span className="relative flex size-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex size-2 rounded-full bg-red-400" />
+            </span>
+            Live
+          </span>
+        </div>
+
+        {/* Stats grid */}
+        <div className="mx-3 mb-3 grid grid-cols-3 gap-2">
+          {[
+            [viewerCount.toLocaleString(), 'Watching'],
+            [`${elapsedMm}:${elapsedSs}`, 'Elapsed'],
+            ['HD', 'Quality'],
+          ].map(([v, l]) => (
+            <div key={l} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] px-3 py-3 text-center">
+              <div className="tabular-nums text-[18px] font-semibold text-white">{v}</div>
+              <div className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-[#7a94c4]">{l}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Reaction bar */}
+        <div className="mx-3 mb-3 rounded-[1.25rem] border border-white/[0.07] bg-white/[0.025] px-3 py-3">
+          <div className="mb-2.5 flex items-center justify-between">
+            <span className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-[#7a94c4]">React</span>
+            <span className="text-[10.5px] text-[#7a94c4]">
+              {totalMyReactions > 0 ? `You sent ${totalMyReactions}` : 'Tap to show appreciation'}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-1.5">
+            {(['❤️', '👏', '🔥', '💡', '🙌'] as const).map(e => {
+              const count = myReactions[e] ?? 0
+              const popping = lastTap === e
+              return (
+                <button
+                  key={e}
+                  type="button"
+                  onClick={() => sendReaction(e)}
+                  className="flex flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl border py-2 transition-all duration-200 active:scale-95"
+                  style={{
+                    background: count > 0 ? 'rgba(142,176,255,0.07)' : 'rgba(255,255,255,0.025)',
+                    borderColor: count > 0 ? 'rgba(142,176,255,0.25)' : 'rgba(255,255,255,0.07)',
+                    transform: popping ? 'translateY(-2px) scale(1.06)' : undefined,
+                  }}
+                >
+                  <span style={{
+                    fontSize: 20,
+                    filter: popping ? 'drop-shadow(0 4px 8px rgba(142,176,255,0.5))' : 'none',
+                    transform: popping ? 'scale(1.25)' : 'scale(1)',
+                    transition: 'transform 220ms cubic-bezier(.2,.7,.2,1)',
+                    display: 'inline-block',
+                  }}>{e}</span>
+                  <span className="tabular-nums text-[10px] text-[#7a94c4]" style={{ minHeight: 12 }}>
+                    {count > 0 ? count : ''}
+                  </span>
+                </button>
+              )
+            })}
           </div>
         </div>
       </section>
+
+      <style>{`
+        @keyframes liveBubbleUp {
+          0%   { opacity: 0; transform: translateY(0) scale(0.7); }
+          15%  { opacity: 1; transform: translateY(-20px) scale(1); }
+          100% { opacity: 0; transform: translateY(-140px) scale(0.95); }
+        }
+      `}</style>
+
       <JoinFeed entries={joinEntries} />
     </div>
   )
