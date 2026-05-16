@@ -15,6 +15,7 @@ import { ContentWatchPage } from '@/pages/ContentWatchPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { WatchPage } from '@/pages/WatchPage'
 import { LivePremierePage } from '@/pages/LivePremierePage'
+import { Day6LivePage } from '@/pages/Day6LivePage'
 import { t } from '@/lib/i18n'
 
 const DashboardNestedPage = lazy(async () => {
@@ -56,6 +57,7 @@ export function App() {
         <Route path="/watch/content" element={<ContentWatchPage />} />
         <Route path="/watch/:token" element={<WatchPage />} />
         <Route path="/premiere" element={<LivePremierePage />} />
+        <Route path="/watch/live/day6" element={<Day6LivePage />} />
 
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardLayout />}>
