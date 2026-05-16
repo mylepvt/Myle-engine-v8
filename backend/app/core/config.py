@@ -150,6 +150,28 @@ class Settings(BaseSettings):
         description="Bearer secret for POST /api/v1/webhooks/whatsapp/reply. Empty = no auth (dev only).",
     )
 
+    # --- Meta WhatsApp Cloud API (direct send) ---
+    whatsapp_meta_phone_number_id: str = Field(
+        default="",
+        validation_alias="WHATSAPP_META_PHONE_NUMBER_ID",
+        description="Meta phone number ID (from Meta Developer Console). If set, removal outreach uses Meta Cloud API directly.",
+    )
+    whatsapp_meta_access_token: str = Field(
+        default="",
+        validation_alias="WHATSAPP_META_ACCESS_TOKEN",
+        description="Meta permanent or temporary access token for WhatsApp Cloud API.",
+    )
+    whatsapp_meta_api_version: str = Field(
+        default="v19.0",
+        validation_alias="WHATSAPP_META_API_VERSION",
+        description="Meta Graph API version, e.g. v19.0",
+    )
+    whatsapp_meta_verify_token: str = Field(
+        default="",
+        validation_alias="WHATSAPP_META_VERIFY_TOKEN",
+        description="Token you set in Meta Developer Console for webhook verification (GET challenge).",
+    )
+
     ctcs_heat_hot_threshold: int = Field(
         default=40,
         ge=0,
