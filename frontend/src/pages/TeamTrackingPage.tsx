@@ -33,6 +33,15 @@ type Props = { title: string }
 
 type PresenceFilter = 'all' | TeamTrackingMemberSummary['presence_status']
 type BandFilter = 'all' | TeamTrackingMemberSummary['consistency_band']
+type ComplianceFilter =
+  | 'all'
+  | 'removed'
+  | 'grace'
+  | 'grace_ending'
+  | 'final_warning'
+  | 'strong_warning'
+  | 'warning'
+  | 'clear'
 type SortMode =
   | 'attention'
   | 'score-desc'
@@ -417,6 +426,7 @@ export function TeamTrackingPage({ title }: Props) {
   const searchQuery = params.get('q') || ''
   const presenceFilter = (params.get('presence') as PresenceFilter | null) ?? 'all'
   const bandFilter = (params.get('band') as BandFilter | null) ?? 'all'
+  const complianceFilter = (params.get('compliance') as ComplianceFilter | null) ?? 'all'
   const leaderFilter = params.get('leader') || 'all'
   const sortMode = (params.get('sort') as SortMode | null) ?? 'attention'
   const deferredSearchQuery = useDeferredValue(searchQuery)
@@ -447,13 +457,14 @@ export function TeamTrackingPage({ title }: Props) {
       searched.filter((item) => {
         if (presenceFilter !== 'all' && item.presence_status !== presenceFilter) return false
         if (bandFilter !== 'all' && item.consistency_band !== bandFilter) return false
+        if (complianceFilter !== 'all' && item.compliance_level !== complianceFilter) return false
         if (leaderFilter === 'unassigned') return item.leader_user_id === null
         if (leaderFilter !== 'all' && String(item.leader_user_id ?? '') !== leaderFilter) return false
         return true
       }),
       sortMode,
     )
-  }, [bandFilter, data, deferredSearchQuery, leaderFilter, presenceFilter, sortMode])
+  }, [bandFilter, complianceFilter, data, deferredSearchQuery, leaderFilter, presenceFilter, sortMode])
 
   const liveNow = useMemo(() => liveNowItems(filteredItems), [filteredItems])
   const flagged = useMemo(() => attentionQueue(filteredItems), [filteredItems])
@@ -467,8 +478,14 @@ export function TeamTrackingPage({ title }: Props) {
     searchQuery.trim().length > 0 ||
     presenceFilter !== 'all' ||
     bandFilter !== 'all' ||
+    complianceFilter !== 'all' ||
     leaderFilter !== 'all' ||
     sortMode !== 'attention'
+
+  const removedMembers = useMemo(
+    () => filteredItems.filter((item) => item.compliance_level === 'removed'),
+    [filteredItems],
+  )
 
   return (
     <div className="max-w-[88rem] space-y-5">
@@ -530,7 +547,7 @@ export function TeamTrackingPage({ title }: Props) {
           </label>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <label className="space-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             <span>Presence</span>
             <select
@@ -556,6 +573,24 @@ export function TeamTrackingPage({ title }: Props) {
               <option value="high">High</option>
               <option value="medium">Medium</option>
               <option value="low">Low</option>
+            </select>
+          </label>
+
+          <label className="space-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            <span>Member status</span>
+            <select
+              value={complianceFilter}
+              onChange={(event) => updateParam(params, setParams, 'compliance', event.target.value)}
+              className={SELECT_CLASSNAME}
+            >
+              <option value="all">All statuses</option>
+              <option value="removed">Removed only</option>
+              <option value="final_warning">Final warning</option>
+              <option value="strong_warning">Strong warning</option>
+              <option value="warning">Warning</option>
+              <option value="grace_ending">Grace ending</option>
+              <option value="grace">Grace</option>
+              <option value="clear">Clear</option>
             </select>
           </label>
 
@@ -686,6 +721,67 @@ export function TeamTrackingPage({ title }: Props) {
               to={`/dashboard/team/tracking?date=${dateIso}`}
             />
           </div>
+
+          {(complianceFilter === 'removed' || removedMembers.length > 0) && complianceFilter === 'removed' ? (
+            <section className="overflow-hidden rounded-md border border-rose-400/30 bg-rose-400/[0.04] shadow-[var(--shadow-card)]">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rose-400/20 px-5 py-4">
+                <div>
+                  <p className="text-sm font-semibold text-rose-600 dark:text-rose-300">
+                    Removed members — WhatsApp cleanup list
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    These members have been removed from the system. Remove them from your WhatsApp groups.
+                  </p>
+                </div>
+                <Badge variant="danger">{removedMembers.length} removed</Badge>
+              </div>
+
+              {removedMembers.length === 0 ? (
+                <div className="px-5 py-10 text-center text-sm text-muted-foreground">
+                  No removed members match the current filters.
+                </div>
+              ) : (
+                <div className="grid gap-2 p-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {removedMembers.map((item) => (
+                    <div
+                      key={item.user_id}
+                      className="rounded-md border border-rose-400/20 bg-background px-4 py-3"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-foreground">{item.member_name}</p>
+                          <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+                            {item.member_fbo_id}
+                          </p>
+                        </div>
+                        <Badge variant="danger" className="shrink-0">removed</Badge>
+                      </div>
+                      <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                        {item.member_phone ? (
+                          <p>
+                            <span className="text-foreground/60">Phone:</span>{' '}
+                            <span className="font-medium text-foreground">{item.member_phone}</span>
+                          </p>
+                        ) : (
+                          <p className="italic">No phone on record</p>
+                        )}
+                        <p>
+                          <span className="text-foreground/60">Email:</span>{' '}
+                          <span className="text-foreground">{item.member_email}</span>
+                        </p>
+                        {item.leader_name ? (
+                          <p>
+                            <span className="text-foreground/60">Leader:</span>{' '}
+                            {item.leader_name}
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          ) : null}
 
           <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
             <section className="overflow-hidden rounded-md border border-border bg-card shadow-[var(--shadow-card)]">
