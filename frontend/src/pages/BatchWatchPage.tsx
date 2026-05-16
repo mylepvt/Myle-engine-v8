@@ -370,6 +370,7 @@ export function BatchWatchPage() {
                     previewTitle={data.title}
                     previewDescription="Tap play to start the batch inside Myle without showing external video clutter before the session begins."
                     playLabel="Start batch now"
+                    seekPrevention
                   />
                 ) : (
                   <div className={`rounded-[1.6rem] border px-5 py-6 text-left transition-colors ${startingSoon ? 'border-emerald-400/30 bg-emerald-400/[0.07]' : 'border-amber-300/20 bg-amber-400/[0.08]'}`}>
