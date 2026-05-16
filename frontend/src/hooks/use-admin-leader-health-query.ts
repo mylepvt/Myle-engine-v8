@@ -42,7 +42,6 @@ export function useLeaderHealthQuery(enabled = true) {
     queryKey: ['admin', 'leader-health'],
     queryFn: fetchLeaderHealth,
     enabled,
-    refetchInterval: 60_000,
     staleTime: 30_000,
   })
 }

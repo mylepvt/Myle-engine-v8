@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthUser, get_db, require_auth_user
+from app.core.realtime_hub import notify_topics
 from app.models.lead_note import LeadNote
 from app.models.user import User
 from app.services.lead_access import require_visible_lead
@@ -72,9 +73,9 @@ async def create_lead_note(
     session.add(note)
     await session.commit()
     await session.refresh(note)
-    # Fetch display name
     u = await session.get(User, user.user_id)
     display_name = u.username if u else None
+    await notify_topics("leads")
     return _to_out(note, display_name)
 
 
@@ -93,3 +94,4 @@ async def delete_lead_note(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
     await session.delete(note)
     await session.commit()
+    await notify_topics("leads")
