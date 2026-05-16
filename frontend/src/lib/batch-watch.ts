@@ -1,4 +1,4 @@
-export type BatchSlotPeriod = 'morning' | 'afternoon' | 'evening' | 'unknown'
+export type BatchSlotPeriod = 'morning' | 'afternoon' | 'evening' | '6pm' | '8pm' | 'unknown'
 
 type BuildBatchGreetingArgs = {
   leadName: string | null | undefined
@@ -25,6 +25,8 @@ export function getBatchSlotPeriod(slot: string): BatchSlotPeriod {
   if (slot.includes('morning')) return 'morning'
   if (slot.includes('afternoon')) return 'afternoon'
   if (slot.includes('evening')) return 'evening'
+  if (slot.includes('6pm')) return '6pm'
+  if (slot.includes('8pm')) return '8pm'
   return 'unknown'
 }
 
@@ -77,7 +79,23 @@ export function buildBatchGreetingCopy({
     },
   }
 
-  const tone = periodMap[period]
+  if (dayNumber === 6) {
+    const timeLabel = period === '6pm' ? '6 PM' : period === '8pm' ? '8 PM' : slotLabel
+    return {
+      firstName,
+      greetingLine: `Hi ${firstName}`,
+      heroTitle: `Day 6 — 2CC Plan Live, ${timeLabel} session ready`,
+      heroSubtitle: `Tera final 2CC session ready h. Watch inside Myle, focus karo, aur close karo.`,
+      reservedBadge: `Reserved for ${firstName}`,
+      privateRoomBadge: `${timeLabel} live session`,
+      focusLine: 'Final closing session — watch, confirm, and complete.',
+      trustLine: 'This 2CC session room was shared personally for you.',
+      mentorLine: `After this session, your coordinator will guide the next step.`,
+      completionMessage: `Well done ${firstName}, your Day 6 2CC session is completed and tracked.`,
+    }
+  }
+
+  const tone = periodMap[period] ?? periodMap['unknown']
 
   return {
     firstName,

@@ -136,6 +136,9 @@ export function BatchWatchPage() {
   const [videoFile, setVideoFile] = useState<File | null>(null)
   const [notesText, setNotesText] = useState('')
 
+  const isDay6 = slot?.startsWith('d6_') ?? false
+  const [liveCount, setLiveCount] = useState(() => Math.floor(Math.random() * 41) + 60)
+
   const loadPayload = async () => {
     if (!slot || !version || !token) return
     const res = await fetch(apiUrl(`/api/v1/watch/batch/${slot}/${version}/payload?token=${encodeURIComponent(token)}`))
@@ -177,6 +180,15 @@ export function BatchWatchPage() {
     const id = setInterval(beat, 20_000)
     return () => clearInterval(id)
   }, [slot, token])
+
+  // Simulated live attendee count for Day 6 (60–100 range)
+  useEffect(() => {
+    if (!isDay6) return
+    const id = setInterval(() => {
+      setLiveCount((prev) => Math.min(100, Math.max(60, prev + Math.floor(Math.random() * 5) - 2)))
+    }, 18_000)
+    return () => clearInterval(id)
+  }, [isDay6])
 
   const playerEmbedUrl = useMemo(
     () => buildEmbeddableVideoUrl(toAbsoluteUrl(data?.youtube_url), data?.video_id),
@@ -372,15 +384,35 @@ export function BatchWatchPage() {
                   <Badge variant="outline" className="border-white/15 bg-muted/40 text-white/75">
                     {data.slot_label}
                   </Badge>
-                  <Badge variant="outline" className="border-white/15 bg-muted/40 text-white/75">
-                    Video {data.version}
-                  </Badge>
+                  {!isDay6 && (
+                    <Badge variant="outline" className="border-white/15 bg-muted/40 text-white/75">
+                      Video {data.version}
+                    </Badge>
+                  )}
                   {greetingCopy ? (
                     <Badge variant="outline" className="border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-100">
                       {greetingCopy.reservedBadge}
                     </Badge>
                   ) : null}
                   {watchComplete ? <Badge variant="success">Watch tracked</Badge> : <Badge variant="warning">Playing now</Badge>}
+                  {isDay6 && accessOpen && (
+                    <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-white shadow-[0_0_14px_rgba(220,38,38,0.55)]">
+                      <span className="relative flex size-2">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                        <span className="relative inline-flex size-2 rounded-full bg-red-400" />
+                      </span>
+                      Live
+                    </span>
+                  )}
+                  {isDay6 && accessOpen && (
+                    <span className="flex items-center gap-1.5 text-[11px] font-semibold text-white/60">
+                      <span className="relative flex size-1.5">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                        <span className="relative inline-flex size-1.5 rounded-full bg-emerald-400" />
+                      </span>
+                      {liveCount} watching
+                    </span>
+                  )}
                 </div>
 
                 <div className="mt-5 grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-6">
