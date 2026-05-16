@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Check, CheckSquare, Eye, Pencil, Search, Send, Video } from 'lucide-react'
+import { Check, CheckSquare, Eye, Pencil, Search, Send, Square, Video } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
@@ -810,13 +810,112 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     )
   }
 
-  const isDay6 = stageKey === 'interview'
-  const slotTimeLabels = isDay6
-    ? (['6PM', '8PM'] as const)
-    : (['M', 'A', 'E'] as const)
+  // interview (Day 6): interview checkbox + Send Day 6 2CC Live Session
+  if (stageKey === 'interview') {
+    const interviewDone = !!lead.process_tracking?.['interview']?.['interview_done']
 
-  // day1, day4, day5, interview(day6): send tokenized batch links
-  if (stageKey === 'day1' || stageKey === 'day4' || stageKey === 'day5' || stageKey === 'interview') {
+    const handleInterviewToggle = async () => {
+      try {
+        await pm.mutateAsync({ id: lead.id, body: {
+          process_stage: 'interview',
+          process_task: 'interview_done',
+          process_task_done: !interviewDone,
+        }})
+        await qc.refetchQueries({ queryKey: ['workboard'] })
+      } catch { /* handled by pm */ }
+    }
+
+    return (
+      <div className="space-y-1.5 border-t border-border/40 pt-1.5">
+        <button
+          type="button"
+          disabled={leadPatchBusy}
+          onClick={() => void handleInterviewToggle()}
+          className={cn(
+            'flex h-6 items-center gap-1.5 rounded px-2 text-ds-caption font-semibold transition disabled:opacity-50',
+            interviewDone
+              ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
+              : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
+          )}
+        >
+          {interviewDone ? <CheckSquare className="h-3 w-3" /> : <Square className="h-3 w-3" />}
+          Interview
+        </button>
+
+        {!pickerOpen ? (
+          <button
+            type="button"
+            disabled={leadPatchBusy || pickerBusy}
+            onClick={() => setPickerOpen(true)}
+            className="flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-indigo-400/40 bg-indigo-400/10 px-3 text-ds-caption font-semibold text-indigo-300 transition hover:bg-indigo-400/20 disabled:opacity-50"
+          >
+            <Video className="h-3.5 w-3.5" />
+            Send Day 6 2CC Live Session
+          </button>
+        ) : (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <span className="text-ds-caption text-muted-foreground">Links:</span>
+              {(['6PM', '8PM'] as const).map((slotLabel) => {
+                const slotKey = slotLabel === '6PM' ? 'd6_6pm' as const : 'd6_8pm' as const
+                const busy = sharingSlot === slotKey
+                const done = lead[slotKey]
+                return (
+                  <button key={slotKey} type="button"
+                    disabled={leadPatchBusy || busy}
+                    onClick={() => void handleBatchShare(slotLabel, slotKey)}
+                    className={cn(
+                      'flex h-6 min-w-12 items-center justify-center rounded px-1.5 text-ds-caption font-semibold transition disabled:opacity-50',
+                      done
+                        ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
+                        : 'border border-indigo-400/40 bg-indigo-400/10 text-indigo-300 hover:bg-indigo-400/20',
+                    )}>
+                    {busy ? '...' : slotLabel}
+                  </button>
+                )
+              })}
+              <button type="button" onClick={() => setPickerOpen(false)}
+                className="text-ds-caption text-muted-foreground hover:text-foreground">✕</button>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-ds-caption text-muted-foreground">Check:</span>
+              {(['d6_6pm', 'd6_8pm'] as const).map((slotKey) => {
+                const done = lead[slotKey]
+                const busy = toggleSlot === slotKey
+                const label = slotKey === 'd6_6pm' ? '6PM' : '8PM'
+                return (
+                  <button key={slotKey} type="button"
+                    disabled={leadPatchBusy || busy}
+                    onClick={() => void handleBatchToggle(slotKey)}
+                    className={cn(
+                      'flex h-6 min-w-10 items-center justify-center rounded px-1.5 text-ds-caption font-semibold transition disabled:opacity-50',
+                      done
+                        ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
+                        : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
+                    )}>
+                    {busy ? '...' : done ? <CheckSquare className="h-3 w-3" /> : <span>{label}</span>}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {batchError ? <p className="text-ds-caption text-destructive">{batchError}</p> : null}
+        {onMoveNext && (
+          <button type="button" disabled={leadPatchBusy} onClick={onMoveNext}
+            className="w-full rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50">
+            {nextLabel ?? 'Move to next stage →'}
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  const slotTimeLabels = (['M', 'A', 'E'] as const)
+
+  // day1, day4, day5: send tokenized batch links
+  if (stageKey === 'day1' || stageKey === 'day4' || stageKey === 'day5') {
     return (
       <div className="space-y-1.5">
         <div className="space-y-1.5 border-t border-border/40 pt-1.5">
