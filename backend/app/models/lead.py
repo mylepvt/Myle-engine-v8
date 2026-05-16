@@ -172,6 +172,8 @@ class Lead(Base):
     d5_morning: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     d5_afternoon: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     d5_evening: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    d6_6pm: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    d6_8pm: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     process_tracking: Mapped[Optional[dict[str, Any]]] = mapped_column(
         _ProcessJSON,
         nullable=True,

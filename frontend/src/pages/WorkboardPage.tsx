@@ -61,7 +61,7 @@ const BADGE: Record<string, string> = {
 }
 const CLOSE:  LeadStatus[] = ['converted','lost']
 const MIN_MINDSET_SECONDS = 300
-type BatchSlotKey = 'd1_morning' | 'd1_afternoon' | 'd1_evening' | 'd2_morning' | 'd2_afternoon' | 'd2_evening' | 'd3_morning' | 'd3_afternoon' | 'd3_evening' | 'd4_morning' | 'd4_afternoon' | 'd4_evening' | 'd5_morning' | 'd5_afternoon' | 'd5_evening'
+type BatchSlotKey = 'd1_morning' | 'd1_afternoon' | 'd1_evening' | 'd2_morning' | 'd2_afternoon' | 'd2_evening' | 'd3_morning' | 'd3_afternoon' | 'd3_evening' | 'd4_morning' | 'd4_afternoon' | 'd4_evening' | 'd5_morning' | 'd5_afternoon' | 'd5_evening' | 'd6_6pm' | 'd6_8pm'
 type WorkboardStageKey =
   | 'day1'
   | 'day2'
@@ -106,42 +106,44 @@ function parseAdminTab(value: string | null): ATab {
 
 function workboardBatchWhatsAppUrl(
   lead: LeadPublic,
-  dayKey: 1 | 2 | 3 | 4 | 5,
-  slot: 'M' | 'A' | 'E',
+  dayKey: 1 | 2 | 3 | 4 | 5 | 6,
+  slot: 'M' | 'A' | 'E' | '6PM' | '8PM',
   links?: { v1?: string; v2?: string },
 ): string | null {
   if (!whatsappDigits(lead.phone ?? '')) return null
   const name = (lead.name || 'Participant').trim()
-  const linkBlock =
-    (links?.v1 ? `📹 Video 1:\n${links.v1}\n` : '') +
-    (links?.v2 ? `📹 Video 2:\n${links.v2}\n` : '')
-  const slotLabel = slot === 'M' ? 'Morning' : slot === 'A' ? 'Afternoon' : 'Evening'
+  const isDay6 = dayKey === 6
+  const slotLabel = slot === 'M' ? 'Morning' : slot === 'A' ? 'Afternoon' : slot === 'E' ? 'Evening' : slot === '6PM' ? '6 PM' : '8 PM'
+  const linkBlock = isDay6
+    ? (links?.v1 ? `📹 Final Video:\n${links.v1}\n` : '')
+    : (links?.v1 ? `📹 Video 1:\n${links.v1}\n` : '') + (links?.v2 ? `📹 Video 2:\n${links.v2}\n` : '')
   const msg =
     `Hi ${name},\n` +
     `Day ${dayKey} — ${slotLabel} Batch\n` +
     (linkBlock ? `\n${linkBlock}` : '\n') +
-    'Please watch both videos and reply ✅.'
+    (isDay6 ? 'Please watch the final video and reply ✅.' : 'Please watch both videos and reply ✅.')
   const url = whatsAppChatWithTextHref(lead.phone, msg)
   return url === '#' ? null : url
 }
 
 function workboardBatchWhatsAppBusinessUrl(
   lead: LeadPublic,
-  dayKey: 1 | 2 | 3 | 4 | 5,
-  slot: 'M' | 'A' | 'E',
+  dayKey: 1 | 2 | 3 | 4 | 5 | 6,
+  slot: 'M' | 'A' | 'E' | '6PM' | '8PM',
   links?: { v1?: string; v2?: string },
 ): string | null {
   if (!whatsappDigits(lead.phone ?? '')) return null
   const name = (lead.name || 'Participant').trim()
-  const linkBlock =
-    (links?.v1 ? `📹 Video 1:\n${links.v1}\n` : '') +
-    (links?.v2 ? `📹 Video 2:\n${links.v2}\n` : '')
-  const slotLabel = slot === 'M' ? 'Morning' : slot === 'A' ? 'Afternoon' : 'Evening'
+  const isDay6 = dayKey === 6
+  const slotLabel = slot === 'M' ? 'Morning' : slot === 'A' ? 'Afternoon' : slot === 'E' ? 'Evening' : slot === '6PM' ? '6 PM' : '8 PM'
+  const linkBlock = isDay6
+    ? (links?.v1 ? `📹 Final Video:\n${links.v1}\n` : '')
+    : (links?.v1 ? `📹 Video 1:\n${links.v1}\n` : '') + (links?.v2 ? `📹 Video 2:\n${links.v2}\n` : '')
   const msg =
     `Hi ${name},\n` +
     `Day ${dayKey} — ${slotLabel} Batch\n` +
     (linkBlock ? `\n${linkBlock}` : '\n') +
-    'Please watch both videos and reply ✅.'
+    (isDay6 ? 'Please watch the final video and reply ✅.' : 'Please watch both videos and reply ✅.')
   const url = whatsAppBusinessChatWithTextHref(lead.phone, msg)
   return url === '#' ? null : url
 }
@@ -704,10 +706,12 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
   const [uploadBusy, setUploadBusy] = useState(false)
   const [uploadErr, setUploadErr] = useState<string | null>(null)
 
-  const hasBatchSlots = stageKey === 'day1' || stageKey === 'day2' || stageKey === 'day3' || stageKey === 'day4' || stageKey === 'day5'
-  const dayKey = stageKey === 'day5' ? 5 : stageKey === 'day4' ? 4 : stageKey === 'day3' ? 3 : stageKey === 'day2' ? 2 : 1
+  const hasBatchSlots = stageKey === 'day1' || stageKey === 'day2' || stageKey === 'day3' || stageKey === 'day4' || stageKey === 'day5' || stageKey === 'interview'
+  const dayKey = stageKey === 'interview' ? 6 : stageKey === 'day5' ? 5 : stageKey === 'day4' ? 4 : stageKey === 'day3' ? 3 : stageKey === 'day2' ? 2 : 1
   const batchSlots: readonly BatchSlotKey[] =
-    stageKey === 'day5'
+    stageKey === 'interview'
+      ? (['d6_6pm', 'd6_8pm'] as const)
+      : stageKey === 'day5'
       ? (['d5_morning', 'd5_afternoon', 'd5_evening'] as const)
       : stageKey === 'day4'
       ? (['d4_morning', 'd4_afternoon', 'd4_evening'] as const)
@@ -720,7 +724,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
   const allSlotsDone = hasBatchSlots && batchSlots.every((k) => lead[k])
 
   // day1 M/A slots — tokenized batch link
-  const handleBatchShare = async (slot: 'M' | 'A' | 'E', slotKey: BatchSlotKey) => {
+  const handleBatchShare = async (slot: 'M' | 'A' | 'E' | '6PM' | '8PM', slotKey: BatchSlotKey) => {
     setBatchError(null)
     setSharingSlot(slotKey)
     const popup = reserveExternalShareWindow('Preparing batch share...')
@@ -806,17 +810,20 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     )
   }
 
-  const slotTimeLabels = (['M', 'A', 'E'] as const)
+  const isDay6 = stageKey === 'interview'
+  const slotTimeLabels = isDay6
+    ? (['6PM', '8PM'] as const)
+    : (['M', 'A', 'E'] as const)
 
-  // day1, day4, day5: all three slots (5pm/6pm/7pm) send tokenized batch links
-  if (stageKey === 'day1' || stageKey === 'day4' || stageKey === 'day5') {
+  // day1, day4, day5, interview(day6): send tokenized batch links
+  if (stageKey === 'day1' || stageKey === 'day4' || stageKey === 'day5' || stageKey === 'interview') {
     return (
       <div className="space-y-1.5">
         <div className="space-y-1.5 border-t border-border/40 pt-1.5">
           <div className="flex items-center gap-2">
             <span className="text-ds-caption text-muted-foreground">Links:</span>
             {batchSlots.map((slotKey, i) => {
-              const slot = (['M', 'A', 'E'] as const)[i]
+              const slot = (slotTimeLabels as readonly string[])[i] as 'M' | 'A' | 'E' | '6PM' | '8PM'
               const timeLabel = slotTimeLabels[i]
               const slotDone = lead[slotKey]
               const busy = sharingSlot === slotKey

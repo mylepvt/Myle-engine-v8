@@ -74,6 +74,8 @@ _BATCH_SLOTS = frozenset(
         "d5_morning",
         "d5_afternoon",
         "d5_evening",
+        "d6_6pm",
+        "d6_8pm",
     }
 )
 _YOUTUBE_ID_RE = re.compile(
@@ -85,6 +87,8 @@ _BATCH_SLOT_DEFAULT_STARTS_IST: dict[str, time] = {
     "morning": time(hour=11, minute=0),
     "afternoon": time(hour=15, minute=0),
     "evening": time(hour=0, minute=0),
+    "6pm": time(hour=18, minute=0),
+    "8pm": time(hour=20, minute=0),
 }
 
 
@@ -148,10 +152,16 @@ def _batch_day_number(slot: str) -> int:
         return 4
     if slot.startswith("d5_"):
         return 5
+    if slot.startswith("d6_"):
+        return 6
     raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Invalid slot")
 
 
 def _batch_slot_label(slot: str) -> str:
+    if slot == "d6_6pm":
+        return "6 PM"
+    if slot == "d6_8pm":
+        return "8 PM"
     return slot.split("_", 1)[1].replace("_", " ").title()
 
 
@@ -162,6 +172,10 @@ def _batch_slot_period(slot: str) -> str:
         return "afternoon"
     if "evening" in slot:
         return "evening"
+    if "6pm" in slot:
+        return "6pm"
+    if "8pm" in slot:
+        return "8pm"
     raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Invalid slot")
 
 
@@ -184,6 +198,7 @@ async def _batch_slot_gate(session: AsyncSession, slot: str) -> tuple[bool, date
     day_number = _batch_day_number(slot)
     if day_number in (4, 5):
         return True, None, None
+    # d6: time-gated at 6 PM / 8 PM IST — falls through to period-based logic below
     period = _batch_slot_period(slot)
     default_start = _BATCH_SLOT_DEFAULT_STARTS_IST[period]
     configured_start = _parse_batch_slot_time(
@@ -239,6 +254,11 @@ async def _resolve_batch_watch_context(
 
 
 async def _resolve_batch_video_url(session: AsyncSession, slot: str, v: int) -> str:
+    if slot.startswith("d6_"):
+        video_url = await _get_setting_value(session, "batch_d6_video_url")
+        if not video_url:
+            raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Video not configured")
+        return video_url
     video_url = await _get_setting_value(session, f"batch_{slot}_v{v}")
     if not video_url and v == 1:
         video_url = await _get_setting_value(session, f"batch_{slot}_v2")
