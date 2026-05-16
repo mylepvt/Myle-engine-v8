@@ -1,8 +1,10 @@
-import { useDeferredValue, useMemo } from 'react'
+import { useDeferredValue, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   Activity,
   ArrowDownWideNarrow,
+  Check,
+  Clipboard,
   Gauge,
   Layers3,
   ShieldAlert,
@@ -487,6 +489,39 @@ export function TeamTrackingPage({ title }: Props) {
     [filteredItems],
   )
 
+  const [copyDone, setCopyDone] = useState(false)
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function copyRemovedList() {
+    const dateLabel = new Date().toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    })
+    const lines: string[] = [
+      `REMOVED MEMBERS — Myle Team`,
+      `Date: ${dateLabel} | Total: ${removedMembers.length} removed`,
+      '─'.repeat(32),
+      '',
+    ]
+    removedMembers.forEach((item, i) => {
+      lines.push(`${i + 1}. ${item.member_name}`)
+      lines.push(`   Phone: ${item.member_phone ?? 'N/A'}`)
+      lines.push(`   FBO ID: ${item.member_fbo_id}`)
+      if (item.leader_name) lines.push(`   Leader: ${item.leader_name}`)
+      if (item.compliance_summary) lines.push(`   Reason: ${item.compliance_summary}`)
+      lines.push('')
+    })
+    lines.push('─'.repeat(32))
+    lines.push('Please remove these members from all WhatsApp groups.')
+    void navigator.clipboard.writeText(lines.join('\n')).then(() => {
+      setCopyDone(true)
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
+      copyTimerRef.current = setTimeout(() => setCopyDone(false), 2500)
+    })
+  }
+
+
   return (
     <div className="max-w-[88rem] space-y-5">
       <Card className="px-5 py-5 md:px-6 md:py-6">
@@ -722,7 +757,7 @@ export function TeamTrackingPage({ title }: Props) {
             />
           </div>
 
-          {(complianceFilter === 'removed' || removedMembers.length > 0) && complianceFilter === 'removed' ? (
+          {complianceFilter === 'removed' ? (
             <section className="overflow-hidden rounded-md border border-rose-400/30 bg-rose-400/[0.04] shadow-[var(--shadow-card)]">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rose-400/20 px-5 py-4">
                 <div>
@@ -733,7 +768,30 @@ export function TeamTrackingPage({ title }: Props) {
                     These members have been removed from the system. Remove them from your WhatsApp groups.
                   </p>
                 </div>
-                <Badge variant="danger">{removedMembers.length} removed</Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="danger">{removedMembers.length} removed</Badge>
+                  {removedMembers.length > 0 ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 border-rose-400/30 text-rose-600 hover:bg-rose-400/10 dark:text-rose-300"
+                      onClick={copyRemovedList}
+                    >
+                      {copyDone ? (
+                        <>
+                          <Check className="size-3.5" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Clipboard className="size-3.5" />
+                          Copy list
+                        </>
+                      )}
+                    </Button>
+                  ) : null}
+                </div>
               </div>
 
               {removedMembers.length === 0 ? (
@@ -773,6 +831,12 @@ export function TeamTrackingPage({ title }: Props) {
                           <p>
                             <span className="text-foreground/60">Leader:</span>{' '}
                             {item.leader_name}
+                          </p>
+                        ) : null}
+                        {item.compliance_summary ? (
+                          <p className="mt-1 border-t border-rose-400/15 pt-1">
+                            <span className="text-foreground/60">Reason:</span>{' '}
+                            <span className="text-rose-600 dark:text-rose-400">{item.compliance_summary}</span>
                           </p>
                         ) : null}
                       </div>
