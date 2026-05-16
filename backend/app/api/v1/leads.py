@@ -1,5 +1,5 @@
 import secrets
-from datetime import datetime, time, timezone
+from datetime import datetime, time, timedelta, timezone
 from typing import Annotated, Optional
 import re
 from urllib.parse import parse_qs, urlparse
@@ -35,7 +35,7 @@ from app.schemas.leads import (
     LeadTransitionResponse,
     LeadUpdate,
 )
-from app.schemas.watch import BatchWatchPageData, BatchWatchSubmissionPublic
+from app.schemas.watch import BatchWatchPageData, BatchWatchSubmissionPublic, Day6LivePageData
 from app.services.all_leads_service import AllLeadsService, get_all_leads_service
 from app.services.batch_watch_uploads import (
     save_batch_submission_notes_file,
@@ -490,6 +490,9 @@ async def generate_batch_share_url(
         await session.commit()
 
     base = str(request.base_url).rstrip("/")
+    if slot.startswith("d6_"):
+        live_url = f"{base}/watch/live/day6?token={token}"
+        return BatchShareUrlResponse(watch_url_v1=live_url, watch_url_v2=live_url)
     return BatchShareUrlResponse(
         watch_url_v1=f"{base}/watch/batch/{slot}/1?token={token}",
         watch_url_v2=f"{base}/watch/batch/{slot}/2?token={token}",
@@ -842,3 +845,73 @@ async def complete_batch_video_watch(
         await session.commit()
         await notify_topics("leads", "workboard")
     return {"ok": True}
+
+
+@watch_router.get("/watch/live/day6", response_model=Day6LivePageData)
+async def watch_day6_live_page(
+    token: str = Query(...),
+    session: AsyncSession = Depends(get_db),
+) -> Day6LivePageData:
+    token = token.strip()
+    if not token:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Missing token")
+
+    link = (
+        await session.execute(
+            select(BatchShareLink).where(BatchShareLink.token == token)
+        )
+    ).scalar_one_or_none()
+
+    if link is None or not link.slot.startswith("d6_"):
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Invalid link")
+
+    lead = await session.get(Lead, link.lead_id)
+    if lead is None or lead.deleted_at is not None or lead.in_pool:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
+
+    slot = link.slot
+    _access_open, opens_at_dt, _gate_msg = await _batch_slot_gate(session, slot)
+
+    dur_raw = await _get_setting_value(session, "batch_d6_duration_minutes") or "90"
+    try:
+        dur_min = max(30, int(dur_raw))
+    except ValueError:
+        dur_min = 90
+
+    live_starts_at = opens_at_dt
+    waiting_starts_at = live_starts_at - timedelta(minutes=30)
+    live_ends_at = live_starts_at + timedelta(minutes=dur_min)
+
+    now_utc = datetime.now(timezone.utc)
+    if now_utc < waiting_starts_at:
+        state = "upcoming"
+    elif now_utc < live_starts_at:
+        state = "waiting"
+    elif now_utc < live_ends_at:
+        state = "live"
+    else:
+        state = "ended"
+
+    video_url: str | None = None
+    if state in ("live", "waiting", "upcoming"):
+        try:
+            video_url = await _resolve_batch_video_url(session, slot, 1)
+        except HTTPException:
+            pass
+
+    viewer_count = 0
+    if state == "waiting":
+        viewer_count = 62
+    elif state == "live":
+        viewer_count = 74
+
+    return Day6LivePageData(
+        lead_name=lead.name or "",
+        slot=slot,
+        state=state,
+        video_url=video_url,
+        waiting_starts_at=waiting_starts_at.isoformat(),
+        live_starts_at=live_starts_at.isoformat(),
+        live_ends_at=live_ends_at.isoformat(),
+        viewer_count=viewer_count,
+    )
