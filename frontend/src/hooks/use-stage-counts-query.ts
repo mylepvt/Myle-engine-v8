@@ -19,7 +19,6 @@ export function useStageCounts(enabled = true) {
     queryKey: ['execution', 'stage-counts'],
     queryFn: fetchStageCounts,
     enabled,
-    refetchInterval: 30_000,
     staleTime: 15_000,
   })
 }

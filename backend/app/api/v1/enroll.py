@@ -16,6 +16,7 @@ from starlette import status as http_status
 from starlette.background import BackgroundTask
 
 from app.api.deps import AuthUser, get_db, require_auth_user
+from app.core.realtime_hub import notify_topics
 from app.models.enroll_share_link import EnrollShareLink
 from app.models.lead import Lead
 from app.schemas.enroll import (
@@ -292,6 +293,7 @@ async def generate_share_link(
     await session.refresh(link)
     observe_event(event_type="enrollment.link_generated", source="enroll_api",
                   lead_id=lead.id, link_id=link.id)
+    await notify_topics("enroll")
     return _build_public_link(link)
 
 
@@ -343,6 +345,7 @@ async def send_enrollment_video(
     await session.commit()
     await session.refresh(link)
 
+    await notify_topics("enroll", "leads")
     return EnrollmentVideoSendResponse(
         link=_build_public_link(link),
         delivery=EnrollmentVideoSendDelivery.model_validate(delivery_meta),
@@ -604,6 +607,7 @@ async def mark_watch_completed(
     lead.last_action_at = now
 
     await session.commit()
+    await notify_topics("enroll", "leads")
     return WatchEventResponse(ok=True, watch_started=True, watch_completed=True)
 
 

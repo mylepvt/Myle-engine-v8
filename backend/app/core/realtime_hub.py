@@ -1,4 +1,9 @@
-"""In-process WebSocket fan-out (single Render instance). Broadcast JSON to all connected clients."""
+"""In-process WebSocket fan-out (single Render instance).
+
+Broadcast JSON to all connected clients. Scaling beyond one instance requires
+a Redis pub/sub adapter: each worker subscribes to a shared channel and
+re-broadcasts locally. Until then, deploy with sticky sessions (session_affinity=true).
+"""
 
 from __future__ import annotations
 
