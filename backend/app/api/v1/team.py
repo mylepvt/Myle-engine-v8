@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Annotated, List, Optional
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import case, delete as sa_delete, func, select, update
 from sqlalchemy.exc import IntegrityError
@@ -16,6 +16,7 @@ from starlette import status as http_status
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.core.auth_cookies import display_name_from_user
 from app.core.realtime_hub import notify_topics
+from app.services.whatsapp_removal import send_removal_whatsapp
 from app.core.fbo_id import normalize_fbo_id
 from app.core.passwords import hash_password
 from app.models.daily_report import DailyReport
@@ -40,6 +41,7 @@ from app.schemas.team import (
     TeamReportsResponse,
     TeamSelfGraceRequestBody,
 )
+from app.db.session import AsyncSessionLocal
 from app.services.downline import is_user_in_downline_of
 from app.services.lead_owner import lead_owner_clause
 from app.services.member_compliance import build_compliance_snapshots
@@ -55,6 +57,17 @@ router = APIRouter()
 
 _MAX_LIMIT = 100
 _DEFAULT_LIMIT = 50
+
+
+async def _send_removal_whatsapp_bg(user_id: int, removal_reason: str) -> None:
+    async with AsyncSessionLocal() as session:
+        user = await session.get(User, user_id)
+        if user is None:
+            return
+        # Temporarily set removal_reason so the service can read it
+        user.removal_reason = removal_reason
+        await send_removal_whatsapp(user=user, session=session)
+        await session.commit()
 
 
 def _require_admin(user: AuthUser) -> None:
@@ -781,6 +794,7 @@ async def update_member_role(
 async def update_member_compliance(
     target_user_id: int,
     body: TeamMemberComplianceUpdate,
+    background_tasks: BackgroundTasks,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> TeamMemberPublic:
@@ -890,6 +904,7 @@ async def update_member_compliance(
         target.grace_updated_at = None
         target.grace_set_by_user_id = None
         _clear_pending_grace_request(target)
+        background_tasks.add_task(_send_removal_whatsapp_bg, target_user_id, target.removal_reason)
     else:
         raise HTTPException(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
