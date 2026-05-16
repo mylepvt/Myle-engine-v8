@@ -689,6 +689,237 @@ async def finance_budget_export_history(
     )
 
 
+class BudgetLeadsUserRow(BaseModel):
+    user_id: int
+    role: str
+    display_name: str
+    fbo_id: str
+    period_spend_cents: int = 0
+    period_recharge_cents: int = 0
+    period_net_change_cents: int = 0
+    current_balance_cents: int = 0
+    leads_created: int = 0
+    leads_reached_day2: int = 0
+
+
+class BudgetLeadsLeaderGroup(BaseModel):
+    leader: BudgetLeadsUserRow
+    team_member_count: int = 0
+    team_spend_cents: int = 0
+    team_recharge_cents: int = 0
+    team_net_change_cents: int = 0
+    team_leads_created: int = 0
+    team_leads_reached_day2: int = 0
+    combined_spend_cents: int = 0
+    combined_leads_created: int = 0
+    combined_leads_reached_day2: int = 0
+    members: list[BudgetLeadsUserRow] = Field(default_factory=list)
+
+
+class BudgetLeadsGrandTotals(BaseModel):
+    total_leaders: int = 0
+    total_team_members: int = 0
+    total_spend_cents: int = 0
+    total_recharge_cents: int = 0
+    total_net_change_cents: int = 0
+    total_leads_created: int = 0
+    total_leads_reached_day2: int = 0
+
+
+class BudgetLeadsSummaryResponse(BaseModel):
+    date_from: date
+    date_to: date
+    grand_totals: BudgetLeadsGrandTotals
+    leaders: list[BudgetLeadsLeaderGroup] = Field(default_factory=list)
+    unlinked_members: list[BudgetLeadsUserRow] = Field(default_factory=list)
+    note: str | None = None
+
+
+@router.get("/budget-leads-summary", response_model=BudgetLeadsSummaryResponse)
+async def finance_budget_leads_summary(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    date_from: Annotated[date | None, Query()] = None,
+    date_to: Annotated[date | None, Query()] = None,
+) -> BudgetLeadsSummaryResponse:
+    """Combined budget-spend + leads-created + day2-progression report for a date range.
+
+    Defaults to the current calendar month when no dates are supplied.
+    Leads are counted by owner_user_id (permanent owner) so the numbers are stable.
+    """
+    _require_admin(user)
+
+    today = date.today()
+    start = date_from or today.replace(day=1)
+    end = date_to or today
+    if end < start:
+        start, end = end, start
+
+    users, user_by_id, leader_lookup, _ = await _load_budget_directory(session)
+    if not users:
+        return BudgetLeadsSummaryResponse(
+            date_from=start,
+            date_to=end,
+            grand_totals=BudgetLeadsGrandTotals(),
+            note="No approved leaders or team members found.",
+        )
+
+    all_ids = [int(u.id) for u in users]
+
+    # --- Wallet: balance (lifetime) + period figures ---
+    balance_rows = (
+        await session.execute(
+            select(WalletLedgerEntry.user_id, func.coalesce(func.sum(WalletLedgerEntry.amount_cents), 0))
+            .where(WalletLedgerEntry.user_id.in_(all_ids))
+            .group_by(WalletLedgerEntry.user_id)
+        )
+    ).all()
+    balance_map = {int(uid): int(bal) for uid, bal in balance_rows}
+
+    period_ledger = (
+        await session.execute(
+            select(WalletLedgerEntry.user_id, WalletLedgerEntry.amount_cents, WalletLedgerEntry.idempotency_key, WalletLedgerEntry.note)
+            .where(
+                WalletLedgerEntry.user_id.in_(all_ids),
+                func.date(WalletLedgerEntry.created_at) >= start,
+                func.date(WalletLedgerEntry.created_at) <= end,
+            )
+        )
+    ).all()
+
+    spend_map: dict[int, int] = {}
+    recharge_map: dict[int, int] = {}
+    net_map: dict[int, int] = {}
+    for uid, amount_cents, idem, note in period_ledger:
+        uid = int(uid)
+        amount_cents = int(amount_cents)
+        net_map[uid] = net_map.get(uid, 0) + amount_cents
+        idem_lower = (idem or "").strip().lower()
+        note_lower = (note or "").strip().lower()
+        if idem_lower.startswith("recharge_") or note_lower.startswith("recharge approved"):
+            recharge_map[uid] = recharge_map.get(uid, 0) + max(amount_cents, 0)
+        elif idem_lower.startswith("pool_claim_") or "lead pool claim" in note_lower:
+            spend_map[uid] = spend_map.get(uid, 0) + max(-amount_cents, 0)
+
+    # --- Leads created in period per owner ---
+    leads_created_rows = (
+        await session.execute(
+            select(Lead.owner_user_id, func.count())
+            .where(
+                Lead.owner_user_id.in_(all_ids),
+                func.date(Lead.created_at) >= start,
+                func.date(Lead.created_at) <= end,
+                Lead.deleted_at.is_(None),
+            )
+            .group_by(Lead.owner_user_id)
+        )
+    ).all()
+    leads_created_map = {int(uid): int(cnt) for uid, cnt in leads_created_rows if uid is not None}
+
+    # --- Leads that reached Day 2 (day2_completed_at IS NOT NULL) among leads created in period ---
+    leads_day2_rows = (
+        await session.execute(
+            select(Lead.owner_user_id, func.count())
+            .where(
+                Lead.owner_user_id.in_(all_ids),
+                func.date(Lead.created_at) >= start,
+                func.date(Lead.created_at) <= end,
+                Lead.deleted_at.is_(None),
+                Lead.day2_completed_at.is_not(None),
+            )
+            .group_by(Lead.owner_user_id)
+        )
+    ).all()
+    leads_day2_map = {int(uid): int(cnt) for uid, cnt in leads_day2_rows if uid is not None}
+
+    def _make_user_row(uid: int) -> BudgetLeadsUserRow:
+        u = user_by_id[uid]
+        return BudgetLeadsUserRow(
+            user_id=uid,
+            role=u.role,
+            display_name=_display_name(u),
+            fbo_id=u.fbo_id,
+            period_spend_cents=spend_map.get(uid, 0),
+            period_recharge_cents=recharge_map.get(uid, 0),
+            period_net_change_cents=net_map.get(uid, 0),
+            current_balance_cents=balance_map.get(uid, 0),
+            leads_created=leads_created_map.get(uid, 0),
+            leads_reached_day2=leads_day2_map.get(uid, 0),
+        )
+
+    leader_users = [u for u in users if u.role == "leader"]
+    team_users = [u for u in users if u.role == "team"]
+
+    leader_groups: list[BudgetLeadsLeaderGroup] = []
+    linked_member_ids: set[int] = set()
+
+    for leader in sorted(leader_users, key=lambda u: _display_name(u).lower()):
+        lid = int(leader.id)
+        leader_row = _make_user_row(lid)
+        members = sorted(
+            [
+                _make_user_row(int(u.id))
+                for u in team_users
+                if leader_lookup.get(int(u.id)) == lid
+            ],
+            key=lambda r: r.display_name.lower(),
+        )
+        for m in members:
+            linked_member_ids.add(m.user_id)
+
+        team_spend = sum(m.period_spend_cents for m in members)
+        team_recharge = sum(m.period_recharge_cents for m in members)
+        team_net = sum(m.period_net_change_cents for m in members)
+        team_leads = sum(m.leads_created for m in members)
+        team_day2 = sum(m.leads_reached_day2 for m in members)
+
+        leader_groups.append(
+            BudgetLeadsLeaderGroup(
+                leader=leader_row,
+                team_member_count=len(members),
+                team_spend_cents=team_spend,
+                team_recharge_cents=team_recharge,
+                team_net_change_cents=team_net,
+                team_leads_created=team_leads,
+                team_leads_reached_day2=team_day2,
+                combined_spend_cents=leader_row.period_spend_cents + team_spend,
+                combined_leads_created=leader_row.leads_created + team_leads,
+                combined_leads_reached_day2=leader_row.leads_reached_day2 + team_day2,
+                members=members,
+            )
+        )
+
+    unlinked = sorted(
+        [_make_user_row(int(u.id)) for u in team_users if int(u.id) not in linked_member_ids],
+        key=lambda r: r.display_name.lower(),
+    )
+
+    all_rows = [_make_user_row(int(u.id)) for u in users]
+    grand = BudgetLeadsGrandTotals(
+        total_leaders=len(leader_users),
+        total_team_members=len(team_users),
+        total_spend_cents=sum(r.period_spend_cents for r in all_rows),
+        total_recharge_cents=sum(r.period_recharge_cents for r in all_rows),
+        total_net_change_cents=sum(r.period_net_change_cents for r in all_rows),
+        total_leads_created=sum(r.leads_created for r in all_rows),
+        total_leads_reached_day2=sum(r.leads_reached_day2 for r in all_rows),
+    )
+
+    return BudgetLeadsSummaryResponse(
+        date_from=start,
+        date_to=end,
+        grand_totals=grand,
+        leaders=leader_groups,
+        unlinked_members=unlinked,
+        note=(
+            f"Budget + leads summary from {start.isoformat()} to {end.isoformat()}. "
+            "Spend = wallet debits for lead pool claims. "
+            "Leads counted by permanent owner (owner_user_id) created in the period. "
+            "Day 2 = leads with day2_completed_at set."
+        ),
+    )
+
+
 @router.get("/monthly-targets", response_model=SystemStubResponse)
 async def finance_monthly_targets(
     user: Annotated[AuthUser, Depends(require_auth_user)],
