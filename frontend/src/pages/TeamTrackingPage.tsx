@@ -521,6 +521,7 @@ export function TeamTrackingPage({ title }: Props) {
     })
   }
 
+
   return (
     <div className="max-w-[88rem] space-y-5">
       <Card className="px-5 py-5 md:px-6 md:py-6">
