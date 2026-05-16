@@ -28,6 +28,7 @@ import {
   useTeamTrackingOverviewQuery,
   type TeamTrackingMemberSummary,
 } from '@/hooks/use-team-tracking-query'
+import { useRemovalOutreachQuery, type RemovalOutreachItem } from '@/hooks/use-removal-outreach-query'
 import { filterCollectionByQuery, type SearchableValue } from '@/lib/search-filter'
 import { cn } from '@/lib/utils'
 
@@ -434,6 +435,15 @@ export function TeamTrackingPage({ title }: Props) {
   const deferredSearchQuery = useDeferredValue(searchQuery)
 
   const { data, isPending, isError, error, refetch } = useTeamTrackingOverviewQuery(dateIso)
+  const { data: outreachData } = useRemovalOutreachQuery(false, complianceFilter === 'removed')
+
+  const outreachByUserId = useMemo(() => {
+    const map = new Map<number, RemovalOutreachItem>()
+    outreachData?.items.forEach((item) => {
+      if (!map.has(item.user_id)) map.set(item.user_id, item)
+    })
+    return map
+  }, [outreachData])
 
   const leaderOptions = useMemo(() => {
     const leaderMap = new Map<string, string>()
@@ -840,6 +850,67 @@ export function TeamTrackingPage({ title }: Props) {
                           </p>
                         ) : null}
                       </div>
+
+                      {(() => {
+                        const outreach = outreachByUserId.get(item.user_id)
+                        if (!outreach) return null
+                        return (
+                          <div className="mt-3 border-t border-rose-400/15 pt-3 text-xs">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={cn(
+                                  'rounded-full px-2 py-0.5 font-medium',
+                                  outreach.send_status === 'sent' || outreach.send_status === 'stub'
+                                    ? 'bg-emerald-400/15 text-emerald-600 dark:text-emerald-300'
+                                    : outreach.send_status === 'failed'
+                                      ? 'bg-rose-400/15 text-rose-600 dark:text-rose-300'
+                                      : 'bg-muted text-muted-foreground',
+                                )}
+                              >
+                                {outreach.send_status === 'sent'
+                                  ? 'WA message sent'
+                                  : outreach.send_status === 'stub'
+                                    ? 'WA message (stub)'
+                                    : outreach.send_status === 'failed'
+                                      ? 'WA send failed'
+                                      : 'WA pending'}
+                              </span>
+                              {outreach.sent_at ? (
+                                <span className="text-muted-foreground">
+                                  {new Date(outreach.sent_at).toLocaleString()}
+                                </span>
+                              ) : null}
+                            </div>
+
+                            {outreach.reply_text ? (
+                              <div className="mt-2 rounded bg-emerald-400/[0.08] px-3 py-2">
+                                <p className="font-medium text-emerald-700 dark:text-emerald-300">
+                                  Member replied:
+                                </p>
+                                <p className="mt-1 text-foreground">{outreach.reply_text}</p>
+                                {outreach.replied_at ? (
+                                  <p className="mt-1 text-muted-foreground">
+                                    {new Date(outreach.replied_at).toLocaleString()}
+                                  </p>
+                                ) : null}
+                              </div>
+                            ) : (
+                              <p className="mt-1 text-muted-foreground">No reply yet</p>
+                            )}
+
+                            {outreach.manual_share_url && outreach.send_status !== 'sent' ? (
+                              <a
+                                href={outreach.manual_share_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-2 inline-flex items-center gap-1 text-primary underline underline-offset-2 hover:text-primary/80"
+                              >
+                                Send manually via WhatsApp
+                              </a>
+                            ) : null}
+                          </div>
+                        )
+                      })()}
                     </div>
                   ))}
                 </div>

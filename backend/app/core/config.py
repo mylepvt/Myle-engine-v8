@@ -142,6 +142,14 @@ class Settings(BaseSettings):
         validation_alias="CTCS_WHATSAPP_ASYNC",
         description="When true, CTCS “interested” WhatsApp/webhook runs after HTTP response (BackgroundTasks). When false, await inline (debug / scripts).",
     )
+
+    # --- Removal outreach inbound reply ---
+    removal_whatsapp_reply_secret: str = Field(
+        default="",
+        validation_alias="REMOVAL_WHATSAPP_REPLY_SECRET",
+        description="Bearer secret for POST /api/v1/webhooks/whatsapp/reply. Empty = no auth (dev only).",
+    )
+
     ctcs_heat_hot_threshold: int = Field(
         default=40,
         ge=0,
