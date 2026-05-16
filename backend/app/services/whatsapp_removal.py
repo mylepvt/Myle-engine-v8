@@ -1,4 +1,4 @@
-"""WhatsApp outreach for removed members — send notification + store reply."""
+"""WhatsApp outreach for removed members — Meta Cloud API + webhook fallback."""
 
 from __future__ import annotations
 
@@ -17,11 +17,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models.member_removal_outreach import MemberRemovalOutreach
 from app.models.user import User
+from app.services.settings_service import SettingsService
 
 logger = logging.getLogger(__name__)
 
 
 def _whatsapp_digits(phone: str | None) -> str | None:
+    """Return E.164 digits only (no +). Indian 10-digit → prefix 91."""
     if not phone:
         return None
     digits = "".join(c for c in phone if c.isdigit())
@@ -62,12 +64,129 @@ def _post_json_sync(
         return int(resp.status), body[:2000]
 
 
+# ---------------------------------------------------------------------------
+# DB-backed config helpers (DB settings override env vars)
+# ---------------------------------------------------------------------------
+
+async def get_meta_config(session: AsyncSession) -> tuple[str, str, str]:
+    """
+    Returns (phone_number_id, access_token, api_version).
+    DB app_settings take precedence over env vars.
+    """
+    svc = SettingsService(session)
+    phone_number_id = (
+        (await svc.get_app_setting("whatsapp.meta.phone_number_id") or "").strip()
+        or (settings.whatsapp_meta_phone_number_id or "").strip()
+    )
+    access_token = (
+        (await svc.get_app_setting("whatsapp.meta.access_token") or "").strip()
+        or (settings.whatsapp_meta_access_token or "").strip()
+    )
+    api_version = (
+        (await svc.get_app_setting("whatsapp.meta.api_version") or "").strip()
+        or (settings.whatsapp_meta_api_version or "").strip()
+        or "v19.0"
+    )
+    return phone_number_id, access_token, api_version
+
+
+async def get_verify_token(session: AsyncSession) -> str:
+    """Returns Meta webhook verify token — DB first, env var fallback."""
+    svc = SettingsService(session)
+    return (
+        (await svc.get_app_setting("whatsapp.meta.verify_token") or "").strip()
+        or (settings.whatsapp_meta_verify_token or "").strip()
+    )
+
+
+# ---------------------------------------------------------------------------
+# Meta Cloud API sender
+# ---------------------------------------------------------------------------
+
+async def _send_via_meta_api(
+    *, phone: str, message: str, phone_number_id: str, access_token: str, api_version: str
+) -> dict[str, Any]:
+    """
+    Send a free-form text message via Meta WhatsApp Cloud API.
+
+    NOTE: Meta allows free-form text only within the 24-hour customer service
+    window. For first-time outreach (member never messaged you) you may need
+    an approved template. The manual wa.me link in the outreach record is
+    always available as fallback.
+    """
+    digits = _whatsapp_digits(phone)
+    if not digits:
+        return {"ok": False, "error": "invalid_phone"}
+
+    url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
+    payload: dict[str, Any] = {
+        "messaging_product": "whatsapp",
+        "to": digits,
+        "type": "text",
+        "text": {"preview_url": False, "body": message},
+    }
+    headers = {"Authorization": f"Bearer {access_token}"}
+    timeout = float(settings.ctcs_whatsapp_timeout_seconds)
+    try:
+        status, body = await asyncio.to_thread(_post_json_sync, url, payload, headers, timeout)
+        ok = 200 <= status < 300
+        if not ok:
+            logger.warning("meta whatsapp non-2xx status=%s body=%s", status, body[:300])
+        return {"ok": ok, "channel": "meta_cloud_api", "http_status": status, "body": body[:500]}
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")[:500] if exc.fp else ""
+        logger.warning("meta whatsapp HTTPError %s: %s", exc.code, body)
+        return {"ok": False, "channel": "meta_cloud_api", "error": f"http_{exc.code}", "detail": body}
+    except Exception as exc:
+        logger.exception("meta whatsapp send failed")
+        return {"ok": False, "channel": "meta_cloud_api", "error": str(exc)[:300]}
+
+
+# ---------------------------------------------------------------------------
+# Generic webhook sender (existing CTCS webhook pattern)
+# ---------------------------------------------------------------------------
+
+async def _send_via_webhook(
+    *, user: User, phone: str | None, message: str, removal_reason: str | None
+) -> dict[str, Any]:
+    url = (settings.ctcs_whatsapp_webhook_url or "").strip()
+    if not url:
+        return {"ok": True, "channel": "whatsapp_stub"}
+
+    payload: dict[str, Any] = {
+        "event": "member_removed_outreach",
+        "user_id": user.id,
+        "phone": phone,
+        "member_name": (user.name or user.username or user.fbo_id or "Member").strip(),
+        "removal_reason": removal_reason,
+        "message": message,
+        "template": "member_removal_v1",
+    }
+    headers: dict[str, str] = {}
+    secret = (settings.ctcs_whatsapp_webhook_secret or "").strip()
+    if secret:
+        headers["Authorization"] = f"Bearer {secret}"
+
+    timeout = float(settings.ctcs_whatsapp_timeout_seconds)
+    try:
+        status, _ = await asyncio.to_thread(_post_json_sync, url, payload, headers, timeout)
+        ok = 200 <= status < 300
+        return {"ok": ok, "channel": "whatsapp_webhook", "http_status": status}
+    except Exception as exc:
+        logger.warning("removal webhook send failed user_id=%s: %s", user.id, exc)
+        return {"ok": False, "channel": "whatsapp_webhook", "error": str(exc)[:300]}
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
 async def send_removal_whatsapp(
     *,
     user: User,
     session: AsyncSession,
 ) -> MemberRemovalOutreach:
-    """Create outreach record and fire the WhatsApp message."""
+    """Create outreach record and send WhatsApp message (Meta API → webhook → stub)."""
     phone = getattr(user, "phone", None)
     member_name = (user.name or user.username or user.fbo_id or "Member").strip()
     removal_reason = (getattr(user, "removal_reason", None) or "").strip() or None
@@ -84,47 +203,33 @@ async def send_removal_whatsapp(
         manual_share_url=manual_share_url,
     )
     session.add(record)
-    await session.flush()  # get record.id
+    await session.flush()
 
-    url = (settings.ctcs_whatsapp_webhook_url or "").strip()
-    if not url:
-        logger.info(
-            "removal whatsapp stub user_id=%s phone_tail=%s",
-            user.id,
-            (phone or "")[-4:],
+    # Priority: Meta Cloud API (DB config or env vars) → webhook → stub
+    phone_number_id, access_token, api_version = await get_meta_config(session)
+    if phone_number_id and access_token and phone:
+        result = await _send_via_meta_api(
+            phone=phone,
+            message=message,
+            phone_number_id=phone_number_id,
+            access_token=access_token,
+            api_version=api_version,
         )
-        record.send_status = "stub"
+    elif (settings.ctcs_whatsapp_webhook_url or "").strip():
+        result = await _send_via_webhook(
+            user=user, phone=phone, message=message, removal_reason=removal_reason
+        )
+    else:
+        logger.info("removal whatsapp stub user_id=%s phone_tail=%s", user.id, (phone or "")[-4:])
+        result = {"ok": True, "channel": "whatsapp_stub"}
+
+    channel = result.get("channel", "unknown")
+    if result.get("ok"):
+        record.send_status = "stub" if channel == "whatsapp_stub" else "sent"
         record.sent_at = datetime.now(timezone.utc)
-        await session.flush()
-        return record
-
-    payload: dict[str, Any] = {
-        "event": "member_removed_outreach",
-        "user_id": user.id,
-        "phone": phone,
-        "member_name": member_name,
-        "removal_reason": removal_reason,
-        "message": message,
-        "template": "member_removal_v1",
-    }
-    headers: dict[str, str] = {}
-    secret = (settings.ctcs_whatsapp_webhook_secret or "").strip()
-    if secret:
-        headers["Authorization"] = f"Bearer {secret}"
-
-    timeout = float(settings.ctcs_whatsapp_timeout_seconds)
-    try:
-        status, _ = await asyncio.to_thread(_post_json_sync, url, payload, headers, timeout)
-        if 200 <= status < 300:
-            record.send_status = "sent"
-            record.sent_at = datetime.now(timezone.utc)
-        else:
-            record.send_status = "failed"
-            record.send_error = f"HTTP {status}"
-    except Exception as exc:
-        logger.warning("removal whatsapp send failed user_id=%s: %s", user.id, exc)
+    else:
         record.send_status = "failed"
-        record.send_error = str(exc)[:500]
+        record.send_error = (result.get("error") or result.get("detail") or "unknown error")[:500]
 
     await session.flush()
     return record
@@ -137,12 +242,11 @@ async def record_reply(
     wa_message_id: str | None,
     session: AsyncSession,
 ) -> MemberRemovalOutreach | None:
-    """Match incoming WhatsApp reply to the most recent outreach for this phone and store it."""
+    """Match incoming WhatsApp reply to the most recent outreach for this phone."""
     digits = _whatsapp_digits(phone)
     if not digits:
         return None
 
-    # Try exact phone match, then digits-only match
     stmt = (
         select(MemberRemovalOutreach)
         .where(MemberRemovalOutreach.reply_text.is_(None))
