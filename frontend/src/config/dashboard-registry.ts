@@ -415,7 +415,7 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
   {
     path: 'other/downloads',
     section: { id: 'other', label: 'Community' },
-    label: 'Downloads',
+    label: 'Downloads & Links',
     roles: routeRoles('other/downloads'),
     surface: 'full',
     ui: { kind: 'downloads' },
