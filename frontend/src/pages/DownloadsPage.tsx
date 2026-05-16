@@ -54,11 +54,14 @@ function FileTypeBadge({ mime }: { mime: string }) {
   )
 }
 
-const CONTENT_VIDEO_LABELS: Array<{ key: string; label: string }> = [
+const MINDSET_LOCK_LINKS: Array<{ key: string; label: string }> = [
   { key: 'content.esbi_model', label: 'ESBI Model Video' },
   { key: 'content.power_of_network', label: 'Power of Network Video' },
-  { key: 'content.manik_expose', label: 'Expose Video (Manik Aggarwal)' },
 ]
+
+const DAY_EXTRA_LINKS: Record<number, Array<{ key: string; label: string }>> = {
+  2: [{ key: 'content.manik_expose', label: 'Expose Video (Manik Aggarwal)' }],
+}
 
 export function DownloadsPage({ title }: Props) {
   const { data: me } = useAuthMeQuery()
@@ -125,51 +128,76 @@ export function DownloadsPage({ title }: Props) {
       </p>
 
       {showLinks ? (
-        <div className="surface-elevated space-y-3 p-5">
+        <div className="surface-elevated space-y-4 p-5">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <ExternalLink className="h-4 w-4" /> Video Links
           </h2>
-          <ul className="space-y-2 text-sm">
-            {trainingData?.videos
-              .filter((v) => v.youtube_url)
-              .sort((a, b) => a.day_number - b.day_number)
-              .map((v) => (
-                <li key={`day-${v.day_number}`} className="flex items-center gap-3">
-                  <span className="flex h-7 w-14 shrink-0 items-center justify-center rounded bg-primary/15 text-[10px] font-bold tracking-wide text-primary">
-                    Day {v.day_number}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-muted-foreground">{v.title}</span>
-                  <a
-                    href={v.youtube_url!}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="shrink-0 rounded border border-primary/30 px-2.5 py-1 text-xs text-primary hover:bg-primary/10"
-                  >
-                    Open
-                  </a>
-                </li>
-              ))}
-            {CONTENT_VIDEO_LABELS.map(({ key, label }) => {
-              const url = appSettingsData?.settings[key]
-              if (!url) return null
-              return (
-                <li key={key} className="flex items-center gap-3">
-                  <span className="flex h-7 w-14 shrink-0 items-center justify-center rounded bg-amber-500/15 text-[10px] font-bold tracking-wide text-amber-400">
-                    Link
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-muted-foreground">{label}</span>
-                  <a
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="shrink-0 rounded border border-primary/30 px-2.5 py-1 text-xs text-primary hover:bg-primary/10"
-                  >
-                    Open
-                  </a>
-                </li>
-              )
-            })}
-          </ul>
+
+          {/* Mindset Lock */}
+          {MINDSET_LOCK_LINKS.some(({ key }) => appSettingsData?.settings[key]) ? (
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Mindset Lock</p>
+              <ul className="space-y-1.5 text-sm">
+                {MINDSET_LOCK_LINKS.map(({ key, label }) => {
+                  const url = appSettingsData?.settings[key]
+                  if (!url) return null
+                  return (
+                    <li key={key} className="flex items-center gap-3">
+                      <span className="flex h-7 w-14 shrink-0 items-center justify-center rounded bg-fuchsia-500/15 text-[10px] font-bold tracking-wide text-fuchsia-400">
+                        ML
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-muted-foreground">{label}</span>
+                      <a href={url} target="_blank" rel="noopener noreferrer"
+                        className="shrink-0 rounded border border-primary/30 px-2.5 py-1 text-xs text-primary hover:bg-primary/10">
+                        Open
+                      </a>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          ) : null}
+
+          {/* Day 2 – Day 6 */}
+          {[2, 3, 4, 5, 6].map((dayNum) => {
+            const video = trainingData?.videos.find((v) => v.day_number === dayNum)
+            const extras = DAY_EXTRA_LINKS[dayNum] ?? []
+            const extraItems = extras.filter(({ key }) => appSettingsData?.settings[key])
+            if (!video?.youtube_url && extraItems.length === 0) return null
+            return (
+              <div key={dayNum} className="space-y-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Day {dayNum}{video?.title ? ` — ${video.title}` : ''}
+                </p>
+                <ul className="space-y-1.5 text-sm">
+                  {video?.youtube_url ? (
+                    <li className="flex items-center gap-3">
+                      <span className="flex h-7 w-14 shrink-0 items-center justify-center rounded bg-primary/15 text-[10px] font-bold tracking-wide text-primary">
+                        Video
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-muted-foreground">Training Video</span>
+                      <a href={video.youtube_url} target="_blank" rel="noopener noreferrer"
+                        className="shrink-0 rounded border border-primary/30 px-2.5 py-1 text-xs text-primary hover:bg-primary/10">
+                        Open
+                      </a>
+                    </li>
+                  ) : null}
+                  {extraItems.map(({ key, label }) => (
+                    <li key={key} className="flex items-center gap-3">
+                      <span className="flex h-7 w-14 shrink-0 items-center justify-center rounded bg-amber-500/15 text-[10px] font-bold tracking-wide text-amber-400">
+                        Link
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-muted-foreground">{label}</span>
+                      <a href={appSettingsData!.settings[key]} target="_blank" rel="noopener noreferrer"
+                        className="shrink-0 rounded border border-primary/30 px-2.5 py-1 text-xs text-primary hover:bg-primary/10">
+                        Open
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )
+          })}
         </div>
       ) : null}
 
