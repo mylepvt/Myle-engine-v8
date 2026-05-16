@@ -138,6 +138,7 @@ export function BatchWatchPage() {
 
   const isDay6 = slot?.startsWith('d6_') ?? false
   const [liveCount, setLiveCount] = useState(() => Math.floor(Math.random() * 41) + 60)
+  const [nowMs, setNowMs] = useState(() => Date.now())
 
   const loadPayload = async () => {
     if (!slot || !version || !token) return
@@ -190,6 +191,12 @@ export function BatchWatchPage() {
     return () => clearInterval(id)
   }, [isDay6])
 
+  // 1-second ticker for waiting room countdown
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
   const playerEmbedUrl = useMemo(
     () => buildEmbeddableVideoUrl(toAbsoluteUrl(data?.youtube_url), data?.video_id),
     [data?.video_id, data?.youtube_url],
@@ -202,6 +209,19 @@ export function BatchWatchPage() {
   const watchComplete = !!data?.watch_complete
   const accessOpen = data?.access_open !== false
   const submission = data?.submission
+
+  const opensAtMs = data?.opens_at ? new Date(data.opens_at).getTime() : null
+  const msUntilOpen = opensAtMs != null ? Math.max(0, opensAtMs - nowMs) : null
+  const startingSoon = msUntilOpen != null && msUntilOpen <= 15 * 60 * 1000
+  const countdownLabel = (() => {
+    if (msUntilOpen == null || msUntilOpen <= 0) return null
+    const totalSec = Math.ceil(msUntilOpen / 1000)
+    const h = Math.floor(totalSec / 3600)
+    const m = Math.floor((totalSec % 3600) / 60)
+    const s = totalSec % 60
+    if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  })()
 
   const handleMarkComplete = async () => {
     if (!slot || !token || completionBusy) return
@@ -352,15 +372,30 @@ export function BatchWatchPage() {
                     playLabel="Start batch now"
                   />
                 ) : (
-                  <div className="rounded-[1.6rem] border border-amber-300/20 bg-amber-400/[0.08] px-5 py-6 text-left">
-                    <p className="text-sm font-semibold uppercase tracking-[0.24em] text-amber-200/80">Scheduled access</p>
-                    <p className="mt-3 text-2xl font-semibold text-white">This batch room is locked for now</p>
+                  <div className={`rounded-[1.6rem] border px-5 py-6 text-left transition-colors ${startingSoon ? 'border-emerald-400/30 bg-emerald-400/[0.07]' : 'border-amber-300/20 bg-amber-400/[0.08]'}`}>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className={`text-sm font-semibold uppercase tracking-[0.24em] ${startingSoon ? 'text-emerald-300/80' : 'text-amber-200/80'}`}>
+                        {startingSoon ? 'Starting soon' : 'Scheduled access'}
+                      </p>
+                      {countdownLabel && (
+                        <p className={`font-mono text-3xl font-bold tabular-nums ${startingSoon ? 'text-emerald-300' : 'text-white'}`}>
+                          {countdownLabel}
+                        </p>
+                      )}
+                    </div>
+                    <p className="mt-3 text-2xl font-semibold text-white">
+                      {startingSoon ? 'Session is about to begin!' : 'This room is locked for now'}
+                    </p>
                     <p className="mt-3 max-w-2xl text-ds-body text-white/72">
-                      {data.gate_message ?? 'Please open this room only at your scheduled batch time so the correct live session appears.'}
+                      {startingSoon
+                        ? 'Stay on this page — the video will unlock automatically when the session starts.'
+                        : (data.gate_message ?? 'Please open this room only at your scheduled batch time.')}
                     </p>
-                    <p className="mt-3 text-sm text-amber-100">
-                      Opens at {formatGateTime(data.opens_at)}
-                    </p>
+                    {!startingSoon && (
+                      <p className="mt-3 text-sm text-amber-100">
+                        Opens at {formatGateTime(data.opens_at)}
+                      </p>
+                    )}
                   </div>
                 )}
 
