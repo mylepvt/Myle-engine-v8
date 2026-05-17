@@ -28,3 +28,10 @@ def test_data_deletion_page_is_public_and_actionable() -> None:
     assert response.status_code == 200
     assert "User Data Deletion Instructions" in response.text
     assert "usually within 30 days" in response.text
+
+
+def test_short_data_deletion_alias_resolves() -> None:
+    response = client.get("/delete")
+
+    assert response.status_code == 200
+    assert "User Data Deletion Instructions" in response.text
