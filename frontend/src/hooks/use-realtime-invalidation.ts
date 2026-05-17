@@ -66,6 +66,8 @@ function applyTopics(qc: QueryClient, topics: string[]) {
   if (t.has('team_tracking') || t.has('team_tracking.presence')) {
     void qc.invalidateQueries({ queryKey: ['team', 'tracking'] })
     void qc.invalidateQueries({ queryKey: ['admin', 'leader-health'] })
+    void qc.invalidateQueries({ queryKey: ['admin', 'online-now'] })
+    void qc.invalidateQueries({ queryKey: ['admin', 'today-pulse'] })
   }
   if (t.has('wallet')) {
     void qc.invalidateQueries({ queryKey: ['wallet'] })

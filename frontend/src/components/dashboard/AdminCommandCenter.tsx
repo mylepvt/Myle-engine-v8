@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo, useState, type ReactNode } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -40,6 +40,8 @@ import { useActiveWatchersQuery } from '@/hooks/use-enroll-query'
 import { useEnrollmentApprovalsPendingQuery, useTeamMembersQuery, useUpdateMemberComplianceMutation, type TeamMemberPublic } from '@/hooks/use-team-query'
 import { useTeamReportsQuery } from '@/hooks/use-team-reports-query'
 import { useLeaderHealthQuery, type LeaderHealthItem } from '@/hooks/use-admin-leader-health-query'
+import { useOnlineNowQuery, type OnlineUserItem } from '@/hooks/use-online-now-query'
+import { useTodayPulseQuery, type ReportStatusItem, type ZeroActivityItem } from '@/hooks/use-today-pulse-query'
 import { useWalletRechargeRequestsQuery } from '@/hooks/use-wallet-recharge-query'
 import { useInvoicesQuery } from '@/hooks/use-invoices-query'
 import { useLeadControlQuery } from '@/hooks/use-lead-control-query'
@@ -285,6 +287,197 @@ function DeskShortcut({
       </div>
       <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-primary/70" />
     </Link>
+  )
+}
+
+function LiveOnlinePanel({ users }: { users: OnlineUserItem[] }) {
+  const working = users.filter((u) => u.is_working)
+  const idle = users.filter((u) => !u.is_working)
+
+  const Row = ({ u }: { u: OnlineUserItem }) => (
+    <div className="flex items-center gap-2 py-1.5">
+      <span
+        className={`size-1.5 shrink-0 rounded-full ${
+          u.presence_status === 'online' ? 'bg-emerald-400' : 'bg-yellow-400'
+        }`}
+      />
+      <span className="min-w-0 flex-1 truncate text-xs text-foreground">{u.name}</span>
+      <span className="shrink-0 text-[10px] text-muted-foreground/60 capitalize">{u.role}</span>
+      {u.is_working ? (
+        <span className="shrink-0 text-[10px] text-emerald-400">
+          {u.calls_today > 0 ? `${u.calls_today}c` : ''}{u.leads_today > 0 ? ` ${u.leads_today}l` : ''}
+        </span>
+      ) : (
+        <span className="shrink-0 text-[10px] text-muted-foreground/40">idle</span>
+      )}
+    </div>
+  )
+
+  return (
+    <div className="max-h-72 overflow-y-auto divide-y divide-border/40">
+      {working.length > 0 && (
+        <div className="pb-1">
+          <p className="sticky top-0 bg-card px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-emerald-400">
+            Working ({working.length})
+          </p>
+          <div className="px-3">
+            {working.map((u) => <Row key={u.user_id} u={u} />)}
+          </div>
+        </div>
+      )}
+      {idle.length > 0 && (
+        <div className="pb-1">
+          <p className="sticky top-0 bg-card px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60">
+            Not working ({idle.length})
+          </p>
+          <div className="px-3">
+            {idle.map((u) => <Row key={u.user_id} u={u} />)}
+          </div>
+        </div>
+      )}
+      {users.length === 0 && (
+        <p className="px-3 py-4 text-center text-xs text-muted-foreground/50">No one online</p>
+      )}
+    </div>
+  )
+}
+
+// ── Pulse chip — reusable clickable stat with dropdown ───────────────────────
+function PulseChip({
+  icon,
+  label,
+  colorClass,
+  children,
+}: {
+  icon: string
+  label: string
+  colorClass: string
+  children?: React.ReactNode
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => children && setOpen((v) => !v)}
+        className={`flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] font-medium transition-colors ${colorClass} ${children ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}`}
+      >
+        <span>{icon}</span>
+        <span>{label}</span>
+      </button>
+      {open && children && (
+        <div className="absolute left-0 top-full z-50 mt-1.5 w-64 rounded border border-border/60 bg-card shadow-xl">
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AdminPulseBar({ pulse }: { pulse: ReturnType<typeof useTodayPulseQuery> }) {
+  const data = pulse.data
+
+  const submitted = (data?.report_members ?? []).filter((r) => r.submitted)
+  const notSubmitted = (data?.report_members ?? []).filter((r) => !r.submitted)
+  const zeroActivity = data?.zero_activity ?? []
+
+  const ReportRow = ({ r }: { r: ReportStatusItem }) => (
+    <div className="flex items-center gap-2 py-1.5">
+      <span className={`size-1.5 shrink-0 rounded-full ${r.submitted ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+      <span className="min-w-0 flex-1 truncate text-xs text-foreground">{r.name}</span>
+      <span className="shrink-0 text-[10px] capitalize text-muted-foreground/60">{r.role}</span>
+      {r.submitted && r.calls_in_report > 0 && (
+        <span className="shrink-0 text-[10px] text-emerald-400">{r.calls_in_report}c</span>
+      )}
+    </div>
+  )
+
+  const ZeroRow = ({ z }: { z: ZeroActivityItem }) => (
+    <div className="flex items-center gap-2 py-1.5">
+      <span className="size-1.5 shrink-0 rounded-full bg-amber-400" />
+      <span className="min-w-0 flex-1 truncate text-xs text-foreground">{z.name}</span>
+      <span className="shrink-0 text-[10px] capitalize text-muted-foreground/60">{z.role}</span>
+      <span className="shrink-0 text-[10px] text-amber-400">0 activity</span>
+    </div>
+  )
+
+  if (!data && pulse.isLoading) return null
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded border border-border/40 bg-card/50 px-3 py-2">
+      {/* Static stats — no dropdown */}
+      <PulseChip
+        icon="📞"
+        label={`${data?.calls_today ?? 0} calls`}
+        colorClass="border-border/40 text-foreground/70"
+      />
+      <PulseChip
+        icon="💰"
+        label={`${data?.enrollments_today ?? 0} enrollments`}
+        colorClass="border-border/40 text-foreground/70"
+      />
+      <PulseChip
+        icon="➕"
+        label={`${data?.leads_today ?? 0} leads`}
+        colorClass="border-border/40 text-foreground/70"
+      />
+
+      {/* Reports — clickable dropdown */}
+      <PulseChip
+        icon="📋"
+        label={`${data?.reports_submitted ?? 0}/${data?.reports_total ?? 0} reports`}
+        colorClass={
+          (data?.reports_submitted ?? 0) < (data?.reports_total ?? 1)
+            ? 'border-amber-400/30 bg-amber-400/[0.06] text-amber-300'
+            : 'border-emerald-400/30 bg-emerald-500/[0.06] text-emerald-300'
+        }
+      >
+        <div className="max-h-72 overflow-y-auto divide-y divide-border/40">
+          {submitted.length > 0 && (
+            <div className="pb-1">
+              <p className="sticky top-0 bg-card px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-emerald-400">
+                Submitted ({submitted.length})
+              </p>
+              <div className="px-3">{submitted.map((r) => <ReportRow key={r.user_id} r={r} />)}</div>
+            </div>
+          )}
+          {notSubmitted.length > 0 && (
+            <div className="pb-1">
+              <p className="sticky top-0 bg-card px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-amber-400">
+                Not yet ({notSubmitted.length})
+              </p>
+              <div className="px-3">{notSubmitted.map((r) => <ReportRow key={r.user_id} r={r} />)}</div>
+            </div>
+          )}
+        </div>
+      </PulseChip>
+
+      {/* Zero-activity — only show if there are any */}
+      {zeroActivity.length > 0 && (
+        <PulseChip
+          icon="⚠️"
+          label={`${zeroActivity.length} online · no work`}
+          colorClass="border-amber-400/30 bg-amber-400/[0.06] text-amber-300"
+        >
+          <div className="max-h-56 overflow-y-auto">
+            <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-amber-400">
+              Online but 0 activity today
+            </p>
+            <div className="px-3 pb-2">{zeroActivity.map((z) => <ZeroRow key={z.user_id} z={z} />)}</div>
+          </div>
+        </PulseChip>
+      )}
+    </div>
   )
 }
 
@@ -584,6 +777,21 @@ export function AdminCommandCenter({ firstName }: Props) {
   const liveWatcherCount = activeWatchers.data?.total ?? 0
   const premiereActiveCount = (premiereViewers.data ?? []).filter((v) => isActiveNow(v.last_seen_at)).length
 
+  const onlineNow = useOnlineNowQuery()
+  const todayPulse = useTodayPulseQuery()
+  const [onlinePanelOpen, setOnlinePanelOpen] = useState(false)
+  const onlinePanelRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!onlinePanelOpen) return
+    const handler = (e: MouseEvent) => {
+      if (onlinePanelRef.current && !onlinePanelRef.current.contains(e.target as Node)) {
+        setOnlinePanelOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [onlinePanelOpen])
+
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       {/* ── Compact operational summary ── */}
@@ -620,9 +828,34 @@ export function AdminCommandCenter({ firstName }: Props) {
                 </span>
               )}
             </div>
-            <p className="mt-0.5 text-[11px] text-muted-foreground/60">Queues · leads · team · finance · content · audit</p>
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
+            {/* Live online counter */}
+            <div ref={onlinePanelRef} className="relative">
+              <button
+                onClick={() => setOnlinePanelOpen((v) => !v)}
+                className="flex items-center gap-1 rounded border border-emerald-400/20 bg-emerald-500/[0.07] px-1.5 py-0.5 text-[10px] hover:bg-emerald-500/[0.12] transition-colors"
+              >
+                <span className="relative flex size-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
+                  <span className="relative inline-flex size-1.5 rounded-full bg-emerald-500" />
+                </span>
+                <span className="font-semibold text-emerald-300">
+                  {onlineNow.data?.online_count ?? 0} online
+                </span>
+              </button>
+              {onlinePanelOpen && (
+                <div className="absolute right-0 top-full z-50 mt-1.5 w-64 rounded border border-border/60 bg-card shadow-xl">
+                  <div className="flex items-center justify-between border-b border-border/40 px-3 py-2">
+                    <span className="text-[11px] font-semibold text-foreground">Online now</span>
+                    <span className="text-[10px] text-muted-foreground/60">
+                      {onlineNow.data?.working_count ?? 0} working · {onlineNow.data?.not_working_count ?? 0} idle
+                    </span>
+                  </div>
+                  <LiveOnlinePanel users={onlineNow.data?.users ?? []} />
+                </div>
+              )}
+            </div>
             <Button asChild variant="secondary" size="sm" className="h-7 px-2.5 text-xs">
               <Link to="/dashboard/work/leads">Open Leads</Link>
             </Button>
