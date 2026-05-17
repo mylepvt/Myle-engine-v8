@@ -1,168 +1,227 @@
-import { TrendingUp, TrendingDown, AlertTriangle, Users, Clock, Activity } from 'lucide-react'
-import { Link } from 'react-router-dom'
-import { useStageCounts } from '@/hooks/use-stage-counts-query'
-import { useLeaderHealthQuery } from '@/hooks/use-admin-leader-health-query'
+import { useState, useRef, useEffect } from 'react'
+import { PhoneCall, TrendingUp, Users, ClipboardList } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useTodayPulseQuery, type ReportStatusItem, type ZeroActivityItem } from '@/hooks/use-today-pulse-query'
 
 function KpiCard({
   label,
   value,
   sub,
-  delta,
-  deltaUp,
   icon,
   urgent,
-  to,
+  onClick,
+  clickable,
 }: {
   label: string
   value: string | number
   sub: string
-  delta?: string
-  deltaUp?: boolean
   icon: React.ReactNode
   urgent?: boolean
-  to: string
+  onClick?: () => void
+  clickable?: boolean
 }) {
-  return (
-    <Link
-      to={to}
-      className={cn(
-        'flex flex-col gap-2 rounded border px-4 py-3 no-underline transition-all duration-150 hover:border-white/20 hover:brightness-110 active:brightness-125 cursor-pointer',
-        urgent
-          ? 'border-red-500/20 bg-red-500/[0.06]'
-          : 'border-white/[0.06] bg-white/[0.03]',
-      )}
-    >
+  const base = cn(
+    'flex flex-col gap-2 rounded border px-4 py-3 transition-all duration-150',
+    urgent ? 'border-amber-500/20 bg-amber-500/[0.06]' : 'border-white/[0.06] bg-white/[0.03]',
+    clickable && 'cursor-pointer hover:border-white/20 hover:brightness-110 active:brightness-125',
+  )
+  const inner = (
+    <>
       <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">
-        <span className={urgent ? 'text-red-400/70' : 'text-muted-foreground/40'}>{icon}</span>
+        <span className={urgent ? 'text-amber-400/70' : 'text-muted-foreground/40'}>{icon}</span>
         {label}
       </div>
-      <div className="flex items-end gap-2">
-        <span className={cn('text-[1.625rem] font-bold leading-none tabular-nums', urgent ? 'text-red-300' : 'text-foreground')}>
-          {value}
-        </span>
-        {delta && (
-          <div className={cn('mb-0.5 flex items-center gap-0.5 text-[11px] font-semibold', deltaUp ? 'text-emerald-400' : 'text-red-400')}>
-            {deltaUp ? <TrendingUp className="size-3" /> : <TrendingDown className="size-3" />}
-            {delta}
-          </div>
-        )}
-      </div>
+      <span className={cn('text-[1.625rem] font-bold leading-none tabular-nums', urgent ? 'text-amber-300' : 'text-foreground')}>
+        {value}
+      </span>
       <p className="text-[10px] text-muted-foreground/40">{sub}</p>
-    </Link>
+    </>
+  )
+  if (onClick) {
+    return <button className={base} onClick={onClick}>{inner}</button>
+  }
+  return <div className={base}>{inner}</div>
+}
+
+function ReportDropdown({ members }: { members: ReportStatusItem[] }) {
+  const submitted = members.filter((r) => r.submitted)
+  const pending = members.filter((r) => !r.submitted)
+  const Row = ({ r }: { r: ReportStatusItem }) => (
+    <div className="flex items-center gap-2 py-1.5">
+      <span className={`size-1.5 shrink-0 rounded-full ${r.submitted ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+      <span className="min-w-0 flex-1 truncate text-xs text-foreground">{r.name}</span>
+      <span className="shrink-0 text-[10px] capitalize text-muted-foreground/50">{r.role}</span>
+      {r.submitted && r.calls_in_report > 0 && (
+        <span className="shrink-0 text-[10px] text-emerald-400">{r.calls_in_report}c</span>
+      )}
+    </div>
+  )
+  return (
+    <div className="max-h-72 overflow-y-auto divide-y divide-border/40">
+      {submitted.length > 0 && (
+        <div className="pb-1">
+          <p className="sticky top-0 bg-card px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-emerald-400">
+            Submitted ({submitted.length})
+          </p>
+          <div className="px-3">{submitted.map((r) => <Row key={r.user_id} r={r} />)}</div>
+        </div>
+      )}
+      {pending.length > 0 && (
+        <div className="pb-1">
+          <p className="sticky top-0 bg-card px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-amber-400">
+            Pending ({pending.length})
+          </p>
+          <div className="px-3">{pending.map((r) => <Row key={r.user_id} r={r} />)}</div>
+        </div>
+      )}
+    </div>
   )
 }
 
-function StuckChip({ label, value, urgent, to }: { label: string; value: number; urgent?: boolean; to: string }) {
+function ZeroActivityDropdown({ users }: { users: ZeroActivityItem[] }) {
   return (
-    <Link
-      to={to}
-      className={cn(
-        'flex flex-col gap-1 rounded border px-3 py-2 no-underline transition-all duration-150 hover:border-white/20 hover:brightness-110 active:brightness-125 cursor-pointer',
-        urgent && value > 0 ? 'border-amber-500/20 bg-amber-500/[0.05]' : 'border-white/[0.04] bg-white/[0.02]',
+    <div className="max-h-56 overflow-y-auto">
+      <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-amber-400">
+        Online · 0 activity today
+      </p>
+      <div className="px-3 pb-2">
+        {users.map((z) => (
+          <div key={z.user_id} className="flex items-center gap-2 py-1.5">
+            <span className="size-1.5 shrink-0 rounded-full bg-amber-400" />
+            <span className="min-w-0 flex-1 truncate text-xs text-foreground">{z.name}</span>
+            <span className="shrink-0 text-[10px] capitalize text-muted-foreground/50">{z.role}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function PopoverCard({
+  label,
+  value,
+  sub,
+  icon,
+  urgent,
+  children,
+}: {
+  label: string
+  value: string | number
+  sub: string
+  icon: React.ReactNode
+  urgent?: boolean
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative">
+      <KpiCard label={label} value={value} sub={sub} icon={icon} urgent={urgent} clickable onClick={() => setOpen((v) => !v)} />
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-1.5 w-64 rounded border border-border/60 bg-card shadow-xl">
+          {children}
+        </div>
       )}
-    >
-      <p className={cn('text-[9px] font-semibold uppercase tracking-wider', urgent && value > 0 ? 'text-amber-400/70' : 'text-muted-foreground/40')}>
-        {label}
-      </p>
-      <p className={cn('text-[18px] font-bold tabular-nums leading-none', urgent && value > 0 ? 'text-amber-300' : 'text-foreground')}>
-        {value}
-        {value > 0 && urgent && (
-          <span className="ml-1 text-[11px] font-semibold text-amber-400">↑ {Math.floor(value * 0.18)}</span>
-        )}
-      </p>
-    </Link>
+    </div>
   )
 }
 
 export function OpsKpiBar() {
-  const stageCounts = useStageCounts()
-  const leaderHealth = useLeaderHealthQuery()
-  const counts = stageCounts.data?.counts ?? {}
-  const todayMov = stageCounts.data?.today_movements ?? {}
+  const pulse = useTodayPulseQuery()
+  const data = pulse.data
 
-  // Live active users: sum of online team members across all leaders
-  const liveActiveUsers = (leaderHealth.data?.leaders ?? []).reduce(
-    (sum, l) => sum + l.team_online_count,
-    0,
-  )
-
-  // Movement rate: leads with activity today / total active
-  const totalMoved = Object.values(todayMov).reduce((a, b) => a + b, 0)
-  const totalActive = stageCounts.data?.total ?? 1
-  const movementRate = totalActive > 0 ? ((totalMoved / totalActive) * 100).toFixed(1) : '0.0'
-
-  // Leads needing attention: at interview/day5 without movement + stale paid
-  const atInterview = counts['interview'] ?? 0
-  const atPaid = counts['paid'] ?? 0
-  const needAttention = atInterview + Math.floor(atPaid * 0.3)
-
-  // Bottleneck avg: stages with highest wait time proxy
-  const bottleneckCount = Math.max(atPaid, counts['mindset_lock'] ?? 0)
-  const bottleneckHours = bottleneckCount > 0 ? (18.6).toFixed(1) : '0'
-
-  // Stuck leads
-  const stuckAt24h = Math.floor(totalActive * 0.06)
-  const waitInterview = counts['interview'] ?? 0
-  const inactiveDay2 = Math.floor((counts['day2'] ?? 0) * 0.35)
-  const noActivity3d = Math.floor(totalActive * 0.007)
+  const reportsSubmitted = data?.reports_submitted ?? 0
+  const reportsTotal = data?.reports_total ?? 0
+  const reportsPending = reportsTotal - reportsSubmitted
+  const zeroActivity = data?.zero_activity ?? []
 
   return (
     <div className="space-y-3">
-      {/* Main KPI cards */}
+      {/* 4 KPI cards */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <KpiCard
-          label="Leads Needing Attention"
-          value={needAttention}
-          sub="Stuck at interview or proof pending"
-          delta={`${Math.floor(needAttention * 0.22)}`}
-          deltaUp={false}
-          icon={<AlertTriangle className="size-3" />}
-          urgent={needAttention > 20}
-          to="/dashboard/work/leads"
-        />
-        <KpiCard
-          label="Today's Movement Rate"
-          value={`${movementRate}%`}
-          sub="Leads with stage activity today"
-          delta={`${(parseFloat(movementRate) * 0.054).toFixed(1)}%`}
-          deltaUp
-          icon={<Activity className="size-3" />}
-          to="/dashboard/team/reports"
-        />
-        <KpiCard
-          label="Bottleneck Delay (Avg)"
-          value={`${bottleneckHours}h`}
-          sub="Avg time at highest-pressure stage"
-          delta={`${(parseFloat(bottleneckHours) * 0.11).toFixed(1)}h`}
-          deltaUp={false}
-          icon={<Clock className="size-3" />}
-          urgent={parseFloat(bottleneckHours) > 24}
-          to="/dashboard/system/lead-control"
-        />
-        <KpiCard
-          label="Live Active Users"
-          value={liveActiveUsers || '–'}
-          sub="Team members currently online"
-          delta={`${Math.max(0, Math.floor(liveActiveUsers * 0.09))}%`}
-          deltaUp
+          label="Leads Added"
+          value={data?.leads_today ?? '–'}
+          sub="New leads added today"
           icon={<Users className="size-3" />}
-          to="/dashboard/settings/all-members"
         />
+        <KpiCard
+          label="Calls Today"
+          value={data?.calls_today ?? '–'}
+          sub="Total calls logged by team"
+          icon={<PhoneCall className="size-3" />}
+        />
+        <KpiCard
+          label="Min. FLP Billing"
+          value={data?.flp_billing_count ?? '–'}
+          sub="Leads at payment stage now"
+          icon={<TrendingUp className="size-3" />}
+        />
+        <PopoverCard
+          label="Reports"
+          value={reportsTotal > 0 ? `${reportsSubmitted}/${reportsTotal}` : '–'}
+          sub={reportsPending > 0 ? `${reportsPending} pending submission` : 'All submitted'}
+          icon={<ClipboardList className="size-3" />}
+          urgent={reportsPending > 0}
+        >
+          <ReportDropdown members={data?.report_members ?? []} />
+        </PopoverCard>
       </div>
 
-      {/* Stuck leads chips */}
-      <div className="flex items-center gap-2">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40">
-          Stuck Leads
-        </span>
-        <div className="flex flex-1 gap-2 overflow-x-auto">
-          <StuckChip label=">24h In Stage" value={stuckAt24h} urgent to="/dashboard/work/leads" />
-          <StuckChip label="Waiting Interview" value={waitInterview} urgent to="/dashboard/work/leads" />
-          <StuckChip label="Inactive (Day 2+)" value={inactiveDay2} to="/dashboard/work/workboard" />
-          <StuckChip label="No Activity (3d+)" value={noActivity3d} to="/dashboard/work/leads" />
+      {/* Zero-activity row — only shows when there are members online with no work */}
+      {zeroActivity.length > 0 && (
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40">
+            No Activity
+          </span>
+          <div className="relative">
+            {/* inline popover trigger */}
+            <ZeroActivityInline users={zeroActivity} />
+          </div>
         </div>
-      </div>
+      )}
+    </div>
+  )
+}
+
+function ZeroActivityInline({ users }: { users: ZeroActivityItem[] }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 rounded border border-amber-500/20 bg-amber-500/[0.05] px-3 py-1.5 text-[11px] font-semibold text-amber-300 transition-colors hover:bg-amber-500/[0.1]"
+      >
+        <span className="relative flex size-1.5">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-60" />
+          <span className="relative inline-flex size-1.5 rounded-full bg-amber-400" />
+        </span>
+        {users.length} online · no work today
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-1.5 w-64 rounded border border-border/60 bg-card shadow-xl">
+          <ZeroActivityDropdown users={users} />
+        </div>
+      )}
     </div>
   )
 }
