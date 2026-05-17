@@ -64,7 +64,7 @@ function formatDateIST(iso: string): string {
 
 function useDay6ViewerCount(serverCount: number, state: string): number {
   const baseRef = useRef(serverCount || 68)
-  const [display, setDisplay] = useState(baseRef.current)
+  const [display, setDisplay] = useState(serverCount || 68)
 
   useEffect(() => {
     if (serverCount) baseRef.current = Math.min(100, Math.max(60, serverCount))

@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { Activity, PhoneCall, UserPlus, ArrowRightLeft, Wallet, CheckCircle2, XCircle } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Activity, UserPlus, ArrowRightLeft, Wallet, CheckCircle2, XCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -48,8 +48,9 @@ const ACTIVE_WINDOW_MS = 300_000 // 5 minutes = "recently active"
 export function LiveTeamActivity() {
   const entries = useAdminFeedStore((s) => s.entries)
 
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => { setNow(Date.now()) }, [entries])
   const { activeNow, recentActivity } = useMemo(() => {
-    const now = Date.now()
     const grouped = new Map<string, { name: string; entries: AdminActivityEntry[]; lastSeen: number }>()
 
     for (const entry of entries) {
@@ -64,7 +65,7 @@ export function LiveTeamActivity() {
     const activeNow: Array<{ name: string; action: string; description: string; lastSeen: number }> = []
     const recentActivity: Array<{ name: string; action: string; description: string; lastSeen: number }> = []
 
-    for (const [_, group] of grouped) {
+    for (const [, group] of grouped) {
       const latest = group.entries.sort((a, b) => b.timestamp - a.timestamp)[0]
       if (!latest) continue
       const item = {
@@ -84,7 +85,7 @@ export function LiveTeamActivity() {
     recentActivity.sort((a, b) => b.lastSeen - a.lastSeen)
 
     return { activeNow, recentActivity }
-  }, [entries])
+  }, [entries, now])
 
   return (
     <Card>

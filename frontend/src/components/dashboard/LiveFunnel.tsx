@@ -15,7 +15,7 @@ export function LiveFunnel() {
 
   return (
     <div className="space-y-1">
-      {stages.map((stage, i) => {
+      {stages.map((stage) => {
         const barWidth = Math.max((stage.count / maxCount) * MAX_BAR_WIDTH, 8)
         return (
           <div key={stage.key} className="group relative flex items-center gap-3 px-2 py-1.5 transition-colors hover:bg-white/[0.02]">
