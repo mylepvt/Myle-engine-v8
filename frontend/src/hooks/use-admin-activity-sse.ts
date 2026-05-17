@@ -70,7 +70,6 @@ function describeEvent(eventType: string, payload: Record<string, unknown>): str
   const leadName = (payload.lead_name as string | undefined) || ''
   const leadRef = leadName ? leadName : leadId ? `Lead #${leadId}` : ''
   const stage = payload.fastapi_stage ?? payload.stage
-  const crmStage = payload.crm_stage
 
   switch (true) {
     // commit_boundary = SQLAlchemy after-commit hook fires on every lead DB write

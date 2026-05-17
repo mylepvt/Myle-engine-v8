@@ -33,7 +33,7 @@ import { useContentLinksQuery } from '@/hooks/use-content-links-query'
 import { checklistForStage } from '@/lib/lead-process-map'
 import { LEAD_SLA_SMOOTH_REFRESH_MS, formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
 import { buildLiveSessionWhatsAppUrl, buildLiveSessionWhatsAppBusinessUrl, type LiveSessionSlotOption } from '@/lib/live-session-slots'
-import { whatsAppChatWithTextHref, whatsAppBusinessChatWithTextHref, whatsappDigits } from '@/lib/phone-links'
+import { whatsAppChatWithTextHref, whatsappDigits } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -124,27 +124,6 @@ function workboardBatchWhatsAppUrl(
   return url === '#' ? null : url
 }
 
-function workboardBatchWhatsAppBusinessUrl(
-  lead: LeadPublic,
-  dayKey: 1 | 2 | 3 | 4 | 5 | 6,
-  slot: 'M' | 'A' | 'E' | '6PM' | '8PM',
-  links?: { v1?: string; v2?: string },
-): string | null {
-  if (!whatsappDigits(lead.phone ?? '')) return null
-  const name = (lead.name || 'Participant').trim()
-  const isDay6 = dayKey === 6
-  const slotLabel = slot === 'M' ? 'Morning' : slot === 'A' ? 'Afternoon' : slot === 'E' ? 'Evening' : slot === '6PM' ? '6 PM' : '8 PM'
-  const linkBlock = isDay6
-    ? (links?.v1 ? `📹 Final Video:\n${links.v1}\n` : '')
-    : (links?.v1 ? `📹 Video 1:\n${links.v1}\n` : '') + (links?.v2 ? `📹 Video 2:\n${links.v2}\n` : '')
-  const msg =
-    `Hi ${name},\n` +
-    `Day ${dayKey} — ${slotLabel} Batch\n` +
-    (linkBlock ? `\n${linkBlock}` : '\n') +
-    (isDay6 ? 'Please watch the final video and reply ✅.' : 'Please watch both videos and reply ✅.')
-  const url = whatsAppBusinessChatWithTextHref(lead.phone, msg)
-  return url === '#' ? null : url
-}
 
 async function readResponseError(res: Response): Promise<string> {
   const body = await res.json().catch(() => ({}))

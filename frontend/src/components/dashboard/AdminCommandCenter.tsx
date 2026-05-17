@@ -32,7 +32,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAdminActivitySSE } from '@/hooks/use-admin-activity-sse'
 import { AdminActivityPanel } from '@/components/dashboard/AdminActivityPanel'
 import { LiveTeamActivity } from '@/components/dashboard/LiveTeamActivity'
-import { LiveFunnel } from '@/components/dashboard/LiveFunnel'
 import { LiveOpsDashboard } from '@/components/dashboard/live-ops/LiveOpsDashboard'
 import { useLiveDashboardStore } from '@/stores/live-dashboard-store'
 import { useAppSettingsQuery, useSystemUsersSummaryQuery } from '@/hooks/use-settings-query'
@@ -41,7 +40,6 @@ import { useEnrollmentApprovalsPendingQuery, useTeamMembersQuery, useUpdateMembe
 import { useTeamReportsQuery } from '@/hooks/use-team-reports-query'
 import { useLeaderHealthQuery, type LeaderHealthItem } from '@/hooks/use-admin-leader-health-query'
 import { useOnlineNowQuery, type OnlineUserItem } from '@/hooks/use-online-now-query'
-import { useTodayPulseQuery, type ReportStatusItem, type ZeroActivityItem } from '@/hooks/use-today-pulse-query'
 import { useWalletRechargeRequestsQuery } from '@/hooks/use-wallet-recharge-query'
 import { useInvoicesQuery } from '@/hooks/use-invoices-query'
 import { useLeadControlQuery } from '@/hooks/use-lead-control-query'
@@ -342,144 +340,6 @@ function LiveOnlinePanel({ users }: { users: OnlineUserItem[] }) {
   )
 }
 
-// ── Pulse chip — reusable clickable stat with dropdown ───────────────────────
-function PulseChip({
-  icon,
-  label,
-  colorClass,
-  children,
-}: {
-  icon: string
-  label: string
-  colorClass: string
-  children?: React.ReactNode
-}) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => children && setOpen((v) => !v)}
-        className={`flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] font-medium transition-colors ${colorClass} ${children ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}`}
-      >
-        <span>{icon}</span>
-        <span>{label}</span>
-      </button>
-      {open && children && (
-        <div className="absolute left-0 top-full z-50 mt-1.5 w-64 rounded border border-border/60 bg-card shadow-xl">
-          {children}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function AdminPulseBar({ pulse }: { pulse: ReturnType<typeof useTodayPulseQuery> }) {
-  const data = pulse.data
-
-  const submitted = (data?.report_members ?? []).filter((r) => r.submitted)
-  const notSubmitted = (data?.report_members ?? []).filter((r) => !r.submitted)
-  const zeroActivity = data?.zero_activity ?? []
-
-  const ReportRow = ({ r }: { r: ReportStatusItem }) => (
-    <div className="flex items-center gap-2 py-1.5">
-      <span className={`size-1.5 shrink-0 rounded-full ${r.submitted ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-      <span className="min-w-0 flex-1 truncate text-xs text-foreground">{r.name}</span>
-      <span className="shrink-0 text-[10px] capitalize text-muted-foreground/60">{r.role}</span>
-      {r.submitted && r.calls_in_report > 0 && (
-        <span className="shrink-0 text-[10px] text-emerald-400">{r.calls_in_report}c</span>
-      )}
-    </div>
-  )
-
-  const ZeroRow = ({ z }: { z: ZeroActivityItem }) => (
-    <div className="flex items-center gap-2 py-1.5">
-      <span className="size-1.5 shrink-0 rounded-full bg-amber-400" />
-      <span className="min-w-0 flex-1 truncate text-xs text-foreground">{z.name}</span>
-      <span className="shrink-0 text-[10px] capitalize text-muted-foreground/60">{z.role}</span>
-      <span className="shrink-0 text-[10px] text-amber-400">0 activity</span>
-    </div>
-  )
-
-  if (!data && pulse.isLoading) return null
-
-  return (
-    <div className="flex flex-wrap items-center gap-2 rounded border border-border/40 bg-card/50 px-3 py-2">
-      {/* Static stats — no dropdown */}
-      <PulseChip
-        icon="📞"
-        label={`${data?.calls_today ?? 0} calls`}
-        colorClass="border-border/40 text-foreground/70"
-      />
-      <PulseChip
-        icon="💰"
-        label={`${data?.enrollments_today ?? 0} enrollments`}
-        colorClass="border-border/40 text-foreground/70"
-      />
-      <PulseChip
-        icon="➕"
-        label={`${data?.leads_today ?? 0} leads`}
-        colorClass="border-border/40 text-foreground/70"
-      />
-
-      {/* Reports — clickable dropdown */}
-      <PulseChip
-        icon="📋"
-        label={`${data?.reports_submitted ?? 0}/${data?.reports_total ?? 0} reports`}
-        colorClass={
-          (data?.reports_submitted ?? 0) < (data?.reports_total ?? 1)
-            ? 'border-amber-400/30 bg-amber-400/[0.06] text-amber-300'
-            : 'border-emerald-400/30 bg-emerald-500/[0.06] text-emerald-300'
-        }
-      >
-        <div className="max-h-72 overflow-y-auto divide-y divide-border/40">
-          {submitted.length > 0 && (
-            <div className="pb-1">
-              <p className="sticky top-0 bg-card px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-emerald-400">
-                Submitted ({submitted.length})
-              </p>
-              <div className="px-3">{submitted.map((r) => <ReportRow key={r.user_id} r={r} />)}</div>
-            </div>
-          )}
-          {notSubmitted.length > 0 && (
-            <div className="pb-1">
-              <p className="sticky top-0 bg-card px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-amber-400">
-                Not yet ({notSubmitted.length})
-              </p>
-              <div className="px-3">{notSubmitted.map((r) => <ReportRow key={r.user_id} r={r} />)}</div>
-            </div>
-          )}
-        </div>
-      </PulseChip>
-
-      {/* Zero-activity — only show if there are any */}
-      {zeroActivity.length > 0 && (
-        <PulseChip
-          icon="⚠️"
-          label={`${zeroActivity.length} online · no work`}
-          colorClass="border-amber-400/30 bg-amber-400/[0.06] text-amber-300"
-        >
-          <div className="max-h-56 overflow-y-auto">
-            <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-amber-400">
-              Online but 0 activity today
-            </p>
-            <div className="px-3 pb-2">{zeroActivity.map((z) => <ZeroRow key={z.user_id} z={z} />)}</div>
-          </div>
-        </PulseChip>
-      )}
-    </div>
-  )
-}
 
 function LeadResultRow({ lead }: { lead: LeadPublic }) {
   return (
@@ -778,7 +638,6 @@ export function AdminCommandCenter({ firstName }: Props) {
   const premiereActiveCount = (premiereViewers.data ?? []).filter((v) => isActiveNow(v.last_seen_at)).length
 
   const onlineNow = useOnlineNowQuery()
-  const todayPulse = useTodayPulseQuery()
   const [onlinePanelOpen, setOnlinePanelOpen] = useState(false)
   const onlinePanelRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
