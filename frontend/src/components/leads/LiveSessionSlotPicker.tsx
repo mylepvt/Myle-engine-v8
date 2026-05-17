@@ -33,11 +33,11 @@ export function LiveSessionSlotPicker({ open, busy = false, day = 1, onClose, on
   const canConfirm = !!effectiveOption && !busy
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 px-4 pb-6 sm:items-center sm:pb-0">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-sm flex flex-col overflow-hidden rounded-[2rem] border border-white/[0.09] bg-[#0d1526] shadow-[0_40px_120px_-40px_rgba(0,0,0,0.9)] max-h-[calc(100svh-3rem)]"
+        className="w-full max-w-sm flex flex-col overflow-hidden rounded-[2rem] border border-white/[0.09] bg-[#0d1526] shadow-[0_40px_120px_-40px_rgba(0,0,0,0.9)] max-h-[calc(100dvh-7rem)]"
         style={{
           background: 'linear-gradient(160deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%), #0d1526',
         }}
