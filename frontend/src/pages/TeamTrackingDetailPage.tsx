@@ -177,9 +177,9 @@ function ScoreRing({ score, band }: { score: number; band: 'low' | 'medium' | 'h
   const offset = C * (1 - Math.max(0, Math.min(100, score)) / 100)
 
   const ringColor =
-    band === 'high' ? 'var(--success)' :
-    band === 'medium' ? 'var(--warning)' :
-    'var(--destructive)'
+    band === 'high' ? '#22c55e' :
+    band === 'medium' ? '#f59e0b' :
+    '#ef4444'
 
   return (
     <div className="relative flex items-center justify-center">
@@ -221,13 +221,13 @@ function TrendBars({ trend }: { trend: TeamTrackingTrendPoint[] }) {
       {/* Legend */}
       <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block size-2 rounded-full bg-emerald-400/80" />Calls
+          <span className="inline-block size-2 rounded-full bg-emerald-400" />Calls
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block size-2 rounded-full bg-primary/80" />Leads
+          <span className="inline-block size-2 rounded-full bg-violet-400" />Leads
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block size-2 rounded-full bg-amber-400/80" />Follow-ups
+          <span className="inline-block size-2 rounded-full bg-amber-400" />Follow-ups
         </span>
       </div>
 
@@ -241,9 +241,9 @@ function TrendBars({ trend }: { trend: TeamTrackingTrendPoint[] }) {
           return (
             <div key={point.date} className="flex flex-1 flex-col items-center gap-1">
               <div className="flex w-full items-end gap-px" style={{ height: '72px' }}>
-                <div className="flex-1 rounded-sm bg-emerald-400/65 transition-all duration-500" style={{ height: `${cH}%` }} />
-                <div className="flex-1 rounded-sm bg-primary/65 transition-all duration-500" style={{ height: `${lH}%` }} />
-                <div className="flex-1 rounded-sm bg-amber-400/65 transition-all duration-500" style={{ height: `${fH}%` }} />
+                <div className="flex-1 rounded-sm bg-emerald-400/80 transition-all duration-500" style={{ height: `${cH}%` }} />
+                <div className="flex-1 rounded-sm bg-violet-400/80 transition-all duration-500" style={{ height: `${lH}%` }} />
+                <div className="flex-1 rounded-sm bg-amber-400/80 transition-all duration-500" style={{ height: `${fH}%` }} />
               </div>
               {/* Score dot */}
               <div
@@ -279,45 +279,42 @@ function TrendBars({ trend }: { trend: TeamTrackingTrendPoint[] }) {
 // ── Activity Funnel ───────────────────────────────────────────────────────
 
 function ActivityFunnel({ member }: { member: TeamTrackingMemberSummary }) {
-  const base = Math.max(member.calls_count, 1)
+  const base = Math.max(member.calls_count, member.leads_added_count, member.followups_done_count, 1)
   const steps = [
     {
       label: 'Calls Made',
       value: member.calls_count,
-      pct: 100,
-      barClass: 'bg-emerald-400/25 border-emerald-400/30',
+      pct: Math.round((member.calls_count / base) * 100),
+      barClass: 'bg-emerald-400/30 border-emerald-400/40',
       textClass: 'text-emerald-400',
     },
     {
       label: 'Follow-ups Done',
       value: member.followups_done_count,
       pct: Math.round((member.followups_done_count / base) * 100),
-      barClass: 'bg-primary/20 border-primary/25',
-      textClass: 'text-primary',
+      barClass: 'bg-violet-400/30 border-violet-400/40',
+      textClass: 'text-violet-400',
     },
     {
       label: 'Leads Added',
       value: member.leads_added_count,
       pct: Math.round((member.leads_added_count / base) * 100),
-      barClass: 'bg-violet-400/20 border-violet-400/25',
-      textClass: 'text-violet-400',
+      barClass: 'bg-amber-400/30 border-amber-400/40',
+      textClass: 'text-amber-400',
     },
   ]
 
   return (
     <div className="space-y-2">
-      {steps.map((step, i) => (
+      {steps.map((step) => (
         <div key={step.label}>
           <div className="mb-1 flex items-center justify-between text-[11px]">
             <span className="text-muted-foreground">{step.label}</span>
-            <div className="flex items-center gap-2">
-              <span className={cn('font-bold tabular-nums', step.textClass)}>{step.value}</span>
-              {i > 0 && <span className="text-[10px] text-muted-foreground/50">{step.pct}%</span>}
-            </div>
+            <span className={cn('font-bold tabular-nums', step.textClass)}>{step.value}</span>
           </div>
-          <div className="h-4 overflow-hidden rounded bg-muted/30">
+          <div className="h-3.5 overflow-hidden rounded-full bg-muted/20">
             <div
-              className={cn('h-full rounded border transition-all duration-700', step.barClass)}
+              className={cn('h-full rounded-full border transition-all duration-700', step.barClass)}
               style={{ width: step.value > 0 ? `${Math.max(step.pct, 4)}%` : '0%' }}
             />
           </div>
@@ -338,9 +335,9 @@ function WeeklyHeatmap({ trend }: { trend: TeamTrackingTrendPoint[] }) {
             <div
               className={cn(
                 'aspect-square w-full max-w-[38px] rounded border',
-                point.consistency_band === 'high' ? 'bg-emerald-400/35 border-emerald-400/25' :
-                point.consistency_band === 'medium' ? 'bg-amber-400/30 border-amber-400/20' :
-                'bg-rose-400/20 border-rose-400/15'
+                point.consistency_band === 'high' ? 'bg-emerald-400/50 border-emerald-400/40' :
+                point.consistency_band === 'medium' ? 'bg-amber-400/45 border-amber-400/35' :
+                'bg-rose-500/40 border-rose-500/30'
               )}
               title={`${formatShortDate(point.date)}: Score ${point.consistency_score}`}
             />
@@ -350,13 +347,13 @@ function WeeklyHeatmap({ trend }: { trend: TeamTrackingTrendPoint[] }) {
       </div>
       <div className="flex items-center gap-3 text-[10px] text-muted-foreground/60">
         <span className="flex items-center gap-1">
-          <span className="inline-block size-2 rounded-sm bg-emerald-400/35 border border-emerald-400/25" />High
+          <span className="inline-block size-2 rounded-sm bg-emerald-400/50 border border-emerald-400/40" />High
         </span>
         <span className="flex items-center gap-1">
-          <span className="inline-block size-2 rounded-sm bg-amber-400/30 border border-amber-400/20" />Medium
+          <span className="inline-block size-2 rounded-sm bg-amber-400/45 border border-amber-400/35" />Medium
         </span>
         <span className="flex items-center gap-1">
-          <span className="inline-block size-2 rounded-sm bg-rose-400/20 border border-rose-400/15" />Low
+          <span className="inline-block size-2 rounded-sm bg-rose-500/40 border border-rose-500/30" />Low
         </span>
       </div>
     </div>
