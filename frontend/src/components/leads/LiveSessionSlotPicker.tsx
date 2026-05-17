@@ -33,17 +33,24 @@ export function LiveSessionSlotPicker({ open, busy = false, day = 1, onClose, on
   const canConfirm = !!effectiveOption && !busy
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 px-4 pb-6 sm:items-center sm:pb-0">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+      style={{
+        paddingTop: 'max(1.5rem, env(safe-area-inset-top))',
+        paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))',
+      }}
+    >
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-sm overflow-hidden rounded-[2rem] border border-white/[0.09] bg-[#0d1526] shadow-[0_40px_120px_-40px_rgba(0,0,0,0.9)]"
+        className="w-full max-w-sm flex flex-col overflow-hidden rounded-[2rem] border border-white/[0.09] bg-[#0d1526] shadow-[0_40px_120px_-40px_rgba(0,0,0,0.9)]"
         style={{
           background: 'linear-gradient(160deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%), #0d1526',
+          maxHeight: 'calc(100dvh - max(3rem, env(safe-area-inset-top)) - max(3rem, env(safe-area-inset-bottom)))',
         }}
       >
         {/* Header */}
-        <div className="px-5 pt-5 pb-4">
+        <div className="px-5 pt-5 pb-4 flex-shrink-0">
           <p className="text-[10.5px] font-semibold uppercase tracking-[0.24em] text-[#7a94c4]">
             Day {day} Live Session
           </p>
@@ -54,7 +61,7 @@ export function LiveSessionSlotPicker({ open, busy = false, day = 1, onClose, on
         <div className="h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)]" />
 
         {/* Slot cards */}
-        <div className="px-4 py-4 space-y-2">
+        <div className="px-4 py-4 space-y-2 overflow-y-auto flex-1">
           {scheduleQuery.isPending ? (
             <div className="space-y-2">
               {[0, 1, 2].map(i => (
@@ -144,7 +151,7 @@ export function LiveSessionSlotPicker({ open, busy = false, day = 1, onClose, on
         <div className="h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.06),transparent)]" />
 
         {/* Footer */}
-        <div className="px-4 pb-5 pt-4 space-y-3">
+        <div className="px-4 pb-5 pt-4 space-y-3 flex-shrink-0">
           <label className="flex items-center gap-3 cursor-pointer">
             <div
               className="relative"

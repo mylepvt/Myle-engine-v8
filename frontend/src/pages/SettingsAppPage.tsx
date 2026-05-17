@@ -120,12 +120,15 @@ export function SettingsAppPage({ title }: Props) {
   const [premiereEdits, setPremiereEdits] = useState<Record<string, string>>({})
   const [contentEdits, setContentEdits] = useState<Record<string, string>>({})
   const [batchVideoEdits, setBatchVideoEdits] = useState<Record<string, string>>({})
+  const [waEdits, setWaEdits] = useState<Record<string, string>>({})
   const [premiereSaveMsg, setPremiereSaveMsg] = useState<string | null>(null)
   const [contentSaveMsg, setContentSaveMsg] = useState<string | null>(null)
   const [batchVideoSaveMsg, setBatchVideoSaveMsg] = useState<string | null>(null)
+  const [waSaveMsg, setWaSaveMsg] = useState<string | null>(null)
   const [premiereErrorMsg, setPremiereErrorMsg] = useState<string | null>(null)
   const [contentErrorMsg, setContentErrorMsg] = useState<string | null>(null)
   const [batchVideoErrorMsg, setBatchVideoErrorMsg] = useState<string | null>(null)
+  const [waErrorMsg, setWaErrorMsg] = useState<string | null>(null)
   const settingsSource = appSettingsData?.settings ?? {}
   const resolvedPremiereValue = (key: string): string =>
     Object.prototype.hasOwnProperty.call(premiereEdits, key)
@@ -135,6 +138,8 @@ export function SettingsAppPage({ title }: Props) {
     Object.prototype.hasOwnProperty.call(contentEdits, key) ? (contentEdits[key] ?? '') : (settingsSource[key] ?? '')
   const resolvedBatchVideoValue = (key: string): string =>
     Object.prototype.hasOwnProperty.call(batchVideoEdits, key) ? (batchVideoEdits[key] ?? '') : (settingsSource[key] ?? '')
+  const resolvedWaValue = (key: string): string =>
+    Object.prototype.hasOwnProperty.call(waEdits, key) ? (waEdits[key] ?? '') : (settingsSource[key] ?? '')
 
   const rows = useMemo(() => {
     const settings = appSettingsData?.settings ?? {}
@@ -201,6 +206,49 @@ export function SettingsAppPage({ title }: Props) {
       void refetchAppSettings()
     } catch (error) {
       setPremiereErrorMsg(error instanceof Error ? error.message : 'Could not update premiere settings.')
+    }
+  }
+
+  const WA_FIELDS = [
+    {
+      key: 'whatsapp.meta.phone_number_id',
+      label: 'Phone Number ID',
+      placeholder: '123456789012345',
+      help: 'Meta Developer Console → WhatsApp → API Setup → Phone Number ID.',
+    },
+    {
+      key: 'whatsapp.meta.access_token',
+      label: 'Access Token',
+      placeholder: 'EAAGm0PX4ZAisBOxxx...',
+      help: 'Meta Developer Console → WhatsApp → API Setup → Temporary or Permanent Token.',
+    },
+    {
+      key: 'whatsapp.meta.api_version',
+      label: 'API Version',
+      placeholder: 'v19.0',
+      help: 'Meta Graph API version. Default: v19.0',
+    },
+    {
+      key: 'whatsapp.meta.verify_token',
+      label: 'Webhook Verify Token',
+      placeholder: 'myle-webhook-secret-2026',
+      help: 'Khud banao koi bhi string. Meta Console mein bhi yahi daalna hoga.',
+    },
+  ] as const
+
+  const handleSaveWhatsApp = async () => {
+    setWaSaveMsg(null)
+    setWaErrorMsg(null)
+    try {
+      for (const field of WA_FIELDS) {
+        const value = resolvedWaValue(field.key).trim()
+        await updateAppSetting.mutateAsync({ key: field.key, value })
+      }
+      setWaEdits({})
+      setWaSaveMsg('WhatsApp settings saved.')
+      void refetchAppSettings()
+    } catch (error) {
+      setWaErrorMsg(error instanceof Error ? error.message : 'Could not save WhatsApp settings.')
     }
   }
 
@@ -402,6 +450,63 @@ export function SettingsAppPage({ title }: Props) {
           >
             {updateAppSetting.isPending ? 'Saving...' : 'Save Day 6 video URL'}
           </button>
+        </div>
+      </section>
+
+      {/* WhatsApp Meta API */}
+      <section className="surface-elevated space-y-3 p-4">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">WhatsApp (Meta Cloud API)</h2>
+          <p className="text-xs text-muted-foreground">
+            Removed member ko automatically WhatsApp message bhejne ke liye Meta credentials yahan set karo.
+            Ye settings env vars se override karti hain.
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Webhook URL jo Meta Console mein dalna hai:{' '}
+            <code className="rounded bg-white/10 px-1 text-[10px]">
+              https://yourdomain.com/api/v1/webhooks/whatsapp/reply
+            </code>
+          </p>
+        </div>
+
+        {appSettingsPending ? (
+          <div className="space-y-2">
+            {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-9 w-full" />)}
+          </div>
+        ) : appSettingsError ? (
+          <div className="text-sm text-destructive" role="alert">
+            {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load settings.'}
+          </div>
+        ) : (
+          <div className="grid gap-3">
+            {WA_FIELDS.map((field) => (
+              <label key={field.key} className="block text-sm">
+                <span className="mb-1 block text-ds-caption text-muted-foreground">{field.label}</span>
+                <input
+                  type={field.key === 'whatsapp.meta.access_token' ? 'password' : 'text'}
+                  value={resolvedWaValue(field.key)}
+                  onChange={(e) => setWaEdits((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                  placeholder={field.placeholder}
+                  autoComplete="off"
+                  className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                />
+                <span className="mt-1 block text-[11px] text-muted-foreground/70">{field.help}</span>
+              </label>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            disabled={updateAppSetting.isPending || appSettingsPending || !!appSettingsError}
+            onClick={() => void handleSaveWhatsApp()}
+            className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-medium text-primary disabled:opacity-50"
+          >
+            {updateAppSetting.isPending ? 'Saving...' : 'Save WhatsApp settings'}
+          </button>
+          {waSaveMsg ? <p className="text-xs text-emerald-400">{waSaveMsg}</p> : null}
+          {waErrorMsg ? <p className="text-xs text-destructive">{waErrorMsg}</p> : null}
         </div>
       </section>
 

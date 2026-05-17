@@ -1,0 +1,217 @@
+"""Inbound webhooks — Meta WhatsApp Cloud API + outreach admin API."""
+
+from __future__ import annotations
+
+import logging
+from typing import Annotated, Any, Optional
+
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
+from fastapi.responses import PlainTextResponse
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from starlette import status as http_status
+
+from app.api.deps import AuthUser, get_db, require_auth_user
+from app.core.config import settings
+from app.models.member_removal_outreach import MemberRemovalOutreach
+from app.services.whatsapp_removal import get_verify_token, record_reply
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter()
+
+
+# ---------------------------------------------------------------------------
+# Meta webhook verification (GET) — Meta sends this to confirm the endpoint
+# ---------------------------------------------------------------------------
+
+@router.get("/webhooks/whatsapp/reply")
+async def verify_meta_webhook(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    hub_mode: str = Query("", alias="hub.mode"),
+    hub_verify_token: str = Query("", alias="hub.verify_token"),
+    hub_challenge: str = Query("", alias="hub.challenge"),
+) -> PlainTextResponse:
+    """
+    Meta Developer Console sends a GET request to verify your webhook URL.
+    Set WHATSAPP_META_VERIFY_TOKEN env var OR save it in Settings → App → WhatsApp.
+    """
+    expected = await get_verify_token(session)
+    if hub_mode == "subscribe" and hub_verify_token == expected and expected:
+        logger.info("meta webhook verification success")
+        return PlainTextResponse(hub_challenge)
+    logger.warning("meta webhook verification failed mode=%s token_match=%s", hub_mode, hub_verify_token == expected)
+    raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Verification failed")
+
+
+# ---------------------------------------------------------------------------
+# Inbound reply — handles both Meta Cloud API format AND simple custom format
+# ---------------------------------------------------------------------------
+
+class SimpleReplyPayload(BaseModel):
+    """Simple format for non-Meta automation (n8n, custom scripts)."""
+    phone: str
+    message: str
+    wa_message_id: Optional[str] = None
+
+
+def _extract_meta_messages(body: dict[str, Any]) -> list[dict[str, Any]]:
+    """
+    Parse Meta's nested webhook payload and return a flat list of
+    {phone, message, wa_message_id} dicts.
+    """
+    results: list[dict[str, Any]] = []
+    for entry in body.get("entry", []):
+        for change in entry.get("changes", []):
+            value = change.get("value", {})
+            for msg in value.get("messages", []):
+                if msg.get("type") != "text":
+                    continue
+                results.append({
+                    "phone": msg.get("from", ""),
+                    "message": (msg.get("text") or {}).get("body", "").strip(),
+                    "wa_message_id": msg.get("id"),
+                })
+    return results
+
+
+@router.post("/webhooks/whatsapp/reply", status_code=200)
+async def receive_whatsapp_reply(
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    authorization: Annotated[Optional[str], Header()] = None,
+) -> dict:
+    """
+    Receives inbound WhatsApp messages in two formats:
+
+    **Format A — Meta Cloud API (automatic when you set Meta webhook URL to this endpoint):**
+    Meta sends its standard nested JSON. No auth header needed if WHATSAPP_META_VERIFY_TOKEN is set.
+
+    **Format B — Simple / custom automation:**
+    {
+      "phone": "+919876543210",
+      "message": "text here",
+      "wa_message_id": "optional"
+    }
+    Secure with REMOVAL_WHATSAPP_REPLY_SECRET env var.
+    """
+    body: dict[str, Any] = {}
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Invalid JSON")
+
+    # Detect Meta format by presence of "object" = "whatsapp_business_account"
+    is_meta_format = body.get("object") == "whatsapp_business_account"
+
+    if is_meta_format:
+        # Meta sends its own signature header (x-hub-signature-256) for security.
+        # For now we trust the verify_token handshake is sufficient.
+        messages = _extract_meta_messages(body)
+        if not messages:
+            # Meta sends status updates (delivery, read) too — just ack them
+            return {"ok": True, "matched": False, "note": "no_text_messages"}
+
+        matched = 0
+        for msg in messages:
+            if not msg["phone"] or not msg["message"]:
+                continue
+            match = await record_reply(
+                phone=msg["phone"],
+                reply_text=msg["message"],
+                wa_message_id=msg.get("wa_message_id"),
+                session=session,
+            )
+            if match:
+                matched += 1
+        await session.commit()
+        logger.info("meta inbound: %d messages, %d matched outreach records", len(messages), matched)
+        return {"ok": True, "matched": matched > 0, "count": matched}
+
+    # Simple format — authenticate with bearer secret
+    secret = (settings.removal_whatsapp_reply_secret or "").strip()
+    if secret:
+        if not authorization or authorization != f"Bearer {secret}":
+            raise HTTPException(
+                status_code=http_status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid webhook secret",
+            )
+
+    try:
+        payload = SimpleReplyPayload.model_validate(body)
+    except Exception:
+        raise HTTPException(status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid payload")
+
+    match = await record_reply(
+        phone=payload.phone,
+        reply_text=payload.message,
+        wa_message_id=payload.wa_message_id,
+        session=session,
+    )
+    if match is None:
+        logger.info("whatsapp reply: no outreach record matched for phone")
+        return {"ok": True, "matched": False}
+
+    await session.commit()
+    logger.info("whatsapp reply stored outreach_id=%s user_id=%s", match.id, match.user_id)
+    return {"ok": True, "matched": True, "outreach_id": match.id}
+
+
+# ---------------------------------------------------------------------------
+# Admin: list outreach records + replies
+# ---------------------------------------------------------------------------
+
+class OutreachItem(BaseModel):
+    id: int
+    user_id: int
+    phone: Optional[str]
+    member_name: str
+    removal_reason: Optional[str]
+    send_status: str
+    sent_at: Optional[str]
+    manual_share_url: Optional[str]
+    reply_text: Optional[str]
+    replied_at: Optional[str]
+    created_at: str
+
+    model_config = {"from_attributes": True}
+
+
+class OutreachListResponse(BaseModel):
+    items: list[OutreachItem]
+    total: int
+
+
+@router.get("/team/removal-outreach", response_model=OutreachListResponse)
+async def list_removal_outreach(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    replied_only: bool = False,
+) -> OutreachListResponse:
+    """Admin: list all removal outreach records with member replies."""
+    if user.role != "admin":
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admin only")
+
+    stmt = select(MemberRemovalOutreach).order_by(MemberRemovalOutreach.created_at.desc())
+    if replied_only:
+        stmt = stmt.where(MemberRemovalOutreach.reply_text.isnot(None))
+
+    rows = (await session.execute(stmt)).scalars().all()
+    items = [
+        OutreachItem(
+            id=r.id,
+            user_id=r.user_id,
+            phone=r.phone,
+            member_name=r.member_name,
+            removal_reason=r.removal_reason,
+            send_status=r.send_status,
+            sent_at=r.sent_at.isoformat() if r.sent_at else None,
+            manual_share_url=r.manual_share_url,
+            reply_text=r.reply_text,
+            replied_at=r.replied_at.isoformat() if r.replied_at else None,
+            created_at=r.created_at.isoformat(),
+        )
+        for r in rows
+    ]
+    return OutreachListResponse(items=items, total=len(items))

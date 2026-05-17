@@ -1,8 +1,10 @@
-import { useDeferredValue, useMemo } from 'react'
+import { useDeferredValue, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   Activity,
   ArrowDownWideNarrow,
+  Check,
+  Clipboard,
   Gauge,
   Layers3,
   ShieldAlert,
@@ -26,6 +28,7 @@ import {
   useTeamTrackingOverviewQuery,
   type TeamTrackingMemberSummary,
 } from '@/hooks/use-team-tracking-query'
+import { useRemovalOutreachQuery, type RemovalOutreachItem } from '@/hooks/use-removal-outreach-query'
 import { filterCollectionByQuery, type SearchableValue } from '@/lib/search-filter'
 import { cn } from '@/lib/utils'
 
@@ -33,6 +36,15 @@ type Props = { title: string }
 
 type PresenceFilter = 'all' | TeamTrackingMemberSummary['presence_status']
 type BandFilter = 'all' | TeamTrackingMemberSummary['consistency_band']
+type ComplianceFilter =
+  | 'all'
+  | 'removed'
+  | 'grace'
+  | 'grace_ending'
+  | 'final_warning'
+  | 'strong_warning'
+  | 'warning'
+  | 'clear'
 type SortMode =
   | 'attention'
   | 'score-desc'
@@ -417,11 +429,21 @@ export function TeamTrackingPage({ title }: Props) {
   const searchQuery = params.get('q') || ''
   const presenceFilter = (params.get('presence') as PresenceFilter | null) ?? 'all'
   const bandFilter = (params.get('band') as BandFilter | null) ?? 'all'
+  const complianceFilter = (params.get('compliance') as ComplianceFilter | null) ?? 'all'
   const leaderFilter = params.get('leader') || 'all'
   const sortMode = (params.get('sort') as SortMode | null) ?? 'attention'
   const deferredSearchQuery = useDeferredValue(searchQuery)
 
   const { data, isPending, isError, error, refetch } = useTeamTrackingOverviewQuery(dateIso)
+  const { data: outreachData } = useRemovalOutreachQuery(false, complianceFilter === 'removed')
+
+  const outreachByUserId = useMemo(() => {
+    const map = new Map<number, RemovalOutreachItem>()
+    outreachData?.items.forEach((item) => {
+      if (!map.has(item.user_id)) map.set(item.user_id, item)
+    })
+    return map
+  }, [outreachData])
 
   const leaderOptions = useMemo(() => {
     const leaderMap = new Map<string, string>()
@@ -447,13 +469,14 @@ export function TeamTrackingPage({ title }: Props) {
       searched.filter((item) => {
         if (presenceFilter !== 'all' && item.presence_status !== presenceFilter) return false
         if (bandFilter !== 'all' && item.consistency_band !== bandFilter) return false
+        if (complianceFilter !== 'all' && item.compliance_level !== complianceFilter) return false
         if (leaderFilter === 'unassigned') return item.leader_user_id === null
         if (leaderFilter !== 'all' && String(item.leader_user_id ?? '') !== leaderFilter) return false
         return true
       }),
       sortMode,
     )
-  }, [bandFilter, data, deferredSearchQuery, leaderFilter, presenceFilter, sortMode])
+  }, [bandFilter, complianceFilter, data, deferredSearchQuery, leaderFilter, presenceFilter, sortMode])
 
   const liveNow = useMemo(() => liveNowItems(filteredItems), [filteredItems])
   const flagged = useMemo(() => attentionQueue(filteredItems), [filteredItems])
@@ -467,8 +490,47 @@ export function TeamTrackingPage({ title }: Props) {
     searchQuery.trim().length > 0 ||
     presenceFilter !== 'all' ||
     bandFilter !== 'all' ||
+    complianceFilter !== 'all' ||
     leaderFilter !== 'all' ||
     sortMode !== 'attention'
+
+  const removedMembers = useMemo(
+    () => filteredItems.filter((item) => item.compliance_level === 'removed'),
+    [filteredItems],
+  )
+
+  const [copyDone, setCopyDone] = useState(false)
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function copyRemovedList() {
+    const dateLabel = new Date().toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    })
+    const lines: string[] = [
+      `REMOVED MEMBERS — Myle Team`,
+      `Date: ${dateLabel} | Total: ${removedMembers.length} removed`,
+      '─'.repeat(32),
+      '',
+    ]
+    removedMembers.forEach((item, i) => {
+      lines.push(`${i + 1}. ${item.member_name}`)
+      lines.push(`   Phone: ${item.member_phone ?? 'N/A'}`)
+      lines.push(`   FBO ID: ${item.member_fbo_id}`)
+      if (item.leader_name) lines.push(`   Leader: ${item.leader_name}`)
+      if (item.compliance_summary) lines.push(`   Reason: ${item.compliance_summary}`)
+      lines.push('')
+    })
+    lines.push('─'.repeat(32))
+    lines.push('Please remove these members from all WhatsApp groups.')
+    void navigator.clipboard.writeText(lines.join('\n')).then(() => {
+      setCopyDone(true)
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
+      copyTimerRef.current = setTimeout(() => setCopyDone(false), 2500)
+    })
+  }
+
 
   return (
     <div className="max-w-[88rem] space-y-5">
@@ -530,7 +592,7 @@ export function TeamTrackingPage({ title }: Props) {
           </label>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <label className="space-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             <span>Presence</span>
             <select
@@ -556,6 +618,24 @@ export function TeamTrackingPage({ title }: Props) {
               <option value="high">High</option>
               <option value="medium">Medium</option>
               <option value="low">Low</option>
+            </select>
+          </label>
+
+          <label className="space-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            <span>Member status</span>
+            <select
+              value={complianceFilter}
+              onChange={(event) => updateParam(params, setParams, 'compliance', event.target.value)}
+              className={SELECT_CLASSNAME}
+            >
+              <option value="all">All statuses</option>
+              <option value="removed">Removed only</option>
+              <option value="final_warning">Final warning</option>
+              <option value="strong_warning">Strong warning</option>
+              <option value="warning">Warning</option>
+              <option value="grace_ending">Grace ending</option>
+              <option value="grace">Grace</option>
+              <option value="clear">Clear</option>
             </select>
           </label>
 
@@ -686,6 +766,157 @@ export function TeamTrackingPage({ title }: Props) {
               to={`/dashboard/team/tracking?date=${dateIso}`}
             />
           </div>
+
+          {complianceFilter === 'removed' ? (
+            <section className="overflow-hidden rounded-md border border-rose-400/30 bg-rose-400/[0.04] shadow-[var(--shadow-card)]">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rose-400/20 px-5 py-4">
+                <div>
+                  <p className="text-sm font-semibold text-rose-600 dark:text-rose-300">
+                    Removed members — WhatsApp cleanup list
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    These members have been removed from the system. Remove them from your WhatsApp groups.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="danger">{removedMembers.length} removed</Badge>
+                  {removedMembers.length > 0 ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 border-rose-400/30 text-rose-600 hover:bg-rose-400/10 dark:text-rose-300"
+                      onClick={copyRemovedList}
+                    >
+                      {copyDone ? (
+                        <>
+                          <Check className="size-3.5" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Clipboard className="size-3.5" />
+                          Copy list
+                        </>
+                      )}
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+
+              {removedMembers.length === 0 ? (
+                <div className="px-5 py-10 text-center text-sm text-muted-foreground">
+                  No removed members match the current filters.
+                </div>
+              ) : (
+                <div className="grid gap-2 p-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {removedMembers.map((item) => (
+                    <div
+                      key={item.user_id}
+                      className="rounded-md border border-rose-400/20 bg-background px-4 py-3"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-foreground">{item.member_name}</p>
+                          <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+                            {item.member_fbo_id}
+                          </p>
+                        </div>
+                        <Badge variant="danger" className="shrink-0">removed</Badge>
+                      </div>
+                      <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                        {item.member_phone ? (
+                          <p>
+                            <span className="text-foreground/60">Phone:</span>{' '}
+                            <span className="font-medium text-foreground">{item.member_phone}</span>
+                          </p>
+                        ) : (
+                          <p className="italic">No phone on record</p>
+                        )}
+                        <p>
+                          <span className="text-foreground/60">Email:</span>{' '}
+                          <span className="text-foreground">{item.member_email}</span>
+                        </p>
+                        {item.leader_name ? (
+                          <p>
+                            <span className="text-foreground/60">Leader:</span>{' '}
+                            {item.leader_name}
+                          </p>
+                        ) : null}
+                        {item.compliance_summary ? (
+                          <p className="mt-1 border-t border-rose-400/15 pt-1">
+                            <span className="text-foreground/60">Reason:</span>{' '}
+                            <span className="text-rose-600 dark:text-rose-400">{item.compliance_summary}</span>
+                          </p>
+                        ) : null}
+                      </div>
+
+                      {(() => {
+                        const outreach = outreachByUserId.get(item.user_id)
+                        if (!outreach) return null
+                        return (
+                          <div className="mt-3 border-t border-rose-400/15 pt-3 text-xs">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={cn(
+                                  'rounded-full px-2 py-0.5 font-medium',
+                                  outreach.send_status === 'sent' || outreach.send_status === 'stub'
+                                    ? 'bg-emerald-400/15 text-emerald-600 dark:text-emerald-300'
+                                    : outreach.send_status === 'failed'
+                                      ? 'bg-rose-400/15 text-rose-600 dark:text-rose-300'
+                                      : 'bg-muted text-muted-foreground',
+                                )}
+                              >
+                                {outreach.send_status === 'sent'
+                                  ? 'WA message sent'
+                                  : outreach.send_status === 'stub'
+                                    ? 'WA message (stub)'
+                                    : outreach.send_status === 'failed'
+                                      ? 'WA send failed'
+                                      : 'WA pending'}
+                              </span>
+                              {outreach.sent_at ? (
+                                <span className="text-muted-foreground">
+                                  {new Date(outreach.sent_at).toLocaleString()}
+                                </span>
+                              ) : null}
+                            </div>
+
+                            {outreach.reply_text ? (
+                              <div className="mt-2 rounded bg-emerald-400/[0.08] px-3 py-2">
+                                <p className="font-medium text-emerald-700 dark:text-emerald-300">
+                                  Member replied:
+                                </p>
+                                <p className="mt-1 text-foreground">{outreach.reply_text}</p>
+                                {outreach.replied_at ? (
+                                  <p className="mt-1 text-muted-foreground">
+                                    {new Date(outreach.replied_at).toLocaleString()}
+                                  </p>
+                                ) : null}
+                              </div>
+                            ) : (
+                              <p className="mt-1 text-muted-foreground">No reply yet</p>
+                            )}
+
+                            {outreach.manual_share_url && outreach.send_status !== 'sent' ? (
+                              <a
+                                href={outreach.manual_share_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-2 inline-flex items-center gap-1 text-primary underline underline-offset-2 hover:text-primary/80"
+                              >
+                                Send manually via WhatsApp
+                              </a>
+                            ) : null}
+                          </div>
+                        )
+                      })()}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          ) : null}
 
           <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
             <section className="overflow-hidden rounded-md border border-border bg-card shadow-[var(--shadow-card)]">
