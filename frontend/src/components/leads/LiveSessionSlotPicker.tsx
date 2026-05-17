@@ -33,13 +33,20 @@ export function LiveSessionSlotPicker({ open, busy = false, day = 1, onClose, on
   const canConfirm = !!effectiveOption && !busy
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+      style={{
+        paddingTop: 'max(1.5rem, env(safe-area-inset-top))',
+        paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))',
+      }}
+    >
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-sm flex flex-col overflow-hidden rounded-[2rem] border border-white/[0.09] bg-[#0d1526] shadow-[0_40px_120px_-40px_rgba(0,0,0,0.9)] max-h-[calc(100dvh-7rem)]"
+        className="w-full max-w-sm flex flex-col overflow-hidden rounded-[2rem] border border-white/[0.09] bg-[#0d1526] shadow-[0_40px_120px_-40px_rgba(0,0,0,0.9)]"
         style={{
           background: 'linear-gradient(160deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%), #0d1526',
+          maxHeight: 'calc(100dvh - max(3rem, env(safe-area-inset-top)) - max(3rem, env(safe-area-inset-bottom)))',
         }}
       >
         {/* Header */}
