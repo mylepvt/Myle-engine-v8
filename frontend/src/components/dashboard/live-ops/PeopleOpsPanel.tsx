@@ -34,7 +34,7 @@ function LeaderCard({ leader, rank }: { leader: LeaderHealthItem; rank: number }
   const color = avatarColor(leader.leader_name)
   const isOnline = leader.presence_status === 'online'
   return (
-    <Link to={`/dashboard/team/tracking/${leader.leader_id}`} className="flex min-w-[100px] flex-1 flex-col items-center gap-2 rounded border border-white/[0.06] bg-white/[0.03] p-3 text-center no-underline transition-all duration-150 hover:border-white/20 hover:bg-white/[0.07] active:bg-white/[0.1] cursor-pointer">
+    <Link to={`/dashboard/team/tracking/${leader.leader_id}`} className="flex min-w-[100px] flex-1 flex-col items-center gap-2 overflow-hidden rounded border border-white/[0.06] bg-white/[0.03] p-3 text-center no-underline transition-all duration-150 hover:border-white/20 hover:bg-white/[0.07] active:bg-white/[0.1] cursor-pointer">
       {/* Rank badge */}
       <div
         className="flex size-5 items-center justify-center rounded-full text-[10px] font-bold text-white shadow"
@@ -59,9 +59,9 @@ function LeaderCard({ leader, rank }: { leader: LeaderHealthItem; rank: number }
         />
       </div>
       {/* Name */}
-      <div>
-        <p className="text-[11px] font-semibold leading-tight text-foreground">{leader.leader_name}</p>
-        <p className="text-[10px] text-muted-foreground/60">
+      <div className="w-full min-w-0">
+        <p className="truncate text-[11px] font-semibold leading-tight text-foreground">{leader.leader_name}</p>
+        <p className="truncate text-[10px] text-muted-foreground/60">
           {leader.team_size} member team
         </p>
       </div>
