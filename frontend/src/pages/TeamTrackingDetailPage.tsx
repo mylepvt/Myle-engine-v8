@@ -435,7 +435,7 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
   const avgScore = useMemo(() => {
     if (!data?.trend.length) return 0
     return Math.round(data.trend.reduce((s, p) => s + p.consistency_score, 0) / data.trend.length)
-  }, [data?.trend])
+  }, [data])
 
   const todayVsAvg = data ? data.member.consistency_score - avgScore : 0
 
