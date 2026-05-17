@@ -204,6 +204,7 @@ export function useTeamTrackingOverviewQuery(dateIso: string, enabled = true) {
     queryKey: ['team', 'tracking', 'overview', dateIso],
     queryFn: () => fetchTrackingOverview(dateIso),
     enabled,
+    refetchInterval: 30_000,
   })
 }
 
@@ -212,6 +213,7 @@ export function useTeamTrackingDetailQuery(userId: number, dateIso: string, enab
     queryKey: ['team', 'tracking', 'detail', userId, dateIso],
     queryFn: () => fetchTrackingDetail(userId, dateIso),
     enabled,
+    refetchInterval: 30_000,
   })
 }
 
@@ -220,5 +222,6 @@ export function useTeamTrackingMeQuery(dateIso: string, enabled = true) {
     queryKey: ['team', 'tracking', 'me', dateIso],
     queryFn: () => fetchTrackingMe(dateIso),
     enabled,
+    refetchInterval: 30_000,
   })
 }
