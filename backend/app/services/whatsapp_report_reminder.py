@@ -1,0 +1,130 @@
+"""WhatsApp reminders for members who haven't submitted their daily report."""
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+import urllib.error
+import urllib.parse
+import urllib.request
+from datetime import date, datetime, timezone
+from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.config import settings
+from app.models.report_reminder_outreach import ReportReminderOutreach
+from app.models.user import User
+from app.services.whatsapp_removal import (
+    _whatsapp_digits,
+    _post_json_sync,
+    get_meta_config,
+)
+
+logger = logging.getLogger(__name__)
+
+
+def build_reminder_message(*, member_name: str) -> str:
+    first_name = (member_name or "there").strip().split()[0]
+    return (
+        f"Hi {first_name},\n\n"
+        "Aapki aaj ki daily report abhi tak submit nahi hui hai. ⏰\n\n"
+        "Please Myle dashboard se apni report submit karein taaki aapka record up-to-date rahe.\n\n"
+        "— Myle Team"
+    )
+
+
+async def _send_via_meta_api(
+    *, phone: str, message: str, phone_number_id: str, access_token: str, api_version: str
+) -> dict[str, Any]:
+    digits = _whatsapp_digits(phone)
+    if not digits:
+        return {"ok": False, "error": "invalid_phone"}
+
+    url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
+    payload: dict[str, Any] = {
+        "messaging_product": "whatsapp",
+        "to": digits,
+        "type": "text",
+        "text": {"preview_url": False, "body": message},
+    }
+    headers = {"Authorization": f"Bearer {access_token}"}
+    timeout = float(settings.ctcs_whatsapp_timeout_seconds)
+    try:
+        status, body = await asyncio.to_thread(_post_json_sync, url, payload, headers, timeout)
+        ok = 200 <= status < 300
+        if not ok:
+            logger.warning("report reminder meta non-2xx status=%s body=%s", status, body[:300])
+        wa_message_id: str | None = None
+        try:
+            parsed = json.loads(body)
+            wa_message_id = parsed.get("messages", [{}])[0].get("id")
+        except Exception:
+            pass
+        return {"ok": ok, "channel": "meta_cloud_api", "http_status": status, "wa_message_id": wa_message_id}
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")[:500] if exc.fp else ""
+        logger.warning("report reminder meta HTTPError %s: %s", exc.code, body)
+        return {"ok": False, "channel": "meta_cloud_api", "error": f"http_{exc.code}", "detail": body}
+    except Exception as exc:
+        logger.exception("report reminder meta send failed")
+        return {"ok": False, "channel": "meta_cloud_api", "error": str(exc)[:300]}
+
+
+async def send_report_reminder(
+    *,
+    user: User,
+    reminder_date: date,
+    session: AsyncSession,
+) -> ReportReminderOutreach:
+    """Send WhatsApp reminder for unsubmitted daily report and record the attempt."""
+    phone = getattr(user, "phone", None)
+    member_name = (
+        (user.name or "").strip()
+        or (getattr(user, "username", None) or "").strip()
+        or user.fbo_id
+        or "Member"
+    )
+
+    message = build_reminder_message(member_name=member_name)
+
+    record = ReportReminderOutreach(
+        user_id=user.id,
+        reminder_date=reminder_date,
+        phone=phone,
+        member_name=member_name,
+        send_status="pending",
+    )
+    session.add(record)
+    await session.flush()
+
+    phone_number_id, access_token, api_version = await get_meta_config(session)
+    if phone_number_id and access_token and phone:
+        result = await _send_via_meta_api(
+            phone=phone,
+            message=message,
+            phone_number_id=phone_number_id,
+            access_token=access_token,
+            api_version=api_version,
+        )
+    else:
+        logger.info(
+            "report reminder stub user_id=%s phone_tail=%s (no meta config)",
+            user.id, (phone or "")[-4:],
+        )
+        result = {"ok": True, "channel": "whatsapp_stub"}
+
+    channel = result.get("channel", "unknown")
+    if result.get("ok"):
+        record.send_status = "stub" if channel == "whatsapp_stub" else "sent"
+        record.sent_at = datetime.now(timezone.utc)
+        if result.get("wa_message_id"):
+            record.wa_message_id = result["wa_message_id"]
+    else:
+        record.send_status = "failed"
+        record.send_error = (
+            result.get("error") or result.get("detail") or "unknown error"
+        )[:500]
+
+    await session.flush()
+    return record
