@@ -133,7 +133,7 @@ describe('BatchWatchPage', () => {
       subtitle: 'Watch inside Myle.',
       lead_name: 'rahul sharma',
       access_open: false,
-      opens_at: '2026-05-05T13:30:00Z',
+      opens_at: '2099-12-31T13:30:00Z',
       gate_message: 'This evening batch unlocks at 07:00 PM IST. Please come back at your scheduled batch time.',
       youtube_url: null,
       video_id: null,
@@ -156,7 +156,7 @@ describe('BatchWatchPage', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('This batch room is locked for now')).toBeInTheDocument()
+      expect(screen.getByText('This room is locked for now')).toBeInTheDocument()
     })
 
     expect(screen.getByText(/unlocks at 07:00 PM IST/i)).toBeInTheDocument()
