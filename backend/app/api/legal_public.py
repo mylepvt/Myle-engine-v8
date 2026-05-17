@@ -418,6 +418,11 @@ async def data_deletion() -> HTMLResponse:
     return _doc_response("data-deletion")
 
 
+@router.get("/delete", response_class=HTMLResponse, include_in_schema=False)
+async def data_deletion_short_alias() -> HTMLResponse:
+    return _doc_response("data-deletion")
+
+
 @router.get("/user-data-deletion", response_class=HTMLResponse, include_in_schema=False)
 async def data_deletion_alias() -> HTMLResponse:
     return _doc_response("data-deletion")
