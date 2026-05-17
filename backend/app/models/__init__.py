@@ -1,4 +1,5 @@
 from app.models.member_removal_outreach import MemberRemovalOutreach
+from app.models.report_reminder_outreach import ReportReminderOutreach
 from app.models.admin_activity_feed import AdminActivityFeed
 from app.models.announcement import Announcement
 from app.models.activity_log import ActivityLog
@@ -29,6 +30,7 @@ from app.models.user_presence_session import UserPresenceSession
 
 __all__ = [
     "MemberRemovalOutreach",
+    "ReportReminderOutreach",
     "AdminActivityFeed",
     "Announcement",
     "ActivityLog",

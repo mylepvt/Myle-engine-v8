@@ -20,6 +20,7 @@ from app.core.time_ist import today_ist
 from app.db.session import AsyncSessionLocal
 from app.models.daily_report import DailyReport
 from app.models.lead import Lead
+from app.models.report_reminder_outreach import ReportReminderOutreach
 from app.models.user import User
 from app.services.live_metrics import fresh_call_counts_by_user, get_daily_call_target
 from app.services.member_compliance import build_compliance_snapshots
@@ -214,11 +215,13 @@ async def job_daily_report_reminder() -> None:
             }
 
             missing = [u for u in users if u.id not in submitted]
-            for user in missing:
+
+            # Push notification (existing)
+            for member in missing:
                 try:
                     await send_push_to_user(
                         session,
-                        user.id,
+                        member.id,
                         title="Daily report pending ⚠️",
                         body="You haven't submitted today's daily report yet. Submit before midnight to avoid a compliance warning.",
                         url="/dashboard/work/report",
@@ -226,7 +229,31 @@ async def job_daily_report_reminder() -> None:
                 except Exception:
                     pass
 
-            logger.info("daily_report_reminder: pushed %d users", len(missing))
+            # WhatsApp reminder — skip members already reminded today
+            from app.services.whatsapp_report_reminder import send_report_reminder
+            already_reminded: set[int] = set(
+                (await session.execute(
+                    select(ReportReminderOutreach.user_id).where(
+                        ReportReminderOutreach.reminder_date == today,
+                        ReportReminderOutreach.send_status.in_(["sent", "stub"]),
+                    )
+                )).scalars().all()
+            )
+            wa_sent = 0
+            for member in missing:
+                if member.id in already_reminded:
+                    continue
+                if not getattr(member, "phone", None):
+                    continue
+                try:
+                    await send_report_reminder(user=member, reminder_date=today, session=session)
+                    wa_sent += 1
+                except Exception as wa_exc:
+                    logger.warning("scheduled wa reminder failed user_id=%s: %s", member.id, wa_exc)
+            if wa_sent:
+                await session.commit()
+
+            logger.info("daily_report_reminder: push=%d wa=%d users", len(missing), wa_sent)
 
     except Exception as exc:
         logger.error("job_daily_report_reminder failed: %s", exc)
