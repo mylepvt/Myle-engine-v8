@@ -341,46 +341,6 @@ function LiveOnlinePanel({ users }: { users: OnlineUserItem[] }) {
 }
 
 // ── Pulse chip — reusable clickable stat with dropdown ───────────────────────
-function PulseChip({
-  icon,
-  label,
-  colorClass,
-  children,
-}: {
-  icon: string
-  label: string
-  colorClass: string
-  children?: React.ReactNode
-}) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => children && setOpen((v) => !v)}
-        className={`flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] font-medium transition-colors ${colorClass} ${children ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}`}
-      >
-        <span>{icon}</span>
-        <span>{label}</span>
-      </button>
-      {open && children && (
-        <div className="absolute left-0 top-full z-50 mt-1.5 w-64 rounded border border-border/60 bg-card shadow-xl">
-          {children}
-        </div>
-      )}
-    </div>
-  )
-}
 
 function LeadResultRow({ lead }: { lead: LeadPublic }) {
   return (

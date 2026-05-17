@@ -48,7 +48,7 @@ const ACTIVE_WINDOW_MS = 300_000 // 5 minutes = "recently active"
 export function LiveTeamActivity() {
   const entries = useAdminFeedStore((s) => s.entries)
 
-  const [now, setNow] = useState(Date.now())
+  const [now, setNow] = useState(0)
   useEffect(() => { setNow(Date.now()) }, [entries])
   const { activeNow, recentActivity } = useMemo(() => {
     const grouped = new Map<string, { name: string; entries: AdminActivityEntry[]; lastSeen: number }>()
