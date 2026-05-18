@@ -340,6 +340,7 @@ function LiveOnlinePanel({ users }: { users: OnlineUserItem[] }) {
   )
 }
 
+// ── Pulse chip — reusable clickable stat with dropdown ───────────────────────
 
 function LeadResultRow({ lead }: { lead: LeadPublic }) {
   return (

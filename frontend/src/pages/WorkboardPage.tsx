@@ -469,12 +469,12 @@ const LeadCard = memo(function LeadCard({
             </button>
             <button
               type="button"
-              disabled={leadPatchBusy || (lead.status === 'lost' && !!lead.archived_at)}
-              onClick={() => void pm.mutateAsync({ id: lead.id, body: { status: 'lost', archived: true } })}
+              disabled={leadPatchBusy || lead.status === 'lost'}
+              onClick={() => void pm.mutateAsync({ id: lead.id, body: { status: 'lost' } })}
               className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md border border-destructive/40 bg-destructive/10 text-ds-caption font-semibold text-destructive transition hover:bg-destructive/20 disabled:cursor-default disabled:opacity-40"
             >
               <X className="size-3.5" />
-              {lead.status === 'lost' && lead.archived_at ? 'Lost ✓' : 'Mark Lost'}
+              {lead.status === 'lost' ? 'Lost ✓' : 'Mark Lost'}
             </button>
           </div>
         )}
