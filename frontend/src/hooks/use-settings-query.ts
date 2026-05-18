@@ -425,11 +425,35 @@ export function usePasswordChangeMutation() {
 
 export function useEmailChangeMutation() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: changeEmail,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
     },
+  })
+}
+
+export type WhatsAppStatusResponse = {
+  configured: boolean
+  connected: boolean | null
+  display_phone_number?: string | null
+  verified_name?: string | null
+  error?: string | null
+}
+
+async function fetchWhatsAppStatus(): Promise<WhatsAppStatusResponse> {
+  const res = await apiFetch('/api/v1/webhooks/whatsapp/status')
+  if (!res.ok) throw new Error(`WhatsApp status HTTP ${res.status}`)
+  return res.json()
+}
+
+export function useWhatsAppStatusQuery(enabled = true) {
+  return useQuery({
+    queryKey: ['whatsapp', 'status'],
+    queryFn: fetchWhatsAppStatus,
+    enabled,
+    staleTime: 30_000,
+    retry: false,
   })
 }

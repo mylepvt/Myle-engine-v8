@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
+import urllib.error
+import urllib.request
 from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
@@ -15,7 +19,7 @@ from starlette import status as http_status
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.core.config import settings
 from app.models.member_removal_outreach import MemberRemovalOutreach
-from app.services.whatsapp_removal import get_verify_token, record_reply
+from app.services.whatsapp_removal import get_meta_config, get_verify_token, record_reply
 
 logger = logging.getLogger(__name__)
 
@@ -156,6 +160,65 @@ async def receive_whatsapp_reply(
     await session.commit()
     logger.info("whatsapp reply stored outreach_id=%s user_id=%s", match.id, match.user_id)
     return {"ok": True, "matched": True, "outreach_id": match.id}
+
+
+# ---------------------------------------------------------------------------
+# WhatsApp connection status
+# ---------------------------------------------------------------------------
+
+class WhatsAppStatusResponse(BaseModel):
+    configured: bool
+    connected: Optional[bool] = None
+    display_phone_number: Optional[str] = None
+    verified_name: Optional[str] = None
+    error: Optional[str] = None
+
+
+def _get_json_sync(url: str, headers: dict[str, str], timeout: float) -> tuple[int, str]:
+    req = urllib.request.Request(url, headers=headers, method="GET")
+    with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
+        return int(resp.status), resp.read().decode("utf-8", errors="replace")[:2000]
+
+
+@router.get("/webhooks/whatsapp/status", response_model=WhatsAppStatusResponse)
+async def get_whatsapp_status(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> WhatsAppStatusResponse:
+    """Check WhatsApp Meta Cloud API connection by pinging the phone number endpoint."""
+    if user.role != "admin":
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admin only")
+
+    phone_number_id, access_token, api_version = await get_meta_config(session)
+    if not phone_number_id or not access_token:
+        return WhatsAppStatusResponse(configured=False)
+
+    url = (
+        f"https://graph.facebook.com/{api_version}/{phone_number_id}"
+        "?fields=display_phone_number,verified_name"
+    )
+    headers = {"Authorization": f"Bearer {access_token}"}
+    try:
+        status_code, body = await asyncio.to_thread(_get_json_sync, url, headers, 10.0)
+        data: dict[str, Any] = json.loads(body) if body else {}
+        if 200 <= status_code < 300:
+            return WhatsAppStatusResponse(
+                configured=True,
+                connected=True,
+                display_phone_number=data.get("display_phone_number"),
+                verified_name=data.get("verified_name"),
+            )
+        err_msg = (data.get("error") or {}).get("message") or f"HTTP {status_code}"
+        return WhatsAppStatusResponse(configured=True, connected=False, error=err_msg)
+    except urllib.error.HTTPError as exc:
+        raw = exc.read().decode("utf-8", errors="replace")[:500] if exc.fp else ""
+        try:
+            err_msg = (json.loads(raw).get("error") or {}).get("message") or f"HTTP {exc.code}"
+        except Exception:
+            err_msg = f"HTTP {exc.code}"
+        return WhatsAppStatusResponse(configured=True, connected=False, error=err_msg)
+    except Exception as exc:
+        return WhatsAppStatusResponse(configured=True, connected=False, error=str(exc))
 
 
 # ---------------------------------------------------------------------------

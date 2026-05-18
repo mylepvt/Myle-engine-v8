@@ -4,6 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   useAppSettingUpdateMutation,
   useAppSettingsQuery,
+  useWhatsAppStatusQuery,
 } from '@/hooks/use-settings-query'
 
 type Props = { title: string }
@@ -115,6 +116,11 @@ export function SettingsAppPage({ title }: Props) {
     refetch: refetchAppSettings,
   } = useAppSettingsQuery()
   const updateAppSetting = useAppSettingUpdateMutation()
+  const {
+    data: waStatus,
+    isFetching: waStatusFetching,
+    refetch: refetchWaStatus,
+  } = useWhatsAppStatusQuery()
 
   const [q, setQ] = useState('')
   const [premiereEdits, setPremiereEdits] = useState<Record<string, string>>({})
@@ -247,6 +253,7 @@ export function SettingsAppPage({ title }: Props) {
       setWaEdits({})
       setWaSaveMsg('WhatsApp settings saved.')
       void refetchAppSettings()
+      void refetchWaStatus()
     } catch (error) {
       setWaErrorMsg(error instanceof Error ? error.message : 'Could not save WhatsApp settings.')
     }
@@ -456,7 +463,30 @@ export function SettingsAppPage({ title }: Props) {
       {/* WhatsApp Meta API */}
       <section className="surface-elevated space-y-3 p-4">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">WhatsApp (Meta Cloud API)</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-foreground">WhatsApp (Meta Cloud API)</h2>
+            {waStatusFetching ? (
+              <span className="text-[11px] text-muted-foreground">Checking…</span>
+            ) : waStatus?.connected === true ? (
+              <span className="flex items-center gap-1 text-[11px] text-emerald-400">
+                <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                Connected
+                {waStatus.display_phone_number ? (
+                  <span className="text-muted-foreground">({waStatus.display_phone_number})</span>
+                ) : null}
+              </span>
+            ) : waStatus?.connected === false ? (
+              <span className="flex items-center gap-1 text-[11px] text-destructive">
+                <span className="h-2 w-2 rounded-full bg-destructive" />
+                Not connected
+              </span>
+            ) : waStatus?.configured === false ? (
+              <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                <span className="h-2 w-2 rounded-full bg-muted-foreground/50" />
+                Not configured
+              </span>
+            ) : null}
+          </div>
           <p className="text-xs text-muted-foreground">
             Removed member ko automatically WhatsApp message bhejne ke liye Meta credentials yahan set karo.
             Ye settings env vars se override karti hain.
@@ -507,6 +537,9 @@ export function SettingsAppPage({ title }: Props) {
           </button>
           {waSaveMsg ? <p className="text-xs text-emerald-400">{waSaveMsg}</p> : null}
           {waErrorMsg ? <p className="text-xs text-destructive">{waErrorMsg}</p> : null}
+          {waStatus?.connected === false && waStatus.error ? (
+            <p className="text-xs text-destructive/80">API error: {waStatus.error}</p>
+          ) : null}
         </div>
       </section>
 
