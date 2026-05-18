@@ -1024,7 +1024,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
       formData.append('file', file)
       formData.append('lead_id', String(lead.id))
       formData.append('amount_cents', '150000')
-      const res = await apiFetch('/api/v1/proof/upload', { method: 'POST', body: formData })
+      const res = await apiFetch('/api/v1/payments/proof/upload', { method: 'POST', body: formData })
       if (!res.ok) throw new Error('Upload failed')
       await qc.refetchQueries({ queryKey: ['workboard'] })
     } catch (err) {
