@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Check, CheckSquare, Eye, Pencil, Search, Send, Square, Video } from 'lucide-react'
+import { Check, CheckSquare, Eye, Pencil, Search, Send, Square, Video, X } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
@@ -124,6 +124,7 @@ function workboardBatchWhatsAppUrl(
   return url === '#' ? null : url
 }
 
+
 async function readResponseError(res: Response): Promise<string> {
   const body = await res.json().catch(() => ({}))
   if (typeof body === 'object' && body !== null) {
@@ -205,6 +206,7 @@ const LeadCard = memo(function LeadCard({
   onMoveNext,
   nextLabel,
   nowMs,
+  showClosingActions,
 }: {
   lead: LeadPublic
   pm: PM
@@ -216,6 +218,7 @@ const LeadCard = memo(function LeadCard({
   onMoveNext?: () => void
   nextLabel?: string
   nowMs: number
+  showClosingActions?: boolean
 }) {
   const { role, serverRole } = useDashboardShellRole()
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
@@ -453,6 +456,28 @@ const LeadCard = memo(function LeadCard({
             nextLabel={nextLabel}
           />
         ) : null}
+        {showClosingActions && (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={leadPatchBusy || lead.status === 'converted'}
+              onClick={() => void pm.mutateAsync({ id: lead.id, body: { status: 'converted' } })}
+              className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md border border-green-500/40 bg-green-500/10 text-ds-caption font-semibold text-green-300 transition hover:bg-green-500/20 disabled:cursor-default disabled:opacity-40"
+            >
+              <Check className="size-3.5" />
+              {lead.status === 'converted' ? 'Closed ✓' : 'Mark Closed'}
+            </button>
+            <button
+              type="button"
+              disabled={leadPatchBusy || (lead.status === 'lost' && !!lead.archived_at)}
+              onClick={() => void pm.mutateAsync({ id: lead.id, body: { status: 'lost', archived: true } })}
+              className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md border border-destructive/40 bg-destructive/10 text-ds-caption font-semibold text-destructive transition hover:bg-destructive/20 disabled:cursor-default disabled:opacity-40"
+            >
+              <X className="size-3.5" />
+              {lead.status === 'lost' && lead.archived_at ? 'Lost ✓' : 'Mark Lost'}
+            </button>
+          </div>
+        )}
         {sendError ? (
           <p className="text-ds-caption text-destructive" role="alert">
             {sendError}
@@ -1058,12 +1083,12 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
   )
 }
 
-function LeadCardItem({ lead, stageKey, nextStatus, pm, patchBusyLeadId, mindsetBusyLeadId, mindsetPreviewByLeadId, onRequestMindsetSend, nextLabel, nowMs }: {
+function LeadCardItem({ lead, stageKey, nextStatus, pm, patchBusyLeadId, mindsetBusyLeadId, mindsetPreviewByLeadId, onRequestMindsetSend, nextLabel, nowMs, showClosingActions }: {
   lead: LeadPublic; stageKey?: WorkboardStageKey; nextStatus?: LeadStatus
   pm: PM; patchBusyLeadId: number | null; mindsetBusyLeadId: number | null
   mindsetPreviewByLeadId: Record<number, MindsetLockPreviewResponse | undefined>
   onRequestMindsetSend?: (lead: LeadPublic) => void
-  nextLabel?: string; nowMs: number
+  nextLabel?: string; nowMs: number; showClosingActions?: boolean
 }) {
   const _moveNext = useCallback(
     () => { if (nextStatus) void pm.mutateAsync({ id: lead.id, body: { status: nextStatus } }) },
@@ -1082,6 +1107,7 @@ function LeadCardItem({ lead, stageKey, nextStatus, pm, patchBusyLeadId, mindset
       onMoveNext={onMoveNext}
       nextLabel={nextLabel}
       nowMs={nowMs}
+      showClosingActions={showClosingActions}
     />
   )
 }
@@ -1098,6 +1124,7 @@ function ResponsiveLeadGrid({
   stageKey,
   nextStatus,
   nextLabel,
+  showClosingActions,
 }: {
   leads: LeadPublic[]
   pm: PM
@@ -1110,6 +1137,7 @@ function ResponsiveLeadGrid({
   stageKey?: WorkboardStageKey
   nextStatus?: LeadStatus
   nextLabel?: string
+  showClosingActions?: boolean
 }) {
 
   if (leads.length === 0) {
@@ -1135,6 +1163,7 @@ function ResponsiveLeadGrid({
           onRequestMindsetSend={onRequestMindsetSend}
           nextLabel={nextLabel}
           nowMs={nowMs}
+          showClosingActions={showClosingActions}
         />
       ))}
     </div>
@@ -1154,6 +1183,7 @@ function Grid({
   stageKey,
   nextStatus,
   nextLabel,
+  showClosingActions,
 }: {
   leads: LeadPublic[]
   pm: PM
@@ -1166,6 +1196,7 @@ function Grid({
   stageKey?: WorkboardStageKey
   nextStatus?: LeadStatus
   nextLabel?: string
+  showClosingActions?: boolean
 }) {
   return (
     <ResponsiveLeadGrid
@@ -1180,6 +1211,7 @@ function Grid({
       stageKey={stageKey}
       nextStatus={nextStatus}
       nextLabel={nextLabel}
+      showClosingActions={showClosingActions}
     />
   )
 }
@@ -1369,7 +1401,7 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance
                   <h3 className="text-sm font-semibold text-muted-foreground">{slabel(s)}</h3>
                   <span className={cn('rounded-full border px-2 py-0.5 text-ds-caption font-semibold', badge)}>{items.length}</span>
                 </div>
-                <Grid leads={items} pm={pm} patchBusyLeadId={patchBusyLeadId} empty="No leads" nowMs={nowMs} />
+                <Grid leads={items} pm={pm} patchBusyLeadId={patchBusyLeadId} empty="No leads" nowMs={nowMs} showClosingActions />
               </div>
             )
           })}
