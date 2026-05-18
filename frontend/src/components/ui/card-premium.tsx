@@ -18,7 +18,7 @@ type PremiumCardProps = React.HTMLAttributes<HTMLDivElement> & {
 const PremiumCard = React.forwardRef<HTMLDivElement, PremiumCardProps>(
   ({ className, hoverLift = false, gradientBorder = false, children, ...props }, ref) => {
     const card = (
-      <Card ref={ref} className={cn(className)} {...props}>
+      <Card ref={ref} className={cn(className, hoverLift && 'transition-transform hover:-translate-y-0.5')} {...props}>
         {children}
       </Card>
     )

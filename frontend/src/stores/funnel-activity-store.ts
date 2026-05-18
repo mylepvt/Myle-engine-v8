@@ -69,15 +69,6 @@ function actorColor(actorId: string): string {
   return DOT_COLORS[Math.abs(hash) % DOT_COLORS.length]
 }
 
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('') || '?'
-}
-
 const DOT_TTL = 120_000 // 2 minutes — dot disappears if inactive
 
 type FunnelState = {

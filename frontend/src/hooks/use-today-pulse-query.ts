@@ -8,6 +8,7 @@ export type ReportStatusItem = {
   role: string
   submitted: boolean
   calls_in_report: number
+  reminded: boolean
 }
 
 export type ZeroActivityItem = {
@@ -18,6 +19,20 @@ export type ZeroActivityItem = {
   presence_status: string
 }
 
+export type ReminderResult = {
+  user_id: number
+  name: string
+  phone_tail: string
+  status: 'sent' | 'stub' | 'failed' | 'no_phone'
+}
+
+export type SendRemindersResponse = {
+  sent: number
+  failed: number
+  no_phone: number
+  results: ReminderResult[]
+}
+
 export type TodayPulseResponse = {
   calls_today: number
   leads_today: number
@@ -26,6 +41,7 @@ export type TodayPulseResponse = {
   reports_total: number
   report_members: ReportStatusItem[]
   zero_activity: ZeroActivityItem[]
+  reminded_user_ids: number[]
 }
 
 async function fetchTodayPulse(): Promise<TodayPulseResponse> {
