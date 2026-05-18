@@ -24,6 +24,7 @@ ComplianceLevel = Literal[
     "final_warning",
     "grace",
     "grace_ending",
+    "grace_expired_warning",
     "removed",
     "not_applicable",
 ]
@@ -99,6 +100,7 @@ def _stage_rank(level: ComplianceLevel) -> int:
         "clear": 0,
         "grace": 1,
         "grace_ending": 2,
+        "grace_expired_warning": 2,
         "warning": 3,
         "strong_warning": 4,
         "final_warning": 5,
@@ -421,6 +423,16 @@ async def build_compliance_snapshots(
             continue
 
         if not ignore_grace_for_rollout and _has_expired_grace(user, today_date):
+            # One-day buffer: warn on grace_end_date+1, remove on grace_end_date+2
+            if user.grace_end_date == today_date - timedelta(days=1):
+                snapshot.compliance_level = "grace_expired_warning"
+                snapshot.compliance_title = "Grace ended — removal tomorrow"
+                detail = f"Grace ended on {user.grace_end_date.isoformat()}. Account will be removed tomorrow."
+                if snapshot.grace_reason:
+                    detail = f"{detail} | {snapshot.grace_reason}"
+                snapshot.compliance_summary = detail
+                snapshots[user.id] = snapshot
+                continue
             reason = (
                 f"Grace ended on {user.grace_end_date.isoformat()} and the system removed this member."
             )
