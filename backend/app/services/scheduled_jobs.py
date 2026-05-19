@@ -3,7 +3,7 @@
 Jobs (all IST-aware):
 - enrollment_proof_alert      : every 30min — pending proof > 2h → push admin/leaders
 - weekly_compliance_digest    : Monday 09:00 IST — compliance summary to leaders
-- daily_report_reminder       : 20:00 IST daily — push eligible users who haven't submitted report
+- daily_report_reminder       : 21:00 IST daily — push eligible users who haven't submitted report
 - call_target_reminder        : 17:00 IST daily — push eligible users short on calls
 - watch_archive_maintenance   : every 30min — archive completed-watch leads > 24h + redistribute stale
 - leader_basics_enforcement   : 23:30 IST daily — warn/lock leaders whose team missed basics 7/14 days

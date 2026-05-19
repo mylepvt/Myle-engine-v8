@@ -61,7 +61,7 @@ async def lifespan(_app: FastAPI):
         )
         _scheduler.add_job(
             job_daily_report_reminder,
-            CronTrigger(hour=20, minute=0),
+            CronTrigger(hour=21, minute=0),
             id="daily_report_reminder",
             replace_existing=True,
             misfire_grace_time=1800,

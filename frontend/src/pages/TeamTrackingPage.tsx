@@ -4,9 +4,12 @@ import {
   Activity,
   ArrowDownWideNarrow,
   Check,
+  CheckCircle2,
   Clipboard,
   Gauge,
   Layers3,
+  Loader2,
+  MessageCircle,
   ShieldAlert,
   Users,
 } from 'lucide-react'
@@ -28,7 +31,7 @@ import {
   useTeamTrackingOverviewQuery,
   type TeamTrackingMemberSummary,
 } from '@/hooks/use-team-tracking-query'
-import { useRemovalOutreachQuery, type RemovalOutreachItem } from '@/hooks/use-removal-outreach-query'
+import { useRemovalOutreachQuery, useSendRemovalOutreachMutation, type RemovalOutreachItem } from '@/hooks/use-removal-outreach-query'
 import { filterCollectionByQuery, type SearchableValue } from '@/lib/search-filter'
 import { cn } from '@/lib/utils'
 
@@ -436,6 +439,7 @@ export function TeamTrackingPage({ title }: Props) {
 
   const { data, isPending, isError, error, refetch } = useTeamTrackingOverviewQuery(dateIso)
   const { data: outreachData } = useRemovalOutreachQuery(false, complianceFilter === 'removed')
+  const sendOutreach = useSendRemovalOutreachMutation()
 
   const outreachByUserId = useMemo(() => {
     const map = new Map<number, RemovalOutreachItem>()
@@ -853,36 +857,39 @@ export function TeamTrackingPage({ title }: Props) {
 
                       {(() => {
                         const outreach = outreachByUserId.get(item.user_id)
-                        if (!outreach) return null
+                        const isSent = outreach?.send_status === 'sent' || outreach?.send_status === 'stub'
+                        const isSending = sendOutreach.isPending && sendOutreach.variables === item.user_id
                         return (
                           <div className="mt-3 border-t border-rose-400/15 pt-3 text-xs">
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={cn(
-                                  'rounded-full px-2 py-0.5 font-medium',
-                                  outreach.send_status === 'sent' || outreach.send_status === 'stub'
-                                    ? 'bg-emerald-400/15 text-emerald-600 dark:text-emerald-300'
-                                    : outreach.send_status === 'failed'
-                                      ? 'bg-rose-400/15 text-rose-600 dark:text-rose-300'
-                                      : 'bg-muted text-muted-foreground',
-                                )}
+                            {isSent ? (
+                              /* ✓ Already sent — checkmark */
+                              <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                                <CheckCircle2 className="size-3.5 shrink-0" />
+                                <span className="font-medium">WA message sent</span>
+                                {outreach?.sent_at ? (
+                                  <span className="text-muted-foreground">
+                                    · {new Date(outreach.sent_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                ) : null}
+                              </div>
+                            ) : (
+                              /* Not sent yet — Send button */
+                              <button
+                                type="button"
+                                disabled={isSending}
+                                onClick={() => sendOutreach.mutate(item.user_id)}
+                                className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
                               >
-                                {outreach.send_status === 'sent'
-                                  ? 'WA message sent'
-                                  : outreach.send_status === 'stub'
-                                    ? 'WA message (stub)'
-                                    : outreach.send_status === 'failed'
-                                      ? 'WA send failed'
-                                      : 'WA pending'}
-                              </span>
-                              {outreach.sent_at ? (
-                                <span className="text-muted-foreground">
-                                  {new Date(outreach.sent_at).toLocaleString()}
-                                </span>
-                              ) : null}
-                            </div>
+                                {isSending ? (
+                                  <Loader2 className="size-3 animate-spin" />
+                                ) : (
+                                  <MessageCircle className="size-3" />
+                                )}
+                                {isSending ? 'Sending…' : outreach?.send_status === 'failed' ? 'Retry WhatsApp' : 'Send WhatsApp'}
+                              </button>
+                            )}
 
-                            {outreach.reply_text ? (
+                            {outreach?.reply_text ? (
                               <div className="mt-2 rounded bg-emerald-400/[0.08] px-3 py-2">
                                 <p className="font-medium text-emerald-700 dark:text-emerald-300">
                                   Member replied:
@@ -894,19 +901,8 @@ export function TeamTrackingPage({ title }: Props) {
                                   </p>
                                 ) : null}
                               </div>
-                            ) : (
+                            ) : isSent ? (
                               <p className="mt-1 text-muted-foreground">No reply yet</p>
-                            )}
-
-                            {outreach.manual_share_url && outreach.send_status !== 'sent' ? (
-                              <a
-                                href={outreach.manual_share_url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="mt-2 inline-flex items-center gap-1 text-primary underline underline-offset-2 hover:text-primary/80"
-                              >
-                                Send manually via WhatsApp
-                              </a>
                             ) : null}
                           </div>
                         )

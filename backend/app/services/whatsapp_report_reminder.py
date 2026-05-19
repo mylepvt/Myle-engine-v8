@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import random
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -24,14 +25,42 @@ from app.services.whatsapp_removal import (
 logger = logging.getLogger(__name__)
 
 
-def build_reminder_message(*, member_name: str) -> str:
-    first_name = (member_name or "there").strip().split()[0]
-    return (
-        f"Hi {first_name},\n\n"
+_REMINDER_VARIANTS = [
+    (
+        "Hi {first_name},\n\n"
         "Aapki aaj ki daily report abhi tak submit nahi hui hai. ⏰\n\n"
         "Please Myle dashboard se apni report submit karein taaki aapka record up-to-date rahe.\n\n"
         "— Myle Team"
-    )
+    ),
+    (
+        "Hey {first_name}! 👋\n\n"
+        "Aaj ki report abhi pending hai — time hai, jaldi submit kar lo.\n\n"
+        "Myle app → Work → Daily Report\n\n"
+        "— Myle Team"
+    ),
+    (
+        "Hi {first_name},\n\n"
+        "Reminder: aaj ki daily report submit karna baaki hai.\n\n"
+        "Ek baar Myle dashboard check karo aur report complete kar lo. 💪\n\n"
+        "— Myle Team"
+    ),
+    (
+        "{first_name}, aaj ki report miss mat karna! 📋\n\n"
+        "Daily report aapke record mein zaroori hai. Dashboard se abhi submit karo.\n\n"
+        "— Myle Team"
+    ),
+    (
+        "Hi {first_name} 😊\n\n"
+        "Aaj ki daily report abhi submit nahi hui. Thoda sa time nikal ke complete kar lo.\n\n"
+        "— Myle Team"
+    ),
+]
+
+
+def build_reminder_message(*, member_name: str) -> str:
+    first_name = (member_name or "there").strip().split()[0]
+    template = random.choice(_REMINDER_VARIANTS)
+    return template.format(first_name=first_name)
 
 
 async def _send_via_meta_api(

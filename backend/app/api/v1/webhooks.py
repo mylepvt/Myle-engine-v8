@@ -19,7 +19,8 @@ from starlette import status as http_status
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.core.config import settings
 from app.models.member_removal_outreach import MemberRemovalOutreach
-from app.services.whatsapp_removal import get_meta_config, get_verify_token, record_reply
+from app.models.user import User
+from app.services.whatsapp_removal import get_meta_config, get_verify_token, record_reply, send_removal_whatsapp
 
 logger = logging.getLogger(__name__)
 
@@ -261,20 +262,62 @@ async def list_removal_outreach(
         stmt = stmt.where(MemberRemovalOutreach.reply_text.isnot(None))
 
     rows = (await session.execute(stmt)).scalars().all()
-    items = [
-        OutreachItem(
-            id=r.id,
-            user_id=r.user_id,
-            phone=r.phone,
-            member_name=r.member_name,
-            removal_reason=r.removal_reason,
-            send_status=r.send_status,
-            sent_at=r.sent_at.isoformat() if r.sent_at else None,
-            manual_share_url=r.manual_share_url,
-            reply_text=r.reply_text,
-            replied_at=r.replied_at.isoformat() if r.replied_at else None,
-            created_at=r.created_at.isoformat(),
-        )
-        for r in rows
-    ]
+    items = [_outreach_to_item(r) for r in rows]
     return OutreachListResponse(items=items, total=len(items))
+
+
+# ---------------------------------------------------------------------------
+# Admin: manually trigger outreach for a single removed member
+# ---------------------------------------------------------------------------
+
+def _outreach_to_item(r: MemberRemovalOutreach) -> OutreachItem:
+    return OutreachItem(
+        id=r.id,
+        user_id=r.user_id,
+        phone=r.phone,
+        member_name=r.member_name,
+        removal_reason=r.removal_reason,
+        send_status=r.send_status,
+        sent_at=r.sent_at.isoformat() if r.sent_at else None,
+        manual_share_url=r.manual_share_url,
+        reply_text=r.reply_text,
+        replied_at=r.replied_at.isoformat() if r.replied_at else None,
+        created_at=r.created_at.isoformat(),
+    )
+
+
+@router.post("/team/removal-outreach/{user_id}/send", response_model=OutreachItem)
+async def send_removal_outreach_manual(
+    user_id: int,
+    auth_user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> OutreachItem:
+    """Admin: manually send (or re-send) WhatsApp outreach for a removed member."""
+    if auth_user.role != "admin":
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admin only")
+
+    # If already sent successfully, return that record — don't send again
+    already_sent = (
+        await session.execute(
+            select(MemberRemovalOutreach)
+            .where(
+                MemberRemovalOutreach.user_id == user_id,
+                MemberRemovalOutreach.send_status.in_(["sent", "stub"]),
+            )
+            .order_by(MemberRemovalOutreach.created_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+    if already_sent:
+        return _outreach_to_item(already_sent)
+
+    target = (
+        await session.execute(select(User).where(User.id == user_id))
+    ).scalar_one_or_none()
+    if not target:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    record = await send_removal_whatsapp(user=target, session=session)
+    await session.commit()
+    return _outreach_to_item(record)
