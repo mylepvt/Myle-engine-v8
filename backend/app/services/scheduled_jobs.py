@@ -397,6 +397,11 @@ async def job_leader_basics_enforcement() -> None:
                     )
                     locked_count += 1
                     try:
+                        from app.services.whatsapp_removal import send_removal_whatsapp
+                        await send_removal_whatsapp(user=leader, session=session)
+                    except Exception as wa_exc:
+                        logger.warning("removal whatsapp failed leader_id=%s during basics enforcement: %s", leader.id, wa_exc)
+                    try:
                         await send_push_to_user(
                             session,
                             leader.id,
