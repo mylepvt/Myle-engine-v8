@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from typing import Iterable, Literal
@@ -16,6 +17,7 @@ from app.services.live_metrics import (
     fresh_lead_counts_by_user,
     get_daily_call_target,
 )
+from app.services.whatsapp_removal import send_removal_whatsapp
 
 ComplianceLevel = Literal[
     "clear",
@@ -30,6 +32,8 @@ ComplianceLevel = Literal[
 
 _ELIGIBLE_ROLES = {"team", "leader"}
 _DISCIPLINE_WINDOW_DAYS = 4
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -426,6 +430,10 @@ async def build_compliance_snapshots(
             )
             if apply_actions:
                 _mark_removed(user, reason=reason, removed_by_user_id=None, now=now)
+                try:
+                    await send_removal_whatsapp(user=user, session=session)
+                except Exception as wa_exc:
+                    logger.info("removal whatsapp failed user_id=%s during grace-expiry removal: %s", user.id, wa_exc)
                 changed = True
             snapshot.access_blocked = True
             snapshot.discipline_status = "removed"
@@ -489,6 +497,10 @@ async def build_compliance_snapshots(
             ) or "Removed for repeated non-compliance."
             if apply_actions:
                 _mark_removed(user, reason=reason, removed_by_user_id=None, now=now)
+                try:
+                    await send_removal_whatsapp(user=user, session=session)
+                except Exception as wa_exc:
+                    logger.info("removal whatsapp failed user_id=%s during streak removal: %s", user.id, wa_exc)
                 changed = True
             snapshot.access_blocked = True
             snapshot.discipline_status = "removed"
