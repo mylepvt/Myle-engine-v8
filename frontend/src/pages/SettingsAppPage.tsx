@@ -5,6 +5,7 @@ import {
   useAppSettingUpdateMutation,
   useAppSettingsQuery,
   useWhatsAppStatusQuery,
+  useWhatsAppTestSendMutation,
 } from '@/hooks/use-settings-query'
 
 type Props = { title: string }
@@ -121,6 +122,8 @@ export function SettingsAppPage({ title }: Props) {
     isFetching: waStatusFetching,
     refetch: refetchWaStatus,
   } = useWhatsAppStatusQuery()
+  const waTestSend = useWhatsAppTestSendMutation()
+  const [waTestPhone, setWaTestPhone] = useState('')
 
   const [q, setQ] = useState('')
   const [premiereEdits, setPremiereEdits] = useState<Record<string, string>>({})
@@ -539,6 +542,41 @@ export function SettingsAppPage({ title }: Props) {
           {waErrorMsg ? <p className="text-xs text-destructive">{waErrorMsg}</p> : null}
           {waStatus?.connected === false && waStatus.error ? (
             <p className="text-xs text-destructive/80">API error: {waStatus.error}</p>
+          ) : null}
+        </div>
+
+        {/* Test send — debug delivery */}
+        <div className="mt-4 border-t border-white/10 pt-3">
+          <p className="mb-2 text-xs font-medium text-foreground">Test message bhejo (debug)</p>
+          <p className="mb-2 text-[11px] text-muted-foreground">
+            Kisi number pe test message bhej ke Meta ka exact response dekho — pata chalega delivery ho rahi hai ya nahi.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="tel"
+              value={waTestPhone}
+              onChange={(e) => setWaTestPhone(e.target.value)}
+              placeholder="10-digit number, e.g. 7230930370"
+              className="flex-1 min-w-[200px] rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-sm text-foreground"
+            />
+            <button
+              type="button"
+              disabled={waTestSend.isPending || !waTestPhone.trim()}
+              onClick={() => waTestSend.mutate(waTestPhone.trim())}
+              className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
+            >
+              {waTestSend.isPending ? 'Sending…' : 'Send test message'}
+            </button>
+          </div>
+          {waTestSend.isError ? (
+            <p className="mt-2 text-xs text-destructive">
+              Error: {waTestSend.error instanceof Error ? waTestSend.error.message : 'Failed'}
+            </p>
+          ) : null}
+          {waTestSend.data ? (
+            <pre className="mt-2 max-h-64 overflow-auto rounded bg-black/40 p-3 text-[11px] text-emerald-300 ring-1 ring-white/10">
+              {JSON.stringify(waTestSend.data, null, 2)}
+            </pre>
           ) : null}
         </div>
       </section>
