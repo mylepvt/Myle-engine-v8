@@ -286,6 +286,72 @@ def _outreach_to_item(r: MemberRemovalOutreach) -> OutreachItem:
     )
 
 
+# ---------------------------------------------------------------------------
+# Admin: test Meta API with a real phone number — shows full response
+# ---------------------------------------------------------------------------
+
+class TestSendRequest(BaseModel):
+    phone: str
+
+
+@router.post("/webhooks/whatsapp/test-send")
+async def test_whatsapp_send(
+    body: TestSendRequest,
+    auth_user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Admin: send a test WhatsApp message and return Meta's raw response for debugging."""
+    if auth_user.role != "admin":
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admin only")
+
+    from app.services.whatsapp_removal import _whatsapp_digits, _post_json_sync
+
+    phone_number_id, access_token, api_version = await get_meta_config(session)
+    if not phone_number_id or not access_token:
+        return {"ok": False, "error": "WhatsApp credentials not configured in Settings"}
+
+    digits = _whatsapp_digits(body.phone)
+    if not digits:
+        return {"ok": False, "error": f"Invalid phone number: {body.phone}"}
+
+    url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
+    payload: dict[str, Any] = {
+        "messaging_product": "whatsapp",
+        "to": digits,
+        "type": "text",
+        "text": {"preview_url": False, "body": "Myle test message — agar yeh aaya toh API kaam kar rahi hai ✓"},
+    }
+    headers = {"Authorization": f"Bearer {access_token}"}
+    try:
+        import urllib.error as _ue
+        status_code, resp_body = await asyncio.to_thread(_post_json_sync, url, payload, headers, 15.0)
+        parsed = json.loads(resp_body) if resp_body else {}
+        return {
+            "ok": 200 <= status_code < 300,
+            "http_status": status_code,
+            "to_digits": digits,
+            "phone_number_id": phone_number_id,
+            "api_version": api_version,
+            "meta_response": parsed,
+        }
+    except _ue.HTTPError as exc:
+        raw = exc.read().decode("utf-8", errors="replace")[:1000] if exc.fp else ""
+        try:
+            parsed_err = json.loads(raw)
+        except Exception:
+            parsed_err = raw
+        return {
+            "ok": False,
+            "http_status": exc.code,
+            "to_digits": digits,
+            "phone_number_id": phone_number_id,
+            "api_version": api_version,
+            "meta_response": parsed_err,
+        }
+    except Exception as exc:
+        return {"ok": False, "error": str(exc), "to_digits": digits}
+
+
 @router.post("/team/removal-outreach/{user_id}/send", response_model=OutreachItem)
 async def send_removal_outreach_manual(
     user_id: int,
