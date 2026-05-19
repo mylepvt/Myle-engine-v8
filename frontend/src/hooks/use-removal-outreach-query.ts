@@ -44,8 +44,9 @@ export function useRemovalOutreachQuery(repliedOnly = false, enabled = true) {
   })
 }
 
-async function sendRemovalOutreach(userId: number): Promise<RemovalOutreachItem> {
-  const res = await apiFetch(`/api/v1/team/removal-outreach/${userId}/send`, { method: 'POST' })
+async function sendRemovalOutreach({ userId, force = false }: { userId: number; force?: boolean }): Promise<RemovalOutreachItem> {
+  const qs = force ? '?force=true' : ''
+  const res = await apiFetch(`/api/v1/team/removal-outreach/${userId}/send${qs}`, { method: 'POST' })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(
