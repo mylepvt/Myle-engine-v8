@@ -291,26 +291,29 @@ async def send_removal_outreach_manual(
     user_id: int,
     auth_user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    force: bool = False,
 ) -> OutreachItem:
-    """Admin: manually send (or re-send) WhatsApp outreach for a removed member."""
+    """Admin: manually send (or re-send) WhatsApp outreach for a removed member.
+    Pass ?force=true to resend even if a previous attempt was marked sent."""
     if auth_user.role != "admin":
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admin only")
 
-    # If already sent successfully, return that record — don't send again
-    already_sent = (
-        await session.execute(
-            select(MemberRemovalOutreach)
-            .where(
-                MemberRemovalOutreach.user_id == user_id,
-                MemberRemovalOutreach.send_status.in_(["sent", "stub"]),
+    # If already sent successfully, return that record — unless force=true
+    if not force:
+        already_sent = (
+            await session.execute(
+                select(MemberRemovalOutreach)
+                .where(
+                    MemberRemovalOutreach.user_id == user_id,
+                    MemberRemovalOutreach.send_status.in_(["sent", "stub"]),
+                )
+                .order_by(MemberRemovalOutreach.created_at.desc())
+                .limit(1)
             )
-            .order_by(MemberRemovalOutreach.created_at.desc())
-            .limit(1)
-        )
-    ).scalar_one_or_none()
+        ).scalar_one_or_none()
 
-    if already_sent:
-        return _outreach_to_item(already_sent)
+        if already_sent:
+            return _outreach_to_item(already_sent)
 
     target = (
         await session.execute(select(User).where(User.id == user_id))

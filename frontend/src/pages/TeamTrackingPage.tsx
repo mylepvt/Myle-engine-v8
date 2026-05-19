@@ -858,26 +858,37 @@ export function TeamTrackingPage({ title }: Props) {
                       {(() => {
                         const outreach = outreachByUserId.get(item.user_id)
                         const isSent = outreach?.send_status === 'sent' || outreach?.send_status === 'stub'
-                        const isSending = sendOutreach.isPending && sendOutreach.variables === item.user_id
+                        const isSending = sendOutreach.isPending && sendOutreach.variables?.userId === item.user_id
                         return (
                           <div className="mt-3 border-t border-rose-400/15 pt-3 text-xs">
                             {isSent ? (
-                              /* ✓ Already sent — checkmark */
-                              <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-                                <CheckCircle2 className="size-3.5 shrink-0" />
-                                <span className="font-medium">WA message sent</span>
-                                {outreach?.sent_at ? (
-                                  <span className="text-muted-foreground">
-                                    · {new Date(outreach.sent_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                  </span>
-                                ) : null}
+                              /* ✓ Already sent — checkmark + resend option */
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                                  <CheckCircle2 className="size-3.5 shrink-0" />
+                                  <span className="font-medium">WA message sent</span>
+                                  {outreach?.sent_at ? (
+                                    <span className="text-muted-foreground">
+                                      · {new Date(outreach.sent_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <button
+                                  type="button"
+                                  disabled={isSending}
+                                  onClick={() => sendOutreach.mutate({ userId: item.user_id, force: true })}
+                                  className="inline-flex items-center gap-1 rounded border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-white/10 disabled:opacity-50"
+                                >
+                                  {isSending ? <Loader2 className="size-2.5 animate-spin" /> : <MessageCircle className="size-2.5" />}
+                                  {isSending ? 'Sending…' : 'Resend'}
+                                </button>
                               </div>
                             ) : (
                               /* Not sent yet — Send button */
                               <button
                                 type="button"
                                 disabled={isSending}
-                                onClick={() => sendOutreach.mutate(item.user_id)}
+                                onClick={() => sendOutreach.mutate({ userId: item.user_id })}
                                 className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
                               >
                                 {isSending ? (

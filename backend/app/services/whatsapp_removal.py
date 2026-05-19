@@ -132,7 +132,12 @@ async def _send_via_meta_api(
         ok = 200 <= status < 300
         if not ok:
             logger.warning("meta whatsapp non-2xx status=%s body=%s", status, body[:300])
-        return {"ok": ok, "channel": "meta_cloud_api", "http_status": status, "body": body[:500]}
+        wa_message_id: str | None = None
+        try:
+            wa_message_id = json.loads(body).get("messages", [{}])[0].get("id")
+        except Exception:
+            pass
+        return {"ok": ok, "channel": "meta_cloud_api", "http_status": status, "body": body[:500], "wa_message_id": wa_message_id}
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")[:500] if exc.fp else ""
         logger.warning("meta whatsapp HTTPError %s: %s", exc.code, body)
@@ -205,7 +210,7 @@ async def send_removal_whatsapp(
     session.add(record)
     await session.flush()
 
-    # Priority: Meta Cloud API (DB config or env vars) → webhook → stub
+    # Meta Cloud API only — no webhook fallback (webhook returns ok=True silently without sending)
     phone_number_id, access_token, api_version = await get_meta_config(session)
     if phone_number_id and access_token and phone:
         result = await _send_via_meta_api(
@@ -215,18 +220,16 @@ async def send_removal_whatsapp(
             access_token=access_token,
             api_version=api_version,
         )
-    elif (settings.ctcs_whatsapp_webhook_url or "").strip():
-        result = await _send_via_webhook(
-            user=user, phone=phone, message=message, removal_reason=removal_reason
-        )
     else:
-        logger.info("removal whatsapp stub user_id=%s phone_tail=%s", user.id, (phone or "")[-4:])
+        logger.info("removal whatsapp stub user_id=%s phone_tail=%s (no meta config)", user.id, (phone or "")[-4:])
         result = {"ok": True, "channel": "whatsapp_stub"}
 
     channel = result.get("channel", "unknown")
     if result.get("ok"):
         record.send_status = "stub" if channel == "whatsapp_stub" else "sent"
         record.sent_at = datetime.now(timezone.utc)
+        if result.get("wa_message_id"):
+            record.wa_message_id = result["wa_message_id"]
     else:
         record.send_status = "failed"
         record.send_error = (result.get("error") or result.get("detail") or "unknown error")[:500]
