@@ -457,3 +457,36 @@ export function useWhatsAppStatusQuery(enabled = true) {
     retry: false,
   })
 }
+
+export type WhatsAppTestSendResponse = {
+  ok: boolean
+  http_status?: number
+  to_digits?: string
+  phone_number_id?: string
+  api_version?: string
+  meta_response?: unknown
+  error?: string
+}
+
+async function sendWhatsAppTest(phone: string): Promise<WhatsAppTestSendResponse> {
+  const res = await apiFetch('/api/v1/webhooks/whatsapp/test-send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone }),
+  })
+  if (!res.ok && res.status !== 200) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(
+      typeof err === 'object' && err !== null && 'detail' in err
+        ? String((err as { detail?: string }).detail)
+        : `HTTP ${res.status}`,
+    )
+  }
+  return res.json()
+}
+
+export function useWhatsAppTestSendMutation() {
+  return useMutation({
+    mutationFn: sendWhatsAppTest,
+  })
+}
