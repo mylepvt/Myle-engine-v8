@@ -352,15 +352,21 @@ async def test_whatsapp_send(
         return {"ok": False, "error": str(exc), "to_digits": digits}
 
 
+class ManualSendRequest(BaseModel):
+    phone: Optional[str] = None
+
+
 @router.post("/team/removal-outreach/{user_id}/send", response_model=OutreachItem)
 async def send_removal_outreach_manual(
     user_id: int,
+    body: ManualSendRequest,
     auth_user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
     force: bool = False,
 ) -> OutreachItem:
     """Admin: manually send (or re-send) WhatsApp outreach for a removed member.
-    Pass ?force=true to resend even if a previous attempt was marked sent."""
+    Pass ?force=true to resend even if already marked sent.
+    Pass {phone} in body to override/set the phone number for members missing one."""
     if auth_user.role != "admin":
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admin only")
 
@@ -386,6 +392,11 @@ async def send_removal_outreach_manual(
     ).scalar_one_or_none()
     if not target:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    # If admin supplies a phone, save it to the user record so future sends work automatically
+    if body.phone and body.phone.strip():
+        target.phone = body.phone.strip()
+        await session.flush()
 
     record = await send_removal_whatsapp(user=target, session=session)
     await session.commit()

@@ -440,6 +440,7 @@ export function TeamTrackingPage({ title }: Props) {
   const { data, isPending, isError, error, refetch } = useTeamTrackingOverviewQuery(dateIso)
   const { data: outreachData } = useRemovalOutreachQuery(false, complianceFilter === 'removed')
   const sendOutreach = useSendRemovalOutreachMutation()
+  const [stubPhones, setStubPhones] = useState<Record<number, string>>({})
 
   const outreachByUserId = useMemo(() => {
     const map = new Map<number, RemovalOutreachItem>()
@@ -885,18 +886,27 @@ export function TeamTrackingPage({ title }: Props) {
                                 </button>
                               </div>
                             ) : isStub ? (
-                              /* Phone not in profile — show warning + retry */
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-amber-600 dark:text-amber-400">No phone saved for this member</span>
-                                <button
-                                  type="button"
-                                  disabled={isSending}
-                                  onClick={() => sendOutreach.mutate({ userId: item.user_id, force: true })}
-                                  className="inline-flex items-center gap-1 rounded border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-white/10 disabled:opacity-50"
-                                >
-                                  {isSending ? <Loader2 className="size-2.5 animate-spin" /> : <MessageCircle className="size-2.5" />}
-                                  {isSending ? 'Sending…' : 'Retry'}
-                                </button>
+                              /* Phone not in profile — inline input to enter and send */
+                              <div className="space-y-1.5">
+                                <p className="text-amber-600 dark:text-amber-400">No phone saved — enter number to send:</p>
+                                <div className="flex items-center gap-1.5">
+                                  <input
+                                    type="tel"
+                                    placeholder="10-digit mobile number"
+                                    value={stubPhones[item.user_id] ?? ''}
+                                    onChange={(e) => setStubPhones((prev) => ({ ...prev, [item.user_id]: e.target.value }))}
+                                    className="flex-1 rounded border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                                  />
+                                  <button
+                                    type="button"
+                                    disabled={isSending || !(stubPhones[item.user_id] ?? '').trim()}
+                                    onClick={() => sendOutreach.mutate({ userId: item.user_id, force: true, phone: stubPhones[item.user_id] })}
+                                    className="inline-flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
+                                  >
+                                    {isSending ? <Loader2 className="size-2.5 animate-spin" /> : <MessageCircle className="size-2.5" />}
+                                    {isSending ? 'Sending…' : 'Send'}
+                                  </button>
+                                </div>
                               </div>
                             ) : (
                               /* Not sent yet — Send button */
