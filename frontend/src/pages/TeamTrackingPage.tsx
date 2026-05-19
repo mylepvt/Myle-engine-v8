@@ -861,14 +861,17 @@ export function TeamTrackingPage({ title }: Props) {
                         const isSent = outreach?.send_status === 'sent'
                         const isStub = outreach?.send_status === 'stub'
                         const isSending = sendOutreach.isPending && sendOutreach.variables?.userId === item.user_id
+                        const phone = outreach?.phone ?? item.member_phone
+                        const waDigits = phone ? phone.replace(/\D/g, '').replace(/^(\d{10})$/, '91$1') : null
+                        const manualUrl = outreach?.manual_share_url ?? (waDigits ? `https://wa.me/${waDigits}` : null)
                         return (
-                          <div className="mt-3 border-t border-rose-400/15 pt-3 text-xs">
+                          <div className="mt-3 border-t border-rose-400/15 pt-3 text-xs space-y-2">
                             {isSent ? (
-                              /* ✓ Actually sent via Meta — checkmark + resend option */
+                              /* ✓ API sent — but may not arrive due to Meta 24h window */
                               <div className="flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
                                   <CheckCircle2 className="size-3.5 shrink-0" />
-                                  <span className="font-medium">WA message sent</span>
+                                  <span className="font-medium">API sent</span>
                                   {outreach?.sent_at ? (
                                     <span className="text-muted-foreground">
                                       · {new Date(outreach.sent_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
@@ -909,7 +912,7 @@ export function TeamTrackingPage({ title }: Props) {
                                 </div>
                               </div>
                             ) : (
-                              /* Not sent yet — Send button */
+                              /* Not sent yet — API Send button */
                               <button
                                 type="button"
                                 disabled={isSending}
@@ -921,9 +924,22 @@ export function TeamTrackingPage({ title }: Props) {
                                 ) : (
                                   <MessageCircle className="size-3" />
                                 )}
-                                {isSending ? 'Sending…' : outreach?.send_status === 'failed' ? 'Retry WhatsApp' : 'Send WhatsApp'}
+                                {isSending ? 'Sending…' : outreach?.send_status === 'failed' ? 'Retry API' : 'Send via API'}
                               </button>
                             )}
+
+                            {/* Manual wa.me link — always show, bypasses Meta 24h window */}
+                            {manualUrl ? (
+                              <a
+                                href={manualUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1.5 rounded-md border border-blue-500/30 bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-500/20 dark:text-blue-400"
+                              >
+                                <MessageCircle className="size-3" />
+                                Send manually (opens WhatsApp)
+                              </a>
+                            ) : null}
 
                             {outreach?.reply_text ? (
                               <div className="mt-2 rounded bg-emerald-400/[0.08] px-3 py-2">
