@@ -364,14 +364,14 @@ async def send_removal_outreach_manual(
     if auth_user.role != "admin":
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admin only")
 
-    # If already sent successfully, return that record — unless force=true
+    # Only block if a real Meta send succeeded — stub means phone was missing, always allow retry
     if not force:
         already_sent = (
             await session.execute(
                 select(MemberRemovalOutreach)
                 .where(
                     MemberRemovalOutreach.user_id == user_id,
-                    MemberRemovalOutreach.send_status.in_(["sent", "stub"]),
+                    MemberRemovalOutreach.send_status == "sent",
                 )
                 .order_by(MemberRemovalOutreach.created_at.desc())
                 .limit(1)

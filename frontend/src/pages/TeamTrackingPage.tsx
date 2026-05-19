@@ -857,12 +857,13 @@ export function TeamTrackingPage({ title }: Props) {
 
                       {(() => {
                         const outreach = outreachByUserId.get(item.user_id)
-                        const isSent = outreach?.send_status === 'sent' || outreach?.send_status === 'stub'
+                        const isSent = outreach?.send_status === 'sent'
+                        const isStub = outreach?.send_status === 'stub'
                         const isSending = sendOutreach.isPending && sendOutreach.variables?.userId === item.user_id
                         return (
                           <div className="mt-3 border-t border-rose-400/15 pt-3 text-xs">
                             {isSent ? (
-                              /* ✓ Already sent — checkmark + resend option */
+                              /* ✓ Actually sent via Meta — checkmark + resend option */
                               <div className="flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
                                   <CheckCircle2 className="size-3.5 shrink-0" />
@@ -881,6 +882,20 @@ export function TeamTrackingPage({ title }: Props) {
                                 >
                                   {isSending ? <Loader2 className="size-2.5 animate-spin" /> : <MessageCircle className="size-2.5" />}
                                   {isSending ? 'Sending…' : 'Resend'}
+                                </button>
+                              </div>
+                            ) : isStub ? (
+                              /* Phone not in profile — show warning + retry */
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-amber-600 dark:text-amber-400">No phone saved for this member</span>
+                                <button
+                                  type="button"
+                                  disabled={isSending}
+                                  onClick={() => sendOutreach.mutate({ userId: item.user_id, force: true })}
+                                  className="inline-flex items-center gap-1 rounded border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-white/10 disabled:opacity-50"
+                                >
+                                  {isSending ? <Loader2 className="size-2.5 animate-spin" /> : <MessageCircle className="size-2.5" />}
+                                  {isSending ? 'Sending…' : 'Retry'}
                                 </button>
                               </div>
                             ) : (
