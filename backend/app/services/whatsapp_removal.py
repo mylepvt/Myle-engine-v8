@@ -235,6 +235,18 @@ async def send_removal_whatsapp(
         record.send_error = (result.get("error") or result.get("detail") or "unknown error")[:500]
 
     await session.flush()
+
+    if channel != "whatsapp_stub":
+        from app.services.whatsapp_log_service import log_wa_outbound
+        await log_wa_outbound(
+            session,
+            phone=phone,
+            message=message,
+            message_type="removal_outreach",
+            result=result,
+            related_user_id=user.id,
+        )
+
     return record
 
 

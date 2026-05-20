@@ -29,9 +29,16 @@ logger = logging.getLogger(__name__)
 # Core helper — send WA to any user by phone
 # ---------------------------------------------------------------------------
 
-async def _send_wa(phone: str | None, message: str, session: AsyncSession) -> bool:
+async def _send_wa(
+    phone: str | None,
+    message: str,
+    session: AsyncSession,
+    message_type: str = "leader_alert",
+    related_user_id: int | None = None,
+) -> bool:
     if not phone:
         return False
+    from app.services.whatsapp_log_service import log_wa_outbound
     try:
         phone_number_id, access_token, api_version = await get_meta_config(session)
         if not phone_number_id or not access_token:
@@ -42,6 +49,14 @@ async def _send_wa(phone: str | None, message: str, session: AsyncSession) -> bo
             phone_number_id=phone_number_id,
             access_token=access_token,
             api_version=api_version,
+        )
+        await log_wa_outbound(
+            session,
+            phone=phone,
+            message=message,
+            message_type=message_type,
+            result=result,
+            related_user_id=related_user_id,
         )
         return bool(result.get("ok"))
     except Exception as exc:
@@ -79,7 +94,7 @@ async def alert_leader_member_removed(
         "Please review your team's status on the app.\n\n"
         "— Myle Team"
     )
-    await _send_wa(leader.phone, msg, session)
+    await _send_wa(leader.phone, msg, session, message_type="leader_alert", related_user_id=leader.id)
     logger.info("leader removal alert sent leader_id=%s member_id=%s", leader.id, member.id)
 
 
@@ -104,7 +119,7 @@ async def alert_leader_grace_requested(
         "Admin will review and approve/reject on the app.\n\n"
         "— Myle Team"
     )
-    await _send_wa(leader.phone, msg, session)
+    await _send_wa(leader.phone, msg, session, message_type="leader_alert", related_user_id=leader.id)
     logger.info("leader grace alert sent leader_id=%s member_id=%s", leader.id, member.id)
 
 
@@ -125,7 +140,7 @@ async def alert_leader_new_member_approved(
         "Welcome them and ensure they submit their first daily report!\n\n"
         "— Myle Team"
     )
-    await _send_wa(leader.phone, msg, session)
+    await _send_wa(leader.phone, msg, session, message_type="leader_alert", related_user_id=leader.id)
     logger.info("leader new-member alert sent leader_id=%s member_id=%s", leader.id, member.id)
 
 
@@ -151,7 +166,7 @@ async def alert_leader_member_replied(
         "You can view the full reply in Team Tracking on the app.\n\n"
         "— Myle Team"
     )
-    await _send_wa(leader.phone, msg, session)
+    await _send_wa(leader.phone, msg, session, message_type="leader_alert", related_user_id=leader.id)
     logger.info("leader reply-forward sent leader_id=%s member_id=%s", leader.id, member_user_id)
 
 
@@ -221,7 +236,7 @@ async def send_daily_team_summary(leader: User, today: date, session: AsyncSessi
             "— Myle Team"
         )
 
-    await _send_wa(leader.phone, msg, session)
+    await _send_wa(leader.phone, msg, session, message_type="leader_alert", related_user_id=leader.id)
     logger.info(
         "daily summary sent leader_id=%s submitted=%d missing=%d",
         leader.id, submitted_count, len(missing),

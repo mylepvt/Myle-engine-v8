@@ -123,6 +123,7 @@ async def receive_whatsapp_reply(
             handle_leader_command,
         )
         from app.services.whatsapp_removal import _send_via_meta_api
+        from app.services.whatsapp_log_service import log_wa_inbound, log_wa_outbound
 
         matched = 0
         for msg in messages:
@@ -132,15 +133,32 @@ async def receive_whatsapp_reply(
             # Check if this is a two-way leader command first
             cmd_reply = await handle_leader_command(msg["phone"], msg["message"], session)
             if cmd_reply:
-                phone_number_id, access_token, api_version = await get_meta_config(session)
-                if phone_number_id and access_token:
-                    await _send_via_meta_api(
-                        phone=msg["phone"],
-                        message=cmd_reply,
-                        phone_number_id=phone_number_id,
-                        access_token=access_token,
-                        api_version=api_version,
-                    )
+                await log_wa_inbound(
+                    session,
+                    phone=msg["phone"],
+                    message=msg["message"],
+                    message_type="inbound_leader",
+                    wa_message_id=msg.get("wa_message_id"),
+                )
+                try:
+                    phone_number_id, access_token, api_version = await get_meta_config(session)
+                    if phone_number_id and access_token:
+                        result = await _send_via_meta_api(
+                            phone=msg["phone"],
+                            message=cmd_reply,
+                            phone_number_id=phone_number_id,
+                            access_token=access_token,
+                            api_version=api_version,
+                        )
+                        await log_wa_outbound(
+                            session,
+                            phone=msg["phone"],
+                            message=cmd_reply,
+                            message_type="command_reply",
+                            result=result,
+                        )
+                except Exception:
+                    logger.exception("leader cmd reply send failed phone=%s", msg["phone"])
                 continue
 
             # Otherwise try to match as removed-member reply
@@ -149,6 +167,15 @@ async def receive_whatsapp_reply(
                 reply_text=msg["message"],
                 wa_message_id=msg.get("wa_message_id"),
                 session=session,
+            )
+            msg_type = "inbound_member" if match else "inbound_unknown"
+            await log_wa_inbound(
+                session,
+                phone=msg["phone"],
+                message=msg["message"],
+                message_type=msg_type,
+                wa_message_id=msg.get("wa_message_id"),
+                related_user_id=match.user_id if match else None,
             )
             if match:
                 matched += 1
@@ -429,3 +456,215 @@ async def send_removal_outreach_manual(
     record = await send_removal_whatsapp(user=target, session=session)
     await session.commit()
     return _outreach_to_item(record)
+
+
+# ---------------------------------------------------------------------------
+# Admin: test leader alert functions without waiting for real events
+# ---------------------------------------------------------------------------
+
+class TestLeaderAlertRequest(BaseModel):
+    alert_type: str  # "removal" | "grace" | "approval" | "reply" | "summary" | "command"
+    member_user_id: Optional[int] = None
+    leader_user_id: Optional[int] = None  # for summary/command, send to this leader
+    message: Optional[str] = None  # for "reply" and "command" types
+
+
+@router.post("/webhooks/whatsapp/test-leader-alerts")
+async def test_leader_alerts(
+    body: TestLeaderAlertRequest,
+    auth_user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Admin: fire leader alert functions manually to verify they work end-to-end."""
+    if auth_user.role != "admin":
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admin only")
+
+    from app.services.whatsapp_leader_alerts import (
+        alert_leader_grace_requested,
+        alert_leader_member_removed,
+        alert_leader_member_replied,
+        alert_leader_new_member_approved,
+        handle_leader_command,
+        send_daily_team_summary,
+    )
+    from app.core.time_ist import today_ist
+
+    alert_type = body.alert_type.strip().lower()
+
+    if alert_type in {"removal", "grace", "approval", "reply"}:
+        if not body.member_user_id:
+            return {"ok": False, "error": "member_user_id required for this alert_type"}
+        member = (await session.execute(select(User).where(User.id == body.member_user_id))).scalar_one_or_none()
+        if not member:
+            return {"ok": False, "error": f"User {body.member_user_id} not found"}
+
+        if alert_type == "removal":
+            await alert_leader_member_removed(member, "Test removal reason", session)
+            return {"ok": True, "sent": "removal alert to leader of user " + str(body.member_user_id)}
+
+        if alert_type == "grace":
+            await alert_leader_grace_requested(member, "Test grace reason", None, session)
+            return {"ok": True, "sent": "grace alert to leader of user " + str(body.member_user_id)}
+
+        if alert_type == "approval":
+            await alert_leader_new_member_approved(member, session)
+            return {"ok": True, "sent": "approval alert to leader of user " + str(body.member_user_id)}
+
+        if alert_type == "reply":
+            reply_text = body.message or "Test reply message from member"
+            await alert_leader_member_replied(member.id, reply_text, session)
+            return {"ok": True, "sent": "reply-forward alert to leader of user " + str(body.member_user_id)}
+
+    if alert_type == "summary":
+        if not body.leader_user_id:
+            return {"ok": False, "error": "leader_user_id required for summary"}
+        leader = (await session.execute(select(User).where(User.id == body.leader_user_id))).scalar_one_or_none()
+        if not leader:
+            return {"ok": False, "error": f"User {body.leader_user_id} not found"}
+        await send_daily_team_summary(leader, today_ist(), session)
+        return {"ok": True, "sent": f"daily summary to leader_id={body.leader_user_id}"}
+
+    if alert_type == "command":
+        if not body.leader_user_id or not body.message:
+            return {"ok": False, "error": "leader_user_id and message required for command"}
+        leader = (await session.execute(select(User).where(User.id == body.leader_user_id))).scalar_one_or_none()
+        if not leader or not leader.phone:
+            return {"ok": False, "error": "Leader not found or has no phone"}
+        reply = await handle_leader_command(leader.phone, body.message, session)
+        if reply is None:
+            return {"ok": False, "error": "Command not recognized or user is not a leader", "tried_phone": leader.phone}
+        from app.services.whatsapp_removal import _send_via_meta_api
+        phone_number_id, access_token, api_version = await get_meta_config(session)
+        if phone_number_id and access_token:
+            result = await _send_via_meta_api(
+                phone=leader.phone,
+                message=reply,
+                phone_number_id=phone_number_id,
+                access_token=access_token,
+                api_version=api_version,
+            )
+            return {"ok": result.get("ok", False), "command_reply_preview": reply[:200], "meta": result}
+        return {"ok": False, "error": "WhatsApp not configured", "reply_would_be": reply[:200]}
+
+    return {"ok": False, "error": f"Unknown alert_type: {body.alert_type}. Use: removal|grace|approval|reply|summary|command"}
+
+
+# ---------------------------------------------------------------------------
+# Admin: WhatsApp activity log
+# ---------------------------------------------------------------------------
+
+from app.models.whatsapp_log import WhatsAppLog as _WhatsAppLog
+from sqlalchemy import func as _func, and_ as _and_
+
+
+class WhatsAppLogItem(BaseModel):
+    id: int
+    created_at: str
+    direction: str
+    message_type: str
+    phone: Optional[str]
+    message_preview: Optional[str]
+    status: str
+    error: Optional[str]
+    wa_message_id: Optional[str]
+    related_user_id: Optional[int]
+
+    model_config = {"from_attributes": True}
+
+
+class WhatsAppLogListResponse(BaseModel):
+    items: list[WhatsAppLogItem]
+    total: int
+    sent_today: int
+    failed_today: int
+    received_today: int
+
+
+@router.get("/webhooks/whatsapp/logs", response_model=WhatsAppLogListResponse)
+async def get_whatsapp_logs(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = 50,
+    offset: int = 0,
+    direction: Optional[str] = None,
+    status: Optional[str] = None,
+    message_type: Optional[str] = None,
+) -> WhatsAppLogListResponse:
+    """Admin: paginated WhatsApp activity log with today's stats."""
+    if user.role != "admin":
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admin only")
+
+    from datetime import date, timezone as _tz
+    import datetime as _dt
+
+    filters = []
+    if direction:
+        filters.append(_WhatsAppLog.direction == direction)
+    if status:
+        filters.append(_WhatsAppLog.status == status)
+    if message_type:
+        filters.append(_WhatsAppLog.message_type == message_type)
+
+    base_stmt = select(_WhatsAppLog)
+    if filters:
+        base_stmt = base_stmt.where(_and_(*filters))
+
+    total_row = (await session.execute(
+        select(_func.count()).select_from(base_stmt.subquery())
+    )).scalar_one()
+
+    rows = (await session.execute(
+        base_stmt.order_by(_WhatsAppLog.created_at.desc()).limit(limit).offset(offset)
+    )).scalars().all()
+
+    # Today's stats (IST midnight → now)
+    from app.core.time_ist import today_ist
+    today_dt = today_ist()
+    today_start = _dt.datetime(today_dt.year, today_dt.month, today_dt.day, tzinfo=_tz.utc)
+
+    sent_today = (await session.execute(
+        select(_func.count()).where(
+            _WhatsAppLog.direction == "out",
+            _WhatsAppLog.status == "sent",
+            _WhatsAppLog.created_at >= today_start,
+        )
+    )).scalar_one()
+
+    failed_today = (await session.execute(
+        select(_func.count()).where(
+            _WhatsAppLog.direction == "out",
+            _WhatsAppLog.status == "failed",
+            _WhatsAppLog.created_at >= today_start,
+        )
+    )).scalar_one()
+
+    received_today = (await session.execute(
+        select(_func.count()).where(
+            _WhatsAppLog.direction == "in",
+            _WhatsAppLog.created_at >= today_start,
+        )
+    )).scalar_one()
+
+    items = [
+        WhatsAppLogItem(
+            id=r.id,
+            created_at=r.created_at.isoformat(),
+            direction=r.direction,
+            message_type=r.message_type,
+            phone=r.phone,
+            message_preview=r.message_preview,
+            status=r.status,
+            error=r.error,
+            wa_message_id=r.wa_message_id,
+            related_user_id=r.related_user_id,
+        )
+        for r in rows
+    ]
+
+    return WhatsAppLogListResponse(
+        items=items,
+        total=total_row,
+        sent_today=sent_today,
+        failed_today=failed_today,
+        received_today=received_today,
+    )

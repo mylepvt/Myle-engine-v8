@@ -75,6 +75,9 @@ function applyTopics(qc: QueryClient, topics: string[]) {
   if (t.has('enroll')) {
     void qc.invalidateQueries({ queryKey: ['enroll'] })
   }
+  if (t.has('whatsapp_log')) {
+    void qc.invalidateQueries({ queryKey: ['whatsapp', 'logs'] })
+  }
 }
 
 function isImmediateTrackingTopic(topics: string[]) {
