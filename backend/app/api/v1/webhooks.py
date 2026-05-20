@@ -61,24 +61,136 @@ class SimpleReplyPayload(BaseModel):
     wa_message_id: Optional[str] = None
 
 
+def _extract_meta_message_value(msg: dict[str, Any]) -> tuple[str, str | None]:
+    msg_type = (msg.get("type") or "").strip().lower() or "unknown"
+
+    if msg_type == "text":
+        text = ((msg.get("text") or {}).get("body") or "").strip()
+        return "text", text or None
+
+    if msg_type == "button":
+        button = msg.get("button") or {}
+        text = (button.get("text") or button.get("payload") or "").strip()
+        return "button", text or None
+
+    if msg_type == "interactive":
+        interactive = msg.get("interactive") or {}
+        interactive_type = (interactive.get("type") or "").strip().lower()
+        if interactive_type == "button_reply":
+            reply = interactive.get("button_reply") or {}
+            text = (reply.get("title") or reply.get("id") or "").strip()
+            return "interactive_button_reply", text or None
+        if interactive_type == "list_reply":
+            reply = interactive.get("list_reply") or {}
+            title = (reply.get("title") or "").strip()
+            desc = (reply.get("description") or "").strip()
+            text = " — ".join(part for part in [title, desc] if part)
+            return "interactive_list_reply", text or None
+
+    return msg_type, None
+
+
 def _extract_meta_messages(body: dict[str, Any]) -> list[dict[str, Any]]:
     """
     Parse Meta's nested webhook payload and return a flat list of
-    {phone, message, wa_message_id} dicts.
+    supported inbound message dicts.
     """
     results: list[dict[str, Any]] = []
     for entry in body.get("entry", []):
         for change in entry.get("changes", []):
             value = change.get("value", {})
             for msg in value.get("messages", []):
-                if msg.get("type") != "text":
+                message_type, message_text = _extract_meta_message_value(msg)
+                if not message_text:
                     continue
                 results.append({
                     "phone": msg.get("from", ""),
-                    "message": (msg.get("text") or {}).get("body", "").strip(),
+                    "message": message_text,
+                    "message_type": message_type,
                     "wa_message_id": msg.get("id"),
                 })
     return results
+
+
+async def _handle_inbound_message(
+    *,
+    session: AsyncSession,
+    phone: str,
+    message: str,
+    wa_message_id: str | None,
+    message_type_hint: str | None = None,
+) -> tuple[str, int | None]:
+    """
+    Unified inbound handling for Meta and custom/BSP forwarded payloads.
+
+    Returns:
+      (message_type_logged, related_user_id)
+    """
+    from app.services.whatsapp_leader_alerts import (
+        alert_leader_member_replied,
+        handle_leader_command,
+    )
+    from app.services.whatsapp_removal import _send_via_meta_api
+    from app.services.whatsapp_log_service import log_wa_inbound, log_wa_outbound
+
+    normalized_message = message.strip()
+    if not phone or not normalized_message:
+        return "inbound_unknown", None
+
+    # First treat it as a possible leader command.
+    cmd_reply = await handle_leader_command(phone, normalized_message, session)
+    if cmd_reply:
+        await log_wa_inbound(
+            session,
+            phone=phone,
+            message=normalized_message,
+            message_type="inbound_leader",
+            wa_message_id=wa_message_id,
+        )
+        try:
+            phone_number_id, access_token, api_version = await get_meta_config(session)
+            if phone_number_id and access_token:
+                result = await _send_via_meta_api(
+                    phone=phone,
+                    message=cmd_reply,
+                    phone_number_id=phone_number_id,
+                    access_token=access_token,
+                    api_version=api_version,
+                )
+                await log_wa_outbound(
+                    session,
+                    phone=phone,
+                    message=cmd_reply,
+                    message_type="command_reply",
+                    result=result,
+                )
+        except Exception:
+            logger.exception("leader cmd reply send failed phone=%s", phone)
+        return "inbound_leader", None
+
+    # Otherwise try to match as a removed-member reply.
+    match = await record_reply(
+        phone=phone,
+        reply_text=normalized_message,
+        wa_message_id=wa_message_id,
+        session=session,
+    )
+    logged_type = "inbound_member" if match else (message_type_hint or "inbound_unknown")
+    await log_wa_inbound(
+        session,
+        phone=phone,
+        message=normalized_message,
+        message_type=logged_type,
+        wa_message_id=wa_message_id,
+        related_user_id=match.user_id if match else None,
+    )
+    if match:
+        try:
+            await alert_leader_member_replied(match.user_id, normalized_message, session)
+        except Exception:
+            logger.exception("leader reply-forward failed user_id=%s", match.user_id)
+        return "inbound_member", match.user_id
+    return logged_type, None
 
 
 @router.post("/webhooks/whatsapp/reply", status_code=200)
@@ -116,74 +228,21 @@ async def receive_whatsapp_reply(
         messages = _extract_meta_messages(body)
         if not messages:
             # Meta sends status updates (delivery, read) too — just ack them
-            return {"ok": True, "matched": False, "note": "no_text_messages"}
-
-        from app.services.whatsapp_leader_alerts import (
-            alert_leader_member_replied,
-            handle_leader_command,
-        )
-        from app.services.whatsapp_removal import _send_via_meta_api
-        from app.services.whatsapp_log_service import log_wa_inbound, log_wa_outbound
+            return {"ok": True, "matched": False, "note": "no_supported_messages"}
 
         matched = 0
         for msg in messages:
             if not msg["phone"] or not msg["message"]:
                 continue
-
-            # Check if this is a two-way leader command first
-            cmd_reply = await handle_leader_command(msg["phone"], msg["message"], session)
-            if cmd_reply:
-                await log_wa_inbound(
-                    session,
-                    phone=msg["phone"],
-                    message=msg["message"],
-                    message_type="inbound_leader",
-                    wa_message_id=msg.get("wa_message_id"),
-                )
-                try:
-                    phone_number_id, access_token, api_version = await get_meta_config(session)
-                    if phone_number_id and access_token:
-                        result = await _send_via_meta_api(
-                            phone=msg["phone"],
-                            message=cmd_reply,
-                            phone_number_id=phone_number_id,
-                            access_token=access_token,
-                            api_version=api_version,
-                        )
-                        await log_wa_outbound(
-                            session,
-                            phone=msg["phone"],
-                            message=cmd_reply,
-                            message_type="command_reply",
-                            result=result,
-                        )
-                except Exception:
-                    logger.exception("leader cmd reply send failed phone=%s", msg["phone"])
-                continue
-
-            # Otherwise try to match as removed-member reply
-            match = await record_reply(
-                phone=msg["phone"],
-                reply_text=msg["message"],
-                wa_message_id=msg.get("wa_message_id"),
+            logged_type, related_user_id = await _handle_inbound_message(
                 session=session,
-            )
-            msg_type = "inbound_member" if match else "inbound_unknown"
-            await log_wa_inbound(
-                session,
                 phone=msg["phone"],
                 message=msg["message"],
-                message_type=msg_type,
                 wa_message_id=msg.get("wa_message_id"),
-                related_user_id=match.user_id if match else None,
+                message_type_hint=msg.get("message_type") or "inbound_unknown",
             )
-            if match:
+            if logged_type == "inbound_member" and related_user_id is not None:
                 matched += 1
-                # Forward reply to the member's leader
-                try:
-                    await alert_leader_member_replied(match.user_id, msg["message"], session)
-                except Exception:
-                    pass
 
         await session.commit()
         logger.info("meta inbound: %d messages, %d matched outreach records", len(messages), matched)
@@ -203,19 +262,21 @@ async def receive_whatsapp_reply(
     except Exception:
         raise HTTPException(status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid payload")
 
-    match = await record_reply(
-        phone=payload.phone,
-        reply_text=payload.message,
-        wa_message_id=payload.wa_message_id,
+    logged_type, related_user_id = await _handle_inbound_message(
         session=session,
+        phone=payload.phone,
+        message=payload.message,
+        wa_message_id=payload.wa_message_id,
+        message_type_hint="inbound_unknown",
     )
-    if match is None:
+    if logged_type != "inbound_member" or related_user_id is None:
         logger.info("whatsapp reply: no outreach record matched for phone")
+        await session.commit()
         return {"ok": True, "matched": False}
 
     await session.commit()
-    logger.info("whatsapp reply stored outreach_id=%s user_id=%s", match.id, match.user_id)
-    return {"ok": True, "matched": True, "outreach_id": match.id}
+    logger.info("whatsapp reply stored related_user_id=%s", related_user_id)
+    return {"ok": True, "matched": True, "related_user_id": related_user_id}
 
 
 # ---------------------------------------------------------------------------
