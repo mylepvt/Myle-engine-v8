@@ -132,15 +132,18 @@ async def receive_whatsapp_reply(
             # Check if this is a two-way leader command first
             cmd_reply = await handle_leader_command(msg["phone"], msg["message"], session)
             if cmd_reply:
-                phone_number_id, access_token, api_version = await get_meta_config(session)
-                if phone_number_id and access_token:
-                    await _send_via_meta_api(
-                        phone=msg["phone"],
-                        message=cmd_reply,
-                        phone_number_id=phone_number_id,
-                        access_token=access_token,
-                        api_version=api_version,
-                    )
+                try:
+                    phone_number_id, access_token, api_version = await get_meta_config(session)
+                    if phone_number_id and access_token:
+                        await _send_via_meta_api(
+                            phone=msg["phone"],
+                            message=cmd_reply,
+                            phone_number_id=phone_number_id,
+                            access_token=access_token,
+                            api_version=api_version,
+                        )
+                except Exception:
+                    logger.exception("leader cmd reply send failed phone=%s", msg["phone"])
                 continue
 
             # Otherwise try to match as removed-member reply
@@ -429,3 +432,94 @@ async def send_removal_outreach_manual(
     record = await send_removal_whatsapp(user=target, session=session)
     await session.commit()
     return _outreach_to_item(record)
+
+
+# ---------------------------------------------------------------------------
+# Admin: test leader alert functions without waiting for real events
+# ---------------------------------------------------------------------------
+
+class TestLeaderAlertRequest(BaseModel):
+    alert_type: str  # "removal" | "grace" | "approval" | "reply" | "summary" | "command"
+    member_user_id: Optional[int] = None
+    leader_user_id: Optional[int] = None  # for summary/command, send to this leader
+    message: Optional[str] = None  # for "reply" and "command" types
+
+
+@router.post("/webhooks/whatsapp/test-leader-alerts")
+async def test_leader_alerts(
+    body: TestLeaderAlertRequest,
+    auth_user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Admin: fire leader alert functions manually to verify they work end-to-end."""
+    if auth_user.role != "admin":
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admin only")
+
+    from app.services.whatsapp_leader_alerts import (
+        alert_leader_grace_requested,
+        alert_leader_member_removed,
+        alert_leader_member_replied,
+        alert_leader_new_member_approved,
+        handle_leader_command,
+        send_daily_team_summary,
+    )
+    from app.core.time_ist import today_ist
+
+    alert_type = body.alert_type.strip().lower()
+
+    if alert_type in {"removal", "grace", "approval", "reply"}:
+        if not body.member_user_id:
+            return {"ok": False, "error": "member_user_id required for this alert_type"}
+        member = (await session.execute(select(User).where(User.id == body.member_user_id))).scalar_one_or_none()
+        if not member:
+            return {"ok": False, "error": f"User {body.member_user_id} not found"}
+
+        if alert_type == "removal":
+            await alert_leader_member_removed(member, "Test removal reason", session)
+            return {"ok": True, "sent": "removal alert to leader of user " + str(body.member_user_id)}
+
+        if alert_type == "grace":
+            await alert_leader_grace_requested(member, "Test grace reason", None, session)
+            return {"ok": True, "sent": "grace alert to leader of user " + str(body.member_user_id)}
+
+        if alert_type == "approval":
+            await alert_leader_new_member_approved(member, session)
+            return {"ok": True, "sent": "approval alert to leader of user " + str(body.member_user_id)}
+
+        if alert_type == "reply":
+            reply_text = body.message or "Test reply message from member"
+            await alert_leader_member_replied(member.id, reply_text, session)
+            return {"ok": True, "sent": "reply-forward alert to leader of user " + str(body.member_user_id)}
+
+    if alert_type == "summary":
+        if not body.leader_user_id:
+            return {"ok": False, "error": "leader_user_id required for summary"}
+        leader = (await session.execute(select(User).where(User.id == body.leader_user_id))).scalar_one_or_none()
+        if not leader:
+            return {"ok": False, "error": f"User {body.leader_user_id} not found"}
+        await send_daily_team_summary(leader, today_ist(), session)
+        return {"ok": True, "sent": f"daily summary to leader_id={body.leader_user_id}"}
+
+    if alert_type == "command":
+        if not body.leader_user_id or not body.message:
+            return {"ok": False, "error": "leader_user_id and message required for command"}
+        leader = (await session.execute(select(User).where(User.id == body.leader_user_id))).scalar_one_or_none()
+        if not leader or not leader.phone:
+            return {"ok": False, "error": "Leader not found or has no phone"}
+        reply = await handle_leader_command(leader.phone, body.message, session)
+        if reply is None:
+            return {"ok": False, "error": "Command not recognized or user is not a leader", "tried_phone": leader.phone}
+        from app.services.whatsapp_removal import _send_via_meta_api
+        phone_number_id, access_token, api_version = await get_meta_config(session)
+        if phone_number_id and access_token:
+            result = await _send_via_meta_api(
+                phone=leader.phone,
+                message=reply,
+                phone_number_id=phone_number_id,
+                access_token=access_token,
+                api_version=api_version,
+            )
+            return {"ok": result.get("ok", False), "command_reply_preview": reply[:200], "meta": result}
+        return {"ok": False, "error": "WhatsApp not configured", "reply_would_be": reply[:200]}
+
+    return {"ok": False, "error": f"Unknown alert_type: {body.alert_type}. Use: removal|grace|approval|reply|summary|command"}
