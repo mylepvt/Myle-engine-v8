@@ -805,10 +805,14 @@ async def update_member_role(
     if previous_role == "leader" and body.role == "team":
         upline_leader = await _find_upline_leader(session, target)
         if upline_leader is not None:
+            # Only transfer Day-2 handoff leads: owner is a team member (not the leader
+            # themselves). These are leads that came to the leader after mindset lock
+            # completion. The leader's own personally-created leads are excluded.
             await session.execute(
                 update(Lead)
                 .where(
                     Lead.assigned_to_user_id == target_user_id,
+                    Lead.owner_user_id != target_user_id,
                     Lead.deleted_at.is_(None),
                     Lead.in_pool.is_(False),
                 )
