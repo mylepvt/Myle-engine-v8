@@ -118,10 +118,32 @@ async def receive_whatsapp_reply(
             # Meta sends status updates (delivery, read) too — just ack them
             return {"ok": True, "matched": False, "note": "no_text_messages"}
 
+        from app.services.whatsapp_leader_alerts import (
+            alert_leader_member_replied,
+            handle_leader_command,
+        )
+        from app.services.whatsapp_removal import _send_via_meta_api
+
         matched = 0
         for msg in messages:
             if not msg["phone"] or not msg["message"]:
                 continue
+
+            # Check if this is a two-way leader command first
+            cmd_reply = await handle_leader_command(msg["phone"], msg["message"], session)
+            if cmd_reply:
+                phone_number_id, access_token, api_version = await get_meta_config(session)
+                if phone_number_id and access_token:
+                    await _send_via_meta_api(
+                        phone=msg["phone"],
+                        message=cmd_reply,
+                        phone_number_id=phone_number_id,
+                        access_token=access_token,
+                        api_version=api_version,
+                    )
+                continue
+
+            # Otherwise try to match as removed-member reply
             match = await record_reply(
                 phone=msg["phone"],
                 reply_text=msg["message"],
@@ -130,6 +152,12 @@ async def receive_whatsapp_reply(
             )
             if match:
                 matched += 1
+                # Forward reply to the member's leader
+                try:
+                    await alert_leader_member_replied(match.user_id, msg["message"], session)
+                except Exception:
+                    pass
+
         await session.commit()
         logger.info("meta inbound: %d messages, %d matched outreach records", len(messages), matched)
         return {"ok": True, "matched": matched > 0, "count": matched}

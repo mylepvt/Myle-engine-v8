@@ -29,6 +29,7 @@ from app.middleware.request_id import RequestIdMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.services.scheduled_jobs import (
     job_call_target_reminder,
+    job_daily_leader_team_summary,
     job_daily_report_reminder,
     job_enrollment_proof_alert,
     job_leader_basics_enforcement,
@@ -84,6 +85,13 @@ async def lifespan(_app: FastAPI):
             job_leader_basics_enforcement,
             CronTrigger(hour=23, minute=30, timezone="Asia/Kolkata"),
             id="leader_basics_enforcement",
+            replace_existing=True,
+            misfire_grace_time=1800,
+        )
+        _scheduler.add_job(
+            job_daily_leader_team_summary,
+            CronTrigger(hour=22, minute=0, timezone="Asia/Kolkata"),
+            id="daily_leader_team_summary",
             replace_existing=True,
             misfire_grace_time=1800,
         )
