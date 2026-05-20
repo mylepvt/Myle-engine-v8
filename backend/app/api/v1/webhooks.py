@@ -777,3 +777,47 @@ async def trigger_daily_summary(
 
     await session.commit()
     return {"ok": True, "sent_to": sent, "total_leaders": len(leaders)}
+
+
+# ---------------------------------------------------------------------------
+# Admin: list all leaders with their WhatsApp phone status
+# ---------------------------------------------------------------------------
+
+@router.get("/webhooks/whatsapp/leaders")
+async def list_leaders_phone_status(
+    auth_user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Admin: returns all approved leaders with name, phone, and whether WA commands will work."""
+    if auth_user.role != "admin":
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admin only")
+
+    from app.services.whatsapp_removal import _whatsapp_digits
+
+    leaders = (
+        await session.execute(
+            select(User).where(
+                User.role == "leader",
+                User.registration_status == "approved",
+                User.removed_at.is_(None),
+            ).order_by(User.name)
+        )
+    ).scalars().all()
+
+    items = []
+    for u in leaders:
+        normalized = _whatsapp_digits(u.phone)
+        items.append({
+            "id": u.id,
+            "name": u.name or u.username or u.fbo_id or "—",
+            "phone_raw": u.phone,
+            "phone_normalized": normalized,
+            "wa_enabled": normalized is not None,
+        })
+
+    return {
+        "leaders": items,
+        "total": len(items),
+        "wa_enabled": sum(1 for i in items if i["wa_enabled"]),
+        "no_phone": sum(1 for i in items if not i["wa_enabled"]),
+    }

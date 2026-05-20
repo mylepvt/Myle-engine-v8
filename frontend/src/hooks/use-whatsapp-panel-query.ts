@@ -116,3 +116,33 @@ export function useWhatsAppStatusQuery(enabled = true) {
     refetchInterval: 60_000,
   })
 }
+
+export type LeaderPhoneItem = {
+  id: number
+  name: string
+  phone_raw: string | null
+  phone_normalized: string | null
+  wa_enabled: boolean
+}
+
+export type LeadersPhoneResponse = {
+  leaders: LeaderPhoneItem[]
+  total: number
+  wa_enabled: number
+  no_phone: number
+}
+
+async function fetchLeadersPhone(): Promise<LeadersPhoneResponse> {
+  const res = await apiFetch('/api/v1/webhooks/whatsapp/leaders')
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
+}
+
+export function useWhatsAppLeadersQuery(enabled = true) {
+  return useQuery({
+    queryKey: ['whatsapp', 'leaders'],
+    queryFn: fetchLeadersPhone,
+    enabled,
+    staleTime: 30_000,
+  })
+}
