@@ -30,7 +30,7 @@ async def log_wa_outbound(
     result: dict[str, Any],
     related_user_id: int | None = None,
 ) -> None:
-    """Write one outbound log row — never raises."""
+    """Write one outbound log row — never raises, uses savepoint so main session stays clean."""
     try:
         ok = bool(result.get("ok"))
         row = WhatsAppLog(
@@ -43,8 +43,8 @@ async def log_wa_outbound(
             wa_message_id=result.get("wa_message_id"),
             related_user_id=related_user_id,
         )
-        session.add(row)
-        await session.flush()
+        async with session.begin_nested():
+            session.add(row)
         _push_realtime()
     except Exception:
         logger.exception("wa log write failed (non-fatal)")
@@ -59,7 +59,7 @@ async def log_wa_inbound(
     wa_message_id: str | None = None,
     related_user_id: int | None = None,
 ) -> None:
-    """Write one inbound log row — never raises."""
+    """Write one inbound log row — never raises, uses savepoint so main session stays clean."""
     try:
         row = WhatsAppLog(
             direction="in",
@@ -70,8 +70,8 @@ async def log_wa_inbound(
             wa_message_id=wa_message_id,
             related_user_id=related_user_id,
         )
-        session.add(row)
-        await session.flush()
+        async with session.begin_nested():
+            session.add(row)
         _push_realtime()
     except Exception:
         logger.exception("wa log write failed (non-fatal)")
