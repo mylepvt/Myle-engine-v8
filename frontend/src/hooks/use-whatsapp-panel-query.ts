@@ -62,8 +62,8 @@ export function useWhatsAppLogsQuery(filters: LogFilters, enabled = true) {
     queryKey: ['whatsapp', 'logs', filters],
     queryFn: () => fetchLogs(filters),
     enabled,
-    staleTime: 15_000,
-    refetchInterval: 30_000,
+    staleTime: 10_000,
+    // No refetchInterval needed — WebSocket topic "whatsapp_log" invalidates instantly
   })
 }
 

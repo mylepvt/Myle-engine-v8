@@ -1,6 +1,7 @@
 """Thin helper to write WhatsApp activity log rows."""
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -9,6 +10,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.whatsapp_log import WhatsAppLog
 
 logger = logging.getLogger(__name__)
+
+
+def _push_realtime() -> None:
+    """Fire-and-forget realtime invalidation via existing WS hub."""
+    try:
+        from app.core.realtime_hub import notify_topics
+        asyncio.ensure_future(notify_topics("whatsapp_log"))
+    except Exception:
+        pass
 
 
 async def log_wa_outbound(
@@ -35,6 +45,7 @@ async def log_wa_outbound(
         )
         session.add(row)
         await session.flush()
+        _push_realtime()
     except Exception:
         logger.exception("wa log write failed (non-fatal)")
 
@@ -61,5 +72,6 @@ async def log_wa_inbound(
         )
         session.add(row)
         await session.flush()
+        _push_realtime()
     except Exception:
         logger.exception("wa log write failed (non-fatal)")
