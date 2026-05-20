@@ -47,6 +47,9 @@ from app.models.app_setting import AppSetting  # noqa: F401
 from app.models.training_question import TrainingQuestion  # noqa: F401
 from app.models.training_test_attempt import TrainingTestAttempt  # noqa: F401
 from app.models.admin_activity_feed import AdminActivityFeed  # noqa: F401
+from app.models.member_removal_outreach import MemberRemovalOutreach  # noqa: F401
+from app.models.report_reminder_outreach import ReportReminderOutreach  # noqa: F401
+from app.models.whatsapp_log import WhatsAppLog  # noqa: F401
 from app.constants.roles import DEV_FBO_BY_ROLE
 from app.services.dev_users import DEV_EMAIL_BY_ROLE
 
