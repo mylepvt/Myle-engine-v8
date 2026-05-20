@@ -1,4 +1,5 @@
 import { type HTMLAttributes, useMemo, useState } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -130,6 +131,7 @@ export function SettingsAppPage({ title }: Props) {
   const [contentEdits, setContentEdits] = useState<Record<string, string>>({})
   const [batchVideoEdits, setBatchVideoEdits] = useState<Record<string, string>>({})
   const [waEdits, setWaEdits] = useState<Record<string, string>>({})
+  const [showAccessToken, setShowAccessToken] = useState(false)
   const [premiereSaveMsg, setPremiereSaveMsg] = useState<string | null>(null)
   const [contentSaveMsg, setContentSaveMsg] = useState<string | null>(null)
   const [batchVideoSaveMsg, setBatchVideoSaveMsg] = useState<string | null>(null)
@@ -512,20 +514,35 @@ export function SettingsAppPage({ title }: Props) {
           </div>
         ) : (
           <div className="grid gap-3">
-            {WA_FIELDS.map((field) => (
-              <label key={field.key} className="block text-sm">
-                <span className="mb-1 block text-ds-caption text-muted-foreground">{field.label}</span>
-                <input
-                  type={field.key === 'whatsapp.meta.access_token' ? 'password' : 'text'}
-                  value={resolvedWaValue(field.key)}
-                  onChange={(e) => setWaEdits((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                  placeholder={field.placeholder}
-                  autoComplete="off"
-                  className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
-                />
-                <span className="mt-1 block text-[11px] text-muted-foreground/70">{field.help}</span>
-              </label>
-            ))}
+            {WA_FIELDS.map((field) => {
+              const isTokenField = field.key === 'whatsapp.meta.access_token'
+              return (
+                <label key={field.key} className="block text-sm">
+                  <span className="mb-1 block text-ds-caption text-muted-foreground">{field.label}</span>
+                  <div className="relative">
+                    <input
+                      type={isTokenField && !showAccessToken ? 'password' : 'text'}
+                      value={resolvedWaValue(field.key)}
+                      onChange={(e) => setWaEdits((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                      placeholder={field.placeholder}
+                      autoComplete="off"
+                      className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 pr-9 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                    />
+                    {isTokenField && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAccessToken((v) => !v)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        aria-label={showAccessToken ? 'Hide token' : 'Show token'}
+                      >
+                        {showAccessToken ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    )}
+                  </div>
+                  <span className="mt-1 block text-[11px] text-muted-foreground/70">{field.help}</span>
+                </label>
+              )
+            })}
           </div>
         )}
 
