@@ -48,6 +48,7 @@ import { AllMembersPage } from '@/pages/AllMembersPage'
 import { AdminInvoicesPage } from '@/pages/AdminInvoicesPage'
 import { LeaderOSPage } from '@/pages/LeaderOSPage'
 import { DownloadsPage } from '@/pages/DownloadsPage'
+import { WhatsAppPanelPage } from '@/pages/WhatsAppPanelPage'
 
 function renderFullUi(ui: FullUiSurface, title: string) {
   switch (ui.kind) {
@@ -125,6 +126,8 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <SettingsOrgTreePage title={title} />
     case 'all-members':
       return <AllMembersPage title={title} />
+    case 'whatsapp-panel':
+      return <WhatsAppPanelPage title={title} />
     case 'shell-api':
       return <ShellStubPage title={title} apiPath={ui.apiPath} />
     default: {

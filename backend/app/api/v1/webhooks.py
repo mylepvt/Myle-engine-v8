@@ -123,6 +123,7 @@ async def receive_whatsapp_reply(
             handle_leader_command,
         )
         from app.services.whatsapp_removal import _send_via_meta_api
+        from app.services.whatsapp_log_service import log_wa_inbound, log_wa_outbound
 
         matched = 0
         for msg in messages:
@@ -132,15 +133,29 @@ async def receive_whatsapp_reply(
             # Check if this is a two-way leader command first
             cmd_reply = await handle_leader_command(msg["phone"], msg["message"], session)
             if cmd_reply:
+                await log_wa_inbound(
+                    session,
+                    phone=msg["phone"],
+                    message=msg["message"],
+                    message_type="inbound_leader",
+                    wa_message_id=msg.get("wa_message_id"),
+                )
                 try:
                     phone_number_id, access_token, api_version = await get_meta_config(session)
                     if phone_number_id and access_token:
-                        await _send_via_meta_api(
+                        result = await _send_via_meta_api(
                             phone=msg["phone"],
                             message=cmd_reply,
                             phone_number_id=phone_number_id,
                             access_token=access_token,
                             api_version=api_version,
+                        )
+                        await log_wa_outbound(
+                            session,
+                            phone=msg["phone"],
+                            message=cmd_reply,
+                            message_type="command_reply",
+                            result=result,
                         )
                 except Exception:
                     logger.exception("leader cmd reply send failed phone=%s", msg["phone"])
@@ -152,6 +167,15 @@ async def receive_whatsapp_reply(
                 reply_text=msg["message"],
                 wa_message_id=msg.get("wa_message_id"),
                 session=session,
+            )
+            msg_type = "inbound_member" if match else "inbound_unknown"
+            await log_wa_inbound(
+                session,
+                phone=msg["phone"],
+                message=msg["message"],
+                message_type=msg_type,
+                wa_message_id=msg.get("wa_message_id"),
+                related_user_id=match.user_id if match else None,
             )
             if match:
                 matched += 1
@@ -523,3 +547,124 @@ async def test_leader_alerts(
         return {"ok": False, "error": "WhatsApp not configured", "reply_would_be": reply[:200]}
 
     return {"ok": False, "error": f"Unknown alert_type: {body.alert_type}. Use: removal|grace|approval|reply|summary|command"}
+
+
+# ---------------------------------------------------------------------------
+# Admin: WhatsApp activity log
+# ---------------------------------------------------------------------------
+
+from app.models.whatsapp_log import WhatsAppLog as _WhatsAppLog
+from sqlalchemy import func as _func, and_ as _and_
+
+
+class WhatsAppLogItem(BaseModel):
+    id: int
+    created_at: str
+    direction: str
+    message_type: str
+    phone: Optional[str]
+    message_preview: Optional[str]
+    status: str
+    error: Optional[str]
+    wa_message_id: Optional[str]
+    related_user_id: Optional[int]
+
+    model_config = {"from_attributes": True}
+
+
+class WhatsAppLogListResponse(BaseModel):
+    items: list[WhatsAppLogItem]
+    total: int
+    sent_today: int
+    failed_today: int
+    received_today: int
+
+
+@router.get("/webhooks/whatsapp/logs", response_model=WhatsAppLogListResponse)
+async def get_whatsapp_logs(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = 50,
+    offset: int = 0,
+    direction: Optional[str] = None,
+    status: Optional[str] = None,
+    message_type: Optional[str] = None,
+) -> WhatsAppLogListResponse:
+    """Admin: paginated WhatsApp activity log with today's stats."""
+    if user.role != "admin":
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admin only")
+
+    from datetime import date, timezone as _tz
+    import datetime as _dt
+
+    filters = []
+    if direction:
+        filters.append(_WhatsAppLog.direction == direction)
+    if status:
+        filters.append(_WhatsAppLog.status == status)
+    if message_type:
+        filters.append(_WhatsAppLog.message_type == message_type)
+
+    base_stmt = select(_WhatsAppLog)
+    if filters:
+        base_stmt = base_stmt.where(_and_(*filters))
+
+    total_row = (await session.execute(
+        select(_func.count()).select_from(base_stmt.subquery())
+    )).scalar_one()
+
+    rows = (await session.execute(
+        base_stmt.order_by(_WhatsAppLog.created_at.desc()).limit(limit).offset(offset)
+    )).scalars().all()
+
+    # Today's stats (IST midnight → now)
+    from app.core.time_ist import today_ist
+    today_dt = today_ist()
+    today_start = _dt.datetime(today_dt.year, today_dt.month, today_dt.day, tzinfo=_tz.utc)
+
+    sent_today = (await session.execute(
+        select(_func.count()).where(
+            _WhatsAppLog.direction == "out",
+            _WhatsAppLog.status == "sent",
+            _WhatsAppLog.created_at >= today_start,
+        )
+    )).scalar_one()
+
+    failed_today = (await session.execute(
+        select(_func.count()).where(
+            _WhatsAppLog.direction == "out",
+            _WhatsAppLog.status == "failed",
+            _WhatsAppLog.created_at >= today_start,
+        )
+    )).scalar_one()
+
+    received_today = (await session.execute(
+        select(_func.count()).where(
+            _WhatsAppLog.direction == "in",
+            _WhatsAppLog.created_at >= today_start,
+        )
+    )).scalar_one()
+
+    items = [
+        WhatsAppLogItem(
+            id=r.id,
+            created_at=r.created_at.isoformat(),
+            direction=r.direction,
+            message_type=r.message_type,
+            phone=r.phone,
+            message_preview=r.message_preview,
+            status=r.status,
+            error=r.error,
+            wa_message_id=r.wa_message_id,
+            related_user_id=r.related_user_id,
+        )
+        for r in rows
+    ]
+
+    return WhatsAppLogListResponse(
+        items=items,
+        total=total_row,
+        sent_today=sent_today,
+        failed_today=failed_today,
+        received_today=received_today,
+    )

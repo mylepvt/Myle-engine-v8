@@ -96,6 +96,7 @@ export type FullUiSurface =
   | { kind: 'settings-help' }
   | { kind: 'settings-org-tree' }
   | { kind: 'all-members' }
+  | { kind: 'whatsapp-panel' }
   /** Loads `ShellStubPage` with a GET that returns `SystemStubResponse` (items + note). */
   | { kind: 'shell-api'; apiPath: string }
 
@@ -419,6 +420,14 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('other/downloads'),
     surface: 'full',
     ui: { kind: 'downloads' },
+  },
+  {
+    path: 'system/whatsapp',
+    section: { id: 'system', label: 'System' },
+    label: 'WhatsApp Panel',
+    roles: routeRoles('system/whatsapp'),
+    surface: 'full',
+    ui: { kind: 'whatsapp-panel' },
   },
   {
     path: 'settings/app',

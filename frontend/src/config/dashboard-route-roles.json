@@ -19,6 +19,7 @@
   "team/enrollment-approvals": ["admin"],
   "team/my-team": ["leader", "team"],
   "system/training": ["admin", "leader", "team"],
+  "system/whatsapp": ["admin"],
   "system/lead-control": ["admin"],
   "system/decision-engine": ["admin"],
   "system/coaching": ["admin", "leader"],
