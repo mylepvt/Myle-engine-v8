@@ -28,6 +28,7 @@ import {
 import {
   useSendCustomMessageMutation,
   useTriggerDailySummaryMutation,
+  useWhatsAppLeadersQuery,
   useWhatsAppLogsQuery,
   useWhatsAppStatusQuery,
   type LogFilters,
@@ -155,8 +156,10 @@ export function WhatsAppPanelPage({ title }: Props) {
   const [customResult, setCustomResult] = useState<string | null>(null)
   const [summaryResult, setSummaryResult] = useState<string | null>(null)
 
+  const [showLeaders, setShowLeaders] = useState(false)
   const { data: status, isLoading: statusLoading } = useWhatsAppStatusQuery()
   const { data: logs, isLoading: logsLoading, isFetching } = useWhatsAppLogsQuery(filters)
+  const { data: leadersData, isLoading: leadersLoading } = useWhatsAppLeadersQuery(showLeaders)
   const sendCustom = useSendCustomMessageMutation()
   const triggerSummary = useTriggerDailySummaryMutation()
 
@@ -367,6 +370,75 @@ export function WhatsAppPanelPage({ title }: Props) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Leaders phone status */}
+      <Card>
+        <CardHeader className="pb-2 pt-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+              <Users className="h-4 w-4 text-indigo-600" />
+              Leaders WhatsApp Status
+              {leadersData && (
+                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                  {leadersData.wa_enabled}/{leadersData.total} have phone
+                  {leadersData.no_phone > 0 && (
+                    <span className="ml-1 text-red-600 font-medium">· {leadersData.no_phone} missing</span>
+                  )}
+                </span>
+              )}
+            </CardTitle>
+            <Button size="sm" variant="ghost" onClick={() => setShowLeaders((v) => !v)}>
+              {showLeaders ? 'Hide' : 'Show'}
+            </Button>
+          </div>
+        </CardHeader>
+        {showLeaders && (
+          <CardContent className="pb-4">
+            {leadersLoading ? (
+              <div className="space-y-2">
+                {[0, 1, 2].map((i) => <Skeleton key={i} className="h-7 w-full" />)}
+              </div>
+            ) : !leadersData || leadersData.leaders.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No leaders found.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Phone (raw)</TableHead>
+                    <TableHead>Normalized</TableHead>
+                    <TableHead className="w-28">WA Commands</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {leadersData.leaders.map((l) => (
+                    <TableRow key={l.id} className={!l.wa_enabled ? 'bg-red-50' : undefined}>
+                      <TableCell className="text-sm font-medium">{l.name}</TableCell>
+                      <TableCell className="text-xs font-mono text-muted-foreground">
+                        {l.phone_raw ?? <span className="text-red-500 font-medium">NOT SET</span>}
+                      </TableCell>
+                      <TableCell className="text-xs font-mono text-muted-foreground">
+                        {l.phone_normalized ?? '—'}
+                      </TableCell>
+                      <TableCell>
+                        {l.wa_enabled ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-green-700 font-medium">
+                            <CheckCircle2 className="h-3 w-3" /> Active
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-xs text-red-600 font-medium">
+                            <XCircle className="h-3 w-3" /> No phone
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        )}
+      </Card>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
