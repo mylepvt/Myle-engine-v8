@@ -443,3 +443,36 @@ async def job_leader_basics_enforcement() -> None:
         logger.error("job_leader_basics_enforcement failed: %s", exc)
         observe_event(event_type="scheduler.failure", source="scheduler",
                       job="leader_basics_enforcement", error=str(exc)[:200])
+
+
+# ---------------------------------------------------------------------------
+# Job 7: daily team summary → leaders at 22:00 IST
+# ---------------------------------------------------------------------------
+
+async def job_daily_leader_team_summary() -> None:
+    """Send each leader a WhatsApp summary of their team's daily report status (22:00 IST)."""
+    try:
+        from app.services.whatsapp_leader_alerts import send_daily_team_summary
+        async with AsyncSessionLocal() as session:
+            today = today_ist()
+            leaders = (
+                await session.execute(
+                    select(User).where(
+                        User.role == "leader",
+                        User.registration_status == "approved",
+                        User.removed_at.is_(None),
+                        User.access_blocked.is_(False),
+                        User.phone.isnot(None),
+                    )
+                )
+            ).scalars().all()
+
+            for leader in leaders:
+                try:
+                    await send_daily_team_summary(leader, today, session)
+                except Exception as exc:
+                    logger.warning("daily summary failed leader_id=%s: %s", leader.id, exc)
+
+            logger.info("job_daily_leader_team_summary: sent to %d leaders", len(leaders))
+    except Exception as exc:
+        logger.error("job_daily_leader_team_summary failed: %s", exc)

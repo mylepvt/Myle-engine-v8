@@ -60,13 +60,14 @@ _DEFAULT_LIMIT = 50
 
 
 async def _send_removal_whatsapp_bg(user_id: int, removal_reason: str) -> None:
+    from app.services.whatsapp_leader_alerts import alert_leader_member_removed
     async with AsyncSessionLocal() as session:
         user = await session.get(User, user_id)
         if user is None:
             return
-        # Temporarily set removal_reason so the service can read it
         user.removal_reason = removal_reason
         await send_removal_whatsapp(user=user, session=session)
+        await alert_leader_member_removed(user, removal_reason, session)
         await session.commit()
 
 
@@ -396,6 +397,14 @@ async def request_my_grace(
     await session.refresh(target)
     [item] = await _finalize_team_member_items(session, [TeamMemberPublic.model_validate(target)])
     await notify_topics("team", "team_tracking")
+    # Notify leader via WhatsApp (fire-and-forget)
+    try:
+        from app.services.whatsapp_leader_alerts import alert_leader_grace_requested
+        await alert_leader_grace_requested(
+            target, target.grace_request_reason, target.grace_request_end_date, session
+        )
+    except Exception:
+        pass
     return item
 
 
@@ -645,6 +654,12 @@ async def decide_pending_registration(
     else:
         row.registration_status = "rejected"
     await session.commit()
+    if body.action == "approve":
+        try:
+            from app.services.whatsapp_leader_alerts import alert_leader_new_member_approved
+            await alert_leader_new_member_approved(row, session)
+        except Exception:
+            pass
     return {"ok": True, "registration_status": row.registration_status}
 
 
