@@ -668,7 +668,7 @@ async def get_premiere_state(
             raise
         real_count = 0
     # Day-based social proof floors: Day1=600, Day2=300, Day3=150
-    _day_floor = {1: 550, 2: 250, 3: 120}
+    _day_floor = {1: 550, 2: 250, 3: 100}
     _day_ceil  = {1: 600, 2: 300, 3: 150}
     _floor = _day_floor.get(session_day, 250)
     _ceil  = _day_ceil.get(session_day, 300)
