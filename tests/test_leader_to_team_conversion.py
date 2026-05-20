@@ -1,4 +1,9 @@
 """
+LOCKED — see CLAUDE.md before modifying this file.
+These tests are the authoritative spec for the leader→team lead handoff rule.
+Do NOT weaken or delete any assertion. If a test fails after a code change,
+fix the code — not the test.
+
 Realtime test: leader → team conversion transfers Day-2 handoff leads to upline leader.
 
 Hierarchy used in tests:

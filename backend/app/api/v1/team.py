@@ -719,6 +719,12 @@ class UpdateRoleBody(BaseModel):
     role: str
 
 
+# ============================================================
+# LOCKED — see CLAUDE.md before modifying anything below.
+# _find_upline_leader: walks upline chain until a leader role
+# is found. Skips team members. Stops at admin. Must walk the
+# full chain — do NOT replace with a single upline lookup.
+# ============================================================
 async def _find_upline_leader(session: AsyncSession, user: User) -> User | None:
     """Walk upline chain from user's direct parent until a leader is found."""
     current_id = user.upline_user_id
@@ -735,6 +741,9 @@ async def _find_upline_leader(session: AsyncSession, user: User) -> User | None:
             return None
         current_id = upline.upline_user_id
     return None
+# ============================================================
+# END LOCKED SECTION
+# ============================================================
 
 
 @router.get("/members/{target_user_id}/leads", response_model=MemberLeadsResponse)
@@ -802,6 +811,12 @@ async def update_member_role(
             target.removed_at = None
             target.removed_by_user_id = None
             target.removal_reason = None
+    # ============================================================
+    # LOCKED — see CLAUDE.md. All four WHERE conditions are
+    # required. Do NOT remove owner_user_id filter (protects
+    # leader's own leads). Do NOT remove in_pool filter.
+    # owner_user_id on leads must never be updated here.
+    # ============================================================
     if previous_role == "leader" and body.role == "team":
         upline_leader = await _find_upline_leader(session, target)
         if upline_leader is not None:
@@ -811,13 +826,16 @@ async def update_member_role(
             await session.execute(
                 update(Lead)
                 .where(
-                    Lead.assigned_to_user_id == target_user_id,
-                    Lead.owner_user_id != target_user_id,
-                    Lead.deleted_at.is_(None),
-                    Lead.in_pool.is_(False),
+                    Lead.assigned_to_user_id == target_user_id,   # in leader's queue
+                    Lead.owner_user_id != target_user_id,          # Day-2 handoff only
+                    Lead.deleted_at.is_(None),                     # not deleted
+                    Lead.in_pool.is_(False),                       # not in pool
                 )
                 .values(assigned_to_user_id=upline_leader.id)
             )
+    # ============================================================
+    # END LOCKED SECTION
+    # ============================================================
     await session.commit()
     await session.refresh(target)
     [item] = await _finalize_team_member_items(session, [TeamMemberPublic.model_validate(target)])
