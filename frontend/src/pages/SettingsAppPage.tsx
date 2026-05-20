@@ -1,5 +1,5 @@
 import { type HTMLAttributes, useMemo, useState } from 'react'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, CheckCircle2, XCircle, Smartphone } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -8,6 +8,8 @@ import {
   useWhatsAppStatusQuery,
   useWhatsAppTestSendMutation,
 } from '@/hooks/use-settings-query'
+import { apiFetch } from '@/lib/api'
+import { type ReminderResult, type SendRemindersResponse } from '@/hooks/use-today-pulse-query'
 
 type Props = { title: string }
 
@@ -132,6 +134,10 @@ export function SettingsAppPage({ title }: Props) {
   const [batchVideoEdits, setBatchVideoEdits] = useState<Record<string, string>>({})
   const [waEdits, setWaEdits] = useState<Record<string, string>>({})
   const [showAccessToken, setShowAccessToken] = useState(false)
+  const [reminderSending, setReminderSending] = useState(false)
+  const [reminderSummary, setReminderSummary] = useState<Omit<SendRemindersResponse, 'results'> | null>(null)
+  const [reminderResults, setReminderResults] = useState<ReminderResult[] | null>(null)
+  const [reminderError, setReminderError] = useState<string | null>(null)
   const [premiereSaveMsg, setPremiereSaveMsg] = useState<string | null>(null)
   const [contentSaveMsg, setContentSaveMsg] = useState<string | null>(null)
   const [batchVideoSaveMsg, setBatchVideoSaveMsg] = useState<string | null>(null)
@@ -246,6 +252,24 @@ export function SettingsAppPage({ title }: Props) {
       help: 'Khud banao koi bhi string. Meta Console mein bhi yahi daalna hoga.',
     },
   ] as const
+
+  const handleSendReportReminders = async () => {
+    setReminderSending(true)
+    setReminderError(null)
+    setReminderSummary(null)
+    setReminderResults(null)
+    try {
+      const res = await apiFetch('/api/v1/admin/send-report-reminders', { method: 'POST' })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data: SendRemindersResponse = await res.json()
+      setReminderSummary({ sent: data.sent, failed: data.failed, no_phone: data.no_phone })
+      setReminderResults(data.results)
+    } catch (err) {
+      setReminderError(err instanceof Error ? err.message : 'Send failed')
+    } finally {
+      setReminderSending(false)
+    }
+  }
 
   const handleSaveWhatsApp = async () => {
     setWaSaveMsg(null)
@@ -594,6 +618,67 @@ export function SettingsAppPage({ title }: Props) {
             <pre className="mt-2 max-h-64 overflow-auto rounded bg-black/40 p-3 text-[11px] text-emerald-300 ring-1 ring-white/10">
               {JSON.stringify(waTestSend.data, null, 2)}
             </pre>
+          ) : null}
+        </div>
+
+        {/* Report reminder resend panel */}
+        <div className="mt-4 border-t border-white/10 pt-3">
+          <p className="mb-1 text-xs font-medium text-foreground">Report reminder manually bhejo</p>
+          <p className="mb-3 text-[11px] text-muted-foreground">
+            Aaj ki report abhi tak submit nahi ki aur pehle reminder nahi mila — unhe WhatsApp pe reminder bhejo.
+            Jinhe aaj already reminder mila hai wo skip honge.
+          </p>
+          <button
+            type="button"
+            disabled={reminderSending}
+            onClick={() => void handleSendReportReminders()}
+            className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-400 hover:bg-amber-500/20 disabled:opacity-50"
+          >
+            {reminderSending ? 'Bhej raha hoon…' : 'Send report reminders'}
+          </button>
+
+          {reminderError ? (
+            <p className="mt-2 text-xs text-destructive">Error: {reminderError}</p>
+          ) : null}
+
+          {reminderSummary ? (
+            <div className="mt-3 flex flex-wrap gap-3">
+              <span className="text-[11px] font-semibold text-emerald-400">✅ {reminderSummary.sent} sent</span>
+              {reminderSummary.failed > 0 && (
+                <span className="text-[11px] font-semibold text-red-400">❌ {reminderSummary.failed} failed</span>
+              )}
+              {reminderSummary.no_phone > 0 && (
+                <span className="text-[11px] font-semibold text-muted-foreground/60">📵 {reminderSummary.no_phone} no phone</span>
+              )}
+              {reminderSummary.sent === 0 && reminderSummary.failed === 0 && reminderSummary.no_phone === 0 && (
+                <span className="text-[11px] text-muted-foreground">Koi pending nahi — sab ne report submit kar di ya pehle reminder mil chuka hai.</span>
+              )}
+            </div>
+          ) : null}
+
+          {reminderResults && reminderResults.length > 0 ? (
+            <div className="mt-3 max-h-64 overflow-y-auto rounded border border-white/[0.08] bg-black/30">
+              {reminderResults.map((r) => (
+                <div key={r.user_id} className="flex items-center gap-2 border-b border-white/[0.05] px-3 py-1.5 last:border-0">
+                  {r.status === 'sent' || r.status === 'stub'
+                    ? <CheckCircle2 className="size-3 shrink-0 text-emerald-400" />
+                    : r.status === 'no_phone'
+                    ? <Smartphone className="size-3 shrink-0 text-muted-foreground/40" />
+                    : <XCircle className="size-3 shrink-0 text-red-400" />}
+                  <span className="flex-1 truncate text-[11px] text-foreground">{r.name}</span>
+                  <span className="text-[10px] text-muted-foreground/50">
+                    {r.phone_tail !== '—' ? `…${r.phone_tail}` : '—'}
+                  </span>
+                  <span className={`text-[10px] font-medium ${
+                    r.status === 'sent' || r.status === 'stub' ? 'text-emerald-400'
+                    : r.status === 'no_phone' ? 'text-muted-foreground/40'
+                    : 'text-red-400'
+                  }`}>
+                    {r.status === 'stub' ? 'sent' : r.status}
+                  </span>
+                </div>
+              ))}
+            </div>
           ) : null}
         </div>
       </section>
