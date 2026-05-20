@@ -496,8 +496,8 @@ export function SettingsAppPage({ title }: Props) {
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             Webhook URL jo Meta Console mein dalna hai:{' '}
-            <code className="rounded bg-white/10 px-1 text-[10px]">
-              https://yourdomain.com/api/v1/webhooks/whatsapp/reply
+            <code className="rounded bg-white/10 px-1 text-[10px] select-all">
+              {window.location.origin}/api/v1/webhooks/whatsapp/reply
             </code>
           </p>
         </div>
