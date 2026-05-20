@@ -54,21 +54,21 @@ async def lifespan(_app: FastAPI):
         )
         _scheduler.add_job(
             job_weekly_compliance_digest,
-            CronTrigger(day_of_week="mon", hour=9, minute=0),
+            CronTrigger(day_of_week="mon", hour=9, minute=0, timezone="Asia/Kolkata"),
             id="weekly_compliance_digest",
             replace_existing=True,
             misfire_grace_time=3600,
         )
         _scheduler.add_job(
             job_daily_report_reminder,
-            CronTrigger(hour=21, minute=0),
+            CronTrigger(hour=21, minute=0, timezone="Asia/Kolkata"),
             id="daily_report_reminder",
             replace_existing=True,
             misfire_grace_time=1800,
         )
         _scheduler.add_job(
             job_call_target_reminder,
-            CronTrigger(hour=17, minute=0),
+            CronTrigger(hour=17, minute=0, timezone="Asia/Kolkata"),
             id="call_target_reminder",
             replace_existing=True,
             misfire_grace_time=1800,
@@ -82,7 +82,7 @@ async def lifespan(_app: FastAPI):
         )
         _scheduler.add_job(
             job_leader_basics_enforcement,
-            CronTrigger(hour=23, minute=30),
+            CronTrigger(hour=23, minute=30, timezone="Asia/Kolkata"),
             id="leader_basics_enforcement",
             replace_existing=True,
             misfire_grace_time=1800,
