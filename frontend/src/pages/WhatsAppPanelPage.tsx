@@ -5,10 +5,12 @@ import {
   ArrowDown,
   ArrowUp,
   CheckCircle2,
+  ClipboardList,
   MessageSquare,
   Phone,
   RefreshCw,
   Send,
+  Smartphone,
   Users,
   WifiOff,
   XCircle,
@@ -34,6 +36,8 @@ import {
   type LogFilters,
   type WhatsAppLogItem,
 } from '@/hooks/use-whatsapp-panel-query'
+import { apiFetch } from '@/lib/api'
+import { type ReminderResult, type SendRemindersResponse } from '@/hooks/use-today-pulse-query'
 import { cn } from '@/lib/utils'
 
 type Props = { title: string }
@@ -155,6 +159,29 @@ export function WhatsAppPanelPage({ title }: Props) {
   const [customMessage, setCustomMessage] = useState('')
   const [customResult, setCustomResult] = useState<string | null>(null)
   const [summaryResult, setSummaryResult] = useState<string | null>(null)
+  const [reminderSending, setReminderSending] = useState(false)
+  const [reminderSummary, setReminderSummary] = useState<Omit<SendRemindersResponse, 'results'> | null>(null)
+  const [reminderResults, setReminderResults] = useState<ReminderResult[] | null>(null)
+  const [reminderError, setReminderError] = useState<string | null>(null)
+
+  async function sendReportReminders() {
+    setReminderSending(true)
+    setReminderError(null)
+    setReminderSummary(null)
+    setReminderResults(null)
+    try {
+      const res = await apiFetch('/api/v1/admin/send-report-reminders', { method: 'POST' })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data: SendRemindersResponse = await res.json()
+      setReminderSummary({ sent: data.sent, failed: data.failed, no_phone: data.no_phone })
+      setReminderResults(data.results)
+      void qc.invalidateQueries({ queryKey: ['whatsapp'] })
+    } catch (err) {
+      setReminderError(err instanceof Error ? err.message : 'Failed')
+    } finally {
+      setReminderSending(false)
+    }
+  }
 
   const [showLeaders, setShowLeaders] = useState(false)
   const { data: status, isLoading: statusLoading } = useWhatsAppStatusQuery()
@@ -279,7 +306,7 @@ export function WhatsAppPanelPage({ title }: Props) {
 
       {/* Filters */}
       {/* Manual Controls */}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {/* Send custom message */}
         <Card>
           <CardHeader className="pb-2 pt-4">
@@ -366,6 +393,62 @@ export function WhatsAppPanelPage({ title }: Props) {
               <p className={cn('text-xs', summaryResult.startsWith('✓') ? 'text-green-700' : 'text-red-600')}>
                 {summaryResult}
               </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Send report reminders */}
+        <Card>
+          <CardHeader className="pb-2 pt-4">
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+              <ClipboardList className="h-4 w-4 text-amber-600" />
+              Send Report Reminders
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 pb-4">
+            <p className="text-xs text-muted-foreground">
+              Aaj ki report submit nahi ki — unhe abhi WhatsApp reminder bhejo. Jo pehle se reminded hain wo skip honge.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full border-amber-500/40 text-amber-700 hover:bg-amber-50"
+              disabled={reminderSending}
+              onClick={() => void sendReportReminders()}
+            >
+              {reminderSending ? 'Bhej raha hoon…' : 'Send Reminders Now'}
+            </Button>
+            {reminderError && (
+              <p className="text-xs text-red-600">✗ {reminderError}</p>
+            )}
+            {reminderSummary && (
+              <div className="flex flex-wrap gap-2 text-xs">
+                <span className="font-medium text-green-700">✓ {reminderSummary.sent} sent</span>
+                {reminderSummary.failed > 0 && (
+                  <span className="font-medium text-red-600">✗ {reminderSummary.failed} failed</span>
+                )}
+                {reminderSummary.no_phone > 0 && (
+                  <span className="text-muted-foreground">📵 {reminderSummary.no_phone} no phone</span>
+                )}
+                {reminderSummary.sent === 0 && reminderSummary.failed === 0 && reminderSummary.no_phone === 0 && (
+                  <span className="text-muted-foreground">Koi pending nahi</span>
+                )}
+              </div>
+            )}
+            {reminderResults && reminderResults.length > 0 && (
+              <div className="max-h-48 overflow-y-auto rounded border border-border/50 bg-muted/30">
+                {reminderResults.map((r) => (
+                  <div key={r.user_id} className="flex items-center gap-2 border-b border-border/30 px-2 py-1 last:border-0 text-xs">
+                    {r.status === 'sent' || r.status === 'stub'
+                      ? <CheckCircle2 className="h-3 w-3 shrink-0 text-green-600" />
+                      : r.status === 'no_phone'
+                      ? <Smartphone className="h-3 w-3 shrink-0 text-muted-foreground/50" />
+                      : <XCircle className="h-3 w-3 shrink-0 text-red-500" />}
+                    <span className="flex-1 truncate font-medium">{r.name}</span>
+                    <span className="text-muted-foreground">{r.phone_tail !== '—' ? `…${r.phone_tail}` : '—'}</span>
+                  </div>
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>
