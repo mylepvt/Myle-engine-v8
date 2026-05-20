@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '@/lib/api'
 
 export type WhatsAppLogItem = {
@@ -65,6 +65,46 @@ export function useWhatsAppLogsQuery(filters: LogFilters, enabled = true) {
     staleTime: 10_000,
     // No refetchInterval needed — WebSocket topic "whatsapp_log" invalidates instantly
   })
+}
+
+// --- Mutations ---
+
+async function sendCustomMessage(payload: { phone: string; message: string }) {
+  const res = await apiFetch('/api/v1/webhooks/whatsapp/send-custom', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { detail?: string }).detail ?? `HTTP ${res.status}`)
+  }
+  return res.json() as Promise<{ ok: boolean; wa_message_id?: string; error?: string }>
+}
+
+async function triggerDailySummary(leader_user_id?: number) {
+  const res = await apiFetch('/api/v1/webhooks/whatsapp/trigger-daily-summary', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ leader_user_id: leader_user_id ?? null }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { detail?: string }).detail ?? `HTTP ${res.status}`)
+  }
+  return res.json() as Promise<{ ok: boolean; sent_to: number; total_leaders?: number }>
+}
+
+export function useSendCustomMessageMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: sendCustomMessage,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['whatsapp', 'logs'] }),
+  })
+}
+
+export function useTriggerDailySummaryMutation() {
+  return useMutation({ mutationFn: triggerDailySummary })
 }
 
 export function useWhatsAppStatusQuery(enabled = true) {

@@ -285,7 +285,7 @@ async def handle_leader_command(
     if matched_leader is None:
         return None
 
-    cmd = text.strip().lower()
+    cmd = text.strip().lower().lstrip("/")
     if cmd not in {"status", "missing", "top"}:
         return None
 
