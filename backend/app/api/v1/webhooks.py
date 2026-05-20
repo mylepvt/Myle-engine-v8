@@ -668,3 +668,112 @@ async def get_whatsapp_logs(
         failed_today=failed_today,
         received_today=received_today,
     )
+
+
+# ---------------------------------------------------------------------------
+# Admin: send a custom WhatsApp message to any phone
+# ---------------------------------------------------------------------------
+
+class CustomSendRequest(BaseModel):
+    phone: str
+    message: str
+
+
+@router.post("/webhooks/whatsapp/send-custom")
+async def send_custom_whatsapp(
+    body: CustomSendRequest,
+    auth_user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Admin: send any custom message to any phone number via Meta API."""
+    if auth_user.role != "admin":
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admin only")
+
+    from app.services.whatsapp_removal import _send_via_meta_api
+    from app.services.whatsapp_log_service import log_wa_outbound
+
+    phone = body.phone.strip()
+    message = body.message.strip()
+    if not phone or not message:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="phone and message required")
+
+    phone_number_id, access_token, api_version = await get_meta_config(session)
+    if not phone_number_id or not access_token:
+        return {"ok": False, "error": "WhatsApp not configured in Settings"}
+
+    result = await _send_via_meta_api(
+        phone=phone,
+        message=message,
+        phone_number_id=phone_number_id,
+        access_token=access_token,
+        api_version=api_version,
+    )
+    await log_wa_outbound(
+        session,
+        phone=phone,
+        message=message,
+        message_type="leader_alert",
+        result=result,
+        related_user_id=auth_user.id,
+    )
+    await session.commit()
+    return {
+        "ok": result.get("ok", False),
+        "wa_message_id": result.get("wa_message_id"),
+        "error": result.get("error") or result.get("detail") if not result.get("ok") else None,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Admin: trigger daily summary for all leaders (or one) right now
+# ---------------------------------------------------------------------------
+
+class TriggerSummaryRequest(BaseModel):
+    leader_user_id: Optional[int] = None  # None = all leaders
+
+
+@router.post("/webhooks/whatsapp/trigger-daily-summary")
+async def trigger_daily_summary(
+    body: TriggerSummaryRequest,
+    auth_user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Admin: fire the daily WhatsApp summary to all leaders (or a specific leader) right now."""
+    if auth_user.role != "admin":
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admin only")
+
+    from app.services.whatsapp_leader_alerts import send_daily_team_summary
+    from app.core.time_ist import today_ist
+
+    today = today_ist()
+
+    if body.leader_user_id:
+        leader = (await session.execute(select(User).where(User.id == body.leader_user_id))).scalar_one_or_none()
+        if not leader:
+            raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Leader not found")
+        await send_daily_team_summary(leader, today, session)
+        await session.commit()
+        return {"ok": True, "sent_to": 1, "leader_id": leader.id}
+
+    # All active leaders with phones
+    leaders = (
+        await session.execute(
+            select(User).where(
+                User.role == "leader",
+                User.registration_status == "approved",
+                User.removed_at.is_(None),
+                User.phone.isnot(None),
+            )
+        )
+    ).scalars().all()
+
+    sent = 0
+    for leader in leaders:
+        try:
+            await send_daily_team_summary(leader, today, session)
+            sent += 1
+        except Exception:
+            logger.exception("daily summary failed for leader_id=%s", leader.id)
+
+    await session.commit()
+    return {"ok": True, "sent_to": sent, "total_leaders": len(leaders)}

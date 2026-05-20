@@ -8,6 +8,8 @@ import {
   MessageSquare,
   Phone,
   RefreshCw,
+  Send,
+  Users,
   WifiOff,
   XCircle,
 } from 'lucide-react'
@@ -24,6 +26,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import {
+  useSendCustomMessageMutation,
+  useTriggerDailySummaryMutation,
   useWhatsAppLogsQuery,
   useWhatsAppStatusQuery,
   type LogFilters,
@@ -146,9 +150,15 @@ export function WhatsAppPanelPage({ title }: Props) {
   const qc = useQueryClient()
   const [filters, setFilters] = useState<LogFilters>({ limit: PAGE_SIZE, offset: 0 })
   const [page, setPage] = useState(0)
+  const [customPhone, setCustomPhone] = useState('')
+  const [customMessage, setCustomMessage] = useState('')
+  const [customResult, setCustomResult] = useState<string | null>(null)
+  const [summaryResult, setSummaryResult] = useState<string | null>(null)
 
   const { data: status, isLoading: statusLoading } = useWhatsAppStatusQuery()
   const { data: logs, isLoading: logsLoading, isFetching } = useWhatsAppLogsQuery(filters)
+  const sendCustom = useSendCustomMessageMutation()
+  const triggerSummary = useTriggerDailySummaryMutation()
 
   function applyFilter(patch: Partial<LogFilters>) {
     setPage(0)
@@ -263,6 +273,100 @@ export function WhatsAppPanelPage({ title }: Props) {
           </Card>
         </div>
       ) : null}
+
+      {/* Filters */}
+      {/* Manual Controls */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        {/* Send custom message */}
+        <Card>
+          <CardHeader className="pb-2 pt-4">
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+              <Send className="h-4 w-4 text-blue-600" />
+              Send Custom Message
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 pb-4">
+            <input
+              type="text"
+              placeholder="+91 98765 43210"
+              value={customPhone}
+              onChange={(e) => { setCustomPhone(e.target.value); setCustomResult(null) }}
+              className="w-full rounded border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+            <textarea
+              placeholder="Type your message here..."
+              value={customMessage}
+              onChange={(e) => { setCustomMessage(e.target.value); setCustomResult(null) }}
+              rows={3}
+              className="w-full rounded border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+            />
+            <Button
+              size="sm"
+              className="w-full"
+              disabled={!customPhone.trim() || !customMessage.trim() || sendCustom.isPending}
+              onClick={() => {
+                sendCustom.mutate(
+                  { phone: customPhone.trim(), message: customMessage.trim() },
+                  {
+                    onSuccess: (r) => {
+                      if (r.ok) {
+                        setCustomResult('✓ Sent successfully')
+                        setCustomPhone('')
+                        setCustomMessage('')
+                      } else {
+                        setCustomResult(`✗ ${r.error ?? 'Failed'}`)
+                      }
+                    },
+                    onError: (e) => setCustomResult(`✗ ${e.message}`),
+                  },
+                )
+              }}
+            >
+              {sendCustom.isPending ? 'Sending…' : 'Send Message'}
+            </Button>
+            {customResult && (
+              <p className={cn('text-xs', customResult.startsWith('✓') ? 'text-green-700' : 'text-red-600')}>
+                {customResult}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Trigger daily summary */}
+        <Card>
+          <CardHeader className="pb-2 pt-4">
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+              <Users className="h-4 w-4 text-purple-600" />
+              Trigger Daily Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 pb-4">
+            <p className="text-xs text-muted-foreground">
+              Send the daily team report summary to all leaders right now — without waiting for 10 PM.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full"
+              disabled={triggerSummary.isPending}
+              onClick={() => {
+                setSummaryResult(null)
+                triggerSummary.mutate(undefined, {
+                  onSuccess: (r) => setSummaryResult(`✓ Sent to ${r.sent_to} of ${r.total_leaders ?? r.sent_to} leaders`),
+                  onError: (e) => setSummaryResult(`✗ ${e.message}`),
+                })
+              }}
+            >
+              {triggerSummary.isPending ? 'Sending…' : 'Send to All Leaders Now'}
+            </Button>
+            {summaryResult && (
+              <p className={cn('text-xs', summaryResult.startsWith('✓') ? 'text-green-700' : 'text-red-600')}>
+                {summaryResult}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
