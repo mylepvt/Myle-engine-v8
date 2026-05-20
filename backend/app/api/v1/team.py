@@ -719,6 +719,24 @@ class UpdateRoleBody(BaseModel):
     role: str
 
 
+async def _find_upline_leader(session: AsyncSession, user: User) -> User | None:
+    """Walk upline chain from user's direct parent until a leader is found."""
+    current_id = user.upline_user_id
+    seen: set[int] = set()
+    while current_id is not None and current_id not in seen:
+        seen.add(current_id)
+        upline = await session.get(User, current_id)
+        if upline is None:
+            return None
+        role = (upline.role or "").strip()
+        if role == "leader":
+            return upline
+        if role == "admin":
+            return None
+        current_id = upline.upline_user_id
+    return None
+
+
 @router.get("/members/{target_user_id}/leads", response_model=MemberLeadsResponse)
 async def get_member_leads(
     target_user_id: int,
@@ -784,6 +802,22 @@ async def update_member_role(
             target.removed_at = None
             target.removed_by_user_id = None
             target.removal_reason = None
+    if previous_role == "leader" and body.role == "team":
+        upline_leader = await _find_upline_leader(session, target)
+        if upline_leader is not None:
+            # Only transfer Day-2 handoff leads: owner is a team member (not the leader
+            # themselves). These are leads that came to the leader after mindset lock
+            # completion. The leader's own personally-created leads are excluded.
+            await session.execute(
+                update(Lead)
+                .where(
+                    Lead.assigned_to_user_id == target_user_id,
+                    Lead.owner_user_id != target_user_id,
+                    Lead.deleted_at.is_(None),
+                    Lead.in_pool.is_(False),
+                )
+                .values(assigned_to_user_id=upline_leader.id)
+            )
     await session.commit()
     await session.refresh(target)
     [item] = await _finalize_team_member_items(session, [TeamMemberPublic.model_validate(target)])
