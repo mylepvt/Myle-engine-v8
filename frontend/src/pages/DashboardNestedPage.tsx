@@ -50,6 +50,7 @@ import { LeaderOSPage } from '@/pages/LeaderOSPage'
 import { DownloadsPage } from '@/pages/DownloadsPage'
 import { WhatsAppPanelPage } from '@/pages/WhatsAppPanelPage'
 import { AuditLogsPage } from '@/pages/AuditLogsPage'
+import { TeamAttendancePage } from '@/pages/TeamAttendancePage'
 
 function renderFullUi(ui: FullUiSurface, title: string) {
   switch (ui.kind) {
@@ -71,6 +72,8 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <RecycleBinWorkPage title={title} />
     case 'team-members':
       return <TeamMembersPage title={title} />
+    case 'team-attendance':
+      return <TeamAttendancePage title={title} />
     case 'team-tracking':
       return <TeamTrackingPage title={title} />
     case 'leader-os':
