@@ -27,6 +27,7 @@ from app.models.lead_note import LeadNote
 from app.models.training_day_note import TrainingDayNote
 from app.models.download import Download
 from app.models.user_presence_session import UserPresenceSession
+from app.models.daily_check_in import DailyCheckIn
 
 __all__ = [
     "MemberRemovalOutreach",
@@ -58,4 +59,5 @@ __all__ = [
     "TrainingDayNote",
     "Download",
     "UserPresenceSession",
+    "DailyCheckIn",
 ]
