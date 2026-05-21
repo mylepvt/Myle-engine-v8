@@ -220,12 +220,38 @@ async def receive_whatsapp_reply(
     # Detect Meta format by presence of "object" = "whatsapp_business_account"
     is_meta_format = body.get("object") == "whatsapp_business_account"
 
+    logger.info(
+        "wa_webhook_received: is_meta=%s keys=%s",
+        is_meta_format,
+        list(body.keys()),
+    )
+
     if is_meta_format:
-        # Meta sends its own signature header (x-hub-signature-256) for security.
-        # For now we trust the verify_token handshake is sufficient.
         messages = _extract_meta_messages(body)
+
+        # Log every entry/change so we can see status updates vs real messages
+        for entry in body.get("entry", []):
+            for change in entry.get("changes", []):
+                value = change.get("value", {})
+                has_messages = bool(value.get("messages"))
+                has_statuses = bool(value.get("statuses"))
+                logger.info(
+                    "wa_webhook_change: field=%s has_messages=%s has_statuses=%s msg_count=%d",
+                    change.get("field"),
+                    has_messages,
+                    has_statuses,
+                    len(value.get("messages", [])),
+                )
+                if has_messages:
+                    for m in value.get("messages", []):
+                        logger.info(
+                            "wa_raw_msg: type=%s from=%s id=%s",
+                            m.get("type"),
+                            m.get("from", "")[-4:],
+                            m.get("id", "")[:12],
+                        )
+
         if not messages:
-            # Meta sends status updates (delivery, read) too — just ack them
             return {"ok": True, "matched": False, "note": "no_supported_messages"}
 
         matched = 0
@@ -237,7 +263,6 @@ async def receive_whatsapp_reply(
             if not phone:
                 continue
             if not message_text:
-                # Non-text message (image, audio, reaction, sticker, etc.) — log but don't process
                 await log_wa_inbound(
                     session,
                     phone=phone,
@@ -246,13 +271,25 @@ async def receive_whatsapp_reply(
                     wa_message_id=msg.get("wa_message_id"),
                 )
                 continue
-            logged_type, related_user_id = await _handle_inbound_message(
-                session=session,
-                phone=phone,
-                message=message_text,
-                wa_message_id=msg.get("wa_message_id"),
-                message_type_hint=msg_type,
-            )
+            try:
+                logged_type, related_user_id = await _handle_inbound_message(
+                    session=session,
+                    phone=phone,
+                    message=message_text,
+                    wa_message_id=msg.get("wa_message_id"),
+                    message_type_hint=msg_type,
+                )
+            except Exception:
+                logger.exception("wa_inbound_handle_error: phone_tail=%s", phone[-4:] if phone else "?")
+                # still log so Received Today increments
+                await log_wa_inbound(
+                    session,
+                    phone=phone,
+                    message=message_text[:400],
+                    message_type="inbound_error",
+                    wa_message_id=msg.get("wa_message_id"),
+                )
+                continue
             if logged_type == "inbound_member" and related_user_id is not None:
                 matched += 1
 
