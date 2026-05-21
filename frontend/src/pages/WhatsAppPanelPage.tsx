@@ -28,11 +28,13 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import {
+  useSendBroadcastMutation,
   useSendCustomMessageMutation,
   useTriggerDailySummaryMutation,
   useWhatsAppLeadersQuery,
   useWhatsAppLogsQuery,
   useWhatsAppStatusQuery,
+  type BroadcastResultItem,
   type LogFilters,
   type WhatsAppLogItem,
 } from '@/hooks/use-whatsapp-panel-query'
@@ -159,6 +161,11 @@ export function WhatsAppPanelPage({ title }: Props) {
   const [customMessage, setCustomMessage] = useState('')
   const [customResult, setCustomResult] = useState<string | null>(null)
   const [summaryResult, setSummaryResult] = useState<string | null>(null)
+  const [broadcastRecipients, setBroadcastRecipients] = useState<'leaders' | 'team' | 'all'>('leaders')
+  const [broadcastMessage, setBroadcastMessage] = useState('')
+  const [broadcastResults, setBroadcastResults] = useState<BroadcastResultItem[] | null>(null)
+  const [broadcastSummary, setBroadcastSummary] = useState<{ sent: number; failed: number; no_phone: number } | null>(null)
+  const sendBroadcast = useSendBroadcastMutation()
   const [reminderSending, setReminderSending] = useState(false)
   const [reminderSummary, setReminderSummary] = useState<Omit<SendRemindersResponse, 'results'> | null>(null)
   const [reminderResults, setReminderResults] = useState<ReminderResult[] | null>(null)
@@ -307,57 +314,178 @@ export function WhatsAppPanelPage({ title }: Props) {
       {/* Filters */}
       {/* Manual Controls */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Send custom message */}
-        <Card>
+        {/* Send custom message — one person OR broadcast */}
+        <Card className="lg:col-span-2">
           <CardHeader className="pb-2 pt-4">
             <CardTitle className="flex items-center gap-2 text-sm font-semibold">
               <Send className="h-4 w-4 text-blue-600" />
               Send Custom Message
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 pb-4">
-            <input
-              type="text"
-              placeholder="+91 98765 43210"
-              value={customPhone}
-              onChange={(e) => { setCustomPhone(e.target.value); setCustomResult(null) }}
-              className="w-full rounded border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-            />
+          <CardContent className="space-y-3 pb-4">
+            {/* Recipient tabs */}
+            <div className="flex gap-1 rounded-lg border border-input bg-muted/40 p-1">
+              {(['one', 'leaders', 'team', 'all'] as const).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => {
+                    if (r === 'one') {
+                      setBroadcastRecipients('leaders')
+                    } else {
+                      setBroadcastRecipients(r)
+                    }
+                    setCustomResult(null)
+                    setBroadcastResults(null)
+                    setBroadcastSummary(null)
+                  }}
+                  className={cn(
+                    'flex-1 rounded-md py-1 text-xs font-medium transition-colors',
+                    (r === 'one' && customPhone !== '' && broadcastResults === null && broadcastSummary === null) ||
+                    (r !== 'one' && broadcastRecipients === r && (broadcastResults !== null || broadcastSummary !== null || broadcastMessage !== ''))
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {r === 'one' ? 'One Person' : r === 'leaders' ? 'All Leaders' : r === 'team' ? 'All Team' : 'Everyone'}
+                </button>
+              ))}
+            </div>
+
+            {/* One person mode */}
+            <div className={broadcastResults !== null || broadcastSummary !== null ? 'hidden' : undefined}>
+              <input
+                type="text"
+                placeholder="+91 98765 43210"
+                value={customPhone}
+                onChange={(e) => { setCustomPhone(e.target.value); setCustomResult(null) }}
+                className="w-full rounded border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring mb-2"
+              />
+              <textarea
+                placeholder="Type your message here..."
+                value={customMessage}
+                onChange={(e) => { setCustomMessage(e.target.value); setCustomResult(null) }}
+                rows={3}
+                className="w-full rounded border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+              />
+              <Button
+                size="sm"
+                className="w-full mt-2"
+                disabled={!customPhone.trim() || !customMessage.trim() || sendCustom.isPending}
+                onClick={() => {
+                  sendCustom.mutate(
+                    { phone: customPhone.trim(), message: customMessage.trim() },
+                    {
+                      onSuccess: (r) => {
+                        if (r.ok) { setCustomResult('✓ Sent successfully'); setCustomPhone(''); setCustomMessage('') }
+                        else setCustomResult(`✗ ${r.error ?? 'Failed'}`)
+                      },
+                      onError: (e) => setCustomResult(`✗ ${e.message}`),
+                    },
+                  )
+                }}
+              >
+                {sendCustom.isPending ? 'Sending…' : 'Send Message'}
+              </Button>
+              {customResult && (
+                <p className={cn('mt-1 text-xs', customResult.startsWith('✓') ? 'text-green-700' : 'text-red-600')}>
+                  {customResult}
+                </p>
+              )}
+            </div>
+
+            {/* Broadcast mode — shown when a group tab is selected */}
+            <div className={broadcastResults === null && broadcastSummary === null && customPhone === '' ? undefined : 'hidden'}>
+              <div className="mb-1 text-xs text-muted-foreground">
+                {broadcastRecipients === 'leaders' ? 'Sabhi leaders ko bhejega' : broadcastRecipients === 'team' ? 'Sabhi team members ko bhejega' : 'Sabhi leaders + team members ko bhejega'}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Broadcast card — full width when active */}
+        <Card className="sm:col-span-2 lg:col-span-3">
+          <CardHeader className="pb-2 pt-4">
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+              <Users className="h-4 w-4 text-indigo-600" />
+              Broadcast Message
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 pb-4">
+            {/* Recipient selector */}
+            <div className="flex gap-2">
+              {(['leaders', 'team', 'all'] as const).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => { setBroadcastRecipients(r); setBroadcastResults(null); setBroadcastSummary(null) }}
+                  className={cn(
+                    'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                    broadcastRecipients === r
+                      ? 'border-indigo-500 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300'
+                      : 'border-border text-muted-foreground hover:border-indigo-400 hover:text-foreground',
+                  )}
+                >
+                  {r === 'leaders' ? '👔 All Leaders' : r === 'team' ? '👥 All Team' : '📢 Everyone'}
+                </button>
+              ))}
+            </div>
+
             <textarea
-              placeholder="Type your message here..."
-              value={customMessage}
-              onChange={(e) => { setCustomMessage(e.target.value); setCustomResult(null) }}
+              placeholder="Type your message here — sabhi selected members ko jaayega..."
+              value={broadcastMessage}
+              onChange={(e) => { setBroadcastMessage(e.target.value); setBroadcastResults(null); setBroadcastSummary(null) }}
               rows={3}
               className="w-full rounded border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
             />
+
             <Button
               size="sm"
-              className="w-full"
-              disabled={!customPhone.trim() || !customMessage.trim() || sendCustom.isPending}
+              className="border-indigo-500/40 bg-indigo-500/10 text-indigo-700 hover:bg-indigo-500/20 dark:text-indigo-300"
+              variant="outline"
+              disabled={!broadcastMessage.trim() || sendBroadcast.isPending}
               onClick={() => {
-                sendCustom.mutate(
-                  { phone: customPhone.trim(), message: customMessage.trim() },
+                sendBroadcast.mutate(
+                  { message: broadcastMessage.trim(), recipients: broadcastRecipients },
                   {
-                    onSuccess: (r) => {
-                      if (r.ok) {
-                        setCustomResult('✓ Sent successfully')
-                        setCustomPhone('')
-                        setCustomMessage('')
-                      } else {
-                        setCustomResult(`✗ ${r.error ?? 'Failed'}`)
-                      }
-                    },
-                    onError: (e) => setCustomResult(`✗ ${e.message}`),
+                    onSuccess: (r) => { setBroadcastSummary({ sent: r.sent, failed: r.failed, no_phone: r.no_phone }); setBroadcastResults(r.results) },
+                    onError: (e) => { setBroadcastSummary({ sent: 0, failed: 0, no_phone: 0 }); setBroadcastResults([]); console.error(e) },
                   },
                 )
               }}
             >
-              {sendCustom.isPending ? 'Sending…' : 'Send Message'}
+              {sendBroadcast.isPending
+                ? 'Bhej raha hoon…'
+                : broadcastRecipients === 'leaders' ? 'Send to All Leaders'
+                : broadcastRecipients === 'team' ? 'Send to All Team'
+                : 'Send to Everyone'}
             </Button>
-            {customResult && (
-              <p className={cn('text-xs', customResult.startsWith('✓') ? 'text-green-700' : 'text-red-600')}>
-                {customResult}
-              </p>
+
+            {broadcastSummary && (
+              <div className="flex flex-wrap gap-3 text-xs">
+                <span className="font-medium text-green-700">✓ {broadcastSummary.sent} sent</span>
+                {broadcastSummary.failed > 0 && <span className="font-medium text-red-600">✗ {broadcastSummary.failed} failed</span>}
+                {broadcastSummary.no_phone > 0 && <span className="text-muted-foreground">📵 {broadcastSummary.no_phone} no phone</span>}
+              </div>
+            )}
+
+            {broadcastResults && broadcastResults.length > 0 && (
+              <div className="max-h-56 overflow-y-auto rounded border border-border/50 bg-muted/30">
+                {broadcastResults.map((r) => (
+                  <div key={r.user_id} className="flex items-center gap-2 border-b border-border/30 px-3 py-1.5 last:border-0 text-xs">
+                    {r.status === 'sent'
+                      ? <CheckCircle2 className="h-3 w-3 shrink-0 text-green-600" />
+                      : r.status === 'no_phone'
+                      ? <Smartphone className="h-3 w-3 shrink-0 text-muted-foreground/50" />
+                      : <XCircle className="h-3 w-3 shrink-0 text-red-500" />}
+                    <span className="flex-1 truncate font-medium">{r.name}</span>
+                    <span className="text-muted-foreground">{r.phone_tail !== '—' ? `…${r.phone_tail}` : '—'}</span>
+                    <span className={cn('font-medium', r.status === 'sent' ? 'text-green-600' : r.status === 'no_phone' ? 'text-muted-foreground/50' : 'text-red-500')}>
+                      {r.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>
