@@ -566,11 +566,9 @@ export function AdminCommandCenter({ firstName }: Props) {
 
   // Seed live dashboard store from REST data once loaded
   const liveSummary = teamReports.data?.live_summary
-  if (liveSummary && !liveDash.day1Total && !liveDash.day2Total) {
+  if (liveSummary && !liveDash.claimedToday && !liveDash.enrolledToday) {
     liveDash.setInitial({
       callsToday: liveSummary.calls_made_today,
-      day1Total: liveSummary.day1_total,
-      day2Total: liveSummary.day2_total,
       claimedToday: liveSummary.leads_claimed_today,
       approvedToday: liveSummary.payment_proofs_approved_today,
       enrolledToday: liveSummary.enrolled_today,
@@ -592,6 +590,14 @@ export function AdminCommandCenter({ firstName }: Props) {
   const isHistoryToday = viewerHistoryDate === todayIST
   const premiereViewersHistory = usePremiereViewersQuery(activeTab === 'premiere' && !isHistoryToday, viewerHistoryDate)
   const premiereData = isHistoryToday ? premiereViewers : premiereViewersHistory
+  const premiereDay1Total = useMemo(
+    () => (premiereViewers.data ?? []).filter((v) => v.session_day === 1).length,
+    [premiereViewers.data],
+  )
+  const premiereDay2Total = useMemo(
+    () => (premiereViewers.data ?? []).filter((v) => v.session_day === 2).length,
+    [premiereViewers.data],
+  )
   const leadSearchResults = useLeadsQuery(
     deferredLeadSearch.length > 0,
     { q: deferredLeadSearch, status: '' },
@@ -797,11 +803,11 @@ export function AdminCommandCenter({ firstName }: Props) {
                 </div>
                 <div className="surface-inset rounded px-3 py-2.5">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Day 1</p>
-                  <p className="mt-0.5 text-xl font-bold tabular-nums text-emerald-400">{liveDash.day1Total || (liveSummary?.day1_total ?? 0)}</p>
+                  <p className="mt-0.5 text-xl font-bold tabular-nums text-emerald-400">{premiereDay1Total}</p>
                 </div>
                 <div className="surface-inset rounded px-3 py-2.5">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Day 2</p>
-                  <p className="mt-0.5 text-xl font-bold tabular-nums text-foreground">{liveDash.day2Total || (liveSummary?.day2_total ?? 0)}</p>
+                  <p className="mt-0.5 text-xl font-bold tabular-nums text-foreground">{premiereDay2Total}</p>
                 </div>
                 <div className="surface-inset rounded px-3 py-2.5">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Claims</p>
