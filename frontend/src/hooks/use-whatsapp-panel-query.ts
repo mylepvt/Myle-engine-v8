@@ -181,3 +181,24 @@ export function useSendBroadcastMutation() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['whatsapp', 'logs'] }),
   })
 }
+
+async function sendInsights(payload: { recipients: 'leaders' | 'team' | 'all'; period: 7 | 30 }) {
+  const res = await apiFetch('/api/v1/webhooks/whatsapp/send-insights', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { detail?: string }).detail ?? `HTTP ${res.status}`)
+  }
+  return res.json() as Promise<BroadcastResponse>
+}
+
+export function useSendInsightsMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: sendInsights,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['whatsapp', 'logs'] }),
+  })
+}
