@@ -49,6 +49,7 @@ import { AdminInvoicesPage } from '@/pages/AdminInvoicesPage'
 import { LeaderOSPage } from '@/pages/LeaderOSPage'
 import { DownloadsPage } from '@/pages/DownloadsPage'
 import { WhatsAppPanelPage } from '@/pages/WhatsAppPanelPage'
+import { AuditLogsPage } from '@/pages/AuditLogsPage'
 
 function renderFullUi(ui: FullUiSurface, title: string) {
   switch (ui.kind) {
@@ -85,6 +86,9 @@ function renderFullUi(ui: FullUiSurface, title: string) {
     case 'lead-control':
       return <LeadControlPage title={title} />
     case 'analytics':
+      if ('surface' in ui && ui.surface === 'activity-log') {
+        return <AuditLogsPage title={title} />
+      }
       return 'surface' in ui ? (
         <AnalyticsSurfacePage title={title} surface={ui.surface} />
       ) : (
