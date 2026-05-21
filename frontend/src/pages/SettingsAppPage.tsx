@@ -251,6 +251,18 @@ export function SettingsAppPage({ title }: Props) {
       placeholder: 'myle-webhook-secret-2026',
       help: 'Khud banao koi bhi string. Meta Console mein bhi yahi daalna hoga.',
     },
+    {
+      key: 'whatsapp.removal_template_name',
+      label: 'Removal Template Name',
+      placeholder: 'member_removal_v1',
+      help: 'Meta pe approved template ka exact naam — removal outreach ke liye. Set hone pe 24-hour window ke bahar bhi deliver hoga.',
+    },
+    {
+      key: 'whatsapp.removal_template_lang',
+      label: 'Removal Template Language',
+      placeholder: 'en',
+      help: 'Template language code, e.g. en, en_US, hi. Default: en',
+    },
   ] as const
 
   const handleSendReportReminders = async () => {
