@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react'
-import { LogIn, LogOut, MapPin, AlertTriangle, Clock } from 'lucide-react'
+import { useCallback, useEffect, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
+import { LogIn, LogOut, MapPin, AlertTriangle, Clock, RefreshCw } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -9,6 +10,8 @@ import {
   useCheckinHeartbeat,
 } from '@/hooks/use-checkin-query'
 import { cn } from '@/lib/utils'
+
+const HEARTBEAT_COOLDOWN_MS = 2 * 60 * 1000
 
 function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60)
@@ -58,14 +61,33 @@ export function CheckInWidget() {
   const { data, isPending } = useMyCheckinQuery()
   const checkIn = useCheckInMutation()
   const checkOut = useCheckOutMutation()
-  const heartbeat = useCheckinHeartbeat(!!data?.checked_in && !data.check_out_at)
+  const heartbeat = useCheckinHeartbeat(true)
+  const location = useLocation()
+  const lastHeartbeatRef = useRef<number>(0)
 
-  // Heartbeat every 15 min while checked in
+  const isActive = !!(data?.checked_in && !data.check_out_at)
+
+  // Activity-based heartbeat: route change, visibility, focus
+  const maybeHeartbeat = useCallback(() => {
+    if (!isActive) return
+    const now = Date.now()
+    if (now - lastHeartbeatRef.current < HEARTBEAT_COOLDOWN_MS) return
+    lastHeartbeatRef.current = now
+    void heartbeat.mutate()
+  }, [isActive, heartbeat])
+
+  useEffect(() => { maybeHeartbeat() }, [location.pathname, maybeHeartbeat])
+
   useEffect(() => {
-    if (!data?.checked_in || data.check_out_at) return
-    const id = setInterval(() => { void heartbeat.mutate() }, 15 * 60 * 1000)
-    return () => clearInterval(id)
-  }, [data?.checked_in, data?.check_out_at, heartbeat])
+    const onVisible = () => { if (document.visibilityState === 'visible') maybeHeartbeat() }
+    const onFocus = () => maybeHeartbeat()
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onFocus)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [maybeHeartbeat])
 
   const handleCheckIn = async () => {
     const coords = await getGps()
@@ -79,9 +101,10 @@ export function CheckInWidget() {
 
   if (isPending) return <Skeleton className="h-[72px] w-full rounded-xl" />
 
-  const isActive = data?.checked_in && !data.check_out_at
-  const isDone = data?.checked_in && !!data.check_out_at
+  const isDone = !!(data?.checked_in && data.check_out_at)
   const isSuspicious = data?.is_suspicious
+  const sessionsToday = data?.sessions_today ?? 0
+  const totalMinutes = data?.total_minutes_today
 
   return (
     <div className={cn(
@@ -112,8 +135,14 @@ export function CheckInWidget() {
         <div className="min-w-0">
           {!data?.checked_in && (
             <>
-              <p className="text-sm font-semibold text-foreground">Check In</p>
-              <p className="text-xs text-muted-foreground">Start your work session</p>
+              <p className="text-sm font-semibold text-foreground">
+                {sessionsToday > 0 ? 'Start new session' : 'Check In'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {sessionsToday > 0
+                  ? `${sessionsToday} session${sessionsToday > 1 ? 's' : ''} today${totalMinutes ? ` · ${formatDuration(totalMinutes)} total` : ''}`
+                  : 'Start your work session'}
+              </p>
             </>
           )}
           {isActive && data.check_in_at && (
@@ -129,15 +158,19 @@ export function CheckInWidget() {
                     </span>
                   : <span>Location recorded</span>
                 }
+                {sessionsToday > 1 && (
+                  <span className="text-muted-foreground/50">· session {sessionsToday}</span>
+                )}
               </div>
             </>
           )}
           {isDone && data.check_out_at && (
             <>
               <p className="text-sm font-semibold text-foreground">
-                Done · {data.work_duration_minutes != null ? formatDuration(data.work_duration_minutes) : '—'}
+                Done · {totalMinutes != null ? formatDuration(totalMinutes) : data.work_duration_minutes != null ? formatDuration(data.work_duration_minutes) : '—'}
               </p>
               <p className="text-xs text-muted-foreground">
+                {sessionsToday > 1 ? `${sessionsToday} sessions today · ` : ''}
                 {new Date(data.check_in_at!).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                 {' → '}
                 {new Date(data.check_out_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
@@ -149,7 +182,7 @@ export function CheckInWidget() {
 
       {/* Right: action button */}
       <div className="shrink-0">
-        {!data?.checked_in && (
+        {(!data?.checked_in) && (
           <button
             type="button"
             onClick={() => void handleCheckIn()}
@@ -157,7 +190,7 @@ export function CheckInWidget() {
             className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50 min-h-[40px]"
           >
             <LogIn className="h-3.5 w-3.5" />
-            {checkIn.isPending ? 'Checking in…' : 'Check In'}
+            {checkIn.isPending ? 'Checking in…' : sessionsToday > 0 ? 'Check In Again' : 'Check In'}
           </button>
         )}
         {isActive && (
@@ -172,7 +205,15 @@ export function CheckInWidget() {
           </button>
         )}
         {isDone && (
-          <span className="text-xs text-muted-foreground/60">Session ended</span>
+          <button
+            type="button"
+            onClick={() => void handleCheckIn()}
+            disabled={checkIn.isPending}
+            className="flex items-center gap-1.5 rounded-lg border border-white/[0.12] bg-white/[0.04] px-3 py-2 text-xs font-semibold text-muted-foreground transition hover:bg-white/[0.08] disabled:opacity-50 min-h-[36px]"
+          >
+            <RefreshCw className="h-3 w-3" />
+            {checkIn.isPending ? '…' : 'New Session'}
+          </button>
         )}
       </div>
 

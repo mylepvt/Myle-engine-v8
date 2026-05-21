@@ -3,17 +3,17 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, UniqueConstraint, func
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 
 
 class DailyCheckIn(Base):
-    """One record per user per calendar day — tracks work presence and GPS location."""
+    """One session row per check-in. Multiple sessions per user per day are allowed."""
 
     __tablename__ = "daily_check_ins"
-    __table_args__ = (UniqueConstraint("user_id", "date", name="uq_daily_check_in_user_date"),)
+    __table_args__ = ()
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)

@@ -14,6 +14,8 @@ export type CheckInStatus = {
   check_out_at: string | null
   last_active_at: string | null
   work_duration_minutes: number | null
+  sessions_today?: number
+  total_minutes_today?: number
   latitude?: number | null
   longitude?: number | null
   accuracy_meters?: number | null

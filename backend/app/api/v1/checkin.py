@@ -1,6 +1,7 @@
-"""Daily attendance check-in / check-out with GPS and activity heartbeat."""
+"""Daily attendance: multiple check-in sessions per day, activity-heartbeat, GPS flags."""
 from __future__ import annotations
 
+from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 from typing import Annotated, Any, Optional
 
@@ -11,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
+from app.core.realtime_hub import notify_topics
 from app.core.time_ist import today_ist
 from app.models.daily_check_in import DailyCheckIn
 from app.models.user import User
@@ -36,7 +38,9 @@ class CheckOutRequest(BaseModel):
     accuracy_meters: Optional[float] = None
 
 
-def _status(row: DailyCheckIn) -> str:
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _session_status(row: DailyCheckIn) -> str:
     if row.check_out_at:
         return "done"
     now = datetime.now(timezone.utc)
@@ -59,8 +63,16 @@ def _serialise(row: DailyCheckIn, actor_name: str | None = None) -> dict[str, An
         "longitude": row.longitude,
         "accuracy_meters": row.accuracy_meters,
         "is_suspicious": row.is_suspicious,
-        "status": _status(row),
+        "status": _session_status(row),
     }
+
+
+def _pick_representative(sessions: list[DailyCheckIn]) -> DailyCheckIn:
+    """Return open session if one exists, otherwise the latest closed session."""
+    open_sessions = [s for s in sessions if not s.check_out_at]
+    if open_sessions:
+        return max(open_sessions, key=lambda s: s.check_in_at)
+    return max(sessions, key=lambda s: s.check_in_at)
 
 
 # ── My check-in status for today ─────────────────────────────────────────────
@@ -71,17 +83,31 @@ async def get_my_checkin_today(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict[str, Any]:
     today = today_ist()
-    row = (
+    rows = (
         await session.execute(
-            select(DailyCheckIn).where(
-                DailyCheckIn.user_id == user.user_id,
-                DailyCheckIn.date == today,
-            )
+            select(DailyCheckIn)
+            .where(DailyCheckIn.user_id == user.user_id, DailyCheckIn.date == today)
+            .order_by(DailyCheckIn.check_in_at)
         )
-    ).scalar_one_or_none()
-    if row is None:
-        return {"checked_in": False, "checked_out": False, "date": str(today)}
-    return {"checked_in": True, **_serialise(row)}
+    ).scalars().all()
+
+    if not rows:
+        return {"checked_in": False, "date": str(today), "sessions_today": 0, "total_minutes_today": 0}
+
+    active = next((r for r in reversed(rows) if r.check_out_at is None), None)
+    rep = active or rows[-1]
+
+    completed_minutes = sum(r.work_duration_minutes or 0 for r in rows if r.check_out_at)
+    if active and active.check_in_at:
+        elapsed = int((datetime.now(timezone.utc) - active.check_in_at).total_seconds() / 60)
+        completed_minutes += elapsed
+
+    return {
+        "checked_in": bool(active),
+        "sessions_today": len(rows),
+        "total_minutes_today": completed_minutes,
+        **_serialise(rep),
+    }
 
 
 # ── Check in ─────────────────────────────────────────────────────────────────
@@ -93,16 +119,19 @@ async def check_in(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict[str, Any]:
     today = today_ist()
-    existing = (
+
+    # Prevent double-tap: return existing open session instead of creating a duplicate.
+    active = (
         await session.execute(
             select(DailyCheckIn).where(
                 DailyCheckIn.user_id == user.user_id,
                 DailyCheckIn.date == today,
+                DailyCheckIn.check_out_at.is_(None),
             )
         )
     ).scalar_one_or_none()
-    if existing:
-        return {"checked_in": True, "already": True, **_serialise(existing)}
+    if active:
+        return {"checked_in": True, "already": True, **_serialise(active)}
 
     now = datetime.now(timezone.utc)
     suspicious = (
@@ -133,6 +162,7 @@ async def check_in(
     )
     await session.commit()
     await session.refresh(row)
+    await notify_topics("team_tracking", "checkin")
     return {"checked_in": True, "already": False, **_serialise(row)}
 
 
@@ -150,13 +180,13 @@ async def check_out(
             select(DailyCheckIn).where(
                 DailyCheckIn.user_id == user.user_id,
                 DailyCheckIn.date == today,
-            )
+                DailyCheckIn.check_out_at.is_(None),
+            ).order_by(DailyCheckIn.check_in_at.desc())
         )
     ).scalar_one_or_none()
+
     if row is None:
-        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Not checked in today.")
-    if row.check_out_at:
-        return {"checked_out": True, "already": True, **_serialise(row)}
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="No active session to check out of.")
 
     now = datetime.now(timezone.utc)
     duration = int((now - row.check_in_at).total_seconds() / 60)
@@ -178,6 +208,7 @@ async def check_out(
     )
     await session.commit()
     await session.refresh(row)
+    await notify_topics("team_tracking", "checkin")
     return {"checked_out": True, "already": False, **_serialise(row)}
 
 
@@ -188,7 +219,7 @@ async def heartbeat(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict[str, str]:
-    """Lightweight ping — updates last_active_at while user is in the app."""
+    """Activity ping — call on route change, app foreground, or lead action."""
     today = today_ist()
     row = (
         await session.execute(
@@ -196,7 +227,7 @@ async def heartbeat(
                 DailyCheckIn.user_id == user.user_id,
                 DailyCheckIn.date == today,
                 DailyCheckIn.check_out_at.is_(None),
-            )
+            ).order_by(DailyCheckIn.check_in_at.desc())
         )
     ).scalar_one_or_none()
     if row:
@@ -225,13 +256,11 @@ async def get_team_checkins(
     else:
         target_date = today_ist()
 
-    # Scope: admin sees all non-admin users; leader sees direct downline
     if user.role == "admin":
         user_filter = User.role.in_(("leader", "team"))
     else:
         user_filter = User.upline_user_id == user.user_id
 
-    # All team members in scope
     members = (
         await session.execute(
             select(User.id, User.name, User.username, User.fbo_id)
@@ -240,27 +269,25 @@ async def get_team_checkins(
         )
     ).all()
 
-    # Their check-ins for target_date
     member_ids = [m.id for m in members]
-    checkins: dict[int, DailyCheckIn] = {}
+    sessions_by_user: dict[int, list[DailyCheckIn]] = defaultdict(list)
     if member_ids:
         rows = (
             await session.execute(
                 select(DailyCheckIn).where(
                     DailyCheckIn.user_id.in_(member_ids),
                     DailyCheckIn.date == target_date,
-                )
+                ).order_by(DailyCheckIn.check_in_at)
             )
         ).scalars().all()
-        checkins = {r.user_id: r for r in rows}
+        for r in rows:
+            sessions_by_user[r.user_id].append(r)
 
     items = []
     for m in members:
         display = m.name or m.username or m.fbo_id
-        row = checkins.get(m.id)
-        if row:
-            items.append({**_serialise(row, actor_name=display)})
-        else:
+        user_sessions = sessions_by_user.get(m.id, [])
+        if not user_sessions:
             items.append({
                 "user_id": m.id,
                 "actor": display,
@@ -271,10 +298,20 @@ async def get_team_checkins(
                 "check_out_at": None,
                 "last_active_at": None,
                 "work_duration_minutes": None,
+                "sessions_today": 0,
+                "total_minutes_today": 0,
                 "is_suspicious": False,
             })
+        else:
+            rep = _pick_representative(user_sessions)
+            completed = sum(s.work_duration_minutes or 0 for s in user_sessions if s.check_out_at)
+            items.append({
+                **_serialise(rep, actor_name=display),
+                "sessions_today": len(user_sessions),
+                "total_minutes_today": completed,
+            })
 
-    checked_in = sum(1 for i in items if i.get("check_in_at"))
+    checked_in = sum(1 for i in items if i.get("check_in_at") and not i.get("check_out_at"))
     active = sum(1 for i in items if i.get("status") == "active")
 
     return {
