@@ -146,3 +146,38 @@ export function useWhatsAppLeadersQuery(enabled = true) {
     staleTime: 30_000,
   })
 }
+
+export type BroadcastResultItem = {
+  user_id: number
+  name: string
+  phone_tail: string
+  status: 'sent' | 'failed' | 'no_phone'
+}
+
+export type BroadcastResponse = {
+  sent: number
+  failed: number
+  no_phone: number
+  results: BroadcastResultItem[]
+}
+
+async function sendBroadcast(payload: { message: string; recipients: 'leaders' | 'team' | 'all' }) {
+  const res = await apiFetch('/api/v1/webhooks/whatsapp/broadcast', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { detail?: string }).detail ?? `HTTP ${res.status}`)
+  }
+  return res.json() as Promise<BroadcastResponse>
+}
+
+export function useSendBroadcastMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: sendBroadcast,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['whatsapp', 'logs'] }),
+  })
+}
