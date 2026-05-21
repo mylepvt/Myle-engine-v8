@@ -30,6 +30,7 @@ import {
 import {
   useSendBroadcastMutation,
   useSendCustomMessageMutation,
+  useSendInsightsMutation,
   useTriggerDailySummaryMutation,
   useWhatsAppLeadersQuery,
   useWhatsAppLogsQuery,
@@ -166,6 +167,11 @@ export function WhatsAppPanelPage({ title }: Props) {
   const [broadcastResults, setBroadcastResults] = useState<BroadcastResultItem[] | null>(null)
   const [broadcastSummary, setBroadcastSummary] = useState<{ sent: number; failed: number; no_phone: number } | null>(null)
   const sendBroadcast = useSendBroadcastMutation()
+  const [insightsRecipients, setInsightsRecipients] = useState<'leaders' | 'team' | 'all'>('team')
+  const [insightsPeriod, setInsightsPeriod] = useState<7 | 30>(7)
+  const [insightsResults, setInsightsResults] = useState<BroadcastResultItem[] | null>(null)
+  const [insightsSummary, setInsightsSummary] = useState<{ sent: number; failed: number; no_phone: number } | null>(null)
+  const sendInsights = useSendInsightsMutation()
   const [reminderSending, setReminderSending] = useState(false)
   const [reminderSummary, setReminderSummary] = useState<Omit<SendRemindersResponse, 'results'> | null>(null)
   const [reminderResults, setReminderResults] = useState<ReminderResult[] | null>(null)
@@ -581,6 +587,104 @@ export function WhatsAppPanelPage({ title }: Props) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Personal Insights card */}
+      <Card>
+        <CardHeader className="pb-2 pt-4">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+            <ClipboardList className="h-4 w-4 text-emerald-600" />
+            Send Personal Insights
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 pb-4">
+          <p className="text-xs text-muted-foreground">
+            Har member ko uski apni performance analysis bhejo — reports, calls, streak, miss pattern sab.
+          </p>
+
+          {/* Period + Recipients */}
+          <div className="flex flex-wrap gap-3">
+            <div className="flex gap-1 rounded-lg border border-input bg-muted/40 p-1">
+              {([7, 30] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => { setInsightsPeriod(p); setInsightsResults(null); setInsightsSummary(null) }}
+                  className={cn(
+                    'rounded-md px-3 py-1 text-xs font-medium transition-colors',
+                    insightsPeriod === p ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {p} days
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-1 rounded-lg border border-input bg-muted/40 p-1">
+              {(['leaders', 'team', 'all'] as const).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => { setInsightsRecipients(r); setInsightsResults(null); setInsightsSummary(null) }}
+                  className={cn(
+                    'rounded-md px-3 py-1 text-xs font-medium transition-colors',
+                    insightsRecipients === r ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {r === 'leaders' ? 'Leaders' : r === 'team' ? 'Team' : 'Everyone'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Preview */}
+          <div className="rounded border border-emerald-500/20 bg-emerald-500/5 p-3 text-[11px] text-muted-foreground font-mono whitespace-pre-line">
+            {insightsPeriod === 7
+              ? `Hi Rahul,\n\nLast 7 days ki teri performance:\n✅ Reports: 5/7 submitted\n🔥 Current streak: 3 days\n📞 Total calls: 42\n⚠️ Missed: Sat, Sun\n💪 Best day: Mon (12 calls)\n\n— Myle Team`
+              : `Hi Rahul,\n\nLast 30 days ki teri analysis:\n✅ Reports: 22/30 submitted\n🔥 Best streak: 8 days\n📞 Avg calls/day: 9\n\n📊 Weekly trend:\n  Week 1: 38 calls · 6/7\n  Week 2: 44 calls · 7/7\n  Week 3: 31 calls · 4/7\n  Week 4: 42 calls · 5/7\n⚠️ Pattern: Saturday pe 3/4 weeks miss ki\n\n— Myle Team`}
+          </div>
+
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full border-emerald-500/40 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400"
+            disabled={sendInsights.isPending}
+            onClick={() => {
+              sendInsights.mutate(
+                { recipients: insightsRecipients, period: insightsPeriod },
+                {
+                  onSuccess: (r) => { setInsightsSummary({ sent: r.sent, failed: r.failed, no_phone: r.no_phone }); setInsightsResults(r.results) },
+                  onError: (e) => { setInsightsSummary({ sent: 0, failed: 0, no_phone: 0 }); setInsightsResults([]); console.error(e) },
+                },
+              )
+            }}
+          >
+            {sendInsights.isPending ? 'Bhej raha hoon…' : `Send ${insightsPeriod}-day Insights`}
+          </Button>
+
+          {insightsSummary && (
+            <div className="flex flex-wrap gap-3 text-xs">
+              <span className="font-medium text-green-700">✓ {insightsSummary.sent} sent</span>
+              {insightsSummary.failed > 0 && <span className="font-medium text-red-600">✗ {insightsSummary.failed} failed</span>}
+              {insightsSummary.no_phone > 0 && <span className="text-muted-foreground">📵 {insightsSummary.no_phone} no phone</span>}
+            </div>
+          )}
+
+          {insightsResults && insightsResults.length > 0 && (
+            <div className="max-h-48 overflow-y-auto rounded border border-border/50 bg-muted/30">
+              {insightsResults.map((r) => (
+                <div key={r.user_id} className="flex items-center gap-2 border-b border-border/30 px-3 py-1.5 last:border-0 text-xs">
+                  {r.status === 'sent'
+                    ? <CheckCircle2 className="h-3 w-3 shrink-0 text-green-600" />
+                    : r.status === 'no_phone'
+                    ? <Smartphone className="h-3 w-3 shrink-0 text-muted-foreground/50" />
+                    : <XCircle className="h-3 w-3 shrink-0 text-red-500" />}
+                  <span className="flex-1 truncate font-medium">{r.name}</span>
+                  <span className="text-muted-foreground">{r.phone_tail !== '—' ? `…${r.phone_tail}` : '—'}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Leaders phone status */}
       <Card>
