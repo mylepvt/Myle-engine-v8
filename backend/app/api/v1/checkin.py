@@ -42,11 +42,16 @@ class CheckOutRequest(BaseModel):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+def _as_utc(dt: datetime) -> datetime:
+    """Ensure datetime is UTC-aware (SQLite returns naive datetimes; assume UTC)."""
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
+
+
 def _session_status(row: DailyCheckIn) -> str:
     if row.check_out_at:
         return "done"
     now = datetime.now(timezone.utc)
-    if row.last_active_at and (now - row.last_active_at) < timedelta(minutes=_AWAY_THRESHOLD_MINUTES):
+    if row.last_active_at and (now - _as_utc(row.last_active_at)) < timedelta(minutes=_AWAY_THRESHOLD_MINUTES):
         return "active"
     return "away"
 
@@ -103,7 +108,7 @@ async def get_my_checkin_today(
 
     completed_minutes = sum(r.work_duration_minutes or 0 for r in rows if r.check_out_at)
     if active and active.check_in_at:
-        elapsed = int((datetime.now(timezone.utc) - active.check_in_at).total_seconds() / 60)
+        elapsed = int((datetime.now(timezone.utc) - _as_utc(active.check_in_at)).total_seconds() / 60)
         completed_minutes += elapsed
 
     return {
@@ -195,7 +200,7 @@ async def check_out(
         raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="No active session to check out of.")
 
     now = datetime.now(timezone.utc)
-    duration = int((now - row.check_in_at).total_seconds() / 60)
+    duration = int((now - _as_utc(row.check_in_at)).total_seconds() / 60)
 
     row.check_out_at = now
     row.checkout_latitude = body.latitude
