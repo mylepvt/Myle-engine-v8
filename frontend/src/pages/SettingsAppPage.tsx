@@ -263,6 +263,18 @@ export function SettingsAppPage({ title }: Props) {
       placeholder: 'en',
       help: 'Template language code, e.g. en, en_US, hi. Default: en',
     },
+    {
+      key: 'whatsapp.report_reminder_template_name',
+      label: 'Report Reminder Template Name',
+      placeholder: 'daily_report_reminder',
+      help: 'Meta pe approved template naam — report reminder ke liye. Set hone pe 24-hour window ke bahar bhi deliver hoga.',
+    },
+    {
+      key: 'whatsapp.report_reminder_template_lang',
+      label: 'Report Reminder Template Language',
+      placeholder: 'en',
+      help: 'Template language code. Default: en',
+    },
   ] as const
 
   const handleSendReportReminders = async () => {
