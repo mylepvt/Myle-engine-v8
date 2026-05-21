@@ -14,6 +14,7 @@ from app.api.deps import AuthUser, get_db, require_auth_user
 from app.models.daily_report import DailyReport
 from app.models.daily_score import DailyScore
 from app.schemas.reports import DailyReportPublic, DailyReportSubmit
+from app.services.audit_service import log_action
 from app.services.team_reports_metrics import IST
 
 router = APIRouter()
@@ -173,6 +174,14 @@ async def submit_daily_report(
         row.calls_made_actual = body.calls_made_actual
         row.payments_actual = body.payments_actual
 
+    await log_action(
+        session=session,
+        user_id=user.user_id,
+        action="daily_report.submit" if points_awarded > 0 else "daily_report.update",
+        entity_type="daily_report",
+        entity_id=row.id,
+        meta={"report_date": str(body.report_date), "calls": body.total_calling},
+    )
     await session.commit()
     await session.refresh(row)
     return _report_to_public(row, points_awarded=points_awarded)
