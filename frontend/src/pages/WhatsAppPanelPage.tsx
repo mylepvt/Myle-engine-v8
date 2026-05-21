@@ -638,8 +638,8 @@ export function WhatsAppPanelPage({ title }: Props) {
           {/* Preview */}
           <div className="rounded border border-emerald-500/20 bg-emerald-500/5 p-3 text-[11px] text-muted-foreground font-mono whitespace-pre-line">
             {insightsPeriod === 7
-              ? `Hi Rahul,\n\nLast 7 days ki teri performance:\n✅ Reports: 5/7 submitted\n🔥 Current streak: 3 days\n📞 Total calls: 42\n⚠️ Missed: Sat, Sun\n💪 Best day: Mon (12 calls)\n\n— Myle Team`
-              : `Hi Rahul,\n\nLast 30 days ki teri analysis:\n✅ Reports: 22/30 submitted\n🔥 Best streak: 8 days\n📞 Avg calls/day: 9\n\n📊 Weekly trend:\n  Week 1: 38 calls · 6/7\n  Week 2: 44 calls · 7/7\n  Week 3: 31 calls · 4/7\n  Week 4: 42 calls · 5/7\n⚠️ Pattern: Saturday pe 3/4 weeks miss ki\n\n— Myle Team`}
+              ? `Hi Rahul,\n\nHere's your performance summary for the last 7 days:\n✅ Reports submitted: 5/7\n🔥 Current streak: 3 days\n📞 Total calls made: 42\n⚠️ Days missed: Sat, Sun\n💪 Best day: Mon (12 calls)\n\nKeep it up — consistency is everything.\n\n— Myle Team`
+              : `Hi Rahul,\n\nHere's your 30-day performance analysis:\n✅ Reports submitted: 22/30\n🔥 Best streak: 8 days\n📞 Average calls/day: 9\n\n📊 Weekly breakdown (oldest → recent):\n  Week 1: 38 calls · 6/7 reports\n  Week 2: 44 calls · 7/7 reports\n  Week 3: 31 calls · 4/7 reports\n  Week 4: 42 calls · 5/7 reports\n⚠️ Pattern noticed: Reports were missed on Saturday in 3 out of the last 4 weeks.\n💡 Try to stay consistent on that day — small habits make big results.\n\n— Myle Team`}
           </div>
 
           <Button
