@@ -14,7 +14,9 @@ from app.api.deps import AuthUser, get_db, require_auth_user
 from app.models.daily_report import DailyReport
 from app.models.daily_score import DailyScore
 from app.schemas.reports import DailyReportPublic, DailyReportSubmit
+from app.models.user import User as _UserModel
 from app.services.audit_service import log_action
+from app.services.push_service import send_push_to_user
 from app.services.team_reports_metrics import IST
 
 router = APIRouter()
@@ -182,6 +184,24 @@ async def submit_daily_report(
         entity_id=row.id,
         meta={"report_date": str(body.report_date), "calls": body.total_calling},
     )
+    # Fetch upline before commit so it's in the same transaction
+    upline_to_notify: int | None = None
+    if points_awarded > 0:
+        upline_to_notify = (
+            await session.execute(
+                select(_UserModel.upline_user_id).where(_UserModel.id == user.user_id)
+            )
+        ).scalar_one_or_none()
     await session.commit()
+    if upline_to_notify:
+        try:
+            await send_push_to_user(
+                session, upline_to_notify,
+                title="📋 Daily Report Submitted",
+                body="A team member submitted their daily report.",
+                url="/dashboard/team/reports",
+            )
+        except Exception:
+            pass
     await session.refresh(row)
     return _report_to_public(row, points_awarded=points_awarded)

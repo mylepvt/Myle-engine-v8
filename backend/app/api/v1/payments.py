@@ -19,7 +19,9 @@ from app.core.payment_validator import (
 )
 from app.models.lead import Lead
 from app.schemas.payments import PaymentProofResponse
+from app.services.lead_owner import resolved_owner_user_id
 from app.services.payment_service import PaymentService
+from app.services.push_service import send_push_to_user
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -106,6 +108,19 @@ async def approve_payment_proof(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail=message,
         )
+        try:
+            lead = await session.get(Lead, lead_id)
+            if lead:
+                owner_id = resolved_owner_user_id(lead)
+                if owner_id:
+                    await send_push_to_user(
+                        session, owner_id,
+                        title="Payment Approved ✅",
+                        body="Your lead's payment proof was approved.",
+                        url="/dashboard/work/leads",
+                    )
+        except Exception:
+            pass
         await notify_topics("team", "leads")
 
         return PaymentProofResponse(
@@ -144,6 +159,19 @@ async def reject_payment_proof(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail=message,
         )
+        try:
+            lead = await session.get(Lead, lead_id)
+            if lead:
+                owner_id = resolved_owner_user_id(lead)
+                if owner_id:
+                    await send_push_to_user(
+                        session, owner_id,
+                        title="Payment Proof Rejected",
+                        body="Payment proof was not approved. Please re-upload a valid proof.",
+                        url="/dashboard/work/leads",
+                    )
+        except Exception:
+            pass
         await notify_topics("team", "leads")
 
         return PaymentProofResponse(
