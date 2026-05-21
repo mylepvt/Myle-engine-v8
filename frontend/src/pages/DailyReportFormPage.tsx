@@ -181,7 +181,7 @@ export function DailyReportFormPage({ title }: Props) {
           type="submit"
           disabled={mut.isPending}
          
-          className="rounded-lg border border-primary/40 bg-primary/15 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary/25 disabled:opacity-50"
+          className="rounded-lg border border-primary/40 bg-primary/15 px-4 py-3 text-sm font-semibold text-primary transition hover:bg-primary/25 disabled:opacity-50 min-h-[44px]"
         >
           {mut.isPending ? 'Saving…' : 'Save report'}
         </button>

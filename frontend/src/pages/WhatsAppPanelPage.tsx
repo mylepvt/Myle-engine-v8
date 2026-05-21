@@ -277,41 +277,41 @@ export function WhatsAppPanelPage({ title }: Props) {
 
       {/* Today's stats */}
       {logsLoading ? (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           {[0, 1, 2].map((i) => <Skeleton key={i} className="h-20" />)}
         </div>
       ) : logs ? (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <Card>
-            <CardHeader className="pb-1 pt-3">
-              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <CardHeader className="pb-1 px-3 pt-3 sm:px-6">
+              <CardTitle className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">
                 Sent Today
               </CardTitle>
             </CardHeader>
-            <CardContent className="pb-3">
-              <p className="text-2xl font-bold text-green-700">{logs.sent_today}</p>
+            <CardContent className="pb-3 px-3 sm:px-6">
+              <p className="text-xl sm:text-2xl font-bold text-green-700">{logs.sent_today}</p>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-1 pt-3">
-              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <CardHeader className="pb-1 px-3 pt-3 sm:px-6">
+              <CardTitle className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">
                 Failed Today
               </CardTitle>
             </CardHeader>
-            <CardContent className="pb-3">
-              <p className={cn('text-2xl font-bold', logs.failed_today > 0 ? 'text-red-600' : 'text-muted-foreground')}>
+            <CardContent className="pb-3 px-3 sm:px-6">
+              <p className={cn('text-xl sm:text-2xl font-bold', logs.failed_today > 0 ? 'text-red-600' : 'text-muted-foreground')}>
                 {logs.failed_today}
               </p>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-1 pt-3">
-              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <CardHeader className="pb-1 px-3 pt-3 sm:px-6">
+              <CardTitle className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">
                 Received Today
               </CardTitle>
             </CardHeader>
-            <CardContent className="pb-3">
-              <p className="text-2xl font-bold text-blue-700">{logs.received_today}</p>
+            <CardContent className="pb-3 px-3 sm:px-6">
+              <p className="text-xl sm:text-2xl font-bold text-blue-700">{logs.received_today}</p>
             </CardContent>
           </Card>
         </div>
@@ -808,21 +808,23 @@ export function WhatsAppPanelPage({ title }: Props) {
               <p className="text-xs">Activity will appear here as WhatsApp messages are sent or received.</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-28">Time</TableHead>
-                  <TableHead className="w-10">Dir</TableHead>
-                  <TableHead className="w-32">Type</TableHead>
-                  <TableHead className="w-36">Phone</TableHead>
-                  <TableHead>Message preview</TableHead>
-                  <TableHead className="w-24">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {logs.items.map((item) => <LogRow key={item.id} item={item} />)}
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto">
+              <Table className="min-w-[600px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-28">Time</TableHead>
+                    <TableHead className="w-10">Dir</TableHead>
+                    <TableHead className="w-32">Type</TableHead>
+                    <TableHead className="w-36">Phone</TableHead>
+                    <TableHead>Message preview</TableHead>
+                    <TableHead className="w-24">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {logs.items.map((item) => <LogRow key={item.id} item={item} />)}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
