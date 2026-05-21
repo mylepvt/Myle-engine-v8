@@ -93,7 +93,7 @@ def _extract_meta_message_value(msg: dict[str, Any]) -> tuple[str, str | None]:
 def _extract_meta_messages(body: dict[str, Any]) -> list[dict[str, Any]]:
     """
     Parse Meta's nested webhook payload and return a flat list of
-    supported inbound message dicts.
+    all inbound message dicts (including non-text types like images/audio).
     """
     results: list[dict[str, Any]] = []
     for entry in body.get("entry", []):
@@ -101,11 +101,9 @@ def _extract_meta_messages(body: dict[str, Any]) -> list[dict[str, Any]]:
             value = change.get("value", {})
             for msg in value.get("messages", []):
                 message_type, message_text = _extract_meta_message_value(msg)
-                if not message_text:
-                    continue
                 results.append({
                     "phone": msg.get("from", ""),
-                    "message": message_text,
+                    "message": message_text,  # may be None for non-text types
                     "message_type": message_type,
                     "wa_message_id": msg.get("id"),
                 })
@@ -231,15 +229,29 @@ async def receive_whatsapp_reply(
             return {"ok": True, "matched": False, "note": "no_supported_messages"}
 
         matched = 0
+        from app.services.whatsapp_log_service import log_wa_inbound
         for msg in messages:
-            if not msg["phone"] or not msg["message"]:
+            phone = msg["phone"] or ""
+            message_text = msg["message"]
+            msg_type = msg.get("message_type") or "inbound_unknown"
+            if not phone:
+                continue
+            if not message_text:
+                # Non-text message (image, audio, reaction, sticker, etc.) — log but don't process
+                await log_wa_inbound(
+                    session,
+                    phone=phone,
+                    message=f"[{msg_type}]",
+                    message_type=msg_type,
+                    wa_message_id=msg.get("wa_message_id"),
+                )
                 continue
             logged_type, related_user_id = await _handle_inbound_message(
                 session=session,
-                phone=msg["phone"],
-                message=msg["message"],
+                phone=phone,
+                message=message_text,
                 wa_message_id=msg.get("wa_message_id"),
-                message_type_hint=msg.get("message_type") or "inbound_unknown",
+                message_type_hint=msg_type,
             )
             if logged_type == "inbound_member" and related_user_id is not None:
                 matched += 1
