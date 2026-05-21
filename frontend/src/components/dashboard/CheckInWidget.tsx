@@ -42,15 +42,44 @@ function ElapsedTimer({ since }: { since: string }) {
   return <span ref={ref} className="tabular-nums" />
 }
 
-async function getGps(): Promise<{ latitude?: number; longitude?: number; accuracy_meters?: number }> {
+type GpsPayload = {
+  latitude?: number
+  longitude?: number
+  accuracy_meters?: number
+  city?: string
+  state?: string
+}
+
+async function reverseGeocode(lat: number, lon: number): Promise<{ city?: string; state?: string }> {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`,
+      { headers: { 'Accept-Language': 'en' } },
+    )
+    if (!res.ok) return {}
+    const data = await res.json() as { address?: Record<string, string> }
+    const addr = data.address ?? {}
+    const city = addr.city || addr.town || addr.village || addr.county || undefined
+    const state = addr.state || undefined
+    return { city, state }
+  } catch {
+    return {}
+  }
+}
+
+async function getGps(): Promise<GpsPayload> {
   if (!('geolocation' in navigator)) return {}
   return new Promise((resolve) => {
     navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({
-        latitude: pos.coords.latitude,
-        longitude: pos.coords.longitude,
-        accuracy_meters: pos.coords.accuracy,
-      }),
+      async (pos) => {
+        const base: GpsPayload = {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          accuracy_meters: pos.coords.accuracy,
+        }
+        const geo = await reverseGeocode(pos.coords.latitude, pos.coords.longitude)
+        resolve({ ...base, ...geo })
+      },
       () => resolve({}),
       { timeout: 8000, maximumAge: 60000 },
     )
@@ -156,7 +185,9 @@ export function CheckInWidget() {
                   ? <span className="flex items-center gap-1 text-amber-400">
                       <AlertTriangle className="h-3 w-3" /> GPS weak
                     </span>
-                  : <span>Location recorded</span>
+                  : data.city
+                    ? <span>{data.city}{data.state ? `, ${data.state}` : ''}</span>
+                    : <span>Location recorded</span>
                 }
                 {sessionsToday > 1 && (
                   <span className="text-muted-foreground/50">· session {sessionsToday}</span>

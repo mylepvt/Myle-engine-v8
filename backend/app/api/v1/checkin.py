@@ -30,6 +30,8 @@ class CheckInRequest(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     accuracy_meters: Optional[float] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
 
 
 class CheckOutRequest(BaseModel):
@@ -62,6 +64,8 @@ def _serialise(row: DailyCheckIn, actor_name: str | None = None) -> dict[str, An
         "latitude": row.latitude,
         "longitude": row.longitude,
         "accuracy_meters": row.accuracy_meters,
+        "city": row.city,
+        "state": row.state,
         "is_suspicious": row.is_suspicious,
         "status": _session_status(row),
     }
@@ -147,6 +151,8 @@ async def check_in(
         latitude=body.latitude,
         longitude=body.longitude,
         accuracy_meters=body.accuracy_meters,
+        city=body.city,
+        state=body.state,
         last_active_at=now,
         is_suspicious=suspicious,
     )
@@ -158,7 +164,7 @@ async def check_in(
         action="checkin.in",
         entity_type="daily_check_in",
         entity_id=row.id,
-        meta={"date": str(today), "suspicious": suspicious},
+        meta={"date": str(today), "suspicious": suspicious, "city": body.city, "state": body.state},
     )
     await session.commit()
     await session.refresh(row)
@@ -300,6 +306,8 @@ async def get_team_checkins(
                 "work_duration_minutes": None,
                 "sessions_today": 0,
                 "total_minutes_today": 0,
+                "city": None,
+                "state": None,
                 "is_suspicious": False,
             })
         else:

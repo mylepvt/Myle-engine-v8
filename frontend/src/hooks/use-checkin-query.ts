@@ -19,6 +19,8 @@ export type CheckInStatus = {
   latitude?: number | null
   longitude?: number | null
   accuracy_meters?: number | null
+  city?: string | null
+  state?: string | null
   is_suspicious?: boolean
   status?: 'active' | 'away' | 'done' | 'absent'
 }
@@ -26,6 +28,10 @@ export type CheckInStatus = {
 export type TeamCheckInEntry = CheckInStatus & {
   actor: string
   status: 'active' | 'away' | 'done' | 'absent'
+  city?: string | null
+  state?: string | null
+  sessions_today?: number
+  total_minutes_today?: number
 }
 
 export type TeamCheckInsResponse = {
@@ -57,7 +63,7 @@ export function useMyCheckinQuery(enabled = true) {
 export function useCheckInMutation() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (coords: { latitude?: number; longitude?: number; accuracy_meters?: number }) => {
+    mutationFn: async (coords: { latitude?: number; longitude?: number; accuracy_meters?: number; city?: string; state?: string }) => {
       const res = await apiFetch('/api/v1/checkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -78,7 +84,7 @@ export function useCheckInMutation() {
 export function useCheckOutMutation() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (coords: { latitude?: number; longitude?: number; accuracy_meters?: number }) => {
+    mutationFn: async (coords: { latitude?: number; longitude?: number; accuracy_meters?: number; city?: string; state?: string }) => {
       const res = await apiFetch('/api/v1/checkin/out', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

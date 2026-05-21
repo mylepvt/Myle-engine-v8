@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { RefreshCw, AlertTriangle, Clock, UserCheck, UserX } from 'lucide-react'
+import { RefreshCw, AlertTriangle, Clock, MapPin, UserCheck, UserX } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { CheckInWidget } from '@/components/dashboard/CheckInWidget'
@@ -47,11 +47,24 @@ function StatusBadge({ status, isSuspicious }: StatusBadgeProps) {
   )
 }
 
+function LocationLabel({ city, state, isSuspicious }: { city?: string | null; state?: string | null; isSuspicious?: boolean }) {
+  if (isSuspicious) {
+    return <span className="flex items-center gap-1 text-amber-400"><AlertTriangle className="h-3 w-3" /> GPS weak</span>
+  }
+  if (city || state) {
+    return <span className="text-muted-foreground">{[city, state].filter(Boolean).join(', ')}</span>
+  }
+  return <span className="text-muted-foreground/40">—</span>
+}
+
 function MemberRow({ entry }: { entry: TeamCheckInEntry }) {
   return (
     <tr className="border-b border-white/[0.06] transition-colors hover:bg-white/[0.03]">
       <td className="px-4 py-3 text-sm font-medium text-foreground/90">{entry.actor}</td>
       <td className="px-4 py-3"><StatusBadge status={entry.status} isSuspicious={entry.is_suspicious} /></td>
+      <td className="px-4 py-3 text-xs text-muted-foreground">
+        <LocationLabel city={entry.city} state={entry.state} isSuspicious={entry.is_suspicious} />
+      </td>
       <td className="px-4 py-3 text-xs tabular-nums text-muted-foreground">{formatTime(entry.check_in_at)}</td>
       <td className="px-4 py-3 text-xs tabular-nums text-muted-foreground">{formatTime(entry.check_out_at)}</td>
       <td className="px-4 py-3 text-xs tabular-nums text-muted-foreground">{formatDuration(entry.work_duration_minutes)}</td>
@@ -69,6 +82,17 @@ function MemberCard({ entry }: { entry: TeamCheckInEntry }) {
           {entry.check_out_at ? ` · Out ${formatTime(entry.check_out_at)}` : ''}
           {entry.work_duration_minutes != null ? ` · ${formatDuration(entry.work_duration_minutes)}` : ''}
         </p>
+        {(entry.city || entry.state) && !entry.is_suspicious && (
+          <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground/50">
+            <MapPin className="h-3 w-3 shrink-0" />
+            {[entry.city, entry.state].filter(Boolean).join(', ')}
+          </p>
+        )}
+        {entry.is_suspicious && entry.check_in_at && (
+          <p className="mt-0.5 flex items-center gap-1 text-xs text-amber-400/80">
+            <AlertTriangle className="h-3 w-3 shrink-0" /> GPS weak
+          </p>
+        )}
       </div>
       <StatusBadge status={entry.status} isSuspicious={entry.is_suspicious} />
     </div>
@@ -158,7 +182,7 @@ export function TeamAttendancePage({ title }: Props) {
             <table className="w-full min-w-[560px] text-left">
               <thead>
                 <tr className="border-b border-white/[0.08] bg-white/[0.03]">
-                  {['Name', 'Status', 'Check In', 'Check Out', 'Duration'].map((h) => (
+                  {['Name', 'Status', 'Location', 'Check In', 'Check Out', 'Duration'].map((h) => (
                     <th key={h} className="px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">{h}</th>
                   ))}
                 </tr>
