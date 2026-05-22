@@ -27,6 +27,8 @@ from app.models.lead_note import LeadNote
 from app.models.training_day_note import TrainingDayNote
 from app.models.download import Download
 from app.models.user_presence_session import UserPresenceSession
+from app.models.whatsapp_inbound_message import WhatsAppInboundMessage
+from app.models.whatsapp_log import WhatsAppLog
 
 __all__ = [
     "MemberRemovalOutreach",
@@ -58,4 +60,6 @@ __all__ = [
     "TrainingDayNote",
     "Download",
     "UserPresenceSession",
+    "WhatsAppInboundMessage",
+    "WhatsAppLog",
 ]
