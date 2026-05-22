@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, Clock3 } from 'lucide-react'
 
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
+import { CheckInWidget } from '@/components/dashboard/CheckInWidget'
 import { XpBadge } from '@/components/xp/XpBadge'
 import { Card, CardContent } from '@/components/ui/card'
 import type { HomeQuickAction } from '@/config/dashboard-home-actions'
@@ -53,6 +54,7 @@ export function TeamDashboardHomeModern({
 
   return (
     <div className="mx-auto w-full max-w-[430px] space-y-4 pb-2">
+      <CheckInWidget />
       <section className="relative overflow-hidden rounded-[1.75rem] border border-primary/20 bg-[radial-gradient(circle_at_top_left,color-mix(in_srgb,var(--palette-blue)_38%,transparent),transparent_42%),linear-gradient(180deg,color-mix(in_srgb,var(--palette-ink)_92%,var(--palette-blue)_8%)_0%,color-mix(in_srgb,var(--palette-ink)_89%,var(--palette-blue)_11%)_48%,color-mix(in_srgb,var(--palette-ink)_96%,var(--palette-blue)_4%)_100%)] text-white shadow-[0_32px_80px_-44px_rgba(27,48,120,0.9)]">
         <div
           className="pointer-events-none absolute inset-0 opacity-30"

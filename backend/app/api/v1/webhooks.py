@@ -728,9 +728,9 @@ async def get_whatsapp_logs(
     )).scalars().all()
 
     # Today's stats (IST midnight → now)
-    from app.core.time_ist import today_ist
+    from app.core.time_ist import today_ist, IST
     today_dt = today_ist()
-    today_start = _dt.datetime(today_dt.year, today_dt.month, today_dt.day, tzinfo=_tz.utc)
+    today_start = _dt.datetime(today_dt.year, today_dt.month, today_dt.day, tzinfo=IST).astimezone(_tz.utc)
 
     sent_today = (await session.execute(
         select(_func.count()).where(

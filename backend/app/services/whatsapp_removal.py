@@ -106,6 +106,7 @@ async def get_verify_token(session: AsyncSession) -> str:
 async def _send_via_meta_api(
     *, phone: str, message: str, phone_number_id: str, access_token: str, api_version: str,
     member_name: str = "", removal_reason: str = "", template_name: str = "", template_lang: str = "en",
+    template_params: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     digits = _whatsapp_digits(phone)
     if not digits:
@@ -114,9 +115,12 @@ async def _send_via_meta_api(
     url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
 
     if template_name:
-        # Use approved template — works outside 24-hour window
         first_name = (member_name or "Member").strip().split()[0]
         reason_text = (removal_reason or "Not specified").strip()
+        params = template_params if template_params is not None else [
+            {"type": "text", "text": first_name},
+            {"type": "text", "text": reason_text},
+        ]
         payload: dict[str, Any] = {
             "messaging_product": "whatsapp",
             "to": digits,
@@ -127,15 +131,12 @@ async def _send_via_meta_api(
                 "components": [
                     {
                         "type": "body",
-                        "parameters": [
-                            {"type": "text", "text": first_name},
-                            {"type": "text", "text": reason_text},
-                        ],
+                        "parameters": params,
                     }
                 ],
             },
         }
-        logger.info("removal outreach using template=%s phone_tail=%s", template_name, digits[-4:])
+        logger.info("sending via template=%s phone_tail=%s params=%d", template_name, digits[-4:], len(params))
     else:
         # Fallback: free-form text (only works within 24-hour window)
         payload = {
@@ -233,11 +234,13 @@ async def send_removal_whatsapp(
     phone_number_id, access_token, api_version = await get_meta_config(session)
     svc = SettingsService(session)
     tmpl_name = (
-        (await svc.get_app_setting("whatsapp.removal_template_name") or "").strip()
+        (await svc.get_app_setting("whatsapp.member_removal_notice_template_name") or "").strip()
+        or (await svc.get_app_setting("whatsapp.removal_template_name") or "").strip()
         or (settings.whatsapp_removal_template_name or "").strip()
     )
     tmpl_lang = (
-        (await svc.get_app_setting("whatsapp.removal_template_lang") or "").strip()
+        (await svc.get_app_setting("whatsapp.member_removal_notice_template_lang") or "").strip()
+        or (await svc.get_app_setting("whatsapp.removal_template_lang") or "").strip()
         or (settings.whatsapp_removal_template_lang or "").strip()
         or "en"
     )
