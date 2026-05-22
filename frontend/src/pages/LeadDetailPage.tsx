@@ -1,6 +1,11 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Headphones, MessageSquareText, NotebookPen, Video } from 'lucide-react'
+import {
+  Headphones,
+  MessageSquareText,
+  NotebookPen,
+  Video,
+} from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -189,6 +194,7 @@ function BatchSubmissionCard({ submission }: { submission: LeadBatchSubmission }
     </div>
   )
 }
+
 
 export function LeadDetailPage({ leadId }: Props) {
   const { role, serverRole } = useDashboardShellRole()
@@ -708,7 +714,6 @@ export function LeadDetailPage({ leadId }: Props) {
               </ul>
             ) : null}
           </div>
-
           {/* Notes card */}
           <div className="surface-elevated p-4 space-y-3">
             <p className="text-ds-label uppercase text-muted-foreground">Notes</p>
