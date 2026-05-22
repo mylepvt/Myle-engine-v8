@@ -316,6 +316,24 @@ def test_admin_surfaces(monkeypatch: pytest.MonkeyPatch) -> None:
     assert isinstance(stale.json().get("implemented"), bool)
 
 
+def test_admin_stage_counts_include_active_leads_without_last_action(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(_reset_execution_tables())
+    try:
+        asyncio.run(_seed_team_execution_data())
+        c = _client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+        response = c.get("/api/v1/execution/stage-counts")
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["counts"]["new_lead"] == 3
+        assert body["today_movements"]["new_lead"] == 2
+        assert body["total"] == 3
+    finally:
+        asyncio.run(_reset_execution_tables())
+
+
 def test_team_cannot_admin_leak_map(monkeypatch: pytest.MonkeyPatch) -> None:
     c = _client(monkeypatch)
     assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
