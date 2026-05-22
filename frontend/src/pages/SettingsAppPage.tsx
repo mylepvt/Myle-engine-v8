@@ -1,10 +1,15 @@
 import { type HTMLAttributes, useMemo, useState } from 'react'
+import { Eye, EyeOff, CheckCircle2, XCircle, Smartphone } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   useAppSettingUpdateMutation,
   useAppSettingsQuery,
+  useWhatsAppStatusQuery,
+  useWhatsAppTestSendMutation,
 } from '@/hooks/use-settings-query'
+import { apiFetch } from '@/lib/api'
+import { type ReminderResult, type SendRemindersResponse } from '@/hooks/use-today-pulse-query'
 
 type Props = { title: string }
 
@@ -115,12 +120,24 @@ export function SettingsAppPage({ title }: Props) {
     refetch: refetchAppSettings,
   } = useAppSettingsQuery()
   const updateAppSetting = useAppSettingUpdateMutation()
+  const {
+    data: waStatus,
+    isFetching: waStatusFetching,
+    refetch: refetchWaStatus,
+  } = useWhatsAppStatusQuery()
+  const waTestSend = useWhatsAppTestSendMutation()
+  const [waTestPhone, setWaTestPhone] = useState('')
 
   const [q, setQ] = useState('')
   const [premiereEdits, setPremiereEdits] = useState<Record<string, string>>({})
   const [contentEdits, setContentEdits] = useState<Record<string, string>>({})
   const [batchVideoEdits, setBatchVideoEdits] = useState<Record<string, string>>({})
   const [waEdits, setWaEdits] = useState<Record<string, string>>({})
+  const [showAccessToken, setShowAccessToken] = useState(false)
+  const [reminderSending, setReminderSending] = useState(false)
+  const [reminderSummary, setReminderSummary] = useState<Omit<SendRemindersResponse, 'results'> | null>(null)
+  const [reminderResults, setReminderResults] = useState<ReminderResult[] | null>(null)
+  const [reminderError, setReminderError] = useState<string | null>(null)
   const [premiereSaveMsg, setPremiereSaveMsg] = useState<string | null>(null)
   const [contentSaveMsg, setContentSaveMsg] = useState<string | null>(null)
   const [batchVideoSaveMsg, setBatchVideoSaveMsg] = useState<string | null>(null)
@@ -234,7 +251,49 @@ export function SettingsAppPage({ title }: Props) {
       placeholder: 'myle-webhook-secret-2026',
       help: 'Khud banao koi bhi string. Meta Console mein bhi yahi daalna hoga.',
     },
+    {
+      key: 'whatsapp.removal_template_name',
+      label: 'Removal Template Name',
+      placeholder: 'member_removal_v1',
+      help: 'Meta pe approved template ka exact naam — removal outreach ke liye. Set hone pe 24-hour window ke bahar bhi deliver hoga.',
+    },
+    {
+      key: 'whatsapp.removal_template_lang',
+      label: 'Removal Template Language',
+      placeholder: 'en',
+      help: 'Template language code, e.g. en, en_US, hi. Default: en',
+    },
+    {
+      key: 'whatsapp.report_reminder_template_name',
+      label: 'Report Reminder Template Name',
+      placeholder: 'daily_report_reminder',
+      help: 'Meta pe approved template naam — report reminder ke liye. Set hone pe 24-hour window ke bahar bhi deliver hoga.',
+    },
+    {
+      key: 'whatsapp.report_reminder_template_lang',
+      label: 'Report Reminder Template Language',
+      placeholder: 'en',
+      help: 'Template language code. Default: en',
+    },
   ] as const
+
+  const handleSendReportReminders = async () => {
+    setReminderSending(true)
+    setReminderError(null)
+    setReminderSummary(null)
+    setReminderResults(null)
+    try {
+      const res = await apiFetch('/api/v1/admin/send-report-reminders', { method: 'POST' })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data: SendRemindersResponse = await res.json()
+      setReminderSummary({ sent: data.sent, failed: data.failed, no_phone: data.no_phone })
+      setReminderResults(data.results)
+    } catch (err) {
+      setReminderError(err instanceof Error ? err.message : 'Send failed')
+    } finally {
+      setReminderSending(false)
+    }
+  }
 
   const handleSaveWhatsApp = async () => {
     setWaSaveMsg(null)
@@ -247,6 +306,7 @@ export function SettingsAppPage({ title }: Props) {
       setWaEdits({})
       setWaSaveMsg('WhatsApp settings saved.')
       void refetchAppSettings()
+      void refetchWaStatus()
     } catch (error) {
       setWaErrorMsg(error instanceof Error ? error.message : 'Could not save WhatsApp settings.')
     }
@@ -456,7 +516,30 @@ export function SettingsAppPage({ title }: Props) {
       {/* WhatsApp Meta API */}
       <section className="surface-elevated space-y-3 p-4">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">WhatsApp (Meta Cloud API)</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-foreground">WhatsApp (Meta Cloud API)</h2>
+            {waStatusFetching ? (
+              <span className="text-[11px] text-muted-foreground">Checking…</span>
+            ) : waStatus?.connected === true ? (
+              <span className="flex items-center gap-1 text-[11px] text-emerald-400">
+                <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                Connected
+                {waStatus.display_phone_number ? (
+                  <span className="text-muted-foreground">({waStatus.display_phone_number})</span>
+                ) : null}
+              </span>
+            ) : waStatus?.connected === false ? (
+              <span className="flex items-center gap-1 text-[11px] text-destructive">
+                <span className="h-2 w-2 rounded-full bg-destructive" />
+                Not connected
+              </span>
+            ) : waStatus?.configured === false ? (
+              <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                <span className="h-2 w-2 rounded-full bg-muted-foreground/50" />
+                Not configured
+              </span>
+            ) : null}
+          </div>
           <p className="text-xs text-muted-foreground">
             Removed member ko automatically WhatsApp message bhejne ke liye Meta credentials yahan set karo.
             Ye settings env vars se override karti hain.
@@ -479,20 +562,35 @@ export function SettingsAppPage({ title }: Props) {
           </div>
         ) : (
           <div className="grid gap-3">
-            {WA_FIELDS.map((field) => (
-              <label key={field.key} className="block text-sm">
-                <span className="mb-1 block text-ds-caption text-muted-foreground">{field.label}</span>
-                <input
-                  type={field.key === 'whatsapp.meta.access_token' ? 'password' : 'text'}
-                  value={resolvedWaValue(field.key)}
-                  onChange={(e) => setWaEdits((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                  placeholder={field.placeholder}
-                  autoComplete="off"
-                  className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
-                />
-                <span className="mt-1 block text-[11px] text-muted-foreground/70">{field.help}</span>
-              </label>
-            ))}
+            {WA_FIELDS.map((field) => {
+              const isTokenField = field.key === 'whatsapp.meta.access_token'
+              return (
+                <label key={field.key} className="block text-sm">
+                  <span className="mb-1 block text-ds-caption text-muted-foreground">{field.label}</span>
+                  <div className="relative">
+                    <input
+                      type={isTokenField && !showAccessToken ? 'password' : 'text'}
+                      value={resolvedWaValue(field.key)}
+                      onChange={(e) => setWaEdits((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                      placeholder={field.placeholder}
+                      autoComplete="off"
+                      className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 pr-9 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                    />
+                    {isTokenField && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAccessToken((v) => !v)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        aria-label={showAccessToken ? 'Hide token' : 'Show token'}
+                      >
+                        {showAccessToken ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    )}
+                  </div>
+                  <span className="mt-1 block text-[11px] text-muted-foreground/70">{field.help}</span>
+                </label>
+              )
+            })}
           </div>
         )}
 
@@ -507,6 +605,105 @@ export function SettingsAppPage({ title }: Props) {
           </button>
           {waSaveMsg ? <p className="text-xs text-emerald-400">{waSaveMsg}</p> : null}
           {waErrorMsg ? <p className="text-xs text-destructive">{waErrorMsg}</p> : null}
+          {waStatus?.connected === false && waStatus.error ? (
+            <p className="text-xs text-destructive/80">API error: {waStatus.error}</p>
+          ) : null}
+        </div>
+
+        {/* Test send — debug delivery */}
+        <div className="mt-4 border-t border-white/10 pt-3">
+          <p className="mb-2 text-xs font-medium text-foreground">Test message bhejo (debug)</p>
+          <p className="mb-2 text-[11px] text-muted-foreground">
+            Kisi number pe test message bhej ke Meta ka exact response dekho — pata chalega delivery ho rahi hai ya nahi.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="tel"
+              value={waTestPhone}
+              onChange={(e) => setWaTestPhone(e.target.value)}
+              placeholder="10-digit number, e.g. 7230930370"
+              className="flex-1 min-w-[200px] rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-sm text-foreground"
+            />
+            <button
+              type="button"
+              disabled={waTestSend.isPending || !waTestPhone.trim()}
+              onClick={() => waTestSend.mutate(waTestPhone.trim())}
+              className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
+            >
+              {waTestSend.isPending ? 'Sending…' : 'Send test message'}
+            </button>
+          </div>
+          {waTestSend.isError ? (
+            <p className="mt-2 text-xs text-destructive">
+              Error: {waTestSend.error instanceof Error ? waTestSend.error.message : 'Failed'}
+            </p>
+          ) : null}
+          {waTestSend.data ? (
+            <pre className="mt-2 max-h-64 overflow-auto rounded bg-black/40 p-3 text-[11px] text-emerald-300 ring-1 ring-white/10">
+              {JSON.stringify(waTestSend.data, null, 2)}
+            </pre>
+          ) : null}
+        </div>
+
+        {/* Report reminder resend panel */}
+        <div className="mt-4 border-t border-white/10 pt-3">
+          <p className="mb-1 text-xs font-medium text-foreground">Report reminder manually bhejo</p>
+          <p className="mb-3 text-[11px] text-muted-foreground">
+            Aaj ki report abhi tak submit nahi ki aur pehle reminder nahi mila — unhe WhatsApp pe reminder bhejo.
+            Jinhe aaj already reminder mila hai wo skip honge.
+          </p>
+          <button
+            type="button"
+            disabled={reminderSending}
+            onClick={() => void handleSendReportReminders()}
+            className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-400 hover:bg-amber-500/20 disabled:opacity-50"
+          >
+            {reminderSending ? 'Bhej raha hoon…' : 'Send report reminders'}
+          </button>
+
+          {reminderError ? (
+            <p className="mt-2 text-xs text-destructive">Error: {reminderError}</p>
+          ) : null}
+
+          {reminderSummary ? (
+            <div className="mt-3 flex flex-wrap gap-3">
+              <span className="text-[11px] font-semibold text-emerald-400">✅ {reminderSummary.sent} sent</span>
+              {reminderSummary.failed > 0 && (
+                <span className="text-[11px] font-semibold text-red-400">❌ {reminderSummary.failed} failed</span>
+              )}
+              {reminderSummary.no_phone > 0 && (
+                <span className="text-[11px] font-semibold text-muted-foreground/60">📵 {reminderSummary.no_phone} no phone</span>
+              )}
+              {reminderSummary.sent === 0 && reminderSummary.failed === 0 && reminderSummary.no_phone === 0 && (
+                <span className="text-[11px] text-muted-foreground">Koi pending nahi — sab ne report submit kar di ya pehle reminder mil chuka hai.</span>
+              )}
+            </div>
+          ) : null}
+
+          {reminderResults && reminderResults.length > 0 ? (
+            <div className="mt-3 max-h-64 overflow-y-auto rounded border border-white/[0.08] bg-black/30">
+              {reminderResults.map((r) => (
+                <div key={r.user_id} className="flex items-center gap-2 border-b border-white/[0.05] px-3 py-1.5 last:border-0">
+                  {r.status === 'sent' || r.status === 'stub'
+                    ? <CheckCircle2 className="size-3 shrink-0 text-emerald-400" />
+                    : r.status === 'no_phone'
+                    ? <Smartphone className="size-3 shrink-0 text-muted-foreground/40" />
+                    : <XCircle className="size-3 shrink-0 text-red-400" />}
+                  <span className="flex-1 truncate text-[11px] text-foreground">{r.name}</span>
+                  <span className="text-[10px] text-muted-foreground/50">
+                    {r.phone_tail !== '—' ? `…${r.phone_tail}` : '—'}
+                  </span>
+                  <span className={`text-[10px] font-medium ${
+                    r.status === 'sent' || r.status === 'stub' ? 'text-emerald-400'
+                    : r.status === 'no_phone' ? 'text-muted-foreground/40'
+                    : 'text-red-400'
+                  }`}>
+                    {r.status === 'stub' ? 'sent' : r.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
       </section>
 

@@ -69,11 +69,17 @@ function applyTopics(qc: QueryClient, topics: string[]) {
     void qc.invalidateQueries({ queryKey: ['admin', 'online-now'] })
     void qc.invalidateQueries({ queryKey: ['admin', 'today-pulse'] })
   }
+  if (t.has('checkin')) {
+    void qc.invalidateQueries({ queryKey: ['checkin'] })
+  }
   if (t.has('wallet')) {
     void qc.invalidateQueries({ queryKey: ['wallet'] })
   }
   if (t.has('enroll')) {
     void qc.invalidateQueries({ queryKey: ['enroll'] })
+  }
+  if (t.has('whatsapp_log')) {
+    void qc.invalidateQueries({ queryKey: ['whatsapp', 'logs'] })
   }
 }
 

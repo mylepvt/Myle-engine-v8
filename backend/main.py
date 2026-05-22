@@ -29,6 +29,7 @@ from app.middleware.request_id import RequestIdMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.services.scheduled_jobs import (
     job_call_target_reminder,
+    job_daily_leader_team_summary,
     job_daily_report_reminder,
     job_enrollment_proof_alert,
     job_leader_basics_enforcement,
@@ -37,6 +38,20 @@ from app.services.scheduled_jobs import (
 )
 
 import os as _os
+
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+_sentry_dsn = _os.environ.get("SENTRY_DSN", "")
+if _sentry_dsn:
+    sentry_sdk.init(
+        dsn=_sentry_dsn,
+        integrations=[FastApiIntegration(), SqlalchemyIntegration()],
+        traces_sample_rate=0.05,
+        environment=_os.environ.get("ENVIRONMENT", "production"),
+        send_default_pii=False,
+    )
 
 _scheduler = AsyncIOScheduler(timezone="Asia/Kolkata")
 _SCHEDULER_ENABLED = _os.environ.get("DISABLE_SCHEDULER", "").lower() not in {"1", "true", "yes"}
@@ -54,21 +69,21 @@ async def lifespan(_app: FastAPI):
         )
         _scheduler.add_job(
             job_weekly_compliance_digest,
-            CronTrigger(day_of_week="mon", hour=9, minute=0),
+            CronTrigger(day_of_week="mon", hour=9, minute=0, timezone="Asia/Kolkata"),
             id="weekly_compliance_digest",
             replace_existing=True,
             misfire_grace_time=3600,
         )
         _scheduler.add_job(
             job_daily_report_reminder,
-            CronTrigger(hour=20, minute=0),
+            CronTrigger(hour=21, minute=0, timezone="Asia/Kolkata"),
             id="daily_report_reminder",
             replace_existing=True,
             misfire_grace_time=1800,
         )
         _scheduler.add_job(
             job_call_target_reminder,
-            CronTrigger(hour=17, minute=0),
+            CronTrigger(hour=17, minute=0, timezone="Asia/Kolkata"),
             id="call_target_reminder",
             replace_existing=True,
             misfire_grace_time=1800,
@@ -82,8 +97,15 @@ async def lifespan(_app: FastAPI):
         )
         _scheduler.add_job(
             job_leader_basics_enforcement,
-            CronTrigger(hour=23, minute=30),
+            CronTrigger(hour=23, minute=30, timezone="Asia/Kolkata"),
             id="leader_basics_enforcement",
+            replace_existing=True,
+            misfire_grace_time=1800,
+        )
+        _scheduler.add_job(
+            job_daily_leader_team_summary,
+            CronTrigger(hour=22, minute=0, timezone="Asia/Kolkata"),
+            id="daily_leader_team_summary",
             replace_existing=True,
             misfire_grace_time=1800,
         )

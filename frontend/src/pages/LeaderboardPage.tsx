@@ -64,7 +64,7 @@ export function LeaderboardPage({ title }: Props) {
         <>
           {/* Podium top-3 */}
           {topThree.length > 0 ? (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
               {topThree.map((r) => {
                 const medals = ['🥇', '🥈', '🥉']
                 const golds = [

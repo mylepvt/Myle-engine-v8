@@ -1948,37 +1948,33 @@ def default_today_iso() -> str:
 
 
 async def admin_stage_counts(session: AsyncSession) -> dict:
-    """Admin: active lead counts per pipeline stage + today's arrivals (IST).
+    """Admin: active lead counts per pipeline stage + today's activity (IST).
 
-    Only leads with last_action_at within 24 h are counted — leads silent for
-    longer than 24 h are either already archived by the SQL watch or will be
-    soon, so including them would inflate funnel numbers.
+    The live funnel should reflect the full active working set, not just leads
+    whose ``last_action_at`` happened to update recently. Some valid active
+    leads still carry stage signals only through older timestamps such as
+    ``created_at`` or ``payment_proof_uploaded_at``.
     """
-    now_utc = datetime.now(timezone.utc)
-    cutoff_24h = now_utc - timedelta(hours=24)
     today_start = _start_of_day_ist(today_ist().isoformat())
+    active_scope = and_(
+        Lead.deleted_at.is_(None),
+        Lead.archived_at.is_(None),
+        Lead.in_pool.is_(False),
+    )
 
-    # Active leads that moved within the last 24 h (exclude deleted, archived, pool)
     cnt_stmt = (
         select(Lead.status, func.count(Lead.id).label("n"))
-        .where(
-            Lead.deleted_at.is_(None),
-            Lead.archived_at.is_(None),
-            Lead.in_pool.is_(False),
-            Lead.last_action_at >= cutoff_24h,
-        )
+        .where(active_scope)
         .group_by(Lead.status)
     )
     rows = (await session.execute(cnt_stmt)).all()
     counts: dict[str, int] = {row[0]: row[1] for row in rows}
 
-    # Leads whose last_action_at is today (IST) — stage arrivals today
     today_stmt = (
         select(Lead.status, func.count(Lead.id).label("n"))
         .where(
-            Lead.deleted_at.is_(None),
-            Lead.archived_at.is_(None),
-            Lead.last_action_at >= today_start,
+            active_scope,
+            _lead_last_activity_ts() >= today_start,
         )
         .group_by(Lead.status)
     )

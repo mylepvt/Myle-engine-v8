@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
 
@@ -41,5 +41,33 @@ export function useRemovalOutreachQuery(repliedOnly = false, enabled = true) {
     queryFn: () => fetchRemovalOutreach(repliedOnly),
     enabled,
     staleTime: 30_000,
+  })
+}
+
+async function sendRemovalOutreach({ userId, force = false, phone }: { userId: number; force?: boolean; phone?: string }): Promise<RemovalOutreachItem> {
+  const qs = force ? '?force=true' : ''
+  const res = await apiFetch(`/api/v1/team/removal-outreach/${userId}/send${qs}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone: phone ?? null }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(
+      typeof err === 'object' && err !== null && 'detail' in err
+        ? String((err as { detail?: string }).detail)
+        : `HTTP ${res.status}`,
+    )
+  }
+  return res.json()
+}
+
+export function useSendRemovalOutreachMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: sendRemovalOutreach,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['team', 'removal-outreach'] })
+    },
   })
 }

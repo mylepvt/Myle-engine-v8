@@ -46,6 +46,7 @@ from app.services.downline import is_user_in_downline_of
 from app.services.lead_owner import lead_owner_clause
 from app.services.member_compliance import build_compliance_snapshots
 from app.services.payment_service import PaymentService
+from app.services.push_service import send_push_to_user
 from app.services.team_reports_metrics import IST, compute_live_summary
 from app.services.user_hierarchy import (
     load_user_hierarchy_entries,
@@ -60,13 +61,14 @@ _DEFAULT_LIMIT = 50
 
 
 async def _send_removal_whatsapp_bg(user_id: int, removal_reason: str) -> None:
+    from app.services.whatsapp_leader_alerts import alert_leader_member_removed
     async with AsyncSessionLocal() as session:
         user = await session.get(User, user_id)
         if user is None:
             return
-        # Temporarily set removal_reason so the service can read it
         user.removal_reason = removal_reason
         await send_removal_whatsapp(user=user, session=session)
+        await alert_leader_member_removed(user, removal_reason, session)
         await session.commit()
 
 
@@ -396,6 +398,14 @@ async def request_my_grace(
     await session.refresh(target)
     [item] = await _finalize_team_member_items(session, [TeamMemberPublic.model_validate(target)])
     await notify_topics("team", "team_tracking")
+    # Notify leader via WhatsApp (fire-and-forget)
+    try:
+        from app.services.whatsapp_leader_alerts import alert_leader_grace_requested
+        await alert_leader_grace_requested(
+            target, target.grace_request_reason, target.grace_request_end_date, session
+        )
+    except Exception:
+        pass
     return item
 
 
@@ -645,6 +655,21 @@ async def decide_pending_registration(
     else:
         row.registration_status = "rejected"
     await session.commit()
+    if body.action == "approve":
+        try:
+            from app.services.whatsapp_leader_alerts import alert_leader_new_member_approved
+            await alert_leader_new_member_approved(row, session)
+        except Exception:
+            pass
+        try:
+            await send_push_to_user(
+                session, target_user_id,
+                title="Welcome to Myle! 🎉",
+                body="Your account has been approved. You can now log in and get started.",
+                url="/dashboard",
+            )
+        except Exception:
+            pass
     return {"ok": True, "registration_status": row.registration_status}
 
 
@@ -719,6 +744,24 @@ class UpdateRoleBody(BaseModel):
     role: str
 
 
+async def _find_upline_leader(session: AsyncSession, user: User) -> User | None:
+    """Walk upline chain from user's direct parent until a leader is found."""
+    current_id = user.upline_user_id
+    seen: set[int] = set()
+    while current_id is not None and current_id not in seen:
+        seen.add(current_id)
+        upline = await session.get(User, current_id)
+        if upline is None:
+            return None
+        role = (upline.role or "").strip()
+        if role == "leader":
+            return upline
+        if role == "admin":
+            return None
+        current_id = upline.upline_user_id
+    return None
+
+
 @router.get("/members/{target_user_id}/leads", response_model=MemberLeadsResponse)
 async def get_member_leads(
     target_user_id: int,
@@ -784,6 +827,22 @@ async def update_member_role(
             target.removed_at = None
             target.removed_by_user_id = None
             target.removal_reason = None
+    if previous_role == "leader" and body.role == "team":
+        upline_leader = await _find_upline_leader(session, target)
+        if upline_leader is not None:
+            # Only transfer Day-2 handoff leads: owner is a team member (not the leader
+            # themselves). These are leads that came to the leader after mindset lock
+            # completion. The leader's own personally-created leads are excluded.
+            await session.execute(
+                update(Lead)
+                .where(
+                    Lead.assigned_to_user_id == target_user_id,
+                    Lead.owner_user_id != target_user_id,
+                    Lead.deleted_at.is_(None),
+                    Lead.in_pool.is_(False),
+                )
+                .values(assigned_to_user_id=upline_leader.id)
+            )
     await session.commit()
     await session.refresh(target)
     [item] = await _finalize_team_member_items(session, [TeamMemberPublic.model_validate(target)])

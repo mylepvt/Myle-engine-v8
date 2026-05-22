@@ -1,5 +1,4 @@
-"""Thin helpers for WhatsApp activity log rows."""
-
+"""Thin helper to write WhatsApp activity log rows."""
 from __future__ import annotations
 
 import asyncio
@@ -14,9 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 def _push_realtime() -> None:
+    """Fire-and-forget realtime invalidation via existing WS hub."""
     try:
         from app.core.realtime_hub import notify_topics
-
         asyncio.ensure_future(notify_topics("whatsapp_log"))
     except Exception:
         pass
@@ -31,7 +30,7 @@ async def log_wa_outbound(
     result: dict[str, Any],
     related_user_id: int | None = None,
 ) -> None:
-    """Write one outbound log row without poisoning the caller session."""
+    """Write one outbound log row — never raises."""
     try:
         ok = bool(result.get("ok"))
         row = WhatsAppLog(
@@ -44,8 +43,8 @@ async def log_wa_outbound(
             wa_message_id=result.get("wa_message_id"),
             related_user_id=related_user_id,
         )
-        async with session.begin_nested():
-            session.add(row)
+        session.add(row)
+        await session.flush()
         _push_realtime()
     except Exception:
         logger.exception("wa log write failed (non-fatal)")
@@ -60,7 +59,7 @@ async def log_wa_inbound(
     wa_message_id: str | None = None,
     related_user_id: int | None = None,
 ) -> None:
-    """Write one inbound log row without poisoning the caller session."""
+    """Write one inbound log row — never raises."""
     try:
         row = WhatsAppLog(
             direction="in",
@@ -71,8 +70,8 @@ async def log_wa_inbound(
             wa_message_id=wa_message_id,
             related_user_id=related_user_id,
         )
-        async with session.begin_nested():
-            session.add(row)
+        session.add(row)
+        await session.flush()
         _push_realtime()
     except Exception:
         logger.exception("wa log write failed (non-fatal)")

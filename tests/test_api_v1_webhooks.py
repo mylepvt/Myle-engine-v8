@@ -5,11 +5,11 @@ import asyncio
 import conftest as test_conftest
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 
 from app.models.app_setting import AppSetting
 from app.models.member_removal_outreach import MemberRemovalOutreach
-from app.models.whatsapp_inbound_message import WhatsAppInboundMessage
+from app.models.user import User
 from app.models.whatsapp_log import WhatsAppLog
 from main import app
 from util_jwt_patch import patch_jwt_settings
@@ -19,7 +19,6 @@ async def _reset_tables() -> None:
     fac = test_conftest.get_test_session_factory()
     async with fac() as session:
         await session.execute(delete(WhatsAppLog))
-        await session.execute(delete(WhatsAppInboundMessage))
         await session.execute(delete(MemberRemovalOutreach))
         await session.execute(delete(AppSetting).where(AppSetting.key == "whatsapp.meta.verify_token"))
         await session.commit()
@@ -43,6 +42,15 @@ async def _seed_removal_outreach(phone: str = "9876500000") -> None:
                 send_status="sent",
             )
         )
+        await session.commit()
+
+
+async def _seed_leader_phone(phone: str = "9876501111") -> None:
+    fac = test_conftest.get_test_session_factory()
+    async with fac() as session:
+        leader = await session.get(User, 2)
+        assert leader is not None
+        leader.phone = phone
         await session.commit()
 
 
@@ -72,57 +80,35 @@ def test_meta_webhook_verify_reads_app_setting_token() -> None:
         asyncio.run(_reset_tables())
 
 
-def test_meta_text_reply_is_stored_and_matched(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_custom_simple_payload_handles_leader_command_and_logs(monkeypatch: pytest.MonkeyPatch) -> None:
     asyncio.run(_reset_tables())
     try:
-        asyncio.run(_seed_removal_outreach())
+        asyncio.run(_seed_leader_phone())
         client = _admin_client(monkeypatch)
-        payload = {
-            "object": "whatsapp_business_account",
-            "entry": [
-                {
-                    "changes": [
-                        {
-                            "value": {
-                                "contacts": [
-                                    {"wa_id": "919876500000", "profile": {"name": "Lead Reply"}}
-                                ],
-                                "messages": [
-                                    {
-                                        "from": "919876500000",
-                                        "id": "wamid.text.1",
-                                        "type": "text",
-                                        "text": {"body": "Interested"},
-                                    }
-                                ],
-                            }
-                        }
-                    ]
-                }
-            ],
-        }
-        res = client.post("/api/v1/webhooks/whatsapp/reply", json=payload)
+        res = client.post(
+            "/api/v1/webhooks/whatsapp/reply",
+            json={"phone": "+91 98765 01111", "message": "/status", "wa_message_id": "wamid.simple.1"},
+        )
         assert res.status_code == 200, res.text
-        assert res.json()["stored"] == 1
-        assert res.json()["matched"] is True
+        assert res.json()["matched"] is False
 
-        inbox = client.get("/api/v1/webhooks/whatsapp/inbox")
-        assert inbox.status_code == 200, inbox.text
-        body = inbox.json()
-        assert body["total"] == 1
-        item = body["items"][0]
-        assert item["phone"] == "919876500000"
-        assert item["profile_name"] == "Lead Reply"
-        assert item["message_text"] == "Interested"
-        assert item["command_key"] == "interested"
-        assert item["matched_removal_outreach_id"] is not None
+        fac = test_conftest.get_test_session_factory()
+        async def _read_logs() -> list[WhatsAppLog]:
+            async with fac() as session:
+                return (await session.execute(select(WhatsAppLog).order_by(WhatsAppLog.id.asc()))).scalars().all()
+        logs = asyncio.run(_read_logs())
+        assert len(logs) == 1
+        assert logs[0].direction == "in"
+        assert logs[0].message_type == "inbound_leader"
+        assert logs[0].message_preview == "/status"
     finally:
         asyncio.run(_reset_tables())
 
 
-def test_meta_button_reply_is_stored_as_command(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_meta_interactive_button_reply_logs_as_leader_inbound(monkeypatch: pytest.MonkeyPatch) -> None:
     asyncio.run(_reset_tables())
     try:
+        asyncio.run(_seed_leader_phone())
         client = _admin_client(monkeypatch)
         payload = {
             "object": "whatsapp_business_account",
@@ -131,22 +117,18 @@ def test_meta_button_reply_is_stored_as_command(monkeypatch: pytest.MonkeyPatch)
                     "changes": [
                         {
                             "value": {
-                                "contacts": [
-                                    {"wa_id": "919999999999", "profile": {"name": "Button User"}}
-                                ],
                                 "messages": [
                                     {
-                                        "from": "919999999999",
+                                        "from": "919876501111",
                                         "id": "wamid.button.1",
                                         "type": "interactive",
                                         "interactive": {
                                             "type": "button_reply",
                                             "button_reply": {
-                                                "id": "CMD_INTERESTED",
-                                                "title": "Interested",
+                                                "id": "status",
+                                                "title": "Status",
                                             },
                                         },
-                                        "context": {"id": "wamid.outbound.55"},
                                     }
                                 ],
                             }
@@ -157,31 +139,44 @@ def test_meta_button_reply_is_stored_as_command(monkeypatch: pytest.MonkeyPatch)
         }
         res = client.post("/api/v1/webhooks/whatsapp/reply", json=payload)
         assert res.status_code == 200, res.text
-        assert res.json()["stored"] == 1
+        assert res.json()["matched"] is False
 
-        inbox = client.get("/api/v1/webhooks/whatsapp/inbox")
-        assert inbox.status_code == 200, inbox.text
-        item = inbox.json()["items"][0]
-        assert item["message_type"] == "interactive_button_reply"
-        assert item["message_text"] == "Interested"
-        assert item["command_key"] == "cmd_interested"
-        assert item["reply_to_wa_message_id"] == "wamid.outbound.55"
+        fac = test_conftest.get_test_session_factory()
+        async def _read_logs() -> list[WhatsAppLog]:
+            async with fac() as session:
+                return (await session.execute(select(WhatsAppLog).order_by(WhatsAppLog.id.asc()))).scalars().all()
+        logs = asyncio.run(_read_logs())
+        assert len(logs) == 1
+        assert logs[0].direction == "in"
+        assert logs[0].message_type == "inbound_leader"
+        assert logs[0].message_preview == "Status"
     finally:
         asyncio.run(_reset_tables())
 
 
-def test_whatsapp_logs_endpoint_boots_and_returns_empty_stats(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_custom_simple_payload_matches_removal_and_logs_member(monkeypatch: pytest.MonkeyPatch) -> None:
     asyncio.run(_reset_tables())
     try:
+        asyncio.run(_seed_removal_outreach())
         client = _admin_client(monkeypatch)
-        res = client.get("/api/v1/webhooks/whatsapp/logs")
+        res = client.post(
+            "/api/v1/webhooks/whatsapp/reply",
+            json={"phone": "+91 98765 00000", "message": "I was unwell", "wa_message_id": "wamid.simple.2"},
+        )
         assert res.status_code == 200, res.text
-        assert res.json() == {
-            "items": [],
-            "total": 0,
-            "sent_today": 0,
-            "failed_today": 0,
-            "received_today": 0,
-        }
+        assert res.json()["matched"] is True
+
+        fac = test_conftest.get_test_session_factory()
+
+        async def _read_state() -> tuple[list[WhatsAppLog], list[MemberRemovalOutreach]]:
+            async with fac() as session:
+                logs = (await session.execute(select(WhatsAppLog).order_by(WhatsAppLog.id.asc()))).scalars().all()
+                outreach = (await session.execute(select(MemberRemovalOutreach))).scalars().all()
+                return logs, outreach
+
+        logs, outreach = asyncio.run(_read_state())
+        assert len(logs) == 1
+        assert logs[0].message_type == "inbound_member"
+        assert outreach[0].reply_text == "I was unwell"
     finally:
         asyncio.run(_reset_tables())

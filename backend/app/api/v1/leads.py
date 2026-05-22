@@ -901,9 +901,9 @@ async def watch_day6_live_page(
 
     viewer_count = 0
     if state == "waiting":
-        viewer_count = 62
+        viewer_count = 80
     elif state == "live":
-        viewer_count = 74
+        viewer_count = 90
 
     return Day6LivePageData(
         lead_name=lead.name or "",
