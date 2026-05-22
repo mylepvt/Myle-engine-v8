@@ -42,7 +42,7 @@ export function XpBadge() {
                 colors.bg, colors.text, colors.border,
               )}
             >
-              ⚡ {data.level_label.toUpperCase()}
+              ⚡ {data.level_label?.toUpperCase() ?? data.level?.toUpperCase() ?? '???'}
             </span>
             {seasonLabel && (
               <span className="text-ds-label text-muted-foreground/70 font-medium">
