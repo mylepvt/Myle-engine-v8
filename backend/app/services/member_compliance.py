@@ -259,17 +259,6 @@ def _mark_removed(
     user.removal_reason = reason
 
 
-def _clear_grace_auto_restore(user: User, *, reset_on: date) -> None:
-    """Clear expired grace and restore member when compliance is met during expiry buffer."""
-    user.access_blocked = False
-    user.discipline_status = "active"
-    user.grace_end_date = None
-    user.grace_reason = None
-    user.grace_updated_at = None
-    user.grace_set_by_user_id = None
-    user.discipline_reset_on = reset_on
-
-
 def _summarize_active_stage(
     *,
     level: ComplianceLevel,
@@ -438,32 +427,7 @@ async def build_compliance_snapshots(
             continue
 
         if not ignore_grace_for_rollout and _has_expired_grace(user, today_date):
-            # One-day buffer: warn on grace_end_date+1, remove on grace_end_date+2.
-            # If member meets compliance (calls >= target AND report submitted) on the
-            # day being evaluated, grace is cleared and access is auto-restored instead.
-            yesterday = today_date - timedelta(days=1)
-            calls_yesterday = int(fresh_calls_by_day.get(yesterday, {}).get(user.id, 0))
-            report_yesterday = (user.id, yesterday) in submitted_reports
-            met_compliance = calls_yesterday >= call_target and report_yesterday
-
-            if met_compliance:
-                # Member proved compliance during the expiry buffer — auto-restore.
-                if apply_actions:
-                    _clear_grace_auto_restore(user, reset_on=today_date)
-                    changed = True
-                snapshot.discipline_status = "active"
-                snapshot.grace_end_date = None
-                snapshot.grace_reason = None
-                snapshot.grace_active = False
-                snapshot.compliance_level = "clear"
-                snapshot.compliance_title = "Grace lifted — compliance met"
-                snapshot.compliance_summary = (
-                    f"{calls_yesterday} fresh calls and daily report submitted on "
-                    f"{yesterday.isoformat()} — grace cleared, access restored."
-                )
-                snapshots[user.id] = snapshot
-                continue
-
+            # One-day buffer: warn on grace_end_date+1, remove on grace_end_date+2
             if user.grace_end_date == today_date - timedelta(days=1):
                 snapshot.compliance_level = "grace_expired_warning"
                 snapshot.compliance_title = "Grace ended — removal tomorrow"
