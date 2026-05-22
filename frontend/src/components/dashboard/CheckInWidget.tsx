@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { LogIn, LogOut, MapPin, AlertTriangle, Clock, RefreshCw } from 'lucide-react'
+import { LogIn, LogOut, MapPin, AlertTriangle, Clock, RefreshCw, Loader2 } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -81,7 +81,7 @@ async function getGps(): Promise<GpsPayload> {
         resolve({ ...base, ...geo })
       },
       () => resolve({}),
-      { timeout: 8000, maximumAge: 60000 },
+      { timeout: 5000, maximumAge: 60000 },
     )
   })
 }
@@ -90,13 +90,18 @@ export function CheckInWidget() {
   const { data, isPending } = useMyCheckinQuery()
   const checkIn = useCheckInMutation()
   const checkOut = useCheckOutMutation()
-  const heartbeat = useCheckinHeartbeat(true)
+  const heartbeat = useCheckinHeartbeat()
   const location = useLocation()
   const lastHeartbeatRef = useRef<number>(0)
+  // Tracks which action is currently busy (GPS + geocode phase before mutation starts)
+  const [busyFor, setBusyFor] = useState<'in' | 'out' | null>(null)
 
   const isActive = !!(data?.checked_in && !data.check_out_at)
+  const sessionsToday = data?.sessions_today ?? 0
+  const totalMinutes = data?.total_minutes_today
+  // checked_in=false after checkout (backend returns last closed session's check_out_at)
+  const isDone = !data?.checked_in && !!(data?.check_out_at) && sessionsToday > 0
 
-  // Activity-based heartbeat: route change, visibility, focus
   const maybeHeartbeat = useCallback(() => {
     if (!isActive) return
     const now = Date.now()
@@ -119,25 +124,33 @@ export function CheckInWidget() {
   }, [maybeHeartbeat])
 
   const handleCheckIn = async () => {
-    const coords = await getGps()
-    checkIn.mutate(coords)
+    setBusyFor('in')
+    try {
+      const coords = await getGps()
+      checkIn.mutate(coords, { onSettled: () => setBusyFor(null) })
+    } catch {
+      setBusyFor(null)
+    }
   }
 
   const handleCheckOut = async () => {
-    const coords = await getGps()
-    checkOut.mutate(coords)
+    setBusyFor('out')
+    try {
+      const coords = await getGps()
+      checkOut.mutate(coords, { onSettled: () => setBusyFor(null) })
+    } catch {
+      setBusyFor(null)
+    }
   }
 
   if (isPending) return <Skeleton className="h-[72px] w-full rounded-xl" />
 
-  const isDone = !!(data?.checked_in && data.check_out_at)
   const isSuspicious = data?.is_suspicious
-  const sessionsToday = data?.sessions_today ?? 0
-  const totalMinutes = data?.total_minutes_today
+  const anythingBusy = busyFor !== null
 
   return (
     <div className={cn(
-      'flex items-center justify-between gap-3 rounded-xl border px-4 py-3 transition-colors',
+      'relative flex items-center justify-between gap-3 rounded-xl border px-4 py-3 transition-colors',
       isActive
         ? 'border-emerald-500/30 bg-emerald-500/10'
         : isDone
@@ -162,7 +175,8 @@ export function CheckInWidget() {
         </div>
 
         <div className="min-w-0">
-          {!data?.checked_in && (
+          {/* Not checked in today, or between sessions */}
+          {!data?.checked_in && !isDone && (
             <>
               <p className="text-sm font-semibold text-foreground">
                 {sessionsToday > 0 ? 'Start new session' : 'Check In'}
@@ -174,6 +188,8 @@ export function CheckInWidget() {
               </p>
             </>
           )}
+
+          {/* Active session */}
           {isActive && data.check_in_at && (
             <>
               <p className="text-sm font-semibold text-emerald-400">
@@ -195,13 +211,15 @@ export function CheckInWidget() {
               </div>
             </>
           )}
+
+          {/* Done — all sessions closed */}
           {isDone && data.check_out_at && (
             <>
               <p className="text-sm font-semibold text-foreground">
                 Done · {totalMinutes != null ? formatDuration(totalMinutes) : data.work_duration_minutes != null ? formatDuration(data.work_duration_minutes) : '—'}
               </p>
               <p className="text-xs text-muted-foreground">
-                {sessionsToday > 1 ? `${sessionsToday} sessions today · ` : ''}
+                {sessionsToday > 1 ? `${sessionsToday} sessions · ` : ''}
                 {new Date(data.check_in_at!).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                 {' → '}
                 {new Date(data.check_out_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
@@ -213,37 +231,54 @@ export function CheckInWidget() {
 
       {/* Right: action button */}
       <div className="shrink-0">
-        {(!data?.checked_in) && (
+        {/* Check In / Re-check-in button */}
+        {(!data?.checked_in && !isDone) && (
           <button
             type="button"
             onClick={() => void handleCheckIn()}
-            disabled={checkIn.isPending}
-            className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50 min-h-[40px]"
+            disabled={anythingBusy || checkIn.isPending}
+            className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-60 min-h-[40px]"
           >
-            <LogIn className="h-3.5 w-3.5" />
-            {checkIn.isPending ? 'Checking in…' : sessionsToday > 0 ? 'Check In Again' : 'Check In'}
+            {(busyFor === 'in' && !checkIn.isPending)
+              ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Getting location…</>
+              : checkIn.isPending
+                ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking in…</>
+                : <><LogIn className="h-3.5 w-3.5" /> {sessionsToday > 0 ? 'Check In Again' : 'Check In'}</>
+            }
           </button>
         )}
+
+        {/* Check Out button */}
         {isActive && (
           <button
             type="button"
             onClick={() => void handleCheckOut()}
-            disabled={checkOut.isPending}
-            className="flex items-center gap-1.5 rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-400 transition hover:bg-rose-500/20 disabled:opacity-50 min-h-[40px]"
+            disabled={anythingBusy || checkOut.isPending}
+            className="flex items-center gap-1.5 rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-400 transition hover:bg-rose-500/20 disabled:opacity-60 min-h-[40px]"
           >
-            <LogOut className="h-3.5 w-3.5" />
-            {checkOut.isPending ? 'Checking out…' : 'Check Out'}
+            {(busyFor === 'out' && !checkOut.isPending)
+              ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Getting location…</>
+              : checkOut.isPending
+                ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking out…</>
+                : <><LogOut className="h-3.5 w-3.5" /> Check Out</>
+            }
           </button>
         )}
+
+        {/* New Session button — shown after checkout */}
         {isDone && (
           <button
             type="button"
             onClick={() => void handleCheckIn()}
-            disabled={checkIn.isPending}
-            className="flex items-center gap-1.5 rounded-lg border border-white/[0.12] bg-white/[0.04] px-3 py-2 text-xs font-semibold text-muted-foreground transition hover:bg-white/[0.08] disabled:opacity-50 min-h-[36px]"
+            disabled={anythingBusy || checkIn.isPending}
+            className="flex items-center gap-1.5 rounded-lg border border-white/[0.12] bg-white/[0.04] px-3 py-2 text-xs font-semibold text-muted-foreground transition hover:bg-white/[0.08] disabled:opacity-60 min-h-[36px]"
           >
-            <RefreshCw className="h-3 w-3" />
-            {checkIn.isPending ? '…' : 'New Session'}
+            {(busyFor === 'in' && !checkIn.isPending)
+              ? <><Loader2 className="h-3 w-3 animate-spin" /> Locating…</>
+              : checkIn.isPending
+                ? <><Loader2 className="h-3 w-3 animate-spin" /> Starting…</>
+                : <><RefreshCw className="h-3 w-3" /> New Session</>
+            }
           </button>
         )}
       </div>
