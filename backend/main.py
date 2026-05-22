@@ -39,6 +39,20 @@ from app.services.scheduled_jobs import (
 
 import os as _os
 
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+_sentry_dsn = _os.environ.get("SENTRY_DSN", "")
+if _sentry_dsn:
+    sentry_sdk.init(
+        dsn=_sentry_dsn,
+        integrations=[FastApiIntegration(), SqlalchemyIntegration()],
+        traces_sample_rate=0.05,
+        environment=_os.environ.get("ENVIRONMENT", "production"),
+        send_default_pii=False,
+    )
+
 _scheduler = AsyncIOScheduler(timezone="Asia/Kolkata")
 _SCHEDULER_ENABLED = _os.environ.get("DISABLE_SCHEDULER", "").lower() not in {"1", "true", "yes"}
 

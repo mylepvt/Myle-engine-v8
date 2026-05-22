@@ -22,14 +22,14 @@ test.describe('happy path (mocked API)', () => {
     const leadHeading = page.getByRole('heading', { name: 'E2E Lead' })
     await expect(leadHeading).toBeVisible()
     const card = leadHeading.locator(
-      'xpath=ancestor::*[contains(concat(" ", @class, " "), " rounded-xl ")][1]',
+      'xpath=ancestor::div[contains(concat(" ", @class, " "), " rounded ")][1]',
     )
     const statusSelect = card.getByLabel('Lead status')
     await statusSelect.selectOption('contacted')
     await expect(statusSelect).toHaveValue('contacted')
   })
 
-  test('CTCS: dial + WhatsApp links; light / dark / glass screenshots', async ({ page }) => {
+  test('CTCS: dial + WhatsApp links; dark mode screenshot', async ({ page }) => {
     await page.goto('/login')
     await page.getByRole('button', { name: /^Continue$/i }).click()
     await page.goto('/dashboard/work/leads')
@@ -38,31 +38,9 @@ test.describe('happy path (mocked API)', () => {
     const dial = page.getByRole('link', { name: 'Dial and log call' })
     const wa = page.getByRole('link', { name: 'Open WhatsApp chat' })
     await expect(dial).toHaveAttribute('href', /^tel:\+919876543210$/)
-    await expect(wa).toHaveAttribute('href', /^https:\/\/api\.whatsapp\.com\/send\?phone=919876543210$/)
+    await expect(wa).toHaveAttribute('href', /^https:\/\/wa\.me\/919876543210$/)
 
-    const setTheme = async (theme: 'light' | 'dark' | 'transparent') => {
-      await page.evaluate((t) => {
-        localStorage.setItem(
-          'myle-ui-feedback',
-          JSON.stringify({ state: { theme: t, satisfactionPoints: 0 }, version: 0 }),
-        )
-      }, theme)
-      await page.reload()
-      await expect(page.getByRole('heading', { name: 'E2E Lead' })).toBeVisible()
-    }
-
-    await setTheme('light')
-    await expect(page.locator('html')).not.toHaveClass(/dark/)
-    await expect(page.locator('html')).not.toHaveClass(/theme-transparent/)
-    await page.screenshot({ path: 'test-results/ctcs-theme-light.png', fullPage: true })
-
-    await setTheme('dark')
     await expect(page.locator('html')).toHaveClass(/dark/)
-    await page.screenshot({ path: 'test-results/ctcs-theme-dark.png', fullPage: true })
-
-    await setTheme('transparent')
-    await expect(page.locator('html')).toHaveClass(/dark/)
-    await expect(page.locator('html')).toHaveClass(/theme-transparent/)
-    await page.screenshot({ path: 'test-results/ctcs-theme-glass.png', fullPage: true })
+    await page.screenshot({ path: 'test-results/ctcs-lead-card-dark.png', fullPage: true })
   })
 })

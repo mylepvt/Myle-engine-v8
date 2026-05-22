@@ -1,6 +1,6 @@
 import { type CSSProperties, type FormEvent, type UIEvent, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, X } from 'lucide-react'
+import { Bell, WifiOff, X } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 
 import { DashboardHeader } from '@/components/layout/DashboardHeader'
@@ -12,6 +12,7 @@ import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { useEnrollmentApprovalsAlertBanner } from '@/hooks/use-enrollment-approvals-alert'
 import { useEnrollmentApprovalsPendingQuery } from '@/hooks/use-team-query'
+import { useOnline } from '@/hooks/use-online'
 import { usePushNotifications } from '@/hooks/use-push-notifications'
 import { useRealtimeInvalidation } from '@/hooks/use-realtime-invalidation'
 import { useSyncRoleFromMe } from '@/hooks/use-sync-role-from-me'
@@ -31,6 +32,7 @@ function isEditableElement(node: Element | null): boolean {
 export function DashboardLayout() {
   useSyncRoleFromMe()
   useRealtimeInvalidation(true)
+  const isOnline = useOnline()
   const location = useLocation()
   const { data: me } = useAuthMeQuery()
   const { role: shellRole } = useDashboardShellRole()
@@ -358,6 +360,21 @@ export function DashboardLayout() {
             <p className="min-w-0 flex-1 text-sm text-orange-900 dark:text-orange-100">
               <span className="font-semibold">Strong Warning.</span>
               {me.compliance_summary ? ` ${me.compliance_summary}` : ' 2 days of missed targets. One more day and you will receive a final warning.'}
+            </p>
+          </div>
+        ) : null}
+
+        {!isOnline ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex shrink-0 items-center gap-2.5 border-b border-slate-500/30 bg-slate-500/10 px-3 py-2 dark:border-slate-400/20 dark:bg-slate-400/8"
+          >
+            <WifiOff className="size-3.5 shrink-0 text-slate-500 dark:text-slate-400" aria-hidden />
+            <p className="min-w-0 text-xs text-slate-700 dark:text-slate-300">
+              <span className="font-semibold">You&apos;re offline</span>
+              {' — '}
+              viewing cached data. Changes will sync when connected.
             </p>
           </div>
         ) : null}
