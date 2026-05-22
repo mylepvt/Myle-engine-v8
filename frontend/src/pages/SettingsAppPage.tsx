@@ -275,6 +275,78 @@ export function SettingsAppPage({ title }: Props) {
       placeholder: 'en',
       help: 'Template language code. Default: en',
     },
+    {
+      key: 'whatsapp.daily_team_summary_template_name',
+      label: 'Daily Team Summary Template',
+      placeholder: 'daily_team_summary',
+      help: 'Leader ko daily report summary — jab kuch members ne submit nahi kiya ho.',
+    },
+    {
+      key: 'whatsapp.daily_team_summary_template_lang',
+      label: '… Language',
+      placeholder: 'en',
+      help: 'Template language code. Default: en',
+    },
+    {
+      key: 'whatsapp.daily_team_summary_all_clear_template_name',
+      label: 'Daily Team Summary (All Clear) Template',
+      placeholder: 'daily_team_summary_all_clear',
+      help: 'Leader ko daily report summary — jab saare members ne submit kar diya ho.',
+    },
+    {
+      key: 'whatsapp.daily_team_summary_all_clear_template_lang',
+      label: '… Language',
+      placeholder: 'en',
+      help: 'Template language code. Default: en',
+    },
+    {
+      key: 'whatsapp.leader_member_removed_template_name',
+      label: 'Member Removed (Leader Alert) Template',
+      placeholder: 'leader_member_removed',
+      help: 'Leader ko alert jab uske team se koi member remove kiya jaye.',
+    },
+    {
+      key: 'whatsapp.leader_member_removed_template_lang',
+      label: '… Language',
+      placeholder: 'en',
+      help: 'Template language code. Default: en',
+    },
+    {
+      key: 'whatsapp.leader_new_member_template_name',
+      label: 'New Member (Leader Alert) Template',
+      placeholder: 'leader_new_member',
+      help: 'Leader ko alert jab naya member approve hoke team mein add ho.',
+    },
+    {
+      key: 'whatsapp.leader_new_member_template_lang',
+      label: '… Language',
+      placeholder: 'en',
+      help: 'Template language code. Default: en',
+    },
+    {
+      key: 'whatsapp.leader_grace_requested_template_name',
+      label: 'Grace Requested (Leader Alert) Template',
+      placeholder: 'leader_grace_requested',
+      help: 'Leader ko alert jab kisi member ne grace period request kiya ho.',
+    },
+    {
+      key: 'whatsapp.leader_grace_requested_template_lang',
+      label: '… Language',
+      placeholder: 'en',
+      help: 'Template language code. Default: en',
+    },
+    {
+      key: 'whatsapp.member_removal_notice_template_name',
+      label: 'Member Removal Notice Template',
+      placeholder: 'member_removal_notice',
+      help: 'Member ko removal notification — jab use system se hata diya jaye.',
+    },
+    {
+      key: 'whatsapp.member_removal_notice_template_lang',
+      label: '… Language',
+      placeholder: 'en',
+      help: 'Template language code. Default: en',
+    },
   ] as const
 
   const handleSendReportReminders = async () => {
