@@ -24,6 +24,10 @@ vi.mock('@/components/dashboard/GateAssistantCard', () => ({
   GateAssistantCard: () => <div data-testid="gate-assistant">Gate Assistant</div>,
 }))
 
+vi.mock('@/components/dashboard/CheckInWidget', () => ({
+  CheckInWidget: () => <div data-testid="checkin-widget">CheckIn</div>,
+}))
+
 vi.mock('@/components/dashboard/AdminCommandCenter', () => ({
   AdminCommandCenter: (props: { firstName: string }) => {
     mockAdminCommandCenter(props)
