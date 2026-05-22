@@ -566,14 +566,18 @@ export function AdminCommandCenter({ firstName }: Props) {
 
   // Seed live dashboard store from REST data once loaded
   const liveSummary = teamReports.data?.live_summary
-  if (liveSummary && !liveDash.claimedToday && !liveDash.enrolledToday) {
+  const didInit = useRef(false)
+  useEffect(() => {
+    if (didInit.current) return
+    if (!liveSummary) return
+    didInit.current = true
     liveDash.setInitial({
       callsToday: liveSummary.calls_made_today,
       claimedToday: liveSummary.leads_claimed_today,
       approvedToday: liveSummary.payment_proofs_approved_today,
       enrolledToday: liveSummary.enrolled_today,
     })
-  }
+  }, [liveSummary, liveDash])
 
   const systemUsersSummary = useSystemUsersSummaryQuery(activeTab === 'team')
   const teamMembers = useTeamMembersQuery()
