@@ -200,6 +200,69 @@ export async function installE2eApiMocks(page: Page) {
       return
     }
 
+    // ── PR #331: CheckIn endpoints ───────────────────────────────────────
+    if (path === '/api/v1/checkin/today' && method === 'GET') {
+      await fulfill(route, {
+        checked_in: true,
+        check_in_at: new Date().toISOString(),
+        check_out_at: null,
+        is_suspicious: false,
+        sessions_today: 1,
+        total_minutes_today: 45,
+        city: 'Mumbai',
+        state: 'Maharashtra',
+        latitude: 19.076,
+        longitude: 72.877,
+      })
+      return
+    }
+
+    if (path === '/api/v1/checkin/heartbeat' && method === 'POST') {
+      await fulfill(route, { ok: true })
+      return
+    }
+
+    if (path === '/api/v1/checkin/team' && method === 'GET') {
+      await fulfill(route, { items: [], total: 0 })
+      return
+    }
+
+    if (path === '/api/v1/analytics/activity-log' && method === 'GET') {
+      await fulfill(route, { items: [], total: 0, page: 1, page_size: 50, pages: 0 })
+      return
+    }
+
+    // ── XP endpoints ────────────────────────────────────────────────────
+    if ((path.startsWith('/api/v1/xp/me') || path === '/api/v1/xp/me') && method === 'GET') {
+      await fulfill(route, {
+        xp_total: 120,
+        level: 'bronze',
+        level_label: 'Bronze',
+        progress_pct: 60,
+        season_month: 5,
+        season_year: 2026,
+      })
+      return
+    }
+
+    if (path.startsWith('/api/v1/xp/history') && method === 'GET') {
+      await fulfill(route, [
+        { month: '2026-04', xp_earned: 80, final_level: 'bronze' },
+        { month: '2026-05', xp_earned: 40, final_level: 'bronze' },
+      ])
+      return
+    }
+
+    // ── Generic fallback: return safe empty data for GET, noop for POST ──
+    if (method === 'GET') {
+      await fulfill(route, { items: [], total: 0, message: 'e2e stub' })
+      return
+    }
+    if (method === 'POST' || method === 'PATCH' || method === 'PUT' || method === 'DELETE') {
+      await fulfill(route, { ok: true, message: 'e2e stub' })
+      return
+    }
+
     await route.fulfill({ status: 404, body: 'e2e mock: unhandled path' })
   })
 }
