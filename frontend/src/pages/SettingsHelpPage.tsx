@@ -1,8 +1,6 @@
 import { useState } from 'react'
-import { Bell } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
-import { PushNotificationToggle } from '@/components/notifications/PushNotificationToggle'
 import { useShellStubQuery } from '@/hooks/use-shell-stub-query'
 
 type Props = { title: string }
@@ -63,22 +61,6 @@ export function SettingsHelpPage({ title }: Props) {
           Common questions and guidance for using the platform.
         </p>
       </div>
-
-      {/* Push notifications toggle */}
-      <section className="surface-elevated rounded-xl p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <Bell className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-            <div>
-              <p className="text-sm font-semibold text-foreground">Device Notifications</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Get alerts for daily targets, reports, and team activity on this device.
-              </p>
-            </div>
-          </div>
-          <PushNotificationToggle />
-        </div>
-      </section>
 
       {isPending ? (
         <div className="space-y-3">

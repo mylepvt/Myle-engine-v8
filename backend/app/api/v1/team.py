@@ -46,7 +46,6 @@ from app.services.downline import is_user_in_downline_of
 from app.services.lead_owner import lead_owner_clause
 from app.services.member_compliance import build_compliance_snapshots
 from app.services.payment_service import PaymentService
-from app.services.push_service import send_push_to_user
 from app.services.team_reports_metrics import IST, compute_live_summary
 from app.services.user_hierarchy import (
     load_user_hierarchy_entries,
@@ -659,15 +658,6 @@ async def decide_pending_registration(
         try:
             from app.services.whatsapp_leader_alerts import alert_leader_new_member_approved
             await alert_leader_new_member_approved(row, session)
-        except Exception:
-            pass
-        try:
-            await send_push_to_user(
-                session, target_user_id,
-                title="Welcome to Myle! 🎉",
-                body="Your account has been approved. You can now log in and get started.",
-                url="/dashboard",
-            )
         except Exception:
             pass
     return {"ok": True, "registration_status": row.registration_status}
