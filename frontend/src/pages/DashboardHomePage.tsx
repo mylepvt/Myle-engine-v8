@@ -8,6 +8,7 @@ import { XpLeaderboard } from '@/components/xp/XpLeaderboard'
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
 import { AdminCommandCenter } from '@/components/dashboard/AdminCommandCenter'
 import { TeamDashboardHomeModern } from '@/components/dashboard/TeamDashboardHomeModern'
+import { CheckInWidget } from '@/components/dashboard/CheckInWidget'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -251,6 +252,9 @@ export function DashboardHomePage() {
           Welcome back, {firstName}
         </h1>
       </div>
+
+      {/* Check-in widget for leader role */}
+      {role === 'leader' && sessionReady && <CheckInWidget />}
 
       {role === 'admin' && sessionReady ? (
         <div className="grid gap-4 sm:grid-cols-2">

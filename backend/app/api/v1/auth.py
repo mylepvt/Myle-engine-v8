@@ -49,6 +49,7 @@ from app.services.login_identity import (
 )
 from app.services.member_compliance import ensure_user_compliance_snapshot
 from app.services.push_service import send_push_to_role_bg
+from app.services.audit_service import log_action
 from app.services.team_tracking import record_login_activity
 
 router = APIRouter()
@@ -390,6 +391,7 @@ async def dev_login(
 @router.post("/login", response_model=DevLoginResponse)
 async def login_with_password(
     body: LoginRequest,
+    request: Request,
     response: Response,
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> DevLoginResponse:
@@ -413,6 +415,12 @@ async def login_with_password(
     await session.refresh(user)
     ensure_may_issue_session_cookies(user)
     await record_login_activity(session, user_id=user.id)
+    await log_action(
+        session=session,
+        user_id=user.id,
+        action="user.login",
+        ip_address=request.client.host if request.client else None,
+    )
     await session.commit()
     issue_session_cookies(response, user, remember_me=body.remember_me)
     return DevLoginResponse()
