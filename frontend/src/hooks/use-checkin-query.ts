@@ -102,7 +102,7 @@ export function useCheckOutMutation() {
 
 // ── Heartbeat ────────────────────────────────────────────────────────────────
 
-export function useCheckinHeartbeat(enabled: boolean) {
+export function useCheckinHeartbeat(_enabled?: boolean) {
   return useMutation({
     mutationFn: async () => {
       await apiFetch('/api/v1/checkin/heartbeat', { method: 'POST' })
