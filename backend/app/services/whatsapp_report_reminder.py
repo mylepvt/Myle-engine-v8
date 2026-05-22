@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models.report_reminder_outreach import ReportReminderOutreach
 from app.models.user import User
+from app.services.settings_service import SettingsService
 from app.services.whatsapp_removal import (
     _whatsapp_digits,
     _post_json_sync,
@@ -64,19 +65,51 @@ def build_reminder_message(*, member_name: str) -> str:
 
 
 async def _send_via_meta_api(
-    *, phone: str, message: str, phone_number_id: str, access_token: str, api_version: str
+    *,
+    phone: str,
+    message: str,
+    phone_number_id: str,
+    access_token: str,
+    api_version: str,
+    template_name: str = "",
+    template_lang: str = "en",
+    first_name: str = "",
 ) -> dict[str, Any]:
     digits = _whatsapp_digits(phone)
     if not digits:
         return {"ok": False, "error": "invalid_phone"}
 
     url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
-    payload: dict[str, Any] = {
-        "messaging_product": "whatsapp",
-        "to": digits,
-        "type": "text",
-        "text": {"preview_url": False, "body": message},
-    }
+
+    if template_name:
+        # Approved template — works outside 24-hour window
+        payload: dict[str, Any] = {
+            "messaging_product": "whatsapp",
+            "to": digits,
+            "type": "template",
+            "template": {
+                "name": template_name,
+                "language": {"code": template_lang or "en"},
+                "components": [
+                    {
+                        "type": "body",
+                        "parameters": [
+                            {"type": "text", "text": first_name or "Member"},
+                        ],
+                    }
+                ],
+            },
+        }
+        logger.info("report reminder using template=%s phone_tail=%s", template_name, digits[-4:])
+    else:
+        # Fallback: free-form text (only works within 24-hour window)
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": digits,
+            "type": "text",
+            "text": {"preview_url": False, "body": message},
+        }
+
     headers = {"Authorization": f"Bearer {access_token}"}
     timeout = float(settings.ctcs_whatsapp_timeout_seconds)
     try:
@@ -114,6 +147,7 @@ async def send_report_reminder(
         or user.fbo_id
         or "Member"
     )
+    first_name = member_name.strip().split()[0]
 
     message = build_reminder_message(member_name=member_name)
 
@@ -127,6 +161,17 @@ async def send_report_reminder(
     session.add(record)
     await session.flush()
 
+    svc = SettingsService(session)
+    tmpl_name = (
+        (await svc.get_app_setting("whatsapp.report_reminder_template_name") or "").strip()
+        or (getattr(settings, "whatsapp_report_reminder_template_name", None) or "").strip()
+    )
+    tmpl_lang = (
+        (await svc.get_app_setting("whatsapp.report_reminder_template_lang") or "").strip()
+        or (getattr(settings, "whatsapp_report_reminder_template_lang", None) or "").strip()
+        or "en"
+    )
+
     phone_number_id, access_token, api_version = await get_meta_config(session)
     if phone_number_id and access_token and phone:
         result = await _send_via_meta_api(
@@ -135,6 +180,9 @@ async def send_report_reminder(
             phone_number_id=phone_number_id,
             access_token=access_token,
             api_version=api_version,
+            template_name=tmpl_name,
+            template_lang=tmpl_lang,
+            first_name=first_name,
         )
     else:
         logger.info(

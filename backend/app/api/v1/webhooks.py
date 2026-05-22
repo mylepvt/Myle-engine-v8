@@ -93,7 +93,7 @@ def _extract_meta_message_value(msg: dict[str, Any]) -> tuple[str, str | None]:
 def _extract_meta_messages(body: dict[str, Any]) -> list[dict[str, Any]]:
     """
     Parse Meta's nested webhook payload and return a flat list of
-    supported inbound message dicts.
+    all inbound message dicts (including non-text types like images/audio).
     """
     results: list[dict[str, Any]] = []
     for entry in body.get("entry", []):
@@ -101,11 +101,9 @@ def _extract_meta_messages(body: dict[str, Any]) -> list[dict[str, Any]]:
             value = change.get("value", {})
             for msg in value.get("messages", []):
                 message_type, message_text = _extract_meta_message_value(msg)
-                if not message_text:
-                    continue
                 results.append({
                     "phone": msg.get("from", ""),
-                    "message": message_text,
+                    "message": message_text,  # may be None for non-text types
                     "message_type": message_type,
                     "wa_message_id": msg.get("id"),
                 })
@@ -222,25 +220,76 @@ async def receive_whatsapp_reply(
     # Detect Meta format by presence of "object" = "whatsapp_business_account"
     is_meta_format = body.get("object") == "whatsapp_business_account"
 
+    logger.info(
+        "wa_webhook_received: is_meta=%s keys=%s",
+        is_meta_format,
+        list(body.keys()),
+    )
+
     if is_meta_format:
-        # Meta sends its own signature header (x-hub-signature-256) for security.
-        # For now we trust the verify_token handshake is sufficient.
         messages = _extract_meta_messages(body)
+
+        # Log every entry/change so we can see status updates vs real messages
+        for entry in body.get("entry", []):
+            for change in entry.get("changes", []):
+                value = change.get("value", {})
+                has_messages = bool(value.get("messages"))
+                has_statuses = bool(value.get("statuses"))
+                logger.info(
+                    "wa_webhook_change: field=%s has_messages=%s has_statuses=%s msg_count=%d",
+                    change.get("field"),
+                    has_messages,
+                    has_statuses,
+                    len(value.get("messages", [])),
+                )
+                if has_messages:
+                    for m in value.get("messages", []):
+                        logger.info(
+                            "wa_raw_msg: type=%s from=%s id=%s",
+                            m.get("type"),
+                            m.get("from", "")[-4:],
+                            m.get("id", "")[:12],
+                        )
+
         if not messages:
-            # Meta sends status updates (delivery, read) too — just ack them
             return {"ok": True, "matched": False, "note": "no_supported_messages"}
 
         matched = 0
+        from app.services.whatsapp_log_service import log_wa_inbound
         for msg in messages:
-            if not msg["phone"] or not msg["message"]:
+            phone = msg["phone"] or ""
+            message_text = msg["message"]
+            msg_type = msg.get("message_type") or "inbound_unknown"
+            if not phone:
                 continue
-            logged_type, related_user_id = await _handle_inbound_message(
-                session=session,
-                phone=msg["phone"],
-                message=msg["message"],
-                wa_message_id=msg.get("wa_message_id"),
-                message_type_hint=msg.get("message_type") or "inbound_unknown",
-            )
+            if not message_text:
+                await log_wa_inbound(
+                    session,
+                    phone=phone,
+                    message=f"[{msg_type}]",
+                    message_type=msg_type,
+                    wa_message_id=msg.get("wa_message_id"),
+                )
+                continue
+            try:
+                logged_type, related_user_id = await _handle_inbound_message(
+                    session=session,
+                    phone=phone,
+                    message=message_text,
+                    wa_message_id=msg.get("wa_message_id"),
+                    message_type_hint=msg_type,
+                )
+            except Exception:
+                logger.exception("wa_inbound_handle_error: phone_tail=%s", phone[-4:] if phone else "?")
+                # still log so Received Today increments
+                await log_wa_inbound(
+                    session,
+                    phone=phone,
+                    message=message_text[:400],
+                    message_type="inbound_error",
+                    wa_message_id=msg.get("wa_message_id"),
+                )
+                continue
             if logged_type == "inbound_member" and related_user_id is not None:
                 matched += 1
 
@@ -786,8 +835,199 @@ async def send_custom_whatsapp(
 
 
 # ---------------------------------------------------------------------------
-# Admin: trigger daily summary for all leaders (or one) right now
+# Admin: broadcast custom message to all leaders or all team
 # ---------------------------------------------------------------------------
+
+class BroadcastRequest(BaseModel):
+    message: str
+    recipients: str  # "leaders" | "team" | "all"
+
+
+class BroadcastResultItem(BaseModel):
+    user_id: int
+    name: str
+    phone_tail: str
+    status: str  # "sent" | "failed" | "no_phone"
+
+
+class BroadcastResponse(BaseModel):
+    sent: int
+    failed: int
+    no_phone: int
+    results: list[BroadcastResultItem]
+
+
+@router.post("/webhooks/whatsapp/broadcast", response_model=BroadcastResponse)
+async def broadcast_whatsapp(
+    body: BroadcastRequest,
+    auth_user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> BroadcastResponse:
+    """Admin: send a custom message to all leaders, all team, or everyone."""
+    if auth_user.role != "admin":
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admin only")
+
+    message = body.message.strip()
+    if not message:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="message required")
+
+    from app.models.user import User
+    from app.services.whatsapp_removal import _send_via_meta_api
+    from app.services.whatsapp_log_service import log_wa_outbound
+
+    roles: list[str] = []
+    if body.recipients == "leaders":
+        roles = ["leader"]
+    elif body.recipients == "team":
+        roles = ["team"]
+    else:
+        roles = ["leader", "team"]
+
+    users = (
+        await session.execute(
+            select(User).where(
+                User.role.in_(roles),
+                User.registration_status == "approved",
+                User.removed_at.is_(None),
+                User.access_blocked.is_(False),
+                User.phone.isnot(None),
+            ).order_by(User.name.asc())
+        )
+    ).scalars().all()
+
+    phone_number_id, access_token, api_version = await get_meta_config(session)
+    if not phone_number_id or not access_token:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="WhatsApp not configured in Settings")
+
+    sent = failed = no_phone = 0
+    results: list[BroadcastResultItem] = []
+
+    for user in users:
+        phone = getattr(user, "phone", None) or ""
+        name = (user.name or getattr(user, "username", None) or user.fbo_id or "Member").strip()
+        phone_tail = phone[-4:] if phone else "—"
+
+        if not phone:
+            no_phone += 1
+            results.append(BroadcastResultItem(user_id=user.id, name=name, phone_tail="—", status="no_phone"))
+            continue
+
+        result = await _send_via_meta_api(
+            phone=phone,
+            message=message,
+            phone_number_id=phone_number_id,
+            access_token=access_token,
+            api_version=api_version,
+        )
+        await log_wa_outbound(
+            session,
+            phone=phone,
+            message=message,
+            message_type="leader_alert",
+            result=result,
+            related_user_id=user.id,
+        )
+        if result.get("ok"):
+            sent += 1
+            results.append(BroadcastResultItem(user_id=user.id, name=name, phone_tail=phone_tail, status="sent"))
+        else:
+            failed += 1
+            results.append(BroadcastResultItem(user_id=user.id, name=name, phone_tail=phone_tail, status="failed"))
+
+    await session.commit()
+    return BroadcastResponse(sent=sent, failed=failed, no_phone=no_phone, results=results)
+
+
+# ---------------------------------------------------------------------------
+# Admin: send personalized performance insights to members/leaders
+# ---------------------------------------------------------------------------
+
+class InsightsBroadcastRequest(BaseModel):
+    recipients: str   # "leaders" | "team" | "all"
+    period: int       # 7 or 30
+
+
+@router.post("/webhooks/whatsapp/send-insights", response_model=BroadcastResponse)
+async def send_insights_broadcast(
+    body: InsightsBroadcastRequest,
+    auth_user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> BroadcastResponse:
+    """Admin: send personalized 7/30-day performance insight to each member via WhatsApp."""
+    if auth_user.role != "admin":
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admin only")
+
+    if body.period not in (7, 30):
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="period must be 7 or 30")
+
+    from app.models.user import User
+    from app.services.whatsapp_insights import build_insight_message
+    from app.services.whatsapp_removal import _send_via_meta_api
+    from app.services.whatsapp_log_service import log_wa_outbound
+
+    roles: list[str] = []
+    if body.recipients == "leaders":
+        roles = ["leader"]
+    elif body.recipients == "team":
+        roles = ["team"]
+    else:
+        roles = ["leader", "team"]
+
+    users = (
+        await session.execute(
+            select(User).where(
+                User.role.in_(roles),
+                User.registration_status == "approved",
+                User.removed_at.is_(None),
+                User.access_blocked.is_(False),
+                User.phone.isnot(None),
+            ).order_by(User.name.asc())
+        )
+    ).scalars().all()
+
+    phone_number_id, access_token, api_version = await get_meta_config(session)
+    if not phone_number_id or not access_token:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="WhatsApp not configured")
+
+    sent = failed = no_phone = 0
+    results: list[BroadcastResultItem] = []
+
+    for user in users:
+        phone = getattr(user, "phone", None) or ""
+        name = (user.name or getattr(user, "username", None) or user.fbo_id or "Member").strip()
+        phone_tail = phone[-4:] if phone else "—"
+
+        if not phone:
+            no_phone += 1
+            results.append(BroadcastResultItem(user_id=user.id, name=name, phone_tail="—", status="no_phone"))
+            continue
+
+        message = await build_insight_message(user=user, period=body.period, session=session)
+        result = await _send_via_meta_api(
+            phone=phone,
+            message=message,
+            phone_number_id=phone_number_id,
+            access_token=access_token,
+            api_version=api_version,
+        )
+        await log_wa_outbound(
+            session,
+            phone=phone,
+            message=message,
+            message_type="leader_alert",
+            result=result,
+            related_user_id=user.id,
+        )
+        if result.get("ok"):
+            sent += 1
+            results.append(BroadcastResultItem(user_id=user.id, name=name, phone_tail=phone_tail, status="sent"))
+        else:
+            failed += 1
+            results.append(BroadcastResultItem(user_id=user.id, name=name, phone_tail=phone_tail, status="failed"))
+
+    await session.commit()
+    return BroadcastResponse(sent=sent, failed=failed, no_phone=no_phone, results=results)
+
 
 class TriggerSummaryRequest(BaseModel):
     leader_user_id: Optional[int] = None  # None = all leaders

@@ -5,10 +5,12 @@ import {
   ArrowDown,
   ArrowUp,
   CheckCircle2,
+  ClipboardList,
   MessageSquare,
   Phone,
   RefreshCw,
   Send,
+  Smartphone,
   Users,
   WifiOff,
   XCircle,
@@ -26,14 +28,19 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import {
+  useSendBroadcastMutation,
   useSendCustomMessageMutation,
+  useSendInsightsMutation,
   useTriggerDailySummaryMutation,
   useWhatsAppLeadersQuery,
   useWhatsAppLogsQuery,
   useWhatsAppStatusQuery,
+  type BroadcastResultItem,
   type LogFilters,
   type WhatsAppLogItem,
 } from '@/hooks/use-whatsapp-panel-query'
+import { apiFetch } from '@/lib/api'
+import { type ReminderResult, type SendRemindersResponse } from '@/hooks/use-today-pulse-query'
 import { cn } from '@/lib/utils'
 
 type Props = { title: string }
@@ -155,6 +162,39 @@ export function WhatsAppPanelPage({ title }: Props) {
   const [customMessage, setCustomMessage] = useState('')
   const [customResult, setCustomResult] = useState<string | null>(null)
   const [summaryResult, setSummaryResult] = useState<string | null>(null)
+  const [broadcastRecipients, setBroadcastRecipients] = useState<'leaders' | 'team' | 'all'>('leaders')
+  const [broadcastMessage, setBroadcastMessage] = useState('')
+  const [broadcastResults, setBroadcastResults] = useState<BroadcastResultItem[] | null>(null)
+  const [broadcastSummary, setBroadcastSummary] = useState<{ sent: number; failed: number; no_phone: number } | null>(null)
+  const sendBroadcast = useSendBroadcastMutation()
+  const [insightsRecipients, setInsightsRecipients] = useState<'leaders' | 'team' | 'all'>('team')
+  const [insightsPeriod, setInsightsPeriod] = useState<7 | 30>(7)
+  const [insightsResults, setInsightsResults] = useState<BroadcastResultItem[] | null>(null)
+  const [insightsSummary, setInsightsSummary] = useState<{ sent: number; failed: number; no_phone: number } | null>(null)
+  const sendInsights = useSendInsightsMutation()
+  const [reminderSending, setReminderSending] = useState(false)
+  const [reminderSummary, setReminderSummary] = useState<Omit<SendRemindersResponse, 'results'> | null>(null)
+  const [reminderResults, setReminderResults] = useState<ReminderResult[] | null>(null)
+  const [reminderError, setReminderError] = useState<string | null>(null)
+
+  async function sendReportReminders() {
+    setReminderSending(true)
+    setReminderError(null)
+    setReminderSummary(null)
+    setReminderResults(null)
+    try {
+      const res = await apiFetch('/api/v1/admin/send-report-reminders', { method: 'POST' })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data: SendRemindersResponse = await res.json()
+      setReminderSummary({ sent: data.sent, failed: data.failed, no_phone: data.no_phone })
+      setReminderResults(data.results)
+      void qc.invalidateQueries({ queryKey: ['whatsapp'] })
+    } catch (err) {
+      setReminderError(err instanceof Error ? err.message : 'Failed')
+    } finally {
+      setReminderSending(false)
+    }
+  }
 
   const [showLeaders, setShowLeaders] = useState(false)
   const { data: status, isLoading: statusLoading } = useWhatsAppStatusQuery()
@@ -237,41 +277,41 @@ export function WhatsAppPanelPage({ title }: Props) {
 
       {/* Today's stats */}
       {logsLoading ? (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           {[0, 1, 2].map((i) => <Skeleton key={i} className="h-20" />)}
         </div>
       ) : logs ? (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <Card>
-            <CardHeader className="pb-1 pt-3">
-              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <CardHeader className="pb-1 px-3 pt-3 sm:px-6">
+              <CardTitle className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">
                 Sent Today
               </CardTitle>
             </CardHeader>
-            <CardContent className="pb-3">
-              <p className="text-2xl font-bold text-green-700">{logs.sent_today}</p>
+            <CardContent className="pb-3 px-3 sm:px-6">
+              <p className="text-xl sm:text-2xl font-bold text-green-700">{logs.sent_today}</p>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-1 pt-3">
-              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <CardHeader className="pb-1 px-3 pt-3 sm:px-6">
+              <CardTitle className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">
                 Failed Today
               </CardTitle>
             </CardHeader>
-            <CardContent className="pb-3">
-              <p className={cn('text-2xl font-bold', logs.failed_today > 0 ? 'text-red-600' : 'text-muted-foreground')}>
+            <CardContent className="pb-3 px-3 sm:px-6">
+              <p className={cn('text-xl sm:text-2xl font-bold', logs.failed_today > 0 ? 'text-red-600' : 'text-muted-foreground')}>
                 {logs.failed_today}
               </p>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-1 pt-3">
-              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <CardHeader className="pb-1 px-3 pt-3 sm:px-6">
+              <CardTitle className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">
                 Received Today
               </CardTitle>
             </CardHeader>
-            <CardContent className="pb-3">
-              <p className="text-2xl font-bold text-blue-700">{logs.received_today}</p>
+            <CardContent className="pb-3 px-3 sm:px-6">
+              <p className="text-xl sm:text-2xl font-bold text-blue-700">{logs.received_today}</p>
             </CardContent>
           </Card>
         </div>
@@ -279,58 +319,179 @@ export function WhatsAppPanelPage({ title }: Props) {
 
       {/* Filters */}
       {/* Manual Controls */}
-      <div className="grid gap-3 sm:grid-cols-2">
-        {/* Send custom message */}
-        <Card>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Send custom message — one person OR broadcast */}
+        <Card className="lg:col-span-2">
           <CardHeader className="pb-2 pt-4">
             <CardTitle className="flex items-center gap-2 text-sm font-semibold">
               <Send className="h-4 w-4 text-blue-600" />
               Send Custom Message
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 pb-4">
-            <input
-              type="text"
-              placeholder="+91 98765 43210"
-              value={customPhone}
-              onChange={(e) => { setCustomPhone(e.target.value); setCustomResult(null) }}
-              className="w-full rounded border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-            />
+          <CardContent className="space-y-3 pb-4">
+            {/* Recipient tabs */}
+            <div className="flex gap-1 rounded-lg border border-input bg-muted/40 p-1">
+              {(['one', 'leaders', 'team', 'all'] as const).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => {
+                    if (r === 'one') {
+                      setBroadcastRecipients('leaders')
+                    } else {
+                      setBroadcastRecipients(r)
+                    }
+                    setCustomResult(null)
+                    setBroadcastResults(null)
+                    setBroadcastSummary(null)
+                  }}
+                  className={cn(
+                    'flex-1 rounded-md py-1 text-xs font-medium transition-colors',
+                    (r === 'one' && customPhone !== '' && broadcastResults === null && broadcastSummary === null) ||
+                    (r !== 'one' && broadcastRecipients === r && (broadcastResults !== null || broadcastSummary !== null || broadcastMessage !== ''))
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {r === 'one' ? 'One Person' : r === 'leaders' ? 'All Leaders' : r === 'team' ? 'All Team' : 'Everyone'}
+                </button>
+              ))}
+            </div>
+
+            {/* One person mode */}
+            <div className={broadcastResults !== null || broadcastSummary !== null ? 'hidden' : undefined}>
+              <input
+                type="text"
+                placeholder="+91 98765 43210"
+                value={customPhone}
+                onChange={(e) => { setCustomPhone(e.target.value); setCustomResult(null) }}
+                className="w-full rounded border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring mb-2"
+              />
+              <textarea
+                placeholder="Type your message here..."
+                value={customMessage}
+                onChange={(e) => { setCustomMessage(e.target.value); setCustomResult(null) }}
+                rows={3}
+                className="w-full rounded border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+              />
+              <Button
+                size="sm"
+                className="w-full mt-2"
+                disabled={!customPhone.trim() || !customMessage.trim() || sendCustom.isPending}
+                onClick={() => {
+                  sendCustom.mutate(
+                    { phone: customPhone.trim(), message: customMessage.trim() },
+                    {
+                      onSuccess: (r) => {
+                        if (r.ok) { setCustomResult('✓ Sent successfully'); setCustomPhone(''); setCustomMessage('') }
+                        else setCustomResult(`✗ ${r.error ?? 'Failed'}`)
+                      },
+                      onError: (e) => setCustomResult(`✗ ${e.message}`),
+                    },
+                  )
+                }}
+              >
+                {sendCustom.isPending ? 'Sending…' : 'Send Message'}
+              </Button>
+              {customResult && (
+                <p className={cn('mt-1 text-xs', customResult.startsWith('✓') ? 'text-green-700' : 'text-red-600')}>
+                  {customResult}
+                </p>
+              )}
+            </div>
+
+            {/* Broadcast mode — shown when a group tab is selected */}
+            <div className={broadcastResults === null && broadcastSummary === null && customPhone === '' ? undefined : 'hidden'}>
+              <div className="mb-1 text-xs text-muted-foreground">
+                {broadcastRecipients === 'leaders' ? 'Sabhi leaders ko bhejega' : broadcastRecipients === 'team' ? 'Sabhi team members ko bhejega' : 'Sabhi leaders + team members ko bhejega'}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Broadcast card — full width when active */}
+        <Card className="sm:col-span-2 lg:col-span-3">
+          <CardHeader className="pb-2 pt-4">
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+              <Users className="h-4 w-4 text-indigo-600" />
+              Broadcast Message
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 pb-4">
+            {/* Recipient selector */}
+            <div className="flex gap-2">
+              {(['leaders', 'team', 'all'] as const).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => { setBroadcastRecipients(r); setBroadcastResults(null); setBroadcastSummary(null) }}
+                  className={cn(
+                    'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                    broadcastRecipients === r
+                      ? 'border-indigo-500 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300'
+                      : 'border-border text-muted-foreground hover:border-indigo-400 hover:text-foreground',
+                  )}
+                >
+                  {r === 'leaders' ? '👔 All Leaders' : r === 'team' ? '👥 All Team' : '📢 Everyone'}
+                </button>
+              ))}
+            </div>
+
             <textarea
-              placeholder="Type your message here..."
-              value={customMessage}
-              onChange={(e) => { setCustomMessage(e.target.value); setCustomResult(null) }}
+              placeholder="Type your message here — sabhi selected members ko jaayega..."
+              value={broadcastMessage}
+              onChange={(e) => { setBroadcastMessage(e.target.value); setBroadcastResults(null); setBroadcastSummary(null) }}
               rows={3}
               className="w-full rounded border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
             />
+
             <Button
               size="sm"
-              className="w-full"
-              disabled={!customPhone.trim() || !customMessage.trim() || sendCustom.isPending}
+              className="border-indigo-500/40 bg-indigo-500/10 text-indigo-700 hover:bg-indigo-500/20 dark:text-indigo-300"
+              variant="outline"
+              disabled={!broadcastMessage.trim() || sendBroadcast.isPending}
               onClick={() => {
-                sendCustom.mutate(
-                  { phone: customPhone.trim(), message: customMessage.trim() },
+                sendBroadcast.mutate(
+                  { message: broadcastMessage.trim(), recipients: broadcastRecipients },
                   {
-                    onSuccess: (r) => {
-                      if (r.ok) {
-                        setCustomResult('✓ Sent successfully')
-                        setCustomPhone('')
-                        setCustomMessage('')
-                      } else {
-                        setCustomResult(`✗ ${r.error ?? 'Failed'}`)
-                      }
-                    },
-                    onError: (e) => setCustomResult(`✗ ${e.message}`),
+                    onSuccess: (r) => { setBroadcastSummary({ sent: r.sent, failed: r.failed, no_phone: r.no_phone }); setBroadcastResults(r.results) },
+                    onError: (e) => { setBroadcastSummary({ sent: 0, failed: 0, no_phone: 0 }); setBroadcastResults([]); console.error(e) },
                   },
                 )
               }}
             >
-              {sendCustom.isPending ? 'Sending…' : 'Send Message'}
+              {sendBroadcast.isPending
+                ? 'Bhej raha hoon…'
+                : broadcastRecipients === 'leaders' ? 'Send to All Leaders'
+                : broadcastRecipients === 'team' ? 'Send to All Team'
+                : 'Send to Everyone'}
             </Button>
-            {customResult && (
-              <p className={cn('text-xs', customResult.startsWith('✓') ? 'text-green-700' : 'text-red-600')}>
-                {customResult}
-              </p>
+
+            {broadcastSummary && (
+              <div className="flex flex-wrap gap-3 text-xs">
+                <span className="font-medium text-green-700">✓ {broadcastSummary.sent} sent</span>
+                {broadcastSummary.failed > 0 && <span className="font-medium text-red-600">✗ {broadcastSummary.failed} failed</span>}
+                {broadcastSummary.no_phone > 0 && <span className="text-muted-foreground">📵 {broadcastSummary.no_phone} no phone</span>}
+              </div>
+            )}
+
+            {broadcastResults && broadcastResults.length > 0 && (
+              <div className="max-h-56 overflow-y-auto rounded border border-border/50 bg-muted/30">
+                {broadcastResults.map((r) => (
+                  <div key={r.user_id} className="flex items-center gap-2 border-b border-border/30 px-3 py-1.5 last:border-0 text-xs">
+                    {r.status === 'sent'
+                      ? <CheckCircle2 className="h-3 w-3 shrink-0 text-green-600" />
+                      : r.status === 'no_phone'
+                      ? <Smartphone className="h-3 w-3 shrink-0 text-muted-foreground/50" />
+                      : <XCircle className="h-3 w-3 shrink-0 text-red-500" />}
+                    <span className="flex-1 truncate font-medium">{r.name}</span>
+                    <span className="text-muted-foreground">{r.phone_tail !== '—' ? `…${r.phone_tail}` : '—'}</span>
+                    <span className={cn('font-medium', r.status === 'sent' ? 'text-green-600' : r.status === 'no_phone' ? 'text-muted-foreground/50' : 'text-red-500')}>
+                      {r.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>
@@ -369,7 +530,161 @@ export function WhatsAppPanelPage({ title }: Props) {
             )}
           </CardContent>
         </Card>
+
+        {/* Send report reminders */}
+        <Card>
+          <CardHeader className="pb-2 pt-4">
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+              <ClipboardList className="h-4 w-4 text-amber-600" />
+              Send Report Reminders
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 pb-4">
+            <p className="text-xs text-muted-foreground">
+              Aaj ki report submit nahi ki — unhe abhi WhatsApp reminder bhejo. Jo pehle se reminded hain wo skip honge.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full border-amber-500/40 text-amber-700 hover:bg-amber-50"
+              disabled={reminderSending}
+              onClick={() => void sendReportReminders()}
+            >
+              {reminderSending ? 'Bhej raha hoon…' : 'Send Reminders Now'}
+            </Button>
+            {reminderError && (
+              <p className="text-xs text-red-600">✗ {reminderError}</p>
+            )}
+            {reminderSummary && (
+              <div className="flex flex-wrap gap-2 text-xs">
+                <span className="font-medium text-green-700">✓ {reminderSummary.sent} sent</span>
+                {reminderSummary.failed > 0 && (
+                  <span className="font-medium text-red-600">✗ {reminderSummary.failed} failed</span>
+                )}
+                {reminderSummary.no_phone > 0 && (
+                  <span className="text-muted-foreground">📵 {reminderSummary.no_phone} no phone</span>
+                )}
+                {reminderSummary.sent === 0 && reminderSummary.failed === 0 && reminderSummary.no_phone === 0 && (
+                  <span className="text-muted-foreground">Koi pending nahi</span>
+                )}
+              </div>
+            )}
+            {reminderResults && reminderResults.length > 0 && (
+              <div className="max-h-48 overflow-y-auto rounded border border-border/50 bg-muted/30">
+                {reminderResults.map((r) => (
+                  <div key={r.user_id} className="flex items-center gap-2 border-b border-border/30 px-2 py-1 last:border-0 text-xs">
+                    {r.status === 'sent' || r.status === 'stub'
+                      ? <CheckCircle2 className="h-3 w-3 shrink-0 text-green-600" />
+                      : r.status === 'no_phone'
+                      ? <Smartphone className="h-3 w-3 shrink-0 text-muted-foreground/50" />
+                      : <XCircle className="h-3 w-3 shrink-0 text-red-500" />}
+                    <span className="flex-1 truncate font-medium">{r.name}</span>
+                    <span className="text-muted-foreground">{r.phone_tail !== '—' ? `…${r.phone_tail}` : '—'}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Personal Insights card */}
+      <Card>
+        <CardHeader className="pb-2 pt-4">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+            <ClipboardList className="h-4 w-4 text-emerald-600" />
+            Send Personal Insights
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 pb-4">
+          <p className="text-xs text-muted-foreground">
+            Har member ko uski apni performance analysis bhejo — reports, calls, streak, miss pattern sab.
+          </p>
+
+          {/* Period + Recipients */}
+          <div className="flex flex-wrap gap-3">
+            <div className="flex gap-1 rounded-lg border border-input bg-muted/40 p-1">
+              {([7, 30] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => { setInsightsPeriod(p); setInsightsResults(null); setInsightsSummary(null) }}
+                  className={cn(
+                    'rounded-md px-3 py-1 text-xs font-medium transition-colors',
+                    insightsPeriod === p ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {p} days
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-1 rounded-lg border border-input bg-muted/40 p-1">
+              {(['leaders', 'team', 'all'] as const).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => { setInsightsRecipients(r); setInsightsResults(null); setInsightsSummary(null) }}
+                  className={cn(
+                    'rounded-md px-3 py-1 text-xs font-medium transition-colors',
+                    insightsRecipients === r ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {r === 'leaders' ? 'Leaders' : r === 'team' ? 'Team' : 'Everyone'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Preview */}
+          <div className="rounded border border-emerald-500/20 bg-emerald-500/5 p-3 text-[11px] text-muted-foreground font-mono whitespace-pre-line">
+            {insightsPeriod === 7
+              ? `Hi Rahul,\n\nHere's your performance summary for the last 7 days:\n✅ Reports submitted: 5/7\n🔥 Current streak: 3 days\n📞 Total calls made: 42\n⚠️ Days missed: Sat, Sun\n💪 Best day: Mon (12 calls)\n\nKeep it up — consistency is everything.\n\n— Myle Team`
+              : `Hi Rahul,\n\nHere's your 30-day performance analysis:\n✅ Reports submitted: 22/30\n🔥 Best streak: 8 days\n📞 Average calls/day: 9\n\n📊 Weekly breakdown (oldest → recent):\n  Week 1: 38 calls · 6/7 reports\n  Week 2: 44 calls · 7/7 reports\n  Week 3: 31 calls · 4/7 reports\n  Week 4: 42 calls · 5/7 reports\n⚠️ Pattern noticed: Reports were missed on Saturday in 3 out of the last 4 weeks.\n💡 Try to stay consistent on that day — small habits make big results.\n\n— Myle Team`}
+          </div>
+
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full border-emerald-500/40 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400"
+            disabled={sendInsights.isPending}
+            onClick={() => {
+              sendInsights.mutate(
+                { recipients: insightsRecipients, period: insightsPeriod },
+                {
+                  onSuccess: (r) => { setInsightsSummary({ sent: r.sent, failed: r.failed, no_phone: r.no_phone }); setInsightsResults(r.results) },
+                  onError: (e) => { setInsightsSummary({ sent: 0, failed: 0, no_phone: 0 }); setInsightsResults([]); console.error(e) },
+                },
+              )
+            }}
+          >
+            {sendInsights.isPending ? 'Bhej raha hoon…' : `Send ${insightsPeriod}-day Insights`}
+          </Button>
+
+          {insightsSummary && (
+            <div className="flex flex-wrap gap-3 text-xs">
+              <span className="font-medium text-green-700">✓ {insightsSummary.sent} sent</span>
+              {insightsSummary.failed > 0 && <span className="font-medium text-red-600">✗ {insightsSummary.failed} failed</span>}
+              {insightsSummary.no_phone > 0 && <span className="text-muted-foreground">📵 {insightsSummary.no_phone} no phone</span>}
+            </div>
+          )}
+
+          {insightsResults && insightsResults.length > 0 && (
+            <div className="max-h-48 overflow-y-auto rounded border border-border/50 bg-muted/30">
+              {insightsResults.map((r) => (
+                <div key={r.user_id} className="flex items-center gap-2 border-b border-border/30 px-3 py-1.5 last:border-0 text-xs">
+                  {r.status === 'sent'
+                    ? <CheckCircle2 className="h-3 w-3 shrink-0 text-green-600" />
+                    : r.status === 'no_phone'
+                    ? <Smartphone className="h-3 w-3 shrink-0 text-muted-foreground/50" />
+                    : <XCircle className="h-3 w-3 shrink-0 text-red-500" />}
+                  <span className="flex-1 truncate font-medium">{r.name}</span>
+                  <span className="text-muted-foreground">{r.phone_tail !== '—' ? `…${r.phone_tail}` : '—'}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Leaders phone status */}
       <Card>
@@ -493,21 +808,23 @@ export function WhatsAppPanelPage({ title }: Props) {
               <p className="text-xs">Activity will appear here as WhatsApp messages are sent or received.</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-28">Time</TableHead>
-                  <TableHead className="w-10">Dir</TableHead>
-                  <TableHead className="w-32">Type</TableHead>
-                  <TableHead className="w-36">Phone</TableHead>
-                  <TableHead>Message preview</TableHead>
-                  <TableHead className="w-24">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {logs.items.map((item) => <LogRow key={item.id} item={item} />)}
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto">
+              <Table className="min-w-[600px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-28">Time</TableHead>
+                    <TableHead className="w-10">Dir</TableHead>
+                    <TableHead className="w-32">Type</TableHead>
+                    <TableHead className="w-36">Phone</TableHead>
+                    <TableHead>Message preview</TableHead>
+                    <TableHead className="w-24">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {logs.items.map((item) => <LogRow key={item.id} item={item} />)}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

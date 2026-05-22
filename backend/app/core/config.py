@@ -171,6 +171,16 @@ class Settings(BaseSettings):
         validation_alias="WHATSAPP_META_VERIFY_TOKEN",
         description="Token you set in Meta Developer Console for webhook verification (GET challenge).",
     )
+    whatsapp_removal_template_name: str = Field(
+        default="",
+        validation_alias="WHATSAPP_REMOVAL_TEMPLATE_NAME",
+        description="Approved Meta template name for removal outreach (e.g. member_removal_v1). If set, sends template message instead of free-form text — works outside 24-hour window.",
+    )
+    whatsapp_removal_template_lang: str = Field(
+        default="en",
+        validation_alias="WHATSAPP_REMOVAL_TEMPLATE_LANG",
+        description="Language code for removal template, e.g. 'en' or 'en_US'.",
+    )
 
     ctcs_heat_hot_threshold: int = Field(
         default=40,

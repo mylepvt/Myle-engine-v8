@@ -243,7 +243,7 @@ export function LeadControlPage({ title }: Props) {
             </CardContent>
           </Card>
 
-          <section className="grid gap-4 md:grid-cols-4">
+          <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <StatCard
               label="Ready Now"
               value={query.data.queue_total}
@@ -266,7 +266,7 @@ export function LeadControlPage({ title }: Props) {
             />
           </section>
 
-          <section className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+          <section className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
             <Card className="surface-elevated overflow-hidden border-border/60">
               <CardHeader className="border-b border-border/60 px-5 py-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
