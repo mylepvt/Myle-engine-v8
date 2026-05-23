@@ -29,9 +29,11 @@ from app.middleware.request_id import RequestIdMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.services.scheduled_jobs import (
     job_call_target_reminder,
+    job_closing_pipeline_maintenance,
     job_daily_leader_team_summary,
     job_daily_report_reminder,
     job_enrollment_proof_alert,
+    job_general_pipeline_maintenance,
     job_leader_basics_enforcement,
     job_watch_archive_maintenance,
     job_weekly_compliance_digest,
@@ -92,6 +94,20 @@ async def lifespan(_app: FastAPI):
             job_watch_archive_maintenance,
             IntervalTrigger(minutes=30),
             id="watch_archive_maintenance",
+            replace_existing=True,
+            misfire_grace_time=120,
+        )
+        _scheduler.add_job(
+            job_closing_pipeline_maintenance,
+            IntervalTrigger(minutes=30),
+            id="closing_pipeline_maintenance",
+            replace_existing=True,
+            misfire_grace_time=120,
+        )
+        _scheduler.add_job(
+            job_general_pipeline_maintenance,
+            IntervalTrigger(minutes=30),
+            id="general_pipeline_maintenance",
             replace_existing=True,
             misfire_grace_time=120,
         )
