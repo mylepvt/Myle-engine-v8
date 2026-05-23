@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
@@ -153,6 +153,40 @@ async def execution_stage_counts(
     """Admin: active lead counts per pipeline stage + today's movements."""
     _require_admin(user)
     return await enf.admin_stage_counts(session)
+
+
+@router.get("/day1-slots")
+async def day1_slots_today(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Admin: today's Day 1 calling board sends per time slot (5pm/6pm/7pm)."""
+    _require_admin(user)
+    from app.models.batch_day_submission import BatchDaySubmission
+    from app.core.time_ist import today_ist
+    from app.services.execution_enforcement import _start_of_day_ist
+
+    today_start = _start_of_day_ist(today_ist().isoformat())
+
+    rows = (
+        await session.execute(
+            select(BatchDaySubmission.slot, func.count(BatchDaySubmission.id).label("cnt"))
+            .where(
+                BatchDaySubmission.day_number == 1,
+                BatchDaySubmission.submitted_at >= today_start,
+            )
+            .group_by(BatchDaySubmission.slot)
+        )
+    ).all()
+
+    slot_map: dict[str, int] = {r.slot: r.cnt for r in rows}
+    return {
+        "date": today_ist().isoformat(),
+        "5pm": slot_map.get("d1_morning", 0),
+        "6pm": slot_map.get("d1_afternoon", 0),
+        "7pm": slot_map.get("d1_evening", 0),
+        "total": sum(slot_map.values()),
+    }
 
 
 @router.get("/at-risk-leads", response_model=list[AtRiskLeadRow])

@@ -43,6 +43,7 @@ import { useOnlineNowQuery, type OnlineUserItem } from '@/hooks/use-online-now-q
 import { useWalletRechargeRequestsQuery } from '@/hooks/use-wallet-recharge-query'
 import { useInvoicesQuery } from '@/hooks/use-invoices-query'
 import { useLeadControlQuery } from '@/hooks/use-lead-control-query'
+import { useDay1SlotsQuery } from '@/hooks/use-day1-slots-query'
 import { LEAD_STATUS_OPTIONS, useLeadsQuery, type LeadPublic } from '@/hooks/use-leads-query'
 import { useLeadPoolQuery } from '@/hooks/use-lead-pool-query'
 import { apiFetch } from '@/lib/api'
@@ -563,6 +564,7 @@ export function AdminCommandCenter({ firstName }: Props) {
   const leadPool = useLeadPoolQuery(true)
   const teamReports = useTeamReportsQuery('', true)
   const activeWatchers = useActiveWatchersQuery(activeTab === 'today')
+  const day1Slots = useDay1SlotsQuery(activeTab === 'today')
 
   // Seed live dashboard store from REST data once loaded
   const liveSummary = teamReports.data?.live_summary
@@ -814,6 +816,31 @@ export function AdminCommandCenter({ firstName }: Props) {
                   <p className="mt-0.5 text-xl font-bold tabular-nums text-foreground">{liveDash.claimedToday || (liveSummary?.leads_claimed_today ?? 0)}</p>
                 </div>
               </div>
+
+              {/* Day 1st Live — Calling Board Today */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Day 1st Live — Calling Board Today</CardTitle>
+                  <CardDescription>Leads sent Day 1 premiere batch links today, per time slot.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 gap-3">
+                    {(['5pm', '6pm', '7pm'] as const).map((slot) => {
+                      const count = day1Slots.data?.[slot] ?? 0
+                      return (
+                        <div key={slot} className="surface-inset flex flex-col items-center rounded-lg py-4 gap-1">
+                          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">{slot} Slot</p>
+                          <p className="text-2xl font-bold tabular-nums text-emerald-400">{count}</p>
+                          <p className="text-[10px] text-muted-foreground/50">leads sent</p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <p className="mt-3 text-right text-xs text-muted-foreground/50">
+                    Total today: <span className="font-semibold text-foreground">{day1Slots.data?.total ?? 0}</span>
+                  </p>
+                </CardContent>
+              </Card>
 
               {/* Ops panel */}
               <Card className="overflow-hidden">
