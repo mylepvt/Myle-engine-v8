@@ -22,34 +22,13 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.db.base import Base
 from app.core.passwords import DEV_LOGIN_BCRYPT_HASH
-from app.models.activity_log import ActivityLog  # noqa: F401
-from app.models.announcement import Announcement  # noqa: F401
-from app.models.call_event import CallEvent  # noqa: F401
-from app.models.batch_share_link import BatchShareLink  # noqa: F401
-from app.models.batch_day_submission import BatchDaySubmission  # noqa: F401
-from app.models.crm_outbox import CrmOutbox  # noqa: F401
-from app.models.daily_member_stat import DailyMemberStat  # noqa: F401
-from app.models.enroll_share_link import EnrollShareLink  # noqa: F401
+import app.models  # noqa: F401 — registers all ORM models with Base.metadata
+# Models not yet in app.models.__init__ but needed for schema creation
 from app.models.follow_up import FollowUp  # noqa: F401
-from app.models.lead import Lead  # noqa: F401
-from app.models.user import User
-from app.models.user_presence_session import UserPresenceSession  # noqa: F401
-from app.models.wallet_ledger import WalletLedgerEntry  # noqa: F401
-from app.models.password_reset_token import PasswordResetToken  # noqa: F401
 from app.models.push_subscription import PushSubscription  # noqa: F401
-from app.models.training_video import TrainingVideo  # noqa: F401
-from app.models.training_progress import TrainingProgress  # noqa: F401
-from app.models.daily_report import DailyReport  # noqa: F401
-from app.models.daily_score import DailyScore  # noqa: F401
 from app.models.xp_event import XpEvent  # noqa: F401
 from app.models.xp_monthly_archive import XpMonthlyArchive  # noqa: F401
-from app.models.app_setting import AppSetting  # noqa: F401
-from app.models.training_question import TrainingQuestion  # noqa: F401
-from app.models.training_test_attempt import TrainingTestAttempt  # noqa: F401
-from app.models.admin_activity_feed import AdminActivityFeed  # noqa: F401
-from app.models.member_removal_outreach import MemberRemovalOutreach  # noqa: F401
-from app.models.report_reminder_outreach import ReportReminderOutreach  # noqa: F401
-from app.models.whatsapp_log import WhatsAppLog  # noqa: F401
+from app.models.user import User
 from app.constants.roles import DEV_FBO_BY_ROLE
 from app.services.dev_users import DEV_EMAIL_BY_ROLE
 
