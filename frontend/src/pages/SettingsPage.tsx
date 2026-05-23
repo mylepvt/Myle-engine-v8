@@ -16,6 +16,8 @@ import {
   Mail,
   Users,
   Database,
+  Eye,
+  EyeOff,
 } from 'lucide-react'
 import { 
   useUserProfileQuery,
@@ -115,6 +117,10 @@ export default function SettingsPage() {
   })
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [settingError, setSettingError] = useState<string | null>(null)
+  const [showCurrentPw, setShowCurrentPw] = useState(false)
+  const [showNewPw, setShowNewPw] = useState(false)
+  const [showConfirmPw, setShowConfirmPw] = useState(false)
+  const [showEmailPw, setShowEmailPw] = useState(false)
   const [deleteConfirmKey, setDeleteConfirmKey] = useState<string | null>(null)
 
   const [profileSuccess, setProfileSuccess] = useState<string | null>(null)
@@ -502,30 +508,63 @@ export default function SettingsPage() {
               <CardContent className="space-y-4">
                 <div>
                   <Label htmlFor="current_password">Current Password</Label>
-                  <Input
-                    id="current_password"
-                    type="password"
-                    value={passwordForm.current_password}
-                    onChange={(e) => setPasswordForm(prev => ({ ...prev, current_password: e.target.value }))}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="current_password"
+                      type={showCurrentPw ? 'text' : 'password'}
+                      value={passwordForm.current_password}
+                      onChange={(e) => setPasswordForm(prev => ({ ...prev, current_password: e.target.value }))}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPw(v => !v)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      aria-label={showCurrentPw ? 'Hide password' : 'Show password'}
+                    >
+                      {showCurrentPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor="new_password">New Password</Label>
-                  <Input
-                    id="new_password"
-                    type="password"
-                    value={passwordForm.new_password}
-                    onChange={(e) => setPasswordForm(prev => ({ ...prev, new_password: e.target.value }))}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="new_password"
+                      type={showNewPw ? 'text' : 'password'}
+                      value={passwordForm.new_password}
+                      onChange={(e) => setPasswordForm(prev => ({ ...prev, new_password: e.target.value }))}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPw(v => !v)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      aria-label={showNewPw ? 'Hide password' : 'Show password'}
+                    >
+                      {showNewPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor="confirm_password">Confirm New Password</Label>
-                  <Input
-                    id="confirm_password"
-                    type="password"
-                    value={passwordForm.confirm_password}
-                    onChange={(e) => setPasswordForm(prev => ({ ...prev, confirm_password: e.target.value }))}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="confirm_password"
+                      type={showConfirmPw ? 'text' : 'password'}
+                      value={passwordForm.confirm_password}
+                      onChange={(e) => setPasswordForm(prev => ({ ...prev, confirm_password: e.target.value }))}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPw(v => !v)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      aria-label={showConfirmPw ? 'Hide password' : 'Show password'}
+                    >
+                      {showConfirmPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
                 {passwordError ? (
                   <p className="text-sm text-destructive" role="alert">{passwordError}</p>
@@ -562,12 +601,23 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <Label htmlFor="email_password">Current Password</Label>
-                  <Input
-                    id="email_password"
-                    type="password"
-                    value={emailForm.current_password}
-                    onChange={(e) => setEmailForm(prev => ({ ...prev, current_password: e.target.value }))}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="email_password"
+                      type={showEmailPw ? 'text' : 'password'}
+                      value={emailForm.current_password}
+                      onChange={(e) => setEmailForm(prev => ({ ...prev, current_password: e.target.value }))}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowEmailPw(v => !v)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      aria-label={showEmailPw ? 'Hide password' : 'Show password'}
+                    >
+                      {showEmailPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
                 <Button onClick={handleEmailChange} disabled={changeEmail.isPending}>
                   {changeEmail.isPending ? 'Changing...' : 'Change Email'}
