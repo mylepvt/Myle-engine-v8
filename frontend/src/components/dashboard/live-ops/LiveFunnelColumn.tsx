@@ -11,10 +11,9 @@ type Stage = {
 
 const PIPELINE: Stage[] = [
   { key: 'claimed',      label: 'Just Claimed',  color: '#7c3aed' },
-  { key: 'new_lead',     label: 'New Lead',       color: '#5865f2' },
   { key: 'contacted',    label: 'Contacted',      color: '#4f86f7' },
   { key: 'invited',      label: 'Invited',        color: '#38bdf8' },
-  { key: 'video_sent',   label: 'Video Sent',     color: '#22d3ee' },
+  { key: 'video_sent',   label: 'Day 1st Live',   color: '#22d3ee' },
   { key: 'mindset_lock', label: 'Mindset Lock',   color: '#6ee7b7' },
   { key: 'day1',         label: 'Day 1',          color: '#84cc16' },
   { key: 'day2',         label: 'Day 2',          color: '#eab308' },
@@ -28,7 +27,6 @@ const PIPELINE: Stage[] = [
 
 const STAGE_ROUTES: Record<string, string> = {
   claimed:      '/dashboard/work/leads?stage=claimed',
-  new_lead:     '/dashboard/work/leads?stage=new_lead',
   contacted:    '/dashboard/work/leads?stage=contacted',
   invited:      '/dashboard/work/leads?stage=invited',
   video_sent:   '/dashboard/work/leads?stage=video_sent',
@@ -53,7 +51,7 @@ export function LiveFunnelColumn() {
   const todayMov = stageCounts.data?.today_movements ?? {}
 
   const liveOverrides: Record<string, number> = {
-    claimed:   liveDash.claimedToday,
+    claimed:   stageCounts.data?.today_claimed ?? liveDash.claimedToday,
     day1:      liveDash.day1Total,
     day2:      liveDash.day2Total,
     day3:      liveDash.day3Total,
