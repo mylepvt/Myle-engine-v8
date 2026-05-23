@@ -572,10 +572,9 @@ function ProcessChecklistSection({
     setTaskError(null)
     setBusyTask(taskKey)
     try {
-      const digits = (lead.phone ?? '').replace(/\D/g, '')
-      if (!digits) throw new Error('Phone number missing.')
       const msg = `Hi ${lead.name || 'there'},\n\nWatch this video:\n${videoUrl}`
-      const waUrl = `https://wa.me/${digits}?text=${encodeURIComponent(msg)}`
+      const waUrl = whatsAppChatWithTextHref(lead.phone, msg)
+      if (waUrl === '#') throw new Error('Phone number missing or invalid.')
       if (!openExternalShareUrl(waUrl)) throw new Error('Could not open WhatsApp.')
       await toggleTask(taskKey, true)
     } catch (err) {
