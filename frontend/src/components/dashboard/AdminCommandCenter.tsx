@@ -496,6 +496,19 @@ function LeaderRingCard({ leader }: { leader: LeaderHealthItem }) {
   )
 }
 
+const GRACE_RISK_CONFIG = {
+  low:    { label: 'Low Risk',    cls: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400' },
+  medium: { label: 'Medium Risk', cls: 'bg-amber-500/15 text-amber-700 dark:text-amber-400' },
+  high:   { label: 'High Risk',   cls: 'bg-red-500/15 text-red-700 dark:text-red-400' },
+}
+
+const GRACE_OUTCOME_LABEL: Record<string, { text: string; cls: string }> = {
+  auto_restored: { text: 'Last: worked through it ✓', cls: 'text-emerald-600 dark:text-emerald-400' },
+  auto_removed:  { text: 'Last: removed at expiry ✗', cls: 'text-red-600 dark:text-red-400' },
+  approved:      { text: 'Last: completed',            cls: 'text-muted-foreground' },
+  cleared:       { text: 'Last: cleared early',        cls: 'text-amber-600 dark:text-amber-400' },
+}
+
 function GraceRequestRow({ member }: { member: TeamMemberPublic }) {
   const mut = useUpdateMemberComplianceMutation()
   const busy = mut.isPending
@@ -504,21 +517,61 @@ function GraceRequestRow({ member }: { member: TeamMemberPublic }) {
     mut.mutate({ userId: member.id, action, graceEndDate: null, reason: null })
   }
 
+  const risk = member.grace_risk ?? 'low'
+  const riskCfg = GRACE_RISK_CONFIG[risk]
+  const count30d = member.grace_count_30d ?? 0
+  const lastOutcomeCfg = member.grace_last_outcome ? GRACE_OUTCOME_LABEL[member.grace_last_outcome] : null
+  const streakNote = (member.calls_short_streak ?? 0) > 0 || (member.missing_report_streak ?? 0) > 0
+    ? `Streak: ${[
+        (member.calls_short_streak ?? 0) > 0 ? `${member.calls_short_streak}d low calls` : '',
+        (member.missing_report_streak ?? 0) > 0 ? `${member.missing_report_streak}d no report` : '',
+      ].filter(Boolean).join(' · ')}`
+    : null
+
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3 rounded border border-border/60 bg-card/40 p-3.5">
-      <div className="min-w-0 flex-1 space-y-0.5">
+    <div className="space-y-2.5 rounded border border-border/60 bg-card/40 p-3.5">
+      {/* Header row: name + risk badge */}
+      <div className="flex flex-wrap items-center gap-2">
         <p className="text-sm font-semibold text-foreground">
           {member.username ?? member.fbo_id}
           <span className="ml-2 text-xs font-normal text-muted-foreground">{member.fbo_id}</span>
         </p>
-        <p className="text-xs text-muted-foreground">
-          Till {member.grace_request_end_date ? new Date(member.grace_request_end_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
-          {member.grace_request_reason ? ` · ${member.grace_request_reason}` : ''}
-        </p>
-        {mut.isError && (
-          <p className="text-xs text-destructive">{(mut.error as Error).message}</p>
+        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${riskCfg.cls}`}>
+          {riskCfg.label}
+        </span>
+        {count30d >= 2 && (
+          <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-semibold text-red-700 dark:text-red-400">
+            Over monthly limit
+          </span>
         )}
       </div>
+
+      {/* Request details */}
+      <div className="space-y-0.5">
+        <p className="text-xs text-muted-foreground">
+          Till {member.grace_request_end_date
+            ? new Date(member.grace_request_end_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+            : '—'}
+          {member.grace_request_reason ? ` · ${member.grace_request_reason}` : ''}
+        </p>
+        {/* Grace intelligence context */}
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
+          <span className="text-muted-foreground">
+            {count30d === 0 ? '1st grace this month' : `${count30d + 1}${count30d + 1 === 2 ? 'nd' : count30d + 1 === 3 ? 'rd' : 'th'} this month`}
+          </span>
+          {lastOutcomeCfg && (
+            <span className={lastOutcomeCfg.cls}>{lastOutcomeCfg.text}</span>
+          )}
+          {streakNote && (
+            <span className="text-amber-600 dark:text-amber-400">{streakNote}</span>
+          )}
+        </div>
+      </div>
+
+      {mut.isError && (
+        <p className="text-xs text-destructive">{(mut.error as Error).message}</p>
+      )}
+
       <div className="flex shrink-0 gap-2">
         <Button
           size="sm"

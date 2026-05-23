@@ -50,4 +50,8 @@ class GateAssistantResponse(BaseModel):
     team_final_warning_count: int = 0
     team_removed_count: int = 0
     team_grace_count: int = 0
+    # Member's own grace intelligence (how many used this month, last outcome)
+    grace_count_30d: int = 0
+    grace_last_outcome: Optional[str] = None
+    grace_monthly_limit: int = 2
     note: Optional[str] = None

@@ -96,10 +96,16 @@ async def build_gate_assistant(session: AsyncSession, user: AuthUser) -> GateAss
     team_final_warning_count = 0
     team_removed_count = 0
     team_grace_count = 0
+    grace_count_30d = 0
+    grace_last_outcome: str | None = None
     pause_note = discipline_warning_pause_note(today)
     warnings_paused = discipline_warnings_paused(today)
 
     if user.role in {"team", "leader"}:
+        from app.services.grace_intelligence import get_grace_context
+        _grace_ctx = await get_grace_context(session, user.user_id)
+        grace_count_30d = _grace_ctx["count_30d"]
+        grace_last_outcome = _grace_ctx["last_outcome"]
         member = await session.get(User, user.user_id)
         compliance = (
             await build_compliance_snapshots(session, [user.user_id], apply_actions=True)
@@ -331,5 +337,7 @@ async def build_gate_assistant(session: AsyncSession, user: AuthUser) -> GateAss
         team_final_warning_count=team_final_warning_count,
         team_removed_count=team_removed_count,
         team_grace_count=team_grace_count,
+        grace_count_30d=grace_count_30d,
+        grace_last_outcome=grace_last_outcome,
         note=pause_note if user.role in {"team", "leader"} and warnings_paused else None,
     )
