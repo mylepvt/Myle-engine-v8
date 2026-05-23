@@ -60,7 +60,7 @@ LEAD_STATUS_LABELS: dict[str, str] = {
     "contacted":      "Contacted",
     "invited":        "Invited",
     "whatsapp_sent":  "WhatsApp Sent",
-    "video_sent":     "Video Sent",
+    "video_sent":     "Day 1st Live",
     "video_watched":  "Video Watched",
     "paid":           "Min. FLP Billing",
     "mindset_lock":   "Mindset Lock",
