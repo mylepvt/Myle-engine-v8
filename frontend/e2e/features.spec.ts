@@ -19,11 +19,12 @@ test.describe('PR #331 features (mocked API)', () => {
   test('team attendance page loads', async ({ page }) => {
     await page.goto('/login')
     await page.getByRole('button', { name: /^Continue$/i }).click()
+    await page.waitForURL(/\/dashboard/, { timeout: 15000 })
 
     await page.goto('/dashboard/team/attendance')
     await expect(page).toHaveURL(/\/dashboard\/team\/attendance\/?$/)
 
-    await expect(page.getByRole('heading', { name: /attendance/i })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /attendance/i })).toBeVisible({ timeout: 10000 })
   })
 
   test('settings help page has notification toggle', async ({ page }) => {
@@ -53,11 +54,11 @@ test.describe('PR #331 features (mocked API)', () => {
 
     await page.goto('/login')
     await page.getByRole('button', { name: /^Continue$/i }).click()
-    await page.waitForTimeout(1000)
+    await page.waitForURL(/\/dashboard/, { timeout: 15000 })
 
     await page.goto('/dashboard/settings/help')
     await expect(page).toHaveURL(/\/dashboard\/settings\/help\/?$/)
 
-    await expect(page.getByText(/device notifications/i)).toBeVisible()
+    await expect(page.getByText(/device notifications/i)).toBeVisible({ timeout: 10000 })
   })
 })

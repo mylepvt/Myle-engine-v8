@@ -94,8 +94,10 @@ async def analytics_activity_log(
     filter_user_id: int | None = Query(default=None, alias="user_id"),
     filter_entity_type: str | None = Query(default=None, alias="entity_type"),
 ) -> dict[str, Any]:
-    """Paginated, filterable audit log. Admin sees all; others see only own entries."""
-    is_admin = user.role == "admin"
+    """Paginated, filterable audit log. Admin-only."""
+    if user.role != "admin":
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    is_admin = True
 
     filters: list[Any] = []
     if not is_admin:

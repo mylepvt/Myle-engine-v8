@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import delete
 
+from app.models.activity_log import ActivityLog
 from app.models.daily_report import DailyReport
 from app.models.daily_score import DailyScore
 from app.models.lead import Lead
@@ -100,8 +101,17 @@ def test_analytics_activity_log_requires_auth() -> None:
 
 
 def test_analytics_activity_log_admin_ok(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Clear activity log so login events from earlier tests don't pollute count
+    async def _clear_activity_log() -> None:
+        factory = get_test_session_factory()
+        async with factory() as session:
+            await session.execute(delete(ActivityLog))
+            await session.commit()
+    asyncio.run(_clear_activity_log())
     c = _authed(monkeypatch)
     assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+    # Clear again — dev-login itself writes a login ActivityLog entry
+    asyncio.run(_clear_activity_log())
     r = c.get("/api/v1/analytics/activity-log")
     assert r.status_code == 200
     body = r.json()
