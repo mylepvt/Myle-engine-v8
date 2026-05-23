@@ -20,7 +20,6 @@ vi.mock('@/hooks/use-gate-assistant-query', () => ({
 vi.mock('@/hooks/use-team-query', () => ({
   useRequestMyGraceMutation: () => mockUseRequestMyGraceMutation(),
   useCancelMyGraceRequestMutation: () => mockUseCancelMyGraceRequestMutation(),
-  useEndMyActiveGraceMutation: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
 const baseResponse = {
