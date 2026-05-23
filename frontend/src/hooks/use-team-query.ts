@@ -401,6 +401,25 @@ export async function cancelMyGraceRequest(): Promise<TeamMemberPublic> {
   return res.json()
 }
 
+export async function endMyActiveGrace(): Promise<TeamMemberPublic> {
+  const res = await apiFetch('/api/v1/team/me/grace', { method: 'DELETE' })
+  if (!res.ok) await parseError(res)
+  return res.json()
+}
+
+export function useEndMyActiveGraceMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: endMyActiveGrace,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['gate-assistant'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'my-team'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'members'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'tracking'] })
+    },
+  })
+}
+
 export function useRequestMyGraceMutation() {
   const queryClient = useQueryClient()
   return useMutation({

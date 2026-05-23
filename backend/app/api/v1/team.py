@@ -445,6 +445,44 @@ async def request_my_grace(
     return item
 
 
+@router.delete("/me/grace", response_model=TeamMemberPublic)
+async def end_my_active_grace(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> TeamMemberPublic:
+    """Member voluntarily ends their own active grace period early."""
+    _require_team_or_leader(user)
+    target = await session.get(User, user.user_id)
+    if target is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    if (target.discipline_status or "").strip().lower() != "grace" or not target.grace_end_date:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="No active grace period to end.",
+        )
+    now = datetime.now(timezone.utc)
+    today = datetime.now(IST).date()
+    record_grace_outcome(
+        session=session,
+        user=target,
+        outcome="cleared",
+        outcome_at=now,
+        final_end_date=target.grace_end_date,
+    )
+    target.access_blocked = False
+    target.discipline_status = "active"
+    target.grace_end_date = None
+    target.grace_reason = None
+    target.grace_updated_at = None
+    target.grace_set_by_user_id = None
+    target.discipline_reset_on = today
+    await session.commit()
+    await session.refresh(target)
+    [item] = await _finalize_team_member_items(session, [TeamMemberPublic.model_validate(target)])
+    await notify_topics("team", "team_tracking")
+    return item
+
+
 @router.delete("/me/grace-request", response_model=TeamMemberPublic)
 async def cancel_my_grace_request(
     user: Annotated[AuthUser, Depends(require_auth_user)],

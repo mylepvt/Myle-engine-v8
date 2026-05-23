@@ -9,6 +9,7 @@ import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { useGateAssistantQuery } from '@/hooks/use-gate-assistant-query'
 import {
   useCancelMyGraceRequestMutation,
+  useEndMyActiveGraceMutation,
   useRequestMyGraceMutation,
 } from '@/hooks/use-team-query'
 import { cn } from '@/lib/utils'
@@ -59,7 +60,11 @@ export function GateAssistantCard({ sessionReady }: Props) {
   const { data, isPending, isError, error, refetch } = useGateAssistantQuery(sessionReady)
   const requestGraceMut = useRequestMyGraceMutation()
   const cancelGraceRequestMut = useCancelMyGraceRequestMutation()
+  const endGraceMut = useEndMyActiveGraceMutation()
   const [requestOpen, setRequestOpen] = useState(false)
+  const [gracePromptDismissed, setGracePromptDismissed] = useState(
+    () => sessionStorage.getItem('grace-early-end-dismissed') === '1',
+  )
   const [requestEndDate, setRequestEndDate] = useState('')
   const [requestReason, setRequestReason] = useState('')
   const [requestError, setRequestError] = useState<string | null>(null)
@@ -138,6 +143,36 @@ export function GateAssistantCard({ sessionReady }: Props) {
   const disciplineDate = formatShortDate(data.grace_end_date)
   const requestDate = formatShortDate(data.grace_request_end_date)
   const requestBusy = requestGraceMut.isPending || cancelGraceRequestMut.isPending
+
+  // Detect: member is working during an active grace period.
+  // Only show once per session, not if grace ends tomorrow (let it expire naturally).
+  const reportDoneToday = Boolean(data.checklist.find((c) => c.id === 'daily_report_submitted')?.done)
+  const workingDuringGrace =
+    data.role !== 'admin' &&
+    data.grace_active &&
+    !data.grace_ending_tomorrow &&
+    !data.grace_request_pending &&
+    (data.calls_today > 0 || reportDoneToday)
+  const showEarlyEndPrompt = workingDuringGrace && !gracePromptDismissed
+
+  function buildActivitySummary(): string {
+    const parts: string[] = []
+    if (data.calls_today > 0)
+      parts.push(`${data.calls_today} fresh call${data.calls_today !== 1 ? 's' : ''} logged`)
+    if (reportDoneToday) parts.push("today's report submitted")
+    return parts.join(' and ')
+  }
+
+  function dismissGracePrompt() {
+    sessionStorage.setItem('grace-early-end-dismissed', '1')
+    setGracePromptDismissed(true)
+  }
+
+  function handleEndGraceEarly() {
+    endGraceMut.mutate(undefined, {
+      onSuccess: dismissGracePrompt,
+    })
+  }
 
   function handleGraceRequestSubmit() {
     if (!requestEndDate.trim()) {
@@ -264,6 +299,44 @@ export function GateAssistantCard({ sessionReady }: Props) {
                 {disciplineDate ? ` · Grace till ${disciplineDate}` : ''}
               </p>
             ) : null}
+          </div>
+        ) : null}
+
+        {showEarlyEndPrompt ? (
+          <div className="rounded-lg border border-amber-400/40 bg-amber-50/60 px-3 py-3 text-sm dark:bg-amber-900/20">
+            <p className="font-semibold text-amber-800 dark:text-amber-300">
+              You're working during grace
+            </p>
+            <p className="mt-1 text-ds-caption text-amber-700 dark:text-amber-400">
+              {buildActivitySummary()} while your grace is active
+              {disciplineDate ? ` (runs till ${disciplineDate})` : ''}.
+              Want to end grace early and get back on normal track?
+            </p>
+            {endGraceMut.isError ? (
+              <p className="mt-1 text-ds-caption text-destructive" role="alert">
+                {endGraceMut.error instanceof Error ? endGraceMut.error.message : 'Something went wrong'}
+              </p>
+            ) : null}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                disabled={endGraceMut.isPending}
+                onClick={handleEndGraceEarly}
+                className="bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600"
+              >
+                {endGraceMut.isPending ? 'Ending grace…' : 'Yes, end grace now'}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={endGraceMut.isPending}
+                onClick={dismissGracePrompt}
+              >
+                Keep grace, continue later
+              </Button>
+            </div>
           </div>
         ) : null}
 
