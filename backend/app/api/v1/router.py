@@ -11,7 +11,7 @@ from app.api.v1 import (
     invoices,
     analytics,
     auth,
-    checkin,
+    location,
     media,
     certificate,
     downloads,
@@ -92,6 +92,6 @@ api_router.include_router(wallet_enhanced.router, prefix="/wallet", tags=["walle
 api_router.include_router(crm_proxy.router, tags=["crm"])
 api_router.include_router(xp.router, prefix="/xp", tags=["xp"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
-api_router.include_router(checkin.router, prefix="/checkin", tags=["checkin"])
+api_router.include_router(location.router, prefix="/location", tags=["location"])
 api_router.include_router(downloads.router, prefix="/downloads", tags=["downloads"])
 api_router.include_router(webhooks.router, tags=["webhooks"])

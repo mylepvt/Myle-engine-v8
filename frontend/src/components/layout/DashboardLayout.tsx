@@ -6,6 +6,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { DashboardHeader } from '@/components/layout/DashboardHeader'
 import { DashboardMobileTabBar } from '@/components/layout/DashboardMobileTabBar'
 import { DashboardSidebar } from '@/components/layout/DashboardSidebar'
+import { LocationPermissionGate } from '@/components/layout/LocationPermissionGate'
 import { DashboardOutletErrorBoundary } from '@/components/routing/DashboardOutletErrorBoundary'
 import { filterDashboardNav, resolveItemLabel } from '@/config/dashboard-nav'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
@@ -23,6 +24,8 @@ import { useAuthStore } from '@/stores/auth-store'
 import { useShellPreviewStore } from '@/stores/shell-preview-store'
 import { useShellStore } from '@/stores/shell-store'
 import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
+import { useLocationPingMutation } from '@/hooks/use-location-query'
+import { getGps } from '@/lib/geolocation'
 
 function isEditableElement(node: Element | null): boolean {
   if (!(node instanceof HTMLElement)) return false
@@ -67,6 +70,21 @@ export function DashboardLayout() {
     push.isSupported &&
     !push.isSubscribed &&
     push.permission !== 'denied'
+  const locationPing = useLocationPingMutation()
+  useEffect(() => {
+    if (shellRole !== 'team' && shellRole !== 'leader') return
+    const doPing = () => {
+      void getGps().then((coords) => {
+        // Only ping if we actually got a location — never overwrite with empty coords
+        if (coords.latitude !== undefined) locationPing.mutate(coords)
+      })
+    }
+    doPing()
+    const id = setInterval(doPing, 15 * 60 * 1000)
+    return () => clearInterval(id)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shellRole])
+
   const [headerSearch, setHeaderSearch] = useState('')
   const [isMobile, setIsMobile] = useState(false)
   const [keyboardInset, setKeyboardInset] = useState(0)
@@ -406,6 +424,8 @@ export function DashboardLayout() {
             ) : null}
           </div>
         ) : null}
+
+        {(shellRole === 'team' || shellRole === 'leader') && <LocationPermissionGate />}
 
         <main
           className={cn(

@@ -1,121 +1,59 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { RefreshCw, AlertTriangle, Clock, MapPin, UserCheck, UserX } from 'lucide-react'
+import { RefreshCw, MapPin, Clock } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
-import { CheckInWidget } from '@/components/dashboard/CheckInWidget'
-import { useTeamCheckInsQuery, type TeamCheckInEntry } from '@/hooks/use-checkin-query'
+import { useTeamLocationsQuery, type TeamLocationEntry } from '@/hooks/use-location-query'
 import { cn } from '@/lib/utils'
 
 type Props = { title: string }
 
-function todayIso() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+function timeAgo(iso: string | null): string {
+  if (!iso) return 'Never'
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
+  if (diff < 60) return `${diff}s ago`
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+  return `${Math.floor(diff / 86400)}d ago`
 }
 
-function formatTime(iso: string | null) {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
-}
-
-function formatDuration(min: number | null) {
-  if (min == null) return '—'
-  const h = Math.floor(min / 60)
-  const m = min % 60
-  return h > 0 ? `${h}h ${m}m` : `${m}m`
-}
-
-type StatusBadgeProps = { status: TeamCheckInEntry['status']; isSuspicious?: boolean }
-function StatusBadge({ status, isSuspicious }: StatusBadgeProps) {
-  const map = {
-    active:  { label: 'Active',   cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
-    away:    { label: 'Away',     cls: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
-    done:    { label: 'Done',     cls: 'bg-sky-500/15 text-sky-400 border-sky-500/30' },
-    absent:  { label: 'Absent',   cls: 'bg-rose-500/15 text-rose-400 border-rose-500/30' },
-  }
-  const s = map[status] ?? map.absent
-  return (
-    <div className="flex items-center gap-1.5">
-      <span className={cn('rounded-full border px-2 py-0.5 text-[11px] font-medium', s.cls)}>
-        {s.label}
-      </span>
-      {isSuspicious && status !== 'absent' && (
-        <AlertTriangle className="h-3 w-3 text-amber-400" title="GPS may be inaccurate" />
-      )}
-    </div>
-  )
-}
-
-function LocationLabel({ city, state, isSuspicious }: { city?: string | null; state?: string | null; isSuspicious?: boolean }) {
-  if (isSuspicious) {
-    return <span className="flex items-center gap-1 text-amber-400"><AlertTriangle className="h-3 w-3" /> GPS weak</span>
-  }
-  if (city || state) {
-    return <span className="text-muted-foreground">{[city, state].filter(Boolean).join(', ')}</span>
-  }
-  return <span className="text-muted-foreground/40">—</span>
-}
-
-function MemberRow({ entry }: { entry: TeamCheckInEntry }) {
-  return (
-    <tr className="border-b border-white/[0.06] transition-colors hover:bg-white/[0.03]">
-      <td className="px-4 py-3 text-sm font-medium text-foreground/90">{entry.actor}</td>
-      <td className="px-4 py-3"><StatusBadge status={entry.status} isSuspicious={entry.is_suspicious} /></td>
-      <td className="px-4 py-3 text-xs text-muted-foreground">
-        <LocationLabel city={entry.city} state={entry.state} isSuspicious={entry.is_suspicious} />
-      </td>
-      <td className="px-4 py-3 text-xs tabular-nums text-muted-foreground">{formatTime(entry.check_in_at)}</td>
-      <td className="px-4 py-3 text-xs tabular-nums text-muted-foreground">{formatTime(entry.check_out_at)}</td>
-      <td className="px-4 py-3 text-xs tabular-nums text-muted-foreground">{formatDuration(entry.work_duration_minutes)}</td>
-    </tr>
-  )
-}
-
-function MemberCard({ entry }: { entry: TeamCheckInEntry }) {
+function LocationChip({ entry }: { entry: TeamLocationEntry }) {
+  const hasLocation = entry.city || entry.state
   return (
     <div className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3">
       <div className="min-w-0">
-        <p className="text-sm font-medium text-foreground/90 truncate">{entry.actor}</p>
-        <p className="mt-0.5 text-xs text-muted-foreground/60">
-          {entry.check_in_at ? `In ${formatTime(entry.check_in_at)}` : 'Not checked in'}
-          {entry.check_out_at ? ` · Out ${formatTime(entry.check_out_at)}` : ''}
-          {entry.work_duration_minutes != null ? ` · ${formatDuration(entry.work_duration_minutes)}` : ''}
-        </p>
-        {(entry.city || entry.state) && !entry.is_suspicious && (
-          <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground/50">
-            <MapPin className="h-3 w-3 shrink-0" />
+        <p className="text-sm font-medium text-foreground/90 truncate">{entry.name ?? '—'}</p>
+        {hasLocation ? (
+          <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+            <MapPin className="h-3 w-3 shrink-0 text-primary/70" />
             {[entry.city, entry.state].filter(Boolean).join(', ')}
           </p>
-        )}
-        {entry.is_suspicious && entry.check_in_at && (
-          <p className="mt-0.5 flex items-center gap-1 text-xs text-amber-400/80">
-            <AlertTriangle className="h-3 w-3 shrink-0" /> GPS weak
-          </p>
+        ) : (
+          <p className="mt-0.5 text-xs text-muted-foreground/40">No location yet</p>
         )}
       </div>
-      <StatusBadge status={entry.status} isSuspicious={entry.is_suspicious} />
+      {entry.updated_at && (
+        <div className="flex items-center gap-1 shrink-0 text-[11px] text-muted-foreground/50">
+          <Clock className="h-3 w-3" />
+          {timeAgo(entry.updated_at)}
+        </div>
+      )}
     </div>
   )
 }
 
 export function TeamAttendancePage({ title }: Props) {
   const navigate = useNavigate()
-  const [date, setDate] = useState(todayIso())
-  const isToday = date === todayIso()
-
-  const { data, isPending, isError, error, isFetching, refetch } = useTeamCheckInsQuery(
-    isToday ? undefined : date,
-  )
+  const { data, isPending, isError, error, isFetching, refetch } = useTeamLocationsQuery()
 
   const sorted = [...(data?.items ?? [])].sort((a, b) => {
-    const order = { active: 0, away: 1, done: 2, absent: 3 }
-    return (order[a.status] ?? 4) - (order[b.status] ?? 4)
+    if (a.updated_at && !b.updated_at) return -1
+    if (!a.updated_at && b.updated_at) return 1
+    if (a.updated_at && b.updated_at) return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    return (a.name ?? '').localeCompare(b.name ?? '')
   })
 
   return (
     <div className="space-y-5">
-      {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <button type="button" onClick={() => navigate(-1)} className="text-sm text-primary hover:underline underline-offset-2">
@@ -133,38 +71,15 @@ export function TeamAttendancePage({ title }: Props) {
         </button>
       </div>
 
-      {/* My check-in widget */}
-      <CheckInWidget />
-
-      {/* Date picker + stats */}
-      <div className="flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Date</span>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-1.5 text-foreground text-sm"
-          />
-        </label>
-        {data && (
-          <div className="flex gap-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <UserCheck className="h-3.5 w-3.5 text-emerald-400" /> {data.checked_in}/{data.total} checked in
-            </span>
-            <span className="flex items-center gap-1">
-              <Clock className="h-3.5 w-3.5 text-sky-400" /> {data.active} active
-            </span>
-            <span className="flex items-center gap-1">
-              <UserX className="h-3.5 w-3.5 text-rose-400" /> {data.total - data.checked_in} absent
-            </span>
-          </div>
-        )}
-      </div>
+      {data && (
+        <p className="text-xs text-muted-foreground/50">
+          {data.items.filter(i => i.updated_at).length} of {data.total} members shared location
+        </p>
+      )}
 
       {isPending && (
         <div className="space-y-2">
-          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
+          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-[60px] w-full rounded-xl" />)}
         </div>
       )}
 
@@ -175,29 +90,10 @@ export function TeamAttendancePage({ title }: Props) {
         </div>
       )}
 
-      {/* Desktop table */}
       {data && sorted.length > 0 && (
-        <>
-          <div className="hidden overflow-x-auto rounded-xl border border-white/[0.08] md:block">
-            <table className="w-full min-w-[560px] text-left">
-              <thead>
-                <tr className="border-b border-white/[0.08] bg-white/[0.03]">
-                  {['Name', 'Status', 'Location', 'Check In', 'Check Out', 'Duration'].map((h) => (
-                    <th key={h} className="px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {sorted.map((e) => <MemberRow key={e.user_id} entry={e} />)}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile cards */}
-          <div className="space-y-2 md:hidden">
-            {sorted.map((e) => <MemberCard key={e.user_id} entry={e} />)}
-          </div>
-        </>
+        <div className="space-y-2">
+          {sorted.map((e) => <LocationChip key={e.user_id} entry={e} />)}
+        </div>
       )}
 
       {data && sorted.length === 0 && (
