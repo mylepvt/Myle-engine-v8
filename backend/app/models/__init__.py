@@ -28,6 +28,7 @@ from app.models.training_day_note import TrainingDayNote
 from app.models.download import Download
 from app.models.user_presence_session import UserPresenceSession
 from app.models.daily_check_in import DailyCheckIn
+from app.models.grace_history import GraceHistory
 from app.models.whatsapp_log import WhatsAppLog
 
 __all__ = [
@@ -61,5 +62,6 @@ __all__ = [
     "Download",
     "UserPresenceSession",
     "DailyCheckIn",
+    "GraceHistory",
     "WhatsAppLog",
 ]

@@ -45,6 +45,11 @@ from app.db.session import AsyncSessionLocal
 from app.services.downline import is_user_in_downline_of
 from app.services.lead_owner import lead_owner_clause
 from app.services.member_compliance import build_compliance_snapshots
+from app.services.grace_intelligence import (
+    get_grace_contexts_batch,
+    record_grace_outcome,
+    MONTHLY_GRACE_LIMIT,
+)
 from app.services.payment_service import PaymentService
 from app.services.push_service import send_push_to_user
 from app.services.team_reports_metrics import IST, compute_live_summary
@@ -128,6 +133,24 @@ async def _attach_team_member_compliance(
     return items
 
 
+async def _attach_grace_intelligence(
+    session: AsyncSession,
+    items: list[TeamMemberPublic],
+) -> list[TeamMemberPublic]:
+    """Attach grace risk / history fields for members with pending requests."""
+    pending_ids = [item.id for item in items if item.grace_request_end_date is not None]
+    if not pending_ids:
+        return items
+    contexts = await get_grace_contexts_batch(session, pending_ids)
+    for item in items:
+        ctx = contexts.get(item.id)
+        if ctx:
+            item.grace_risk = ctx["risk"]
+            item.grace_count_30d = ctx["count_30d"]
+            item.grace_last_outcome = ctx["last_outcome"]
+    return items
+
+
 async def _finalize_team_member_items(
     session: AsyncSession,
     items: list[TeamMemberPublic],
@@ -143,6 +166,7 @@ async def _finalize_team_member_items(
                 _attach_pending_grace_request(item, member)
     items = await _attach_team_member_hierarchy(session, items)
     items = await _attach_team_member_compliance(session, items)
+    items = await _attach_grace_intelligence(session, items)
     return items
 
 
@@ -390,6 +414,18 @@ async def request_my_grace(
         raise HTTPException(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="grace_end_date cannot be in the past",
+        )
+    # Check frequency before saving — warn member if approaching/over monthly limit.
+    from app.services.grace_intelligence import get_grace_context
+    ctx = await get_grace_context(session, user.user_id)
+    if ctx["count_30d"] >= MONTHLY_GRACE_LIMIT:
+        raise HTTPException(
+            status_code=http_status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=(
+                f"Grace limit reached: you have already used {ctx['count_30d']} grace "
+                f"period{'s' if ctx['count_30d'] != 1 else ''} this month "
+                f"(limit is {MONTHLY_GRACE_LIMIT}). Contact your admin directly."
+            ),
         )
     target.grace_request_end_date = body.grace_end_date
     target.grace_request_reason = (body.reason or "").strip() or None
@@ -886,11 +922,20 @@ async def update_member_compliance(
                 status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="grace_end_date cannot be in the past",
             )
+        now_utc = datetime.now(timezone.utc)
+        record_grace_outcome(
+            session=session,
+            user=target,
+            outcome="approved",
+            outcome_at=now_utc,
+            final_end_date=body.grace_end_date,
+            action_by_user_id=user.user_id,
+        )
         target.access_blocked = False
         target.discipline_status = "grace"
         target.grace_end_date = body.grace_end_date
         target.grace_reason = (body.reason or "").strip() or None
-        target.grace_updated_at = datetime.now(timezone.utc)
+        target.grace_updated_at = now_utc
         target.grace_set_by_user_id = user.user_id
         target.discipline_reset_on = None
         target.removed_at = None
@@ -898,11 +943,21 @@ async def update_member_compliance(
         target.removal_reason = None
         _clear_pending_grace_request(target)
     elif body.action == "clear_grace":
+        now_utc = datetime.now(timezone.utc)
+        if (target.discipline_status or "").strip().lower() == "grace":
+            record_grace_outcome(
+                session=session,
+                user=target,
+                outcome="cleared",
+                outcome_at=now_utc,
+                final_end_date=target.grace_end_date,
+                action_by_user_id=user.user_id,
+            )
         target.access_blocked = False
         target.discipline_status = "active"
         target.grace_end_date = None
         target.grace_reason = None
-        target.grace_updated_at = datetime.now(timezone.utc)
+        target.grace_updated_at = now_utc
         target.grace_set_by_user_id = user.user_id
         target.discipline_reset_on = datetime.now(IST).date()
         _clear_pending_grace_request(target)
@@ -926,12 +981,21 @@ async def update_member_compliance(
                     "Use 'Grant Grace' with a future date instead."
                 ),
             )
+        now_utc = datetime.now(timezone.utc)
         grace_reason = (body.reason or target.grace_request_reason or "").strip() or None
+        record_grace_outcome(
+            session=session,
+            user=target,
+            outcome="approved",
+            outcome_at=now_utc,
+            final_end_date=target.grace_request_end_date,
+            action_by_user_id=user.user_id,
+        )
         target.access_blocked = False
         target.discipline_status = "grace"
         target.grace_end_date = target.grace_request_end_date
         target.grace_reason = grace_reason
-        target.grace_updated_at = datetime.now(timezone.utc)
+        target.grace_updated_at = now_utc
         target.grace_set_by_user_id = user.user_id
         target.discipline_reset_on = None
         target.removed_at = None
@@ -939,6 +1003,13 @@ async def update_member_compliance(
         target.removal_reason = None
         _clear_pending_grace_request(target)
     elif body.action == "reject_grace_request":
+        record_grace_outcome(
+            session=session,
+            user=target,
+            outcome="rejected",
+            outcome_at=datetime.now(timezone.utc),
+            action_by_user_id=user.user_id,
+        )
         _clear_pending_grace_request(target)
     elif body.action == "restore_access":
         target.access_blocked = False

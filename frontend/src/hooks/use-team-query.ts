@@ -42,6 +42,9 @@ export type TeamMemberPublic = {
   compliance_summary?: string | null
   grace_active?: boolean | null
   grace_ending_tomorrow?: boolean | null
+  grace_risk?: 'low' | 'medium' | 'high' | null
+  grace_count_30d?: number
+  grace_last_outcome?: string | null
 }
 
 export type TeamMemberListResponse = {

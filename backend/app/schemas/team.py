@@ -44,6 +44,10 @@ class TeamMemberPublic(BaseModel):
     compliance_summary: Optional[str] = None
     grace_active: Optional[bool] = None
     grace_ending_tomorrow: Optional[bool] = None
+    # Grace intelligence — populated for members with pending grace requests
+    grace_risk: Optional[Literal["low", "medium", "high"]] = None
+    grace_count_30d: int = 0
+    grace_last_outcome: Optional[str] = None
 
 
 class TeamMemberListResponse(BaseModel):

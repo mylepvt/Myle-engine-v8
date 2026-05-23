@@ -42,6 +42,9 @@ export type GateAssistantResponse = {
   team_final_warning_count: number
   team_removed_count: number
   team_grace_count: number
+  grace_count_30d: number
+  grace_last_outcome: string | null
+  grace_monthly_limit: number
   note: string | null
 }
 

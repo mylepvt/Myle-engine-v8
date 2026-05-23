@@ -449,6 +449,14 @@ async def build_compliance_snapshots(
             if met_compliance:
                 # Member proved compliance during the expiry buffer — auto-restore.
                 if apply_actions:
+                    from app.services.grace_intelligence import record_grace_outcome
+                    record_grace_outcome(
+                        session=session,
+                        user=user,
+                        outcome="auto_restored",
+                        outcome_at=now,
+                        final_end_date=user.grace_end_date,
+                    )
                     _clear_grace_auto_restore(user, reset_on=today_date)
                     changed = True
                 snapshot.discipline_status = "active"
@@ -477,6 +485,14 @@ async def build_compliance_snapshots(
                 f"Grace ended on {user.grace_end_date.isoformat()} and the system removed this member."
             )
             if apply_actions:
+                from app.services.grace_intelligence import record_grace_outcome
+                record_grace_outcome(
+                    session=session,
+                    user=user,
+                    outcome="auto_removed",
+                    outcome_at=now,
+                    final_end_date=user.grace_end_date,
+                )
                 _mark_removed(user, reason=reason, removed_by_user_id=None, now=now)
                 try:
                     await send_removal_whatsapp(user=user, session=session)

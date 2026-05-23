@@ -46,6 +46,14 @@ function formatShortDate(value: string | null) {
   return date.toLocaleDateString(undefined, { dateStyle: 'medium' })
 }
 
+const GRACE_OUTCOME_LABEL: Record<string, { text: string; cls: string }> = {
+  auto_restored:  { text: 'Kept working — auto-restored ✓', cls: 'text-emerald-600 dark:text-emerald-400' },
+  approved:       { text: 'Approved by admin',              cls: 'text-emerald-600 dark:text-emerald-400' },
+  auto_removed:   { text: 'Removed (no compliance)',        cls: 'text-destructive' },
+  rejected:       { text: 'Rejected by admin',              cls: 'text-destructive' },
+  cleared:        { text: 'Cleared by admin',               cls: 'text-muted-foreground' },
+}
+
 export function GateAssistantCard({ sessionReady }: Props) {
   const { isAdminPreviewing } = useDashboardShellRole()
   const { data, isPending, isError, error, refetch } = useGateAssistantQuery(sessionReady)
@@ -274,13 +282,41 @@ export function GateAssistantCard({ sessionReady }: Props) {
                 {data.grace_request_reason ? (
                   <p className="mt-1 text-ds-caption text-muted-foreground">{data.grace_request_reason}</p>
                 ) : null}
+                {/* Grace intelligence: credits used + last outcome */}
+                {(() => {
+                  const limit = data.grace_monthly_limit ?? 2
+                  const used = data.grace_count_30d ?? 0
+                  const atLimit = used >= limit
+                  const outcome = data.grace_last_outcome
+                    ? (GRACE_OUTCOME_LABEL[data.grace_last_outcome] ?? null)
+                    : null
+                  return (
+                    <div className="mt-2 space-y-0.5">
+                      <p className={cn(
+                        'text-ds-caption font-medium',
+                        atLimit ? 'text-destructive' : 'text-muted-foreground',
+                      )}>
+                        {atLimit
+                          ? `Monthly limit reached (${used}/${limit} graces used)`
+                          : used > 0
+                            ? `${used} of ${limit} monthly grace credits used`
+                            : `Up to ${limit} grace requests allowed per month`}
+                      </p>
+                      {outcome ? (
+                        <p className={cn('text-ds-caption', outcome.cls)}>
+                          Last grace: {outcome.text}
+                        </p>
+                      ) : null}
+                    </div>
+                  )
+                })()}
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={requestBusy}
+                  disabled={requestBusy || (!data.grace_request_pending && (data.grace_count_30d ?? 0) >= (data.grace_monthly_limit ?? 2))}
                   onClick={() => {
                     setRequestError(null)
                     setRequestOpen((value) => !value)
