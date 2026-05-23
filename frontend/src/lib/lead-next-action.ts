@@ -1,4 +1,5 @@
 import { LEAD_STATUS_OPTIONS, PRIMARY_USER_FLOW_STATUSES, USER_OUTCOME_STATUSES } from '@/hooks/use-leads-query'
+import { whatsAppChatWithTextHref } from './phone-links'
 
 /** Preferred primary action order — mirrors the real team journey instead of legacy compat stages. */
 export const LEAD_PIPELINE_ORDER: readonly string[] = [
@@ -102,11 +103,10 @@ export function primaryActionLabel(targetSlug: string): string {
 /** Open WhatsApp with a short video message — only meaningful when moving to `video_sent`. */
 export function buildWhatsAppVideoUrl(phone: string | null | undefined, leadName: string): string | null {
   if (!phone?.trim()) return null
-  const digits = phone.replace(/\D/g, '')
-  if (digits.length < 10) return null
   const n = leadName.trim() || 'there'
   const text = `Hi ${n}, watch this 15-min video — link below.\n[your enrollment link]`
-  return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`
+  const waUrl = whatsAppChatWithTextHref(phone, text)
+  return waUrl === '#' ? null : waUrl
 }
 
 export function shouldOfferWhatsAppForTransition(
