@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Check, CheckSquare, Eye, Pencil, Search, Send, Square, Video, X } from 'lucide-react'
+import { ArrowLeftRight, Check, CheckSquare, Eye, Pencil, Search, Send, Square, Video, X } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
@@ -95,10 +95,11 @@ const STATUS_TAB_LABEL: Partial<Record<LeadStatus, string>> = {
   day1: 'Day 2', day2: 'Day 3', day3: 'Day 3', interview: 'Day 6', plan_2cc: 'Day 6',
   converted: 'Closing', lost: 'Closing',
 }
-type ATab = WorkboardStageKey | 'closing'
+type ATab = WorkboardStageKey | 'closing' | 'reassigned'
 
 function parseAdminTab(value: string | null): ATab {
   const match = ADMIN_STAGE_TABS.find((tab) => tab.id === value)
+  if (value === 'reassigned') return 'reassigned'
   return (match?.id ?? 'day2') as ATab
 }
 
@@ -245,6 +246,7 @@ const LeadCard = memo(function LeadCard({
   const badge = BADGE[lead.status] ?? 'bg-muted/30 text-muted-foreground border-white/10'
   const isWatched = lead.status === 'video_watched' || lead.call_status === 'video_watched'
   const isSent = !isWatched && (lead.status === 'video_sent' || lead.call_status === 'video_sent')
+  const isReassigned = Boolean(lead.is_reassigned)
   const slaMs = timerRemainingMs(lead.last_action_at ?? null, lead.created_at, nowMs)
   const slaOverdue = slaMs < 0
   const slaRemainingSec = Math.max(0, Math.floor(slaMs / 1000))
@@ -312,6 +314,12 @@ const LeadCard = memo(function LeadCard({
           <div className="flex items-center gap-1.5 rounded-md bg-indigo-400/10 px-2 py-1 text-ds-caption font-medium text-indigo-300">
             <Send className="size-3.5 shrink-0" aria-hidden />
             <span>Video sent — waiting for response</span>
+          </div>
+        ) : null}
+        {isReassigned ? (
+          <div className="flex items-center gap-1.5 rounded-md bg-amber-400/10 px-2 py-1 text-ds-caption font-medium text-amber-300">
+            <ArrowLeftRight className="size-3.5 shrink-0" aria-hidden />
+            <span>Reassigned</span>
           </div>
         ) : null}
         {!stageOpsCard ? (
@@ -1339,8 +1347,9 @@ function MindsetQueueView({
 
 
 // ── AdminView ──────────────────────────────────────────────────────────────────
-function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance = true, tab, onTabChange }: {
+function AdminView({ cols, reassignedToday, pm, patchBusyLeadId, search, nowMs, allowStageAdvance = true, tab, onTabChange }: {
   cols: Col[]
+  reassignedToday: LeadPublic[]
   pm: PM
   patchBusyLeadId: number | null
   search: string
@@ -1358,18 +1367,31 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance
     ...config,
     items: f(config.statuses),
   }))
-  const tabs = tabData.map((config) => ({
-    id: config.id,
-    label: config.label,
-    count: config.items.length,
-  }))
+  const filteredReassigned = reassignedToday.filter((l) =>
+    !needle || l.name.toLowerCase().includes(needle) || (l.phone ?? '').includes(needle))
+  const tabs = [
+    ...tabData.map((config) => ({
+      id: config.id,
+      label: config.label,
+      count: config.items.length,
+    })),
+    { id: 'reassigned', label: 'Reassigned Today', count: filteredReassigned.length },
+  ]
   const active = tabData.find((config) => config.id === tab) ?? tabData[0]
   const day2 = tabData.find((config) => config.id === 'day2')?.items ?? []
 
   return (
     <div id="pipeline" className="space-y-4">
       <Tabs tabs={tabs} active={tab} onChange={(id) => onTabChange(id as ATab)}/>
-      {active?.id === 'day2' ? (
+      {tab === 'reassigned' ? (
+        <Grid
+          leads={filteredReassigned}
+          pm={pm}
+          patchBusyLeadId={patchBusyLeadId}
+          empty="No leads reassigned to you today"
+          nowMs={nowMs}
+        />
+      ) : active?.id === 'day2' ? (
         <div className="space-y-3">
           {/* Day 3 summary chips */}
           <div className="flex flex-wrap gap-2">
@@ -1461,6 +1483,7 @@ export function WorkboardPage({ title, mode = 'pipeline' }: Props) {
       items: Array.isArray(c.items) ? c.items : [],
     }))
   }, [data])
+  const reassignedToday: LeadPublic[] = useMemo(() => data?.reassigned_today ?? [], [data])
 
   useEffect(() => {
     if (!toastMsg) return
@@ -1605,6 +1628,7 @@ export function WorkboardPage({ title, mode = 'pipeline' }: Props) {
           : (
             <AdminView
               cols={cols}
+              reassignedToday={reassignedToday}
               pm={pm}
               patchBusyLeadId={patchBusyLeadId}
               search={search}

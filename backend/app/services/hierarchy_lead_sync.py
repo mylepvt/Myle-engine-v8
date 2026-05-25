@@ -202,7 +202,7 @@ def sync_lead_execution_after_team_upline_change(db, team_username: str) -> int:
         # Require current_owner still = this team so we never touch another claimer's row.
         apply_leads_update(
             db,
-            {"assigned_user_id": target_uid, "assigned_to": ""},
+            {"assigned_user_id": target_uid, "assigned_to": "", "is_reassigned": 1, "reassigned_at": now_ist().strftime("%Y-%m-%d %H:%M:%S")},
             where_sql=(
                 "id = ? AND in_pool = 0 AND deleted_at = '' "
                 "AND LOWER(TRIM(COALESCE(current_owner, ''))) = LOWER(?)"

@@ -39,6 +39,7 @@ class WorkboardResponse(BaseModel):
         default_factory=WorkboardActionCounts,
         description="Summary counts for today's priorities bar",
     )
+    reassigned_today: list[LeadPublic] = Field(default_factory=list)
 
 
 class WorkboardSummaryResponse(BaseModel):
@@ -49,6 +50,7 @@ class WorkboardSummaryResponse(BaseModel):
 class WorkboardLeadsResponse(BaseModel):
     columns: list[WorkboardColumnOut]
     max_rows_fetched: int
+    reassigned_today: list[LeadPublic] = Field(default_factory=list)
 
 
 class WorkboardStaleResponse(BaseModel):

@@ -1049,6 +1049,8 @@ def _assign_leads(
 
         # Ownership safety: only assignee can change.
         lead.assigned_to_user_id = to_uid
+        lead.is_reassigned = True
+        lead.reassigned_at = now
         lead.archived_at = None
         lead.last_action_at = now
 
