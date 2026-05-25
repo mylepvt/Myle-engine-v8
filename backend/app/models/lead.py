@@ -79,6 +79,16 @@ class Lead(Base):
         ForeignKey("users.id"),
         nullable=True,
     )
+    is_reassigned: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+        default=False,
+    )
+    reassigned_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
     # Call tracking
     call_status: Mapped[Optional[str]] = mapped_column(

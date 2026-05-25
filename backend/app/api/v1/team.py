@@ -915,7 +915,7 @@ async def update_member_role(
                     Lead.deleted_at.is_(None),
                     Lead.in_pool.is_(False),
                 )
-                .values(assigned_to_user_id=upline_leader.id)
+                .values(assigned_to_user_id=upline_leader.id, is_reassigned=True, reassigned_at=datetime.now(timezone.utc))
             )
     await session.commit()
     await session.refresh(target)

@@ -876,6 +876,8 @@ class LeadsService:
                     detail="Only admin or leader can re-assign leads",
                 )
             lead.assigned_to_user_id = body.assigned_to_user_id
+            lead.is_reassigned = True
+            lead.reassigned_at = datetime.now(timezone.utc)
         if body.name is not None:
             lead.name = body.name.strip()
         if body.status is not None:

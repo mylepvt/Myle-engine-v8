@@ -58,6 +58,8 @@ class LeadPublic(BaseModel):
     assigned_to_role: Optional[str] = None
     leader_user_id: Optional[int] = None
     leader_name: Optional[str] = None
+    is_reassigned: bool = False
+    reassigned_at: Optional[datetime] = None
 
     # Call tracking
     call_status: Optional[str] = None

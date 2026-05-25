@@ -118,6 +118,7 @@ export type LeadPublic = {
   assigned_to_role?: string | null
   leader_user_id?: number | null
   leader_name?: string | null
+  is_reassigned?: boolean | null
   // Call tracking
   call_status: string | null
   call_count: number
