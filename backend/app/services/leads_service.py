@@ -139,9 +139,14 @@ def _ctcs_filter_clause(ctcs_filter: Optional[str]) -> Any:
                 "track_selected",
             ),
         )
+    if key == "reassigned":
+        return and_(
+            Lead.is_reassigned.is_(True),
+            Lead.reassigned_at >= day_start,
+        )
     raise HTTPException(
         status_code=http_status.HTTP_422_UNPROCESSABLE_CONTENT,
-        detail="Invalid ctcs_filter (use: all|today|followups|hot|converted)",
+        detail="Invalid ctcs_filter (use: all|today|followups|hot|converted|reassigned)",
     )
 
 

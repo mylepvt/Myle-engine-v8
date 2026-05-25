@@ -64,24 +64,12 @@ class WorkboardService:
             )
             buckets[status] = await build_lead_public_payloads(self._session, rows)
 
-        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-        reassigned_rows = await self._repository.get_workboard_leads(
-            condition=and_(
-                scope,
-                Lead.is_reassigned.is_(True),
-                Lead.reassigned_at >= today_start,
-            ),
-            limit=50,
-        )
-        reassigned_today = await build_lead_public_payloads(self._session, reassigned_rows)
-
         return WorkboardLeadsResponse(
             columns=[
                 WorkboardColumnOut(status=status, total=totals.get(status, 0), items=buckets[status])
                 for status in WORKBOARD_COLUMNS
             ],
             max_rows_fetched=max_rows,
-            reassigned_today=reassigned_today,
         )
 
     async def get_stale(self, *, user: AuthUser, stale_hours: int, limit: int) -> WorkboardStaleResponse:
@@ -198,7 +186,6 @@ class WorkboardService:
             columns=leads_payload.columns,
             max_rows_fetched=leads_payload.max_rows_fetched,
             action_counts=summary_payload.action_counts,
-            reassigned_today=leads_payload.reassigned_today,
         )
 
 

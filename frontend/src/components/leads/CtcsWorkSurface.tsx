@@ -39,6 +39,7 @@ const TABS: { id: CtcsTab; label: string }[] = [
   { id: 'followups', label: 'Follow-ups' },
   { id: 'hot', label: 'Hot' },
   { id: 'converted', label: 'Converted' },
+  { id: 'reassigned', label: 'Reassigned' },
   { id: 'all', label: 'All' },
 ]
 
@@ -63,6 +64,12 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
         ctcsFilter: 'all' as const,
         ctcsPrioritySort: true as const,
         leaderAllScope: surfaceRole === 'leader',
+      }
+    }
+    if (tab === 'reassigned') {
+      return {
+        ctcsFilter: 'reassigned' as const,
+        ctcsPrioritySort: true as const,
       }
     }
     return { ctcsFilter: tab, ctcsPrioritySort: true as const, preEnrollmentOnly: true as const }
