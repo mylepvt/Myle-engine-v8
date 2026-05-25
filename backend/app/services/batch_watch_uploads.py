@@ -4,6 +4,8 @@ from pathlib import Path
 
 from fastapi import UploadFile
 
+from app.services.r2_storage import content_type_for_ext, r2_enabled, upload_to_r2
+
 _BACKEND_ROOT = Path(__file__).resolve().parents[2]
 _UPLOADS_ROOT = _BACKEND_ROOT / "uploads"
 _BATCH_NOTES_ROOT = _UPLOADS_ROOT / "batch_day_notes"
@@ -138,10 +140,25 @@ async def save_batch_submission_voice_file(lead_id: int, slot: str, file: Upload
 
 
 async def save_batch_submission_video_file(lead_id: int, slot: str, file: UploadFile) -> str:
+    stem = f"{lead_id}_{slot}"
+    ext = _pick_extension(
+        filename=file.filename,
+        content_type=file.content_type,
+        allowed=_VIDEO_EXTENSIONS,
+        default_ext=".mp4",
+    )
+
+    if r2_enabled():
+        data = await file.read()
+        await file.close()
+        key = f"videos/batch/{stem}{ext}"
+        return await upload_to_r2(data=data, key=key, content_type=content_type_for_ext(ext))
+
+    # Fallback: local disk
     return await _save_submission_file(
         root=_BATCH_VIDEO_ROOT,
         folder_name="batch_day_video",
-        stem=f"{lead_id}_{slot}",
+        stem=stem,
         file=file,
         allowed_extensions=_VIDEO_EXTENSIONS,
         default_ext=".mp4",

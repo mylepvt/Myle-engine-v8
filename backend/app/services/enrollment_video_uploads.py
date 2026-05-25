@@ -6,6 +6,13 @@ from uuid import uuid4
 from fastapi import UploadFile
 
 from app.services.enrollment_video import normalize_video_source_url
+from app.services.r2_storage import (
+    content_type_for_ext,
+    delete_from_r2,
+    r2_enabled,
+    r2_key_from_url,
+    upload_to_r2,
+)
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[2]
 _UPLOADS_ROOT = _BACKEND_ROOT / "uploads"
@@ -44,34 +51,58 @@ async def save_enrollment_video_file(file: UploadFile) -> tuple[bool, str, str |
     if ext is None:
         return False, "Unsupported video file. Use .mp4, .webm, .mov, .m4v, .mpg, or .mpeg.", None
 
-    _ENROLLMENT_VIDEO_ROOT.mkdir(parents=True, exist_ok=True)
-    filename = f"enrollment_video_{uuid4().hex}{ext}"
-    destination = _ENROLLMENT_VIDEO_ROOT / filename
-
+    # Read file in chunks, enforcing size limit
+    chunks: list[bytes] = []
     total_bytes = 0
     try:
-        with destination.open("wb") as handle:
-            while True:
-                chunk = await file.read(1024 * 1024)
-                if not chunk:
-                    break
-                total_bytes += len(chunk)
-                if total_bytes > _MAX_BYTES:
-                    handle.close()
-                    destination.unlink(missing_ok=True)
-                    return False, "Video too large (max 512 MB).", None
-                handle.write(chunk)
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
+            total_bytes += len(chunk)
+            if total_bytes > _MAX_BYTES:
+                return False, "Video too large (max 512 MB).", None
+            chunks.append(chunk)
     finally:
         await file.close()
 
+    data = b"".join(chunks)
+    filename = f"enrollment_video_{uuid4().hex}{ext}"
+
+    if r2_enabled():
+        key = f"videos/enrollment/{filename}"
+        content_type = content_type_for_ext(ext)
+        try:
+            url = await upload_to_r2(data=data, key=key, content_type=content_type)
+            return True, "Enrollment video uploaded successfully.", url
+        except Exception as exc:
+            return False, f"R2 upload failed: {exc}", None
+
+    # Fallback: local disk
+    _ENROLLMENT_VIDEO_ROOT.mkdir(parents=True, exist_ok=True)
+    destination = _ENROLLMENT_VIDEO_ROOT / filename
+    destination.write_bytes(data)
     return True, "Enrollment video uploaded successfully.", f"/uploads/enrollment_video/{filename}"
 
 
 def remove_managed_enrollment_video_file(source_url: str | None) -> None:
     raw = normalize_video_source_url(source_url)
-    if not raw.startswith("/uploads/enrollment_video/"):
+    if not raw:
         return
 
+    # R2 URL
+    key = r2_key_from_url(raw)
+    if key:
+        import asyncio
+        try:
+            asyncio.get_event_loop().run_until_complete(delete_from_r2(key))
+        except Exception:
+            pass
+        return
+
+    # Local disk
+    if not raw.startswith("/uploads/enrollment_video/"):
+        return
     relative = raw.removeprefix("/uploads/")
     target = (_UPLOADS_ROOT / relative).resolve()
     try:
