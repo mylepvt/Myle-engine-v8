@@ -95,11 +95,10 @@ const STATUS_TAB_LABEL: Partial<Record<LeadStatus, string>> = {
   day1: 'Day 2', day2: 'Day 3', day3: 'Day 3', interview: 'Day 6', plan_2cc: 'Day 6',
   converted: 'Closing', lost: 'Closing',
 }
-type ATab = WorkboardStageKey | 'closing' | 'reassigned'
+type ATab = WorkboardStageKey | 'closing'
 
 function parseAdminTab(value: string | null): ATab {
   const match = ADMIN_STAGE_TABS.find((tab) => tab.id === value)
-  if (value === 'reassigned') return 'reassigned'
   return (match?.id ?? 'day2') as ATab
 }
 
@@ -1347,9 +1346,8 @@ function MindsetQueueView({
 
 
 // ── AdminView ──────────────────────────────────────────────────────────────────
-function AdminView({ cols, reassignedToday, pm, patchBusyLeadId, search, nowMs, allowStageAdvance = true, tab, onTabChange }: {
+function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance = true, tab, onTabChange }: {
   cols: Col[]
-  reassignedToday: LeadPublic[]
   pm: PM
   patchBusyLeadId: number | null
   search: string
@@ -1367,31 +1365,18 @@ function AdminView({ cols, reassignedToday, pm, patchBusyLeadId, search, nowMs, 
     ...config,
     items: f(config.statuses),
   }))
-  const filteredReassigned = reassignedToday.filter((l) =>
-    !needle || l.name.toLowerCase().includes(needle) || (l.phone ?? '').includes(needle))
-  const tabs = [
-    ...tabData.map((config) => ({
-      id: config.id,
-      label: config.label,
-      count: config.items.length,
-    })),
-    { id: 'reassigned', label: 'Reassigned Today', count: filteredReassigned.length },
-  ]
+  const tabs = tabData.map((config) => ({
+    id: config.id,
+    label: config.label,
+    count: config.items.length,
+  }))
   const active = tabData.find((config) => config.id === tab) ?? tabData[0]
   const day2 = tabData.find((config) => config.id === 'day2')?.items ?? []
 
   return (
     <div id="pipeline" className="space-y-4">
       <Tabs tabs={tabs} active={tab} onChange={(id) => onTabChange(id as ATab)}/>
-      {tab === 'reassigned' ? (
-        <Grid
-          leads={filteredReassigned}
-          pm={pm}
-          patchBusyLeadId={patchBusyLeadId}
-          empty="No leads reassigned to you today"
-          nowMs={nowMs}
-        />
-      ) : active?.id === 'day2' ? (
+      {active?.id === 'day2' ? (
         <div className="space-y-3">
           {/* Day 3 summary chips */}
           <div className="flex flex-wrap gap-2">
@@ -1483,8 +1468,6 @@ export function WorkboardPage({ title, mode = 'pipeline' }: Props) {
       items: Array.isArray(c.items) ? c.items : [],
     }))
   }, [data])
-  const reassignedToday: LeadPublic[] = useMemo(() => data?.reassigned_today ?? [], [data])
-
   useEffect(() => {
     if (!toastMsg) return
     const id = window.setTimeout(() => setToastMsg(null), 2200)
@@ -1628,7 +1611,6 @@ export function WorkboardPage({ title, mode = 'pipeline' }: Props) {
           : (
             <AdminView
               cols={cols}
-              reassignedToday={reassignedToday}
               pm={pm}
               patchBusyLeadId={patchBusyLeadId}
               search={search}

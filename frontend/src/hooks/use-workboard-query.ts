@@ -20,7 +20,6 @@ export type WorkboardResponse = {
   columns: WorkboardColumn[]
   max_rows_fetched: number
   action_counts?: WorkboardActionCounts
-  reassigned_today?: LeadPublic[]
 }
 
 async function parseError(res: Response): Promise<never> {
