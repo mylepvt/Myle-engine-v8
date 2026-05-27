@@ -88,7 +88,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
     tab !== 'reassigned',
     { q: '', status: '' },
     'active',
-    { ctcsFilter: 'reassigned' as const },
+    { ctcsFilter: 'reassigned' as const, leaderAllScope: surfaceRole === 'leader' },
   )
   const reassignedCount = tab !== 'reassigned' ? (reassignedCountQ.data?.total ?? 0) : total
 
