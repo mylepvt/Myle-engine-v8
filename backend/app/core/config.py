@@ -275,6 +275,33 @@ class Settings(BaseSettings):
         description="Phase 1 observation sampling rate (0.0=off, 1.0=all). Successful syncs are sampled; divergences and failures always log.",
     )
 
+    # --- Cloudflare R2 video storage ---
+    r2_account_id: str = Field(
+        default="",
+        validation_alias="R2_ACCOUNT_ID",
+        description="Cloudflare account ID (from dashboard). Required for R2 uploads.",
+    )
+    r2_access_key_id: str = Field(
+        default="",
+        validation_alias="R2_ACCESS_KEY_ID",
+        description="R2 API token Access Key ID.",
+    )
+    r2_secret_access_key: str = Field(
+        default="",
+        validation_alias="R2_SECRET_ACCESS_KEY",
+        description="R2 API token Secret Access Key.",
+    )
+    r2_bucket_name: str = Field(
+        default="",
+        validation_alias="R2_BUCKET_NAME",
+        description="R2 bucket name (e.g. myle-videos).",
+    )
+    r2_public_url: str = Field(
+        default="",
+        validation_alias="R2_PUBLIC_URL",
+        description="Public base URL for the R2 bucket (e.g. https://pub-xxxx.r2.dev or https://cdn.myle.in). No trailing slash.",
+    )
+
     # --- Admin Activity Feed ---
     admin_activity_feed_enabled: bool = Field(
         default=True,

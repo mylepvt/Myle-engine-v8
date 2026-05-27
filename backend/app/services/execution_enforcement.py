@@ -1002,6 +1002,36 @@ async def run_completed_watch_pipeline_maintenance(
     }
 
 
+async def _get_previous_assignees(
+    session: AsyncSession,
+    lead_ids: list[int],
+) -> dict[int, set[int]]:
+    """Return map of lead_id → set of user_ids who previously received this lead via auto-reassign."""
+    if not lead_ids:
+        return {}
+    rows = await session.execute(
+        select(ActivityLog.entity_id, ActivityLog.meta)
+        .where(
+            ActivityLog.action.in_([
+                _AUTO_REASSIGNMENT_ACTION,
+                _MANUAL_REASSIGNMENT_ACTION,
+                _CLOSING_REASSIGNMENT_ACTION,
+                _GENERAL_REASSIGNMENT_ACTION,
+            ]),
+            ActivityLog.entity_type == "lead",
+            ActivityLog.entity_id.in_(lead_ids),
+        )
+    )
+    result: dict[int, set[int]] = {}
+    for entity_id, meta in rows.all():
+        if not isinstance(meta, dict):
+            continue
+        uid = meta.get("assigned_to_user_id")
+        if uid is not None:
+            result.setdefault(int(entity_id), set()).add(int(uid))
+    return result
+
+
 def _assign_leads(
     *,
     leads: list[Lead],
@@ -1010,8 +1040,9 @@ def _assign_leads(
     cutoff: datetime,
     now: datetime,
     worker_rank: dict[int, int],
-    max_active_per_worker: int,
+    max_active_per_worker: int | None,
     auto_cycle_hours: int,
+    previously_assigned: dict[int, set[int]] | None = None,
     audit_log_user_id: int | None = None,
 ) -> tuple[int, int, list[list[Any]], list[ActivityLog]]:
     assigned = 0
@@ -1026,18 +1057,33 @@ def _assign_leads(
             continue
 
         from_uid = int(lead.assigned_to_user_id) if lead.assigned_to_user_id is not None else None
+        prior_assignees = (previously_assigned or {}).get(int(lead.id), set())
         eligible_workers = sorted(
             workers,
             key=lambda wid: (int(load_map.get(wid, 0)), int(worker_rank.get(wid, 9999)), int(wid)),
         )
+        # First try: skip prior assignees who already let this lead go stale
         to_uid = next(
             (
                 wid
                 for wid in eligible_workers
-                if wid != from_uid and int(load_map.get(wid, 0)) < max_active_per_worker
+                if wid != from_uid
+                and wid not in prior_assignees
+                and (max_active_per_worker is None or int(load_map.get(wid, 0)) < max_active_per_worker)
             ),
             None,
         )
+        # Fallback: all prior assignees exhausted — pick anyone except current holder
+        if to_uid is None:
+            to_uid = next(
+                (
+                    wid
+                    for wid in eligible_workers
+                    if wid != from_uid
+                    and (max_active_per_worker is None or int(load_map.get(wid, 0)) < max_active_per_worker)
+                ),
+                None,
+            )
         if to_uid is None:
             skipped += 1
             continue
@@ -1101,14 +1147,12 @@ async def stale_redistribute(
     - never change ``owner_user_id``
     - only reassign from the archived completed-watch stale bucket
     - only assign into the top-XP approved team pool
-    - cap each selected worker at 50 active leads
     """
     sh = max(1, int(stale_hours))
     n_workers = max(1, int(top_n))
     max_rows = max(1, int(limit))
     ts = _ensure_utc_datetime(now) or datetime.now(timezone.utc)
     cutoff = ts - timedelta(hours=sh)
-    max_active_per_worker = _DEFAULT_MAX_ACTIVE_LEADS_PER_WORKER
 
     workers = await _get_top_xp_workers(session, top_n=n_workers)
     if not workers:
@@ -1116,23 +1160,12 @@ async def stale_redistribute(
             implemented=True,
             message="No eligible top-XP team members found for redistribution.",
             source_bucket=_STALE_WATCH_BUCKET,
-            max_active_per_worker=max_active_per_worker,
         )
 
     worker_ids = [wid for wid, _label in workers]
     worker_meta = {wid: label for wid, label in workers}
     worker_rank = {wid: idx for idx, wid in enumerate(worker_ids)}
     load_map = await _get_worker_load(session, worker_ids)
-    eligible_workers = [wid for wid in worker_ids if int(load_map.get(wid, 0)) < max_active_per_worker]
-    if not eligible_workers:
-        return StaleRedistributeOut(
-            implemented=True,
-            message="Top-XP team members are already at the active-lead cap.",
-            source_bucket=_STALE_WATCH_BUCKET,
-            max_active_per_worker=max_active_per_worker,
-            worker_pool_size=len(worker_ids),
-            worker_counts={worker_meta[wid]: int(load_map.get(wid, 0)) for wid in worker_ids},
-        )
 
     stale_leads = await _get_completed_watch_stale_leads(
         session,
@@ -1144,22 +1177,23 @@ async def stale_redistribute(
             implemented=True,
             message="No archived completed-watch stale leads matched the given threshold.",
             source_bucket=_STALE_WATCH_BUCKET,
-            max_active_per_worker=max_active_per_worker,
             worker_pool_size=len(worker_ids),
             worker_counts={worker_meta[wid]: int(load_map.get(wid, 0)) for wid in worker_ids},
         )
 
-    audit_log_user_id = next((wid for wid in worker_ids if int(load_map.get(wid, 0)) < max_active_per_worker), None)
+    audit_log_user_id = worker_ids[0] if worker_ids else None
     lead_map = {lead.id: lead for lead in stale_leads}
+    previously_assigned = await _get_previous_assignees(session, [lead.id for lead in stale_leads])
     assigned, skipped, assignments, audit_logs = _assign_leads(
         leads=stale_leads,
-        workers=eligible_workers,
+        workers=worker_ids,
         load_map=load_map,
         cutoff=cutoff,
         now=ts,
         worker_rank=worker_rank,
-        max_active_per_worker=max_active_per_worker,
+        max_active_per_worker=None,
         auto_cycle_hours=sh,
+        previously_assigned=previously_assigned,
         audit_log_user_id=audit_log_user_id,
     )
     for lead_id, _from_uid, _to_uid in assignments:
@@ -1187,7 +1221,7 @@ async def stale_redistribute(
         "stale_watch_redistribute assigned=%s skipped=%s workers=%s stale_hours=%s limit=%s",
         assigned,
         skipped,
-        len(eligible_workers),
+        len(worker_ids),
         sh,
         max_rows,
     )
@@ -1200,7 +1234,7 @@ async def stale_redistribute(
         worker_counts={worker_meta[wid]: int(load_map.get(wid, 0)) for wid in worker_ids},
         worker_pool_size=len(worker_ids),
         source_bucket=_STALE_WATCH_BUCKET,
-        max_active_per_worker=max_active_per_worker,
+        max_active_per_worker=None,
     )
 
 
@@ -1374,7 +1408,6 @@ async def stale_redistribute_closing_pipeline(
     max_rows = max(1, int(limit))
     ts = _ensure_utc_datetime(now) or datetime.now(timezone.utc)
     cutoff = ts - timedelta(hours=sh)
-    max_active_per_worker = _DEFAULT_MAX_ACTIVE_LEADS_PER_WORKER
 
     workers = await _get_top_xp_leaders(session, top_n=n_leaders)
     if not workers:
@@ -1382,23 +1415,13 @@ async def stale_redistribute_closing_pipeline(
             implemented=True,
             message="No eligible leaders found for closing pipeline redistribution.",
             source_bucket=_STALE_CLOSING_BUCKET,
-            max_active_per_worker=max_active_per_worker,
+            max_active_per_worker=None,
         )
 
     worker_ids = [wid for wid, _label in workers]
     worker_meta = {wid: label for wid, label in workers}
     worker_rank = {wid: idx for idx, wid in enumerate(worker_ids)}
     load_map = await _get_worker_load(session, worker_ids)
-    eligible_workers = [wid for wid in worker_ids if int(load_map.get(wid, 0)) < max_active_per_worker]
-    if not eligible_workers:
-        return StaleRedistributeOut(
-            implemented=True,
-            message="All top leaders are already at the active-lead cap.",
-            source_bucket=_STALE_CLOSING_BUCKET,
-            max_active_per_worker=max_active_per_worker,
-            worker_pool_size=len(worker_ids),
-            worker_counts={worker_meta[wid]: int(load_map.get(wid, 0)) for wid in worker_ids},
-        )
 
     stale_leads = await _get_closing_pipeline_stale_leads(session, cutoff=cutoff, limit=max_rows)
     if not stale_leads:
@@ -1406,24 +1429,23 @@ async def stale_redistribute_closing_pipeline(
             implemented=True,
             message="No stale closing-pipeline archived leads matched the threshold.",
             source_bucket=_STALE_CLOSING_BUCKET,
-            max_active_per_worker=max_active_per_worker,
             worker_pool_size=len(worker_ids),
             worker_counts={worker_meta[wid]: int(load_map.get(wid, 0)) for wid in worker_ids},
         )
 
-    audit_log_user_id = next(
-        (wid for wid in worker_ids if int(load_map.get(wid, 0)) < max_active_per_worker), None
-    )
+    audit_log_user_id = worker_ids[0] if worker_ids else None
     lead_map = {lead.id: lead for lead in stale_leads}
+    previously_assigned = await _get_previous_assignees(session, [lead.id for lead in stale_leads])
     assigned, skipped, assignments, audit_logs = _assign_leads(
         leads=stale_leads,
-        workers=eligible_workers,
+        workers=worker_ids,
         load_map=load_map,
         cutoff=cutoff,
         now=ts,
         worker_rank=worker_rank,
-        max_active_per_worker=max_active_per_worker,
+        max_active_per_worker=None,
         auto_cycle_hours=sh,
+        previously_assigned=previously_assigned,
         audit_log_user_id=audit_log_user_id,
     )
     for log in audit_logs:
@@ -1456,7 +1478,7 @@ async def stale_redistribute_closing_pipeline(
 
     logger.info(
         "stale_closing_pipeline_redistribute assigned=%s skipped=%s leaders=%s stale_hours=%s",
-        assigned, skipped, len(eligible_workers), sh,
+        assigned, skipped, len(worker_ids), sh,
     )
     return StaleRedistributeOut(
         implemented=True,
@@ -1467,7 +1489,7 @@ async def stale_redistribute_closing_pipeline(
         worker_counts={worker_meta[wid]: int(load_map.get(wid, 0)) for wid in worker_ids},
         worker_pool_size=len(worker_ids),
         source_bucket=_STALE_CLOSING_BUCKET,
-        max_active_per_worker=max_active_per_worker,
+        max_active_per_worker=None,
     )
 
 
@@ -1640,7 +1662,6 @@ async def stale_redistribute_general_pipeline(
     sh = max(1, int(stale_hours))
     ts = _ensure_utc_datetime(now) or datetime.now(timezone.utc)
     cutoff = ts - timedelta(hours=sh)
-    max_active_per_worker = _DEFAULT_MAX_ACTIVE_LEADS_PER_WORKER
 
     workers = await _get_top_xp_workers(session, top_n=top_n)
     if not workers:
@@ -1648,23 +1669,13 @@ async def stale_redistribute_general_pipeline(
             implemented=True,
             message="No eligible team workers for general pipeline redistribution.",
             source_bucket=_STALE_GENERAL_BUCKET,
-            max_active_per_worker=max_active_per_worker,
+            max_active_per_worker=None,
         )
 
     worker_ids = [wid for wid, _label in workers]
     worker_meta = {wid: label for wid, label in workers}
     worker_rank = {wid: idx for idx, wid in enumerate(worker_ids)}
     load_map = await _get_worker_load(session, worker_ids)
-    eligible_workers = [wid for wid in worker_ids if int(load_map.get(wid, 0)) < max_active_per_worker]
-    if not eligible_workers:
-        return StaleRedistributeOut(
-            implemented=True,
-            message="All top team workers are at the active-lead cap.",
-            source_bucket=_STALE_GENERAL_BUCKET,
-            max_active_per_worker=max_active_per_worker,
-            worker_pool_size=len(worker_ids),
-            worker_counts={worker_meta[wid]: int(load_map.get(wid, 0)) for wid in worker_ids},
-        )
 
     stale_leads = await _get_general_pipeline_stale_leads(session, cutoff=cutoff, limit=max(1, int(limit)))
     if not stale_leads:
@@ -1672,24 +1683,23 @@ async def stale_redistribute_general_pipeline(
             implemented=True,
             message="No stale general-pipeline archived leads matched the threshold.",
             source_bucket=_STALE_GENERAL_BUCKET,
-            max_active_per_worker=max_active_per_worker,
             worker_pool_size=len(worker_ids),
             worker_counts={worker_meta[wid]: int(load_map.get(wid, 0)) for wid in worker_ids},
         )
 
-    audit_log_user_id = next(
-        (wid for wid in worker_ids if int(load_map.get(wid, 0)) < max_active_per_worker), None
-    )
+    audit_log_user_id = worker_ids[0] if worker_ids else None
     lead_map = {lead.id: lead for lead in stale_leads}
+    previously_assigned = await _get_previous_assignees(session, [lead.id for lead in stale_leads])
     assigned, skipped, assignments, audit_logs = _assign_leads(
         leads=stale_leads,
-        workers=eligible_workers,
+        workers=worker_ids,
         load_map=load_map,
         cutoff=cutoff,
         now=ts,
         worker_rank=worker_rank,
-        max_active_per_worker=max_active_per_worker,
+        max_active_per_worker=None,
         auto_cycle_hours=sh,
+        previously_assigned=previously_assigned,
         audit_log_user_id=audit_log_user_id,
     )
     for log in audit_logs:
@@ -1722,7 +1732,7 @@ async def stale_redistribute_general_pipeline(
 
     logger.info(
         "stale_general_pipeline_redistribute assigned=%s skipped=%s workers=%s stale_hours=%s",
-        assigned, skipped, len(eligible_workers), sh,
+        assigned, skipped, len(worker_ids), sh,
     )
     return StaleRedistributeOut(
         implemented=True,
@@ -1733,7 +1743,7 @@ async def stale_redistribute_general_pipeline(
         worker_counts={worker_meta[wid]: int(load_map.get(wid, 0)) for wid in worker_ids},
         worker_pool_size=len(worker_ids),
         source_bucket=_STALE_GENERAL_BUCKET,
-        max_active_per_worker=max_active_per_worker,
+        max_active_per_worker=None,
     )
 
 

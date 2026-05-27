@@ -15,6 +15,7 @@ import {
   useLeadCallLogMutation,
   useLeadCtcsActionMutation,
   useLeadsInfiniteQuery,
+  useLeadsQuery,
   usePatchLeadMutation,
 } from '@/hooks/use-leads-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
@@ -82,6 +83,14 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   const leadsQ = useLeadsInfiniteQuery(true, filters, 'active', 50, ctcsOpts)
   const items = useMemo(() => leadsQ.data?.pages.flatMap((p) => p.items) ?? [], [leadsQ.data])
   const total = leadsQ.data?.pages[0]?.total ?? 0
+
+  const reassignedCountQ = useLeadsQuery(
+    tab !== 'reassigned',
+    { q: '', status: '' },
+    'active',
+    { ctcsFilter: 'reassigned' as const, leaderAllScope: surfaceRole === 'leader' },
+  )
+  const reassignedCount = tab !== 'reassigned' ? (reassignedCountQ.data?.total ?? 0) : total
 
   const patchMut = usePatchLeadMutation()
   const ctcsMut = useLeadCtcsActionMutation()
@@ -198,6 +207,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pb-1">
           {TABS.map((t) => {
             const active = tab === t.id
+            const showReassignedBadge = t.id === 'reassigned' && !active && reassignedCount > 0
             return (
               <button
                 key={t.id}
@@ -213,6 +223,9 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
                 <span>{t.label}</span>
                 {active && total > 0 ? (
                   <span className="rounded bg-muted px-1.5 py-0.5 text-ds-caption text-muted-foreground">{total}</span>
+                ) : null}
+                {showReassignedBadge ? (
+                  <span className="rounded bg-orange-500/20 px-1.5 py-0.5 text-ds-caption font-semibold text-orange-500">{reassignedCount}</span>
                 ) : null}
               </button>
             )

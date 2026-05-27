@@ -252,3 +252,196 @@ async def test_patch_without_reassign_does_not_set_flag(admin_client: AsyncClien
         assert refreshed is not None
         assert refreshed.is_reassigned is False
         assert refreshed.reassigned_at is None
+
+
+# ── Unit: _get_previous_assignees ─────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_get_previous_assignees_returns_prior_uid(engine):
+    """_get_previous_assignees returns user IDs from auto-reassign activity logs."""
+    from app.models.activity_log import ActivityLog
+    from app.services.execution_enforcement import _get_previous_assignees
+
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        await _seed_user(session, 500)
+        await _seed_user(session, 501)
+        lead = await _seed_lead(session, owner_id=500, assigned_to_id=501)
+        await session.flush()
+        session.add(ActivityLog(
+            user_id=501,
+            action="lead.stale_watch_reassigned",
+            entity_type="lead",
+            entity_id=lead.id,
+            meta={"assigned_to_user_id": 501, "previous_assignee_user_id": 500},
+        ))
+        await session.commit()
+        lead_id = lead.id
+
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        result = await _get_previous_assignees(session, [lead_id])
+        assert lead_id in result
+        assert 501 in result[lead_id]
+
+
+@pytest.mark.asyncio
+async def test_get_previous_assignees_includes_manual_action(engine):
+    """_get_previous_assignees includes manual reassignment logs."""
+    from app.models.activity_log import ActivityLog
+    from app.services.execution_enforcement import _get_previous_assignees
+
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        await _seed_user(session, 510)
+        await _seed_user(session, 511)
+        lead = await _seed_lead(session, owner_id=510, assigned_to_id=511)
+        await session.flush()
+        session.add(ActivityLog(
+            user_id=510,
+            action="lead.manual_watch_reassigned",
+            entity_type="lead",
+            entity_id=lead.id,
+            meta={"assigned_to_user_id": 511, "previous_assignee_user_id": 510},
+        ))
+        await session.commit()
+        lead_id = lead.id
+
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        result = await _get_previous_assignees(session, [lead_id])
+        assert 511 in result.get(lead_id, set())
+
+
+@pytest.mark.asyncio
+async def test_get_previous_assignees_empty_lead_ids(engine):
+    """Empty lead_ids returns empty dict without hitting DB."""
+    from app.services.execution_enforcement import _get_previous_assignees
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        result = await _get_previous_assignees(session, [])
+    assert result == {}
+
+
+@pytest.mark.asyncio
+async def test_get_previous_assignees_ignores_unrelated_logs(engine):
+    """Logs for other leads or unrelated actions are not included."""
+    from app.models.activity_log import ActivityLog
+    from app.services.execution_enforcement import _get_previous_assignees
+
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        await _seed_user(session, 520)
+        lead = await _seed_lead(session, owner_id=520, assigned_to_id=520)
+        other_lead = await _seed_lead(session, owner_id=520, assigned_to_id=520)
+        await session.flush()
+        # Log belongs to other_lead, not lead
+        session.add(ActivityLog(
+            user_id=520,
+            action="lead.stale_watch_reassigned",
+            entity_type="lead",
+            entity_id=other_lead.id,
+            meta={"assigned_to_user_id": 520},
+        ))
+        await session.commit()
+        lead_id = lead.id
+
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        result = await _get_previous_assignees(session, [lead_id])
+        assert result.get(lead_id, set()) == set()
+
+
+# ── Unit: _assign_leads intelligent routing ───────────────────────────────────
+
+def _make_lead(lead_id: int, assigned_to: int, status: str = "new_lead"):
+    from types import SimpleNamespace
+    return SimpleNamespace(
+        id=lead_id,
+        assigned_to_user_id=assigned_to,
+        owner_user_id=assigned_to,
+        created_by_user_id=assigned_to,
+        last_action_at=None,
+        last_called_at=None,
+        payment_proof_uploaded_at=None,
+        whatsapp_sent_at=None,
+        day3_completed_at=None,
+        day2_completed_at=None,
+        day1_completed_at=None,
+        created_at=datetime.now(timezone.utc),
+        archived_at=None,
+        is_reassigned=False,
+        reassigned_at=None,
+        status=status,
+    )
+
+
+def test_assign_leads_skips_prior_assignee():
+    """_assign_leads prefers fresh worker over one who already let it go stale."""
+    from datetime import timezone
+    from app.services.execution_enforcement import _assign_leads
+
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(hours=25)
+    lead = _make_lead(1, assigned_to=10)
+    lead.last_action_at = cutoff - timedelta(hours=1)
+
+    assigned, skipped, assignments, _ = _assign_leads(
+        leads=[lead],
+        workers=[10, 20, 30],
+        load_map={10: 0, 20: 0, 30: 0},
+        cutoff=cutoff,
+        now=now,
+        worker_rank={10: 0, 20: 1, 30: 2},
+        max_active_per_worker=None,
+        auto_cycle_hours=24,
+        previously_assigned={1: {10}},  # worker 10 already had this lead
+    )
+    assert assigned == 1
+    assert skipped == 0
+    # Must NOT go to 10 (prior assignee), must go to 20 (next by rank)
+    assert assignments[0][2] == 20
+
+
+def test_assign_leads_fallback_when_all_prior():
+    """_assign_leads falls back to any eligible worker if all were prior assignees."""
+    from datetime import timezone
+    from app.services.execution_enforcement import _assign_leads
+
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(hours=25)
+    lead = _make_lead(1, assigned_to=10)
+    lead.last_action_at = cutoff - timedelta(hours=1)
+
+    assigned, skipped, assignments, _ = _assign_leads(
+        leads=[lead],
+        workers=[10, 20],
+        load_map={10: 0, 20: 0},
+        cutoff=cutoff,
+        now=now,
+        worker_rank={10: 0, 20: 1},
+        max_active_per_worker=None,
+        auto_cycle_hours=24,
+        previously_assigned={1: {10, 20}},  # both are prior assignees
+    )
+    # Falls back — 10 is current holder so skip, 20 is prior but fallback picks it
+    assert assigned == 1
+    assert assignments[0][2] == 20
+
+
+def test_assign_leads_sets_is_reassigned_flag():
+    """_assign_leads must set is_reassigned=True and reassigned_at on assigned leads."""
+    from datetime import timezone
+    from app.services.execution_enforcement import _assign_leads
+
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(hours=25)
+    lead = _make_lead(1, assigned_to=10)
+    lead.last_action_at = cutoff - timedelta(hours=1)
+
+    _assign_leads(
+        leads=[lead],
+        workers=[10, 20],
+        load_map={10: 0, 20: 0},
+        cutoff=cutoff,
+        now=now,
+        worker_rank={10: 0, 20: 1},
+        max_active_per_worker=None,
+        auto_cycle_hours=24,
+    )
+    assert lead.is_reassigned is True
+    assert lead.reassigned_at == now
+    assert lead.archived_at is None
