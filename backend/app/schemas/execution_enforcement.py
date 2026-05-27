@@ -123,7 +123,7 @@ class StaleRedistributeOut(BaseModel):
     worker_counts: dict[str, int] = Field(default_factory=dict)
     worker_pool_size: int = 0
     source_bucket: str = ""
-    max_active_per_worker: int = 50
+    max_active_per_worker: Optional[int] = None
 
 
 class LeadControlAssignableUser(BaseModel):
