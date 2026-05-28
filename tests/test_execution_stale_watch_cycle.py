@@ -358,7 +358,7 @@ def test_execution_stale_redistribute_endpoint_exposes_archived_watch_cycle_cont
         body = res.json()
         assert body["implemented"] is True
         assert body["source_bucket"] == "archived_completed_watch_stale_leads"
-        assert body["max_active_per_worker"] == 50
+        assert body["max_active_per_worker"] is None
     finally:
         asyncio.run(_reset_state())
 
