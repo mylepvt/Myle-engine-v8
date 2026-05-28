@@ -23,6 +23,8 @@ vi.mock('@/hooks/use-leads-query', async () => {
     usePatchLeadMutation: (...args: unknown[]) => mockUsePatchLeadMutation(...args),
     useLeadCtcsActionMutation: (...args: unknown[]) => mockUseLeadCtcsActionMutation(...args),
     useLeadCallLogMutation: (...args: unknown[]) => mockUseLeadCallLogMutation(...args),
+    // Stub out the reassigned-count query so it doesn't consume the global fetch mock
+    useLeadsQuery: () => ({ data: { total: 0, items: [] }, isPending: false, isError: false }),
   }
 })
 
@@ -146,34 +148,36 @@ describe('CtcsWorkSurface', () => {
     })
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            slots: [
-              {
-                hour: 11,
-                label: '11:00 AM',
-                state: 'live',
-                live_starts_at: '2026-05-05T11:00:00+05:30',
-                live_ends_at: '2026-05-05T11:49:00+05:30',
-              },
-              {
-                hour: 12,
-                label: '12:00 PM',
-                state: 'upcoming',
-                live_starts_at: '2026-05-05T12:00:00+05:30',
-                live_ends_at: '2026-05-05T12:49:00+05:30',
-              },
-              {
-                hour: 13,
-                label: '1:00 PM',
-                state: 'upcoming',
-                live_starts_at: '2026-05-05T13:00:00+05:30',
-                live_ends_at: '2026-05-05T13:49:00+05:30',
-              },
-            ],
-          }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } },
+      vi.fn().mockImplementation(() =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              slots: [
+                {
+                  hour: 11,
+                  label: '11:00 AM',
+                  state: 'live',
+                  live_starts_at: '2026-05-05T11:00:00+05:30',
+                  live_ends_at: '2026-05-05T11:49:00+05:30',
+                },
+                {
+                  hour: 12,
+                  label: '12:00 PM',
+                  state: 'upcoming',
+                  live_starts_at: '2026-05-05T12:00:00+05:30',
+                  live_ends_at: '2026-05-05T12:49:00+05:30',
+                },
+                {
+                  hour: 13,
+                  label: '1:00 PM',
+                  state: 'upcoming',
+                  live_starts_at: '2026-05-05T13:00:00+05:30',
+                  live_ends_at: '2026-05-05T13:49:00+05:30',
+                },
+              ],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
         ),
       ),
     )
