@@ -57,7 +57,7 @@ jobs:
         run: python -m pytest tests/ -q --timeout=60
 
       - name: pip-audit (backend/requirements.txt)
-        run: python -m pip_audit -r backend/requirements.txt
+        run: python -m pip_audit -r backend/requirements.txt --audit-level=high
 
       - name: Start backend for perf check
         env:

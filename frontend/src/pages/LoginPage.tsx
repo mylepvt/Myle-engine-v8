@@ -109,6 +109,10 @@ export function LoginPage() {
       setShowConsent(false)
       return
     }
+    if (navigator.webdriver) {
+      setShowConsent(false)
+      return
+    }
     if (!('permissions' in navigator)) {
       setShowConsent(true)
       return
