@@ -1,7 +1,7 @@
 """leads.is_reassigned flag and reassigned_at timestamp
 
 Revision ID: 20260525_0065
-Revises: 20260523_0064
+Revises: 20260522_0064, 20260523_0064
 Create Date: 2026-05-25
 
 """
@@ -9,7 +9,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "20260525_0065"
-down_revision = "20260523_0064"
+down_revision = ("20260522_0064", "20260523_0064")
 branch_labels = None
 depends_on = None
 
