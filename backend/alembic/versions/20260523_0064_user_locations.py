@@ -1,7 +1,7 @@
 """user_locations table — one row per user, upserted on each location ping
 
 Revision ID: 20260523_0064
-Revises: 20260521_0063
+Revises: 20260522_0064
 Create Date: 2026-05-23
 
 """
@@ -9,7 +9,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "20260523_0064"
-down_revision = "20260521_0063"
+down_revision = "20260522_0064"
 branch_labels = None
 depends_on = None
 
