@@ -152,6 +152,12 @@ export function CtcsLeadCard({
               {cityLine ? <span>{cityLine}</span> : null}
             </p>
           ) : null}
+          {lead.is_reassigned ? (
+            <span className="mt-1 inline-flex items-center gap-1 rounded bg-orange-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-orange-500">
+              <UserRoundCog className="size-3" aria-hidden />
+              Reassigned
+            </span>
+          ) : null}
         </div>
 
         {/* Keep call + lead status compact on one row. */}
