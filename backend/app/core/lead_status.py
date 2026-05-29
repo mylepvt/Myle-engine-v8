@@ -39,6 +39,7 @@ LEAD_STATUS_SET: frozenset[str] = frozenset(LEAD_STATUS_SEQUENCE)
 # Team role cannot PATCH these statuses (legacy ``TEAM_FORBIDDEN_STATUSES`` — vl2 slugs).
 TEAM_FORBIDDEN_STATUS_SLUGS: frozenset[str] = frozenset(
     {
+        "day1",
         "day2",
         "day3",
         "day4",
