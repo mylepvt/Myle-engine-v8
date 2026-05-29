@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from fastapi import BackgroundTasks, Depends, HTTPException
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
@@ -17,6 +17,7 @@ from app.core.config import settings
 from app.core.pipeline_rules import validate_vl2_status_transition_for_role
 from app.core.realtime_hub import notify_topics
 from app.core.time_ist import IST
+from app.models.activity_log import ActivityLog
 from app.models.batch_day_submission import BatchDaySubmission
 from app.models.follow_up import FollowUp
 from app.models.lead import Lead
@@ -117,12 +118,24 @@ def _ctcs_filter_clause(ctcs_filter: Optional[str]) -> Any:
     if ctcs_filter is None:
         return None
     now_ist = datetime.now(IST)
-    day_start = now_ist.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+    day_start_ist = now_ist.replace(hour=0, minute=0, second=0, microsecond=0)
+    day_start = day_start_ist.astimezone(timezone.utc)
+    day_end = (day_start_ist + timedelta(days=1)).astimezone(timezone.utc)
     key = ctcs_filter.strip().lower()
     if key in ("", "all"):
         return None
     if key == "today":
-        return func.coalesce(Lead.last_action_at, Lead.created_at) >= day_start
+        # "Today" = leads CLAIMED today (IST). Claim is recorded in ActivityLog
+        # (lead.claimed / lead.claimed_free); there is no claimed_at column.
+        return exists(
+            select(1).where(
+                ActivityLog.entity_type == "lead",
+                ActivityLog.entity_id == Lead.id,
+                ActivityLog.action.in_(("lead.claimed", "lead.claimed_free")),
+                ActivityLog.created_at >= day_start,
+                ActivityLog.created_at < day_end,
+            )
+        )
     if key in ("followups", "follow_ups"):
         return Lead.next_followup_at.is_not(None)
     if key == "hot":
