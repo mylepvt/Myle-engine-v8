@@ -14,6 +14,7 @@ from app.services.xp_service import (
     DAILY_CAP,
     admin_force_reset_all,
     get_leaderboard,
+    get_process_leaderboard,
     get_user_xp_history,
     get_user_xp_summary,
     grant_xp,
@@ -69,8 +70,6 @@ async def leaderboard(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> List[dict]:
-    if user.role not in ("admin", "leader"):
-        raise HTTPException(status_code=403, detail="Forbidden")
     return await get_leaderboard(session, limit=10)
 
 
@@ -105,6 +104,31 @@ async def ping_login(
         "already_claimed": already_today,
         "streak": db_user.login_streak or 0,
     }
+
+
+@router.get("/process-leaderboard")
+async def process_leaderboard_endpoint(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    days: int = 7,
+) -> List[dict]:
+    """Process-based ranking — excludes result actions. All authenticated users."""
+    return await get_process_leaderboard(session, limit=10, days=max(1, min(days, 30)))
+
+
+@router.get("/reassign-eligible")
+async def reassign_eligible(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> List[dict]:
+    """Top process performers for reassigned lead routing. Leader sees own team, admin sees all."""
+    if user.role not in ("admin", "leader"):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    within_ids = None
+    if user.role == "leader":
+        from app.services.downline import recursive_downline_user_ids
+        within_ids = await recursive_downline_user_ids(session, user.user_id)
+    return await get_process_leaderboard(session, limit=10, within_user_ids=within_ids)
 
 
 @router.post("/admin/reset-month")

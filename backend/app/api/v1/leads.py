@@ -19,6 +19,7 @@ from app.models.batch_day_submission import BatchDaySubmission
 from app.models.batch_share_link import BatchShareLink
 from app.models.lead import Lead
 from app.schemas.call_events import CallEventCreate, CallEventListResponse, CallEventPublic
+from pydantic import BaseModel
 from app.schemas.leads import (
     AllLeadsResponse,
     BatchShareUrlRequest,
@@ -46,6 +47,7 @@ from app.services.lead_file_import import run_personal_lead_import
 from app.services.leads_service import LeadsService, get_leads_service, _PAYMENT_REQUIRED_STATUSES
 from app.services.team_tracking import refresh_daily_member_stat_after_change
 from app.services.downline import is_user_in_downline_of
+from app.services.lead_scope import user_can_access_lead
 from app.services.lead_owner import resolved_owner_user_id
 from app.services.leads_service import _sync_batch_completion_timestamps
 from app.db.session import AsyncSessionLocal
@@ -525,6 +527,52 @@ async def update_lead(
             body=f"Lead '{lead.name}' has been assigned to you",
             url="/dashboard/work/leads",
         )
+    return await service.serialize_lead_public(lead)
+
+
+class _ReassignBody(BaseModel):
+    assigned_to_user_id: int
+
+
+@router.post("/{lead_id}/reassign", response_model=LeadPublic)
+async def reassign_lead(
+    lead_id: int,
+    body: _ReassignBody,
+    background_tasks: BackgroundTasks,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    service: Annotated[LeadsService, Depends(get_leads_service)],
+) -> LeadPublic:
+    """Leader/admin manual reassign. Leader must own the lead's scope; target must be in their downline."""
+    if user.role not in ("admin", "leader"):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    lead = (await session.execute(select(Lead).where(Lead.id == lead_id))).scalar_one_or_none()
+    if lead is None or lead.deleted_at is not None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
+
+    if user.role == "leader":
+        if not await user_can_access_lead(session, user, lead):
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Lead not in your scope")
+        if not await is_user_in_downline_of(session, body.assigned_to_user_id, user.user_id):
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Target not in your team")
+
+    lead.assigned_to_user_id = body.assigned_to_user_id
+    lead.is_reassigned = True
+    lead.reassigned_at = datetime.now(timezone.utc)
+    await session.commit()
+    await session.refresh(lead)
+
+    if body.assigned_to_user_id != user.user_id:
+        background_tasks.add_task(
+            send_push_to_user_bg,
+            AsyncSessionLocal,
+            body.assigned_to_user_id,
+            title="Lead Assigned",
+            body=f"Lead '{lead.name}' has been assigned to you",
+            url="/dashboard/work/leads",
+        )
+
     return await service.serialize_lead_public(lead)
 
 

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ChevronRight, MessageCircle, MoreHorizontal, Phone } from 'lucide-react'
+import { ChevronRight, MessageCircle, MoreHorizontal, Phone, UserRoundCog } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { callStatusSelectOptions, type CallStatusApi } from '@/lib/call-status-options'
@@ -52,6 +52,7 @@ type Props = {
   onSendEnrollment: (id: number) => void
   onCall: (lead: LeadPublic) => void
   onFollowUp: (id: number) => void
+  onReassign?: (lead: LeadPublic) => void
 }
 
 export function CtcsLeadCard({
@@ -65,6 +66,7 @@ export function CtcsLeadCard({
   onSendEnrollment,
   onCall,
   onFollowUp,
+  onReassign,
 }: Props) {
   const { role, serverRole } = useDashboardShellRole()
   const selectBusy = patchBusy || actionBusy
@@ -349,6 +351,18 @@ export function CtcsLeadCard({
             >
               <MoreHorizontal className="size-3" aria-hidden />
             </button>
+            {onReassign ? (
+              <button
+                type="button"
+                disabled={selectBusy}
+                onClick={() => onReassign(lead)}
+                className="flex size-10 items-center justify-center rounded-full border border-border bg-muted/70 text-muted-foreground transition hover:border-primary/40 hover:text-foreground active:scale-95 disabled:opacity-40"
+                title="Reassign to top performer"
+                aria-label="Reassign lead"
+              >
+                <UserRoundCog className="size-3.5" aria-hidden />
+              </button>
+            ) : null}
           </div>
         </div>
 

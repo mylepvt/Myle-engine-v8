@@ -32,14 +32,19 @@ from app.services.push_service import send_push_to_user
 
 XP_TABLE: dict[str, int] = {
     "login_daily": 5,
-    "report_submitted": 20,
+    "report_submitted": 25,       # process: +5
+    "call_logged": 8,             # process: every call attempt
+    "connected_call": 5,          # process: bonus when answered/callback
     "lead_contacted": 10,
-    "followup_completed": 15,
-    "lead_won": 100,
+    "followup_completed": 20,     # process: +5
+    "lead_won": 50,               # result: halved — process actions now dominate
 }
 
+# Excluded from process score (result-only actions)
+_RESULT_ACTIONS: frozenset[str] = frozenset({"lead_won"})
+
 DAILY_CAP = 300
-PER_LEAD_DAILY_ACTIONS = {"followup_completed"}
+PER_LEAD_DAILY_ACTIONS = {"followup_completed", "call_logged", "connected_call"}
 
 LEVEL_THRESHOLDS = [
     (1000, "legend"),
@@ -213,12 +218,12 @@ async def grant_xp(
         if await _already_granted_today(session, user_id, action, None):
             return None
 
-    # First-contact XP is a one-time reward for the lead, not something that
-    # can be farmed by bouncing the status back and forth.
+    # First-contact XP: once per user per lead. Per-user so reassigned leads
+    # still let the new owner earn it.
     if action == "lead_contacted":
         if lead_id is None:
             return None
-        if await _already_granted_ever(session, action=action, lead_id=lead_id):
+        if await _already_granted_ever(session, action=action, lead_id=lead_id, user_id=user_id):
             return None
 
     # lead_won anti-cheat: lead must be >24h old
@@ -411,27 +416,83 @@ async def get_user_xp_history(session: AsyncSession, user_id: int) -> list[dict]
     ]
 
 
+async def get_process_leaderboard(
+    session: AsyncSession,
+    limit: int = 10,
+    within_user_ids: Optional[list[int]] = None,
+    days: int = 7,
+) -> list[dict]:
+    """Rank by process XP in last N days (excludes result actions like lead_won)."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+
+    q = (
+        select(
+            XpEvent.user_id,
+            func.coalesce(func.sum(XpEvent.xp), 0).label("process_score"),
+        )
+        .where(
+            ~XpEvent.action.in_(list(_RESULT_ACTIONS)),
+            XpEvent.created_at >= cutoff,
+        )
+        .group_by(XpEvent.user_id)
+        .order_by(func.sum(XpEvent.xp).desc())
+        .limit(limit)
+    )
+
+    if within_user_ids is not None:
+        q = q.where(XpEvent.user_id.in_(within_user_ids))
+
+    rows = (await session.execute(q)).all()
+    if not rows:
+        return []
+
+    user_ids = [r.user_id for r in rows]
+    users_map = {
+        u.id: u
+        for u in (
+            await session.execute(select(User).where(User.id.in_(user_ids)))
+        ).scalars().all()
+    }
+
+    result = []
+    for rank, row in enumerate(rows, start=1):
+        u = users_map.get(row.user_id)
+        if u is None or u.role == "admin":
+            continue
+        result.append({
+            "rank": rank,
+            "user_id": u.id,
+            "name": u.name or u.username or u.fbo_id,
+            "fbo_id": u.fbo_id,
+            "level": _calculate_level(u.xp_total or 0),
+            "level_label": _calculate_level(u.xp_total or 0).title(),
+            "xp_total": u.xp_total or 0,
+            "process_score_7d": int(row.process_score),
+        })
+    return result
+
+
 async def get_leaderboard(session: AsyncSession, limit: int = 10) -> list[dict]:
+    """Top 10 by cumulative season XP — leaders + team both eligible."""
     rows = (
         await session.execute(
             select(User)
-            .where(User.role != "admin")
+            .where(User.role.in_(("leader", "team")))
             .order_by(User.xp_total.desc())
             .limit(limit)
         )
     ).scalars().all()
 
     result = []
-    for rank, user in enumerate(rows, start=1):
-        result.append(
-            {
-                "rank": rank,
-                "user_id": user.id,
-                "name": user.name or user.username or user.fbo_id,
-                "fbo_id": user.fbo_id,
-                "level": _calculate_level(user.xp_total or 0),
-                "level_label": _calculate_level(user.xp_total or 0).title(),
-                "xp_total": user.xp_total or 0,
-            }
-        )
+    for rank, u in enumerate(rows, start=1):
+        result.append({
+            "rank": rank,
+            "user_id": u.id,
+            "name": u.name or u.username or u.fbo_id,
+            "fbo_id": u.fbo_id,
+            "level": _calculate_level(u.xp_total or 0),
+            "level_label": _calculate_level(u.xp_total or 0).title(),
+            "xp_total": u.xp_total or 0,
+            "process_score_7d": 0,
+        })
     return result

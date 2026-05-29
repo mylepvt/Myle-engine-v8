@@ -294,6 +294,7 @@ export async function createLead(body: CreateLeadBody): Promise<LeadPublic> {
 export type PatchLeadBody = {
   name?: string
   status?: LeadStatus
+  assigned_to_user_id?: number
   archived?: boolean
   in_pool?: boolean
   restored?: boolean
@@ -580,6 +581,27 @@ export function usePatchLeadMutation() {
       id: number
       body: Parameters<typeof patchLead>[1]
     }) => patchLead(id, body),
+    onSuccess: () => {
+      invalidateLeadRelated(qc)
+    },
+  })
+}
+
+async function reassignLead(leadId: number, assignedToUserId: number): Promise<LeadPublic> {
+  const res = await apiFetch(`/api/v1/leads/${leadId}/reassign`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ assigned_to_user_id: assignedToUserId }),
+  })
+  if (!res.ok) await parseError(res)
+  return res.json()
+}
+
+export function useReassignLeadMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ leadId, userId }: { leadId: number; userId: number }) =>
+      reassignLead(leadId, userId),
     onSuccess: () => {
       invalidateLeadRelated(qc)
     },

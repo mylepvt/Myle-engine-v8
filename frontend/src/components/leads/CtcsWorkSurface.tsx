@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { CtcsLeadCard } from '@/components/leads/CtcsLeadCard'
 import { CtcsOutcomeModal } from '@/components/leads/CtcsOutcomeModal'
+import { LeaderReassignSheet } from '@/components/leads/LeaderReassignSheet'
 import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
 import { LEAD_SLA_SMOOTH_REFRESH_MS } from '@/lib/lead-sla'
 import { cn } from '@/lib/utils'
@@ -17,6 +18,7 @@ import {
   useLeadsInfiniteQuery,
   useLeadsQuery,
   usePatchLeadMutation,
+  useReassignLeadMutation,
 } from '@/hooks/use-leads-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
@@ -56,6 +58,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [slotPickerLeadId, setSlotPickerLeadId] = useState<number | null>(null)
   const [slotPickerTargetStatus, setSlotPickerTargetStatus] = useState<LeadStatus>('video_sent')
+  const [reassignTarget, setReassignTarget] = useState<{ id: number; name: string } | null>(null)
   const searchMode =
     filters.q.trim().length > 0 && (surfaceRole === 'admin' || surfaceRole === 'leader')
   const ctcsOpts = useMemo(() => {
@@ -93,6 +96,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   const reassignedCount = tab !== 'reassigned' ? (reassignedCountQ.data?.total ?? 0) : total
 
   const patchMut = usePatchLeadMutation()
+  const reassignMut = useReassignLeadMutation()
   const ctcsMut = useLeadCtcsActionMutation()
   const callLogMut = useLeadCallLogMutation()
 
@@ -172,6 +176,20 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
       await patchMut.mutateAsync({ id, body: { next_followup_at: at } })
     },
     [patchMut],
+  )
+
+  const onReassign = useCallback(
+    (lead: LeadPublic) => setReassignTarget({ id: lead.id, name: lead.name }),
+    [],
+  )
+
+  const handleReassignConfirm = useCallback(
+    async (userId: number) => {
+      if (!reassignTarget) return
+      await reassignMut.mutateAsync({ leadId: reassignTarget.id, userId })
+      setReassignTarget(null)
+    },
+    [reassignMut, reassignTarget],
   )
 
   const actionBusy = ctcsMut.isPending || callLogMut.isPending
@@ -276,6 +294,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
             onSendEnrollment={onSendEnrollment}
             onCall={onCall}
             onFollowUp={onFollowUp}
+            onReassign={surfaceRole === 'leader' || surfaceRole === 'admin' ? onReassign : undefined}
           />
         ))}
       </div>
@@ -291,6 +310,15 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
             {leadsQ.isFetchingNextPage ? 'Loading…' : 'Load more'}
           </button>
         </div>
+      ) : null}
+
+      {reassignTarget ? (
+        <LeaderReassignSheet
+          leadName={reassignTarget.name}
+          onClose={() => setReassignTarget(null)}
+          onConfirm={(userId) => { void handleReassignConfirm(userId) }}
+          busy={reassignMut.isPending}
+        />
       ) : null}
 
       <LiveSessionSlotPicker

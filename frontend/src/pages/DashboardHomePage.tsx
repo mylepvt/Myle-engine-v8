@@ -540,7 +540,7 @@ export function DashboardHomePage() {
 
       <XpBadge />
 
-      <XpLeaderboard role={role} />
+      <XpLeaderboard />
 
       <Card className="border-primary/20">
         <CardHeader>
