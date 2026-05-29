@@ -19,7 +19,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         {...props}
         onClick={(e) => {
-          playFileSound('tap', 0.3)
+          playFileSound('pop', 0.3)
           props.onClick?.(e)
         }}
       />

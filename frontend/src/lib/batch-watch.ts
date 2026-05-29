@@ -70,6 +70,20 @@ export function buildBatchGreetingCopy({
       trustLine: 'Your evening batch stays private and polished all the way through.',
       completionVerb: 'evening batch is completed and tracked',
     },
+    '6pm': {
+      greeting: 'Good Evening',
+      energyLine: 'Close the day with clarity and confidence.',
+      focusLine: 'Premium room, calmer flow, and a clean final push for the day.',
+      trustLine: 'Your 6 PM session stays private and polished all the way through.',
+      completionVerb: 'session is completed and tracked',
+    },
+    '8pm': {
+      greeting: 'Good Evening',
+      energyLine: 'Close the day with clarity and confidence.',
+      focusLine: 'Premium room, calmer flow, and a clean final push for the day.',
+      trustLine: 'Your 8 PM session stays private and polished all the way through.',
+      completionVerb: 'session is completed and tracked',
+    },
     unknown: {
       greeting: 'Hello',
       energyLine: 'Your private batch room is ready inside Myle.',

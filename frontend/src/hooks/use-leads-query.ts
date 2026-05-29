@@ -15,6 +15,8 @@ export type LeadStatus =
   | 'invited'
   | 'whatsapp_sent'
   | 'video_sent'
+  | 'video_watched'
+  | 'paid'
   | 'mindset_lock'
   | 'day1'
   | 'day2'
@@ -204,7 +206,7 @@ export type LeadsListMode = 'active' | 'archived' | 'recycle'
 
 export type CtcsTab = 'all' | 'today' | 'followups' | 'hot' | 'converted' | 'reassigned'
 
-export type CtcsAction = 'not_picked' | 'interested' | 'call_later' | 'not_interested'
+export type CtcsAction = 'not_picked' | 'interested' | 'call_later' | 'not_interested' | 'paid'
 
 export type CtcsListOptions = {
   ctcsFilter?: CtcsTab | null

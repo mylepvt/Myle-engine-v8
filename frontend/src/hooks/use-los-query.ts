@@ -28,6 +28,7 @@ export type LosSnapshot = {
   members: LosMemberRow[]
   leader_score: number
   leader_tier: 'strong' | 'average' | 'at_risk'
+  basics_streak: number
 }
 
 async function fetchLosSnapshot(activationsTarget: number): Promise<LosSnapshot> {
