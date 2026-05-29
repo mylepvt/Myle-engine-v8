@@ -920,7 +920,10 @@ class LeadsService:
             lead.archived_at = now
             lead.in_pool = False
         elif body.archived is False:
+            # Restore from Archived: clear the flag AND restart the 24h watch,
+            # else the stale anchor re-archives the lead on the next sweep.
             lead.archived_at = None
+            lead.last_action_at = now
         if body.phone is not None:
             dup = await self._find_duplicate_phone_lead(body.phone, exclude_lead_id=lead.id)
             if dup is not None:
