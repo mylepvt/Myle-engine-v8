@@ -16,6 +16,7 @@ from app.api.deps import AuthUser, get_db
 from app.core.config import settings
 from app.core.pipeline_rules import validate_vl2_status_transition_for_role
 from app.core.realtime_hub import notify_topics
+from app.core.time_ist import IST
 from app.models.batch_day_submission import BatchDaySubmission
 from app.models.follow_up import FollowUp
 from app.models.lead import Lead
@@ -115,8 +116,8 @@ def _free_pool_available_clause() -> Any:
 def _ctcs_filter_clause(ctcs_filter: Optional[str]) -> Any:
     if ctcs_filter is None:
         return None
-    now = datetime.now(timezone.utc)
-    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    now_ist = datetime.now(IST)
+    day_start = now_ist.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
     key = ctcs_filter.strip().lower()
     if key in ("", "all"):
         return None

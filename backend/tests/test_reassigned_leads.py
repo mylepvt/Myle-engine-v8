@@ -30,8 +30,9 @@ def _now_utc() -> datetime:
 
 
 def _today_start() -> datetime:
-    n = _now_utc()
-    return n.replace(hour=0, minute=0, second=0, microsecond=0)
+    from app.core.time_ist import IST
+    now_ist = datetime.now(IST)
+    return now_ist.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
 
 
 async def _seed_user(session: AsyncSession, user_id: int, role: str = "team") -> User:
