@@ -3,23 +3,16 @@ import { useXpLeaderboardQuery, LEVEL_COLORS } from '@/hooks/use-xp-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 
-type Props = {
-  role: string | null | undefined
-}
-
 const RANK_COLORS = ['text-amber-400', 'text-slate-400', 'text-amber-600/80']
 
-export function XpLeaderboard({ role }: Props) {
-  const isAllowed = role === 'leader' || role === 'admin'
+export function XpLeaderboard() {
   const { data, isPending, isError } = useXpLeaderboardQuery()
-
-  if (!isAllowed) return null
 
   if (isPending) {
     return (
       <Card className="border-primary/20">
         <CardHeader className="pb-2">
-          <CardTitle className="text-ds-h3">🏆 This Week&apos;s Leaders</CardTitle>
+          <CardTitle className="text-ds-h3">🧠 Top Performers · 7-Day Effort</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -41,7 +34,7 @@ export function XpLeaderboard({ role }: Props) {
   return (
     <Card className="border-primary/20">
       <CardHeader className="pb-2">
-        <CardTitle className="text-ds-h3">🏆 This Week&apos;s Leaders</CardTitle>
+        <CardTitle className="text-ds-h3">🧠 Top Performers · 7-Day Effort</CardTitle>
       </CardHeader>
       <CardContent className="space-y-1.5">
         {top10.map((entry, idx) => {
@@ -71,8 +64,9 @@ export function XpLeaderboard({ role }: Props) {
               >
                 {(entry.level_label ?? entry.level ?? 'rookie').toUpperCase()}
               </span>
-              <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
-                {entry.xp_total.toLocaleString()} XP
+              <span className="shrink-0 tabular-nums text-xs font-semibold text-foreground">
+                {entry.xp_total.toLocaleString()}
+                <span className="ml-0.5 font-normal text-muted-foreground"> XP</span>
               </span>
             </div>
           )

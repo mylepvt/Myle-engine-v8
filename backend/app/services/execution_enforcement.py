@@ -649,7 +649,7 @@ async def _get_top_xp_workers(
     rows = await session.execute(
         select(User.id, User.username, User.fbo_id)
         .where(
-            User.role == "team",
+            User.role.in_(("leader", "team")),
             User.access_blocked.is_(False),
             User.registration_status == "approved",
             User.removed_at.is_(None),

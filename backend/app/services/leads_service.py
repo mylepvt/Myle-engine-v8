@@ -121,7 +121,7 @@ def _ctcs_filter_clause(ctcs_filter: Optional[str]) -> Any:
     if key in ("", "all"):
         return None
     if key == "today":
-        return Lead.created_at >= day_start
+        return func.coalesce(Lead.last_action_at, Lead.created_at) >= day_start
     if key in ("followups", "follow_ups"):
         return Lead.next_followup_at.is_not(None)
     if key == "hot":
@@ -1075,6 +1075,15 @@ class LeadsService:
         await self._session.flush()
         enqueue_lead_shadow_upsert(self._session, lead)
         await self._repository.commit()
+        # XP for process activity — never blocks call logging
+        try:
+            from app.services.xp_service import grant_xp as _grant_xp
+            await _grant_xp(self._session, user.user_id, "call_logged", lead_id)
+            if body.outcome in {"answered", "callback_requested"}:
+                await _grant_xp(self._session, user.user_id, "connected_call", lead_id)
+            await self._session.commit()
+        except Exception:
+            pass
         await refresh_daily_member_stat_after_change(
             self._session,
             user_id=user.user_id,

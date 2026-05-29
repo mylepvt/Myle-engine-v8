@@ -27,6 +27,7 @@ export type XpLeaderboardEntry = {
   level: string
   level_label: string
   xp_total: number
+  process_score_7d: number
 }
 
 export const LEVEL_COLORS: Record<string, { bg: string; text: string; border: string }> = {
@@ -70,6 +71,18 @@ export function useXpHistoryQuery() {
       return res.json()
     },
     staleTime: 300_000,
+  })
+}
+
+export function useReassignEligibleQuery() {
+  return useQuery<XpLeaderboardEntry[]>({
+    queryKey: ['xp', 'reassign-eligible'],
+    queryFn: async () => {
+      const res = await apiFetch('/api/v1/xp/reassign-eligible')
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      return res.json()
+    },
+    staleTime: 60_000,
   })
 }
 
