@@ -15,6 +15,8 @@ export type LeadStatus =
   | 'invited'
   | 'whatsapp_sent'
   | 'video_sent'
+  | 'video_watched'
+  | 'paid'
   | 'mindset_lock'
   | 'day1'
   | 'day2'
@@ -204,7 +206,7 @@ export type LeadsListMode = 'active' | 'archived' | 'recycle'
 
 export type CtcsTab = 'all' | 'today' | 'followups' | 'hot' | 'converted' | 'reassigned'
 
-export type CtcsAction = 'not_picked' | 'interested' | 'call_later' | 'not_interested'
+export type CtcsAction = 'not_picked' | 'interested' | 'call_later' | 'not_interested' | 'paid'
 
 export type CtcsListOptions = {
   ctcsFilter?: CtcsTab | null
@@ -581,7 +583,31 @@ export function usePatchLeadMutation() {
       id: number
       body: Parameters<typeof patchLead>[1]
     }) => patchLead(id, body),
-    onSuccess: () => {
+    onMutate: async ({ id, body }) => {
+      const patch: Partial<LeadPublic> = {}
+      if (body.status !== undefined) patch.status = body.status
+      if (body.call_status !== undefined) patch.call_status = body.call_status
+      if (Object.keys(patch).length === 0) return { previous: undefined }
+      await qc.cancelQueries({ queryKey: ['leads', 'list', 'paged'], exact: false })
+      const previous = qc.getQueriesData({ queryKey: ['leads', 'list', 'paged'], exact: false })
+      previous.forEach(([queryKey, data]) => {
+        if (!isLeadsInfiniteData(data)) return
+        qc.setQueryData(queryKey, {
+          ...data,
+          pages: data.pages.map((page) => ({
+            ...page,
+            items: page.items.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+          })),
+        })
+      })
+      return { previous }
+    },
+    onError: (_err, _variables, context) => {
+      context?.previous?.forEach(([queryKey, data]) => {
+        qc.setQueryData(queryKey, data)
+      })
+    },
+    onSettled: () => {
       invalidateLeadRelated(qc)
     },
   })

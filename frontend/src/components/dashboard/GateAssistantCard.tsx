@@ -156,6 +156,7 @@ export function GateAssistantCard({ sessionReady }: Props) {
   const showEarlyEndPrompt = workingDuringGrace && !gracePromptDismissed
 
   function buildActivitySummary(): string {
+    if (!data) return ''
     const parts: string[] = []
     if (data.calls_today > 0)
       parts.push(`${data.calls_today} fresh call${data.calls_today !== 1 ? 's' : ''} logged`)

@@ -118,6 +118,28 @@ async def test_today_excludes_lead_touched_today_but_not_claimed(team_client: As
 
 
 @pytest.mark.asyncio
+async def test_today_excludes_free_claim(team_client: AsyncClient, engine):
+    """Free-pool claim today (lead.claimed_free) → excluded; Today = paid recharge only."""
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        await _seed_user(session, 201)
+        lead = await _seed_lead(session, owner_id=201, last_action_at=_now_utc())
+        await _seed_claim_activity(
+            session,
+            user_id=201,
+            lead_id=lead.id,
+            created_at=_now_utc(),
+            action="lead.claimed_free",
+        )
+        await session.commit()
+        lead_id = lead.id
+
+    resp = await team_client.get("/api/v1/leads?ctcs_filter=today")
+    assert resp.status_code == 200
+    ids = [item["id"] for item in resp.json()["items"]]
+    assert lead_id not in ids
+
+
+@pytest.mark.asyncio
 async def test_today_excludes_lead_claimed_yesterday(team_client: AsyncClient, engine):
     """Claim ActivityLog dated just before today's IST start → must NOT appear."""
     async with AsyncSession(engine, expire_on_commit=False) as session:

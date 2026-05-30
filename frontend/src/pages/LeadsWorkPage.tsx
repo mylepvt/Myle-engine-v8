@@ -70,7 +70,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const qParam = searchParams.get('q') ?? ''
   const stageParam = searchParams.get('stage') ?? ''
   const [qInput, setQInput] = useState(qParam)
-  const [filters, setFilters] = useState<LeadListFilters>({ ...emptyFilters, q: qParam, status: stageParam })
+  const [filters, setFilters] = useState<LeadListFilters>({ ...emptyFilters, q: qParam, status: stageParam as LeadListFilters['status'] })
   const crossSectionSearch =
     !archivedOnly &&
     filters.q.trim().length > 0 &&

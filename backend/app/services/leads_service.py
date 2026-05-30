@@ -125,13 +125,15 @@ def _ctcs_filter_clause(ctcs_filter: Optional[str]) -> Any:
     if key in ("", "all"):
         return None
     if key == "today":
-        # "Today" = leads CLAIMED today (IST). Claim is recorded in ActivityLog
-        # (lead.claimed / lead.claimed_free); there is no claimed_at column.
+        # "Today" = leads claimed today (IST) via PAID recharge claim only.
+        # Paid claim is recorded as ActivityLog action "lead.claimed"
+        # (free-pool claims use "lead.claimed_free" and are excluded here).
+        # There is no claimed_at column, so we read it from ActivityLog.
         return exists(
             select(1).where(
                 ActivityLog.entity_type == "lead",
                 ActivityLog.entity_id == Lead.id,
-                ActivityLog.action.in_(("lead.claimed", "lead.claimed_free")),
+                ActivityLog.action == "lead.claimed",
                 ActivityLog.created_at >= day_start,
                 ActivityLog.created_at < day_end,
             )

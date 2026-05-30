@@ -93,7 +93,7 @@ function renderFullUi(ui: FullUiSurface, title: string) {
         return <AuditLogsPage title={title} />
       }
       return 'surface' in ui ? (
-        <AnalyticsSurfacePage title={title} surface={ui.surface} />
+        <AnalyticsSurfacePage title={title} surface={ui.surface as 'activity-log'} />
       ) : (
         <AnalyticsPage />
       )

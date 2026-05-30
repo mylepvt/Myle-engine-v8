@@ -11,16 +11,52 @@ Covers:
 """
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.api.deps import AuthUser, get_db, require_auth_user
 from app.models.lead import Lead
 from app.models.user import User
+
+
+@asynccontextmanager
+async def _as_role(engine, role: str, user_id: int):
+    """Client authenticated as a specific role/user, bound to the test engine.
+
+    Role-scoped conftest clients (team_client/admin_client) share one app and
+    clobber each other's auth override, so a test needing two roles must switch
+    in-place rather than depending on two fixtures at once.
+    """
+    from main import app
+
+    factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False, autoflush=False)
+
+    async def _get_db():
+        async with factory() as session:
+            yield session
+
+    async def _fake_auth():
+        return AuthUser(
+            user_id=user_id,
+            role=role,
+            email=f"{role}{user_id}@test.myle",
+            fbo_id=f"T{user_id:05d}",
+            username=f"{role}_{user_id}",
+        )
+
+    app.dependency_overrides[get_db] = _get_db
+    app.dependency_overrides[require_auth_user] = _fake_auth
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            yield c
+    finally:
+        app.dependency_overrides.clear()
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -192,6 +228,199 @@ async def test_reassigned_filter_excludes_leads_with_null_reassigned_at(team_cli
 async def test_invalid_ctcs_filter_returns_422(team_client: AsyncClient):
     resp = await team_client.get("/api/v1/leads?ctcs_filter=blah_blah")
     assert resp.status_code == 422
+
+
+# ── Visibility follows assignment (reassign transfer) ─────────────────────────
+
+@pytest.mark.asyncio
+async def test_reassigned_away_hidden_from_old_owner(team_client: AsyncClient, engine):
+    """Lead reassigned away from owner (assigned to someone else) must NOT
+    appear for the old owner anywhere — visibility follows the new assignee."""
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        await _seed_user(session, 201)  # old owner = team_client
+        await _seed_user(session, 777, role="team")  # new assignee
+        lead = await _seed_lead(
+            session,
+            owner_id=201,
+            assigned_to_id=777,  # reassigned away
+            is_reassigned=True,
+            reassigned_at=_now_utc(),
+        )
+        await session.commit()
+        lead_id = lead.id
+
+    resp = await team_client.get("/api/v1/leads")
+    assert resp.status_code == 200
+    ids = [item["id"] for item in resp.json()["items"]]
+    assert lead_id not in ids
+
+
+@pytest.mark.asyncio
+async def test_reassigned_to_me_visible(team_client: AsyncClient, engine):
+    """Lead owned by someone else but assigned to me appears for me."""
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        await _seed_user(session, 201)  # current assignee = team_client
+        await _seed_user(session, 777, role="team")  # original owner
+        lead = await _seed_lead(
+            session,
+            owner_id=777,
+            assigned_to_id=201,  # assigned to me
+            is_reassigned=True,
+            reassigned_at=_now_utc(),
+        )
+        await session.commit()
+        lead_id = lead.id
+
+    resp = await team_client.get("/api/v1/leads")
+    assert resp.status_code == 200
+    ids = [item["id"] for item in resp.json()["items"]]
+    assert lead_id in ids
+
+
+@pytest.mark.asyncio
+async def test_owner_sees_unassigned_lead(team_client: AsyncClient, engine):
+    """Owner still sees their lead while it is not assigned away to anyone."""
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        await _seed_user(session, 201)
+        lead = await _seed_lead(
+            session,
+            owner_id=201,
+            assigned_to_id=None,  # unassigned
+        )
+        await session.commit()
+        lead_id = lead.id
+
+    resp = await team_client.get("/api/v1/leads")
+    assert resp.status_code == 200
+    ids = [item["id"] for item in resp.json()["items"]]
+    assert lead_id in ids
+
+
+# ── Single-lead access gate follows assignment (GET /leads/:id) ───────────────
+
+@pytest.mark.asyncio
+async def test_old_owner_single_lead_get_403_after_reassign(team_client: AsyncClient, engine):
+    """Old owner GET /leads/:id on a reassigned-away lead → 403 (access gate)."""
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        await _seed_user(session, 201)
+        await _seed_user(session, 777, role="team")
+        lead = await _seed_lead(
+            session, owner_id=201, assigned_to_id=777,
+            is_reassigned=True, reassigned_at=_now_utc(),
+        )
+        await session.commit()
+        lead_id = lead.id
+
+    resp = await team_client.get(f"/api/v1/leads/{lead_id}")
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_new_assignee_single_lead_get_200(team_client: AsyncClient, engine):
+    """New assignee GET /leads/:id → 200 even though owner is someone else."""
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        await _seed_user(session, 201)  # assignee = team_client
+        await _seed_user(session, 777, role="team")  # owner
+        lead = await _seed_lead(
+            session, owner_id=777, assigned_to_id=201,
+            is_reassigned=True, reassigned_at=_now_utc(),
+        )
+        await session.commit()
+        lead_id = lead.id
+
+    resp = await team_client.get(f"/api/v1/leads/{lead_id}")
+    assert resp.status_code == 200
+    assert resp.json()["id"] == lead_id
+
+
+# ── Notes/follow-up write gate follows assignment (require_visible_lead) ───────
+
+@pytest.mark.asyncio
+async def test_old_owner_cannot_create_note_after_reassign(team_client: AsyncClient, engine):
+    """Old owner can NOT write a note on a reassigned-away lead → 403."""
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        await _seed_user(session, 201)
+        await _seed_user(session, 777, role="team")
+        lead = await _seed_lead(
+            session, owner_id=201, assigned_to_id=777,
+            is_reassigned=True, reassigned_at=_now_utc(),
+        )
+        await session.commit()
+        lead_id = lead.id
+
+    resp = await team_client.post(f"/api/v1/leads/{lead_id}/notes", json={"body": "hi"})
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_new_assignee_can_create_note(team_client: AsyncClient, engine):
+    """New assignee CAN write a note even though they are not the owner → 201."""
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        await _seed_user(session, 201)  # assignee
+        await _seed_user(session, 777, role="team")  # owner
+        lead = await _seed_lead(
+            session, owner_id=777, assigned_to_id=201,
+            is_reassigned=True, reassigned_at=_now_utc(),
+        )
+        await session.commit()
+        lead_id = lead.id
+
+    resp = await team_client.post(f"/api/v1/leads/{lead_id}/notes", json={"body": "mine now"})
+    assert resp.status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_owner_can_create_note_on_unassigned_lead(team_client: AsyncClient, engine):
+    """Owner still writes notes while the lead is not assigned away → 201."""
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        await _seed_user(session, 201)
+        lead = await _seed_lead(session, owner_id=201, assigned_to_id=None)
+        await session.commit()
+        lead_id = lead.id
+
+    resp = await team_client.post(f"/api/v1/leads/{lead_id}/notes", json={"body": "still mine"})
+    assert resp.status_code == 201
+
+
+# ── Full manual-reassign round trip via real PATCH API ────────────────────────
+
+@pytest.mark.asyncio
+async def test_manual_reassign_transfers_visibility_end_to_end(engine):
+    """Admin reassigns 201→777 via the real PATCH API; old owner then loses
+    both the list row and single-lead detail, while ownership stays sticky."""
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        await _seed_user(session, 203, role="admin")
+        await _seed_user(session, 201)
+        await _seed_user(session, 777, role="team")
+        lead = await _seed_lead(session, owner_id=201, assigned_to_id=201)
+        await session.commit()
+        lead_id = lead.id
+
+    # Old owner sees it before reassign.
+    async with _as_role(engine, "team", 201) as old_owner:
+        pre = await old_owner.get("/api/v1/leads")
+        assert lead_id in [i["id"] for i in pre.json()["items"]]
+
+    # Admin reassigns away via the real API.
+    async with _as_role(engine, "admin", 203) as admin:
+        patch = await admin.patch(f"/api/v1/leads/{lead_id}", json={"assigned_to_user_id": 777})
+        assert patch.status_code == 200, patch.text
+
+    # Old owner now blocked everywhere.
+    async with _as_role(engine, "team", 201) as old_owner:
+        post_list = await old_owner.get("/api/v1/leads")
+        assert lead_id not in [i["id"] for i in post_list.json()["items"]]
+        assert (await old_owner.get(f"/api/v1/leads/{lead_id}")).status_code == 403
+
+    # New assignee sees it.
+    async with _as_role(engine, "team", 777) as new_assignee:
+        assert (await new_assignee.get(f"/api/v1/leads/{lead_id}")).status_code == 200
+
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        refreshed = await session.get(Lead, lead_id)
+        assert refreshed.assigned_to_user_id == 777
+        assert refreshed.owner_user_id == 201  # ownership stays sticky
+        assert refreshed.is_reassigned is True
 
 
 # ── Integration: PATCH sets is_reassigned + reassigned_at ─────────────────────

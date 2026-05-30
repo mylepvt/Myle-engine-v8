@@ -7,7 +7,7 @@ export type LiveSessionSlotOption = {
   link: string
   liveStartsAt: string
   liveEndsAt: string
-  state: 'upcoming' | 'waiting'
+  state: 'past' | 'upcoming' | 'waiting' | 'live'
 }
 
 type ScheduleSlot = {

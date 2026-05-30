@@ -54,7 +54,6 @@ const STAGE_LABELS: Record<string, string> = {
   lost: 'Lost',
   retarget: 'Retarget',
   follow_up: 'Follow Up',
-  interview: 'Interview',
   converted: 'Converted',
 }
 
@@ -199,9 +198,9 @@ function activitySound(action: string) {
   else if (action === 'lead:closed') playFileSound('ching', 0.5)
   else if (action === 'lead:claimed' || action === 'lead:batch_claimed') playFileSound('ching', 0.4)
   else if (action.startsWith('wallet:')) playFileSound('paySuccess', 0.5)
-  else if (action === 'enrollment.link_generated') playFileSound('success', 0.4)
+  else if (action === 'enrollment.link_generated') playFileSound('notify', 0.4)
   else if (action === 'lead:assigned') playFileSound('pop', 0.35)
-  else if (action.includes('failure') || action.includes('duplicate')) playFileSound('click', 0.3)
+  else if (action.includes('failure') || action.includes('duplicate')) playFileSound('pop', 0.3)
 }
 
 // Parse raw SSE data string → AdminActivityEntry

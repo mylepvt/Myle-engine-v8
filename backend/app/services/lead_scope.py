@@ -13,7 +13,11 @@ from app.services.downline import (
     is_user_in_downline_of,
     lead_execution_visible_to_leader_clause,
 )
-from app.services.lead_owner import lead_owner_clause, resolved_owner_user_id
+from app.services.lead_owner import (
+    lead_owner_clause,
+    lead_personal_scope_clause,
+    resolved_owner_user_id,
+)
 
 _POST_PAYMENT_FALLBACK_STATUSES = ("paid", "mindset_lock")
 
@@ -27,7 +31,9 @@ def lead_visibility_where(user: AuthUser) -> Optional[Any]:
     """
     if user.role == "admin":
         return None
-    return lead_owner_clause(user.user_id)
+    # Visibility follows assignment: once a lead is reassigned away from its
+    # owner, the old owner stops seeing it and the new assignee sees it.
+    return lead_personal_scope_clause(user.user_id)
 
 
 def lead_execution_visibility_where(user: AuthUser) -> Optional[Any]:
@@ -66,9 +72,10 @@ async def user_can_access_lead(session: AsyncSession, user: AuthUser, lead: Lead
         return True
     if lead.in_pool:
         return False
-    if resolved_owner_user_id(lead) == user.user_id:
-        return True
     if lead.assigned_to_user_id == user.user_id:
+        return True
+    # Owner sees their lead only while it is not assigned away to someone else.
+    if lead.assigned_to_user_id is None and resolved_owner_user_id(lead) == user.user_id:
         return True
     if user.role == "leader":
         return await _leader_may_manage_lead(session, user, lead)
@@ -76,14 +83,15 @@ async def user_can_access_lead(session: AsyncSession, user: AuthUser, lead: Lead
 
 
 async def user_can_mutate_lead(session: AsyncSession, user: AuthUser, lead: Lead) -> bool:
-    """PATCH/delete and similar — admin, active assignee/owner, or leader over managed downline leads."""
+    """PATCH/delete and similar — admin, active assignee, owner of an unassigned lead, or leader over managed downline leads."""
     if user.role == "admin":
         return True
     if lead.in_pool:
         return False
     if lead.assigned_to_user_id == user.user_id:
         return True
-    if resolved_owner_user_id(lead) == user.user_id:
+    # Owner can mutate their lead only while it is not assigned away.
+    if lead.assigned_to_user_id is None and resolved_owner_user_id(lead) == user.user_id:
         return True
     if user.role == "leader":
         return await _leader_may_manage_lead(session, user, lead)
