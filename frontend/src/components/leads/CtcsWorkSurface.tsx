@@ -76,6 +76,10 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
         ctcsPrioritySort: true as const,
       }
     }
+    if (tab === 'today') {
+      // Today = leads claimed today via paid recharge, shown at ANY pipeline stage.
+      return { ctcsFilter: 'today' as const, ctcsPrioritySort: true as const }
+    }
     return { ctcsFilter: tab, ctcsPrioritySort: true as const, preEnrollmentOnly: true as const }
   }, [searchMode, tab, surfaceRole])
   useEffect(() => {
@@ -129,13 +133,18 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
         onSendEnrollment(id, status)
         return
       }
-      void patchMut.mutateAsync({ id, body: { status } })
+      patchMut.mutateAsync({ id, body: { status } }).catch((err) => {
+        window.alert('Status update failed: ' + (err instanceof Error ? err.message : 'Unknown error'))
+      })
     },
     [onSendEnrollment, patchMut],
   )
 
   const onPatchCallStatus = useCallback(
-    (id: number, call_status: string) => void patchMut.mutateAsync({ id, body: { call_status } }),
+    (id: number, call_status: string) =>
+      void patchMut.mutateAsync({ id, body: { call_status } }).catch((err) => {
+        window.alert('Call status update failed: ' + (err instanceof Error ? err.message : 'Unknown error'))
+      }),
     [patchMut],
   )
 
