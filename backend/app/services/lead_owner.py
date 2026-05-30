@@ -31,9 +31,29 @@ def lead_owner_clause(user_id: int):
     )
 
 
-def lead_owner_or_assignee_clause(user_id: int):
-    """Ownership-aware access for personal queues and follow-up surfaces."""
+def lead_personal_scope_clause(user_id: int):
+    """Personal visibility that follows assignment.
+
+    A user sees a lead if they are the current assignee, OR they own a lead
+    that has not been assigned to anyone else. Once a lead is reassigned away
+    from its owner (``assigned_to_user_id`` points elsewhere), the old owner no
+    longer sees it — visibility moves with the lead to the new assignee.
+
+    Note: ``owner_user_id`` itself is never changed (monetization / paid-claim
+    record stays sticky); only what each user *sees* follows the assignment.
+    """
     return or_(
         Lead.assigned_to_user_id == user_id,
-        lead_owner_clause(user_id),
+        and_(
+            lead_owner_clause(user_id),
+            Lead.assigned_to_user_id.is_(None),
+        ),
     )
+
+
+def lead_owner_or_assignee_clause(user_id: int):
+    """Ownership-aware access for personal queues and follow-up surfaces.
+
+    Visibility follows assignment: assignee, or owner of an unassigned lead.
+    """
+    return lead_personal_scope_clause(user_id)

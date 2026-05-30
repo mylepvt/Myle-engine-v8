@@ -194,6 +194,72 @@ async def test_invalid_ctcs_filter_returns_422(team_client: AsyncClient):
     assert resp.status_code == 422
 
 
+# ── Visibility follows assignment (reassign transfer) ─────────────────────────
+
+@pytest.mark.asyncio
+async def test_reassigned_away_hidden_from_old_owner(team_client: AsyncClient, engine):
+    """Lead reassigned away from owner (assigned to someone else) must NOT
+    appear for the old owner anywhere — visibility follows the new assignee."""
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        await _seed_user(session, 201)  # old owner = team_client
+        await _seed_user(session, 777, role="team")  # new assignee
+        lead = await _seed_lead(
+            session,
+            owner_id=201,
+            assigned_to_id=777,  # reassigned away
+            is_reassigned=True,
+            reassigned_at=_now_utc(),
+        )
+        await session.commit()
+        lead_id = lead.id
+
+    resp = await team_client.get("/api/v1/leads")
+    assert resp.status_code == 200
+    ids = [item["id"] for item in resp.json()["items"]]
+    assert lead_id not in ids
+
+
+@pytest.mark.asyncio
+async def test_reassigned_to_me_visible(team_client: AsyncClient, engine):
+    """Lead owned by someone else but assigned to me appears for me."""
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        await _seed_user(session, 201)  # current assignee = team_client
+        await _seed_user(session, 777, role="team")  # original owner
+        lead = await _seed_lead(
+            session,
+            owner_id=777,
+            assigned_to_id=201,  # assigned to me
+            is_reassigned=True,
+            reassigned_at=_now_utc(),
+        )
+        await session.commit()
+        lead_id = lead.id
+
+    resp = await team_client.get("/api/v1/leads")
+    assert resp.status_code == 200
+    ids = [item["id"] for item in resp.json()["items"]]
+    assert lead_id in ids
+
+
+@pytest.mark.asyncio
+async def test_owner_sees_unassigned_lead(team_client: AsyncClient, engine):
+    """Owner still sees their lead while it is not assigned away to anyone."""
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        await _seed_user(session, 201)
+        lead = await _seed_lead(
+            session,
+            owner_id=201,
+            assigned_to_id=None,  # unassigned
+        )
+        await session.commit()
+        lead_id = lead.id
+
+    resp = await team_client.get("/api/v1/leads")
+    assert resp.status_code == 200
+    ids = [item["id"] for item in resp.json()["items"]]
+    assert lead_id in ids
+
+
 # ── Integration: PATCH sets is_reassigned + reassigned_at ─────────────────────
 
 @pytest.mark.asyncio
