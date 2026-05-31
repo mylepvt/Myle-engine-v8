@@ -133,6 +133,13 @@ class SystemOverviewWallet(BaseModel):
     net_volume: int
 
 
+class SystemOverviewSales(BaseModel):
+    """System overview CC/sale-engine metrics (approved invoices)."""
+    sale_count: int
+    total_case_credits: float
+    total_amount_cents: int
+
+
 class SystemOverviewResponse(BaseModel):
     """Response for system overview endpoint."""
     period: str
@@ -140,6 +147,7 @@ class SystemOverviewResponse(BaseModel):
     reports: SystemOverviewReports
     leads: SystemOverviewLeads
     wallet: SystemOverviewWallet
+    sales: SystemOverviewSales
 
 
 class DailyTrendEntry(BaseModel):
