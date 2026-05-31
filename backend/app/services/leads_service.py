@@ -57,7 +57,17 @@ from app.services.whatsapp_ctcs import send_interested_flp_min_billing_assets
 from app.services.execution_enforcement import run_completed_watch_pipeline_maintenance
 from app.validators.leads_validator import lead_list_conditions, parse_status_query, validate_list_flags
 
-_PAYMENT_REQUIRED_STATUSES: frozenset[str] = frozenset()
+# Post-Day-3 MAE batch stages (Day 4 / Day 5 / Day 6 interview). Entering any of
+# these requires an approved ₹1500 FLP-billing proof (non-admin). The leader keeps
+# free control up to and including Day 3; from Day 4 onward the proof gate applies.
+# Gating the whole batch range — not only the entry — also blocks forward
+# *jump-over* (e.g. new → day4) which would otherwise skip the gate.
+# NOTE: "converted" is intentionally excluded — a leader's day3 → converted close
+# is a valid final-closing path (see test_leader_closes_lead_after_handover) and
+# the sale-engine, not this status gate, enforces the Day-6 closing billing.
+_PAYMENT_REQUIRED_STATUSES: frozenset[str] = frozenset(
+    {"day4", "day5", "interview"}
+)
 
 _POOL_CLAIM_ROLES: frozenset[str] = frozenset({"team", "leader", "admin"})
 _POOL_SINGLE_CLAIM_ROLES: frozenset[str] = frozenset({"admin"})
@@ -913,6 +923,14 @@ class LeadsService:
             )
             if not ok:
                 raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
+            # Payment gate: non-admins cannot enter a post-Day-3 status without an
+            # approved ₹1500 FLP-billing proof. Mirrors transition_lead_status.
+            if body.status in _PAYMENT_REQUIRED_STATUSES and user.role != "admin":
+                if lead.payment_status != "approved":
+                    raise HTTPException(
+                        status_code=http_status.HTTP_400_BAD_REQUEST,
+                        detail="Payment proof must be approved before moving to this status.",
+                    )
             prev_status = lead.status
             lead.status = body.status
             bump_heat_on_entering_contacted(lead, prev_status)

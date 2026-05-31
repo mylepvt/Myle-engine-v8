@@ -468,6 +468,14 @@ async def generate_batch_share_url(
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
     if not await _actor_may_share_batch_link(session=session, user=user, lead=lead, slot=slot):
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    # Day-4+ batch links sit past the Day-3 FLP-billing boundary — non-admins need
+    # an approved ₹1500 payment proof first (mirrors the post-Day-3 status gate).
+    if slot[:3] in {"d4_", "d5_", "d6_"} and user.role != "admin":
+        if lead.payment_status != "approved":
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="Payment proof must be approved before sharing Day-4+ batch links.",
+            )
     existing = (
         await session.execute(
             select(BatchShareLink).where(
