@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { ArrowRight, Clock3 } from 'lucide-react'
 
+import { CcSummaryCard } from '@/components/dashboard/CcSummaryCard'
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
 import { XpBadge } from '@/components/xp/XpBadge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -172,6 +173,8 @@ export function TeamDashboardHomeModern({
       <XpBadge />
 
       <GateAssistantCard sessionReady={sessionReady} />
+
+      <CcSummaryCard enabled={sessionReady} />
 
       <section className="space-y-2">
         <div className="flex items-center justify-between px-1">

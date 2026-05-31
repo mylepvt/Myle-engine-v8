@@ -21,6 +21,7 @@ import {
 } from '@/hooks/use-lead-detail-query'
 import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
+import { LeadBillingCard } from '@/components/leads/LeadBillingCard'
 import { LeadNextStepPanel } from '@/components/leads/LeadNextStepPanel'
 import { LeadNotesPanel } from '@/components/leads/LeadNotesPanel'
 import { apiUrl } from '@/lib/api'
@@ -834,6 +835,9 @@ export function LeadDetailPage({ leadId }: Props) {
               </div>
             </div>
           </div>
+
+          {/* CC / Billing card — Day 3 + Day 6 invoice capture */}
+          <LeadBillingCard leadId={lead.id} surfaceRole={surfaceRole} />
         </div>
       </div>
     </div>

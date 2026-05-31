@@ -18,6 +18,7 @@
   "team/reports": ["admin", "leader"],
   "team/approvals": ["admin"],
   "team/flp-min-billing": ["admin"],
+  "team/sales-approvals": ["admin"],
   "team/my-team": ["leader", "team"],
   "system/training": ["admin", "leader", "team"],
   "system/whatsapp": ["admin"],
