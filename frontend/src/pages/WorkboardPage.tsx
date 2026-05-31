@@ -53,9 +53,9 @@ const BADGE: Record<string, string> = {
   day1:           'bg-orange-400/15 text-orange-300 border-orange-400/25',
   day2:           'bg-yellow-400/15 text-yellow-300 border-yellow-400/25',
   day3:           'bg-lime-400/15 text-lime-300 border-lime-400/25',
+  day4:           'bg-emerald-400/15 text-emerald-300 border-emerald-400/25',
+  day5:           'bg-teal-400/15 text-teal-300 border-teal-400/25',
   interview:      'bg-lime-400/15 text-lime-300 border-lime-400/25',
-  track_selected: 'bg-emerald-400/15 text-emerald-300 border-emerald-400/25',
-  seat_hold:      'bg-teal-400/15 text-teal-300 border-teal-400/25',
   converted:      'bg-green-500/15 text-green-300 border-green-500/25',
   lost:           'bg-destructive/15 text-destructive border-destructive/25',
 }
@@ -69,8 +69,6 @@ type WorkboardStageKey =
   | 'day4'
   | 'day5'
   | 'interview'
-  | 'pending'
-  | 'level_up'
 const slabel  = (s: string) => LEAD_STATUS_OPTIONS.find((o) => o.value === s)?.label ?? s
 
 const ADMIN_STAGE_TABS: {
@@ -85,14 +83,12 @@ const ADMIN_STAGE_TABS: {
   { id: 'day3', label: 'Day 3', statuses: ['day3'], stageKey: 'day3', nextStatus: 'day4', nextLabel: 'Push to Day 4' },
   { id: 'day4', label: 'Day 4', statuses: ['day4'], stageKey: 'day4', nextStatus: 'day5', nextLabel: 'Push to Day 5' },
   { id: 'day5', label: 'Day 5', statuses: ['day5'], stageKey: 'day5', nextStatus: 'interview', nextLabel: 'Push to Day 6' },
-  { id: 'interview', label: 'Day 6', statuses: ['interview', 'plan_2cc'], stageKey: 'interview', nextStatus: 'pending', nextLabel: 'Push to Next 3 Days' },
-  { id: 'pending', label: 'Next 3 Days', statuses: ['pending'], stageKey: 'pending', nextStatus: 'level_up', nextLabel: 'Push to Final Stage' },
-  { id: 'level_up', label: 'Final Stage', statuses: ['level_up'], stageKey: 'level_up', nextStatus: 'converted', nextLabel: 'Mark converted' },
+  { id: 'interview', label: 'Day 6', statuses: ['interview'], stageKey: 'interview', nextStatus: 'converted', nextLabel: 'Mark converted' },
   { id: 'closing', label: 'Closing', statuses: CLOSE },
 ]
 
 const STATUS_TAB_LABEL: Partial<Record<LeadStatus, string>> = {
-  day1: 'Day 2', day2: 'Day 3', day3: 'Day 3', interview: 'Day 6', plan_2cc: 'Day 6',
+  day1: 'Day 2', day2: 'Day 3', day3: 'Day 3', interview: 'Day 6',
   converted: 'Closing', lost: 'Closing',
 }
 type ATab = WorkboardStageKey | 'closing'

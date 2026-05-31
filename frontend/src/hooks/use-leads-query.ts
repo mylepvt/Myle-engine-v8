@@ -22,15 +22,11 @@ export type LeadStatus =
   | 'day4'
   | 'day5'
   | 'interview'
-  | 'track_selected'
-  | 'seat_hold'
   | 'converted'
   | 'lost'
   | 'retarget'
   | 'inactive'
   | 'training'
-  | 'plan_2cc'
-  | 'level_up'
   | 'pending'
   | 'new'
 
@@ -45,16 +41,12 @@ export const LEAD_STATUS_OPTIONS: { value: LeadStatus; label: string }[] = [
   { value: 'day3',           label: 'Day 3' },
   { value: 'day4',           label: 'Day 4' },
   { value: 'day5',           label: 'Day 5' },
-  { value: 'interview',      label: 'Interview' },
-  { value: 'track_selected', label: 'Track Selected' },
-  { value: 'seat_hold',      label: 'Seat Hold' },
+  { value: 'interview',      label: 'Day 6 Interview' },
   { value: 'converted',      label: 'Converted' },
   { value: 'lost',           label: 'Lost' },
   { value: 'retarget',       label: 'Retarget' },
   { value: 'inactive',       label: 'Inactive' },
   { value: 'training',       label: 'Training' },
-  { value: 'plan_2cc',       label: '2CC Plan' },
-  { value: 'level_up',       label: 'Level Up' },
   { value: 'pending',        label: 'Pending' },
   { value: 'new',            label: 'New (Legacy)' },
 ]
@@ -70,11 +62,7 @@ export const PRIMARY_USER_FLOW_STATUSES: LeadStatus[] = [
   'day4',
   'day5',
   'interview',
-  'track_selected',
-  'seat_hold',
-  'plan_2cc',
   'pending',
-  'level_up',
   'converted',
 ]
 

@@ -74,8 +74,6 @@ _REDISTRIBUTION_TERMINAL_STATUSES = frozenset(
         "day2",
         "day3",
         "interview",
-        "track_selected",
-        "seat_hold",
         "converted",
         "lost",
         "inactive",
@@ -89,15 +87,13 @@ _ENROLLED_SIGNAL_STATUSES = frozenset(
         "day2",
         "day3",
         "interview",
-        "track_selected",
-        "seat_hold",
         "converted",
     }
 )
 _WATCH_PIPELINE_STATUSES = frozenset({"video_sent", "video_watched"})
 # Day 2-6 closing pipeline stages — stale archive + 24h owner restore window + auto-reassign.
 _CLOSING_PIPELINE_STATUSES = frozenset({
-    "day2", "day3", "day4", "day5", "interview", "track_selected", "seat_hold"
+    "day2", "day3", "day4", "day5", "interview"
 })
 # Pre-enrollment general pipeline — same 24h rule, reassign to team workers.
 _GENERAL_PIPELINE_STATUSES = frozenset({
@@ -2364,7 +2360,7 @@ async def admin_leak_map(session: AsyncSession) -> LeakMapOut:
 
     m = {x.status: x.count for x in hist_list}
     # Funnel: Claimed Today → Invite → Day1Live → Mindset →
-    # Day2 → Day3 → MinFLP → Day4 → Day5 → Interview → 2CC Plan → Seat Hold → Converted
+    # Day2 → Day3 → MinFLP → Day4 → Day5 → Interview → Converted
     funnel_order = [
         "claimed_today",
         "invited",
@@ -2376,8 +2372,6 @@ async def admin_leak_map(session: AsyncSession) -> LeakMapOut:
         "day4",
         "day5",
         "interview",
-        "plan_2cc",
-        "seat_hold",
         "converted",
     ]
     drops: list[FunnelDropRow] = []

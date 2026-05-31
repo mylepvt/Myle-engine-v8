@@ -146,7 +146,7 @@ class WorkboardService:
             )
         )
         closings_due = await self._repository.count_leads(
-            and_(scope, Lead.status.in_(("day3", "interview", "track_selected", "seat_hold", "plan_2cc", "pending", "level_up")))
+            and_(scope, Lead.status.in_(("day3", "day4", "day5", "interview")))
         )
         stale_before = datetime.now(timezone.utc) - timedelta(hours=stale_hours)
         stale_total = await self._repository.count_leads(
