@@ -21,6 +21,7 @@ import { TeamTrackingDetailPage } from '@/pages/TeamTrackingDetailPage'
 import { TeamTrackingPage } from '@/pages/TeamTrackingPage'
 import { MyTeamPage } from '@/pages/MyTeamPage'
 import { FlpMinBillingApprovalsPage } from '@/pages/FlpMinBillingApprovalsPage'
+import { SalesApprovalsPage } from '@/pages/SalesApprovalsPage'
 import { AnalyticsSurfacePage } from '@/pages/AnalyticsSurfacePage'
 import { SystemSurfacePage } from '@/pages/SystemSurfacePage'
 import { RetargetWorkPage } from '@/pages/RetargetWorkPage'
@@ -84,6 +85,8 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <MyTeamPage title={title} />
     case 'flp-min-billing':
       return <FlpMinBillingApprovalsPage title={title} />
+    case 'sales-approvals':
+      return <SalesApprovalsPage title={title} />
     case 'system':
       return <SystemSurfacePage title={title} surface={ui.surface} />
     case 'lead-control':

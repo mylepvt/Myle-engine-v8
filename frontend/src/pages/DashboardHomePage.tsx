@@ -7,6 +7,7 @@ import { XpBadge } from '@/components/xp/XpBadge'
 import { XpLeaderboard } from '@/components/xp/XpLeaderboard'
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
 import { AdminCommandCenter } from '@/components/dashboard/AdminCommandCenter'
+import { CcSummaryCard } from '@/components/dashboard/CcSummaryCard'
 import { TeamDashboardHomeModern } from '@/components/dashboard/TeamDashboardHomeModern'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -336,6 +337,8 @@ export function DashboardHomePage() {
       ) : null}
 
       {role !== 'admin' ? <GateAssistantCard sessionReady={sessionReady} /> : null}
+
+      <CcSummaryCard enabled={sessionReady} />
 
       {wb.isError ? (
         <ErrorState

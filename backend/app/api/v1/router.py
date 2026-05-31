@@ -33,6 +33,7 @@ from app.api.v1 import (
     realtime_ws,
     reports,
     retarget,
+    sales,
     settings_enhanced,
     settings_pages,
     system,
@@ -88,6 +89,7 @@ api_router.include_router(flp_min_billing.router, prefix="/flp-min-billing", tag
 api_router.include_router(flp_min_billing.watch_router, tags=["watch"])
 api_router.include_router(certificate.router, tags=["certificate"])
 api_router.include_router(payments.router, prefix="/payments", tags=["payments"])
+api_router.include_router(sales.router, tags=["sales"])
 api_router.include_router(wallet_enhanced.router, prefix="/wallet", tags=["wallet-enhanced"])
 api_router.include_router(crm_proxy.router, tags=["crm"])
 api_router.include_router(xp.router, prefix="/xp", tags=["xp"])

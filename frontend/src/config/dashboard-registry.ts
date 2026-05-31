@@ -68,6 +68,7 @@ export type FullUiSurface =
   | { kind: 'my-team' }
   | { kind: 'team-approvals' }
   | { kind: 'flp-min-billing' }
+  | { kind: 'sales-approvals' }
   | {
       kind: 'system'
       surface: 'training' | 'decision-engine' | 'coaching'
@@ -253,6 +254,14 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('team/flp-min-billing'),
     surface: 'full',
     ui: { kind: 'flp-min-billing' },
+  },
+  {
+    path: 'team/sales-approvals',
+    section: { id: 'team', label: 'Team' },
+    label: 'CC / Sale Approvals',
+    roles: routeRoles('team/sales-approvals'),
+    surface: 'full',
+    ui: { kind: 'sales-approvals' },
   },
   {
     path: 'team/attendance',

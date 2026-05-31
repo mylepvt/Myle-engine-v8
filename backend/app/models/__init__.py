@@ -11,6 +11,7 @@ from app.models.daily_member_stat import DailyMemberStat
 from app.models.flp_min_billing_share_link import FlpMinBillingShareLink
 from app.models.invoice import Invoice
 from app.models.lead import Lead
+from app.models.lead_sale import LeadSale
 from app.models.legacy_row_snapshot import LegacyRowSnapshot
 from app.models.user import User
 from app.models.wallet_ledger import WalletLedgerEntry
@@ -45,6 +46,7 @@ __all__ = [
     "FlpMinBillingShareLink",
     "Invoice",
     "Lead",
+    "LeadSale",
     "LegacyRowSnapshot",
     "User",
     "WalletLedgerEntry",

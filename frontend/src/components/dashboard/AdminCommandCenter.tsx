@@ -31,6 +31,7 @@ import { EmptyState, ErrorState } from '@/components/ui/states'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAdminActivitySSE } from '@/hooks/use-admin-activity-sse'
 import { AdminActivityPanel } from '@/components/dashboard/AdminActivityPanel'
+import { CcSummaryCard } from '@/components/dashboard/CcSummaryCard'
 import { LiveTeamActivity } from '@/components/dashboard/LiveTeamActivity'
 import { LiveOpsDashboard } from '@/components/dashboard/live-ops/LiveOpsDashboard'
 import { useLiveDashboardStore } from '@/stores/live-dashboard-store'
@@ -839,6 +840,10 @@ export function AdminCommandCenter({ firstName }: Props) {
           {/* Full live ops dashboard */}
           <div className="mb-6">
             <LiveOpsDashboard />
+          </div>
+
+          <div className="mb-6">
+            <CcSummaryCard />
           </div>
 
           <div className="space-y-4">
