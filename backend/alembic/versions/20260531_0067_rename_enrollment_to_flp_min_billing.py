@@ -35,8 +35,8 @@ _APP_SETTING_KEY_MAP = {
 def _remap_app_setting_keys(mapping: dict[str, str]) -> None:
     bind = op.get_bind()
     stmt = sa.text(
-        "UPDATE app_setting SET key = :new WHERE key = :old "
-        "AND NOT EXISTS (SELECT 1 FROM app_setting a2 WHERE a2.key = :new)"
+        "UPDATE app_settings SET key = :new WHERE key = :old "
+        "AND NOT EXISTS (SELECT 1 FROM app_settings a2 WHERE a2.key = :new)"
     )
     for old, new in mapping.items():
         bind.execute(stmt, {"old": old, "new": new})
