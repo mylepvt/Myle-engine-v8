@@ -47,7 +47,7 @@ def crm_shadow_stage_for_lead(lead: Lead) -> str:
 
     if status in {"converted", "lost"}:
         return "CLOSED"
-    if status in {"day3", "interview", "track_selected", "seat_hold", "training", "plan_2cc", "level_up", "pending"}:
+    if status in {"day3", "day4", "day5", "interview", "training", "pending"}:
         return "DAY3_CLOSER"
     if status == "day2":
         return "DAY2_ADMIN"

@@ -2,19 +2,14 @@ import { LEGACY_COMPAT_STATUSES, USER_OUTCOME_STATUSES, type LeadStatus } from '
 
 /** Mirrors `TEAM_FORBIDDEN_STATUS_SLUGS` in `backend/app/core/lead_status.py`. */
 const TEAM_FORBIDDEN: ReadonlySet<LeadStatus> = new Set([
-  'day1',
   'day2',
   'day3',
   'day4',
   'day5',
   'interview',
-  'track_selected',
-  'seat_hold',
   'converted',
-  'level_up',
   'training',
   'pending',
-  'plan_2cc',
 ])
 
 const NON_ADMIN_HIDDEN: ReadonlySet<LeadStatus> = new Set(LEGACY_COMPAT_STATUSES)

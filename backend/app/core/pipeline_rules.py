@@ -168,13 +168,6 @@ TEAM_CALL_STATUS_VALUES = [
     "Wrong Number",
 ]
 
-TRACKS = {
-    "Slow Track": {"price": 8000, "seat_hold": 2000},
-    "Medium Track": {"price": 18000, "seat_hold": 4000},
-    "Fast Track": {"price": 38000, "seat_hold": 5000},
-}
-
-
 def normalize_flow_status(status: str) -> str:
     """Normalize legacy status aliases to canonical names."""
     s = (status or "").strip()
@@ -270,15 +263,8 @@ def validate_lead_business_rules(
     status: str,
     payment_done: int,
     payment_amount: float,
-    seat_hold_amount: float,
-    track_price: float,
 ) -> tuple[bool, str]:
-    """Hard validation before DB write (legacy float rupees + flags)."""
-    st = (status or "").strip()
+    """Hard validation before DB write (Min. FLP Billing payment flag)."""
     if int(payment_done or 0) == 1 and float(payment_amount or 0) <= 0:
         return False, "payment_done=1 requires payment_amount > 0"
-    if st == "Seat Hold Confirmed" and float(seat_hold_amount or 0) <= 0:
-        return False, "Seat Hold Confirmed requires seat_hold_amount > 0"
-    if st == "Fully Converted" and float(track_price or 0) <= 0:
-        return False, "Fully Converted requires track_price > 0"
     return True, ""

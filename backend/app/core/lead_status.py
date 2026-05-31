@@ -5,38 +5,37 @@ Matches the old Myle Dashboard pipeline exactly — do not reorder, only append.
 
 from __future__ import annotations
 
-# Full pipeline sequence — mirrors old app statuses exactly.
+# Active pipeline sequence — matches the live myle vl2 funnel (order preserved).
+# Team scope: new_lead → … → mindset_lock. Leader scope: day2 → … → converted/lost.
+# Track-pricing stages (track_selected/seat_hold/level_up/plan_2cc) removed — closing
+# is the 5k/2cc model handled by the FLP-billing engine, not seat-hold tracks.
 LEAD_STATUS_SEQUENCE: tuple[str, ...] = (
-    "new_lead",           # Fresh / just added
-    "contacted",          # Called / WhatsApp sent
-    "invited",            # Invited to watch enrollment video
-    "whatsapp_sent",      # WhatsApp message sent before video share
-    "video_sent",         # Day 1 video link shared
-    "video_watched",      # Prospect watched the video
-    "paid",               # Min. FLP Billing paid & approved
-    "mindset_lock",       # 5-minute mindset lock before leader handoff
-    "day1",               # Attending Day 1 session
-    "day2",               # Attending Day 2 session
-    "day3",               # Day 3 closer stage
-    "day4",               # Day 4 MAE batches
-    "day5",               # Day 5 MAE batches
-    "interview",          # Post Day5 interview stage
-    "track_selected",     # Chose Slow/Medium/Fast track
-    "seat_hold",          # Seat hold amount paid
-    "converted",          # Fully converted / closed won
+    "new_lead",           # Fresh / just claimed → Today's tab
+    "contacted",          # Connected on call
+    "invited",            # Invitation call done, ready for Day 1
+    "whatsapp_sent",      # Auto WhatsApp Day 1 link sent
+    "video_sent",         # Day 1 live-session link shared
+    "video_watched",      # Prospect watched the Day 1 link (name+number gate)
+    "paid",               # Min. FLP Billing paid & admin-approved
+    "mindset_lock",       # Team→leader handoff boundary
+    "day1",               # Attending Day 1 live session
+    "day2",               # Day 2 live session (leader)
+    "day3",               # Day 3 closing environment (leader)
+    "day4",               # Day 4 MAE batch
+    "day5",               # Day 5 MAE batch
+    "interview",          # Day 6 interview / final closing
+    "converted",          # Closed won → onboarding
     "lost",               # Closed lost
-    "retarget",           # Re-engage after lost/inactive
+    "retarget",           # Re-engage 1 month later with context
     "inactive",           # No response, on hold
-    "training",           # In 7-day training program
-    "plan_2cc",           # 2-call coaching plan
-    "level_up",           # Upsell / level-up stage
-    "pending",            # Awaiting action / review
+    "training",           # 7-day onboarding training program
+    "pending",            # Awaiting action / review (internal)
     "new",                # Legacy alias kept for backwards compat
 )
 
 LEAD_STATUS_SET: frozenset[str] = frozenset(LEAD_STATUS_SEQUENCE)
 
-# Team role cannot PATCH these statuses (legacy ``TEAM_FORBIDDEN_STATUSES`` — vl2 slugs).
+# Team role cannot PATCH these statuses — all post-handoff (leader) stages.
 TEAM_FORBIDDEN_STATUS_SLUGS: frozenset[str] = frozenset(
     {
         "day2",
@@ -44,13 +43,9 @@ TEAM_FORBIDDEN_STATUS_SLUGS: frozenset[str] = frozenset(
         "day4",
         "day5",
         "interview",
-        "track_selected",
-        "seat_hold",
         "converted",
-        "level_up",
         "training",
         "pending",
-        "plan_2cc",
     }
 )
 
@@ -70,15 +65,11 @@ LEAD_STATUS_LABELS: dict[str, str] = {
     "day4":           "Day 4",
     "day5":           "Day 5",
     "interview":      "Interview",
-    "track_selected": "Track Selected",
-    "seat_hold":      "Seat Hold",
     "converted":      "Converted",
     "lost":           "Lost",
     "retarget":       "Retarget",
     "inactive":       "Inactive",
     "training":       "Training",
-    "plan_2cc":       "2CC Plan",
-    "level_up":       "Level Up",
     "pending":        "Pending",
     "new":            "New",
 }
@@ -99,11 +90,6 @@ WORKBOARD_COLUMNS: tuple[str, ...] = (
     "day4",
     "day5",
     "interview",
-    "track_selected",
-    "seat_hold",
-    "plan_2cc",
-    "pending",
-    "level_up",
     "converted",
     "lost",
 )

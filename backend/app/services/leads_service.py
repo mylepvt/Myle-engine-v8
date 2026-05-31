@@ -144,13 +144,13 @@ def _ctcs_filter_clause(ctcs_filter: Optional[str]) -> Any:
         return Lead.status.in_(
             (
                 "converted",
-                "seat_hold",
                 "mindset_lock",
                 "day1",
                 "day2",
                 "day3",
+                "day4",
+                "day5",
                 "interview",
-                "track_selected",
             ),
         )
     if key == "reassigned":
@@ -217,7 +217,7 @@ def _apply_status_side_effects(
 
     if new_status == "day3":
         lead.day3_completed_at = None
-    elif new_status == "converted" and previous_status in {"day3", "interview", "track_selected", "seat_hold"}:
+    elif new_status == "converted" and previous_status in {"day3", "day4", "day5", "interview"}:
         if lead.day3_completed_at is None:
             lead.day3_completed_at = now
 

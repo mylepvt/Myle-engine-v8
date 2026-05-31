@@ -86,52 +86,14 @@ export const PROCESS_STAGE_DEFS: Record<string, ProcessStageDef> = {
   interview: {
     status: 'interview',
     title: 'Day 6 Closing',
-    helper: 'Leader closes the Day 6 conversion push and records the immediate closing follow-up.',
-    nextStatus: 'plan_2cc',
-    nextLabel: 'Push to Pending Process',
-    tasks: [
-      { key: 'closing_1500', label: '₹1500 Closing' },
-      { key: 'follow_up_closing', label: 'Follow-up Closing' },
-    ],
-  },
-  plan_2cc: {
-    status: 'plan_2cc',
-    title: '2CC Plan',
-    helper: 'Leader records the Day-6 interview, 2CC plan, and closing push in one place.',
-    nextStatus: 'pending',
-    nextLabel: 'Push to Pending Process',
-    tasks: [
-      { key: 'day6_interview', label: 'Interview' },
-      { key: 'day6_2cc_plan', label: '2CC Plan' },
-      { key: 'day6_closing', label: 'Closing' },
-    ],
-  },
-  pending: {
-    status: 'pending',
-    title: 'Pending Process',
-    helper: 'Next 3 days of leader-led follow-up sessions before the final close.',
-    nextStatus: 'level_up',
-    nextLabel: 'Push to Final Stage',
-    tasks: [
-      { key: 'abhishek_utane', label: 'Abhishek Utane' },
-      { key: 'abhishek_follow_up', label: 'Follow-up' },
-      { key: 'vishakha_maam', label: "Vishakha Ma'am" },
-      { key: 'vishakha_follow_up', label: 'Follow-up' },
-      { key: 'azhar_sir', label: 'Azhar Sir' },
-      { key: 'azhar_follow_up', label: 'Follow-up' },
-      { key: 'md_imran', label: 'MD Imran' },
-      { key: 'md_imran_follow_up', label: 'Follow-up' },
-    ],
-  },
-  level_up: {
-    status: 'level_up',
-    title: 'Final Stage',
-    helper: 'Admin and leader finish the level-up close and final 2CC / 5000 close here.',
+    helper: 'Interview → 2CC live session → final closing (₹5000 or 2CC). Cumulative with Day 3 billing. Close or move to Lost.',
     nextStatus: 'converted',
     nextLabel: 'Mark Converted',
     tasks: [
-      { key: 'level_up_closing', label: 'Level Up Closing' },
-      { key: 'closing_5000_or_2cc', label: '₹5000 / 2CC Closing' },
+      { key: 'day6_interview', label: 'Interview' },
+      { key: 'day6_2cc_plan', label: '2CC Live Session' },
+      { key: 'closing_5000_or_2cc', label: 'Final Closing (₹5000 / 2CC)' },
+      { key: 'follow_up_closing', label: 'Follow-up Closing' },
     ],
   },
 }
@@ -142,9 +104,6 @@ export const PROCESS_STAGE_ORDER = [
   'day4',
   'day5',
   'interview',
-  'plan_2cc',
-  'pending',
-  'level_up',
 ] as const
 
 export function checklistForStage(status: string): ProcessStageDef | null {
