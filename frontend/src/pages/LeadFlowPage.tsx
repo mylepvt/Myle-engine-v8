@@ -8,12 +8,12 @@ type Props = {
 
 const PIPELINE_STAGES = [
   'new_lead', 'invited', 'whatsapp_sent', 'video_sent', 'video_watched',
-  'paid', 'mindset_lock', 'day1', 'day2', 'day3', 'interview', 'track_selected', 'seat_hold', 'converted',
+  'paid', 'mindset_lock', 'day1', 'day2', 'day3', 'day4', 'day5', 'interview', 'converted',
 ] as const
 
 const TERMINAL_STAGES = ['lost', 'retarget', 'inactive'] as const
 
-const INTERNAL_COMPAT_STAGES = ['contacted', 'training', 'plan_2cc', 'level_up', 'pending', 'new'] as const
+const INTERNAL_COMPAT_STAGES = ['contacted', 'training', 'pending', 'new'] as const
 
 function label(v: string): string {
   return LEAD_STATUS_OPTIONS.find((o) => o.value === v)?.label ?? v
@@ -31,15 +31,13 @@ const STAGE_COLORS: Record<string, string> = {
   day1:           'border-orange-400/30 bg-orange-400/10 text-orange-400',
   day2:           'border-yellow-400/30 bg-yellow-400/10 text-yellow-400',
   day3:           'border-lime-400/30 bg-lime-400/10 text-lime-400',
+  day4:           'border-emerald-400/30 bg-emerald-400/10 text-emerald-400',
+  day5:           'border-teal-400/30 bg-teal-400/10 text-teal-400',
   interview:      'border-lime-400/30 bg-lime-400/10 text-lime-400',
-  track_selected: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-400',
-  seat_hold:      'border-teal-400/30 bg-teal-400/10 text-teal-400',
   converted:      'border-[hsl(142_71%_45%)]/30 bg-[hsl(142_71%_45%)]/10 text-[hsl(142_71%_45%)]',
   lost:           'border-destructive/30 bg-destructive/10 text-destructive',
   retarget:       'border-rose-400/30 bg-rose-400/10 text-rose-400',
   inactive:       'border-zinc-400/30 bg-zinc-400/10 text-zinc-400',
-  plan_2cc:       'border-purple-400/30 bg-purple-400/10 text-purple-400',
-  level_up:       'border-fuchsia-400/30 bg-fuchsia-400/10 text-fuchsia-400',
 }
 
 export function LeadFlowPage({ title }: Props) {

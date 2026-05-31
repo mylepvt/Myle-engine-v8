@@ -57,12 +57,10 @@ const VIDEO_SENT_STAGES = new Set<LeadStatus>([
   'day1',
   'day2',
   'day3',
+  'day4',
+  'day5',
   'interview',
-  'track_selected',
-  'seat_hold',
-  'plan_2cc',
   'pending',
-  'level_up',
   'converted',
 ])
 

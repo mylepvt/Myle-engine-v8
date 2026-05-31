@@ -12,7 +12,11 @@ from app.services.ctcs_heat import bump_heat_on_entering_contacted
 
 
 def _label_to_slug() -> dict[str, str]:
-    return {LEAD_STATUS_LABELS[k]: k for k in LEAD_STATUS_LABELS}
+    m = {LEAD_STATUS_LABELS[k]: k for k in LEAD_STATUS_LABELS}
+    # normalize_flow_status aliases — keep the walker's STATUS_FLOW_ORDER labels resolvable.
+    m.setdefault("Fully Converted", "converted")
+    m.setdefault("New Lead", "new_lead")
+    return m
 
 
 _LABEL_TO_SLUG = _label_to_slug()

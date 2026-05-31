@@ -105,6 +105,7 @@ class LeadPublic(BaseModel):
     # CTCS fields (nullable for legacy rows until touched)
     last_action_at: Optional[datetime] = None
     next_followup_at: Optional[datetime] = None
+    retarget_at: Optional[datetime] = None
     heat_score: int = 0
 
     @computed_field
@@ -120,7 +121,7 @@ class LeadPublic(BaseModel):
             return "DAY1"
         if self.status == "day2":
             return "DAY2"
-        if self.status in ("day3", "interview", "track_selected", "seat_hold", "converted"):
+        if self.status in ("day3", "day4", "day5", "interview", "converted"):
             return "DAY3"
         return "NONE"
 
