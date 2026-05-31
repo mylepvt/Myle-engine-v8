@@ -61,7 +61,7 @@ function applyTopics(qc: QueryClient, topics: string[]) {
   }
   if (t.has('team')) {
     void qc.invalidateQueries({ queryKey: ['team'] })
-    void qc.invalidateQueries({ queryKey: ['team', 'enrollment-requests'] })
+    void qc.invalidateQueries({ queryKey: ['team', 'flp-min-billing-requests'] })
   }
   if (t.has('team_tracking') || t.has('team_tracking.presence')) {
     void qc.invalidateQueries({ queryKey: ['team', 'tracking'] })

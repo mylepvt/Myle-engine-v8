@@ -38,7 +38,7 @@ export type TeamReportItem = TeamReportsMember & {
 export type TeamReportsLiveSummary = {
   leads_claimed_today: number
   calls_made_today: number
-  enrolled_today: number
+  flp_min_billing_today: number
   /** Enroll payment proofs approved today (Asia/Kolkata calendar day). */
   payment_proofs_approved_today: number
   day1_total: number

@@ -53,7 +53,7 @@ from app.services.ctcs_status_chain import advance_lead_status_toward
 from app.services.lead_payloads import build_lead_public_payloads
 from app.services.team_tracking import refresh_daily_member_stat_after_change
 from app.services.user_hierarchy import nearest_leader_for_user
-from app.services.whatsapp_ctcs import send_interested_enrollment_assets
+from app.services.whatsapp_ctcs import send_interested_flp_min_billing_assets
 from app.services.execution_enforcement import run_completed_watch_pipeline_maintenance
 from app.validators.leads_validator import lead_list_conditions, parse_status_query, validate_list_flags
 
@@ -65,7 +65,7 @@ _PHONE_DIGIT_RE = re.compile(r"\D")
 
 
 async def _deliver_ctcs_interested_whatsapp(lead_id: int, phone: str | None) -> None:
-    await send_interested_enrollment_assets(lead_id=lead_id, phone=phone)
+    await send_interested_flp_min_billing_assets(lead_id=lead_id, phone=phone)
 
 
 def _display_name_from_fields(name: str | None, username: str | None, email: str | None) -> str:
@@ -328,7 +328,7 @@ class LeadsService:
         deleted_only: bool,
         ctcs_filter: Optional[str] = None,
         ctcs_priority_sort: bool = False,
-        pre_enrollment_only: bool = False,
+        pre_flp_min_billing_only: bool = False,
         search_all_sections: bool = False,
         leader_all_scope: bool = False,
     ) -> LeadListResponse:
@@ -347,8 +347,8 @@ class LeadsService:
         extra = _ctcs_filter_clause(ctcs_filter)
         if extra is not None:
             condition = and_(condition, extra) if condition is not None else extra
-        # leader_all_scope shows all statuses — skip pre_enrollment_only restriction
-        if pre_enrollment_only and not (leader_all_scope and user.role == "leader"):
+        # leader_all_scope shows all statuses — skip pre_flp_min_billing_only restriction
+        if pre_flp_min_billing_only and not (leader_all_scope and user.role == "leader"):
             pre_enroll = Lead.status.in_(
                 ["new_lead", "contacted", "invited", "whatsapp_sent", "video_sent"]
             )
@@ -1239,7 +1239,7 @@ class LeadsService:
                 background_tasks.add_task(_deliver_ctcs_interested_whatsapp, lead.id, lead.phone)
                 wa_meta: dict[str, Any] = {"queued": True, "channel": "whatsapp"}
             else:
-                wa_meta = await send_interested_enrollment_assets(lead_id=lead.id, phone=lead.phone)
+                wa_meta = await send_interested_flp_min_billing_assets(lead_id=lead.id, phone=lead.phone)
             await self._repository.add_lead_activity(
                 user_id=user.user_id,
                 action="ctcs.interested",

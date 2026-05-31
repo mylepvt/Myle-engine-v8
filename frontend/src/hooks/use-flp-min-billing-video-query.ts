@@ -18,7 +18,7 @@ export type ActiveWatcherListResponse = {
   total: number
 }
 
-export type EnrollShareLink = {
+export type FlpMinBillingShareLink = {
   id: number
   token: string
   lead_id: number
@@ -38,12 +38,12 @@ export type EnrollShareLink = {
   is_expired: boolean
 }
 
-type EnrollShareLinkListResponse = {
-  items: EnrollShareLink[]
+type FlpMinBillingShareLinkListResponse = {
+  items: FlpMinBillingShareLink[]
   total: number
 }
 
-export type EnrollmentVideoSendDelivery = {
+export type FlpMinBillingVideoSendDelivery = {
   ok: boolean
   channel: string
   manual_share_url?: string | null
@@ -54,9 +54,9 @@ export type EnrollmentVideoSendDelivery = {
   detail?: string | null
 }
 
-export type EnrollmentVideoSendResponse = {
-  link: EnrollShareLink
-  delivery: EnrollmentVideoSendDelivery
+export type FlpMinBillingVideoSendResponse = {
+  link: FlpMinBillingShareLink
+  delivery: FlpMinBillingVideoSendDelivery
 }
 
 type GenerateShareLinkBody = {
@@ -80,39 +80,39 @@ async function parseError(res: Response): Promise<never> {
   throw new Error(msg || `HTTP ${res.status}`)
 }
 
-async function fetchLeadShareLinks(leadId: number): Promise<EnrollShareLinkListResponse> {
-  const res = await apiFetch(`/api/v1/enroll/lead/${leadId}`)
+async function fetchLeadShareLinks(leadId: number): Promise<FlpMinBillingShareLinkListResponse> {
+  const res = await apiFetch(`/api/v1/flp-min-billing/lead/${leadId}`)
   if (!res.ok) await parseError(res)
-  return res.json() as Promise<EnrollShareLinkListResponse>
+  return res.json() as Promise<FlpMinBillingShareLinkListResponse>
 }
 
-async function postGenerateShareLink(body: GenerateShareLinkBody): Promise<EnrollShareLink> {
-  const res = await apiFetch('/api/v1/enroll/generate', {
+async function postGenerateShareLink(body: GenerateShareLinkBody): Promise<FlpMinBillingShareLink> {
+  const res = await apiFetch('/api/v1/flp-min-billing/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
   if (!res.ok) await parseError(res)
-  return res.json() as Promise<EnrollShareLink>
+  return res.json() as Promise<FlpMinBillingShareLink>
 }
 
 function normalizeSendBody(input: number | GenerateShareLinkBody): GenerateShareLinkBody {
   return typeof input === 'number' ? { lead_id: input } : input
 }
 
-async function postSendEnrollmentVideo(body: number | GenerateShareLinkBody): Promise<EnrollmentVideoSendResponse> {
+async function postSendFlpMinBillingVideo(body: number | GenerateShareLinkBody): Promise<FlpMinBillingVideoSendResponse> {
   const payload = normalizeSendBody(body)
-  const res = await apiFetch('/api/v1/enroll/send', {
+  const res = await apiFetch('/api/v1/flp-min-billing/send', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
   if (!res.ok) await parseError(res)
-  return res.json() as Promise<EnrollmentVideoSendResponse>
+  return res.json() as Promise<FlpMinBillingVideoSendResponse>
 }
 
 async function fetchActiveWatchers(): Promise<ActiveWatcherListResponse> {
-  const res = await apiFetch('/api/v1/enroll/live-watchers')
+  const res = await apiFetch('/api/v1/flp-min-billing/live-watchers')
   if (!res.ok) await parseError(res)
   return res.json() as Promise<ActiveWatcherListResponse>
 }
@@ -137,10 +137,10 @@ export function useGenerateShareLinkMutation() {
   })
 }
 
-export function useSendEnrollmentVideoMutation() {
+export function useSendFlpMinBillingVideoMutation() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: number | GenerateShareLinkBody) => postSendEnrollmentVideo(body),
+    mutationFn: (body: number | GenerateShareLinkBody) => postSendFlpMinBillingVideo(body),
     onSuccess: (_data, body) => {
       const payload = normalizeSendBody(body)
       void qc.invalidateQueries({ queryKey: ['enroll', 'lead', payload.lead_id] })
@@ -162,7 +162,7 @@ export function useActiveWatchersQuery(enabled = true) {
 
 async function fetchBatchLiveWatchers(date?: string): Promise<ActiveWatcherListResponse> {
   const params = date ? `?date=${encodeURIComponent(date)}` : ''
-  const res = await apiFetch(`/api/v1/enroll/batch-live-watchers${params}`)
+  const res = await apiFetch(`/api/v1/flp-min-billing/batch-live-watchers${params}`)
   if (!res.ok) await parseError(res)
   return res.json() as Promise<ActiveWatcherListResponse>
 }

@@ -8,7 +8,7 @@ from app.models.call_event import CallEvent
 from app.models.batch_share_link import BatchShareLink
 from app.models.crm_outbox import CrmOutbox
 from app.models.daily_member_stat import DailyMemberStat
-from app.models.enroll_share_link import EnrollShareLink
+from app.models.flp_min_billing_share_link import FlpMinBillingShareLink
 from app.models.invoice import Invoice
 from app.models.lead import Lead
 from app.models.legacy_row_snapshot import LegacyRowSnapshot
@@ -42,7 +42,7 @@ __all__ = [
     "BatchShareLink",
     "CrmOutbox",
     "DailyMemberStat",
-    "EnrollShareLink",
+    "FlpMinBillingShareLink",
     "Invoice",
     "Lead",
     "LegacyRowSnapshot",

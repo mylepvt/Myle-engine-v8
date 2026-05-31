@@ -111,8 +111,8 @@ export default function TeamPerformanceCard({ performance, isLoading }: TeamPerf
                 <span className="font-semibold">{performance.reports.calls_picked.toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Enrollments</span>
-                <span className="font-semibold">{performance.reports.enrollments}</span>
+                <span className="text-sm text-muted-foreground">FlpMinBillings</span>
+                <span className="font-semibold">{performance.reports.flp_min_billings}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Payments</span>

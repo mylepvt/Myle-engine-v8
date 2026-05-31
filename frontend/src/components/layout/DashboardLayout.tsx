@@ -11,8 +11,8 @@ import { DashboardOutletErrorBoundary } from '@/components/routing/DashboardOutl
 import { filterDashboardNav, resolveItemLabel } from '@/config/dashboard-nav'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
-import { useEnrollmentApprovalsAlertBanner } from '@/hooks/use-enrollment-approvals-alert'
-import { useEnrollmentApprovalsPendingQuery } from '@/hooks/use-team-query'
+import { useFlpMinBillingApprovalsAlertBanner } from '@/hooks/use-flp-min-billing-approvals-alert'
+import { useFlpMinBillingApprovalsPendingQuery } from '@/hooks/use-team-query'
 import { useOnline } from '@/hooks/use-online'
 import { usePushNotifications } from '@/hooks/use-push-notifications'
 import { useRealtimeInvalidation } from '@/hooks/use-realtime-invalidation'
@@ -57,11 +57,11 @@ export function DashboardLayout() {
   )
   const theme = useUiFeedbackStore((s) => s.theme)
   const logout = useAuthStore((s) => s.logout)
-  const enrollmentPending = useEnrollmentApprovalsPendingQuery()
+  const enrollmentPending = useFlpMinBillingApprovalsPendingQuery()
   const pendingEnrollCount = enrollmentPending.data?.total ?? 0
   const approverForEnroll =
     Boolean(me?.authenticated) && me?.role === 'admin'
-  const enrollmentAlert = useEnrollmentApprovalsAlertBanner(pendingEnrollCount, {
+  const enrollmentAlert = useFlpMinBillingApprovalsAlertBanner(pendingEnrollCount, {
     enabled: approverForEnroll,
   })
   const push = usePushNotifications()
@@ -338,7 +338,7 @@ export function DashboardLayout() {
             </p>
             <div className="flex shrink-0 items-center gap-2">
               <Link
-                to="/dashboard/team/enrollment-approvals"
+                to="/dashboard/team/flp-min-billing"
                 className="text-sm font-semibold text-amber-950 underline underline-offset-2 dark:text-amber-50"
                 onClick={() => enrollmentAlert.dismiss()}
               >

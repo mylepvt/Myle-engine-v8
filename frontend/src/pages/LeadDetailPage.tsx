@@ -820,7 +820,7 @@ export function LeadDetailPage({ leadId }: Props) {
                           FLP invoice leader Workboard par upload karta hai. Yahan se sirf status dekh
                           ya{' '}
                           <Link
-                            to="/dashboard/team/enrollment-approvals"
+                            to="/dashboard/team/flp-min-billing"
                             className="font-medium text-primary underline-offset-2 hover:underline"
                           >
                             approvals

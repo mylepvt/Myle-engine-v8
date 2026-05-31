@@ -89,10 +89,10 @@ export function TeamDashboardHomeModern({
 
             <div className="shrink-0 rounded-[1.2rem] border border-white/10 bg-white/10 px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md">
               <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-blue-100/68">
-                Enrolled
+                Min. FLP Billed
               </p>
               <p className="mt-1 text-2xl font-semibold leading-none text-white">
-                {today?.enrolled_today ?? 0}
+                {today?.flp_min_billing_today ?? 0}
               </p>
               <p className="mt-1 text-[0.72rem] text-blue-100/70">
                 {enrolledPct}% from claimed

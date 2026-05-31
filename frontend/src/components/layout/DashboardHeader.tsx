@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { StatusDot } from '@/components/ui/status-dot'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
-import { useEnrollmentApprovalsPendingQuery } from '@/hooks/use-team-query'
+import { useFlpMinBillingApprovalsPendingQuery } from '@/hooks/use-team-query'
 import { useNoticeBoardUnread } from '@/hooks/use-notice-board-unread'
 import { useShellPreviewStore } from '@/stores/shell-preview-store'
 import { apiUrl } from '@/lib/api'
@@ -48,7 +48,7 @@ export function DashboardHeader({
   const setViewAsRole = useShellPreviewStore((s) => s.setViewAsRole)
   const { data: me } = useAuthMeQuery()
   const { unread: noticeBoardUnread } = useNoticeBoardUnread()
-  const enrollmentPending = useEnrollmentApprovalsPendingQuery()
+  const enrollmentPending = useFlpMinBillingApprovalsPendingQuery()
   const pendingEnrollCount = enrollmentPending.data?.total ?? 0
   const approverForEnroll =
     Boolean(me?.authenticated) && me?.role === 'admin'
@@ -152,7 +152,7 @@ export function DashboardHeader({
         {approverForEnroll && pendingEnrollCount > 0 ? (
           <div className="relative">
             <Link
-              to="/dashboard/team/enrollment-approvals"
+              to="/dashboard/team/flp-min-billing"
               className="relative flex size-9 items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[rgba(255,255,255,0.06)] hover:text-foreground"
               aria-label={`Min. FLP approvals — ${pendingEnrollCount} pending`}
             >

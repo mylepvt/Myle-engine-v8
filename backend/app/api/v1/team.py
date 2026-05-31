@@ -24,12 +24,12 @@ from app.models.lead import Lead
 from app.models.user import User
 from app.schemas.system_surface import SystemStubResponse
 from app.schemas.team import (
-    EnrollmentDecisionBody,
+    FlpMinBillingDecisionBody,
     PendingRegistrationsResponse,
     PendingRegistrationItem,
     RegistrationDecisionBody,
-    TeamEnrollmentHistoryResponse,
-    TeamEnrollmentListResponse,
+    TeamFlpMinBillingHistoryResponse,
+    TeamFlpMinBillingListResponse,
     TeamMemberComplianceUpdate,
     TeamMemberCreate,
     TeamMemberListResponse,
@@ -500,24 +500,24 @@ async def cancel_my_grace_request(
     return item
 
 
-@router.get("/enrollment-requests", response_model=TeamEnrollmentListResponse)
-async def list_enrollment_requests(
+@router.get("/flp-min-billing-requests", response_model=TeamFlpMinBillingListResponse)
+async def list_flp_min_billing_requests(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
     limit: int = Query(default=_DEFAULT_LIMIT, ge=1, le=_MAX_LIMIT),
     offset: int = Query(default=0, ge=0),
-) -> TeamEnrollmentListResponse:
+) -> TeamFlpMinBillingListResponse:
     """Min. FLP Billing proof approval queue for admin/leader review."""
     _require_admin_or_leader(user)
     service = PaymentService(session)
     items = await service.get_pending_payment_proofs(user.user_id, user.role)
     total = len(items)
     page = items[offset : offset + limit]
-    return TeamEnrollmentListResponse(items=page, total=total, limit=limit, offset=offset)
+    return TeamFlpMinBillingListResponse(items=page, total=total, limit=limit, offset=offset)
 
 
-@router.get("/enrollment-requests/history", response_model=TeamEnrollmentHistoryResponse)
-async def enrollment_request_history(
+@router.get("/flp-min-billing-requests/history", response_model=TeamFlpMinBillingHistoryResponse)
+async def flp_min_billing_request_history(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
     date: Optional[str] = Query(
@@ -526,7 +526,7 @@ async def enrollment_request_history(
     ),
     limit: int = Query(default=_DEFAULT_LIMIT, ge=1, le=_MAX_LIMIT),
     offset: int = Query(default=0, ge=0),
-) -> TeamEnrollmentHistoryResponse:
+) -> TeamFlpMinBillingHistoryResponse:
     """Calendar-wise proof approval / rejection history for admin / leader review."""
     _require_admin_or_leader(user)
     target_day = _parse_report_date_param(date)
@@ -541,13 +541,13 @@ async def enrollment_request_history(
         limit=limit,
         offset=offset,
     )
-    return TeamEnrollmentHistoryResponse(items=items, total=total, date=target_day.isoformat())
+    return TeamFlpMinBillingHistoryResponse(items=items, total=total, date=target_day.isoformat())
 
 
-@router.post("/enrollment-requests/{lead_id}/decision")
-async def decide_enrollment_request(
+@router.post("/flp-min-billing-requests/{lead_id}/decision")
+async def decide_flp_min_billing_request(
     lead_id: int,
-    body: EnrollmentDecisionBody,
+    body: FlpMinBillingDecisionBody,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
@@ -1187,8 +1187,8 @@ async def team_approvals(
             },
             {
                 "title": "Min. FLP Billing queue",
-                "detail": "Enrollment proof + approvals: Team → Min. FLP Billing Approvals.",
-                "href": "team/enrollment-approvals",
+                "detail": "Min. FLP Billing proof + approvals: Team → Min. FLP Billing Approvals.",
+                "href": "team/flp-min-billing",
             },
         ],
         total=2,

@@ -100,7 +100,7 @@ export type AppSettingUpdateRequest = {
   value: string
 }
 
-export type EnrollmentVideoUploadResponse = {
+export type FlpMinBillingVideoUploadResponse = {
   source_url: string
   file_name: string
   message: string
@@ -235,7 +235,7 @@ async function updateAppSetting(request: AppSettingUpdateRequest): Promise<{ mes
   return res.json()
 }
 
-async function uploadEnrollmentVideo(file: File): Promise<EnrollmentVideoUploadResponse> {
+async function uploadFlpMinBillingVideo(file: File): Promise<FlpMinBillingVideoUploadResponse> {
   const form = new FormData()
   form.append('file', file)
   const res = await apiFetch('/api/v1/settings-enhanced/system/app-settings/enrollment-video/upload', {
@@ -384,11 +384,11 @@ export function useAppSettingUpdateMutation() {
   })
 }
 
-export function useEnrollmentVideoUploadMutation() {
+export function useFlpMinBillingVideoUploadMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: uploadEnrollmentVideo,
+    mutationFn: uploadFlpMinBillingVideo,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings', 'system', 'app-settings'] })
       queryClient.invalidateQueries({ queryKey: ['settings', 'system', 'configuration'] })

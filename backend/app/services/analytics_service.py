@@ -41,7 +41,7 @@ class AnalyticsService:
                     "total_reports": 0,
                     "total_calls": 0,
                     "calls_picked": 0,
-                    "enrollments": 0,
+                    "flp_min_billings": 0,
                     "payments": 0,
                     "avg_daily_calls": 0.0,
                     "pickup_rate": 0.0,
@@ -66,7 +66,7 @@ class AnalyticsService:
                 func.count(DailyReport.id).label("total_reports"),
                 func.sum(DailyReport.total_calling).label("total_calls"),
                 func.sum(DailyReport.calls_picked).label("calls_picked"),
-                func.sum(DailyReport.day1_count + DailyReport.day2_count + DailyReport.day3_count).label("enrollments"),
+                func.sum(DailyReport.day1_count + DailyReport.day2_count + DailyReport.day3_count).label("flp_min_billings"),
                 func.sum(DailyReport.payments_actual).label("payments"),
                 func.avg(DailyReport.total_calling).label("avg_daily_calls"),
             )
@@ -132,7 +132,7 @@ class AnalyticsService:
                 "total_reports": reports_data.total_reports or 0,
                 "total_calls": total_calls,
                 "calls_picked": calls_picked,
-                "enrollments": reports_data.enrollments or 0,
+                "flp_min_billings": reports_data.flp_min_billings or 0,
                 "payments": reports_data.payments or 0,
                 "avg_daily_calls": round(reports_data.avg_daily_calls or 0, 1),
                 "pickup_rate": round(pickup_rate, 2),
@@ -222,7 +222,7 @@ class AnalyticsService:
             daily_data.append({
                 "date": current_date.isoformat(),
                 "calls": report.total_calling if report else 0,
-                "enrollments": (report.day1_count + report.day2_count + report.day3_count) if report else 0,
+                "flp_min_billings": (report.day1_count + report.day2_count + report.day3_count) if report else 0,
                 "payments": report.payments_actual if report else 0,
                 "points": 20 if report else 0,  # 20 points per report
             })
@@ -232,7 +232,7 @@ class AnalyticsService:
             "reports": {
                 "total_reports": len(reports),
                 "total_calls": sum(r.total_calling for r in reports),
-                "total_enrollments": sum(r.day1_count + r.day2_count + r.day3_count for r in reports),
+                "total_flp_min_billings": sum(r.day1_count + r.day2_count + r.day3_count for r in reports),
                 "total_payments": sum(r.payments_actual for r in reports),
                 "avg_daily_calls": round(sum(r.total_calling for r in reports) / len(reports), 1) if reports else 0,
             },
@@ -339,7 +339,7 @@ class AnalyticsService:
             select(
                 func.count(DailyReport.id).label("total_reports"),
                 func.sum(DailyReport.total_calling).label("total_calls"),
-                func.sum(DailyReport.day1_count + DailyReport.day2_count + DailyReport.day3_count).label("total_enrollments"),
+                func.sum(DailyReport.day1_count + DailyReport.day2_count + DailyReport.day3_count).label("total_flp_min_billings"),
                 func.sum(DailyReport.payments_actual).label("total_payments"),
             )
             .where(
@@ -390,7 +390,7 @@ class AnalyticsService:
             "reports": {
                 "total_reports": reports_data.total_reports or 0,
                 "total_calls": reports_data.total_calls or 0,
-                "total_enrollments": reports_data.total_enrollments or 0,
+                "total_flp_min_billings": reports_data.total_flp_min_billings or 0,
                 "total_payments": reports_data.total_payments or 0,
                 "avg_calls_per_user": round((reports_data.total_calls or 0) / active_users, 1) if active_users > 0 else 0,
             },
@@ -447,7 +447,7 @@ class AnalyticsService:
                 DailyReport.report_date,
                 func.count(DailyReport.id).label("reports_count"),
                 func.sum(DailyReport.total_calling).label("total_calls"),
-                func.sum(DailyReport.day1_count + DailyReport.day2_count + DailyReport.day3_count).label("total_enrollments"),
+                func.sum(DailyReport.day1_count + DailyReport.day2_count + DailyReport.day3_count).label("total_flp_min_billings"),
                 func.sum(DailyReport.payments_actual).label("total_payments"),
             )
             .where(where_clause)
@@ -461,7 +461,7 @@ class AnalyticsService:
                 "date": row.report_date.isoformat(),
                 "reports_count": row.reports_count or 0,
                 "total_calls": row.total_calls or 0,
-                "total_enrollments": row.total_enrollments or 0,
+                "total_flp_min_billings": row.total_flp_min_billings or 0,
                 "total_payments": row.total_payments or 0,
                 "avg_calls_per_report": round((row.total_calls or 0) / (row.reports_count or 1), 1),
             }

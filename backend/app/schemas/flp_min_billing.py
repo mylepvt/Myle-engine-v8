@@ -6,12 +6,12 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
-class EnrollShareLinkCreate(BaseModel):
+class FlpMinBillingShareLinkCreate(BaseModel):
     lead_id: int
     live_session_slot_key: Optional[str] = None
 
 
-class EnrollShareLinkPublic(BaseModel):
+class FlpMinBillingShareLinkPublic(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -33,7 +33,7 @@ class EnrollShareLinkPublic(BaseModel):
     is_expired: bool = False
 
     @model_validator(mode="after")
-    def set_share_url(self) -> "EnrollShareLinkPublic":
+    def set_share_url(self) -> "FlpMinBillingShareLinkPublic":
         expiry = None
         if self.expires_at is not None:
             expiry = self.expires_at.replace(tzinfo=timezone.utc) if self.expires_at.tzinfo is None else self.expires_at.astimezone(timezone.utc)
@@ -43,12 +43,12 @@ class EnrollShareLinkPublic(BaseModel):
         return self
 
 
-class EnrollShareLinkListResponse(BaseModel):
-    items: list[EnrollShareLinkPublic]
+class FlpMinBillingShareLinkListResponse(BaseModel):
+    items: list[FlpMinBillingShareLinkPublic]
     total: int
 
 
-class EnrollmentVideoSendDelivery(BaseModel):
+class FlpMinBillingVideoSendDelivery(BaseModel):
     ok: bool
     channel: str
     manual_share_url: Optional[str] = None
@@ -59,9 +59,9 @@ class EnrollmentVideoSendDelivery(BaseModel):
     detail: Optional[str] = None
 
 
-class EnrollmentVideoSendResponse(BaseModel):
-    link: EnrollShareLinkPublic
-    delivery: EnrollmentVideoSendDelivery
+class FlpMinBillingVideoSendResponse(BaseModel):
+    link: FlpMinBillingShareLinkPublic
+    delivery: FlpMinBillingVideoSendDelivery
 
 
 class WatchPageData(BaseModel):

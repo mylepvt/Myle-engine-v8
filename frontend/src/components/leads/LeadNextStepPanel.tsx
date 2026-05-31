@@ -159,7 +159,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
             </Link>
           ) : (
             <Link
-              to="/dashboard/team/enrollment-approvals"
+              to="/dashboard/team/flp-min-billing"
               className="mt-2 inline-flex font-semibold text-primary underline-offset-2 hover:underline"
             >
               Open Min. FLP Approvals

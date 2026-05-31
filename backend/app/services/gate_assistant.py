@@ -251,7 +251,7 @@ async def build_gate_assistant(session: AsyncSession, user: AuthUser) -> GateAss
                 id="payment_proofs_pending",
                 label=f"Min. FLP Billing proofs waiting for review ({pending_proof_count})",
                 done=pending_proof_count == 0,
-                href="team/enrollment-approvals",
+                href="team/flp-min-billing",
             ),
             GateChecklistItem(
                 id="org_discipline",
@@ -279,7 +279,7 @@ async def build_gate_assistant(session: AsyncSession, user: AuthUser) -> GateAss
         elif pending_proof_count > 0:
             risk = "red"
             next_action = f"Review {pending_proof_count} pending payment proof(s)"
-            next_href = "team/enrollment-approvals"
+            next_href = "team/flp-min-billing"
             next_label = "Open proof queue"
         elif team_strong_warning_count > 0 or team_warning_count > 0:
             risk = "yellow"

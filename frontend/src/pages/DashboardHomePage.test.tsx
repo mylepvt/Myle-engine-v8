@@ -124,7 +124,7 @@ function seedBaseMocks(role: 'team' | 'leader' | 'admin') {
     data: {
       claimed_today: 0,
       calls_today: 0,
-      enrolled_today: 0,
+      flp_min_billing_today: 0,
     },
     isPending: false,
   })

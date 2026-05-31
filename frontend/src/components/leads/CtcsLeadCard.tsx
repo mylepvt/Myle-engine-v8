@@ -319,8 +319,8 @@ export function CtcsLeadCard({
                   'dark:border-[#25D366]/75 dark:bg-[#25D366]/20 dark:text-[#dcf8c6] dark:shadow-[0_0_12px_rgba(37,211,102,0.45)] dark:ring-[#25D366]/35',
                   'dark:hover:border-[#34eb75] dark:hover:bg-[#25D366]/30',
                 )}
-                title="Send secure enrollment video on WhatsApp"
-                aria-label="Send secure enrollment video on WhatsApp"
+                title="Send secure Min. FLP Billing video on WhatsApp"
+                aria-label="Send secure Min. FLP Billing video on WhatsApp"
               >
                 <MessageCircle className="size-3.5 text-[#047857] dark:text-[#b8f5c4]" aria-hidden />
               </button>

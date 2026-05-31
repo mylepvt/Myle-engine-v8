@@ -9,7 +9,7 @@ const mockUseQuery = vi.fn()
 const mockUseActiveWatchersQuery = vi.fn()
 const mockUseAppSettingsQuery = vi.fn()
 const mockUseSystemUsersSummaryQuery = vi.fn()
-const mockUseEnrollmentApprovalsPendingQuery = vi.fn()
+const mockUseFlpMinBillingApprovalsPendingQuery = vi.fn()
 const mockUseTeamMembersQuery = vi.fn()
 const mockUseTeamReportsQuery = vi.fn()
 const mockUseWalletRechargeRequestsQuery = vi.fn()
@@ -31,7 +31,7 @@ vi.mock('@/hooks/use-settings-query', () => ({
   useSystemUsersSummaryQuery: (...args: unknown[]) => mockUseSystemUsersSummaryQuery(...args),
 }))
 
-vi.mock('@/hooks/use-enroll-query', () => ({
+vi.mock('@/hooks/use-flp-min-billing-video-query', () => ({
   useActiveWatchersQuery: (...args: unknown[]) => mockUseActiveWatchersQuery(...args),
   useBatchLiveWatchersQuery: () => ({ data: [], isPending: false }),
 }))
@@ -47,7 +47,7 @@ vi.mock('@/hooks/use-admin-leader-health-query', () => ({
 }))
 
 vi.mock('@/hooks/use-team-query', () => ({
-  useEnrollmentApprovalsPendingQuery: (...args: unknown[]) => mockUseEnrollmentApprovalsPendingQuery(...args),
+  useFlpMinBillingApprovalsPendingQuery: (...args: unknown[]) => mockUseFlpMinBillingApprovalsPendingQuery(...args),
   useTeamMembersQuery: (...args: unknown[]) => mockUseTeamMembersQuery(...args),
 }))
 
@@ -140,7 +140,7 @@ describe('AdminCommandCenter', () => {
         refetch: vi.fn(),
       }
     })
-    mockUseEnrollmentApprovalsPendingQuery.mockReturnValue({
+    mockUseFlpMinBillingApprovalsPendingQuery.mockReturnValue({
       data: { total: 3, items: [] },
       isPending: false,
       isError: false,
@@ -254,7 +254,7 @@ describe('AdminCommandCenter', () => {
         live_summary: {
           leads_claimed_today: 12,
           calls_made_today: 41,
-          enrolled_today: 4,
+          flp_min_billing_today: 4,
           payment_proofs_approved_today: 3,
           day1_total: 8,
           day2_total: 6,

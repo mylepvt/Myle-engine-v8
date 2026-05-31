@@ -61,14 +61,14 @@ export type TeamMyTeamResponse = {
   total_downline?: number
 }
 
-export type TeamEnrollmentListResponse = {
-  items: TeamEnrollmentRequest[]
+export type TeamFlpMinBillingListResponse = {
+  items: TeamFlpMinBillingRequest[]
   total: number
   limit: number
   offset: number
 }
 
-export type TeamEnrollmentHistoryItem = TeamEnrollmentRequest & {
+export type TeamFlpMinBillingHistoryItem = TeamFlpMinBillingRequest & {
   reviewed_at: string
   reviewed_by_user_id: number | null
   reviewed_by_username: string | null
@@ -76,13 +76,13 @@ export type TeamEnrollmentHistoryItem = TeamEnrollmentRequest & {
   review_note: string | null
 }
 
-export type TeamEnrollmentHistoryResponse = {
-  items: TeamEnrollmentHistoryItem[]
+export type TeamFlpMinBillingHistoryResponse = {
+  items: TeamFlpMinBillingHistoryItem[]
   total: number
   date: string
 }
 
-export type TeamEnrollmentRequest = {
+export type TeamFlpMinBillingRequest = {
   lead_id: number
   lead_name: string
   lead_phone: string | null
@@ -139,36 +139,36 @@ async function fetchMyTeam(): Promise<TeamMyTeamResponse> {
   return res.json()
 }
 
-async function fetchEnrollmentRequests(): Promise<TeamEnrollmentListResponse> {
-  const res = await apiFetch('/api/v1/team/enrollment-requests')
+async function fetchFlpMinBillingRequests(): Promise<TeamFlpMinBillingListResponse> {
+  const res = await apiFetch('/api/v1/team/flp-min-billing-requests')
   if (!res.ok) await parseError(res)
-  const body = (await res.json()) as TeamEnrollmentListResponse
+  const body = (await res.json()) as TeamFlpMinBillingListResponse
   return {
     ...body,
     items: body.items.map((item) => ({
       ...item,
       // Backend still stores actionable queue rows as payment_status=proof_uploaded.
       // Normalize that to "pending" so the approvals UI behaves consistently.
-      status: (item.status === 'proof_uploaded' ? 'pending' : item.status) as TeamEnrollmentRequest['status'],
+      status: (item.status === 'proof_uploaded' ? 'pending' : item.status) as TeamFlpMinBillingRequest['status'],
     })),
   }
 }
 
-async function fetchEnrollmentHistory(date: string): Promise<TeamEnrollmentHistoryResponse> {
+async function fetchFlpMinBillingHistory(date: string): Promise<TeamFlpMinBillingHistoryResponse> {
   const params = new URLSearchParams()
   if (date.trim()) params.set('date', date.trim())
   const qs = params.toString()
-  const res = await apiFetch(`/api/v1/team/enrollment-requests/history${qs ? `?${qs}` : ''}`)
+  const res = await apiFetch(`/api/v1/team/flp-min-billing-requests/history${qs ? `?${qs}` : ''}`)
   if (!res.ok) await parseError(res)
   return res.json()
 }
 
-export async function decideEnrollmentRequest(body: {
+export async function decideFlpMinBillingRequest(body: {
   leadId: number
   action: 'approve' | 'reject'
   reason?: string | null
 }): Promise<{ ok: boolean; payment_status: string; message: string }> {
-  const res = await apiFetch(`/api/v1/team/enrollment-requests/${body.leadId}/decision`, {
+  const res = await apiFetch(`/api/v1/team/flp-min-billing-requests/${body.leadId}/decision`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -214,31 +214,31 @@ export function useMyTeamQuery(enabled = true) {
   })
 }
 
-export function useEnrollmentRequestsQuery(enabled = true) {
+export function useFlpMinBillingRequestsQuery(enabled = true) {
   return useQuery({
-    queryKey: ['team', 'enrollment-requests'],
-    queryFn: fetchEnrollmentRequests,
+    queryKey: ['team', 'flp-min-billing-requests'],
+    queryFn: fetchFlpMinBillingRequests,
     enabled,
   })
 }
 
-export function useEnrollmentHistoryQuery(date: string, enabled = true) {
+export function useFlpMinBillingHistoryQuery(date: string, enabled = true) {
   return useQuery({
-    queryKey: ['team', 'enrollment-history', date],
-    queryFn: () => fetchEnrollmentHistory(date),
+    queryKey: ['team', 'flp-min-billing-history', date],
+    queryFn: () => fetchFlpMinBillingHistory(date),
     enabled: enabled && date.trim().length > 0,
   })
 }
 
-/** Admin / leader: shared cache with `useEnrollmentRequestsQuery` — for sidebar + header badges. */
-export function useEnrollmentApprovalsPendingQuery() {
+/** Admin / leader: shared cache with `useFlpMinBillingRequestsQuery` — for sidebar + header badges. */
+export function useFlpMinBillingApprovalsPendingQuery() {
   const { data: me, isPending: mePending } = useAuthMeQuery()
   const isApprover =
     Boolean(me?.authenticated) && me?.role === 'admin'
 
   return useQuery({
-    queryKey: ['team', 'enrollment-requests'],
-    queryFn: fetchEnrollmentRequests,
+    queryKey: ['team', 'flp-min-billing-requests'],
+    queryFn: fetchFlpMinBillingRequests,
     enabled: isApprover && !mePending,
     staleTime: 15_000,
   })
@@ -461,13 +461,13 @@ export function useDeleteMemberMutation() {
   })
 }
 
-export function useEnrollmentDecisionMutation() {
+export function useFlpMinBillingDecisionMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: decideEnrollmentRequest,
+    mutationFn: decideFlpMinBillingRequest,
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['team', 'enrollment-requests'] })
-      void queryClient.invalidateQueries({ queryKey: ['team', 'enrollment-history'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'flp-min-billing-requests'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'flp-min-billing-history'] })
     },
   })
 }

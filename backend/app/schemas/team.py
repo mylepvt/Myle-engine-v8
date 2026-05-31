@@ -105,7 +105,7 @@ class TeamMyTeamResponse(BaseModel):
     )
 
 
-class TeamEnrollmentRequestItem(BaseModel):
+class TeamFlpMinBillingRequestItem(BaseModel):
     lead_id: int
     lead_name: str
     lead_phone: Optional[str] = None
@@ -117,16 +117,16 @@ class TeamEnrollmentRequestItem(BaseModel):
     status: str = "pending"
 
 
-class TeamEnrollmentListResponse(BaseModel):
+class TeamFlpMinBillingListResponse(BaseModel):
     """Min. FLP Billing proof approval queue for admin / leader review."""
 
-    items: list[TeamEnrollmentRequestItem] = Field(default_factory=list)
+    items: list[TeamFlpMinBillingRequestItem] = Field(default_factory=list)
     total: int = 0
     limit: int
     offset: int
 
 
-class TeamEnrollmentHistoryItem(TeamEnrollmentRequestItem):
+class TeamFlpMinBillingHistoryItem(TeamFlpMinBillingRequestItem):
     reviewed_at: datetime
     reviewed_by_user_id: Optional[int] = None
     reviewed_by_username: Optional[str] = None
@@ -134,8 +134,8 @@ class TeamEnrollmentHistoryItem(TeamEnrollmentRequestItem):
     review_note: Optional[str] = None
 
 
-class TeamEnrollmentHistoryResponse(BaseModel):
-    items: list[TeamEnrollmentHistoryItem] = Field(default_factory=list)
+class TeamFlpMinBillingHistoryResponse(BaseModel):
+    items: list[TeamFlpMinBillingHistoryItem] = Field(default_factory=list)
     total: int = 0
     date: str = Field(description="Calendar day YYYY-MM-DD, Asia/Kolkata")
 
@@ -145,7 +145,7 @@ class TeamReportsLiveSummary(BaseModel):
 
     leads_claimed_today: int
     calls_made_today: int
-    enrolled_today: int
+    flp_min_billing_today: int
     payment_proofs_approved_today: int
     day1_total: int
     day2_total: int
@@ -213,7 +213,7 @@ class RegistrationDecisionBody(BaseModel):
     action: Literal["approve", "reject"]
 
 
-class EnrollmentDecisionBody(BaseModel):
+class FlpMinBillingDecisionBody(BaseModel):
     action: Literal["approve", "reject"]
     reason: Optional[str] = None
 

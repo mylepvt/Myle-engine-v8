@@ -91,7 +91,7 @@ function MemberRow({ m }: { m: LosMemberRow }) {
         </span>
         <span className="text-muted-foreground">/{m.call_target}</span>
       </TableCell>
-      <TableCell className="tabular-nums">{m.enrollments}</TableCell>
+      <TableCell className="tabular-nums">{m.flp_min_billings}</TableCell>
       <TableCell>
         <Badge
           variant={m.is_active ? 'default' : 'destructive'}

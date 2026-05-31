@@ -25,7 +25,7 @@ from app.models.activity_log import ActivityLog
 from app.models.batch_day_submission import BatchDaySubmission
 from app.models.follow_up import FollowUp
 from app.models.call_event import CallEvent
-from app.models.enroll_share_link import EnrollShareLink
+from app.models.flp_min_billing_share_link import FlpMinBillingShareLink
 from app.models.lead import Lead
 from app.models.user import User
 from app.services.crm_outbox import enqueue_lead_shadow_upsert
@@ -188,8 +188,8 @@ def _redistribution_eligible_filters() -> ColumnElement[bool]:
 def _completed_watch_exists() -> ColumnElement[bool]:
     return exists(
         select(1).where(
-            EnrollShareLink.lead_id == Lead.id,
-            EnrollShareLink.status_synced.is_(True),
+            FlpMinBillingShareLink.lead_id == Lead.id,
+            FlpMinBillingShareLink.status_synced.is_(True),
         )
     )
 
@@ -199,15 +199,15 @@ def _completed_watch_anchor_ts():
         select(
             func.max(
                 func.coalesce(
-                    EnrollShareLink.last_viewed_at,
-                    EnrollShareLink.first_viewed_at,
-                    EnrollShareLink.created_at,
+                    FlpMinBillingShareLink.last_viewed_at,
+                    FlpMinBillingShareLink.first_viewed_at,
+                    FlpMinBillingShareLink.created_at,
                 )
             )
         )
         .where(
-            EnrollShareLink.lead_id == Lead.id,
-            EnrollShareLink.status_synced.is_(True),
+            FlpMinBillingShareLink.lead_id == Lead.id,
+            FlpMinBillingShareLink.status_synced.is_(True),
         )
         .scalar_subquery()
     )
@@ -236,7 +236,7 @@ def bottleneck_tags_for_member(
         tags.append("Proof stuck")
     if int(stats.get("fu_due") or 0) >= 3 or (
         int(stats.get("fu_due") or 0) >= 1
-        and int(stats.get("enrollments") or 0) == 0
+        and int(stats.get("flp_min_billings") or 0) == 0
         and int(stats.get("total_active") or 0) >= 4
     ):
         tags.append("Follow-up slow")
@@ -318,11 +318,11 @@ async def team_personal_funnel(session: AsyncSession, user_id: int) -> TeamPerso
         video_reached=video,
         proof_pending=proof,
         paid_flp=paid,
-        enrolled_total=paid,
+        flp_min_billing_total=paid,
         pct_video_vs_claimed=_pct(video, claimed),
         pct_proof_vs_video=_pct(proof, video),
-        pct_enrolled_vs_video=_pct(paid, video),
-        pct_enrolled_vs_claimed=_pct(paid, claimed),
+        pct_flp_min_billing_vs_video=_pct(paid, video),
+        pct_flp_min_billing_vs_claimed=_pct(paid, claimed),
     )
 
 
@@ -342,7 +342,7 @@ async def team_today_stats(
     call_target = await get_daily_call_target(session)
     effective_call_target = call_target if fresh_leads_today > 0 else 0
 
-    enrolled_today = int(
+    flp_min_billing_today = int(
         (
             await session.execute(
                 select(func.count())
@@ -372,7 +372,7 @@ async def team_today_stats(
         fresh_leads_today=fresh_leads_today,
         calls_today=calls_today,
         call_target=effective_call_target,
-        enrolled_today=enrolled_today,
+        flp_min_billing_today=flp_min_billing_today,
     )
 
 
@@ -420,7 +420,7 @@ async def downline_member_execution_stats(
     user_ids: list[int],
     today_iso: str,
 ) -> dict[int, dict[str, Any]]:
-    """Per assignee: totals, enrollments, proof queue, follow-up pressure."""
+    """Per assignee: totals, flp_min_billings, proof queue, follow-up pressure."""
     if not user_ids:
         return {}
     day = datetime.strptime(today_iso, "%Y-%m-%d").date()
@@ -466,7 +466,7 @@ async def downline_member_execution_stats(
         select(
             Lead.assigned_to_user_id.label("uid"),
             func.count(Lead.id).label("total_active"),
-            func.sum(enrolled_expr).label("enrollments"),
+            func.sum(enrolled_expr).label("flp_min_billings"),
             func.sum(proof_expr).label("proof_pend"),
             func.sum(fu_expr).label("fu_due"),
         )
@@ -481,13 +481,13 @@ async def downline_member_execution_stats(
     for r in result.mappings().all():
         uid = int(r["uid"])
         tot = int(r["total_active"] or 0)
-        enr = int(r["enrollments"] or 0)
+        enr = int(r["flp_min_billings"] or 0)
         calls_today = int(calls_today_map.get(uid, 0))
         fresh_leads_today = int(fresh_leads_today_map.get(uid, 0))
         call_target = daily_call_target if fresh_leads_today > 0 else 0
         out[uid] = {
             "total_active": tot,
-            "enrollments": enr,
+            "flp_min_billings": enr,
             "proof_pend": int(r["proof_pend"] or 0),
             "fu_due": int(r["fu_due"] or 0),
             "conv_pct": round(100.0 * enr / tot, 1) if tot else 0.0,
@@ -802,20 +802,20 @@ async def _get_watch_completion_map(
     rows = (
         await session.execute(
             select(
-                EnrollShareLink.lead_id,
+                FlpMinBillingShareLink.lead_id,
                 func.max(
                     func.coalesce(
-                        EnrollShareLink.last_viewed_at,
-                        EnrollShareLink.first_viewed_at,
-                        EnrollShareLink.created_at,
+                        FlpMinBillingShareLink.last_viewed_at,
+                        FlpMinBillingShareLink.first_viewed_at,
+                        FlpMinBillingShareLink.created_at,
                     )
                 ).label("watch_completed_at"),
             )
             .where(
-                EnrollShareLink.lead_id.in_(lead_ids),
-                EnrollShareLink.status_synced.is_(True),
+                FlpMinBillingShareLink.lead_id.in_(lead_ids),
+                FlpMinBillingShareLink.status_synced.is_(True),
             )
-            .group_by(EnrollShareLink.lead_id)
+            .group_by(FlpMinBillingShareLink.lead_id)
         )
     ).all()
     out: dict[int, datetime] = {}
@@ -2293,7 +2293,7 @@ async def admin_weak_members(
             User.username,
             User.role,
             func.count(Lead.id).label("total_leads"),
-            func.sum(enrolled_expr).label("enrollments"),
+            func.sum(enrolled_expr).label("flp_min_billings"),
             func.sum(fu_expr).label("fu_pending"),
         )
         .select_from(User)
@@ -2322,7 +2322,7 @@ async def admin_weak_members(
                 username=un,
                 role=role,
                 total_leads=tot_i,
-                enrollments=enr_i,
+                flp_min_billings=enr_i,
                 fu_pending=fu_i,
                 conv_pct=conv,
             )
@@ -2486,11 +2486,11 @@ async def leader_los_snapshot(
     for uid in team_ids:
         d = raw.get(uid, {
             "calls_today": 0, "call_target": daily_call_target,
-            "call_gate_met": False, "enrollments": 0, "fu_due": 0,
+            "call_gate_met": False, "flp_min_billings": 0, "fu_due": 0,
         })
         calls_today = int(d.get("calls_today", 0))
         call_target = int(d.get("call_target", daily_call_target)) or daily_call_target
-        enrollments = int(d.get("enrollments", 0))
+        flp_min_billings = int(d.get("flp_min_billings", 0))
         fu_due = int(d.get("fu_due", 0))
         is_active = calls_today >= call_target
 
@@ -2502,13 +2502,13 @@ async def leader_los_snapshot(
             calls_today=calls_today,
             call_target=call_target,
             call_gate_met=bool(d.get("call_gate_met", is_active)),
-            enrollments=enrollments,
+            flp_min_billings=flp_min_billings,
             fu_due=fu_due,
             is_active=is_active,
             downline_count=downline_map.get(uid, 0),
         ))
         total_calls += calls_today
-        total_activations += enrollments
+        total_activations += flp_min_billings
         total_fu += fu_due
         if is_active:
             active_count += 1

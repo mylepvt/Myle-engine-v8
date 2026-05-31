@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import Any
 
 from app.core.config import settings
-from app.services.enrollment_video import whatsapp_digits
+from app.services.flp_min_billing_video import whatsapp_digits
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ def _post_json_sync(url: str, payload: dict[str, Any], headers: dict[str, str], 
         return int(resp.status), body[:2000]
 
 
-def build_secure_enrollment_message(*, lead_name: str, watch_url: str) -> str:
+def build_secure_flp_min_billing_message(*, lead_name: str, watch_url: str) -> str:
     first_name = (lead_name or "there").strip().split()[0]
     return (
         f"Hi {first_name},\n"
@@ -45,7 +45,7 @@ def build_manual_share_url(*, phone: str | None, message: str) -> str | None:
     return f"https://wa.me/{digits}?text={urllib.parse.quote(message)}"
 
 
-async def send_enrollment_video_whatsapp(
+async def send_flp_min_billing_video_whatsapp(
     *,
     lead_id: int,
     phone: str | None,
@@ -54,7 +54,7 @@ async def send_enrollment_video_whatsapp(
     expires_at: datetime | None,
     title: str,
 ) -> dict[str, Any]:
-    message = build_secure_enrollment_message(lead_name=lead_name, watch_url=watch_url)
+    message = build_secure_flp_min_billing_message(lead_name=lead_name, watch_url=watch_url)
     manual_share_url = build_manual_share_url(phone=phone, message=message)
 
     url = (settings.ctcs_whatsapp_webhook_url or "").strip()

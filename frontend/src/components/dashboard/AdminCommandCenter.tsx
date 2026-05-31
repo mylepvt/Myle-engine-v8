@@ -35,8 +35,8 @@ import { LiveTeamActivity } from '@/components/dashboard/LiveTeamActivity'
 import { LiveOpsDashboard } from '@/components/dashboard/live-ops/LiveOpsDashboard'
 import { useLiveDashboardStore } from '@/stores/live-dashboard-store'
 import { useAppSettingsQuery, useSystemUsersSummaryQuery } from '@/hooks/use-settings-query'
-import { useActiveWatchersQuery } from '@/hooks/use-enroll-query'
-import { useEnrollmentApprovalsPendingQuery, useTeamMembersQuery, useUpdateMemberComplianceMutation, type TeamMemberPublic } from '@/hooks/use-team-query'
+import { useActiveWatchersQuery } from '@/hooks/use-flp-min-billing-video-query'
+import { useFlpMinBillingApprovalsPendingQuery, useTeamMembersQuery, useUpdateMemberComplianceMutation, type TeamMemberPublic } from '@/hooks/use-team-query'
 import { useTeamReportsQuery } from '@/hooks/use-team-reports-query'
 import { useLeaderHealthQuery, type LeaderHealthItem } from '@/hooks/use-admin-leader-health-query'
 import { useOnlineNowQuery, type OnlineUserItem } from '@/hooks/use-online-now-query'
@@ -609,7 +609,7 @@ export function AdminCommandCenter({ firstName }: Props) {
     queryKey: ['team', 'pending-registrations'],
     queryFn: () => fetchJson<PendingRegistrationResponse>('/api/v1/team/pending-registrations'),
   })
-  const enrollmentPending = useEnrollmentApprovalsPendingQuery()
+  const enrollmentPending = useFlpMinBillingApprovalsPendingQuery()
   const rechargeRequests = useWalletRechargeRequestsQuery()
   const leadControl = useLeadControlQuery()
   const liveDash = useLiveDashboardStore()
@@ -626,7 +626,7 @@ export function AdminCommandCenter({ firstName }: Props) {
       day2Total: liveSummary.day2_total,
       claimedToday: liveSummary.leads_claimed_today,
       approvedToday: liveSummary.payment_proofs_approved_today,
-      enrolledToday: liveSummary.enrolled_today,
+      enrolledToday: liveSummary.flp_min_billing_today,
     })
   }
 
@@ -867,7 +867,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                 <div className="divide-y divide-border/40">
                   <OpsRow label="Recharge requests" value={pendingRechargeItems.length} hint="Wallet requests still waiting for finance approval." variant="warning" to="/dashboard/finance/recharge-admin" />
                   <OpsRow label="Pending registrations" value={pendingRegistrations.data?.total ?? 0} hint="Self-serve signups waiting for admin approval." variant="warning" to="/dashboard/team/approvals" />
-                  <OpsRow label="Min. FLP billing" value={enrollmentPending.data?.total ?? 0} hint="Min. FLP billing approvals pending review right now." variant="warning" to="/dashboard/team/enrollment-approvals" />
+                  <OpsRow label="Min. FLP billing" value={enrollmentPending.data?.total ?? 0} hint="Min. FLP billing approvals pending review right now." variant="warning" to="/dashboard/team/flp-min-billing" />
                   <OpsRow label="Grace requests" value={pendingGraceCount} hint="Team members with a pending grace period request awaiting review." variant={pendingGraceCount > 0 ? 'warning' : 'default'} to="/dashboard/team/members" />
                   <OpsRow label="Reassign ready" value={leadControl.data?.queue_total ?? 0} hint="Archived leads eligible for redistribution." variant="default" to="/dashboard/system/lead-control" />
                   <OpsRow label="Archive incubation" value={leadControl.data?.incubation_total ?? 0} hint="Archived leads counting down toward stale reassignment." variant="default" to="/dashboard/system/lead-control" />
@@ -892,7 +892,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                       icon={<Users className="size-4" />}
                     />
                     <DeskShortcut
-                      to="/dashboard/team/enrollment-approvals"
+                      to="/dashboard/team/flp-min-billing"
                       title="Min. FLP Billing"
                       description="Review minimum FLP billing proofs and keep the funnel moving."
                       icon={<ClipboardCheck className="size-4" />}
@@ -1433,7 +1433,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                 <DeskShortcut
                   to="/dashboard/settings/app"
                   title="General settings"
-                  description="Enrollment video, live session, and batch links."
+                  description="Min. FLP Billing video, live session, and batch links."
                   icon={<Settings className="size-4" />}
                 />
                 <DeskShortcut

@@ -30,7 +30,7 @@ const STAGE_ROUTES: Record<string, string> = {
   contacted:    '/dashboard/work/leads?stage=contacted',
   invited:      '/dashboard/work/leads?stage=invited',
   video_sent:   '/dashboard/work/leads?stage=video_sent',
-  paid:         '/dashboard/team/enrollment-approvals',
+  paid:         '/dashboard/team/flp-min-billing',
   mindset_lock: '/dashboard/work/workboard',
   day1:         '/dashboard/work/workboard',
   day2:         '/dashboard/work/workboard?tab=day2',

@@ -12,7 +12,7 @@ class TeamPerformanceReports(BaseModel):
     total_reports: int
     total_calls: int
     calls_picked: int
-    enrollments: int
+    flp_min_billings: int
     payments: int
     avg_daily_calls: float
     pickup_rate: float
@@ -47,7 +47,7 @@ class IndividualPerformanceReports(BaseModel):
     """Individual performance reports metrics."""
     total_reports: int
     total_calls: int
-    total_enrollments: int
+    total_flp_min_billings: int
     total_payments: int
     avg_daily_calls: float
 
@@ -69,7 +69,7 @@ class DailyTrendData(BaseModel):
     """Daily trend data point."""
     date: str
     calls: int
-    enrollments: int
+    flp_min_billings: int
     payments: int
     points: int
 
@@ -112,7 +112,7 @@ class SystemOverviewReports(BaseModel):
     """System overview report metrics."""
     total_reports: int
     total_calls: int
-    total_enrollments: int
+    total_flp_min_billings: int
     total_payments: int
     avg_calls_per_user: float
 
@@ -147,7 +147,7 @@ class DailyTrendEntry(BaseModel):
     date: str
     reports_count: int
     total_calls: int
-    total_enrollments: int
+    total_flp_min_billings: int
     total_payments: int
     avg_calls_per_report: float
 

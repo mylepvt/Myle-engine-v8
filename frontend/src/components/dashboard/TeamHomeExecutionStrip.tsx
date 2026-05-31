@@ -32,7 +32,7 @@ export function TeamHomeExecutionStrip({
   return (
     <Card className="border-primary/20">
       <CardHeader className="pb-2">
-        <CardTitle className="text-ds-h3">Your enrollment funnel</CardTitle>
+        <CardTitle className="text-ds-h3">Your Min. FLP Billing funnel</CardTitle>
         <CardDescription>
           Same idea as legacy team dashboard funnel — counts are for your assigned active leads only.
         </CardDescription>
@@ -69,8 +69,8 @@ export function TeamHomeExecutionStrip({
                     <p className="mt-1 font-heading text-xl font-semibold tabular-nums">{todayStats?.calls_today ?? 0}</p>
                   </div>
                   <div className="rounded border border-primary/20 bg-primary/[0.08] px-3 py-3">
-                    <p className="text-ds-caption text-muted-foreground">Enrolled today</p>
-                    <p className="mt-1 font-heading text-xl font-semibold tabular-nums">{todayStats?.enrolled_today ?? 0}</p>
+                    <p className="text-ds-caption text-muted-foreground">Min. FLP Billed today</p>
+                    <p className="mt-1 font-heading text-xl font-semibold tabular-nums">{todayStats?.flp_min_billing_today ?? 0}</p>
                   </div>
                 </>
               )}
@@ -93,7 +93,7 @@ export function TeamHomeExecutionStrip({
               <div className="rounded border border-white/10 bg-muted/40 px-3 py-3">
                 <p className="text-ds-caption text-muted-foreground">Min. FLP Billing</p>
                 <p className="mt-1 font-heading text-2xl font-semibold tabular-nums">{data.paid_flp}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">{pct(data.pct_enrolled_vs_claimed)} of claimed</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{pct(data.pct_flp_min_billing_vs_claimed)} of claimed</p>
               </div>
             </div>
             <p className="text-ds-caption text-muted-foreground">

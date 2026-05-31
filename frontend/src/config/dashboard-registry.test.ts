@@ -23,9 +23,9 @@ describe('dashboard-registry', () => {
     expect(resolveTitleForPath('work/leads', 'team')).toBe('Calling Board')
   })
 
-  it('resolveTitleForPath uses labelByRole for admin on team/enrollment-approvals', () => {
-    expect(resolveTitleForPath('team/enrollment-approvals', 'admin')).toBe('Min. FLP Billing (all teams)')
-    expect(resolveTitleForPath('team/enrollment-approvals', 'leader')).toBe('Min. FLP Billing')
+  it('resolveTitleForPath uses labelByRole for admin on team/flp-min-billing', () => {
+    expect(resolveTitleForPath('team/flp-min-billing', 'admin')).toBe('Min. FLP Billing (all teams)')
+    expect(resolveTitleForPath('team/flp-min-billing', 'leader')).toBe('Min. FLP Billing')
   })
 
   it('routeDefAccessible allows valid route for allowed role', () => {
