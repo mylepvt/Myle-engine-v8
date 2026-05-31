@@ -205,6 +205,11 @@ class Lead(Base):
         DateTime(timezone=True),
         nullable=True,
     )
+    # Set when the lead enters lost/retarget — drives the 1-month re-highlight to the owner.
+    retarget_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
     heat_score: Mapped[int] = mapped_column(
         Integer,
         nullable=False,

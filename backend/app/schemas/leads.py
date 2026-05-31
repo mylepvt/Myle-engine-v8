@@ -105,6 +105,7 @@ class LeadPublic(BaseModel):
     # CTCS fields (nullable for legacy rows until touched)
     last_action_at: Optional[datetime] = None
     next_followup_at: Optional[datetime] = None
+    retarget_at: Optional[datetime] = None
     heat_score: int = 0
 
     @computed_field

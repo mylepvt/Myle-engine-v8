@@ -142,6 +142,22 @@ class WorkboardService:
                             Lead.d2_evening.is_(False),
                         ),
                     ),
+                    and_(
+                        Lead.status == "day4",
+                        or_(
+                            Lead.d4_morning.is_(False),
+                            Lead.d4_afternoon.is_(False),
+                            Lead.d4_evening.is_(False),
+                        ),
+                    ),
+                    and_(
+                        Lead.status == "day5",
+                        or_(
+                            Lead.d5_morning.is_(False),
+                            Lead.d5_afternoon.is_(False),
+                            Lead.d5_evening.is_(False),
+                        ),
+                    ),
                 ),
             )
         )

@@ -200,6 +200,10 @@ def _apply_status_side_effects(
     if new_status in {"lost", "retarget"}:
         # Legacy parity: terminal retarget/lost moves clear pending follow-up timers.
         lead.next_followup_at = None
+        # Stamp entry into the retarget bucket (re-stamp only on a fresh entry) so the
+        # 1-month re-highlight to the owner is measured from the latest lost/retarget move.
+        if previous_status not in {"lost", "retarget"} or lead.retarget_at is None:
+            lead.retarget_at = now
 
     if new_status == "mindset_lock":
         lead.mindset_lock_state = "mindset_lock"
