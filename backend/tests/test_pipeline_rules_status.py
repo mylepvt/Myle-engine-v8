@@ -68,3 +68,24 @@ def test_leader_can_set_day1():
 def test_admin_can_jump_anywhere():
     assert ok("new_lead", "day3", "admin")
     assert ok("video_sent", "converted", "admin")
+
+
+# ── Payment gate: post-Day-3 FLP-billing boundary ─────────────────────────────
+
+def test_payment_required_statuses_gate_day4_onward():
+    """Regression: the Day-3 FLP-billing gate must list the post-billing batch
+    stages. It was silently emptied once (commit 95506c89 set it to frozenset()),
+    which let a leader jump new -> day4 without an approved Rs.1500 payment proof.
+
+    Guards three invariants of _PAYMENT_REQUIRED_STATUSES:
+      - day4 / day5 / interview ARE gated (entry + jump-over for non-admins)
+      - converted is NOT gated (leader day3 -> converted close stays valid)
+      - pre-billing stages are NOT gated (leader free up to Day 3)
+    """
+    from app.services.leads_service import _PAYMENT_REQUIRED_STATUSES
+
+    assert {"day4", "day5", "interview"} <= _PAYMENT_REQUIRED_STATUSES
+    assert "converted" not in _PAYMENT_REQUIRED_STATUSES
+    assert _PAYMENT_REQUIRED_STATUSES.isdisjoint(
+        {"new_lead", "contacted", "video_sent", "paid", "mindset_lock", "day1", "day2", "day3"}
+    )
