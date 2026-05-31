@@ -95,6 +95,11 @@ export type SystemOverviewResponse = {
     total_debits: number
     net_volume: number
   }
+  sales: {
+    sale_count: number
+    total_case_credits: number
+    total_amount_cents: number
+  }
 }
 
 export type DailyTrendsResponse = {

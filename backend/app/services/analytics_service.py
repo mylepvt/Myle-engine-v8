@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.daily_report import DailyReport
 from app.models.daily_score import DailyScore
 from app.models.lead import Lead
+from app.models.lead_sale import LeadSale
 from app.models.user import User
 from app.models.wallet_ledger import WalletLedgerEntry
 from app.services.live_metrics import analytics_scope_user_ids
@@ -381,6 +382,21 @@ class AnalyticsService:
         )
         wallet_data = wallet_q.first()
 
+        # CC/sale revenue — approved invoices from the sale engine (Phase 3).
+        sales_q = await self.session.execute(
+            select(
+                func.count(LeadSale.id).label("sale_count"),
+                func.coalesce(func.sum(LeadSale.case_credits), 0).label("total_case_credits"),
+                func.coalesce(func.sum(LeadSale.amount_cents), 0).label("total_amount_cents"),
+            )
+            .where(
+                LeadSale.status == "approved",
+                LeadSale.created_at >= datetime.combine(start_date, datetime.min.time()),
+                LeadSale.created_at <= datetime.combine(end_date, datetime.max.time()),
+            )
+        )
+        sales_data = sales_q.first()
+
         return {
             "period": f"{days} days",
             "users": {
@@ -405,6 +421,11 @@ class AnalyticsService:
                 "total_credits": wallet_data.total_credits or 0,
                 "total_debits": wallet_data.total_debits or 0,
                 "net_volume": (wallet_data.total_credits or 0) - (wallet_data.total_debits or 0),
+            },
+            "sales": {
+                "sale_count": sales_data.sale_count or 0,
+                "total_case_credits": float(sales_data.total_case_credits or 0),
+                "total_amount_cents": int(sales_data.total_amount_cents or 0),
             },
         }
 

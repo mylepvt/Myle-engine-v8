@@ -61,7 +61,7 @@ async def session(engine) -> AsyncSession:
         # module touches so fixed seed IDs don't collide across tests.
         from sqlalchemy import text
 
-        for tbl in ("lead_sales", "leads", "users"):
+        for tbl in ("lead_sales", "crm_outbox", "leads", "users"):
             await s.execute(text(f"DELETE FROM {tbl}"))
         await s.commit()
         yield s
@@ -251,3 +251,203 @@ async def test_team_cannot_access_out_of_scope_lead(session, monkeypatch, tmp_pa
     )
     assert ok is False and sale is None
     assert msg == "Access denied"
+
+
+# ── Flow: pending → approve → data metrics ─────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_pending_then_approve_flows_into_dashboard(session, monkeypatch, tmp_path):
+    """A manual (non-auto) invoice stays out of the dashboard until admin approves."""
+    monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
+    unavail = ExtractedInvoice(ocr_available=False)
+    unavail.recompute_confidence()
+    monkeypatch.setattr(sales_mod, "extract_forever_invoice", lambda data: unavail)
+    ids = await _seed(session)
+    svc = SalesService(session)
+
+    _, _, sale, auto = await svc.submit_sale(
+        lead_id=ids["lead"], billing_stage="day3",
+        file=_FakeUpload(_png_bytes()),
+        manual=SaleManualFields(case_credits=Decimal("1.002"), amount_cents=1_997_800),
+        actor_user_id=ids["team"], actor_role="team",
+    )
+    assert auto is False and sale.status == "pending"
+
+    # Pending sale → not yet in the team's CC rollup.
+    before = await svc.dashboard(user_id=ids["team"], role="team")
+    assert before["sale_count"] == 0
+    assert before["pending_count"] == 1
+    assert before["total_case_credits"] == Decimal("0")
+
+    ok, _, approved = await svc.approve_sale(sale_id=sale.id, admin_user_id=ids["admin"])
+    assert ok and approved.status == "approved"
+
+    # After approval → CC + revenue flow into the dashboard metric.
+    after = await svc.dashboard(user_id=ids["team"], role="team")
+    assert after["sale_count"] == 1
+    assert after["pending_count"] == 0
+    assert after["total_case_credits"] == Decimal("1.002")
+    assert after["total_amount_cents"] == 1_997_800
+
+
+@pytest.mark.asyncio
+async def test_system_overview_includes_approved_sale_revenue(session, monkeypatch, tmp_path):
+    """The admin data-metric overview rolls up approved CC/sale revenue."""
+    from app.services.analytics_service import AnalyticsService
+
+    monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
+    monkeypatch.setattr(sales_mod, "extract_forever_invoice", lambda data: _good_ocr())
+    ids = await _seed(session)
+    svc = SalesService(session)
+
+    _, _, sale, auto = await svc.submit_sale(
+        lead_id=ids["lead"], billing_stage="day3",
+        file=_FakeUpload(_png_bytes()), manual=SaleManualFields(),
+        actor_user_id=ids["team"], actor_role="team",
+    )
+    assert auto is True and sale.status == "approved"
+
+    overview = await AnalyticsService(session).get_system_overview(days=30)
+    assert overview["sales"]["sale_count"] == 1
+    assert overview["sales"]["total_amount_cents"] == 1_997_800
+    assert overview["sales"]["total_case_credits"] == pytest.approx(1.002)
+
+
+# ── HTTP end-to-end: upload proof → admin approve → metrics ────────────────────
+
+@pytest.mark.asyncio
+async def test_http_upload_approve_dashboard_flow(session, team_client, monkeypatch, tmp_path):
+    """Full HTTP path: team uploads invoice → admin approves → dashboard reflects it.
+
+    OCR is unavailable in the test image path, so the invoice lands pending and
+    must be admin-approved before it counts — the real production gate. The auth
+    identity is flipped per request (client fixtures share one app override).
+    """
+    from main import app
+    from app.api.deps import AuthUser, require_auth_user
+
+    monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
+
+    def as_role(role: str, uid: int):
+        async def _fake() -> AuthUser:
+            return AuthUser(
+                user_id=uid, role=role, email=f"{role}{uid}@t",
+                fbo_id=f"F{uid}", username=f"{role}{uid}",
+            )
+        return _fake
+
+    team = User(id=201, fbo_id="F201", email="t201@t", role="team", username="team201")
+    admin = User(id=203, fbo_id="F203", email="a203@t", role="admin", username="adm203")
+    session.add_all([team, admin])
+    await session.flush()
+    lead = Lead(id=7001, name="Pinky", created_by_user_id=201, owner_user_id=201)
+    session.add(lead)
+    await session.commit()
+
+    # 1) Team uploads the invoice (multipart). OCR unavailable → pending.
+    app.dependency_overrides[require_auth_user] = as_role("team", 201)
+    files = {"file": ("inv.png", _png_bytes(), "image/png")}
+    data = {"billing_stage": "day3", "case_credits": "1.002", "amount_cents": "1997800"}
+    res = await team_client.post("/api/v1/leads/7001/sales", data=data, files=files)
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["auto_approved"] is False
+    assert body["sale"]["status"] == "pending"
+    sale_id = body["sale"]["id"]
+
+    # 2) Admin sees it in the pending queue and approves.
+    app.dependency_overrides[require_auth_user] = as_role("admin", 203)
+    pending = await team_client.get("/api/v1/sales/pending")
+    assert pending.status_code == 200
+    assert any(r["id"] == sale_id for r in pending.json()["items"])
+    appr = await team_client.post(f"/api/v1/sales/{sale_id}/approve")
+    assert appr.status_code == 200, appr.text
+    assert appr.json()["status"] == "approved"
+
+    # 3) Team dashboard now rolls up the CC + revenue (scope = self).
+    app.dependency_overrides[require_auth_user] = as_role("team", 201)
+    dash = await team_client.get("/api/v1/sales/dashboard")
+    assert dash.status_code == 200
+    dbody = dash.json()
+    assert dbody["scope"] == "self"
+    assert dbody["sale_count"] == 1
+    assert float(dbody["total_case_credits"]) == pytest.approx(1.002)
+    assert dbody["total_amount_cents"] == 1_997_800
+
+
+# ── Payment-proof → CC/sale-engine bridge ──────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_approved_payment_proof_creates_approved_sale(session):
+    """Approving a Day-3 payment proof links it into the CC/sale revenue rollup."""
+    from app.services.analytics_service import AnalyticsService
+    from app.services.payment_service import PaymentService
+
+    ids = await _seed(session)
+    lead = await session.get(Lead, ids["lead"])
+    lead.status = "day3"
+    lead.payment_amount_cents = 150_000  # ₹1500 Min. FLP billing
+    lead.payment_proof_url = "https://example/proof.png"
+    lead.payment_proof_uploaded_at = datetime.now(timezone.utc)
+    lead.payment_status = "proof_uploaded"
+    await session.commit()
+
+    ok, msg = await PaymentService(session).approve_payment_proof(
+        lead_id=ids["lead"], approved_by_user_id=ids["admin"], approved_by_role="admin",
+    )
+    assert ok, msg
+
+    sale = (
+        await session.execute(
+            LeadSale.__table__.select().where(LeadSale.lead_id == ids["lead"])
+        )
+    ).first()
+    assert sale is not None
+    assert sale.billing_stage == "day3"
+    assert sale.status == "approved"
+    assert sale.amount_cents == 150_000
+    assert sale.case_credits is None  # payment proof carries no CC
+
+    overview = await AnalyticsService(session).get_system_overview(days=30)
+    assert overview["sales"]["sale_count"] == 1
+    assert overview["sales"]["total_amount_cents"] == 150_000
+
+
+@pytest.mark.asyncio
+async def test_payment_approval_does_not_clobber_existing_cc_sale(session, monkeypatch, tmp_path):
+    """If a CC invoice already exists for the stage, payment approval keeps its CC."""
+    from app.services.payment_service import PaymentService
+
+    monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
+    monkeypatch.setattr(sales_mod, "extract_forever_invoice", lambda data: _good_ocr())
+    ids = await _seed(session)
+
+    # Real FOREVER invoice first → approved sale with CC 1.002.
+    _, _, sale, auto = await SalesService(session).submit_sale(
+        lead_id=ids["lead"], billing_stage="day3",
+        file=_FakeUpload(_png_bytes()), manual=SaleManualFields(),
+        actor_user_id=ids["team"], actor_role="team",
+    )
+    assert auto is True and sale.status == "approved"
+
+    lead = await session.get(Lead, ids["lead"])
+    lead.status = "day3"
+    lead.payment_amount_cents = 150_000
+    lead.payment_proof_url = "https://example/proof.png"
+    lead.payment_proof_uploaded_at = datetime.now(timezone.utc)
+    lead.payment_status = "proof_uploaded"
+    await session.commit()
+
+    ok, _ = await PaymentService(session).approve_payment_proof(
+        lead_id=ids["lead"], approved_by_user_id=ids["admin"], approved_by_role="admin",
+    )
+    assert ok
+
+    rows = (
+        await session.execute(
+            LeadSale.__table__.select().where(LeadSale.lead_id == ids["lead"])
+        )
+    ).all()
+    assert len(rows) == 1  # upsert on (lead, stage), not a duplicate
+    assert rows[0].case_credits == Decimal("1.002")  # CC preserved
+    assert rows[0].amount_cents == 1_997_800  # original invoice amount preserved
