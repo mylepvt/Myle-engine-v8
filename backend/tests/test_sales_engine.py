@@ -61,7 +61,7 @@ async def session(engine) -> AsyncSession:
         # module touches so fixed seed IDs don't collide across tests.
         from sqlalchemy import text
 
-        for tbl in ("lead_sales", "leads", "users"):
+        for tbl in ("lead_sales", "crm_outbox", "leads", "users"):
             await s.execute(text(f"DELETE FROM {tbl}"))
         await s.commit()
         yield s
@@ -373,3 +373,81 @@ async def test_http_upload_approve_dashboard_flow(session, team_client, monkeypa
     assert dbody["sale_count"] == 1
     assert float(dbody["total_case_credits"]) == pytest.approx(1.002)
     assert dbody["total_amount_cents"] == 1_997_800
+
+
+# ── Payment-proof → CC/sale-engine bridge ──────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_approved_payment_proof_creates_approved_sale(session):
+    """Approving a Day-3 payment proof links it into the CC/sale revenue rollup."""
+    from app.services.analytics_service import AnalyticsService
+    from app.services.payment_service import PaymentService
+
+    ids = await _seed(session)
+    lead = await session.get(Lead, ids["lead"])
+    lead.status = "day3"
+    lead.payment_amount_cents = 150_000  # ₹1500 Min. FLP billing
+    lead.payment_proof_url = "https://example/proof.png"
+    lead.payment_proof_uploaded_at = datetime.now(timezone.utc)
+    lead.payment_status = "proof_uploaded"
+    await session.commit()
+
+    ok, msg = await PaymentService(session).approve_payment_proof(
+        lead_id=ids["lead"], approved_by_user_id=ids["admin"], approved_by_role="admin",
+    )
+    assert ok, msg
+
+    sale = (
+        await session.execute(
+            LeadSale.__table__.select().where(LeadSale.lead_id == ids["lead"])
+        )
+    ).first()
+    assert sale is not None
+    assert sale.billing_stage == "day3"
+    assert sale.status == "approved"
+    assert sale.amount_cents == 150_000
+    assert sale.case_credits is None  # payment proof carries no CC
+
+    overview = await AnalyticsService(session).get_system_overview(days=30)
+    assert overview["sales"]["sale_count"] == 1
+    assert overview["sales"]["total_amount_cents"] == 150_000
+
+
+@pytest.mark.asyncio
+async def test_payment_approval_does_not_clobber_existing_cc_sale(session, monkeypatch, tmp_path):
+    """If a CC invoice already exists for the stage, payment approval keeps its CC."""
+    from app.services.payment_service import PaymentService
+
+    monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
+    monkeypatch.setattr(sales_mod, "extract_forever_invoice", lambda data: _good_ocr())
+    ids = await _seed(session)
+
+    # Real FOREVER invoice first → approved sale with CC 1.002.
+    _, _, sale, auto = await SalesService(session).submit_sale(
+        lead_id=ids["lead"], billing_stage="day3",
+        file=_FakeUpload(_png_bytes()), manual=SaleManualFields(),
+        actor_user_id=ids["team"], actor_role="team",
+    )
+    assert auto is True and sale.status == "approved"
+
+    lead = await session.get(Lead, ids["lead"])
+    lead.status = "day3"
+    lead.payment_amount_cents = 150_000
+    lead.payment_proof_url = "https://example/proof.png"
+    lead.payment_proof_uploaded_at = datetime.now(timezone.utc)
+    lead.payment_status = "proof_uploaded"
+    await session.commit()
+
+    ok, _ = await PaymentService(session).approve_payment_proof(
+        lead_id=ids["lead"], approved_by_user_id=ids["admin"], approved_by_role="admin",
+    )
+    assert ok
+
+    rows = (
+        await session.execute(
+            LeadSale.__table__.select().where(LeadSale.lead_id == ids["lead"])
+        )
+    ).all()
+    assert len(rows) == 1  # upsert on (lead, stage), not a duplicate
+    assert rows[0].case_credits == Decimal("1.002")  # CC preserved
+    assert rows[0].amount_cents == 1_997_800  # original invoice amount preserved
