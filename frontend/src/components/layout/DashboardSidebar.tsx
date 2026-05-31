@@ -85,7 +85,7 @@ export function DashboardSidebar({
                           to={to}
                           end={item.end ?? false}
                           aria-label={
-                            item.path === 'team/enrollment-approvals' && pendingEnrollCount > 0
+                            item.path === 'team/flp-min-billing' && pendingEnrollCount > 0
                               ? `${label}, ${pendingEnrollCount} pending`
                               : undefined
                           }
@@ -114,7 +114,7 @@ export function DashboardSidebar({
                                 aria-hidden
                               />
                               <span className="min-w-0 flex-1 truncate">{label}</span>
-                              {item.path === 'team/enrollment-approvals' && pendingEnrollCount > 0 ? (
+                              {item.path === 'team/flp-min-billing' && pendingEnrollCount > 0 ? (
                                 <span
                                   className={cn(
                                     'shrink-0 rounded px-1.5 py-0.5 text-ds-label font-bold tabular-nums',

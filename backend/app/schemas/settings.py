@@ -117,7 +117,7 @@ class AppSettingUpdateRequest(BaseModel):
     value: str = Field(..., max_length=1000)
 
 
-class EnrollmentVideoUploadResponse(BaseModel):
+class FlpMinBillingVideoUploadResponse(BaseModel):
     """Response for enrollment video file uploads."""
     source_url: str
     file_name: str

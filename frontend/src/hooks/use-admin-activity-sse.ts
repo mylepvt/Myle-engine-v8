@@ -43,7 +43,7 @@ const STAGE_LABELS: Record<string, string> = {
   day3_pending: 'Day 3 Pending',
   day3_attended: 'Day 3 Attended',
   interview: 'Interview',
-  enrolled: 'Enrolled',
+  enrolled: 'Min. FLP Billed',
   closed: 'Closed',
   rejected: 'Rejected',
   pool: 'In Pool',
@@ -154,7 +154,7 @@ function describeEvent(eventType: string, payload: Record<string, unknown>): str
       return leadRef ? `Join link created for ${leadRef}` : 'Join link created'
 
     case eventType.startsWith('enrollment.'):
-      return leadRef ? `Enrollment update for ${leadRef}` : 'Enrollment updated'
+      return leadRef ? `Min. FLP Billing update for ${leadRef}` : 'Min. FLP Billing updated'
 
     default:
       // Fallback: clean up any remaining snake_case / dots

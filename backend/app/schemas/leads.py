@@ -13,7 +13,7 @@ _CALL_STATUS_SET = {
     "callback_requested",
     "not_interested",
     "converted",
-    # Enrollment funnel (workboard + team UI)
+    # Min. FLP Billing funnel (workboard + team UI)
     "no_answer",
     "interested",
     "follow_up",

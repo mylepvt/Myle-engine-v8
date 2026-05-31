@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from fastapi import UploadFile
 
-from app.services.enrollment_video import normalize_video_source_url
+from app.services.flp_min_billing_video import normalize_video_source_url
 from app.services.r2_storage import (
     content_type_for_ext,
     delete_from_r2,
@@ -16,7 +16,7 @@ from app.services.r2_storage import (
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[2]
 _UPLOADS_ROOT = _BACKEND_ROOT / "uploads"
-_ENROLLMENT_VIDEO_ROOT = _UPLOADS_ROOT / "enrollment_video"
+_FLP_MIN_BILLING_VIDEO_ROOT = _UPLOADS_ROOT / "enrollment_video"
 
 _MAX_BYTES = 512 * 1024 * 1024
 _ALLOWED_EXTENSIONS = {
@@ -46,7 +46,7 @@ def _pick_extension(file: UploadFile) -> str | None:
     return None
 
 
-async def save_enrollment_video_file(file: UploadFile) -> tuple[bool, str, str | None]:
+async def save_flp_min_billing_video_file(file: UploadFile) -> tuple[bool, str, str | None]:
     ext = _pick_extension(file)
     if ext is None:
         return False, "Unsupported video file. Use .mp4, .webm, .mov, .m4v, .mpg, or .mpeg.", None
@@ -74,18 +74,18 @@ async def save_enrollment_video_file(file: UploadFile) -> tuple[bool, str, str |
         content_type = content_type_for_ext(ext)
         try:
             url = await upload_to_r2(data=data, key=key, content_type=content_type)
-            return True, "Enrollment video uploaded successfully.", url
+            return True, "Min. FLP Billing video uploaded successfully.", url
         except Exception as exc:
             return False, f"R2 upload failed: {exc}", None
 
     # Fallback: local disk
-    _ENROLLMENT_VIDEO_ROOT.mkdir(parents=True, exist_ok=True)
-    destination = _ENROLLMENT_VIDEO_ROOT / filename
+    _FLP_MIN_BILLING_VIDEO_ROOT.mkdir(parents=True, exist_ok=True)
+    destination = _FLP_MIN_BILLING_VIDEO_ROOT / filename
     destination.write_bytes(data)
-    return True, "Enrollment video uploaded successfully.", f"/uploads/enrollment_video/{filename}"
+    return True, "Min. FLP Billing video uploaded successfully.", f"/uploads/enrollment_video/{filename}"
 
 
-def remove_managed_enrollment_video_file(source_url: str | None) -> None:
+def remove_managed_flp_min_billing_video_file(source_url: str | None) -> None:
     raw = normalize_video_source_url(source_url)
     if not raw:
         return
@@ -106,17 +106,17 @@ def remove_managed_enrollment_video_file(source_url: str | None) -> None:
     relative = raw.removeprefix("/uploads/")
     target = (_UPLOADS_ROOT / relative).resolve()
     try:
-        target.relative_to(_ENROLLMENT_VIDEO_ROOT.resolve())
+        target.relative_to(_FLP_MIN_BILLING_VIDEO_ROOT.resolve())
     except ValueError:
         return
     target.unlink(missing_ok=True)
 
 
-def cleanup_replaced_managed_enrollment_video(
+def cleanup_replaced_managed_flp_min_billing_video(
     previous_source_url: str | None,
     next_source_url: str | None,
 ) -> None:
     previous = normalize_video_source_url(previous_source_url)
     current = normalize_video_source_url(next_source_url)
     if previous and previous != current:
-        remove_managed_enrollment_video_file(previous)
+        remove_managed_flp_min_billing_video_file(previous)

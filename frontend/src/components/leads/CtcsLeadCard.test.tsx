@@ -100,12 +100,12 @@ describe('CtcsLeadCard proof gating', () => {
   it('shows the secure enrollment WhatsApp button for video_sent', () => {
     renderCard(makeLead('video_sent'))
 
-    expect(screen.getByTitle('Send secure enrollment video on WhatsApp')).toBeInTheDocument()
+    expect(screen.getByTitle('Send secure Min. FLP Billing video on WhatsApp')).toBeInTheDocument()
   })
 
   it('hides the secure enrollment WhatsApp button after video_watched', () => {
     renderCard(makeLead('video_watched'))
 
-    expect(screen.queryByTitle('Send secure enrollment video on WhatsApp')).not.toBeInTheDocument()
+    expect(screen.queryByTitle('Send secure Min. FLP Billing video on WhatsApp')).not.toBeInTheDocument()
   })
 })

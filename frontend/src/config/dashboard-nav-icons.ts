@@ -51,7 +51,7 @@ const BY_PATH: Record<string, LucideIcon> = {
   'team/tracking': Activity,
   'team/reports': FileBarChart,
   'team/approvals': CheckSquare,
-  'team/enrollment-approvals': Banknote,
+  'team/flp-min-billing': Banknote,
   'team/my-team': Users,
   'system/whatsapp': MessageSquare,
   'system/training': BookOpen,

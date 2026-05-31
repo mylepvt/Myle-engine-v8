@@ -6,22 +6,22 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import {
-  useEnrollmentDecisionMutation,
-  useEnrollmentHistoryQuery,
-  useEnrollmentRequestsQuery,
+  useFlpMinBillingDecisionMutation,
+  useFlpMinBillingHistoryQuery,
+  useFlpMinBillingRequestsQuery,
 } from '@/hooks/use-team-query'
 import { playAppSound } from '@/lib/app-sounds'
 import { ClipboardList, ExternalLink } from 'lucide-react'
 
 type Props = { title: string }
 
-export function EnrollmentApprovalsPage({ title }: Props) {
+export function FlpMinBillingApprovalsPage({ title }: Props) {
   const navigate = useNavigate()
   const { data: me } = useAuthMeQuery()
-  const decide = useEnrollmentDecisionMutation()
-  const { data, isPending, isError, error, refetch } = useEnrollmentRequestsQuery()
+  const decide = useFlpMinBillingDecisionMutation()
+  const { data, isPending, isError, error, refetch } = useFlpMinBillingRequestsQuery()
   const [historyDate, setHistoryDate] = useState(() => new Date().toLocaleDateString('en-CA'))
-  const historyQ = useEnrollmentHistoryQuery(historyDate)
+  const historyQ = useFlpMinBillingHistoryQuery(historyDate)
   const isAdmin = me?.authenticated && me.role === 'admin'
 
   async function handleApprove(leadId: number) {

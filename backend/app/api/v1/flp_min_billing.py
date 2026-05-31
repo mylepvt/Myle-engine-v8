@@ -1,4 +1,4 @@
-"""Enrollment video share-link endpoints."""
+"""Min. FLP Billing video share-link endpoints."""
 
 from __future__ import annotations
 
@@ -17,45 +17,45 @@ from starlette.background import BackgroundTask
 
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.core.realtime_hub import notify_topics
-from app.models.enroll_share_link import EnrollShareLink
+from app.models.flp_min_billing_share_link import FlpMinBillingShareLink
 from app.models.lead import Lead
-from app.schemas.enroll import (
+from app.schemas.flp_min_billing import (
     ActiveWatcherListResponse,
     ActiveWatcherPublic,
-    EnrollShareLinkCreate,
-    EnrollShareLinkListResponse,
-    EnrollShareLinkPublic,
-    EnrollmentVideoSendDelivery,
-    EnrollmentVideoSendResponse,
+    FlpMinBillingShareLinkCreate,
+    FlpMinBillingShareLinkListResponse,
+    FlpMinBillingShareLinkPublic,
+    FlpMinBillingVideoSendDelivery,
+    FlpMinBillingVideoSendResponse,
     WatchEventResponse,
     WatchPageData,
     WatchUnlockRequest,
 )
 from app.services.crm_outbox import enqueue_lead_shadow_upsert
 from app.services.observation_logger import observe_event
-from app.services.enrollment_video import (
+from app.services.flp_min_billing_video import (
     absolute_video_source_url,
-    build_enrollment_stream_source_candidates,
+    build_flp_min_billing_stream_source_candidates,
     clear_watch_cookie,
     ensure_watch_timer_started,
-    enrollment_expires_at,
+    flp_min_billing_expires_at,
     ensure_utc_datetime,
     expire_active_links_for_lead,
     get_app_setting,
-    get_enrollment_video_source,
-    get_enrollment_video_title,
+    get_flp_min_billing_video_source,
+    get_flp_min_billing_video_title,
     has_watch_access,
     issue_watch_cookie,
     is_youtube_like_url,
     mask_phone,
     normalize_video_source_url,
     normalize_phone_for_match,
-    require_secure_enrollment_video_source,
+    require_secure_flp_min_billing_video_source,
     resolve_public_app_url,
     sanitize_public_token,
 )
 from app.services.lead_scope import user_can_mutate_lead
-from app.services.whatsapp_enrollment import send_enrollment_video_whatsapp
+from app.services.whatsapp_flp_min_billing import send_flp_min_billing_video_whatsapp
 
 router = APIRouter()
 watch_router = APIRouter()
@@ -101,8 +101,8 @@ async def _assert_lead_access(session: AsyncSession, user: AuthUser, lead: Lead)
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
 
-def _build_public_link(link: EnrollShareLink) -> EnrollShareLinkPublic:
-    return EnrollShareLinkPublic.model_validate(link)
+def _build_public_link(link: FlpMinBillingShareLink) -> FlpMinBillingShareLinkPublic:
+    return FlpMinBillingShareLinkPublic.model_validate(link)
 
 
 def _sync_lead_for_send(lead: Lead, *, now: datetime) -> bool:
@@ -128,11 +128,11 @@ def _parse_non_negative_int(raw_value: str) -> int | None:
 
 async def _load_watch_room_snapshot(session: AsyncSession) -> dict[str, int | str | None]:
     social_proof_count = _parse_non_negative_int(
-        await get_app_setting(session, "enrollment_social_proof_count")
+        await get_app_setting(session, "flp_min_billing_social_proof_count")
     )
-    total_seats = _parse_non_negative_int(await get_app_setting(session, "enrollment_total_seats"))
-    seats_left = _parse_non_negative_int(await get_app_setting(session, "enrollment_seats_left"))
-    trust_note = (await get_app_setting(session, "enrollment_trust_note")).strip() or None
+    total_seats = _parse_non_negative_int(await get_app_setting(session, "flp_min_billing_total_seats"))
+    seats_left = _parse_non_negative_int(await get_app_setting(session, "flp_min_billing_seats_left"))
+    trust_note = (await get_app_setting(session, "flp_min_billing_trust_note")).strip() or None
 
     if total_seats is not None and seats_left is not None:
         seats_left = min(seats_left, total_seats)
@@ -153,11 +153,11 @@ async def _prepare_share_link(
     now: datetime,
     source_url: str | None = None,
     title: str | None = None,
-) -> EnrollShareLink:
-    resolved_source_url = source_url or await require_secure_enrollment_video_source(session)
-    resolved_title = title or await get_enrollment_video_title(session)
+) -> FlpMinBillingShareLink:
+    resolved_source_url = source_url or await require_secure_flp_min_billing_video_source(session)
+    resolved_title = title or await get_flp_min_billing_video_title(session)
     await expire_active_links_for_lead(session, lead_id=lead.id, now=now)
-    link = EnrollShareLink(
+    link = FlpMinBillingShareLink(
         token=secrets.token_urlsafe(32),
         lead_id=lead.id,
         created_by_user_id=user.user_id,
@@ -211,12 +211,12 @@ async def _resolve_selected_live_session_source(
 async def _get_watch_link_and_lead(
     session: AsyncSession,
     token: str,
-) -> tuple[EnrollShareLink, Lead]:
+) -> tuple[FlpMinBillingShareLink, Lead]:
     clean_token = sanitize_public_token(token)
     if not clean_token:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Link not found")
     link = (
-        await session.execute(select(EnrollShareLink).where(EnrollShareLink.token == clean_token))
+        await session.execute(select(FlpMinBillingShareLink).where(FlpMinBillingShareLink.token == clean_token))
     ).scalar_one_or_none()
     if link is None:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Link not found")
@@ -231,7 +231,7 @@ async def _get_watch_link_and_lead(
 
 def _watch_page_payload(
     *,
-    link: EnrollShareLink,
+    link: FlpMinBillingShareLink,
     lead: Lead,
     access_granted: bool,
     room_snapshot: dict[str, int | str | None] | None = None,
@@ -240,7 +240,7 @@ def _watch_page_payload(
     snapshot = room_snapshot or {}
     return WatchPageData(
         token=link.token,
-        title=link.title or "Enrollment video",
+        title=link.title or "Min. FLP Billing video",
         lead_name=lead_first_name,
         masked_phone=mask_phone(lead.phone),
         expires_at=link.expires_at,
@@ -262,12 +262,12 @@ async def _close_upstream(upstream: httpx.Response, client: httpx.AsyncClient) -
     await client.aclose()
 
 
-@router.post("/generate", response_model=EnrollShareLinkPublic, status_code=http_status.HTTP_201_CREATED)
+@router.post("/generate", response_model=FlpMinBillingShareLinkPublic, status_code=http_status.HTTP_201_CREATED)
 async def generate_share_link(
-    body: EnrollShareLinkCreate,
+    body: FlpMinBillingShareLinkCreate,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
-) -> EnrollShareLinkPublic:
+) -> FlpMinBillingShareLinkPublic:
     """Create a secure share link without attempting WhatsApp delivery."""
     lead = await _get_lead_or_404(session, body.lead_id)
     await _assert_lead_access(session, user, lead)
@@ -297,13 +297,13 @@ async def generate_share_link(
     return _build_public_link(link)
 
 
-@router.post("/send", response_model=EnrollmentVideoSendResponse, status_code=http_status.HTTP_201_CREATED)
-async def send_enrollment_video(
-    body: EnrollShareLinkCreate,
+@router.post("/send", response_model=FlpMinBillingVideoSendResponse, status_code=http_status.HTTP_201_CREATED)
+async def send_flp_min_billing_video(
+    body: FlpMinBillingShareLinkCreate,
     request: Request,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
-) -> EnrollmentVideoSendResponse:
+) -> FlpMinBillingVideoSendResponse:
     """Create a secure link, send it over WhatsApp, and move the lead to video_sent."""
     lead = await _get_lead_or_404(session, body.lead_id)
     await _assert_lead_access(session, user, lead)
@@ -323,13 +323,13 @@ async def send_enrollment_video(
     public_app_url = await resolve_public_app_url(session, request)
     watch_url = f"{public_app_url}/watch/{link.token}"
 
-    delivery_meta = await send_enrollment_video_whatsapp(
+    delivery_meta = await send_flp_min_billing_video_whatsapp(
         lead_id=lead.id,
         phone=lead.phone,
         lead_name=lead.name,
         watch_url=watch_url,
         expires_at=link.expires_at,
-        title=link.title or "Enrollment video",
+        title=link.title or "Min. FLP Billing video",
     )
     if not delivery_meta.get("ok") and delivery_meta.get("channel") != "whatsapp_stub":
         await session.rollback()
@@ -346,36 +346,36 @@ async def send_enrollment_video(
     await session.refresh(link)
 
     await notify_topics("enroll", "leads")
-    return EnrollmentVideoSendResponse(
+    return FlpMinBillingVideoSendResponse(
         link=_build_public_link(link),
-        delivery=EnrollmentVideoSendDelivery.model_validate(delivery_meta),
+        delivery=FlpMinBillingVideoSendDelivery.model_validate(delivery_meta),
     )
 
 
-@router.get("/lead/{lead_id}", response_model=EnrollShareLinkListResponse)
+@router.get("/lead/{lead_id}", response_model=FlpMinBillingShareLinkListResponse)
 async def list_lead_share_links(
     lead_id: int,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
-) -> EnrollShareLinkListResponse:
+) -> FlpMinBillingShareLinkListResponse:
     lead = await _get_lead_or_404(session, lead_id)
     await _assert_lead_access(session, user, lead)
 
     total = int(
         (
             await session.execute(
-                select(func.count()).select_from(EnrollShareLink).where(EnrollShareLink.lead_id == lead_id)
+                select(func.count()).select_from(FlpMinBillingShareLink).where(FlpMinBillingShareLink.lead_id == lead_id)
             )
         ).scalar_one()
     )
     rows = (
         await session.execute(
-            select(EnrollShareLink)
-            .where(EnrollShareLink.lead_id == lead_id)
-            .order_by(EnrollShareLink.created_at.desc())
+            select(FlpMinBillingShareLink)
+            .where(FlpMinBillingShareLink.lead_id == lead_id)
+            .order_by(FlpMinBillingShareLink.created_at.desc())
         )
     ).scalars().all()
-    return EnrollShareLinkListResponse(items=[_build_public_link(row) for row in rows], total=total)
+    return FlpMinBillingShareLinkListResponse(items=[_build_public_link(row) for row in rows], total=total)
 
 
 @router.get("/live-watchers", response_model=ActiveWatcherListResponse)
@@ -390,15 +390,15 @@ async def live_watchers(
     cutoff = datetime.fromtimestamp(now.timestamp() - 35, tz=timezone.utc)
     rows = (
         await session.execute(
-            select(EnrollShareLink, Lead)
-            .join(Lead, Lead.id == EnrollShareLink.lead_id)
+            select(FlpMinBillingShareLink, Lead)
+            .join(Lead, Lead.id == FlpMinBillingShareLink.lead_id)
             .where(
-                EnrollShareLink.first_viewed_at.is_not(None),
-                EnrollShareLink.last_viewed_at.is_not(None),
-                EnrollShareLink.last_viewed_at >= cutoff,
+                FlpMinBillingShareLink.first_viewed_at.is_not(None),
+                FlpMinBillingShareLink.last_viewed_at.is_not(None),
+                FlpMinBillingShareLink.last_viewed_at >= cutoff,
                 Lead.deleted_at.is_(None),
             )
-            .order_by(desc(EnrollShareLink.last_viewed_at))
+            .order_by(desc(FlpMinBillingShareLink.last_viewed_at))
             .limit(25)
         )
     ).all()
@@ -621,10 +621,10 @@ async def stream_watch_video(
     if not has_watch_access(request, link=link, lead=lead):
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Verify your number to continue.")
 
-    configured_source = await get_enrollment_video_source(session)
-    source_candidates = build_enrollment_stream_source_candidates(link.youtube_url, configured_source)
+    configured_source = await get_flp_min_billing_video_source(session)
+    source_candidates = build_flp_min_billing_stream_source_candidates(link.youtube_url, configured_source)
     if not source_candidates:
-        await require_secure_enrollment_video_source(session)
+        await require_secure_flp_min_billing_video_source(session)
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Video file is not available.")
 
     forward_headers: dict[str, str] = {}

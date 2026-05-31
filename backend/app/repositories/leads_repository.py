@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import AuthUser
 from app.models.activity_log import ActivityLog
 from app.models.call_event import CallEvent
-from app.models.enroll_share_link import EnrollShareLink
+from app.models.flp_min_billing_share_link import FlpMinBillingShareLink
 from app.models.follow_up import FollowUp
 from app.models.lead import Lead
 from app.models.wallet_ledger import WalletLedgerEntry
@@ -197,7 +197,7 @@ class SqlAlchemyLeadsRepository:
         # Explicit child cleanup because FK rows do not use ON DELETE CASCADE.
         await self._session.execute(delete(FollowUp).where(FollowUp.lead_id == lead_id))
         await self._session.execute(delete(CallEvent).where(CallEvent.lead_id == lead_id))
-        await self._session.execute(delete(EnrollShareLink).where(EnrollShareLink.lead_id == lead_id))
+        await self._session.execute(delete(FlpMinBillingShareLink).where(FlpMinBillingShareLink.lead_id == lead_id))
         await self._session.execute(delete(Lead).where(Lead.id == lead_id))
         if commit:
             await self._session.commit()

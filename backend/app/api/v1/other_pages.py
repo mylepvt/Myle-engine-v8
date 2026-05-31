@@ -29,7 +29,7 @@ from app.models.training_video import TrainingVideo
 from app.models.user import User
 from app.schemas.notice_board import AnnouncementCreate, AnnouncementOut, NoticeBoardResponse
 from app.schemas.system_surface import SystemStubResponse, TrainingSurfaceResponse
-from app.services.enrollment_video import normalize_phone_for_match
+from app.services.flp_min_billing_video import normalize_phone_for_match
 from app.services.team_reports_metrics import IST
 from app.services.training_surface import build_training_surface
 from app.services.training_uploads import save_training_notes_image
@@ -648,7 +648,7 @@ async def get_premiere_state(
         video_url = (
             await _s(f"premiere_day{session_day}_video_url")
             or await _s("premiere_video_url")
-            or await _s("enrollment_video_source_url")
+            or await _s("flp_min_billing_video_source_url")
             or None
         )
 

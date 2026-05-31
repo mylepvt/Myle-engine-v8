@@ -238,7 +238,7 @@ function buildLeadsQueryString(
     p.set('ctcs_priority_sort', 'true')
   }
   if (ctcs?.preEnrollmentOnly) {
-    p.set('pre_enrollment_only', 'true')
+    p.set('pre_flp_min_billing_only', 'true')
   }
   if (ctcs?.searchAllSections) {
     p.set('search_all_sections', 'true')

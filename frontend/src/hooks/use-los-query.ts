@@ -9,7 +9,7 @@ export type LosMemberRow = {
   calls_today: number
   call_target: number
   call_gate_met: boolean
-  enrollments: number
+  flp_min_billings: number
   fu_due: number
   is_active: boolean
 }

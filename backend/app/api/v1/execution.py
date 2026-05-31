@@ -114,7 +114,7 @@ async def execution_downline_stats(
     for uid, d in raw.items():
         stats[str(uid)] = MemberExecutionStats(
             total_active=d["total_active"],
-            enrollments=d["enrollments"],
+            flp_min_billings=d["flp_min_billings"],
             proof_pend=d["proof_pend"],
             fu_due=d["fu_due"],
             conv_pct=d["conv_pct"],

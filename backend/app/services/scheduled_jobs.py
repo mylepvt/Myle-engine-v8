@@ -1,7 +1,7 @@
 """Scheduled cron jobs for Myle automation.
 
 Jobs (all IST-aware):
-- enrollment_proof_alert          : every 30min — pending proof > 2h → push admin/leaders
+- flp_min_billing_proof_alert          : every 30min — pending proof > 2h → push admin/leaders
 - weekly_compliance_digest        : Monday 09:00 IST — compliance summary to leaders
 - daily_report_reminder           : 21:00 IST daily — push eligible users who haven't submitted report
 - call_target_reminder            : 17:00 IST daily — push eligible users short on calls
@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 # Job 1: enrollment proof pending > 2h → alert admin + leaders
 # ---------------------------------------------------------------------------
 
-async def job_enrollment_proof_alert() -> None:
+async def job_flp_min_billing_proof_alert() -> None:
     """Push admin and leaders when a payment proof has been waiting > 2 hours."""
     cutoff = datetime.now(timezone.utc) - timedelta(hours=2)
     try:
@@ -70,17 +70,17 @@ async def job_enrollment_proof_alert() -> None:
                     await send_push_to_role(
                         session,
                         role,
-                        title="Enrollment approval overdue",
+                        title="Min. FLP Billing approval overdue",
                         body=body,
-                        url="/dashboard/team/enrollment-approvals",
+                        url="/dashboard/team/flp-min-billing",
                     )
                 except Exception:
                     pass
 
-            logger.info("enrollment_proof_alert: %d overdue proofs notified", count)
+            logger.info("flp_min_billing_proof_alert: %d overdue proofs notified", count)
 
     except Exception as exc:
-        logger.error("job_enrollment_proof_alert failed: %s", exc)
+        logger.error("job_flp_min_billing_proof_alert failed: %s", exc)
 
 
 # ---------------------------------------------------------------------------

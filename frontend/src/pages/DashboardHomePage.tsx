@@ -308,7 +308,7 @@ export function DashboardHomePage() {
                 </Card>
               </Link>
               <Link
-                to="/dashboard/team/enrollment-approvals"
+                to="/dashboard/team/flp-min-billing"
                 className="block rounded no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
               >
                 <Card className="h-full border-border transition-colors hover:border-primary/30">

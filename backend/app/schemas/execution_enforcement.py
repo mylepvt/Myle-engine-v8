@@ -15,11 +15,11 @@ class TeamPersonalFunnelOut(BaseModel):
     video_reached: int
     proof_pending: int
     paid_flp: int
-    enrolled_total: int
+    flp_min_billing_total: int
     pct_video_vs_claimed: float
     pct_proof_vs_video: float
-    pct_enrolled_vs_video: float
-    pct_enrolled_vs_claimed: float
+    pct_flp_min_billing_vs_video: float
+    pct_flp_min_billing_vs_claimed: float
 
 
 class TeamTodayStatsOut(BaseModel):
@@ -29,7 +29,7 @@ class TeamTodayStatsOut(BaseModel):
     fresh_leads_today: int = 0
     calls_today: int
     call_target: int = 0
-    enrolled_today: int
+    flp_min_billing_today: int
 
 
 class FollowUpAttackRow(BaseModel):
@@ -43,7 +43,7 @@ class FollowUpAttackRow(BaseModel):
 
 class MemberExecutionStats(BaseModel):
     total_active: int
-    enrollments: int
+    flp_min_billings: int
     proof_pend: int
     fu_due: int
     conv_pct: float
@@ -91,7 +91,7 @@ class WeakMemberRow(BaseModel):
     username: Optional[str] = None
     role: str
     total_leads: int
-    enrollments: int
+    flp_min_billings: int
     fu_pending: int
     conv_pct: float
 
@@ -253,7 +253,7 @@ class LosMemberRow(BaseModel):
     calls_today: int
     call_target: int
     call_gate_met: bool
-    enrollments: int
+    flp_min_billings: int
     fu_due: int
     is_active: bool
     downline_count: int = 0

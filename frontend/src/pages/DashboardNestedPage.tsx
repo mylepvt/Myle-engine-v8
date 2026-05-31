@@ -20,7 +20,7 @@ import { TeamMembersPage } from '@/pages/TeamMembersPage'
 import { TeamTrackingDetailPage } from '@/pages/TeamTrackingDetailPage'
 import { TeamTrackingPage } from '@/pages/TeamTrackingPage'
 import { MyTeamPage } from '@/pages/MyTeamPage'
-import { EnrollmentApprovalsPage } from '@/pages/EnrollmentApprovalsPage'
+import { FlpMinBillingApprovalsPage } from '@/pages/FlpMinBillingApprovalsPage'
 import { AnalyticsSurfacePage } from '@/pages/AnalyticsSurfacePage'
 import { SystemSurfacePage } from '@/pages/SystemSurfacePage'
 import { RetargetWorkPage } from '@/pages/RetargetWorkPage'
@@ -82,8 +82,8 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <TeamApprovalsPage title={title} />
     case 'my-team':
       return <MyTeamPage title={title} />
-    case 'enrollment-approvals':
-      return <EnrollmentApprovalsPage title={title} />
+    case 'flp-min-billing':
+      return <FlpMinBillingApprovalsPage title={title} />
     case 'system':
       return <SystemSurfacePage title={title} surface={ui.surface} />
     case 'lead-control':

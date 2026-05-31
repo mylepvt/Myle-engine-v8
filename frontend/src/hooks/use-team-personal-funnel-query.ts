@@ -7,11 +7,11 @@ export type TeamPersonalFunnel = {
   video_reached: number
   proof_pending: number
   paid_flp: number
-  enrolled_total: number
+  flp_min_billing_total: number
   pct_video_vs_claimed: number
   pct_proof_vs_video: number
-  pct_enrolled_vs_video: number
-  pct_enrolled_vs_claimed: number
+  pct_flp_min_billing_vs_video: number
+  pct_flp_min_billing_vs_claimed: number
 }
 
 async function fetchTeamPersonalFunnel(): Promise<TeamPersonalFunnel> {

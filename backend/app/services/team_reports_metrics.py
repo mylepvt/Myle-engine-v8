@@ -49,7 +49,7 @@ async def compute_live_summary(
         return {
             "leads_claimed_today": 0,
             "calls_made_today": 0,
-            "enrolled_today": 0,
+            "flp_min_billing_today": 0,
             "payment_proofs_approved_today": 0,
             "day1_total": 0,
             "day2_total": 0,
@@ -85,7 +85,7 @@ async def compute_live_summary(
     if scoped_user_ids is not None:
         enrolled_stmt = enrolled_stmt.where(Lead.assigned_to_user_id.in_(scoped_user_ids))
     enrolled_q = await session.execute(enrolled_stmt)
-    enrolled_today = int(enrolled_q.scalar_one())
+    flp_min_billing_today = int(enrolled_q.scalar_one())
 
     proofs_stmt = (
         select(func.count())
@@ -121,7 +121,7 @@ async def compute_live_summary(
     return {
         "leads_claimed_today": leads_claimed_today,
         "calls_made_today": calls_made_today,
-        "enrolled_today": enrolled_today,
+        "flp_min_billing_today": flp_min_billing_today,
         "payment_proofs_approved_today": payment_proofs_approved_today,
         "day1_total": day1_total,
         "day2_total": day2_total,

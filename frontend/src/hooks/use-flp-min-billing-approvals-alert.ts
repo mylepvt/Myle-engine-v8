@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 
-function isEnrollmentApprovalsPath(pathname: string): boolean {
-  return pathname.includes('/team/enrollment-approvals')
+function isFlpMinBillingApprovalsPath(pathname: string): boolean {
+  return pathname.includes('/team/flp-min-billing')
 }
 
 /**
  * When pending Enroll count increases while the user is not on the approvals page,
  * surfaces an in-app banner. Optionally fires `Notification` if permission is already granted.
  */
-export function useEnrollmentApprovalsAlertBanner(
+export function useFlpMinBillingApprovalsAlertBanner(
   pendingTotal: number,
   options: { enabled: boolean },
 ): { open: boolean; delta: number; dismiss: () => void } {
@@ -18,7 +18,7 @@ export function useEnrollmentApprovalsAlertBanner(
   const [open, setOpen] = useState(false)
   const [delta, setDelta] = useState(0)
 
-  const onApprovalsPage = isEnrollmentApprovalsPath(location.pathname)
+  const onApprovalsPage = isFlpMinBillingApprovalsPath(location.pathname)
 
   useEffect(() => {
     if (!options.enabled) return

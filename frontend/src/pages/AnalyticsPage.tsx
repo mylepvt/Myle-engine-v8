@@ -110,9 +110,9 @@ export default function AnalyticsPage() {
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Enrollments</span>
+                    <span className="text-sm text-gray-600">FlpMinBillings</span>
                     <span className="font-semibold">
-                      {individualPerformance.data?.reports.total_enrollments || 0}
+                      {individualPerformance.data?.reports.total_flp_min_billings || 0}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">

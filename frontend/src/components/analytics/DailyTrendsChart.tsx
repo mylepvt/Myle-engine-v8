@@ -41,7 +41,7 @@ export default function DailyTrendsChart({ trends, isLoading }: DailyTrendsChart
               <li key={t.date} className="flex justify-between gap-2 border-b border-border/60 py-1">
                 <span className="text-muted-foreground">{t.date}</span>
                 <span>
-                  calls {t.total_calls} · enroll {t.total_enrollments}
+                  calls {t.total_calls} · enroll {t.total_flp_min_billings}
                 </span>
               </li>
             ))}

@@ -226,7 +226,7 @@ const LeadCard = memo(function LeadCard({
   const [pickerOpen, setPickerOpen] = useState(false)
   const stageOpsCard = stageKey != null
 
-  async function handleSendEnrollmentVideo(option: LiveSessionSlotOption, useBusinessWhatsApp = false) {
+  async function handleSendFlpMinBillingVideo(option: LiveSessionSlotOption, useBusinessWhatsApp = false) {
     setSendError(null)
     try {
       await pm.mutateAsync({ id: lead.id, body: { status: 'video_sent' } })
@@ -451,7 +451,7 @@ const LeadCard = memo(function LeadCard({
           open={pickerOpen}
           busy={pm.isPending}
           onClose={() => setPickerOpen(false)}
-          onConfirm={(option, useBusiness) => void handleSendEnrollmentVideo(option, useBusiness)}
+          onConfirm={(option, useBusiness) => void handleSendFlpMinBillingVideo(option, useBusiness)}
         />
         {stageKey ? (
           <StageAdvanceSection

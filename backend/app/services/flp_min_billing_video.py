@@ -16,7 +16,7 @@ from starlette import status as http_status
 
 from app.core.config import settings
 from app.models.app_setting import AppSetting
-from app.models.enroll_share_link import EnrollShareLink
+from app.models.flp_min_billing_share_link import FlpMinBillingShareLink
 from app.models.lead import Lead
 
 ENROLL_LINK_TTL_MINUTES = 50
@@ -115,7 +115,7 @@ def local_video_source_exists(raw_url: str | None) -> bool | None:
     return local_path.is_file()
 
 
-def build_enrollment_stream_source_candidates(*raw_sources: str | None) -> list[str]:
+def build_flp_min_billing_stream_source_candidates(*raw_sources: str | None) -> list[str]:
     candidates: list[str] = []
     for raw_source in raw_sources:
         normalized = normalize_video_source_url(raw_source)
@@ -143,29 +143,29 @@ async def get_app_setting(session: AsyncSession, key: str) -> str:
     return str(row or "").strip()
 
 
-async def get_enrollment_video_title(session: AsyncSession) -> str:
-    title = await get_app_setting(session, "enrollment_video_title")
-    return title or "Enrollment video"
+async def get_flp_min_billing_video_title(session: AsyncSession) -> str:
+    title = await get_app_setting(session, "flp_min_billing_video_title")
+    return title or "Min. FLP Billing video"
 
 
-async def get_enrollment_video_source(session: AsyncSession) -> str:
-    source = await get_app_setting(session, "enrollment_video_source_url")
+async def get_flp_min_billing_video_source(session: AsyncSession) -> str:
+    source = await get_app_setting(session, "flp_min_billing_video_source_url")
     if not source:
-        source = await get_app_setting(session, "enrollment_video_url")
+        source = await get_app_setting(session, "flp_min_billing_video_url")
     return source
 
 
-async def require_secure_enrollment_video_source(session: AsyncSession) -> str:
-    source = await get_enrollment_video_source(session)
+async def require_secure_flp_min_billing_video_source(session: AsyncSession) -> str:
+    source = await get_flp_min_billing_video_source(session)
     if not source:
         raise HTTPException(
             status_code=http_status.HTTP_400_BAD_REQUEST,
-            detail="Enrollment video source is not configured.",
+            detail="Min. FLP Billing video source is not configured.",
         )
     if is_youtube_like_url(source):
         raise HTTPException(
             status_code=http_status.HTTP_400_BAD_REQUEST,
-            detail="Enrollment video must be a direct hosted video URL, not YouTube.",
+            detail="Min. FLP Billing video must be a direct hosted video URL, not YouTube.",
         )
     return source
 
@@ -179,7 +179,7 @@ async def resolve_public_app_url(session: AsyncSession, request: Request) -> str
     return configured.rstrip("/")
 
 
-def enrollment_expires_at(now: datetime | None = None) -> datetime:
+def flp_min_billing_expires_at(now: datetime | None = None) -> datetime:
     anchor = now or datetime.now(timezone.utc)
     return anchor + timedelta(minutes=ENROLL_LINK_TTL_MINUTES)
 
@@ -259,7 +259,7 @@ def clear_watch_cookie(response: Response) -> None:
     )
 
 
-def has_watch_access(request: Request, *, link: EnrollShareLink, lead: Lead) -> bool:
+def has_watch_access(request: Request, *, link: FlpMinBillingShareLink, lead: Lead) -> bool:
     raw_cookie = request.cookies.get(ENROLL_WATCH_COOKIE)
     if not raw_cookie:
         return False
@@ -286,12 +286,12 @@ async def expire_active_links_for_lead(
     now: datetime,
 ) -> None:
     await session.execute(
-        update(EnrollShareLink)
+        update(FlpMinBillingShareLink)
         .where(
-            EnrollShareLink.lead_id == lead_id,
+            FlpMinBillingShareLink.lead_id == lead_id,
             or_(
-                EnrollShareLink.expires_at.is_(None),
-                EnrollShareLink.expires_at > now,
+                FlpMinBillingShareLink.expires_at.is_(None),
+                FlpMinBillingShareLink.expires_at > now,
             ),
         )
         .values(expires_at=now)
@@ -301,13 +301,13 @@ async def expire_active_links_for_lead(
 async def ensure_watch_timer_started(
     session: AsyncSession,
     *,
-    link: EnrollShareLink,
+    link: FlpMinBillingShareLink,
     now: datetime | None = None,
-) -> EnrollShareLink:
+) -> FlpMinBillingShareLink:
     if link.expires_at is not None:
         return link
     started_at = now or datetime.now(timezone.utc)
-    link.expires_at = enrollment_expires_at(started_at)
+    link.expires_at = flp_min_billing_expires_at(started_at)
     await session.commit()
     await session.refresh(link)
     return link

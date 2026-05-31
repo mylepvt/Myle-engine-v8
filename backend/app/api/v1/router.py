@@ -15,7 +15,7 @@ from app.api.v1 import (
     media,
     certificate,
     downloads,
-    enroll,
+    flp_min_billing,
     execution,
     finance_surfaces,
     follow_ups,
@@ -83,9 +83,9 @@ api_router.include_router(
     gate_assistant.router, prefix="/gate-assistant", tags=["gate-assistant"]
 )
 api_router.include_router(realtime_ws.router, tags=["realtime"])
-api_router.include_router(enroll.router, prefix="/enroll", tags=["enroll"])
-# Public watch route — no /enroll prefix so the URL is /api/v1/watch/{token}
-api_router.include_router(enroll.watch_router, tags=["watch"])
+api_router.include_router(flp_min_billing.router, prefix="/flp-min-billing", tags=["flp-min-billing"])
+# Public watch route — no /flp-min-billing prefix so the URL is /api/v1/watch/{token}
+api_router.include_router(flp_min_billing.watch_router, tags=["watch"])
 api_router.include_router(certificate.router, tags=["certificate"])
 api_router.include_router(payments.router, prefix="/payments", tags=["payments"])
 api_router.include_router(wallet_enhanced.router, prefix="/wallet", tags=["wallet-enhanced"])

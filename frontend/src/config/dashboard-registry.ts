@@ -67,7 +67,7 @@ export type FullUiSurface =
   | { kind: 'leader-os' }
   | { kind: 'my-team' }
   | { kind: 'team-approvals' }
-  | { kind: 'enrollment-approvals' }
+  | { kind: 'flp-min-billing' }
   | {
       kind: 'system'
       surface: 'training' | 'decision-engine' | 'coaching'
@@ -244,15 +244,15 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     ui: { kind: 'team-reports' },
   },
   {
-    path: 'team/enrollment-approvals',
+    path: 'team/flp-min-billing',
     section: { id: 'team', label: 'Team' },
     label: 'Min. FLP Billing',
     labelByRole: {
       admin: 'Min. FLP Billing (all teams)',
     },
-    roles: routeRoles('team/enrollment-approvals'),
+    roles: routeRoles('team/flp-min-billing'),
     surface: 'full',
-    ui: { kind: 'enrollment-approvals' },
+    ui: { kind: 'flp-min-billing' },
   },
   {
     path: 'team/attendance',

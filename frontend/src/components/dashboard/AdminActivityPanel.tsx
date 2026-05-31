@@ -209,7 +209,7 @@ function iconLabel(action: string): string {
 function activityLink(entry: AdminActivityEntry): string {
   if (entry.targetType === 'lead' && entry.targetId) return `/dashboard/work/leads/${entry.targetId}`
   if (entry.action.startsWith('wallet')) return '/dashboard/finance/recharge-admin'
-  if (entry.action.startsWith('enrollment')) return '/dashboard/team/enrollment-approvals'
+  if (entry.action.startsWith('enrollment')) return '/dashboard/team/flp-min-billing'
   if (entry.action.startsWith('lead:')) return '/dashboard/work/leads'
   return '/dashboard/analytics/activity-log'
 }

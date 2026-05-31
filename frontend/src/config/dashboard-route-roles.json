@@ -17,7 +17,7 @@
   "team/los": ["leader"],
   "team/reports": ["admin", "leader"],
   "team/approvals": ["admin"],
-  "team/enrollment-approvals": ["admin"],
+  "team/flp-min-billing": ["admin"],
   "team/my-team": ["leader", "team"],
   "system/training": ["admin", "leader", "team"],
   "system/whatsapp": ["admin"],

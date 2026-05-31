@@ -9,7 +9,7 @@ export type TeamPerformanceResponse = {
     total_reports: number
     total_calls: number
     calls_picked: number
-    enrollments: number
+    flp_min_billings: number
     payments: number
     avg_daily_calls: number
     pickup_rate: number
@@ -33,7 +33,7 @@ export type IndividualPerformanceResponse = {
   reports: {
     total_reports: number
     total_calls: number
-    total_enrollments: number
+    total_flp_min_billings: number
     total_payments: number
     avg_daily_calls: number
   }
@@ -49,7 +49,7 @@ export type IndividualPerformanceResponse = {
   daily_trends: Array<{
     date: string
     calls: number
-    enrollments: number
+    flp_min_billings: number
     payments: number
     points: number
   }>
@@ -79,7 +79,7 @@ export type SystemOverviewResponse = {
   reports: {
     total_reports: number
     total_calls: number
-    total_enrollments: number
+    total_flp_min_billings: number
     total_payments: number
     avg_calls_per_user: number
   }
@@ -102,7 +102,7 @@ export type DailyTrendsResponse = {
     date: string
     reports_count: number
     total_calls: number
-    total_enrollments: number
+    total_flp_min_billings: number
     total_payments: number
     avg_calls_per_report: number
   }>

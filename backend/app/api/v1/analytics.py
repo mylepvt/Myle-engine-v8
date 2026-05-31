@@ -46,19 +46,19 @@ def _build_analytics_export_rows(
         sc = individual_perf.get("scores") or {}
         rows.append(["Total Reports", rep.get("total_reports", 0)])
         rows.append(["Total Calls", rep.get("total_calls", 0)])
-        rows.append(["Total Enrollments", rep.get("total_enrollments", 0)])
+        rows.append(["Total FlpMinBillings", rep.get("total_flp_min_billings", 0)])
         rows.append(["Total Points", sc.get("total_points", 0)])
     rows.append([])
     if team_perf:
         rows.append(["Team Performance"])
-        rows.append(["Team Member", "Reports", "Calls", "Enrollments", "Points"])
+        rows.append(["Team Member", "Reports", "Calls", "FlpMinBillings", "Points"])
         for member in team_perf.get("team_members", []):
             rows.append(
                 [
                     member.get("name", ""),
                     member.get("reports", 0),
                     member.get("calls", 0),
-                    member.get("enrollments", 0),
+                    member.get("flp_min_billings", 0),
                     member.get("points", 0),
                 ]
             )

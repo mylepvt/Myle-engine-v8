@@ -32,7 +32,7 @@ from app.services.scheduled_jobs import (
     job_closing_pipeline_maintenance,
     job_daily_leader_team_summary,
     job_daily_report_reminder,
-    job_enrollment_proof_alert,
+    job_flp_min_billing_proof_alert,
     job_general_pipeline_maintenance,
     job_leader_basics_enforcement,
     job_watch_archive_maintenance,
@@ -63,9 +63,9 @@ _SCHEDULER_ENABLED = _os.environ.get("DISABLE_SCHEDULER", "").lower() not in {"1
 async def lifespan(_app: FastAPI):
     if _SCHEDULER_ENABLED:
         _scheduler.add_job(
-            job_enrollment_proof_alert,
+            job_flp_min_billing_proof_alert,
             IntervalTrigger(minutes=30),
-            id="enrollment_proof_alert",
+            id="flp_min_billing_proof_alert",
             replace_existing=True,
             misfire_grace_time=120,
         )

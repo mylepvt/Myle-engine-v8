@@ -117,7 +117,7 @@ function SubmissionCard({ item }: { item: TeamReportItem }) {
           <div className="text-center text-sm font-semibold tabular-nums text-emerald-300">{item.calls_picked}</div>
         </div>
         <div className="surface-inset rounded-lg px-2 py-2">
-          <p className="text-[0.68rem] uppercase tracking-wide text-muted-foreground">Enroll</p>
+          <p className="text-[0.68rem] uppercase tracking-wide text-muted-foreground">Min. FLP</p>
           <ReportMetric reported={item.day1_count + item.day2_count + item.day3_count} system={item.payments_actual} tone="text-amber-300" />
         </div>
       </div>
@@ -135,7 +135,7 @@ function SubmissionCard({ item }: { item: TeamReportItem }) {
 const TILES: { key: keyof TeamReportsLiveSummary; label: string; color: string }[] = [
   { key: 'leads_claimed_today', label: 'Claimed (day)', color: 'text-primary' },
   { key: 'calls_made_today', label: 'Calls (day)', color: 'text-emerald-400' },
-  { key: 'enrolled_today', label: 'Proof uploaded (day)', color: 'text-amber-400' },
+  { key: 'flp_min_billing_today', label: 'Proof uploaded (day)', color: 'text-amber-400' },
   {
     key: 'payment_proofs_approved_today',
     label: 'FLP invoice approved (day)',
@@ -157,7 +157,7 @@ export function TeamReportsPage({ title }: Props) {
       scopeTotal: data?.scope_total_members ?? 0,
       missing: data?.missing_members.length ?? 0,
       totalCalls: items.reduce((sum, item) => sum + item.total_calling, 0),
-      totalEnrollments: items.reduce((sum, item) => sum + item.day1_count + item.day2_count + item.day3_count, 0),
+      totalFlpMinBillings: items.reduce((sum, item) => sum + item.day1_count + item.day2_count + item.day3_count, 0),
     }
   }, [data])
 
@@ -234,7 +234,7 @@ export function TeamReportsPage({ title }: Props) {
             <MetricCard
               label="Reported calls"
               value={summary.totalCalls}
-              hint={`${summary.totalEnrollments} enrollments reported in submitted rows.`}
+              hint={`${summary.totalFlpMinBillings} flp_min_billings reported in submitted rows.`}
             />
           </div>
 
@@ -289,7 +289,7 @@ export function TeamReportsPage({ title }: Props) {
                           <th className="pb-3 pr-4 font-medium">Submitted</th>
                           <th className="pb-3 px-3 font-medium text-center">Calls</th>
                           <th className="pb-3 px-3 font-medium text-center">Picked</th>
-                          <th className="pb-3 px-3 font-medium text-center">Enroll</th>
+                          <th className="pb-3 px-3 font-medium text-center">Min. FLP</th>
                           <th className="pb-3 px-3 font-medium text-center">Pending</th>
                           <th className="pb-3 px-3 font-medium text-center">2CC</th>
                           <th className="pb-3 pl-4 font-medium">Remarks</th>
