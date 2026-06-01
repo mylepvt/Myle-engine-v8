@@ -46,6 +46,23 @@ _MIN_CONFIDENCE = Decimal("0.75")    # ≥ 3 of 4 critical fields parsed
 _MAX_INVOICE_AGE_DAYS = 60           # bill should be recent
 _FUTURE_GRACE_DAYS = 1               # tolerate timezone slop
 
+# FOREVER personal-sale commission ("approx cheque"): 25% of the bill's NET
+# amount, i.e. invoice total minus CGST and SGST. Personal = the lead's lifetime
+# owner only — downline/team billing never contributes to a leader's cheque.
+COMMISSION_RATE_PERCENT = 25
+
+# SQL: per-row net amount (paise) = amount − CGST − SGST, NULL-safe.
+_NET_CENTS = (
+    func.coalesce(LeadSale.amount_cents, 0)
+    - func.coalesce(LeadSale.cgst_cents, 0)
+    - func.coalesce(LeadSale.sgst_cents, 0)
+)
+
+
+def commission_from_net_cents(net_cents: int) -> int:
+    """25% of net, floored to whole paise. Negative nets clamp to 0."""
+    return (max(int(net_cents or 0), 0) * COMMISSION_RATE_PERCENT) // 100
+
 
 class SalesService:
     def __init__(self, session: AsyncSession) -> None:
@@ -193,6 +210,8 @@ class SalesService:
         # Manual entry wins over OCR when provided (admin/team override).
         sale.case_credits = manual.case_credits if manual.case_credits is not None else ocr.case_credits
         sale.amount_cents = manual.amount_cents if manual.amount_cents is not None else ocr.amount_cents
+        sale.cgst_cents = manual.cgst_cents if manual.cgst_cents is not None else ocr.cgst_cents
+        sale.sgst_cents = manual.sgst_cents if manual.sgst_cents is not None else ocr.sgst_cents
         sale.fbo_id = manual.fbo_id or ocr.fbo_id
         sale.sponsor_id = manual.sponsor_id or ocr.sponsor_id
         sale.order_count = manual.order_count if manual.order_count is not None else ocr.order_count
@@ -353,7 +372,7 @@ class SalesService:
             ).scalar_one()
         )
 
-        # Per-owner breakdown with usernames.
+        # Per-owner breakdown with usernames (+ net for the per-owner cheque).
         rows_q = (
             select(
                 LeadSale.owner_user_id,
@@ -361,6 +380,7 @@ class SalesService:
                 func.count(LeadSale.id),
                 func.coalesce(func.sum(LeadSale.case_credits), 0),
                 func.coalesce(func.sum(LeadSale.amount_cents), 0),
+                func.coalesce(func.sum(_NET_CENTS), 0),
             )
             .outerjoin(User, User.id == LeadSale.owner_user_id)
             .where(and_(*base_where))
@@ -369,12 +389,27 @@ class SalesService:
         )
         rows = (await self.session.execute(rows_q)).all()
 
+        # Viewer's PERSONAL commission: own leads only (owner == viewer), never
+        # downline/team billing — independent of the scope above. Same rule for
+        # every role, so admin sees their own personal cheque here too.
+        personal_net = int(
+            (
+                await self.session.execute(
+                    select(func.coalesce(func.sum(_NET_CENTS), 0)).where(
+                        approved, LeadSale.owner_user_id == user_id
+                    )
+                )
+            ).scalar_one()
+            or 0
+        )
+
         return {
             "scope": scope,
             "sale_count": int(totals[0] or 0),
             "total_case_credits": Decimal(str(totals[1] or 0)),
             "total_amount_cents": int(totals[2] or 0),
             "pending_count": pending_count,
+            "personal_commission_cents": commission_from_net_cents(personal_net),
             "rows": [
                 {
                     "owner_user_id": owner_id,
@@ -382,8 +417,9 @@ class SalesService:
                     "sale_count": int(cnt or 0),
                     "total_case_credits": Decimal(str(cc or 0)),
                     "total_amount_cents": int(amt or 0),
+                    "commission_cents": commission_from_net_cents(int(net or 0)),
                 }
-                for owner_id, username, cnt, cc, amt in rows
+                for owner_id, username, cnt, cc, amt, net in rows
             ],
         }
 

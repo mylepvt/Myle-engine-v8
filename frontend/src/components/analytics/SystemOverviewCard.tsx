@@ -95,6 +95,16 @@ export default function SystemOverviewCard({ overview, isLoading }: SystemOvervi
               }).format(overview.sales.total_amount_cents / 100)}
             </span>
           </div>
+          <div className="flex justify-between border-t border-border/40 pt-2">
+            <span className="text-muted-foreground">Commission (cheques)</span>
+            <span className="font-medium text-emerald-400">
+              {new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: 'INR',
+                maximumFractionDigits: 0,
+              }).format((overview.sales.total_commission_cents ?? 0) / 100)}
+            </span>
+          </div>
         </CardContent>
       </Card>
     </div>

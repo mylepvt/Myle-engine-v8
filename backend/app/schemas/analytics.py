@@ -138,6 +138,8 @@ class SystemOverviewSales(BaseModel):
     sale_count: int
     total_case_credits: float
     total_amount_cents: int
+    # Grand-total personal-sale commission (sum of every owner's 25% cheque).
+    total_commission_cents: int = 0
 
 
 class SystemOverviewResponse(BaseModel):

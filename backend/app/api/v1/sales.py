@@ -43,6 +43,8 @@ async def submit_sale(
     file: Annotated[UploadFile, File()],
     case_credits: Annotated[Optional[Decimal], Form()] = None,
     amount_cents: Annotated[Optional[int], Form()] = None,
+    cgst_cents: Annotated[Optional[int], Form()] = None,
+    sgst_cents: Annotated[Optional[int], Form()] = None,
     invoice_number: Annotated[Optional[str], Form()] = None,
     fbo_id: Annotated[Optional[str], Form()] = None,
     sponsor_id: Annotated[Optional[str], Form()] = None,
@@ -52,6 +54,8 @@ async def submit_sale(
     manual = SaleManualFields(
         case_credits=case_credits,
         amount_cents=amount_cents,
+        cgst_cents=cgst_cents,
+        sgst_cents=sgst_cents,
         invoice_number=invoice_number,
         fbo_id=fbo_id,
         sponsor_id=sponsor_id,

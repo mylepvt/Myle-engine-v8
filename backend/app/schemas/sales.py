@@ -17,6 +17,8 @@ class SaleManualFields(BaseModel):
 
     case_credits: Optional[Decimal] = Field(default=None, ge=0)
     amount_cents: Optional[int] = Field(default=None, ge=0)
+    cgst_cents: Optional[int] = Field(default=None, ge=0)
+    sgst_cents: Optional[int] = Field(default=None, ge=0)
     invoice_number: Optional[str] = Field(default=None, max_length=64)
     fbo_id: Optional[str] = Field(default=None, max_length=32)
     sponsor_id: Optional[str] = Field(default=None, max_length=32)
@@ -32,6 +34,8 @@ class LeadSalePublic(BaseModel):
     billing_stage: BillingStage
     case_credits: Optional[Decimal] = None
     amount_cents: Optional[int] = None
+    cgst_cents: Optional[int] = None
+    sgst_cents: Optional[int] = None
     invoice_number: Optional[str] = None
     fbo_id: Optional[str] = None
     sponsor_id: Optional[str] = None
@@ -76,6 +80,8 @@ class SaleDashboardRow(BaseModel):
     sale_count: int = 0
     total_case_credits: Decimal = Decimal("0")
     total_amount_cents: int = 0
+    # Personal-sale commission for this owner: (amount − CGST − SGST) × 25%.
+    commission_cents: int = 0
 
 
 class SaleDashboardResponse(BaseModel):
@@ -84,4 +90,7 @@ class SaleDashboardResponse(BaseModel):
     total_case_credits: Decimal = Decimal("0")
     total_amount_cents: int = 0
     pending_count: int = 0
+    # Viewer's own PERSONAL-sale commission (approx cheque) — leads they own
+    # themselves only, never downline/team billing. Same for every role.
+    personal_commission_cents: int = 0
     rows: list[SaleDashboardRow] = Field(default_factory=list)

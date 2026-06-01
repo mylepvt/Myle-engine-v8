@@ -383,11 +383,19 @@ class AnalyticsService:
         wallet_data = wallet_q.first()
 
         # CC/sale revenue — approved invoices from the sale engine (Phase 3).
+        # net = amount − CGST − SGST; the 25% personal-sale commission total is
+        # the sum of every owner's cheque (admin sees the grand total).
+        _net = (
+            func.coalesce(LeadSale.amount_cents, 0)
+            - func.coalesce(LeadSale.cgst_cents, 0)
+            - func.coalesce(LeadSale.sgst_cents, 0)
+        )
         sales_q = await self.session.execute(
             select(
                 func.count(LeadSale.id).label("sale_count"),
                 func.coalesce(func.sum(LeadSale.case_credits), 0).label("total_case_credits"),
                 func.coalesce(func.sum(LeadSale.amount_cents), 0).label("total_amount_cents"),
+                func.coalesce(func.sum(_net), 0).label("total_net_cents"),
             )
             .where(
                 LeadSale.status == "approved",
@@ -426,6 +434,7 @@ class AnalyticsService:
                 "sale_count": sales_data.sale_count or 0,
                 "total_case_credits": float(sales_data.total_case_credits or 0),
                 "total_amount_cents": int(sales_data.total_amount_cents or 0),
+                "total_commission_cents": (max(int(sales_data.total_net_cents or 0), 0) * 25) // 100,
             },
         }
 

@@ -44,6 +44,8 @@ class ExtractedInvoice:
     invoice_number: Optional[str] = None
     amount_cents: Optional[int] = None
     case_credits: Optional[Decimal] = None
+    cgst_cents: Optional[int] = None
+    sgst_cents: Optional[int] = None
     fbo_id: Optional[str] = None
     sponsor_id: Optional[str] = None
     order_count: Optional[int] = None
@@ -96,6 +98,39 @@ def _parse_amount_to_cents(raw: str) -> Optional[int]:
     return int((rupees * 100).quantize(Decimal("1")))
 
 
+_FLOAT_RE = re.compile(r"\d[\d,]*\.\d{1,3}")
+
+
+def _parse_cgst_sgst(text: str) -> tuple[Optional[int], Optional[int]]:
+    """Extract CGST + SGST (paise) from the FOREVER invoice summary row.
+
+    The summary row lays out: ``CC Net CGST SGST Cess Total`` e.g.
+    ``Total : 1.002  19026.33  475.66  475.66  0.00  19977.65``. CGST and SGST
+    are an intra-state split and always equal, so the reliable signal is an
+    *adjacent equal pair* of positive decimals. Per-item lines carry the same
+    equal-pair shape (each product's own CGST/SGST), so we restrict the scan to
+    the summary row — the only line that carries a ``Total`` token — to avoid
+    latching onto the first line item's tax instead of the invoice total.
+    """
+    for line in (text or "").splitlines():
+        if "total" not in line.lower():
+            continue
+        nums: list[Decimal] = []
+        for tok in _FLOAT_RE.findall(line):
+            try:
+                nums.append(Decimal(tok.replace(",", "")))
+            except InvalidOperation:
+                continue
+        if len(nums) < 4:
+            continue
+        for i in range(len(nums) - 1):
+            a, b = nums[i], nums[i + 1]
+            if a == b and a > 0 and a < max(nums):
+                paise = int((a * 100).quantize(Decimal("1")))
+                return paise, paise
+    return None, None
+
+
 def _parse_invoice_date(raw: str) -> Optional[date]:
     m = re.search(r"(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})", raw or "")
     if not m:
@@ -138,6 +173,9 @@ def _extract_fields(text: str, out: ExtractedInvoice) -> None:
         if Decimal("0") < val < Decimal("1000"):
             out.case_credits = val
             break
+
+    # CGST + SGST (equal intra-state split) from the summary row.
+    out.cgst_cents, out.sgst_cents = _parse_cgst_sgst(text)
 
     # FBO ID : 910711594952
     m = re.search(r"FBO\s*ID\s*[:\-]?\s*(\d[\d\s]{7,16})", text, re.IGNORECASE)

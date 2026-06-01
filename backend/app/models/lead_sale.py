@@ -52,6 +52,10 @@ class LeadSale(Base):
         Numeric(7, 3), nullable=True
     )
     amount_cents: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    # CGST + SGST (paise) parsed from the bill — removed before the 25% personal
+    # commission ("approx cheque") is computed off the net amount.
+    cgst_cents: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    sgst_cents: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     invoice_number: Mapped[Optional[str]] = mapped_column(
         String(64), unique=True, nullable=True
     )
