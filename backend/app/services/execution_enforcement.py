@@ -47,6 +47,7 @@ from app.schemas.execution_enforcement import (
     LeadControlManualReassignOut,
     LeadControlOut,
     LeadControlQueueLead,
+    LeadControlRevertOut,
     LosMemberRow,
     LosSnapshotOut,
     MemberExecutionStats,
@@ -120,6 +121,13 @@ _MANUAL_REASSIGNMENT_ACTION = "lead.manual_watch_reassigned"
 _CLOSING_REASSIGNMENT_ACTION = "lead.closing_pipeline_stale_reassigned"
 _GENERAL_REASSIGNMENT_ACTION = "lead.general_pipeline_stale_reassigned"
 _REASSIGNMENT_HISTORY_ACTIONS = (_AUTO_REASSIGNMENT_ACTION, _MANUAL_REASSIGNMENT_ACTION)
+_ALL_REASSIGNMENT_ACTIONS = (
+    _AUTO_REASSIGNMENT_ACTION,
+    _MANUAL_REASSIGNMENT_ACTION,
+    _CLOSING_REASSIGNMENT_ACTION,
+    _GENERAL_REASSIGNMENT_ACTION,
+)
+_REVERT_ACTION = "lead.reassignment_reverted"
 
 
 def _user_label(user: User | None, user_id: int | None = None) -> str:
@@ -933,8 +941,7 @@ async def auto_archive_completed_watch_leads(
         safe_activity = _ensure_utc_datetime(activity_at) or _lead_last_activity_value(lead)
         if safe_activity > cutoff:
             continue
-        archive_mark_at = safe_activity + timedelta(hours=archive_hours)
-        lead.archived_at = archive_mark_at
+        lead.archived_at = ts
         lead.in_pool = False
         archived += 1
         audit_logs.append(
@@ -949,7 +956,7 @@ async def auto_archive_completed_watch_leads(
                     "watch_completed": True,
                     "status": lead.status,
                     "watch_completed_at": safe_activity.isoformat(),
-                    "archived_at": archive_mark_at.isoformat(),
+                    "archived_at": ts.isoformat(),
                     "owner_user_id": int(lead.owner_user_id) if lead.owner_user_id is not None else None,
                     "assigned_to_user_id": int(lead.assigned_to_user_id) if lead.assigned_to_user_id is not None else None,
                     "auto_cycle_hours": archive_hours,
@@ -1348,8 +1355,7 @@ async def auto_archive_closing_pipeline_leads(
         safe = _ensure_utc_datetime(activity_at) or _lead_last_activity_value(lead)
         if safe > cutoff:
             continue
-        archive_mark_at = safe + timedelta(hours=archive_hours)
-        lead.archived_at = archive_mark_at
+        lead.archived_at = ts
         lead.in_pool = False
         archived += 1
         owner_uid = int(lead.assigned_to_user_id or lead.owner_user_id or lead.created_by_user_id)
@@ -1364,7 +1370,7 @@ async def auto_archive_closing_pipeline_leads(
                     "source_bucket": _CLOSING_ARCHIVE_BUCKET,
                     "status": lead.status,
                     "activity_at": safe.isoformat(),
-                    "archived_at": archive_mark_at.isoformat(),
+                    "archived_at": ts.isoformat(),
                     "auto_cycle_hours": archive_hours,
                     "owner_user_id": int(lead.owner_user_id) if lead.owner_user_id is not None else None,
                     "assigned_to_user_id": int(lead.assigned_to_user_id) if lead.assigned_to_user_id is not None else None,
@@ -1604,8 +1610,7 @@ async def auto_archive_general_pipeline_leads(
         safe = _ensure_utc_datetime(activity_at) or _lead_last_activity_value(lead)
         if safe > cutoff:
             continue
-        archive_mark_at = safe + timedelta(hours=archive_hours)
-        lead.archived_at = archive_mark_at
+        lead.archived_at = ts
         lead.in_pool = False
         archived += 1
         owner_uid = int(lead.assigned_to_user_id or lead.owner_user_id or lead.created_by_user_id)
@@ -1620,7 +1625,7 @@ async def auto_archive_general_pipeline_leads(
                     "source_bucket": _GENERAL_ARCHIVE_BUCKET,
                     "status": lead.status,
                     "activity_at": safe.isoformat(),
-                    "archived_at": archive_mark_at.isoformat(),
+                    "archived_at": ts.isoformat(),
                     "auto_cycle_hours": archive_hours,
                     "owner_user_id": int(lead.owner_user_id) if lead.owner_user_id is not None else None,
                     "assigned_to_user_id": int(lead.assigned_to_user_id) if lead.assigned_to_user_id is not None else None,
@@ -2253,6 +2258,141 @@ async def admin_manual_bulk_reassign_archived_completed_watch_leads(
         lead_ids=moved_lead_ids,
         assigned_to_user_id=target_user_id,
         assigned_to_name=_user_label(target_user),
+    )
+
+
+async def admin_revert_lead_reassignment(
+    session: AsyncSession,
+    *,
+    admin_user_id: int,
+    lead_id: int,
+    activity_id: int | None = None,
+    reason: str | None = None,
+) -> LeadControlRevertOut:
+    """Admin: undo a reassignment, restoring the lead to its previous assignee.
+
+    Only the working assignee is restored — the lifetime owner never changes.
+    """
+    lead = await session.get(Lead, int(lead_id))
+    if lead is None or lead.deleted_at is not None:
+        raise ValueError("Lead not found")
+
+    stmt = (
+        select(ActivityLog)
+        .where(
+            ActivityLog.entity_type == "lead",
+            ActivityLog.entity_id == int(lead_id),
+            ActivityLog.action.in_(_ALL_REASSIGNMENT_ACTIONS),
+        )
+        .order_by(ActivityLog.created_at.desc(), ActivityLog.id.desc())
+    )
+    if activity_id is not None:
+        stmt = stmt.where(ActivityLog.id == int(activity_id))
+    log = (await session.execute(stmt.limit(1))).scalar_one_or_none()
+    if log is None:
+        raise ValueError("No reassignment found to revert for this lead")
+
+    meta = log.meta if isinstance(log.meta, dict) else {}
+    reassigned_to = _coerce_int(meta.get("assigned_to_user_id"))
+    previous_assignee = _coerce_int(meta.get("previous_assignee_user_id"))
+    current = int(lead.assigned_to_user_id) if lead.assigned_to_user_id is not None else None
+
+    if reassigned_to is not None and current != reassigned_to:
+        raise ValueError("Lead has moved since this reassignment — nothing to revert")
+    if previous_assignee == current:
+        raise ValueError("Lead is already with the previous assignee")
+
+    restored_user: User | None = None
+    if previous_assignee is not None:
+        restored_user = (
+            await session.execute(
+                select(User).where(
+                    User.id == previous_assignee,
+                    User.role.in_(("leader", "team")),
+                    User.registration_status == "approved",
+                    User.removed_at.is_(None),
+                    User.access_blocked.is_(False),
+                )
+            )
+        ).scalar_one_or_none()
+        if restored_user is None:
+            raise ValueError("Previous assignee is no longer active — reassign manually instead")
+
+    now = datetime.now(timezone.utc)
+    reason_text = (reason or "").strip() or None
+    lead.assigned_to_user_id = previous_assignee
+    lead.is_reassigned = False
+    lead.reassigned_at = None
+    lead.archived_at = None
+    lead.in_pool = False
+    lead.last_action_at = now
+    enqueue_lead_shadow_upsert(session, lead)
+    session.add(
+        ActivityLog(
+            user_id=int(admin_user_id),
+            action=_REVERT_ACTION,
+            entity_type="lead",
+            entity_id=int(lead.id),
+            meta={
+                "actor": "admin.revert_reassignment",
+                "reverted_activity_id": int(log.id),
+                "reverted_action": log.action,
+                "undone_assignee_user_id": reassigned_to,
+                "assigned_to_user_id": previous_assignee,
+                "owner_user_id": int(lead.owner_user_id) if lead.owner_user_id is not None else None,
+                "owner_preserved": True,
+                "reason": reason_text,
+                "status": lead.status,
+            },
+        )
+    )
+    await session.commit()
+
+    users_by_id = await _load_users_by_ids(
+        session,
+        {
+            int(x)
+            for x in (previous_assignee, reassigned_to, lead.owner_user_id)
+            if x is not None
+        },
+    )
+    if previous_assignee is not None:
+        try:
+            await send_push_to_user(
+                session,
+                int(previous_assignee),
+                title="Lead restored to you",
+                body=f"Lead '{lead.name}' was reverted back into your Calling Board by admin.",
+                url="/dashboard/work/leads",
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception("Failed to send revert push for lead %s", lead.id)
+
+    return LeadControlRevertOut(
+        success=True,
+        message=(
+            "Reassignment reverted. Lead restored to its previous assignee; owner unchanged."
+            if previous_assignee is not None
+            else "Reassignment reverted. Lead is now unassigned; owner unchanged."
+        ),
+        lead_id=int(lead.id),
+        restored_to_user_id=previous_assignee,
+        restored_to_name=(
+            _user_label(restored_user, previous_assignee)
+            if previous_assignee is not None
+            else "Unassigned"
+        ),
+        undone_assignee_user_id=reassigned_to,
+        undone_assignee_name=(
+            _user_label(users_by_id.get(reassigned_to), reassigned_to)
+            if reassigned_to is not None
+            else "Unassigned"
+        ),
+        owner_user_id=int(lead.owner_user_id) if lead.owner_user_id is not None else None,
+        owner_name=_user_label(
+            users_by_id.get(int(lead.owner_user_id)) if lead.owner_user_id is not None else None,
+            lead.owner_user_id,
+        ),
     )
 
 

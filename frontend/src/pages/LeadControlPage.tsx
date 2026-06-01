@@ -10,6 +10,8 @@ import {
   useLeadControlBulkReassignMutation,
   useLeadControlManualReassignMutation,
   useLeadControlQuery,
+  useLeadControlRevertMutation,
+  type LeadControlHistoryRow,
 } from '@/hooks/use-lead-control-query'
 import { LEAD_STATUS_OPTIONS } from '@/hooks/use-leads-query'
 
@@ -63,6 +65,7 @@ export function LeadControlPage({ title }: Props) {
   const query = useLeadControlQuery()
   const manualReassign = useLeadControlManualReassignMutation()
   const bulkReassign = useLeadControlBulkReassignMutation()
+  const revert = useLeadControlRevertMutation()
   const queue = query.data?.queue ?? []
   const assignableUsers = query.data?.assignable_users ?? []
   const historySummary = query.data?.history_summary ?? []
@@ -74,6 +77,9 @@ export function LeadControlPage({ title }: Props) {
   const [reason, setReason] = useState('')
   const [submitError, setSubmitError] = useState('')
   const [submitMessage, setSubmitMessage] = useState('')
+  const [revertingId, setRevertingId] = useState<number | null>(null)
+  const [revertError, setRevertError] = useState('')
+  const [revertMessage, setRevertMessage] = useState('')
 
   useEffect(() => {
     if (queue.length === 0) {
@@ -147,6 +153,23 @@ export function LeadControlPage({ title }: Props) {
       setSubmitMessage(result.message)
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'Could not reassign this lead right now.')
+    }
+  }
+
+  async function handleRevert(row: LeadControlHistoryRow) {
+    setRevertError('')
+    setRevertMessage('')
+    setRevertingId(row.activity_id)
+    try {
+      const result = await revert.mutateAsync({
+        leadId: row.lead_id,
+        activityId: row.activity_id,
+      })
+      setRevertMessage(result.message)
+    } catch (error) {
+      setRevertError(error instanceof Error ? error.message : 'Could not revert this reassignment right now.')
+    } finally {
+      setRevertingId(null)
     }
   }
 
@@ -550,6 +573,12 @@ export function LeadControlPage({ title }: Props) {
                 <CardDescription>Soft audit trail for recent auto and manual lead movement.</CardDescription>
               </CardHeader>
               <CardContent>
+                {revertError ? (
+                  <p className="mb-3 text-sm text-destructive">{revertError}</p>
+                ) : null}
+                {revertMessage ? (
+                  <p className="mb-3 text-sm text-emerald-600">{revertMessage}</p>
+                ) : null}
                 {history.length === 0 ? (
                   <EmptyState
                     title="No recent movement"
@@ -574,10 +603,23 @@ export function LeadControlPage({ title }: Props) {
                           {row.previous_assignee_name || 'Unassigned'} →{' '}
                           <span className="font-medium text-foreground">{row.assigned_to_name || 'Unassigned'}</span>
                         </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Actor: {row.actor_name}
-                          {row.reason ? ` · ${row.reason}` : ''}
-                        </p>
+                        <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-xs text-muted-foreground">
+                            Actor: {row.actor_name}
+                            {row.reason ? ` · ${row.reason}` : ''}
+                          </p>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={revert.isPending && revertingId === row.activity_id}
+                            onClick={() => void handleRevert(row)}
+                          >
+                            {revert.isPending && revertingId === row.activity_id
+                              ? 'Reverting...'
+                              : `Revert to ${row.previous_assignee_name || 'Unassigned'}`}
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>

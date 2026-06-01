@@ -246,6 +246,24 @@ class LeadControlBulkReassignOut(BaseModel):
     assigned_to_name: str
 
 
+class LeadControlRevertIn(BaseModel):
+    lead_id: int = Field(ge=1)
+    activity_id: Optional[int] = Field(default=None, ge=1)
+    reason: Optional[str] = Field(default=None, max_length=500)
+
+
+class LeadControlRevertOut(BaseModel):
+    success: bool = True
+    message: str
+    lead_id: int
+    restored_to_user_id: Optional[int] = None
+    restored_to_name: str = ""
+    undone_assignee_user_id: Optional[int] = None
+    undone_assignee_name: str = ""
+    owner_user_id: Optional[int] = None
+    owner_name: str = ""
+
+
 class LosMemberRow(BaseModel):
     user_id: int
     name: str

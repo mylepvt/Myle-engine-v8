@@ -24,6 +24,8 @@ from app.schemas.execution_enforcement import (
     LeadControlManualReassignIn,
     LeadControlManualReassignOut,
     LeadControlOut,
+    LeadControlRevertIn,
+    LeadControlRevertOut,
     LosSnapshotOut,
     MemberExecutionStats,
     StaleRedistributeOut,
@@ -280,6 +282,34 @@ async def execution_bulk_manual_reassign(
         )
     except ValueError as exc:
         detail = str(exc).strip() or "Unable to bulk reassign leads"
+        status_code = (
+            http_status.HTTP_404_NOT_FOUND
+            if detail == "Lead not found"
+            else http_status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=status_code, detail=detail) from exc
+    await notify_topics("leads", "workboard", "team_tracking")
+    return result
+
+
+@router.post("/lead-control/revert", response_model=LeadControlRevertOut)
+async def execution_revert_reassignment(
+    body: LeadControlRevertIn,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> LeadControlRevertOut:
+    """Admin: revert a reassignment, restoring the lead to its previous assignee."""
+    _require_admin(user)
+    try:
+        result = await enf.admin_revert_lead_reassignment(
+            session,
+            admin_user_id=user.user_id,
+            lead_id=body.lead_id,
+            activity_id=body.activity_id,
+            reason=body.reason,
+        )
+    except ValueError as exc:
+        detail = str(exc).strip() or "Unable to revert reassignment"
         status_code = (
             http_status.HTTP_404_NOT_FOUND
             if detail == "Lead not found"
