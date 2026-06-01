@@ -11,6 +11,8 @@ export type LeadSale = {
   billing_stage: BillingStage
   case_credits: string | null
   amount_cents: number | null
+  cgst_cents: number | null
+  sgst_cents: number | null
   invoice_number: string | null
   fbo_id: string | null
   sponsor_id: string | null
@@ -47,6 +49,8 @@ export type SaleDashboardRow = {
   sale_count: number
   total_case_credits: string
   total_amount_cents: number
+  /** Personal-sale commission for this owner: (amount − CGST − SGST) × 25%. */
+  commission_cents: number
 }
 
 export type SaleDashboardResponse = {
@@ -55,6 +59,8 @@ export type SaleDashboardResponse = {
   total_case_credits: string
   total_amount_cents: number
   pending_count: number
+  /** Viewer's own personal-sale commission (approx cheque), own leads only. */
+  personal_commission_cents: number
   rows: SaleDashboardRow[]
 }
 
@@ -62,6 +68,8 @@ export type SaleDashboardResponse = {
 export type SaleManualFields = {
   case_credits?: string
   amount_cents?: number
+  cgst_cents?: number
+  sgst_cents?: number
   invoice_number?: string
   fbo_id?: string
   sponsor_id?: string
@@ -112,6 +120,8 @@ async function submitSale(args: {
   const m = args.manual ?? {}
   if (m.case_credits != null) fd.append('case_credits', m.case_credits)
   if (m.amount_cents != null) fd.append('amount_cents', String(m.amount_cents))
+  if (m.cgst_cents != null) fd.append('cgst_cents', String(m.cgst_cents))
+  if (m.sgst_cents != null) fd.append('sgst_cents', String(m.sgst_cents))
   if (m.invoice_number) fd.append('invoice_number', m.invoice_number)
   if (m.fbo_id) fd.append('fbo_id', m.fbo_id)
   if (m.sponsor_id) fd.append('sponsor_id', m.sponsor_id)

@@ -44,6 +44,8 @@ def _good_ocr(invoice_number: str = "2627-027-006305") -> ExtractedInvoice:
     out = ExtractedInvoice(ocr_available=True, raw_text="stub")
     out.invoice_number = invoice_number
     out.amount_cents = 1_997_800  # ₹19,978
+    out.cgst_cents = 47_566  # ₹475.66
+    out.sgst_cents = 47_566  # ₹475.66
     out.case_credits = Decimal("1.002")
     out.fbo_id = "910711594952"
     out.sponsor_id = "910711242522"
@@ -103,11 +105,27 @@ def test_parser_extracts_forever_invoice_fields():
     assert out.invoice_number == "2627-027-006305"
     assert out.amount_cents == 1_997_800
     assert out.case_credits == Decimal("1.002")
+    assert out.cgst_cents == 47_566  # ₹475.66 — adjacent equal pair in the row
+    assert out.sgst_cents == 47_566
     assert out.fbo_id == "910711594952"
     assert out.sponsor_id == "910711242522"
     assert out.order_count == 2
     assert out.invoice_date.isoformat() == "2026-05-25"
     assert out.confidence == 1.0
+
+
+def test_parser_cgst_sgst_uses_summary_row_not_line_items():
+    """Per-item rows carry their own equal CGST/SGST pair — must use the Total row."""
+    text = (
+        "1 5207 FOREVER BEE HONEY 0.105 2094.00 2. 52.35 2. 52.35 0.00 2198.70\n"
+        "1 5815 ALOE VERA GEL 0.102 1935.00 2. 48.38 2. 48.38 0.00 2031.75\n"
+        "z Total : 1.002 19026.33 475.66 475.66 0.00 19977.65\n"
+        "Invoice Total : 19978.00\n"
+    )
+    out = ExtractedInvoice(raw_text=text)
+    _extract_fields(text, out)
+    assert out.cgst_cents == 47_566  # ₹475.66 from the summary, not ₹52.35 item tax
+    assert out.sgst_cents == 47_566
 
 
 # ── Service: hybrid auto-verify ────────────────────────────────────────────────
@@ -451,3 +469,77 @@ async def test_payment_approval_does_not_clobber_existing_cc_sale(session, monke
     assert len(rows) == 1  # upsert on (lead, stage), not a duplicate
     assert rows[0].case_credits == Decimal("1.002")  # CC preserved
     assert rows[0].amount_cents == 1_997_800  # original invoice amount preserved
+
+
+# ── Personal-sale commission ("approx cheque") = (amount − CGST − SGST) × 25% ────
+
+def test_commission_helper_floors_25_percent_of_net():
+    from app.services.sales_service import commission_from_net_cents
+
+    # net = 1_997_800 − 47_566 − 47_566 = 1_902_668 ; 25% = 475_667 (floored)
+    assert commission_from_net_cents(1_902_668) == 475_667
+    assert commission_from_net_cents(0) == 0
+    assert commission_from_net_cents(-100) == 0  # negative clamps
+
+
+@pytest.mark.asyncio
+async def test_dashboard_shows_personal_commission(session, monkeypatch, tmp_path):
+    """A personal sale's cheque = 25% of net; shown on the owner's dashboard + row."""
+    monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
+    monkeypatch.setattr(sales_mod, "extract_forever_invoice", lambda data: _good_ocr())
+    ids = await _seed(session)
+    svc = SalesService(session)
+
+    await svc.submit_sale(
+        lead_id=ids["lead"], billing_stage="day3",
+        file=_FakeUpload(_png_bytes()), manual=SaleManualFields(),
+        actor_user_id=ids["team"], actor_role="team",
+    )
+
+    dash = await svc.dashboard(user_id=ids["team"], role="team")
+    assert dash["personal_commission_cents"] == 475_667
+    assert dash["rows"][0]["owner_user_id"] == 301
+    assert dash["rows"][0]["commission_cents"] == 475_667
+
+
+@pytest.mark.asyncio
+async def test_commission_is_personal_only_not_team(session, monkeypatch, tmp_path):
+    """Leader's own cheque counts only leads they own — never downline/team billing."""
+    monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
+    monkeypatch.setattr(sales_mod, "extract_forever_invoice", lambda data: _good_ocr())
+    ids = await _seed(session)
+    svc = SalesService(session)
+
+    # team 301 (in leader 302's downline) logs a personal sale on their own lead.
+    await svc.submit_sale(
+        lead_id=ids["lead"], billing_stage="day3",
+        file=_FakeUpload(_png_bytes()), manual=SaleManualFields(),
+        actor_user_id=ids["team"], actor_role="team",
+    )
+
+    leader_dash = await svc.dashboard(user_id=ids["leader"], role="leader")
+    assert leader_dash["scope"] == "downline"
+    assert leader_dash["sale_count"] == 1            # CC rollup still sees the team sale
+    assert leader_dash["personal_commission_cents"] == 0  # but cheque is personal-only
+
+    team_dash = await svc.dashboard(user_id=ids["team"], role="team")
+    assert team_dash["personal_commission_cents"] == 475_667  # the seller gets the cheque
+
+
+@pytest.mark.asyncio
+async def test_system_overview_includes_total_commission(session, monkeypatch, tmp_path):
+    """Admin overview rolls up the grand-total personal commission."""
+    from app.services.analytics_service import AnalyticsService
+
+    monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
+    monkeypatch.setattr(sales_mod, "extract_forever_invoice", lambda data: _good_ocr())
+    ids = await _seed(session)
+
+    await SalesService(session).submit_sale(
+        lead_id=ids["lead"], billing_stage="day3",
+        file=_FakeUpload(_png_bytes()), manual=SaleManualFields(),
+        actor_user_id=ids["team"], actor_role="team",
+    )
+
+    overview = await AnalyticsService(session).get_system_overview(days=30)
+    assert overview["sales"]["total_commission_cents"] == 475_667

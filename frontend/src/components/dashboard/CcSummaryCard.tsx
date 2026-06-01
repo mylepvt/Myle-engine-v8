@@ -60,6 +60,21 @@ export function CcSummaryCard({ enabled = true, className }: Props) {
             </div>
           </div>
 
+          {/* Personal-sale commission ("approx cheque") — own leads only, 25% of net. */}
+          <div className="flex items-baseline justify-between rounded-md border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                Your cheque (approx)
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                25% of net • personal sales only
+              </p>
+            </div>
+            <p className="text-xl font-bold text-emerald-300">
+              {inr(data.personal_commission_cents)}
+            </p>
+          </div>
+
           {data.pending_count > 0 ? (
             <Link
               to="/dashboard/team/sales-approvals"

@@ -99,6 +99,8 @@ export type SystemOverviewResponse = {
     sale_count: number
     total_case_credits: number
     total_amount_cents: number
+    /** Grand-total personal-sale commission (sum of every owner's cheque). */
+    total_commission_cents: number
   }
 }
 
