@@ -32,7 +32,7 @@ import { getMindsetLockSendState } from '@/lib/mindset-lock'
 import { useContentLinksQuery } from '@/hooks/use-content-links-query'
 import { checklistForStage } from '@/lib/lead-process-map'
 import { LEAD_SLA_SMOOTH_REFRESH_MS, formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
-import { buildLiveSessionWhatsAppUrl, buildLiveSessionWhatsAppBusinessUrl, type LiveSessionSlotOption } from '@/lib/live-session-slots'
+import { type LiveSessionSlotOption } from '@/lib/live-session-slots'
 import { buildDay2BusinessTestWhatsAppUrl } from '@/lib/day2-business-test'
 import { whatsAppChatWithTextHref, whatsappDigits } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
@@ -1028,8 +1028,6 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
   const [sharingSlot, setSharingSlot] = useState<BatchSlotKey | null>(null)
   const [toggleSlot, setToggleSlot] = useState<BatchSlotKey | null>(null)
   const [batchError, setBatchError] = useState<string | null>(null)
-  const [pickerOpen, setPickerOpen] = useState(false)
-  const [pickerBusy, setPickerBusy] = useState(false)
   const [testLinkBusy, setTestLinkBusy] = useState(false)
 
   const hasBatchSlots = stageKey === 'day1' || stageKey === 'day2'
@@ -1080,40 +1078,6 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     }
   }
 
-  // day1-evening + day2/day3-all: live session slot picker → WhatsApp premiere link
-  const slotKeyForHour = (hour: number): BatchSlotKey | null => {
-    const p = stageKey === 'day2' ? 'd2' : 'd1'
-    if (hour === 17) return `${p}_morning` as BatchSlotKey
-    if (hour === 18) return `${p}_afternoon` as BatchSlotKey
-    if (hour === 19) return `${p}_evening` as BatchSlotKey
-    return null
-  }
-
-  const handlePickerConfirm = async (option: LiveSessionSlotOption, useBusinessWhatsApp = false) => {
-    setPickerBusy(true)
-    setBatchError(null)
-    try {
-      // day1 evening sends day2 premiere; other days send their own day premiere
-      const targetDay = stageKey === 'day1' ? 2 : dayKey
-      const shareUrl = useBusinessWhatsApp
-        ? buildLiveSessionWhatsAppBusinessUrl(lead.phone, lead.name, option, targetDay)
-        : buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option, targetDay)
-      if (!shareUrl || !openExternalShareUrl(shareUrl)) {
-        setBatchError('WhatsApp link nahi bana. Phone number check karo.')
-        return
-      }
-      const slotKey = slotKeyForHour(option.hour)
-      if (slotKey) {
-        await pm.mutateAsync({ id: lead.id, body: { [slotKey]: true } })
-        await qc.refetchQueries({ queryKey: ['workboard'] })
-      }
-      setPickerOpen(false)
-    } catch (err) {
-      setBatchError(err instanceof Error ? err.message : 'Could not send live session')
-    } finally {
-      setPickerBusy(false)
-    }
-  }
 
   // day2: issue the prospect's single cheat-proof business-test link → WhatsApp
   const handleSendTestLink = async () => {
@@ -1170,8 +1134,10 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
 
   const slotTimeLabels = (['M', 'A', 'E'] as const)
 
-  // day1: send tokenized batch links (M/A/E)
-  if (stageKey === 'day1') {
+  // day1 + day2: send tokenized batch links (M/A/E) — mirrors old app's 3 batch
+  // buttons. Day 2 also carries the business-test link. (No expose/follow-up/id
+  // checklist — old app had none.)
+  if (hasBatchSlots) {
     return (
       <div className="space-y-1.5">
         <div className="space-y-1.5 border-t border-border/40 pt-1.5">
@@ -1219,43 +1185,22 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
             })}
           </div>
           {batchError ? <p className="text-ds-caption text-destructive">{batchError}</p> : null}
-          {allSlotsDone && onMoveNext && (
-            <button type="button" disabled={leadPatchBusy} onClick={onMoveNext}
-              className="w-full rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50">
-              {nextLabel ?? 'Move to next stage →'}
-            </button>
-          )}
         </div>
-      </div>
-    )
-  }
-
-  // day2: Send Live button + checklist
-  if (stageKey === 'day2') {
-    return (
-      <div className="space-y-1.5">
-        <div className="border-t border-border/40 pt-1.5 space-y-1.5">
-          <button type="button"
-            disabled={leadPatchBusy || pickerBusy}
-            onClick={() => setPickerOpen(true)}
-            className="relative flex h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-xl border border-indigo-400/40 bg-gradient-to-r from-indigo-400/15 to-violet-400/10 px-3 text-sm font-bold text-indigo-200 shadow-[0_0_16px_-6px_rgba(99,102,241,0.5)] transition hover:border-indigo-400/60 hover:from-indigo-400/20 hover:to-violet-400/15 disabled:opacity-50">
-            <Video className="h-4 w-4 shrink-0" />
-            <span>{pickerBusy ? 'Sending...' : `Send Day ${dayKey} Live Session`}</span>
+        {stageKey === 'day2' ? (
+          allSlotsDone ? (
+            <Day2TestLinkRow lead={lead} busy={testLinkBusy} onSend={() => void handleSendTestLink()} />
+          ) : (
+            <p className="border-t border-border/40 pt-1.5 text-ds-caption text-muted-foreground">
+              Complete all 3 Day 2 batches to unlock the business test.
+            </p>
+          )
+        ) : null}
+        {allSlotsDone && onMoveNext && (
+          <button type="button" disabled={leadPatchBusy} onClick={onMoveNext}
+            className="w-full rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50">
+            {nextLabel ?? 'Move to next stage →'}
           </button>
-          {batchError ? <p className="text-ds-caption text-destructive">{batchError}</p> : null}
-        </div>
-        <Day2TestLinkRow lead={lead} busy={testLinkBusy} onSend={() => void handleSendTestLink()} />
-        <ProcessChecklistSection
-          lead={lead}
-          stage={stageKey}
-          pm={pm}
-          leadPatchBusy={leadPatchBusy}
-          onMoveNext={onMoveNext}
-          nextLabel={nextLabel}
-        />
-        <LiveSessionSlotPicker open={pickerOpen} busy={pickerBusy} day={dayKey}
-          onClose={() => setPickerOpen(false)}
-          onConfirm={(option, useBusiness) => void handlePickerConfirm(option, useBusiness)} />
+        )}
       </div>
     )
   }
