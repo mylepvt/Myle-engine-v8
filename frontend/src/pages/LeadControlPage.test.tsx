@@ -14,6 +14,7 @@ vi.mock('@/hooks/use-lead-control-query', () => ({
   useLeadControlQuery: () => mockUseLeadControlQuery(),
   useLeadControlManualReassignMutation: () => mockUseLeadControlManualReassignMutation(),
   useLeadControlBulkReassignMutation: () => mockUseLeadControlBulkReassignMutation(),
+  useLeadControlRevertMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
 vi.mock('@/hooks/use-leads-query', () => ({
