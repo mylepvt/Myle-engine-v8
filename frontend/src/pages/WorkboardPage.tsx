@@ -1,6 +1,6 @@
-import { memo, useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeftRight, Check, CheckSquare, Eye, Pencil, Search, Send, Square, Video, X } from 'lucide-react'
+import { ArrowLeftRight, Check, CheckSquare, Eye, Pencil, Search, Send, Video, X } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
@@ -18,7 +18,7 @@ import {
 } from '@/hooks/use-leads-query'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
-import { apiFetch } from '@/lib/api'
+import { apiFetch, apiUrl } from '@/lib/api'
 import { callStatusSelectOptions } from '@/lib/call-status-options'
 import { formatCountdown, timerRemainingMs } from '@/lib/ctcs-timer'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
@@ -33,6 +33,7 @@ import { useContentLinksQuery } from '@/hooks/use-content-links-query'
 import { checklistForStage } from '@/lib/lead-process-map'
 import { LEAD_SLA_SMOOTH_REFRESH_MS, formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
 import { buildLiveSessionWhatsAppUrl, buildLiveSessionWhatsAppBusinessUrl, type LiveSessionSlotOption } from '@/lib/live-session-slots'
+import { buildDay2BusinessTestWhatsAppUrl } from '@/lib/day2-business-test'
 import { whatsAppChatWithTextHref, whatsappDigits } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
 
@@ -61,14 +62,11 @@ const BADGE: Record<string, string> = {
 }
 const CLOSE:  LeadStatus[] = ['converted','lost']
 const MIN_MINDSET_SECONDS = 300
-type BatchSlotKey = 'd1_morning' | 'd1_afternoon' | 'd1_evening' | 'd2_morning' | 'd2_afternoon' | 'd2_evening' | 'd3_morning' | 'd3_afternoon' | 'd3_evening' | 'd4_morning' | 'd4_afternoon' | 'd4_evening' | 'd5_morning' | 'd5_afternoon' | 'd5_evening' | 'd6_6pm' | 'd6_8pm'
+type BatchSlotKey = 'd1_morning' | 'd1_afternoon' | 'd1_evening' | 'd2_morning' | 'd2_afternoon' | 'd2_evening'
 type WorkboardStageKey =
   | 'day1'
   | 'day2'
   | 'day3'
-  | 'day4'
-  | 'day5'
-  | 'interview'
 const slabel  = (s: string) => LEAD_STATUS_OPTIONS.find((o) => o.value === s)?.label ?? s
 
 const ADMIN_STAGE_TABS: {
@@ -79,16 +77,14 @@ const ADMIN_STAGE_TABS: {
   nextStatus?: LeadStatus
   nextLabel?: string
 }[] = [
+  { id: 'day1', label: 'Day 1', statuses: ['day1'], stageKey: 'day1', nextStatus: 'day2', nextLabel: 'Push to Day 2' },
   { id: 'day2', label: 'Day 2', statuses: ['day2'], stageKey: 'day2', nextStatus: 'day3', nextLabel: 'Push to Day 3' },
-  { id: 'day3', label: 'Day 3', statuses: ['day3'], stageKey: 'day3', nextStatus: 'day4', nextLabel: 'Push to Day 4' },
-  { id: 'day4', label: 'Day 4', statuses: ['day4'], stageKey: 'day4', nextStatus: 'day5', nextLabel: 'Push to Day 5' },
-  { id: 'day5', label: 'Day 5', statuses: ['day5'], stageKey: 'day5', nextStatus: 'interview', nextLabel: 'Push to Day 6' },
-  { id: 'interview', label: 'Day 6', statuses: ['interview'], stageKey: 'interview', nextStatus: 'converted', nextLabel: 'Mark converted' },
+  { id: 'day3', label: 'Day 3', statuses: ['day3'], stageKey: 'day3', nextStatus: 'converted', nextLabel: 'Mark converted' },
   { id: 'closing', label: 'Closing', statuses: CLOSE },
 ]
 
 const STATUS_TAB_LABEL: Partial<Record<LeadStatus, string>> = {
-  day1: 'Day 2', day2: 'Day 3', day3: 'Day 3', interview: 'Day 6',
+  day1: 'Day 1', day2: 'Day 2', day3: 'Day 3',
   converted: 'Closing', lost: 'Closing',
 }
 type ATab = WorkboardStageKey | 'closing'
@@ -216,23 +212,42 @@ const LeadCard = memo(function LeadCard({
   nowMs: number
   showClosingActions?: boolean
 }) {
+  const qc = useQueryClient()
   const { role, serverRole } = useDashboardShellRole()
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
   const [sendError, setSendError] = useState<string | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
   const stageOpsCard = stageKey != null
 
+  // Enrollment-Live send: create the single open token /watch/{token} link (detail-form
+  // gate + first-open timer + auto video_sent→video_watched on finish), then WhatsApp it.
   async function handleSendFlpMinBillingVideo(option: LiveSessionSlotOption, useBusinessWhatsApp = false) {
     setSendError(null)
     try {
-      await pm.mutateAsync({ id: lead.id, body: { status: 'video_sent' } })
-      const shareUrl = useBusinessWhatsApp
-        ? buildLiveSessionWhatsAppBusinessUrl(lead.phone, lead.name, option)
-        : buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option)
-      if (!shareUrl || !openExternalShareUrl(shareUrl)) {
-        throw new Error('Could not open WhatsApp share window')
+      const slotKey = `live_session_slot_${String(option.hour).padStart(2, '0')}_00`
+      const res = await apiFetch('/api/v1/flp-min-billing/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lead_id: lead.id, live_session_slot_key: slotKey }),
+      })
+      if (!res.ok) throw new Error(await readResponseError(res))
+      const data = (await res.json()) as { link?: { share_url?: string } }
+      const share = data.link?.share_url
+      const watchUrl = share ? `${window.location.origin}${share}` : null
+      if (watchUrl) {
+        const digits = whatsappDigits(lead.phone ?? '')
+        const msg =
+          `Hi ${lead.name || 'there'},\n\n` +
+          `Aapki Day 1 (Enrollment Live) video ready hai. Is link pe apna naam aur registered number daal ke dekhiye:\n${watchUrl}`
+        const waUrl = digits
+          ? useBusinessWhatsApp
+            ? `https://www.whatsapp.com/contact/${digits}?text=${encodeURIComponent(msg)}`
+            : `https://wa.me/${digits}?text=${encodeURIComponent(msg)}`
+          : null
+        if (waUrl) openExternalShareUrl(waUrl)
       }
       setPickerOpen(false)
+      await qc.refetchQueries({ queryKey: ['workboard'] })
     } catch (err) {
       setSendError(err instanceof Error ? err.message : 'Could not send enrollment video')
     }
@@ -697,6 +712,309 @@ function ProcessChecklistSection({
   )
 }
 
+// ── Day 3 Stage picker (1/2/3) + seat-hold ──────────────────────────────────
+const STAGE_OPTIONS = [
+  { key: 'stage1', label: 'Stage 1', sub: 'Slow', priceCents: 800_000, seatHoldCents: 200_000 },
+  { key: 'stage2', label: 'Stage 2', sub: 'Medium', priceCents: 1_800_000, seatHoldCents: 400_000 },
+  { key: 'stage3', label: 'Stage 3', sub: 'Fast', priceCents: 3_800_000, seatHoldCents: 800_000 },
+] as const
+
+function rupees(cents: number): string {
+  return `₹${(cents / 100).toLocaleString('en-IN')}`
+}
+
+function Day3StagePicker({ lead, pm, leadPatchBusy }: {
+  lead: LeadPublic; pm: PM; leadPatchBusy: boolean
+}) {
+  const qc = useQueryClient()
+  const [busy, setBusy] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  const [nowMs, setNowMs] = useState(() => Date.now())
+
+  const selected = lead.stage_selected ?? null
+  const seatHoldCents = lead.seat_hold_amount_cents ?? null
+  const expiryMs = lead.seat_hold_expiry ? new Date(lead.seat_hold_expiry).getTime() : null
+  const seatHeld = expiryMs != null && expiryMs > nowMs
+  const seatExpired = expiryMs != null && expiryMs <= nowMs
+
+  useEffect(() => {
+    if (expiryMs == null) return
+    const id = setInterval(() => setNowMs(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [expiryMs])
+
+  const patch = async (body: Record<string, unknown>, key: string) => {
+    setErr(null)
+    setBusy(key)
+    try {
+      await pm.mutateAsync({ id: lead.id, body })
+      await qc.refetchQueries({ queryKey: ['workboard'] })
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not update stage')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const countdown = (() => {
+    if (expiryMs == null || !seatHeld) return null
+    const totalSec = Math.max(0, Math.ceil((expiryMs - nowMs) / 1000))
+    const h = Math.floor(totalSec / 3600)
+    const m = Math.floor((totalSec % 3600) / 60)
+    return `${h}h ${String(m).padStart(2, '0')}m left`
+  })()
+
+  return (
+    <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 p-3">
+      <p className="text-ds-caption font-bold uppercase tracking-wider text-foreground/70">Stage Selection</p>
+      <div className="grid grid-cols-3 gap-1.5">
+        {STAGE_OPTIONS.map((s) => {
+          const active = selected === s.key
+          return (
+            <button
+              key={s.key}
+              type="button"
+              disabled={leadPatchBusy || busy !== null}
+              onClick={() => void patch({ stage_selected: s.key }, s.key)}
+              className={cn(
+                'flex flex-col items-center rounded-lg border px-2 py-2 text-center transition disabled:opacity-50',
+                active
+                  ? 'border-cyan-400/50 bg-cyan-400/[0.12] text-cyan-200'
+                  : 'border-border/50 bg-card/40 text-foreground/80 hover:border-cyan-400/30',
+              )}
+            >
+              <span className="text-sm font-bold">{s.label}</span>
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{s.sub}</span>
+              <span className="mt-1 text-xs font-semibold">{rupees(s.priceCents)}</span>
+              <span className="text-[10px] text-muted-foreground">seat {rupees(s.seatHoldCents)}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {selected ? (
+        <div className="space-y-1.5 border-t border-border/40 pt-2">
+          <div className="flex items-center justify-between">
+            <span className="text-ds-caption text-muted-foreground">
+              Seat-hold {seatHoldCents != null ? rupees(seatHoldCents) : ''}
+            </span>
+            {seatHeld ? (
+              <span className="rounded-full border border-emerald-400/30 bg-emerald-400/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                Held · {countdown}
+              </span>
+            ) : seatExpired ? (
+              <span className="rounded-full border border-amber-400/30 bg-amber-400/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                Expired
+              </span>
+            ) : null}
+          </div>
+          {seatHeld ? (
+            <button
+              type="button"
+              disabled={leadPatchBusy || busy !== null}
+              onClick={() => void patch({ collect_seat_hold: false }, 'release')}
+              className="w-full rounded-md border border-border/60 bg-muted/30 px-2 py-1 text-ds-caption font-semibold text-muted-foreground transition hover:bg-muted/50 disabled:opacity-50"
+            >
+              {busy === 'release' ? 'Releasing…' : 'Release seat-hold'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={leadPatchBusy || busy !== null}
+              onClick={() => void patch({ collect_seat_hold: true }, 'collect')}
+              className="w-full rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-ds-caption font-semibold text-emerald-300 transition hover:bg-emerald-400/20 disabled:opacity-50"
+            >
+              {busy === 'collect' ? 'Saving…' : seatExpired ? 'Re-collect seat-hold' : 'Collect seat-hold'}
+            </button>
+          )}
+        </div>
+      ) : (
+        <p className="text-ds-caption text-muted-foreground">Pick a stage to set price + seat-hold.</p>
+      )}
+      {err ? <p className="text-ds-caption text-destructive">{err}</p> : null}
+    </div>
+  )
+}
+
+// ── Day 3 Stage payment — screenshot → leader account → admin approve ────────
+function Day3StagePayment({ lead, leadPatchBusy }: { lead: LeadPublic; leadPatchBusy: boolean }) {
+  const qc = useQueryClient()
+  const { role, serverRole } = useDashboardShellRole()
+  const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
+  const isAdmin = surfaceRole === 'admin'
+
+  const status = lead.payment_status ?? null // null | proof_uploaded | approved | rejected
+  const [file, setFile] = useState<File | null>(null)
+  const [amount, setAmount] = useState(() =>
+    lead.stage_price_cents != null ? String(Math.round(lead.stage_price_cents / 100)) : '',
+  )
+  const [busy, setBusy] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+
+  if (!lead.stage_selected) return null
+
+  const refetch = () => qc.refetchQueries({ queryKey: ['workboard'] })
+
+  const upload = async () => {
+    setErr(null)
+    if (!file) { setErr('Screenshot select karo.'); return }
+    const cents = Math.round(Number(amount) * 100)
+    if (!Number.isFinite(cents) || cents <= 0) { setErr('Valid amount daalo.'); return }
+    setBusy('upload')
+    try {
+      const form = new FormData()
+      form.append('proof_file', file)
+      form.append('lead_id', String(lead.id))
+      form.append('payment_amount_cents', String(cents))
+      form.append('notes', 'Day 3 stage payment')
+      const res = await apiFetch('/api/v1/payments/proof/upload', { method: 'POST', body: form })
+      if (!res.ok) throw new Error(await readResponseError(res))
+      setFile(null)
+      await refetch()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Upload failed')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const review = async (action: 'approve' | 'reject') => {
+    setErr(null)
+    setBusy(action)
+    try {
+      const res = await apiFetch(`/api/v1/payments/proof/${action}?lead_id=${lead.id}`, { method: 'POST' })
+      if (!res.ok) throw new Error(await readResponseError(res))
+      await refetch()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : `Could not ${action}`)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const badge = (() => {
+    if (status === 'approved') return ['Paid ✓ (recorded)', 'border-emerald-400/30 bg-emerald-400/15 text-emerald-300']
+    if (status === 'proof_uploaded') return ['Pending review', 'border-amber-400/30 bg-amber-400/15 text-amber-300']
+    if (status === 'rejected') return ['Rejected', 'border-destructive/30 bg-destructive/15 text-destructive']
+    return ['Not paid', 'border-border/50 bg-muted text-muted-foreground']
+  })()
+
+  const showForm = status == null || status === 'rejected'
+
+  return (
+    <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 p-3">
+      <div className="flex items-center justify-between">
+        <p className="text-ds-caption font-bold uppercase tracking-wider text-foreground/70">Stage Payment</p>
+        <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-bold', badge[1])}>{badge[0]}</span>
+      </div>
+      <p className="text-ds-caption text-muted-foreground">Prospect ka payment leader ke account me. Screenshot upload → admin approve.</p>
+
+      {lead.payment_proof_url ? (
+        <a href={apiUrl(lead.payment_proof_url)} target="_blank" rel="noreferrer"
+          className="block text-ds-caption font-semibold text-primary underline">
+          View uploaded screenshot
+        </a>
+      ) : null}
+
+      {showForm ? (
+        <div className="space-y-1.5">
+          <div className="flex gap-1.5">
+            <span className="flex items-center rounded-md border border-border/50 bg-card/40 px-2 text-ds-caption text-muted-foreground">₹</span>
+            <input
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              inputMode="numeric"
+              placeholder="Amount"
+              className="h-9 flex-1 rounded-md border border-border/50 bg-card/40 px-2 text-sm outline-none focus:border-cyan-400/40"
+            />
+          </div>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            className="block w-full text-ds-caption text-muted-foreground file:mr-2 file:rounded-md file:border-0 file:bg-primary/15 file:px-2 file:py-1 file:text-primary"
+          />
+          <button
+            type="button"
+            disabled={leadPatchBusy || busy !== null}
+            onClick={() => void upload()}
+            className="w-full rounded-md border border-cyan-400/30 bg-cyan-400/10 px-2 py-1 text-ds-caption font-semibold text-cyan-300 transition hover:bg-cyan-400/20 disabled:opacity-50"
+          >
+            {busy === 'upload' ? 'Uploading…' : 'Upload payment screenshot'}
+          </button>
+        </div>
+      ) : null}
+
+      {isAdmin && status === 'proof_uploaded' ? (
+        <div className="flex gap-1.5">
+          <button
+            type="button"
+            disabled={busy !== null}
+            onClick={() => void review('approve')}
+            className="flex-1 rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-ds-caption font-semibold text-emerald-300 transition hover:bg-emerald-400/20 disabled:opacity-50"
+          >
+            {busy === 'approve' ? '…' : 'Approve'}
+          </button>
+          <button
+            type="button"
+            disabled={busy !== null}
+            onClick={() => void review('reject')}
+            className="flex-1 rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1 text-ds-caption font-semibold text-destructive transition hover:bg-destructive/20 disabled:opacity-50"
+          >
+            {busy === 'reject' ? '…' : 'Reject'}
+          </button>
+        </div>
+      ) : null}
+      {err ? <p className="text-ds-caption text-destructive">{err}</p> : null}
+    </div>
+  )
+}
+
+// ── Day 2 cheat-proof business-test link + status ───────────────────────────
+function Day2TestLinkRow({ lead, busy, onSend }: {
+  lead: LeadPublic; busy: boolean; onSend: () => void
+}) {
+  const status = lead.day2_test_status ?? 'pending'
+  const done = status === 'passed' || status === 'failed'
+  const badge: Record<string, string> = {
+    pending: 'bg-muted text-muted-foreground border-border/50',
+    in_progress: 'bg-amber-400/15 text-amber-300 border-amber-400/30',
+    passed: 'bg-emerald-400/15 text-emerald-300 border-emerald-400/30',
+    failed: 'bg-destructive/15 text-destructive border-destructive/30',
+  }
+  const label: Record<string, string> = {
+    pending: 'Test not started',
+    in_progress: 'Test in progress',
+    passed: `Passed${lead.day2_test_score != null ? ` (${lead.day2_test_score}/30)` : ''}`,
+    failed: `Failed${lead.day2_test_score != null ? ` (${lead.day2_test_score}/30)` : ''}`,
+  }
+  return (
+    <div className="border-t border-border/40 pt-1.5 space-y-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-ds-caption font-semibold text-muted-foreground">Day 2 Business Test</span>
+        <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-bold', badge[status])}>
+          {label[status]}
+        </span>
+      </div>
+      {!done ? (
+        <button type="button"
+          disabled={busy}
+          onClick={onSend}
+          className="relative flex h-10 w-full items-center justify-center gap-2 overflow-hidden rounded-xl border border-cyan-400/40 bg-gradient-to-r from-cyan-400/15 to-emerald-400/10 px-3 text-sm font-bold text-cyan-200 transition hover:border-cyan-400/60 hover:from-cyan-400/20 disabled:opacity-50">
+          <Send className="h-4 w-4 shrink-0" />
+          <span>{busy ? 'Preparing...' : status === 'in_progress' ? 'Resend test link' : 'Send test link'}</span>
+        </button>
+      ) : (
+        <p className="text-ds-caption text-muted-foreground">
+          {status === 'passed'
+            ? 'Test cleared — admin can advance to Day 3.'
+            : 'Test failed — prospect cannot advance to Day 3.'}
+        </p>
+      )}
+    </div>
+  )
+}
+
 // ── StageAdvanceSection — day flow + post-Day-3 progression ──────────────────
 function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, nextLabel }: {
   lead: LeadPublic
@@ -712,21 +1030,12 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
   const [batchError, setBatchError] = useState<string | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerBusy, setPickerBusy] = useState(false)
-  const [uploadBusy, setUploadBusy] = useState(false)
-  const [uploadErr, setUploadErr] = useState<string | null>(null)
+  const [testLinkBusy, setTestLinkBusy] = useState(false)
 
-  const hasBatchSlots = stageKey === 'day1' || stageKey === 'day2' || stageKey === 'day3' || stageKey === 'day4' || stageKey === 'day5' || stageKey === 'interview'
-  const dayKey = stageKey === 'interview' ? 6 : stageKey === 'day5' ? 5 : stageKey === 'day4' ? 4 : stageKey === 'day3' ? 3 : stageKey === 'day2' ? 2 : 1
+  const hasBatchSlots = stageKey === 'day1' || stageKey === 'day2'
+  const dayKey = stageKey === 'day3' ? 3 : stageKey === 'day2' ? 2 : 1
   const batchSlots: readonly BatchSlotKey[] =
-    stageKey === 'interview'
-      ? (['d6_6pm', 'd6_8pm'] as const)
-      : stageKey === 'day5'
-      ? (['d5_morning', 'd5_afternoon', 'd5_evening'] as const)
-      : stageKey === 'day4'
-      ? (['d4_morning', 'd4_afternoon', 'd4_evening'] as const)
-      : stageKey === 'day3'
-      ? (['d3_morning', 'd3_afternoon', 'd3_evening'] as const)
-      : stageKey === 'day2'
+    stageKey === 'day2'
       ? (['d2_morning', 'd2_afternoon', 'd2_evening'] as const)
       : (['d1_morning', 'd1_afternoon', 'd1_evening'] as const)
 
@@ -773,7 +1082,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
 
   // day1-evening + day2/day3-all: live session slot picker → WhatsApp premiere link
   const slotKeyForHour = (hour: number): BatchSlotKey | null => {
-    const p = stageKey === 'day5' ? 'd5' : stageKey === 'day4' ? 'd4' : stageKey === 'day3' ? 'd3' : stageKey === 'day2' ? 'd2' : 'd1'
+    const p = stageKey === 'day2' ? 'd2' : 'd1'
     if (hour === 17) return `${p}_morning` as BatchSlotKey
     if (hour === 18) return `${p}_afternoon` as BatchSlotKey
     if (hour === 19) return `${p}_evening` as BatchSlotKey
@@ -806,125 +1115,63 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     }
   }
 
-  if (!hasBatchSlots) {
-    return (
-      <ProcessChecklistSection
-        lead={lead}
-        stage={stageKey}
-        pm={pm}
-        leadPatchBusy={leadPatchBusy}
-        onMoveNext={onMoveNext}
-        nextLabel={nextLabel}
-      />
-    )
+  // day2: issue the prospect's single cheat-proof business-test link → WhatsApp
+  const handleSendTestLink = async () => {
+    setBatchError(null)
+    setTestLinkBusy(true)
+    const popup = reserveExternalShareWindow('Preparing test link...')
+    try {
+      const res = await apiFetch(`/api/v1/leads/${lead.id}/day2-test-link`, { method: 'POST' })
+      if (!res.ok) throw new Error(await readResponseError(res))
+      const body = (await res.json()) as { test_url?: string }
+      const waUrl = buildDay2BusinessTestWhatsAppUrl({
+        leadName: lead.name,
+        phone: lead.phone,
+        testUrl: body.test_url,
+      })
+      if (!waUrl) throw new Error('Phone number missing for WhatsApp test share.')
+      if (!completeExternalShareWindow(popup, waUrl)) throw new Error('Could not open WhatsApp share window.')
+      await qc.refetchQueries({ queryKey: ['workboard'] })
+    } catch (err) {
+      closeExternalShareWindow(popup)
+      setBatchError(err instanceof Error ? err.message : 'Could not generate test link')
+    } finally {
+      setTestLinkBusy(false)
+    }
   }
 
-  // interview (Day 6): interview checkbox + Send Day 6 2CC Live Session
-  if (stageKey === 'interview') {
-    const interviewDone = !!lead.process_tracking?.['interview']?.['interview_done']
-
-    const handleInterviewToggle = async () => {
-      try {
-        await pm.mutateAsync({ id: lead.id, body: {
-          process_stage: 'interview',
-          process_task: 'interview_done',
-          process_task_done: !interviewDone,
-        }})
-        await qc.refetchQueries({ queryKey: ['workboard'] })
-      } catch { /* handled by pm */ }
-    }
-
+  if (!hasBatchSlots) {
+    // day3 closing sub-flow: interview → 2CC → blueprint → stage → seat-hold → converted
+    const day3Done = stageChecklistComplete(lead, 'day3')
     return (
-      <div className="space-y-1.5 border-t border-border/40 pt-1.5">
-        <button
-          type="button"
-          disabled={leadPatchBusy}
-          onClick={() => void handleInterviewToggle()}
-          className={cn(
-            'flex h-6 items-center gap-1.5 rounded px-2 text-ds-caption font-semibold transition disabled:opacity-50',
-            interviewDone
-              ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
-              : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
-          )}
-        >
-          {interviewDone ? <CheckSquare className="h-3 w-3" /> : <Square className="h-3 w-3" />}
-          Interview
-        </button>
-
-        {!pickerOpen ? (
+      <div className="space-y-1.5">
+        <ProcessChecklistSection
+          lead={lead}
+          stage={stageKey}
+          pm={pm}
+          leadPatchBusy={leadPatchBusy}
+          taskKeys={['day3_interview', 'day3_2cc_plan', 'day3_blueprint_video']}
+        />
+        <Day3StagePicker lead={lead} pm={pm} leadPatchBusy={leadPatchBusy} />
+        <Day3StagePayment lead={lead} leadPatchBusy={leadPatchBusy} />
+        {onMoveNext ? (
           <button
             type="button"
-            disabled={leadPatchBusy || pickerBusy}
-            onClick={() => setPickerOpen(true)}
-            className="flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-indigo-400/40 bg-indigo-400/10 px-3 text-ds-caption font-semibold text-indigo-300 transition hover:bg-indigo-400/20 disabled:opacity-50"
+            disabled={leadPatchBusy || !day3Done}
+            onClick={onMoveNext}
+            className="w-full rounded-md border border-green-500/40 bg-green-500/10 px-2 py-1 text-ds-caption font-semibold text-green-300 transition hover:bg-green-500/20 disabled:opacity-50"
           >
-            <Video className="h-3.5 w-3.5" />
-            Send Day 6 2CC Live Session
+            {nextLabel ?? 'Mark Converted'}
           </button>
-        ) : (
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span className="text-ds-caption text-muted-foreground">Links:</span>
-              {(['6PM', '8PM'] as const).map((slotLabel) => {
-                const slotKey = slotLabel === '6PM' ? 'd6_6pm' as const : 'd6_8pm' as const
-                const busy = sharingSlot === slotKey
-                const done = lead[slotKey]
-                return (
-                  <button key={slotKey} type="button"
-                    disabled={leadPatchBusy || busy}
-                    onClick={() => void handleBatchShare(slotLabel, slotKey)}
-                    className={cn(
-                      'flex h-6 min-w-12 items-center justify-center rounded px-1.5 text-ds-caption font-semibold transition disabled:opacity-50',
-                      done
-                        ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
-                        : 'border border-indigo-400/40 bg-indigo-400/10 text-indigo-300 hover:bg-indigo-400/20',
-                    )}>
-                    {busy ? '...' : slotLabel}
-                  </button>
-                )
-              })}
-              <button type="button" onClick={() => setPickerOpen(false)}
-                className="text-ds-caption text-muted-foreground hover:text-foreground">✕</button>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-ds-caption text-muted-foreground">Check:</span>
-              {(['d6_6pm', 'd6_8pm'] as const).map((slotKey) => {
-                const done = lead[slotKey]
-                const busy = toggleSlot === slotKey
-                const label = slotKey === 'd6_6pm' ? '6PM' : '8PM'
-                return (
-                  <button key={slotKey} type="button"
-                    disabled={leadPatchBusy || busy}
-                    onClick={() => void handleBatchToggle(slotKey)}
-                    className={cn(
-                      'flex h-6 min-w-10 items-center justify-center rounded px-1.5 text-ds-caption font-semibold transition disabled:opacity-50',
-                      done
-                        ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
-                        : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
-                    )}>
-                    {busy ? '...' : done ? <CheckSquare className="h-3 w-3" /> : <span>{label}</span>}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {batchError ? <p className="text-ds-caption text-destructive">{batchError}</p> : null}
-        {onMoveNext && (
-          <button type="button" disabled={leadPatchBusy} onClick={onMoveNext}
-            className="w-full rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50">
-            {nextLabel ?? 'Move to next stage →'}
-          </button>
-        )}
+        ) : null}
       </div>
     )
   }
 
   const slotTimeLabels = (['M', 'A', 'E'] as const)
 
-  // day1, day4, day5: send tokenized batch links
-  if (stageKey === 'day1' || stageKey === 'day4' || stageKey === 'day5') {
+  // day1: send tokenized batch links (M/A/E)
+  if (stageKey === 'day1') {
     return (
       <div className="space-y-1.5">
         <div className="space-y-1.5 border-t border-border/40 pt-1.5">
@@ -997,6 +1244,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
           </button>
           {batchError ? <p className="text-ds-caption text-destructive">{batchError}</p> : null}
         </div>
+        <Day2TestLinkRow lead={lead} busy={testLinkBusy} onSend={() => void handleSendTestLink()} />
         <ProcessChecklistSection
           lead={lead}
           stage={stageKey}
@@ -1012,77 +1260,8 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     )
   }
 
-  // day3: top tasks → Send Live → FLP billing with upload button
-  const proofUploaded = Boolean(lead.payment_proof_url)
-  const paymentApproved = lead.payment_status === 'approved'
-
-  async function handleProofUpload(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploadBusy(true)
-    setUploadErr(null)
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('lead_id', String(lead.id))
-      formData.append('amount_cents', '150000')
-      const res = await apiFetch('/api/v1/payments/proof/upload', { method: 'POST', body: formData })
-      if (!res.ok) throw new Error('Upload failed')
-      await qc.refetchQueries({ queryKey: ['workboard'] })
-    } catch (err) {
-      setUploadErr(err instanceof Error ? err.message : 'Upload failed')
-    } finally {
-      setUploadBusy(false)
-    }
-  }
-
-  // Block Day 4 push until admin has approved the billing proof
-  const gatedMoveNext = paymentApproved ? onMoveNext : undefined
-
-  return (
-    <div className="space-y-1.5">
-      <ProcessChecklistSection
-        lead={lead} stage={stageKey} pm={pm} leadPatchBusy={leadPatchBusy}
-        onMoveNext={gatedMoveNext}
-        nextLabel={nextLabel}
-      />
-      <div className="border-t border-border/40 pt-1.5 space-y-1.5">
-        <button type="button"
-          disabled={leadPatchBusy || pickerBusy}
-          onClick={() => setPickerOpen(true)}
-          className="relative flex h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-xl border border-indigo-400/40 bg-gradient-to-r from-indigo-400/15 to-violet-400/10 px-3 text-sm font-bold text-indigo-200 shadow-[0_0_16px_-6px_rgba(99,102,241,0.5)] transition hover:border-indigo-400/60 hover:from-indigo-400/20 hover:to-violet-400/15 disabled:opacity-50">
-          <Video className="h-4 w-4 shrink-0" />
-          <span>{pickerBusy ? 'Sending...' : 'Send Day 3 Live Session'}</span>
-        </button>
-        {batchError ? <p className="text-ds-caption text-destructive">{batchError}</p> : null}
-      </div>
-      <div className="space-y-2 rounded border border-amber-400/30 bg-amber-400/[0.05] p-3">
-        <p className="text-ds-caption font-semibold uppercase tracking-wide text-muted-foreground">Min. FLP Billing</p>
-        <p className="text-ds-caption text-muted-foreground">₹1500 payment — upload proof for admin approval.</p>
-        {paymentApproved ? (
-          <div className="flex items-center gap-2 rounded-md border border-emerald-400/30 bg-emerald-400/[0.08] px-3 py-2 text-ds-caption font-semibold text-emerald-300">
-            ✅ Payment approved — lead can be pushed to Day 4
-          </div>
-        ) : proofUploaded ? (
-          <div className="flex items-center gap-2 rounded-md border border-amber-400/30 bg-amber-400/[0.08] px-3 py-2 text-ds-caption font-semibold text-amber-300">
-            ⏳ Proof uploaded — awaiting admin approval before Day 4
-          </div>
-        ) : (
-          <>
-            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-amber-400/40 bg-amber-400/[0.06] px-3 py-3 text-ds-caption font-semibold text-amber-300 transition hover:bg-amber-400/[0.12]">
-              <input type="file" accept="image/*,.pdf" onChange={handleProofUpload} disabled={uploadBusy} className="sr-only" />
-              {uploadBusy ? 'Uploading...' : '📷 Upload Payment Proof'}
-            </label>
-            <p className="text-ds-caption text-destructive/80">⚠️ Proof upload required — Day 4 push blocked until approved</p>
-          </>
-        )}
-        {uploadErr ? <p className="text-ds-caption text-destructive">{uploadErr}</p> : null}
-      </div>
-      <LiveSessionSlotPicker open={pickerOpen} busy={pickerBusy} day={3}
-        onClose={() => setPickerOpen(false)}
-        onConfirm={(option, useBusiness) => void handlePickerConfirm(option, useBusiness)} />
-    </div>
-  )
+  // day3 closing sub-flow renders via the ProcessChecklistSection early-return above.
+  return null
 }
 
 function LeadCardItem({ lead, stageKey, nextStatus, pm, patchBusyLeadId, mindsetBusyLeadId, mindsetPreviewByLeadId, onRequestMindsetSend, nextLabel, nowMs, showClosingActions }: {

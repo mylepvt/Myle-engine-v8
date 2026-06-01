@@ -12,6 +12,7 @@ import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { BatchWatchPage } from '@/pages/BatchWatchPage'
 import { ContentWatchPage } from '@/pages/ContentWatchPage'
+import { Day2TestPage } from '@/pages/Day2TestPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { WatchPage } from '@/pages/WatchPage'
 import { LivePremierePage } from '@/pages/LivePremierePage'
@@ -58,6 +59,7 @@ export function App() {
         <Route path="/watch/:token" element={<WatchPage />} />
         <Route path="/premiere" element={<LivePremierePage />} />
         <Route path="/watch/live/day6" element={<Day6LivePage />} />
+        <Route path="/test/d2/:token" element={<Day2TestPage />} />
 
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardLayout />}>

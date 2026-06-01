@@ -23,4 +23,37 @@ describe('team-lead-status', () => {
     expect(values[0]).toBe('training')
     expect(values).toContain('day2')
   })
+
+  it('blocks a leader from advancing forward into day3 (admin-only entry)', () => {
+    const values = leadStatusSelectOptionsForLead('leader', 'day2' as LeadStatus, LEAD_STATUS_OPTIONS).map(
+      (option) => option.value,
+    )
+
+    expect(values).not.toContain('day3')
+    expect(values).toContain('day2')
+  })
+
+  it('still lets a leader step backward into day3 as a correction', () => {
+    const values = leadStatusSelectOptionsForLead('leader', 'converted' as LeadStatus, LEAD_STATUS_OPTIONS).map(
+      (option) => option.value,
+    )
+
+    expect(values).toContain('day3')
+  })
+
+  it('keeps day3 visible when the lead is already at day3', () => {
+    const values = leadStatusSelectOptionsForLead('leader', 'day3' as LeadStatus, LEAD_STATUS_OPTIONS).map(
+      (option) => option.value,
+    )
+
+    expect(values).toContain('day3')
+  })
+
+  it('lets an admin advance forward into day3', () => {
+    const values = leadStatusSelectOptionsForLead('admin', 'day2' as LeadStatus, LEAD_STATUS_OPTIONS).map(
+      (option) => option.value,
+    )
+
+    expect(values).toContain('day3')
+  })
 })

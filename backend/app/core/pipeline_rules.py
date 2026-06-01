@@ -132,7 +132,7 @@ STATUS_FLOW_ORDER = [
     "New Lead",          # new_lead
     "Contacted",         # contacted
     "Invited",           # invited
-    "Day 1 Live",        # video_sent  (single open token link, replaces enrollment)
+    "Enrollment Live",   # video_sent  (single open token link, replaces enrollment)
     "Video Watched",     # video_watched  ← team forward boundary
     "Day 1",             # day1   (post-handoff / leader)
     "Day 2",             # day2   (admin advances)
@@ -191,7 +191,7 @@ def is_valid_forward_status_transition(
     - Backward / same / statuses outside STATUS_FLOW_ORDER: allowed.
     - Admin & Leader (admin_may_skip_fsm=True): any forward jump.
     - Team: forward jumps only up to and including Video Watched; blocked beyond.
-    Flow: New Lead → … → Day 1 Live → Video Watched →
+    Flow: New Lead → … → Enrollment Live → Video Watched →
           Day 1 → Day 2 → Day 3 → Fully Converted
     """
     cur = normalize_flow_status(current_status)
@@ -211,6 +211,22 @@ def is_valid_forward_status_transition(
     return True
 
 
+# ── Per-day advance role gate (mirrors old-app ACTION_MAP) ────────────────────
+# Who is allowed to ADVANCE a lead INTO each post-handoff stage. Backward moves
+# and same-stage edits are not gated here. Team is already blocked beyond
+# Video Watched by ``TEAM_FORBIDDEN_STATUS_SLUGS``.
+#   day1   = leader/admin (handoff: team records video_watched, leader takes over)
+#   day2   = leader/admin
+#   day3   = ADMIN ONLY  (admin advances Day 2 → Day 3 closing)
+#   converted = leader/admin (Day 3 close)
+DAY_ADVANCE_ALLOWED_ROLES: dict[str, frozenset[str]] = {
+    "day1": frozenset({"leader", "admin"}),
+    "day2": frozenset({"leader", "admin"}),
+    "day3": frozenset({"admin"}),
+    "converted": frozenset({"leader", "admin"}),
+}
+
+
 def validate_vl2_status_transition_for_role(
     *,
     current_slug: str,
@@ -218,18 +234,38 @@ def validate_vl2_status_transition_for_role(
     role: str,
 ) -> tuple[bool, str]:
     """
-    Validate a ``Lead.status`` change (vl2 slug) using FSM + team forbidden set.
+    Validate a ``Lead.status`` change (vl2 slug) using FSM + team forbidden set
+    + per-day advance role gate.
 
     - Admin: any forward jump.
-    - Leader: free forward jumps (post-handoff owner).
+    - Leader: free forward jumps, EXCEPT advancing into Day 3 (admin only).
     - Team: free jumps up to Video Watched; cannot set ``TEAM_FORBIDDEN_STATUS_SLUGS``.
     """
-    from app.core.lead_status import LEAD_STATUS_LABELS, TEAM_FORBIDDEN_STATUS_SLUGS
+    from app.core.lead_status import (
+        LEAD_STATUS_LABELS,
+        LEAD_STATUS_SEQUENCE,
+        TEAM_FORBIDDEN_STATUS_SLUGS,
+    )
 
     if current_slug == target_slug:
         return True, ""
     if role == "team" and target_slug in TEAM_FORBIDDEN_STATUS_SLUGS:
         return False, "Team cannot set this pipeline status"
+
+    # Per-day advance gate — only on a genuine FORWARD move into the gated stage.
+    seq_idx = {s: i for i, s in enumerate(LEAD_STATUS_SEQUENCE)}
+    is_forward = (
+        current_slug in seq_idx
+        and target_slug in seq_idx
+        and seq_idx[target_slug] > seq_idx[current_slug]
+    )
+    if is_forward:
+        allowed = DAY_ADVANCE_ALLOWED_ROLES.get(target_slug)
+        if allowed is not None and role not in allowed:
+            if target_slug == "day3":
+                return False, "Only an admin can advance a lead to Day 3"
+            return False, "You are not allowed to advance the lead to this stage"
+
     cur_label = LEAD_STATUS_LABELS.get(current_slug, current_slug)
     tgt_label = LEAD_STATUS_LABELS.get(target_slug, target_slug)
     cur_h = normalize_flow_status(cur_label)

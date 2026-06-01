@@ -68,6 +68,7 @@ export type FullUiSurface =
   | { kind: 'team-approvals' }
   | { kind: 'flp-min-billing' }
   | { kind: 'sales-approvals' }
+  | { kind: 'pending-as' }
   | {
       kind: 'system'
       surface: 'training' | 'decision-engine' | 'coaching'
@@ -253,6 +254,14 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('team/sales-approvals'),
     surface: 'full',
     ui: { kind: 'sales-approvals' },
+  },
+  {
+    path: 'work/pending-as',
+    section: { id: 'work', label: '' },
+    label: 'Pending AS Process',
+    roles: routeRoles('work/pending-as'),
+    surface: 'full',
+    ui: { kind: 'pending-as' },
   },
   {
     path: 'team/attendance',

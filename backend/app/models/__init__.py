@@ -6,6 +6,8 @@ from app.models.activity_log import ActivityLog
 from app.models.batch_day_submission import BatchDaySubmission
 from app.models.call_event import CallEvent
 from app.models.batch_share_link import BatchShareLink
+from app.models.day2_test_session import Day2TestSession
+from app.models.follow_up import FollowUp
 from app.models.crm_outbox import CrmOutbox
 from app.models.daily_member_stat import DailyMemberStat
 from app.models.flp_min_billing_share_link import FlpMinBillingShareLink
@@ -41,6 +43,8 @@ __all__ = [
     "BatchDaySubmission",
     "CallEvent",
     "BatchShareLink",
+    "Day2TestSession",
+    "FollowUp",
     "CrmOutbox",
     "DailyMemberStat",
     "FlpMinBillingShareLink",

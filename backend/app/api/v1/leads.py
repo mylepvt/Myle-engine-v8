@@ -43,6 +43,7 @@ from app.services.batch_watch_uploads import (
     save_batch_submission_video_file,
     save_batch_submission_voice_file,
 )
+from app.services import day2_test_service
 from app.services.lead_file_import import run_personal_lead_import
 from app.services.leads_service import LeadsService, get_leads_service, _PAYMENT_REQUIRED_STATUSES
 from app.services.team_tracking import refresh_daily_member_stat_after_change
@@ -59,6 +60,8 @@ watch_router = APIRouter()
 
 _MAX_LIMIT = 100
 _DEFAULT_LIMIT = 50
+# MAE batches run for Day 1 and Day 2 only (3 slots each: morning/afternoon/evening).
+# Legacy d3–d6 columns remain on the model but are no longer accepted by the API.
 _BATCH_SLOTS = frozenset(
     {
         "d1_morning",
@@ -67,17 +70,6 @@ _BATCH_SLOTS = frozenset(
         "d2_morning",
         "d2_afternoon",
         "d2_evening",
-        "d3_morning",
-        "d3_afternoon",
-        "d3_evening",
-        "d4_morning",
-        "d4_afternoon",
-        "d4_evening",
-        "d5_morning",
-        "d5_afternoon",
-        "d5_evening",
-        "d6_6pm",
-        "d6_8pm",
     }
 )
 _YOUTUBE_ID_RE = re.compile(
@@ -506,6 +498,46 @@ async def generate_batch_share_url(
     return BatchShareUrlResponse(
         watch_url_v1=f"{base}/watch/batch/{slot}/1?token={token}",
         watch_url_v2=f"{base}/watch/batch/{slot}/2?token={token}",
+    )
+
+
+class Day2TestLinkResponse(BaseModel):
+    token: str
+    test_url: str
+    status: str
+
+
+@router.post("/{lead_id}/day2-test-link", response_model=Day2TestLinkResponse)
+async def generate_day2_test_link(
+    lead_id: int,
+    request: Request,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Day2TestLinkResponse:
+    """Leader/admin issues the prospect's single Day 2 business-test link.
+
+    The prospect opens it on their own phone; the test is server-locked (random subset,
+    option shuffle, timer, no-back, server scoring). Admin can advance Day 2 → Day 3
+    only once ``day2_test_status == 'passed'``.
+    """
+    if user.role not in ("leader", "admin"):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    lead = await session.get(Lead, lead_id)
+    if lead is None or lead.deleted_at is not None or lead.in_pool:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    if not await user_can_access_lead(session, user, lead):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    try:
+        link = await day2_test_service.create_link(
+            session, lead=lead, created_by_user_id=user.user_id
+        )
+    except day2_test_service.Day2TestError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message)
+    base = str(request.base_url).rstrip("/")
+    return Day2TestLinkResponse(
+        token=link.token,
+        test_url=f"{base}/test/d2/{link.token}",
+        status=link.status,
     )
 
 

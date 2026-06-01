@@ -3,7 +3,7 @@
 Walks one lead through the real API as TEAM then LEADER, checking every step:
 
   CREATE (team)
-    new_lead → contacted → invited → video_sent (Day 1 Live) → video_watched
+    new_lead → contacted → invited → video_sent (Enrollment Live) → video_watched
   CLOSING (leader, post-handoff)
     day1 → day2 → day3 → converted
 
@@ -153,11 +153,14 @@ async def test_team_cannot_jump_to_closing_stages(team_client: AsyncClient, engi
     assert resp.status_code == 400, f"team must NOT set {forbidden}: {resp.text}"
 
 
-# ── 3. LEADER closing walk: day1 → day2 → day3 → converted ─────────────────────
+# ── 3. CLOSING walk: leader day1→day2, admin day2→day3, leader day3→converted ──
 
 @pytest.mark.asyncio
-async def test_leader_closes_lead_after_handover(engine):
+async def test_closing_walk_per_day_roles(engine):
     await _seed_hierarchy(engine)
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        await _seed_user(session, 203, "admin", upline_user_id=None)
+        await session.commit()
 
     # TEAM drives create + walk up to the team boundary (video_watched).
     async with _as_role(engine, "team", 201) as team:
@@ -165,12 +168,38 @@ async def test_leader_closes_lead_after_handover(engine):
         for target in ("contacted", "invited", "video_sent", "video_watched"):
             assert (await _patch_status(team, lead_id, target)).status_code == 200
 
-    # LEADER (upline) drives the post-handoff close.
+    # LEADER takes over: video_watched → day1 → day2 (but NOT day3).
     async with _as_role(engine, "leader", 202) as leader:
-        for target in ("day1", "day2", "day3", "converted"):
+        for target in ("day1", "day2"):
             resp = await _patch_status(leader, lead_id, target)
             assert resp.status_code == 200, resp.text
             assert resp.json()["status"] == target
+        # leader must NOT advance into Day 3 (admin-only)
+        assert (await _patch_status(leader, lead_id, "day3")).status_code == 400
+
+    # Day 2 → Day 3 is gated on a PASSED Day 2 business test. Without it, even admin
+    # is blocked; stamp a pass (as the server-scored test would) then advance.
+    async with _as_role(engine, "admin", 203) as admin:
+        blocked = await _patch_status(admin, lead_id, "day3")
+        assert blocked.status_code == 400, "day3 must be blocked until Day 2 test passes"
+
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        lead_row = await session.get(Lead, lead_id)
+        lead_row.day2_test_status = "passed"
+        lead_row.day2_test_score = 27
+        await session.commit()
+
+    # ADMIN advances Day 2 → Day 3 (now that the test is passed).
+    async with _as_role(engine, "admin", 203) as admin:
+        resp = await _patch_status(admin, lead_id, "day3")
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["status"] == "day3"
+
+    # LEADER closes Day 3 → converted.
+    async with _as_role(engine, "leader", 202) as leader:
+        resp = await _patch_status(leader, lead_id, "converted")
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["status"] == "converted"
 
     lead = await _get_lead_row(engine, lead_id)
     assert lead.status == "converted"

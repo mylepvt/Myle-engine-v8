@@ -15,6 +15,12 @@ from starlette import status as http_status
 from app.api.deps import AuthUser, get_db
 from app.core.config import settings
 from app.core.pipeline_rules import validate_vl2_status_transition_for_role
+from app.core.stage_pricing import (
+    SEAT_HOLD_WINDOW_HOURS,
+    STAGE_KEYS,
+    stage_price_cents,
+    stage_seat_hold_cents,
+)
 from app.core.realtime_hub import notify_topics
 from app.core.time_ist import IST
 from app.models.activity_log import ActivityLog
@@ -57,17 +63,11 @@ from app.services.whatsapp_ctcs import send_interested_flp_min_billing_assets
 from app.services.execution_enforcement import run_completed_watch_pipeline_maintenance
 from app.validators.leads_validator import lead_list_conditions, parse_status_query, validate_list_flags
 
-# Post-Day-3 MAE batch stages (Day 4 / Day 5 / Day 6 interview). Entering any of
-# these requires an approved ₹1500 FLP-billing proof (non-admin). The leader keeps
-# free control up to and including Day 3; from Day 4 onward the proof gate applies.
-# Gating the whole batch range — not only the entry — also blocks forward
-# *jump-over* (e.g. new → day4) which would otherwise skip the gate.
-# NOTE: "converted" is intentionally excluded — a leader's day3 → converted close
-# is a valid final-closing path (see test_leader_closes_lead_after_handover) and
-# the sale-engine, not this status gate, enforces the Day-6 closing billing.
-_PAYMENT_REQUIRED_STATUSES: frozenset[str] = frozenset(
-    {"day4", "day5", "interview"}
-)
+# Early-enrollment FLP-billing payment gate (old Day 4 / Day 5 / Day 6 stages).
+# Those stages were removed from the pipeline; FLP billing now wires at the Day 3
+# close via the sale-engine (see Pending-as-Process / FLP invoice OCR flow), not
+# as a status-entry gate. Kept as an (empty) extension point.
+_PAYMENT_REQUIRED_STATUSES: frozenset[str] = frozenset()
 
 _POOL_CLAIM_ROLES: frozenset[str] = frozenset({"team", "leader", "admin"})
 _POOL_SINGLE_CLAIM_ROLES: frozenset[str] = frozenset({"admin"})
@@ -257,6 +257,35 @@ def _toggle_process_task(
     lead.process_tracking = tracking
 
 
+async def expire_stale_seat_holds(
+    session: AsyncSession, *, now: datetime | None = None
+) -> int:
+    """Lapse seat-holds whose reserve window passed — clears the expiry + the
+    day3_seat_hold checklist flag so the seat reopens for the prospect.
+
+    Mirrors the old-app ``_check_seat_hold_expiry`` (which reverted seat_hold → day3);
+    here Day 3 is the closing stage and the seat-hold is a sub-step, so we only reset
+    the seat-hold state rather than changing ``status``.
+    """
+    ts = now or datetime.now(timezone.utc)
+    rows = (
+        await session.execute(
+            select(Lead).where(
+                Lead.status == "day3",
+                Lead.seat_hold_expiry.is_not(None),
+                Lead.seat_hold_expiry < ts,
+                Lead.deleted_at.is_(None),
+            )
+        )
+    ).scalars().all()
+    for lead in rows:
+        lead.seat_hold_expiry = None
+        _toggle_process_task(lead, stage="day3", task="day3_seat_hold", done=False)
+    if rows:
+        await session.commit()
+    return len(rows)
+
+
 class LeadsService:
     def __init__(
         self,
@@ -347,6 +376,7 @@ class LeadsService:
         leader_all_scope: bool = False,
     ) -> LeadListResponse:
         await run_completed_watch_pipeline_maintenance(self._session)
+        await expire_stale_seat_holds(self._session)
         validate_list_flags(archived_only=archived_only, deleted_only=deleted_only, user=user)
         cross_section_search = search_all_sections and bool((q or "").strip())
         condition = lead_list_conditions(
@@ -923,6 +953,15 @@ class LeadsService:
             )
             if not ok:
                 raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
+            # Day 2 → Day 3 gate: the prospect must have PASSED the cheat-proof Day 2
+            # business test first (server-scored). Mirrors the old-app ACTION_MAP
+            # 'day2_complete' requiring lead_day2_business_test_passed.
+            if body.status == "day3" and lead.status == "day2":
+                if (getattr(lead, "day2_test_status", "pending") or "pending") != "passed":
+                    raise HTTPException(
+                        status_code=http_status.HTTP_400_BAD_REQUEST,
+                        detail="Day 2 business test must be passed before advancing to Day 3.",
+                    )
             # Payment gate: non-admins cannot enter a post-Day-3 status without an
             # approved ₹1500 FLP-billing proof. Mirrors transition_lead_status.
             if body.status in _PAYMENT_REQUIRED_STATUSES and user.role != "admin":
@@ -1001,6 +1040,32 @@ class LeadsService:
                 task=body.process_task.strip(),
                 done=body.process_task_done,
             )
+        # Day 3 closing — Stage picker (price auto-set) + seat-hold reserve window.
+        if body.stage_selected is not None:
+            if user.role not in ("leader", "admin"):
+                raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+            if body.stage_selected not in STAGE_KEYS:
+                raise HTTPException(
+                    status_code=http_status.HTTP_400_BAD_REQUEST, detail="Invalid stage"
+                )
+            lead.stage_selected = body.stage_selected
+            lead.stage_price_cents = stage_price_cents(body.stage_selected)
+            lead.seat_hold_amount_cents = stage_seat_hold_cents(body.stage_selected)
+            _toggle_process_task(lead, stage="day3", task="day3_stage_selection", done=True)
+        if body.collect_seat_hold is not None:
+            if user.role not in ("leader", "admin"):
+                raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+            if body.collect_seat_hold:
+                if not lead.stage_selected:
+                    raise HTTPException(
+                        status_code=http_status.HTTP_400_BAD_REQUEST,
+                        detail="Select a stage before collecting the seat-hold.",
+                    )
+                lead.seat_hold_expiry = now + timedelta(hours=SEAT_HOLD_WINDOW_HOURS)
+                _toggle_process_task(lead, stage="day3", task="day3_seat_hold", done=True)
+            else:
+                lead.seat_hold_expiry = None
+                _toggle_process_task(lead, stage="day3", task="day3_seat_hold", done=False)
         explicit_d1 = (body.d1_morning, body.d1_afternoon, body.d1_evening)
         if any(x is not None for x in explicit_d1):
             if body.d1_morning is not None:

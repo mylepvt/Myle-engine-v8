@@ -47,7 +47,7 @@ LEAD_STATUS_LABELS: dict[str, str] = {
     "new_lead":       "New Lead",
     "contacted":      "Contacted",
     "invited":        "Invited",
-    "video_sent":     "Day 1 Live",
+    "video_sent":     "Enrollment Live",
     "video_watched":  "Video Watched",
     "day1":           "Day 1",
     "day2":           "Day 2",

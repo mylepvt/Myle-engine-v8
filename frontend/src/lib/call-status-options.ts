@@ -52,15 +52,9 @@ const BASE_ORDER: CallStatusApi[] = [
 const VIDEO_SENT_STAGES = new Set<LeadStatus>([
   'video_sent',
   'video_watched',
-  'paid',
-  'mindset_lock',
   'day1',
   'day2',
   'day3',
-  'day4',
-  'day5',
-  'interview',
-  'pending',
   'converted',
 ])
 
