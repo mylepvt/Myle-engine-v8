@@ -6,8 +6,8 @@ Jobs (all IST-aware):
 - daily_report_reminder           : 21:00 IST daily — push eligible users who haven't submitted report
 - call_target_reminder            : 17:00 IST daily — push eligible users short on calls
 - watch_archive_maintenance       : every 30min — archive completed-watch leads > 24h + redistribute stale
-- closing_pipeline_maintenance    : every 30min — archive day2-6 leads idle >24h; reassign after 24h in archive
-- general_pipeline_maintenance    : every 30min — archive pre-enrollment leads idle >24h; reassign after 24h in archive
+- closing_pipeline_maintenance    : every 30min — archive day2-6 leads idle >24h (reassign is manual only)
+- general_pipeline_maintenance    : every 30min — archive pre-enrollment leads idle >24h (reassign is manual only)
 - leader_basics_enforcement       : 23:30 IST daily — warn/lock leaders whose team missed basics 7/14 days
 """
 from __future__ import annotations
@@ -332,10 +332,10 @@ async def job_watch_archive_maintenance() -> None:
 # ---------------------------------------------------------------------------
 
 async def job_closing_pipeline_maintenance() -> None:
-    """Archive day2-6 leads idle >24h; auto-reassign to top leaders after 24h in archive."""
+    """Archive day2-6 leads idle >24h. Reassign is manual only (no auto-reassign)."""
     try:
         async with AsyncSessionLocal() as session:
-            result = await enf.run_closing_pipeline_maintenance(session, auto_reassign=True)
+            result = await enf.run_closing_pipeline_maintenance(session, auto_reassign=False)
             logger.info(
                 "closing_pipeline_maintenance: archived=%d reassigned=%d skipped=%d",
                 result["auto_archived"],
@@ -357,10 +357,10 @@ async def job_closing_pipeline_maintenance() -> None:
 # ---------------------------------------------------------------------------
 
 async def job_general_pipeline_maintenance() -> None:
-    """Archive pre-enrollment leads idle >24h; auto-reassign to team after 24h in archive."""
+    """Archive pre-enrollment leads idle >24h. Reassign is manual only (no auto-reassign)."""
     try:
         async with AsyncSessionLocal() as session:
-            result = await enf.run_general_pipeline_maintenance(session, auto_reassign=True)
+            result = await enf.run_general_pipeline_maintenance(session, auto_reassign=False)
             logger.info(
                 "general_pipeline_maintenance: archived=%d reassigned=%d skipped=%d",
                 result["auto_archived"],

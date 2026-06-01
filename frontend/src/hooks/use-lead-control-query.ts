@@ -98,6 +98,24 @@ export type LeadControlBulkReassignResponse = {
   assigned_to_name: string
 }
 
+export type LeadControlRevertBody = {
+  leadId: number
+  activityId?: number | null
+  reason?: string | null
+}
+
+export type LeadControlRevertResponse = {
+  success: boolean
+  message: string
+  lead_id: number
+  restored_to_user_id: number | null
+  restored_to_name: string
+  undone_assignee_user_id: number | null
+  undone_assignee_name: string
+  owner_user_id: number | null
+  owner_name: string
+}
+
 async function fetchJson<T>(path: string): Promise<T> {
   const response = await apiFetch(path)
   const body = await response.json().catch(() => null)
@@ -157,6 +175,27 @@ export function useLeadControlBulkReassignMutation() {
       postJson<LeadControlBulkReassignResponse>('/api/v1/execution/lead-control/reassign-bulk', {
         lead_ids: body.leadIds,
         to_user_id: body.toUserId,
+        reason: body.reason ?? undefined,
+      }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['execution', 'lead-control'] }),
+        queryClient.invalidateQueries({ queryKey: ['execution', 'day2-review'] }),
+        queryClient.invalidateQueries({ queryKey: ['leads'] }),
+        queryClient.invalidateQueries({ queryKey: ['workboard'] }),
+      ])
+    },
+  })
+}
+
+export function useLeadControlRevertMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (body: LeadControlRevertBody) =>
+      postJson<LeadControlRevertResponse>('/api/v1/execution/lead-control/revert', {
+        lead_id: body.leadId,
+        activity_id: body.activityId ?? undefined,
         reason: body.reason ?? undefined,
       }),
     onSuccess: async () => {
