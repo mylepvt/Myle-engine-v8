@@ -118,6 +118,31 @@ class SalesService:
 
         return (len(reasons) == 0), reasons
 
+    # ── Reverse bridge: approved Day-3 billing unlocks the Day-4 payment gate ──
+    async def _open_payment_gate_for_day3_sale(self, sale: LeadSale) -> None:
+        """An approved Day-3 FLP-billing sale IS the ₹1500 proof — unlock Day-4.
+
+        The Day-4+ status gate (``_PAYMENT_REQUIRED_STATUSES``) checks
+        ``lead.payment_status == "approved"``. The CC/sale upload and the
+        workboard payment-proof upload used to be two separate actions; this
+        bridges them so a single OCR invoice both books the CC and opens the
+        gate. Restricted to ``day3`` — the Day-6 closing billing must NOT
+        retroactively satisfy the Day-4 gate. Caller commits.
+        """
+        if sale.billing_stage != "day3" or sale.status != "approved":
+            return
+        lead = await self.session.get(Lead, sale.lead_id)
+        if lead is None:
+            return
+        if lead.payment_status != "approved":
+            lead.payment_status = "approved"
+        if lead.payment_amount_cents is None and sale.amount_cents is not None:
+            lead.payment_amount_cents = sale.amount_cents
+        if not (lead.payment_proof_url or "").strip() and (sale.proof_url or "").strip():
+            lead.payment_proof_url = sale.proof_url
+        if lead.payment_proof_uploaded_at is None:
+            lead.payment_proof_uploaded_at = sale.approved_at or datetime.now(timezone.utc)
+
     # ── Submit (upload + OCR + verify) ───────────────────────────────────────
     async def submit_sale(
         self,
@@ -214,6 +239,7 @@ class SalesService:
             sale.verify_notes = "Auto-verified"
             auto_approved = True
             await self._log(lead_id, actor_user_id, "sale_auto_approved", billing_stage)
+            await self._open_payment_gate_for_day3_sale(sale)
         else:
             sale.verify_notes = "; ".join(reasons)[:512] or "Pending review"
             await self._log(lead_id, actor_user_id, "sale_submitted", billing_stage)
@@ -246,6 +272,7 @@ class SalesService:
         sale.approved_at = datetime.now(timezone.utc)
         sale.rejection_reason = None
         await self._log(sale.lead_id, admin_user_id, "sale_approved", sale.billing_stage)
+        await self._open_payment_gate_for_day3_sale(sale)
         await self.session.commit()
         await self.session.refresh(sale)
         return True, "Sale approved", sale

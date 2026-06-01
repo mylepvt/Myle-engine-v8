@@ -451,3 +451,75 @@ async def test_payment_approval_does_not_clobber_existing_cc_sale(session, monke
     assert len(rows) == 1  # upsert on (lead, stage), not a duplicate
     assert rows[0].case_credits == Decimal("1.002")  # CC preserved
     assert rows[0].amount_cents == 1_997_800  # original invoice amount preserved
+
+
+# ── Reverse bridge: approved Day-3 sale unlocks the Day-4 payment gate ──────────
+
+@pytest.mark.asyncio
+async def test_day3_auto_approved_sale_opens_payment_gate(session, monkeypatch, tmp_path):
+    """One OCR invoice books the CC AND sets lead.payment_status=approved (Day-4 unlock)."""
+    monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
+    monkeypatch.setattr(sales_mod, "extract_forever_invoice", lambda data: _good_ocr())
+    ids = await _seed(session)
+
+    _, _, sale, auto = await SalesService(session).submit_sale(
+        lead_id=ids["lead"], billing_stage="day3",
+        file=_FakeUpload(_png_bytes()), manual=SaleManualFields(),
+        actor_user_id=ids["team"], actor_role="team",
+    )
+    assert auto is True and sale.status == "approved"
+
+    lead = await session.get(Lead, ids["lead"])
+    await session.refresh(lead)
+    assert lead.payment_status == "approved"
+    assert lead.payment_amount_cents == 1_997_800
+    assert (lead.payment_proof_url or "") == sale.proof_url
+    assert lead.payment_proof_uploaded_at is not None
+
+
+@pytest.mark.asyncio
+async def test_day3_manual_approve_opens_payment_gate(session, monkeypatch, tmp_path):
+    """Manual admin approval of a pending Day-3 sale also unlocks the gate."""
+    monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
+    unavail = ExtractedInvoice(ocr_available=False)
+    unavail.recompute_confidence()
+    monkeypatch.setattr(sales_mod, "extract_forever_invoice", lambda data: unavail)
+    ids = await _seed(session)
+    svc = SalesService(session)
+
+    _, _, sale, auto = await svc.submit_sale(
+        lead_id=ids["lead"], billing_stage="day3",
+        file=_FakeUpload(_png_bytes()),
+        manual=SaleManualFields(case_credits=Decimal("1.002"), amount_cents=1_997_800),
+        actor_user_id=ids["team"], actor_role="team",
+    )
+    assert auto is False and sale.status == "pending"
+
+    lead = await session.get(Lead, ids["lead"])
+    await session.refresh(lead)
+    assert (lead.payment_status or "") != "approved"  # not yet — pending
+
+    ok, _, approved = await svc.approve_sale(sale_id=sale.id, admin_user_id=ids["admin"])
+    assert ok and approved.status == "approved"
+
+    await session.refresh(lead)
+    assert lead.payment_status == "approved"
+
+
+@pytest.mark.asyncio
+async def test_day6_sale_does_not_open_day4_gate(session, monkeypatch, tmp_path):
+    """Day-6 closing billing must NOT retroactively satisfy the Day-4 gate."""
+    monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
+    monkeypatch.setattr(sales_mod, "extract_forever_invoice", lambda data: _good_ocr())
+    ids = await _seed(session)
+
+    _, _, sale, auto = await SalesService(session).submit_sale(
+        lead_id=ids["lead"], billing_stage="day6",
+        file=_FakeUpload(_png_bytes()), manual=SaleManualFields(),
+        actor_user_id=ids["team"], actor_role="team",
+    )
+    assert auto is True and sale.status == "approved"
+
+    lead = await session.get(Lead, ids["lead"])
+    await session.refresh(lead)
+    assert (lead.payment_status or "") != "approved"  # day6 leaves the gate shut
