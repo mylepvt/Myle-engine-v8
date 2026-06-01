@@ -57,8 +57,6 @@ function renderFullUi(ui: FullUiSurface, title: string) {
   switch (ui.kind) {
     case 'leads':
       return <LeadsWorkPage title={title} listMode={ui.listMode} />
-    case 'mindset-lock':
-      return <WorkboardPage title={title} mode="mindset-lock" />
     case 'workboard':
       return <WorkboardPage title={title} mode="pipeline" />
     case 'follow-ups':

@@ -168,14 +168,9 @@ class PaymentService:
         self._restore_execution_owner(lead)
         lead.payment_status = "approved"
 
-        if lead.status == "video_watched":
-            lead.status = "paid"
-        if lead.status == "paid":
-            lead.mindset_lock_state = None
-            lead.mindset_started_at = None
-            lead.mindset_completed_at = None
-            lead.mindset_completed_by_user_id = None
-            lead.mindset_leader_user_id = None
+        # Payment-proof approval no longer auto-advances pipeline status. The old
+        # enrollment "paid" step + mindset_lock were removed; stage payments in the
+        # Day-3 closing flow are tracked separately (Phase 5).
         if lead.status != prev_status:
             lead.last_action_at = now
 
@@ -192,9 +187,12 @@ class PaymentService:
 
     @staticmethod
     def _billing_stage_for_lead(lead: Lead) -> str:
-        """Map a lead's pipeline stage to a CC billing stage bucket."""
-        closing_stages = {"day6", "interview", "converted", "closing"}
-        return "day6" if (lead.status or "") in closing_stages else "day3"
+        """Map a lead's pipeline stage to a CC billing stage bucket.
+
+        Day-4/Day-6 enrollment billing was removed; all closing-stage billing now
+        rolls up under the single ``day3`` bucket.
+        """
+        return "day3"
 
     async def _upsert_sale_from_payment(
         self, lead: Lead, approved_by_user_id: int, now: datetime

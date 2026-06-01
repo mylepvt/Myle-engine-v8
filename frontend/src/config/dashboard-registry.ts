@@ -55,7 +55,6 @@ export type DashboardNavSection = {
 export type FullUiSurface =
   | { kind: 'leads'; listMode: 'active' | 'archived' }
   | { kind: 'workboard' }
-  | { kind: 'mindset-lock' }
   | { kind: 'follow-ups' }
   | { kind: 'retarget' }
   | { kind: 'lead-flow' }
@@ -147,14 +146,6 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('work/leads'),
     surface: 'full',
     ui: { kind: 'leads', listMode: 'active' },
-  },
-  {
-    path: 'work/mindset-lock',
-    section: { id: 'work', label: '' },
-    label: 'Mindset Lock',
-    roles: routeRoles('work/mindset-lock'),
-    surface: 'full',
-    ui: { kind: 'mindset-lock' },
   },
   {
     path: 'work/workboard',

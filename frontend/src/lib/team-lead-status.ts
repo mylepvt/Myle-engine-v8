@@ -2,27 +2,23 @@ import { LEGACY_COMPAT_STATUSES, USER_OUTCOME_STATUSES, type LeadStatus } from '
 
 /** Mirrors `TEAM_FORBIDDEN_STATUS_SLUGS` in `backend/app/core/lead_status.py`. */
 const TEAM_FORBIDDEN: ReadonlySet<LeadStatus> = new Set([
+  'day1',
   'day2',
   'day3',
-  'day4',
-  'day5',
-  'interview',
   'converted',
   'training',
-  'pending',
 ])
 
 const NON_ADMIN_HIDDEN: ReadonlySet<LeadStatus> = new Set(LEGACY_COMPAT_STATUSES)
-const DIRECT_PICK_HIDDEN: ReadonlySet<LeadStatus> = new Set(['whatsapp_sent'])
+const DIRECT_PICK_HIDDEN: ReadonlySet<LeadStatus> = new Set<LeadStatus>([])
 
 
 const TEAM_STAGE_VISIBILITY: Partial<Record<LeadStatus, LeadStatus[]>> = {
   new_lead: ['new_lead', 'contacted', 'invited'],
   contacted: ['contacted', 'invited', 'video_sent'],
   invited: ['invited', 'video_sent'],
-  whatsapp_sent: ['whatsapp_sent', 'video_sent'],
-  video_sent: ['video_sent', 'mindset_lock'],
-  mindset_lock: ['mindset_lock'],
+  video_sent: ['video_sent', 'video_watched'],
+  video_watched: ['video_watched'],
   lost: ['lost', 'retarget', 'inactive'],
   retarget: ['retarget', 'contacted', 'invited'],
   inactive: ['inactive', 'retarget'],
