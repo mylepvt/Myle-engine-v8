@@ -177,19 +177,22 @@ async def test_closing_walk_per_day_roles(engine):
         # leader must NOT advance into Day 3 (admin-only)
         assert (await _patch_status(leader, lead_id, "day3")).status_code == 400
 
-    # Day 2 → Day 3 is gated on a PASSED Day 2 business test. Without it, even admin
-    # is blocked; stamp a pass (as the server-scored test would) then advance.
+    # Day 2 → Day 3 is gated on BOTH all Day-2 batches done AND a PASSED business test.
+    # Without them, even admin is blocked; satisfy both, then advance.
     async with _as_role(engine, "admin", 203) as admin:
         blocked = await _patch_status(admin, lead_id, "day3")
-        assert blocked.status_code == 400, "day3 must be blocked until Day 2 test passes"
+        assert blocked.status_code == 400, "day3 must be blocked until Day 2 batches + test pass"
 
     async with AsyncSession(engine, expire_on_commit=False) as session:
         lead_row = await session.get(Lead, lead_id)
+        lead_row.d2_morning = True
+        lead_row.d2_afternoon = True
+        lead_row.d2_evening = True
         lead_row.day2_test_status = "passed"
         lead_row.day2_test_score = 27
         await session.commit()
 
-    # ADMIN advances Day 2 → Day 3 (now that the test is passed).
+    # ADMIN advances Day 2 → Day 3 (now that batches are done and the test is passed).
     async with _as_role(engine, "admin", 203) as admin:
         resp = await _patch_status(admin, lead_id, "day3")
         assert resp.status_code == 200, resp.text
