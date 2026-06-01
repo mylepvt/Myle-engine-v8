@@ -139,6 +139,21 @@ async def test_all_correct_passes(admin_client: AsyncClient, engine):
         assert lead.day2_test_attempts == 1
         assert lead.day2_test_completed_at is not None
 
+    # passing unlocks the downloadable Day 2 business certificate (PDF)
+    cert = await admin_client.get(f"/test/d2/{token}/certificate")
+    assert cert.status_code == 200, cert.text
+    assert cert.headers["content-type"] == "application/pdf"
+    assert cert.content[:4] == b"%PDF"
+
+
+@pytest.mark.asyncio
+async def test_certificate_blocked_before_pass(admin_client: AsyncClient):
+    lead_id = await _create_lead(admin_client)
+    token = await _issue_link(admin_client, lead_id)
+    # not started/passed yet → no certificate
+    cert = await admin_client.get(f"/test/d2/{token}/certificate")
+    assert cert.status_code == 403
+
 
 # ── Scoring: fail + one-attempt lockout ───────────────────────────────────────
 
