@@ -93,7 +93,7 @@ function TopEarners({ rows }: { rows: SaleDashboardRow[] }) {
               </span>
             </button>
             {open ? (
-              <div className="ml-[5.5rem] mb-1 grid grid-cols-3 gap-2 rounded-md border border-border/50 bg-background/50 px-3 py-2 text-xs">
+              <div className="ml-0 sm:ml-[5.5rem] mb-1 grid grid-cols-3 gap-2 rounded-md border border-border/50 bg-background/50 px-3 py-2 text-xs">
                 <div>
                   <p className="font-semibold text-emerald-300">{cc.toFixed(3)}</p>
                   <p className="text-[10px] text-muted-foreground">CC</p>
