@@ -390,6 +390,17 @@ export function Day2TestPage() {
                 ? 'Aapki team aapse Day 3 ke liye contact karegi.'
                 : 'Aapki team aapse contact karegi. Dhanyavaad.'}
             </p>
+            {state.passed ? (
+              <a
+                href={apiUrl(`/test/d2/${token}/certificate`)}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-[1.25rem] border border-emerald-400/40 bg-emerald-400/15 px-4 py-3 text-sm font-bold text-emerald-200 transition hover:bg-emerald-400/25"
+              >
+                <ShieldCheck className="size-4" />
+                Download certificate
+              </a>
+            ) : null}
           </div>
         ) : (
           <p className="text-center text-white/60">Nothing to show.</p>

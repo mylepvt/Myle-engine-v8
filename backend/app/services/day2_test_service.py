@@ -95,6 +95,29 @@ async def create_link(
     return link
 
 
+# ── Public: pass certificate ─────────────────────────────────────────────────
+
+async def certificate_pdf(session: AsyncSession, token: str) -> tuple[bytes, str]:
+    """Return (pdf_bytes, filename) for a PASSED test. Raises if not passed."""
+    from app.services.day2_certificate_pdf import build_day2_business_certificate_pdf
+
+    link = await _get_by_token(session, token)
+    if link.status != "submitted" or not link.passed:
+        raise Day2TestError("Certificate available only after passing the test", status_code=403)
+    total = len(link.question_ids or []) or QUESTIONS_PER_ATTEMPT
+    name = (link.prospect_name or "Participant").strip() or "Participant"
+    when = _as_aware(link.submitted_at) or _now()
+    date_display = when.astimezone(timezone(timedelta(hours=5, minutes=30))).strftime("%d %B %Y")
+    pdf = build_day2_business_certificate_pdf(
+        recipient_name=name,
+        score=int(link.score or 0),
+        total_questions=total,
+        date_display=date_display,
+    )
+    safe = "".join(ch for ch in name if ch.isalnum() or ch in " -_").strip().replace(" ", "_") or "certificate"
+    return pdf, f"day2_certificate_{safe}.pdf"
+
+
 # ── Public: load session by token ────────────────────────────────────────────
 
 async def _get_by_token(session: AsyncSession, token: str) -> Day2TestSession:
