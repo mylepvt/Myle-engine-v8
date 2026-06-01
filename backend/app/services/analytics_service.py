@@ -86,7 +86,7 @@ class AnalyticsService:
             select(
                 func.count(Lead.id).label("total_leads"),
                 func.sum(case((Lead.status == "converted", 1), else_=0)).label("converted_leads"),
-                func.sum(case((Lead.status == "paid", 1), else_=0)).label("paid_leads"),
+                func.sum(case((Lead.payment_status == "approved", 1), else_=0)).label("paid_leads"),
             )
             .where(
                 and_(
@@ -178,7 +178,7 @@ class AnalyticsService:
             select(
                 func.count(Lead.id).label("total_leads"),
                 func.sum(case((Lead.status == "converted", 1), else_=0)).label("converted_leads"),
-                func.sum(case((Lead.status == "paid", 1), else_=0)).label("paid_leads"),
+                func.sum(case((Lead.payment_status == "approved", 1), else_=0)).label("paid_leads"),
             )
             .where(
                 and_(
@@ -357,7 +357,7 @@ class AnalyticsService:
             select(
                 func.count(Lead.id).label("total_leads"),
                 func.sum(case((Lead.status == "converted", 1), else_=0)).label("converted_leads"),
-                func.sum(case((Lead.status == "paid", 1), else_=0)).label("paid_leads"),
+                func.sum(case((Lead.payment_status == "approved", 1), else_=0)).label("paid_leads"),
             )
             .where(
                 and_(
