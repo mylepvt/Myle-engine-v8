@@ -20,6 +20,7 @@ import {
   usePatchLeadMutation,
   useReassignLeadMutation,
 } from '@/hooks/use-leads-query'
+import { useLeadControlRevertMutation } from '@/hooks/use-lead-control-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import {
@@ -58,7 +59,8 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [slotPickerLeadId, setSlotPickerLeadId] = useState<number | null>(null)
   const [slotPickerTargetStatus, setSlotPickerTargetStatus] = useState<LeadStatus>('video_sent')
-  const [reassignTarget, setReassignTarget] = useState<{ id: number; name: string } | null>(null)
+  const [reassignTarget, setReassignTarget] = useState<{ id: number; name: string; isReassigned: boolean } | null>(null)
+  const [revertNotice, setRevertNotice] = useState<string | null>(null)
   const searchMode =
     filters.q.trim().length > 0 && (surfaceRole === 'admin' || surfaceRole === 'leader')
   const ctcsOpts = useMemo(() => {
@@ -101,6 +103,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
 
   const patchMut = usePatchLeadMutation()
   const reassignMut = useReassignLeadMutation()
+  const revertMut = useLeadControlRevertMutation()
   const ctcsMut = useLeadCtcsActionMutation()
   const callLogMut = useLeadCallLogMutation()
 
@@ -188,7 +191,10 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   )
 
   const onReassign = useCallback(
-    (lead: LeadPublic) => setReassignTarget({ id: lead.id, name: lead.name }),
+    (lead: LeadPublic) => {
+      setRevertNotice(null)
+      setReassignTarget({ id: lead.id, name: lead.name, isReassigned: !!lead.is_reassigned })
+    },
     [],
   )
 
@@ -200,6 +206,21 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
     },
     [reassignMut, reassignTarget],
   )
+
+  const handleRevert = useCallback(async () => {
+    if (!reassignTarget) return
+    if (!reassignTarget.isReassigned) {
+      setRevertNotice('Already with original assignee — nothing to revert.')
+      return
+    }
+    try {
+      await revertMut.mutateAsync({ leadId: reassignTarget.id })
+      setReassignTarget(null)
+      setRevertNotice(null)
+    } catch (err) {
+      setRevertNotice(err instanceof Error ? err.message : 'Revert failed')
+    }
+  }, [reassignTarget, revertMut])
 
   const actionBusy = ctcsMut.isPending || callLogMut.isPending
   const sendBusyLeadId = slotPickerLeadId
@@ -324,9 +345,13 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
       {reassignTarget ? (
         <LeaderReassignSheet
           leadName={reassignTarget.name}
-          onClose={() => setReassignTarget(null)}
+          isReassigned={reassignTarget.isReassigned}
+          onClose={() => { setReassignTarget(null); setRevertNotice(null) }}
           onConfirm={(userId) => { void handleReassignConfirm(userId) }}
+          onRevert={() => { void handleRevert() }}
           busy={reassignMut.isPending}
+          reverting={revertMut.isPending}
+          revertNotice={revertNotice}
         />
       ) : null}
 

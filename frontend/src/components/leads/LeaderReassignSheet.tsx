@@ -4,12 +4,25 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 type Props = {
   leadName: string
+  isReassigned: boolean
   onClose: () => void
   onConfirm: (userId: number, userName: string) => void
+  onRevert: () => void
   busy: boolean
+  reverting: boolean
+  revertNotice: string | null
 }
 
-export function LeaderReassignSheet({ leadName, onClose, onConfirm, busy }: Props) {
+export function LeaderReassignSheet({
+  leadName,
+  isReassigned,
+  onClose,
+  onConfirm,
+  onRevert,
+  busy,
+  reverting,
+  revertNotice,
+}: Props) {
   const { data, isPending, isError } = useReassignEligibleQuery()
 
   return (
@@ -21,6 +34,30 @@ export function LeaderReassignSheet({ leadName, onClose, onConfirm, busy }: Prop
         <div className="border-b border-border px-4 py-3">
           <p className="text-ds-caption text-muted-foreground">Reassign lead</p>
           <h2 className="truncate text-sm font-semibold text-foreground">{leadName}</h2>
+        </div>
+
+        <div className="border-b border-border px-4 py-3">
+          <button
+            type="button"
+            disabled={reverting || busy}
+            onClick={onRevert}
+            className={cn(
+              'flex w-full items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition active:scale-[0.98] disabled:opacity-50',
+              isReassigned
+                ? 'border-orange-500/40 bg-orange-500/[0.08] text-orange-600 hover:bg-orange-500/15 dark:text-orange-300'
+                : 'border-border bg-muted/40 text-muted-foreground hover:bg-muted/60',
+            )}
+          >
+            {reverting ? 'Reverting…' : 'Revert to original assignee'}
+          </button>
+          <p
+            className={cn(
+              'mt-2 text-ds-caption',
+              revertNotice ? 'text-orange-600 dark:text-orange-300' : 'text-muted-foreground',
+            )}
+          >
+            {revertNotice ?? 'Undoes the last reassignment and restores the previous assignee. Stage stays the same.'}
+          </p>
         </div>
 
         <div className="px-4 py-3">
