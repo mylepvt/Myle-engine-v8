@@ -4,6 +4,7 @@ import { ArrowLeftRight, Check, CheckSquare, Eye, Pencil, Search, Send, Video, X
 import { useQueryClient } from '@tanstack/react-query'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
+import { LeadBillingCard } from '@/components/leads/LeadBillingCard'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
@@ -496,6 +497,9 @@ const LeadCard = memo(function LeadCard({
             </button>
           </div>
         )}
+        {showClosingActions && lead.status === 'converted' ? (
+          <LeadBillingCard leadId={lead.id} surfaceRole={surfaceRole} />
+        ) : null}
         {sendError ? (
           <p className="text-ds-caption text-destructive" role="alert">
             {sendError}

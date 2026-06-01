@@ -23,15 +23,11 @@ const FUNNEL_STAGES: { key: string; label: string; icon: string }[] = [
   { key: 'new_lead', label: 'New Lead', icon: '📥' },
   { key: 'contacted', label: 'Contacted', icon: '📞' },
   { key: 'invited', label: 'Invited', icon: '✉️' },
-  { key: 'video_sent', label: 'Video Sent', icon: '▶️' },
-  { key: 'paid', label: 'Min. FLP', icon: '💰' },
-  { key: 'mindset_lock', label: 'Mindset Lock', icon: '🔒' },
+  { key: 'video_sent', label: 'Enrollment Live', icon: '▶️' },
+  { key: 'video_watched', label: 'Video Watched', icon: '👀' },
   { key: 'day1', label: 'Day 1', icon: '🎯' },
   { key: 'day2', label: 'Day 2', icon: '📚' },
   { key: 'day3', label: 'Day 3', icon: '📚' },
-  { key: 'day4', label: 'Day 4', icon: '📚' },
-  { key: 'day5', label: 'Day 5', icon: '📚' },
-  { key: 'interview', label: 'Interview', icon: '🎤' },
   { key: 'converted', label: 'Converted', icon: '🏆' },
 ]
 
