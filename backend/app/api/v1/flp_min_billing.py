@@ -55,6 +55,8 @@ from app.services.flp_min_billing_video import (
     sanitize_public_token,
 )
 from app.services.lead_scope import user_can_mutate_lead
+from app.services.lead_owner import resolved_owner_user_id
+from app.services.push_service import send_push_to_user
 from app.services.whatsapp_flp_min_billing import send_flp_min_billing_video_whatsapp
 
 router = APIRouter()
@@ -602,11 +604,31 @@ async def mark_watch_completed(
         link.first_viewed_at = now
         link.view_count = int(link.view_count or 0) + 1
     link.last_viewed_at = now
+    advanced = False
     if not link.status_synced:
         link.status_synced = True
+        # Auto-advance the prospect past the team boundary: Enrollment-Live link
+        # watched → video_watched (team records the watch; leader takes over next).
+        if lead.status == _VIDEO_SENT_STATUS:
+            lead.status = "video_watched"
+            advanced = True
     lead.last_action_at = now
 
     await session.commit()
+
+    if advanced:
+        owner_id = resolved_owner_user_id(lead)
+        if owner_id:
+            try:
+                await send_push_to_user(
+                    session,
+                    owner_id,
+                    title="Enrollment-Live watched 🎬",
+                    body=f"{lead.name} ne Day 1 video dekh li — ab aapke paas (video_watched).",
+                    url="/dashboard/work/leads",
+                )
+            except Exception:
+                pass
     await notify_topics("enroll", "leads")
     return WatchEventResponse(ok=True, watch_started=True, watch_completed=True)
 

@@ -22,6 +22,7 @@ import { TeamTrackingPage } from '@/pages/TeamTrackingPage'
 import { MyTeamPage } from '@/pages/MyTeamPage'
 import { FlpMinBillingApprovalsPage } from '@/pages/FlpMinBillingApprovalsPage'
 import { SalesApprovalsPage } from '@/pages/SalesApprovalsPage'
+import { PendingAsProcessPage } from '@/pages/PendingAsProcessPage'
 import { AnalyticsSurfacePage } from '@/pages/AnalyticsSurfacePage'
 import { SystemSurfacePage } from '@/pages/SystemSurfacePage'
 import { RetargetWorkPage } from '@/pages/RetargetWorkPage'
@@ -57,8 +58,6 @@ function renderFullUi(ui: FullUiSurface, title: string) {
   switch (ui.kind) {
     case 'leads':
       return <LeadsWorkPage title={title} listMode={ui.listMode} />
-    case 'mindset-lock':
-      return <WorkboardPage title={title} mode="mindset-lock" />
     case 'workboard':
       return <WorkboardPage title={title} mode="pipeline" />
     case 'follow-ups':
@@ -87,6 +86,8 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <FlpMinBillingApprovalsPage title={title} />
     case 'sales-approvals':
       return <SalesApprovalsPage title={title} />
+    case 'pending-as':
+      return <PendingAsProcessPage title={title} />
     case 'system':
       return <SystemSurfacePage title={title} surface={ui.surface} />
     case 'lead-control':

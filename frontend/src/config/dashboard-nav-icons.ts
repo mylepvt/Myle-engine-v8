@@ -39,6 +39,7 @@ const BY_PATH: Record<string, LucideIcon> = {
   'work/leads': Users,
   'work/workboard': LayoutGrid,
   'work/follow-ups': CalendarClock,
+  'work/pending-as': Receipt,
   'work/retarget': Target,
   'work/lead-flow': GitBranch,
   'work/archived': Archive,

@@ -189,6 +189,27 @@ class Lead(Base):
         nullable=True,
         comment="Per-stage business checklist state keyed by stage slug and task slug.",
     )
+    # Day 2 cheat-proof business test (prospect takes via unique link on own phone).
+    # status: 'pending' | 'in_progress' | 'passed' | 'failed'. Admin advances Day 2 → Day 3
+    # only when day2_test_status == 'passed'. Server-scored; correct answers never sent to client.
+    day2_test_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default=text("'pending'"), default="pending"
+    )
+    day2_test_score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    day2_test_attempts: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0"), default=0
+    )
+    day2_test_completed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Day 3 closing — Stage (track) selection + seat-hold. stage_selected:
+    # 'stage1' | 'stage2' | 'stage3'. Prices in paise (see app.core.stage_pricing).
+    stage_selected: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    stage_price_cents: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    seat_hold_amount_cents: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    seat_hold_expiry: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
     no_response_attempt_count: Mapped[int] = mapped_column(
         Integer,
         nullable=False,

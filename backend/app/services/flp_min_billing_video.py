@@ -19,7 +19,9 @@ from app.models.app_setting import AppSetting
 from app.models.flp_min_billing_share_link import FlpMinBillingShareLink
 from app.models.lead import Lead
 
-ENROLL_LINK_TTL_MINUTES = 50
+# Enrollment-Live ("Day 1" open video) link — timer starts on FIRST open. The
+# Day-1 video runs 53:15 (3195s); TTL must comfortably outlast it.
+ENROLL_LINK_TTL_MINUTES = 60
 ENROLL_WATCH_COOKIE = "myle_enroll_watch"
 
 _PHONE_DIGIT_RE = re.compile(r"\D")

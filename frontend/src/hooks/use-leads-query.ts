@@ -13,58 +13,43 @@ export type LeadStatus =
   | 'new_lead'
   | 'contacted'
   | 'invited'
-  | 'whatsapp_sent'
   | 'video_sent'
   | 'video_watched'
-  | 'paid'
-  | 'mindset_lock'
   | 'day1'
   | 'day2'
   | 'day3'
-  | 'day4'
-  | 'day5'
-  | 'interview'
   | 'converted'
   | 'lost'
   | 'retarget'
   | 'inactive'
   | 'training'
-  | 'pending'
   | 'new'
 
 export const LEAD_STATUS_OPTIONS: { value: LeadStatus; label: string }[] = [
   { value: 'new_lead',       label: 'New Lead' },
   { value: 'contacted',      label: 'Contacted' },
   { value: 'invited',        label: 'Invited' },
-  { value: 'whatsapp_sent',  label: 'WhatsApp Sent' },
-  { value: 'video_sent',     label: 'Sent Day 1 Video' },
-  { value: 'mindset_lock',   label: 'Mindset Lock' },
+  { value: 'video_sent',     label: 'Enrollment Live' },
+  { value: 'video_watched',  label: 'Video Watched' },
+  { value: 'day1',           label: 'Day 1' },
   { value: 'day2',           label: 'Day 2' },
   { value: 'day3',           label: 'Day 3' },
-  { value: 'day4',           label: 'Day 4' },
-  { value: 'day5',           label: 'Day 5' },
-  { value: 'interview',      label: 'Day 6 Interview' },
   { value: 'converted',      label: 'Converted' },
   { value: 'lost',           label: 'Lost' },
   { value: 'retarget',       label: 'Retarget' },
   { value: 'inactive',       label: 'Inactive' },
   { value: 'training',       label: 'Training' },
-  { value: 'pending',        label: 'Pending' },
   { value: 'new',            label: 'New (Legacy)' },
 ]
 
 export const PRIMARY_USER_FLOW_STATUSES: LeadStatus[] = [
   'new_lead',
   'invited',
-  'whatsapp_sent',
   'video_sent',
-  'mindset_lock',
+  'video_watched',
+  'day1',
   'day2',
   'day3',
-  'day4',
-  'day5',
-  'interview',
-  'pending',
   'converted',
 ]
 
@@ -128,6 +113,16 @@ export type LeadPublic = {
   day3_completed_at: string | null
   day4_completed_at: string | null
   day5_completed_at: string | null
+  // Day 2 cheat-proof business test
+  day2_test_status?: 'pending' | 'in_progress' | 'passed' | 'failed'
+  day2_test_score?: number | null
+  day2_test_attempts?: number
+  day2_test_completed_at?: string | null
+  // Day 3 closing — Stage selection + seat-hold
+  stage_selected?: 'stage1' | 'stage2' | 'stage3' | null
+  stage_price_cents?: number | null
+  seat_hold_amount_cents?: number | null
+  seat_hold_expiry?: string | null
   d1_morning: boolean
   d1_afternoon: boolean
   d1_evening: boolean

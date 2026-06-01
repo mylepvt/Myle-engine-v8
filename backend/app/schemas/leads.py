@@ -83,6 +83,18 @@ class LeadPublic(BaseModel):
     day4_completed_at: Optional[datetime] = None
     day5_completed_at: Optional[datetime] = None
 
+    # Day 2 cheat-proof business test
+    day2_test_status: str = "pending"
+    day2_test_score: Optional[int] = None
+    day2_test_attempts: int = 0
+    day2_test_completed_at: Optional[datetime] = None
+
+    # Day 3 closing — Stage selection + seat-hold
+    stage_selected: Optional[str] = None
+    stage_price_cents: Optional[int] = None
+    seat_hold_amount_cents: Optional[int] = None
+    seat_hold_expiry: Optional[datetime] = None
+
     # Batch slots (M/A/E)
     d1_morning: bool = False
     d1_afternoon: bool = False
@@ -259,6 +271,14 @@ class LeadUpdate(BaseModel):
     process_stage: Optional[str] = Field(default=None, max_length=64)
     process_task: Optional[str] = Field(default=None, max_length=128)
     process_task_done: Optional[bool] = Field(default=None)
+    # Day 3 closing — Stage picker + seat-hold (leader/admin)
+    stage_selected: Optional[str] = Field(
+        default=None, description="Stage track: 'stage1' | 'stage2' | 'stage3' (price auto-set)"
+    )
+    collect_seat_hold: Optional[bool] = Field(
+        default=None,
+        description="True = start the seat-hold reserve window (needs a selected stage)",
+    )
     no_response_attempt_count: Optional[int] = Field(default=None, ge=0, description="Optional counter")
     next_followup_at: Optional[datetime] = Field(
         default=None,
@@ -306,6 +326,8 @@ class LeadUpdate(BaseModel):
             self.process_stage,
             self.process_task,
             self.process_task_done,
+            self.stage_selected,
+            self.collect_seat_hold,
             self.no_response_attempt_count,
             self.next_followup_at,
         ]

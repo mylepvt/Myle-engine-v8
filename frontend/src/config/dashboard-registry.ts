@@ -55,7 +55,6 @@ export type DashboardNavSection = {
 export type FullUiSurface =
   | { kind: 'leads'; listMode: 'active' | 'archived' }
   | { kind: 'workboard' }
-  | { kind: 'mindset-lock' }
   | { kind: 'follow-ups' }
   | { kind: 'retarget' }
   | { kind: 'lead-flow' }
@@ -69,6 +68,7 @@ export type FullUiSurface =
   | { kind: 'team-approvals' }
   | { kind: 'flp-min-billing' }
   | { kind: 'sales-approvals' }
+  | { kind: 'pending-as' }
   | {
       kind: 'system'
       surface: 'training' | 'decision-engine' | 'coaching'
@@ -147,14 +147,6 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('work/leads'),
     surface: 'full',
     ui: { kind: 'leads', listMode: 'active' },
-  },
-  {
-    path: 'work/mindset-lock',
-    section: { id: 'work', label: '' },
-    label: 'Mindset Lock',
-    roles: routeRoles('work/mindset-lock'),
-    surface: 'full',
-    ui: { kind: 'mindset-lock' },
   },
   {
     path: 'work/workboard',
@@ -262,6 +254,14 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('team/sales-approvals'),
     surface: 'full',
     ui: { kind: 'sales-approvals' },
+  },
+  {
+    path: 'work/pending-as',
+    section: { id: 'work', label: '' },
+    label: 'Pending AS Process',
+    roles: routeRoles('work/pending-as'),
+    surface: 'full',
+    ui: { kind: 'pending-as' },
   },
   {
     path: 'team/attendance',

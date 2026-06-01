@@ -56,9 +56,9 @@ describe('usePatchLeadMutation optimistic status update', () => {
     vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})))
 
     const { result } = renderHook(() => usePatchLeadMutation(), { wrapper: wrapper(qc) })
-    result.current.mutate({ id: 1, body: { status: 'mindset_lock' } })
+    result.current.mutate({ id: 1, body: { status: 'day1' } })
 
-    await waitFor(() => expect(leadStatus(qc)).toBe('mindset_lock'))
+    await waitFor(() => expect(leadStatus(qc)).toBe('day1'))
   })
 
   it('rolls the row back to its previous status when the PATCH fails', async () => {
@@ -72,7 +72,7 @@ describe('usePatchLeadMutation optimistic status update', () => {
 
     const { result } = renderHook(() => usePatchLeadMutation(), { wrapper: wrapper(qc) })
     await expect(
-      result.current.mutateAsync({ id: 1, body: { status: 'mindset_lock' } }),
+      result.current.mutateAsync({ id: 1, body: { status: 'day1' } }),
     ).rejects.toThrow()
 
     // After failure the optimistic change is reverted (not left stuck or silently stale).

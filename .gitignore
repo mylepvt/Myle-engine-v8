@@ -31,5 +31,6 @@ apps/crm-api/prisma/seed.js.map
 apps/crm-api/prisma/seed.d.ts
 apps/crm-api/prisma/seed.d.ts.map
 
-# User uploads (profile photos, etc.)
+# User uploads (profile photos, payment proofs, training media, etc.)
 backend/data/uploads/
+backend/uploads/
