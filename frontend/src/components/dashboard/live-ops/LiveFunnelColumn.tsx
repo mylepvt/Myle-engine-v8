@@ -10,35 +10,27 @@ type Stage = {
 }
 
 const PIPELINE: Stage[] = [
-  { key: 'claimed',      label: 'Just Claimed',  color: '#7c3aed' },
-  { key: 'contacted',    label: 'Contacted',      color: '#4f86f7' },
-  { key: 'invited',      label: 'Invited',        color: '#38bdf8' },
-  { key: 'video_sent',   label: 'Day 1st Live',   color: '#22d3ee' },
-  { key: 'mindset_lock', label: 'Mindset Lock',   color: '#6ee7b7' },
-  { key: 'day1',         label: 'Day 1',          color: '#84cc16' },
-  { key: 'day2',         label: 'Day 2',          color: '#eab308' },
-  { key: 'day3',         label: 'Day 3',          color: '#f59e0b' },
-  { key: 'paid',         label: 'Min. FLP',       color: '#10b981' },
-  { key: 'day4',         label: 'Day 4',          color: '#f97316' },
-  { key: 'day5',         label: 'Day 5',          color: '#ef4444' },
-  { key: 'interview',    label: 'Interview',      color: '#e879f9' },
-  { key: 'converted',    label: 'Converted',      color: '#f43f5e' },
+  { key: 'claimed',       label: 'Just Claimed',    color: '#7c3aed' },
+  { key: 'contacted',     label: 'Contacted',        color: '#4f86f7' },
+  { key: 'invited',       label: 'Invited',          color: '#38bdf8' },
+  { key: 'video_sent',    label: 'Enrollment Live',  color: '#22d3ee' },
+  { key: 'video_watched', label: 'Video Watched',    color: '#6ee7b7' },
+  { key: 'day1',          label: 'Day 1',            color: '#84cc16' },
+  { key: 'day2',          label: 'Day 2',            color: '#eab308' },
+  { key: 'day3',          label: 'Day 3',            color: '#f59e0b' },
+  { key: 'converted',     label: 'Converted',        color: '#f43f5e' },
 ]
 
 const STAGE_ROUTES: Record<string, string> = {
-  claimed:      '/dashboard/work/leads?stage=claimed',
-  contacted:    '/dashboard/work/leads?stage=contacted',
-  invited:      '/dashboard/work/leads?stage=invited',
-  video_sent:   '/dashboard/work/leads?stage=video_sent',
-  paid:         '/dashboard/team/flp-min-billing',
-  mindset_lock: '/dashboard/work/workboard',
-  day1:         '/dashboard/work/workboard',
-  day2:         '/dashboard/work/workboard?tab=day2',
-  day3:         '/dashboard/work/workboard?tab=day3',
-  day4:         '/dashboard/work/workboard?tab=day4',
-  day5:         '/dashboard/work/workboard?tab=day5',
-  interview:    '/dashboard/work/workboard?tab=interview',
-  converted:    '/dashboard/work/leads?stage=converted',
+  claimed:       '/dashboard/work/leads?stage=claimed',
+  contacted:     '/dashboard/work/leads?stage=contacted',
+  invited:       '/dashboard/work/leads?stage=invited',
+  video_sent:    '/dashboard/work/leads?stage=video_sent',
+  video_watched: '/dashboard/work/leads?stage=video_watched',
+  day1:          '/dashboard/work/workboard?tab=day1',
+  day2:          '/dashboard/work/workboard?tab=day2',
+  day3:          '/dashboard/work/workboard?tab=day3',
+  converted:     '/dashboard/work/leads?stage=converted',
 }
 function stageRoute(key: string): string {
   return STAGE_ROUTES[key] ?? '/dashboard/work/leads'
@@ -55,8 +47,6 @@ export function LiveFunnelColumn() {
     day1:      liveDash.day1Total,
     day2:      liveDash.day2Total,
     day3:      liveDash.day3Total,
-    day4:      liveDash.day4Total,
-    day5:      liveDash.day5Total,
     converted: liveDash.enrolledToday,
   }
 
@@ -68,7 +58,7 @@ export function LiveFunnelColumn() {
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [counts, todayMov, liveOverrides.claimed, liveOverrides.day1, liveOverrides.day2,
-     liveOverrides.day3, liveOverrides.day4, liveOverrides.day5, liveOverrides.converted],
+     liveOverrides.day3, liveOverrides.converted],
   )
 
   const maxCount = useMemo(() => Math.max(1, ...rows.map((r) => r.count)), [rows])
