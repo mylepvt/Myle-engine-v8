@@ -953,10 +953,14 @@ class LeadsService:
             )
             if not ok:
                 raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
-            # Day 2 → Day 3 gate: the prospect must have PASSED the cheat-proof Day 2
-            # business test first (server-scored). Mirrors the old-app ACTION_MAP
-            # 'day2_complete' requiring lead_day2_business_test_passed.
+            # Day 2 → Day 3 gate: mirrors the old-app ACTION_MAP 'day2_complete' which
+            # required BOTH all Day-2 batches done AND lead_day2_business_test_passed.
             if body.status == "day3" and lead.status == "day2":
+                if not (lead.d2_morning and lead.d2_afternoon and lead.d2_evening):
+                    raise HTTPException(
+                        status_code=http_status.HTTP_400_BAD_REQUEST,
+                        detail="All Day 2 batches (morning/afternoon/evening) must be done before Day 3.",
+                    )
                 if (getattr(lead, "day2_test_status", "pending") or "pending") != "passed":
                     raise HTTPException(
                         status_code=http_status.HTTP_400_BAD_REQUEST,
