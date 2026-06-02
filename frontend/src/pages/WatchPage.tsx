@@ -41,21 +41,6 @@ function resolveWish(date: Date): string {
   return 'Good night'
 }
 
-function formatRemaining(expiresAt: string | null, nowMs: number): string {
-  if (!expiresAt) return '50m starts when this room opens'
-  const diff = new Date(expiresAt).getTime() - nowMs
-  if (diff <= 0) return 'Expired'
-  const totalSeconds = Math.ceil(diff / 1000)
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  return `${minutes}m ${seconds.toString().padStart(2, '0')}s left`
-}
-
-function easeOutCubic(value: number): number {
-  const clamped = Math.min(1, Math.max(0, value))
-  return 1 - Math.pow(1 - clamped, 3)
-}
-
 function resolveGreetingName(rawValue: string | null | undefined): string | null {
   const value = (rawValue || '').trim()
   if (!value) return null
@@ -198,37 +183,7 @@ export function WatchPage() {
   const greetingName = useMemo(() => resolveGreetingName(data?.lead_name), [data?.lead_name])
   const heroGreeting = greetingName ? `${wish}, ${greetingName}` : wish
   const heroHeading = useMemo(() => resolveProspectHeading(data?.title), [data?.title])
-  const countdown = useMemo(
-    () => (data ? formatRemaining(data.expires_at, nowMs) : ''),
-    [data, nowMs],
-  )
   const videoSrc = data?.stream_url ? apiUrl(data.stream_url) : null
-  const playbackWindowSeconds = durationSeconds > 0 ? durationSeconds : 15 * 60
-  const socialProofProgress = easeOutCubic(playbackWindowSeconds > 0 ? currentSeconds / playbackWindowSeconds : 0)
-  const socialProofStart = data?.social_proof_count != null
-    ? Math.max(data.social_proof_count - Math.min(24, Math.max(8, Math.round(data.social_proof_count * 0.06))), 0)
-    : null
-  const displayedSocialProof = data?.social_proof_count != null && socialProofStart != null
-    ? Math.round(socialProofStart + (data.social_proof_count - socialProofStart) * socialProofProgress)
-    : null
-  const seatsLeftStart = data?.seats_left != null
-    ? Math.min(
-        data.total_seats ?? Number.MAX_SAFE_INTEGER,
-        data.seats_left + Math.min(6, Math.max(2, Math.round((data.total_seats ?? data.seats_left) * 0.12))),
-      )
-    : null
-  const displayedSeatsLeft = data?.seats_left != null && seatsLeftStart != null
-    ? Math.max(
-        data.seats_left,
-        Math.round(seatsLeftStart - (seatsLeftStart - data.seats_left) * socialProofProgress),
-      )
-    : null
-  const intakeHighlights = [
-    displayedSocialProof != null ? `${displayedSocialProof} applications reviewed` : null,
-    displayedSeatsLeft != null ? `${displayedSeatsLeft} places currently available` : null,
-  ].filter((value): value is string => Boolean(value))
-  const intakeSummary = intakeHighlights.join(' • ')
-  const showSoftSnapshot = Boolean(intakeSummary || data?.trust_note)
   const playerStatusTitle = watchCompleted ? 'Thanks for watching' : playMarked ? 'Now playing' : 'Press play to begin'
   const playerStatusBody = watchCompleted
     ? 'You can replay this introduction anytime while this private access window is active.'
@@ -372,11 +327,7 @@ export function WatchPage() {
                   Live
                 </span>
               ) : null}
-              {data ? (
-                <p className="rounded-full border border-[#3f537d] bg-[#0b1120] px-4 py-2 text-sm font-semibold text-[#c9d9ff] shadow-[0_14px_34px_-24px_rgba(132,165,255,0.35)]">
-                  {countdown}
-                </p>
-              ) : null}
+
             </div>
           </div>
         </header>
@@ -421,19 +372,6 @@ export function WatchPage() {
                   </div>
                 </div>
               </section>
-
-              {showSoftSnapshot ? (
-                <section className="rounded-[1.8rem] border border-white/8 bg-white/[0.035] px-5 py-4 shadow-[0_24px_90px_-70px_rgba(0,0,0,0.9)] backdrop-blur-xl sm:px-6">
-                  {intakeSummary ? (
-                    <p className="text-sm font-medium text-[#d9e7ff]">{intakeSummary}</p>
-                  ) : null}
-                  {data.trust_note ? (
-                    <p className={`${intakeSummary ? 'mt-1.5' : ''} text-ds-body text-[#9eabc7]`}>
-                      {data.trust_note}
-                    </p>
-                  ) : null}
-                </section>
-              ) : null}
 
               {!data.access_granted ? (
                 <section className="mx-auto w-full max-w-xl rounded-[2rem] border border-white/10 bg-[linear-gradient(170deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] px-5 py-6 shadow-[0_34px_120px_-80px_rgba(0,0,0,0.95)] backdrop-blur-2xl sm:px-6">
