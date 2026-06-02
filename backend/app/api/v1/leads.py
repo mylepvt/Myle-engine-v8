@@ -189,26 +189,8 @@ def _parse_batch_slot_time(raw_value: str, fallback: time) -> time:
 
 
 async def _batch_slot_gate(session: AsyncSession, slot: str) -> tuple[bool, datetime | None, str | None]:
-    day_number = _batch_day_number(slot)
-    if day_number in (4, 5):
-        return True, None, None
-    # d6: time-gated at 6 PM / 8 PM IST — falls through to period-based logic below
-    period = _batch_slot_period(slot)
-    default_start = _BATCH_SLOT_DEFAULT_STARTS_IST[period]
-    configured_start = _parse_batch_slot_time(
-        await _get_setting_value(session, f"batch_{period}_start_ist"),
-        default_start,
-    )
-    now_local = now_ist()
-    opens_at = datetime.combine(now_local.date(), configured_start, tzinfo=IST)
-    if now_local >= opens_at:
-        return True, opens_at.astimezone(timezone.utc), None
-    readable = opens_at.strftime("%I:%M %p").lstrip("0")
-    return (
-        False,
-        opens_at.astimezone(timezone.utc),
-        f"This {period} batch unlocks at {readable} IST. Please come back at your scheduled batch time.",
-    )
+    # No time gating — batch links are always open, same as the original app.
+    return True, None, None
 
 
 def _to_batch_submission_public(
