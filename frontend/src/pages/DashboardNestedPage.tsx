@@ -59,7 +59,7 @@ function renderFullUi(ui: FullUiSurface, title: string) {
     case 'leads':
       return <LeadsWorkPage title={title} listMode={ui.listMode} />
     case 'workboard':
-      return <WorkboardPage title={title} mode="pipeline" />
+      return <WorkboardPage title={title} />
     case 'follow-ups':
       return <FollowUpsWorkPage title={title} />
     case 'retarget':

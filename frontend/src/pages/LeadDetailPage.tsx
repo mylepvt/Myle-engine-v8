@@ -55,7 +55,6 @@ function StatusBadge({ status }: { status: string }) {
     video_sent: 'bg-indigo-400/15 text-indigo-400',
     video_watched: 'bg-blue-400/15 text-blue-400',
     paid: 'bg-amber-400/15 text-amber-400',
-    mindset_lock: 'bg-fuchsia-400/15 text-fuchsia-400',
     day1: 'bg-orange-400/15 text-orange-400',
     day2: 'bg-yellow-400/15 text-yellow-400',
     day3: 'bg-lime-400/15 text-lime-400',
@@ -334,9 +333,7 @@ export function LeadDetailPage({ leadId }: Props) {
     setResetClockError('')
     const currentStageLabel = LEAD_STATUS_OPTIONS.find((option) => option.value === lead.status)?.label ?? lead.status
     const confirmed = window.confirm(
-      lead.status === 'mindset_lock'
-        ? 'Reset the Mindset Lock timer for this lead? This keeps the lead in Mindset Lock and restarts the 5-minute countdown.'
-        : `Reset the ${currentStageLabel} clock for this lead? This keeps the lead in ${currentStageLabel} and restarts that stage timer.`,
+      `Reset the ${currentStageLabel} clock for this lead? This keeps the lead in ${currentStageLabel} and restarts that stage timer.`,
     )
     if (!confirmed) return
     try {
@@ -381,11 +378,8 @@ export function LeadDetailPage({ leadId }: Props) {
 
   const currentStageLabel = LEAD_STATUS_OPTIONS.find((option) => option.value === lead.status)?.label ?? lead.status
   const stageClockHelpText =
-    lead.status === 'mindset_lock'
-      ? 'Admin-only: restart the 5-minute Mindset Lock timer without moving this lead out of Mindset Lock.'
-      : `Admin-only: restart the ${currentStageLabel} stage clock without moving this lead out of ${currentStageLabel}.`
-  const stageClockButtonLabel =
-    lead.status === 'mindset_lock' ? 'Reset Mindset Lock Clock' : `Reset ${currentStageLabel} Clock`
+    `Admin-only: restart the ${currentStageLabel} stage clock without moving this lead out of ${currentStageLabel}.`
+  const stageClockButtonLabel = `Reset ${currentStageLabel} Clock`
 
   return (
     <>
