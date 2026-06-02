@@ -51,14 +51,6 @@ function formatRemaining(expiresAt: string | null, nowMs: number): string {
   return `${minutes}m ${seconds.toString().padStart(2, '0')}s left`
 }
 
-function formatPlaybackTime(value: number): string {
-  if (!Number.isFinite(value) || value <= 0) return '0:00'
-  const safeSeconds = Math.max(0, Math.floor(value))
-  const minutes = Math.floor(safeSeconds / 60)
-  const seconds = safeSeconds % 60
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`
-}
-
 function easeOutCubic(value: number): number {
   const clamped = Math.min(1, Math.max(0, value))
   return 1 - Math.pow(1 - clamped, 3)
@@ -237,15 +229,6 @@ export function WatchPage() {
   ].filter((value): value is string => Boolean(value))
   const intakeSummary = intakeHighlights.join(' • ')
   const showSoftSnapshot = Boolean(intakeSummary || data?.trust_note)
-  const progressPercent = durationSeconds > 0 ? Math.min(100, (currentSeconds / durationSeconds) * 100) : 0
-  const progressLabel = `${formatPlaybackTime(currentSeconds)} / ${formatPlaybackTime(durationSeconds)}`
-  const playerButtonLabel = playing
-    ? 'Pause'
-    : watchCompleted
-      ? 'Play again'
-      : currentSeconds > 0
-        ? 'Resume'
-        : 'Play introduction'
   const playerStatusTitle = watchCompleted ? 'Thanks for watching' : playMarked ? 'Now playing' : 'Press play to begin'
   const playerStatusBody = watchCompleted
     ? 'You can replay this introduction anytime while this private access window is active.'
@@ -279,6 +262,7 @@ export function WatchPage() {
       setDurationSeconds(0)
       setName('')
       setPhone('')
+      setTimeout(() => videoRef.current?.play(), 100)
     } catch (err) {
       setUnlockError(err instanceof Error ? err.message : 'Could not verify number.')
     } finally {
@@ -353,26 +337,6 @@ export function WatchPage() {
       setPlayerError(err instanceof Error ? err.message : 'Could not complete secure playback.')
     } finally {
       setCompleting(false)
-    }
-  }
-
-  async function togglePlayback() {
-    const video = videoRef.current
-    if (!video) return
-    setPlayerError(null)
-    try {
-      if (video.paused) {
-        if (watchCompleted && durationSeconds > 0 && currentSeconds >= Math.max(0, durationSeconds - 1)) {
-          video.currentTime = 0
-          maxAllowedTimeRef.current = 0
-          setCurrentSeconds(0)
-        }
-        await video.play()
-        return
-      }
-      video.pause()
-    } catch (err) {
-      setPlayerError(err instanceof Error ? err.message : 'Could not control secure playback.')
     }
   }
 
@@ -537,6 +501,7 @@ export function WatchPage() {
                             src={videoSrc}
                             crossOrigin="use-credentials"
                             playsInline
+                            autoPlay
                             preload="metadata"
                             controls={false}
                             controlsList="nodownload nofullscreen noplaybackrate noremoteplayback"
@@ -557,7 +522,10 @@ export function WatchPage() {
                                 void handleFirstPlay()
                               }
                             }}
-                            onPause={() => setPlaying(false)}
+                            onPause={() => {
+                              setPlaying(false)
+                              videoRef.current?.play()
+                            }}
                             onTimeUpdate={(e) => {
                               const nextTime = e.currentTarget.currentTime || 0
                               const nextDuration = Number.isFinite(e.currentTarget.duration)
@@ -590,37 +558,8 @@ export function WatchPage() {
                         </div>
 
                         <div className="mt-4 rounded-[1.4rem] border border-white/10 bg-white/[0.045] p-4 text-white/90">
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                              <p className="text-base font-semibold text-white">{playerStatusTitle}</p>
-                              <p className="mt-1 text-ds-body text-[#b6c6e7]">{playerStatusBody}</p>
-                              {data.viewer_name || data.viewer_phone ? (
-                                <p className="mt-2 text-xs text-white/55">
-                                  Watching as {[data.viewer_name, data.viewer_phone].filter(Boolean).join(' · ')}
-                                </p>
-                              ) : null}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => void togglePlayback()}
-                              disabled={!videoSrc || completing}
-                              className="inline-flex h-11 items-center justify-center rounded-md bg-[#dce7ff] px-5 text-sm font-semibold text-[#0a1530] transition hover:bg-[#c6d8ff] disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              {playerButtonLabel}
-                            </button>
-                          </div>
-
-                          <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
-                            <div
-                              className="h-full rounded-full bg-[#8fb4ff] transition-[width]"
-                              style={{ width: `${progressPercent}%` }}
-                            />
-                          </div>
-
-                          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-white/70">
-                            <span>{currentSeconds > 0 || watchCompleted ? progressLabel : null}</span>
-                            <span>{watchCompleted ? 'Thanks for watching.' : 'Please watch through to the end.'}</span>
-                          </div>
+                          <p className="text-base font-semibold text-white">{playerStatusTitle}</p>
+                          <p className="mt-1 text-ds-body text-[#b6c6e7]">{playerStatusBody}</p>
 
                           {completing ? <p className="mt-3 text-xs text-[#8fb4ff]">Finishing up…</p> : null}
                           {playerError ? (
