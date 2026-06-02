@@ -47,7 +47,7 @@ const ENROLLMENT_VIDEO_FIELDS: readonly SettingsTextField[] = [
     key: 'flp_min_billing_video_source_url',
     label: 'Enrollment Live video URL',
     placeholder: 'https://pub-xxxx.r2.dev/enrollment.mp4',
-    help: 'Jab leader "Send Enrollment-Live video" bhejta hai, prospect ke in-app /watch link me yahi video chalta hai.',
+    help: 'Jab leader "Send Enrollment-Live video" bhejta hai, prospect ke in-app /watch link me yahi video chalta hai. Direct hosted (R2 / .mp4 / HLS) — YouTube nahi.',
   },
   {
     key: 'flp_min_billing_video_title',
@@ -538,7 +538,6 @@ export function SettingsAppPage({ title }: Props) {
           {enrollmentErrorMsg ? <p className="text-xs text-destructive">{enrollmentErrorMsg}</p> : null}
         </div>
       </section>
-
 
 
       {/* WhatsApp Meta API */}
