@@ -85,17 +85,6 @@ const PREMIERE_SETTING_FIELDS: readonly SettingsTextField[] = [
 ]
 
 
-type BatchVideoField = { slot: string; label: string }
-
-const BATCH_VIDEO_SLOTS: readonly BatchVideoField[] = [
-  { slot: 'd4_morning', label: 'Day 4 Morning' },
-  { slot: 'd4_afternoon', label: 'Day 4 Afternoon' },
-  { slot: 'd4_evening', label: 'Day 4 Evening' },
-  { slot: 'd5_morning', label: 'Day 5 Morning' },
-  { slot: 'd5_afternoon', label: 'Day 5 Afternoon' },
-  { slot: 'd5_evening', label: 'Day 5 Evening' },
-]
-
 const YOUTUBE_HOSTS = new Set(['youtube.com', 'youtu.be', 'youtube-nocookie.com'])
 
 function looksLikeYouTubeUrl(rawValue: string): boolean {
@@ -131,7 +120,6 @@ export function SettingsAppPage({ title }: Props) {
   const [q, setQ] = useState('')
   const [premiereEdits, setPremiereEdits] = useState<Record<string, string>>({})
   const [contentEdits, setContentEdits] = useState<Record<string, string>>({})
-  const [batchVideoEdits, setBatchVideoEdits] = useState<Record<string, string>>({})
   const [waEdits, setWaEdits] = useState<Record<string, string>>({})
   const [showAccessToken, setShowAccessToken] = useState(false)
   const [reminderSending, setReminderSending] = useState(false)
@@ -140,11 +128,9 @@ export function SettingsAppPage({ title }: Props) {
   const [reminderError, setReminderError] = useState<string | null>(null)
   const [premiereSaveMsg, setPremiereSaveMsg] = useState<string | null>(null)
   const [contentSaveMsg, setContentSaveMsg] = useState<string | null>(null)
-  const [batchVideoSaveMsg, setBatchVideoSaveMsg] = useState<string | null>(null)
   const [waSaveMsg, setWaSaveMsg] = useState<string | null>(null)
   const [premiereErrorMsg, setPremiereErrorMsg] = useState<string | null>(null)
   const [contentErrorMsg, setContentErrorMsg] = useState<string | null>(null)
-  const [batchVideoErrorMsg, setBatchVideoErrorMsg] = useState<string | null>(null)
   const [waErrorMsg, setWaErrorMsg] = useState<string | null>(null)
   const settingsSource = appSettingsData?.settings ?? {}
   const resolvedPremiereValue = (key: string): string =>
@@ -153,8 +139,6 @@ export function SettingsAppPage({ title }: Props) {
       : (settingsSource[key] ?? '')
   const resolvedContentValue = (key: string): string =>
     Object.prototype.hasOwnProperty.call(contentEdits, key) ? (contentEdits[key] ?? '') : (settingsSource[key] ?? '')
-  const resolvedBatchVideoValue = (key: string): string =>
-    Object.prototype.hasOwnProperty.call(batchVideoEdits, key) ? (batchVideoEdits[key] ?? '') : (settingsSource[key] ?? '')
   const resolvedWaValue = (key: string): string =>
     Object.prototype.hasOwnProperty.call(waEdits, key) ? (waEdits[key] ?? '') : (settingsSource[key] ?? '')
 
@@ -183,25 +167,6 @@ export function SettingsAppPage({ title }: Props) {
       void refetchAppSettings()
     } catch (error) {
       setContentErrorMsg(error instanceof Error ? error.message : 'Could not save content links.')
-    }
-  }
-
-  const handleSaveBatchVideos = async () => {
-    setBatchVideoSaveMsg(null)
-    setBatchVideoErrorMsg(null)
-    try {
-      for (const { slot } of BATCH_VIDEO_SLOTS) {
-        for (const v of [1, 2] as const) {
-          const key = `batch_${slot}_v${v}`
-          const value = resolvedBatchVideoValue(key).trim()
-          await updateAppSetting.mutateAsync({ key, value })
-        }
-      }
-      setBatchVideoEdits({})
-      setBatchVideoSaveMsg('Batch video URLs saved.')
-      void refetchAppSettings()
-    } catch (error) {
-      setBatchVideoErrorMsg(error instanceof Error ? error.message : 'Could not save batch video URLs.')
     }
   }
 
@@ -489,99 +454,6 @@ export function SettingsAppPage({ title }: Props) {
           </button>
           {contentSaveMsg ? <p className="text-xs text-emerald-400">{contentSaveMsg}</p> : null}
           {contentErrorMsg ? <p className="text-xs text-destructive">{contentErrorMsg}</p> : null}
-        </div>
-      </section>
-
-      <section className="surface-elevated space-y-3 p-4">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">Batch Videos (Day 4 &amp; 5)</h2>
-          <p className="text-xs text-muted-foreground">
-            Day 4 aur Day 5 ke batch watch links ke liye video URLs. Har slot ke 2 versions hain (v1 aur v2). Lead ke paas jo link jaata hai usmein yahi URLs play hote hain.
-          </p>
-        </div>
-
-        {appSettingsPending ? (
-          <Skeleton className="h-9 w-full" />
-        ) : appSettingsError ? (
-          <div className="text-sm text-destructive" role="alert">
-            {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load app settings.'}
-          </div>
-        ) : (
-          <div className="grid gap-4">
-            {BATCH_VIDEO_SLOTS.map(({ slot, label }) => (
-              <div key={slot} className="space-y-2">
-                <p className="text-xs font-medium text-foreground">{label}</p>
-                {([1, 2] as const).map((v) => {
-                  const key = `batch_${slot}_v${v}`
-                  return (
-                    <label key={key} className="block text-sm">
-                      <span className="mb-1 block text-ds-caption text-muted-foreground">V{v} URL</span>
-                      <input
-                        type="text"
-                        value={resolvedBatchVideoValue(key)}
-                        onChange={(e) => setBatchVideoEdits((prev) => ({ ...prev, [key]: e.target.value }))}
-                        placeholder="https://cdn.example.com/batch-d5-afternoon.mp4"
-                        className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
-                      />
-                    </label>
-                  )
-                })}
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            disabled={updateAppSetting.isPending || appSettingsPending || appSettingsError}
-            onClick={() => void handleSaveBatchVideos()}
-            className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-medium text-primary disabled:opacity-50"
-          >
-            {updateAppSetting.isPending ? 'Saving...' : 'Save batch video URLs'}
-          </button>
-          {batchVideoSaveMsg ? <p className="text-xs text-emerald-400">{batchVideoSaveMsg}</p> : null}
-          {batchVideoErrorMsg ? <p className="text-xs text-destructive">{batchVideoErrorMsg}</p> : null}
-        </div>
-      </section>
-
-      <section className="surface-elevated space-y-3 p-4">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">Day 6 Final Video</h2>
-          <p className="text-xs text-muted-foreground">
-            Day 6 ke 6 PM aur 8 PM dono batches ke liye ek hi video URL. Cloudflare R2 ya koi bhi direct hosted URL. 6 PM se pehle lead ke paas link hoga lekin video locked rahega — 6 PM aur 8 PM IST pe automatically unlock hota hai.
-          </p>
-        </div>
-
-        {appSettingsPending ? (
-          <Skeleton className="h-9 w-full" />
-        ) : appSettingsError ? (
-          <div className="text-sm text-destructive" role="alert">
-            {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load app settings.'}
-          </div>
-        ) : (
-          <label className="block text-sm">
-            <span className="mb-1 block text-ds-caption text-muted-foreground">Video URL (6 PM &amp; 8 PM dono ke liye)</span>
-            <input
-              type="text"
-              value={resolvedBatchVideoValue('batch_d6_video_url')}
-              onChange={(e) => setBatchVideoEdits((prev) => ({ ...prev, batch_d6_video_url: e.target.value }))}
-              placeholder="https://pub-xxxx.r2.dev/final-video.mp4"
-              className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
-            />
-            <span className="mt-1 block text-muted-foreground/80">R2 public URL, .mp4 / .webm / HLS — YouTube nahi.</span>
-          </label>
-        )}
-
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            disabled={updateAppSetting.isPending || appSettingsPending || appSettingsError}
-            onClick={() => void updateAppSetting.mutateAsync({ key: 'batch_d6_video_url', value: resolvedBatchVideoValue('batch_d6_video_url').trim() }).then(() => { setBatchVideoEdits((prev) => { const next = { ...prev }; delete next['batch_d6_video_url']; return next }); void refetchAppSettings() })}
-            className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-medium text-primary disabled:opacity-50"
-          >
-            {updateAppSetting.isPending ? 'Saving...' : 'Save Day 6 video URL'}
-          </button>
         </div>
       </section>
 
