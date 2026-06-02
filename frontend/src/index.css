@@ -631,24 +631,18 @@
 
   /* ─── Mobile bottom tab bar ──────────────────────────────────────────────── */
 
+  /* Floating glass pill bar (iOS 17 style) — the <nav> is just the safe-area
+     spacer; the visible bar is the rounded, detached __inner pill. */
   .dashboard-mobile-tabbar {
     position: relative;
     isolation: isolate;
-    min-height: calc(60px + env(safe-area-inset-bottom, 0px));
+    min-height: calc(66px + env(safe-area-inset-bottom, 0px));
     padding-bottom: env(safe-area-inset-bottom, 0px);
-    /* Dark mode: use --card (#070a12) so bar is visually distinct from
-       --background (#000000). Light mode: semi-transparent background. */
-    background-color: color-mix(in srgb, var(--card) 94%, transparent);
-    border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-    box-shadow: var(--shadow-ios-bar);
-    backdrop-filter: saturate(145%) blur(16px);
-    -webkit-backdrop-filter: saturate(145%) blur(16px);
-    transition:
-      background-color 0.2s ease,
-      backdrop-filter 0.22s ease,
-      box-shadow 0.22s ease,
-      opacity 0.18s ease,
-      transform 0.18s ease;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease;
   }
 
   /* Hide tab bar when software keyboard is open (keyboard inset > 0) */
@@ -656,38 +650,59 @@
     display: none;
   }
 
-  .dashboard-mobile-tabbar--scrolled {
-    background-color: color-mix(in srgb, var(--card) 88%, transparent);
-    backdrop-filter: saturate(168%) blur(20px);
-    -webkit-backdrop-filter: saturate(168%) blur(20px);
-  }
-
-  .dashboard-mobile-tabbar::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background: linear-gradient(180deg, rgba(255,255,255,0.025), transparent 40%);
-    opacity: 1;
-    z-index: -1;
-  }
-
   .dashboard-mobile-tabbar__inner {
     position: relative;
+    pointer-events: auto;
+    margin: 0 0.75rem max(0.5rem, env(safe-area-inset-bottom, 0px));
+    border-radius: 1.4rem;
+    background-color: color-mix(in srgb, var(--card) 82%, transparent);
+    border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+    box-shadow:
+      0 10px 34px -10px rgba(0, 0, 0, 0.6),
+      0 2px 8px -4px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 color-mix(in srgb, white 9%, transparent);
+    backdrop-filter: saturate(170%) blur(22px);
+    -webkit-backdrop-filter: saturate(170%) blur(22px);
+    transition: background-color 0.2s ease, box-shadow 0.22s ease;
+  }
+
+  .dashboard-mobile-tabbar--scrolled .dashboard-mobile-tabbar__inner {
+    background-color: color-mix(in srgb, var(--card) 90%, transparent);
+    box-shadow:
+      0 14px 40px -10px rgba(0, 0, 0, 0.7),
+      0 2px 8px -4px rgba(0, 0, 0, 0.55),
+      inset 0 1px 0 color-mix(in srgb, white 10%, transparent);
   }
 
   .dashboard-mobile-tabbar__tab {
     border: 1px solid transparent;
+    transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1),
+      background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+  }
+
+  .dashboard-mobile-tabbar__tab:active {
+    transform: scale(0.9);
   }
 
   .dashboard-mobile-tabbar__tab--active {
-    border-color: color-mix(in srgb, var(--primary) 30%, transparent);
-    background-color: color-mix(in srgb, var(--primary) 15%, transparent);
-    box-shadow: inset 0 1px 0 color-mix(in srgb, white 24%, transparent);
+    border-color: color-mix(in srgb, var(--primary) 38%, transparent);
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--primary) 24%, transparent),
+      color-mix(in srgb, var(--primary) 12%, transparent)
+    );
+    box-shadow:
+      0 0 18px -5px color-mix(in srgb, var(--primary) 60%, transparent),
+      inset 0 1px 0 color-mix(in srgb, white 26%, transparent);
+  }
+
+  .dashboard-mobile-tabbar__tab--active svg {
+    transform: scale(1.08);
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   .dashboard-mobile-tabbar__tab--idle:hover {
-    background-color: color-mix(in srgb, var(--muted) 72%, transparent);
+    background-color: color-mix(in srgb, var(--muted) 60%, transparent);
   }
 
   .dashboard-sidebar {
