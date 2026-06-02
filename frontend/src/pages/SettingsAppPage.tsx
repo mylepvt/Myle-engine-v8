@@ -42,78 +42,6 @@ const CONTENT_LINK_FIELDS: readonly SettingsTextField[] = [
   },
 ]
 
-const ENROLLMENT_VIDEO_FIELDS: readonly SettingsTextField[] = [
-  {
-    key: 'flp_min_billing_video_source_url',
-    label: 'Enrollment Live video URL',
-    placeholder: 'https://pub-xxxx.r2.dev/enrollment.mp4',
-    help: 'Jab leader "Send Enrollment-Live video" bhejta hai, prospect ke in-app /watch link me yahi video chalta hai. Direct hosted (R2 / .mp4 / HLS) — YouTube nahi.',
-  },
-  {
-    key: 'flp_min_billing_video_title',
-    label: 'Enrollment video title (overlay)',
-    placeholder: 'MYLE COMMUNITY',
-    help: 'Player ke upar dikhne wala title. Khali chhodo to default.',
-  },
-]
-
-const PREMIERE_SETTING_FIELDS: readonly SettingsTextField[] = [
-  {
-    key: 'premiere_day1_video_url',
-    label: 'Day 1 video URL (Power of Digital India)',
-    placeholder: 'https://cdn.example.com/day1.mp4',
-    help: 'Cloudflare R2 / HLS URL for Day 1 premiere session. Plays at 5pm, 6pm, 7pm.',
-  },
-  {
-    key: 'premiere_day2_video_url',
-    label: 'Day 2 video URL (Secret Industry Reveal)',
-    placeholder: 'https://cdn.example.com/day2.mp4',
-    help: 'Cloudflare R2 / HLS URL for Day 2 premiere session. Plays at 5pm, 6pm, 7pm.',
-  },
-  {
-    key: 'premiere_day3_video_url',
-    label: 'Day 3 video URL (Final Day)',
-    placeholder: 'https://cdn.example.com/day3.mp4',
-    help: 'Cloudflare R2 / HLS URL for Day 3 premiere session. Plays at 5pm, 6pm, 7pm.',
-  },
-  {
-    key: 'premiere_session_hours',
-    label: 'Session hours (IST)',
-    placeholder: '17,18,19',
-    inputMode: 'text',
-    help: 'Comma-separated 24h hours when premiere goes live. Default: 5 PM, 6 PM, 7 PM (17,18,19).',
-  },
-  {
-    key: 'premiere_waiting_minutes',
-    label: 'Waiting room opens (minutes before live)',
-    placeholder: '30',
-    inputMode: 'numeric',
-    help: 'How many minutes before each session the waiting room opens. Default: 30.',
-  },
-  {
-    key: 'premiere_duration_minutes',
-    label: 'Session duration (minutes)',
-    placeholder: '49',
-    inputMode: 'numeric',
-    help: 'How long each premiere session runs. Default: 49 minutes.',
-  },
-]
-
-
-const YOUTUBE_HOSTS = new Set(['youtube.com', 'youtu.be', 'youtube-nocookie.com'])
-
-function looksLikeYouTubeUrl(rawValue: string): boolean {
-  const value = rawValue.trim()
-  if (!value) return false
-  try {
-    const parsed = new URL(value)
-    const host = parsed.hostname.replace(/^(www|m|music)\./i, '').toLowerCase()
-    return YOUTUBE_HOSTS.has(host)
-  } catch {
-    return value.toLowerCase().includes('youtu')
-  }
-}
-
 
 export function SettingsAppPage({ title }: Props) {
   const {
@@ -133,32 +61,20 @@ export function SettingsAppPage({ title }: Props) {
   const [waTestPhone, setWaTestPhone] = useState('')
 
   const [q, setQ] = useState('')
-  const [premiereEdits, setPremiereEdits] = useState<Record<string, string>>({})
   const [contentEdits, setContentEdits] = useState<Record<string, string>>({})
-  const [enrollmentEdits, setEnrollmentEdits] = useState<Record<string, string>>({})
   const [waEdits, setWaEdits] = useState<Record<string, string>>({})
   const [showAccessToken, setShowAccessToken] = useState(false)
   const [reminderSending, setReminderSending] = useState(false)
   const [reminderSummary, setReminderSummary] = useState<Omit<SendRemindersResponse, 'results'> | null>(null)
   const [reminderResults, setReminderResults] = useState<ReminderResult[] | null>(null)
   const [reminderError, setReminderError] = useState<string | null>(null)
-  const [premiereSaveMsg, setPremiereSaveMsg] = useState<string | null>(null)
   const [contentSaveMsg, setContentSaveMsg] = useState<string | null>(null)
-  const [enrollmentSaveMsg, setEnrollmentSaveMsg] = useState<string | null>(null)
   const [waSaveMsg, setWaSaveMsg] = useState<string | null>(null)
-  const [premiereErrorMsg, setPremiereErrorMsg] = useState<string | null>(null)
   const [contentErrorMsg, setContentErrorMsg] = useState<string | null>(null)
-  const [enrollmentErrorMsg, setEnrollmentErrorMsg] = useState<string | null>(null)
   const [waErrorMsg, setWaErrorMsg] = useState<string | null>(null)
   const settingsSource = appSettingsData?.settings ?? {}
-  const resolvedPremiereValue = (key: string): string =>
-    Object.prototype.hasOwnProperty.call(premiereEdits, key)
-      ? (premiereEdits[key] ?? '')
-      : (settingsSource[key] ?? '')
   const resolvedContentValue = (key: string): string =>
     Object.prototype.hasOwnProperty.call(contentEdits, key) ? (contentEdits[key] ?? '') : (settingsSource[key] ?? '')
-  const resolvedEnrollmentValue = (key: string): string =>
-    Object.prototype.hasOwnProperty.call(enrollmentEdits, key) ? (enrollmentEdits[key] ?? '') : (settingsSource[key] ?? '')
   const resolvedWaValue = (key: string): string =>
     Object.prototype.hasOwnProperty.call(waEdits, key) ? (waEdits[key] ?? '') : (settingsSource[key] ?? '')
 
@@ -187,43 +103,6 @@ export function SettingsAppPage({ title }: Props) {
       void refetchAppSettings()
     } catch (error) {
       setContentErrorMsg(error instanceof Error ? error.message : 'Could not save content links.')
-    }
-  }
-
-  const handleSaveEnrollmentVideo = async () => {
-    setEnrollmentSaveMsg(null)
-    setEnrollmentErrorMsg(null)
-    try {
-      for (const field of ENROLLMENT_VIDEO_FIELDS) {
-        const value = resolvedEnrollmentValue(field.key).trim()
-        await updateAppSetting.mutateAsync({ key: field.key, value })
-      }
-      setEnrollmentEdits({})
-      setEnrollmentSaveMsg('Enrollment video saved.')
-      void refetchAppSettings()
-    } catch (error) {
-      setEnrollmentErrorMsg(error instanceof Error ? error.message : 'Could not save enrollment video.')
-    }
-  }
-
-  const handleSavePremiere = async () => {
-    setPremiereSaveMsg(null)
-    setPremiereErrorMsg(null)
-    const videoUrl = resolvedPremiereValue('premiere_video_url').trim()
-    if (videoUrl && looksLikeYouTubeUrl(videoUrl)) {
-      setPremiereErrorMsg('YouTube link allowed nahi hai. Direct hosted .mp4 / HLS URL use karein.')
-      return
-    }
-    try {
-      for (const field of PREMIERE_SETTING_FIELDS) {
-        const value = resolvedPremiereValue(field.key).trim()
-        await updateAppSetting.mutateAsync({ key: field.key, value })
-      }
-      setPremiereEdits({})
-      setPremiereSaveMsg('Premiere settings updated successfully.')
-      void refetchAppSettings()
-    } catch (error) {
-      setPremiereErrorMsg(error instanceof Error ? error.message : 'Could not update premiere settings.')
     }
   }
 
@@ -393,59 +272,7 @@ export function SettingsAppPage({ title }: Props) {
         secrets should stay in server environment variables — this table is for product toggles and
         copy (e.g. live session text).
       </p>
-      {/* Premiere Settings */}
-      <section className="surface-elevated space-y-3 p-4">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">Live Premiere</h2>
-          <p className="text-xs text-muted-foreground">
-            Prospects <code className="rounded bg-white/10 px-1 text-[10px]">/premiere</code> page ka config.
-            Video URL set karo aur session hours define karo. Admin premiere tab mein viewers real-time dikhenge.
-          </p>
-        </div>
 
-        {appSettingsPending ? (
-          <Skeleton className="h-9 w-full" />
-        ) : appSettingsError ? (
-          <div className="text-sm text-destructive" role="alert">
-            {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load app settings.'}
-          </div>
-        ) : (
-          <div className="grid gap-3">
-            {PREMIERE_SETTING_FIELDS.map((field) => (
-              <label key={field.key} className="block text-sm">
-                <span className="mb-1 block text-ds-caption text-muted-foreground">{field.label}</span>
-                <input
-                  type="text"
-                  inputMode={field.inputMode}
-                  value={resolvedPremiereValue(field.key)}
-                  onChange={(e) =>
-                    setPremiereEdits((prev) => ({
-                      ...prev,
-                      [field.key]: e.target.value,
-                    }))
-                  }
-                  placeholder={field.placeholder}
-                  className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
-                />
-                <span className="mt-1 block text-muted-foreground/80">{field.help}</span>
-              </label>
-            ))}
-          </div>
-        )}
-
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            disabled={updateAppSetting.isPending || appSettingsPending || appSettingsError}
-            onClick={() => void handleSavePremiere()}
-            className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-medium text-primary disabled:opacity-50"
-          >
-            {updateAppSetting.isPending ? 'Saving...' : 'Save premiere settings'}
-          </button>
-          {premiereSaveMsg ? <p className="text-xs text-emerald-400">{premiereSaveMsg}</p> : null}
-          {premiereErrorMsg ? <p className="text-xs text-destructive">{premiereErrorMsg}</p> : null}
-        </div>
-      </section>
 
       <section className="surface-elevated space-y-3 p-4">
         <div>
@@ -493,51 +320,8 @@ export function SettingsAppPage({ title }: Props) {
         </div>
       </section>
 
-      <section className="surface-elevated space-y-3 p-4">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">Enrollment Live Video</h2>
-          <p className="text-xs text-muted-foreground">
-            Jab leader workboard se "Send Enrollment-Live video" bhejta hai, prospect ke in-app /watch link me yahi video chalta hai.
-          </p>
-        </div>
 
-        {appSettingsPending ? (
-          <Skeleton className="h-9 w-full" />
-        ) : appSettingsError ? (
-          <div className="text-sm text-destructive" role="alert">
-            {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load app settings.'}
-          </div>
-        ) : (
-          <div className="grid gap-3">
-            {ENROLLMENT_VIDEO_FIELDS.map((field) => (
-              <label key={field.key} className="block text-sm">
-                <span className="mb-1 block text-ds-caption text-muted-foreground">{field.label}</span>
-                <input
-                  type="text"
-                  value={resolvedEnrollmentValue(field.key)}
-                  onChange={(e) => setEnrollmentEdits((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                  placeholder={field.placeholder}
-                  className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
-                />
-                <span className="mt-1 block text-muted-foreground/80">{field.help}</span>
-              </label>
-            ))}
-          </div>
-        )}
 
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            disabled={updateAppSetting.isPending || appSettingsPending || appSettingsError}
-            onClick={() => void handleSaveEnrollmentVideo()}
-            className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-medium text-primary disabled:opacity-50"
-          >
-            {updateAppSetting.isPending ? 'Saving...' : 'Save enrollment video'}
-          </button>
-          {enrollmentSaveMsg ? <p className="text-xs text-emerald-400">{enrollmentSaveMsg}</p> : null}
-          {enrollmentErrorMsg ? <p className="text-xs text-destructive">{enrollmentErrorMsg}</p> : null}
-        </div>
-      </section>
 
 
       {/* WhatsApp Meta API */}
