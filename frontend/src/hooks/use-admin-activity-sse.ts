@@ -29,7 +29,6 @@ function severityFor(eventType: string): AdminActivityEntry['severity'] {
 const STAGE_LABELS: Record<string, string> = {
   new: 'New',
   contacted: 'Contacted',
-  mindset_lock: 'Mindset Lock',
   day1: 'Day 1',
   day2: 'Day 2',
   day3: 'Day 3',

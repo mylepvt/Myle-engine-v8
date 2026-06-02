@@ -20,14 +20,10 @@ import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LeadBillingCard } from '@/components/leads/LeadBillingCard'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import {
-  fetchMindsetLockPreview,
   LEAD_STATUS_OPTIONS,
-  postMindsetLockComplete,
   type LeadPublic,
   type LeadStatus,
-  type MindsetLockPreviewResponse,
   usePatchLeadMutation,
 } from '@/hooks/use-leads-query'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
@@ -42,7 +38,6 @@ import {
   openExternalShareUrl,
   reserveExternalShareWindow,
 } from '@/lib/external-share-window'
-import { getMindsetLockSendState } from '@/lib/mindset-lock'
 import { useContentLinksQuery } from '@/hooks/use-content-links-query'
 import { checklistForStage } from '@/lib/lead-process-map'
 import { LEAD_SLA_SMOOTH_REFRESH_MS, formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
@@ -52,7 +47,7 @@ import { whatsAppChatWithTextHref, whatsappDigits } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-type Props = { title: string; mode?: 'mindset-lock' | 'pipeline' }
+type Props = { title: string }
 type Col = { status: string; total: number; items: LeadPublic[] }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -64,7 +59,6 @@ const BADGE: Record<string, string> = {
   video_sent:     'bg-indigo-400/15 text-indigo-300 border-indigo-400/25',
   video_watched:  'bg-blue-400/15 text-blue-300 border-blue-400/25',
   paid:           'bg-amber-400/15 text-amber-300 border-amber-400/25',
-  mindset_lock:   'bg-fuchsia-400/15 text-fuchsia-300 border-fuchsia-400/25',
   day1:           'bg-orange-400/15 text-orange-300 border-orange-400/25',
   day2:           'bg-yellow-400/15 text-yellow-300 border-yellow-400/25',
   day3:           'bg-lime-400/15 text-lime-300 border-lime-400/25',
@@ -75,7 +69,6 @@ const BADGE: Record<string, string> = {
   lost:           'bg-destructive/15 text-destructive border-destructive/25',
 }
 const CLOSE:  LeadStatus[] = ['converted','lost']
-const MIN_MINDSET_SECONDS = 300
 type BatchSlotKey = 'd1_morning' | 'd1_afternoon' | 'd1_evening' | 'd2_morning' | 'd2_afternoon' | 'd2_evening'
 type WorkboardStageKey =
   | 'day1'
@@ -217,9 +210,6 @@ const LeadCard = memo(function LeadCard({
   lead,
   pm,
   leadPatchBusy,
-  mindsetBusy,
-  mindsetPreview,
-  onRequestMindsetSend,
   stageKey,
   onMoveNext,
   nextLabel,
@@ -229,9 +219,6 @@ const LeadCard = memo(function LeadCard({
   lead: LeadPublic
   pm: PM
   leadPatchBusy: boolean
-  mindsetBusy?: boolean
-  mindsetPreview?: MindsetLockPreviewResponse | null
-  onRequestMindsetSend?: (lead: LeadPublic) => void
   stageKey?: WorkboardStageKey
   onMoveNext?: () => void
   nextLabel?: string
@@ -283,22 +270,6 @@ const LeadCard = memo(function LeadCard({
   const slaTone = leadSlaTone(slaOverdue ? 0 : slaRemainingSec)
   const { hourAngle: slaHourAngle, minuteAngle: slaMinuteAngle, secondAngle: slaSecondAngle } =
     leadSlaClockAngles(slaOverdue ? 0 : slaMs)
-  const mindsetStartable =
-    lead.status === 'day1' &&
-    !lead.mindset_started_at
-  const mindsetReady =
-    lead.status === 'mindset_lock' &&
-    lead.mindset_lock_state !== 'leader_assigned'
-  const startedAtMs = lead.mindset_started_at ? new Date(lead.mindset_started_at).getTime() : null
-  const elapsedSeconds = startedAtMs ? Math.max(0, Math.floor((nowMs - startedAtMs) / 1000)) : 0
-  const remainingSeconds = Math.max(0, MIN_MINDSET_SECONDS - elapsedSeconds)
-  const { canSend } = getMindsetLockSendState({
-    mindsetReady,
-    remainingSeconds,
-    preview: mindsetPreview,
-  })
-  const isLeaderMindsetFlow = surfaceRole === 'leader'
-  const mindsetChecklistDone = stageChecklistComplete(lead, 'mindset_lock')
   const callOptions = callStatusSelectOptions(surfaceRole ?? null, lead.status as LeadStatus)
   const rawCallStatus = (lead.call_status ?? '').trim()
   const callValue = callOptions.some((option) => option.value === rawCallStatus)
@@ -434,50 +405,6 @@ const LeadCard = memo(function LeadCard({
             </Link>
           </div>
         </div>
-        {mindsetStartable ? (
-          <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 px-2 py-2">
-            <p className="text-ds-caption text-muted-foreground">
-              {isLeaderMindsetFlow
-                ? 'Start Mindset Lock before pushing this lead into Day 2.'
-                : 'Start the After Day 1 mindset lock before leader handoff.'}
-            </p>
-            <button
-              type="button"
-              disabled={leadPatchBusy}
-              onClick={() => void pm.mutateAsync({ id: lead.id, body: { status: 'mindset_lock' as LeadStatus } })}
-              className="flex h-10 w-full items-center justify-center gap-1 rounded-md border border-fuchsia-400/40 bg-fuchsia-400/12 px-3 text-ds-caption font-semibold text-fuchsia-300 transition hover:bg-fuchsia-400/20 disabled:opacity-50"
-            >
-              <CheckSquare className="h-3.5 w-3.5" />
-              <span>Start Mindset Lock</span>
-            </button>
-          </div>
-        ) : null}
-        {mindsetReady ? (
-          <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 px-2 py-2">
-            <ProcessChecklistSection
-              lead={lead}
-              stage="mindset_lock"
-              pm={pm}
-              leadPatchBusy={leadPatchBusy}
-            />
-            <button
-              type="button"
-              disabled={!canSend || !mindsetChecklistDone || mindsetBusy}
-              onClick={() => onRequestMindsetSend?.(lead)}
-              className={cn(
-                'flex h-10 w-full items-center justify-center gap-1 rounded-md border px-3 text-ds-caption font-semibold transition disabled:cursor-not-allowed disabled:opacity-50',
-                canSend && mindsetChecklistDone
-                  ? 'border-emerald-400/40 bg-emerald-400/12 text-emerald-300 hover:bg-emerald-400/20'
-                  : 'border-border bg-muted/30 text-muted-foreground',
-              )}
-            >
-              <CheckSquare className="h-3.5 w-3.5" />
-              <span>
-                {mindsetBusy ? 'Moving...' : isLeaderMindsetFlow ? 'Push to Day 2' : 'Send to Leader'}
-              </span>
-            </button>
-          </div>
-        ) : null}
         {stageKey ? (
           <StageAdvanceSection
             lead={lead}
@@ -1443,11 +1370,9 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
   return null
 }
 
-function LeadCardItem({ lead, stageKey, nextStatus, pm, patchBusyLeadId, mindsetBusyLeadId, mindsetPreviewByLeadId, onRequestMindsetSend, nextLabel, nowMs, showClosingActions }: {
+function LeadCardItem({ lead, stageKey, nextStatus, pm, patchBusyLeadId, nextLabel, nowMs, showClosingActions }: {
   lead: LeadPublic; stageKey?: WorkboardStageKey; nextStatus?: LeadStatus
-  pm: PM; patchBusyLeadId: number | null; mindsetBusyLeadId: number | null
-  mindsetPreviewByLeadId: Record<number, MindsetLockPreviewResponse | undefined>
-  onRequestMindsetSend?: (lead: LeadPublic) => void
+  pm: PM; patchBusyLeadId: number | null
   nextLabel?: string; nowMs: number; showClosingActions?: boolean
 }) {
   const _moveNext = useCallback(
@@ -1461,9 +1386,6 @@ function LeadCardItem({ lead, stageKey, nextStatus, pm, patchBusyLeadId, mindset
       stageKey={stageKey}
       pm={pm}
       leadPatchBusy={patchBusyLeadId === lead.id}
-      mindsetBusy={mindsetBusyLeadId === lead.id}
-      mindsetPreview={mindsetPreviewByLeadId[lead.id] ?? null}
-      onRequestMindsetSend={onRequestMindsetSend}
       onMoveNext={onMoveNext}
       nextLabel={nextLabel}
       nowMs={nowMs}
@@ -1476,9 +1398,6 @@ function ResponsiveLeadGrid({
   leads,
   pm,
   patchBusyLeadId,
-  mindsetBusyLeadId,
-  mindsetPreviewByLeadId,
-  onRequestMindsetSend,
   empty,
   nowMs,
   stageKey,
@@ -1489,9 +1408,6 @@ function ResponsiveLeadGrid({
   leads: LeadPublic[]
   pm: PM
   patchBusyLeadId: number | null
-  mindsetBusyLeadId: number | null
-  mindsetPreviewByLeadId: Record<number, MindsetLockPreviewResponse | undefined>
-  onRequestMindsetSend?: (lead: LeadPublic) => void
   empty?: string
   nowMs: number
   stageKey?: WorkboardStageKey
@@ -1518,9 +1434,6 @@ function ResponsiveLeadGrid({
           nextStatus={nextStatus}
           pm={pm}
           patchBusyLeadId={patchBusyLeadId}
-          mindsetBusyLeadId={mindsetBusyLeadId}
-          mindsetPreviewByLeadId={mindsetPreviewByLeadId}
-          onRequestMindsetSend={onRequestMindsetSend}
           nextLabel={nextLabel}
           nowMs={nowMs}
           showClosingActions={showClosingActions}
@@ -1535,9 +1448,6 @@ function Grid({
   leads,
   pm,
   patchBusyLeadId,
-  mindsetBusyLeadId = null,
-  mindsetPreviewByLeadId = {},
-  onRequestMindsetSend,
   empty,
   nowMs,
   stageKey,
@@ -1548,9 +1458,6 @@ function Grid({
   leads: LeadPublic[]
   pm: PM
   patchBusyLeadId: number | null
-  mindsetBusyLeadId?: number | null
-  mindsetPreviewByLeadId?: Record<number, MindsetLockPreviewResponse | undefined>
-  onRequestMindsetSend?: (lead: LeadPublic) => void
   empty?: string
   nowMs: number
   stageKey?: WorkboardStageKey
@@ -1563,9 +1470,6 @@ function Grid({
       leads={leads}
       pm={pm}
       patchBusyLeadId={patchBusyLeadId}
-      mindsetBusyLeadId={mindsetBusyLeadId}
-      mindsetPreviewByLeadId={mindsetPreviewByLeadId}
-      onRequestMindsetSend={onRequestMindsetSend}
       empty={empty}
       nowMs={nowMs}
       stageKey={stageKey}
@@ -1573,128 +1477,6 @@ function Grid({
       nextLabel={nextLabel}
       showClosingActions={showClosingActions}
     />
-  )
-}
-
-// ── TeamView ───────────────────────────────────────────────────────────────────
-function MindsetQueueView({
-  cols,
-  pm,
-  patchBusyLeadId,
-  mindsetBusyLeadId,
-  mindsetPreviewByLeadId,
-  ensureMindsetPreview,
-  onRequestMindsetSend,
-  search,
-  nowMs,
-  queueRole,
-  currentUserId,
-}: {
-  cols: Col[]
-  pm: PM
-  patchBusyLeadId: number | null
-  mindsetBusyLeadId: number | null
-  mindsetPreviewByLeadId: Record<number, MindsetLockPreviewResponse | undefined>
-  ensureMindsetPreview: (lead: LeadPublic) => void
-  onRequestMindsetSend?: (lead: LeadPublic) => void
-  search: string
-  nowMs: number
-  queueRole: 'team' | 'leader' | 'admin'
-  currentUserId: number | null
-}) {
-  const byS = Object.fromEntries(cols.map((c) => [c.status, c]))
-  const needle = search.trim().toLowerCase()
-  const allowLead = (lead: LeadPublic) =>
-    queueRole === 'admin' || queueRole !== 'leader' || (currentUserId != null && lead.assigned_to_user_id === currentUserId)
-  const day1Leads = (byS.day1?.items ?? []).filter(
-    (l) =>
-      allowLead(l) &&
-      !l.mindset_started_at &&
-      (!needle || l.name.toLowerCase().includes(needle) || (l.phone ?? '').includes(needle)),
-  )
-  const mindsetLeads = (byS.mindset_lock?.items ?? []).filter(
-    (l) =>
-      allowLead(l) &&
-      (!needle || l.name.toLowerCase().includes(needle) || (l.phone ?? '').includes(needle)),
-  )
-  const mindsetQueue = [...day1Leads, ...mindsetLeads]
-  useEffect(() => {
-    mindsetLeads.forEach((lead) => {
-      const ready =
-        lead.status === 'mindset_lock' &&
-        lead.mindset_lock_state !== 'leader_assigned'
-      if (!ready) return
-      if (Object.prototype.hasOwnProperty.call(mindsetPreviewByLeadId, lead.id)) return
-      ensureMindsetPreview(lead)
-    })
-  }, [mindsetLeads, mindsetPreviewByLeadId, ensureMindsetPreview])
-
-  if (queueRole === 'admin') {
-    const grouped = mindsetQueue.reduce<Record<string, LeadPublic[]>>((acc, lead) => {
-      const ownerKey = lead.owner_name ?? `User #${lead.owner_user_id ?? '?'}`
-      ;(acc[ownerKey] ??= []).push(lead)
-      return acc
-    }, {})
-    const entries = Object.entries(grouped).sort((a, b) => a[0].localeCompare(b[0]))
-    return (
-      <div id="mindset-lock" className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-muted-foreground">Mindset Lock — All Team</h2>
-          <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-ds-caption font-semibold tabular-nums text-muted-foreground">
-            {mindsetQueue.length}
-          </span>
-        </div>
-        {mindsetQueue.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No mindset-lock leads across team.</p>
-        ) : (
-          entries.map(([ownerName, leads]) => (
-            <div key={ownerName} className="space-y-2">
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-semibold text-foreground">{ownerName}</h3>
-                <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-ds-caption font-semibold tabular-nums text-muted-foreground">
-                  {leads.length}
-                </span>
-              </div>
-              <Grid
-                leads={leads}
-                pm={pm}
-                patchBusyLeadId={patchBusyLeadId}
-                mindsetBusyLeadId={mindsetBusyLeadId}
-                mindsetPreviewByLeadId={mindsetPreviewByLeadId}
-                onRequestMindsetSend={onRequestMindsetSend}
-                empty=""
-                nowMs={nowMs}
-              />
-            </div>
-          ))
-        )}
-      </div>
-    )
-  }
-
-  return (
-    <div id="mindset-lock" className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-muted-foreground">Mindset Lock</h2>
-        <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-ds-caption font-semibold tabular-nums text-muted-foreground">
-          {mindsetQueue.length}
-        </span>
-      </div>
-      <Grid
-        leads={mindsetQueue}
-        pm={pm}
-        patchBusyLeadId={patchBusyLeadId}
-        mindsetBusyLeadId={mindsetBusyLeadId}
-        mindsetPreviewByLeadId={mindsetPreviewByLeadId}
-        onRequestMindsetSend={onRequestMindsetSend}
-        empty={
-          queueRole === 'leader'
-            ? 'No personal mindset-lock leads yet'
-            : 'No mindset-lock leads yet'
-        }
-        nowMs={nowMs}
-      />
-    </div>
   )
 }
 
@@ -1782,29 +1564,20 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance
 }
 
 // ── Page ───────────────────────────────────────────────────────────────────────
-export function WorkboardPage({ title, mode = 'pipeline' }: Props) {
+export function WorkboardPage({ title }: Props) {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { role, serverRole } = useDashboardShellRole()
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
-  const { data: me } = useAuthMeQuery()
-  const qc = useQueryClient()
   const { data, isPending, isError, error, refetch } = useWorkboardQuery(true)
   const pm = usePatchLeadMutation()
   const patchBusyLeadId =
     pm.isPending && pm.variables && typeof pm.variables.id === 'number' ? pm.variables.id : null
-  const [mindsetBusyLeadId, setMindsetBusyLeadId] = useState<number | null>(null)
-  const [mindsetErr, setMindsetErr] = useState<string | null>(null)
-  const [mindsetPreviewByLeadId, setMindsetPreviewByLeadId] = useState<
-    Record<number, MindsetLockPreviewResponse | undefined>
-  >({})
-  const [confirmLead, setConfirmLead] = useState<LeadPublic | null>(null)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
   const [qInput, setQInput] = useState('')
   const [search, setSearch] = useState('')
   const [nowMs, setNowMs] = useState(() => Date.now())
   const adminTab = parseAdminTab(searchParams.get('tab'))
-  const currentUserId = me?.authenticated ? (me.user_id ?? null) : null
   useEffect(() => {
     const id = window.setInterval(() => setNowMs(Date.now()), LEAD_SLA_SMOOTH_REFRESH_MS)
     return () => window.clearInterval(id)
@@ -1828,24 +1601,6 @@ export function WorkboardPage({ title, mode = 'pipeline' }: Props) {
     return () => window.clearTimeout(id)
   }, [toastMsg])
 
-  const ensureMindsetPreview = useCallback((lead: LeadPublic) => {
-    let shouldFetch = false
-    setMindsetPreviewByLeadId((prev) => {
-      if (Object.prototype.hasOwnProperty.call(prev, lead.id)) return prev
-      shouldFetch = true
-      return { ...prev, [lead.id]: undefined }
-    })
-    if (!shouldFetch) return
-    void (async () => {
-      try {
-        const p = await fetchMindsetLockPreview(lead.id)
-        setMindsetPreviewByLeadId((prev) => ({ ...prev, [lead.id]: p }))
-      } catch {
-        setMindsetPreviewByLeadId((prev) => ({ ...prev, [lead.id]: undefined }))
-      }
-    })()
-  }, [])
-
   const setAdminTab = useCallback((tab: ATab) => {
     const next = new URLSearchParams(searchParams)
     if (tab === 'day2') {
@@ -1856,30 +1611,6 @@ export function WorkboardPage({ title, mode = 'pipeline' }: Props) {
     setSearchParams(next, { replace: true })
   }, [searchParams, setSearchParams])
 
-  async function completeMindsetLock(leadId: number) {
-    setMindsetErr(null)
-    setMindsetBusyLeadId(leadId)
-    try {
-      await postMindsetLockComplete(leadId)
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: ['workboard'] }),
-        qc.invalidateQueries({ queryKey: ['leads'] }),
-      ])
-      await refetch()
-      setMindsetPreviewByLeadId((prev) => {
-        const next = { ...prev }
-        delete next[leadId]
-        return next
-      })
-      setToastMsg('Mindset Lock complete. Lead moved to Day 2')
-    } catch (e) {
-      setMindsetErr(e instanceof Error ? e.message : 'Could not complete mindset lock')
-    } finally {
-      setMindsetBusyLeadId(null)
-      setConfirmLead(null)
-    }
-  }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -1888,15 +1619,9 @@ export function WorkboardPage({ title, mode = 'pipeline' }: Props) {
           <button type="button" onClick={() => navigate(-1)} className="mb-1 text-sm text-primary underline-offset-2 hover:underline">← Back</button>
           <h1 className="text-ds-h2">{title}</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            {mode === 'mindset-lock'
-              ? surfaceRole === 'admin'
-                ? 'All team mindset-lock leads — grouped by member.'
-                : surfaceRole === 'leader'
-                ? 'Your assigned leads ready for mindset lock — complete before Day 2.'
-                : 'Complete mindset lock for your leads before they move to Day 2.'
-              : surfaceRole === 'admin'
-                ? 'Organization pipeline — Day 2 onwards.'
-                : 'Day 2 onwards execution pipeline.'}
+            {surfaceRole === 'admin'
+              ? 'Organization pipeline — Day 2 onwards.'
+              : 'Day 2 onwards execution pipeline.'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -1938,85 +1663,20 @@ export function WorkboardPage({ title, mode = 'pipeline' }: Props) {
           {pm.error instanceof Error ? pm.error.message : 'Could not update lead'}
         </p>
       )}
-      {mindsetErr ? (
-        <p className="text-ds-caption text-destructive" role="alert">
-          {mindsetErr}
-        </p>
-      ) : null}
 
       {/* Main content */}
       {data && !isPending && (
-        mode === 'mindset-lock'
-          ? (
-            <MindsetQueueView
-              cols={cols}
-              pm={pm}
-              patchBusyLeadId={patchBusyLeadId}
-              mindsetBusyLeadId={mindsetBusyLeadId}
-              mindsetPreviewByLeadId={mindsetPreviewByLeadId}
-              ensureMindsetPreview={ensureMindsetPreview}
-              onRequestMindsetSend={(lead) => setConfirmLead(lead)}
-              search={search}
-              nowMs={nowMs}
-              queueRole={surfaceRole === 'admin' ? 'admin' : surfaceRole === 'leader' ? 'leader' : 'team'}
-              currentUserId={currentUserId}
-            />
-          )
-          : (
-            <AdminView
-              cols={cols}
-              pm={pm}
-              patchBusyLeadId={patchBusyLeadId}
-              search={search}
-              nowMs={nowMs}
-              allowStageAdvance={surfaceRole !== 'team'}
-              tab={adminTab}
-              onTabChange={setAdminTab}
-            />
-          )
+        <AdminView
+          cols={cols}
+          pm={pm}
+          patchBusyLeadId={patchBusyLeadId}
+          search={search}
+          nowMs={nowMs}
+          allowStageAdvance={surfaceRole !== 'team'}
+          tab={adminTab}
+          onTabChange={setAdminTab}
+        />
       )}
-      {confirmLead ? (
-        <div className="keyboard-safe-modal fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4">
-          <div className="keyboard-safe-sheet w-full max-w-md overflow-y-auto rounded border border-border bg-card p-4 shadow-2xl">
-            <h3 className="text-base font-semibold text-foreground">
-              {surfaceRole === 'leader' ? 'Complete Mindset Lock?' : 'Send to Leader?'}
-            </h3>
-            <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-              {surfaceRole === 'leader' ? (
-                <>
-                  <li>You have completed the After Day 1 checklist and mindset call</li>
-                  <li>This action will complete Mindset Lock and move the lead into your Day 2 queue</li>
-                  <li>You can continue execution from the Day 2 tab</li>
-                </>
-              ) : (
-                <>
-                  <li>You have completed the After Day 1 checklist and mindset call</li>
-                  <li>This action will complete Mindset Lock and move the lead to Day 2 under your leader</li>
-                  <li>You won't be able to edit after this</li>
-                </>
-              )}
-            </ul>
-            <div className="mt-4 flex items-center justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setConfirmLead(null)}>
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                onClick={() => void completeMindsetLock(confirmLead.id)}
-                disabled={mindsetBusyLeadId === confirmLead.id}
-              >
-                {mindsetBusyLeadId === confirmLead.id
-                  ? surfaceRole === 'leader'
-                    ? 'Starting…'
-                    : 'Sending…'
-                  : surfaceRole === 'leader'
-                    ? 'Confirm & Start Day 2'
-                    : 'Confirm & Send'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
       {toastMsg ? (
         <div className="fixed bottom-24 right-4 z-[85] rounded-md border border-emerald-400/35 bg-emerald-400/15 px-3 py-2 text-ds-caption font-semibold text-emerald-200 shadow-lg">
           {toastMsg}

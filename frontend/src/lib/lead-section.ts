@@ -12,15 +12,10 @@ const NEXT_STATUS_BY_STATUS: Partial<Record<string, string>> = {
   invited: 'video_sent',
   whatsapp_sent: 'video_sent',
   video_sent: 'video_watched',
-  video_watched: 'paid',
-  paid: 'day1',
-  day1: 'mindset_lock',
-  mindset_lock: 'day2',
+  video_watched: 'day1',
+  day1: 'day2',
   day2: 'day3',
-  day3: 'day4',
-  day4: 'day5',
-  day5: 'interview',
-  interview: 'converted',
+  day3: 'converted',
   lost: 'retarget',
   inactive: 'retarget',
 }
@@ -36,9 +31,6 @@ function workboardTabPath(tab: string): string {
 function sectionForStatus(status: string, role: Role | null): LeadSectionInfo {
   if (status === 'retarget' || status === 'lost' || status === 'inactive') {
     return { label: 'Retarget', path: '/dashboard/work/retarget' }
-  }
-  if (status === 'mindset_lock') {
-    return { label: 'Mindset Lock', path: '/dashboard/work/mindset-lock' }
   }
   if (status === 'paid') {
     return { label: 'Workboard -> Day 1', path: workboardTabPath('day1') }

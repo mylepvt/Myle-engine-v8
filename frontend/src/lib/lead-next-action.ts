@@ -72,7 +72,6 @@ export function primaryActionLabel(targetSlug: string): string {
     video_sent: 'Send video (WhatsApp) → mark sent',
     video_watched: 'Mark video watched',
     paid: 'Mark paid Min. FLP Billing',
-    mindset_lock: 'Open After Day 1 mindset lock',
     day1: 'Move to Day 1',
     day2: 'Move to Day 2',
     day3: 'Move to Day 3',

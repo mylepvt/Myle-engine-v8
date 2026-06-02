@@ -34,8 +34,8 @@ describe('lead-section', () => {
     expect(
       nextSectionForLead({ status: 'day1', archived_at: null } as const, 'leader'),
     ).toEqual({
-      label: 'Mindset Lock',
-      path: '/dashboard/work/mindset-lock',
+      label: 'Workboard -> Day 2',
+      path: '/dashboard/work/workboard?tab=day2#pipeline',
     })
   })
 

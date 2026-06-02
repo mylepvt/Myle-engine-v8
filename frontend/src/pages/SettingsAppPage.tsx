@@ -26,13 +26,13 @@ const CONTENT_LINK_FIELDS: readonly SettingsTextField[] = [
     key: 'content.esbi_model',
     label: 'ESBI Model Video',
     placeholder: 'https://youtube.com/watch?v=...',
-    help: 'Mindset Lock me ESBI Model task ka Watch button is link pe jaata hai.',
+    help: 'Day 2 card me ESBI Model task ka Watch button is link pe jaata hai.',
   },
   {
     key: 'content.power_of_network',
     label: 'Power of Network Video',
     placeholder: 'https://youtube.com/watch?v=...',
-    help: 'Mindset Lock me Power of Network task ka Watch button is link pe jaata hai.',
+    help: 'Day 2 card me Power of Network task ka Watch button is link pe jaata hai.',
   },
   {
     key: 'content.manik_expose',
@@ -450,7 +450,7 @@ export function SettingsAppPage({ title }: Props) {
         <div>
           <h2 className="text-sm font-semibold text-foreground">Content Links</h2>
           <p className="text-xs text-muted-foreground">
-            ESBI Model, Power of Network, aur Expose Video ke links yahan set karo. Ye links Mindset Lock aur Day 2 cards mein directly use hote hain.
+            ESBI Model, Power of Network, aur Expose Video ke links yahan set karo. Ye links Day 2 cards mein directly use hote hain.
           </p>
         </div>
 

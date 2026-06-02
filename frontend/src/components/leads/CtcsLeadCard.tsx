@@ -22,7 +22,7 @@ function statusDotClass(status: string): string {
   if (status === 'contacted') return 'bg-yellow-500'
   if (status === 'lost' || status === 'inactive') return 'bg-gray-500'
   if (status === 'new_lead' || status === 'new') return 'bg-sky-400'
-  if (['mindset_lock', 'day1', 'day2'].includes(status)) return 'bg-emerald-400'
+  if (['day1', 'day2'].includes(status)) return 'bg-emerald-400'
   return 'bg-orange-400'
 }
 
