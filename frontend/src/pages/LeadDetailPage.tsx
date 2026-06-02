@@ -19,7 +19,6 @@ import {
   usePatchLeadDetailMutation,
   useResetStageClockMutation,
 } from '@/hooks/use-lead-detail-query'
-import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LeadBillingCard } from '@/components/leads/LeadBillingCard'
 import { LeadNextStepPanel } from '@/components/leads/LeadNextStepPanel'
@@ -27,10 +26,7 @@ import { LeadNotesPanel } from '@/components/leads/LeadNotesPanel'
 import { apiUrl } from '@/lib/api'
 import { callStatusSelectOptions } from '@/lib/call-status-options'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
-import {
-  openExternalShareUrl,
-} from '@/lib/external-share-window'
-import { buildLiveSessionWhatsAppUrl, type LiveSessionSlotOption } from '@/lib/live-session-slots'
+import { sendEnrollmentLiveLink } from '@/lib/enrollment-send'
 import { leadStatusSelectOptionsForLead, teamLeadStatusSelectOptions } from '@/lib/team-lead-status'
 
 type Props = {
@@ -221,7 +217,6 @@ export function LeadDetailPage({ leadId }: Props) {
   const [pipelineStatus, setPipelineStatus] = useState('')
   const [pipelineCallStatus, setPipelineCallStatus] = useState('')
   const [pipelineError, setPipelineError] = useState('')
-  const [pipelineSlotPickerOpen, setPipelineSlotPickerOpen] = useState(false)
   const [resetClockError, setResetClockError] = useState('')
 
   // Notes card
@@ -257,31 +252,18 @@ export function LeadDetailPage({ leadId }: Props) {
     setPipelineError('')
     try {
       if (pipelineStatus === 'video_sent') {
-        setPipelineSlotPickerOpen(true)
+        // Enrollment-Live: one tokenized /watch link (no time-slot picker); the send
+        // moves the lead to video_sent server-side.
+        await sendEnrollmentLiveLink(lead)
+        if (pipelineCallStatus) {
+          await patchMut.mutateAsync({ leadId, body: { call_status: pipelineCallStatus } })
+        }
         return
       }
       await patchMut.mutateAsync({
         leadId,
         body: { status: pipelineStatus as LeadStatus, call_status: pipelineCallStatus || undefined },
       })
-    } catch (e) {
-      setPipelineError(e instanceof Error ? e.message : 'Save failed')
-    }
-  }
-
-  async function handlePipelineSessionShare(option: LiveSessionSlotOption) {
-    if (!lead) return
-    setPipelineError('')
-    try {
-      await patchMut.mutateAsync({
-        leadId,
-        body: { status: 'video_sent', call_status: pipelineCallStatus || undefined },
-      })
-      const shareUrl = buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option)
-      if (!shareUrl || !openExternalShareUrl(shareUrl)) {
-        throw new Error('Could not open WhatsApp share window')
-      }
-      setPipelineSlotPickerOpen(false)
     } catch (e) {
       setPipelineError(e instanceof Error ? e.message : 'Save failed')
     }
@@ -841,12 +823,6 @@ export function LeadDetailPage({ leadId }: Props) {
         </div>
       </div>
     </div>
-    <LiveSessionSlotPicker
-      open={pipelineSlotPickerOpen}
-      busy={patchMut.isPending}
-      onClose={() => setPipelineSlotPickerOpen(false)}
-      onConfirm={(option) => void handlePipelineSessionShare(option)}
-    />
     </>
   )
 }
