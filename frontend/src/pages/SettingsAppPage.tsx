@@ -1,4 +1,4 @@
-import { type HTMLAttributes, useMemo, useState } from 'react'
+import { type HTMLAttributes, useEffect, useMemo, useState } from 'react'
 import { Eye, EyeOff, CheckCircle2, XCircle, Smartphone } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
@@ -62,6 +62,9 @@ export function SettingsAppPage({ title }: Props) {
 
   const [q, setQ] = useState('')
   const [contentEdits, setContentEdits] = useState<Record<string, string>>({})
+  const [enrollmentUrlValue, setEnrollmentUrlValue] = useState('')
+  const [enrollmentSaveMsg, setEnrollmentSaveMsg] = useState<string | null>(null)
+  const [enrollmentErrorMsg, setEnrollmentErrorMsg] = useState<string | null>(null)
   const [waEdits, setWaEdits] = useState<Record<string, string>>({})
   const [showAccessToken, setShowAccessToken] = useState(false)
   const [reminderSending, setReminderSending] = useState(false)
@@ -73,6 +76,12 @@ export function SettingsAppPage({ title }: Props) {
   const [contentErrorMsg, setContentErrorMsg] = useState<string | null>(null)
   const [waErrorMsg, setWaErrorMsg] = useState<string | null>(null)
   const settingsSource = appSettingsData?.settings ?? {}
+
+  useEffect(() => {
+    if (!enrollmentUrlValue && settingsSource.flp_min_billing_video_source_url) {
+      setEnrollmentUrlValue(settingsSource.flp_min_billing_video_source_url)
+    }
+  }, [settingsSource.flp_min_billing_video_source_url])
   const resolvedContentValue = (key: string): string =>
     Object.prototype.hasOwnProperty.call(contentEdits, key) ? (contentEdits[key] ?? '') : (settingsSource[key] ?? '')
   const resolvedWaValue = (key: string): string =>
@@ -103,6 +112,21 @@ export function SettingsAppPage({ title }: Props) {
       void refetchAppSettings()
     } catch (error) {
       setContentErrorMsg(error instanceof Error ? error.message : 'Could not save content links.')
+    }
+  }
+
+  const handleSaveEnrollmentUrl = async () => {
+    setEnrollmentSaveMsg(null)
+    setEnrollmentErrorMsg(null)
+    try {
+      await updateAppSetting.mutateAsync({
+        key: 'flp_min_billing_video_source_url',
+        value: enrollmentUrlValue.trim(),
+      })
+      setEnrollmentSaveMsg('Enrollment video URL saved.')
+      void refetchAppSettings()
+    } catch (error) {
+      setEnrollmentErrorMsg(error instanceof Error ? error.message : 'Could not save enrollment video URL.')
     }
   }
 
@@ -320,8 +344,47 @@ export function SettingsAppPage({ title }: Props) {
         </div>
       </section>
 
+      <section className="surface-elevated space-y-3 p-4">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">Enrollment Live Video</h2>
+          <p className="text-xs text-muted-foreground">
+            Calling board se "Send Enrollment-Live video" bhejne pe lead ko token link jaata hai. Yahan video URL set karo jo lead dekhega.
+          </p>
+        </div>
 
+        {appSettingsPending ? (
+          <Skeleton className="h-9 w-full" />
+        ) : appSettingsError ? (
+          <div className="text-sm text-destructive" role="alert">
+            {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load app settings.'}
+          </div>
+        ) : (
+          <label className="block text-sm">
+            <span className="mb-1 block text-ds-caption text-muted-foreground">Video URL</span>
+            <input
+              type="text"
+              value={enrollmentUrlValue}
+              onChange={(e) => setEnrollmentUrlValue(e.target.value)}
+              placeholder="https://pub-xxxx.r2.dev/enrollment.mp4"
+              className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+            />
+            <span className="mt-1 block text-muted-foreground/80">Direct hosted URL (R2 / .mp4 / HLS) — YouTube nahi.</span>
+          </label>
+        )}
 
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            disabled={updateAppSetting.isPending || appSettingsPending || appSettingsError}
+            onClick={() => void handleSaveEnrollmentUrl()}
+            className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-medium text-primary disabled:opacity-50"
+          >
+            {updateAppSetting.isPending ? 'Saving...' : 'Save enrollment video URL'}
+          </button>
+          {enrollmentSaveMsg ? <p className="text-xs text-emerald-400">{enrollmentSaveMsg}</p> : null}
+          {enrollmentErrorMsg ? <p className="text-xs text-destructive">{enrollmentErrorMsg}</p> : null}
+        </div>
+      </section>
 
       {/* WhatsApp Meta API */}
       <section className="surface-elevated space-y-3 p-4">
