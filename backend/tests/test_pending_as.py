@@ -1,8 +1,14 @@
 """Pending AS process queue — converted leads awaiting FLP-invoice / CC approval."""
 from __future__ import annotations
 
+from decimal import Decimal
+
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.lead_sale import LeadSale
 
 _PHONE = iter(range(9150000000, 9150009999))
 
@@ -25,7 +31,7 @@ async def _converted_lead(admin_client: AsyncClient) -> int:
 
 
 @pytest.mark.asyncio
-async def test_converted_lead_appears_then_clears(admin_client: AsyncClient):
+async def test_converted_lead_appears_then_clears(admin_client: AsyncClient, engine):
     lead_id = await _converted_lead(admin_client)
 
     listed = await admin_client.get("/api/v1/pending-as")
@@ -33,7 +39,8 @@ async def test_converted_lead_appears_then_clears(admin_client: AsyncClient):
     ids = [r["id"] for r in listed.json()["items"]]
     assert lead_id in ids, "converted lead with no approved sale must be pending AS"
 
-    # An approved sale (FLP invoice processed) removes it from the queue.
+    # A Day-3 STAGE-PAYMENT proof creates an approved LeadSale but with NULL case_credits
+    # — the CC/FOREVER invoice is still due, so the lead must STAY in pending AS.
     up = await admin_client.post(
         "/api/v1/payments/proof/upload",
         files={"proof_file": ("p.png", _PNG, "image/png")},
@@ -43,7 +50,20 @@ async def test_converted_lead_appears_then_clears(admin_client: AsyncClient):
     ap = await admin_client.post(f"/api/v1/payments/proof/approve?lead_id={lead_id}")
     assert ap.status_code == 200, ap.text
 
+    still = await admin_client.get("/api/v1/pending-as")
+    assert lead_id in [r["id"] for r in still.json()["items"]], (
+        "stage-payment approval (no case_credits) must NOT clear the lead from pending AS"
+    )
+
+    # Approving the FOREVER invoice (case_credits parsed via OCR) is what clears it.
+    async with AsyncSession(engine, expire_on_commit=False) as s:
+        sale = (
+            await s.execute(select(LeadSale).where(LeadSale.lead_id == lead_id))
+        ).scalar_one()
+        sale.case_credits = Decimal("1.5")
+        await s.commit()
+
     after = await admin_client.get("/api/v1/pending-as")
-    assert after.status_code == 200
-    ids_after = [r["id"] for r in after.json()["items"]]
-    assert lead_id not in ids_after, "approved CC sale must clear the lead from pending AS"
+    assert lead_id not in [r["id"] for r in after.json()["items"]], (
+        "approved CC invoice (case_credits set) must clear the lead from pending AS"
+    )
