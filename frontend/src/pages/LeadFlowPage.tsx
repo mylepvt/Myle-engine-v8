@@ -7,13 +7,13 @@ type Props = {
 }
 
 const PIPELINE_STAGES = [
-  'new_lead', 'invited', 'whatsapp_sent', 'video_sent', 'video_watched',
-  'paid', 'mindset_lock', 'day1', 'day2', 'day3', 'day4', 'day5', 'interview', 'converted',
+  'new_lead', 'contacted', 'invited', 'video_sent', 'video_watched',
+  'day1', 'day2', 'day3', 'converted',
 ] as const
 
 const TERMINAL_STAGES = ['lost', 'retarget', 'inactive'] as const
 
-const INTERNAL_COMPAT_STAGES = ['contacted', 'training', 'pending', 'new'] as const
+const INTERNAL_COMPAT_STAGES = ['training', 'new'] as const
 
 function label(v: string): string {
   return LEAD_STATUS_OPTIONS.find((o) => o.value === v)?.label ?? v
@@ -23,17 +23,12 @@ const STAGE_COLORS: Record<string, string> = {
   new_lead:       'border-primary/30 bg-primary/10 text-primary',
   contacted:      'border-sky-400/30 bg-sky-400/10 text-sky-400',
   invited:        'border-violet-400/30 bg-violet-400/10 text-violet-400',
-  whatsapp_sent:  'border-pink-400/30 bg-pink-400/10 text-pink-400',
   video_sent:     'border-indigo-400/30 bg-indigo-400/10 text-indigo-400',
   video_watched:  'border-blue-400/30 bg-blue-400/10 text-blue-400',
-  paid:           'border-amber-400/30 bg-amber-400/10 text-amber-400',
-  mindset_lock:   'border-fuchsia-400/30 bg-fuchsia-400/10 text-fuchsia-400',
   day1:           'border-orange-400/30 bg-orange-400/10 text-orange-400',
   day2:           'border-yellow-400/30 bg-yellow-400/10 text-yellow-400',
   day3:           'border-lime-400/30 bg-lime-400/10 text-lime-400',
-  day4:           'border-emerald-400/30 bg-emerald-400/10 text-emerald-400',
-  day5:           'border-teal-400/30 bg-teal-400/10 text-teal-400',
-  interview:      'border-lime-400/30 bg-lime-400/10 text-lime-400',
+  training:       'border-cyan-400/30 bg-cyan-400/10 text-cyan-400',
   converted:      'border-[hsl(142_71%_45%)]/30 bg-[hsl(142_71%_45%)]/10 text-[hsl(142_71%_45%)]',
   lost:           'border-destructive/30 bg-destructive/10 text-destructive',
   retarget:       'border-rose-400/30 bg-rose-400/10 text-rose-400',
@@ -74,11 +69,11 @@ export function LeadFlowPage({ title }: Props) {
           ))}
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          After <span className="font-medium text-foreground">Video Watched</span>, the team uploads FLP invoice,
-          admin approves it, and only then the lead may enter <span className="font-medium text-foreground">Paid Min. FLP Billing</span>.
-          Post-day-3 execution continues through <span className="font-medium text-foreground">Interview</span>,{' '}
-          <span className="font-medium text-foreground">Track Selected</span>, and{' '}
-          <span className="font-medium text-foreground">Seat Hold</span> before conversion.
+          Team scope ends at <span className="font-medium text-foreground">Video Watched</span> (Enrollment-Live link watched).
+          Leader/admin then run <span className="font-medium text-foreground">Day 1 → Day 2 → Day 3</span>. Day 2 → Day 3 needs all
+          Day-2 batches done plus a passed business test (admin-only). The{' '}
+          <span className="font-medium text-foreground">Day 3</span> close runs Interview → 2CC → Blueprint → Stage 1/2/3 → Seat-hold →
+          <span className="font-medium text-foreground"> Converted</span>. The FLP invoice (OCR → CC/revenue/cheque) is uploaded after conversion.
         </p>
       </div>
 
