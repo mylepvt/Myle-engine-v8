@@ -168,6 +168,7 @@ async def _prepare_share_link(
         created_by_user_id=user.user_id,
         youtube_url=resolved_source_url,
         title=resolved_title,
+        expires_at=flp_min_billing_expires_at(now),
     )
     session.add(link)
     return link
