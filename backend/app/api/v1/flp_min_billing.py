@@ -683,6 +683,9 @@ async def mark_watch_completed(
                             },
                         )
                     )
+            # Auto-advance to Day 1 so the watched lead lands directly on the
+            # leader's workboard Day 1 instead of resting at video_watched.
+            lead.status = "day1"
     lead.last_action_at = now
 
     await session.commit()
@@ -695,7 +698,7 @@ async def mark_watch_completed(
                     session,
                     owner_id,
                     title="Enrollment-Live watched 🎬",
-                    body=f"{lead.name} ne Day 1 video dekh li — ab aapke paas (video_watched).",
+                    body=f"{lead.name} ne Day 1 video dekh li — ab Day 1 me aapke workboard par.",
                     url="/dashboard/work/leads",
                 )
             except Exception:

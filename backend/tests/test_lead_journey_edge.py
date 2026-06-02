@@ -128,14 +128,20 @@ async def test_team_walks_lead_to_video_watched(team_client: AsyncClient, engine
     await _seed_hierarchy(engine)
     lead_id = await _create_lead(team_client, "9000000001")
 
-    for target in ("contacted", "invited", "video_sent", "video_watched"):
+    for target in ("contacted", "invited", "video_sent"):
         resp = await _patch_status(team_client, lead_id, target)
         assert resp.status_code == 200, f"team {target} should be allowed: {resp.text}"
         assert resp.json()["status"] == target
 
+    # Marking video_watched is the team's last step — it auto-advances the lead to
+    # Day 1 and hands it off to the upline leader (lands on the leader's workboard).
+    resp = await _patch_status(team_client, lead_id, "video_watched")
+    assert resp.status_code == 200, f"team video_watched should be allowed: {resp.text}"
+    assert resp.json()["status"] == "day1"
+
     lead = await _get_lead_row(engine, lead_id)
     assert lead.owner_user_id == 201               # owner stays the team claimer (sticky)
-    assert lead.assigned_to_user_id == 202         # video_watched hands off to the upline leader
+    assert lead.assigned_to_user_id == 202         # handed off to the upline leader
     assert lead.is_reassigned is True
 
 
