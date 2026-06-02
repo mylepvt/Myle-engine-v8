@@ -134,8 +134,9 @@ async def test_team_walks_lead_to_video_watched(team_client: AsyncClient, engine
         assert resp.json()["status"] == target
 
     lead = await _get_lead_row(engine, lead_id)
-    assert lead.owner_user_id == 201
-    assert lead.assigned_to_user_id == 201
+    assert lead.owner_user_id == 201               # owner stays the team claimer (sticky)
+    assert lead.assigned_to_user_id == 202         # video_watched hands off to the upline leader
+    assert lead.is_reassigned is True
 
 
 # ── 2. TEAM edge: forbidden forward jumps to closing stages ───────────────────
@@ -149,8 +150,10 @@ async def test_team_cannot_jump_to_closing_stages(team_client: AsyncClient, engi
     for target in ("contacted", "invited", "video_sent", "video_watched"):
         assert (await _patch_status(team_client, lead_id, target)).status_code == 200
 
+    # After video_watched the lead is handed off to the leader, so the team can no longer
+    # push it forward — blocked either by the role gate (400) or loss of access (403).
     resp = await _patch_status(team_client, lead_id, forbidden)
-    assert resp.status_code == 400, f"team must NOT set {forbidden}: {resp.text}"
+    assert resp.status_code in (400, 403), f"team must NOT set {forbidden}: {resp.text}"
 
 
 # ── 3. CLOSING walk: leader day1→day2, admin day2→day3, leader day3→converted ──

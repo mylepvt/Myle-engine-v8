@@ -8,20 +8,15 @@ export const LEAD_PIPELINE_ORDER: readonly string[] = [
 ]
 
 const PRIMARY_NEXT_BY_STATUS: Record<string, string> = {
-  new_lead: 'invited',
+  new_lead: 'contacted',
   contacted: 'invited',
   invited: 'video_sent',
-  whatsapp_sent: 'video_sent',
   video_sent: 'video_watched',
-  video_watched: 'paid',
-  paid: 'day1',
-  day1: 'mindset_lock',
-  mindset_lock: 'day2',
+  // Team scope ends here: marking watched hands the lead off to the leader for Day 1.
+  video_watched: 'day1',
+  day1: 'day2',
   day2: 'day3',
-  day3: 'day4',
-  day4: 'day5',
-  day5: 'interview',
-  interview: 'converted',
+  day3: 'converted',
 }
 
 const VISIBLE_ALTERNATIVE_TARGETS = new Set<string>([
