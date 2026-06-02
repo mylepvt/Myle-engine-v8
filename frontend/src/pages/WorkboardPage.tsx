@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeftRight,
@@ -1246,7 +1247,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
             {nextLabel ?? 'Move to next stage →'}
           </button>
         )}
-        {batchModal ? (
+        {batchModal ? createPortal(
           <div className="keyboard-safe-modal fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4">
             <div
               className="keyboard-safe-sheet w-full max-w-lg overflow-y-auto rounded border border-border bg-card p-4 shadow-2xl"
@@ -1360,7 +1361,8 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
                 </Button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         ) : null}
       </div>
     )
