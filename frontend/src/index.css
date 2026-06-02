@@ -631,18 +631,35 @@
 
   /* ─── Mobile bottom tab bar ──────────────────────────────────────────────── */
 
-  /* Floating glass pill bar (iOS 17 style) — the <nav> is just the safe-area
-     spacer; the visible bar is the rounded, detached __inner pill. */
+  /* Docked glass tab bar — the bar fills all the way to the screen bottom; the
+     iPhone home-indicator safe area is tinted bar background (NOT empty space).
+     Nav items sit in the top row, above the indicator. */
   .dashboard-mobile-tabbar {
     position: relative;
     isolation: isolate;
-    min-height: calc(66px + env(safe-area-inset-bottom, 0px));
+    pointer-events: auto;
     padding-bottom: env(safe-area-inset-bottom, 0px);
-    background: transparent;
-    border: none;
-    box-shadow: none;
+    background-color: color-mix(in srgb, var(--card) 86%, transparent);
+    border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+    box-shadow: 0 -8px 30px -12px rgba(0, 0, 0, 0.55);
+    backdrop-filter: saturate(180%) blur(24px);
+    -webkit-backdrop-filter: saturate(180%) blur(24px);
+    transition: background-color 0.2s ease, box-shadow 0.22s ease;
+  }
+
+  /* hairline top highlight */
+  .dashboard-mobile-tabbar::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
     pointer-events: none;
-    transition: opacity 0.18s ease, transform 0.18s ease;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, white 12%, transparent),
+      transparent
+    );
   }
 
   /* Hide tab bar when software keyboard is open (keyboard inset > 0) */
@@ -650,59 +667,58 @@
     display: none;
   }
 
-  .dashboard-mobile-tabbar__inner {
-    position: relative;
-    pointer-events: auto;
-    margin: 0 0.75rem max(0.5rem, env(safe-area-inset-bottom, 0px));
-    border-radius: 1.4rem;
-    background-color: color-mix(in srgb, var(--card) 82%, transparent);
-    border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
-    box-shadow:
-      0 10px 34px -10px rgba(0, 0, 0, 0.6),
-      0 2px 8px -4px rgba(0, 0, 0, 0.5),
-      inset 0 1px 0 color-mix(in srgb, white 9%, transparent);
-    backdrop-filter: saturate(170%) blur(22px);
-    -webkit-backdrop-filter: saturate(170%) blur(22px);
-    transition: background-color 0.2s ease, box-shadow 0.22s ease;
+  .dashboard-mobile-tabbar--scrolled {
+    background-color: color-mix(in srgb, var(--card) 93%, transparent);
+    box-shadow: 0 -10px 38px -12px rgba(0, 0, 0, 0.65);
   }
 
-  .dashboard-mobile-tabbar--scrolled .dashboard-mobile-tabbar__inner {
-    background-color: color-mix(in srgb, var(--card) 90%, transparent);
-    box-shadow:
-      0 14px 40px -10px rgba(0, 0, 0, 0.7),
-      0 2px 8px -4px rgba(0, 0, 0, 0.55),
-      inset 0 1px 0 color-mix(in srgb, white 10%, transparent);
+  .dashboard-mobile-tabbar__inner {
+    position: relative;
   }
 
   .dashboard-mobile-tabbar__tab {
+    position: relative;
     border: 1px solid transparent;
     transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1),
       background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
   }
 
   .dashboard-mobile-tabbar__tab:active {
-    transform: scale(0.9);
+    transform: scale(0.88);
   }
 
   .dashboard-mobile-tabbar__tab--active {
-    border-color: color-mix(in srgb, var(--primary) 38%, transparent);
     background: linear-gradient(
       180deg,
-      color-mix(in srgb, var(--primary) 24%, transparent),
-      color-mix(in srgb, var(--primary) 12%, transparent)
+      color-mix(in srgb, var(--primary) 22%, transparent),
+      color-mix(in srgb, var(--primary) 9%, transparent)
     );
     box-shadow:
-      0 0 18px -5px color-mix(in srgb, var(--primary) 60%, transparent),
-      inset 0 1px 0 color-mix(in srgb, white 26%, transparent);
+      0 0 16px -4px color-mix(in srgb, var(--primary) 55%, transparent),
+      inset 0 1px 0 color-mix(in srgb, white 22%, transparent);
+  }
+
+  /* active top-indicator pill */
+  .dashboard-mobile-tabbar__tab--active::before {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 26px;
+    height: 3px;
+    border-radius: 0 0 3px 3px;
+    background: var(--primary);
+    box-shadow: 0 0 10px -1px color-mix(in srgb, var(--primary) 70%, transparent);
   }
 
   .dashboard-mobile-tabbar__tab--active svg {
-    transform: scale(1.08);
+    transform: scale(1.12);
     transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   .dashboard-mobile-tabbar__tab--idle:hover {
-    background-color: color-mix(in srgb, var(--muted) 60%, transparent);
+    background-color: color-mix(in srgb, var(--muted) 55%, transparent);
   }
 
   .dashboard-sidebar {
