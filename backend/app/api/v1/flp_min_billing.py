@@ -33,8 +33,12 @@ from app.schemas.flp_min_billing import (
     WatchEventResponse,
     WatchPageData,
     WatchUnlockRequest,
+    SessionSlotInfo,
+    SessionSlotsResponse,
 )
+from app.models.activity_log import ActivityLog
 from app.services.crm_outbox import enqueue_lead_shadow_upsert
+from app.services.user_hierarchy import nearest_leader_for_user
 from app.services.observation_logger import observe_event
 from app.services.flp_min_billing_video import (
     absolute_video_source_url,
@@ -158,6 +162,7 @@ async def _prepare_share_link(
     now: datetime,
     source_url: str | None = None,
     title: str | None = None,
+    session_hour: int | None = None,
 ) -> FlpMinBillingShareLink:
     resolved_source_url = source_url or await require_secure_flp_min_billing_video_source(session)
     resolved_title = title or await get_flp_min_billing_video_title(session)
@@ -169,6 +174,7 @@ async def _prepare_share_link(
         youtube_url=resolved_source_url,
         title=resolved_title,
         expires_at=flp_min_billing_expires_at(now),
+        session_hour=session_hour,
     )
     session.add(link)
     return link
@@ -194,13 +200,14 @@ def _slot_label_from_key(slot_key: str) -> str | None:
 async def _resolve_selected_live_session_source(
     session: AsyncSession,
     slot_key: str | None,
-) -> tuple[str | None, str | None]:
+) -> tuple[str | None, str | None, int | None]:
     clean_key = (slot_key or "").strip()
     if not clean_key:
-        return None, None
+        return None, None, None
     slot_label = _slot_label_from_key(clean_key)
     if slot_label is None:
         raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Invalid live session slot")
+    slot_time = _slot_time_from_key(clean_key)
     source_url = (await get_app_setting(session, clean_key)).strip()
     if not source_url:
         raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=f"{slot_label} live session video is not configured.")
@@ -211,7 +218,7 @@ async def _resolve_selected_live_session_source(
             detail=f"{slot_label} live session video must be a direct hosted link, not YouTube.",
         )
     base_title = (await get_app_setting(session, "live_session_title")).strip() or "Live Session"
-    return normalized_source, f"{base_title} • {slot_label}"
+    return normalized_source, f"{base_title} • {slot_label}", slot_time[0] if slot_time else None
 
 
 async def _get_watch_link_and_lead(
@@ -260,6 +267,7 @@ def _watch_page_payload(
         total_seats=snapshot.get("total_seats"),
         seats_left=snapshot.get("seats_left"),
         trust_note=snapshot.get("trust_note"),
+        session_hour=link.session_hour,
     )
 
 
@@ -281,7 +289,7 @@ async def generate_share_link(
         raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Lead phone number is required.")
 
     now = datetime.now(timezone.utc)
-    selected_source, selected_title = await _resolve_selected_live_session_source(session, body.live_session_slot_key)
+    selected_source, selected_title, slot_hour = await _resolve_selected_live_session_source(session, body.live_session_slot_key)
     link = await _prepare_share_link(
         session=session,
         lead=lead,
@@ -289,6 +297,7 @@ async def generate_share_link(
         now=now,
         source_url=selected_source,
         title=selected_title,
+        session_hour=slot_hour or body.session_hour,
     )
     should_sync_lead = _sync_lead_for_send(lead, now=now)
 
@@ -301,6 +310,28 @@ async def generate_share_link(
                   lead_id=lead.id, link_id=link.id)
     await notify_topics("enroll")
     return _build_public_link(link)
+
+
+@router.get("/session-slots", response_model=SessionSlotsResponse)
+async def get_session_slots(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+) -> SessionSlotsResponse:
+    """Return available live session slots from current hour onwards (team-only)."""
+    import datetime as dt_module
+    now_ist = dt_module.datetime.now(_IST)
+    current_hour = now_ist.hour
+    slots = []
+    default_hour = 11
+    for key, label in _LIVE_SESSION_SLOT_ORDER:
+        hour = int(key.removeprefix("live_session_slot_").split("_")[0])
+        if hour < current_hour:
+            continue
+        if default_hour < hour and default_hour < current_hour:
+            default_hour = hour
+        elif default_hour == 11 or hour == current_hour:
+            default_hour = hour
+        slots.append(SessionSlotInfo(hour=hour, label=label, slot_key=key))
+    return SessionSlotsResponse(slots=slots, default_hour=default_hour)
 
 
 @router.post("/send", response_model=FlpMinBillingVideoSendResponse, status_code=http_status.HTTP_201_CREATED)
@@ -318,7 +349,7 @@ async def send_flp_min_billing_video(
 
     now = datetime.now(timezone.utc)
     try:
-        selected_source, selected_title = await _resolve_selected_live_session_source(session, body.live_session_slot_key)
+        selected_source, selected_title, slot_hour = await _resolve_selected_live_session_source(session, body.live_session_slot_key)
         link = await _prepare_share_link(
             session=session,
             lead=lead,
@@ -326,6 +357,7 @@ async def send_flp_min_billing_video(
             now=now,
             source_url=selected_source,
             title=selected_title,
+            session_hour=slot_hour or body.session_hour,
         )
         public_app_url = await resolve_public_app_url(session, request)
         watch_url = f"{public_app_url}/watch/{link.token}"
@@ -627,6 +659,30 @@ async def mark_watch_completed(
         if lead.status == _VIDEO_SENT_STATUS:
             lead.status = "video_watched"
             advanced = True
+            # Auto-handoff: prospect watched the video → reassign to nearest upline leader
+            # so the lead surfaces on the leader's workboard for Day 1.
+            owner_id = resolved_owner_user_id(lead)
+            if owner_id:
+                leader = await nearest_leader_for_user(session, owner_id)
+                if leader is not None and lead.assigned_to_user_id != leader.id:
+                    from_uid = lead.assigned_to_user_id
+                    lead.assigned_to_user_id = leader.id
+                    lead.is_reassigned = True
+                    lead.reassigned_at = now
+                    session.add(
+                        ActivityLog(
+                            user_id=owner_id,
+                            action="leader_handoff_video_watched",
+                            entity_type="lead",
+                            entity_id=lead.id,
+                            meta={
+                                "from_user_id": from_uid,
+                                "to_user_id": leader.id,
+                                "leader_id": leader.id,
+                                "source": "auto_watch_complete",
+                            },
+                        )
+                    )
     lead.last_action_at = now
 
     await session.commit()
