@@ -7,6 +7,8 @@ import {
   Banknote,
   BellRing,
   CalendarDays,
+  Check,
+  ChevronDown,
   ChevronRight,
   ClipboardCheck,
   Clock,
@@ -22,13 +24,15 @@ import {
   Users,
   Video,
   Wallet,
+  type LucideIcon,
 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardLink, CardTitle } from '@/components/ui/card'
 import { EmptyState, ErrorState } from '@/components/ui/states'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { useAdminActivitySSE } from '@/hooks/use-admin-activity-sse'
 import { AdminActivityPanel } from '@/components/dashboard/AdminActivityPanel'
 import { CcSummaryCard } from '@/components/dashboard/CcSummaryCard'
@@ -597,6 +601,108 @@ function GraceRequestRow({ member }: { member: TeamMemberPublic }) {
   )
 }
 
+const DASHBOARD_TABS: readonly { value: string; label: string; Icon: LucideIcon }[] = [
+  { value: 'today', label: 'Today', Icon: CalendarDays },
+  { value: 'leads', label: 'Leads', Icon: Search },
+  { value: 'premiere', label: 'Live Attendees', Icon: Video },
+  { value: 'team', label: 'Team', Icon: Users },
+  { value: 'leaders', label: 'Leaders', Icon: Activity },
+  { value: 'finance', label: 'Finance', Icon: Wallet },
+  { value: 'content', label: 'Content', Icon: Settings },
+  { value: 'audit', label: 'Audit', Icon: ShieldCheck },
+]
+
+/** Apple-style single view switcher — replaces an 8-wide tab strip with one clean
+ *  popup button + dropdown (current view + total alert count, per-item badges). */
+function DashboardViewSwitcher({
+  active,
+  badges,
+  onSelect,
+}: {
+  active: string
+  badges: Record<string, number>
+  onSelect: (value: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDocClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onEsc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('mousedown', onDocClick)
+    document.addEventListener('keydown', onEsc)
+    return () => {
+      document.removeEventListener('mousedown', onDocClick)
+      document.removeEventListener('keydown', onEsc)
+    }
+  }, [open])
+
+  const current = DASHBOARD_TABS.find((t) => t.value === active) ?? DASHBOARD_TABS[0]
+  const CurrentIcon = current.Icon
+  const totalAlerts = Object.values(badges).reduce((a, b) => a + (b || 0), 0)
+
+  return (
+    <div ref={ref} className="relative inline-block">
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-2.5 rounded-xl border border-border/60 bg-card/70 px-4 py-2.5 text-sm font-semibold text-foreground shadow-sm backdrop-blur transition hover:border-border hover:bg-card focus:outline-none focus:ring-2 focus:ring-primary/30"
+      >
+        <CurrentIcon className="size-4 text-primary" />
+        <span>{current.label}</span>
+        {totalAlerts > 0 && (
+          <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
+            {totalAlerts}
+          </span>
+        )}
+        <ChevronDown className={cn('size-4 text-muted-foreground transition-transform', open && 'rotate-180')} />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute left-0 z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-border/60 bg-popover/95 p-1.5 shadow-xl backdrop-blur-xl"
+        >
+          {DASHBOARD_TABS.map((t) => {
+            const Icon = t.Icon
+            const badge = badges[t.value] ?? 0
+            const isActive = t.value === active
+            return (
+              <button
+                key={t.value}
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  onSelect(t.value)
+                  setOpen(false)
+                }}
+                className={cn(
+                  'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition',
+                  isActive ? 'bg-primary/12 font-semibold text-primary' : 'text-foreground/85 hover:bg-muted/60',
+                )}
+              >
+                <Icon className={cn('size-4 shrink-0', isActive ? 'text-primary' : 'text-muted-foreground')} />
+                <span className="flex-1 text-left">{t.label}</span>
+                {badge > 0 && (
+                  <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
+                    {badge}
+                  </span>
+                )}
+                {isActive && <Check className="size-4 shrink-0 text-primary" />}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function AdminCommandCenter({ firstName }: Props) {
   const [activeTab, setActiveTab] = useState('today')
   const [leadSearch, setLeadSearch] = useState('')
@@ -781,60 +887,18 @@ export function AdminCommandCenter({ firstName }: Props) {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-px rounded bg-muted/40 p-1">
-          <TabsTrigger value="today" className="flex items-center gap-1.5">
-            <CalendarDays className="size-3.5" />
-            Today
-            {pendingTotal > 0 && (
-              <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
-                {pendingTotal}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="leads" className="flex items-center gap-1.5">
-            <Search className="size-3.5" />
-            Leads
-          </TabsTrigger>
-          <TabsTrigger value="premiere" className="flex items-center gap-1.5">
-            <Video className="size-3.5" />
-            Live Attendees
-            {premiereActiveCount > 0 && (
-              <span className="rounded-full bg-red-500/20 px-1.5 py-0.5 text-[10px] font-bold text-red-400">
-                {premiereActiveCount}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="team" className="flex items-center gap-1.5">
-            <Users className="size-3.5" />
-            Team
-            {pendingGraceCount > 0 && (
-              <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
-                {pendingGraceCount}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="leaders" className="flex items-center gap-1.5">
-            <Activity className="size-3.5" />
-            Leaders
-          </TabsTrigger>
-          <TabsTrigger value="finance" className="flex items-center gap-1.5">
-            <Wallet className="size-3.5" />
-            Finance
-            {pendingRechargeItems.length > 0 && (
-              <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
-                {pendingRechargeItems.length}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="content" className="flex items-center gap-1.5">
-            <Settings className="size-3.5" />
-            Content
-          </TabsTrigger>
-          <TabsTrigger value="audit" className="flex items-center gap-1.5">
-            <ShieldCheck className="size-3.5" />
-            Audit
-          </TabsTrigger>
-        </TabsList>
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <DashboardViewSwitcher
+            active={activeTab}
+            badges={{
+              today: pendingTotal,
+              premiere: premiereActiveCount,
+              team: pendingGraceCount,
+              finance: pendingRechargeItems.length,
+            }}
+            onSelect={setActiveTab}
+          />
+        </div>
 
         <TabsContent value="today">
           {/* Full live ops dashboard */}
