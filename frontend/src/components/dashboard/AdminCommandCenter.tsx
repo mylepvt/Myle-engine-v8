@@ -223,39 +223,6 @@ function StatCard({
   return <Card className="overflow-hidden">{inner}</Card>
 }
 
-// Compact operations panel — replaces 6 individual stat cards
-function OpsRow({
-  label,
-  value,
-  hint,
-  variant = 'default',
-  to,
-}: {
-  label: string
-  value: string | number
-  hint: string
-  variant?: StatVariant
-  to?: string
-}) {
-  const styles = STAT_VARIANT_STYLES[variant]
-  const hasValue = Number(value) > 0
-  const inner = (
-    <div
-      title={hint}
-      className={`flex items-center gap-3 px-4 py-2.5 transition-colors ${to ? 'hover:bg-muted/30' : ''}`}
-    >
-      <div className={`size-1.5 shrink-0 rounded-full ${hasValue ? styles.dot : 'bg-muted-foreground/20'}`} />
-      <p className="flex-1 truncate text-sm text-foreground/75">{label}</p>
-      <p className={`shrink-0 tabular-nums text-sm font-semibold ${hasValue ? styles.value : 'text-muted-foreground/40'}`}>
-        {value}
-      </p>
-      {to && <ChevronRight className="size-3 shrink-0 text-muted-foreground/25" />}
-    </div>
-  )
-  if (to) return <Link to={to} className="block no-underline">{inner}</Link>
-  return <div>{inner}</div>
-}
-
 function DeskShortcut({
   to,
   title,
@@ -911,79 +878,53 @@ export function AdminCommandCenter({ firstName }: Props) {
           </div>
 
           <div className="space-y-4">
-              {/* Pipeline stats bar */}
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <div className="surface-inset rounded px-3 py-2.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Calls Today</p>
-                  <p className="mt-0.5 text-xl font-bold tabular-nums text-foreground">{liveSummary?.calls_made_today ?? 0}</p>
-                </div>
-                <div className="surface-inset rounded px-3 py-2.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Day 1</p>
-                  <p className="mt-0.5 text-xl font-bold tabular-nums text-emerald-400">{liveDash.day1Total || (liveSummary?.day1_total ?? 0)}</p>
-                </div>
-                <div className="surface-inset rounded px-3 py-2.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Day 2</p>
-                  <p className="mt-0.5 text-xl font-bold tabular-nums text-foreground">{liveDash.day2Total || (liveSummary?.day2_total ?? 0)}</p>
-                </div>
-                <div className="surface-inset rounded px-3 py-2.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Claims</p>
-                  <p className="mt-0.5 text-xl font-bold tabular-nums text-foreground">{liveDash.claimedToday || (liveSummary?.leads_claimed_today ?? 0)}</p>
-                </div>
-              </div>
-
-              {/* Ops panel */}
-              <Card className="overflow-hidden">
-                <div className="divide-y divide-border/40">
-                  <OpsRow label="Recharge requests" value={pendingRechargeItems.length} hint="Wallet requests still waiting for finance approval." variant="warning" to="/dashboard/finance/recharge-admin" />
-                  <OpsRow label="Pending registrations" value={pendingRegistrations.data?.total ?? 0} hint="Self-serve signups waiting for admin approval." variant="warning" to="/dashboard/team/approvals" />
-                  <OpsRow label="Min. FLP billing" value={enrollmentPending.data?.total ?? 0} hint="Min. FLP billing approvals pending review right now." variant="warning" to="/dashboard/team/flp-min-billing" />
-                  <OpsRow label="Grace requests" value={pendingGraceCount} hint="Team members with a pending grace period request awaiting review." variant={pendingGraceCount > 0 ? 'warning' : 'default'} to="/dashboard/team/members" />
-                  <OpsRow label="Reassign ready" value={leadControl.data?.queue_total ?? 0} hint="Archived leads eligible for redistribution." variant="default" to="/dashboard/system/lead-control" />
-                  <OpsRow label="Archive incubation" value={leadControl.data?.incubation_total ?? 0} hint="Archived leads counting down toward stale reassignment." variant="default" to="/dashboard/system/lead-control" />
-                </div>
-              </Card>
-
-              {/* Actions grid */}
+              {/* Action queue + snapshot — single source of truth, no duplicate KPI/queue rows.
+                  (Calls/Day1/Day2/Claims live in the KPI bar + funnel above; the old flat ops
+                  list and the card grid were the same five actions — merged into one here.) */}
               <section className="grid gap-4 xl:grid-cols-2">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg">
                       <BellRing className="size-4" />
-                      Today Queue
+                      Action Queue
                     </CardTitle>
-                    <CardDescription>Priority approvals and movement queues without jumping across the app.</CardDescription>
+                    <CardDescription>Everything waiting on you — live counts, one tap to act.</CardDescription>
                   </CardHeader>
-                  <CardContent className="grid gap-3">
-                    <DeskShortcut
-                      to="/dashboard/team/approvals"
-                      title="Pending registrations"
-                      description="Approve or reject newly registered users."
-                      icon={<Users className="size-4" />}
-                    />
-                    <DeskShortcut
-                      to="/dashboard/team/flp-min-billing"
-                      title="Min. FLP Billing"
-                      description="Review minimum FLP billing proofs and keep the funnel moving."
-                      icon={<ClipboardCheck className="size-4" />}
-                    />
-                    <DeskShortcut
-                      to="/dashboard/finance/recharge-admin"
-                      title="Recharge requests"
-                      description="Approve or reject pending wallet recharges."
-                      icon={<Wallet className="size-4" />}
-                    />
-                    <DeskShortcut
-                      to="/dashboard/team/members"
-                      title="Grace requests"
-                      description="Review and approve or reject pending grace period requests from team members."
-                      icon={<Clock className="size-4" />}
-                    />
-                    <DeskShortcut
-                      to="/dashboard/system/lead-control"
-                      title="Reassignment queue"
-                      description="Move stale archived watch leads without changing ownership."
-                      icon={<ArrowRightLeft className="size-4" />}
-                    />
+                  <CardContent className="grid gap-2">
+                    {[
+                      { title: 'Pending registrations', description: 'Self-serve signups awaiting admin approval.', count: pendingRegistrations.data?.total ?? 0, icon: <Users className="size-4" />, to: '/dashboard/team/approvals' },
+                      { title: 'Min. FLP Billing', description: 'FLP billing proofs pending review.', count: enrollmentPending.data?.total ?? 0, icon: <ClipboardCheck className="size-4" />, to: '/dashboard/team/flp-min-billing' },
+                      { title: 'Recharge requests', description: 'Wallet recharges awaiting finance approval.', count: pendingRechargeItems.length, icon: <Wallet className="size-4" />, to: '/dashboard/finance/recharge-admin' },
+                      { title: 'Grace requests', description: 'Team grace-period requests to review.', count: pendingGraceCount, icon: <Clock className="size-4" />, to: '/dashboard/team/members' },
+                      { title: 'Reassign ready', description: 'Archived leads eligible for redistribution.', count: leadControl.data?.queue_total ?? 0, icon: <ArrowRightLeft className="size-4" />, to: '/dashboard/system/lead-control' },
+                      { title: 'Archive incubation', description: 'Archived leads nearing stale reassignment.', count: leadControl.data?.incubation_total ?? 0, icon: <Layers3 className="size-4" />, to: '/dashboard/system/lead-control' },
+                    ].map((row) => {
+                      const active = row.count > 0
+                      return (
+                        <Link
+                          key={row.title}
+                          to={row.to}
+                          className={cn(
+                            'group flex items-center gap-3 rounded-xl border px-3 py-2.5 transition',
+                            active
+                              ? 'border-amber-400/30 bg-amber-400/[0.06] hover:bg-amber-400/[0.1]'
+                              : 'border-border/50 bg-card/40 hover:bg-muted/40',
+                          )}
+                        >
+                          <span className={cn('grid size-9 shrink-0 place-items-center rounded-lg', active ? 'bg-amber-400/15 text-amber-300' : 'bg-muted/50 text-muted-foreground')}>
+                            {row.icon}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-semibold text-foreground">{row.title}</span>
+                            <span className="block truncate text-xs text-muted-foreground">{row.description}</span>
+                          </span>
+                          <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-sm font-bold tabular-nums', active ? 'bg-amber-400/20 text-amber-300' : 'text-muted-foreground/40')}>
+                            {row.count}
+                          </span>
+                          <ChevronRight className="size-4 shrink-0 text-muted-foreground/50 transition group-hover:translate-x-0.5 group-hover:text-foreground" />
+                        </Link>
+                      )
+                    })}
                   </CardContent>
                 </Card>
 

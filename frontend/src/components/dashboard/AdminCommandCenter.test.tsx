@@ -416,7 +416,7 @@ describe('AdminCommandCenter', () => {
     renderWithProviders()
 
     expect(screen.getByText('Good day, Admin')).toBeInTheDocument()
-    expect(screen.getByText('Today Queue')).toBeInTheDocument()
+    expect(screen.getByText('Action Queue')).toBeInTheDocument()
     expect(screen.getByText('Today Snapshot')).toBeInTheDocument()
     expect(screen.getByText('Reassign ready')).toBeInTheDocument()
     expect(screen.getByText('Archive incubation')).toBeInTheDocument()
