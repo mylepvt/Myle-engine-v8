@@ -1008,6 +1008,22 @@ class LeadsService:
                             "leader_id": leader[0],
                         },
                     )
+                # Auto-advance to Day 1 so the handed-off lead lands directly on the
+                # leader's workboard Day 1 instead of resting at video_watched on the
+                # calling board. video_watched stays a transient record of the watch.
+                lead.status = "day1"
+                _apply_status_side_effects(
+                    lead,
+                    previous_status="video_watched",
+                    new_status="day1",
+                    now=now,
+                )
+                await self._repository.add_lead_activity(
+                    user_id=user.user_id,
+                    action="auto_advance_day1_on_video_watched",
+                    lead_id=lead.id,
+                    meta={"from_status": "video_watched", "to_status": "day1"},
+                )
         if body.archived is True:
             lead.archived_at = now
             lead.in_pool = False

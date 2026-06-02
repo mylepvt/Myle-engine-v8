@@ -49,6 +49,9 @@ class FlpMinBillingShareLink(Base):
         server_default=text("false"),
         default=False,
     )
+    # Optional live-session slot hour (IST, 0-23) chosen when the link was created.
+    # Column added by migration 006c3106eb31; this maps it onto the ORM model.
+    session_hour: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

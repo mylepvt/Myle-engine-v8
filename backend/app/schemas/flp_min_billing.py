@@ -109,3 +109,14 @@ class ActiveWatcherPublic(BaseModel):
 class ActiveWatcherListResponse(BaseModel):
     items: list[ActiveWatcherPublic]
     total: int
+
+
+class SessionSlotInfo(BaseModel):
+    hour: int
+    label: str
+    slot_key: str
+
+
+class SessionSlotsResponse(BaseModel):
+    slots: list[SessionSlotInfo]
+    default_hour: int

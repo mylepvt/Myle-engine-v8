@@ -53,7 +53,9 @@ async def test_complete_advances_to_video_watched(admin_client: AsyncClient, ano
 
     async with AsyncSession(engine, expire_on_commit=False) as s:
         lead = await s.get(Lead, lead_id)
-        assert lead.status == "video_watched"
+        # Finishing the video auto-advances past video_watched straight to Day 1
+        # so the handed-off lead lands on the leader's workboard Day 1.
+        assert lead.status == "day1"
 
 
 @pytest.mark.asyncio
