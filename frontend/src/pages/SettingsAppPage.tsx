@@ -21,6 +21,21 @@ type SettingsTextField = {
   inputMode?: HTMLAttributes<HTMLInputElement>['inputMode']
 }
 
+const BATCH_VIDEO_FIELDS: readonly SettingsTextField[] = [
+  { key: 'batch_d1_morning_v1', label: 'Day 1 - Morning Video 1', placeholder: 'https://youtube.com/watch?v=...', help: 'Token link generate hote waqt watch/batch/d1_morning/1 pe ye video URL serve hoga.' },
+  { key: 'batch_d1_morning_v2', label: 'Day 1 - Morning Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'watch/batch/d1_morning/2 ke liye video URL.' },
+  { key: 'batch_d1_afternoon_v1', label: 'Day 1 - Afternoon Video 1', placeholder: 'https://youtube.com/watch?v=...', help: 'watch/batch/d1_afternoon/1 ke liye video URL.' },
+  { key: 'batch_d1_afternoon_v2', label: 'Day 1 - Afternoon Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'watch/batch/d1_afternoon/2 ke liye video URL.' },
+  { key: 'batch_d1_evening_v1', label: 'Day 1 - Evening Video 1', placeholder: 'https://youtube.com/watch?v=...', help: 'watch/batch/d1_evening/1 ke liye video URL.' },
+  { key: 'batch_d1_evening_v2', label: 'Day 1 - Evening Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'watch/batch/d1_evening/2 ke liye video URL.' },
+  { key: 'batch_d2_morning_v1', label: 'Day 2 - Morning Video 1', placeholder: 'https://youtube.com/watch?v=...', help: 'watch/batch/d2_morning/1 ke liye video URL.' },
+  { key: 'batch_d2_morning_v2', label: 'Day 2 - Morning Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'watch/batch/d2_morning/2 ke liye video URL.' },
+  { key: 'batch_d2_afternoon_v1', label: 'Day 2 - Afternoon Video 1', placeholder: 'https://youtube.com/watch?v=...', help: 'watch/batch/d2_afternoon/1 ke liye video URL.' },
+  { key: 'batch_d2_afternoon_v2', label: 'Day 2 - Afternoon Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'watch/batch/d2_afternoon/2 ke liye video URL.' },
+  { key: 'batch_d2_evening_v1', label: 'Day 2 - Evening Video 1', placeholder: 'https://youtube.com/watch?v=...', help: 'watch/batch/d2_evening/1 ke liye video URL.' },
+  { key: 'batch_d2_evening_v2', label: 'Day 2 - Evening Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'watch/batch/d2_evening/2 ke liye video URL.' },
+]
+
 const CONTENT_LINK_FIELDS: readonly SettingsTextField[] = [
   {
     key: 'content.esbi_model',
@@ -71,6 +86,9 @@ export function SettingsAppPage({ title }: Props) {
   const [reminderSummary, setReminderSummary] = useState<Omit<SendRemindersResponse, 'results'> | null>(null)
   const [reminderResults, setReminderResults] = useState<ReminderResult[] | null>(null)
   const [reminderError, setReminderError] = useState<string | null>(null)
+  const [batchEdits, setBatchEdits] = useState<Record<string, string>>({})
+  const [batchSaveMsg, setBatchSaveMsg] = useState<string | null>(null)
+  const [batchErrorMsg, setBatchErrorMsg] = useState<string | null>(null)
   const [contentSaveMsg, setContentSaveMsg] = useState<string | null>(null)
   const [waSaveMsg, setWaSaveMsg] = useState<string | null>(null)
   const [contentErrorMsg, setContentErrorMsg] = useState<string | null>(null)
@@ -86,6 +104,8 @@ export function SettingsAppPage({ title }: Props) {
     Object.prototype.hasOwnProperty.call(contentEdits, key) ? (contentEdits[key] ?? '') : (settingsSource[key] ?? '')
   const resolvedWaValue = (key: string): string =>
     Object.prototype.hasOwnProperty.call(waEdits, key) ? (waEdits[key] ?? '') : (settingsSource[key] ?? '')
+  const resolvedBatchValue = (key: string): string =>
+    Object.prototype.hasOwnProperty.call(batchEdits, key) ? (batchEdits[key] ?? '') : (settingsSource[key] ?? '')
 
   const rows = useMemo(() => {
     const settings = appSettingsData?.settings ?? {}
@@ -112,6 +132,22 @@ export function SettingsAppPage({ title }: Props) {
       void refetchAppSettings()
     } catch (error) {
       setContentErrorMsg(error instanceof Error ? error.message : 'Could not save content links.')
+    }
+  }
+
+  const handleSaveBatchLinks = async () => {
+    setBatchSaveMsg(null)
+    setBatchErrorMsg(null)
+    try {
+      for (const field of BATCH_VIDEO_FIELDS) {
+        const value = resolvedBatchValue(field.key).trim()
+        await updateAppSetting.mutateAsync({ key: field.key, value })
+      }
+      setBatchEdits({})
+      setBatchSaveMsg('Batch video links saved.')
+      void refetchAppSettings()
+    } catch (error) {
+      setBatchErrorMsg(error instanceof Error ? error.message : 'Could not save batch video links.')
     }
   }
 
@@ -341,6 +377,70 @@ export function SettingsAppPage({ title }: Props) {
           </button>
           {contentSaveMsg ? <p className="text-xs text-emerald-400">{contentSaveMsg}</p> : null}
           {contentErrorMsg ? <p className="text-xs text-destructive">{contentErrorMsg}</p> : null}
+        </div>
+      </section>
+
+      <section className="surface-elevated space-y-3 p-4">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">Batch Video Links</h2>
+          <p className="text-xs text-muted-foreground">
+            Day 1 aur Day 2 ke 6 slots (Morning/Afternoon/Evening) × 2 videos = 12 URL yahan set karo.
+            Ye YouTube links direct watch pages me serve hote hain jab lead token link kholta hai.
+          </p>
+        </div>
+
+        {appSettingsPending ? (
+          <Skeleton className="h-9 w-full" />
+        ) : appSettingsError ? (
+          <div className="text-sm text-destructive" role="alert">
+            {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load app settings.'}
+          </div>
+        ) : (
+          <div className="grid gap-3">
+            {(['d1', 'd2'] as const).map((day) => (
+              <div key={day} className="rounded-lg border border-white/10 p-3">
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Day {day === 'd1' ? '1' : '2'}
+                </h3>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {(['morning', 'afternoon', 'evening'] as const).map((slot) => (
+                    <div key={`${day}_${slot}`} className="space-y-2">
+                      <p className="text-ds-caption font-medium capitalize text-muted-foreground/80">{slot}</p>
+                      {([1, 2] as const).map((v) => {
+                        const key = `batch_${day}_${slot}_v${v}`
+                        const field = BATCH_VIDEO_FIELDS.find((f) => f.key === key)
+                        return (
+                          <label key={key} className="block text-sm">
+                            <span className="mb-0.5 block text-ds-caption text-muted-foreground/60">Video {v}</span>
+                            <input
+                              type="text"
+                              value={resolvedBatchValue(key)}
+                              onChange={(e) => setBatchEdits((prev) => ({ ...prev, [key]: e.target.value }))}
+                              placeholder={field?.placeholder}
+                              className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                            />
+                          </label>
+                        )
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            disabled={updateAppSetting.isPending || appSettingsPending || appSettingsError}
+            onClick={() => void handleSaveBatchLinks()}
+            className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-medium text-primary disabled:opacity-50"
+          >
+            {updateAppSetting.isPending ? 'Saving...' : 'Save batch video links'}
+          </button>
+          {batchSaveMsg ? <p className="text-xs text-emerald-400">{batchSaveMsg}</p> : null}
+          {batchErrorMsg ? <p className="text-xs text-destructive">{batchErrorMsg}</p> : null}
         </div>
       </section>
 
