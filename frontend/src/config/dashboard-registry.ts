@@ -479,7 +479,6 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     section: { id: 'settings', label: 'Settings' },
     label: 'Org tree',
     roles: routeRoles('settings/org-tree'),
-    navHidden: true,
     surface: 'full',
     ui: { kind: 'settings-org-tree' },
   },
