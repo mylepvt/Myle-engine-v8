@@ -290,7 +290,7 @@ const LeadCard = memo(function LeadCard({
         className={cn('absolute bottom-2 left-0 top-2 w-[3px] rounded-full', slaTone.leftBorder)}
         aria-hidden
       />
-      <div className="relative flex flex-col gap-2.5 pl-3">
+      <div className="relative flex flex-col gap-2 pl-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1">
             <p className="break-words text-sm font-semibold leading-tight text-foreground sm:text-base">{lead.name}</p>
@@ -1612,7 +1612,7 @@ export function WorkboardPage({ title }: Props) {
   }, [searchParams, setSearchParams])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 pb-20 md:pb-10">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -1632,7 +1632,7 @@ export function WorkboardPage({ title }: Props) {
       </div>
 
       {/* Search */}
-      <div className="surface-elevated px-4 py-3">
+      <div className="surface-elevated px-3 py-2">
         <div className="relative max-w-sm">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden/>
           <input value={qInput} onChange={(e) => setQInput(e.target.value)}
