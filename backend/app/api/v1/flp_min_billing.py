@@ -385,7 +385,7 @@ async def send_flp_min_billing_video(
         await session.commit()
         await session.refresh(link)
 
-        await notify_topics("enroll", "leads")
+    await notify_topics("enroll", "leads", "workboard")
         return FlpMinBillingVideoSendResponse(
             link=_build_public_link(link),
             delivery=FlpMinBillingVideoSendDelivery.model_validate(delivery_meta),
