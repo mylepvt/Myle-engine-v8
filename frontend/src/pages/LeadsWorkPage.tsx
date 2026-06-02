@@ -3,7 +3,6 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Filter, Mail, MapPin, Phone, Plus, Search, Share2, Upload, UserPlus, X } from 'lucide-react'
 
 import { CtcsWorkSurface } from '@/components/leads/CtcsWorkSurface'
-import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
 import { LeadsVirtualizedBody } from '@/components/leads/LeadsVirtualizedBody'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -19,12 +18,9 @@ import {
   useLeadsInfiniteQuery,
   usePatchLeadMutation,
 } from '@/hooks/use-leads-query'
-import {
-  openExternalShareUrl,
-} from '@/lib/external-share-window'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
-import { buildLiveSessionWhatsAppUrl, type LiveSessionSlotOption } from '@/lib/live-session-slots'
+import { sendEnrollmentLiveLink } from '@/lib/enrollment-send'
 import { teamLeadStatusSelectOptions } from '@/lib/team-lead-status'
 import type { Role } from '@/types/role'
 
@@ -85,7 +81,6 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const [advancedTableOpen, setAdvancedTableOpen] = useState(false)
   const [filterOpen, setFilterOpen] = useState(false)
   const [quickAddOpen, setQuickAddOpen] = useState(false)
-  const [slotPickerLeadId, setSlotPickerLeadId] = useState<number | null>(null)
   const [importHint, setImportHint] = useState<string | null>(null)
   const importFileRef = useRef<HTMLInputElement>(null)
   const importMut = useImportLeadsFileMutation()
@@ -145,11 +140,13 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const onPatchStatus = useCallback(
     (id: number, status: LeadStatus) => {
       if (status === 'video_sent') {
-        setSlotPickerLeadId(id)
+        // Enrollment-Live: send one tokenized /watch link (no time-slot picker).
+        void sendEnroll(id)
         return
       }
       void patchMut.mutateAsync({ id, body: { status } })
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [patchMut],
   )
   const onPatchPool = useCallback(
@@ -164,28 +161,22 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
     (id: number) => void deleteMut.mutateAsync(id),
     [deleteMut],
   )
-  const handleSendEnrollment = useCallback(
-    async (option: LiveSessionSlotOption) => {
-      if (slotPickerLeadId == null) return
+  const sendEnroll = useCallback(
+    async (id: number) => {
       const allVisibleItems: LeadPublic[] = [
         ...items,
         ...(classicLeadsQ.data?.pages.flatMap((page) => page.items) ?? []),
       ]
-      const lead = allVisibleItems.find((item) => item.id === slotPickerLeadId)
+      const lead = allVisibleItems.find((item) => item.id === id)
       if (!lead) return
       try {
-        await patchMut.mutateAsync({ id: lead.id, body: { status: 'video_sent' } })
-        const shareUrl = buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option)
-        if (!shareUrl || !openExternalShareUrl(shareUrl)) {
-          window.alert('WhatsApp link nahi bana. Lead ka phone number check karo.')
-          return
-        }
-        setSlotPickerLeadId(null)
+        await sendEnrollmentLiveLink(lead)
+        await refetch()
       } catch (err) {
-        window.alert('Status update failed: ' + (err instanceof Error ? err.message : 'Unknown error'))
+        window.alert('Could not send enrollment link: ' + (err instanceof Error ? err.message : 'Unknown error'))
       }
     },
-    [classicLeadsQ.data?.pages, items, patchMut, slotPickerLeadId],
+    [classicLeadsQ.data?.pages, items, refetch],
   )
 
   async function handleImportFilePick(e: ChangeEvent<HTMLInputElement>) {
@@ -329,12 +320,6 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
           </div>
         ) : null}
       </div>
-      <LiveSessionSlotPicker
-        open={slotPickerLeadId != null}
-        busy={patchMut.isPending}
-        onClose={() => setSlotPickerLeadId(null)}
-        onConfirm={(option) => void handleSendEnrollment(option)}
-      />
       </>
     )
   }
@@ -740,12 +725,6 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
           </div>
         ) : null}
       </div>
-      <LiveSessionSlotPicker
-        open={slotPickerLeadId != null}
-        busy={patchMut.isPending}
-        onClose={() => setSlotPickerLeadId(null)}
-        onConfirm={(option) => void handleSendEnrollment(option)}
-      />
     </>
   )
 }
