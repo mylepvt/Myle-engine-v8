@@ -703,7 +703,7 @@ async def mark_watch_completed(
                 )
             except Exception:
                 pass
-    await notify_topics("enroll", "leads")
+    await notify_topics("enroll", "leads", "workboard")
     return WatchEventResponse(ok=True, watch_started=True, watch_completed=True)
 
 
