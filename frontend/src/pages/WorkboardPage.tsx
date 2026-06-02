@@ -1,6 +1,20 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeftRight, Check, CheckSquare, Eye, Pencil, Search, Send, Video, X } from 'lucide-react'
+import {
+  ArrowLeftRight,
+  Check,
+  CheckSquare,
+  Copy,
+  Eye,
+  Moon,
+  Pencil,
+  Search,
+  Send,
+  Sun,
+  Sunrise,
+  Video,
+  X,
+} from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LeadBillingCard } from '@/components/leads/LeadBillingCard'
@@ -33,6 +47,7 @@ import { useContentLinksQuery } from '@/hooks/use-content-links-query'
 import { checklistForStage } from '@/lib/lead-process-map'
 import { LEAD_SLA_SMOOTH_REFRESH_MS, formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
 import { buildDay2BusinessTestWhatsAppUrl } from '@/lib/day2-business-test'
+import { isDay2AdvanceUnlocked } from '@/lib/workboard-stage'
 import { whatsAppChatWithTextHref, whatsappDigits } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
 
@@ -66,6 +81,18 @@ type WorkboardStageKey =
   | 'day1'
   | 'day2'
   | 'day3'
+type BatchSlotChip = 'M' | 'A' | 'E'
+type BatchLinkVariant = 'v1' | 'v2'
+type BatchModalState = {
+  slot: BatchSlotChip
+  slotKey: BatchSlotKey
+  label: string
+  watchUrlV1: string
+  watchUrlV2: string
+  loading: boolean
+  error: string | null
+  copied: BatchLinkVariant | null
+}
 const slabel  = (s: string) => LEAD_STATUS_OPTIONS.find((o) => o.value === s)?.label ?? s
 
 const ADMIN_STAGE_TABS: {
@@ -1016,9 +1043,10 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
 }) {
   const qc = useQueryClient()
   const [sharingSlot, setSharingSlot] = useState<BatchSlotKey | null>(null)
-  const [toggleSlot, setToggleSlot] = useState<BatchSlotKey | null>(null)
+  const [markingSlot, setMarkingSlot] = useState<BatchSlotKey | null>(null)
   const [batchError, setBatchError] = useState<string | null>(null)
   const [testLinkBusy, setTestLinkBusy] = useState(false)
+  const [batchModal, setBatchModal] = useState<BatchModalState | null>(null)
 
   const hasBatchSlots = stageKey === 'day1' || stageKey === 'day2'
   const dayKey = stageKey === 'day3' ? 3 : stageKey === 'day2' ? 2 : 1
@@ -1028,12 +1056,32 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
       : (['d1_morning', 'd1_afternoon', 'd1_evening'] as const)
 
   const allSlotsDone = hasBatchSlots && batchSlots.every((k) => lead[k])
+  const doneCount = hasBatchSlots ? batchSlots.filter((k) => lead[k]).length : 0
+  const day2AdvanceUnlocked = stageKey !== 'day2' || isDay2AdvanceUnlocked(lead)
+  const slotButtonMeta: Record<BatchSlotChip, { icon: typeof Sunrise; label: string }> = {
+    M: { icon: Sunrise, label: 'Morning' },
+    A: { icon: Sun, label: 'Afternoon' },
+    E: { icon: Moon, label: 'Evening' },
+  }
 
-  // day1 M/A slots — tokenized batch link
-  const handleBatchShare = async (slot: 'M' | 'A' | 'E' | '6PM' | '8PM', slotKey: BatchSlotKey) => {
+  const closeBatchModal = () => {
+    if (sharingSlot != null || markingSlot != null) return
+    setBatchModal(null)
+  }
+
+  const handleBatchButtonClick = async (slot: BatchSlotChip, slotKey: BatchSlotKey) => {
     setBatchError(null)
     setSharingSlot(slotKey)
-    const popup = reserveExternalShareWindow('Preparing batch share...')
+    setBatchModal({
+      slot,
+      slotKey,
+      label: `${slotButtonMeta[slot].label} Batch`,
+      watchUrlV1: '',
+      watchUrlV2: '',
+      loading: true,
+      error: null,
+      copied: null,
+    })
     try {
       const res = await apiFetch(`/api/v1/leads/${lead.id}/batch-share-url`, {
         method: 'POST',
@@ -1042,29 +1090,89 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
       })
       if (!res.ok) throw new Error(await readResponseError(res))
       const body = (await res.json()) as { watch_url_v1?: string; watch_url_v2?: string }
-      const waUrl = workboardBatchWhatsAppUrl(lead, dayKey, slot, { v1: body.watch_url_v1, v2: body.watch_url_v2 })
-      if (!waUrl) throw new Error('Phone number missing for WhatsApp batch share.')
-      if (!completeExternalShareWindow(popup, waUrl)) throw new Error('Could not open WhatsApp share window.')
-      await pm.mutateAsync({ id: lead.id, body: { [slotKey]: true } })
-      await qc.refetchQueries({ queryKey: ['workboard'] })
+      setBatchModal((prev) =>
+        prev && prev.slotKey === slotKey
+          ? {
+              ...prev,
+              watchUrlV1: body.watch_url_v1 ?? '',
+              watchUrlV2: body.watch_url_v2 ?? '',
+              loading: false,
+            }
+          : prev,
+      )
     } catch (err) {
-      closeExternalShareWindow(popup)
-      setBatchError(err instanceof Error ? err.message : 'Could not generate batch links')
+      const message = err instanceof Error ? err.message : 'Could not generate batch links'
+      setBatchError(message)
+      setBatchModal((prev) =>
+        prev && prev.slotKey === slotKey
+          ? {
+              ...prev,
+              loading: false,
+              error: message,
+            }
+          : prev,
+      )
     } finally {
       setSharingSlot(null)
     }
   }
 
-  const handleBatchToggle = async (slotKey: BatchSlotKey) => {
+  const markBatchDone = async (slotKey: BatchSlotKey) => {
     setBatchError(null)
-    setToggleSlot(slotKey)
+    setMarkingSlot(slotKey)
     try {
-      await pm.mutateAsync({ id: lead.id, body: { [slotKey]: !lead[slotKey] } })
+      await pm.mutateAsync({ id: lead.id, body: { [slotKey]: true } })
       await qc.refetchQueries({ queryKey: ['workboard'] })
+      setBatchModal(null)
     } catch (err) {
-      setBatchError(err instanceof Error ? err.message : 'Could not update batch state')
+      const message = err instanceof Error ? err.message : 'Could not update batch state'
+      setBatchError(message)
+      setBatchModal((prev) =>
+        prev && prev.slotKey === slotKey
+          ? {
+              ...prev,
+              error: message,
+            }
+          : prev,
+      )
     } finally {
-      setToggleSlot(null)
+      setMarkingSlot(null)
+    }
+  }
+
+  const handleSendAndMark = async () => {
+    if (!batchModal) return
+    const waUrl = workboardBatchWhatsAppUrl(lead, dayKey, batchModal.slot, {
+      v1: batchModal.watchUrlV1,
+      v2: batchModal.watchUrlV2,
+    })
+    if (!waUrl) {
+      const message = 'Phone number missing for WhatsApp batch share.'
+      setBatchError(message)
+      setBatchModal((prev) => (prev ? { ...prev, error: message } : prev))
+      return
+    }
+    if (!openExternalShareUrl(waUrl)) {
+      const message = 'Could not open WhatsApp share window.'
+      setBatchError(message)
+      setBatchModal((prev) => (prev ? { ...prev, error: message } : prev))
+      return
+    }
+    await markBatchDone(batchModal.slotKey)
+  }
+
+  const handleCopyBatchLink = async (variant: BatchLinkVariant) => {
+    if (!batchModal) return
+    const value = variant === 'v1' ? batchModal.watchUrlV1 : batchModal.watchUrlV2
+    if (!value) return
+    try {
+      await navigator.clipboard.writeText(value)
+      setBatchModal((prev) => (prev ? { ...prev, copied: variant } : prev))
+      window.setTimeout(() => {
+        setBatchModal((prev) => (prev ? { ...prev, copied: null } : prev))
+      }, 1800)
+    } catch {
+      setBatchError('Could not copy link.')
     }
   }
 
@@ -1130,46 +1238,61 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
   if (hasBatchSlots) {
     return (
       <div className="space-y-1.5">
-        <div className="space-y-1.5 border-t border-border/40 pt-1.5">
-          <div className="flex items-center gap-2">
-            <span className="text-ds-caption text-muted-foreground">Links:</span>
-            {batchSlots.map((slotKey, i) => {
-              const slot = (slotTimeLabels as readonly string[])[i] as 'M' | 'A' | 'E' | '6PM' | '8PM'
-              const timeLabel = slotTimeLabels[i]
-              const slotDone = lead[slotKey]
-              const busy = sharingSlot === slotKey
-              return (
-                <button key={`share-${slotKey}`} type="button"
-                  disabled={leadPatchBusy || busy}
-                  onClick={() => void handleBatchShare(slot, slotKey)}
-                  className={cn(
-                    'flex h-6 min-w-10 items-center justify-center rounded px-1.5 text-ds-caption font-semibold transition disabled:opacity-50',
-                    slotDone
-                      ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
-                      : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
-                  )}>
-                  {busy ? '...' : timeLabel}
-                </button>
-              )
-            })}
+        <div className="space-y-2 border-t border-border/40 pt-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-ds-caption font-medium text-muted-foreground">Batch progress</span>
+            <span
+              className={cn(
+                'rounded-full border px-2 py-0.5 text-[10px] font-semibold',
+                doneCount === 3
+                  ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
+                  : doneCount > 0
+                    ? 'border-amber-400/30 bg-amber-400/15 text-amber-300'
+                    : 'border-border bg-muted/30 text-muted-foreground',
+              )}
+            >
+              {doneCount}/3
+            </span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-ds-caption text-muted-foreground">Check:</span>
+          <div className="h-1.5 overflow-hidden rounded-full bg-muted/40">
+            <div
+              className={cn(
+                'h-full rounded-full transition-all',
+                doneCount === 3 ? 'bg-emerald-400' : doneCount > 0 ? 'bg-amber-400' : 'bg-border',
+              )}
+              style={{ width: `${Math.round((doneCount / 3) * 100)}%` }}
+            />
+          </div>
+          <p className="text-[11px] text-muted-foreground">{doneCount}/3 batches done</p>
+          <div className="flex gap-2">
             {batchSlots.map((slotKey, i) => {
+              const slot = slotTimeLabels[i]
+              const meta = slotButtonMeta[slot]
+              const Icon = meta.icon
               const slotDone = lead[slotKey]
-              const busy = toggleSlot === slotKey
+              const busy = sharingSlot === slotKey || markingSlot === slotKey
               return (
-                <button key={`toggle-${slotKey}`} type="button"
+                <button
+                  key={`share-${slotKey}`}
+                  type="button"
                   disabled={leadPatchBusy || busy}
-                  aria-label={slotDone ? `Uncheck ${slotTimeLabels[i]}` : `Check ${slotTimeLabels[i]}`}
-                  onClick={() => void handleBatchToggle(slotKey)}
+                  title={`${meta.label} batch`}
+                  onClick={() => void handleBatchButtonClick(slot, slotKey)}
                   className={cn(
-                    'flex h-6 min-w-10 items-center justify-center rounded px-1.5 text-ds-caption font-semibold transition disabled:opacity-50',
+                    'flex min-h-11 flex-1 flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-xs font-semibold transition disabled:opacity-50',
                     slotDone
-                      ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
-                      : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
-                  )}>
-                  {busy ? '...' : slotDone ? <CheckSquare className="h-3 w-3" /> : <span>{slotTimeLabels[i]}</span>}
+                      ? 'border-emerald-400/35 bg-emerald-400/12 text-emerald-300'
+                      : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
+                  )}
+                >
+                  {busy ? (
+                    <span className="text-[11px]">...</span>
+                  ) : slotDone ? (
+                    <CheckSquare className="h-4 w-4" />
+                  ) : (
+                    <Icon className="h-4 w-4" />
+                  )}
+                  <span>{slot}</span>
                 </button>
               )
             })}
@@ -1185,12 +1308,133 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
             </p>
           )
         ) : null}
-        {allSlotsDone && onMoveNext && (
+        {stageKey === 'day2' && allSlotsDone && !day2AdvanceUnlocked ? (
+          <p className="border-t border-border/40 pt-1.5 text-ds-caption text-muted-foreground">
+            Pass the Day 2 business test to unlock Day 3.
+          </p>
+        ) : null}
+        {allSlotsDone && onMoveNext && day2AdvanceUnlocked && (
           <button type="button" disabled={leadPatchBusy} onClick={onMoveNext}
             className="w-full rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50">
             {nextLabel ?? 'Move to next stage →'}
           </button>
         )}
+        {batchModal ? (
+          <div className="keyboard-safe-modal fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4">
+            <div
+              className="keyboard-safe-sheet w-full max-w-lg overflow-y-auto rounded border border-border bg-card p-4 shadow-2xl"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={`batch-modal-title-${lead.id}`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 id={`batch-modal-title-${lead.id}`} className="text-base font-semibold text-foreground">
+                    Day {dayKey} - {batchModal.label}
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{lead.name}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeBatchModal}
+                  disabled={sharingSlot != null || markingSlot != null}
+                  className="rounded-md border border-border bg-muted/30 p-1 text-muted-foreground transition hover:text-foreground disabled:opacity-50"
+                  aria-label="Close batch dialog"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                {batchModal.loading ? (
+                  <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-4 text-sm text-muted-foreground">
+                    Generating tokenized batch links...
+                  </div>
+                ) : batchModal.error ? (
+                  <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-3 text-sm text-destructive">
+                    {batchModal.error}
+                  </div>
+                ) : batchModal.watchUrlV1 || batchModal.watchUrlV2 ? (
+                  <>
+                    {([
+                      ['v1', batchModal.watchUrlV1, 'Video 1'],
+                      ['v2', batchModal.watchUrlV2, 'Video 2'],
+                    ] as const)
+                      .filter(([, url]) => url)
+                      .map(([variant, url, label]) => (
+                        <div
+                          key={variant}
+                          className="rounded-xl border border-primary/20 bg-primary/5 p-3"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-foreground">{label}</p>
+                              <p className="mt-1 truncate text-xs text-primary">{url}</p>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2">
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded-md border border-primary/25 bg-background/70 px-2.5 py-1 text-xs font-semibold text-primary transition hover:bg-background"
+                              >
+                                Open
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => void handleCopyBatchLink(variant)}
+                                className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-xs font-semibold text-foreground transition hover:border-primary/35 hover:text-primary"
+                              >
+                                <Copy className="h-3.5 w-3.5" />
+                                {batchModal.copied === variant ? 'Copied' : 'Copy'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    <p className="text-xs text-muted-foreground">
+                      Send on WhatsApp to mark this batch done, or use already sent if the prospect already has the link.
+                    </p>
+                  </>
+                ) : (
+                  <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-3 text-sm text-muted-foreground">
+                    Video URLs are not configured for this batch yet.
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={closeBatchModal}
+                  disabled={sharingSlot != null || markingSlot != null}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void markBatchDone(batchModal.slotKey)}
+                  disabled={markingSlot != null || batchModal.loading}
+                >
+                  {markingSlot === batchModal.slotKey ? 'Marking...' : 'Already Sent'}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => void handleSendAndMark()}
+                  disabled={
+                    markingSlot != null ||
+                    batchModal.loading ||
+                    (!batchModal.watchUrlV1 && !batchModal.watchUrlV2)
+                  }
+                >
+                  {markingSlot === batchModal.slotKey ? 'Sending...' : 'Send & Mark'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     )
   }
@@ -1657,7 +1901,7 @@ export function WorkboardPage({ title, mode = 'pipeline' }: Props) {
         </div>
         <div className="flex items-center gap-2">
           <Button type="button" size="sm" asChild>
-            <Link to="/dashboard/work/add-lead">Add Lead</Link>
+            <Link to="/dashboard/work/leads">Add Lead</Link>
           </Button>
         </div>
       </div>
