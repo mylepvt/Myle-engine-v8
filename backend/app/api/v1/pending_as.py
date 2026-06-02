@@ -34,10 +34,20 @@ async def list_pending_as_leads(
     limit: int = Query(default=_DEFAULT_LIMIT, ge=1, le=_MAX_LIMIT),
     offset: int = Query(default=0, ge=0),
 ) -> LeadListResponse:
-    """Converted leads still pending FOREVER-invoice / CC processing, scoped like ``GET /leads``."""
-    approved_sale = (
+    """Converted leads still pending FOREVER-invoice / CC processing, scoped like ``GET /leads``.
+
+    "Done" = an approved LeadSale that carries case_credits (the real FOREVER tax-invoice
+    parsed via OCR). A Day-3 stage-payment proof also creates an approved LeadSale but with
+    NULL case_credits, so it must NOT clear a lead from this queue — the CC invoice is still due.
+    """
+    cc_invoice_done = (
         select(LeadSale.id)
-        .where(LeadSale.lead_id == Lead.id, LeadSale.status == "approved")
+        .where(
+            LeadSale.lead_id == Lead.id,
+            LeadSale.status == "approved",
+            LeadSale.case_credits.is_not(None),
+            LeadSale.case_credits > 0,
+        )
         .exists()
     )
     parts = [
@@ -45,7 +55,7 @@ async def list_pending_as_leads(
         Lead.archived_at.is_(None),
         Lead.deleted_at.is_(None),
         Lead.in_pool.is_(False),
-        ~approved_sale,
+        ~cc_invoice_done,
     ]
     vis = (
         lead_management_visible_to_leader_clause(user.user_id)

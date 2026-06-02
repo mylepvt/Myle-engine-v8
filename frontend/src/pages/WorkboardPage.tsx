@@ -3,7 +3,6 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeftRight, Check, CheckSquare, Eye, Pencil, Search, Send, Video, X } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
-import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
 import { LeadBillingCard } from '@/components/leads/LeadBillingCard'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -33,7 +32,6 @@ import { getMindsetLockSendState } from '@/lib/mindset-lock'
 import { useContentLinksQuery } from '@/hooks/use-content-links-query'
 import { checklistForStage } from '@/lib/lead-process-map'
 import { LEAD_SLA_SMOOTH_REFRESH_MS, formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
-import { type LiveSessionSlotOption } from '@/lib/live-session-slots'
 import { buildDay2BusinessTestWhatsAppUrl } from '@/lib/day2-business-test'
 import { whatsAppChatWithTextHref, whatsappDigits } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
@@ -217,19 +215,18 @@ const LeadCard = memo(function LeadCard({
   const { role, serverRole } = useDashboardShellRole()
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
   const [sendError, setSendError] = useState<string | null>(null)
-  const [pickerOpen, setPickerOpen] = useState(false)
   const stageOpsCard = stageKey != null
 
   // Enrollment-Live send: create the single open token /watch/{token} link (detail-form
   // gate + first-open timer + auto video_sent→video_watched on finish), then WhatsApp it.
-  async function handleSendFlpMinBillingVideo(option: LiveSessionSlotOption, useBusinessWhatsApp = false) {
+  // Enrollment-Live send — one tokenized /watch link, no time-slot picker.
+  async function handleSendFlpMinBillingVideo() {
     setSendError(null)
     try {
-      const slotKey = `live_session_slot_${String(option.hour).padStart(2, '0')}_00`
       const res = await apiFetch('/api/v1/flp-min-billing/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lead_id: lead.id, live_session_slot_key: slotKey }),
+        body: JSON.stringify({ lead_id: lead.id }),
       })
       if (!res.ok) throw new Error(await readResponseError(res))
       const data = (await res.json()) as { link?: { share_url?: string } }
@@ -239,15 +236,10 @@ const LeadCard = memo(function LeadCard({
         const digits = whatsappDigits(lead.phone ?? '')
         const msg =
           `Hi ${lead.name || 'there'},\n\n` +
-          `Aapki Day 1 (Enrollment Live) video ready hai. Is link pe apna naam aur registered number daal ke dekhiye:\n${watchUrl}`
-        const waUrl = digits
-          ? useBusinessWhatsApp
-            ? `https://www.whatsapp.com/contact/${digits}?text=${encodeURIComponent(msg)}`
-            : `https://wa.me/${digits}?text=${encodeURIComponent(msg)}`
-          : null
+          `Aapki Enrollment-Live video ready hai. Is link pe apna naam aur registered number daal ke dekhiye:\n${watchUrl}`
+        const waUrl = digits ? `https://wa.me/${digits}?text=${encodeURIComponent(msg)}` : null
         if (waUrl) openExternalShareUrl(waUrl)
       }
-      setPickerOpen(false)
       await qc.refetchQueries({ queryKey: ['workboard'] })
     } catch (err) {
       setSendError(err instanceof Error ? err.message : 'Could not send enrollment video')
@@ -402,8 +394,8 @@ const LeadCard = memo(function LeadCard({
               <>
                 <LeadContactActions phone={lead.phone} />
                 {!stageOpsCard ? (
-                  <IconBtn title="Send Video" colorHover="hover:border-indigo-400/40 hover:text-indigo-400 disabled:opacity-50"
-                    onClick={() => setPickerOpen(true)}>
+                  <IconBtn title="Send Enrollment-Live video" colorHover="hover:border-indigo-400/40 hover:text-indigo-400 disabled:opacity-50"
+                    onClick={() => void handleSendFlpMinBillingVideo()}>
                     <Video className="h-3.5 w-3.5"/>
                   </IconBtn>
                 ) : null}
@@ -459,12 +451,6 @@ const LeadCard = memo(function LeadCard({
             </button>
           </div>
         ) : null}
-        <LiveSessionSlotPicker
-          open={pickerOpen}
-          busy={pm.isPending}
-          onClose={() => setPickerOpen(false)}
-          onConfirm={(option, useBusiness) => void handleSendFlpMinBillingVideo(option, useBusiness)}
-        />
         {stageKey ? (
           <StageAdvanceSection
             lead={lead}

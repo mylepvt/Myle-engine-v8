@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 
@@ -38,6 +38,11 @@ vi.mock('@/stores/call-to-close-store', () => ({
       toggleCallMode: vi.fn(),
       setOutcomeLeadId: vi.fn(),
     }),
+}))
+
+const mockSendEnrollmentLiveLink = vi.fn().mockResolvedValue(undefined)
+vi.mock('@/lib/enrollment-send', () => ({
+  sendEnrollmentLiveLink: (...args: unknown[]) => mockSendEnrollmentLiveLink(...args),
 }))
 
 function makeLead(): LeadPublic {
@@ -133,7 +138,7 @@ describe('CtcsWorkSurface', () => {
     vi.unstubAllGlobals()
   })
 
-  it('opens the live session slot picker when Sent Enroll Video is selected', async () => {
+  it('sends the Enrollment-Live link (no time-slot picker) when Sent Enroll Video is selected', async () => {
     mockUseLeadsInfiniteQuery.mockReturnValue({
       data: { pages: [{ items: [makeLead()], total: 1 }] },
       isPending: false,
@@ -196,8 +201,8 @@ describe('CtcsWorkSurface', () => {
 
     fireEvent.change(screen.getByLabelText('Lead status'), { target: { value: 'video_sent' } })
 
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByText('Choose a time slot')).toBeInTheDocument()
-    expect(await screen.findByText(/slot=12/i)).toBeInTheDocument()
+    // No time-slot picker anymore — selecting Enrollment-Live sends the token link directly.
+    await waitFor(() => expect(mockSendEnrollmentLiveLink).toHaveBeenCalledTimes(1))
+    expect(screen.queryByText('Choose a time slot')).not.toBeInTheDocument()
   })
 })

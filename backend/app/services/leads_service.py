@@ -983,6 +983,31 @@ class LeadsService:
                 new_status=body.status,
                 now=now,
             )
+            # Team → leader handoff: marking the Enrollment-Live video watched is the team's
+            # last step. Reassign the lead to the owner's nearest upline leader so it surfaces
+            # on the leader's board for Day 1 (replaces the removed mindset-lock handoff).
+            if body.status == "video_watched" and prev_status != "video_watched":
+                owner_id = (
+                    lead.owner_user_id
+                    or lead.assigned_to_user_id
+                    or lead.created_by_user_id
+                )
+                leader = await self._nearest_leader(owner_id) if owner_id else None
+                if leader is not None and lead.assigned_to_user_id != leader[0]:
+                    from_uid = lead.assigned_to_user_id
+                    lead.assigned_to_user_id = leader[0]
+                    lead.is_reassigned = True
+                    lead.reassigned_at = now
+                    await self._repository.add_lead_activity(
+                        user_id=user.user_id,
+                        action="leader_handoff_video_watched",
+                        lead_id=lead.id,
+                        meta={
+                            "from_user_id": from_uid,
+                            "to_user_id": leader[0],
+                            "leader_id": leader[0],
+                        },
+                    )
         if body.archived is True:
             lead.archived_at = now
             lead.in_pool = False

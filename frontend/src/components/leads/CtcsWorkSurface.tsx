@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CtcsLeadCard } from '@/components/leads/CtcsLeadCard'
 import { CtcsOutcomeModal } from '@/components/leads/CtcsOutcomeModal'
 import { LeaderReassignSheet } from '@/components/leads/LeaderReassignSheet'
-import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
 import { LEAD_SLA_SMOOTH_REFRESH_MS } from '@/lib/lead-sla'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -23,10 +22,7 @@ import {
 import { useLeadControlRevertMutation } from '@/hooks/use-lead-control-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
-import {
-  openExternalShareUrl,
-} from '@/lib/external-share-window'
-import { buildLiveSessionWhatsAppUrl, buildLiveSessionWhatsAppBusinessUrl, type LiveSessionSlotOption } from '@/lib/live-session-slots'
+import { sendEnrollmentLiveLink } from '@/lib/enrollment-send'
 import { useCallToCloseStore } from '@/stores/call-to-close-store'
 
 function nextLeadId(items: LeadPublic[], current: number | null): number | null {
@@ -57,8 +53,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
   const [tab, setTab] = useState<CtcsTab>('all')
   const [nowMs, setNowMs] = useState(() => Date.now())
-  const [slotPickerLeadId, setSlotPickerLeadId] = useState<number | null>(null)
-  const [slotPickerTargetStatus, setSlotPickerTargetStatus] = useState<LeadStatus>('video_sent')
+  const [sendingLeadId, setSendingLeadId] = useState<number | null>(null)
   const [reassignTarget, setReassignTarget] = useState<{ id: number; name: string; isReassigned: boolean } | null>(null)
   const [revertNotice, setRevertNotice] = useState<string | null>(null)
   const searchMode =
@@ -125,10 +120,29 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
     [items, outcomeLeadId],
   )
 
-  const onSendEnrollment = useCallback((id: number, targetStatus: LeadStatus = 'video_sent') => {
-    setSlotPickerTargetStatus(targetStatus)
-    setSlotPickerLeadId(id)
-  }, [])
+  const onSendEnrollment = useCallback(
+    async (id: number, targetStatus: LeadStatus = 'video_sent') => {
+      if (targetStatus === 'video_sent') {
+        // Enrollment-Live: one tokenized /watch link (no time-slot picker).
+        const lead = items.find((item) => item.id === id)
+        if (!lead) return
+        setSendingLeadId(id)
+        try {
+          await sendEnrollmentLiveLink(lead)
+          await leadsQ.refetch()
+        } catch (err) {
+          window.alert('Could not send enrollment link: ' + (err instanceof Error ? err.message : 'Unknown error'))
+        } finally {
+          setSendingLeadId(null)
+        }
+        return
+      }
+      patchMut.mutateAsync({ id, body: { status: targetStatus } }).catch((err) => {
+        window.alert('Status update failed: ' + (err instanceof Error ? err.message : 'Unknown error'))
+      })
+    },
+    [items, leadsQ, patchMut],
+  )
 
   const onPatchStatus = useCallback(
     (id: number, status: LeadStatus) => {
@@ -223,27 +237,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   }, [reassignTarget, revertMut])
 
   const actionBusy = ctcsMut.isPending || callLogMut.isPending
-  const sendBusyLeadId = slotPickerLeadId
-
-  async function handleSendSelectedSession(option: LiveSessionSlotOption, useBusinessWhatsApp = false) {
-    if (slotPickerLeadId == null) return
-    const lead = items.find((item) => item.id === slotPickerLeadId)
-    if (!lead) return
-    try {
-      await patchMut.mutateAsync({ id: lead.id, body: { status: slotPickerTargetStatus } })
-      const day = slotPickerTargetStatus === 'day2' ? 2 : slotPickerTargetStatus === 'day3' ? 3 : 1
-      const shareUrl = useBusinessWhatsApp
-        ? buildLiveSessionWhatsAppBusinessUrl(lead.phone, lead.name, option, day)
-        : buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option, day)
-      if (!shareUrl || !openExternalShareUrl(shareUrl)) {
-        window.alert('WhatsApp link nahi bana. Lead ka phone number check karo.')
-        return
-      }
-      setSlotPickerLeadId(null)
-    } catch (err) {
-      window.alert('Status update failed: ' + (err instanceof Error ? err.message : 'Unknown error'))
-    }
-  }
+  const sendBusyLeadId = sendingLeadId
 
   return (
     <div className="space-y-4">
@@ -354,16 +348,6 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
           revertNotice={revertNotice}
         />
       ) : null}
-
-      <LiveSessionSlotPicker
-        open={slotPickerLeadId != null}
-        busy={patchMut.isPending}
-        day={slotPickerTargetStatus === 'day2' ? 2 : slotPickerTargetStatus === 'day3' ? 3 : 1}
-        onClose={() => setSlotPickerLeadId(null)}
-        onConfirm={(option, useBusiness) => {
-          void handleSendSelectedSession(option, useBusiness)
-        }}
-      />
 
       <CtcsOutcomeModal
         key={outcomeLeadId ?? 'closed'}
