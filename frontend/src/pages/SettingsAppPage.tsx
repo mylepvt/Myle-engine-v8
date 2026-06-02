@@ -42,6 +42,21 @@ const CONTENT_LINK_FIELDS: readonly SettingsTextField[] = [
   },
 ]
 
+const ENROLLMENT_VIDEO_FIELDS: readonly SettingsTextField[] = [
+  {
+    key: 'flp_min_billing_video_source_url',
+    label: 'Enrollment Live video URL',
+    placeholder: 'https://pub-xxxx.r2.dev/enrollment.mp4',
+    help: 'Jab leader "Send Enrollment-Live video" bhejta hai, prospect ke in-app /watch link me yahi video chalta hai. Direct hosted (R2 / .mp4 / HLS) — YouTube nahi.',
+  },
+  {
+    key: 'flp_min_billing_video_title',
+    label: 'Enrollment video title (overlay)',
+    placeholder: 'MYLE COMMUNITY',
+    help: 'Player ke upar dikhne wala title. Khali chhodo to default.',
+  },
+]
+
 const PREMIERE_SETTING_FIELDS: readonly SettingsTextField[] = [
   {
     key: 'premiere_day1_video_url',
@@ -120,6 +135,7 @@ export function SettingsAppPage({ title }: Props) {
   const [q, setQ] = useState('')
   const [premiereEdits, setPremiereEdits] = useState<Record<string, string>>({})
   const [contentEdits, setContentEdits] = useState<Record<string, string>>({})
+  const [enrollmentEdits, setEnrollmentEdits] = useState<Record<string, string>>({})
   const [waEdits, setWaEdits] = useState<Record<string, string>>({})
   const [showAccessToken, setShowAccessToken] = useState(false)
   const [reminderSending, setReminderSending] = useState(false)
@@ -128,9 +144,11 @@ export function SettingsAppPage({ title }: Props) {
   const [reminderError, setReminderError] = useState<string | null>(null)
   const [premiereSaveMsg, setPremiereSaveMsg] = useState<string | null>(null)
   const [contentSaveMsg, setContentSaveMsg] = useState<string | null>(null)
+  const [enrollmentSaveMsg, setEnrollmentSaveMsg] = useState<string | null>(null)
   const [waSaveMsg, setWaSaveMsg] = useState<string | null>(null)
   const [premiereErrorMsg, setPremiereErrorMsg] = useState<string | null>(null)
   const [contentErrorMsg, setContentErrorMsg] = useState<string | null>(null)
+  const [enrollmentErrorMsg, setEnrollmentErrorMsg] = useState<string | null>(null)
   const [waErrorMsg, setWaErrorMsg] = useState<string | null>(null)
   const settingsSource = appSettingsData?.settings ?? {}
   const resolvedPremiereValue = (key: string): string =>
@@ -139,6 +157,8 @@ export function SettingsAppPage({ title }: Props) {
       : (settingsSource[key] ?? '')
   const resolvedContentValue = (key: string): string =>
     Object.prototype.hasOwnProperty.call(contentEdits, key) ? (contentEdits[key] ?? '') : (settingsSource[key] ?? '')
+  const resolvedEnrollmentValue = (key: string): string =>
+    Object.prototype.hasOwnProperty.call(enrollmentEdits, key) ? (enrollmentEdits[key] ?? '') : (settingsSource[key] ?? '')
   const resolvedWaValue = (key: string): string =>
     Object.prototype.hasOwnProperty.call(waEdits, key) ? (waEdits[key] ?? '') : (settingsSource[key] ?? '')
 
@@ -167,6 +187,22 @@ export function SettingsAppPage({ title }: Props) {
       void refetchAppSettings()
     } catch (error) {
       setContentErrorMsg(error instanceof Error ? error.message : 'Could not save content links.')
+    }
+  }
+
+  const handleSaveEnrollmentVideo = async () => {
+    setEnrollmentSaveMsg(null)
+    setEnrollmentErrorMsg(null)
+    try {
+      for (const field of ENROLLMENT_VIDEO_FIELDS) {
+        const value = resolvedEnrollmentValue(field.key).trim()
+        await updateAppSetting.mutateAsync({ key: field.key, value })
+      }
+      setEnrollmentEdits({})
+      setEnrollmentSaveMsg('Enrollment video saved.')
+      void refetchAppSettings()
+    } catch (error) {
+      setEnrollmentErrorMsg(error instanceof Error ? error.message : 'Could not save enrollment video.')
     }
   }
 
@@ -454,6 +490,52 @@ export function SettingsAppPage({ title }: Props) {
           </button>
           {contentSaveMsg ? <p className="text-xs text-emerald-400">{contentSaveMsg}</p> : null}
           {contentErrorMsg ? <p className="text-xs text-destructive">{contentErrorMsg}</p> : null}
+        </div>
+      </section>
+
+      <section className="surface-elevated space-y-3 p-4">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">Enrollment Live Video</h2>
+          <p className="text-xs text-muted-foreground">
+            Jab leader workboard se "Send Enrollment-Live video" bhejta hai, prospect ke in-app /watch link me yahi video chalta hai.
+          </p>
+        </div>
+
+        {appSettingsPending ? (
+          <Skeleton className="h-9 w-full" />
+        ) : appSettingsError ? (
+          <div className="text-sm text-destructive" role="alert">
+            {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load app settings.'}
+          </div>
+        ) : (
+          <div className="grid gap-3">
+            {ENROLLMENT_VIDEO_FIELDS.map((field) => (
+              <label key={field.key} className="block text-sm">
+                <span className="mb-1 block text-ds-caption text-muted-foreground">{field.label}</span>
+                <input
+                  type="text"
+                  value={resolvedEnrollmentValue(field.key)}
+                  onChange={(e) => setEnrollmentEdits((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                  placeholder={field.placeholder}
+                  className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                />
+                <span className="mt-1 block text-muted-foreground/80">{field.help}</span>
+              </label>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            disabled={updateAppSetting.isPending || appSettingsPending || appSettingsError}
+            onClick={() => void handleSaveEnrollmentVideo()}
+            className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-medium text-primary disabled:opacity-50"
+          >
+            {updateAppSetting.isPending ? 'Saving...' : 'Save enrollment video'}
+          </button>
+          {enrollmentSaveMsg ? <p className="text-xs text-emerald-400">{enrollmentSaveMsg}</p> : null}
+          {enrollmentErrorMsg ? <p className="text-xs text-destructive">{enrollmentErrorMsg}</p> : null}
         </div>
       </section>
 
