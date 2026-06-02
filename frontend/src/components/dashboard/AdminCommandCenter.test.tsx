@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 
@@ -420,8 +420,12 @@ describe('AdminCommandCenter', () => {
     expect(screen.getByText('Today Snapshot')).toBeInTheDocument()
     expect(screen.getByText('Reassign ready')).toBeInTheDocument()
     expect(screen.getByText('Archive incubation')).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Leads' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Audit' })).toBeInTheDocument()
+    // Views are now selected via a single Apple-style dropdown switcher (not an 8-wide tab strip).
+    const switcher = screen.getByRole('button', { name: /Today/ })
+    expect(switcher).toHaveAttribute('aria-haspopup', 'menu')
+    fireEvent.click(switcher)
+    expect(screen.getByRole('menuitem', { name: /Leads/ })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /Audit/ })).toBeInTheDocument()
     expect(screen.getByText('Open Leads')).toBeInTheDocument()
   })
 })
