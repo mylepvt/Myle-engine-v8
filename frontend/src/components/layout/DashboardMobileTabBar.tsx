@@ -1,5 +1,5 @@
-import { useLayoutEffect, useRef, useState } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { useCallback, useLayoutEffect, useRef, useState } from 'react'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { MoreHorizontal } from 'lucide-react'
 
 import { getDashboardNavIcon } from '@/config/dashboard-nav-icons'
@@ -46,6 +46,37 @@ function fourthTabDef(role: Role): DashboardRouteDef | undefined {
   return undefined
 }
 
+type IndicatorState = { left: number; width: number; visible: boolean }
+
+function getTabCenters(innerEl: HTMLElement): number[] {
+  const tabs = innerEl.querySelectorAll<HTMLElement>('a')
+  return Array.from(tabs).map((t) => t.offsetLeft + t.offsetWidth / 2)
+}
+
+function snapIndex(x: number, centers: number[]): number {
+  let minDist = Infinity
+  let idx = 0
+  for (let i = 0; i < centers.length; i++) {
+    const d = Math.abs(x - centers[i])
+    if (d < minDist) { minDist = d; idx = i }
+  }
+  return idx
+}
+
+const BLOB = 46
+const BLOB_MIN = 38
+const BLOB_MAX = 56
+
+function morphWidth(x: number, centers: number[]): number {
+  let minDist = Infinity
+  for (const c of centers) {
+    const d = Math.abs(x - c)
+    if (d < minDist) minDist = d
+  }
+  const t = Math.min(minDist / 40, 1)
+  return BLOB_MIN + (BLOB_MAX - BLOB_MIN) * t
+}
+
 export function DashboardMobileTabBar({
   role,
   trainingLocked = false,
@@ -54,8 +85,12 @@ export function DashboardMobileTabBar({
   scrolled = false,
 }: Props) {
   const location = useLocation()
+  const navigate = useNavigate()
   const tabRefs = useRef<(HTMLAnchorElement | null)[]>([])
-  const [indicator, setIndicator] = useState({ left: 0, width: 46, visible: false })
+  const innerRef = useRef<HTMLDivElement>(null)
+  const [indicator, setIndicator] = useState<IndicatorState>({ left: 0, width: 46, visible: false })
+  const [isDragging, setIsDragging] = useState(false)
+  const dragRef = useRef({ startX: 0, currentX: 0, activeIdx: 0 })
 
   const fourth = fourthTabDef(role)
   const defs: DashboardRouteDef[] = [
@@ -76,18 +111,63 @@ export function DashboardMobileTabBar({
 
   // Measure the active tab so the liquid-glass indicator can slide to it.
   useLayoutEffect(() => {
-    const BLOB = 46
+    if (isDragging) return
     const el = activeIndex >= 0 ? tabRefs.current[activeIndex] : null
     if (!el) {
       setIndicator((s) => ({ ...s, visible: false }))
       return
     }
+    const centers = getTabCenters(innerRef.current!)
+    const cx = el.offsetLeft + el.offsetWidth / 2
     setIndicator({
-      left: el.offsetLeft + el.offsetWidth / 2 - BLOB / 2,
-      width: BLOB,
+      left: cx - BLOB / 2,
+      width: morphWidth(cx, centers),
       visible: true,
     })
-  }, [activeIndex, defs.length, scrolled, keyboardOpen])
+  }, [activeIndex, defs.length, scrolled, keyboardOpen, isDragging])
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    if (!innerRef.current) return
+    const rect = innerRef.current.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    dragRef.current = { startX: x, currentX: x, activeIdx: activeIndex >= 0 ? activeIndex : 0 }
+    setIsDragging(true)
+    innerRef.current.setPointerCapture(e.pointerId)
+  }, [activeIndex])
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isDragging || !innerRef.current) return
+    const rect = innerRef.current.getBoundingClientRect()
+    const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width))
+    dragRef.current.currentX = x
+    const centers = getTabCenters(innerRef.current)
+    if (centers.length === 0) return
+    const w = morphWidth(x, centers)
+    setIndicator({ left: x - BLOB / 2, width: w, visible: true })
+  }, [isDragging])
+
+  const handlePointerUp = useCallback(() => {
+    if (!isDragging || !innerRef.current) return
+    const centers = getTabCenters(innerRef.current)
+    if (centers.length === 0) { setIsDragging(false); return }
+    const dx = Math.abs(dragRef.current.currentX - dragRef.current.startX)
+    const idx = snapIndex(dragRef.current.currentX, centers)
+    // Snap indicator to nearest tab (spring transition re-enables via CSS)
+    const cx = centers[idx]
+    setIndicator({
+      left: cx - BLOB / 2,
+      width: morphWidth(cx, centers),
+      visible: true,
+    })
+    setIsDragging(false)
+    // Only navigate on actual drag (>10px) — taps let NavLink handle naturally
+    if (dx > 10) {
+      const to = tos[idx]
+      if (to && location.pathname !== to && !location.pathname.startsWith(`${to}/`)) {
+        navigate(to)
+      }
+    }
+  }, [isDragging, tos, location.pathname, navigate])
 
   const barClass = cn(
     'dashboard-mobile-tabbar shrink-0 pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] md:hidden',
@@ -161,11 +241,22 @@ export function DashboardMobileTabBar({
       role="navigation"
       aria-label="Main tabs"
     >
-      <div className={innerClass}>
+      <div
+        className={innerClass}
+        ref={innerRef}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        style={{ touchAction: 'none' }}
+      >
         {/* Liquid-glass sliding indicator — springs to the active tab */}
         <span
           aria-hidden
-          className="dashboard-mobile-tabbar__indicator"
+          className={cn(
+            'dashboard-mobile-tabbar__indicator',
+            isDragging && 'dashboard-mobile-tabbar__indicator--dragging',
+          )}
           style={{
             transform: `translateX(${indicator.left}px)`,
             width: indicator.width,
