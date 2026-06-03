@@ -84,11 +84,8 @@ export function LeaderboardPage({ title }: Props) {
                     <p className="max-w-full truncate text-sm font-semibold text-foreground">{r.name}</p>
                     <LevelBadge level={r.level} />
                     <p className="tabular-nums text-xs text-muted-foreground">
-                      <span className="font-medium text-foreground">{r.points}</span> pts
+                      <span className="font-medium text-foreground">{r.xp}</span> XP
                     </p>
-                    {r.xp !== '—' ? (
-                      <p className="text-[0.6rem] text-muted-foreground/70">{r.xp} XP</p>
-                    ) : null}
                   </div>
                 )
               })}
@@ -106,7 +103,6 @@ export function LeaderboardPage({ title }: Props) {
                     <th scope="col" className="px-4 py-2.5 font-medium">Member</th>
                     <th scope="col" className="px-4 py-2.5 font-medium hidden sm:table-cell">Level</th>
                     <th scope="col" className="px-4 py-2.5 font-medium hidden md:table-cell">Role</th>
-                    <th scope="col" className="px-4 py-2.5 text-right font-medium">Points</th>
                     <th scope="col" className="px-4 py-2.5 text-right font-medium hidden sm:table-cell">XP</th>
                   </tr>
                 </thead>
@@ -127,8 +123,7 @@ export function LeaderboardPage({ title }: Props) {
                         <LevelBadge level={r.level} />
                       </td>
                       <td className="px-4 py-2.5 capitalize text-muted-foreground hidden md:table-cell">{r.role}</td>
-                      <td className="px-4 py-2.5 text-right tabular-nums font-medium">{r.points}</td>
-                      <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground hidden sm:table-cell">{r.xp}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums font-medium hidden sm:table-cell">{r.xp}</td>
                     </tr>
                   ))}
                 </tbody>
