@@ -41,6 +41,7 @@ import SettingsPage from '@/pages/SettingsPage'
 import { LeaderboardPage } from '@/pages/LeaderboardPage'
 import { LiveSessionPage } from '@/pages/LiveSessionPage'
 import { CommunityTrainingPage } from '@/pages/CommunityTrainingPage'
+import { TrainingProgressPage } from '@/pages/TrainingProgressPage'
 import { BudgetExportPage } from '@/pages/BudgetExportPage'
 import { LeadControlPage } from '@/pages/LeadControlPage'
 import { SettingsAppPage } from '@/pages/SettingsAppPage'
@@ -125,6 +126,8 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <LiveSessionPage title={title} />
     case 'community-training':
       return <CommunityTrainingPage title={title} />
+    case 'training-progress':
+      return <TrainingProgressPage title={title} />
     case 'downloads':
       return <DownloadsPage title={title} />
     case 'budget-export':
