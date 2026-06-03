@@ -61,7 +61,7 @@ function LeaderCard({ leader, rank }: { leader: LeaderHealthItem; rank: number }
       {/* Name */}
       <div className="w-full min-w-0">
         <p className="truncate text-[11px] font-semibold leading-tight text-foreground">{leader.leader_name}</p>
-        <p className="truncate text-[10px] text-muted-foreground/60">
+        <p className="truncate text-[10px] text-muted-foreground/70">
           {leader.team_size} member team
         </p>
       </div>
@@ -69,15 +69,15 @@ function LeaderCard({ leader, rank }: { leader: LeaderHealthItem; rank: number }
       <div className="flex w-full items-center justify-around gap-1 border-t border-border dark:border-white/[0.06] pt-2">
         <div className="text-center">
           <p className="text-[13px] font-bold tabular-nums text-foreground">{leader.personal_leads_added}</p>
-          <p className="text-[9px] text-muted-foreground/50">Adds</p>
+          <p className="text-[9px] text-muted-foreground/70">Adds</p>
         </div>
         <div className="text-center">
           <p className="text-[13px] font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{leader.personal_calls_today}</p>
-          <p className="text-[9px] text-muted-foreground/50">Calls</p>
+          <p className="text-[9px] text-muted-foreground/70">Calls</p>
         </div>
         <div className="text-center">
           <p className="text-[13px] font-bold tabular-nums text-foreground">{leader.personal_consistency_score}</p>
-          <p className="text-[9px] text-muted-foreground/50">Score</p>
+          <p className="text-[9px] text-muted-foreground/70">Score</p>
         </div>
       </div>
     </Link>
@@ -109,7 +109,7 @@ function TeamRow({ leader }: { leader: LeaderHealthItem }) {
       <div className="min-w-0 flex-1">
         <p className="truncate text-[12px] font-semibold text-foreground">{leader.leader_name}</p>
         <div className="flex items-center gap-1.5">
-          <span className={cn('text-[10px] font-medium', isOnline ? 'text-emerald-400' : 'text-muted-foreground/40')}>
+          <span className={cn('text-[10px] font-medium', isOnline ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground/60')}>
             {isOnline ? 'Live' : 'Offline'}
           </span>
         </div>
@@ -120,7 +120,7 @@ function TeamRow({ leader }: { leader: LeaderHealthItem }) {
         <ActivityChip label="Team Calls" value={leader.team_calls_today} icon="👥" />
         <ActivityChip label="Day 2" value={leader.day2_leads_count} icon="📚" />
       </div>
-      <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/30 transition-transform duration-150 group-hover:translate-x-0.5" />
+      <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/50 transition-transform duration-150 group-hover:translate-x-0.5" />
     </Link>
   )
 }
@@ -128,7 +128,7 @@ function TeamRow({ leader }: { leader: LeaderHealthItem }) {
 function ActivityChip({ label, value, icon }: { label: string; value: number; icon: string }) {
   return (
     <div className="flex min-w-[52px] flex-col items-center gap-0.5">
-      <div className="flex items-center gap-1 text-[10px] text-muted-foreground/50">
+      <div className="flex items-center gap-1 text-[10px] text-muted-foreground/70">
         <span className="text-[10px]">{icon}</span>
         <span>{label}</span>
       </div>
@@ -178,7 +178,7 @@ function LiveActivityFeed() {
 
   if (!visible.length) {
     return (
-      <div className="flex items-center justify-center py-6 text-[11px] text-muted-foreground/40">
+      <div className="flex items-center justify-center py-6 text-[11px] text-muted-foreground/60">
         Waiting for activity…
       </div>
     )
@@ -208,13 +208,13 @@ function LiveActivityFeed() {
                 {entry.description}
               </p>
               {entry.actorName && entry.actorName !== 'Unknown' && (
-                <p className="mt-0.5 truncate text-[10px] text-muted-foreground/50">
+                <p className="mt-0.5 truncate text-[10px] text-muted-foreground/70">
                   By {entry.actorName}
                 </p>
               )}
             </div>
             {/* Time */}
-            <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/40">
+            <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/60">
               {timeAgo(entry.timestamp)}
             </span>
           </Link>
