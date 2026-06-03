@@ -117,7 +117,6 @@ export function WatchPage() {
   const [watchCompleted, setWatchCompleted] = useState(false)
   const [playing, setPlaying] = useState(false)
   const [playerError, setPlayerError] = useState<string | null>(null)
-  const [currentSeconds, setCurrentSeconds] = useState(0)
   const [durationSeconds, setDurationSeconds] = useState(0)
   const [completing, setCompleting] = useState(false)
   const [nowMs, setNowMs] = useState(() => Date.now())
@@ -161,7 +160,6 @@ export function WatchPage() {
         maxAllowedTimeRef.current = 0
         setPlaying(false)
         setPlayerError(null)
-        setCurrentSeconds(0)
         setDurationSeconds(0)
         setLoading(false)
       })
@@ -213,7 +211,6 @@ export function WatchPage() {
       maxAllowedTimeRef.current = 0
       setPlaying(false)
       setPlayerError(null)
-      setCurrentSeconds(0)
       setDurationSeconds(0)
       setName('')
       setPhone('')
@@ -451,7 +448,6 @@ export function WatchPage() {
                                 ? e.currentTarget.duration
                                 : 0
                               setDurationSeconds(nextDuration)
-                              setCurrentSeconds(e.currentTarget.currentTime || 0)
                               maxAllowedTimeRef.current = Math.max(maxAllowedTimeRef.current, e.currentTarget.currentTime || 0)
                             }}
                             onPlay={() => {
@@ -469,7 +465,6 @@ export function WatchPage() {
                               const nextDuration = Number.isFinite(e.currentTarget.duration)
                                 ? e.currentTarget.duration
                                 : 0
-                              setCurrentSeconds(nextTime)
                               if (nextDuration > 0) {
                                 setDurationSeconds(nextDuration)
                               }
@@ -487,7 +482,6 @@ export function WatchPage() {
                             }}
                             onEnded={() => {
                               setPlaying(false)
-                              setCurrentSeconds(durationSeconds)
                               maxAllowedTimeRef.current = durationSeconds
                               void handleCompleteWatch()
                             }}

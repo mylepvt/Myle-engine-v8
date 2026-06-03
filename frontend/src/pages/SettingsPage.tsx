@@ -188,7 +188,7 @@ export default function SettingsPage() {
                         height={96}
                       />
                     ) : (
-                      <div className="flex size-full items-center justify-center text-2xl text-gray-400">
+                      <div className="flex size-full items-center justify-center text-2xl text-muted-foreground">
                         {(userProfile.data?.username?.[0] ?? userProfile.data?.email?.[0] ?? '?').toUpperCase()}
                       </div>
                     )}
@@ -208,7 +208,7 @@ export default function SettingsPage() {
                         e.target.value = ''
                       }}
                     />
-                    <p className="mt-1 text-xs text-gray-600 dark:text-muted-foreground">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       JPEG, PNG, or WebP. Max 2 MB.
                     </p>
                     {avatarUpload.isError ? (
@@ -294,7 +294,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Member Since</span>
-                  <span className="text-sm text-gray-600">{memberSince}</span>
+                  <span className="text-sm text-muted-foreground">{memberSince}</span>
                 </div>
               </CardContent>
             </Card>
@@ -316,7 +316,7 @@ export default function SettingsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <Label htmlFor="email_notifications">Email Notifications</Label>
-                      <p className="text-sm text-gray-600">Receive notifications via email.</p>
+                      <p className="text-sm text-muted-foreground">Receive notifications via email.</p>
                     </div>
                     <Switch
                       id="email_notifications"
@@ -327,14 +327,14 @@ export default function SettingsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <Label>Push Notifications</Label>
-                      <p className="text-sm text-gray-600">Receive browser push notifications.</p>
+                      <p className="text-sm text-muted-foreground">Receive browser push notifications.</p>
                     </div>
                     <PushNotificationToggle />
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
                       <Label htmlFor="daily_report_reminders">Daily Report Reminders</Label>
-                      <p className="text-sm text-gray-600">Get reminded to submit daily reports.</p>
+                      <p className="text-sm text-muted-foreground">Get reminded to submit daily reports.</p>
                     </div>
                     <Switch
                       id="daily_report_reminders"
@@ -345,7 +345,7 @@ export default function SettingsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <Label htmlFor="lead_assignment_alerts">Lead Assignment Alerts</Label>
-                      <p className="text-sm text-gray-600">Notify when new leads are assigned.</p>
+                      <p className="text-sm text-muted-foreground">Notify when new leads are assigned.</p>
                     </div>
                     <Switch
                       id="lead_assignment_alerts"
@@ -356,7 +356,7 @@ export default function SettingsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <Label htmlFor="payment_notifications">Payment Notifications</Label>
-                      <p className="text-sm text-gray-600">Get notified about payment updates.</p>
+                      <p className="text-sm text-muted-foreground">Get notified about payment updates.</p>
                     </div>
                     <Switch
                       id="payment_notifications"
@@ -367,7 +367,7 @@ export default function SettingsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <Label htmlFor="weekly_summary">Weekly Summary</Label>
-                      <p className="text-sm text-gray-600">Receive weekly performance summary.</p>
+                      <p className="text-sm text-muted-foreground">Receive weekly performance summary.</p>
                     </div>
                     <Switch
                       id="weekly_summary"

@@ -1,9 +1,9 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-export type ThemePreference = 'dark'
+export type ThemePreference = 'light' | 'dark'
 
-const THEME_CYCLE_ORDER: ThemePreference[] = ['dark']
+const THEME_CYCLE_ORDER: ThemePreference[] = ['dark', 'light']
 
 type UiFeedbackState = {
   theme: ThemePreference

@@ -298,7 +298,7 @@ export function WhatsAppPanelPage({ title }: Props) {
         )}>
           <CardContent className="flex items-center gap-4 py-4">
             {!status.configured ? (
-              <WifiOff className="h-8 w-8 text-gray-400" />
+              <WifiOff className="h-8 w-8 text-muted-foreground" />
             ) : status.connected ? (
               <MessageSquare className="h-8 w-8 text-green-600" />
             ) : (
@@ -306,7 +306,7 @@ export function WhatsAppPanelPage({ title }: Props) {
             )}
             <div>
               {!status.configured ? (
-                <p className="font-medium text-gray-600">WhatsApp not configured</p>
+                <p className="font-medium text-muted-foreground">WhatsApp not configured</p>
               ) : status.connected ? (
                 <>
                   <p className="font-medium text-green-700">Connected</p>
@@ -376,7 +376,7 @@ export function WhatsAppPanelPage({ title }: Props) {
         <CardHeader className="pb-2 pt-4">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <Settings className="h-4 w-4 text-slate-500" />
+              <Settings className="h-4 w-4 text-muted-foreground" />
               Approved Template Settings
             </CardTitle>
             <Button size="sm" variant="ghost" onClick={() => setTemplatesOpen((v) => !v)}>

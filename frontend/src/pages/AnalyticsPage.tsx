@@ -39,7 +39,7 @@ export default function AnalyticsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold mb-2">Analytics & Reports</h1>
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               Performance metrics and insights for your team
             </p>
           </div>
@@ -98,25 +98,25 @@ export default function AnalyticsPage() {
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Reports Submitted</span>
+                    <span className="text-sm text-muted-foreground">Reports Submitted</span>
                     <span className="font-semibold">
                       {individualPerformance.data?.reports.total_reports || 0}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Total Calls</span>
+                    <span className="text-sm text-muted-foreground">Total Calls</span>
                     <span className="font-semibold">
                       {individualPerformance.data?.reports.total_calls || 0}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">FlpMinBillings</span>
+                    <span className="text-sm text-muted-foreground">FlpMinBillings</span>
                     <span className="font-semibold">
                       {individualPerformance.data?.reports.total_flp_min_billings || 0}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Points Earned</span>
+                    <span className="text-sm text-muted-foreground">Points Earned</span>
                     <span className="font-semibold">
                       {individualPerformance.data?.scores.total_points || 0}
                     </span>
@@ -161,7 +161,7 @@ export default function AnalyticsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-medium">Export Data</h3>
-            <p className="text-sm text-gray-600">Download analytics data for offline analysis</p>
+            <p className="text-sm text-muted-foreground">Download analytics data for offline analysis</p>
           </div>
           <div className="flex space-x-2">
             <Button
