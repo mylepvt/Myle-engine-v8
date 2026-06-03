@@ -682,7 +682,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                 id="free-pool-import-file"
                 type="file"
                 accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                className="max-w-full text-xs file:mr-2 file:rounded-md file:border-0 file:bg-emerald-600 file:px-2 file:py-1 file:text-xs file:font-medium file:text-white"
+                className="max-w-full text-xs file:mr-2 file:rounded-md file:border-0 file:bg-emerald-600 dark:file:bg-emerald-500 file:px-2 file:py-1 file:text-xs file:font-medium file:text-white"
                 onChange={(e) => setFreeImportFile(e.target.files?.[0] ?? null)}
               />
               <Button
