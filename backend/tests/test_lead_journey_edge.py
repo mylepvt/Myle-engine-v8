@@ -162,7 +162,7 @@ async def test_team_cannot_jump_to_closing_stages(team_client: AsyncClient, engi
     assert resp.status_code in (400, 403), f"team must NOT set {forbidden}: {resp.text}"
 
 
-# ── 3. CLOSING walk: leader day1→day2, admin day2→day3, leader day3→converted ──
+# ── 3. CLOSING walk: leader has full status control day1→day2→day3→converted ──
 
 @pytest.mark.asyncio
 async def test_closing_walk_per_day_roles(engine):
@@ -177,35 +177,13 @@ async def test_closing_walk_per_day_roles(engine):
         for target in ("contacted", "invited", "video_sent", "video_watched"):
             assert (await _patch_status(team, lead_id, target)).status_code == 200
 
-    # LEADER takes over: video_watched → day1 → day2 (but NOT day3).
+    # LEADER takes over with full status control: video_watched → day1 → day2 → day3.
+    # Leader may advance straight into Day 3 without the Day-2 batch/test gate.
     async with _as_role(engine, "leader", 202) as leader:
-        for target in ("day1", "day2"):
+        for target in ("day1", "day2", "day3"):
             resp = await _patch_status(leader, lead_id, target)
             assert resp.status_code == 200, resp.text
             assert resp.json()["status"] == target
-        # leader must NOT advance into Day 3 (admin-only)
-        assert (await _patch_status(leader, lead_id, "day3")).status_code == 400
-
-    # Day 2 → Day 3 is gated on BOTH all Day-2 batches done AND a PASSED business test.
-    # Without them, even admin is blocked; satisfy both, then advance.
-    async with _as_role(engine, "admin", 203) as admin:
-        blocked = await _patch_status(admin, lead_id, "day3")
-        assert blocked.status_code == 400, "day3 must be blocked until Day 2 batches + test pass"
-
-    async with AsyncSession(engine, expire_on_commit=False) as session:
-        lead_row = await session.get(Lead, lead_id)
-        lead_row.d2_morning = True
-        lead_row.d2_afternoon = True
-        lead_row.d2_evening = True
-        lead_row.day2_test_status = "passed"
-        lead_row.day2_test_score = 27
-        await session.commit()
-
-    # ADMIN advances Day 2 → Day 3 (now that batches are done and the test is passed).
-    async with _as_role(engine, "admin", 203) as admin:
-        resp = await _patch_status(admin, lead_id, "day3")
-        assert resp.status_code == 200, resp.text
-        assert resp.json()["status"] == "day3"
 
     # LEADER closes Day 3 → converted.
     async with _as_role(engine, "leader", 202) as leader:

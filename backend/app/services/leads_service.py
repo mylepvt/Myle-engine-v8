@@ -955,7 +955,12 @@ class LeadsService:
                 raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
             # Day 2 → Day 3 gate: mirrors the old-app ACTION_MAP 'day2_complete' which
             # required BOTH all Day-2 batches done AND lead_day2_business_test_passed.
-            if body.status == "day3" and lead.status == "day2":
+            # Leader/admin have full status control and may move a lead anywhere.
+            if (
+                body.status == "day3"
+                and lead.status == "day2"
+                and user.role not in ("admin", "leader")
+            ):
                 if not (lead.d2_morning and lead.d2_afternoon and lead.d2_evening):
                     raise HTTPException(
                         status_code=http_status.HTTP_400_BAD_REQUEST,
