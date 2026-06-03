@@ -53,8 +53,8 @@ function LeaderCard({ leader, rank }: { leader: LeaderHealthItem; rank: number }
         {/* Online indicator */}
         <span
           className={cn(
-            'absolute bottom-0 right-0 block size-3 rounded-full border-2 border-[#111214]',
-            isOnline ? 'bg-emerald-400' : 'bg-gray-600',
+            'absolute bottom-0 right-0 block size-3 rounded-full border-2 border-background dark:border-[#111214]',
+            isOnline ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-gray-500 dark:bg-gray-600',
           )}
         />
       </div>
@@ -72,7 +72,7 @@ function LeaderCard({ leader, rank }: { leader: LeaderHealthItem; rank: number }
           <p className="text-[9px] text-muted-foreground/50">Adds</p>
         </div>
         <div className="text-center">
-          <p className="text-[13px] font-bold tabular-nums text-emerald-400">{leader.personal_calls_today}</p>
+          <p className="text-[13px] font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{leader.personal_calls_today}</p>
           <p className="text-[9px] text-muted-foreground/50">Calls</p>
         </div>
         <div className="text-center">
@@ -100,8 +100,8 @@ function TeamRow({ leader }: { leader: LeaderHealthItem }) {
         </div>
         <span
           className={cn(
-            'absolute -bottom-0.5 -right-0.5 block size-2.5 rounded-full border-[1.5px] border-[#1a1c22]',
-            isOnline ? 'bg-emerald-400' : 'bg-gray-600',
+            'absolute -bottom-0.5 -right-0.5 block size-2.5 rounded-full border-[1.5px] border-background dark:border-[#1a1c22]',
+            isOnline ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-muted-foreground/40 dark:bg-gray-600',
           )}
         />
       </div>
@@ -288,8 +288,8 @@ export function PeopleOpsPanel() {
         <div className="flex items-center justify-between border-b border-border dark:border-white/[0.06] px-4 py-3">
           <div className="flex items-center gap-2">
             <span className="relative flex size-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex size-1.5 rounded-full bg-emerald-400" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 dark:bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
             </span>
             <p className="text-[11px] font-semibold text-muted-foreground/70">Live Activity</p>
           </div>

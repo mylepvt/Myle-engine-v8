@@ -63,7 +63,6 @@ function snapIndex(x: number, centers: number[]): number {
   return idx
 }
 
-const BLOB = 46
 const BLOB_MIN = 38
 const BLOB_MAX = 56
 
@@ -119,9 +118,10 @@ export function DashboardMobileTabBar({
     }
     const centers = getTabCenters(innerRef.current!)
     const cx = el.offsetLeft + el.offsetWidth / 2
+    const w = morphWidth(cx, centers)
     setIndicator({
-      left: cx - BLOB / 2,
-      width: morphWidth(cx, centers),
+      left: cx - w / 2,
+      width: w,
       visible: true,
     })
   }, [activeIndex, defs.length, scrolled, keyboardOpen, isDragging])
@@ -143,7 +143,7 @@ export function DashboardMobileTabBar({
     const centers = getTabCenters(innerRef.current)
     if (centers.length === 0) return
     const w = morphWidth(x, centers)
-    setIndicator({ left: x - BLOB / 2, width: w, visible: true })
+    setIndicator({ left: x - w / 2, width: w, visible: true })
   }, [isDragging])
 
   const handlePointerUp = useCallback(() => {
@@ -154,9 +154,10 @@ export function DashboardMobileTabBar({
     const idx = snapIndex(dragRef.current.currentX, centers)
     // Snap indicator to nearest tab (spring transition re-enables via CSS)
     const cx = centers[idx]
+    const w = morphWidth(cx, centers)
     setIndicator({
-      left: cx - BLOB / 2,
-      width: morphWidth(cx, centers),
+      left: cx - w / 2,
+      width: w,
       visible: true,
     })
     setIsDragging(false)
@@ -178,7 +179,7 @@ export function DashboardMobileTabBar({
     'dashboard-mobile-tabbar__inner mx-auto flex h-[60px] max-w-lg items-stretch justify-around gap-1 px-1.5 min-[390px]:px-2'
   const tabClass =
     'dashboard-mobile-tabbar__tab flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[1rem] px-1 py-1 text-ds-label font-medium transition-colors active:opacity-70'
-  const iconClass = 'size-5 shrink-0 min-[390px]:size-[22px]'
+  const iconClass = 'size-[22px] shrink-0 min-[390px]:size-6'
 
   if (trainingLocked) {
     const def = defForPath('system/training')
