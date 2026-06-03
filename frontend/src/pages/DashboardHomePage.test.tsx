@@ -59,6 +59,10 @@ vi.mock('@/hooks/use-team-today-stats-query', () => ({
   useTeamTodayStatsQuery: () => mockUseTeamTodayStatsQuery(),
 }))
 
+vi.mock('@/hooks/use-handed-off-leads-query', () => ({
+  useHandedOffLeadsQuery: () => ({ data: [], isPending: false }),
+}))
+
 vi.mock('@/hooks/use-lead-pool-query', () => ({
   useLeadPoolQuery: () => mockUseLeadPoolQuery(),
 }))

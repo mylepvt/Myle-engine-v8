@@ -27,6 +27,7 @@ import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { useFollowUpsQuery } from '@/hooks/use-follow-ups-query'
 import { useTeamPersonalFunnelQuery } from '@/hooks/use-team-personal-funnel-query'
+import { useHandedOffLeadsQuery } from '@/hooks/use-handed-off-leads-query'
 import { useTeamTodayStatsQuery } from '@/hooks/use-team-today-stats-query'
 import { useLeadPoolQuery } from '@/hooks/use-lead-pool-query'
 import { LEAD_STATUS_OPTIONS, type LeadPublic, type LeadStatus, usePatchLeadMutation } from '@/hooks/use-leads-query'
@@ -146,6 +147,7 @@ export function DashboardHomePage() {
   const fu = useFollowUpsQuery(true, sessionReady && role !== 'team')
   const teamFunnel = useTeamPersonalFunnelQuery(sessionReady && role === 'team')
   const teamToday = useTeamTodayStatsQuery(sessionReady && role === 'team')
+  const handedOffLeads = useHandedOffLeadsQuery(sessionReady && role === 'team')
   const pool = useLeadPoolQuery(sessionReady && role === 'admin')
   const adminReports = useTeamReportsQuery('', sessionReady && role === 'admin')
   const los = useLosQuery(sessionReady && role === 'leader')
@@ -236,6 +238,8 @@ export function DashboardHomePage() {
         funnel={teamFunnel.data}
         today={teamToday.data}
         recentLeads={recentLeads}
+        handedOffLeads={handedOffLeads.data ?? []}
+        handedOffPending={handedOffLeads.isPending}
         quickActions={quickActions}
       />
     )

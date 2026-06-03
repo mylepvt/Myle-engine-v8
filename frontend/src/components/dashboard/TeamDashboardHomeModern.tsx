@@ -3,6 +3,7 @@ import { ArrowRight, Clock3 } from 'lucide-react'
 
 import { CcSummaryCard } from '@/components/dashboard/CcSummaryCard'
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
+import { HandedOffLeadsSection } from '@/components/dashboard/HandedOffLeadsSection'
 import { XpBadge } from '@/components/xp/XpBadge'
 import { Card, CardContent } from '@/components/ui/card'
 import type { HomeQuickAction } from '@/config/dashboard-home-actions'
@@ -19,6 +20,8 @@ type Props = {
   funnel: TeamPersonalFunnel | undefined
   today: TeamTodayStats | undefined
   recentLeads: LeadPublic[]
+  handedOffLeads: LeadPublic[]
+  handedOffPending: boolean
   quickActions: HomeQuickAction[]
 }
 
@@ -41,6 +44,8 @@ export function TeamDashboardHomeModern({
   funnel,
   today,
   recentLeads,
+  handedOffLeads,
+  handedOffPending,
   quickActions,
 }: Props) {
   const topActions = quickActions.slice(0, 4)
@@ -175,6 +180,8 @@ export function TeamDashboardHomeModern({
       <GateAssistantCard sessionReady={sessionReady} />
 
       <CcSummaryCard enabled={sessionReady} />
+
+      <HandedOffLeadsSection leads={handedOffLeads} pending={handedOffPending} />
 
       <section className="space-y-2">
         <div className="flex items-center justify-between px-1">
