@@ -9,10 +9,10 @@ type Props = { title: string }
 
 const LEVEL_META: Record<string, { label: string; cls: string }> = {
   rookie:    { label: 'Rookie',    cls: 'bg-muted/60 text-muted-foreground' },
-  hustler:   { label: 'Hustler',   cls: 'bg-blue-500/15 text-blue-400' },
-  closer:    { label: 'Closer',    cls: 'bg-violet-500/15 text-violet-400' },
-  champion:  { label: 'Champion',  cls: 'bg-amber-500/15 text-amber-400' },
-  legend:    { label: 'Legend',    cls: 'bg-gradient-to-r from-amber-400/20 to-orange-400/20 text-amber-300 font-bold' },
+  hustler:   { label: 'Hustler',   cls: 'bg-blue-500/15 text-blue-600 dark:text-blue-400' },
+  closer:    { label: 'Closer',    cls: 'bg-violet-500/15 text-violet-600 dark:text-violet-400' },
+  champion:  { label: 'Champion',  cls: 'bg-amber-500/15 text-amber-600 dark:text-amber-400' },
+  legend:    { label: 'Legend',    cls: 'bg-gradient-to-r from-amber-400/20 to-orange-400/20 text-amber-600 dark:text-amber-300 font-bold' },
 }
 
 function LevelBadge({ level }: { level: string }) {

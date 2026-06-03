@@ -97,7 +97,7 @@ export function DashboardSidebar({
                               'group flex min-h-[36px] items-center gap-2.5 rounded px-2 py-1.5 text-sm font-medium',
                               'transition-[background-color,color] duration-100',
                               isActive
-                                ? 'bg-[rgba(88,101,242,0.20)] text-primary font-semibold'
+                                ? 'bg-primary/20 text-primary font-semibold'
                                 : 'text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground',
                             )
                           }
