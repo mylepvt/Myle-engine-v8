@@ -216,7 +216,7 @@ export function DashboardHeader({
             <img
               src={apiUrl(me.avatar_url)}
               alt={me.username ? `Profile photo for ${me.username}` : me.email ? `Profile photo for ${me.email}` : 'Your profile photo'}
-              className="size-full object-cover"
+              className="size-8 object-cover"
               width={32}
               height={32}
             />
