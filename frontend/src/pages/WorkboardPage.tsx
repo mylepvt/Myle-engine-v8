@@ -282,7 +282,7 @@ const LeadCard = memo(function LeadCard({
     <article
       className={cn(
         'relative overflow-hidden rounded-md border p-3 text-card-foreground backdrop-blur-md sm:p-3.5',
-        'bg-card/90 dark:bg-card/80 supports-[backdrop-filter]:bg-card/75 supports-[backdrop-filter]:dark:bg-card/60',
+        'bg-card dark:bg-card/80 supports-[backdrop-filter]:dark:bg-card/60',
         slaTone.border,
         slaTone.cardGlow,
       )}
