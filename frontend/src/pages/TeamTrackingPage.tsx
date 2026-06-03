@@ -288,15 +288,15 @@ function buildLeaderHealth(items: TeamTrackingMemberSummary[]) {
 }
 
 function liveBadgeClass(status: TeamTrackingMemberSummary['presence_status']) {
-  if (status === 'online') return 'bg-emerald-400'
-  if (status === 'idle') return 'bg-amber-400'
-  return 'bg-slate-400'
+  if (status === 'online') return 'bg-emerald-500 dark:bg-emerald-400'
+  if (status === 'idle') return 'bg-amber-500 dark:bg-amber-400'
+  return 'bg-slate-500 dark:bg-slate-400'
 }
 
 function scoreRailClass(band: TeamTrackingMemberSummary['consistency_band']) {
-  if (band === 'high') return 'bg-emerald-400/90'
-  if (band === 'medium') return 'bg-amber-400/90'
-  return 'bg-rose-400/90'
+  if (band === 'high') return 'bg-emerald-500/90 dark:bg-emerald-400/90'
+  if (band === 'medium') return 'bg-amber-500/90 dark:bg-amber-400/90'
+  return 'bg-rose-500/90 dark:bg-rose-400/90'
 }
 
 function updateParam(
@@ -411,7 +411,7 @@ function AttentionRow({ item, dateIso }: { item: TeamTrackingMemberSummary; date
             last activity {formatRelativeTime(item.last_activity_at)}
           </p>
         </div>
-        <div className="rounded-full border border-rose-400/20 px-2 py-1 text-ds-label uppercase text-rose-200">
+        <div className="rounded-full border border-rose-400/20 px-2 py-1 text-ds-label uppercase text-rose-600 dark:text-rose-200">
           priority
         </div>
       </div>

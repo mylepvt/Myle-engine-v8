@@ -551,7 +551,7 @@ function MemberProfileModal({
             <div>
               <p className="text-xs text-foreground">
                 Status:{' '}
-                <span className={trainingRequired ? 'text-amber-400 font-medium' : 'text-emerald-400 font-medium'}>
+                <span className={trainingRequired ? 'text-amber-600 dark:text-amber-400 font-medium' : 'text-emerald-600 dark:text-emerald-400 font-medium'}>
                   {trainingRequired ? '🔒 Locked (training required)' : '✓ Unlocked'}
                 </span>
               </p>
@@ -818,7 +818,7 @@ export function TeamMembersPage({ title }: Props) {
       ) : null}
 
       {toastMsg ? (
-        <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] right-4 z-[85] max-w-[min(22rem,calc(100vw-2rem))] rounded-md border border-emerald-400/35 bg-emerald-400/15 px-3 py-2 text-ds-caption font-semibold text-emerald-200 shadow-lg">
+        <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] right-4 z-[85] max-w-[min(22rem,calc(100vw-2rem))] rounded-md border border-emerald-500/35 bg-emerald-500/15 px-3 py-2 text-ds-caption font-semibold text-emerald-600 dark:text-emerald-200 shadow-lg">
           {toastMsg}
         </div>
       ) : null}

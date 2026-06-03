@@ -126,7 +126,7 @@ export function SalesApprovalsPage({ title }: Props) {
                       {row.invoice_number ? <span>#{row.invoice_number}</span> : null}
                     </div>
                     {row.verify_notes ? (
-                      <p className="text-xs text-amber-300/90">{row.verify_notes}</p>
+                      <p className="text-xs text-amber-600/90 dark:text-amber-300/90">{row.verify_notes}</p>
                     ) : null}
                     {row.ocr_confidence ? (
                       <p className="text-[11px] text-muted-foreground">
