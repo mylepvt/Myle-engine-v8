@@ -67,7 +67,7 @@ export function DashboardHeader({
           type="button"
           variant="ghost"
           size="icon"
-          className="size-9"
+          className="min-h-[44px] min-w-[44px]"
           onClick={() => {
             if (isMobile) setMobileMenuOpen(!mobileMenuOpen)
             else toggleSidebar()
@@ -143,7 +143,7 @@ export function DashboardHeader({
 
         <Link
           to="/dashboard/settings/profile"
-          className="hidden size-9 items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground md:flex"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground md:flex"
           aria-label="Settings"
         >
           <Settings className="size-[17px]" />
@@ -153,7 +153,7 @@ export function DashboardHeader({
           <div className="relative">
             <Link
               to="/dashboard/team/flp-min-billing"
-              className="relative flex size-9 items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground"
+              className="relative flex min-h-[44px] min-w-[44px] items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground"
               aria-label={`Min. FLP approvals — ${pendingEnrollCount} pending`}
             >
               <ClipboardCheck className="size-[17px] text-success" />
@@ -170,7 +170,7 @@ export function DashboardHeader({
         <div className="relative">
           <Link
             to="/dashboard/other/notice-board"
-            className="relative flex size-9 items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground"
+            className="relative flex min-h-[44px] min-w-[44px] items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground"
             aria-label={noticeBoardUnread > 0 ? `Notice board — ${noticeBoardUnread} new` : 'Notice board'}
           >
             <Bell className="size-[17px]" />
@@ -204,7 +204,7 @@ export function DashboardHeader({
 
         <Link
           to="/dashboard/settings/profile"
-          className="relative ml-1 flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted text-ds-caption font-semibold text-foreground transition-opacity hover:opacity-85 active:opacity-70"
+          className="relative ml-1 flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted text-ds-caption font-semibold text-foreground transition-opacity hover:opacity-85 active:opacity-70"
           title={
             me?.fbo_id
               ? `${me.fbo_id}${me.username ? ` · ${me.username}` : ''}${me.email ? ` · ${me.email}` : ''}`
@@ -216,7 +216,7 @@ export function DashboardHeader({
             <img
               src={apiUrl(me.avatar_url)}
               alt={me.username ? `Profile photo for ${me.username}` : me.email ? `Profile photo for ${me.email}` : 'Your profile photo'}
-              className="size-full object-cover"
+              className="size-8 object-cover"
               width={32}
               height={32}
             />

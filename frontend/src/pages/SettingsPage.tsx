@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -125,6 +126,19 @@ export default function SettingsPage() {
           {authData?.role?.toUpperCase() ?? '--'}
         </Badge>
       </div>
+
+      {userProfile.isPending || userPreferences.isPending ? (
+        <div className="space-y-4">
+          <Skeleton className="h-24 w-full rounded-lg" />
+          <Skeleton className="h-64 w-full rounded-lg" />
+        </div>
+      ) : null}
+
+      {userProfile.isError ? (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert">
+          Failed to load profile. Try refreshing the page.
+        </div>
+      ) : null}
 
       {isAdmin ? (
         <Card className="border-primary/20 bg-primary/5">

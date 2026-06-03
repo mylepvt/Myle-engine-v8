@@ -389,7 +389,7 @@ export function LeadPoolWorkPage({ title }: Props) {
       {canClaimPool && walletData !== undefined ? (
         <div className="surface-inset inline-flex items-center gap-2 px-3 py-1.5 text-sm">
           <span className="text-muted-foreground">Wallet balance:</span>
-          <span className={`font-semibold ${walletBalance > 0 ? 'text-[hsl(142_71%_48%)]' : 'text-destructive'}`}>
+          <span className={`font-semibold ${walletBalance > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}`}>
             {formatRupees(walletBalance)}
           </span>
           <Link to="/dashboard/finance/wallet" className="text-xs text-primary underline-offset-2 hover:underline">
@@ -548,8 +548,8 @@ export function LeadPoolWorkPage({ title }: Props) {
                       {/* Price badge */}
                       <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                         isFree
-                          ? 'bg-[hsl(142_71%_45%)]/15 text-[hsl(142_71%_45%)]'
-                          : 'bg-amber-400/15 text-amber-400'
+                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                          : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
                       }`}>
                         {isFree ? 'Free' : formatRupees(price)}
                       </span>
@@ -652,7 +652,7 @@ export function LeadPoolWorkPage({ title }: Props) {
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <p className="font-semibold text-foreground">
             Free Lead Pool{' '}
-            <span className="ml-1 rounded-full bg-[hsl(142_71%_45%)]/15 px-2 py-0.5 text-xs font-medium text-[hsl(142_71%_45%)]">
+            <span className="ml-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
               Free
             </span>
           </p>
@@ -682,7 +682,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                 id="free-pool-import-file"
                 type="file"
                 accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                className="max-w-full text-xs file:mr-2 file:rounded-md file:border-0 file:bg-[hsl(142_71%_45%)] file:px-2 file:py-1 file:text-xs file:font-medium file:text-white"
+                className="max-w-full text-xs file:mr-2 file:rounded-md file:border-0 file:bg-emerald-600 file:px-2 file:py-1 file:text-xs file:font-medium file:text-white"
                 onChange={(e) => setFreeImportFile(e.target.files?.[0] ?? null)}
               />
               <Button
@@ -719,10 +719,10 @@ export function LeadPoolWorkPage({ title }: Props) {
             ) : null}
 
             {freePoolPreview != null ? (
-              <div className="rounded-lg border border-[hsl(142_71%_45%)]/25 bg-[hsl(142_71%_45%)]/5 p-3 text-xs">
+              <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/5 p-3 text-xs">
                 <p className="font-medium text-foreground">
                   Available free leads:{' '}
-                  <span className="tabular-nums text-[hsl(142_71%_45%)]">
+                  <span className="tabular-nums text-emerald-600 dark:text-emerald-400">
                     {freePoolPreview.available_count}
                   </span>
                 </p>
@@ -730,7 +730,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                 {freePoolPreview.available_count === 0 ? (
                   <p className="mt-2 text-muted-foreground">Abhi koi free lead available nahi hai.</p>
                 ) : freeBatchConfirmOpen ? (
-                  <div className="mt-3 space-y-2 rounded-md border border-[hsl(142_71%_45%)]/30 bg-[hsl(142_71%_45%)]/10 p-2">
+                  <div className="mt-3 space-y-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2">
                     <p className="text-foreground">
                       <strong className="tabular-nums">{freePoolPreview.claim_count}</strong> free lead(s) claim
                       karna chahte ho? Bilkul free — wallet se kuch nahi katega.
@@ -768,7 +768,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                         step={1}
                         value={freeBatchCountStr}
                         onChange={(e) => setFreeBatchCountStr(e.target.value)}
-                        className="w-20 rounded-md border border-border dark:border-white/12 bg-muted/50 px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-[hsl(142_71%_45%)]/35"
+                        className="w-20 rounded-md border border-border dark:border-white/12 bg-muted/50 px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-emerald-500/35"
                       />
                       <span className="ml-2 text-muted-foreground">
                         (max {Math.min(50, freePoolPreview.available_count)})

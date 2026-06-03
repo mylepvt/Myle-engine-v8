@@ -144,10 +144,10 @@ export function LeaderOSPage() {
         <Card>
           <CardContent className="px-4 py-3.5">
             <div className="flex items-center gap-2">
-              <Users className="size-4 text-blue-400" aria-hidden />
+              <Users className="size-4 text-blue-600 dark:text-blue-400" aria-hidden />
               <span className="text-xs text-muted-foreground">Active Members</span>
             </div>
-            <p className="mt-2 text-3xl font-semibold tabular-nums text-blue-400">
+            <p className="mt-2 text-3xl font-semibold tabular-nums text-blue-600 dark:text-blue-400">
               {data.active_count}
             </p>
             <p className="text-xs text-muted-foreground">
@@ -159,10 +159,10 @@ export function LeaderOSPage() {
         <Card>
           <CardContent className="px-4 py-3.5">
             <div className="flex items-center gap-2">
-              <Phone className="size-4 text-amber-400" aria-hidden />
+              <Phone className="size-4 text-amber-600 dark:text-amber-400" aria-hidden />
               <span className="text-xs text-muted-foreground">Calls Today</span>
             </div>
-            <p className={cn('mt-2 text-3xl font-semibold tabular-nums', callsPct < 60 ? 'text-red-400' : 'text-amber-400')}>
+            <p className={cn('mt-2 text-3xl font-semibold tabular-nums', callsPct < 60 ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400')}>
               {data.total_calls_today}
             </p>
             <p className="text-xs text-muted-foreground">Target {data.calls_team_target}</p>
@@ -172,10 +172,10 @@ export function LeaderOSPage() {
         <Card>
           <CardContent className="px-4 py-3.5">
             <div className="flex items-center gap-2">
-              <Zap className="size-4 text-violet-400" aria-hidden />
+              <Zap className="size-4 text-violet-600 dark:text-violet-400" aria-hidden />
               <span className="text-xs text-muted-foreground">Activations</span>
             </div>
-            <p className={cn('mt-2 text-3xl font-semibold tabular-nums', actPct < 60 ? 'text-red-400' : 'text-violet-400')}>
+            <p className={cn('mt-2 text-3xl font-semibold tabular-nums', actPct < 60 ? 'text-red-600 dark:text-red-400' : 'text-violet-600 dark:text-violet-400')}>
               {data.activations_today}
             </p>
             <p className="text-xs text-muted-foreground">Target {data.activations_target}</p>
@@ -185,10 +185,10 @@ export function LeaderOSPage() {
         <Card>
           <CardContent className="px-4 py-3.5">
             <div className="flex items-center gap-2">
-              <IndianRupee className="size-4 text-emerald-400" aria-hidden />
+              <IndianRupee className="size-4 text-emerald-600 dark:text-emerald-400" aria-hidden />
               <span className="text-xs text-muted-foreground">Today Billing</span>
             </div>
-            <p className="mt-2 text-3xl font-semibold tabular-nums text-emerald-400">
+            <p className="mt-2 text-3xl font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
               ₹{data.billing_today_rupees.toLocaleString('en-IN')}
             </p>
             <p className="text-xs text-muted-foreground">
@@ -242,6 +242,7 @@ export function LeaderOSPage() {
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
+                  aria-label={f === 'all' ? 'Show all members' : f === 'active' ? 'Show active members' : 'Show inactive members'}
                   className={cn(
                     'rounded-lg px-2.5 py-1 text-xs font-medium transition',
                     filter === f
