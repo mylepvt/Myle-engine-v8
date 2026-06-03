@@ -93,7 +93,7 @@ export function InAppVideoPlayer({
   if (!playbackSource || playbackSource.kind === 'unsupported') {
     if (!fallbackUrl) {
       return (
-        <div className="flex aspect-video items-center justify-center rounded-[2rem] border border-border dark:border-white/10 bg-muted/40 text-sm text-foreground/55">
+        <div className="flex aspect-video items-center justify-center rounded-[2rem] border border-border dark:border-white/10 bg-muted/40 text-sm text-[color-mix(in_srgb,var(--foreground)_55%,transparent)]">
           Video link is being prepared.
         </div>
       )
@@ -102,7 +102,7 @@ export function InAppVideoPlayer({
     return (
       <div className="flex aspect-video flex-col items-center justify-center rounded-[2rem] border border-amber-300/20 bg-amber-300/[0.06] px-6 text-center">
         <p className="text-ds-h3 text-white">Video could not be played cleanly inside this room.</p>
-        <p className="mt-2 max-w-md text-ds-body text-foreground/65">
+        <p className="mt-2 max-w-md text-ds-body text-[color-mix(in_srgb,var(--foreground)_65%,transparent)]">
           For the cleanest in-app player, use a direct hosted video file link like `.mp4` or `.webm` instead of a
           share-page URL.
         </p>
@@ -129,7 +129,7 @@ export function InAppVideoPlayer({
             <h3 className="mt-3 text-ds-h3 text-white">
               {previewTitle ?? title}
             </h3>
-            <p className="mt-3 text-ds-body text-foreground/68 md:text-base">
+            <p className="mt-3 text-ds-body text-[color-mix(in_srgb,var(--foreground)_68%,transparent)] md:text-base">
               {previewDescription}
             </p>
             <Button
@@ -180,7 +180,7 @@ export function InAppVideoPlayer({
           allowFullScreen
         />
       )}
-      <div className="border-t border-border dark:border-white/10 bg-muted/30 px-4 py-3 text-xs text-foreground/55">
+      <div className="border-t border-border dark:border-white/10 bg-muted/30 px-4 py-3 text-xs text-[color-mix(in_srgb,var(--foreground)_55%,transparent)]">
         {playbackSource.kind === 'native'
           ? 'Playback stays inside Myle with native controls and fullscreen available from the player.'
           : 'Playback stays inside Myle. If the video pauses, tap once inside the player.'}

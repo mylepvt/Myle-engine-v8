@@ -555,7 +555,7 @@ function ProcessChecklistSection({
     <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 p-3">
       {!taskKeys && (
         <div className="space-y-0.5">
-          <p className="text-ds-caption font-bold uppercase tracking-wider text-foreground/70">{def.title}</p>
+          <p className="text-ds-caption font-bold uppercase tracking-wider text-[color-mix(in_srgb,var(--foreground)_70%,transparent)]">{def.title}</p>
           <p className="text-ds-caption text-muted-foreground">{def.helper}</p>
         </div>
       )}
@@ -575,7 +575,7 @@ function ProcessChecklistSection({
             >
               <div className="flex min-w-0 items-center gap-2">
                 {done && <Check className="h-3.5 w-3.5 shrink-0 text-emerald-400" aria-hidden />}
-                <p className={cn('text-sm font-medium', done ? 'text-emerald-300/80' : 'text-foreground/90')}>
+                <p className={cn('text-sm font-medium', done ? 'text-emerald-300/80' : 'text-[color-mix(in_srgb,var(--foreground)_90%,transparent)]')}>
                   {task.label}
                 </p>
               </div>
@@ -711,7 +711,7 @@ function Day3StagePicker({ lead, pm, leadPatchBusy }: {
 
   return (
     <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 p-3">
-      <p className="text-ds-caption font-bold uppercase tracking-wider text-foreground/70">Stage Selection</p>
+      <p className="text-ds-caption font-bold uppercase tracking-wider text-[color-mix(in_srgb,var(--foreground)_70%,transparent)]">Stage Selection</p>
       <div className="grid grid-cols-3 gap-1.5">
         {STAGE_OPTIONS.map((s) => {
           const active = selected === s.key
@@ -725,7 +725,7 @@ function Day3StagePicker({ lead, pm, leadPatchBusy }: {
                 'flex flex-col items-center rounded-lg border px-2 py-2 text-center transition disabled:opacity-50',
                 active
                   ? 'border-cyan-400/50 bg-cyan-400/[0.12] text-cyan-200'
-                  : 'border-border/50 bg-card/40 text-foreground/80 hover:border-cyan-400/30',
+                  : 'border-border/50 bg-card/40 text-[color-mix(in_srgb,var(--foreground)_80%,transparent)] hover:border-cyan-400/30',
               )}
             >
               <span className="text-sm font-bold">{s.label}</span>
@@ -849,7 +849,7 @@ function Day3StagePayment({ lead, leadPatchBusy }: { lead: LeadPublic; leadPatch
   return (
     <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 p-3">
       <div className="flex items-center justify-between">
-        <p className="text-ds-caption font-bold uppercase tracking-wider text-foreground/70">Stage Payment</p>
+        <p className="text-ds-caption font-bold uppercase tracking-wider text-[color-mix(in_srgb,var(--foreground)_70%,transparent)]">Stage Payment</p>
         <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-bold', badge[1])}>{badge[0]}</span>
       </div>
       <p className="text-ds-caption text-muted-foreground">Prospect ka payment leader ke account me. Screenshot upload → admin approve.</p>

@@ -120,7 +120,7 @@ export function LeadContactActions({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setShowWaMenu(false)}
-                className="block px-3 py-2 text-xs whitespace-nowrap hover:bg-foreground/5 text-foreground"
+                className="block px-3 py-2 text-xs whitespace-nowrap hover:bg-[color-mix(in_srgb,var(--foreground)_5%,transparent)] text-foreground"
               >
                 Personal WhatsApp
               </a>
@@ -130,7 +130,7 @@ export function LeadContactActions({
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => setShowWaMenu(false)}
-                  className="block px-3 py-2 text-xs whitespace-nowrap hover:bg-foreground/5 text-foreground border-t border-border dark:border-white/12"
+                  className="block px-3 py-2 text-xs whitespace-nowrap hover:bg-[color-mix(in_srgb,var(--foreground)_5%,transparent)] text-foreground border-t border-border dark:border-white/12"
                 >
                   WhatsApp Business
                 </a>

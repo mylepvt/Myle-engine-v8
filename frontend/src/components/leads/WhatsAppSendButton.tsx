@@ -88,14 +88,14 @@ export function WhatsAppSendButton({
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => setShowMenu(false)}
-                  className="block px-3 py-2 text-xs hover:bg-foreground/5 text-foreground border-b border-border dark:border-white/12"
+                  className="block px-3 py-2 text-xs hover:bg-[color-mix(in_srgb,var(--foreground)_5%,transparent)] text-foreground border-b border-border dark:border-white/12"
                 >
                   <div className="flex items-center gap-2">
                     <MessageCircle className="h-4 w-4" style={{ color: '#25D366' }} />
                     <span>WhatsApp Personal</span>
                   </div>
                   {prefillMessage && (
-                    <div className="text-foreground/50 text-[0.65rem] mt-1 line-clamp-2">
+                    <div className="text-[color-mix(in_srgb,var(--foreground)_50%,transparent)] text-[0.65rem] mt-1 line-clamp-2">
                       {prefillMessage}
                     </div>
                   )}
@@ -107,14 +107,14 @@ export function WhatsAppSendButton({
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => setShowMenu(false)}
-                  className="block px-3 py-2 text-xs hover:bg-foreground/5 text-foreground"
+                  className="block px-3 py-2 text-xs hover:bg-[color-mix(in_srgb,var(--foreground)_5%,transparent)] text-foreground"
                 >
                   <div className="flex items-center gap-2">
                     <MessageCircle className="h-4 w-4" style={{ color: '#00a884' }} />
                     <span>WhatsApp Business</span>
                   </div>
                   {prefillMessage && (
-                    <div className="text-foreground/50 text-[0.65rem] mt-1 line-clamp-2">
+                    <div className="text-[color-mix(in_srgb,var(--foreground)_50%,transparent)] text-[0.65rem] mt-1 line-clamp-2">
                       {prefillMessage}
                     </div>
                   )}

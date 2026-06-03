@@ -328,7 +328,7 @@ export function SettingsAppPage({ title }: Props) {
     <div className="max-w-4xl space-y-6">
       <h1 className="text-ds-h2">{title}</h1>
       <p className="text-sm text-muted-foreground">
-        All rows from <code className="rounded bg-foreground/10 px-1 text-xs">app_settings</code>. Sensitive
+        All rows from <code className="rounded bg-[color-mix(in_srgb,var(--foreground)_10%,transparent)] px-1 text-xs">app_settings</code>. Sensitive
         secrets should stay in server environment variables — this table is for product toggles and
         copy (e.g. live session text).
       </p>
@@ -519,7 +519,7 @@ export function SettingsAppPage({ title }: Props) {
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             Webhook URL jo Meta Console mein dalna hai:{' '}
-            <code className="rounded bg-foreground/10 px-1 text-[10px]">
+            <code className="rounded bg-[color-mix(in_srgb,var(--foreground)_10%,transparent)] px-1 text-[10px]">
               https://yourdomain.com/api/v1/webhooks/whatsapp/reply
             </code>
           </p>
@@ -688,7 +688,7 @@ export function SettingsAppPage({ title }: Props) {
               type="button"
               disabled={appSettingsPending}
               onClick={() => void refetchAppSettings()}
-              className="rounded-md bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground hover:bg-foreground/[0.08] disabled:opacity-50"
+              className="rounded-md bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_8%,transparent)] disabled:opacity-50"
             >
               {appSettingsPending ? 'Refreshing…' : 'Refresh'}
             </button>

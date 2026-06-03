@@ -74,7 +74,7 @@ function LogRow({ entry }: { entry: AuditLogEntry }) {
         <span className="block">{date}</span>
         <span className="block tabular-nums opacity-60">{time}</span>
       </td>
-      <td className="px-4 py-2.5 text-sm text-foreground/90">{entry.actor}</td>
+      <td className="px-4 py-2.5 text-sm text-[color-mix(in_srgb,var(--foreground)_90%,transparent)]">{entry.actor}</td>
       <td className="px-4 py-2.5">
         <span className={cn('rounded-full border px-2 py-0.5 text-[11px] font-medium', chip.bg, chip.text, chip.border)}>
           {friendlyAction(entry.action)}
@@ -104,7 +104,7 @@ function LogCard({ entry }: { entry: AuditLogEntry }) {
           {date} {time}
         </span>
       </div>
-      <p className="text-sm font-medium text-foreground/90">{entry.actor}</p>
+      <p className="text-sm font-medium text-[color-mix(in_srgb,var(--foreground)_90%,transparent)]">{entry.actor}</p>
       {(entry.entity_type || summary) ? (
         <p className="text-xs text-muted-foreground/60">
           {entry.entity_type ? `${entry.entity_type}${entry.entity_id ? ` #${entry.entity_id}` : ''}` : ''}

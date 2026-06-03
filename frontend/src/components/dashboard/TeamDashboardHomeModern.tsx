@@ -88,7 +88,7 @@ export function TeamDashboardHomeModern({
               </p>
             </div>
 
-            <div className="shrink-0 rounded-[1.2rem] border border-border dark:border-white/10 bg-foreground/10 px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md">
+            <div className="shrink-0 rounded-[1.2rem] border border-border dark:border-white/10 bg-[color-mix(in_srgb,var(--foreground)_10%,transparent)] px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md">
               <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-blue-100/68">
                 Min. FLP Billed
               </p>
@@ -102,7 +102,7 @@ export function TeamDashboardHomeModern({
           </div>
 
           <div className="grid grid-cols-3 gap-2">
-            <div className="rounded-[1.15rem] border border-border dark:border-white/10 bg-foreground/[0.08] px-3 py-3 backdrop-blur-sm">
+            <div className="rounded-[1.15rem] border border-border dark:border-white/10 bg-[color-mix(in_srgb,var(--foreground)_8%,transparent)] px-3 py-3 backdrop-blur-sm">
               <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-blue-100/64">
                 Today&apos;s leads
               </p>
@@ -110,7 +110,7 @@ export function TeamDashboardHomeModern({
                 {today?.claimed_today ?? 0}
               </p>
             </div>
-            <div className="rounded-[1.15rem] border border-border dark:border-white/10 bg-foreground/[0.08] px-3 py-3 backdrop-blur-sm">
+            <div className="rounded-[1.15rem] border border-border dark:border-white/10 bg-[color-mix(in_srgb,var(--foreground)_8%,transparent)] px-3 py-3 backdrop-blur-sm">
               <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-blue-100/64">
                 Calls
               </p>
@@ -123,7 +123,7 @@ export function TeamDashboardHomeModern({
           {primaryAction ? (
             <Link
               to={primaryAction.to}
-              className="group flex items-center justify-between rounded-[1.25rem] border border-border dark:border-white/10 bg-foreground/[0.14] px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md transition hover:bg-foreground/[0.18]"
+              className="group flex items-center justify-between rounded-[1.25rem] border border-border dark:border-white/10 bg-[color-mix(in_srgb,var(--foreground)_14%,transparent)] px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md transition hover:bg-[color-mix(in_srgb,var(--foreground)_18%,transparent)]"
             >
               <div className="min-w-0">
                 <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-blue-100/64">
@@ -151,7 +151,7 @@ export function TeamDashboardHomeModern({
                 <Link
                   key={action.path}
                   to={action.to}
-                  className="inline-flex min-h-[42px] items-center gap-2 rounded-full border border-border dark:border-white/10 bg-foreground/[0.08] px-3.5 py-2 text-xs font-semibold text-blue-50 transition hover:bg-foreground/[0.13]"
+                  className="inline-flex min-h-[42px] items-center gap-2 rounded-full border border-border dark:border-white/10 bg-[color-mix(in_srgb,var(--foreground)_8%,transparent)] px-3.5 py-2 text-xs font-semibold text-blue-50 transition hover:bg-[color-mix(in_srgb,var(--foreground)_13%,transparent)]"
                 >
                   <action.Icon
                     className="size-3.5 shrink-0 text-blue-100/90"
@@ -159,7 +159,7 @@ export function TeamDashboardHomeModern({
                   />
                   <span>{action.label}</span>
                   {action.badgeCount != null ? (
-                    <span className="rounded-full bg-foreground/12 px-1.5 py-0.5 text-[0.65rem] text-blue-50">
+                    <span className="rounded-full bg-[color-mix(in_srgb,var(--foreground)_12%,transparent)] px-1.5 py-0.5 text-[0.65rem] text-blue-50">
                       {action.badgeCount}
                     </span>
                   ) : null}

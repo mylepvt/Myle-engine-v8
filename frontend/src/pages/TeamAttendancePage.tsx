@@ -21,7 +21,7 @@ function LocationChip({ entry }: { entry: TeamLocationEntry }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-xl border border-border dark:border-white/[0.08] bg-white/[0.03] px-4 py-3">
       <div className="min-w-0">
-        <p className="text-sm font-medium text-foreground/90 truncate">{entry.name ?? '—'}</p>
+        <p className="text-sm font-medium text-[color-mix(in_srgb,var(--foreground)_90%,transparent)] truncate">{entry.name ?? '—'}</p>
         {hasLocation ? (
           <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
             <MapPin className="h-3 w-3 shrink-0 text-primary/70" />

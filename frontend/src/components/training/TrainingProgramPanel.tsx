@@ -100,7 +100,7 @@ function TrainingOverviewCard({
           <span>Progress</span>
           <span>{progressPercent}%</span>
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-foreground/6">
+        <div className="h-2 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)]">
           <div
             className="h-full rounded-full bg-gradient-to-r from-primary to-primary/70 transition-[width] duration-300"
             style={{ width: `${progressPercent}%` }}
@@ -325,7 +325,7 @@ function TrainingCertificationBlock({
                         'flex min-h-[48px] cursor-pointer items-start gap-2 rounded border px-3 py-3 text-ds-body transition-colors',
                         selected
                           ? 'border-primary/40 bg-primary/[0.08] text-foreground'
-                          : 'border-border dark:border-white/10 bg-foreground/[0.02] text-muted-foreground hover:border-primary/20 hover:text-foreground',
+                          : 'border-border dark:border-white/10 bg-[color-mix(in_srgb,var(--foreground)_2%,transparent)] text-muted-foreground hover:border-primary/20 hover:text-foreground',
                       )}
                     >
                       <input
@@ -417,7 +417,7 @@ export function TrainingProgramPanel({ data }: Props) {
   return (
     <div className="surface-elevated space-y-5 p-4 text-ds-body text-muted-foreground md:p-5">
       {data.note ? (
-        <div className="rounded border border-border dark:border-white/10 bg-muted/30 px-4 py-3 text-ds-body text-foreground/90">
+        <div className="rounded border border-border dark:border-white/10 bg-muted/30 px-4 py-3 text-ds-body text-[color-mix(in_srgb,var(--foreground)_90%,transparent)]">
           {data.note}
         </div>
       ) : null}

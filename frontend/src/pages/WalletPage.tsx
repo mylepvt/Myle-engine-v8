@@ -19,8 +19,8 @@ export function WalletPage({ title }: Props) {
       <p className="text-sm text-muted-foreground">
         Balance is the sum of all ledger lines (append-only). Credits and debits are applied by admins via Finance →
         Recharges. When a document exists, use{' '}
-        <span className="text-foreground/90">Download payment receipt</span> or{' '}
-        <span className="text-foreground/90">Download tax invoice</span> to open a printable page (save as PDF from the
+        <span className="text-[color-mix(in_srgb,var(--foreground)_90%,transparent)]">Download payment receipt</span> or{' '}
+        <span className="text-[color-mix(in_srgb,var(--foreground)_90%,transparent)]">Download tax invoice</span> to open a printable page (save as PDF from the
         browser if you need a file).
       </p>
 

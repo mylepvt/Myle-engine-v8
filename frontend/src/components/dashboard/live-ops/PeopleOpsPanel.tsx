@@ -204,7 +204,7 @@ function LiveActivityFeed() {
             </div>
             {/* Text */}
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[11.5px] font-medium leading-tight text-foreground/90">
+              <p className="truncate text-[11.5px] font-medium leading-tight text-[color-mix(in_srgb,var(--foreground)_90%,transparent)]">
                 {entry.description}
               </p>
               {entry.actorName && entry.actorName !== 'Unknown' && (

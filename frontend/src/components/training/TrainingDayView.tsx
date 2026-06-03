@@ -177,7 +177,7 @@ export function TrainingDayView({
               )}
             </>
           ) : (
-            <div className="rounded-lg border border-dashed border-border dark:border-white/10 bg-foreground/[0.02] px-4 py-8 text-center text-sm text-muted-foreground">
+            <div className="rounded-lg border border-dashed border-border dark:border-white/10 bg-[color-mix(in_srgb,var(--foreground)_2%,transparent)] px-4 py-8 text-center text-sm text-muted-foreground">
               Video will appear here when it is ready.
             </div>
           )}
@@ -240,7 +240,7 @@ export function TrainingDayView({
                   ref={fileRef}
                   type="file"
                   accept="image/*"
-                  className="block w-full min-w-0 max-w-full text-xs file:mr-2 file:rounded file:border-0 file:bg-foreground/10 file:px-2 file:py-1 file:text-xs"
+                  className="block w-full min-w-0 max-w-full text-xs file:mr-2 file:rounded file:border-0 file:bg-[color-mix(in_srgb,var(--foreground)_10%,transparent)] file:px-2 file:py-1 file:text-xs"
                   onChange={(e) => setNoteFile(e.target.files?.[0] ?? null)}
                 />
                 <Button

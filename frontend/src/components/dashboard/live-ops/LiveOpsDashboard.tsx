@@ -18,7 +18,7 @@ export function LiveOpsDashboard() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
               <span className="relative inline-flex size-2 rounded-full bg-emerald-400" />
             </span>
-            <h2 className="text-[11px] font-bold uppercase tracking-widest text-foreground/40">
+            <h2 className="text-[11px] font-bold uppercase tracking-widest text-[color-mix(in_srgb,var(--foreground)_40%,transparent)]">
               Live Pipeline
             </h2>
             <span className="ml-auto text-[10px] font-medium text-emerald-400/60">Live</span>
