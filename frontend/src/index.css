@@ -729,6 +729,11 @@
     will-change: transform;
   }
 
+  /* During drag: no transition — follows finger instantly */
+  .dashboard-mobile-tabbar__indicator--dragging {
+    transition: none !important;
+  }
+
   .dashboard-mobile-tabbar__tab {
     position: relative;
     z-index: 1;
