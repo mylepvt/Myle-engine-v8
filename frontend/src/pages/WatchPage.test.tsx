@@ -63,8 +63,7 @@ describe('WatchPage', () => {
     })
 
     expect(screen.getByText(/Good (morning|afternoon|evening|night), Rahul/)).toBeInTheDocument()
-    expect(screen.getByText('282 applications reviewed • 18 places currently available')).toBeInTheDocument()
-    expect(screen.getByText('Private room access is limited to the current batch window.')).toBeInTheDocument()
+    // Social-proof + seats banner was removed in #406; only the masked title check remains.
     expect(screen.queryByText('EARN 30K USING INSTAGRAM MONTHLY | MYLE COMMUNITY')).not.toBeInTheDocument()
 
     const video = container.querySelector('video')
@@ -72,8 +71,8 @@ describe('WatchPage', () => {
     Object.defineProperty(video!, 'duration', { configurable: true, value: 120 })
     Object.defineProperty(video!, 'currentTime', { configurable: true, writable: true, value: 0 })
 
+    // Player auto-plays with no controls (#406) — no explicit play button to click.
     fireEvent.loadedMetadata(video!)
-    fireEvent.click(screen.getByRole('button', { name: 'Play introduction' }))
     fireEvent.play(video!)
 
     await waitFor(() => {
@@ -103,7 +102,11 @@ describe('WatchPage', () => {
     })
 
     expect(await screen.findByText('Thanks for watching')).toBeInTheDocument()
-    expect(screen.getByText('Thanks for watching.')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'You can replay this introduction anytime while this private access window is active.',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('keeps the player non-seekable and hides native skip controls', async () => {

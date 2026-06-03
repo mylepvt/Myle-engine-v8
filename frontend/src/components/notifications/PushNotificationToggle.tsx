@@ -73,7 +73,7 @@ export function PushNotificationToggle() {
       {errorMessage ? (
         <p className="text-right text-xs text-rose-600">{errorMessage}</p>
       ) : (
-        <p className="text-right text-xs text-gray-500">
+        <p className="text-right text-xs text-muted-foreground">
           Allow alerts once on this device and Myle will keep the connection synced automatically.
         </p>
       )}
