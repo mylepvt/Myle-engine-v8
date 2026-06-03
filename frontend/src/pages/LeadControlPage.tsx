@@ -308,7 +308,7 @@ export function LeadControlPage({ title }: Props) {
                         type="checkbox"
                         checked={selectedLeadIds.length === queue.length}
                         onChange={(event) => toggleSelectAll(event.target.checked)}
-                        className="size-4 rounded border-white/[0.16] bg-background accent-primary"
+                        className="size-4 rounded border-border dark:border-white/[0.16] bg-background accent-primary"
                       />
                       Select all stale leads
                     </label>
@@ -350,13 +350,13 @@ export function LeadControlPage({ title }: Props) {
                                   toggleLeadSelection(lead.lead_id, event.target.checked)
                                 }}
                                 onClick={(event) => event.stopPropagation()}
-                                className="mt-1 size-4 rounded border-white/[0.16] bg-background accent-primary"
+                                className="mt-1 size-4 rounded border-border dark:border-white/[0.16] bg-background accent-primary"
                                 aria-label={`Select ${lead.lead_name}`}
                               />
                               <div className="space-y-1">
                               <div className="flex flex-wrap items-center gap-2">
                                 <p className="font-medium text-foreground">{lead.lead_name}</p>
-                                <span className="rounded-full border border-white/[0.12] px-2 py-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+                                <span className="rounded-full border border-border dark:border-white/[0.12] px-2 py-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">
                                   {statusLabel(lead.status)}
                                 </span>
                               </div>

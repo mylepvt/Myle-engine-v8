@@ -186,7 +186,7 @@ function Tabs({ tabs, active, onChange }: {
   onChange: (id: string) => void
 }) {
   return (
-    <div className="flex flex-wrap gap-1 border-b border-white/10">
+    <div className="flex flex-wrap gap-1 border-b border-border dark:border-white/10">
       {tabs.map((t) => (
         <button key={t.id} type="button" onClick={() => onChange(t.id)}
           className={cn('-mb-px shrink-0 border-b-2 px-2.5 py-2 text-ds-caption font-medium transition min-[400px]:px-3 sm:px-4 sm:text-sm',
@@ -261,7 +261,7 @@ const LeadCard = memo(function LeadCard({
     }
   }
 
-  const badge = BADGE[lead.status] ?? 'bg-muted/30 text-muted-foreground border-white/10'
+  const badge = BADGE[lead.status] ?? 'bg-muted/30 text-muted-foreground border-border dark:border-white/10'
   const isWatched = lead.status === 'video_watched' || lead.call_status === 'video_watched'
   const isSent = !isWatched && (lead.status === 'video_sent' || lead.call_status === 'video_sent')
   const isReassigned = Boolean(lead.is_reassigned)
@@ -1540,7 +1540,7 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance
           <div className="flex flex-wrap gap-2">
             {[['Complete', day2.filter((l) => !!l.day2_completed_at).length, 'bg-emerald-400/15 text-emerald-300 border-emerald-400/25'],
               ['In Progress', day2.filter((l) => !l.day2_completed_at && !!l.day1_completed_at).length, 'bg-amber-400/15 text-amber-300 border-amber-400/25'],
-              ['Not Started', day2.filter((l) => !l.day1_completed_at).length, 'bg-muted/30 text-muted-foreground border-white/10'],
+              ['Not Started', day2.filter((l) => !l.day1_completed_at).length, 'bg-muted/30 text-muted-foreground border-border dark:border-white/10'],
             ].map(([label, count, cls]) =>
               <span key={label as string} className={cn('rounded-full border px-2.5 py-0.5 text-ds-caption font-medium', cls as string)}>{label}: {count}</span>)}
           </div>

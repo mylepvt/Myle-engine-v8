@@ -73,7 +73,7 @@ export function NoticeBoardPage({ title }: Props) {
             disabled={create.isPending}
             rows={4}
             placeholder="Type your announcement here…"
-            className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2.5 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+            className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2.5 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
           />
           <label className="flex cursor-pointer items-center gap-2 text-muted-foreground">
             <input
@@ -81,7 +81,7 @@ export function NoticeBoardPage({ title }: Props) {
               checked={pinNew}
               onChange={(e) => setPinNew(e.target.checked)}
               disabled={create.isPending}
-              className="size-4 rounded border-white/25 accent-primary"
+              className="size-4 rounded border-border dark:border-white/25 accent-primary"
             />
             Pin to top
           </label>

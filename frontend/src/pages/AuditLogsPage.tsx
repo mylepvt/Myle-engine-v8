@@ -69,7 +69,7 @@ function LogRow({ entry }: { entry: AuditLogEntry }) {
   const summary = metaSummary(entry)
 
   return (
-    <tr className="border-b border-white/[0.06] transition-colors hover:bg-white/[0.03]">
+    <tr className="border-b border-border dark:border-white/[0.06] transition-colors hover:bg-white/[0.03]">
       <td className="whitespace-nowrap px-4 py-2.5 text-xs text-muted-foreground">
         <span className="block">{date}</span>
         <span className="block tabular-nums opacity-60">{time}</span>
@@ -95,7 +95,7 @@ function LogCard({ entry }: { entry: AuditLogEntry }) {
   const summary = metaSummary(entry)
 
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 space-y-1.5">
+    <div className="rounded-xl border border-border dark:border-white/[0.08] bg-white/[0.03] p-3 space-y-1.5">
       <div className="flex items-start justify-between gap-2">
         <span className={cn('rounded-full border px-2 py-0.5 text-[11px] font-medium', chip.bg, chip.text, chip.border)}>
           {friendlyAction(entry.action)}
@@ -176,7 +176,7 @@ export function AuditLogsPage({ title }: Props) {
           type="button"
           onClick={() => void refetch()}
           disabled={isFetching}
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04] text-muted-foreground transition hover:bg-white/[0.08] disabled:opacity-40"
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-border dark:border-white/[0.08] bg-white/[0.04] text-muted-foreground transition hover:bg-white/[0.08] disabled:opacity-40"
           title="Refresh"
         >
           <RefreshCw className={cn('h-3.5 w-3.5', isFetching && 'animate-spin')} />
@@ -190,7 +190,7 @@ export function AuditLogsPage({ title }: Props) {
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
         {/* Days buttons */}
-        <div className="flex rounded-lg border border-white/[0.08] bg-white/[0.03] p-0.5">
+        <div className="flex rounded-lg border border-border dark:border-white/[0.08] bg-white/[0.03] p-0.5">
           {DAY_OPTIONS.map((d) => (
             <button
               key={d}
@@ -219,7 +219,7 @@ export function AuditLogsPage({ title }: Props) {
               onClick={() => handleActionFilter(action)}
               className={cn(
                 'rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-all',
-                active ? cn(chip.bg, chip.text, chip.border) : 'border-white/[0.08] bg-white/[0.03] text-muted-foreground hover:text-foreground',
+                active ? cn(chip.bg, chip.text, chip.border) : 'border-border dark:border-white/[0.08] bg-white/[0.03] text-muted-foreground hover:text-foreground',
               )}
             >
               {friendlyAction(action)}
@@ -261,10 +261,10 @@ export function AuditLogsPage({ title }: Props) {
       {/* Desktop table */}
       {data && data.items.length > 0 ? (
         <>
-          <div className="hidden overflow-x-auto rounded-xl border border-white/[0.08] md:block">
+          <div className="hidden overflow-x-auto rounded-xl border border-border dark:border-white/[0.08] md:block">
             <table className="w-full min-w-[640px] text-left">
               <thead>
-                <tr className="border-b border-white/[0.08] bg-white/[0.03]">
+                <tr className="border-b border-border dark:border-white/[0.08] bg-white/[0.03]">
                   {['Time', 'Who', 'Action', 'Entity', 'Details'].map((h) => (
                     <th key={h} className="px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">
                       {h}
@@ -301,7 +301,7 @@ export function AuditLogsPage({ title }: Props) {
               type="button"
               disabled={page <= 1 || isFetching}
               onClick={() => setPage((p) => p - 1)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03] disabled:opacity-40 hover:bg-white/[0.08]"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-border dark:border-white/[0.08] bg-white/[0.03] disabled:opacity-40 hover:bg-white/[0.08]"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
             </button>
@@ -309,7 +309,7 @@ export function AuditLogsPage({ title }: Props) {
               type="button"
               disabled={page >= totalPages || isFetching}
               onClick={() => setPage((p) => p + 1)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03] disabled:opacity-40 hover:bg-white/[0.08]"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-border dark:border-white/[0.08] bg-white/[0.03] disabled:opacity-40 hover:bg-white/[0.08]"
             >
               <ChevronRight className="h-3.5 w-3.5" />
             </button>

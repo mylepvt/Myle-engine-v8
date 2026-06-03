@@ -100,7 +100,7 @@ function TrainingOverviewCard({
           <span>Progress</span>
           <span>{progressPercent}%</span>
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-white/6">
+        <div className="h-2 overflow-hidden rounded-full bg-foreground/6">
           <div
             className="h-full rounded-full bg-gradient-to-r from-primary to-primary/70 transition-[width] duration-300"
             style={{ width: `${progressPercent}%` }}
@@ -137,7 +137,7 @@ function TrainingDaysBlock({
 
   if (vids.length === 0) {
     return (
-      <div className="rounded-md border border-dashed border-white/10 bg-muted/30 px-5 py-8 text-center">
+      <div className="rounded-md border border-dashed border-border dark:border-white/10 bg-muted/30 px-5 py-8 text-center">
         <p className="text-base font-medium text-foreground">Training is not available yet</p>
         <p className="mt-2 text-ds-body text-muted-foreground">
           Please try again later. If this keeps happening, contact support.
@@ -284,7 +284,7 @@ function TrainingCertificationBlock({
   }
 
   return (
-    <div className="mt-4 border-t border-white/10 pt-4">
+    <div className="mt-4 border-t border-border dark:border-white/10 pt-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-ds-body font-medium text-foreground">Final quiz</p>
@@ -308,9 +308,9 @@ function TrainingCertificationBlock({
       {questions ? (
         <div className="mt-4 space-y-3">
           {questions.map((q, index) => (
-            <fieldset key={q.id} className="rounded border border-white/10 bg-muted/30 p-4">
+            <fieldset key={q.id} className="rounded border border-border dark:border-white/10 bg-muted/30 p-4">
               <legend className="flex items-start gap-2 text-ds-body font-medium text-foreground">
-                <span className="rounded-full border border-white/10 bg-muted/40 px-2 py-0.5 text-ds-caption text-muted-foreground">
+                <span className="rounded-full border border-border dark:border-white/10 bg-muted/40 px-2 py-0.5 text-ds-caption text-muted-foreground">
                   {index + 1}
                 </span>
                 <span className="pt-0.5">{q.question}</span>
@@ -325,7 +325,7 @@ function TrainingCertificationBlock({
                         'flex min-h-[48px] cursor-pointer items-start gap-2 rounded border px-3 py-3 text-ds-body transition-colors',
                         selected
                           ? 'border-primary/40 bg-primary/[0.08] text-foreground'
-                          : 'border-white/10 bg-white/[0.02] text-muted-foreground hover:border-primary/20 hover:text-foreground',
+                          : 'border-border dark:border-white/10 bg-foreground/[0.02] text-muted-foreground hover:border-primary/20 hover:text-foreground',
                       )}
                     >
                       <input
@@ -417,7 +417,7 @@ export function TrainingProgramPanel({ data }: Props) {
   return (
     <div className="surface-elevated space-y-5 p-4 text-ds-body text-muted-foreground md:p-5">
       {data.note ? (
-        <div className="rounded border border-white/10 bg-muted/30 px-4 py-3 text-ds-body text-foreground/90">
+        <div className="rounded border border-border dark:border-white/10 bg-muted/30 px-4 py-3 text-ds-body text-foreground/90">
           {data.note}
         </div>
       ) : null}

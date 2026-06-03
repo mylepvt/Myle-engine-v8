@@ -81,21 +81,21 @@ export function WhatsAppSendButton({
             <ChevronDown className="h-4 w-4" />
           </button>
           {showMenu && (
-            <div className="absolute top-full right-0 mt-1 z-10 bg-muted border border-white/12 rounded-md overflow-hidden shadow-lg min-w-[200px]">
+            <div className="absolute top-full right-0 mt-1 z-10 bg-muted border border-border dark:border-white/12 rounded-md overflow-hidden shadow-lg min-w-[200px]">
               {personalHref && (
                 <a
                   href={personalHref}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => setShowMenu(false)}
-                  className="block px-3 py-2 text-xs hover:bg-white/5 text-foreground border-b border-white/12"
+                  className="block px-3 py-2 text-xs hover:bg-foreground/5 text-foreground border-b border-border dark:border-white/12"
                 >
                   <div className="flex items-center gap-2">
                     <MessageCircle className="h-4 w-4" style={{ color: '#25D366' }} />
                     <span>WhatsApp Personal</span>
                   </div>
                   {prefillMessage && (
-                    <div className="text-white/50 text-[0.65rem] mt-1 line-clamp-2">
+                    <div className="text-foreground/50 text-[0.65rem] mt-1 line-clamp-2">
                       {prefillMessage}
                     </div>
                   )}
@@ -107,14 +107,14 @@ export function WhatsAppSendButton({
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => setShowMenu(false)}
-                  className="block px-3 py-2 text-xs hover:bg-white/5 text-foreground"
+                  className="block px-3 py-2 text-xs hover:bg-foreground/5 text-foreground"
                 >
                   <div className="flex items-center gap-2">
                     <MessageCircle className="h-4 w-4" style={{ color: '#00a884' }} />
                     <span>WhatsApp Business</span>
                   </div>
                   {prefillMessage && (
-                    <div className="text-white/50 text-[0.65rem] mt-1 line-clamp-2">
+                    <div className="text-foreground/50 text-[0.65rem] mt-1 line-clamp-2">
                       {prefillMessage}
                     </div>
                   )}

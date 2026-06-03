@@ -98,7 +98,7 @@ export function DashboardSidebar({
                               'transition-[background-color,color] duration-100',
                               isActive
                                 ? 'bg-[rgba(88,101,242,0.20)] text-primary font-semibold'
-                                : 'text-muted-foreground hover:bg-[rgba(255,255,255,0.06)] hover:text-foreground',
+                                : 'text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground',
                             )
                           }
                         >

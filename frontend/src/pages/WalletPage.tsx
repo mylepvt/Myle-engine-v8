@@ -92,7 +92,7 @@ export function WalletPage({ title }: Props) {
             {ledger.data.items.map((e) => (
               <li
                 key={e.id}
-                className="flex flex-col gap-2 rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-2 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-2 rounded-md border border-border dark:border-white/[0.06] bg-white/[0.02] px-2 py-2 sm:flex-row sm:items-center sm:justify-between"
               >
                 <span className="min-w-0">
                   #{e.id} · {e.amount_cents >= 0 ? '+' : ''}

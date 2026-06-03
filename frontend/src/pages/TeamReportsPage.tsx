@@ -123,8 +123,8 @@ function SubmissionCard({ item }: { item: TeamReportItem }) {
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2 text-[0.68rem] text-muted-foreground">
-        <span className="rounded-full border border-white/10 px-2 py-1">2CC {item.plan_2cc}</span>
-        <span className="rounded-full border border-white/10 px-2 py-1">Seat {item.seat_holdings}</span>
+        <span className="rounded-full border border-border dark:border-white/10 px-2 py-1">2CC {item.plan_2cc}</span>
+        <span className="rounded-full border border-border dark:border-white/10 px-2 py-1">Seat {item.seat_holdings}</span>
       </div>
 
       {item.remarks ? <p className="mt-3 text-sm text-muted-foreground">{item.remarks}</p> : null}
@@ -178,7 +178,7 @@ export function TeamReportsPage({ title }: Props) {
             type="date"
             value={dateIso}
             onChange={(e) => setDateIso(e.target.value)}
-            className="rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground"
+            className="rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground"
           />
         </label>
         <span className="text-xs text-muted-foreground">
@@ -270,7 +270,7 @@ export function TeamReportsPage({ title }: Props) {
               </div>
 
               {data.items.length === 0 ? (
-                <div className="rounded border border-dashed border-white/12 px-4 py-6 text-sm text-muted-foreground">
+                <div className="rounded border border-dashed border-border dark:border-white/12 px-4 py-6 text-sm text-muted-foreground">
                   No reports submitted for {data.date}.
                 </div>
               ) : (
@@ -284,7 +284,7 @@ export function TeamReportsPage({ title }: Props) {
                   <div className="hidden overflow-x-auto md:block">
                     <table className="min-w-full text-sm">
                       <thead className="text-left text-ds-caption uppercase tracking-wide text-muted-foreground">
-                        <tr className="border-b border-white/10">
+                        <tr className="border-b border-border dark:border-white/10">
                           <th className="pb-3 pr-4 font-medium">Member</th>
                           <th className="pb-3 pr-4 font-medium">Submitted</th>
                           <th className="pb-3 px-3 font-medium text-center">Calls</th>
@@ -302,7 +302,7 @@ export function TeamReportsPage({ title }: Props) {
                             item.payments_actual !== (item.day1_count + item.day2_count + item.day3_count)
 
                           return (
-                            <tr key={item.report_id} className="border-b border-white/[0.06] align-top">
+                            <tr key={item.report_id} className="border-b border-border dark:border-white/[0.06] align-top">
                               <td className="py-4 pr-4">
                                 <div className="min-w-[15rem]">
                                   <div className="flex flex-wrap items-center gap-2">
@@ -377,7 +377,7 @@ export function TeamReportsPage({ title }: Props) {
               </div>
 
               {data.missing_members.length === 0 ? (
-                <div className="rounded border border-dashed border-white/12 px-4 py-6 text-sm text-muted-foreground">
+                <div className="rounded border border-dashed border-border dark:border-white/12 px-4 py-6 text-sm text-muted-foreground">
                   Everyone in scope has submitted for {data.date}.
                 </div>
               ) : (

@@ -176,7 +176,7 @@ function RechargeRow({
             value={rejectNote}
             onChange={(e) => setRejectNote(e.target.value)}
             placeholder="Reason…"
-            className="w-full rounded-md border border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+            className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
           />
           <div className="flex gap-2">
             <Button
