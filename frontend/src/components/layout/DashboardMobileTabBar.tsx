@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom'
+import { useLayoutEffect, useRef, useState } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
 import { MoreHorizontal } from 'lucide-react'
 
 import { getDashboardNavIcon } from '@/config/dashboard-nav-icons'
@@ -52,6 +53,42 @@ export function DashboardMobileTabBar({
   keyboardOpen = false,
   scrolled = false,
 }: Props) {
+  const location = useLocation()
+  const tabRefs = useRef<(HTMLAnchorElement | null)[]>([])
+  const [indicator, setIndicator] = useState({ left: 0, width: 46, visible: false })
+
+  const fourth = fourthTabDef(role)
+  const defs: DashboardRouteDef[] = [
+    ...TAB_ORDER.map((p) => defForPath(p)).filter(
+      (d): d is DashboardRouteDef => d != null,
+    ),
+    fourth,
+  ].filter((d): d is DashboardRouteDef => d != null && routeDefAccessible(d, role))
+
+  const tos = defs.map((def) =>
+    def.path === '' ? '/dashboard' : `/dashboard/${def.path}`,
+  )
+  const activeIndex = tos.findIndex((to, i) =>
+    defs[i].path === ''
+      ? location.pathname === '/dashboard'
+      : location.pathname === to || location.pathname.startsWith(`${to}/`),
+  )
+
+  // Measure the active tab so the liquid-glass indicator can slide to it.
+  useLayoutEffect(() => {
+    const BLOB = 46
+    const el = activeIndex >= 0 ? tabRefs.current[activeIndex] : null
+    if (!el) {
+      setIndicator((s) => ({ ...s, visible: false }))
+      return
+    }
+    setIndicator({
+      left: el.offsetLeft + el.offsetWidth / 2 - BLOB / 2,
+      width: BLOB,
+      visible: true,
+    })
+  }, [activeIndex, defs.length, scrolled, keyboardOpen])
+
   const barClass = cn(
     'dashboard-mobile-tabbar shrink-0 pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] md:hidden',
     keyboardOpen && 'dashboard-mobile-tabbar--keyboard-open',
@@ -118,14 +155,6 @@ export function DashboardMobileTabBar({
     )
   }
 
-  const fourth = fourthTabDef(role)
-  const defs: DashboardRouteDef[] = [
-    ...TAB_ORDER.map((p) => defForPath(p)).filter(
-      (d): d is DashboardRouteDef => d != null,
-    ),
-    fourth,
-  ].filter((d): d is DashboardRouteDef => d != null && routeDefAccessible(d, role))
-
   return (
     <nav
       className={barClass}
@@ -133,8 +162,18 @@ export function DashboardMobileTabBar({
       aria-label="Main tabs"
     >
       <div className={innerClass}>
-        {defs.map((def) => {
-          const to = def.path === '' ? '/dashboard' : `/dashboard/${def.path}`
+        {/* Liquid-glass sliding indicator — springs to the active tab */}
+        <span
+          aria-hidden
+          className="dashboard-mobile-tabbar__indicator"
+          style={{
+            transform: `translateX(${indicator.left}px)`,
+            width: indicator.width,
+            opacity: indicator.visible ? 1 : 0,
+          }}
+        />
+        {defs.map((def, i) => {
+          const to = tos[i]
           const Icon = getDashboardNavIcon(def.path)
           const label =
             SHORT_LABEL[def.path] ??
@@ -145,6 +184,9 @@ export function DashboardMobileTabBar({
               key={def.path || 'home'}
               to={to}
               end={def.end ?? false}
+              ref={(el) => {
+                tabRefs.current[i] = el
+              }}
               className={({ isActive }) =>
                 cn(
                   tabClass,

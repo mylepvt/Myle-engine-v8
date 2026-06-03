@@ -59,13 +59,13 @@ const TYPE_LABELS: Record<string, string> = {
 }
 
 const TYPE_COLORS: Record<string, string> = {
-  removal_outreach: 'bg-orange-100 text-orange-800',
-  leader_alert: 'bg-blue-100 text-blue-800',
-  command_reply: 'bg-purple-100 text-purple-800',
-  inbound_member: 'bg-green-100 text-green-800',
-  inbound_leader: 'bg-indigo-100 text-indigo-800',
-  inbound_unknown: 'bg-gray-100 text-gray-600',
-  report_reminder: 'bg-amber-100 text-amber-800',
+  removal_outreach: 'bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300',
+  leader_alert: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
+  command_reply: 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300',
+  inbound_member: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300',
+  inbound_leader: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300',
+  inbound_unknown: 'bg-gray-100 text-gray-600 dark:bg-gray-800/50 dark:text-gray-400',
+  report_reminder: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300',
 }
 
 function formatTime(iso: string) {

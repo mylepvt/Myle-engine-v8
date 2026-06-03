@@ -64,7 +64,7 @@ export function LiveFunnelColumn() {
   const maxCount = useMemo(() => Math.max(1, ...rows.map((r) => r.count)), [rows])
 
   return (
-    <div className="divide-y divide-white/[0.04]">
+    <div className="divide-y divide-border/40 dark:divide-white/[0.04]">
       {rows.map(({ stage, count, movement }, i) => {
         const barWidth = count > 0 ? Math.max(4, (count / maxCount) * 100) : 0
         const isUp = movement > 0
@@ -74,9 +74,9 @@ export function LiveFunnelColumn() {
             key={stage.key}
             to={stageRoute(stage.key)}
             title={`View ${stage.label} leads`}
-            className="flex min-h-[44px] items-center gap-3 px-4 py-2.5 no-underline transition-colors hover:bg-[color-mix(in_srgb,var(--foreground)_4%,transparent)] active:bg-[color-mix(in_srgb,var(--foreground)_7%,transparent)] cursor-pointer"
+            className="flex min-h-[44px] items-center gap-3 px-4 py-2.5 no-underline transition-colors hover:bg-white/[0.04] active:bg-white/[0.07] cursor-pointer"
           >
-            <span className="w-5 shrink-0 text-[10px] tabular-nums text-[color-mix(in_srgb,var(--foreground)_25%,transparent)]">
+            <span className="w-5 shrink-0 text-[10px] tabular-nums text-white/25">
               {String(i + 1).padStart(2, '0')}
             </span>
 
@@ -91,11 +91,11 @@ export function LiveFunnelColumn() {
               />
             </span>
 
-            <span className="w-24 shrink-0 truncate text-[12px] font-medium text-[color-mix(in_srgb,var(--foreground)_70%,transparent)]">
+            <span className="w-24 shrink-0 truncate text-[12px] font-medium text-foreground/70">
               {stage.label}
             </span>
 
-            <div className="flex-1 overflow-hidden rounded-sm bg-[color-mix(in_srgb,var(--foreground)_4%,transparent)]" style={{ height: '6px' }}>
+            <div className="flex-1 overflow-hidden rounded-sm bg-white/[0.04]" style={{ height: '6px' }}>
               <div
                 className="h-full rounded-sm transition-all duration-500"
                 style={{ width: `${barWidth}%`, backgroundColor: `${stage.color}99` }}
@@ -111,7 +111,7 @@ export function LiveFunnelColumn() {
 
             <span
               className={`w-8 shrink-0 text-right text-[11px] font-semibold tabular-nums ${
-                isUp ? 'text-emerald-400' : movement < 0 ? 'text-red-400' : 'text-[color-mix(in_srgb,var(--foreground)_15%,transparent)]'
+                isUp ? 'text-emerald-400' : movement < 0 ? 'text-red-400' : 'text-white/15'
               }`}
             >
               {movement !== 0 ? `${isUp ? '↑' : '↓'}${Math.abs(movement)}` : '–'}

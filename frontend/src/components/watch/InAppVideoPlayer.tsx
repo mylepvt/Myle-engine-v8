@@ -93,7 +93,7 @@ export function InAppVideoPlayer({
   if (!playbackSource || playbackSource.kind === 'unsupported') {
     if (!fallbackUrl) {
       return (
-        <div className="flex aspect-video items-center justify-center rounded-[2rem] border border-border dark:border-white/10 bg-muted/40 text-sm text-[color-mix(in_srgb,var(--foreground)_55%,transparent)]">
+        <div className="flex aspect-video items-center justify-center rounded-[2rem] border border-white/10 bg-muted/40 text-sm text-white/55">
           Video link is being prepared.
         </div>
       )
@@ -102,7 +102,7 @@ export function InAppVideoPlayer({
     return (
       <div className="flex aspect-video flex-col items-center justify-center rounded-[2rem] border border-amber-300/20 bg-amber-300/[0.06] px-6 text-center">
         <p className="text-ds-h3 text-white">Video could not be played cleanly inside this room.</p>
-        <p className="mt-2 max-w-md text-ds-body text-[color-mix(in_srgb,var(--foreground)_65%,transparent)]">
+        <p className="mt-2 max-w-md text-ds-body text-white/65">
           For the cleanest in-app player, use a direct hosted video file link like `.mp4` or `.webm` instead of a
           share-page URL.
         </p>
@@ -110,7 +110,7 @@ export function InAppVideoPlayer({
           href={fallbackUrl}
           target="_blank"
           rel="noreferrer"
-          className="mt-4 inline-flex items-center gap-2 rounded-full border border-border dark:border-white/15 bg-black/25 px-4 py-2 text-sm font-medium text-white transition hover:border-cyan-300/25 hover:text-cyan-100"
+          className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/25 px-4 py-2 text-sm font-medium text-white transition hover:border-cyan-300/25 hover:text-cyan-100"
         >
           Open backup video
           <ArrowUpRight className="size-4" />
@@ -121,7 +121,7 @@ export function InAppVideoPlayer({
 
   if (!playerActivated) {
     return (
-      <div className="relative overflow-hidden rounded-[2rem] border border-border dark:border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.2),transparent_38%),linear-gradient(145deg,rgba(6,15,32,0.98),rgba(3,8,18,0.92))] shadow-[0_30px_80px_-35px_rgba(56,189,248,0.45)]">
+      <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.2),transparent_38%),linear-gradient(145deg,rgba(6,15,32,0.98),rgba(3,8,18,0.92))] shadow-[0_30px_80px_-35px_rgba(56,189,248,0.45)]">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.2),transparent_34%)]" />
         <div className="relative flex aspect-video flex-col justify-end p-5 md:p-7">
           <div className="max-w-xl">
@@ -129,7 +129,7 @@ export function InAppVideoPlayer({
             <h3 className="mt-3 text-ds-h3 text-white">
               {previewTitle ?? title}
             </h3>
-            <p className="mt-3 text-ds-body text-[color-mix(in_srgb,var(--foreground)_68%,transparent)] md:text-base">
+            <p className="mt-3 text-ds-body text-white/68 md:text-base">
               {previewDescription}
             </p>
             <Button
@@ -147,7 +147,7 @@ export function InAppVideoPlayer({
   }
 
   return (
-    <div className="overflow-hidden rounded-[2rem] border border-border dark:border-white/10 bg-black/70 shadow-[0_30px_80px_-35px_rgba(56,189,248,0.55)]">
+    <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-black/70 shadow-[0_30px_80px_-35px_rgba(56,189,248,0.55)]">
       {playbackSource.kind === 'native' ? (
         <video
           className="aspect-video h-full w-full bg-black object-contain"
@@ -180,7 +180,7 @@ export function InAppVideoPlayer({
           allowFullScreen
         />
       )}
-      <div className="border-t border-border dark:border-white/10 bg-muted/30 px-4 py-3 text-xs text-[color-mix(in_srgb,var(--foreground)_55%,transparent)]">
+      <div className="border-t border-white/10 bg-muted/30 px-4 py-3 text-xs text-white/55">
         {playbackSource.kind === 'native'
           ? 'Playback stays inside Myle with native controls and fullscreen available from the player.'
           : 'Playback stays inside Myle. If the video pauses, tap once inside the player.'}
