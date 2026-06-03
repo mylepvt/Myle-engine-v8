@@ -29,7 +29,7 @@ from app.models.batch_share_link import BatchShareLink  # noqa: F401
 from app.models.batch_day_submission import BatchDaySubmission  # noqa: F401
 from app.models.crm_outbox import CrmOutbox  # noqa: F401
 from app.models.daily_member_stat import DailyMemberStat  # noqa: F401
-from app.models.enroll_share_link import EnrollShareLink  # noqa: F401
+from app.models.flp_min_billing_share_link import FlpMinBillingShareLink  # noqa: F401
 from app.models.follow_up import FollowUp  # noqa: F401
 from app.models.lead import Lead  # noqa: F401
 from app.models.user import User

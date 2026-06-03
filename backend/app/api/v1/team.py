@@ -903,6 +903,19 @@ async def update_member_role(
             target.removal_reason = None
     if previous_role == "leader" and body.role == "team":
         upline_leader = await _find_upline_leader(session, target)
+        # Re-parent the demoted leader's direct downline. If we leave them pointing
+        # at a now-team node, their handoff has to walk past it to the next leader —
+        # and if none exists above (e.g. the demoted leader reported straight to an
+        # admin), the whole subtree is orphaned with no leader to hand off to. Move
+        # them under the nearest upline leader when there is one, otherwise under the
+        # demoted leader's own upline so the chain stays intact.
+        new_parent_id = upline_leader.id if upline_leader is not None else target.upline_user_id
+        if new_parent_id is not None and new_parent_id != target_user_id:
+            await session.execute(
+                update(User)
+                .where(User.upline_user_id == target_user_id)
+                .values(upline_user_id=new_parent_id)
+            )
         if upline_leader is not None:
             # Only transfer Day-2 handoff leads: owner is a team member (not the leader
             # themselves). These are leads that came to the leader after mindset lock
@@ -917,6 +930,52 @@ async def update_member_role(
                 )
                 .values(assigned_to_user_id=upline_leader.id, is_reassigned=True, reassigned_at=datetime.now(timezone.utc))
             )
+    await session.commit()
+    await session.refresh(target)
+    [item] = await _finalize_team_member_items(session, [TeamMemberPublic.model_validate(target)])
+    return item
+
+
+class UpdateUplineBody(BaseModel):
+    upline_user_id: int
+
+
+@router.patch("/members/{target_user_id}/upline", response_model=TeamMemberPublic)
+async def update_member_upline(
+    target_user_id: int,
+    body: UpdateUplineBody,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> TeamMemberPublic:
+    """Move a member under a different leader. Admin only.
+
+    The new upline must be a leader or admin so the member's handoff always
+    resolves to a real leader, and it cannot be the member itself or anyone in
+    the member's own downline (which would create a cycle).
+    """
+    _require_admin(user)
+    target = await session.get(User, target_user_id)
+    if target is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    if body.upline_user_id == target_user_id:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="A member cannot be their own upline",
+        )
+    new_upline = await session.get(User, body.upline_user_id)
+    if new_upline is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Upline user not found")
+    if (new_upline.role or "").strip().lower() not in ("leader", "admin"):
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="Upline must be a leader or admin",
+        )
+    if await is_user_in_downline_of(session, body.upline_user_id, target_user_id):
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="Cannot move a member under their own downline",
+        )
+    target.upline_user_id = body.upline_user_id
     await session.commit()
     await session.refresh(target)
     [item] = await _finalize_team_member_items(session, [TeamMemberPublic.model_validate(target)])
