@@ -680,6 +680,9 @@ export function SettingsAppPage({ title }: Props) {
         </div>
       </section>
 
+      {/* XP Recalc — admin only */}
+      <XpRecalcSection />
+
       {appSettingsData ? (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -734,5 +737,51 @@ export function SettingsAppPage({ title }: Props) {
         </div>
       ) : null}
     </div>
+  )
+}
+
+function XpRecalcSection() {
+  const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const [result, setResult] = useState<string | null>(null)
+
+  const handleRecalc = async () => {
+    setState('loading')
+    setResult(null)
+    try {
+      const res = await apiFetch('/api/v1/xp/admin/recalc-cutoff', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail ?? 'Failed')
+      setResult(data.message ?? `Done — ${data.users_updated} users, ${data.events_deleted} events deleted.`)
+      setState('done')
+    } catch (err) {
+      setResult(err instanceof Error ? err.message : 'Unknown error')
+      setState('error')
+    }
+  }
+
+  return (
+    <section className="surface-elevated space-y-3 p-4">
+      <div>
+        <h2 className="text-sm font-semibold text-foreground">XP Reset (Pre-June Cleanup)</h2>
+        <p className="text-xs text-muted-foreground">
+          1 June se pehle ke sab XP points delete karega aur June ke points rakhega. Admin-only.
+        </p>
+      </div>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          disabled={state === 'loading'}
+          onClick={() => void handleRecalc()}
+          className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-500/20 disabled:opacity-50 dark:text-amber-400"
+        >
+          {state === 'loading' ? 'Processing…' : 'Reset Pre-June XP'}
+        </button>
+        {result && (
+          <span className={`text-xs ${state === 'error' ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
+            {result}
+          </span>
+        )}
+      </div>
+    </section>
   )
 }
