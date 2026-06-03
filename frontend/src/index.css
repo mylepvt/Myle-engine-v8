@@ -15,43 +15,46 @@
     --palette-cyan-neon: #00ffd4;
     --palette-cyan-dull: color-mix(in srgb, var(--palette-cyan-neon) 52%, #64748b 48%);
 
+    /* ── Light theme — soft blue-grey / white-card / blue-accent (mockup) ── */
     color-scheme: light;
-    --background: color-mix(in srgb, var(--palette-mist) 38%, white 62%);
-    --foreground: var(--palette-ink);
+    --background: #e9edf4;
+    --foreground: #141a29;
     --card: #ffffff;
-    --card-foreground: var(--palette-ink);
+    --card-foreground: #141a29;
     --popover: #ffffff;
-    --popover-foreground: var(--palette-ink);
-    --primary: var(--palette-blue);
-    --primary-foreground: #f8fafc;
-    --secondary: color-mix(in srgb, var(--palette-mist) 60%, #e2e8f0 40%);
-    --secondary-foreground: var(--palette-ink);
-    --muted: color-mix(in srgb, var(--palette-mist) 55%, #f1f5f9 45%);
-    --muted-foreground: color-mix(in srgb, var(--palette-ink) 62%, #64748b 38%);
-    --accent: color-mix(in srgb, var(--palette-cyan-dull) 22%, var(--palette-mist) 78%);
-    --accent-foreground: var(--palette-ink);
-    --destructive: #dc2626;
-    --destructive-foreground: #fef2f2;
-    --border: color-mix(in srgb, var(--palette-ink) 28%, var(--palette-mist) 72%);
-    --input: color-mix(in srgb, var(--palette-mist) 62%, white 38%);
-    --ring: var(--palette-blue);
-    --radius: 0.25rem;
+    --popover-foreground: #141a29;
+    --primary: #3b6ef6;
+    --primary-foreground: #ffffff;
+    --secondary: #eef1f8;
+    --secondary-foreground: #141a29;
+    --muted: #eef1f8;
+    --muted-foreground: #6b7488;
+    --accent: #e6edfd;
+    --accent-foreground: #2952cc;
+    --destructive: #e0444d;
+    --destructive-foreground: #ffffff;
+    --border: #e3e8f1;
+    --input: #eef1f8;
+    --ring: #3b6ef6;
+    /* rounded corners — light only (dark overrides back to flat) */
+    --radius: 0.85rem;
     --chart-1: var(--palette-blue);
     --chart-2: var(--palette-cyan-dull);
     --chart-3: color-mix(in srgb, var(--palette-blue) 55%, var(--palette-mist) 45%);
     --chart-4: color-mix(in srgb, var(--palette-mist) 70%, var(--palette-blue) 30%);
     --chart-5: color-mix(in srgb, var(--palette-ink) 40%, var(--palette-mist) 60%);
-    --surface: color-mix(in srgb, var(--palette-mist) 45%, #f8fafc 55%);
-    --subtle: color-mix(in srgb, var(--palette-ink) 48%, var(--palette-mist) 52%);
+    --surface: #f3f5fb;
+    --subtle: #8b93a7;
     --success: #23a55a;
     --success-foreground: #ffffff;
     --warning: #f0b232;
     --warning-foreground: #000000;
-    --glass-base: color-mix(in srgb, var(--palette-mist) 55%, white 45%);
-    --shadow-card: 0 1px 0 rgba(0,0,0,0.06);
-    --shadow-card-hover: 0 1px 0 rgba(0,0,0,0.08);
-    --shadow-ios-bar: 0 0.5px 0 0 color-mix(in srgb, var(--palette-mist) 55%, transparent),
-      0 8px 24px -12px color-mix(in srgb, var(--palette-ink) 22%, transparent);
+    --glass-base: #ffffff;
+    /* soft neumorphic card shadows */
+    --shadow-card: 0 4px 14px -6px rgba(45,70,120,0.12), 0 1px 3px -1px rgba(45,70,120,0.06);
+    --shadow-card-hover: 0 10px 26px -8px rgba(45,70,120,0.18), 0 2px 6px -2px rgba(45,70,120,0.09);
+    --shadow-ios-bar: 0 1px 0 0 rgba(255,255,255,0.7),
+      0 10px 30px -16px rgba(45,70,120,0.22);
 
     --palette-blue-light: color-mix(in srgb, var(--palette-blue) 70%, white 30%);
 
@@ -78,6 +81,8 @@
 
   .dark {
     color-scheme: dark;
+    /* keep dark mode flat (Discord look) — light mode is the rounded one */
+    --radius: 0.25rem;
     --palette-ink: #0f1014;
     /* ── Surfaces ─── deeper than Discord, matte charcoal blacks */
     --background: #111214;
