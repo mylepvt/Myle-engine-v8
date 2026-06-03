@@ -204,7 +204,7 @@ export function DashboardHeader({
 
         <Link
           to="/dashboard/settings/profile"
-          className="relative ml-1 flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted text-ds-caption font-semibold text-foreground transition-opacity hover:opacity-85 active:opacity-70"
+          className="relative ml-1 flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted text-ds-caption font-semibold text-foreground transition-opacity hover:opacity-85 active:opacity-70"
           title={
             me?.fbo_id
               ? `${me.fbo_id}${me.username ? ` · ${me.username}` : ''}${me.email ? ` · ${me.email}` : ''}`
@@ -216,9 +216,9 @@ export function DashboardHeader({
             <img
               src={apiUrl(me.avatar_url)}
               alt={me.username ? `Profile photo for ${me.username}` : me.email ? `Profile photo for ${me.email}` : 'Your profile photo'}
-              className="size-8 object-cover"
-              width={32}
-              height={32}
+              className="size-full object-cover"
+              width={44}
+              height={44}
             />
           ) : (
             displayInitial
