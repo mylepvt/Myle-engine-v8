@@ -50,7 +50,7 @@ function OrgBranch({ node, depth }: { node: OrgTreeNode; depth: number }) {
   const hasChildren = node.children.length > 0
 
   return (
-    <div className={cn('min-w-0 space-y-2', depth > 0 ? 'ml-4 border-l border-white/10 pl-3' : '')}>
+    <div className={cn('min-w-0 space-y-2', depth > 0 ? 'ml-4 border-l border-border dark:border-white/10 pl-3' : '')}>
       <button
         type="button"
         onClick={() => hasChildren && setOpen((o) => !o)}
@@ -80,7 +80,7 @@ function OrgBranch({ node, depth }: { node: OrgTreeNode; depth: number }) {
           </div>
 
           {hasChildren ? (
-            <div className="shrink-0 rounded-full border border-white/10 bg-muted/30 p-1 text-muted-foreground">
+            <div className="shrink-0 rounded-full border border-border dark:border-white/10 bg-muted/30 p-1 text-muted-foreground">
               {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
             </div>
           ) : null}

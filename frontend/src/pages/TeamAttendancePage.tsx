@@ -19,7 +19,7 @@ function timeAgo(iso: string | null): string {
 function LocationChip({ entry }: { entry: TeamLocationEntry }) {
   const hasLocation = entry.city || entry.state
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3">
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-border dark:border-white/[0.08] bg-white/[0.03] px-4 py-3">
       <div className="min-w-0">
         <p className="text-sm font-medium text-foreground/90 truncate">{entry.name ?? '—'}</p>
         {hasLocation ? (
@@ -65,7 +65,7 @@ export function TeamAttendancePage({ title }: Props) {
           type="button"
           onClick={() => void refetch()}
           disabled={isFetching}
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04] text-muted-foreground transition hover:bg-white/[0.08] disabled:opacity-40"
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-border dark:border-white/[0.08] bg-white/[0.04] text-muted-foreground transition hover:bg-white/[0.08] disabled:opacity-40"
         >
           <RefreshCw className={cn('h-3.5 w-3.5', isFetching && 'animate-spin')} />
         </button>

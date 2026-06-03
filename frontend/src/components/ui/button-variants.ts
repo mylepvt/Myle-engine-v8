@@ -10,9 +10,9 @@ export const buttonVariants = cva(
         secondary:
           'bg-secondary text-secondary-foreground hover:bg-[#47484f] active:bg-[#3f4147]',
         ghost:
-          'text-foreground hover:bg-[rgba(255,255,255,0.08)] active:bg-[rgba(255,255,255,0.12)]',
+          'text-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_9%,transparent)] active:bg-[color-mix(in_srgb,var(--foreground)_13%,transparent)]',
         outline:
-          'border border-border bg-transparent text-foreground hover:bg-[rgba(255,255,255,0.06)] active:bg-[rgba(255,255,255,0.09)]',
+          'border border-border bg-transparent text-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_7%,transparent)] active:bg-[color-mix(in_srgb,var(--foreground)_10%,transparent)]',
         destructive:
           'bg-destructive text-destructive-foreground hover:bg-[#d42526] active:bg-[#c01f25]',
       },

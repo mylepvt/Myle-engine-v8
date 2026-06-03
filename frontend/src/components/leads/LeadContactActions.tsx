@@ -16,9 +16,9 @@ type Props = {
 }
 
 const boxSm =
-  'flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-white/12 bg-muted/50 text-foreground transition [&_svg]:h-3.5 [&_svg]:w-3.5'
+  'flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-border dark:border-white/12 bg-muted/50 text-foreground transition [&_svg]:h-3.5 [&_svg]:w-3.5'
 const boxMd =
-  'flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-white/12 bg-muted/50 text-foreground transition [&_svg]:h-4 [&_svg]:w-4'
+  'flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-border dark:border-white/12 bg-muted/50 text-foreground transition [&_svg]:h-4 [&_svg]:w-4'
 
 const BLOCKED_LEVELS = new Set(['strong_warning', 'final_warning'])
 
@@ -114,13 +114,13 @@ export function LeadContactActions({
             <span className="sr-only">WhatsApp</span>
           </button>
           {showWaMenu && (
-            <div className="absolute top-full right-0 mt-1 z-10 bg-muted border border-white/12 rounded-md overflow-hidden shadow-lg">
+            <div className="absolute top-full right-0 mt-1 z-10 bg-muted border border-border dark:border-white/12 rounded-md overflow-hidden shadow-lg">
               <a
                 href={wa}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setShowWaMenu(false)}
-                className="block px-3 py-2 text-xs whitespace-nowrap hover:bg-white/5 text-foreground"
+                className="block px-3 py-2 text-xs whitespace-nowrap hover:bg-foreground/5 text-foreground"
               >
                 Personal WhatsApp
               </a>
@@ -130,7 +130,7 @@ export function LeadContactActions({
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => setShowWaMenu(false)}
-                  className="block px-3 py-2 text-xs whitespace-nowrap hover:bg-white/5 text-foreground border-t border-white/12"
+                  className="block px-3 py-2 text-xs whitespace-nowrap hover:bg-foreground/5 text-foreground border-t border-border dark:border-white/12"
                 >
                   WhatsApp Business
                 </a>

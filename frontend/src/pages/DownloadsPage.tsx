@@ -197,7 +197,7 @@ export function DownloadsPage({ title }: Props) {
             onChange={(e) => setFileTitle(e.target.value)}
             disabled={upload.isPending}
             placeholder="Document title"
-            className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+            className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
           />
 
           <textarea
@@ -206,7 +206,7 @@ export function DownloadsPage({ title }: Props) {
             disabled={upload.isPending}
             rows={2}
             placeholder="Description (optional)"
-            className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+            className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
           />
 
           {formError ? (

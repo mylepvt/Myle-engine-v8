@@ -417,7 +417,7 @@ function AttentionRow({ item, dateIso }: { item: TeamTrackingMemberSummary; date
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
         {reasons.slice(0, 3).map((reason) => (
-          <Badge key={reason} variant="secondary" className="bg-white/[0.08] text-foreground">
+          <Badge key={reason} variant="secondary" className="bg-foreground/[0.08] text-foreground">
             {reason}
           </Badge>
         ))}
@@ -882,7 +882,7 @@ export function TeamTrackingPage({ title }: Props) {
                                   type="button"
                                   disabled={isSending}
                                   onClick={() => sendOutreach.mutate({ userId: item.user_id, force: true })}
-                                  className="inline-flex items-center gap-1 rounded border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-white/10 disabled:opacity-50"
+                                  className="inline-flex items-center gap-1 rounded border border-border dark:border-white/10 bg-foreground/5 px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-foreground/10 disabled:opacity-50"
                                 >
                                   {isSending ? <Loader2 className="size-2.5 animate-spin" /> : <MessageCircle className="size-2.5" />}
                                   {isSending ? 'Sending…' : 'Resend'}
@@ -898,7 +898,7 @@ export function TeamTrackingPage({ title }: Props) {
                                     placeholder="10-digit mobile number"
                                     value={stubPhones[item.user_id] ?? ''}
                                     onChange={(e) => setStubPhones((prev) => ({ ...prev, [item.user_id]: e.target.value }))}
-                                    className="flex-1 rounded border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                                    className="flex-1 rounded border border-border dark:border-white/10 bg-foreground/5 px-2 py-0.5 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
                                   />
                                   <button
                                     type="button"
@@ -1182,7 +1182,7 @@ export function TeamTrackingPage({ title }: Props) {
                                 {item.consistency_band}
                               </span>
                             </div>
-                            <div className="h-2 rounded-full bg-white/[0.08]">
+                            <div className="h-2 rounded-full bg-foreground/[0.08]">
                               <div
                                 className={cn('h-2 rounded-full', scoreRailClass(item.consistency_band))}
                                 style={{ width: `${Math.max(6, item.consistency_score)}%` }}

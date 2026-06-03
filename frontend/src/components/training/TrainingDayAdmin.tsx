@@ -169,12 +169,12 @@ export function TrainingDayAdmin({ video }: Props) {
 
         <label className="block md:col-span-2">
           <span className="field-label">Audio file</span>
-          <div className="rounded border border-white/10 bg-muted/30 p-3">
+          <div className="rounded border border-border dark:border-white/10 bg-muted/30 p-3">
             <input
               ref={audioRef}
               type="file"
               accept=".aac,.m4a,.mp3,.ogg,.wav,.webm,audio/*"
-              className="block w-full min-w-0 max-w-full text-xs file:mr-2 file:rounded file:border-0 file:bg-white/10 file:px-2 file:py-1 file:text-xs"
+              className="block w-full min-w-0 max-w-full text-xs file:mr-2 file:rounded file:border-0 file:bg-foreground/10 file:px-2 file:py-1 file:text-xs"
               onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
             />
           </div>
