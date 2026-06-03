@@ -75,7 +75,7 @@ export function FlpMinBillingApprovalsPage({ title }: Props) {
       ) : null}
 
       {data && data.total === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded border border-dashed border-white/[0.12] py-14 text-center">
+        <div className="flex flex-col items-center gap-3 rounded border border-dashed border-border dark:border-white/[0.12] py-14 text-center">
           <ClipboardList className="size-10 text-muted-foreground/50" />
           <p className="text-sm font-medium text-foreground">No pending FLP billing requests</p>
           <p className="text-xs text-muted-foreground">New requests will appear here for your review.</p>
@@ -185,7 +185,7 @@ export function FlpMinBillingApprovalsPage({ title }: Props) {
               type="date"
               value={historyDate}
               onChange={(e) => setHistoryDate(e.target.value)}
-              className="w-full rounded-md border border-white/[0.12] bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+              className="w-full rounded-md border border-border dark:border-white/[0.12] bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
             />
           </div>
         </div>
@@ -207,7 +207,7 @@ export function FlpMinBillingApprovalsPage({ title }: Props) {
         ) : null}
 
         {historyQ.data && historyQ.data.total === 0 ? (
-          <div className="rounded border border-dashed border-white/[0.12] px-4 py-8 text-center text-sm text-muted-foreground">
+          <div className="rounded border border-dashed border-border dark:border-white/[0.12] px-4 py-8 text-center text-sm text-muted-foreground">
             No proof decisions found for {historyDate}.
           </div>
         ) : null}

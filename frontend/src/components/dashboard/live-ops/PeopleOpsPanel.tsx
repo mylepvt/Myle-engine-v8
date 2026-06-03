@@ -34,7 +34,7 @@ function LeaderCard({ leader, rank }: { leader: LeaderHealthItem; rank: number }
   const color = avatarColor(leader.leader_name)
   const isOnline = leader.presence_status === 'online'
   return (
-    <Link to={`/dashboard/team/tracking/${leader.leader_id}`} className="flex min-w-[100px] flex-1 flex-col items-center gap-2 overflow-hidden rounded border border-white/[0.06] bg-white/[0.03] p-3 text-center no-underline transition-all duration-150 hover:border-white/20 hover:bg-white/[0.07] active:bg-white/[0.1] cursor-pointer">
+    <Link to={`/dashboard/team/tracking/${leader.leader_id}`} className="flex min-w-[100px] flex-1 flex-col items-center gap-2 overflow-hidden rounded border border-border dark:border-white/[0.06] bg-white/[0.03] p-3 text-center no-underline transition-all duration-150 hover:border-border dark:border-white/20 hover:bg-white/[0.07] active:bg-white/[0.1] cursor-pointer">
       {/* Rank badge */}
       <div
         className="flex size-5 items-center justify-center rounded-full text-[10px] font-bold text-white shadow"
@@ -66,7 +66,7 @@ function LeaderCard({ leader, rank }: { leader: LeaderHealthItem; rank: number }
         </p>
       </div>
       {/* Stats row */}
-      <div className="flex w-full items-center justify-around gap-1 border-t border-white/[0.06] pt-2">
+      <div className="flex w-full items-center justify-around gap-1 border-t border-border dark:border-white/[0.06] pt-2">
         <div className="text-center">
           <p className="text-[13px] font-bold tabular-nums text-foreground">{leader.personal_leads_added}</p>
           <p className="text-[9px] text-muted-foreground/50">Adds</p>
@@ -89,7 +89,7 @@ function TeamRow({ leader }: { leader: LeaderHealthItem }) {
   const isOnline = leader.presence_status === 'online'
   const color = avatarColor(leader.leader_name)
   return (
-    <Link to={`/dashboard/team/tracking/${leader.leader_id}`} className="flex items-center gap-3 border-b border-white/[0.04] px-4 py-3 no-underline transition-all duration-150 hover:bg-white/[0.05] active:bg-white/[0.08] cursor-pointer">
+    <Link to={`/dashboard/team/tracking/${leader.leader_id}`} className="flex items-center gap-3 border-b border-border dark:border-white/[0.04] px-4 py-3 no-underline transition-all duration-150 hover:bg-white/[0.05] active:bg-white/[0.08] cursor-pointer">
       {/* Avatar + status */}
       <div className="relative shrink-0">
         <div
@@ -204,7 +204,7 @@ function LiveActivityFeed() {
             </div>
             {/* Text */}
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[11.5px] font-medium leading-tight text-foreground/90">
+              <p className="truncate text-[11.5px] font-medium leading-tight text-[color-mix(in_srgb,var(--foreground)_90%,transparent)]">
                 {entry.description}
               </p>
               {entry.actorName && entry.actorName !== 'Unknown' && (
@@ -237,16 +237,16 @@ export function PeopleOpsPanel() {
   const topLeaders = leaders.slice(0, 5)
 
   return (
-    <div className="flex flex-col gap-0 overflow-hidden rounded border border-white/[0.06] bg-card">
+    <div className="flex flex-col gap-0 overflow-hidden rounded border border-border dark:border-white/[0.06] bg-card">
       {/* Section header */}
-      <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
+      <div className="flex items-center justify-between border-b border-border dark:border-white/[0.06] px-4 py-3">
         <h2 className="text-[12px] font-bold uppercase tracking-widest text-muted-foreground/60">
           People Operations
         </h2>
       </div>
 
       {/* Top Leaders */}
-      <div className="border-b border-white/[0.06] px-4 py-3">
+      <div className="border-b border-border dark:border-white/[0.06] px-4 py-3">
         <div className="mb-3 flex items-center justify-between">
           <p className="text-[11px] font-semibold text-muted-foreground/70">Top Leaders (Today)</p>
           <Link to="/dashboard/settings/all-members" className="text-[10px] font-medium text-primary/70 hover:text-primary">
@@ -256,7 +256,7 @@ export function PeopleOpsPanel() {
         <div className="flex gap-2 overflow-x-auto scroll-px-1 pb-1">
           {topLeaders.length === 0 &&
             Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="min-w-[100px] flex-1 animate-pulse rounded border border-white/[0.06] bg-white/[0.02] py-12" />
+              <div key={i} className="min-w-[100px] flex-1 animate-pulse rounded border border-border dark:border-white/[0.06] bg-white/[0.02] py-12" />
             ))}
           {topLeaders.map((leader, i) => (
             <LeaderCard key={leader.leader_id} leader={leader} rank={i + 1} />
@@ -265,7 +265,7 @@ export function PeopleOpsPanel() {
       </div>
 
       {/* Teams Live Overview */}
-      <div className="border-b border-white/[0.06]">
+      <div className="border-b border-border dark:border-white/[0.06]">
         <div className="flex items-center justify-between px-4 py-3">
           <p className="text-[11px] font-semibold text-muted-foreground/70">Teams Live Overview</p>
           <Link to="/dashboard/settings/all-members" className="text-[10px] font-medium text-primary/70 hover:text-primary">
@@ -278,14 +278,14 @@ export function PeopleOpsPanel() {
           ))}
           {leaderHealth.isLoading &&
             Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-14 animate-pulse border-b border-white/[0.04] bg-white/[0.02]" />
+              <div key={i} className="h-14 animate-pulse border-b border-border dark:border-white/[0.04] bg-white/[0.02]" />
             ))}
         </div>
       </div>
 
       {/* Live Activity feed */}
       <div className="flex flex-col">
-        <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
+        <div className="flex items-center justify-between border-b border-border dark:border-white/[0.06] px-4 py-3">
           <div className="flex items-center gap-2">
             <span className="relative flex size-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />

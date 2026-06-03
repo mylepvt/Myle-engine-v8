@@ -92,7 +92,7 @@ export function SalesApprovalsPage({ title }: Props) {
       ) : null}
 
       {data && data.total === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded border border-dashed border-white/[0.12] py-14 text-center">
+        <div className="flex flex-col items-center gap-3 rounded border border-dashed border-border dark:border-white/[0.12] py-14 text-center">
           <ClipboardList className="size-10 text-muted-foreground/50" />
           <p className="text-sm font-medium text-foreground">No pending CC/sale invoices</p>
           <p className="text-xs text-muted-foreground">Auto-verified sales skip this queue.</p>

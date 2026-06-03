@@ -30,8 +30,8 @@ function KpiCard({
 }) {
   const base = cn(
     'flex flex-col gap-2 rounded border px-4 py-3 transition-all duration-150',
-    urgent ? 'border-amber-500/20 bg-amber-500/[0.06]' : 'border-white/[0.06] bg-white/[0.03]',
-    clickable && 'cursor-pointer hover:border-white/20 hover:brightness-110 active:brightness-125',
+    urgent ? 'border-amber-500/20 bg-amber-500/[0.06]' : 'border-border dark:border-white/[0.06] bg-white/[0.03]',
+    clickable && 'cursor-pointer hover:border-border dark:border-white/20 hover:brightness-110 active:brightness-125',
   )
   const inner = (
     <>

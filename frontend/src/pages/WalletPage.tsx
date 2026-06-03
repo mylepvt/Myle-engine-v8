@@ -19,8 +19,8 @@ export function WalletPage({ title }: Props) {
       <p className="text-sm text-muted-foreground">
         Balance is the sum of all ledger lines (append-only). Credits and debits are applied by admins via Finance →
         Recharges. When a document exists, use{' '}
-        <span className="text-foreground/90">Download payment receipt</span> or{' '}
-        <span className="text-foreground/90">Download tax invoice</span> to open a printable page (save as PDF from the
+        <span className="text-[color-mix(in_srgb,var(--foreground)_90%,transparent)]">Download payment receipt</span> or{' '}
+        <span className="text-[color-mix(in_srgb,var(--foreground)_90%,transparent)]">Download tax invoice</span> to open a printable page (save as PDF from the
         browser if you need a file).
       </p>
 
@@ -92,7 +92,7 @@ export function WalletPage({ title }: Props) {
             {ledger.data.items.map((e) => (
               <li
                 key={e.id}
-                className="flex flex-col gap-2 rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-2 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-2 rounded-md border border-border dark:border-white/[0.06] bg-white/[0.02] px-2 py-2 sm:flex-row sm:items-center sm:justify-between"
               >
                 <span className="min-w-0">
                   #{e.id} · {e.amount_cents >= 0 ? '+' : ''}

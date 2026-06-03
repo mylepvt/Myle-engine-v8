@@ -328,7 +328,7 @@ export function SettingsAppPage({ title }: Props) {
     <div className="max-w-4xl space-y-6">
       <h1 className="text-ds-h2">{title}</h1>
       <p className="text-sm text-muted-foreground">
-        All rows from <code className="rounded bg-white/10 px-1 text-xs">app_settings</code>. Sensitive
+        All rows from <code className="rounded bg-[color-mix(in_srgb,var(--foreground)_10%,transparent)] px-1 text-xs">app_settings</code>. Sensitive
         secrets should stay in server environment variables — this table is for product toggles and
         copy (e.g. live session text).
       </p>
@@ -358,7 +358,7 @@ export function SettingsAppPage({ title }: Props) {
                   value={resolvedContentValue(field.key)}
                   onChange={(e) => setContentEdits((prev) => ({ ...prev, [field.key]: e.target.value }))}
                   placeholder={field.placeholder}
-                  className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                  className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
                 />
                 <span className="mt-1 block text-muted-foreground/80">{field.help}</span>
               </label>
@@ -398,7 +398,7 @@ export function SettingsAppPage({ title }: Props) {
         ) : (
           <div className="grid gap-3">
             {(['d1', 'd2'] as const).map((day) => (
-              <div key={day} className="rounded-lg border border-white/10 p-3">
+              <div key={day} className="rounded-lg border border-border dark:border-white/10 p-3">
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Day {day === 'd1' ? '1' : '2'}
                 </h3>
@@ -417,7 +417,7 @@ export function SettingsAppPage({ title }: Props) {
                               value={resolvedBatchValue(key)}
                               onChange={(e) => setBatchEdits((prev) => ({ ...prev, [key]: e.target.value }))}
                               placeholder={field?.placeholder}
-                              className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                              className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
                             />
                           </label>
                         )
@@ -466,7 +466,7 @@ export function SettingsAppPage({ title }: Props) {
               value={enrollmentUrlValue}
               onChange={(e) => setEnrollmentUrlValue(e.target.value)}
               placeholder="https://pub-xxxx.r2.dev/enrollment.mp4"
-              className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+              className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
             />
             <span className="mt-1 block text-muted-foreground/80">Direct hosted URL (R2 / .mp4 / HLS) — YouTube nahi.</span>
           </label>
@@ -519,7 +519,7 @@ export function SettingsAppPage({ title }: Props) {
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             Webhook URL jo Meta Console mein dalna hai:{' '}
-            <code className="rounded bg-white/10 px-1 text-[10px]">
+            <code className="rounded bg-[color-mix(in_srgb,var(--foreground)_10%,transparent)] px-1 text-[10px]">
               https://yourdomain.com/api/v1/webhooks/whatsapp/reply
             </code>
           </p>
@@ -547,7 +547,7 @@ export function SettingsAppPage({ title }: Props) {
                       onChange={(e) => setWaEdits((prev) => ({ ...prev, [field.key]: e.target.value }))}
                       placeholder={field.placeholder}
                       autoComplete="off"
-                      className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 pr-9 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                      className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 pr-9 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
                     />
                     {isTokenField && (
                       <button
@@ -584,7 +584,7 @@ export function SettingsAppPage({ title }: Props) {
         </div>
 
         {/* Test send — debug delivery */}
-        <div className="mt-4 border-t border-white/10 pt-3">
+        <div className="mt-4 border-t border-border dark:border-white/10 pt-3">
           <p className="mb-2 text-xs font-medium text-foreground">Test message bhejo (debug)</p>
           <p className="mb-2 text-[11px] text-muted-foreground">
             Kisi number pe test message bhej ke Meta ka exact response dekho — pata chalega delivery ho rahi hai ya nahi.
@@ -595,7 +595,7 @@ export function SettingsAppPage({ title }: Props) {
               value={waTestPhone}
               onChange={(e) => setWaTestPhone(e.target.value)}
               placeholder="10-digit number, e.g. 7230930370"
-              className="flex-1 min-w-[200px] rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-sm text-foreground"
+              className="flex-1 min-w-[200px] rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-sm text-foreground"
             />
             <button
               type="button"
@@ -619,7 +619,7 @@ export function SettingsAppPage({ title }: Props) {
         </div>
 
         {/* Report reminder resend panel */}
-        <div className="mt-4 border-t border-white/10 pt-3">
+        <div className="mt-4 border-t border-border dark:border-white/10 pt-3">
           <p className="mb-1 text-xs font-medium text-foreground">Report reminder manually bhejo</p>
           <p className="mb-3 text-[11px] text-muted-foreground">
             Aaj ki report abhi tak submit nahi ki aur pehle reminder nahi mila — unhe WhatsApp pe reminder bhejo.
@@ -654,9 +654,9 @@ export function SettingsAppPage({ title }: Props) {
           ) : null}
 
           {reminderResults && reminderResults.length > 0 ? (
-            <div className="mt-3 max-h-64 overflow-y-auto rounded border border-white/[0.08] bg-black/30">
+            <div className="mt-3 max-h-64 overflow-y-auto rounded border border-border dark:border-white/[0.08] bg-black/30">
               {reminderResults.map((r) => (
-                <div key={r.user_id} className="flex items-center gap-2 border-b border-white/[0.05] px-3 py-1.5 last:border-0">
+                <div key={r.user_id} className="flex items-center gap-2 border-b border-border dark:border-white/[0.05] px-3 py-1.5 last:border-0">
                   {r.status === 'sent' || r.status === 'stub'
                     ? <CheckCircle2 className="size-3 shrink-0 text-emerald-400" />
                     : r.status === 'no_phone'
@@ -688,7 +688,7 @@ export function SettingsAppPage({ title }: Props) {
               type="button"
               disabled={appSettingsPending}
               onClick={() => void refetchAppSettings()}
-              className="rounded-md bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground hover:bg-white/[0.08] disabled:opacity-50"
+              className="rounded-md bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_8%,transparent)] disabled:opacity-50"
             >
               {appSettingsPending ? 'Refreshing…' : 'Refresh'}
             </button>
@@ -699,20 +699,20 @@ export function SettingsAppPage({ title }: Props) {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search…"
-              className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+              className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
             />
           </label>
           <div className="surface-elevated max-h-[min(32rem,70vh)] overflow-auto p-3">
             <table className="w-full border-collapse text-left text-sm">
               <thead className="sticky top-0 z-[1] bg-muted/40 backdrop-blur-sm">
-                <tr className="border-b border-white/10 text-ds-caption text-muted-foreground">
+                <tr className="border-b border-border dark:border-white/10 text-ds-caption text-muted-foreground">
                   <th className="py-2 pr-3 font-medium">Key</th>
                   <th className="py-2 font-medium">Value</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r, idx) => (
-                  <tr key={r.key ? `${r.key}:${idx}` : `row-${idx}`} className="border-b border-white/[0.06] align-top">
+                  <tr key={r.key ? `${r.key}:${idx}` : `row-${idx}`} className="border-b border-border dark:border-white/[0.06] align-top">
                     <td className="whitespace-nowrap py-2 pr-3 font-mono text-xs text-primary">{r.key}</td>
                     <td className="py-2 break-all text-muted-foreground">{r.value || '—'}</td>
                   </tr>

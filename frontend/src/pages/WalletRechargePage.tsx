@@ -112,7 +112,7 @@ export function WalletRechargePage({ title }: Props) {
               <img
                 src={instructionsQuery.data.qr_image_url}
                 alt="Recharge UPI QR code"
-                className="max-h-64 w-full max-w-xs rounded-md border border-white/12 object-contain"
+                className="max-h-64 w-full max-w-xs rounded-md border border-border dark:border-white/12 object-contain"
               />
             ) : null}
             <p className="text-xs text-muted-foreground">
@@ -143,7 +143,7 @@ export function WalletRechargePage({ title }: Props) {
             required
             disabled={createMut.isPending}
             placeholder="e.g. 500"
-            className="w-full rounded-md border border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 disabled:opacity-50"
+            className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 disabled:opacity-50"
           />
         </div>
 
@@ -162,7 +162,7 @@ export function WalletRechargePage({ title }: Props) {
             placeholder="Bank reference number"
             required
             disabled={createMut.isPending}
-            className="w-full rounded-md border border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 disabled:opacity-50"
+            className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 disabled:opacity-50"
           />
         </div>
 
@@ -180,7 +180,7 @@ export function WalletRechargePage({ title }: Props) {
             onChange={(e) => setProofUrl(e.target.value)}
             placeholder="https://…"
             disabled={createMut.isPending}
-            className="w-full rounded-md border border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 disabled:opacity-50"
+            className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 disabled:opacity-50"
           />
         </div>
 

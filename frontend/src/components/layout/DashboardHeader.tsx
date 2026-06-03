@@ -143,7 +143,7 @@ export function DashboardHeader({
 
         <Link
           to="/dashboard/settings/profile"
-          className="hidden size-9 items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[rgba(255,255,255,0.06)] hover:text-foreground md:flex"
+          className="hidden size-9 items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground md:flex"
           aria-label="Settings"
         >
           <Settings className="size-[17px]" />
@@ -153,7 +153,7 @@ export function DashboardHeader({
           <div className="relative">
             <Link
               to="/dashboard/team/flp-min-billing"
-              className="relative flex size-9 items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[rgba(255,255,255,0.06)] hover:text-foreground"
+              className="relative flex size-9 items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground"
               aria-label={`Min. FLP approvals — ${pendingEnrollCount} pending`}
             >
               <ClipboardCheck className="size-[17px] text-success" />
@@ -170,7 +170,7 @@ export function DashboardHeader({
         <div className="relative">
           <Link
             to="/dashboard/other/notice-board"
-            className="relative flex size-9 items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[rgba(255,255,255,0.06)] hover:text-foreground"
+            className="relative flex size-9 items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground"
             aria-label={noticeBoardUnread > 0 ? `Notice board — ${noticeBoardUnread} new` : 'Notice board'}
           >
             <Bell className="size-[17px]" />
