@@ -217,12 +217,12 @@ def is_valid_forward_status_transition(
 # Video Watched by ``TEAM_FORBIDDEN_STATUS_SLUGS``.
 #   day1   = leader/admin (handoff: team records video_watched, leader takes over)
 #   day2   = leader/admin
-#   day3   = ADMIN ONLY  (admin advances Day 2 → Day 3 closing)
+#   day3   = leader/admin (leader has full status control over their leads)
 #   converted = leader/admin (Day 3 close)
 DAY_ADVANCE_ALLOWED_ROLES: dict[str, frozenset[str]] = {
     "day1": frozenset({"leader", "admin"}),
     "day2": frozenset({"leader", "admin"}),
-    "day3": frozenset({"admin"}),
+    "day3": frozenset({"leader", "admin"}),
     "converted": frozenset({"leader", "admin"}),
 }
 
@@ -238,7 +238,7 @@ def validate_vl2_status_transition_for_role(
     + per-day advance role gate.
 
     - Admin: any forward jump.
-    - Leader: free forward jumps, EXCEPT advancing into Day 3 (admin only).
+    - Leader: full control — any forward jump including Day 3.
     - Team: free jumps up to Video Watched; cannot set ``TEAM_FORBIDDEN_STATUS_SLUGS``.
     """
     from app.core.lead_status import (

@@ -24,12 +24,12 @@ describe('team-lead-status', () => {
     expect(values).toContain('day2')
   })
 
-  it('blocks a leader from advancing forward into day3 (admin-only entry)', () => {
+  it('lets a leader advance forward into day3 (full status control)', () => {
     const values = leadStatusSelectOptionsForLead('leader', 'day2' as LeadStatus, LEAD_STATUS_OPTIONS).map(
       (option) => option.value,
     )
 
-    expect(values).not.toContain('day3')
+    expect(values).toContain('day3')
     expect(values).toContain('day2')
   })
 

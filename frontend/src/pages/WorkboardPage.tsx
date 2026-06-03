@@ -1050,7 +1050,8 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     setMarkingSlot(slotKey)
     try {
       await pm.mutateAsync({ id: lead.id, body: { [slotKey]: true } })
-      await qc.refetchQueries({ queryKey: ['workboard'] })
+      // Optimistic cache update already painted; mutation onSettled invalidates
+      // the board in the background — no awaited refetch needed.
       setBatchModal(null)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not update batch state'
@@ -1063,6 +1064,21 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
             }
           : prev,
       )
+    } finally {
+      setMarkingSlot(null)
+    }
+  }
+
+  // Tapping an already-done batch toggles it back off (no share modal).
+  const unmarkBatchDone = async (slotKey: BatchSlotKey) => {
+    setBatchError(null)
+    setMarkingSlot(slotKey)
+    try {
+      await pm.mutateAsync({ id: lead.id, body: { [slotKey]: false } })
+      // Optimistic cache update already painted; onSettled invalidates in bg.
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not update batch state'
+      setBatchError(message)
     } finally {
       setMarkingSlot(null)
     }
@@ -1204,8 +1220,12 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
                   key={`share-${slotKey}`}
                   type="button"
                   disabled={leadPatchBusy || busy}
-                  title={`${meta.label} batch`}
-                  onClick={() => void handleBatchButtonClick(slot, slotKey)}
+                  title={slotDone ? `${meta.label} batch — tap to undo` : `${meta.label} batch`}
+                  onClick={() =>
+                    slotDone
+                      ? void unmarkBatchDone(slotKey)
+                      : void handleBatchButtonClick(slot, slotKey)
+                  }
                   className={cn(
                     'flex min-h-11 flex-1 flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-xs font-semibold transition disabled:opacity-50',
                     slotDone

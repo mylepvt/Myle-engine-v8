@@ -65,9 +65,9 @@ def test_leader_day1_to_day2():
     assert ok("day1", "day2", "leader")
 
 
-def test_leader_cannot_advance_to_day3():
-    """Day 2 → Day 3 is admin-only (mirrors old ACTION_MAP)."""
-    assert not ok("day2", "day3", "leader")
+def test_leader_can_advance_to_day3():
+    """Leader has full status control and may advance Day 2 → Day 3."""
+    assert ok("day2", "day3", "leader")
 
 
 def test_leader_day3_to_converted():

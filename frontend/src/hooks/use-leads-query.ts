@@ -8,6 +8,7 @@ import {
 
 import { apiFetch } from '@/lib/api'
 import { applyCtcsOptimisticToLead } from '@/lib/ctcs-optimistic'
+import type { WorkboardResponse } from '@/hooks/use-workboard-query'
 
 export type LeadStatus =
   | 'new_lead'
@@ -556,6 +557,30 @@ export function useImportLeadsFileMutation() {
   })
 }
 
+// Fields whose value can be copied straight onto a cached lead card for an
+// instant optimistic update (no derived/server-computed values here).
+const OPTIMISTIC_PATCH_FIELDS = [
+  'status',
+  'call_status',
+  'name',
+  'd1_morning',
+  'd1_afternoon',
+  'd1_evening',
+  'd2_morning',
+  'd2_afternoon',
+  'd2_evening',
+  'd6_6pm',
+  'd6_8pm',
+] as const
+
+function isWorkboardData(data: unknown): data is WorkboardResponse {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    Array.isArray((data as WorkboardResponse).columns)
+  )
+}
+
 export function usePatchLeadMutation() {
   const qc = useQueryClient()
   return useMutation({
@@ -567,11 +592,19 @@ export function usePatchLeadMutation() {
       body: Parameters<typeof patchLead>[1]
     }) => patchLead(id, body),
     onMutate: async ({ id, body }) => {
+      // Optimistically reflect every field that maps 1:1 onto a card so clicks
+      // (status, batch M/A/E toggles, etc.) paint instantly instead of waiting
+      // for the PATCH round-trip + refetch.
       const patch: Partial<LeadPublic> = {}
-      if (body.status !== undefined) patch.status = body.status
-      if (body.call_status !== undefined) patch.call_status = body.call_status
-      if (Object.keys(patch).length === 0) return { previous: undefined }
+      const src = body as Record<string, unknown>
+      for (const key of OPTIMISTIC_PATCH_FIELDS) {
+        if (src[key] !== undefined) (patch as Record<string, unknown>)[key] = src[key]
+      }
+      if (Object.keys(patch).length === 0) return { previous: undefined, previousWb: undefined }
+
       await qc.cancelQueries({ queryKey: ['leads', 'list', 'paged'], exact: false })
+      await qc.cancelQueries({ queryKey: ['workboard'] })
+
       const previous = qc.getQueriesData({ queryKey: ['leads', 'list', 'paged'], exact: false })
       previous.forEach(([queryKey, data]) => {
         if (!isLeadsInfiniteData(data)) return
@@ -583,10 +616,26 @@ export function usePatchLeadMutation() {
           })),
         })
       })
-      return { previous }
+
+      const previousWb = qc.getQueriesData({ queryKey: ['workboard'] })
+      previousWb.forEach(([queryKey, data]) => {
+        if (!isWorkboardData(data)) return
+        qc.setQueryData(queryKey, {
+          ...data,
+          columns: data.columns.map((col) => ({
+            ...col,
+            items: col.items.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+          })),
+        })
+      })
+
+      return { previous, previousWb }
     },
     onError: (_err, _variables, context) => {
       context?.previous?.forEach(([queryKey, data]) => {
+        qc.setQueryData(queryKey, data)
+      })
+      context?.previousWb?.forEach(([queryKey, data]) => {
         qc.setQueryData(queryKey, data)
       })
     },

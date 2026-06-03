@@ -12,34 +12,6 @@ const TEAM_FORBIDDEN: ReadonlySet<LeadStatus> = new Set([
 const NON_ADMIN_HIDDEN: ReadonlySet<LeadStatus> = new Set(LEGACY_COMPAT_STATUSES)
 const DIRECT_PICK_HIDDEN: ReadonlySet<LeadStatus> = new Set<LeadStatus>([])
 
-/** Forward-advance ordering — mirrors `LEAD_STATUS_SEQUENCE` in backend `lead_status.py`. */
-const STATUS_RANK: Partial<Record<LeadStatus, number>> = {
-  new_lead: 0,
-  contacted: 1,
-  invited: 2,
-  video_sent: 3,
-  video_watched: 4,
-  day1: 5,
-  day2: 6,
-  day3: 7,
-  converted: 8,
-}
-
-/**
- * Stages only an admin may ADVANCE a lead INTO (forward). Mirrors backend
- * `DAY_ADVANCE_ALLOWED_ROLES` — day3 entry is admin-only; leader may still
- * step backward into day3 (e.g. converted → day3) as a correction.
- */
-const ADMIN_ONLY_FORWARD_ENTRY: ReadonlySet<LeadStatus> = new Set<LeadStatus>(['day3'])
-
-function isForwardMove(from: LeadStatus, to: LeadStatus): boolean {
-  const a = STATUS_RANK[from]
-  const b = STATUS_RANK[to]
-  if (a === undefined || b === undefined) return false
-  return b > a
-}
-
-
 const TEAM_STAGE_VISIBILITY: Partial<Record<LeadStatus, LeadStatus[]>> = {
   new_lead: ['new_lead', 'contacted', 'invited'],
   contacted: ['contacted', 'invited', 'video_sent'],
@@ -75,21 +47,13 @@ export function leadStatusSelectOptionsForLead(
   all: { value: LeadStatus; label: string }[],
 ): { value: LeadStatus; label: string }[] {
   const roleFiltered = teamLeadStatusSelectOptions(role, all)
-  if (role === 'admin') return roleFiltered
-  if (role === 'leader') {
-    // Leader cannot ADVANCE a lead forward into an admin-only entry stage (day3),
-    // but may still pick it as a backward correction or keep the current value.
-    const gated = roleFiltered.filter(
-      (o) =>
-        o.value === currentStatus ||
-        !ADMIN_ONLY_FORWARD_ENTRY.has(o.value) ||
-        !isForwardMove(currentStatus, o.value),
-    )
+  // Leader has full status control (same as admin): any stage, any direction,
+  // from wherever the lead currently sits. Keep the current value selectable
+  // even when it would otherwise be hidden (e.g. a legacy/training stage).
+  if (role === 'admin' || role === 'leader') {
+    if (roleFiltered.some((o) => o.value === currentStatus)) return roleFiltered
     const currentOption = all.find((o) => o.value === currentStatus)
-    if (currentOption && !gated.some((o) => o.value === currentStatus)) {
-      return [currentOption, ...gated]
-    }
-    return gated
+    return currentOption ? [currentOption, ...roleFiltered] : roleFiltered
   }
 
   const stageMap = TEAM_STAGE_VISIBILITY
