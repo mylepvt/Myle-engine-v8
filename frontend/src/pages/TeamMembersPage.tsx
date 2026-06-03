@@ -12,6 +12,7 @@ import {
   useResetMemberPasswordMutation,
   useUpdateMemberComplianceMutation,
   useUpdateMemberRoleMutation,
+  useUpdateMemberUplineMutation,
   useDeleteMemberMutation,
   useMemberLeadsQuery,
   useToggleTrainingLockMutation,
@@ -187,11 +188,15 @@ function MemberProfileModal({
   const { data, isPending } = useMemberLeadsQuery(currentMember.id)
   const invQuery = useInvoicesQuery({ user_id: currentMember.id, limit: 50, offset: 0 })
   const updateRoleMut = useUpdateMemberRoleMutation()
+  const updateUplineMut = useUpdateMemberUplineMutation()
   const updateComplianceMut = useUpdateMemberComplianceMutation()
   const deleteMut = useDeleteMemberMutation()
   const trainingToggle = useToggleTrainingLockMutation()
+  const { data: allMembers } = useTeamMembersQuery()
   const [selectedRole, setSelectedRole] = useState<Role>(member.role as Role)
   const [roleError, setRoleError] = useState<string | null>(null)
+  const [selectedUpline, setSelectedUpline] = useState<string>('')
+  const [uplineError, setUplineError] = useState<string | null>(null)
   const [complianceError, setComplianceError] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [trainingError, setTrainingError] = useState<string | null>(null)
@@ -206,6 +211,7 @@ function MemberProfileModal({
   useEffect(() => {
     setCurrentMember(member)
     setSelectedRole(member.role as Role)
+    setSelectedUpline(member.upline_user_id != null ? String(member.upline_user_id) : '')
     setTrainingRequired(member.training_required ?? false)
     setGraceEndDate(member.grace_request_end_date?.slice(0, 10) ?? member.grace_end_date?.slice(0, 10) ?? '')
     setGraceReason(member.grace_request_reason ?? member.grace_reason ?? '')
@@ -220,6 +226,25 @@ function MemberProfileModal({
         onSuccess: (updated) => {
           setCurrentMember(updated)
           setSelectedRole(updated.role as Role)
+        },
+      },
+    )
+  }
+
+  function handleUplineChange() {
+    setUplineError(null)
+    const uplineUserId = Number(selectedUpline)
+    if (!Number.isFinite(uplineUserId) || uplineUserId <= 0) {
+      setUplineError('Pick a leader.')
+      return
+    }
+    updateUplineMut.mutate(
+      { userId: currentMember.id, uplineUserId },
+      {
+        onError: (e: Error) => setUplineError(e.message),
+        onSuccess: (updated) => {
+          setCurrentMember(updated)
+          setSelectedUpline(updated.upline_user_id != null ? String(updated.upline_user_id) : '')
         },
       },
     )
@@ -465,6 +490,46 @@ function MemberProfileModal({
           </div>
           {roleError ? (
             <p className="mt-1 text-ds-caption text-destructive" role="alert">{roleError}</p>
+          ) : null}
+        </div>
+
+        {/* Upline (leader) — controls who this member's leads hand off to */}
+        <div className="mb-4 rounded-lg border border-border bg-muted/20 p-3">
+          <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Upline Leader</p>
+          <p className="mb-2 text-ds-caption text-muted-foreground">
+            Handoffs go to this member's nearest upline leader. Move them under the right leader here.
+          </p>
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedUpline}
+              onChange={(e) => setSelectedUpline(e.target.value)}
+              disabled={updateUplineMut.isPending}
+              className="field-input flex-1"
+            >
+              <option value="">Select a leader…</option>
+              {(allMembers?.items ?? [])
+                .filter((m) => (m.role === 'leader' || m.role === 'admin') && m.id !== currentMember.id)
+                .map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {(m.username ?? m.email)} · {roleShortLabel(m.role as Role)}
+                  </option>
+                ))}
+            </select>
+            <Button
+              type="button"
+              size="sm"
+              disabled={
+                updateUplineMut.isPending ||
+                !selectedUpline ||
+                Number(selectedUpline) === currentMember.upline_user_id
+              }
+              onClick={handleUplineChange}
+            >
+              {updateUplineMut.isPending ? '…' : 'Save'}
+            </Button>
+          </div>
+          {uplineError ? (
+            <p className="mt-1 text-ds-caption text-destructive" role="alert">{uplineError}</p>
           ) : null}
         </div>
 

@@ -339,6 +339,29 @@ export function useUpdateMemberRoleMutation() {
   })
 }
 
+export async function updateMemberUpline(body: {
+  userId: number
+  uplineUserId: number
+}): Promise<TeamMemberPublic> {
+  const res = await apiFetch(`/api/v1/team/members/${body.userId}/upline`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ upline_user_id: body.uplineUserId }),
+  })
+  if (!res.ok) await parseError(res)
+  return res.json()
+}
+
+export function useUpdateMemberUplineMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: updateMemberUpline,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['team', 'members'] })
+    },
+  })
+}
+
 export async function updateMemberCompliance(body: {
   userId: number
   action:
