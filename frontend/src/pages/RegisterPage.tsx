@@ -330,7 +330,7 @@ export function RegisterPage() {
                   <p
                     className={`mt-2 flex items-start gap-2 text-ds-caption ${
                       uplineLookup.is_valid_upline
-                        ? 'text-emerald-400/95'
+                        ? 'text-emerald-600/95 dark:text-emerald-400/95'
                         : 'text-amber-200/90'
                     }`}
                   >

@@ -696,7 +696,7 @@ export function TeamMembersPage({ title }: Props) {
               {filteredMembers.map((m) => (
                 <li
                   key={m.id}
-                  className="surface-inset min-w-0 overflow-hidden rounded-md border border-border dark:border-white/5 px-4 py-3 text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+                  className="surface-inset min-w-0 overflow-hidden rounded-md border border-border dark:border-white/5 px-4 py-3 text-muted-foreground shadow-[inset_0_1px_0_color-mix(in_srgb,var(--foreground)_5%,transparent)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0 flex-1">

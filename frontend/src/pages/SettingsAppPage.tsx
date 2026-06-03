@@ -375,7 +375,7 @@ export function SettingsAppPage({ title }: Props) {
           >
             {updateAppSetting.isPending ? 'Saving...' : 'Save content links'}
           </button>
-          {contentSaveMsg ? <p className="text-xs text-emerald-400">{contentSaveMsg}</p> : null}
+          {contentSaveMsg ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{contentSaveMsg}</p> : null}
           {contentErrorMsg ? <p className="text-xs text-destructive">{contentErrorMsg}</p> : null}
         </div>
       </section>
@@ -439,7 +439,7 @@ export function SettingsAppPage({ title }: Props) {
           >
             {updateAppSetting.isPending ? 'Saving...' : 'Save batch video links'}
           </button>
-          {batchSaveMsg ? <p className="text-xs text-emerald-400">{batchSaveMsg}</p> : null}
+          {batchSaveMsg ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{batchSaveMsg}</p> : null}
           {batchErrorMsg ? <p className="text-xs text-destructive">{batchErrorMsg}</p> : null}
         </div>
       </section>
@@ -481,7 +481,7 @@ export function SettingsAppPage({ title }: Props) {
           >
             {updateAppSetting.isPending ? 'Saving...' : 'Save enrollment video URL'}
           </button>
-          {enrollmentSaveMsg ? <p className="text-xs text-emerald-400">{enrollmentSaveMsg}</p> : null}
+          {enrollmentSaveMsg ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{enrollmentSaveMsg}</p> : null}
           {enrollmentErrorMsg ? <p className="text-xs text-destructive">{enrollmentErrorMsg}</p> : null}
         </div>
       </section>
@@ -494,8 +494,8 @@ export function SettingsAppPage({ title }: Props) {
             {waStatusFetching ? (
               <span className="text-[11px] text-muted-foreground">Checking…</span>
             ) : waStatus?.connected === true ? (
-              <span className="flex items-center gap-1 text-[11px] text-emerald-400">
-                <span className="h-2 w-2 rounded-full bg-emerald-400" />
+              <span className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-400" />
                 Connected
                 {waStatus.display_phone_number ? (
                   <span className="text-muted-foreground">({waStatus.display_phone_number})</span>
@@ -576,7 +576,7 @@ export function SettingsAppPage({ title }: Props) {
           >
             {updateAppSetting.isPending ? 'Saving...' : 'Save WhatsApp settings'}
           </button>
-          {waSaveMsg ? <p className="text-xs text-emerald-400">{waSaveMsg}</p> : null}
+          {waSaveMsg ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{waSaveMsg}</p> : null}
           {waErrorMsg ? <p className="text-xs text-destructive">{waErrorMsg}</p> : null}
           {waStatus?.connected === false && waStatus.error ? (
             <p className="text-xs text-destructive/80">API error: {waStatus.error}</p>
@@ -612,7 +612,7 @@ export function SettingsAppPage({ title }: Props) {
             </p>
           ) : null}
           {waTestSend.data ? (
-            <pre className="mt-2 max-h-64 overflow-auto rounded bg-black/40 p-3 text-[11px] text-emerald-300 ring-1 ring-white/10">
+            <pre className="mt-2 max-h-64 overflow-auto rounded bg-black/40 p-3 text-[11px] text-emerald-500 dark:text-emerald-300 ring-1 ring-white/10">
               {JSON.stringify(waTestSend.data, null, 2)}
             </pre>
           ) : null}
@@ -629,7 +629,7 @@ export function SettingsAppPage({ title }: Props) {
             type="button"
             disabled={reminderSending}
             onClick={() => void handleSendReportReminders()}
-            className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-400 hover:bg-amber-500/20 disabled:opacity-50"
+            className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-500/20 disabled:opacity-50 dark:text-amber-400"
           >
             {reminderSending ? 'Bhej raha hoon…' : 'Send report reminders'}
           </button>
@@ -640,9 +640,9 @@ export function SettingsAppPage({ title }: Props) {
 
           {reminderSummary ? (
             <div className="mt-3 flex flex-wrap gap-3">
-              <span className="text-[11px] font-semibold text-emerald-400">✅ {reminderSummary.sent} sent</span>
+              <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">✅ {reminderSummary.sent} sent</span>
               {reminderSummary.failed > 0 && (
-                <span className="text-[11px] font-semibold text-red-400">❌ {reminderSummary.failed} failed</span>
+                <span className="text-[11px] font-semibold text-red-600 dark:text-red-400">❌ {reminderSummary.failed} failed</span>
               )}
               {reminderSummary.no_phone > 0 && (
                 <span className="text-[11px] font-semibold text-muted-foreground/60">📵 {reminderSummary.no_phone} no phone</span>
@@ -658,18 +658,18 @@ export function SettingsAppPage({ title }: Props) {
               {reminderResults.map((r) => (
                 <div key={r.user_id} className="flex items-center gap-2 border-b border-border dark:border-white/[0.05] px-3 py-1.5 last:border-0">
                   {r.status === 'sent' || r.status === 'stub'
-                    ? <CheckCircle2 className="size-3 shrink-0 text-emerald-400" />
+                    ? <CheckCircle2 className="size-3 shrink-0 text-emerald-600 dark:text-emerald-400" />
                     : r.status === 'no_phone'
                     ? <Smartphone className="size-3 shrink-0 text-muted-foreground/40" />
-                    : <XCircle className="size-3 shrink-0 text-red-400" />}
+                    : <XCircle className="size-3 shrink-0 text-red-600 dark:text-red-400" />}
                   <span className="flex-1 truncate text-[11px] text-foreground">{r.name}</span>
                   <span className="text-[10px] text-muted-foreground/50">
                     {r.phone_tail !== '—' ? `…${r.phone_tail}` : '—'}
                   </span>
                   <span className={`text-[10px] font-medium ${
-                    r.status === 'sent' || r.status === 'stub' ? 'text-emerald-400'
+                    r.status === 'sent' || r.status === 'stub' ? 'text-emerald-600 dark:text-emerald-400'
                     : r.status === 'no_phone' ? 'text-muted-foreground/40'
-                    : 'text-red-400'
+                    : 'text-red-600 dark:text-red-400'
                   }`}>
                     {r.status === 'stub' ? 'sent' : r.status}
                   </span>
