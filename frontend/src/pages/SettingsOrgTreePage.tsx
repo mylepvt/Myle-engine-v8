@@ -1,35 +1,18 @@
-import { useDeferredValue, useEffect, useMemo, useState } from 'react'
-import {
-  Building2,
-  Columns2,
-  Download,
-  GitBranch,
-  Network,
-  RefreshCw,
-  Search,
-  Users,
-} from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states'
 import { MemberProfileModal } from '@/components/team/member-profile-modal'
 import { ResetPasswordModal } from '@/components/team/reset-password-modal'
 import { type ResetTarget } from '@/components/team/member-utils'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { useOrgTreeQuery, type OrgTreeNode } from '@/hooks/use-org-tree-query'
 import { useTeamMembersQuery, type TeamMemberPublic } from '@/hooks/use-team-query'
-import { cn } from '@/lib/utils'
 
 type Props = { title: string }
 
-type OrgNode = OrgTreeNode
-
 type FlatNode = {
-  node: OrgNode
+  node: OrgTreeNode
   depth: number
-  path: OrgNode[]
+  path: OrgTreeNode[]
 }
 
 type HandoffColumn = {
@@ -37,7 +20,24 @@ type HandoffColumn = {
   members: FlatNode[]
 }
 
-function flatten(nodes: OrgNode[], depth = 0, path: OrgNode[] = []): FlatNode[] {
+const C = {
+  bg: '#0b0f14',
+  panel: '#121922',
+  card: '#0f151d',
+  border: '#1f2a36',
+  txt: '#e6edf3',
+  mut: '#8b9aab',
+  mut2: '#5e6e7e',
+  leader: '#f5a524',
+  team: '#3fb950',
+  admin: '#6e8bff',
+  bad: '#f85149',
+  badbg: '#1c1012',
+} as const
+
+const MAX_CARD = 6
+
+function flatten(nodes: OrgTreeNode[], depth = 0, path: OrgTreeNode[] = []): FlatNode[] {
   const out: FlatNode[] = []
   for (const node of nodes) {
     const nextPath = [...path, node]
@@ -87,85 +87,6 @@ function buildHandoffData(items: FlatNode[]): {
   return { columns, unassigned }
 }
 
-function HandoffColumnCard({
-  column,
-  topLeaderIds,
-  selectedId,
-  onSelect,
-  onCardClick,
-}: {
-  column: HandoffColumn
-  topLeaderIds: Set<number>
-  selectedId: number | null
-  onSelect: (id: number) => void
-  onCardClick: (node: OrgNode) => void
-}) {
-  const leader = column.leader
-  const isTopLeader = topLeaderIds.has(leader.node.id)
-
-  return (
-    <div className="flex w-[230px] shrink-0 flex-col overflow-hidden rounded-xl border border-zinc-800/70 bg-zinc-900/50">
-      <div className="flex items-center gap-2.5 border-b border-zinc-800/60 px-3 py-3">
-        <div className="flex size-7 items-center justify-center rounded-md bg-gradient-to-br from-amber-400 to-amber-600 text-[11px] font-bold text-white shrink-0">
-          {initials(leader.node.name)}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold text-zinc-100">{leader.node.name}</p>
-          <p className="font-mono text-[10px] text-zinc-600">
-            Leader{isTopLeader ? '' : ' · under a member'}
-            {!isTopLeader ? <span className="ml-0.5 text-amber-500/60">⚠</span> : null}
-          </p>
-        </div>
-        <span className="shrink-0 rounded-full border border-zinc-700/60 px-2 py-0.5 text-[10px] text-zinc-400">
-          {column.members.length}
-        </span>
-      </div>
-
-      <div className="flex flex-col gap-1.5 p-2">
-        {column.members.map((item) => (
-            <button
-              key={item.node.id}
-              type="button"
-              onClick={() => {
-                onSelect(item.node.id)
-                onCardClick(item.node)
-              }}
-              className={cn(
-                'flex items-center gap-2 rounded-lg border border-zinc-800/50 bg-zinc-900/60 px-2.5 py-2 text-left transition-colors hover:bg-zinc-800/60',
-                item.node.id === selectedId && 'ring-2 ring-primary/20',
-              )}
-            >
-            <span
-              className={cn(
-                'size-1.5 shrink-0 rounded-full',
-                item.node.role === 'leader' ? 'bg-amber-400' : 'bg-emerald-400',
-              )}
-            />
-            <span className="truncate text-[12px] text-zinc-200">{item.node.name}</span>
-            {item.node.children.length > 0 && item.node.role === 'leader' ? (
-              <span className="ml-auto shrink-0 text-[10px] text-zinc-600">
-                +{item.node.children.length} sub
-              </span>
-            ) : null}
-          </button>
-        ))}
-      </div>
-
-      {!isTopLeader ? (
-        <div className="border-t border-zinc-800/40 px-3 py-2">
-          <p className="text-[10px] text-zinc-600">
-            Sits under{' '}
-            {leader.path.length > 1
-              ? leader.path[leader.path.length - 2]?.name ?? 'root'
-              : 'root'}
-            . Works, but move under a top leader to clean up.
-          </p>
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
 export function SettingsOrgTreePage({ title }: Props) {
   const { data, isPending, isError, error, refetch } = useOrgTreeQuery({
     includeInactive: true,
@@ -182,7 +103,6 @@ export function SettingsOrgTreePage({ title }: Props) {
     [teamMembersQuery.data?.items],
   )
 
-  const [query, setQuery] = useState('')
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [profileTarget, setProfileTarget] = useState<TeamMemberPublic | null>(null)
   const [resetTarget, setResetTarget] = useState<ResetTarget | null>(null)
@@ -204,320 +124,73 @@ export function SettingsOrgTreePage({ title }: Props) {
     return () => window.clearTimeout(id)
   }, [toastMsg])
 
-  const deferredQuery = useDeferredValue(query)
-  const needle = deferredQuery.trim().toLowerCase()
-
-  const filteredTree = useMemo(() => {
-    if (!needle) return data?.items ?? []
-    function nodeMatches(n: OrgNode, q: string): boolean {
-      if (
-        n.name.toLowerCase().includes(q) ||
-        n.fbo_id.toLowerCase().includes(q) ||
-        n.role.toLowerCase().includes(q)
-      )
-        return true
-      return n.children.some((c) => nodeMatches(c, q))
-    }
-    function filterTree(nodes: OrgNode[], q: string): OrgNode[] {
-      if (!q) return nodes
-      return nodes
-        .filter((n) => nodeMatches(n, q))
-        .map((n) => ({ ...n, children: filterTree(n.children, q) }))
-    }
-    return filterTree(data?.items ?? [], needle)
-  }, [data, needle])
-
   const allFlat = useMemo(() => flatten(data?.items ?? []), [data])
-  const filteredFlat = useMemo(() => flatten(filteredTree), [filteredTree])
+  const topLeaderIds = useMemo(
+    () => new Set(data?.items.map((n) => n.id) ?? []),
+    [data],
+  )
 
-  const flatById = useMemo(
-    () => new Map(allFlat.map((item) => [item.node.id, item])),
+  const { columns, unassigned } = useMemo(
+    () => buildHandoffData(allFlat),
     [allFlat],
   )
 
-  const selected = useMemo(() => {
-    if (selectedId !== null) {
-      const byId = flatById.get(selectedId)
-      if (byId) return byId
-    }
-    return filteredFlat[0] ?? allFlat[0] ?? null
-  }, [allFlat, filteredFlat, flatById, selectedId])
-
-  const totalMembers = allFlat.length
-  const adminCount = allFlat.filter((item) => item.node.role === 'admin').length
-  const leaderCount = allFlat.filter((item) => item.node.role === 'leader').length
-  const teamCount = allFlat.filter((item) => item.node.role === 'team').length
-
-  const searchActive = needle.length > 0
-
-  const biggestBranch = useMemo(() => {
-    return allFlat.reduce<FlatNode | null>((best, item) => {
-      if (!best || item.node.team_size > best.node.team_size) return item
-      return best
-    }, null)
-  }, [allFlat])
-
-  const highlightedBranches = useMemo(() => {
-    return allFlat
-      .filter((item) => item.node.role !== 'team' && item.node.team_size > 0)
-      .sort((a, b) => b.node.team_size - a.node.team_size)
-      .slice(0, 4)
-  }, [allFlat])
-
-  const downloadCsv = () => {
-    const header = ['Member', 'Role', 'FBO ID', 'Team size', 'Depth', 'Path'].join(',')
-    const body = allFlat
-      .map((item) =>
-        [
-          item.node.name,
-          item.node.role,
-          item.node.fbo_id,
-          item.node.team_size,
-          item.depth + 1,
-          item.path
-            .slice(0, -1)
-            .map((i) => i.name)
-            .join(' / ') || 'Top level',
-        ]
-          .map((value) => `"${String(value).replace(/"/g, '""')}"`)
-          .join(','),
-      )
-      .join('\n')
-
-    const csv = `${header}\n${body}`
-    let url: string | undefined
-
-    try {
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-      url = URL.createObjectURL(blob)
-      const anchor = document.createElement('a')
-      anchor.href = url
-      anchor.download = `org-tree-${new Date().toISOString().slice(0, 10)}.csv`
-      anchor.rel = 'noopener'
-      anchor.click()
-    } finally {
-      if (url) URL.revokeObjectURL(url)
-    }
-  }
+  const hasData = columns.length > 0 || unassigned.length > 0
 
   return (
-    <div className="max-w-7xl space-y-5">
-      <section className="surface-elevated relative overflow-hidden px-5 py-5 md:px-6 md:py-6">
-        <div className="pointer-events-none absolute -left-20 top-0 size-56 rounded-full bg-primary/10 blur-3xl" />
-        <div className="pointer-events-none absolute right-0 top-0 size-48 rounded-full bg-accent/25 blur-3xl" />
+    <div style={{ background: C.bg, color: C.txt, font: '14px/1.45 -apple-system,Segoe UI,Roboto,sans-serif', minHeight: '100dvh' }}>
+      <div style={{ maxWidth: 1080, margin: '0 auto', padding: '24px 18px' }}>
 
-        <div className="relative flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
-          <div className="max-w-3xl space-y-4">
-            <Badge variant="primary" className="w-fit gap-1.5 px-3 py-1">
-              <Network className="size-3.5" />
-              Organisation
-            </Badge>
+        <h1 style={{ fontSize: 18, margin: '0 0 2px', fontWeight: 600 }}>{title}</h1>
+        <p style={{ color: C.mut, fontSize: 12.5, margin: '0 0 18px' }}>
+          Each column is a leader. The cards are the people whose leads actually land on that
+          leader&rsquo;s board. The red column is where handoffs are falling through.
+        </p>
 
-            <div className="space-y-2">
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
-                {title}
-              </h1>
-              <p className="max-w-2xl text-sm text-muted-foreground md:text-base">
-                Each column is a leader. The cards show people whose leads actually land on that
-                leader&apos;s board. The red column is where handoffs are falling through.
-              </p>
-            </div>
-          </div>
+        {isPending ? (
+          <p style={{ color: C.mut2, fontSize: 13 }}>Loading organisation map&hellip;</p>
+        ) : null}
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:w-[32rem]">
-            <div className="surface-inset relative overflow-hidden px-4 py-3">
-              <div className="pointer-events-none absolute right-2 top-2 opacity-10">
-                <Users className="size-5" />
-              </div>
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                People mapped
-              </p>
-              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-                {totalMembers}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">{teamCount} members plus leadership seats</p>
-            </div>
-            <div className="surface-inset relative overflow-hidden px-4 py-3">
-              <div className="pointer-events-none absolute right-2 top-2 opacity-10">
-                <GitBranch className="size-5" />
-              </div>
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                Leaders
-              </p>
-              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-                {leaderCount}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">{adminCount} admin root{adminCount === 1 ? '' : 's'} above them</p>
-            </div>
-            <div className="surface-inset relative overflow-hidden px-4 py-3">
-              <div className="pointer-events-none absolute right-2 top-2 opacity-10">
-                <Building2 className="size-5" />
-              </div>
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                Largest branch
-              </p>
-              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-                {biggestBranch ? `+${biggestBranch.node.team_size}` : 0}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {biggestBranch ? biggestBranch.node.name : 'No branch yet'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {highlightedBranches.length > 0 ? (
-          <div className="relative mt-6 flex flex-wrap gap-2">
-            {highlightedBranches.map((item) => (
-              <button
-                key={item.node.id}
-                type="button"
-                onClick={() => setSelectedId(item.node.id)}
-                className={cn(
-                  'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-left transition-colors',
-                  item.node.id === selected?.node.id
-                    ? 'border-primary/20 bg-primary/[0.08] text-primary'
-                    : 'border-border bg-muted/45 text-muted-foreground hover:bg-muted/70 hover:text-foreground',
-                )}
-              >
-                <span className="font-medium">{item.node.name}</span>
-                <span className="font-mono text-[0.68rem] opacity-75">{item.node.fbo_id}</span>
-                <Badge variant="outline">+{item.node.team_size}</Badge>
-              </button>
-            ))}
+        {isError ? (
+          <div>
+            <p style={{ color: C.bad, fontSize: 13 }}>
+              {error instanceof Error ? error.message : 'Could not load the organisation tree'}
+            </p>
+            <button onClick={() => void refetch()} style={btnStyle}>Retry</button>
           </div>
         ) : null}
-      </section>
 
-      <section className="surface-elevated p-4 md:p-5">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="relative max-w-xl flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/60" />
-            <Input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search name, FBO ID, or role"
-              className="pl-9"
-            />
-          </div>
+        {!isPending && !isError && !hasData ? (
+          <p style={{ color: C.mut2, fontSize: 13 }}>No handoff data yet.</p>
+        ) : null}
 
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={totalMembers === 0}
-              onClick={downloadCsv}
-            >
-              <Download className="size-4" />
-              CSV
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={isPending}
-              onClick={() => void refetch()}
-            >
-              <RefreshCw className={cn('size-4', isPending && 'animate-spin')} />
-              Refresh
-            </Button>
-          </div>
-        </div>
+        {!isPending && !isError && hasData ? (
+          <>
+            <div style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 8 }}>
+              {columns.map((col) => {
+                const leader = col.leader
+                const isTopLeader = topLeaderIds.has(leader.node.id)
+                const count = col.members.length
+                const showMore = count > MAX_CARD
+                const visibleCards = showMore ? col.members.slice(0, MAX_CARD) : col.members
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/[0.08] px-2.5 py-1 text-[0.68rem] font-medium text-primary">
-            <span className="uppercase tracking-[0.2em]">Admins</span>
-            <span className="text-foreground">{adminCount}</span>
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-warning/25 bg-warning/10 px-2.5 py-1 text-[0.68rem] font-medium text-warning">
-            <span className="uppercase tracking-[0.2em]">Leaders</span>
-            <span className="text-foreground">{leaderCount}</span>
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-success/20 bg-success/[0.09] px-2.5 py-1 text-[0.68rem] font-medium text-success">
-            <span className="uppercase tracking-[0.2em]">Team</span>
-            <span className="text-foreground">{teamCount}</span>
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/45 px-2.5 py-1 text-[0.68rem] font-medium text-muted-foreground">
-            <span className="uppercase tracking-[0.2em]">{searchActive ? 'Matches' : 'Visible'}</span>
-            <span className="text-foreground">{filteredFlat.length}</span>
-          </span>
-        </div>
-      </section>
-
-      {isPending ? (
-        <div className="surface-elevated p-8">
-          <LoadingState label="Loading organisation map..." />
-        </div>
-      ) : null}
-
-      {isError ? (
-        <ErrorState
-          title="Could not load the organisation tree"
-          message={error instanceof Error ? error.message : 'Please try again.'}
-          onRetry={() => void refetch()}
-        />
-      ) : null}
-
-      {!isPending && !isError ? (
-        <div className="surface-elevated overflow-hidden p-4 md:p-5">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="rounded-md border border-primary/20 bg-primary/[0.08] p-2 text-primary">
-              <Columns2 className="size-4" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-foreground">Organisation — Handoff View</p>
-              <p className="text-xs text-muted-foreground">
-                Each column is a leader. The cards are the people whose leads actually land on that
-                leader&apos;s board. The red column is where handoffs are falling through.
-              </p>
-            </div>
-          </div>
-
-          {(() => {
-            const { columns, unassigned } = buildHandoffData(searchActive ? filteredFlat : allFlat)
-            const topLeaderIds = new Set(data?.items.map((n) => n.id) ?? [])
-
-            if (columns.length === 0 && unassigned.length === 0) {
-              return (
-                <EmptyState
-                  title="No handoff data"
-                  description="Leaders and their direct reports will appear here as columns."
-                  className="border-none bg-transparent px-0 py-8"
-                />
-              )
-            }
-
-            return (
-              <div className="flex gap-3 overflow-x-auto pb-2">
-                {columns.map((col) => (
-                  <HandoffColumnCard
-                    key={col.leader.node.id}
-                    column={col}
-                    topLeaderIds={topLeaderIds}
-                    selectedId={selected?.node.id ?? null}
-                    onSelect={setSelectedId}
-                    onCardClick={handleCardClick}
-                  />
-                ))}
-
-                {unassigned.length > 0 ? (
-                  <div className="flex w-[230px] shrink-0 flex-col overflow-hidden rounded-xl border border-red-500/25 bg-red-950/20">
-                    <div className="flex items-center gap-2.5 border-b border-red-500/15 px-3 py-3">
-                      <div className="flex size-7 items-center justify-center rounded-md bg-red-500/20 text-[11px] font-bold text-red-400 shrink-0">
-                        !
+                return (
+                  <div key={leader.node.id} style={colStyle}>
+                    <div style={chStyle}>
+                      <div style={{ ...avStyle, background: '#f5a524', color: '#1a1206' }}>
+                        {initials(leader.node.name)}
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] font-semibold text-red-400">No leader</p>
-                        <p className="font-mono text-[10px] text-red-500/50">handoff drops here</p>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 13.5 }}>{leader.node.name}</div>
+                        <div style={{ color: C.mut2, fontSize: 11 }}>
+                          Leader{!isTopLeader ? ' · under a member ⚠' : ''}
+                        </div>
                       </div>
-                      <span className="shrink-0 rounded-full border border-red-500/20 px-2 py-0.5 text-[10px] text-red-400">
-                        {unassigned.length}
-                      </span>
+                      <span style={cntStyle}>{count}</span>
                     </div>
 
-                    <div className="flex flex-col gap-1.5 p-2">
-                      {unassigned.map((item) => (
+                    <div style={bodyStyle}>
+                      {visibleCards.map((item) => (
                         <button
                           key={item.node.id}
                           type="button"
@@ -525,53 +198,173 @@ export function SettingsOrgTreePage({ title }: Props) {
                             setSelectedId(item.node.id)
                             handleCardClick(item.node)
                           }}
-                          className={cn(
-                            'flex items-center gap-2 rounded-lg border border-red-500/15 bg-red-950/30 px-2.5 py-2 text-left transition-colors hover:bg-red-950/50',
-                            item.node.id === selected?.node.id && 'ring-2 ring-red-500/20',
-                          )}
+                          style={{
+                            ...cardStyle,
+                            ...(item.node.id === selectedId ? cardSelectedStyle : {}),
+                          }}
                         >
-                          <span className="size-1.5 shrink-0 rounded-full bg-red-500" />
-                          <span className="truncate text-[12px] text-red-200/80">{item.node.name}</span>
+                          <span style={{
+                            ...dotStyle,
+                            background: item.node.role === 'leader' ? C.leader : C.team,
+                          }} />
+                          <span style={{ fontSize: 12.5 }}>{item.node.name}</span>
+                          {item.node.children.length > 0 && item.node.role === 'leader' ? (
+                            <span style={{ marginLeft: 'auto', fontSize: 10, color: C.mut2 }}>
+                              +{item.node.children.length} sub
+                            </span>
+                          ) : null}
                         </button>
                       ))}
+                      {showMore ? (
+                        <div style={{ ...cardStyle, cursor: 'default', opacity: 0.6 }}>
+                          <span style={{ fontSize: 12.5 }}>&hellip;{count - MAX_CARD} more</span>
+                        </div>
+                      ) : null}
                     </div>
 
-                    <div className="mt-auto border-t border-dashed border-red-500/15 px-3 py-2.5 text-center">
-                      <button
-                        type="button"
-                        className="text-[11px] text-red-400/70 transition-colors hover:text-red-300"
-                      >
-                        + Assign these to a leader
-                      </button>
-                    </div>
+                    {!isTopLeader ? (
+                      <div style={noteStyle}>
+                        Sits under{' '}
+                        {leader.path.length > 1
+                          ? leader.path[leader.path.length - 2]?.name ?? 'root'
+                          : 'root'}
+                        . Works, but move under a top leader to clean up.
+                      </div>
+                    ) : null}
                   </div>
-                ) : null}
-              </div>
-            )
-          })()}
-        </div>
-      ) : null}
+                )
+              })}
 
-      {resetTarget ? (
-        <ResetPasswordModal
-          target={resetTarget}
-          onClose={() => setResetTarget(null)}
-          onSuccess={(name) => setToastMsg(`Password reset for ${name}`)}
-        />
-      ) : null}
+              {unassigned.length > 0 ? (
+                <div style={{ ...colStyle, borderColor: '#5a2226', background: '#140d0e' }}>
+                  <div style={chStyle}>
+                    <div style={{ ...avStyle, background: C.bad, color: '#1a0606' }}>!</div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13.5, color: C.bad }}>No leader</div>
+                      <div style={{ color: C.mut2, fontSize: 11 }}>handoff drops here</div>
+                    </div>
+                    <span style={{ ...cntStyle, borderColor: '#5a2226' }}>{unassigned.length}</span>
+                  </div>
 
-      {profileTarget ? (
-        <MemberProfileModal
-          member={profileTarget}
-          onClose={() => setProfileTarget(null)}
-        />
-      ) : null}
+                  <div style={bodyStyle}>
+                    {unassigned.map((item) => (
+                      <button
+                        key={item.node.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedId(item.node.id)
+                          handleCardClick(item.node)
+                        }}
+                        style={{
+                          ...cardStyle,
+                          borderColor: '#5a2226',
+                          ...(item.node.id === selectedId ? { ...cardSelectedStyle, borderColor: C.bad } : {}),
+                        }}
+                      >
+                        <span style={{ ...dotStyle, background: C.bad }} />
+                        <span style={{ fontSize: 12.5 }}>{item.node.name}</span>
+                      </button>
+                    ))}
+                  </div>
 
-      {toastMsg ? (
-        <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] right-4 z-[85] max-w-[min(22rem,calc(100vw-2rem))] rounded-md border border-emerald-500/35 bg-emerald-500/15 px-3 py-2 text-ds-caption font-semibold text-emerald-600 dark:text-emerald-200 shadow-lg">
-          {toastMsg}
-        </div>
-      ) : null}
+                  <div style={assignStyle}>＋ Assign these to a leader</div>
+                </div>
+              ) : null}
+            </div>
+
+            <p style={{ marginTop: 14, color: C.mut2, fontSize: 11.5 }}>
+              Design B &mdash; reframed by <strong>where leads actually go</strong>, not nominal hierarchy.
+              Drag a card to another column = change that person&rsquo;s leader.
+              The red column makes broken handoffs impossible to miss.
+            </p>
+          </>
+        ) : null}
+
+        {resetTarget ? (
+          <ResetPasswordModal
+            target={resetTarget}
+            onClose={() => setResetTarget(null)}
+            onSuccess={(name) => setToastMsg(`Password reset for ${name}`)}
+          />
+        ) : null}
+
+        {profileTarget ? (
+          <MemberProfileModal
+            member={profileTarget}
+            onClose={() => setProfileTarget(null)}
+          />
+        ) : null}
+
+        {toastMsg ? (
+          <div style={{
+            position: 'fixed', bottom: 24, right: 24, zIndex: 85,
+            maxWidth: '22rem', borderRadius: 6,
+            border: '1px solid rgba(63,185,80,0.35)', background: 'rgba(63,185,80,0.15)',
+            padding: '8px 14px', fontSize: 12.5, fontWeight: 600, color: '#3fb950',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+          }}>
+            {toastMsg}
+          </div>
+        ) : null}
+      </div>
     </div>
   )
+}
+
+/* ── shared style objects ── */
+
+const btnStyle: React.CSSProperties = {
+  background: 'transparent', border: '1px solid #1f2a36', color: '#8b9aab',
+  borderRadius: 6, padding: '6px 14px', fontSize: 12.5, cursor: 'pointer',
+  marginTop: 8,
+}
+
+const colStyle: React.CSSProperties = {
+  flex: '0 0 250px', background: '#121922', border: '1px solid #1f2a36',
+  borderRadius: 12, display: 'flex', flexDirection: 'column', maxHeight: 560,
+}
+
+const chStyle: React.CSSProperties = {
+  padding: '12px 13px', borderBottom: '1px solid #1f2a36',
+  display: 'flex', alignItems: 'center', gap: 9, position: 'sticky', top: 0,
+}
+
+const avStyle: React.CSSProperties = {
+  width: 30, height: 30, borderRadius: 8, display: 'flex',
+  alignItems: 'center', justifyContent: 'center', fontWeight: 700,
+  fontSize: 12, flex: '0 0 auto',
+}
+
+const cntStyle: React.CSSProperties = {
+  marginLeft: 'auto', fontSize: 11, color: '#8b9aab',
+  border: '1px solid #1f2a36', borderRadius: 999, padding: '2px 8px',
+}
+
+const bodyStyle: React.CSSProperties = {
+  padding: 9, overflowY: 'auto', display: 'flex',
+  flexDirection: 'column', gap: 7, flex: 1,
+}
+
+const cardStyle: React.CSSProperties = {
+  background: '#0f151d', border: '1px solid #1a2530', borderRadius: 9,
+  padding: '8px 10px', display: 'flex', alignItems: 'center', gap: 8,
+  cursor: 'pointer', color: '#e6edf3', textAlign: 'left', width: '100%',
+}
+
+const cardSelectedStyle: React.CSSProperties = {
+  outline: '2px solid #6e8bff', outlineOffset: 1,
+}
+
+const dotStyle: React.CSSProperties = {
+  width: 7, height: 7, borderRadius: '50%', flex: '0 0 auto',
+}
+
+const noteStyle: React.CSSProperties = {
+  margin: '9px 13px 12px', fontSize: 11, color: '#5e6e7e',
+}
+
+const assignStyle: React.CSSProperties = {
+  margin: '8px 9px 11px', textAlign: 'center', fontSize: 11.5,
+  color: '#ffb4ae', border: '1px dashed #5a2226', borderRadius: 8,
+  padding: 8, cursor: 'pointer', marginTop: 'auto',
 }
