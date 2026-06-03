@@ -102,7 +102,7 @@ export function LiveFunnelColumn() {
             <div className="flex-1 overflow-hidden rounded-sm bg-muted/30 dark:bg-white/[0.04]" style={{ height: '6px' }}>
               <div
                 className="h-full rounded-sm transition-all duration-500"
-                style={{ width: `${barWidth}%`, backgroundColor: `${stage.color}99` }}
+                style={{ width: `${barWidth}%`, backgroundColor: stage.color }}
               />
             </div>
 

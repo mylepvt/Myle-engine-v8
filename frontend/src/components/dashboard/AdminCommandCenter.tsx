@@ -274,7 +274,7 @@ function LiveOnlinePanel({ users }: { users: OnlineUserItem[] }) {
       <span className="min-w-0 flex-1 truncate text-xs text-foreground">{u.name}</span>
       <span className="shrink-0 text-[10px] text-muted-foreground/60 capitalize">{u.role}</span>
       {u.is_working ? (
-        <span className="shrink-0 text-[10px] text-emerald-400">
+        <span className="shrink-0 text-[10px] text-emerald-600 dark:text-emerald-400">
           {u.calls_today > 0 ? `${u.calls_today}c` : ''}{u.leads_today > 0 ? ` ${u.leads_today}l` : ''}
         </span>
       ) : (
@@ -287,7 +287,7 @@ function LiveOnlinePanel({ users }: { users: OnlineUserItem[] }) {
     <div className="max-h-72 overflow-y-auto divide-y divide-border/40">
       {working.length > 0 && (
         <div className="pb-1">
-          <p className="sticky top-0 bg-card px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-emerald-400">
+          <p className="sticky top-0 bg-card px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
             Working ({working.length})
           </p>
           <div className="px-3">
@@ -793,7 +793,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-500 opacity-75" />
                     <span className="relative inline-flex size-1.5 rounded-full bg-amber-500" />
                   </span>
-                  <span className="font-semibold text-amber-300">{pendingTotal} pending</span>
+                  <span className="font-semibold text-amber-700 dark:text-amber-300">{pendingTotal} pending</span>
                 </span>
               )}
               {liveWatcherCount > 0 && (
@@ -802,7 +802,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
                     <span className="relative inline-flex size-1.5 rounded-full bg-red-500" />
                   </span>
-                  <span className="font-semibold text-red-300">{liveWatcherCount} watching</span>
+                  <span className="font-semibold text-red-700 dark:text-red-300">{liveWatcherCount} watching</span>
                 </span>
               )}
               {premiereActiveCount > 0 && (
@@ -811,7 +811,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
                     <span className="relative inline-flex size-1.5 rounded-full bg-red-500" />
                   </span>
-                  <span className="font-semibold text-red-300">{premiereActiveCount} live</span>
+                  <span className="font-semibold text-red-700 dark:text-red-300">{premiereActiveCount} live</span>
                 </span>
               )}
             </div>
@@ -827,7 +827,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
                   <span className="relative inline-flex size-1.5 rounded-full bg-emerald-500" />
                 </span>
-                <span className="font-semibold text-emerald-300">
+                <span className="font-semibold text-emerald-700 dark:text-emerald-300">
                   {onlineNow.data?.online_count ?? 0} online
                 </span>
               </button>
