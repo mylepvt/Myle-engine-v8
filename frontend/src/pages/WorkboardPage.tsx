@@ -1050,7 +1050,8 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     setMarkingSlot(slotKey)
     try {
       await pm.mutateAsync({ id: lead.id, body: { [slotKey]: true } })
-      await qc.refetchQueries({ queryKey: ['workboard'] })
+      // Optimistic cache update already painted; mutation onSettled invalidates
+      // the board in the background — no awaited refetch needed.
       setBatchModal(null)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not update batch state'
@@ -1074,7 +1075,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     setMarkingSlot(slotKey)
     try {
       await pm.mutateAsync({ id: lead.id, body: { [slotKey]: false } })
-      await qc.refetchQueries({ queryKey: ['workboard'] })
+      // Optimistic cache update already painted; onSettled invalidates in bg.
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not update batch state'
       setBatchError(message)
