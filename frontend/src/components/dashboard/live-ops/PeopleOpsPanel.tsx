@@ -34,7 +34,7 @@ function LeaderCard({ leader, rank }: { leader: LeaderHealthItem; rank: number }
   const color = avatarColor(leader.leader_name)
   const isOnline = leader.presence_status === 'online'
   return (
-    <Link to={`/dashboard/team/tracking/${leader.leader_id}`} className="flex min-w-[100px] flex-1 flex-col items-center gap-2 overflow-hidden rounded border border-border dark:border-white/[0.06] bg-white/[0.03] p-3 text-center no-underline transition-all duration-150 hover:border-border dark:border-white/20 hover:bg-white/[0.07] active:bg-white/[0.1] cursor-pointer">
+    <Link to={`/dashboard/team/tracking/${leader.leader_id}`} className="flex min-w-[100px] flex-1 flex-col items-center gap-2 overflow-hidden rounded border border-border dark:border-white/[0.06] bg-muted/20 dark:bg-white/[0.03] p-3 text-center no-underline transition-all duration-150 hover:border-foreground/10 dark:hover:border-white/20 hover:bg-muted/40 dark:hover:bg-white/[0.07] active:bg-muted/60 dark:active:bg-white/[0.1] cursor-pointer">
       {/* Rank badge */}
       <div
         className="flex size-5 items-center justify-center rounded-full text-[10px] font-bold text-white shadow"
@@ -89,7 +89,7 @@ function TeamRow({ leader }: { leader: LeaderHealthItem }) {
   const isOnline = leader.presence_status === 'online'
   const color = avatarColor(leader.leader_name)
   return (
-    <Link to={`/dashboard/team/tracking/${leader.leader_id}`} className="flex items-center gap-3 border-b border-border dark:border-white/[0.04] px-4 py-3 no-underline transition-all duration-150 hover:bg-white/[0.05] active:bg-white/[0.08] cursor-pointer">
+    <Link to={`/dashboard/team/tracking/${leader.leader_id}`} className="flex items-center gap-3 border-b border-border dark:border-white/[0.04] px-4 py-3 no-underline transition-all duration-150 hover:bg-muted/30 dark:hover:bg-white/[0.05] active:bg-muted/50 dark:active:bg-white/[0.08] cursor-pointer">
       {/* Avatar + status */}
       <div className="relative shrink-0">
         <div
@@ -193,7 +193,7 @@ function LiveActivityFeed() {
           <Link
             key={entry.id}
             to="/dashboard/analytics/activity-log"
-            className="flex items-start gap-3 px-4 py-2.5 no-underline transition-colors hover:bg-white/[0.05] active:bg-white/[0.08] cursor-pointer"
+            className="flex items-start gap-3 px-4 py-2.5 no-underline transition-colors hover:bg-muted/30 dark:hover:bg-white/[0.05] active:bg-muted/50 dark:active:bg-white/[0.08] cursor-pointer"
           >
             {/* Icon dot */}
             <div
@@ -256,7 +256,7 @@ export function PeopleOpsPanel() {
         <div className="flex gap-2 overflow-x-auto scroll-px-1 pb-1">
           {topLeaders.length === 0 &&
             Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="min-w-[100px] flex-1 animate-pulse rounded border border-border dark:border-white/[0.06] bg-white/[0.02] py-12" />
+              <div key={i} className="min-w-[100px] flex-1 animate-pulse rounded border border-border dark:border-white/[0.06] bg-muted/10 dark:bg-white/[0.02] py-12" />
             ))}
           {topLeaders.map((leader, i) => (
             <LeaderCard key={leader.leader_id} leader={leader} rank={i + 1} />
@@ -278,7 +278,7 @@ export function PeopleOpsPanel() {
           ))}
           {leaderHealth.isLoading &&
             Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-14 animate-pulse border-b border-border dark:border-white/[0.04] bg-white/[0.02]" />
+              <div key={i} className="h-14 animate-pulse border-b border-border dark:border-white/[0.04] bg-muted/10 dark:bg-white/[0.02]" />
             ))}
         </div>
       </div>
