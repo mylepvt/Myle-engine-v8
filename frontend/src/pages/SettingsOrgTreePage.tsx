@@ -288,7 +288,7 @@ function LeafNodeCard({
         roleSurfaceTone(node.role),
         selected
           ? 'ring-2 ring-primary/20 shadow-ios-card'
-          : 'hover:-translate-y-0.5 hover:border-primary/15 hover:bg-white/[0.58] hover:shadow-sm',
+          : 'hover:-translate-y-0.5 hover:border-primary/15 hover:bg-primary/[0.04] dark:hover:bg-white/[0.58] hover:shadow-sm',
       )}
     >
       <NodeAvatar name={node.name} role={node.role} size="sm" />
@@ -643,7 +643,7 @@ function DirectoryRow({
           roleSurfaceTone(item.node.role),
           selected
             ? 'ring-2 ring-primary/20 shadow-ios-card'
-            : 'hover:-translate-y-0.5 hover:border-primary/15 hover:bg-white/[0.58]',
+            : 'hover:-translate-y-0.5 hover:border-primary/15 hover:bg-primary/[0.04] dark:hover:bg-white/[0.58]',
         )}
       >
         <div className="flex items-center gap-3">
@@ -820,7 +820,7 @@ function DetailPanel({
                   type="button"
                   onClick={() => onSelect(child.id)}
                   className={cn(
-                    'surface-inset flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:border-primary/15 hover:bg-white/[0.58]',
+                    'surface-inset flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:border-primary/15 hover:bg-primary/[0.04] dark:hover:bg-white/[0.58]',
                     roleSurfaceTone(child.role),
                   )}
                 >

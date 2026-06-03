@@ -83,7 +83,7 @@ function Day1PipelineRow({
           {/* Previous stages auto-complete */}
           <div className="flex items-center gap-1">
             {D1_STAGES.map((s) => (
-              <span key={s} className="flex items-center gap-0.5 text-[0.6rem] text-emerald-400/80">
+              <span key={s} className="flex items-center gap-0.5 text-[0.6rem] text-emerald-600/80 dark:text-emerald-400/80">
                 <CheckCircle2 className="size-3" />
               </span>
             ))}
@@ -106,7 +106,7 @@ function Day1PipelineRow({
                   className={cn(
                     'flex items-center gap-1 rounded-full border px-2 py-0.5 text-[0.65rem] font-medium transition disabled:opacity-50',
                     checked
-                      ? 'border-emerald-400/40 bg-emerald-400/12 text-emerald-400'
+                      ? 'border-emerald-600/40 bg-emerald-600/12 text-emerald-600 dark:border-emerald-400/40 dark:bg-emerald-400/12 dark:text-emerald-400'
                       : 'border-border bg-muted/40 text-muted-foreground hover:border-primary/40 hover:text-foreground',
                   )}
                 >
@@ -295,9 +295,9 @@ export function DashboardHomePage() {
                       <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
                         Today&apos;s claimed leads
                       </p>
-                      <UserPlus className="size-5 shrink-0 text-amber-400" aria-hidden />
+                      <UserPlus className="size-5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
                     </div>
-                    <p className={cn('mt-2 text-2xl font-bold tabular-nums leading-none', adminReports.data.live_summary.leads_claimed_today > 0 ? 'text-amber-400' : 'text-muted-foreground')}>
+                    <p className={cn('mt-2 text-2xl font-bold tabular-nums leading-none', adminReports.data.live_summary.leads_claimed_today > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground')}>
                       {adminReports.data.live_summary.leads_claimed_today > 0
                         ? adminReports.data.live_summary.leads_claimed_today
                         : 'None yet'}
@@ -318,9 +318,9 @@ export function DashboardHomePage() {
                       <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
                         Today&apos;s FLP approvals
                       </p>
-                      <ClipboardCheck className="size-5 shrink-0 text-emerald-400" aria-hidden />
+                      <ClipboardCheck className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
                     </div>
-                    <p className={cn('mt-2 text-2xl font-bold tabular-nums leading-none', adminReports.data.live_summary.payment_proofs_approved_today > 0 ? 'text-emerald-400' : 'text-muted-foreground')}>
+                    <p className={cn('mt-2 text-2xl font-bold tabular-nums leading-none', adminReports.data.live_summary.payment_proofs_approved_today > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground')}>
                       {adminReports.data.live_summary.payment_proofs_approved_today > 0
                         ? adminReports.data.live_summary.payment_proofs_approved_today
                         : 'None yet'}
@@ -368,9 +368,9 @@ export function DashboardHomePage() {
                 <div className={cn(
                   'flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold tabular-nums',
                   !los.data ? 'bg-muted text-muted-foreground' :
-                  los.data.leader_tier === 'strong' ? 'bg-emerald-500/15 text-emerald-400' :
-                  los.data.leader_tier === 'average' ? 'bg-amber-500/15 text-amber-400' :
-                  'bg-red-500/15 text-red-400',
+                   los.data.leader_tier === 'strong' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' :
+                   los.data.leader_tier === 'average' ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400' :
+                   'bg-red-500/15 text-red-600 dark:text-red-400',
                 )}>
                   {los.data ? los.data.leader_score : '—'}
                 </div>
@@ -382,8 +382,8 @@ export function DashboardHomePage() {
                     <p className="mt-0.5 text-sm font-medium text-foreground">
                       {los.data.active_count} active · {los.data.total_calls_today}/{los.data.calls_team_target} calls ·{' '}
                       <span className={cn(
-                        los.data.leader_tier === 'strong' ? 'text-emerald-400' :
-                        los.data.leader_tier === 'average' ? 'text-amber-400' : 'text-red-400',
+                        los.data.leader_tier === 'strong' ? 'text-emerald-600 dark:text-emerald-400' :
+                        los.data.leader_tier === 'average' ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400',
                       )}>
                         {los.data.leader_tier === 'strong' ? 'Strong' : los.data.leader_tier === 'average' ? 'Average' : 'At Risk'}
                       </span>
@@ -427,9 +427,9 @@ export function DashboardHomePage() {
                     <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">
                       Active leads
                     </p>
-                    <TrendingUp className="size-4 shrink-0 text-blue-400/70" aria-hidden />
+                    <TrendingUp className="size-4 shrink-0 text-blue-600/70 dark:text-blue-400/70" aria-hidden />
                   </div>
-                  <p className="mt-2 text-2xl font-bold tabular-nums leading-none text-blue-400">
+                  <p className="mt-2 text-2xl font-bold tabular-nums leading-none text-blue-600 dark:text-blue-400">
                     {metrics.activeTotal}
                   </p>
                   <p className="mt-1.5 text-ds-caption text-subtle">
@@ -450,10 +450,10 @@ export function DashboardHomePage() {
                         Open follow-ups
                       </p>
                       {openFollowUps > 0 && (
-                        <span className="text-xs font-semibold text-amber-400" aria-hidden>↑</span>
+                        <span className="text-xs font-semibold text-amber-600 dark:text-amber-400" aria-hidden>↑</span>
                       )}
                     </div>
-                    <p className={cn('mt-2 text-2xl font-bold tabular-nums leading-none', openFollowUps > 0 ? 'text-amber-400' : 'text-muted-foreground')}>
+                    <p className={cn('mt-2 text-2xl font-bold tabular-nums leading-none', openFollowUps > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground')}>
                       {openFollowUps}
                     </p>
                     <p className="mt-1.5 text-ds-caption text-subtle">
@@ -500,12 +500,12 @@ export function DashboardHomePage() {
                       Converted
                     </p>
                     {metrics.winRatePct !== null && (
-                      <span className={cn('text-xs font-semibold', metrics.won > 0 ? 'text-emerald-400' : 'text-muted-foreground')} aria-hidden>
+                      <span className={cn('text-xs font-semibold', metrics.won > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground')} aria-hidden>
                         {metrics.won > 0 ? '↑' : '—'} {metrics.winRatePct}%
                       </span>
                     )}
                   </div>
-                  <p className={cn('mt-2 text-2xl font-bold tabular-nums leading-none', metrics.won > 0 ? 'text-emerald-400' : 'text-muted-foreground')}>
+                  <p className={cn('mt-2 text-2xl font-bold tabular-nums leading-none', metrics.won > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground')}>
                     {metrics.won}
                   </p>
                   <p className="mt-1.5 text-ds-caption text-subtle">
@@ -525,10 +525,10 @@ export function DashboardHomePage() {
                       New leads
                     </p>
                     {metrics.newLeads > 0 && (
-                      <span className="text-xs font-semibold text-violet-400/70" aria-hidden>↑</span>
+                      <span className="text-xs font-semibold text-violet-600/70 dark:text-violet-400/70" aria-hidden>↑</span>
                     )}
                   </div>
-                  <p className="mt-2 text-2xl font-bold tabular-nums leading-none text-violet-400">
+                  <p className="mt-2 text-2xl font-bold tabular-nums leading-none text-violet-600 dark:text-violet-400">
                     {metrics.newLeads}
                   </p>
                   <p className="mt-1.5 text-ds-caption text-subtle">

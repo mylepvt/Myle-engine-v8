@@ -185,7 +185,7 @@ function LiveActivityFeed() {
   }
 
   return (
-    <div className="flex flex-col divide-y divide-white/[0.04]">
+    <div className="flex flex-col divide-y divide-border/40 dark:divide-white/[0.04]">
       {visible.map((entry) => {
         const color = ACTION_COLORS[entry.action] ?? '#6b7280'
         const icon = ACTION_ICONS[entry.action] ?? '·'

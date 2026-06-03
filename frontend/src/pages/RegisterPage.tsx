@@ -36,7 +36,7 @@ function SectionTitle({ children }: { children: string }) {
       <span className="whitespace-nowrap text-ds-label uppercase text-muted-foreground">
         {children}
       </span>
-      <div className="h-px min-w-0 flex-1 bg-white/[0.08]" />
+      <div className="h-px min-w-0 flex-1 bg-border" />
     </div>
   )
 }
