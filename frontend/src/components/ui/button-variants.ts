@@ -6,15 +6,15 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          'bg-primary text-primary-foreground hover:bg-[#4752c4] active:bg-[#3e45b8]',
+          'bg-primary text-primary-foreground hover:bg-[color-mix(in_srgb,var(--primary),black_20%)] active:bg-[color-mix(in_srgb,var(--primary),black_30%)]',
         secondary:
-          'bg-secondary text-secondary-foreground hover:bg-[#47484f] active:bg-[#3f4147]',
+          'bg-secondary text-secondary-foreground hover:bg-[color-mix(in_srgb,var(--secondary),black_15%)] active:bg-[color-mix(in_srgb,var(--secondary),black_25%)]',
         ghost:
           'text-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_9%,transparent)] active:bg-[color-mix(in_srgb,var(--foreground)_13%,transparent)]',
         outline:
           'border border-border bg-transparent text-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_7%,transparent)] active:bg-[color-mix(in_srgb,var(--foreground)_10%,transparent)]',
         destructive:
-          'bg-destructive text-destructive-foreground hover:bg-[#d42526] active:bg-[#c01f25]',
+          'bg-destructive text-destructive-foreground hover:bg-[color-mix(in_srgb,var(--destructive),black_20%)] active:bg-[color-mix(in_srgb,var(--destructive),black_30%)]',
       },
       size: {
         default: 'h-9 min-h-[36px] px-4 py-2',

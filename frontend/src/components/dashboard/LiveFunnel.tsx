@@ -18,7 +18,7 @@ export function LiveFunnel() {
       {stages.map((stage) => {
         const barWidth = Math.max((stage.count / maxCount) * MAX_BAR_WIDTH, 8)
         return (
-          <div key={stage.key} className="group relative flex items-center gap-3 px-2 py-1.5 transition-colors hover:bg-white/[0.02]">
+          <div key={stage.key} className="group relative flex items-center gap-3 px-2 py-1.5 transition-colors hover:bg-muted/20 dark:hover:bg-white/[0.02]">
             {/* Stage icon + label */}
             <div className="flex w-32 shrink-0 items-center gap-1.5">
               <span className="text-[13px]">{stage.icon}</span>
@@ -31,8 +31,8 @@ export function LiveFunnel() {
                 className="flex h-7 items-center gap-1 rounded-r-full px-2"
                 style={{
                   width: `${barWidth}%`,
-                  background: `linear-gradient(90deg, rgba(88,101,242,0.2), rgba(88,101,242,0.08))`,
-                  borderLeft: '2px solid rgba(88,101,242,0.3)',
+                  background: `linear-gradient(90deg, color-mix(in srgb, var(--primary) 20%, transparent), color-mix(in srgb, var(--primary) 8%, transparent))`,
+                  borderLeft: '2px solid color-mix(in srgb, var(--primary) 30%, transparent)',
                 }}
               >
                 {stage.count > 0 && (

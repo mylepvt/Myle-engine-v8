@@ -37,7 +37,7 @@ function inr2(cents: number): string {
 function Kpi({ value, label, accent }: { value: string; label: string; accent?: boolean }) {
   return (
     <div className="rounded-lg border border-border/50 bg-background/40 px-3 py-2">
-      <p className={cn('text-lg font-bold', accent ? 'text-emerald-300' : 'text-foreground')}>{value}</p>
+      <p className={cn('text-lg font-bold', accent ? 'text-emerald-600 dark:text-emerald-300' : 'text-foreground')}>{value}</p>
       <p className="text-[11px] text-muted-foreground">{label}</p>
     </div>
   )
@@ -48,7 +48,7 @@ function ChequeHero({ cents, subtitle }: { cents: number; subtitle: string }) {
   return (
     <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] px-4 py-3">
       <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Your cheque (approx)</p>
-      <p className="bg-gradient-to-r from-emerald-300 to-emerald-500 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent">
+      <p className="bg-gradient-to-r from-emerald-600 to-emerald-500 dark:from-emerald-300 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent">
         {inr2(cents)}
       </p>
       <p className="text-[10px] text-muted-foreground">{subtitle}</p>
