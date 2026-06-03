@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 class FlpMinBillingShareLinkCreate(BaseModel):
     lead_id: int
     live_session_slot_key: Optional[str] = None
+    session_hour: Optional[int] = None
 
 
 class FlpMinBillingShareLinkPublic(BaseModel):
