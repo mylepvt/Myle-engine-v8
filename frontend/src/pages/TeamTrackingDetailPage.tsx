@@ -98,16 +98,16 @@ type ActionMeta = { label: string; icon: typeof Phone; color: string }
 
 const ACTION_MAP: Record<string, ActionMeta> = {
   'lead:created':          { label: 'New lead added',          icon: UserPlus,       color: 'text-primary' },
-  'lead:claimed':          { label: 'Lead claimed',            icon: CheckCircle2,   color: 'text-emerald-400' },
-  'lead:batch_claimed':    { label: 'Batch leads claimed',     icon: CheckCircle2,   color: 'text-emerald-400' },
-  'lead:transitioned':     { label: 'Lead stage moved',        icon: ArrowRightLeft, color: 'text-blue-400' },
-  lead_state:              { label: 'Lead stage updated',      icon: ArrowRightLeft, color: 'text-blue-400' },
-  'lead:closed':           { label: 'Lead closed',             icon: Target,         color: 'text-violet-400' },
+  'lead:claimed':          { label: 'Lead claimed',            icon: CheckCircle2,   color: 'text-emerald-600 dark:text-emerald-400' },
+  'lead:batch_claimed':    { label: 'Batch leads claimed',     icon: CheckCircle2,   color: 'text-emerald-600 dark:text-emerald-400' },
+  'lead:transitioned':     { label: 'Lead stage moved',        icon: ArrowRightLeft, color: 'text-blue-600 dark:text-blue-400' },
+  lead_state:              { label: 'Lead stage updated',      icon: ArrowRightLeft, color: 'text-blue-600 dark:text-blue-400' },
+  'lead:closed':           { label: 'Lead closed',             icon: Target,         color: 'text-violet-600 dark:text-violet-400' },
   'lead:assigned':         { label: 'Lead reassigned',         icon: ArrowRightLeft, color: 'text-slate-400' },
   'lead:auto_reassigned':  { label: 'Lead auto-reassigned',    icon: ArrowRightLeft, color: 'text-slate-400' },
-  'auto_handoff.call_logged': { label: 'Outbound call logged', icon: Phone,          color: 'text-emerald-400' },
-  'wallet:credited':       { label: 'Wallet credited',         icon: Wallet,         color: 'text-amber-400' },
-  'wallet:credited_worker':{ label: 'Wallet credited',         icon: Wallet,         color: 'text-amber-400' },
+  'auto_handoff.call_logged': { label: 'Outbound call logged', icon: Phone,          color: 'text-emerald-600 dark:text-emerald-400' },
+  'wallet:credited':       { label: 'Wallet credited',         icon: Wallet,         color: 'text-amber-600 dark:text-amber-400' },
+  'wallet:credited_worker':{ label: 'Wallet credited',         icon: Wallet,         color: 'text-amber-600 dark:text-amber-400' },
   'fsm:validation_failed': { label: 'Stage change blocked',    icon: XCircle,        color: 'text-destructive' },
 }
 
@@ -248,8 +248,8 @@ function TrendBars({ trend }: { trend: TeamTrackingTrendPoint[] }) {
               {/* Score dot */}
               <div
                 className={cn('size-1.5 rounded-full flex-shrink-0',
-                  point.consistency_band === 'high' ? 'bg-emerald-400' :
-                  point.consistency_band === 'medium' ? 'bg-amber-400' : 'bg-rose-400'
+                  point.consistency_band === 'high' ? 'bg-emerald-500 dark:bg-emerald-400' :
+                  point.consistency_band === 'medium' ? 'bg-amber-500 dark:bg-amber-400' : 'bg-rose-500 dark:bg-rose-400'
                 )}
               />
               <span className="text-[9px] leading-none text-muted-foreground/50">{weekdayShort(point.date)}</span>
@@ -264,8 +264,8 @@ function TrendBars({ trend }: { trend: TeamTrackingTrendPoint[] }) {
           <div key={point.date} className="flex flex-1 justify-center">
             <span className={cn(
               'text-[10px] font-bold tabular-nums',
-              point.consistency_band === 'high' ? 'text-emerald-400' :
-              point.consistency_band === 'medium' ? 'text-amber-400' : 'text-rose-400'
+                point.consistency_band === 'high' ? 'text-emerald-600 dark:text-emerald-400' :
+                  point.consistency_band === 'medium' ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'
             )}>
               {point.consistency_score}
             </span>
@@ -570,9 +570,9 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
               {/* Metrics row: 4 columns */}
               <div className="grid grid-cols-4 divide-x divide-border/50">
                 {[
-                  { label: 'Calls',      value: data.member.calls_count,         color: 'text-emerald-400' },
+                  { label: 'Calls',      value: data.member.calls_count,         color: 'text-emerald-600 dark:text-emerald-400' },
                   { label: 'Leads',      value: data.member.leads_added_count,    color: 'text-primary' },
-                  { label: 'Follow-ups', value: data.member.followups_done_count, color: 'text-amber-400' },
+                  { label: 'Follow-ups', value: data.member.followups_done_count, color: 'text-amber-600 dark:text-amber-400' },
                   { label: 'Logins',     value: data.member.login_count,          color: 'text-muted-foreground' },
                 ].map(({ label, value, color }) => (
                   <div key={label} className="flex flex-col items-center gap-0.5 py-3">
@@ -656,8 +656,8 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
               </CardHeader>
               <CardContent className="space-y-2">
                 {data.member.insights.map((insight) => (
-                  <div key={insight} className="flex items-start gap-2.5 rounded border border-amber-400/15 bg-amber-400/[0.05] px-3 py-2.5">
-                    <span className="mt-px shrink-0 text-xs text-amber-400">!</span>
+                  <div key={insight} className="flex items-start gap-2.5 rounded border border-amber-600/15 bg-amber-600/[0.05] px-3 py-2.5 dark:border-amber-400/15 dark:bg-amber-400/[0.05]">
+                    <span className="mt-px shrink-0 text-xs text-amber-600 dark:text-amber-400">!</span>
                     <p className="text-[12.5px] text-foreground">{insight}</p>
                   </div>
                 ))}
