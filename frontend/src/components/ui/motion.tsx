@@ -91,17 +91,7 @@ const FadeIn = ({
 }: FadeInProps) => {
   const reduced = useReducedMotion()
   return (
-    <div
-      className={cn(className)}
-      style={
-        !reduced
-          ? {
-              animation: `fadeIn ${duration}ms ease-out forwards`,
-              animationDelay: `${delay}ms`,
-            }
-          : undefined
-      }
-    >
+    <div className={cn(className)}>
       {children}
     </div>
   )
@@ -114,23 +104,9 @@ interface ScaleInProps {
   delay?: number
 }
 
-const ScaleIn = ({ children, className, delay = 0 }: ScaleInProps) => {
+const ScaleIn = ({ children, className }: ScaleInProps) => {
   const reduced = useReducedMotion()
-  return (
-    <div
-      className={cn(className)}
-      style={
-        !reduced
-          ? {
-              animation: 'scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
-              animationDelay: `${delay}ms`,
-            }
-          : undefined
-      }
-    >
-      {children}
-    </div>
-  )
+  return <div className={cn(className)}>{children}</div>
 }
 
 // Hover lift wrapper

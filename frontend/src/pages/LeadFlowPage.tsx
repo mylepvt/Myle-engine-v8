@@ -21,18 +21,18 @@ function label(v: string): string {
 
 const STAGE_COLORS: Record<string, string> = {
   new_lead:       'border-primary/30 bg-primary/10 text-primary',
-  contacted:      'border-sky-400/30 bg-sky-400/10 text-sky-600 dark:text-sky-400',
-  invited:        'border-violet-400/30 bg-violet-400/10 text-violet-600 dark:text-violet-400',
-  video_sent:     'border-indigo-400/30 bg-indigo-400/10 text-indigo-600 dark:text-indigo-400',
-  video_watched:  'border-blue-400/30 bg-blue-400/10 text-blue-600 dark:text-blue-400',
-  day1:           'border-orange-400/30 bg-orange-400/10 text-orange-600 dark:text-orange-400',
-  day2:           'border-yellow-400/30 bg-yellow-400/10 text-yellow-600 dark:text-yellow-400',
-  day3:           'border-lime-400/30 bg-lime-400/10 text-lime-600 dark:text-lime-400',
-  training:       'border-cyan-400/30 bg-cyan-400/10 text-cyan-600 dark:text-cyan-400',
-  converted:      'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+  contacted:      'border-sky-400/30 bg-sky-400/10 text-sky-400',
+  invited:        'border-violet-400/30 bg-violet-400/10 text-violet-400',
+  video_sent:     'border-indigo-400/30 bg-indigo-400/10 text-indigo-400',
+  video_watched:  'border-blue-400/30 bg-blue-400/10 text-blue-400',
+  day1:           'border-orange-400/30 bg-orange-400/10 text-orange-400',
+  day2:           'border-yellow-400/30 bg-yellow-400/10 text-yellow-400',
+  day3:           'border-lime-400/30 bg-lime-400/10 text-lime-400',
+  training:       'border-cyan-400/30 bg-cyan-400/10 text-cyan-400',
+  converted:      'border-[hsl(142_71%_45%)]/30 bg-[hsl(142_71%_45%)]/10 text-[hsl(142_71%_45%)]',
   lost:           'border-destructive/30 bg-destructive/10 text-destructive',
-  retarget:       'border-rose-400/30 bg-rose-400/10 text-rose-600 dark:text-rose-400',
-  inactive:       'border-zinc-400/30 bg-zinc-400/10 text-zinc-600 dark:text-zinc-400',
+  retarget:       'border-rose-400/30 bg-rose-400/10 text-rose-400',
+  inactive:       'border-zinc-400/30 bg-zinc-400/10 text-zinc-400',
 }
 
 export function LeadFlowPage({ title }: Props) {

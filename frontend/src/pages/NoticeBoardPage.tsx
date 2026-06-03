@@ -155,7 +155,7 @@ export function NoticeBoardPage({ title }: Props) {
                           type="button"
                           variant="default"
                           size="sm"
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          className="bg-destructive text-white hover:bg-destructive/90"
                           disabled={remove.isPending}
                          
                           onClick={() => {

@@ -20,7 +20,7 @@ export function ShellHeaderFeedbackControls() {
       <button
         type="button"
         onClick={cycleTheme}
-        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground max-md:min-h-[36px] max-md:min-w-[36px]"
+        className="flex size-8 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
         title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
         aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       >

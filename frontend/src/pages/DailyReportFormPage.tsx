@@ -188,7 +188,7 @@ export function DailyReportFormPage({ title }: Props) {
       </form>
 
       {mut.isSuccess && mut.data ? (
-        <p className="text-sm text-emerald-600 dark:text-emerald-400/90">
+        <p className="text-sm text-emerald-400/90">
           Saved. Points awarded this request:{' '}
           <span className="font-mono tabular-nums">{mut.data.points_awarded}</span>
         </p>

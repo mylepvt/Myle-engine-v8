@@ -40,9 +40,9 @@ function initials(name: string): string {
 }
 
 function avatarTone(role: string): string {
-  if (role === 'admin') return 'bg-amber-400/15 text-amber-600 dark:text-amber-300 border border-amber-400/20'
+  if (role === 'admin') return 'bg-amber-400/15 text-amber-300 border border-amber-400/20'
   if (role === 'leader') return 'bg-primary/15 text-primary border border-primary/20'
-  return 'bg-emerald-400/15 text-emerald-600 dark:text-emerald-300 border border-emerald-400/20'
+  return 'bg-emerald-400/15 text-emerald-300 border border-emerald-400/20'
 }
 
 function OrgBranch({ node, depth }: { node: OrgTreeNode; depth: number }) {
