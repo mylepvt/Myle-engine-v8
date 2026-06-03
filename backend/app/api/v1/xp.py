@@ -13,6 +13,7 @@ from app.models.user import User
 from app.services.xp_service import (
     DAILY_CAP,
     admin_force_reset_all,
+    admin_recalc_cutoff,
     get_leaderboard,
     get_process_leaderboard,
     get_user_xp_history,
@@ -147,3 +148,32 @@ async def admin_reset_month(
     count = await admin_force_reset_all(session)
     await session.commit()
     return {"reset_count": count, "message": f"Reset XP for {count} users. Season archived."}
+
+
+@router.post("/admin/recalc-cutoff")
+async def admin_recalc_cutoff_endpoint(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    cutoff: datetime | None = None,
+) -> dict:
+    """Admin-only: delete xp_events before cutoff (default: 2026-06-01),
+    recalculate xp_total from remaining events.
+
+    Use when the lazy monthly reset didn't fire for inactive users.
+    Post-cutoff points are preserved.
+    """
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    if cutoff is None:
+        cutoff = datetime(2026, 6, 1, 0, 0, 0, tzinfo=timezone.utc)
+    result = await admin_recalc_cutoff(session, cutoff)
+    await session.commit()
+    return {
+        "cutoff": cutoff.isoformat(),
+        "users_updated": result["users_updated"],
+        "events_deleted": result["events_deleted"],
+        "message": (
+            f"Deleted {result['events_deleted']} XP events before {cutoff.date()}, "
+            f"recalculated XP for {result['users_updated']} users."
+        ),
+    }

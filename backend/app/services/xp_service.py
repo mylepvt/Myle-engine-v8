@@ -319,6 +319,54 @@ async def revoke_won_xp(session: AsyncSession, lead_id: int) -> None:
 # Admin manual reset (for testing or emergency)
 # ---------------------------------------------------------------------------
 
+async def admin_recalc_cutoff(session: AsyncSession, cutoff: datetime) -> dict:
+    """Delete xp_events before cutoff, recalculate xp_total from remaining events.
+
+    Used when the lazy monthly reset failed to fire for all users (e.g. users
+    who never logged in during the new month).  Keeps post-cutoff points intact.
+    """
+    from sqlalchemy import func as sa_func
+
+    now = _now_utc()
+    users = (await session.execute(
+        select(User).where(User.role != "admin")
+    )).scalars().all()
+
+    total_deleted = 0
+    reset_count = 0
+    for user in users:
+        # Delete events before cutoff
+        result = await session.execute(
+            delete(XpEvent).where(
+                XpEvent.user_id == user.id,
+                XpEvent.created_at < cutoff,
+            )
+        )
+        total_deleted += result.rowcount if result.rowcount is not None else 0
+
+        # Recalculate from remaining events
+        remaining = (await session.execute(
+            select(sa_func.coalesce(sa_func.sum(XpEvent.xp), 0)).where(
+                XpEvent.user_id == user.id,
+            )
+        )).scalar_one()
+
+        old_total = user.xp_total or 0
+        if old_total != remaining:
+            user.xp_total = remaining
+            user.xp_level = _calculate_level(remaining)
+            reset_count += 1
+
+        # Stamp season so lazy reset doesn't double-delete later
+        user.xp_season_year = now.year
+        user.xp_season_month = now.month
+
+    await session.flush()
+    return {
+        "users_updated": reset_count,
+        "events_deleted": total_deleted,
+    }
+
 async def admin_force_reset_all(session: AsyncSession) -> int:
     """Archive + reset XP for ALL users. Returns count of users reset."""
     now = _now_utc()

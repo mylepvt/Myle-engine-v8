@@ -52,8 +52,12 @@ export function LiveFunnelColumn() {
 
   const rows = useMemo(() =>
     PIPELINE.map((stage) => {
-      const count = (counts[stage.key] ?? 0) + (liveOverrides[stage.key] ?? 0)
-      const movement = (todayMov[stage.key] ?? 0) + (liveOverrides[stage.key] ?? 0)
+      const count = stage.key === 'video_sent'
+        ? (todayMov[stage.key] ?? 0) + (liveOverrides[stage.key] ?? 0)
+        : (counts[stage.key] ?? 0) + (liveOverrides[stage.key] ?? 0)
+      const movement = stage.key === 'video_sent'
+        ? 0
+        : (todayMov[stage.key] ?? 0) + (liveOverrides[stage.key] ?? 0)
       return { stage, count, movement }
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
