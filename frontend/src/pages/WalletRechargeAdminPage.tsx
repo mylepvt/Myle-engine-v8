@@ -36,7 +36,7 @@ function formatReviewerLabel(item: WalletRecharge): string {
 function RechargeStatusBadge({ status }: { status: string }) {
   const cls: Record<string, string> = {
     pending: 'bg-amber-400/15 text-amber-400',
-    approved: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+    approved: 'bg-[hsl(142_71%_48%)]/15 text-[hsl(142_71%_48%)]',
     rejected: 'bg-destructive/15 text-destructive',
   }
   const c = cls[status] ?? 'bg-muted/30 text-muted-foreground'
@@ -253,7 +253,7 @@ export function WalletRechargeAdminPage({ title }: Props) {
               className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                 isActive
                   ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted/50 text-muted-foreground hover:bg-muted/60 dark:hover:bg-white/[0.08] hover:text-foreground'
+                  : 'bg-muted/50 text-muted-foreground hover:bg-white/[0.08] hover:text-foreground'
               }`}
             >
               {tab.label}

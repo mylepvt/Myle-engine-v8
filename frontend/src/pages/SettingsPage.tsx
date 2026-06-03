@@ -126,19 +126,6 @@ export default function SettingsPage() {
         </Badge>
       </div>
 
-      {userProfile.isPending || userPreferences.isPending ? (
-        <div className="space-y-4">
-          <Skeleton className="h-24 w-full rounded-lg" />
-          <Skeleton className="h-64 w-full rounded-lg" />
-        </div>
-      ) : null}
-
-      {userProfile.isError ? (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert">
-          Failed to load profile. Try refreshing the page.
-        </div>
-      ) : null}
-
       {isAdmin ? (
         <Card className="border-primary/20 bg-primary/5">
           <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
