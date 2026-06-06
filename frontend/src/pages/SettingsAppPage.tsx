@@ -80,6 +80,9 @@ export function SettingsAppPage({ title }: Props) {
   const [enrollmentUrlValue, setEnrollmentUrlValue] = useState('')
   const [enrollmentSaveMsg, setEnrollmentSaveMsg] = useState<string | null>(null)
   const [enrollmentErrorMsg, setEnrollmentErrorMsg] = useState<string | null>(null)
+  const [secureEnrollUrlValue, setSecureEnrollUrlValue] = useState('')
+  const [secureEnrollSaveMsg, setSecureEnrollSaveMsg] = useState<string | null>(null)
+  const [secureEnrollErrorMsg, setSecureEnrollErrorMsg] = useState<string | null>(null)
   const [waEdits, setWaEdits] = useState<Record<string, string>>({})
   const [showAccessToken, setShowAccessToken] = useState(false)
   const [reminderSending, setReminderSending] = useState(false)
@@ -100,6 +103,11 @@ export function SettingsAppPage({ title }: Props) {
       setEnrollmentUrlValue(settingsSource.flp_min_billing_video_source_url)
     }
   }, [settingsSource.flp_min_billing_video_source_url])
+  useEffect(() => {
+    if (!secureEnrollUrlValue && settingsSource.enrollment_video_source_url) {
+      setSecureEnrollUrlValue(settingsSource.enrollment_video_source_url)
+    }
+  }, [settingsSource.enrollment_video_source_url])
   const resolvedContentValue = (key: string): string =>
     Object.prototype.hasOwnProperty.call(contentEdits, key) ? (contentEdits[key] ?? '') : (settingsSource[key] ?? '')
   const resolvedWaValue = (key: string): string =>
@@ -163,6 +171,21 @@ export function SettingsAppPage({ title }: Props) {
       void refetchAppSettings()
     } catch (error) {
       setEnrollmentErrorMsg(error instanceof Error ? error.message : 'Could not save enrollment video URL.')
+    }
+  }
+
+  const handleSaveSecureEnrollUrl = async () => {
+    setSecureEnrollSaveMsg(null)
+    setSecureEnrollErrorMsg(null)
+    try {
+      await updateAppSetting.mutateAsync({
+        key: 'enrollment_video_source_url',
+        value: secureEnrollUrlValue.trim(),
+      })
+      setSecureEnrollSaveMsg('Secure enrollment link video saved.')
+      void refetchAppSettings()
+    } catch (error) {
+      setSecureEnrollErrorMsg(error instanceof Error ? error.message : 'Could not save secure enrollment video URL.')
     }
   }
 
@@ -483,6 +506,48 @@ export function SettingsAppPage({ title }: Props) {
           </button>
           {enrollmentSaveMsg ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{enrollmentSaveMsg}</p> : null}
           {enrollmentErrorMsg ? <p className="text-xs text-destructive">{enrollmentErrorMsg}</p> : null}
+        </div>
+      </section>
+
+      <section className="surface-elevated space-y-3 p-4">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">New Enrollment Link (Secure Video)</h2>
+          <p className="text-xs text-muted-foreground">
+            Secure enrollment link (Today tab ka 🔗 button + Enrollment Link page) yahi video bhejega. Cloudflare R2 ka link/key set karo.
+          </p>
+        </div>
+
+        {appSettingsPending ? (
+          <Skeleton className="h-9 w-full" />
+        ) : appSettingsError ? (
+          <div className="text-sm text-destructive" role="alert">
+            {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load app settings.'}
+          </div>
+        ) : (
+          <label className="block text-sm">
+            <span className="mb-1 block text-ds-caption text-muted-foreground">Cloudflare R2 link / object key</span>
+            <input
+              type="text"
+              value={secureEnrollUrlValue}
+              onChange={(e) => setSecureEnrollUrlValue(e.target.value)}
+              placeholder="videos/enrollment/master.mp4  ya  https://pub-xxxx.r2.dev/enrollment.mp4"
+              className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+            />
+            <span className="mt-1 block text-muted-foreground/80">R2 object key (recommended — private + signed) ya direct R2 URL. YouTube nahi.</span>
+          </label>
+        )}
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            disabled={updateAppSetting.isPending || appSettingsPending || appSettingsError}
+            onClick={() => void handleSaveSecureEnrollUrl()}
+            className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-medium text-primary disabled:opacity-50"
+          >
+            {updateAppSetting.isPending ? 'Saving...' : 'Save enrollment link video'}
+          </button>
+          {secureEnrollSaveMsg ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{secureEnrollSaveMsg}</p> : null}
+          {secureEnrollErrorMsg ? <p className="text-xs text-destructive">{secureEnrollErrorMsg}</p> : null}
         </div>
       </section>
 

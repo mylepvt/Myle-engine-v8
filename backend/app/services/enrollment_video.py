@@ -31,8 +31,8 @@ from app.services import r2_storage
 
 ENROLL2_WATCH_COOKIE = "myle_enroll2_watch"
 
-# Defaults: 15-min video + 1-min buffer, single device, single view.
-DEFAULT_WINDOW_SECONDS = 16 * 60
+# Defaults: 16:56 (1016s) video + ~1-min buffer = 18 min, single device, single view.
+DEFAULT_WINDOW_SECONDS = 18 * 60
 DEFAULT_CREATION_CAP = timedelta(days=2)
 DEFAULT_MAX_VIEWS = 1
 

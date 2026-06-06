@@ -58,8 +58,9 @@ class EnrollmentShareLink(Base):
     )
 
     # Lifecycle. expires_at is NULL until first open, then opened_at + window.
+    # 18 min — covers the 16:56 enrollment video with ~1-min buffer.
     window_seconds: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("960"), default=960
+        Integer, nullable=False, server_default=text("1080"), default=1080
     )
     opened_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     first_viewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
