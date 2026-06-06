@@ -1212,6 +1212,31 @@ async def toggle_training_lock(
     }
 
 
+class EnrollmentAccessToggleBody(BaseModel):
+    enabled: bool  # True = this member may create secure enrollment links
+
+
+@router.patch("/members/{target_user_id}/enrollment-access")
+async def toggle_enrollment_access(
+    target_user_id: int,
+    body: EnrollmentAccessToggleBody,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Admin: grant or revoke the secure enrollment-link feature for a member."""
+    _require_admin(user)
+    target = await session.get(User, target_user_id)
+    if target is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    target.enrollment_link_access = bool(body.enabled)
+    await session.commit()
+    return {
+        "user_id": target.id,
+        "fbo_id": target.fbo_id,
+        "enrollment_link_access": target.enrollment_link_access,
+    }
+
+
 @router.delete("/members/{target_user_id}", status_code=http_status.HTTP_204_NO_CONTENT)
 async def delete_member(
     target_user_id: int,

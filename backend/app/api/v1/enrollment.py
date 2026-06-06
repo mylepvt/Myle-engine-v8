@@ -18,6 +18,7 @@ from starlette.background import BackgroundTask
 
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.models.enrollment_share_link import EnrollmentShareLink
+from app.models.user import User
 from app.schemas.enrollment import (
     EnrollmentEventResponse,
     EnrollmentLinkCreate,
@@ -47,6 +48,18 @@ def _public(link: EnrollmentShareLink) -> EnrollmentLinkPublic:
     )
 
 
+async def _require_enroll_access(session: AsyncSession, user: AuthUser) -> None:
+    """Admins always allowed; everyone else needs the admin-granted flag."""
+    if (user.role or "").strip().lower() == "admin":
+        return
+    db_user = await session.get(User, user.user_id)
+    if db_user is None or not bool(getattr(db_user, "enrollment_link_access", False)):
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to enrollment links. Ask an admin to enable it.",
+        )
+
+
 async def _get_link(session: AsyncSession, token: str) -> EnrollmentShareLink:
     clean = ev.sanitize_public_token(token)
     if not clean:
@@ -69,6 +82,7 @@ async def generate_enrollment_link(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> EnrollmentLinkPublic:
+    await _require_enroll_access(session, user)
     now = datetime.now(timezone.utc)
     link = EnrollmentShareLink(
         token=ev.new_token(),
@@ -92,6 +106,7 @@ async def list_my_enrollment_links(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[EnrollmentLinkPublic]:
+    await _require_enroll_access(session, user)
     rows = (
         await session.execute(
             select(EnrollmentShareLink)
@@ -109,6 +124,7 @@ async def revoke_enrollment_link(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> EnrollmentEventResponse:
+    await _require_enroll_access(session, user)
     link = await _get_link(session, token)
     if link.created_by_user_id != user.user_id:
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Not your link.")

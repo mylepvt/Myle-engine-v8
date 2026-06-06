@@ -16,7 +16,6 @@ import { Day2TestPage } from '@/pages/Day2TestPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { WatchPage } from '@/pages/WatchPage'
 import { EnrollmentWatchPage } from '@/pages/EnrollmentWatchPage'
-import { EnrollmentAdminPage } from '@/pages/EnrollmentAdminPage'
 import { LivePremierePage } from '@/pages/LivePremierePage'
 import { Day6LivePage } from '@/pages/Day6LivePage'
 import { t } from '@/lib/i18n'
@@ -65,7 +64,6 @@ export function App() {
         <Route path="/test/d2/:token" element={<Day2TestPage />} />
 
         <Route element={<ProtectedRoute />}>
-          <Route path="/enroll-admin" element={<EnrollmentAdminPage />} />
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<DashboardHomePage />} />
             <Route

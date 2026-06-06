@@ -51,6 +51,14 @@ class User(Base):
         server_default=text("'not_required'"),
         default="not_required",
     )
+    # Admin-granted capability: may open the secure enrollment-link generator
+    # and create /enroll links. Off by default; admins always allowed.
+    enrollment_link_access: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+        default=False,
+    )
     access_blocked: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,

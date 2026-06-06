@@ -11,10 +11,12 @@ export type TeamMemberPublic = {
   email: string
   role: string
   created_at: string
+  upline_user_id?: number | null
   upline_fbo_id?: string | null
   upline_name?: string | null
   training_required?: boolean | null
   training_status?: string | null
+  enrollment_link_access?: boolean | null
   access_blocked?: boolean | null
   discipline_status?: string | null
   grace_end_date?: string | null
@@ -512,6 +514,29 @@ export function useToggleTrainingLockMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: toggleTrainingLock,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['team', 'members'] })
+    },
+  })
+}
+
+async function toggleEnrollmentAccess(body: { userId: number; enabled: boolean }): Promise<{ enrollment_link_access: boolean }> {
+  const res = await apiFetch(`/api/v1/team/members/${body.userId}/enrollment-access`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled: body.enabled }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { detail?: string }).detail ?? res.statusText)
+  }
+  return res.json()
+}
+
+export function useToggleEnrollmentAccessMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: toggleEnrollmentAccess,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['team', 'members'] })
     },

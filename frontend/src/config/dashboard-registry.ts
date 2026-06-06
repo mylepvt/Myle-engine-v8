@@ -54,6 +54,7 @@ export type DashboardNavSection = {
 /** What to render for product surfaces (includes `shell-api` list pages backed by `SystemStubResponse`). */
 export type FullUiSurface =
   | { kind: 'leads'; listMode: 'active' | 'archived' }
+  | { kind: 'enroll-link' }
   | { kind: 'workboard' }
   | { kind: 'follow-ups' }
   | { kind: 'retarget' }
@@ -148,6 +149,14 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('work/leads'),
     surface: 'full',
     ui: { kind: 'leads', listMode: 'active' },
+  },
+  {
+    path: 'work/enroll-link',
+    section: { id: 'work', label: '' },
+    label: 'Enrollment Link',
+    roles: routeRoles('work/enroll-link'),
+    surface: 'full',
+    ui: { kind: 'enroll-link' },
   },
   {
     path: 'work/workboard',
