@@ -100,6 +100,38 @@ async def upload_to_r2(*, data: bytes, key: str, content_type: str) -> str:
     return f"{settings.r2_public_url.rstrip('/')}/{key}"
 
 
+def _presign_get_sync(key: str, expires_seconds: int) -> str:
+    """Blocking presigned GET URL — run inside asyncio.to_thread."""
+    import boto3  # lazy import — only needed when R2 is enabled
+    from botocore.config import Config
+
+    client = boto3.client(
+        "s3",
+        endpoint_url=f"https://{settings.r2_account_id}.r2.cloudflarestorage.com",
+        aws_access_key_id=settings.r2_access_key_id,
+        aws_secret_access_key=settings.r2_secret_access_key,
+        config=Config(signature_version="s3v4"),
+        region_name="auto",
+    )
+    return client.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": settings.r2_bucket_name, "Key": key},
+        ExpiresIn=expires_seconds,
+    )
+
+
+async def presign_get_url(*, key: str, expires_seconds: int = 120) -> str:
+    """Return a short-lived presigned GET URL for *key*.
+
+    The URL is consumed server-side only (the streaming proxy fetches it) and is
+    never handed to the browser, so the bucket can stay fully private.
+    Raises RuntimeError if R2 is not configured.
+    """
+    if not r2_enabled():
+        raise RuntimeError("R2 not configured — check R2_* env vars")
+    return await asyncio.to_thread(_presign_get_sync, key, expires_seconds)
+
+
 async def delete_from_r2(key: str) -> None:
     """Delete *key* from R2 bucket. No-op if R2 not configured."""
     if not r2_enabled():

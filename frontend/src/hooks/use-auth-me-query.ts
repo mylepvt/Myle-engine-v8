@@ -18,6 +18,8 @@ export type MeResponse = {
   training_status: string | null
   /** When true, full dashboard is gated until training is completed (legacy). */
   training_required: boolean | null
+  /** Admin-granted: may open the secure enrollment-link generator. */
+  enrollment_link_access: boolean | null
   /** pending | approved | rejected */
   registration_status: string | null
   /** Profile image path (use with `apiUrl()`). */
@@ -39,6 +41,7 @@ const UNAUTH: MeResponse = {
   auth_version: null,
   training_status: null,
   training_required: null,
+  enrollment_link_access: null,
   registration_status: null,
   avatar_url: null,
   compliance_level: null,
@@ -63,6 +66,8 @@ export async function fetchAuthMe(): Promise<MeResponse> {
       typeof raw.training_status === 'string' ? raw.training_status : null,
     training_required:
       typeof raw.training_required === 'boolean' ? raw.training_required : null,
+    enrollment_link_access:
+      typeof raw.enrollment_link_access === 'boolean' ? raw.enrollment_link_access : null,
     registration_status:
       typeof raw.registration_status === 'string'
         ? raw.registration_status

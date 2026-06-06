@@ -12,6 +12,7 @@ import {
   useDeleteMemberMutation,
   useMemberLeadsQuery,
   useToggleTrainingLockMutation,
+  useToggleEnrollmentAccessMutation,
   type TeamMemberPublic,
 } from '@/hooks/use-team-query'
 import { useInvoicesQuery } from '@/hooks/use-invoices-query'
@@ -38,6 +39,7 @@ export function MemberProfileModal({
   const updateComplianceMut = useUpdateMemberComplianceMutation()
   const deleteMut = useDeleteMemberMutation()
   const trainingToggle = useToggleTrainingLockMutation()
+  const enrollAccessToggle = useToggleEnrollmentAccessMutation()
   const { data: allMembers } = useTeamMembersQuery()
   const [selectedRole, setSelectedRole] = useState<Role>(member.role as Role)
   const [roleError, setRoleError] = useState<string | null>(null)
@@ -47,6 +49,8 @@ export function MemberProfileModal({
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [trainingError, setTrainingError] = useState<string | null>(null)
   const [trainingRequired, setTrainingRequired] = useState<boolean>(member.training_required ?? false)
+  const [enrollError, setEnrollError] = useState<string | null>(null)
+  const [enrollAccess, setEnrollAccess] = useState<boolean>(member.enrollment_link_access ?? false)
   const [graceEndDate, setGraceEndDate] = useState(
     member.grace_request_end_date?.slice(0, 10) ?? member.grace_end_date?.slice(0, 10) ?? '',
   )
@@ -59,6 +63,7 @@ export function MemberProfileModal({
     setSelectedRole(member.role as Role)
     setSelectedUpline(member.upline_user_id != null ? String(member.upline_user_id) : '')
     setTrainingRequired(member.training_required ?? false)
+    setEnrollAccess(member.enrollment_link_access ?? false)
     setGraceEndDate(member.grace_request_end_date?.slice(0, 10) ?? member.grace_end_date?.slice(0, 10) ?? '')
     setGraceReason(member.grace_request_reason ?? member.grace_reason ?? '')
   }, [member])
@@ -503,6 +508,53 @@ export function MemberProfileModal({
             </div>
             {trainingError ? (
               <p className="mt-1 text-ds-caption text-destructive" role="alert">{trainingError}</p>
+            ) : null}
+          </div>
+
+          {/* Enrollment link access */}
+          <div className="mb-4 rounded-lg border border-border bg-muted/20 p-3">
+            <p className="mb-2 text-ds-label uppercase text-muted-foreground">Enrollment Link Access</p>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs text-foreground">
+                  Status:{' '}
+                  <span className={enrollAccess ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-muted-foreground font-medium'}>
+                    {enrollAccess ? 'Allowed (sees Enrollment Link page)' : 'Not allowed'}
+                  </span>
+                </p>
+                <p className="mt-0.5 text-[0.68rem] text-muted-foreground">
+                  Lets this member open the secure enrollment-video link generator.
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                disabled={enrollAccessToggle.isPending}
+                onClick={() => {
+                  setEnrollError(null)
+                  const next = !enrollAccess
+                  enrollAccessToggle.mutate(
+                    { userId: currentMember.id, enabled: next },
+                    {
+                      onSuccess: (updated) => {
+                        setEnrollAccess(updated.enrollment_link_access)
+                        setCurrentMember((prev) => ({
+                          ...prev,
+                          enrollment_link_access: updated.enrollment_link_access,
+                        }))
+                      },
+                      onError: (e: Error) => setEnrollError(e.message),
+                    },
+                  )
+                }}
+                className="shrink-0"
+              >
+                {enrollAccessToggle.isPending ? '…' : enrollAccess ? 'Disable' : 'Enable'}
+              </Button>
+            </div>
+            {enrollError ? (
+              <p className="mt-1 text-ds-caption text-destructive" role="alert">{enrollError}</p>
             ) : null}
           </div>
 

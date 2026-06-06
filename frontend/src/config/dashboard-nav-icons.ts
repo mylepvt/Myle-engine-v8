@@ -37,6 +37,7 @@ import {
 const BY_PATH: Record<string, LucideIcon> = {
   '': LayoutDashboard,
   'work/leads': Users,
+  'work/enroll-link': Video,
   'work/workboard': LayoutGrid,
   'work/follow-ups': CalendarClock,
   'work/pending-as': Receipt,

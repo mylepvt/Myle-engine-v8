@@ -15,6 +15,7 @@ from app.api.v1 import (
     media,
     certificate,
     downloads,
+    enrollment,
     flp_min_billing,
     execution,
     finance_surfaces,
@@ -89,6 +90,8 @@ api_router.include_router(realtime_ws.router, tags=["realtime"])
 api_router.include_router(flp_min_billing.router, prefix="/flp-min-billing", tags=["flp-min-billing"])
 # Public watch route — no /flp-min-billing prefix so the URL is /api/v1/watch/{token}
 api_router.include_router(flp_min_billing.watch_router, tags=["watch"])
+api_router.include_router(enrollment.router, prefix="/enroll", tags=["enroll-secure"])
+api_router.include_router(enrollment.public_router, tags=["enroll-secure"])
 api_router.include_router(certificate.router, tags=["certificate"])
 api_router.include_router(payments.router, prefix="/payments", tags=["payments"])
 api_router.include_router(sales.router, tags=["sales"])

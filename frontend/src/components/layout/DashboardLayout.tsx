@@ -247,14 +247,21 @@ export function DashboardLayout() {
     location.pathname === '/dashboard/other/training' ||
     location.pathname.startsWith('/dashboard/other/training/')
 
+  const enrollAllowed = me?.role === 'admin' || me?.enrollment_link_access === true
   const sections = useMemo(() => {
     if (shellRole == null) return []
     const full = filterDashboardNav(shellRole)
-    if (!trainingLocked) return full
-    const flat = full.flatMap((s) => s.items)
+    // Hide the Enrollment Link page unless this user is admin-granted access.
+    const capped = enrollAllowed
+      ? full
+      : full
+          .map((s) => ({ ...s, items: s.items.filter((i) => i.path !== 'work/enroll-link') }))
+          .filter((s) => s.items.length > 0)
+    if (!trainingLocked) return capped
+    const flat = capped.flatMap((s) => s.items)
     const tr = flat.find((i) => i.path === 'system/training')
-    return tr ? [{ id: 'training-only', label: '', items: [tr] }] : full
-  }, [shellRole, trainingLocked])
+    return tr ? [{ id: 'training-only', label: '', items: [tr] }] : capped
+  }, [shellRole, trainingLocked, enrollAllowed])
 
   const currentPageLabel = useMemo(() => {
     const rel = location.pathname.replace('/dashboard/', '')

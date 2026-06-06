@@ -41,6 +41,10 @@ class MeResponse(BaseModel):
         default=None,
         description="pending | approved | rejected — account approval gate",
     )
+    enrollment_link_access: Optional[bool] = Field(
+        default=None,
+        description="Admin-granted: may open the secure enrollment-link generator",
+    )
     avatar_url: Optional[str] = Field(
         default=None,
         description="Profile image URL path when set (same-origin /api/v1/media/avatar/…)",

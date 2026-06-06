@@ -99,6 +99,7 @@ async def read_me(
     avatar_url_s: str | None = None
     compliance_level_s: str | None = None
     compliance_summary_s: str | None = None
+    enroll_access_b: bool | None = None
     if user_id is not None:
         compliance_snapshot = await ensure_user_compliance_snapshot(
             session, user_id=user_id, apply_actions=True
@@ -119,6 +120,7 @@ async def read_me(
             ts_s = row.training_status
             tr_b = bool(row.training_required)
             rs_s = row.registration_status
+            enroll_access_b = bool(getattr(row, "enrollment_link_access", False))
             if compliance_snapshot is not None:
                 compliance_level_s = compliance_snapshot.compliance_level
                 compliance_summary_s = compliance_snapshot.compliance_summary
@@ -137,6 +139,7 @@ async def read_me(
         training_status=ts_s,
         training_required=tr_b,
         registration_status=rs_s,
+        enrollment_link_access=enroll_access_b,
         avatar_url=avatar_url_s,
         compliance_level=compliance_level_s,
         compliance_summary=compliance_summary_s,

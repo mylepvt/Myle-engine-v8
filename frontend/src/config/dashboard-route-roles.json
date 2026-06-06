@@ -1,6 +1,7 @@
 {
   "": ["admin", "leader", "team"],
   "work/leads": ["admin", "leader", "team"],
+  "work/enroll-link": ["admin", "leader", "team"],
   "work/workboard": ["admin", "leader"],
   "work/follow-ups": ["admin", "leader"],
   "work/pending-as": ["admin", "leader"],
