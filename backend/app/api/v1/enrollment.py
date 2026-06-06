@@ -84,12 +84,20 @@ async def generate_enrollment_link(
 ) -> EnrollmentLinkPublic:
     await _require_enroll_access(session, user)
     now = datetime.now(timezone.utc)
+    video_source = (body.video_source or "").strip()
+    if not video_source:
+        video_source = await ev.resolve_default_video_source(session)
+    if not video_source:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="No enrollment video is configured. Set it in Settings first.",
+        )
     link = EnrollmentShareLink(
         token=ev.new_token(),
         created_by_user_id=user.user_id,
         viewer_name=(body.viewer_name or "").strip()[:120] or None,
         viewer_phone=ev.normalize_phone(body.viewer_phone) or None,
-        video_source=body.video_source.strip(),
+        video_source=video_source,
         title=(body.title or "").strip()[:200] or "Enrollment video",
         max_views=int(body.max_views or ev.DEFAULT_MAX_VIEWS),
         window_seconds=int(body.window_seconds or ev.DEFAULT_WINDOW_SECONDS),
