@@ -35,7 +35,7 @@ export function EnrollmentAdminPage({ pageTitle }: { pageTitle?: string } = {}) 
   const [phone, setPhone] = useState('')
   const [videoSource, setVideoSource] = useState('')
   const [title, setTitle] = useState('Enrollment video')
-  const [windowMin, setWindowMin] = useState(16)
+  const [windowMin, setWindowMin] = useState(18)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [rows, setRows] = useState<LinkRow[]>([])
@@ -157,7 +157,7 @@ export function EnrollmentAdminPage({ pageTitle }: { pageTitle?: string } = {}) 
                 min={1}
                 max={120}
                 value={windowMin}
-                onChange={(e) => setWindowMin(Number(e.target.value) || 16)}
+                onChange={(e) => setWindowMin(Number(e.target.value) || 18)}
               />
             </div>
           </div>
