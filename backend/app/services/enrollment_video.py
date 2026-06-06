@@ -21,7 +21,11 @@ from typing import Optional
 import jwt
 from fastapi import Request, Response
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.config import settings
+from app.models.app_setting import AppSetting
 from app.models.enrollment_share_link import EnrollmentShareLink
 from app.services import r2_storage
 
@@ -39,6 +43,26 @@ _HAS_SCHEME_RE = re.compile(r"^[a-z][a-z0-9+.\-]*://", re.IGNORECASE)
 
 def new_token() -> str:
     return secrets.token_urlsafe(32)
+
+
+async def _app_setting(session: AsyncSession, key: str) -> str:
+    row = (
+        await session.execute(select(AppSetting.value).where(AppSetting.key == key))
+    ).scalar_one_or_none()
+    return str(row or "").strip()
+
+
+async def resolve_default_video_source(session: AsyncSession) -> str:
+    """Default enrollment video for per-lead quick links.
+
+    Prefers a dedicated key, then reuses the already-configured Enrollment-Live
+    video so no extra setup is needed.
+    """
+    for key in ("enrollment_video_source_url", "flp_min_billing_video_source_url", "flp_min_billing_video_url"):
+        value = await _app_setting(session, key)
+        if value:
+            return value
+    return ""
 
 
 def sanitize_public_token(raw_token: str) -> str:
