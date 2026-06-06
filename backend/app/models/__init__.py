@@ -10,6 +10,7 @@ from app.models.day2_test_session import Day2TestSession
 from app.models.follow_up import FollowUp
 from app.models.crm_outbox import CrmOutbox
 from app.models.daily_member_stat import DailyMemberStat
+from app.models.enrollment_share_link import EnrollmentShareLink
 from app.models.flp_min_billing_share_link import FlpMinBillingShareLink
 from app.models.invoice import Invoice
 from app.models.lead import Lead
@@ -44,6 +45,7 @@ __all__ = [
     "CallEvent",
     "BatchShareLink",
     "Day2TestSession",
+    "EnrollmentShareLink",
     "FollowUp",
     "CrmOutbox",
     "DailyMemberStat",
