@@ -21,6 +21,8 @@ import {
 } from '@/hooks/use-leads-query'
 import { useLeadControlRevertMutation } from '@/hooks/use-lead-control-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
+import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
+import { apiUrl } from '@/lib/api'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import { sendEnrollmentLiveLink } from '@/lib/enrollment-send'
 import { useCallToCloseStore } from '@/stores/call-to-close-store'
@@ -51,9 +53,13 @@ type Props = {
 export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   const { role, serverRole } = useDashboardShellRole()
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
+  const { data: me } = useAuthMeQuery()
+  const enrollAllowed = me?.role === 'admin' || me?.enrollment_link_access === true
   const [tab, setTab] = useState<CtcsTab>('all')
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [sendingLeadId, setSendingLeadId] = useState<number | null>(null)
+  const [enrollBusyLeadId, setEnrollBusyLeadId] = useState<number | null>(null)
+  const [enrollCopiedLeadId, setEnrollCopiedLeadId] = useState<number | null>(null)
   const [reassignTarget, setReassignTarget] = useState<{ id: number; name: string; isReassigned: boolean } | null>(null)
   const [revertNotice, setRevertNotice] = useState<string | null>(null)
   const searchMode =
@@ -142,6 +148,37 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
       })
     },
     [items, leadsQ, patchMut],
+  )
+
+  const onCopyEnrollLink = useCallback(
+    async (lead: LeadPublic) => {
+      setEnrollBusyLeadId(lead.id)
+      try {
+        const res = await fetch(apiUrl('/api/v1/enroll/generate'), {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ viewer_name: lead.name ?? null, viewer_phone: lead.phone ?? null }),
+        })
+        if (!res.ok) {
+          const err = (await res.json().catch(() => ({}))) as { detail?: string }
+          throw new Error(err.detail ?? `HTTP ${res.status}`)
+        }
+        const { token } = (await res.json()) as { token: string }
+        const link = `${window.location.origin}/enroll/${token}`
+        await navigator.clipboard.writeText(link)
+        setEnrollCopiedLeadId(lead.id)
+        window.setTimeout(
+          () => setEnrollCopiedLeadId((c) => (c === lead.id ? null : c)),
+          2000,
+        )
+      } catch (err) {
+        window.alert('Could not create enrollment link: ' + (err instanceof Error ? err.message : 'Unknown error'))
+      } finally {
+        setEnrollBusyLeadId(null)
+      }
+    },
+    [],
   )
 
   const onPatchStatus = useCallback(
@@ -319,6 +356,10 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
             onCall={onCall}
             onFollowUp={onFollowUp}
             onReassign={surfaceRole === 'leader' || surfaceRole === 'admin' ? onReassign : undefined}
+            showEnrollLink={tab === 'today' && enrollAllowed}
+            enrollLinkBusy={enrollBusyLeadId === l.id}
+            enrollLinkCopied={enrollCopiedLeadId === l.id}
+            onCopyEnrollLink={onCopyEnrollLink}
           />
         ))}
       </div>

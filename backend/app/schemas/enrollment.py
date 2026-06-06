@@ -9,7 +9,9 @@ from pydantic import BaseModel, Field
 class EnrollmentLinkCreate(BaseModel):
     viewer_name: Optional[str] = Field(default=None, max_length=120)
     viewer_phone: Optional[str] = Field(default=None, max_length=32)
-    video_source: str = Field(min_length=1, max_length=600)
+    # Optional: when omitted, the server falls back to the configured default
+    # enrollment video (so per-lead quick links need no source typed).
+    video_source: Optional[str] = Field(default=None, max_length=600)
     title: Optional[str] = Field(default=None, max_length=200)
     window_seconds: Optional[int] = Field(default=None, ge=60, le=24 * 3600)
     max_views: Optional[int] = Field(default=None, ge=1, le=20)
