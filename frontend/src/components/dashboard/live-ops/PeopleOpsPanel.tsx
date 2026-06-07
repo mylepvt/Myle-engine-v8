@@ -256,7 +256,7 @@ export function PeopleOpsPanel() {
         <div className="flex gap-2 overflow-x-auto scroll-px-1 pb-1">
           {topLeaders.length === 0 &&
             Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="min-w-[100px] flex-1 animate-pulse rounded border border-border dark:border-white/[0.06] bg-muted/10 dark:bg-white/[0.02] py-12" />
+              <div key={i} className="min-w-[100px] flex-1 animate-pulse rounded border border-border dark:border-white/[0.06] bg-foreground/10 py-12" />
             ))}
           {topLeaders.map((leader, i) => (
             <LeaderCard key={leader.leader_id} leader={leader} rank={i + 1} />
@@ -278,7 +278,7 @@ export function PeopleOpsPanel() {
           ))}
           {leaderHealth.isLoading &&
             Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-14 animate-pulse border-b border-border dark:border-white/[0.04] bg-muted/10 dark:bg-white/[0.02]" />
+              <div key={i} className="h-14 animate-pulse border-b border-border dark:border-white/[0.04] bg-foreground/10" />
             ))}
         </div>
       </div>

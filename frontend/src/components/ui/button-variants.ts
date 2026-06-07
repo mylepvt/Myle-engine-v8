@@ -1,7 +1,7 @@
 import { cva, type VariantProps } from 'class-variance-authority'
 
 export const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded text-ds-body font-semibold transition-[background-color,color,border-color] duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded text-ds-body font-semibold transition-[background-color,color,border-color,transform] duration-100 active:scale-[0.97] motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
   {
     variants: {
       variant: {
@@ -17,10 +17,12 @@ export const buttonVariants = cva(
           'bg-destructive text-destructive-foreground hover:bg-[color-mix(in_srgb,var(--destructive),black_20%)] active:bg-[color-mix(in_srgb,var(--destructive),black_30%)]',
       },
       size: {
-        default: 'h-9 min-h-[36px] px-4 py-2',
+        // Heights: dense sm 32 · default 40 (was 36, better baseline with the
+        // 44px field inputs) · lg + icon 44 (iOS HIG minimum tap target).
+        default: 'h-10 min-h-[40px] px-4 py-2',
         sm: 'h-8 min-h-[32px] px-3 text-ds-caption',
-        lg: 'h-10 min-h-[40px] px-6 text-ds-h3',
-        icon: 'h-9 min-h-[36px] w-9 min-w-[36px]',
+        lg: 'h-11 min-h-[44px] px-6 text-ds-h3',
+        icon: 'h-11 min-h-[44px] w-11 min-w-[44px]',
       },
     },
     defaultVariants: {
