@@ -538,18 +538,26 @@
 
   /* ── Discord modal animations ───────────────────────────────────── */
   .keyboard-safe-modal {
-    animation: dcFadeIn 0.12s ease-out;
+    animation: dcFadeIn 0.16s ease-out;
   }
   .keyboard-safe-sheet {
-    animation: dcSlideUp 0.15s ease-out;
+    /* decelerate (ease-out-expo) for a settled, native feel */
+    animation: dcSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
   }
   @keyframes dcFadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
   }
   @keyframes dcSlideUp {
-    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+    from { opacity: 0; transform: translateY(14px) scale(0.985); }
     to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  /* Honour reduced-motion: snap, don't slide */
+  @media (prefers-reduced-motion: reduce) {
+    .keyboard-safe-modal,
+    .keyboard-safe-sheet {
+      animation: none;
+    }
   }
 
   /* ── Discord shimmer skeleton ───────────────────────────────────── */
