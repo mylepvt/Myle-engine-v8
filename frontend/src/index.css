@@ -105,7 +105,8 @@
     --secondary: #1e2028;
     --secondary-foreground: #9a9fa8;
     --muted: #15171c;
-    --muted-foreground: #72767d;
+    /* lightened from #72767d (3.73:1 on card — AA fail) to clear WCAG AA */
+    --muted-foreground: #8e939d;
     --accent: #3b6ef6;
     --accent-foreground: #ffffff;
     --destructive: #da373c;
@@ -121,7 +122,7 @@
     --chart-4: #9a9fa8;
     --chart-5: #72767d;
     --surface: #1e2028;
-    --subtle: #72767d;
+    --subtle: #8e939d;
     --success: #23a55a;
     --success-foreground: #ffffff;
     --warning: #f0b232;
