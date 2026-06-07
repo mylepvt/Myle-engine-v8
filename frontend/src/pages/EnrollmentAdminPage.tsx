@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Check, Copy, ShieldCheck, Trash2 } from 'lucide-react'
+import { Check, Copy, ShieldCheck, Trash2, Users } from 'lucide-react'
 
 import { apiUrl } from '@/lib/api'
+import { useLeadsQuery, type LeadPublic } from '@/hooks/use-leads-query'
 
 type LinkRow = {
   token: string
@@ -26,6 +27,10 @@ function phoneDigits(raw: string): string {
   return raw.replace(/\D/g, '')
 }
 
+function sigFor(name: string, phone: string): string {
+  return `${name.trim().toLowerCase()}|${phoneDigits(phone).slice(-10)}`
+}
+
 async function readError(res: Response, fallback: string): Promise<string> {
   const body = await res.json().catch(() => ({}))
   if (body && typeof body === 'object' && typeof (body as { detail?: unknown }).detail === 'string') {
@@ -46,7 +51,8 @@ export function EnrollmentAdminPage({ pageTitle }: { pageTitle?: string } = {}) 
   const [copied, setCopied] = useState<string | null>(null)
   const [lastLink, setLastLink] = useState<string | null>(null)
   const [autoNote, setAutoNote] = useState<string | null>(null)
-  /** Signature of the last auto-generated (name|phone) — avoids duplicate links. */
+  const [activeField, setActiveField] = useState<'name' | 'phone' | null>(null)
+  const [suggestQ, setSuggestQ] = useState('')
   const lastAutoSigRef = useRef<string>('')
 
   useEffect(() => {
@@ -67,6 +73,22 @@ export function EnrollmentAdminPage({ pageTitle }: { pageTitle?: string } = {}) 
     void load()
   }, [load])
 
+  // Today's claimed leads — shown below for one-tap send.
+  const todayQ = useLeadsQuery(true, { q: '', status: '' }, 'active', {
+    ctcsFilter: 'today',
+    ctcsPrioritySort: true,
+  })
+  const todayLeads = todayQ.data?.items ?? []
+
+  // Autocomplete suggestions from the user's own leads as they type name/phone.
+  useEffect(() => {
+    const term = activeField === 'name' ? name : activeField === 'phone' ? phone : ''
+    const id = window.setTimeout(() => setSuggestQ(term.trim()), 250)
+    return () => window.clearTimeout(id)
+  }, [name, phone, activeField])
+  const suggestionsQ = useLeadsQuery(suggestQ.length >= 2, { q: suggestQ, status: '' }, 'active')
+  const suggestions = activeField ? (suggestionsQ.data?.items ?? []).slice(0, 6) : []
+
   async function copy(token: string) {
     try {
       await navigator.clipboard.writeText(fullLink(token))
@@ -77,9 +99,11 @@ export function EnrollmentAdminPage({ pageTitle }: { pageTitle?: string } = {}) 
     }
   }
 
-  /** Create a link + copy it. Used by both the auto-trigger and manual fallback. */
+  /** Create a link + copy it. Accepts explicit lead override (for clicks). */
   const createLink = useCallback(
-    async (opts?: { silent?: boolean }): Promise<void> => {
+    async (opts?: { silent?: boolean; lead?: { name: string; phone: string } }): Promise<void> => {
+      const vName = (opts?.lead?.name ?? name).trim()
+      const vPhone = (opts?.lead?.phone ?? phone).trim()
       setBusy(true)
       setError(null)
       try {
@@ -88,8 +112,8 @@ export function EnrollmentAdminPage({ pageTitle }: { pageTitle?: string } = {}) 
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            viewer_name: name.trim() || null,
-            viewer_phone: phone.trim() || null,
+            viewer_name: vName || null,
+            viewer_phone: vPhone || null,
             video_source: videoSource.trim() || null,
             title: title.trim() || null,
             window_seconds: Math.max(60, Math.round(windowMin * 60)),
@@ -106,12 +130,12 @@ export function EnrollmentAdminPage({ pageTitle }: { pageTitle?: string } = {}) 
           }
         }
         setLastLink(fullLink(created.token))
-        setAutoNote(opts?.silent ? 'Link ready & copied automatically.' : 'Link created & copied.')
+        setAutoNote(`Link for ${vName || 'prospect'} ready & copied.`)
         await load()
         await copy(created.token)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Could not create link.')
-        lastAutoSigRef.current = '' // allow retry
+        lastAutoSigRef.current = ''
       } finally {
         setBusy(false)
       }
@@ -119,12 +143,11 @@ export function EnrollmentAdminPage({ pageTitle }: { pageTitle?: string } = {}) 
     [name, phone, videoSource, title, windowMin, load],
   )
 
-  // Auto-generate: as soon as name + a 10-digit phone are present, debounce then
-  // create + copy. No button press needed. One link per unique name|phone.
+  // Auto-generate when name + 10-digit phone present (typed manually).
   useEffect(() => {
     const digits = phoneDigits(phone)
-    const sig = `${name.trim().toLowerCase()}|${digits.slice(-10)}`
     if (!name.trim() || digits.length < 10) return
+    const sig = sigFor(name, phone)
     if (sig === lastAutoSigRef.current || busy) return
     const id = window.setTimeout(() => {
       lastAutoSigRef.current = sig
@@ -132,6 +155,24 @@ export function EnrollmentAdminPage({ pageTitle }: { pageTitle?: string } = {}) 
     }, 700)
     return () => window.clearTimeout(id)
   }, [name, phone, busy, createLink])
+
+  /** Pick a lead (from suggestion or today list) → fill + generate + copy now. */
+  const pickLead = useCallback(
+    (lead: LeadPublic) => {
+      const ln = lead.name ?? ''
+      const lp = lead.phone ?? ''
+      setName(ln)
+      setPhone(lp)
+      setActiveField(null)
+      if (phoneDigits(lp).length < 10) {
+        setError('This lead has no valid 10-digit phone.')
+        return
+      }
+      lastAutoSigRef.current = sigFor(ln, lp) // stop the auto-effect double firing
+      void createLink({ lead: { name: ln, phone: lp } })
+    },
+    [createLink],
+  )
 
   async function revoke(token: string) {
     if (!window.confirm('Revoke this link? It will stop working immediately.')) return
@@ -145,6 +186,27 @@ export function EnrollmentAdminPage({ pageTitle }: { pageTitle?: string } = {}) 
   const inputCls =
     'h-11 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary'
 
+  const SuggestList = () =>
+    suggestions.length > 0 ? (
+      <ul className="absolute z-30 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border bg-card shadow-lg">
+        {suggestions.map((s) => (
+          <li key={s.id}>
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault()
+                pickLead(s)
+              }}
+              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
+            >
+              <span className="truncate font-medium text-foreground">{s.name || 'No name'}</span>
+              <span className="shrink-0 font-mono text-xs text-muted-foreground">{s.phone ?? '—'}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    ) : null
+
   return (
     <div className="p-4 sm:p-6">
       <div className="mx-auto w-full max-w-3xl">
@@ -155,17 +217,34 @@ export function EnrollmentAdminPage({ pageTitle }: { pageTitle?: string } = {}) 
 
         <div className="space-y-3 rounded-2xl border border-border bg-muted/20 p-5">
           <p className="text-xs text-muted-foreground">
-            Naam + 10-digit phone bharo — link <strong>apne aap ban ke copy</strong> ho jayega. One-time · first-device lock ·{' '}
-            {windowMin}-min timer. Naam &amp; phone video pe watermark me dikhenge.
+            Naam ya number type karo — apne leads me se <strong>suggestion</strong> aayega, ya niche Today list se tap karo. Link{' '}
+            <strong>apne aap ban ke copy</strong> ho jata. One-time · first-device lock · {windowMin}-min timer.
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div>
+            <div className="relative">
               <label className="mb-1 block text-xs text-muted-foreground">Prospect name (watermark)</label>
-              <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Rahul Sharma" />
+              <input
+                className={inputCls}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onFocus={() => setActiveField('name')}
+                onBlur={() => window.setTimeout(() => setActiveField((f) => (f === 'name' ? null : f)), 150)}
+                placeholder="Type to search your leads…"
+              />
+              {activeField === 'name' ? <SuggestList /> : null}
             </div>
-            <div>
+            <div className="relative">
               <label className="mb-1 block text-xs text-muted-foreground">Prospect phone (watermark)</label>
-              <input className={inputCls} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="10-digit number" inputMode="numeric" />
+              <input
+                className={inputCls}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                onFocus={() => setActiveField('phone')}
+                onBlur={() => window.setTimeout(() => setActiveField((f) => (f === 'phone' ? null : f)), 150)}
+                placeholder="Type number to search…"
+                inputMode="numeric"
+              />
+              {activeField === 'phone' ? <SuggestList /> : null}
             </div>
           </div>
 
@@ -187,8 +266,8 @@ export function EnrollmentAdminPage({ pageTitle }: { pageTitle?: string } = {}) 
           ) : null}
 
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
-          {!error && autoNote ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{busy ? 'Generating…' : autoNote}</p> : null}
-          {!error && !autoNote && busy ? <p className="text-xs text-muted-foreground">Generating…</p> : null}
+          {!error && busy ? <p className="text-xs text-muted-foreground">Generating…</p> : null}
+          {!error && !busy && autoNote ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{autoNote}</p> : null}
 
           <details className="text-xs text-muted-foreground">
             <summary className="cursor-pointer select-none">Advanced (video override / title / timer)</summary>
@@ -214,21 +293,41 @@ export function EnrollmentAdminPage({ pageTitle }: { pageTitle?: string } = {}) 
                   />
                 </div>
               </div>
-              <button
-                type="button"
-                disabled={busy || !name.trim() || phoneDigits(phone).length < 10}
-                onClick={() => {
-                  lastAutoSigRef.current = `${name.trim().toLowerCase()}|${phoneDigits(phone).slice(-10)}`
-                  void createLink()
-                }}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border px-4 text-xs font-medium text-foreground transition hover:bg-muted disabled:opacity-60"
-              >
-                Regenerate link manually
-              </button>
             </div>
           </details>
         </div>
 
+        {/* Today's claimed leads — tap to send */}
+        <div className="mt-6 space-y-2">
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
+            <Users className="size-4" /> Today’s claimed leads — tap to send
+          </h2>
+          {todayQ.isPending ? (
+            <p className="text-xs text-muted-foreground">Loading…</p>
+          ) : todayLeads.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No leads claimed today.</p>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {todayLeads.map((l) => (
+                <button
+                  key={l.id}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => pickLead(l)}
+                  className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2.5 text-left transition hover:border-primary/50 hover:bg-primary/5 disabled:opacity-60"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-foreground">{l.name || 'No name'}</span>
+                    <span className="block truncate font-mono text-[11px] text-muted-foreground">{l.phone ?? 'no phone'}</span>
+                  </span>
+                  <Copy className="size-4 shrink-0 text-primary" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Recent generated links */}
         <div className="mt-6 space-y-2">
           <h2 className="text-sm font-semibold text-muted-foreground">Recent links</h2>
           {rows.length === 0 ? (
