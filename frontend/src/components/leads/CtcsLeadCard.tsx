@@ -367,8 +367,8 @@ export function CtcsLeadCard({
                     ? 'border-emerald-500/60 bg-emerald-500/15 text-emerald-600 dark:text-emerald-300'
                     : 'border-primary/50 bg-primary/10 text-primary hover:bg-primary/20',
                 )}
-                title="Copy secure enrollment link"
-                aria-label="Copy secure enrollment link"
+                title="Send secure enrollment link on WhatsApp"
+                aria-label="Send secure enrollment link on WhatsApp"
               >
                 {enrollLinkCopied ? <Check className="size-3.5" aria-hidden /> : <Link2 className="size-3.5" aria-hidden />}
               </button>
