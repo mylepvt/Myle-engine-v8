@@ -25,6 +25,8 @@ import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { apiUrl } from '@/lib/api'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import { sendEnrollmentLiveLink } from '@/lib/enrollment-send'
+import { openExternalShareUrl } from '@/lib/external-share-window'
+import { whatsappDigits } from '@/lib/phone-links'
 import { useCallToCloseStore } from '@/stores/call-to-close-store'
 
 function nextLeadId(items: LeadPublic[], current: number | null): number | null {
@@ -166,7 +168,16 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
         }
         const { token } = (await res.json()) as { token: string }
         const link = `${window.location.origin}/enroll/${token}`
-        await navigator.clipboard.writeText(link)
+        const digits = whatsappDigits(lead.phone ?? '')
+        if (!digits) {
+          throw new Error('Lead has no valid WhatsApp number.')
+        }
+        // Copy as backup, then open WhatsApp to the lead with the link prefilled.
+        await navigator.clipboard.writeText(link).catch(() => {})
+        const msg =
+          `Hi ${lead.name || 'there'},\n\n` +
+          `Aapki enrollment video ready hai. Ye private link sirf aapke liye hai — kholiye aur dekhiye:\n${link}`
+        openExternalShareUrl(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`)
         setEnrollCopiedLeadId(lead.id)
         window.setTimeout(
           () => setEnrollCopiedLeadId((c) => (c === lead.id ? null : c)),
