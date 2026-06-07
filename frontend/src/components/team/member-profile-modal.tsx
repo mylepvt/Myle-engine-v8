@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { InvoiceDownloadLink } from '@/components/wallet/InvoiceDownloadLink'
 import {
@@ -47,6 +48,7 @@ export function MemberProfileModal({
   const [uplineError, setUplineError] = useState<string | null>(null)
   const [complianceError, setComplianceError] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [danger, setDanger] = useState<null | 'delete' | 'remove_now'>(null)
   const [trainingError, setTrainingError] = useState<string | null>(null)
   const [trainingRequired, setTrainingRequired] = useState<boolean>(member.training_required ?? false)
   const [enrollError, setEnrollError] = useState<string | null>(null)
@@ -114,10 +116,6 @@ export function MemberProfileModal({
       setComplianceError('Grace till date required.')
       return
     }
-    if (action === 'remove_now') {
-      const ok = window.confirm(`Remove ${currentMember.fbo_id} from the system right now?`)
-      if (!ok) return
-    }
     setComplianceError(null)
     updateComplianceMut.mutate(
       {
@@ -138,7 +136,6 @@ export function MemberProfileModal({
   }
 
   function handleDelete() {
-    if (!window.confirm(`Delete ${currentMember.fbo_id}? This cannot be undone.`)) return
     setDeleteError(null)
     deleteMut.mutate(currentMember.id, {
       onError: (e: Error) => setDeleteError(e.message),
@@ -147,6 +144,7 @@ export function MemberProfileModal({
   }
 
   return (
+    <>
     <div
       className="keyboard-safe-modal fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
       onClick={onClose}
@@ -302,7 +300,7 @@ export function MemberProfileModal({
                       variant="outline"
                       size="sm"
                       disabled={updateComplianceMut.isPending}
-                      onClick={() => handleComplianceAction('remove_now')}
+                      onClick={() => setDanger('remove_now')}
                       className="border-destructive/50 text-destructive hover:bg-destructive/10"
                     >
                       Remove Now
@@ -568,7 +566,7 @@ export function MemberProfileModal({
               variant="outline"
               size="sm"
               disabled={deleteMut.isPending}
-              onClick={handleDelete}
+              onClick={() => setDanger('delete')}
               className="border-destructive/50 text-destructive hover:bg-destructive/10"
             >
               {deleteMut.isPending ? 'Deleting…' : 'Delete Account'}
@@ -577,5 +575,26 @@ export function MemberProfileModal({
         </div>
       </div>
     </div>
+
+      <ConfirmDialog
+        open={danger !== null}
+        title={danger === 'delete' ? 'Delete account' : 'Remove member now'}
+        description={
+          danger === 'delete'
+            ? `This permanently deletes ${currentMember.fbo_id} and cannot be undone.`
+            : `Remove ${currentMember.fbo_id} from the system right now? They lose access immediately.`
+        }
+        confirmLabel={danger === 'delete' ? 'Delete account' : 'Remove now'}
+        destructive
+        requireTyped={danger === 'delete' ? currentMember.fbo_id : undefined}
+        onConfirm={() => {
+          const action = danger
+          setDanger(null)
+          if (action === 'delete') handleDelete()
+          else if (action === 'remove_now') handleComplianceAction('remove_now')
+        }}
+        onCancel={() => setDanger(null)}
+      />
+    </>
   )
 }
