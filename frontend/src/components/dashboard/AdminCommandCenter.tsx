@@ -691,9 +691,16 @@ export function AdminCommandCenter({ firstName }: Props) {
   const teamReports = useTeamReportsQuery('', true)
   const activeWatchers = useActiveWatchersQuery(activeTab === 'today')
 
-  // Seed live dashboard store from REST data once loaded
+  // Seed live dashboard store from REST data once loaded.
+  // MUST run in an effect, not during render: the old in-render guard
+  // (`!day1Total && !day2Total`) never flips when those totals are genuinely 0,
+  // so setInitial fired on every render → infinite re-render → the whole admin
+  // home froze (main thread blocked). A one-shot ref seeds exactly once.
   const liveSummary = teamReports.data?.live_summary
-  if (liveSummary && !liveDash.day1Total && !liveDash.day2Total) {
+  const liveSeededRef = useRef(false)
+  useEffect(() => {
+    if (!liveSummary || liveSeededRef.current) return
+    liveSeededRef.current = true
     liveDash.setInitial({
       callsToday: liveSummary.calls_made_today,
       day1Total: liveSummary.day1_total,
@@ -702,7 +709,7 @@ export function AdminCommandCenter({ firstName }: Props) {
       approvedToday: liveSummary.payment_proofs_approved_today,
       enrolledToday: liveSummary.flp_min_billing_today,
     })
-  }
+  }, [liveSummary, liveDash])
 
   const systemUsersSummary = useSystemUsersSummaryQuery(activeTab === 'team')
   const teamMembers = useTeamMembersQuery()
