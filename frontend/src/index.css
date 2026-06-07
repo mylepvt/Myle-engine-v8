@@ -435,14 +435,17 @@
 }
 
 @layer components {
-  /* Discord-style flat card (no blur, minimal shadow) */
+  /* Elevated card — resting depth + a stronger lift on hover (wires the
+     --shadow-card / --shadow-card-hover tokens that were defined but unused) */
   .surface-elevated {
-    @apply rounded border border-border bg-card text-card-foreground transition-all duration-100;
+    @apply rounded border border-border bg-card text-card-foreground transition-all duration-150;
+    box-shadow: var(--shadow-card);
   }
 
   .surface-elevated:hover {
     border-color: color-mix(in oklch, var(--border) 110%, transparent);
     background-color: color-mix(in srgb, var(--card) 92%, var(--primary) 8%);
+    box-shadow: var(--shadow-card-hover);
   }
 
   .surface-elevated:active {
