@@ -16,7 +16,7 @@ const ASSIGNEE_PALETTE = ['bg-blue-500', 'bg-pink-500', 'bg-violet-500', 'bg-cya
 
 /** Native `<select>` — compact so Call + Lead sit one row beside Dial/WA. */
 const pillSelectInner =
-  'min-w-0 flex-1 h-full cursor-pointer appearance-none rounded-full border-0 bg-transparent py-0 pl-0.5 pr-5 text-left text-ds-caption font-medium leading-none text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1 disabled:opacity-40'
+  'min-w-0 flex-1 h-full cursor-pointer appearance-none rounded-full border-0 bg-transparent py-0 pl-0.5 pr-0.5 text-left text-ds-caption font-medium leading-none text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1 disabled:opacity-40'
 
 function statusDotClass(status: string): string {
   if (status === 'contacted') return 'bg-yellow-500'
