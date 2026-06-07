@@ -631,7 +631,14 @@
   }
 
   .keyboard-safe-sheet {
-    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - var(--keyboard-inset-height, 0px) - 0.5rem);
+    /* Match the overlay's padding (top + bottom safe-area insets) so the sheet
+       fits fully inside the padded, centred box. Subtracting the bottom inset
+       too is what stops the sheet from overflowing above the viewport on
+       notched iPhones (header unreachable + no scroll). */
+    max-height: calc(
+      100dvh - (env(safe-area-inset-top, 0px) + 0.5rem) -
+        (max(env(safe-area-inset-bottom), var(--keyboard-inset-height, 0px)) + 0.5rem)
+    );
   }
 
   /* ─── Mobile bottom tab bar ──────────────────────────────────────────────── */
@@ -864,7 +871,14 @@ html.pwa-standalone .keyboard-safe-modal {
 }
 
 html.pwa-standalone .keyboard-safe-sheet {
-  max-height: calc(100lvh - env(safe-area-inset-top, 0px) - var(--keyboard-inset-height, 0px) - 0.5rem);
+  /* Standalone PWA uses lvh for the shell; mirror the overlay padding (top +
+     bottom safe-area insets) so the sheet never exceeds the visible safe area.
+     Without the bottom inset the sheet overflowed past the home indicator and,
+     once centred, pushed its sticky header off the top of the screen. */
+  max-height: calc(
+    100lvh - (env(safe-area-inset-top, 0px) + 0.5rem) -
+      (max(env(safe-area-inset-bottom), var(--keyboard-inset-height, 0px)) + 0.5rem)
+  );
 }
 
 /* Prevent callout popup on long-press for interactive elements in PWA */
