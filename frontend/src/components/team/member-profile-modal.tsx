@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { InvoiceDownloadLink } from '@/components/wallet/InvoiceDownloadLink'
 import {
@@ -176,6 +177,16 @@ export function MemberProfileModal({
         </div>
 
         <div className="px-4 pb-4 pt-4 md:px-6 md:pb-6">
+          <Tabs defaultValue="overview" className="w-full">
+            <TabsList className="mb-4 grid w-full grid-cols-5">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="role">Role</TabsTrigger>
+              <TabsTrigger value="activity">Activity</TabsTrigger>
+              <TabsTrigger value="access">Access</TabsTrigger>
+              <TabsTrigger value="danger">Danger</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview">
           <div className="mb-4 rounded-lg border border-border bg-muted/20 p-3">
             <div className="flex flex-col gap-3">
               <div className="flex flex-wrap items-start justify-between gap-2">
@@ -314,7 +325,9 @@ export function MemberProfileModal({
               ) : null}
             </div>
           </div>
+            </TabsContent>
 
+            <TabsContent value="role">
           {/* Role change */}
           <div className="mb-4 rounded-lg border border-border bg-muted/20 p-3">
             <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Change Role</p>
@@ -382,7 +395,9 @@ export function MemberProfileModal({
               <p className="mt-1 text-ds-caption text-destructive" role="alert">{uplineError}</p>
             ) : null}
           </div>
+            </TabsContent>
 
+            <TabsContent value="activity">
           {/* Leads */}
           <div className="mb-4">
             <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -458,7 +473,9 @@ export function MemberProfileModal({
               </ul>
             )}
           </div>
+            </TabsContent>
 
+            <TabsContent value="access">
           {/* Training lock/unlock */}
           <div className="mb-4 rounded-lg border border-border bg-muted/20 p-3">
             <p className="mb-2 text-ds-label uppercase text-muted-foreground">Training Gate</p>
@@ -555,7 +572,9 @@ export function MemberProfileModal({
               <p className="mt-1 text-ds-caption text-destructive" role="alert">{enrollError}</p>
             ) : null}
           </div>
+            </TabsContent>
 
+            <TabsContent value="danger">
           {/* Delete */}
           <div className="border-t border-border pt-3">
             {deleteError ? (
@@ -572,6 +591,8 @@ export function MemberProfileModal({
               {deleteMut.isPending ? 'Deleting…' : 'Delete Account'}
             </Button>
           </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>
