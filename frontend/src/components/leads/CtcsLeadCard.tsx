@@ -16,7 +16,7 @@ const ASSIGNEE_PALETTE = ['bg-blue-500', 'bg-pink-500', 'bg-violet-500', 'bg-cya
 
 /** Native `<select>` — compact so Call + Lead sit one row beside Dial/WA. */
 const pillSelectInner =
-  'max-w-[min(11rem,46vw)] min-w-0 h-full flex-1 cursor-pointer appearance-none rounded-full border-0 bg-transparent py-0 pl-0.5 pr-5 text-left text-ds-caption font-medium leading-none text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1 disabled:opacity-40'
+  'min-w-0 flex-1 h-full cursor-pointer appearance-none rounded-full border-0 bg-transparent py-0 pl-0.5 pr-5 text-left text-ds-caption font-medium leading-none text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1 disabled:opacity-40'
 
 function statusDotClass(status: string): string {
   if (status === 'contacted') return 'bg-yellow-500'
@@ -170,14 +170,9 @@ export function CtcsLeadCard({
         </div>
 
         {/* Keep call + lead status compact on one row. */}
-        <div
-          className={cn(
-            'mb-1.5 flex min-h-[2.25rem] items-center gap-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
-            'rounded-lg border border-border/40 bg-muted/20 px-1 py-1',
-          )}
-        >
+        <div className="mb-1.5 flex min-h-[2.25rem] items-center gap-1.5 rounded-lg border border-border/40 bg-muted/20 px-1 py-1">
           {pipelineReadonly ? (
-            <div className="flex h-8 min-w-[6.5rem] max-w-[52%] shrink-0 items-center gap-1.5 rounded-full border border-border/50 bg-muted/60 px-2.5">
+            <div className="flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-full border border-border/50 bg-muted/60 px-2.5">
               <span className={cn('size-1.5 shrink-0 rounded-full', statusDotClass(lead.status))} aria-hidden />
               <span className="truncate text-ds-caption text-foreground">
                 {LEAD_STATUS_OPTIONS.find((o) => o.value === lead.status)?.label ?? lead.status}
@@ -186,7 +181,7 @@ export function CtcsLeadCard({
               <span className="text-ds-caption text-muted-foreground">Leader</span>
             </div>
           ) : (
-            <div className="relative flex h-8 min-w-[7rem] max-w-[52%] shrink-0 items-center gap-1.5 rounded-full border border-border/50 bg-muted/60 pl-2 pr-6">
+            <div className="relative flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-full border border-border/50 bg-muted/60 pl-2 pr-6">
               <span className={cn('size-1.5 shrink-0 rounded-full', statusDotClass(lead.status))} aria-hidden />
               <select
                 className={pillSelectInner}
@@ -208,7 +203,7 @@ export function CtcsLeadCard({
               />
             </div>
           )}
-          <div className="relative flex h-8 min-w-[7.25rem] max-w-[52%] shrink-0 items-center gap-1.5 rounded-full border border-border/50 bg-muted/60 pl-2 pr-6">
+          <div className="relative flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-full border border-border/50 bg-muted/60 pl-2 pr-6">
             <Phone className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
             <select
               className={pillSelectInner}
@@ -232,7 +227,7 @@ export function CtcsLeadCard({
 
         </div>
 
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-1.5">
             <div className={cn('relative size-8 shrink-0 rounded-full', timeColors.glow)}>
             <svg viewBox="0 0 40 40" className="size-full" aria-hidden>
@@ -286,7 +281,7 @@ export function CtcsLeadCard({
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex flex-wrap items-center justify-end gap-1.5 sm:shrink-0">
             {!dialBlocked ? (
               <a
                 href={tel}
