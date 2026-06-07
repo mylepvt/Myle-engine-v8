@@ -39,8 +39,10 @@ export default {
           { lineHeight: '1.625rem', fontWeight: '700', letterSpacing: '-0.025em' },
         ],
         'ds-h3': [
-          '1rem',
-          { lineHeight: '1.375rem', fontWeight: '600', letterSpacing: '-0.015em' },
+          // 17px — restores a real step above the 15px body (was 16px, a 1px
+          // collapse that flattened the heading vs body hierarchy)
+          '1.0625rem',
+          { lineHeight: '1.45rem', fontWeight: '600', letterSpacing: '-0.015em' },
         ],
         'ds-body': [
           '0.9375rem',
