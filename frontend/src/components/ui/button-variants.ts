@@ -8,7 +8,7 @@ export const buttonVariants = cva(
         default:
           'bg-primary text-primary-foreground hover:bg-[color-mix(in_srgb,var(--primary),black_20%)] active:bg-[color-mix(in_srgb,var(--primary),black_30%)]',
         secondary:
-          'bg-secondary text-secondary-foreground hover:bg-[color-mix(in_srgb,var(--secondary),black_15%)] active:bg-[color-mix(in_srgb,var(--secondary),black_25%)]',
+          'border border-border bg-secondary text-secondary-foreground hover:bg-[color-mix(in_srgb,var(--secondary),black_15%)] active:bg-[color-mix(in_srgb,var(--secondary),black_25%)]',
         ghost:
           'text-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_9%,transparent)] active:bg-[color-mix(in_srgb,var(--foreground)_13%,transparent)]',
         outline:

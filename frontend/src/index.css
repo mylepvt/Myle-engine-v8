@@ -28,12 +28,16 @@
     --secondary: #eef1f8;
     --secondary-foreground: #141a29;
     --muted: #eef1f8;
-    --muted-foreground: #6b7488;
+    /* darkened from #6b7488 so caption text clears WCAG AA (4.5:1) on the
+       page background, not just on white cards */
+    --muted-foreground: #565f73;
     --accent: #e6edfd;
     --accent-foreground: #2952cc;
     --destructive: #e0444d;
     --destructive-foreground: #ffffff;
-    --border: #e3e8f1;
+    /* darkened from #e3e8f1 — the old border was ~1.2:1 on white, so cards,
+       inputs and dividers were nearly invisible in light mode */
+    --border: #c8d0de;
     --input: #eef1f8;
     --ring: #3b6ef6;
     /* rounded corners — light only (dark overrides back to flat) */
@@ -44,15 +48,17 @@
     --chart-4: color-mix(in srgb, var(--palette-mist) 70%, var(--palette-blue) 30%);
     --chart-5: color-mix(in srgb, var(--palette-ink) 40%, var(--palette-mist) 60%);
     --surface: #f3f5fb;
-    --subtle: #8b93a7;
+    /* darkened from #8b93a7 so faint/subtle text still clears AA */
+    --subtle: #616a7d;
     --success: #23a55a;
     --success-foreground: #ffffff;
     --warning: #f0b232;
     --warning-foreground: #000000;
     --glass-base: #ffffff;
-    /* soft neumorphic card shadows */
-    --shadow-card: 0 4px 14px -6px rgba(45,70,120,0.12), 0 1px 3px -1px rgba(45,70,120,0.06);
-    --shadow-card-hover: 0 10px 26px -8px rgba(45,70,120,0.18), 0 2px 6px -2px rgba(45,70,120,0.09);
+    /* soft neumorphic card shadows — strengthened so white cards lift off the
+       light page / white panels they nest inside (was 0.12/0.06) */
+    --shadow-card: 0 4px 16px -6px rgba(45,70,120,0.18), 0 1px 3px -1px rgba(45,70,120,0.10);
+    --shadow-card-hover: 0 12px 28px -8px rgba(45,70,120,0.24), 0 2px 6px -2px rgba(45,70,120,0.12);
     --shadow-ios-bar: 0 1px 0 0 rgba(255,255,255,0.7),
       0 10px 30px -16px rgba(45,70,120,0.22);
 
