@@ -232,7 +232,7 @@ export function CtcsLeadCard({
 
         </div>
 
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-1.5">
             <div className={cn('relative size-8 shrink-0 rounded-full', timeColors.glow)}>
             <svg viewBox="0 0 40 40" className="size-full" aria-hidden>
@@ -286,7 +286,7 @@ export function CtcsLeadCard({
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex flex-wrap items-center justify-end gap-1.5 sm:shrink-0">
             {!dialBlocked ? (
               <a
                 href={tel}
