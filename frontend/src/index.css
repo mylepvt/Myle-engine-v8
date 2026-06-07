@@ -101,8 +101,9 @@
     --accent-foreground: #ffffff;
     --destructive: #da373c;
     --destructive-foreground: #ffffff;
-    /* ── Borders: extremely subtle — almost invisible */
-    --border: rgba(255,255,255,0.07);
+    /* ── Borders: subtle but visible (was 0.07 — too faint to separate
+       surfaces in dark mode) */
+    --border: rgba(255,255,255,0.10);
     --input: #15171c;
     --ring: #5865f2;
     --chart-1: #5865f2;
@@ -117,9 +118,10 @@
     --warning: #f0b232;
     --warning-foreground: #000000;
     --glass-base: #1a1c22;
-    /* ── Shadows: use darkness, not light */
-    --shadow-card: 0 1px 3px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.03);
-    --shadow-card-hover: 0 2px 6px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.04);
+    /* ── Shadows: darkness + a hairline ring so cards/modals actually lift off
+       the near-black surfaces (was 1px/3px with no ring — zero elevation) */
+    --shadow-card: 0 2px 8px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06);
+    --shadow-card-hover: 0 8px 22px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.09);
     --shadow-ios-bar: 0 1px 0 rgba(255,255,255,0.03);
   }
 }
