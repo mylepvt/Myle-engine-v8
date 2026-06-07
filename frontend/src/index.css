@@ -40,8 +40,9 @@
     --border: #c8d0de;
     --input: #eef1f8;
     --ring: #3b6ef6;
-    /* rounded corners — light only (dark overrides back to flat) */
-    --radius: 0.85rem;
+    /* one radius across both themes — single brand identity (was 0.85rem
+       light / 0.25rem dark, which made the two themes feel like two kits) */
+    --radius: 0.625rem;
     --chart-1: var(--palette-blue);
     --chart-2: var(--palette-cyan-dull);
     --chart-3: color-mix(in srgb, var(--palette-blue) 55%, var(--palette-mist) 45%);
@@ -87,8 +88,8 @@
 
   .dark {
     color-scheme: dark;
-    /* keep dark mode flat (Discord look) — light mode is the rounded one */
-    --radius: 0.25rem;
+    /* match light radius — one rounded identity across both themes */
+    --radius: 0.625rem;
     --palette-ink: #0f1014;
     /* ── Surfaces ─── deeper than Discord, matte charcoal blacks */
     --background: #111214;
@@ -97,21 +98,23 @@
     --card-foreground: #c8ccd0;
     --popover: #0f1014;
     --popover-foreground: #c8ccd0;
-    --primary: #5865f2;
+    /* unified brand blue — same hue as light (#3b6ef6); dropped the
+       Discord-blurple #5865f2 so the brand colour is identical in both themes */
+    --primary: #3b6ef6;
     --primary-foreground: #ffffff;
     --secondary: #1e2028;
     --secondary-foreground: #9a9fa8;
     --muted: #15171c;
     --muted-foreground: #72767d;
-    --accent: #5865f2;
+    --accent: #3b6ef6;
     --accent-foreground: #ffffff;
     --destructive: #da373c;
     --destructive-foreground: #ffffff;
     /* ── Borders: extremely subtle — almost invisible */
     --border: rgba(255,255,255,0.07);
     --input: #15171c;
-    --ring: #5865f2;
-    --chart-1: #5865f2;
+    --ring: #3b6ef6;
+    --chart-1: #3b6ef6;
     --chart-2: #23a55a;
     --chart-3: #4752c4;
     --chart-4: #9a9fa8;
@@ -904,11 +907,15 @@ html.pwa-standalone * {
   button:focus-visible,
   a:focus-visible,
   input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible,
   [role="button"]:focus-visible {
     outline: none;
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 50%, transparent);
   }
 
+  /* Plain :focus strips the native outline; textarea + select now get the ring
+     above via :focus-visible, so keyboard focus stays visible on them. */
   input:focus,
   textarea:focus,
   select:focus {
