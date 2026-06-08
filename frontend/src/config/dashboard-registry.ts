@@ -124,7 +124,7 @@ const SECTION_ORDER: { id: string; label: string }[] = [
   { id: 'work', label: '' },
   { id: 'finance', label: 'Wallet' },
   { id: 'team', label: 'Team' },
-  { id: 'other', label: 'Community' },
+  { id: 'other', label: 'More' },
   { id: 'system', label: 'System' },
   { id: 'settings', label: 'Settings' },
 ]
@@ -429,7 +429,7 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
   {
     path: 'other/training',
     section: { id: 'other', label: 'Community' },
-    label: 'Training',
+    label: 'Community Training',
     roles: routeRoles('other/training'),
     surface: 'full',
     ui: { kind: 'community-training' },
