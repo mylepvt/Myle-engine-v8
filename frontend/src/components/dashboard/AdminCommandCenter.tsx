@@ -787,13 +787,13 @@ export function AdminCommandCenter({ firstName }: Props) {
   }, [onlinePanelOpen])
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6 overflow-x-hidden">
       {/* ── Compact operational summary ── */}
-      <div className="rounded border border-border/60 bg-card px-3 py-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="rounded border border-border/60 bg-card px-2 sm:px-3 py-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <p className="text-sm font-medium text-foreground">Good day, {firstName}</p>
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+              <p className="text-sm font-medium text-foreground shrink-0">Good day, {firstName}</p>
               {pendingTotal > 0 && (
                 <span className="flex items-center gap-1 rounded border border-amber-400/20 bg-amber-400/[0.07] px-1.5 py-0.5 text-[10px]">
                   <span className="relative flex size-1.5">
@@ -823,12 +823,12 @@ export function AdminCommandCenter({ firstName }: Props) {
               )}
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-1.5 sm:shrink-0">
+          <div className="flex flex-wrap items-center gap-1.5 shrink-0 min-w-0">
             {/* Live online counter */}
-            <div ref={onlinePanelRef} className="relative">
+            <div ref={onlinePanelRef} className="relative shrink-0">
               <button
                 onClick={() => setOnlinePanelOpen((v) => !v)}
-                className="flex items-center gap-1 rounded border border-emerald-400/20 bg-emerald-500/[0.07] px-1.5 py-0.5 text-[10px] hover:bg-emerald-500/[0.12] transition-colors"
+                className="flex items-center gap-1 rounded border border-emerald-400/20 bg-emerald-500/[0.07] px-1.5 py-0.5 text-[10px] hover:bg-emerald-500/[0.12] transition-colors whitespace-nowrap"
               >
                 <span className="relative flex size-1.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
@@ -839,7 +839,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                 </span>
               </button>
               {onlinePanelOpen && (
-                <div className="absolute right-0 top-full z-50 mt-1.5 w-64 rounded border border-border/60 bg-card shadow-xl">
+                <div className="fixed right-2 sm:absolute sm:right-0 top-auto sm:top-full z-50 mt-1.5 w-72 sm:w-64 rounded border border-border/60 bg-card shadow-xl max-sm:left-2">
                   <div className="flex items-center justify-between border-b border-border/40 px-3 py-2">
                     <span className="text-[11px] font-semibold text-foreground">Online now</span>
                     <span className="text-[10px] text-muted-foreground/60">
@@ -850,10 +850,10 @@ export function AdminCommandCenter({ firstName }: Props) {
                 </div>
               )}
             </div>
-            <Button asChild variant="secondary" size="sm" className="h-7 px-2.5 text-xs">
-              <Link to="/dashboard/work/leads">Open Leads</Link>
+            <Button asChild variant="secondary" size="sm" className="h-7 px-2 text-xs">
+              <Link to="/dashboard/work/leads">Leads</Link>
             </Button>
-            <Button asChild variant="secondary" size="sm" className="h-7 px-2.5 text-xs">
+            <Button asChild variant="secondary" size="sm" className="h-7 px-2 text-xs">
               <Link to="/dashboard/finance/recharge-admin">Finance</Link>
             </Button>
           </div>
