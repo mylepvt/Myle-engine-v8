@@ -1,7 +1,9 @@
 import { type FormEvent, useMemo, useState } from 'react'
+import { ListChecks } from 'lucide-react'
 
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { Button } from '@/components/ui/button'
+import { EmptyStatePremium } from '@/components/ui/empty-state-premium'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   useCreateFollowUpMutation,
@@ -158,7 +160,12 @@ export function FollowUpsWorkPage({ title }: Props) {
             ) : null}
           </p>
           {fuQ.data.items.length === 0 ? (
-            <p className="text-muted-foreground">No follow-ups in this view.</p>
+            <EmptyStatePremium
+              variant="tasks"
+              title="No follow-ups"
+              description={openOnly ? 'All follow-ups are completed. Uncheck "Open only" to see them.' : 'Create a follow-up above to get started.'}
+              icon={ListChecks}
+            />
           ) : (
             <ul className="space-y-2">
               {fuQ.data.items.map((f) => (

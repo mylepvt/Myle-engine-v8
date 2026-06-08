@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
+import { Users } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { EmptyStatePremium } from '@/components/ui/empty-state-premium'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   LEAD_STATUS_OPTIONS,
@@ -503,11 +505,21 @@ export function LeadPoolWorkPage({ title }: Props) {
           ) : null}
 
           {canViewPoolList && data != null && data.items.length === 0 ? (
-            <p>No leads in pool right now.</p>
+            <EmptyStatePremium
+              variant="leads"
+              title="No leads in pool"
+              description="Import leads or wait for admin to add them."
+              icon={Users}
+            />
           ) : null}
 
           {!canViewPoolList && batchPreview != null && batchPreview.available_count === 0 ? (
-            <p>No leads in pool right now.</p>
+            <EmptyStatePremium
+              variant="leads"
+              title="No leads in pool"
+              description="No leads available to claim right now. Check back later."
+              icon={Users}
+            />
           ) : null}
 
           {!canViewPoolList ? (
@@ -728,7 +740,13 @@ export function LeadPoolWorkPage({ title }: Props) {
                 </p>
 
                 {freePoolPreview.available_count === 0 ? (
-                  <p className="mt-2 text-muted-foreground">Abhi koi free lead available nahi hai.</p>
+                  <EmptyStatePremium
+                    variant="leads"
+                    title="No free leads available"
+                    description="Ask admin to add leads to the free pool."
+                    className="mt-2"
+                    icon={Users}
+                  />
                 ) : freeBatchConfirmOpen ? (
                   <div className="mt-3 space-y-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2">
                     <p className="text-foreground">
