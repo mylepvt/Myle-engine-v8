@@ -623,7 +623,7 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
           )}
 
           {/* ══ SECTION 3 — FUNNEL + HEATMAP ══════════════════ */}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Card className="surface-elevated">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">Activity Conversion</CardTitle>
@@ -690,7 +690,7 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
               <CardTitle className="text-sm">Member Details</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-2 text-[12.5px] sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2 text-[12.5px] sm:grid-cols-2">
                 {([
                   ['Email',     data.member.member_email],
                   ['Phone',     data.member.member_phone || '—'],

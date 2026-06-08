@@ -191,7 +191,7 @@ export function TeamReportsPage({ title }: Props) {
 
       {isPending ? (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="h-28 rounded" />
             ))}
@@ -215,7 +215,7 @@ export function TeamReportsPage({ title }: Props) {
 
       {data ? (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard
               label="Members in scope"
               value={summary.scopeTotal}
@@ -257,7 +257,7 @@ export function TeamReportsPage({ title }: Props) {
             </div>
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(18rem,0.7fr)]">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(18rem,0.7fr)]">
             <section className="surface-elevated p-4 md:p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>

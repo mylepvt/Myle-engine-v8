@@ -39,7 +39,7 @@ export function TeamHomeExecutionStrip({
       </CardHeader>
       <CardContent>
         {isPending ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="h-20 rounded" />
             ))}
@@ -55,7 +55,7 @@ export function TeamHomeExecutionStrip({
         ) : null}
         {data && !isPending ? (
           <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               {todayPending ? (
                 Array.from({ length: 3 }).map((_, i) => <Skeleton key={`today-${i}`} className="h-16 rounded" />)
               ) : (
@@ -75,7 +75,7 @@ export function TeamHomeExecutionStrip({
                 </>
               )}
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded border border-border dark:border-white/10 bg-muted/40 px-3 py-3">
                 <p className="text-ds-caption text-muted-foreground">Claimed (active)</p>
                 <p className="mt-1 font-heading text-2xl font-semibold tabular-nums">{data.claimed}</p>

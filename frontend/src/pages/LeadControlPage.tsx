@@ -289,7 +289,7 @@ export function LeadControlPage({ title }: Props) {
             />
           </section>
 
-          <section className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+          <section className="grid grid-cols-1 gap-4 lg:grid-cols-[1.05fr_0.95fr]">
             <Card className="surface-elevated overflow-hidden border-border/60">
               <CardHeader className="border-b border-border/60 px-5 py-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -432,7 +432,7 @@ export function LeadControlPage({ title }: Props) {
                             <Link to={`/dashboard/work/leads/${selectedLead.lead_id}`}>Open lead</Link>
                           </Button>
                         </div>
-                        <div className="grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-3 text-sm text-muted-foreground sm:grid-cols-2">
                           <div>
                             <p className="text-xs uppercase tracking-wide">Current assignee</p>
                             <p className="mt-1 text-foreground">{selectedLead.assigned_to_name}</p>
@@ -518,7 +518,7 @@ export function LeadControlPage({ title }: Props) {
             </Card>
           </section>
 
-          <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+          <section className="grid grid-cols-1 gap-4 xl:grid-cols-[0.9fr_1.1fr]">
             <Card className="surface-elevated border-border/60">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">

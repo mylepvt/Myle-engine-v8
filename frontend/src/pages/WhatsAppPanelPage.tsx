@@ -432,7 +432,7 @@ export function WhatsAppPanelPage({ title }: Props) {
       </Card>
 
       {/* Manual Controls */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {/* Send custom message — one person OR broadcast */}
         <Card className="lg:col-span-2">
           <CardHeader className="pb-2 pt-4">

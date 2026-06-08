@@ -372,7 +372,7 @@ export function SettingsAppPage({ title }: Props) {
             {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load app settings.'}
           </div>
         ) : (
-          <div className="grid gap-3">
+          <div className="grid grid-cols-1 gap-3">
             {CONTENT_LINK_FIELDS.map((field) => (
               <label key={field.key} className="block text-sm">
                 <span className="mb-1 block text-ds-caption text-muted-foreground">{field.label}</span>
@@ -419,13 +419,13 @@ export function SettingsAppPage({ title }: Props) {
             {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load app settings.'}
           </div>
         ) : (
-          <div className="grid gap-3">
+          <div className="grid grid-cols-1 gap-3">
             {(['d1', 'd2'] as const).map((day) => (
               <div key={day} className="rounded-lg border border-border dark:border-white/10 p-3">
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Day {day === 'd1' ? '1' : '2'}
                 </h3>
-                <div className="grid gap-3 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   {(['morning', 'afternoon', 'evening'] as const).map((slot) => (
                     <div key={`${day}_${slot}`} className="space-y-2">
                       <p className="text-ds-caption font-medium capitalize text-muted-foreground/80">{slot}</p>
@@ -599,7 +599,7 @@ export function SettingsAppPage({ title }: Props) {
             {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load settings.'}
           </div>
         ) : (
-          <div className="grid gap-3">
+          <div className="grid grid-cols-1 gap-3">
             {WA_FIELDS.map((field) => {
               const isTokenField = field.key === 'whatsapp.meta.access_token'
               return (

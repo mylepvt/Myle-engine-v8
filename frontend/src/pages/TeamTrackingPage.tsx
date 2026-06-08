@@ -577,7 +577,7 @@ export function TeamTrackingPage({ title }: Props) {
       </Card>
 
       <Card className="space-y-4 px-4 py-4">
-        <div className="grid gap-3 xl:grid-cols-[minmax(18rem,1.25fr)_12rem]">
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(18rem,1.25fr)_12rem]">
           <ListSearchInput
             value={searchQuery}
             onValueChange={(value) => updateParam(params, setParams, 'q', value)}
@@ -597,7 +597,7 @@ export function TeamTrackingPage({ title }: Props) {
           </label>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <label className="space-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             <span>Presence</span>
             <select
@@ -704,7 +704,7 @@ export function TeamTrackingPage({ title }: Props) {
 
       {isPending ? (
         <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
             {Array.from({ length: 6 }).map((_, index) => (
               <Skeleton key={index} className="h-32 rounded-md" />
             ))}
@@ -729,7 +729,7 @@ export function TeamTrackingPage({ title }: Props) {
 
       {data ? (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
             <MetricPanel
               icon={Users}
               label="Members in scope"
@@ -814,7 +814,7 @@ export function TeamTrackingPage({ title }: Props) {
                   No removed members match the current filters.
                 </div>
               ) : (
-                <div className="grid gap-2 p-4 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="grid grid-cols-1 gap-2 p-4 sm:grid-cols-2 xl:grid-cols-3">
                   {removedMembers.map((item) => (
                     <div
                       key={item.user_id}
@@ -966,7 +966,7 @@ export function TeamTrackingPage({ title }: Props) {
             </section>
           ) : null}
 
-          <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+          <div className="grid grid-cols-1 gap-4 2xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
             <section className="overflow-hidden rounded-md border border-border bg-card shadow-[var(--shadow-card)]">
               <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
                 <div>
@@ -977,7 +977,7 @@ export function TeamTrackingPage({ title }: Props) {
                 </div>
                 <Badge variant="success">{liveNow.length} visible</Badge>
               </div>
-              <div className="grid gap-3 p-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 p-4 md:grid-cols-2">
                 {liveNow.length === 0 ? (
                   <div className="rounded-md border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground md:col-span-2">
                     No live members match these filters right now.
@@ -1028,7 +1028,7 @@ export function TeamTrackingPage({ title }: Props) {
                 No leader groups match the active filters.
               </div>
             ) : (
-              <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="grid grid-cols-1 gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
                 {leaderHealth.map((leader) => (
                   <Card key={leader.key} className="border-border/60 bg-muted/30">
                     <CardHeader className="space-y-2 pb-3">

@@ -197,7 +197,7 @@ export function MyTeamPage({ title }: Props) {
       ) : null}
 
       {!initialLoading ? (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]">
           <section className="surface-elevated p-4 md:p-5">
             <div className="mb-4 flex items-center gap-2">
               <div className="rounded border border-primary/20 bg-primary/[0.08] p-2 text-primary">

@@ -101,7 +101,7 @@ const PageHeaderSkeleton = () => (
 )
 
 const StatsRowSkeleton = ({ count = 4 }: { count?: number }) => (
-  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
     {Array.from({ length: count }).map((_, i) => (
       <MetricCardSkeleton key={i} />
     ))}
@@ -123,7 +123,7 @@ const FullPageSkeleton = () => (
   <div className="space-y-8">
     <PageHeaderSkeleton />
     <StatsRowSkeleton />
-    <div className="grid gap-8 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
       <ContentSectionSkeleton />
       <ContentSectionSkeleton />
     </div>

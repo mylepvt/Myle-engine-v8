@@ -232,7 +232,7 @@ export function MemberProfileModal({
                 </p>
               ) : (
                 <>
-                  <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
                     <label className="block">
                       <span className="mb-1 block text-ds-caption text-muted-foreground">Grace till</span>
                       <input

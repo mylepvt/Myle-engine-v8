@@ -79,7 +79,7 @@ function TrainingOverviewCard({
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[25rem]">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:min-w-[25rem]">
           <div className="surface-inset px-4 py-3">
             <p className="text-ds-caption uppercase tracking-wide text-muted-foreground">Done</p>
             <p className="mt-1 text-2xl font-semibold text-foreground">{completedDays}</p>
