@@ -39,14 +39,14 @@ export function SalesApprovalsPage({ title }: Props) {
 
   async function handleApprove(saleId: number) {
     await approve.mutateAsync(saleId)
-    playAppSound('cashier')
+    playAppSound('claim')
   }
 
   async function handleReject(saleId: number) {
     const reason = window.prompt('Why are you rejecting this invoice?', 'Invoice unclear or invalid')
     if (reason === null) return
     await reject.mutateAsync({ saleId, reason: reason.trim() || 'Invoice unclear or invalid' })
-    playAppSound('decline')
+    playAppSound('error')
   }
 
   return (
