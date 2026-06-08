@@ -17,6 +17,7 @@ import {
   type ResetTarget,
 } from '@/components/team/member-utils'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
+import { useBackClose } from '@/hooks/use-back-close'
 import {
   useTeamMembersQuery,
   type TeamMemberPublic,
@@ -37,6 +38,9 @@ export function TeamMembersPage({ title }: Props) {
   const [resetTarget, setResetTarget] = useState<ResetTarget | null>(null)
   const [profileTarget, setProfileTarget] = useState<TeamMemberPublic | null>(null)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
+
+  useBackClose({ open: !!profileTarget, onClose: () => setProfileTarget(null) })
+  useBackClose({ open: !!resetTarget, onClose: () => setResetTarget(null) })
   const deferredMemberQuery = useDeferredValue(memberQuery)
   const searchActive = memberQuery.trim().length > 0
   const filteredMembers = data
