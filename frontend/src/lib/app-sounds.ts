@@ -285,52 +285,41 @@ function canPlay(kind: AppSound) {
   return true
 }
 
+// Apple-keyboard-style keypress: a crisp noise "tac" + a soft low body "pock",
+// NOT a pitched beep. Per-press jitter (level + pitch) so rapid taps feel like
+// real typing instead of one robotic tone.
 function playSoftTap(graph: AudioGraph) {
   const { ctx, output } = graph
-  const now = ctx.currentTime + 0.005
+  const now = ctx.currentTime + 0.003
+  const lvl = 0.82 + Math.random() * 0.34 // 0.82–1.16 per-press loudness variation
+  const pitch = 1 + (Math.random() * 0.08 - 0.04) // ±4% body pitch variation
+
+  // Low body "pock" — the soft thump of a key bottoming out (the satisfying part)
   scheduleTone(ctx, output, {
     at: now,
-    frequency: 720,
-    endFrequency: 470,
-    type: 'triangle',
-    peak: 0.011,
-    attack: 0.002,
-    decay: 0.024,
-    filter: {
-      type: 'lowpass',
-      frequency: 1350,
-      q: 0.35,
-    },
-  })
-  scheduleTone(ctx, output, {
-    at: now + 0.001,
-    frequency: 1480,
-    endFrequency: 1180,
-    type: 'square',
-    peak: 0.0028,
-    attack: 0.001,
-    decay: 0.012,
-    filter: {
-      type: 'bandpass',
-      frequency: 1850,
-      q: 1.3,
-    },
-  })
-  scheduleTone(ctx, output, {
-    at: now,
-    frequency: 420,
-    endFrequency: 340,
+    frequency: 176 * pitch,
+    endFrequency: 112 * pitch,
     type: 'sine',
-    peak: 0.0022,
-    attack: 0.002,
-    decay: 0.03,
+    peak: 0.025 * lvl,
+    attack: 0.001,
+    decay: 0.033,
+    filter: { type: 'lowpass', frequency: 900, q: 0.6 },
   })
+  // Click transient — short broadband noise burst = the crisp "tac" of the press
   scheduleNoise(ctx, output, {
     at: now,
     duration: 0.01,
-    peak: 0.00075,
-    highpass: 1900,
-    lowpass: 4200,
+    peak: 0.03 * lvl,
+    highpass: 1400,
+    lowpass: 5000,
+  })
+  // Bright micro-tick — a hair of high noise for snap/definition on top
+  scheduleNoise(ctx, output, {
+    at: now + 0.0005,
+    duration: 0.004,
+    peak: 0.011 * lvl,
+    highpass: 3800,
+    lowpass: 8200,
   })
 }
 
