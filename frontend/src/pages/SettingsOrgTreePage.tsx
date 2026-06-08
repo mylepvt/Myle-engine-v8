@@ -4,6 +4,7 @@ import { MemberProfileModal } from '@/components/team/member-profile-modal'
 import { ResetPasswordModal } from '@/components/team/reset-password-modal'
 import { type ResetTarget } from '@/components/team/member-utils'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
+import { useBackClose } from '@/hooks/use-back-close'
 import { useOrgTreeQuery, type OrgTreeNode } from '@/hooks/use-org-tree-query'
 import { useTeamMembersQuery, type TeamMemberPublic } from '@/hooks/use-team-query'
 
@@ -120,6 +121,9 @@ export function SettingsOrgTreePage({ title }: Props) {
   const [resetTarget, setResetTarget] = useState<ResetTarget | null>(null)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
 
+  useBackClose({ open: !!profileTarget, onClose: () => setProfileTarget(null) })
+  useBackClose({ open: !!resetTarget, onClose: () => setResetTarget(null) })
+
   function handleCardClick(node: OrgTreeNode) {
     const member = membersByFboId.get(node.fbo_id)
     if (!member) return
@@ -156,7 +160,18 @@ export function SettingsOrgTreePage({ title }: Props) {
         </p>
 
         {isPending ? (
-          <p style={{ color: C.mut2, fontSize: 13 }}>Loading organisation map&hellip;</p>
+          <div className="space-y-3 animate-pulse" style={{ padding: '4px 0' }}>
+            <div className="flex gap-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} style={{
+                  flex: '0 0 250px', height: 320, borderRadius: 12,
+                  background: 'linear-gradient(135deg, #121922 30%, #1a2535 60%, #121922 100%)',
+                  backgroundSize: '200% 100%',
+                  animation: 'shimmer 1.5s ease-in-out infinite',
+                }} />
+              ))}
+            </div>
+          </div>
         ) : null}
 
         {isError ? (

@@ -6,6 +6,7 @@ import { PushNotificationBootstrap } from '@/components/notifications/PushNotifi
 import { InstallAppBanner } from '@/components/pwa/InstallAppBanner'
 import { ProtectedRoute } from '@/components/routing/ProtectedRoute'
 import { Skeleton } from '@/components/ui/skeleton'
+import { SkeletonPremium } from '@/components/ui/skeleton-premium'
 import { DashboardHomePage } from '@/pages/DashboardHomePage'
 import { HomePage } from '@/pages/HomePage'
 import { LoginPage } from '@/pages/LoginPage'
@@ -27,9 +28,22 @@ const DashboardNestedPage = lazy(async () => {
 
 function DashboardRouteFallback() {
   return (
-    <div className="space-y-3 p-4">
-      <Skeleton className="h-8 w-48" />
-      <Skeleton className="h-24 w-full max-w-2xl" />
+    <div className="space-y-4 p-4 animate-pulse">
+      <div className="flex items-center gap-3">
+        <SkeletonPremium className="h-10 w-10 rounded-full" />
+        <div className="space-y-2 flex-1">
+          <SkeletonPremium className="h-5 w-48" />
+          <SkeletonPremium className="h-3 w-32" />
+        </div>
+      </div>
+      <SkeletonPremium className="h-3 w-full max-w-2xl" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+        <SkeletonPremium className="h-28 w-full rounded-xl" />
+        <SkeletonPremium className="h-28 w-full rounded-xl" />
+        <SkeletonPremium className="h-28 w-full rounded-xl" />
+      </div>
+      <SkeletonPremium className="h-3 w-56 mt-4" />
+      <SkeletonPremium className="h-20 w-full max-w-xl rounded-lg" />
     </div>
   )
 }
