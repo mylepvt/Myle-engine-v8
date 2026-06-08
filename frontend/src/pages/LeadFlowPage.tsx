@@ -121,7 +121,7 @@ export function LeadFlowPage({ title }: Props) {
         <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
           {LEAD_STATUS_OPTIONS.filter(o => o.value !== 'new').map((o) => (
             <div key={o.value} className="surface-inset flex items-center gap-2 px-2.5 py-1.5">
-              <span className={`h-2 w-2 shrink-0 rounded-full border ${STAGE_COLORS[o.value] ?? 'border-border bg-muted'}`} />
+              <span className={`h-2 w-2 shrink-0 rounded-full border ${STAGE_COLORS[o.value] ?? 'border-border bg-muted'}`} aria-hidden />
               <span className="truncate text-xs text-foreground">{o.label}</span>
             </div>
           ))}

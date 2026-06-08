@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect } from 'react'
+import { Toaster } from 'sonner'
 
 import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
 
@@ -19,5 +20,18 @@ export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) 
     if (meta) meta.setAttribute('content', THEME_COLOR[theme])
   }, [theme])
 
-  return <>{children}</>
+  return (
+    <>
+      {children}
+      <Toaster
+        richColors
+        closeButton
+        position="bottom-right"
+        theme={theme}
+        toastOptions={{
+          duration: 4000,
+        }}
+      />
+    </>
+  )
 }

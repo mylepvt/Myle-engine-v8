@@ -22,18 +22,18 @@ type SettingsTextField = {
 }
 
 const BATCH_VIDEO_FIELDS: readonly SettingsTextField[] = [
-  { key: 'batch_d1_morning_v1', label: 'Day 1 - Morning Video 1', placeholder: 'https://youtube.com/watch?v=...', help: 'Token link generate hote waqt watch/batch/d1_morning/1 pe ye video URL serve hoga.' },
-  { key: 'batch_d1_morning_v2', label: 'Day 1 - Morning Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'watch/batch/d1_morning/2 ke liye video URL.' },
-  { key: 'batch_d1_afternoon_v1', label: 'Day 1 - Afternoon Video 1', placeholder: 'https://youtube.com/watch?v=...', help: 'watch/batch/d1_afternoon/1 ke liye video URL.' },
-  { key: 'batch_d1_afternoon_v2', label: 'Day 1 - Afternoon Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'watch/batch/d1_afternoon/2 ke liye video URL.' },
-  { key: 'batch_d1_evening_v1', label: 'Day 1 - Evening Video 1', placeholder: 'https://youtube.com/watch?v=...', help: 'watch/batch/d1_evening/1 ke liye video URL.' },
-  { key: 'batch_d1_evening_v2', label: 'Day 1 - Evening Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'watch/batch/d1_evening/2 ke liye video URL.' },
-  { key: 'batch_d2_morning_v1', label: 'Day 2 - Morning Video 1', placeholder: 'https://youtube.com/watch?v=...', help: 'watch/batch/d2_morning/1 ke liye video URL.' },
-  { key: 'batch_d2_morning_v2', label: 'Day 2 - Morning Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'watch/batch/d2_morning/2 ke liye video URL.' },
-  { key: 'batch_d2_afternoon_v1', label: 'Day 2 - Afternoon Video 1', placeholder: 'https://youtube.com/watch?v=...', help: 'watch/batch/d2_afternoon/1 ke liye video URL.' },
-  { key: 'batch_d2_afternoon_v2', label: 'Day 2 - Afternoon Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'watch/batch/d2_afternoon/2 ke liye video URL.' },
-  { key: 'batch_d2_evening_v1', label: 'Day 2 - Evening Video 1', placeholder: 'https://youtube.com/watch?v=...', help: 'watch/batch/d2_evening/1 ke liye video URL.' },
-  { key: 'batch_d2_evening_v2', label: 'Day 2 - Evening Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'watch/batch/d2_evening/2 ke liye video URL.' },
+  { key: 'batch_d1_morning_v1', label: 'Day 1 - Morning Video 1', placeholder: 'https://youtube.com/watch?v=...', help: 'Serves as the video URL for watch/batch/d1_morning/1 when a token link is generated.' },
+  { key: 'batch_d1_morning_v2', label: 'Day 1 - Morning Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'Video URL for watch/batch/d1_morning/2.' },
+  { key: 'batch_d1_afternoon_v1', label: 'Day 1 - Afternoon Video 1', placeholder: 'https://youtube.com/watch?v=...', help: 'Video URL for watch/batch/d1_afternoon/1.' },
+  { key: 'batch_d1_afternoon_v2', label: 'Day 1 - Afternoon Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'Video URL for watch/batch/d1_afternoon/2.' },
+  { key: 'batch_d1_evening_v1', label: 'Day 1 - Evening Video 1', placeholder: 'https://youtube.com/watch?v=...', help: 'Video URL for watch/batch/d1_evening/1.' },
+  { key: 'batch_d1_evening_v2', label: 'Day 1 - Evening Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'Video URL for watch/batch/d1_evening/2.' },
+  { key: 'batch_d2_morning_v1', label: 'Day 2 - Morning Video 1', placeholder: 'https://youtube.com/watch?v=...', help: 'Video URL for watch/batch/d2_morning/1.' },
+  { key: 'batch_d2_morning_v2', label: 'Day 2 - Morning Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'Video URL for watch/batch/d2_morning/2.' },
+  { key: 'batch_d2_afternoon_v1', label: 'Day 2 - Afternoon Video 1', placeholder: 'https://youtube.com/watch?v=...', help: 'Video URL for watch/batch/d2_afternoon/1.' },
+  { key: 'batch_d2_afternoon_v2', label: 'Day 2 - Afternoon Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'Video URL for watch/batch/d2_afternoon/2.' },
+  { key: 'batch_d2_evening_v1', label: 'Day 2 - Evening Video 1', placeholder: 'https://youtube.com/watch?v=...', help: 'Video URL for watch/batch/d2_evening/1.' },
+  { key: 'batch_d2_evening_v2', label: 'Day 2 - Evening Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'Video URL for watch/batch/d2_evening/2.' },
 ]
 
 const CONTENT_LINK_FIELDS: readonly SettingsTextField[] = [
@@ -41,19 +41,19 @@ const CONTENT_LINK_FIELDS: readonly SettingsTextField[] = [
     key: 'content.esbi_model',
     label: 'ESBI Model Video',
     placeholder: 'https://youtube.com/watch?v=...',
-    help: 'Day 2 card me ESBI Model task ka Watch button is link pe jaata hai.',
+    help: 'Day 2 card — ESBI Model task Watch button uses this link.',
   },
   {
     key: 'content.power_of_network',
     label: 'Power of Network Video',
     placeholder: 'https://youtube.com/watch?v=...',
-    help: 'Day 2 card me Power of Network task ka Watch button is link pe jaata hai.',
+    help: 'Day 2 card — Power of Network task Watch button uses this link.',
   },
   {
     key: 'content.manik_expose',
     label: 'Expose Video (Manik Aggarwal)',
     placeholder: 'https://youtube.com/watch?v=...',
-    help: 'Day 2 me Expose Video Share button WhatsApp pe yahi link bhejta hai.',
+    help: 'Day 2 — Expose Video Share button sends this link on WhatsApp.',
   },
 ]
 
@@ -212,13 +212,13 @@ export function SettingsAppPage({ title }: Props) {
       key: 'whatsapp.meta.verify_token',
       label: 'Webhook Verify Token',
       placeholder: 'myle-webhook-secret-2026',
-      help: 'Khud banao koi bhi string. Meta Console mein bhi yahi daalna hoga.',
+      help: 'Create any string. Must match what is set in Meta Console.',
     },
     {
       key: 'whatsapp.removal_template_name',
       label: 'Removal Template Name',
       placeholder: 'member_removal_v1',
-      help: 'Meta pe approved template ka exact naam — removal outreach ke liye. Set hone pe 24-hour window ke bahar bhi deliver hoga.',
+      help: 'Exact approved template name in Meta — for removal outreach. Delivers even outside the 24-hour window once set.',
     },
     {
       key: 'whatsapp.removal_template_lang',
@@ -230,7 +230,7 @@ export function SettingsAppPage({ title }: Props) {
       key: 'whatsapp.report_reminder_template_name',
       label: 'Report Reminder Template Name',
       placeholder: 'daily_report_reminder',
-      help: 'Meta pe approved template naam — report reminder ke liye. Set hone pe 24-hour window ke bahar bhi deliver hoga.',
+      help: 'Exact approved template name in Meta — for report reminders. Delivers even outside the 24-hour window once set.',
     },
     {
       key: 'whatsapp.report_reminder_template_lang',
@@ -408,7 +408,7 @@ export function SettingsAppPage({ title }: Props) {
           <h2 className="text-sm font-semibold text-foreground">Batch Video Links</h2>
           <p className="text-xs text-muted-foreground">
             Day 1 aur Day 2 ke 6 slots (Morning/Afternoon/Evening) × 2 videos = 12 URL yahan set karo.
-            Ye YouTube links direct watch pages me serve hote hain jab lead token link kholta hai.
+            These YouTube links are served directly on watch pages when a lead opens their token link.
           </p>
         </div>
 
@@ -471,7 +471,7 @@ export function SettingsAppPage({ title }: Props) {
         <div>
           <h2 className="text-sm font-semibold text-foreground">Enrollment Live Video</h2>
           <p className="text-xs text-muted-foreground">
-            Calling board se "Send Enrollment-Live video" bhejne pe lead ko token link jaata hai. Yahan video URL set karo jo lead dekhega.
+            When "Send Enrollment-Live video" is sent from the calling board, the lead receives a token link. Set the video URL here.
           </p>
         </div>
 
@@ -513,7 +513,7 @@ export function SettingsAppPage({ title }: Props) {
         <div>
           <h2 className="text-sm font-semibold text-foreground">New Enrollment Link (Secure Video)</h2>
           <p className="text-xs text-muted-foreground">
-            Secure enrollment link (Today tab ka 🔗 button + Enrollment Link page) yahi video bhejega. Cloudflare R2 ka link/key set karo.
+            Secure enrollment link (Today tab 🔗 button + Enrollment Link page) sends this video. Set Cloudflare R2 link/key.
           </p>
         </div>
 
@@ -579,7 +579,7 @@ export function SettingsAppPage({ title }: Props) {
             ) : null}
           </div>
           <p className="text-xs text-muted-foreground">
-            Removed member ko automatically WhatsApp message bhejne ke liye Meta credentials yahan set karo.
+            Set Meta credentials here for automatic WhatsApp messages to removed members.
             Ye settings env vars se override karti hain.
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -650,9 +650,9 @@ export function SettingsAppPage({ title }: Props) {
 
         {/* Test send — debug delivery */}
         <div className="mt-4 border-t border-border dark:border-white/10 pt-3">
-          <p className="mb-2 text-xs font-medium text-foreground">Test message bhejo (debug)</p>
-          <p className="mb-2 text-[11px] text-muted-foreground">
-            Kisi number pe test message bhej ke Meta ka exact response dekho — pata chalega delivery ho rahi hai ya nahi.
+          <p className="mb-2 text-xs font-medium text-foreground">Send test message (debug)</p>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Send a test message to any number to see Meta's exact response — check if delivery is working.
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <input
@@ -685,10 +685,10 @@ export function SettingsAppPage({ title }: Props) {
 
         {/* Report reminder resend panel */}
         <div className="mt-4 border-t border-border dark:border-white/10 pt-3">
-          <p className="mb-1 text-xs font-medium text-foreground">Report reminder manually bhejo</p>
+          <p className="mb-1 text-xs font-medium text-foreground">Send report reminder manually</p>
           <p className="mb-3 text-[11px] text-muted-foreground">
-            Aaj ki report abhi tak submit nahi ki aur pehle reminder nahi mila — unhe WhatsApp pe reminder bhejo.
-            Jinhe aaj already reminder mila hai wo skip honge.
+            Send WhatsApp reminders to members who haven't submitted today's report and haven't received a reminder yet.
+            Members who already got a reminder today will be skipped.
           </p>
           <button
             type="button"
@@ -696,7 +696,7 @@ export function SettingsAppPage({ title }: Props) {
             onClick={() => void handleSendReportReminders()}
             className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-500/20 disabled:opacity-50 dark:text-amber-400"
           >
-            {reminderSending ? 'Bhej raha hoon…' : 'Send report reminders'}
+            {reminderSending ? 'Sending…' : 'Send report reminders'}
           </button>
 
           {reminderError ? (
@@ -713,7 +713,7 @@ export function SettingsAppPage({ title }: Props) {
                 <span className="text-[11px] font-semibold text-muted-foreground/60">📵 {reminderSummary.no_phone} no phone</span>
               )}
               {reminderSummary.sent === 0 && reminderSummary.failed === 0 && reminderSummary.no_phone === 0 && (
-                <span className="text-[11px] text-muted-foreground">Koi pending nahi — sab ne report submit kar di ya pehle reminder mil chuka hai.</span>
+                <span className="text-[11px] text-muted-foreground">No pending — everyone submitted or already reminded.</span>
               )}
             </div>
           ) : null}
@@ -808,8 +808,10 @@ export function SettingsAppPage({ title }: Props) {
 function XpRecalcSection() {
   const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [result, setResult] = useState<string | null>(null)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   const handleRecalc = async () => {
+    setShowConfirm(false)
     setState('loading')
     setResult(null)
     try {
@@ -829,14 +831,14 @@ function XpRecalcSection() {
       <div>
         <h2 className="text-sm font-semibold text-foreground">XP Reset (Pre-June Cleanup)</h2>
         <p className="text-xs text-muted-foreground">
-          1 June se pehle ke sab XP points delete karega aur June ke points rakhega. Admin-only.
+          Deletes all XP points before June 1st, keeps points from June onwards. Admin-only.
         </p>
       </div>
       <div className="flex items-center gap-3">
         <button
           type="button"
           disabled={state === 'loading'}
-          onClick={() => void handleRecalc()}
+          onClick={() => setShowConfirm(true)}
           className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-500/20 disabled:opacity-50 dark:text-amber-400"
         >
           {state === 'loading' ? 'Processing…' : 'Reset Pre-June XP'}
@@ -847,6 +849,40 @@ function XpRecalcSection() {
           </span>
         )}
       </div>
+
+      {showConfirm ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowConfirm(false) }}
+          onKeyDown={(e) => { if (e.key === 'Escape') setShowConfirm(false) }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm XP reset"
+        >
+          <div className="mx-4 w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-2xl">
+            <h3 className="text-lg font-semibold text-foreground">Confirm XP Reset</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              This will permanently delete all XP events before June 1st. This action cannot be undone.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowConfirm(false)}
+                className="rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleRecalc()}
+                className="rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90"
+              >
+                Yes, Reset XP
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   )
 }

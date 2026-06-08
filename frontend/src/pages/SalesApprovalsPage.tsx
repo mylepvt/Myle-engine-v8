@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { RejectReasonModal } from '@/components/ui/reject-reason-modal'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import {
@@ -36,16 +38,16 @@ export function SalesApprovalsPage({ title }: Props) {
   const reject = useRejectSaleMutation()
   const isAdmin = me?.authenticated && me.role === 'admin'
   const busy = approve.isPending || reject.isPending
+  const [rejectTarget, setRejectTarget] = useState<number | null>(null)
 
   async function handleApprove(saleId: number) {
     await approve.mutateAsync(saleId)
     playAppSound('claim')
   }
 
-  async function handleReject(saleId: number) {
-    const reason = window.prompt('Why are you rejecting this invoice?', 'Invoice unclear or invalid')
-    if (reason === null) return
-    await reject.mutateAsync({ saleId, reason: reason.trim() || 'Invoice unclear or invalid' })
+  async function handleReject(saleId: number, reason: string) {
+    setRejectTarget(null)
+    await reject.mutateAsync({ saleId, reason })
     playAppSound('error')
   }
 
@@ -151,7 +153,7 @@ export function SalesApprovalsPage({ title }: Props) {
                         size="default"
                         variant="default"
                         disabled={busy}
-                        className="h-11 min-w-[5.5rem] flex-1 bg-emerald-600 font-semibold text-white hover:bg-emerald-700 sm:flex-none"
+                        className="h-11 min-w-[5.5rem] flex-1 font-semibold sm:flex-none"
                         onClick={() => void handleApprove(row.id)}
                       >
                         Approve
@@ -161,7 +163,7 @@ export function SalesApprovalsPage({ title }: Props) {
                         variant="outline"
                         disabled={busy}
                         className="h-11 min-w-[5rem] flex-1 border-destructive/50 font-semibold text-destructive hover:bg-destructive/10 sm:flex-none"
-                        onClick={() => void handleReject(row.id)}
+                        onClick={() => setRejectTarget(row.id)}
                       >
                         Reject
                       </Button>
@@ -173,6 +175,15 @@ export function SalesApprovalsPage({ title }: Props) {
           </ul>
         </div>
       ) : null}
+
+      <RejectReasonModal
+        open={rejectTarget !== null}
+        title="Reject Invoice"
+        description="Why are you rejecting this invoice?"
+        defaultReason="Invoice unclear or invalid"
+        onConfirm={(reason) => { if (rejectTarget !== null) void handleReject(rejectTarget, reason) }}
+        onCancel={() => setRejectTarget(null)}
+      />
     </div>
   )
 }

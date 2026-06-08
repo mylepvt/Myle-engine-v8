@@ -78,17 +78,17 @@ function Day1PipelineRow({
   const day1Complete = Boolean(lead.day1_completed_at) || allDone
 
   return (
-    <TableRow className="bg-primary/[0.03] hover:bg-primary/[0.06]">
+    <TableRow className="bg-primary/[0.06] hover:bg-primary/[0.10]">
       <TableCell colSpan={4} className="py-2 px-4">
         <div className="flex flex-wrap items-center gap-3">
           {/* Previous stages auto-complete */}
           <div className="flex items-center gap-1">
             {D1_STAGES.map((s) => (
-              <span key={s} className="flex items-center gap-0.5 text-[0.6rem] text-emerald-600/80 dark:text-emerald-400/80">
-                <CheckCircle2 className="size-3" />
+              <span key={s} className="flex items-center gap-0.5 text-[0.7rem] text-emerald-600/80 dark:text-emerald-400/80">
+                <CheckCircle2 className="size-3.5" />
               </span>
             ))}
-            <span className="ml-1 text-[0.62rem] text-muted-foreground">Pre-Day 1 ✓</span>
+            <span className="ml-1 text-ds-caption text-muted-foreground">Pre-Day 1 ✓</span>
           </div>
 
           <span className="text-muted-foreground/40">|</span>
@@ -554,7 +554,7 @@ export function DashboardHomePage() {
           <CardTitle className="text-ds-h3">Quick actions</CardTitle>
           <CardDescription>Jump to frequently used sections</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-2 sm:grid sm:grid-cols-2 lg:grid-cols-3">
+        <CardContent className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {quickActions.map((action) => {
             const Icon = action.Icon
             return (

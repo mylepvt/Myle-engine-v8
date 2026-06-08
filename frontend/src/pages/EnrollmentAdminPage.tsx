@@ -217,8 +217,8 @@ export function EnrollmentAdminPage({ pageTitle }: { pageTitle?: string } = {}) 
 
         <div className="space-y-3 rounded-2xl border border-border bg-muted/20 p-5">
           <p className="text-xs text-muted-foreground">
-            Naam ya number type karo — apne leads me se <strong>suggestion</strong> aayega, ya niche Today list se tap karo. Link{' '}
-            <strong>apne aap ban ke copy</strong> ho jata. One-time · first-device lock · {windowMin}-min timer.
+            Type name or number — <strong>suggestions</strong> from your leads will appear, or tap from the Today list below. Link{' '}
+            <strong>auto-generates and copies</strong>. One-time · first-device lock · {windowMin}-min timer.
           </p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="relative">
@@ -346,7 +346,7 @@ export function EnrollmentAdminPage({ pageTitle }: { pageTitle?: string } = {}) 
                   <button
                     type="button"
                     onClick={() => void copy(r.token)}
-                    className="inline-flex size-8 items-center justify-center rounded-md bg-muted text-foreground hover:bg-muted/70"
+                    className="inline-flex size-11 items-center justify-center rounded-md bg-muted text-foreground hover:bg-muted/70"
                     title="Copy link"
                   >
                     {copied === r.token ? <Check className="size-4 text-emerald-600 dark:text-emerald-400" /> : <Copy className="size-4" />}
@@ -354,7 +354,7 @@ export function EnrollmentAdminPage({ pageTitle }: { pageTitle?: string } = {}) 
                   <button
                     type="button"
                     onClick={() => void revoke(r.token)}
-                    className="inline-flex size-8 items-center justify-center rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20"
+                    className="inline-flex size-11 items-center justify-center rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20"
                     title="Revoke"
                   >
                     <Trash2 className="size-4" />

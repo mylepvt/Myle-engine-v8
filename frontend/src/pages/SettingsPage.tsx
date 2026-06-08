@@ -186,7 +186,7 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <div className="relative size-24 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-100 dark:border-border dark:bg-muted">
+                  <div className="relative size-24 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
                     {userProfile.data?.avatar_url ? (
                       <img
                         src={apiUrl(userProfile.data.avatar_url)}
@@ -226,7 +226,7 @@ export default function SettingsPage() {
                       JPEG, PNG, or WebP. Max 2 MB.
                     </p>
                     {avatarUpload.isError ? (
-                      <p className="mt-1 text-xs text-red-600" role="alert">
+                      <p className="mt-1 text-xs text-destructive" role="alert">
                         {avatarUpload.error instanceof Error ? avatarUpload.error.message : 'Upload failed'}
                       </p>
                     ) : null}

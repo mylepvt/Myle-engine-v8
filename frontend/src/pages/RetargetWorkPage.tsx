@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom'
+import { RefreshCw } from 'lucide-react'
 
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
+import { EmptyStatePremium } from '@/components/ui/empty-state-premium'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   LEAD_STATUS_OPTIONS,
@@ -54,7 +56,12 @@ export function RetargetWorkPage({ title }: Props) {
         <div className="surface-elevated p-4 text-sm">
           <p className="mb-3 font-medium text-foreground">Total: {data.total}</p>
           {data.items.length === 0 ? (
-            <p className="text-muted-foreground">No retarget candidates — move a lead to Lost or Contacted first.</p>
+            <EmptyStatePremium
+              variant="search"
+              title="No retarget candidates"
+              description="Move a lead to Lost or Contacted first, then it will appear here."
+              icon={RefreshCw}
+            />
           ) : (
             <ul className="space-y-2">
               {data.items.map((l) => (

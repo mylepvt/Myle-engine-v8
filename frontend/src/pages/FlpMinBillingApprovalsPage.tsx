@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { RejectReasonModal } from '@/components/ui/reject-reason-modal'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import {
@@ -21,6 +22,7 @@ export function FlpMinBillingApprovalsPage({ title }: Props) {
   const decide = useFlpMinBillingDecisionMutation()
   const { data, isPending, isError, error, refetch } = useFlpMinBillingRequestsQuery()
   const [historyDate, setHistoryDate] = useState(() => new Date().toLocaleDateString('en-CA'))
+  const [rejectTarget, setRejectTarget] = useState<number | null>(null)
   const historyQ = useFlpMinBillingHistoryQuery(historyDate)
   const isAdmin = me?.authenticated && me.role === 'admin'
 
@@ -29,14 +31,9 @@ export function FlpMinBillingApprovalsPage({ title }: Props) {
     playAppSound('claim')
   }
 
-  async function handleReject(leadId: number) {
-    const reason = window.prompt('Why are you rejecting this proof?', 'Proof is unclear or incomplete')
-    if (reason === null) return
-    await decide.mutateAsync({
-      leadId,
-      action: 'reject',
-      reason: reason.trim() || 'Proof is unclear or incomplete',
-    })
+  async function handleReject(leadId: number, reason: string) {
+    setRejectTarget(null)
+    await decide.mutateAsync({ leadId, action: 'reject', reason })
     playAppSound('error')
   }
 
@@ -145,7 +142,7 @@ export function FlpMinBillingApprovalsPage({ title }: Props) {
                         size="default"
                         variant="default"
                         disabled={decide.isPending}
-                        className="h-11 min-w-[5.5rem] flex-1 bg-emerald-600 font-semibold text-white hover:bg-emerald-700 sm:flex-none"
+                        className="h-11 min-w-[5.5rem] flex-1 font-semibold sm:flex-none"
                         onClick={() => void handleApprove(row.lead_id)}
                       >
                         Approve
@@ -155,7 +152,7 @@ export function FlpMinBillingApprovalsPage({ title }: Props) {
                         variant="outline"
                         disabled={decide.isPending}
                         className="h-11 min-w-[5rem] flex-1 border-destructive/50 font-semibold text-destructive hover:bg-destructive/10 sm:flex-none"
-                        onClick={() => void handleReject(row.lead_id)}
+                        onClick={() => setRejectTarget(row.lead_id)}
                       >
                         Reject
                       </Button>
@@ -167,6 +164,15 @@ export function FlpMinBillingApprovalsPage({ title }: Props) {
           </ul>
         </div>
       ) : null}
+
+      <RejectReasonModal
+        open={rejectTarget !== null}
+        title="Reject FLP Proof"
+        description="Why are you rejecting this proof?"
+        defaultReason="Proof is unclear or incomplete"
+        onConfirm={(reason) => { if (rejectTarget !== null) void handleReject(rejectTarget, reason) }}
+        onCancel={() => setRejectTarget(null)}
+      />
 
       <section className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">

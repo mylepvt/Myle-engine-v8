@@ -176,10 +176,10 @@ export function AuditLogsPage({ title }: Props) {
           type="button"
           onClick={() => void refetch()}
           disabled={isFetching}
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-border dark:border-white/[0.08] bg-muted/30 dark:bg-white/[0.04] text-muted-foreground transition hover:bg-muted/50 dark:hover:bg-white/[0.08] disabled:opacity-40"
+          className="flex h-11 w-11 items-center justify-center rounded-lg border border-border dark:border-white/[0.08] bg-muted/30 dark:bg-white/[0.04] text-muted-foreground transition hover:bg-muted/50 dark:hover:bg-white/[0.08] disabled:opacity-40"
           title="Refresh"
         >
-          <RefreshCw className={cn('h-3.5 w-3.5', isFetching && 'animate-spin')} />
+          <RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} />
         </button>
       </div>
 
@@ -301,17 +301,17 @@ export function AuditLogsPage({ title }: Props) {
               type="button"
               disabled={page <= 1 || isFetching}
               onClick={() => setPage((p) => p - 1)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-border dark:border-white/[0.08] bg-muted/30 dark:bg-white/[0.03] disabled:opacity-40 hover:bg-muted/50 dark:hover:bg-white/[0.08]"
+              className="flex h-11 w-11 items-center justify-center rounded-lg border border-border dark:border-white/[0.08] bg-muted/30 dark:bg-white/[0.03] disabled:opacity-40 hover:bg-muted/50 dark:hover:bg-white/[0.08]"
             >
-              <ChevronLeft className="h-3.5 w-3.5" />
+              <ChevronLeft className="h-4 w-4" />
             </button>
             <button
               type="button"
               disabled={page >= totalPages || isFetching}
               onClick={() => setPage((p) => p + 1)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-border dark:border-white/[0.08] bg-muted/30 dark:bg-white/[0.03] disabled:opacity-40 hover:bg-muted/50 dark:hover:bg-white/[0.08]"
+              className="flex h-11 w-11 items-center justify-center rounded-lg border border-border dark:border-white/[0.08] bg-muted/30 dark:bg-white/[0.03] disabled:opacity-40 hover:bg-muted/50 dark:hover:bg-white/[0.08]"
             >
-              <ChevronRight className="h-3.5 w-3.5" />
+              <ChevronRight className="h-4 w-4" />
             </button>
           </div>
         </div>
