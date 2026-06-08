@@ -1,5 +1,36 @@
 export type AppSound = 'softTap' | 'success' | 'cashier' | 'decline'
 
+// ─── Global enable/mute (SaaS: user-controllable, persisted) ──────────────────
+const SOUND_PREF_KEY = 'myle-sound-enabled'
+
+function readInitialSoundPref(): boolean {
+  try {
+    const raw = localStorage.getItem(SOUND_PREF_KEY)
+    if (raw === '0') return false
+    if (raw === '1') return true
+    // No explicit choice yet → default ON, but respect OS reduced-motion (mute).
+    return !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  } catch {
+    return true
+  }
+}
+
+let soundsEnabled = readInitialSoundPref()
+
+export function getSoundsEnabled(): boolean {
+  return soundsEnabled
+}
+
+/** Toggle/persist app sounds. Call from the UI sound switch. */
+export function setSoundsEnabled(value: boolean): void {
+  soundsEnabled = value
+  try {
+    localStorage.setItem(SOUND_PREF_KEY, value ? '1' : '0')
+  } catch {
+    /* ignore */
+  }
+}
+
 // ─── File-based sounds ───────────────────────────────────────────────────────
 
 export type FileSoundName = 'ching' | 'paySuccess' | 'notify' | 'pop'
@@ -58,6 +89,7 @@ const FILE_SOUND_COOLDOWN_MS: Record<FileSoundName, number> = {
 
 /** Play a real MP3 sound effect via Web Audio API (decoded, low-latency). */
 export async function playFileSound(name: FileSoundName, volume = 1.0) {
+  if (!soundsEnabled) return
   const last = fileLastPlayedAt[name] ?? 0
   if (Date.now() - last < FILE_SOUND_COOLDOWN_MS[name]) return
   fileLastPlayedAt[name] = Date.now()
@@ -444,6 +476,7 @@ export function primeAppSounds() {
 }
 
 export function playAppSound(kind: AppSound) {
+  if (!soundsEnabled) return
   if (!canPlay(kind)) return
   const graph = ensureAudioGraph()
   if (!graph) return
