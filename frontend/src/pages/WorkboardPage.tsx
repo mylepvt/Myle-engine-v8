@@ -201,7 +201,7 @@ function Tabs({ tabs, active, onChange }: {
 function IconBtn({ href, onClick, title, colorHover, children }: {
   href?: string; onClick?: () => void; title: string; colorHover: string; children: React.ReactNode
 }) {
-  const cls = cn('flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-muted/30 text-foreground transition', colorHover)
+  const cls = cn('flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-muted/30 text-foreground transition active:scale-95', colorHover)
   if (href) return <a href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" title={title} className={cls}>{children}</a>
   return <button type="button" title={title} onClick={onClick} className={cls}>{children}</button>
 }
@@ -307,22 +307,22 @@ const LeadCard = memo(function LeadCard({
           <span className={cn('self-start rounded-full border px-2 py-0.5 text-ds-caption font-semibold', badge)}>{STATUS_TAB_LABEL[lead.status as LeadStatus] ?? slabel(lead.status)}</span>
         </div>
         {!stageOpsCard && isWatched ? (
-          <div className="flex items-center gap-1.5 rounded-md bg-blue-400/10 px-2 py-1 text-ds-caption font-medium text-blue-300">
+          <div className="flex items-center gap-1.5 rounded-lg border border-blue-500/25 bg-blue-500/10 px-2 py-1 text-ds-caption font-medium text-blue-700 dark:text-blue-300">
             <Eye className="size-3.5 shrink-0" aria-hidden />
             <span>Prospect watched the video — call now!</span>
           </div>
         ) : null}
         {!stageOpsCard && isSent ? (
-          <div className="flex items-center gap-1.5 rounded-md bg-indigo-400/10 px-2 py-1 text-ds-caption font-medium text-indigo-300">
+          <div className="flex items-center gap-1.5 rounded-lg border border-indigo-500/25 bg-indigo-500/10 px-2 py-1 text-ds-caption font-medium text-indigo-700 dark:text-indigo-300">
             <Send className="size-3.5 shrink-0" aria-hidden />
             <span>Video sent — waiting for response</span>
           </div>
         ) : null}
         {isReassigned ? (
-          <div className="flex items-center gap-1.5 rounded-md bg-amber-400/10 px-2 py-1 text-ds-caption font-medium text-amber-300">
-            <ArrowLeftRight className="size-3.5 shrink-0" aria-hidden />
-            <span>Reassigned</span>
-          </div>
+          <span className="flex w-fit items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+            <ArrowLeftRight className="size-3 shrink-0" aria-hidden />
+            Reassigned
+          </span>
         ) : null}
         {!stageOpsCard ? (
           <select
@@ -401,7 +401,7 @@ const LeadCard = memo(function LeadCard({
               </>
             ) : null}
             <Link to={`/dashboard/work/leads/${lead.id}`} title="Edit"
-              className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-muted/30 transition hover:border-primary/40 hover:text-primary">
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-muted/30 text-foreground transition active:scale-95 hover:border-primary/40 hover:text-primary">
               <Pencil className="h-3.5 w-3.5"/>
             </Link>
           </div>

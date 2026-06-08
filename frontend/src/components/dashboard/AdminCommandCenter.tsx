@@ -790,7 +790,7 @@ export function AdminCommandCenter({ firstName }: Props) {
     <div className="mx-auto max-w-7xl space-y-6">
       {/* ── Compact operational summary ── */}
       <div className="rounded border border-border/60 bg-card px-3 py-3">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <p className="text-sm font-medium text-foreground">Good day, {firstName}</p>
@@ -823,7 +823,7 @@ export function AdminCommandCenter({ firstName }: Props) {
               )}
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5 sm:shrink-0">
             {/* Live online counter */}
             <div ref={onlinePanelRef} className="relative">
               <button
