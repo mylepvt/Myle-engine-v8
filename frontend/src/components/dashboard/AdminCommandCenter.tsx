@@ -839,7 +839,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                 </span>
               </button>
               {onlinePanelOpen && (
-                <div className="fixed right-2 sm:absolute sm:right-0 top-auto sm:top-full z-50 mt-1.5 w-72 sm:w-64 rounded border border-border/60 bg-card shadow-xl max-sm:left-2">
+                <div className="fixed right-2 sm:absolute sm:right-0 top-auto sm:top-full z-50 mt-1.5 w-72 sm:w-64 rounded border border-border/60 bg-card shadow-xl max-sm:right-2">
                   <div className="flex items-center justify-between border-b border-border/40 px-3 py-2">
                     <span className="text-[11px] font-semibold text-foreground">Online now</span>
                     <span className="text-[10px] text-muted-foreground/60">
