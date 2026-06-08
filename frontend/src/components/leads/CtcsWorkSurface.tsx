@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { CtcsLeadCard } from '@/components/leads/CtcsLeadCard'
+import { StaggerContainer } from '@/components/ui/motion'
 import { CtcsOutcomeModal } from '@/components/leads/CtcsOutcomeModal'
 import { LeaderReassignSheet } from '@/components/leads/LeaderReassignSheet'
 import { LEAD_SLA_SMOOTH_REFRESH_MS } from '@/lib/lead-sla'
@@ -352,7 +353,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
         </p>
       ) : null}
 
-      <div className="space-y-3">
+      <StaggerContainer className="space-y-3" staggerDelay={35}>
         {items.map((l) => (
           <CtcsLeadCard
             key={l.id}
@@ -373,7 +374,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
             onCopyEnrollLink={onCopyEnrollLink}
           />
         ))}
-      </div>
+      </StaggerContainer>
 
       {items.length > 0 && leadsQ.hasNextPage ? (
         <div className="flex justify-center pt-2">

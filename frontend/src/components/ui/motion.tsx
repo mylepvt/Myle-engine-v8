@@ -47,12 +47,16 @@ interface StaggerContainerProps {
   children: React.ReactNode
   className?: string
   staggerDelay?: number
+  /** Cap per-item delay so long lists don't get an absurd tail
+   *  (50 items × 50ms = 2.5s). After this many items, delay is constant. */
+  maxStagger?: number
 }
 
 const StaggerContainer = ({
   children,
   className,
-  staggerDelay = 50,
+  staggerDelay = 40,
+  maxStagger = 10,
 }: StaggerContainerProps) => {
   const reduced = useReducedMotion()
   if (reduced) {
@@ -64,7 +68,7 @@ const StaggerContainer = ({
         <div
           className="animate-slide-up opacity-0"
           style={{
-            animationDelay: `${index * staggerDelay}ms`,
+            animationDelay: `${Math.min(index, maxStagger) * staggerDelay}ms`,
             animationFillMode: 'forwards',
           }}
         >
