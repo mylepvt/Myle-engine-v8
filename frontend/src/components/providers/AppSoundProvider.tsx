@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect } from 'react'
 
-import { playAppSound, primeAppSounds } from '@/lib/app-sounds'
+import { playAppSound, preloadFileSounds, primeAppSounds } from '@/lib/app-sounds'
 
 // Elements matching these selectors get the tap sound on pointerdown.
 const TAP_SELECTOR =
@@ -29,6 +29,7 @@ export function AppSoundProvider({ children }: { children: ReactNode }) {
       // Always prime audio context on first interaction
       if (!primed) {
         primeAppSounds()
+        preloadFileSounds() // decode all SFX up-front → zero delay on first real play
         primed = true
       }
       // iOS-style tap sound on interactive elements (pointer = touch or mouse primary)
@@ -42,6 +43,7 @@ export function AppSoundProvider({ children }: { children: ReactNode }) {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!primed) {
         primeAppSounds()
+        preloadFileSounds() // decode all SFX up-front → zero delay on first real play
         primed = true
       }
       // Space / Enter on focused interactive = tap sound

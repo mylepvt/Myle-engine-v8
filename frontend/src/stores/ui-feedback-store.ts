@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+import { getSoundsEnabled, setSoundsEnabled } from '@/lib/app-sounds'
+
 export type ThemePreference = 'light' | 'dark'
 
 const THEME_CYCLE_ORDER: ThemePreference[] = ['dark', 'light']
@@ -8,10 +10,12 @@ const THEME_CYCLE_ORDER: ThemePreference[] = ['dark', 'light']
 type UiFeedbackState = {
   theme: ThemePreference
   satisfactionPoints: number
+  soundEnabled: boolean
 
   setTheme: (theme: ThemePreference) => void
   cycleTheme: () => void
   addSatisfactionPoints: (amount?: number) => void
+  toggleSound: () => void
 }
 
 export const useUiFeedbackStore = create<UiFeedbackState>()(
@@ -19,8 +23,14 @@ export const useUiFeedbackStore = create<UiFeedbackState>()(
     (set, get) => ({
       theme: 'dark',
       satisfactionPoints: 0,
+      soundEnabled: getSoundsEnabled(),
 
       setTheme: (theme) => set({ theme }),
+      toggleSound: () => {
+        const next = !get().soundEnabled
+        setSoundsEnabled(next)
+        set({ soundEnabled: next })
+      },
       cycleTheme: () => {
         const current = get().theme
         const safeCurrent = THEME_CYCLE_ORDER.includes(current) ? current : 'dark'
