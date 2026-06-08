@@ -674,17 +674,16 @@ export function LeadPoolWorkPage({ title }: Props) {
         </div>
 
         <p className="mb-4 text-xs text-muted-foreground">
-          Admin ne yahan free leads add ki hain — claim karo bina kisi wallet debit ke. Server oldest leads pehle
-          deta hai (FIFO). Max 50 per request.
+          Free leads added by admin — claim without any wallet debit. Server uses FIFO (oldest first). Max 50 per request.
         </p>
 
         {/* Admin: import free pool leads */}
         {canManagePool ? (
           <div className="surface-inset mb-4 space-y-3 p-4 text-sm">
-            <p className="font-medium text-foreground">Admin: Free Pool mein leads import karo (Excel)</p>
+            <p className="font-medium text-foreground">Admin: Import leads to Free Pool (Excel)</p>
             <p className="text-xs text-muted-foreground">
-              Same format jaise paid pool — .xlsx with Full Name, Phone, City, Age, Gender, AD Name columns.
-              Yeh leads bilkul free hain — koi price set nahi hogi.
+              Same format as paid pool — .xlsx with Full Name, Phone, City, Age, Gender, AD Name columns.
+              These leads are completely free — no price will be set.
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <label htmlFor="free-pool-import-file" className="sr-only">
@@ -750,8 +749,8 @@ export function LeadPoolWorkPage({ title }: Props) {
                 ) : freeBatchConfirmOpen ? (
                   <div className="mt-3 space-y-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2">
                     <p className="text-foreground">
-                      <strong className="tabular-nums">{freePoolPreview.claim_count}</strong> free lead(s) claim
-                      karna chahte ho? Bilkul free — wallet se kuch nahi katega.
+                      Claim <strong className="tabular-nums">{freePoolPreview.claim_count}</strong> free lead(s)?
+                      Completely free — nothing will be deducted from your wallet.
                     </p>
                     <div className="flex flex-wrap gap-2">
                       <Button

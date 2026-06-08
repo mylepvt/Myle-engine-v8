@@ -332,6 +332,7 @@ export function DashboardLayout() {
           displayInitial={displayInitial}
         />
 
+        <div className="max-h-[132px] space-y-0 overflow-y-auto">
         {enrollmentAlert.open && approverForEnroll ? (
           <div
             role="status"
@@ -353,7 +354,7 @@ export function DashboardLayout() {
               </Link>
               <button
                 type="button"
-                className="rounded-md p-1 text-amber-950/80 transition hover:bg-amber-500/20 dark:text-amber-100/90"
+                className="rounded-md p-2 text-amber-950/80 transition hover:bg-amber-500/20 dark:text-amber-100/90"
                 aria-label="Dismiss"
                 onClick={() => enrollmentAlert.dismiss()}
               >
@@ -433,6 +434,7 @@ export function DashboardLayout() {
         ) : null}
 
         {(shellRole === 'team' || shellRole === 'leader') && <LocationPermissionGate />}
+        </div>
 
         <main
           className={cn(

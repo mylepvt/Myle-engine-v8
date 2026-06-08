@@ -35,9 +35,9 @@ export function ListSearchInput({
           type="button"
           aria-label="Clear search"
           onClick={() => onValueChange('')}
-          className="absolute right-1 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          className="absolute right-1 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
         >
-          <X className="size-3.5" aria-hidden />
+          <X className="size-4" aria-hidden />
         </button>
       ) : null}
     </div>

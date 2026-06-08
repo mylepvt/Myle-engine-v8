@@ -304,14 +304,14 @@ export function AdminActivityPanel() {
           )}
         </div>
         <div className="flex items-center gap-1">
-          <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPaused(!paused)} title={paused ? 'Resume' : 'Pause'}>
-            {paused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
+          <Button type="button" variant="ghost" size="icon" onClick={() => setPaused(!paused)} title={paused ? 'Resume' : 'Pause'}>
+            {paused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
           </Button>
-          <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={refresh} title="Refresh">
-            <RefreshCw className="h-3 w-3" />
+          <Button type="button" variant="ghost" size="icon" onClick={refresh} title="Refresh">
+            <RefreshCw className="h-3.5 w-3.5" />
           </Button>
-          <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={markAllRead} title="Mark all read">
-            <Activity className="h-3 w-3" />
+          <Button type="button" variant="ghost" size="icon" onClick={markAllRead} title="Mark all read">
+            <Activity className="h-3.5 w-3.5" />
           </Button>
         </div>
       </CardHeader>

@@ -350,9 +350,9 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                 type="button"
                 aria-label="Filters"
                 onClick={() => setFilterOpen((o) => !o)}
-                className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-sm transition hover:bg-muted hover:text-foreground"
+                className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-sm transition hover:bg-muted hover:text-foreground"
               >
-                <Filter className="size-3.5" />
+                <Filter className="size-4" />
               </button>
               {canFileImport ? (
                 <>
@@ -370,9 +370,9 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                     aria-label="Import leads from PDF"
                     disabled={importMut.isPending}
                     onClick={() => importFileRef.current?.click()}
-                    className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-sm transition hover:bg-muted hover:text-foreground disabled:opacity-50"
+                    className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-sm transition hover:bg-muted hover:text-foreground disabled:opacity-50"
                   >
-                    <Upload className="size-3.5" />
+                    <Upload className="size-4" />
                   </button>
                 </>
               ) : null}
@@ -380,9 +380,9 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                 type="button"
                 aria-label="Add lead"
                 onClick={() => setQuickAddOpen(true)}
-                className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-md transition active:scale-95"
+                className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-md transition active:scale-95"
               >
-                <Plus className="size-3.5" />
+                <Plus className="size-4" />
               </button>
             </div>
           </div>

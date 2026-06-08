@@ -346,7 +346,7 @@ export function EnrollmentAdminPage({ pageTitle }: { pageTitle?: string } = {}) 
                   <button
                     type="button"
                     onClick={() => void copy(r.token)}
-                    className="inline-flex size-8 items-center justify-center rounded-md bg-muted text-foreground hover:bg-muted/70"
+                    className="inline-flex size-11 items-center justify-center rounded-md bg-muted text-foreground hover:bg-muted/70"
                     title="Copy link"
                   >
                     {copied === r.token ? <Check className="size-4 text-emerald-600 dark:text-emerald-400" /> : <Copy className="size-4" />}
@@ -354,7 +354,7 @@ export function EnrollmentAdminPage({ pageTitle }: { pageTitle?: string } = {}) 
                   <button
                     type="button"
                     onClick={() => void revoke(r.token)}
-                    className="inline-flex size-8 items-center justify-center rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20"
+                    className="inline-flex size-11 items-center justify-center rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20"
                     title="Revoke"
                   >
                     <Trash2 className="size-4" />
