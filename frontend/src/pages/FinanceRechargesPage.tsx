@@ -1,4 +1,4 @@
-import { type FormEvent, useDeferredValue, useState } from 'react'
+import { useDeferredValue, useState } from 'react'
 
 import { InsightList } from '@/components/dashboard/InsightList'
 import { Button } from '@/components/ui/button'
