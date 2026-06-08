@@ -217,8 +217,8 @@ export function EnrollmentAdminPage({ pageTitle }: { pageTitle?: string } = {}) 
 
         <div className="space-y-3 rounded-2xl border border-border bg-muted/20 p-5">
           <p className="text-xs text-muted-foreground">
-            Naam ya number type karo — apne leads me se <strong>suggestion</strong> aayega, ya niche Today list se tap karo. Link{' '}
-            <strong>apne aap ban ke copy</strong> ho jata. One-time · first-device lock · {windowMin}-min timer.
+            Type name or number — <strong>suggestions</strong> from your leads will appear, or tap from the Today list below. Link{' '}
+            <strong>auto-generates and copies</strong>. One-time · first-device lock · {windowMin}-min timer.
           </p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="relative">
