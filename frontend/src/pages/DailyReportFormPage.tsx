@@ -148,7 +148,7 @@ export function DailyReportFormPage({ title }: Props) {
           void mut.mutateAsync()
         }}
       >
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {INT_FIELDS.map(({ key, label }) => (
             <label key={key} className="flex flex-col gap-1 text-sm">
               <span className="text-muted-foreground">{label}</span>

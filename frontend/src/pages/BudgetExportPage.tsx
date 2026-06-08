@@ -408,7 +408,7 @@ export function BudgetExportPage({ title }: Props) {
             Choose day, week, month, or a custom range, then narrow the report to one leader or one team member.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
           <label className="space-y-2">
             <span className="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">Window</span>
             <select
@@ -478,7 +478,7 @@ export function BudgetExportPage({ title }: Props) {
       </Card>
 
       {budgetQuery.isPending ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Skeleton className="h-28 w-full" />
           <Skeleton className="h-28 w-full" />
           <Skeleton className="h-28 w-full" />
@@ -505,7 +505,7 @@ export function BudgetExportPage({ title }: Props) {
 
       {budgetQuery.data && grandTotals && hasHierarchyPayload ? (
         <>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
             <Card>
               <CardHeader>
                 <CardDescription>Visible budget</CardDescription>

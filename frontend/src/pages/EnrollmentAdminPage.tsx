@@ -220,7 +220,7 @@ export function EnrollmentAdminPage({ pageTitle }: { pageTitle?: string } = {}) 
             Naam ya number type karo — apne leads me se <strong>suggestion</strong> aayega, ya niche Today list se tap karo. Link{' '}
             <strong>apne aap ban ke copy</strong> ho jata. One-time · first-device lock · {windowMin}-min timer.
           </p>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="relative">
               <label className="mb-1 block text-xs text-muted-foreground">Prospect name (watermark)</label>
               <input
@@ -276,7 +276,7 @@ export function EnrollmentAdminPage({ pageTitle }: { pageTitle?: string } = {}) 
                 <label className="mb-1 block text-xs text-muted-foreground">Video source (optional — defaults to Settings video)</label>
                 <input className={inputCls} value={videoSource} onChange={(e) => setVideoSource(e.target.value)} placeholder="videos/enrollment/master.mp4" />
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-xs text-muted-foreground">Title</label>
                   <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -307,7 +307,7 @@ export function EnrollmentAdminPage({ pageTitle }: { pageTitle?: string } = {}) 
           ) : todayLeads.length === 0 ? (
             <p className="text-xs text-muted-foreground">No leads claimed today.</p>
           ) : (
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {todayLeads.map((l) => (
                 <button
                   key={l.id}

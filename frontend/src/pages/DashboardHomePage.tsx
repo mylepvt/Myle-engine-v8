@@ -258,7 +258,7 @@ export function DashboardHomePage() {
       </div>
 
       {role === 'admin' && sessionReady ? (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {adminReports.isPending ? (
             <>
               <Card className="border-primary/20">
@@ -408,7 +408,7 @@ export function DashboardHomePage() {
           Overview
         </h2>
         {kpiLoading ? (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <Card key={i} className="border-primary/20">
                 <CardContent>
@@ -420,7 +420,7 @@ export function DashboardHomePage() {
             ))}
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Link
               to="/dashboard/work/workboard"
               className="block rounded no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2"

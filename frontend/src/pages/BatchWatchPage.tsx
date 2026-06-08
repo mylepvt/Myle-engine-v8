@@ -480,7 +480,7 @@ export function BatchWatchPage() {
                   )}
 
                   <form className="mt-5 space-y-4" onSubmit={(event) => void handleSubmission(event)}>
-                    <div className="grid gap-4 md:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                       <UploadCard
                         icon={<NotebookPen className="size-4" />}
                         title="Notes"
