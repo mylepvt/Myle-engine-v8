@@ -808,8 +808,10 @@ export function SettingsAppPage({ title }: Props) {
 function XpRecalcSection() {
   const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [result, setResult] = useState<string | null>(null)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   const handleRecalc = async () => {
+    setShowConfirm(false)
     setState('loading')
     setResult(null)
     try {
@@ -836,7 +838,7 @@ function XpRecalcSection() {
         <button
           type="button"
           disabled={state === 'loading'}
-          onClick={() => void handleRecalc()}
+          onClick={() => setShowConfirm(true)}
           className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-500/20 disabled:opacity-50 dark:text-amber-400"
         >
           {state === 'loading' ? 'Processing…' : 'Reset Pre-June XP'}
@@ -847,6 +849,40 @@ function XpRecalcSection() {
           </span>
         )}
       </div>
+
+      {showConfirm ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowConfirm(false) }}
+          onKeyDown={(e) => { if (e.key === 'Escape') setShowConfirm(false) }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm XP reset"
+        >
+          <div className="mx-4 w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-2xl">
+            <h3 className="text-lg font-semibold text-foreground">Confirm XP Reset</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              This will permanently delete all XP events before June 1st. This action cannot be undone.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowConfirm(false)}
+                className="rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleRecalc()}
+                className="rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90"
+              >
+                Yes, Reset XP
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   )
 }
