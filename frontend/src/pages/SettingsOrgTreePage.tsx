@@ -58,30 +58,42 @@ function initials(name: string): string {
   )
 }
 
+// A lead hands off to the member's NEAREST upline leader — the first leader found
+// walking up the chain (path is [root, ..., self]). Team nodes that sit under a
+// non-leader (e.g. a member who still has a downline) skip past it to the leader
+// above. Returns null when no leader exists above (orphaned handoff).
+function nearestLeaderId(item: FlatNode): number | null {
+  for (let i = item.path.length - 2; i >= 0; i--) {
+    if (item.path[i].role === 'leader') return item.path[i].id
+  }
+  return null
+}
+
+// A leader whose direct parent is a plain member (not a leader/admin) — structurally
+// odd. Their own team still resolves to them, never to the member above.
+function leaderUnderMember(item: FlatNode): boolean {
+  const parent = item.path.length > 1 ? item.path[item.path.length - 2] : null
+  return parent !== null && parent.role !== 'leader' && parent.role !== 'admin'
+}
+
 function buildHandoffData(items: FlatNode[]): {
   columns: HandoffColumn[]
   unassigned: FlatNode[]
 } {
   const leaders = items.filter((f) => f.node.role === 'leader')
-  const parentIsLeader = new Map<number, boolean>()
-  const parentMap = new Map<number, number | null>()
 
-  for (const item of items) {
-    const parentId = item.path.length > 1 ? item.path[item.path.length - 2].id : null
-    parentMap.set(item.node.id, parentId)
-    parentIsLeader.set(
-      item.node.id,
-      parentId !== null && (items.find((f) => f.node.id === parentId)?.node.role ?? '') === 'leader',
-    )
-  }
-
+  // One column per leader. A team member belongs ONLY to its nearest upline
+  // leader's column — a sub-leader owns its own column and its team never rolls
+  // up into the grandparent leader above it.
   const columns: HandoffColumn[] = leaders.map((leader) => ({
     leader,
-    members: items.filter((f) => parentMap.get(f.node.id) === leader.node.id),
+    members: items.filter(
+      (f) => f.node.role === 'team' && nearestLeaderId(f) === leader.node.id,
+    ),
   }))
 
   const unassigned = items.filter(
-    (f) => f.node.role !== 'admin' && f.node.role !== 'leader' && !parentIsLeader.get(f.node.id),
+    (f) => f.node.role === 'team' && nearestLeaderId(f) === null,
   )
 
   return { columns, unassigned }
@@ -125,10 +137,6 @@ export function SettingsOrgTreePage({ title }: Props) {
   }, [toastMsg])
 
   const allFlat = useMemo(() => flatten(data?.items ?? []), [data])
-  const topLeaderIds = useMemo(
-    () => new Set(data?.items.map((n) => n.id) ?? []),
-    [data],
-  )
 
   const { columns, unassigned } = useMemo(
     () => buildHandoffData(allFlat),
@@ -169,7 +177,7 @@ export function SettingsOrgTreePage({ title }: Props) {
             <div style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 8 }}>
               {columns.map((col) => {
                 const leader = col.leader
-                const isTopLeader = topLeaderIds.has(leader.node.id)
+                const underMember = leaderUnderMember(leader)
                 const count = col.members.length
                 const showMore = count > MAX_CARD
                 const visibleCards = showMore ? col.members.slice(0, MAX_CARD) : col.members
@@ -183,7 +191,7 @@ export function SettingsOrgTreePage({ title }: Props) {
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontWeight: 600, fontSize: 13.5 }}>{leader.node.name}</div>
                         <div style={{ color: C.mut2, fontSize: 11 }}>
-                          Leader{!isTopLeader ? ' · under a member ⚠' : ''}
+                          Leader{underMember ? ' · under a member ⚠' : ''}
                         </div>
                       </div>
                       <span style={cntStyle}>{count}</span>
@@ -208,9 +216,9 @@ export function SettingsOrgTreePage({ title }: Props) {
                             background: item.node.role === 'leader' ? C.leader : C.team,
                           }} />
                           <span style={{ fontSize: 12.5 }}>{item.node.name}</span>
-                          {item.node.children.length > 0 && item.node.role === 'leader' ? (
+                          {item.node.team_size > 0 ? (
                             <span style={{ marginLeft: 'auto', fontSize: 10, color: C.mut2 }}>
-                              +{item.node.children.length} sub
+                              +{item.node.team_size} downline
                             </span>
                           ) : null}
                         </button>
@@ -222,13 +230,14 @@ export function SettingsOrgTreePage({ title }: Props) {
                       ) : null}
                     </div>
 
-                    {!isTopLeader ? (
+                    {underMember ? (
                       <div style={noteStyle}>
                         Sits under{' '}
                         {leader.path.length > 1
                           ? leader.path[leader.path.length - 2]?.name ?? 'root'
                           : 'root'}
-                        . Works, but move under a top leader to clean up.
+                        {' '}(a member). Their team still hands off to them — move them
+                        under a leader to tidy the chart.
                       </div>
                     ) : null}
                   </div>
@@ -267,15 +276,15 @@ export function SettingsOrgTreePage({ title }: Props) {
                     ))}
                   </div>
 
-                  <div style={assignStyle}>＋ Assign these to a leader</div>
+                  <div style={assignStyle}>Click a card → set their Upline Leader</div>
                 </div>
               ) : null}
             </div>
 
             <p style={{ marginTop: 14, color: C.mut2, fontSize: 11.5 }}>
-              Design B &mdash; reframed by <strong>where leads actually go</strong>, not nominal hierarchy.
-              Drag a card to another column = change that person&rsquo;s leader.
-              The red column makes broken handoffs impossible to miss.
+              Grouped by <strong>where leads actually go</strong> &mdash; each member sits under their
+              nearest upline leader, never a grandparent. Click a card to open their Control Center and
+              change their leader. The red column is where handoffs are dropping.
             </p>
           </>
         ) : null}
