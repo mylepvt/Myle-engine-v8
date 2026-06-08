@@ -74,7 +74,7 @@ function RechargeRow({
     setRowError('')
     try {
       await reviewMut.mutateAsync({ id: item.id, body: { status: 'approved' } })
-      playAppSound('cashier')
+      playAppSound('claim')
     } catch (e) {
       setRowError(e instanceof Error ? e.message : 'Action failed')
     }
@@ -87,7 +87,7 @@ function RechargeRow({
         id: item.id,
         body: { status: 'rejected', admin_note: rejectNote.trim() || undefined },
       })
-      playAppSound('decline')
+      playAppSound('error')
       setShowRejectNote(false)
       setRejectNote('')
     } catch (e) {

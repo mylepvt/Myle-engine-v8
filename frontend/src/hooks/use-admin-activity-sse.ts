@@ -10,7 +10,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import { useAdminFeedStore, type AdminActivityEntry } from '@/stores/admin-feed-store'
 import { useLiveDashboardStore } from '@/stores/live-dashboard-store'
 import { useFunnelActivityStore } from '@/stores/funnel-activity-store'
-import { playFileSound } from '@/lib/app-sounds'
+import { playAppSound } from '@/lib/app-sounds'
 
 const REST_URL = '/api/v1/admin/activity-feed?limit=50'
 
@@ -192,14 +192,14 @@ function parseEventFromObj(data: Record<string, unknown>): AdminActivityEntry | 
 
 // ── Activity sounds ──────────────────────────────────────────────────────────
 function activitySound(action: string) {
-  if (action === 'lead:created') playFileSound('pop', 0.5)
-  else if (action === 'lead:transitioned' || action === 'lead_state') playFileSound('notify', 0.4)
-  else if (action === 'lead:closed') playFileSound('ching', 0.5)
-  else if (action === 'lead:claimed' || action === 'lead:batch_claimed') playFileSound('ching', 0.4)
-  else if (action.startsWith('wallet:')) playFileSound('paySuccess', 0.5)
-  else if (action === 'enrollment.link_generated') playFileSound('notify', 0.4)
-  else if (action === 'lead:assigned') playFileSound('pop', 0.35)
-  else if (action.includes('failure') || action.includes('duplicate')) playFileSound('pop', 0.3)
+  if (action === 'lead:created') playAppSound('notify')
+  else if (action === 'lead:transitioned' || action === 'lead_state') playAppSound('notify')
+  else if (action === 'lead:closed') playAppSound('claim')
+  else if (action === 'lead:claimed' || action === 'lead:batch_claimed') playAppSound('claim')
+  else if (action.startsWith('wallet:')) playAppSound('success')
+  else if (action === 'enrollment.link_generated') playAppSound('notify')
+  else if (action === 'lead:assigned') playAppSound('notify')
+  else if (action.includes('failure') || action.includes('duplicate')) playAppSound('error')
 }
 
 // Parse raw SSE data string → AdminActivityEntry

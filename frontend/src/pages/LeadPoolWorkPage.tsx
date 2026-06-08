@@ -138,7 +138,7 @@ export function LeadPoolWorkPage({ title }: Props) {
   async function handleClaim(leadId: number) {
     try {
       await claimMut.mutateAsync(leadId)
-      playAppSound('cashier')
+      playAppSound('claim')
       setConfirmId(null)
     } catch {
       /* error surfaced below */
@@ -153,7 +153,7 @@ export function LeadPoolWorkPage({ title }: Props) {
   async function handleBatchClaim() {
     try {
       await batchClaimMut.mutateAsync(requestedBatchCount)
-      playAppSound('cashier')
+      playAppSound('claim')
       setBatchConfirmOpen(false)
     } catch {
       /* surfaced below */
@@ -237,7 +237,7 @@ export function LeadPoolWorkPage({ title }: Props) {
   async function handleFreePoolBatchClaim() {
     try {
       await freeClaimMut.mutateAsync(requestedFreeBatchCount)
-      playAppSound('cashier')
+      playAppSound('claim')
       setFreeBatchConfirmOpen(false)
     } catch {
       /* surfaced below */

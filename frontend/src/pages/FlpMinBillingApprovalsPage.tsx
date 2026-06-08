@@ -26,7 +26,7 @@ export function FlpMinBillingApprovalsPage({ title }: Props) {
 
   async function handleApprove(leadId: number) {
     await decide.mutateAsync({ leadId, action: 'approve' })
-    playAppSound('cashier')
+    playAppSound('claim')
   }
 
   async function handleReject(leadId: number) {
@@ -37,7 +37,7 @@ export function FlpMinBillingApprovalsPage({ title }: Props) {
       action: 'reject',
       reason: reason.trim() || 'Proof is unclear or incomplete',
     })
-    playAppSound('decline')
+    playAppSound('error')
   }
 
   return (
