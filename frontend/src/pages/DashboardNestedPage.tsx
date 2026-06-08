@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 
 import {
@@ -7,6 +8,7 @@ import {
   routeDefAccessible,
   type FullUiSurface,
 } from '@/config/dashboard-registry'
+import { PageTransition } from '@/components/ui/motion'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -218,16 +220,27 @@ export function DashboardNestedPage() {
 
   const title = resolveTitleForPath(path, navRole) ?? path
 
+  let content: ReactNode
   switch (def.surface) {
     case 'placeholder':
-      return <DashboardPlaceholderPage title={title} />
+      content = <DashboardPlaceholderPage title={title} />
+      break
     case 'dashboard-home':
       return <Navigate to="/dashboard" replace />
     case 'full':
-      return renderFullUi(def.ui, title)
+      content = renderFullUi(def.ui, title)
+      break
     default: {
       const _exhaustive: never = def
       return _exhaustive
     }
   }
+
+  // Smooth enter animation on every route change (keyed by path → re-runs on nav).
+  // PageTransition no-ops under prefers-reduced-motion.
+  return (
+    <PageTransition key={path} className="h-full">
+      {content}
+    </PageTransition>
+  )
 }
