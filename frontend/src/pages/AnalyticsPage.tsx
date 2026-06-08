@@ -33,30 +33,30 @@ export default function AnalyticsPage() {
   const dailyTrends = useDailyTrendsQuery(undefined, selectedDays)
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="min-w-0 overflow-x-hidden p-4 sm:p-6">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Analytics & Reports</h1>
-            <p className="text-muted-foreground">
+      <div className="mb-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-1">Analytics & Reports</h1>
+            <p className="text-sm text-muted-foreground">
               Performance metrics and insights for your team
             </p>
           </div>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <Calendar className="w-4 h-4" />
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5">
+              <Calendar className="w-4 h-4 shrink-0" />
               <select
                 value={selectedDays}
                 onChange={(e) => setSelectedDays(Number(e.target.value))}
-                className="px-3 py-2 border rounded-md text-sm"
+                className="px-2 py-1.5 border rounded-md text-xs sm:text-sm"
               >
                 <option value={7}>7 days</option>
                 <option value={30}>30 days</option>
                 <option value={90}>90 days</option>
               </select>
             </div>
-            <Badge variant="outline" className="text-sm">
+            <Badge variant="outline" className="text-xs sm:text-sm">
               {authData?.role?.toUpperCase()}
             </Badge>
           </div>
@@ -65,16 +65,18 @@ export default function AnalyticsPage() {
 
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-4' : canViewTeam ? 'grid-cols-3' : 'grid-cols-2'}`}>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          {canViewTeam && <TabsTrigger value="team">Team</TabsTrigger>}
-          <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
-          {isAdmin && <TabsTrigger value="system">System</TabsTrigger>}
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className={`inline-flex w-auto ${isAdmin ? 'grid-cols-4' : canViewTeam ? 'grid-cols-3' : 'grid-cols-2'}`}>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            {canViewTeam && <TabsTrigger value="team">Team</TabsTrigger>}
+            <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
+            {isAdmin && <TabsTrigger value="system">System</TabsTrigger>}
+          </TabsList>
+        </div>
 
         {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <TabsContent value="overview" className="space-y-4 sm:space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {/* Individual Performance */}
             <IndividualPerformanceCard 
               performance={individualPerformance.data}
@@ -89,35 +91,35 @@ export default function AnalyticsPage() {
 
             {/* Quick Stats */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center">
-                  <Activity className="w-5 h-5 mr-2" />
+              <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
+                <CardTitle className="text-base sm:text-lg flex items-center">
+                  <Activity className="w-4 h-4 mr-1.5 shrink-0" />
                   Quick Stats
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Reports Submitted</span>
-                    <span className="font-semibold">
+              <CardContent className="px-4 sm:px-6">
+                <div className="space-y-3 sm:space-y-4">
+                  <div className="flex justify-between items-center gap-2">
+                    <span className="text-xs sm:text-sm text-muted-foreground">Reports Submitted</span>
+                    <span className="font-semibold text-sm">
                       {individualPerformance.data?.reports.total_reports || 0}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Total Calls</span>
-                    <span className="font-semibold">
+                  <div className="flex justify-between items-center gap-2">
+                    <span className="text-xs sm:text-sm text-muted-foreground">Total Calls</span>
+                    <span className="font-semibold text-sm">
                       {individualPerformance.data?.reports.total_calls || 0}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">FlpMinBillings</span>
-                    <span className="font-semibold">
+                  <div className="flex justify-between items-center gap-2">
+                    <span className="text-xs sm:text-sm text-muted-foreground">Enrollments</span>
+                    <span className="font-semibold text-sm">
                       {individualPerformance.data?.reports.total_flp_min_billings || 0}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Points Earned</span>
-                    <span className="font-semibold">
+                  <div className="flex justify-between items-center gap-2">
+                    <span className="text-xs sm:text-sm text-muted-foreground">Points Earned</span>
+                    <span className="font-semibold text-sm">
                       {individualPerformance.data?.scores.total_points || 0}
                     </span>
                   </div>
@@ -129,7 +131,7 @@ export default function AnalyticsPage() {
 
         {/* Team Performance Tab */}
         {canViewTeam && (
-          <TabsContent value="team" className="space-y-6">
+          <TabsContent value="team" className="space-y-4 sm:space-y-6">
             <TeamPerformanceCard 
               performance={teamPerformance.data}
               isLoading={teamPerformance.isLoading}
@@ -138,7 +140,7 @@ export default function AnalyticsPage() {
         )}
 
         {/* Leaderboard Tab */}
-        <TabsContent value="leaderboard" className="space-y-6">
+        <TabsContent value="leaderboard" className="space-y-4 sm:space-y-6">
           <LeaderboardTable 
               leaderboard={leaderboard.data}
               isLoading={leaderboard.isLoading}
@@ -147,7 +149,7 @@ export default function AnalyticsPage() {
 
         {/* System Overview Tab */}
         {isAdmin && (
-          <TabsContent value="system" className="space-y-6">
+          <TabsContent value="system" className="space-y-4 sm:space-y-6">
             <SystemOverviewCard 
               overview={systemOverview.data}
               isLoading={systemOverview.isLoading}
@@ -157,13 +159,13 @@ export default function AnalyticsPage() {
       </Tabs>
 
       {/* Export Options */}
-      <div className="mt-8 rounded-lg bg-gray-50 p-4 dark:bg-muted/30">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-medium">Export Data</h3>
-            <p className="text-sm text-muted-foreground">Download analytics data for offline analysis</p>
+      <div className="mt-6 sm:mt-8 rounded-lg bg-muted/30 p-3 sm:p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h3 className="text-sm sm:text-base font-medium">Export Data</h3>
+            <p className="text-xs sm:text-sm text-muted-foreground">Download analytics data for offline analysis</p>
           </div>
-          <div className="flex space-x-2">
+          <div className="flex flex-wrap gap-2 shrink-0">
             <Button
               variant="outline"
               size="sm"
@@ -182,9 +184,10 @@ export default function AnalyticsPage() {
                 URL.revokeObjectURL(url)
               }}
               disabled={!dailyTrends.data?.trends?.length}
+              className="text-xs sm:text-sm"
             >
-              <Download className="mr-2 w-4 h-4" />
-              Export CSV
+              <Download className="mr-1.5 w-3.5 h-3.5" />
+              CSV
             </Button>
             <Button
               variant="outline"
@@ -204,9 +207,10 @@ export default function AnalyticsPage() {
                 URL.revokeObjectURL(url)
               }}
               disabled={!dailyTrends.data?.trends?.length}
+              className="text-xs sm:text-sm"
             >
-              <Download className="mr-2 w-4 h-4" />
-              Export Excel
+              <Download className="mr-1.5 w-3.5 h-3.5" />
+              Excel
             </Button>
           </div>
         </div>
