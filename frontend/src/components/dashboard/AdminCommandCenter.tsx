@@ -270,6 +270,7 @@ function LiveOnlinePanel({ users }: { users: OnlineUserItem[] }) {
         className={`size-1.5 shrink-0 rounded-full ${
           u.presence_status === 'online' ? 'bg-emerald-400' : 'bg-yellow-400'
         }`}
+        aria-label={u.presence_status}
       />
       <span className="min-w-0 flex-1 truncate text-xs text-foreground">{u.name}</span>
       <span className="shrink-0 text-[10px] text-muted-foreground/60 capitalize">{u.role}</span>
@@ -1284,6 +1285,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                                     ? 'bg-amber-400'
                                     : 'bg-muted-foreground/30'
                               }`}
+                              aria-label={leader.presence_status}
                             />
                             <p className="font-medium text-foreground">{leader.leader_name}</p>
                           </div>

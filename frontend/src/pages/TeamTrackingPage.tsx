@@ -1109,6 +1109,7 @@ export function TeamTrackingPage({ title }: Props) {
                                   'size-2.5 rounded-full',
                                   liveBadgeClass(item.presence_status),
                                 )}
+                                aria-label={item.presence_status}
                               />
                               <span className="font-medium text-foreground">{item.member_name}</span>
                               <Badge variant={scoreVariant(item.consistency_band)}>

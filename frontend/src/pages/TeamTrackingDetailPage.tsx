@@ -251,6 +251,8 @@ function TrendBars({ trend }: { trend: TeamTrackingTrendPoint[] }) {
                   point.consistency_band === 'high' ? 'bg-emerald-500 dark:bg-emerald-400' :
                   point.consistency_band === 'medium' ? 'bg-amber-500 dark:bg-amber-400' : 'bg-rose-500 dark:bg-rose-400'
                 )}
+                role="img"
+                aria-label={`Consistency: ${point.consistency_band}`}
               />
               <span className="text-[9px] leading-none text-muted-foreground/50">{weekdayShort(point.date)}</span>
             </div>
@@ -514,7 +516,7 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
                     'absolute -bottom-0.5 -right-0.5 block size-3.5 rounded-full border-2 border-card',
                     data.member.presence_status === 'online' ? 'bg-emerald-400' :
                     data.member.presence_status === 'idle' ? 'bg-amber-400' : 'bg-slate-500'
-                  )} />
+                  )} role="img" aria-label={data.member.presence_status} />
                   {data.member.presence_status === 'online' && (
                     <span className="absolute -bottom-0.5 -right-0.5 size-3.5 animate-ping rounded-full bg-emerald-400/40" />
                   )}
