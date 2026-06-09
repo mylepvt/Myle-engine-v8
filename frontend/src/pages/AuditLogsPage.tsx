@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react'
+import { ChevronLeft, ChevronRight, RefreshCw, Search } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
@@ -130,6 +130,7 @@ export function AuditLogsPage({ title }: Props) {
   const [days, setDays] = useState<number>(30)
   const [page, setPage] = useState(1)
   const [filterAction, setFilterAction] = useState<string | undefined>()
+  const [qText, setQText] = useState('')
 
   const { data, isPending, isError, error, isFetching, refetch } = useAuditLogsQuery({
     page,
@@ -157,6 +158,19 @@ export function AuditLogsPage({ title }: Props) {
   const topActions = Object.entries(actionCounts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6)
+
+  const filteredItems = useMemo(() => {
+    if (!data?.items) return [] as AuditLogEntry[]
+    const q = qText.trim().toLowerCase()
+    if (!q) return data.items
+    return data.items.filter(
+      (e) =>
+        e.actor.toLowerCase().includes(q) ||
+        e.action.toLowerCase().includes(q) ||
+        (e.entity_type ?? '').toLowerCase().includes(q) ||
+        String(e.entity_id ?? '').includes(q),
+    )
+  }, [data?.items, qText])
 
   return (
     <div className="space-y-5">
@@ -239,6 +253,20 @@ export function AuditLogsPage({ title }: Props) {
         )}
       </div>
 
+      {/* Text search */}
+      <div className="surface-inset flex h-9 items-center gap-1.5 rounded-lg px-2.5">
+        <Search className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+        <input
+          type="text"
+          value={qText}
+          onChange={(e) => setQText(e.target.value)}
+          placeholder="Search actor, action, entity..."
+          aria-label="Search activity log"
+          className="min-w-0 flex-1 bg-transparent text-ds-caption text-foreground outline-none placeholder:text-muted-foreground"
+          autoComplete="off"
+        />
+      </div>
+
       {/* Loading skeleton */}
       {isPending ? (
         <div className="space-y-2">
@@ -259,7 +287,7 @@ export function AuditLogsPage({ title }: Props) {
       ) : null}
 
       {/* Desktop table */}
-      {data && data.items.length > 0 ? (
+      {data && filteredItems.length > 0 ? (
         <>
           <div className="hidden overflow-x-auto rounded-xl border border-border dark:border-white/[0.08] md:block">
             <table className="w-full min-w-[640px] text-left">
@@ -273,21 +301,23 @@ export function AuditLogsPage({ title }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {data.items.map((e) => <LogRow key={e.id} entry={e} />)}
+                {filteredItems.map((e) => <LogRow key={e.id} entry={e} />)}
               </tbody>
             </table>
           </div>
 
           {/* Mobile cards */}
           <div className="space-y-2 md:hidden">
-            {data.items.map((e) => <LogCard key={e.id} entry={e} />)}
+            {filteredItems.map((e) => <LogCard key={e.id} entry={e} />)}
           </div>
         </>
       ) : null}
 
       {/* Empty */}
-      {data && data.items.length === 0 ? (
-        <p className="py-12 text-center text-sm text-muted-foreground/50">No activity in the last {days} days.</p>
+      {data && filteredItems.length === 0 ? (
+        <p className="py-12 text-center text-sm text-muted-foreground/50">
+          {qText.trim() ? 'No activity matches your search.' : `No activity in the last ${days} days.`}
+        </p>
       ) : null}
 
       {/* Pagination */}

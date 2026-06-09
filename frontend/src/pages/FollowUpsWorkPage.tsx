@@ -1,5 +1,5 @@
 import { type FormEvent, useMemo, useState } from 'react'
-import { ListChecks } from 'lucide-react'
+import { ListChecks, Search } from 'lucide-react'
 
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,7 @@ export function FollowUpsWorkPage({ title }: Props) {
   const [leadId, setLeadId] = useState('')
   const [note, setNote] = useState('')
   const [dueLocal, setDueLocal] = useState('')
+  const [fuSearch, setFuSearch] = useState('')
 
   const leadsQ = useLeadsQuery(true, emptyLeadFilters, 'active')
   const leadPhoneById = useMemo(() => {
@@ -34,6 +35,18 @@ export function FollowUpsWorkPage({ title }: Props) {
     return m
   }, [leadsQ.data?.items])
   const fuQ = useFollowUpsQuery(openOnly)
+
+  const filteredFuItems = useMemo(() => {
+    if (!fuQ.data?.items) return [] as typeof fuQ.data.items
+    const q = fuSearch.trim().toLowerCase()
+    if (!q) return fuQ.data.items
+    return fuQ.data.items.filter(
+      (f) =>
+        f.note.toLowerCase().includes(q) ||
+        f.lead_name.toLowerCase().includes(q) ||
+        String(f.lead_id).includes(q),
+    )
+  }, [fuQ.data?.items, fuSearch])
   const createMut = useCreateFollowUpMutation()
   const patchMut = usePatchFollowUpMutation()
   const delMut = useDeleteFollowUpMutation()
@@ -151,24 +164,31 @@ export function FollowUpsWorkPage({ title }: Props) {
 
       {fuQ.data ? (
         <div className="surface-elevated p-4 text-sm">
+          <div className="surface-inset mb-3 flex h-9 items-center gap-1.5 rounded-lg px-2.5">
+            <Search className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+            <input
+              type="text"
+              value={fuSearch}
+              onChange={(e) => setFuSearch(e.target.value)}
+              placeholder="Search note, lead name..."
+              aria-label="Search follow-ups"
+              className="min-w-0 flex-1 bg-transparent text-ds-caption text-foreground outline-none placeholder:text-muted-foreground"
+              autoComplete="off"
+            />
+          </div>
           <p className="mb-3 font-medium text-foreground">
-            Total: {fuQ.data.total}
-            {fuQ.data.total > fuQ.data.items.length ? (
-              <span className="ml-2 font-normal text-muted-foreground">
-                (showing {fuQ.data.items.length})
-              </span>
-            ) : null}
+            Total: {fuSearch.trim() ? filteredFuItems.length : fuQ.data.total}
           </p>
-          {fuQ.data.items.length === 0 ? (
+          {filteredFuItems.length === 0 ? (
             <EmptyStatePremium
               variant="tasks"
               title="No follow-ups"
-              description={openOnly ? 'All follow-ups are completed. Uncheck "Open only" to see them.' : 'Create a follow-up above to get started.'}
+              description={fuSearch.trim() ? 'No follow-ups match your search.' : openOnly ? 'All follow-ups are completed. Uncheck "Open only" to see them.' : 'Create a follow-up above to get started.'}
               icon={ListChecks}
             />
           ) : (
             <ul className="space-y-2">
-              {fuQ.data.items.map((f) => (
+              {filteredFuItems.map((f) => (
                 <li
                   key={f.id}
                   className="surface-inset px-3 py-2 text-muted-foreground"
