@@ -27,7 +27,7 @@ export function RecycleBinWorkPage({ title }: Props) {
   const permanentDeleteMut = usePermanentDeleteLeadMutation()
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-4xl space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
         <Link
@@ -38,8 +38,7 @@ export function RecycleBinWorkPage({ title }: Props) {
         </Link>
       </div>
       <p className="text-sm text-muted-foreground">
-        Soft-deleted leads from your execution scope. Restoring clears trash and returns the lead to the normal list
-        if it was not in the pool.
+        Soft-deleted leads from your execution scope. Restoring returns the lead to your active list.
       </p>
 
       {isPending ? (
@@ -75,48 +74,49 @@ export function RecycleBinWorkPage({ title }: Props) {
               {data.items.map((l) => (
                 <li
                   key={l.id}
-                  className="surface-inset flex flex-wrap items-center justify-between gap-2 px-3 py-2"
+                  className="surface-inset flex items-center gap-3 px-3 py-2"
                 >
                   <div className="min-w-0 flex-1">
                     <span className="font-medium text-foreground">{l.name}</span>
                     <span className="mt-0.5 block text-xs text-muted-foreground">
-                      #{l.id} · deleted{' '}
+                      ID {l.id} · deleted{' '}
                       {l.deleted_at ? new Date(l.deleted_at).toLocaleString() : '—'}
                     </span>
                   </div>
-                  <LeadContactActions phone={l.phone} className="shrink-0" />
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    disabled={patchMut.isPending}
-                    onClick={() => void patchMut.mutateAsync({ id: l.id, body: { restored: true } })}
-                  >
-                    Restore
-                  </Button>
-                  {canPermanentlyDelete ? (
+                  <div className="flex shrink-0 items-center gap-2">
+                    <LeadContactActions phone={l.phone} />
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="secondary"
                       size="sm"
-                      className="text-destructive"
-                      disabled={permanentDeleteMut.isPending}
-                      onClick={() => void permanentDeleteMut.mutateAsync(l.id)}
+                      disabled={patchMut.isPending}
+                      onClick={() => void patchMut.mutateAsync({ id: l.id, body: { restored: true } })}
                     >
-                      Permanent delete
+                      {patchMut.isPending ? 'Restoring…' : 'Restore'}
                     </Button>
-                  ) : null}
+                    {canPermanentlyDelete ? (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        disabled={permanentDeleteMut.isPending}
+                        onClick={() => void permanentDeleteMut.mutateAsync(l.id)}
+                      >
+                        {permanentDeleteMut.isPending ? 'Deleting…' : 'Delete permanently'}
+                      </Button>
+                    ) : null}
+                  </div>
                 </li>
               ))}
             </ul>
           )}
           {patchMut.isError || permanentDeleteMut.isError ? (
-            <p className="mt-2 text-xs text-destructive" role="alert">
+            <p className="mt-3 rounded border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
               {patchMut.error instanceof Error
                 ? patchMut.error.message
                 : permanentDeleteMut.error instanceof Error
                   ? permanentDeleteMut.error.message
-                  : 'Recycle action failed'}
+                  : 'Action failed'}
             </p>
           ) : null}
         </div>
