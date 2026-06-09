@@ -946,39 +946,40 @@ class LeadsService:
         if body.name is not None:
             lead.name = body.name.strip()
         if body.status is not None:
-            ok, msg = validate_vl2_status_transition_for_role(
-                current_slug=lead.status,
-                target_slug=body.status,
-                role=user.role,
-            )
-            if not ok:
-                raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
-            # Day 2 → Day 3 gate: mirrors the old-app ACTION_MAP 'day2_complete' which
-            # required BOTH all Day-2 batches done AND lead_day2_business_test_passed.
-            # Leader/admin have full status control and may move a lead anywhere.
-            if (
-                body.status == "day3"
-                and lead.status == "day2"
-                and user.role not in ("admin", "leader")
-            ):
-                if not (lead.d2_morning and lead.d2_afternoon and lead.d2_evening):
-                    raise HTTPException(
-                        status_code=http_status.HTTP_400_BAD_REQUEST,
-                        detail="All Day 2 batches (morning/afternoon/evening) must be done before Day 3.",
-                    )
-                if (getattr(lead, "day2_test_status", "pending") or "pending") != "passed":
-                    raise HTTPException(
-                        status_code=http_status.HTTP_400_BAD_REQUEST,
-                        detail="Day 2 business test must be passed before advancing to Day 3.",
-                    )
-            # Payment gate: non-admins cannot enter a post-Day-3 status without an
-            # approved ₹1500 FLP-billing proof. Mirrors transition_lead_status.
-            if body.status in _PAYMENT_REQUIRED_STATUSES and user.role != "admin":
-                if lead.payment_status != "approved":
-                    raise HTTPException(
-                        status_code=http_status.HTTP_400_BAD_REQUEST,
-                        detail="Payment proof must be approved before moving to this status.",
-                    )
+            if user.role != "admin":
+                ok, msg = validate_vl2_status_transition_for_role(
+                    current_slug=lead.status,
+                    target_slug=body.status,
+                    role=user.role,
+                )
+                if not ok:
+                    raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
+                # Day 2 → Day 3 gate: mirrors the old-app ACTION_MAP 'day2_complete' which
+                # required BOTH all Day-2 batches done AND lead_day2_business_test_passed.
+                # Leader/admin have full status control and may move a lead anywhere.
+                if (
+                    body.status == "day3"
+                    and lead.status == "day2"
+                    and user.role not in ("admin", "leader")
+                ):
+                    if not (lead.d2_morning and lead.d2_afternoon and lead.d2_evening):
+                        raise HTTPException(
+                            status_code=http_status.HTTP_400_BAD_REQUEST,
+                            detail="All Day 2 batches (morning/afternoon/evening) must be done before Day 3.",
+                        )
+                    if (getattr(lead, "day2_test_status", "pending") or "pending") != "passed":
+                        raise HTTPException(
+                            status_code=http_status.HTTP_400_BAD_REQUEST,
+                            detail="Day 2 business test must be passed before advancing to Day 3.",
+                        )
+                # Payment gate: non-admins cannot enter a post-Day-3 status without an
+                # approved ₹1500 FLP-billing proof. Mirrors transition_lead_status.
+                if body.status in _PAYMENT_REQUIRED_STATUSES and user.role != "admin":
+                    if lead.payment_status != "approved":
+                        raise HTTPException(
+                            status_code=http_status.HTTP_400_BAD_REQUEST,
+                            detail="Payment proof must be approved before moving to this status.",
+                        )
             prev_status = lead.status
             lead.status = body.status
             bump_heat_on_entering_contacted(lead, prev_status)
@@ -991,7 +992,8 @@ class LeadsService:
             # Team → leader handoff: marking the Enrollment-Live video watched is the team's
             # last step. Reassign the lead to the owner's nearest upline leader so it surfaces
             # on the leader's board for Day 1 (replaces the removed mindset-lock handoff).
-            if body.status == "video_watched" and prev_status != "video_watched":
+            # Admin is exempt — they have full status control.
+            if body.status == "video_watched" and prev_status != "video_watched" and user.role != "admin":
                 owner_id = (
                     lead.owner_user_id
                     or lead.assigned_to_user_id
@@ -1298,13 +1300,14 @@ class LeadsService:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
         if not await self._repository.can_mutate_lead(user, lead):
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
-        ok, msg = validate_vl2_status_transition_for_role(
-            current_slug=lead.status,
-            target_slug=body.target_status,
-            role=user.role,
-        )
-        if not ok:
-            raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
+        if user.role != "admin":
+            ok, msg = validate_vl2_status_transition_for_role(
+                current_slug=lead.status,
+                target_slug=body.target_status,
+                role=user.role,
+            )
+            if not ok:
+                raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
         # Only entering Min. FLP Billing is payment-gated; post-paid stages stay unlocked.
         if body.target_status in _PAYMENT_REQUIRED_STATUSES and user.role != "admin":
             if lead.payment_status != "approved":
