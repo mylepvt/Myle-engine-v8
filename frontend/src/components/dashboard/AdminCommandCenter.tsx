@@ -31,7 +31,9 @@ import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardLink, CardTitle } from '@/components/ui/card'
-import { EmptyState, ErrorState } from '@/components/ui/states'
+import { EmptyStatePremium } from '@/components/ui/empty-state-premium'
+import { Skeleton } from '@/components/ui/skeleton'
+import { ErrorState } from '@/components/ui/states'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { useAdminActivitySSE } from '@/hooks/use-admin-activity-sse'
 import { AdminActivityPanel } from '@/components/dashboard/AdminActivityPanel'
@@ -176,19 +178,19 @@ const STAT_VARIANT_STYLES: Record<StatVariant, { accent: string; value: string; 
     dot: 'bg-primary/40',
   },
   warning: {
-    accent: 'bg-amber-400/70',
-    value: 'text-amber-300',
-    dot: 'bg-amber-400/50',
+    accent: 'bg-warning/70',
+    value: 'text-warning',
+    dot: 'bg-warning/50',
   },
   success: {
-    accent: 'bg-emerald-400/70',
-    value: 'text-emerald-300',
-    dot: 'bg-emerald-400/50',
+    accent: 'bg-success/70',
+    value: 'text-success',
+    dot: 'bg-success/50',
   },
   danger: {
-    accent: 'bg-red-400/70',
-    value: 'text-red-300',
-    dot: 'bg-red-400/50',
+    accent: 'bg-destructive/70',
+    value: 'text-destructive',
+    dot: 'bg-destructive/50',
   },
 }
 
@@ -268,14 +270,14 @@ function LiveOnlinePanel({ users }: { users: OnlineUserItem[] }) {
     <div className="flex items-center gap-2 py-1.5">
       <span
         className={`size-1.5 shrink-0 rounded-full ${
-          u.presence_status === 'online' ? 'bg-emerald-400' : 'bg-yellow-400'
+          u.presence_status === 'online' ? 'bg-success' : 'bg-warning'
         }`}
         aria-label={u.presence_status}
       />
       <span className="min-w-0 flex-1 truncate text-xs text-foreground">{u.name}</span>
       <span className="shrink-0 text-[10px] text-muted-foreground/60 capitalize">{u.role}</span>
       {u.is_working ? (
-        <span className="shrink-0 text-[10px] text-emerald-600 dark:text-emerald-400">
+        <span className="shrink-0 text-[10px] text-success">
           {u.calls_today > 0 ? `${u.calls_today}c` : ''}{u.leads_today > 0 ? ` ${u.leads_today}l` : ''}
         </span>
       ) : (
@@ -288,7 +290,7 @@ function LiveOnlinePanel({ users }: { users: OnlineUserItem[] }) {
     <div className="max-h-72 overflow-y-auto divide-y divide-border/40">
       {working.length > 0 && (
         <div className="pb-1">
-          <p className="sticky top-0 bg-card px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+          <p className="sticky top-0 bg-card px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-success">
             Working ({working.length})
           </p>
           <div className="px-3">
@@ -349,16 +351,16 @@ function LeaderRingCard({ leader }: { leader: LeaderHealthItem }) {
 
   const ringColor =
     leader.personal_consistency_band === 'high'
-      ? '#10b981'
+      ? 'var(--success)'
       : leader.personal_consistency_band === 'medium'
-        ? '#f59e0b'
-        : '#ef4444'
+        ? 'var(--warning)'
+        : 'var(--destructive)'
 
   const presenceDot =
     leader.presence_status === 'online'
-      ? 'bg-emerald-500'
+      ? 'bg-success'
       : leader.presence_status === 'idle'
-        ? 'bg-amber-400'
+        ? 'bg-warning'
         : 'bg-muted-foreground/30'
 
   return (
@@ -452,13 +454,13 @@ function LeaderRingCard({ leader }: { leader: LeaderHealthItem }) {
       <div
         className={`w-full rounded border p-2.5 text-center ${
           leader.day2_leads_count > 0
-            ? 'border-violet-400/30 bg-violet-400/[0.07]'
+            ? 'border-urgency-watch/30 bg-urgency-watch/[0.07]'
             : 'border-border/30 bg-muted/10'
         }`}
       >
         <p
           className={`text-sm font-bold tabular-nums ${
-            leader.day2_leads_count > 0 ? 'text-violet-400' : 'text-muted-foreground'
+            leader.day2_leads_count > 0 ? 'text-urgency-watch' : 'text-muted-foreground'
           }`}
         >
           {leader.day2_leads_count}
@@ -470,13 +472,13 @@ function LeaderRingCard({ leader }: { leader: LeaderHealthItem }) {
 }
 
 const GRACE_RISK_CONFIG = {
-  low:    { label: 'Low Risk',    cls: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400' },
-  medium: { label: 'Medium Risk', cls: 'bg-amber-500/15 text-amber-700 dark:text-amber-400' },
-  high:   { label: 'High Risk',   cls: 'bg-red-500/15 text-red-700 dark:text-red-400' },
+  low:    { label: 'Low Risk',    cls: 'bg-success/15 text-success' },
+  medium: { label: 'Medium Risk', cls: 'bg-warning/15 text-warning' },
+  high:   { label: 'High Risk',   cls: 'bg-destructive/15 text-destructive' },
 }
 
 const GRACE_OUTCOME_LABEL: Record<string, { text: string; cls: string }> = {
-  auto_restored: { text: 'Last: worked through it ✓', cls: 'text-emerald-600 dark:text-emerald-400' },
+  auto_restored: { text: 'Last: worked through it ✓', cls: 'text-success' },
   auto_removed:  { text: 'Last: removed at expiry ✗', cls: 'text-red-600 dark:text-red-400' },
   approved:      { text: 'Last: completed',            cls: 'text-muted-foreground' },
   cleared:       { text: 'Last: cleared early',        cls: 'text-amber-600 dark:text-amber-400' },
@@ -549,7 +551,7 @@ function GraceRequestRow({ member }: { member: TeamMemberPublic }) {
         <Button
           size="sm"
           variant="outline"
-          className="border-emerald-500/40 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-400/10"
+          className="border-success/40 text-success hover:bg-success/10"
           disabled={busy}
           onClick={() => act('approve_grace_request')}
         >
@@ -796,30 +798,30 @@ export function AdminCommandCenter({ firstName }: Props) {
             <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
               <p className="text-sm font-medium text-foreground shrink-0">Good day, {firstName}</p>
               {pendingTotal > 0 && (
-                <span className="flex items-center gap-1 rounded border border-amber-400/20 bg-amber-400/[0.07] px-1.5 py-0.5 text-[10px]">
+                <span className="flex items-center gap-1 rounded border border-warning/20 bg-warning/[0.07] px-1.5 py-0.5 text-[10px]">
                   <span className="relative flex size-1.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-500 opacity-75" />
-                    <span className="relative inline-flex size-1.5 rounded-full bg-amber-500" />
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-warning opacity-75" />
+                    <span className="relative inline-flex size-1.5 rounded-full bg-warning" />
                   </span>
-                  <span className="font-semibold text-amber-700 dark:text-amber-300">{pendingTotal} pending</span>
+                  <span className="font-semibold text-warning">{pendingTotal} pending</span>
                 </span>
               )}
               {liveWatcherCount > 0 && (
-                <span className="flex items-center gap-1 rounded border border-red-400/20 bg-red-500/[0.07] px-1.5 py-0.5 text-[10px]">
+                <span className="flex items-center gap-1 rounded border border-destructive/20 bg-destructive/[0.07] px-1.5 py-0.5 text-[10px]">
                   <span className="relative flex size-1.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
-                    <span className="relative inline-flex size-1.5 rounded-full bg-red-500" />
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
+                    <span className="relative inline-flex size-1.5 rounded-full bg-destructive" />
                   </span>
-                  <span className="font-semibold text-red-700 dark:text-red-300">{liveWatcherCount} watching</span>
+                  <span className="font-semibold text-destructive">{liveWatcherCount} watching</span>
                 </span>
               )}
               {premiereActiveCount > 0 && (
-                <span className="flex items-center gap-1 rounded border border-red-400/20 bg-red-500/[0.07] px-1.5 py-0.5 text-[10px]">
+                <span className="flex items-center gap-1 rounded border border-destructive/20 bg-destructive/[0.07] px-1.5 py-0.5 text-[10px]">
                   <span className="relative flex size-1.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
-                    <span className="relative inline-flex size-1.5 rounded-full bg-red-500" />
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
+                    <span className="relative inline-flex size-1.5 rounded-full bg-destructive" />
                   </span>
-                  <span className="font-semibold text-red-700 dark:text-red-300">{premiereActiveCount} live</span>
+                  <span className="font-semibold text-destructive">{premiereActiveCount} live</span>
                 </span>
               )}
             </div>
@@ -829,13 +831,13 @@ export function AdminCommandCenter({ firstName }: Props) {
             <div ref={onlinePanelRef} className="relative shrink-0">
               <button
                 onClick={() => setOnlinePanelOpen((v) => !v)}
-                className="flex items-center gap-1 rounded border border-emerald-400/20 bg-emerald-500/[0.07] px-1.5 py-0.5 text-[10px] hover:bg-emerald-500/[0.12] transition-colors whitespace-nowrap"
+                className="flex items-center gap-1 rounded border border-success/20 bg-success/[0.07] px-1.5 py-0.5 text-[10px] hover:bg-success/[0.12] transition-colors whitespace-nowrap"
               >
                 <span className="relative flex size-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
-                  <span className="relative inline-flex size-1.5 rounded-full bg-emerald-500" />
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
+                  <span className="relative inline-flex size-1.5 rounded-full bg-success" />
                 </span>
-                <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                <span className="font-semibold text-success">
                   {onlineNow.data?.online_count ?? 0} online
                 </span>
               </button>
@@ -1017,7 +1019,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                 />
               </label>
               {deferredLeadSearch.length === 0 ? (
-                <EmptyState
+                <EmptyStatePremium
                   title="Start typing to search"
                   description="This search is meant for admin jump-and-review across sections."
                 />
@@ -1028,7 +1030,8 @@ export function AdminCommandCenter({ firstName }: Props) {
                   onRetry={() => void leadSearchResults.refetch()}
                 />
               ) : (leadSearchResults.data?.items ?? []).length === 0 ? (
-                <EmptyState
+                <EmptyStatePremium
+                  variant="search"
                   title="No leads matched"
                   description="Try a broader phone, name, city, or note fragment."
                 />
@@ -1151,7 +1154,8 @@ export function AdminCommandCenter({ firstName }: Props) {
               </CardHeader>
               <CardContent>
                 {flaggedMembers.length === 0 ? (
-                  <EmptyState
+                  <EmptyStatePremium
+                    variant="notifications"
                     title="No urgent member flags"
                     description="Training locks, access blocks, and compliance warnings will surface here."
                   />
@@ -1228,7 +1232,7 @@ export function AdminCommandCenter({ firstName }: Props) {
               {leaderHealth.isPending ? (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="h-80 animate-pulse rounded bg-muted/40" />
+                    <Skeleton key={i} className="h-80" />
                   ))}
                 </div>
               ) : leaderHealth.isError ? (
@@ -1238,7 +1242,8 @@ export function AdminCommandCenter({ firstName }: Props) {
                   onRetry={() => void leaderHealth.refetch()}
                 />
               ) : (leaderHealth.data?.leaders ?? []).length === 0 ? (
-                <EmptyState
+                <EmptyStatePremium
+                  variant="analytics"
                   title="No leaders found"
                   description="Approved leaders will appear here with their daily health metrics."
                 />
@@ -1403,7 +1408,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                     onRetry={() => void invoices.refetch()}
                   />
                 ) : (invoices.data?.items ?? []).length === 0 ? (
-                  <EmptyState title="No invoices yet" description="Recent invoice documents will show here." />
+                  <EmptyStatePremium variant="wallet" title="No invoices yet" description="Recent invoice documents will show here." />
                 ) : (
                   <div className="space-y-3">
                     {invoices.data?.items.map((invoice) => (
@@ -1544,7 +1549,7 @@ export function AdminCommandCenter({ firstName }: Props) {
               {premiereData.isPending ? (
                 <div className="space-y-2">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="surface-inset h-16 animate-pulse rounded-md" />
+                    <Skeleton key={i} className="surface-inset h-16 rounded-md" />
                   ))}
                 </div>
               ) : premiereData.isError ? (
@@ -1554,7 +1559,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                   onRetry={() => void premiereData.refetch()}
                 />
               ) : (premiereData.data ?? []).length === 0 ? (
-                <EmptyState
+                <EmptyStatePremium
                   title="No attendees on this date"
                   description="No live session viewers found for the selected date."
                 />
@@ -1676,9 +1681,9 @@ export function AdminCommandCenter({ firstName }: Props) {
             <CardContent>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {([
-                  { day: 'Day 1', source: 'Calling Board', color: 'border-blue-500/30 bg-blue-500/[0.04]' },
-                  { day: 'Day 2', source: 'Workboard', color: 'border-indigo-500/30 bg-indigo-500/[0.04]' },
-                  { day: 'Day 3', source: 'Workboard (Live)', color: 'border-violet-500/30 bg-violet-500/[0.04]' },
+                  { day: 'Day 1', source: 'Calling Board', color: 'border-urgency-watch/30 bg-urgency-watch/[0.04]' },
+                  { day: 'Day 2', source: 'Workboard', color: 'border-urgency-caution/30 bg-urgency-caution/[0.04]' },
+                  { day: 'Day 3', source: 'Workboard (Live)', color: 'border-urgency-warning/30 bg-urgency-warning/[0.04]' },
                 ]).map(({ day, source, color }) => (
                   <div key={day} className={`surface-inset rounded p-3 text-sm ${color}`}>
                     <p className="font-semibold text-foreground">{day}</p>
@@ -1755,7 +1760,8 @@ export function AdminCommandCenter({ firstName }: Props) {
               </CardHeader>
               <CardContent>
                 {(leadControl.data?.history ?? []).length === 0 ? (
-                  <EmptyState
+                  <EmptyStatePremium
+                    variant="default"
                     title="No movement yet"
                     description="Auto and manual reassignment rows will appear here."
                   />
