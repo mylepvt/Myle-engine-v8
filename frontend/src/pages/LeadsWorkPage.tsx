@@ -247,6 +247,19 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
           Restore a lead to send it back to your main list and workboard.
         </p>
 
+        <div className="surface-inset flex h-9 items-center gap-1.5 rounded-lg px-2.5">
+          <Search className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+          <input
+            type="text"
+            value={qInput}
+            onChange={(e) => setQInput(e.target.value)}
+            placeholder="Search name, phone, email..."
+            aria-label="Search archived leads"
+            className="min-w-0 flex-1 bg-transparent text-ds-caption text-foreground outline-none placeholder:text-muted-foreground"
+            autoComplete="off"
+          />
+        </div>
+
         {isPending ? (
           <div className="space-y-2">
             <Skeleton className="h-9 w-full" />

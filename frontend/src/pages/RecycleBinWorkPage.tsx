@@ -1,5 +1,6 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Trash2 } from 'lucide-react'
+import { Search, Trash2 } from 'lucide-react'
 
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { Button } from '@/components/ui/button'
@@ -20,8 +21,17 @@ type Props = {
 const emptyFilters: LeadListFilters = { q: '', status: '' }
 
 export function RecycleBinWorkPage({ title }: Props) {
-  const { data, isPending, isError, error, refetch } = useLeadsQuery(true, emptyFilters, 'recycle')
+  const [qInput, setQInput] = useState('')
+  const [filters, setFilters] = useState<LeadListFilters>(emptyFilters)
+  const { data, isPending, isError, error, refetch } = useLeadsQuery(true, filters, 'recycle')
   const { serverRole } = useDashboardShellRole()
+
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      setFilters((f) => ({ ...f, q: qInput }))
+    }, 400)
+    return () => window.clearTimeout(id)
+  }, [qInput])
   const canPermanentlyDelete = serverRole === 'admin'
   const patchMut = usePatchLeadMutation()
   const permanentDeleteMut = usePermanentDeleteLeadMutation()
@@ -40,6 +50,19 @@ export function RecycleBinWorkPage({ title }: Props) {
       <p className="text-sm text-muted-foreground">
         Soft-deleted leads from your execution scope. Restoring returns the lead to your active list.
       </p>
+
+      <div className="surface-inset flex h-9 items-center gap-1.5 rounded-lg px-2.5">
+        <Search className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+        <input
+          type="text"
+          value={qInput}
+          onChange={(e) => setQInput(e.target.value)}
+          placeholder="Search name, phone, email..."
+          aria-label="Search deleted leads"
+          className="min-w-0 flex-1 bg-transparent text-ds-caption text-foreground outline-none placeholder:text-muted-foreground"
+          autoComplete="off"
+        />
+      </div>
 
       {isPending ? (
         <div className="space-y-2">

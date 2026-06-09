@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Users } from 'lucide-react'
+import { Search, Users } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { EmptyStatePremium } from '@/components/ui/empty-state-premium'
@@ -63,6 +63,7 @@ function parseRupeesToCents(value: string): number | null {
 }
 
 export function LeadPoolWorkPage({ title }: Props) {
+  const [poolQ, setPoolQ] = useState('')
   const qc = useQueryClient()
   const { role, serverRole, isAdminPreviewing } = useDashboardShellRole()
   const signedInRole = serverRole ?? role
@@ -118,6 +119,18 @@ export function LeadPoolWorkPage({ title }: Props) {
     error: batchPreviewError,
     refetch: refetchBatchPreview,
   } = useLeadPoolBatchPreviewQuery(requestedBatchCount, canClaimPool)
+
+  const poolItems = useMemo(() => {
+    if (!data?.items) return [] as PoolLead[]
+    const q = poolQ.trim().toLowerCase()
+    if (!q) return data.items as PoolLead[]
+    return (data.items as PoolLead[]).filter(
+      (l) =>
+        l.name.toLowerCase().includes(q) ||
+        l.phone?.toLowerCase().includes(q) ||
+        l.city?.toLowerCase().includes(q),
+    )
+  }, [data?.items, poolQ])
 
   useEffect(() => {
     if (!poolDefaults || defaultPriceHydrated) return
@@ -504,7 +517,7 @@ export function LeadPoolWorkPage({ title }: Props) {
             </div>
           ) : null}
 
-          {canViewPoolList && data != null && data.items.length === 0 ? (
+          {canViewPoolList && data != null && data.items.length === 0 && !poolQ.trim() ? (
             <EmptyStatePremium
               variant="leads"
               title="No leads in pool"
@@ -530,8 +543,24 @@ export function LeadPoolWorkPage({ title }: Props) {
           ) : null}
 
           {canViewPoolList && data != null && data.items.length > 0 ? (
+            <div className="space-y-2">
+              <div className="surface-inset flex h-9 items-center gap-1.5 rounded-lg px-2.5">
+                <Search className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                <input
+                  type="text"
+                  value={poolQ}
+                  onChange={(e) => setPoolQ(e.target.value)}
+                  placeholder="Search name, phone, city..."
+                  aria-label="Search pool leads"
+                  className="min-w-0 flex-1 bg-transparent text-ds-caption text-foreground outline-none placeholder:text-muted-foreground"
+                  autoComplete="off"
+                />
+              </div>
+            {poolItems.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No pool leads match your search.</p>
+            ) : (
             <ul className="space-y-3">
-              {(data.items as PoolLead[]).map((l) => {
+              {poolItems.map((l) => {
                 const price = l.pool_price_cents ?? 0
                 const isFree = price === 0
                 const canAfford = walletBalance >= price
@@ -643,6 +672,8 @@ export function LeadPoolWorkPage({ title }: Props) {
                 )
               })}
             </ul>
+            )}
+          </div>
           ) : null}
 
           {claimMut.isError || batchClaimMut.isError ? (
