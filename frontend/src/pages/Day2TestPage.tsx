@@ -64,7 +64,7 @@ export function Day2TestPage() {
 
   const post = useCallback(
     async (suffix: string, body?: unknown): Promise<TestState> => {
-      const res = await fetch(apiUrl(`/test/d2/${token}${suffix}`), {
+      const res = await fetch(apiUrl(`/api/test/d2/${token}${suffix}`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: body === undefined ? undefined : JSON.stringify(body),
@@ -78,7 +78,7 @@ export function Day2TestPage() {
   const reportEvent = useCallback(
     (type: AntiCheatEvent) => {
       if (!token) return
-      void fetch(apiUrl(`/test/d2/${token}/event`), {
+      void fetch(apiUrl(`/api/test/d2/${token}/event`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type }),
@@ -97,7 +97,7 @@ export function Day2TestPage() {
     let cancelled = false
     void (async () => {
       try {
-        const res = await fetch(apiUrl(`/test/d2/${token}`))
+        const res = await fetch(apiUrl(`/api/test/d2/${token}`))
         if (!res.ok) throw new Error(await readJsonError(res))
         const data = (await res.json()) as TestState
         if (!cancelled) {
@@ -130,7 +130,7 @@ export function Day2TestPage() {
     } catch {
       // ignore — server timer is authoritative; reload state
       try {
-        const res = await fetch(apiUrl(`/test/d2/${token}`))
+        const res = await fetch(apiUrl(`/api/test/d2/${token}`))
         if (res.ok) applyState((await res.json()) as TestState)
       } catch {
         /* noop */
@@ -392,7 +392,7 @@ export function Day2TestPage() {
             </p>
             {state.passed ? (
               <a
-                href={apiUrl(`/test/d2/${token}/certificate`)}
+                href={apiUrl(`/api/test/d2/${token}/certificate`)}
                 target="_blank"
                 rel="noreferrer"
                 className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-[1.25rem] border border-emerald-400/40 bg-emerald-400/15 px-4 py-3 text-sm font-bold text-emerald-200 transition hover:bg-emerald-400/25"

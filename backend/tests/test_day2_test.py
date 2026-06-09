@@ -64,7 +64,7 @@ async def _drive(admin_client: AsyncClient, engine, token: str, *, correct: bool
         right = _correct_index(qid, order)
         choice = right if correct else (right + 1) % 4
         resp = await admin_client.post(
-            f"/test/d2/{token}/answer",
+            f"/api/test/d2/{token}/answer",
             json={"question_index": idx, "choice_index": choice},
         )
         assert resp.status_code == 200, resp.text
@@ -96,15 +96,15 @@ async def test_start_requires_identity(admin_client: AsyncClient):
     lead_id = await _create_lead(admin_client)
     token = await _issue_link(admin_client, lead_id)
 
-    state = (await admin_client.get(f"/test/d2/{token}")).json()
+    state = (await admin_client.get(f"/api/test/d2/{token}")).json()
     assert state["status"] == "created"
     assert state["question"] is None
 
-    bad = await admin_client.post(f"/test/d2/{token}/start", json={"name": "x", "phone": "123"})
+    bad = await admin_client.post(f"/api/test/d2/{token}/start", json={"name": "x", "phone": "123"})
     assert bad.status_code == 400
 
     ok = await admin_client.post(
-        f"/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9123456780"}
+        f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9123456780"}
     )
     assert ok.status_code == 200, ok.text
     body = ok.json()
@@ -125,7 +125,7 @@ async def test_all_correct_passes(admin_client: AsyncClient, engine):
     lead_id = await _create_lead(admin_client)
     token = await _issue_link(admin_client, lead_id)
     await admin_client.post(
-        f"/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9123456780"}
+        f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9123456780"}
     )
     final = await _drive(admin_client, engine, token, correct=True)
     assert final["status"] == "submitted"
@@ -140,7 +140,7 @@ async def test_all_correct_passes(admin_client: AsyncClient, engine):
         assert lead.day2_test_completed_at is not None
 
     # passing unlocks the downloadable Day 2 business certificate (PDF)
-    cert = await admin_client.get(f"/test/d2/{token}/certificate")
+    cert = await admin_client.get(f"/api/test/d2/{token}/certificate")
     assert cert.status_code == 200, cert.text
     assert cert.headers["content-type"] == "application/pdf"
     assert cert.content[:4] == b"%PDF"
@@ -151,7 +151,7 @@ async def test_certificate_blocked_before_pass(admin_client: AsyncClient):
     lead_id = await _create_lead(admin_client)
     token = await _issue_link(admin_client, lead_id)
     # not started/passed yet → no certificate
-    cert = await admin_client.get(f"/test/d2/{token}/certificate")
+    cert = await admin_client.get(f"/api/test/d2/{token}/certificate")
     assert cert.status_code == 403
 
 
@@ -162,7 +162,7 @@ async def test_all_wrong_fails_and_locks(admin_client: AsyncClient, engine):
     lead_id = await _create_lead(admin_client)
     token = await _issue_link(admin_client, lead_id)
     await admin_client.post(
-        f"/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9123456780"}
+        f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9123456780"}
     )
     final = await _drive(admin_client, engine, token, correct=False)
     assert final["status"] == "submitted"
@@ -178,7 +178,7 @@ async def test_all_wrong_fails_and_locks(admin_client: AsyncClient, engine):
     assert again.status_code == 409
     # and the spent token cannot be restarted
     restart = await admin_client.post(
-        f"/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9123456780"}
+        f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9123456780"}
     )
     assert restart.status_code == 409
 
@@ -190,11 +190,11 @@ async def test_no_back_rejects_wrong_index(admin_client: AsyncClient):
     lead_id = await _create_lead(admin_client)
     token = await _issue_link(admin_client, lead_id)
     await admin_client.post(
-        f"/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9123456780"}
+        f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9123456780"}
     )
     # current_index is 0; answering index 5 must be rejected
     resp = await admin_client.post(
-        f"/test/d2/{token}/answer", json={"question_index": 5, "choice_index": 0}
+        f"/api/test/d2/{token}/answer", json={"question_index": 5, "choice_index": 0}
     )
     assert resp.status_code == 409
 
@@ -206,10 +206,10 @@ async def test_event_counters(admin_client: AsyncClient, engine):
     lead_id = await _create_lead(admin_client)
     token = await _issue_link(admin_client, lead_id)
     await admin_client.post(
-        f"/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9123456780"}
+        f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9123456780"}
     )
     for ev in ("blur", "blur", "hidden", "copy", "paste", "paste", "paste"):
-        r = await admin_client.post(f"/test/d2/{token}/event", json={"type": ev})
+        r = await admin_client.post(f"/api/test/d2/{token}/event", json={"type": ev})
         assert r.status_code == 200
 
     async with AsyncSession(engine, expire_on_commit=False) as s:
@@ -229,7 +229,7 @@ async def test_timer_auto_submits(admin_client: AsyncClient, engine):
     lead_id = await _create_lead(admin_client)
     token = await _issue_link(admin_client, lead_id)
     await admin_client.post(
-        f"/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9123456780"}
+        f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9123456780"}
     )
     # force expiry
     async with AsyncSession(engine, expire_on_commit=False) as s:
@@ -239,7 +239,7 @@ async def test_timer_auto_submits(admin_client: AsyncClient, engine):
         row.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
         await s.commit()
 
-    state = (await admin_client.get(f"/test/d2/{token}")).json()
+    state = (await admin_client.get(f"/api/test/d2/{token}")).json()
     assert state["status"] == "submitted"
     # nothing answered → score 0, failed
     assert state["score"] == 0
