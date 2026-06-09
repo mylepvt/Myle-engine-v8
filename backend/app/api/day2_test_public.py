@@ -1,7 +1,13 @@
 """Public (no-auth) Day 2 cheat-proof test endpoints — driven by a unique link token.
 
-Not mounted under /api/v1. The prospect opens these on their own phone; there is no
-session/cookie. All anti-cheat + scoring is server-side (see day2_test_service).
+Mounted under ``/api/test/d2`` (NOT ``/api/v1``). The prospect opens these on their own
+phone; there is no session/cookie. All anti-cheat + scoring is server-side (see
+day2_test_service).
+
+The ``/api`` prefix is deliberate: in the unified deploy the browser-facing page lives at
+``/test/d2/{token}`` (served by the SPA fallback → React ``Day2TestPage``). Keeping the data
+API under ``/api/...`` avoids a path collision where the API would otherwise intercept the
+page navigation and return raw JSON to the prospect.
 """
 from __future__ import annotations
 
@@ -14,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_db
 from app.services import day2_test_service as svc
 
-router = APIRouter(prefix="/test/d2", tags=["day2-test-public"])
+router = APIRouter(prefix="/api/test/d2", tags=["day2-test-public"])
 
 
 class StartBody(BaseModel):
