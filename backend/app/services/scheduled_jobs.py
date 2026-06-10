@@ -577,3 +577,31 @@ async def job_management_updates() -> None:
             if attempt < MAX_RETRIES:
                 await asyncio.sleep(60)
     logger.error("job_management_updates: all %d attempts exhausted", MAX_RETRIES)
+
+
+# ---------------------------------------------------------------------------
+# Job 11: weekly management report → Shikha at Mon 09:00 IST
+# ---------------------------------------------------------------------------
+
+async def job_management_weekly_report() -> None:
+    """Send weekly performance report to management every Monday 09:00 IST."""
+    try:
+        from app.services.whatsapp_management_updates import send_management_update
+        async with AsyncSessionLocal() as session:
+            result = await send_management_update(session, "weekly")
+            if result.get("sent"):
+                logger.info("job_management_weekly_report: sent successfully")
+            else:
+                logger.warning("job_management_weekly_report: %s", result.get("error", "unknown"))
+            observe_event(
+                event_type="scheduler.management_weekly_report",
+                source="scheduler",
+                detail=result,
+            )
+    except Exception as exc:
+        logger.error("job_management_weekly_report failed: %s", exc)
+        observe_event(
+            event_type="scheduler.failure",
+            source="scheduler",
+            detail={"job": "management_weekly_report", "error": str(exc)},
+        )

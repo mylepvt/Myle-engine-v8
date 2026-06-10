@@ -37,6 +37,7 @@ from app.services.scheduled_jobs import (
     job_general_pipeline_maintenance,
     job_leader_basics_enforcement,
     job_management_updates,
+    job_management_weekly_report,
     job_watch_archive_maintenance,
     job_weekly_compliance_digest,
 )
@@ -133,6 +134,13 @@ async def lifespan(_app: FastAPI):
             id="management_updates",
             replace_existing=True,
             misfire_grace_time=1800,
+        )
+        _scheduler.add_job(
+            job_management_weekly_report,
+            CronTrigger(day_of_week="mon", hour=9, minute=0, timezone="Asia/Kolkata"),
+            id="management_weekly_report",
+            replace_existing=True,
+            misfire_grace_time=3600,
         )
         _scheduler.start()
     yield
