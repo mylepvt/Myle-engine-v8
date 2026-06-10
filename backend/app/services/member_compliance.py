@@ -498,6 +498,15 @@ async def build_compliance_snapshots(
                     await send_removal_whatsapp(user=user, session=session)
                 except Exception as wa_exc:
                     logger.info("removal whatsapp failed user_id=%s during grace-expiry removal: %s", user.id, wa_exc)
+                try:
+                    from app.services.whatsapp_management_updates import send_management_member_removed_alert
+                    await send_management_member_removed_alert(
+                        session, member_name=user.name or f"User #{user.id}",
+                        member_fbo=user.fbo_id or "", removed_by="System (grace-expiry)",
+                        reason=reason,
+                    )
+                except Exception as mgmt_exc:
+                    logger.info("management alert failed user_id=%s grace-expiry: %s", user.id, mgmt_exc)
                 changed = True
             snapshot.access_blocked = True
             snapshot.discipline_status = "removed"
@@ -565,6 +574,15 @@ async def build_compliance_snapshots(
                     await send_removal_whatsapp(user=user, session=session)
                 except Exception as wa_exc:
                     logger.info("removal whatsapp failed user_id=%s during streak removal: %s", user.id, wa_exc)
+                try:
+                    from app.services.whatsapp_management_updates import send_management_member_removed_alert
+                    await send_management_member_removed_alert(
+                        session, member_name=user.name or f"User #{user.id}",
+                        member_fbo=user.fbo_id or "", removed_by="System (streak)",
+                        reason=reason,
+                    )
+                except Exception as mgmt_exc:
+                    logger.info("management alert failed user_id=%s streak: %s", user.id, mgmt_exc)
                 changed = True
             snapshot.access_blocked = True
             snapshot.discipline_status = "removed"

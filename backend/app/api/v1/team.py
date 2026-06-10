@@ -74,6 +74,18 @@ async def _send_removal_whatsapp_bg(user_id: int, removal_reason: str) -> None:
         user.removal_reason = removal_reason
         await send_removal_whatsapp(user=user, session=session)
         await alert_leader_member_removed(user, removal_reason, session)
+        try:
+            from app.services.whatsapp_management_updates import send_management_member_removed_alert
+            await send_management_member_removed_alert(
+                session,
+                member_name=user.name or f"User #{user.id}",
+                member_fbo=user.fbo_id or "",
+                removed_by="Admin",
+                reason=removal_reason,
+                leader_name="",
+            )
+        except Exception:
+            logger.exception("management removal alert failed")
         await session.commit()
 
 
@@ -733,6 +745,21 @@ async def decide_pending_registration(
         try:
             from app.services.whatsapp_leader_alerts import alert_leader_new_member_approved
             await alert_leader_new_member_approved(row, session)
+        except Exception:
+            pass
+        try:
+            from app.services.whatsapp_management_updates import send_management_member_approved_alert
+            leader_name = ""
+            if row.upline_user_id:
+                leader = await session.get(User, row.upline_user_id)
+                leader_name = leader.name if leader else ""
+            await send_management_member_approved_alert(
+                session,
+                member_name=row.name or f"User #{row.id}",
+                member_fbo=row.fbo_id or "",
+                approved_by=user.name or f"Admin #{user.user_id}",
+                leader_name=leader_name,
+            )
         except Exception:
             pass
         try:

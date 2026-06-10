@@ -278,3 +278,60 @@ async def send_daily_management_bundle(session: AsyncSession) -> list[dict[str, 
         r = await send_management_update(session, ut, phone)
         results.append(r)
     return results
+
+
+# ── Instant alerts for real-time events ─────────────────────────────
+
+
+async def send_management_member_removed_alert(
+    session: AsyncSession,
+    member_name: str,
+    member_fbo: str,
+    removed_by: str,
+    reason: str,
+    leader_name: str = "",
+    phone: str | None = None,
+) -> dict[str, Any]:
+    """Notify management when a member is removed."""
+    if not phone:
+        phone = await get_management_phone(session)
+    if not phone:
+        return {"ok": False, "error": "No management phone configured"}
+
+    lines = [
+        "🚨 *Member Removed*\n",
+        f"👤 *{member_name}* ({member_fbo})",
+        f"❌ Removed by: {removed_by}",
+        f"📝 Reason: {reason}",
+    ]
+    if leader_name:
+        lines.append(f"👔 Leader: {leader_name}")
+    lines.append(f"\n🕐 {datetime.now(timezone.utc).astimezone().strftime('%d %b %I:%M %p')}")
+
+    return await _send_wa_message(session, phone, "\n".join(lines))
+
+
+async def send_management_member_approved_alert(
+    session: AsyncSession,
+    member_name: str,
+    member_fbo: str,
+    approved_by: str,
+    leader_name: str = "",
+    phone: str | None = None,
+) -> dict[str, Any]:
+    """Notify management when a new member is approved."""
+    if not phone:
+        phone = await get_management_phone(session)
+    if not phone:
+        return {"ok": False, "error": "No management phone configured"}
+
+    lines = [
+        "✅ *New Member Approved*\n",
+        f"👤 *{member_name}* ({member_fbo})",
+        f"✔️ Approved by: {approved_by}",
+    ]
+    if leader_name:
+        lines.append(f"👔 Under leader: {leader_name}")
+    lines.append(f"\n🕐 {datetime.now(timezone.utc).astimezone().strftime('%d %b %I:%M %p')}")
+
+    return await _send_wa_message(session, phone, "\n".join(lines))

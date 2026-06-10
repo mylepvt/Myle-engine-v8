@@ -36,6 +36,7 @@ from app.services.scheduled_jobs import (
     job_flp_min_billing_proof_alert,
     job_general_pipeline_maintenance,
     job_leader_basics_enforcement,
+    job_management_updates,
     job_watch_archive_maintenance,
     job_weekly_compliance_digest,
 )
@@ -123,6 +124,13 @@ async def lifespan(_app: FastAPI):
             job_daily_leader_team_summary,
             CronTrigger(hour=22, minute=0, timezone="Asia/Kolkata"),
             id="daily_leader_team_summary",
+            replace_existing=True,
+            misfire_grace_time=1800,
+        )
+        _scheduler.add_job(
+            job_management_updates,
+            CronTrigger(hour=21, minute=30, timezone="Asia/Kolkata"),
+            id="management_updates",
             replace_existing=True,
             misfire_grace_time=1800,
         )
