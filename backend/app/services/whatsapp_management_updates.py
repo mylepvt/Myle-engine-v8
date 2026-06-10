@@ -50,9 +50,9 @@ async def set_management_phone(session: AsyncSession, phone: str) -> None:
 
 async def _get_meta_config(session: AsyncSession) -> dict[str, Any]:
     svc = SettingsService(session)
-    pid = await svc.get_app_setting("whatsapp.phone_number_id")
-    token = await svc.get_app_setting("whatsapp.access_token")
-    ver = await svc.get_app_setting("whatsapp.api_version") or "v22.0"
+    pid = await svc.get_app_setting("whatsapp.meta.phone_number_id")
+    token = await svc.get_app_setting("whatsapp.meta.access_token")
+    ver = await svc.get_app_setting("whatsapp.meta.api_version") or "v22.0"
     return {
         "phone_number_id": pid or "",
         "access_token": token or "",
