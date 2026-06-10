@@ -29,15 +29,19 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import {
+  useManagementConfigQuery,
+  useSaveManagementConfigMutation,
   useSendBroadcastMutation,
   useSendCustomMessageMutation,
   useSendInsightsMutation,
+  useSendManagementUpdateMutation,
   useTriggerDailySummaryMutation,
   useWhatsAppLeadersQuery,
   useWhatsAppLogsQuery,
   useWhatsAppStatusQuery,
   type BroadcastResultItem,
   type LogFilters,
+  type ManagementSendResult,
   type WhatsAppLogItem,
 } from '@/hooks/use-whatsapp-panel-query'
 import { apiFetch } from '@/lib/api'
@@ -179,6 +183,25 @@ export function WhatsAppPanelPage({ title }: Props) {
   const [reminderSummary, setReminderSummary] = useState<Omit<SendRemindersResponse, 'results'> | null>(null)
   const [reminderResults, setReminderResults] = useState<ReminderResult[] | null>(null)
   const [reminderError, setReminderError] = useState<string | null>(null)
+
+  // Management Updates
+  const { data: mgmtConfig, isLoading: mgmtConfigLoading } = useManagementConfigQuery()
+  const mgmtSaveMutation = useSaveManagementConfigMutation()
+  const mgmtSendMutation = useSendManagementUpdateMutation()
+  const [mgmtPhone, setMgmtPhone] = useState('')
+  const [mgmtResults, setMgmtResults] = useState<Record<string, ManagementSendResult>>({})
+  useEffect(() => {
+    if (mgmtConfig && mgmtPhone === '') setMgmtPhone(mgmtConfig.phone)
+  }, [mgmtConfig]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const MGMT_UPDATE_TYPES = [
+    { type: 'bundle', label: 'Full Daily Bundle', desc: 'Top 5 + integrity alerts + inactive list ek saath' },
+    { type: 'daily', label: 'Daily Top 5', desc: 'Aaj ke top 5 performers send karo' },
+    { type: 'integrity', label: 'Integrity Alerts', desc: 'Low trust-score members ki alert' },
+    { type: 'inactive', label: 'Inactive Members', desc: 'Members with no recent reports' },
+    { type: 'elite_alert', label: 'Elite-at-Risk', desc: 'Elite members jo risk mein hain' },
+    { type: 'weekly', label: 'Weekly Report', desc: 'Weekly performance roundup' },
+  ] as const
 
   // Template settings
   const TEMPLATE_DEFS = [
@@ -796,6 +819,80 @@ export function WhatsAppPanelPage({ title }: Props) {
               ))}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Management Updates */}
+      <Card>
+        <CardHeader className="pb-2 pt-4">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+            <Settings className="h-4 w-4 text-rose-600" />
+            Management WhatsApp Updates
+            <span className="ml-2 text-[10px] font-normal text-muted-foreground">(to Shikha / configured phone)</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 pb-4">
+          {/* Phone config */}
+          <div className="flex items-center gap-2">
+            <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+            <input
+              type="text"
+              placeholder="+91 96729 47625"
+              value={mgmtPhone}
+              onChange={(e) => setMgmtPhone(e.target.value)}
+              className="flex-1 rounded border border-input bg-background px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={mgmtSaveMutation.isPending || !mgmtPhone.trim()}
+              onClick={() => mgmtSaveMutation.mutate(mgmtPhone.trim())}
+            >
+              {mgmtSaveMutation.isPending ? 'Saving…' : 'Save'}
+            </Button>
+            {mgmtConfigLoading && <Skeleton className="h-8 w-20" />}
+          </div>
+
+          {/* Update type buttons */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {MGMT_UPDATE_TYPES.map((u) => {
+              const result = mgmtResults[u.type]
+              return (
+                <div key={u.type} className="space-y-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full justify-start border-rose-200 text-xs hover:border-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                    disabled={mgmtSendMutation.isPending}
+                    onClick={() => {
+                      mgmtSendMutation.mutate(
+                        { type: u.type, phone: mgmtPhone.trim() || undefined },
+                        {
+                          onSuccess: (r) => setMgmtResults((prev) => ({ ...prev, [u.type]: r })),
+                          onError: (e) => setMgmtResults((prev) => ({ ...prev, [u.type]: { ok: false, label: u.label, info: '', error: e.message, sent: false } })),
+                        },
+                      )
+                    }}
+                  >
+                    <Send className="mr-1.5 h-3 w-3 shrink-0 text-rose-500" />
+                    <span className="truncate">{u.label}</span>
+                  </Button>
+                  {result && (
+                    <p className={cn('px-1 text-[10px] leading-tight', result.sent ? 'text-green-700' : 'text-red-600')}>
+                      {result.sent ? `✓ ${result.info || 'Sent'}` : `✗ ${result.error || 'Failed'}`}
+                    </p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            {MGMT_UPDATE_TYPES.map((u) => (
+              <span key={u.type} className="mr-3">
+                <span className="font-medium text-rose-600">{u.label}</span>: {u.desc}
+              </span>
+            ))}
+          </p>
         </CardContent>
       </Card>
 
