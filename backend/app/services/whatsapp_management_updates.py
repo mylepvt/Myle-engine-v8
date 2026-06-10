@@ -124,29 +124,55 @@ async def build_integrity_alert(session: AsyncSession, days: int = 1) -> str | N
 
 
 async def build_inactive_list(session: AsyncSession, days: int = 1) -> str | None:
-    """List members who didn't submit report today."""
-    svc = PerformerInsightsService(session)
-    insights = await svc.get_performer_insights(days=days, min_reports=0)
-    inactive_count = insights.get("tier_distribution", {}).get("inactive", 0)
-    if inactive_count == 0:
+    """List members who didn't submit report today — direct DB query."""
+    today = today_ist()
+    day_start = datetime(today.year, today.month, today.day, tzinfo=IST)
+    day_end = day_start + timedelta(days=1)
+
+    # All active team/leader members
+    all_members = (
+        await session.execute(
+            select(User.id, User.name, User.fbo_id).where(
+                User.role.in_(["team", "leader"]),
+                User.registration_status == "approved",
+                User.access_blocked.is_(False),
+                User.removed_at.is_(None),
+            ).order_by(User.name)
+        )
+    ).all()
+
+    # Who submitted report today
+    submitters = (
+        await session.execute(
+            select(DailyReport.user_id).where(
+                DailyReport.report_date == today,
+            ).distinct()
+        )
+    ).scalars().all()
+    submitter_set = set(submitters)
+
+    inactive = [m for m in all_members if m.id not in submitter_set]
+    if not inactive:
         return None
 
-    # Get inactive members directly
-    inactive = [p for p in insights.get("performers", []) if p.get("tier") == "inactive"]
-
-    total_members = insights["total_members"]
-    active = insights["active_members"]
+    # Build message — keep under WhatsApp 4096 char limit
+    MAX_MSG_LEN = 4000
     lines = [
-        f"📋 *Inactive Members — Today*\n",
-        f"Total: {total_members} members",
-        f"✅ Submitted: {active}",
-        f"❌ Missing: {inactive_count}\n",
+        f"📋 *Inactive Members — {today.strftime('%d %b')}*\n",
+        f"Total: {len(all_members)} members",
+        f"✅ Submitted: {len(submitter_set)}",
+        f"❌ Missing: {len(inactive)}\n",
     ]
-    if inactive:
-        names = [f"• {p['name']} ({p['fbo_id']})" for p in inactive[:10]]
-        lines.extend(names)
-        if len(inactive) > 10:
-            lines.append(f"...and {len(inactive) - 10} more")
+    for m in inactive:
+        line = f"• {m.name or f'User #{m.id}'} ({m.fbo_id or '—'})"
+        candidate = "\n".join(lines + [line])
+        if len(candidate) > MAX_MSG_LEN:
+            added_so_far = len(lines) - 4  # subtract header lines
+            remaining = len(inactive) - added_so_far
+            lines.append(f"...and {remaining} more (message limit reached)")
+            break
+        lines.append(line)
+
     return "\n".join(lines)
 
 
