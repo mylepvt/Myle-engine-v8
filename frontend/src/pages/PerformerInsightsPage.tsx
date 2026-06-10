@@ -1,30 +1,54 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Calendar, TrendingUp, Trophy, Users, PhoneCall, GitPullRequest, DollarSign } from 'lucide-react'
-import { usePerformerInsightsQuery } from '@/hooks/use-performer-insights-query'
+import { Button } from '@/components/ui/button'
+import {
+  Calendar,
+  TrendingUp,
+  Trophy,
+  Users,
+  PhoneCall,
+  GitPullRequest,
+  DollarSign,
+  Copy,
+  MessageSquare,
+  Check,
+  Shield,
+  Star,
+  Zap,
+} from 'lucide-react'
+import { usePerformerInsightsQuery, type SuggestedMember } from '@/hooks/use-performer-insights-query'
 import { cn } from '@/lib/utils'
 
 const TREND_COLORS: Record<string, string> = {
-  improving: 'text-green-600 bg-green-500/10',
-  stable: 'text-amber-600 bg-amber-500/10',
-  declining: 'text-red-600 bg-red-500/10',
-  inactive: 'text-muted-foreground bg-muted/40',
+  improving: 'text-green-600 bg-green-500/10 border-green-500/20',
+  stable: 'text-amber-600 bg-amber-500/10 border-amber-500/20',
+  declining: 'text-red-600 bg-red-500/10 border-red-500/20',
+  inactive: 'text-muted-foreground bg-muted/40 border-muted/30',
 }
 
-const LEVEL_RANK: Record<string, { label: string; min: number; cls: string }> = {
-  elite: { label: 'Elite', min: 75, cls: 'bg-gradient-to-r from-amber-400/20 to-orange-400/20 text-amber-600 dark:text-amber-300 font-bold' },
-  strong: { label: 'Strong', min: 50, cls: 'bg-violet-500/15 text-violet-600 dark:text-violet-400' },
-  rising: { label: 'Rising', min: 25, cls: 'bg-blue-500/15 text-blue-600 dark:text-blue-400' },
-  low: { label: 'Low', min: 0, cls: 'bg-muted/60 text-muted-foreground' },
-}
-
-function scoreLevel(score: number): { label: string; cls: string } {
-  for (const l of Object.values(LEVEL_RANK)) {
-    if (score >= l.min) return l
-  }
-  return LEVEL_RANK.low
+const TIER_STYLES: Record<string, { icon: React.ReactNode; cls: string }> = {
+  elite: {
+    icon: <Trophy className="w-4 h-4" />,
+    cls: 'bg-gradient-to-r from-amber-400/20 to-orange-400/20 text-amber-600 dark:text-amber-300 border-amber-400/30',
+  },
+  strong: {
+    icon: <Shield className="w-4 h-4" />,
+    cls: 'bg-violet-500/15 text-violet-600 dark:text-violet-400 border-violet-500/20',
+  },
+  rising: {
+    icon: <TrendingUp className="w-4 h-4" />,
+    cls: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/20',
+  },
+  developing: {
+    icon: <Star className="w-4 h-4" />,
+    cls: 'bg-muted/60 text-muted-foreground border-muted/30',
+  },
+  inactive: {
+    icon: <Zap className="w-4 h-4" />,
+    cls: 'bg-muted/40 text-muted-foreground/50 border-muted/20',
+  },
 }
 
 function BreakdownBar({ value, label, color }: { value: number; label: string; color: string }) {
@@ -37,7 +61,32 @@ function BreakdownBar({ value, label, color }: { value: number; label: string; c
           style={{ width: `${Math.min(value, 100)}%` }}
         />
       </div>
-      <span className="w-8 text-right tabular-nums font-medium">{Math.round(value)}</span>
+      <span className="w-8 text-right tabular-nums font-medium">{Math.round(value)}%</span>
+    </div>
+  )
+}
+
+function SuggestedCard({ member, isElite }: { member: SuggestedMember; isElite: boolean }) {
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/20',
+        isElite ? 'border-amber-400/40 bg-amber-500/5' : 'border-violet-400/20 bg-violet-500/5',
+      )}
+    >
+      <span className="text-lg shrink-0">{isElite ? '🔥' : '💪'}</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate">{member.name}</p>
+        <p className="text-xs text-muted-foreground truncate">
+          {member.fbo_id} · Score {member.composite_score}
+        </p>
+        {member.phone && (
+          <p className="text-xs text-muted-foreground/70 mt-0.5 font-mono">{member.phone}</p>
+        )}
+      </div>
+      <div className="shrink-0 text-xs text-muted-foreground max-w-[140px] text-right leading-tight">
+        {member.reason.split('—')[1]?.trim() || member.reason}
+      </div>
     </div>
   )
 }
@@ -46,24 +95,69 @@ type Props = { title?: string }
 
 export default function PerformerInsightsPage({ title: _title }: Props) {
   const [days, setDays] = useState(30)
+  const [copied, setCopied] = useState(false)
+  const [showOnlySuggested, setShowOnlySuggested] = useState(false)
   const { data, isPending, isError, error } = usePerformerInsightsQuery(days)
 
-  const summaryStats = useMemo(() => {
-    if (!data) return null
-    return {
-      total: data.total_members,
-      active: data.active_members,
-      top: data.top_performer_count,
-      avgScore: data.average_score,
+  const sortedPerformers = useMemo(() => {
+    if (!data) return []
+    let list = data.performers
+    if (showOnlySuggested) {
+      const suggestedIds = new Set([
+        ...data.suggested_group.elite.map((s) => s.user_id),
+        ...data.suggested_group.strong.map((s) => s.user_id),
+      ])
+      list = list.filter((p) => suggestedIds.has(p.user_id))
+    }
+    return list
+  }, [data, showOnlySuggested])
+
+  const handleCopyNumbers = useCallback(async () => {
+    if (!data?.suggested_group.all_phones.length) return
+    const text = data.suggested_group.all_phones.join('\n')
+    await navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }, [data])
+
+  const handleCopyNamesAndNumbers = useCallback(async () => {
+    if (!data) return
+    const lines = [
+      data.suggested_group.whatsapp_group_intro,
+      '',
+      '🔥 *ELITE PERFORMERS*',
+      ...data.suggested_group.elite.map(
+        (m) => `${m.phone || '—'}  ${m.name} (${m.fbo_id})`,
+      ),
+      '',
+      '💪 *STRONG PERFORMERS*',
+      ...data.suggested_group.strong.map(
+        (m) => `${m.phone || '—'}  ${m.name} (${m.fbo_id})`,
+      ),
+      '',
+      `Total: ${data.suggested_group.total_count} members`,
+    ]
+    await navigator.clipboard.writeText(lines.join('\n'))
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }, [data])
+
+  const handleOpenWhatsAppGroup = useCallback(() => {
+    if (!data?.suggested_group.all_phones.length) return
+    const numbers = data.suggested_group.all_phones
+    // Use the first phone as a click-to-chat to start the group
+    const first = numbers[0]
+    if (first) {
+      window.open(`https://wa.me/${first.replace('+', '')}?text=Hi!%20Join%20our%20Top%20Performers%20group%20%F0%9F%8F%86`, '_blank')
     }
   }, [data])
 
   if (isPending) {
     return (
       <div className="space-y-4 p-4 sm:p-6">
-        <Skeleton className="h-8 w-48" />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24 rounded" />)}
+        <Skeleton className="h-8 w-56" />
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-24 rounded" />)}
         </div>
         <Skeleton className="h-96 w-full rounded" />
       </div>
@@ -82,6 +176,8 @@ export default function PerformerInsightsPage({ title: _title }: Props) {
 
   if (!data) return null
 
+  const suggested = data.suggested_group
+
   return (
     <div className="min-w-0 space-y-4 p-4 sm:p-6">
       {/* Header */}
@@ -92,7 +188,7 @@ export default function PerformerInsightsPage({ title: _title }: Props) {
             Performer Insights
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Intelligent ranking of who is genuinely working & getting results
+            Statistical engine ranking who is genuinely working — suggests who belongs in the Top Performers WhatsApp group
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -112,40 +208,144 @@ export default function PerformerInsightsPage({ title: _title }: Props) {
         </div>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* Summary tiles */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <SummaryCard icon={<Users className="w-4 h-4" />} label="Total Members" value={data.total_members} />
         <SummaryCard icon={<PhoneCall className="w-4 h-4 text-green-600" />} label="Active (reported)" value={data.active_members} />
         <SummaryCard icon={<Trophy className="w-4 h-4 text-amber-600" />} label="Top Performers" value={data.top_performer_count} />
         <SummaryCard icon={<TrendingUp className="w-4 h-4 text-blue-600" />} label="Avg Score" value={`${data.average_score}`} />
+        <SummaryCard icon={<Star className="w-4 h-4 text-violet-600" />} label="Median Score" value={`${data.median_score}`} />
       </div>
 
-      {/* Performer list */}
+      {/* Tier distribution */}
+      <div className="flex flex-wrap gap-2">
+        {Object.entries(data.tier_distribution).map(([tier, count]) => {
+          const style = TIER_STYLES[tier]
+          return (
+            <Badge key={tier} variant="outline" className={cn('gap-1 px-2.5 py-1 text-xs', style?.cls)}>
+              {style?.icon}
+              {tier}: {count}
+            </Badge>
+          )
+        })}
+      </div>
+
+      {/* Suggested Group — WhatsApp-ready */}
+      {suggested.total_count > 0 && (
+        <Card className="border-amber-400/30">
+          <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
+            <CardTitle className="text-base flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-green-600" />
+                Suggested for WhatsApp Top Performers Group
+              </span>
+              <Badge variant="default" className="bg-green-600 text-white text-xs">
+                {suggested.total_count} members
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 sm:px-6 pb-4 space-y-3">
+            {/* Action buttons */}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopyNumbers}
+                className="text-xs gap-1.5"
+              >
+                {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? 'Copied!' : 'Copy All Numbers'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopyNamesAndNumbers}
+                className="text-xs gap-1.5"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                Copy Names + Numbers
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleOpenWhatsAppGroup}
+                className="text-xs gap-1.5 bg-green-600 hover:bg-green-700"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                Open WhatsApp (Start with first member)
+              </Button>
+            </div>
+
+            {/* Elite performers */}
+            {suggested.elite.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold text-amber-600 mb-2 flex items-center gap-1.5">
+                  <Trophy className="w-4 h-4" /> Elite ({suggested.elite.length})
+                </h4>
+                <div className="space-y-1.5">
+                  {suggested.elite.map((m) => (
+                    <SuggestedCard key={m.user_id} member={m} isElite />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Strong performers */}
+            {suggested.strong.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold text-violet-600 mb-2 flex items-center gap-1.5">
+                  <Shield className="w-4 h-4" /> Strong ({suggested.strong.length})
+                </h4>
+                <div className="space-y-1.5">
+                  {suggested.strong.map((m) => (
+                    <SuggestedCard key={m.user_id} member={m} isElite={false} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Full performer list */}
       <Card>
         <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
           <CardTitle className="text-base flex items-center justify-between">
-            <span>Ranking ({data.period_days}-day period)</span>
-            <Badge variant="outline" className="text-xs font-normal">
-              {data.performers.length} members scored
-            </Badge>
+            <span>Full Ranking ({data.period_days}-day period)</span>
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showOnlySuggested}
+                  onChange={(e) => setShowOnlySuggested(e.target.checked)}
+                  className="rounded"
+                />
+                Suggested only
+              </label>
+              <Badge variant="outline" className="text-xs font-normal">
+                {sortedPerformers.length} members
+              </Badge>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent className="px-2 sm:px-6 pb-4">
-          {data.performers.length === 0 ? (
+          {sortedPerformers.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">No performer data for this period.</p>
           ) : (
             <div className="space-y-2">
-              {data.performers.map((p) => {
-                const level = scoreLevel(p.composite_score)
+              {sortedPerformers.map((p) => {
+                const tierStyle = TIER_STYLES[p.tier] || TIER_STYLES.developing
                 return (
                   <div
                     key={p.user_id}
                     className={cn(
                       'rounded-lg border p-3 transition-colors hover:bg-muted/20',
-                      p.rank <= 3 ? 'border-amber-400/30 bg-amber-500/5' : 'border-border',
+                      p.rank <= 3
+                        ? 'border-amber-400/30 bg-amber-500/[0.03]'
+                        : 'border-border',
+                      showOnlySuggested && 'border-green-400/30',
                     )}
                   >
-                    {/* Top row: rank, name, score, badge */}
                     <div className="flex items-center justify-between gap-3 mb-2">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <span className={cn(
@@ -157,27 +357,34 @@ export default function PerformerInsightsPage({ title: _title }: Props) {
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">{p.name}</p>
                           <p className="text-xs text-muted-foreground truncate">{p.fbo_id} · {p.role}</p>
+                          {p.phone && (
+                            <p className="text-xs text-muted-foreground/60 font-mono">{p.phone}</p>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium', level.cls)}>
-                          {level.label}
+                        <span className={cn(
+                          'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium',
+                          tierStyle.cls,
+                        )}>
+                          {tierStyle.icon}
+                          {p.tier}
                         </span>
                         <span className="text-lg font-bold tabular-nums">{p.composite_score}</span>
                       </div>
                     </div>
 
-                    {/* Breakdown bars */}
                     <div className="space-y-1 mb-2">
                       <BreakdownBar value={p.breakdown.consistency} label="Consistency" color="bg-blue-500" />
-                      <BreakdownBar value={p.breakdown.call_activity} label="Call Activity" color="bg-emerald-500" />
+                      <BreakdownBar value={p.breakdown.call_activity} label="Call Volume" color="bg-emerald-500" />
+                      <BreakdownBar value={p.breakdown.pickup_rate} label="Pickup Rate" color="bg-teal-500" />
                       <BreakdownBar value={p.breakdown.lead_education} label="Lead Education" color="bg-violet-500" />
                       <BreakdownBar value={p.breakdown.pipeline_conversion} label="Pipeline Conv." color="bg-orange-500" />
                       <BreakdownBar value={p.breakdown.results} label="Results" color="bg-rose-500" />
                     </div>
 
-                    {/* Key metrics row */}
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      <span>{p.metrics.submission_days}/{data.period_days}d reports</span>
                       <span className="flex items-center gap-1">
                         <PhoneCall className="w-3 h-3" /> {p.metrics.total_calls} calls
                       </span>
@@ -189,6 +396,7 @@ export default function PerformerInsightsPage({ title: _title }: Props) {
                         <DollarSign className="w-3 h-3" /> {p.metrics.payments} payments
                       </span>
                       <span>{p.metrics.leads_taken} leads</span>
+                      <span>{p.metrics.converted_leads} conv</span>
                       <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0', TREND_COLORS[p.trend] || '')}>
                         {p.trend === 'inactive' ? 'Inactive' : `${p.trend} (${p.trend_pct > 0 ? '+' : ''}${p.trend_pct}%)`}
                       </Badge>
