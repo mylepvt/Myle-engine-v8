@@ -96,7 +96,7 @@ async def build_top5_daily(session: AsyncSession, days: int = 1) -> str:
         score = p["composite_score"]
         lines.append(
             f"{i}. {emoji} *{p['name']}* — {score} pts\n"
-            f"   📞 {calls} calls | 🔄 {pipeline} pipeline | ₹ payments"
+            f"   📞 {calls} calls | 🔄 {pipeline} pipeline | ₹{payments} payments"
         )
 
     lines.append(f"\n👥 Active: {insights['active_members']}/{insights['total_members']} members")
