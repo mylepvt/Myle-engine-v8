@@ -349,6 +349,7 @@ async def send_management_update(
     elif update_type == "elite_alert":
         message = await builder_fn(session)
     else:
+        days = 1 if update_type in ("daily", "integrity", "inactive") else 7
         message = await builder_fn(session, days=days)
 
     if not message:
