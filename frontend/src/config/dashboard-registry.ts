@@ -101,6 +101,7 @@ export type FullUiSurface =
   | { kind: 'settings-org-tree' }
   | { kind: 'all-members' }
   | { kind: 'whatsapp-panel' }
+  | { kind: 'performer-insights' }
   /** Loads `ShellStubPage` with a GET that returns `SystemStubResponse` (items + note). */
   | { kind: 'shell-api'; apiPath: string }
 
@@ -465,6 +466,14 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('system/whatsapp'),
     surface: 'full',
     ui: { kind: 'whatsapp-panel' },
+  },
+  {
+    path: 'system/performer-insights',
+    section: { id: 'system', label: 'System' },
+    label: 'Performer Insights',
+    roles: routeRoles('system/performer-insights'),
+    surface: 'full',
+    ui: { kind: 'performer-insights' },
   },
   {
     path: 'settings/app',

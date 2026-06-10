@@ -5,7 +5,8 @@ New pipeline (mirrors old Myle Dashboard):
            → day1 → day2 → day3 → converted
 
 Role rules:
-  - Team: forward up to and including video_watched; never day1+.
+  - Team: forward up to and including video_watched; never day1+/day2+ EXCEPT
+    day2→day3 (allowed; the gate in leads_service checks batches + test).
   - Leader: free forward EXCEPT advancing into Day 3 (admin only).
   - Admin: anywhere.
 """
@@ -43,8 +44,9 @@ def test_team_cannot_set_day2():
     assert not ok("day1", "day2", "team")
 
 
-def test_team_cannot_set_day3():
-    assert not ok("day2", "day3", "team")
+def test_team_can_set_day3_with_gate_check():
+    """Team may request day2→day3; the gate in leads_service checks batches+test."""
+    assert ok("day2", "day3", "team")
 
 
 def test_team_can_mark_lost_from_video_sent():

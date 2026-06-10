@@ -217,12 +217,12 @@ def is_valid_forward_status_transition(
 # Video Watched by ``TEAM_FORBIDDEN_STATUS_SLUGS``.
 #   day1   = leader/admin (handoff: team records video_watched, leader takes over)
 #   day2   = leader/admin
-#   day3   = leader/admin (leader has full status control over their leads)
+#   day3   = leader/admin/team (team members may advance once batches+test gate is met)
 #   converted = leader/admin (Day 3 close)
 DAY_ADVANCE_ALLOWED_ROLES: dict[str, frozenset[str]] = {
     "day1": frozenset({"leader", "admin"}),
     "day2": frozenset({"leader", "admin"}),
-    "day3": frozenset({"leader", "admin"}),
+    "day3": frozenset({"leader", "admin", "team"}),
     "converted": frozenset({"leader", "admin"}),
 }
 
@@ -266,18 +266,23 @@ def validate_vl2_status_transition_for_role(
                 return False, "Only an admin can advance a lead to Day 3"
             return False, "You are not allowed to advance the lead to this stage"
 
-    cur_label = LEAD_STATUS_LABELS.get(current_slug, current_slug)
-    tgt_label = LEAD_STATUS_LABELS.get(target_slug, target_slug)
-    cur_h = normalize_flow_status(cur_label)
-    tgt_h = normalize_flow_status(tgt_label)
-    ok = is_valid_forward_status_transition(
-        cur_h,
-        tgt_h,
-        for_team=(role == "team"),
-        admin_may_skip_fsm=(role in ("admin", "leader")),
-    )
-    if not ok:
-        return False, "Invalid status transition for your role"
+    # Team may advance day2→day3 once the batch+test gate is satisfied
+    # (checked in leads_service). Skip the FSM boundary restriction for this path.
+    if role == "team" and current_slug == "day2" and target_slug == "day3":
+        pass
+    else:
+        cur_label = LEAD_STATUS_LABELS.get(current_slug, current_slug)
+        tgt_label = LEAD_STATUS_LABELS.get(target_slug, target_slug)
+        cur_h = normalize_flow_status(cur_label)
+        tgt_h = normalize_flow_status(tgt_label)
+        ok = is_valid_forward_status_transition(
+            cur_h,
+            tgt_h,
+            for_team=(role == "team"),
+            admin_may_skip_fsm=(role in ("admin", "leader")),
+        )
+        if not ok:
+            return False, "Invalid status transition for your role"
     return True, ""
 
 

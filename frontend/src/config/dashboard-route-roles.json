@@ -24,6 +24,7 @@
   "system/training": ["admin", "leader", "team"],
   "system/training-progress": ["admin"],
   "system/whatsapp": ["admin"],
+  "system/performer-insights": ["admin"],
   "system/lead-control": ["admin"],
   "system/decision-engine": ["admin"],
   "system/coaching": ["admin", "leader"],
