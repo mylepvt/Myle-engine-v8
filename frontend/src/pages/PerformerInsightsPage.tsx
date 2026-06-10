@@ -94,23 +94,28 @@ function SuggestedCard({ member, isElite }: { member: SuggestedMember; isElite: 
 type Props = { title?: string }
 
 export default function PerformerInsightsPage({ title: _title }: Props) {
+  type FilterMode = 'all' | 'suggested' | 'active' | 'inactive'
   const [days, setDays] = useState(30)
+  const [filterMode, setFilterMode] = useState<FilterMode>('all')
   const [copied, setCopied] = useState(false)
-  const [showOnlySuggested, setShowOnlySuggested] = useState(false)
   const { data, isPending, isError, error } = usePerformerInsightsQuery(days)
 
   const sortedPerformers = useMemo(() => {
     if (!data) return []
     let list = data.performers
-    if (showOnlySuggested) {
+    if (filterMode === 'suggested') {
       const suggestedIds = new Set([
         ...data.suggested_group.elite.map((s) => s.user_id),
         ...data.suggested_group.strong.map((s) => s.user_id),
       ])
       list = list.filter((p) => suggestedIds.has(p.user_id))
+    } else if (filterMode === 'inactive') {
+      list = list.filter((p) => p.tier === 'inactive' || p.trend === 'inactive')
+    } else if (filterMode === 'active') {
+      list = list.filter((p) => p.tier !== 'inactive' && p.trend !== 'inactive')
     }
     return list
-  }, [data, showOnlySuggested])
+  }, [data, filterMode])
 
   const handleCopyNumbers = useCallback(async () => {
     if (!data?.suggested_group.all_phones.length) return
@@ -307,21 +312,64 @@ export default function PerformerInsightsPage({ title: _title }: Props) {
         </Card>
       )}
 
+      {/* Inactive members card */}
+      {data.tier_distribution.inactive > 0 && (
+        <Card className="border-red-200/40 dark:border-red-900/30">
+          <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
+            <CardTitle className="text-base flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-muted-foreground" />
+                Inactive Members
+              </span>
+              <Badge variant="outline" className="text-xs bg-red-500/10 text-red-600 border-red-500/20">
+                {data.tier_distribution.inactive} members
+              </Badge>
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              No activity in the last {days} days — no reports, calls, or leads
+            </p>
+          </CardHeader>
+          <CardContent className="px-4 sm:px-6 pb-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+              {data.performers
+                .filter((p) => p.tier === 'inactive')
+                .slice(0, 24)
+                .map((p) => (
+                  <div
+                    key={p.user_id}
+                    className="rounded border border-dashed border-muted-300/50 p-2 text-center"
+                  >
+                    <p className="text-xs font-medium truncate">{p.name}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{p.fbo_id}</p>
+                    {p.phone && <p className="text-[10px] text-muted-foreground/60 font-mono">{p.phone}</p>}
+                  </div>
+                ))}
+              {data.tier_distribution.inactive > 24 && (
+                <p className="text-xs text-muted-foreground col-span-full text-center pt-1">
+                  +{data.tier_distribution.inactive - 24} more inactive members — switch to "Inactive Only" filter to see all
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Full performer list */}
       <Card>
         <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
           <CardTitle className="text-base flex items-center justify-between">
             <span>Full Ranking ({data.period_days}-day period)</span>
             <div className="flex items-center gap-2">
-              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showOnlySuggested}
-                  onChange={(e) => setShowOnlySuggested(e.target.checked)}
-                  className="rounded"
-                />
-                Suggested only
-              </label>
+              <select
+                value={filterMode}
+                onChange={(e) => setFilterMode(e.target.value as FilterMode)}
+                className="px-2 py-1 border rounded text-xs bg-background"
+              >
+                <option value="all">All Members</option>
+                <option value="active">Active</option>
+                <option value="suggested">Top Performers</option>
+                <option value="inactive">Inactive Only</option>
+              </select>
               <Badge variant="outline" className="text-xs font-normal">
                 {sortedPerformers.length} members
               </Badge>
@@ -343,7 +391,7 @@ export default function PerformerInsightsPage({ title: _title }: Props) {
                       p.rank <= 3
                         ? 'border-amber-400/30 bg-amber-500/[0.03]'
                         : 'border-border',
-                      showOnlySuggested && 'border-green-400/30',
+                      filterMode !== 'all' && 'border-green-400/30',
                     )}
                   >
                     <div className="flex items-center justify-between gap-3 mb-2">
