@@ -40,19 +40,19 @@ _TIER_EMOJI = {
 
 async def get_management_phone(session: AsyncSession) -> str | None:
     svc = SettingsService(session)
-    return await svc.get_setting(SETTING_KEY_PHONE)
+    return await svc.get_app_setting(SETTING_KEY_PHONE)
 
 
 async def set_management_phone(session: AsyncSession, phone: str) -> None:
     svc = SettingsService(session)
-    await svc.set_setting(SETTING_KEY_PHONE, phone)
+    await svc.update_app_setting(SETTING_KEY_PHONE, phone, updated_by_user_id=0)
 
 
 async def _get_meta_config(session: AsyncSession) -> dict[str, Any]:
     svc = SettingsService(session)
-    pid = await svc.get_setting("whatsapp.phone_number_id")
-    token = await svc.get_setting("whatsapp.access_token")
-    ver = await svc.get_setting("whatsapp.api_version") or "v22.0"
+    pid = await svc.get_app_setting("whatsapp.phone_number_id")
+    token = await svc.get_app_setting("whatsapp.access_token")
+    ver = await svc.get_app_setting("whatsapp.api_version") or "v22.0"
     return {
         "phone_number_id": pid or "",
         "access_token": token or "",
