@@ -17,9 +17,21 @@ import {
   Shield,
   Star,
   Zap,
+  AlertTriangle,
+  ShieldAlert,
+  ShieldCheck,
+  Activity,
+  ExternalLink,
 } from 'lucide-react'
-import { usePerformerInsightsQuery, type SuggestedMember } from '@/hooks/use-performer-insights-query'
+import {
+  usePerformerInsightsQuery,
+  type SuggestedMember,
+  type FlaggedMember,
+  type EliteAtRiskMember,
+} from '@/hooks/use-performer-insights-query'
 import { cn } from '@/lib/utils'
+
+type FilterMode = 'all' | 'suggested' | 'active' | 'inactive'
 
 const TREND_COLORS: Record<string, string> = {
   improving: 'text-green-600 bg-green-500/10 border-green-500/20',
@@ -48,6 +60,21 @@ const TIER_STYLES: Record<string, { icon: React.ReactNode; cls: string }> = {
   inactive: {
     icon: <Zap className="w-4 h-4" />,
     cls: 'bg-muted/40 text-muted-foreground/50 border-muted/20',
+  },
+}
+
+const RISK_STYLES: Record<string, { icon: React.ReactNode; cls: string }> = {
+  high: {
+    icon: <ShieldAlert className="w-4 h-4" />,
+    cls: 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/20',
+  },
+  medium: {
+    icon: <AlertTriangle className="w-4 h-4" />,
+    cls: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/20',
+  },
+  low: {
+    icon: <ShieldCheck className="w-4 h-4" />,
+    cls: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/20',
   },
 }
 
@@ -94,7 +121,6 @@ function SuggestedCard({ member, isElite }: { member: SuggestedMember; isElite: 
 type Props = { title?: string }
 
 export default function PerformerInsightsPage({ title: _title }: Props) {
-  type FilterMode = 'all' | 'suggested' | 'active' | 'inactive'
   const [days, setDays] = useState(30)
   const [filterMode, setFilterMode] = useState<FilterMode>('all')
   const [copied, setCopied] = useState(false)
@@ -149,11 +175,12 @@ export default function PerformerInsightsPage({ title: _title }: Props) {
 
   const handleOpenWhatsAppGroup = useCallback(() => {
     if (!data?.suggested_group.all_phones.length) return
-    const numbers = data.suggested_group.all_phones
-    // Use the first phone as a click-to-chat to start the group
-    const first = numbers[0]
+    const first = data.suggested_group.all_phones[0]
     if (first) {
-      window.open(`https://wa.me/${first.replace('+', '')}?text=Hi!%20Join%20our%20Top%20Performers%20group%20%F0%9F%8F%86`, '_blank')
+      window.open(
+        `https://wa.me/${first.replace('+', '')}?text=Hi!%20Join%20our%20Top%20Performers%20group%20%F0%9F%8F%86`,
+        '_blank',
+      )
     }
   }, [data])
 
@@ -162,7 +189,9 @@ export default function PerformerInsightsPage({ title: _title }: Props) {
       <div className="space-y-4 p-4 sm:p-6">
         <Skeleton className="h-8 w-56" />
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-24 rounded" />)}
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="h-24 rounded" />
+          ))}
         </div>
         <Skeleton className="h-96 w-full rounded" />
       </div>
@@ -172,7 +201,10 @@ export default function PerformerInsightsPage({ title: _title }: Props) {
   if (isError) {
     return (
       <div className="p-4 sm:p-6">
-        <div className="rounded border border-red-600/20 bg-red-600/5 p-4 text-sm text-red-600" role="alert">
+        <div
+          className="rounded border border-red-600/20 bg-red-600/5 p-4 text-sm text-red-600"
+          role="alert"
+        >
           {error instanceof Error ? error.message : 'Failed to load performer insights'}
         </div>
       </div>
@@ -182,6 +214,8 @@ export default function PerformerInsightsPage({ title: _title }: Props) {
   if (!data) return null
 
   const suggested = data.suggested_group
+  const audit = data.integrity_audit
+  const atRisk = data.elite_at_risk
 
   return (
     <div className="min-w-0 space-y-4 p-4 sm:p-6">
@@ -193,7 +227,7 @@ export default function PerformerInsightsPage({ title: _title }: Props) {
             Performer Insights
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Statistical engine ranking who is genuinely working — suggests who belongs in the Top Performers WhatsApp group
+            Statistical engine ranking genuine contributors with integrity audit &amp; elite risk prediction
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -233,9 +267,162 @@ export default function PerformerInsightsPage({ title: _title }: Props) {
             </Badge>
           )
         })}
+        {audit.total_flagged > 0 && (
+          <Badge variant="outline" className="gap-1 px-2.5 py-1 text-xs bg-red-500/10 text-red-600 border-red-500/20">
+            <AlertTriangle className="w-4 h-4" />
+            {audit.total_flagged} flagged
+          </Badge>
+        )}
+        {atRisk.total_at_risk > 0 && (
+          <Badge variant="outline" className="gap-1 px-2.5 py-1 text-xs bg-amber-500/15 text-amber-600 border-amber-500/20">
+            <Activity className="w-4 h-4" />
+            {atRisk.total_at_risk} at risk
+          </Badge>
+        )}
       </div>
 
-      {/* Suggested Group — WhatsApp-ready */}
+      {/* ─────────────────── ELITE AT RISK ─────────────────── */}
+      {atRisk.total_at_risk > 0 && (
+        <Card className="border-amber-400/30">
+          <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
+            <CardTitle className="text-base flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <Activity className="w-4 h-4 text-amber-600" />
+                Elite at Risk — Top performers going inactive
+              </span>
+              <Badge variant="outline" className="text-xs bg-amber-500/15 text-amber-600 border-amber-500/20">
+                {atRisk.total_at_risk} at risk
+              </Badge>
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              These elite/strong members have stopped working. Risk is calculated from inactivity duration + grace abuse history.
+            </p>
+          </CardHeader>
+          <CardContent className="px-4 sm:px-6 pb-4 space-y-2.5">
+            {atRisk.members.map((m) => {
+              const riskStyle = RISK_STYLES[m.risk_level] || RISK_STYLES.low
+              return (
+                <div
+                  key={m.user_id}
+                  className={cn(
+                    'rounded-lg border p-3',
+                    m.risk_level === 'high' ? 'border-red-400/30 bg-red-500/[0.03]' : 'border-amber-400/20 bg-amber-500/[0.02]',
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium', riskStyle.cls)}>
+                          {riskStyle.icon}
+                          {m.risk_level.toUpperCase()}
+                        </span>
+                        <span className="text-sm font-medium">{m.name}</span>
+                        <span className="text-xs text-muted-foreground">{m.fbo_id}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1.5">{m.suggested_action}</p>
+                      <div className="flex flex-wrap gap-3 mt-2 text-xs text-muted-foreground">
+                        <span>⏱ {m.days_since_activity}d inactive</span>
+                        <span>🏆 Score {m.composite_score}</span>
+                        <span>📅 Last active: {m.last_active_date}</span>
+                        <span className={cn(m.grace_risk !== 'low' ? 'text-red-500' : '')}>
+                          Grace risk: {m.grace_risk} ({m.grace_count_30d}/30d)
+                        </span>
+                      </div>
+                    </div>
+                    <div className="shrink-0 flex gap-1.5">
+                      {m.whatsapp_link && (
+                        <a
+                          href={m.whatsapp_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 rounded-md bg-green-600 px-2.5 py-1.5 text-xs text-white hover:bg-green-700 transition-colors"
+                        >
+                          <MessageSquare className="w-3 h-3" />
+                          WhatsApp
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ─────────────────── INTEGRITY AUDIT ─────────────────── */}
+      {audit.total_flagged > 0 && (
+        <Card className="border-red-200/40 dark:border-red-900/30">
+          <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
+            <CardTitle className="text-base flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-red-500" />
+                Integrity Audit — Report vs Reality
+              </span>
+              <Badge variant="outline" className="text-xs bg-red-500/10 text-red-600 border-red-500/20">
+                Trust score: {audit.average_trust_score}%
+              </Badge>
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Cross-checking self-reported calls ({'{'}DailyReport.total_calling{'}'}) against system-logged call events ({'{'}CallEvent{'}'}).
+              Flagged members have &lt;70% trust score. Scores are capped at 40 for trust &lt;50%.
+            </p>
+          </CardHeader>
+          <CardContent className="px-4 sm:px-6 pb-4 space-y-2">
+            {audit.flagged_members.map((m: FlaggedMember) => {
+              const trustColor = m.trust_score < 30 ? 'bg-red-500' : m.trust_score < 50 ? 'bg-orange-500' : 'bg-amber-500'
+              return (
+                <div key={m.user_id} className="rounded-lg border border-red-200/30 dark:border-red-900/20 p-3">
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <AlertTriangle className="w-4 h-4 shrink-0 text-red-500" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{m.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{m.fbo_id}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className={cn(
+                        'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium',
+                        trustColor.replace('bg-', 'bg-').replace('red-500', 'red-500/15 text-red-600').replace('orange-500', 'orange-500/15 text-orange-600').replace('amber-500', 'amber-500/15 text-amber-600'),
+                      )}>
+                        Trust: {m.trust_score}%
+                      </span>
+                      <Badge variant="outline" className={cn('text-[10px]', TIER_STYLES[m.tier]?.cls)}>
+                        {m.tier}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    <div>
+                      <span className="text-muted-foreground">Reported calls</span>
+                      <p className="font-semibold tabular-nums">{m.reported_calls}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Actual calls (system)</span>
+                      <p className="font-semibold tabular-nums text-green-600">{m.actual_calls}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Discrepancy</span>
+                      <p className={cn('font-semibold tabular-nums', m.discrepancy > 0 ? 'text-red-600' : 'text-green-600')}>
+                        {m.discrepancy > 0 ? '+' : ''}{m.discrepancy}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Discrepancy %</span>
+                      <p className={cn('font-semibold tabular-nums', m.discrepancy_pct > 20 ? 'text-red-600' : 'text-amber-600')}>
+                        {m.discrepancy_pct > 0 ? '+' : ''}{m.discrepancy_pct}%
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ─────────────────── WHATSAPP GROUP ─────────────────── */}
       {suggested.total_count > 0 && (
         <Card className="border-amber-400/30">
           <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
@@ -250,23 +437,12 @@ export default function PerformerInsightsPage({ title: _title }: Props) {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 sm:px-6 pb-4 space-y-3">
-            {/* Action buttons */}
             <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCopyNumbers}
-                className="text-xs gap-1.5"
-              >
+              <Button variant="outline" size="sm" onClick={handleCopyNumbers} className="text-xs gap-1.5">
                 {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
                 {copied ? 'Copied!' : 'Copy All Numbers'}
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCopyNamesAndNumbers}
-                className="text-xs gap-1.5"
-              >
+              <Button variant="outline" size="sm" onClick={handleCopyNamesAndNumbers} className="text-xs gap-1.5">
                 <Copy className="w-3.5 h-3.5" />
                 Copy Names + Numbers
               </Button>
@@ -277,11 +453,9 @@ export default function PerformerInsightsPage({ title: _title }: Props) {
                 className="text-xs gap-1.5 bg-green-600 hover:bg-green-700"
               >
                 <MessageSquare className="w-3.5 h-3.5" />
-                Open WhatsApp (Start with first member)
+                Open WhatsApp
               </Button>
             </div>
-
-            {/* Elite performers */}
             {suggested.elite.length > 0 && (
               <div>
                 <h4 className="text-sm font-semibold text-amber-600 mb-2 flex items-center gap-1.5">
@@ -294,8 +468,6 @@ export default function PerformerInsightsPage({ title: _title }: Props) {
                 </div>
               </div>
             )}
-
-            {/* Strong performers */}
             {suggested.strong.length > 0 && (
               <div>
                 <h4 className="text-sm font-semibold text-violet-600 mb-2 flex items-center gap-1.5">
@@ -312,7 +484,7 @@ export default function PerformerInsightsPage({ title: _title }: Props) {
         </Card>
       )}
 
-      {/* Inactive members card */}
+      {/* ─────────────────── INACTIVE MEMBERS ─────────────────── */}
       {data.tier_distribution.inactive > 0 && (
         <Card className="border-red-200/40 dark:border-red-900/30">
           <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
@@ -335,10 +507,7 @@ export default function PerformerInsightsPage({ title: _title }: Props) {
                 .filter((p) => p.tier === 'inactive')
                 .slice(0, 24)
                 .map((p) => (
-                  <div
-                    key={p.user_id}
-                    className="rounded border border-dashed border-muted-300/50 p-2 text-center"
-                  >
+                  <div key={p.user_id} className="rounded border border-dashed border-muted-300/50 p-2 text-center">
                     <p className="text-xs font-medium truncate">{p.name}</p>
                     <p className="text-[10px] text-muted-foreground truncate">{p.fbo_id}</p>
                     {p.phone && <p className="text-[10px] text-muted-foreground/60 font-mono">{p.phone}</p>}
@@ -346,7 +515,7 @@ export default function PerformerInsightsPage({ title: _title }: Props) {
                 ))}
               {data.tier_distribution.inactive > 24 && (
                 <p className="text-xs text-muted-foreground col-span-full text-center pt-1">
-                  +{data.tier_distribution.inactive - 24} more inactive members — switch to "Inactive Only" filter to see all
+                  +{data.tier_distribution.inactive - 24} more — switch to "Inactive Only" filter to see all
                 </p>
               )}
             </div>
@@ -354,7 +523,7 @@ export default function PerformerInsightsPage({ title: _title }: Props) {
         </Card>
       )}
 
-      {/* Full performer list */}
+      {/* ─────────────────── FULL RANKING ─────────────────── */}
       <Card>
         <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
           <CardTitle className="text-base flex items-center justify-between">
@@ -388,33 +557,49 @@ export default function PerformerInsightsPage({ title: _title }: Props) {
                     key={p.user_id}
                     className={cn(
                       'rounded-lg border p-3 transition-colors hover:bg-muted/20',
-                      p.rank <= 3
-                        ? 'border-amber-400/30 bg-amber-500/[0.03]'
-                        : 'border-border',
+                      p.rank <= 3 ? 'border-amber-400/30 bg-amber-500/[0.03]' : 'border-border',
                       filterMode !== 'all' && 'border-green-400/30',
+                      p.trust_score < 50 && 'border-l-red-400',
                     )}
                   >
                     <div className="flex items-center justify-between gap-3 mb-2">
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <span className={cn(
-                          'flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold shrink-0',
-                          p.rank <= 3 ? 'bg-amber-500/20 text-amber-600' : 'bg-muted text-muted-foreground',
-                        )}>
+                        <span
+                          className={cn(
+                            'flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold shrink-0',
+                            p.rank <= 3 ? 'bg-amber-500/20 text-amber-600' : 'bg-muted text-muted-foreground',
+                          )}
+                        >
                           {p.rank <= 3 ? ['🥇', '🥈', '🥉'][p.rank - 1] : `#${p.rank}`}
                         </span>
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">{p.name}</p>
-                          <p className="text-xs text-muted-foreground truncate">{p.fbo_id} · {p.role}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {p.fbo_id} · {p.role}
+                          </p>
                           {p.phone && (
                             <p className="text-xs text-muted-foreground/60 font-mono">{p.phone}</p>
                           )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className={cn(
-                          'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium',
-                          tierStyle.cls,
-                        )}>
+                        {p.trust_score < 70 && (
+                          <span className={cn(
+                            'inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium',
+                            p.trust_score < 30
+                              ? 'bg-red-500/15 text-red-600'
+                              : 'bg-amber-500/15 text-amber-600',
+                          )}>
+                            <AlertTriangle className="w-3 h-3 mr-0.5" />
+                            {p.trust_score}%
+                          </span>
+                        )}
+                        <span
+                          className={cn(
+                            'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium',
+                            tierStyle.cls,
+                          )}
+                        >
                           {tierStyle.icon}
                           {p.tier}
                         </span>
@@ -432,9 +617,14 @@ export default function PerformerInsightsPage({ title: _title }: Props) {
                     </div>
 
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      <span>{p.metrics.submission_days}/{data.period_days}d reports</span>
+                      <span>
+                        {p.metrics.submission_days}/{data.period_days}d reports
+                      </span>
                       <span className="flex items-center gap-1">
                         <PhoneCall className="w-3 h-3" /> {p.metrics.total_calls} calls
+                      </span>
+                      <span className={cn(p.metrics.total_calls > p.metrics.actual_calls ? 'text-red-500' : 'text-green-600')}>
+                        ({p.metrics.actual_calls} system)
                       </span>
                       <span>{p.metrics.pickup_rate}% picked</span>
                       <span className="flex items-center gap-1">
@@ -445,8 +635,13 @@ export default function PerformerInsightsPage({ title: _title }: Props) {
                       </span>
                       <span>{p.metrics.leads_taken} leads</span>
                       <span>{p.metrics.converted_leads} conv</span>
-                      <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0', TREND_COLORS[p.trend] || '')}>
-                        {p.trend === 'inactive' ? 'Inactive' : `${p.trend} (${p.trend_pct > 0 ? '+' : ''}${p.trend_pct}%)`}
+                      <Badge
+                        variant="outline"
+                        className={cn('text-[10px] px-1.5 py-0', TREND_COLORS[p.trend] || '')}
+                      >
+                        {p.trend === 'inactive'
+                          ? 'Inactive'
+                          : `${p.trend} (${p.trend_pct > 0 ? '+' : ''}${p.trend_pct}%)`}
                       </Badge>
                     </div>
                   </div>
@@ -460,7 +655,15 @@ export default function PerformerInsightsPage({ title: _title }: Props) {
   )
 }
 
-function SummaryCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | number }) {
+function SummaryCard({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: string | number
+}) {
   return (
     <Card>
       <CardContent className="p-3 sm:p-4">
