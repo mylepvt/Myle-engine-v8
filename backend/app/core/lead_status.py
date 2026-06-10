@@ -36,7 +36,6 @@ TEAM_FORBIDDEN_STATUS_SLUGS: frozenset[str] = frozenset(
     {
         "day1",
         "day2",
-        "day3",
         "converted",
         "training",
     }

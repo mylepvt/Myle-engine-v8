@@ -76,44 +76,50 @@ def _auth_override(role: str, user_id: int):
 
 # ── Client fixtures ───────────────────────────────────────────────────────────
 
+def _stack_overrides(app, engine, auth_override=None):
+    """Stack dependency overrides so multiple client fixtures can coexist."""
+    saved = dict(app.dependency_overrides)
+    app.dependency_overrides[get_db] = _db_override(engine)
+    if auth_override:
+        app.dependency_overrides[require_auth_user] = auth_override
+    return saved
+
+
 @pytest_asyncio.fixture
 async def team_client(engine):
     """Authenticated as team member (user_id=201)."""
     from main import app
-    app.dependency_overrides[get_db] = _db_override(engine)
-    app.dependency_overrides[require_auth_user] = _auth_override("team", 201)
+    saved = _stack_overrides(app, engine, _auth_override("team", 201))
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
-    app.dependency_overrides.clear()
+    app.dependency_overrides = saved
 
 
 @pytest_asyncio.fixture
 async def leader_client(engine):
     """Authenticated as leader (user_id=202)."""
     from main import app
-    app.dependency_overrides[get_db] = _db_override(engine)
-    app.dependency_overrides[require_auth_user] = _auth_override("leader", 202)
+    saved = _stack_overrides(app, engine, _auth_override("leader", 202))
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
-    app.dependency_overrides.clear()
+    app.dependency_overrides = saved
 
 
 @pytest_asyncio.fixture
 async def admin_client(engine):
     """Authenticated as admin (user_id=203)."""
     from main import app
-    app.dependency_overrides[get_db] = _db_override(engine)
-    app.dependency_overrides[require_auth_user] = _auth_override("admin", 203)
+    saved = _stack_overrides(app, engine, _auth_override("admin", 203))
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
-    app.dependency_overrides.clear()
+    app.dependency_overrides = saved
 
 
 @pytest_asyncio.fixture
 async def anon_client(engine):
     """No auth — only overrides get_db (for public endpoints like webhooks)."""
     from main import app
-    app.dependency_overrides[get_db] = _db_override(engine)
+    saved = _stack_overrides(app, engine)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
-    app.dependency_overrides.clear()
+    app.dependency_overrides = saved

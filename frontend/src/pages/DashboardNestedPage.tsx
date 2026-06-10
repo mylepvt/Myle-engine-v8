@@ -58,6 +58,7 @@ import { DownloadsPage } from '@/pages/DownloadsPage'
 import { WhatsAppPanelPage } from '@/pages/WhatsAppPanelPage'
 import { AuditLogsPage } from '@/pages/AuditLogsPage'
 import { TeamAttendancePage } from '@/pages/TeamAttendancePage'
+import PerformerInsightsPage from '@/pages/PerformerInsightsPage'
 
 function renderFullUi(ui: FullUiSurface, title: string) {
   switch (ui.kind) {
@@ -148,6 +149,8 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <AllMembersPage title={title} />
     case 'whatsapp-panel':
       return <WhatsAppPanelPage title={title} />
+    case 'performer-insights':
+      return <PerformerInsightsPage title={title} />
     case 'shell-api':
       return <ShellStubPage title={title} apiPath={ui.apiPath} />
     default: {
