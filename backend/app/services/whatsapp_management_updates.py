@@ -357,6 +357,7 @@ async def send_management_update(
 
     result = await _send_wa_message(session, phone, message)
     result["label"] = label
+    result["sent"] = result.get("ok", False)
     return result
 
 
