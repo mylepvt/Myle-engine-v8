@@ -195,8 +195,9 @@ export function WhatsAppPanelPage({ title }: Props) {
   }, [mgmtConfig]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const MGMT_UPDATE_TYPES = [
-    { type: 'bundle', label: 'Full Daily Bundle', desc: 'Top 5 + integrity alerts + inactive list ek saath' },
+    { type: 'bundle', label: 'Full Daily Bundle', desc: 'Top 5 + integrity alerts + inactive list + lead activity ek saath' },
     { type: 'daily', label: 'Daily Top 5', desc: 'Aaj ke top 5 performers send karo' },
+    { type: 'leads', label: 'Lead Activity', desc: 'Kisne kitne leads claim ki, kisne nahi, kisne call nahi ki' },
     { type: 'integrity', label: 'Integrity Alerts', desc: 'Low trust-score members ki alert' },
     { type: 'inactive', label: 'Inactive Members', desc: 'Members with no recent reports' },
     { type: 'elite_alert', label: 'Elite-at-Risk', desc: 'Elite members jo risk mein hain' },

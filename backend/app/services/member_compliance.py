@@ -498,6 +498,15 @@ async def build_compliance_snapshots(
                     await send_removal_whatsapp(user=user, session=session)
                 except Exception as wa_exc:
                     logger.info("removal whatsapp failed user_id=%s during grace-expiry removal: %s", user.id, wa_exc)
+                try:
+                    from app.services.whatsapp_management_updates import send_management_member_removed_alert
+                    await send_management_member_removed_alert(
+                        session, member_name=user.name or f"User #{user.id}",
+                        member_fbo=user.fbo_id or "", removed_by="System (grace-expiry)",
+                        reason=reason,
+                    )
+                except Exception as mgmt_exc:
+                    logger.info("management alert failed user_id=%s grace-expiry: %s", user.id, mgmt_exc)
                 changed = True
             snapshot.access_blocked = True
             snapshot.discipline_status = "removed"
@@ -565,6 +574,15 @@ async def build_compliance_snapshots(
                     await send_removal_whatsapp(user=user, session=session)
                 except Exception as wa_exc:
                     logger.info("removal whatsapp failed user_id=%s during streak removal: %s", user.id, wa_exc)
+                try:
+                    from app.services.whatsapp_management_updates import send_management_member_removed_alert
+                    await send_management_member_removed_alert(
+                        session, member_name=user.name or f"User #{user.id}",
+                        member_fbo=user.fbo_id or "", removed_by="System (streak)",
+                        reason=reason,
+                    )
+                except Exception as mgmt_exc:
+                    logger.info("management alert failed user_id=%s streak: %s", user.id, mgmt_exc)
                 changed = True
             snapshot.access_blocked = True
             snapshot.discipline_status = "removed"
@@ -583,6 +601,18 @@ async def build_compliance_snapshots(
             missing_report_streak=snapshot.missing_report_streak,
             call_target=call_target,
         )
+        if apply_actions and winning_level == "final_warning":
+            try:
+                from app.services.whatsapp_management_updates import send_management_final_warning_alert
+                await send_management_final_warning_alert(
+                    session,
+                    member_name=user.name or f"User #{user.id}",
+                    member_fbo=user.fbo_id or "",
+                    reason=snapshot.compliance_summary,
+                    streak_days=max(snapshot.calls_short_streak, snapshot.missing_report_streak),
+                )
+            except Exception as mgmt_exc:
+                logger.info("management final-warning alert failed user_id=%s: %s", user.id, mgmt_exc)
         snapshots[user.id] = snapshot
 
     if changed:

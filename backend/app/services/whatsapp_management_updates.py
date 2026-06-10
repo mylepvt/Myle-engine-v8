@@ -14,7 +14,11 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.time_ist import IST, today_ist
+from app.models.activity_log import ActivityLog
+from app.models.call_event import CallEvent
 from app.models.daily_report import DailyReport
+from app.models.lead import Lead
 from app.models.user import User
 from app.services.performer_insights_service import PerformerInsightsService
 from app.services.whatsapp_report_reminder import _send_via_meta_api as send_wa
@@ -92,7 +96,7 @@ async def build_top5_daily(session: AsyncSession, days: int = 1) -> str:
         score = p["composite_score"]
         lines.append(
             f"{i}. {emoji} *{p['name']}* — {score} pts\n"
-            f"   📞 {calls} calls | 🔄 {pipeline} pipeline | ₹ payments"
+            f"   📞 {calls} calls | 🔄 {pipeline} pipeline | ₹{payments} payments"
         )
 
     lines.append(f"\n👥 Active: {insights['active_members']}/{insights['total_members']} members")
@@ -222,6 +226,92 @@ async def build_weekly_report(session: AsyncSession) -> str:
     return "\n".join(lines)
 
 
+async def build_lead_activity_daily(session: AsyncSession) -> str:
+    """Who claimed leads today, who didn't, who claimed but didn't call."""
+    today = today_ist()
+    day_start = datetime(today.year, today.month, today.day, tzinfo=IST)
+    day_end = day_start + timedelta(days=1)
+
+    # 1) Who claimed leads today
+    claim_rows = (
+        await session.execute(
+            select(
+                ActivityLog.user_id,
+                func.count(ActivityLog.id).label("claim_count"),
+            ).where(
+                ActivityLog.action.in_(["lead.claimed", "lead.claimed_free"]),
+                ActivityLog.created_at >= day_start,
+                ActivityLog.created_at < day_end,
+            ).group_by(ActivityLog.user_id)
+        )
+    ).all()
+    claim_map: dict[int, int] = {r.user_id: r.claim_count for r in claim_rows}
+
+    # 2) All active team/leader users
+    active_users = (
+        await session.execute(
+            select(User).where(
+                User.role.in_(["team", "leader"]),
+                User.registration_status == "approved",
+                User.access_blocked.is_(False),
+                User.removed_at.is_(None),
+            ).order_by(User.name)
+        )
+    ).scalars().all()
+
+    # 3) Who called on their claimed leads today
+    called_on_claimed = set()
+    if claim_map:
+        called_rows = (
+            await session.execute(
+                select(CallEvent.user_id.distinct()).where(
+                    CallEvent.called_at >= day_start,
+                    CallEvent.called_at < day_end,
+                    CallEvent.user_id.in_(list(claim_map.keys())),
+                )
+            )
+        ).scalars().all()
+        called_on_claimed = set(called_rows)
+
+    # 4) Build message
+    lines = ["📞 *Lead Activity — Today*\n"]
+
+    claimers = sorted(claim_map.items(), key=lambda x: x[1], reverse=True)
+    if claimers:
+        lines.append("✅ *Claimed Leads:*")
+        for uid, count in claimers:
+            user = next((u for u in active_users if u.id == uid), None)
+            name = user.name if user else f"User #{uid}"
+            called = "📞" if uid in called_on_claimed else "⚠️ No calls"
+            lines.append(f"  • {name} — {count} leads {called}")
+        lines.append("")
+
+    not_claimed = [u for u in active_users if u.id not in claim_map]
+    if not_claimed:
+        lines.append(f"❌ *Did NOT Claim Today ({len(not_claimed)} members):*")
+        for u in not_claimed[:15]:
+            lines.append(f"  • {u.name or f'User #{u.id}'} ({u.fbo_id or u.role})")
+        if len(not_claimed) > 15:
+            lines.append(f"  ...and {len(not_claimed) - 15} more")
+        lines.append("")
+
+    claimed_no_calls = [uid for uid in claim_map if uid not in called_on_claimed]
+    if claimed_no_calls:
+        lines.append(f"⚠️ *Claimed but No Calls ({len(claimed_no_calls)} members):*")
+        for uid in claimed_no_calls[:10]:
+            user = next((u for u in active_users if u.id == uid), None)
+            name = user.name if user else f"User #{uid}"
+            lines.append(f"  • {name} — {claim_map[uid]} leads claimed, 0 calls")
+        if len(claimed_no_calls) > 10:
+            lines.append(f"  ...and {len(claimed_no_calls) - 10} more")
+        lines.append("")
+
+    total_active = len(active_users)
+    total_claimed = sum(claim_map.values())
+    lines.append(f"📊 Summary: {len(claimers)}/{total_active} members claimed {total_claimed} leads")
+    return "\n".join(lines)
+
+
 # ── Unified send function ────────────────────────────────────────────
 
 
@@ -245,18 +335,21 @@ async def send_management_update(
         "inactive": ("📋 Inactive Members", build_inactive_list),
         "elite_alert": ("🚨 Elite at Risk", build_elite_at_risk_alert),
         "weekly": ("📆 Weekly Report", build_weekly_report),
+        "leads": ("📞 Lead Activity", None),
     }
 
     label, builder_fn = builders.get(update_type, (None, None))
-    if not builder_fn:
+    if not builder_fn and update_type != "leads":
         return {"ok": False, "error": f"Unknown update type: {update_type}"}
 
-    days = 1 if update_type in ("daily", "integrity", "inactive") else 30 if update_type == "elite_alert" else 7
-    if update_type == "weekly":
+    if update_type == "leads":
+        message = await build_lead_activity_daily(session)
+    elif update_type == "weekly":
         message = await builder_fn(session)
     elif update_type == "elite_alert":
         message = await builder_fn(session)
     else:
+        days = 1 if update_type in ("daily", "integrity", "inactive") else 7
         message = await builder_fn(session, days=days)
 
     if not message:
@@ -264,6 +357,7 @@ async def send_management_update(
 
     result = await _send_wa_message(session, phone, message)
     result["label"] = label
+    result["sent"] = result.get("ok", False)
     return result
 
 
@@ -274,7 +368,135 @@ async def send_daily_management_bundle(session: AsyncSession) -> list[dict[str, 
         return [{"ok": False, "error": "No management phone configured"}]
 
     results = []
-    for ut in ("daily", "integrity", "inactive"):
+    for ut in ("daily", "integrity", "inactive", "leads"):
         r = await send_management_update(session, ut, phone)
         results.append(r)
     return results
+
+
+# ── Instant alerts for real-time events ─────────────────────────────
+
+
+async def send_management_member_removed_alert(
+    session: AsyncSession,
+    member_name: str,
+    member_fbo: str,
+    removed_by: str,
+    reason: str,
+    leader_name: str = "",
+    phone: str | None = None,
+) -> dict[str, Any]:
+    """Notify management when a member is removed."""
+    if not phone:
+        phone = await get_management_phone(session)
+    if not phone:
+        return {"ok": False, "error": "No management phone configured"}
+
+    lines = [
+        "🚨 *Member Removed*\n",
+        f"👤 *{member_name}* ({member_fbo})",
+        f"❌ Removed by: {removed_by}",
+        f"📝 Reason: {reason}",
+    ]
+    if leader_name:
+        lines.append(f"👔 Leader: {leader_name}")
+    lines.append(f"\n🕐 {datetime.now(timezone.utc).astimezone().strftime('%d %b %I:%M %p')}")
+
+    return await _send_wa_message(session, phone, "\n".join(lines))
+
+
+async def send_management_member_approved_alert(
+    session: AsyncSession,
+    member_name: str,
+    member_fbo: str,
+    approved_by: str,
+    leader_name: str = "",
+    phone: str | None = None,
+) -> dict[str, Any]:
+    """Notify management when a new member is approved."""
+    if not phone:
+        phone = await get_management_phone(session)
+    if not phone:
+        return {"ok": False, "error": "No management phone configured"}
+
+    lines = [
+        "✅ *New Member Approved*\n",
+        f"👤 *{member_name}* ({member_fbo})",
+        f"✔️ Approved by: {approved_by}",
+    ]
+    if leader_name:
+        lines.append(f"👔 Under leader: {leader_name}")
+    lines.append(f"\n🕐 {datetime.now(timezone.utc).astimezone().strftime('%d %b %I:%M %p')}")
+
+    return await _send_wa_message(session, phone, "\n".join(lines))
+
+
+async def send_management_grace_requested_alert(
+    session: AsyncSession,
+    member_name: str,
+    member_fbo: str,
+    reason: str,
+    end_date: str,
+    phone: str | None = None,
+) -> dict[str, Any]:
+    """Notify management when a member requests grace."""
+    if not phone:
+        phone = await get_management_phone(session)
+    if not phone:
+        return {"ok": False, "error": "No management phone configured"}
+    lines = [
+        "🙏 *Grace Requested*\n",
+        f"👤 *{member_name}* ({member_fbo})",
+        f"📝 Reason: {reason or 'Not specified'}",
+        f"📅 Till: {end_date}",
+        f"\n🕐 {datetime.now(timezone.utc).astimezone().strftime('%d %b %I:%M %p')}",
+    ]
+    return await _send_wa_message(session, phone, "\n".join(lines))
+
+
+async def send_management_grace_decision_alert(
+    session: AsyncSession,
+    member_name: str,
+    member_fbo: str,
+    action: str,  # approved / rejected / granted
+    decided_by: str,
+    phone: str | None = None,
+) -> dict[str, Any]:
+    """Notify management when a grace request is approved/rejected by admin."""
+    if not phone:
+        phone = await get_management_phone(session)
+    if not phone:
+        return {"ok": False, "error": "No management phone configured"}
+    emoji = "✅" if action in ("approved", "granted") else "❌"
+    label = "Grace Approved" if action in ("approved", "granted") else "Grace Rejected"
+    lines = [
+        f"{emoji} *{label}*\n",
+        f"👤 *{member_name}* ({member_fbo})",
+        f"👤 By: {decided_by}",
+        f"\n🕐 {datetime.now(timezone.utc).astimezone().strftime('%d %b %I:%M %p')}",
+    ]
+    return await _send_wa_message(session, phone, "\n".join(lines))
+
+
+async def send_management_final_warning_alert(
+    session: AsyncSession,
+    member_name: str,
+    member_fbo: str,
+    reason: str,
+    streak_days: int,
+    phone: str | None = None,
+) -> dict[str, Any]:
+    """Notify management when a member hits final warning (about to be removed)."""
+    if not phone:
+        phone = await get_management_phone(session)
+    if not phone:
+        return {"ok": False, "error": "No management phone configured"}
+    lines = [
+        "⚠️ *Final Warning — Immediate Attention*\n",
+        f"👤 *{member_name}* ({member_fbo})",
+        f"📝 Issue: {reason}",
+        f"📊 Streak: {streak_days} days",
+        f"\n⏳ Next step: auto-removal if not corrected",
+        f"\n🕐 {datetime.now(timezone.utc).astimezone().strftime('%d %b %I:%M %p')}",
+    ]
+    return await _send_wa_message(session, phone, "\n".join(lines))

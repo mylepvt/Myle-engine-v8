@@ -533,3 +533,19 @@ async def job_daily_leader_team_summary() -> None:
             logger.info("job_daily_leader_team_summary: sent to %d leaders", len(leaders))
     except Exception as exc:
         logger.error("job_daily_leader_team_summary failed: %s", exc)
+
+
+# ---------------------------------------------------------------------------
+# Job 10: management updates → Shikha at 21:30 IST (daily bundle)
+# ---------------------------------------------------------------------------
+
+async def job_management_updates() -> None:
+    """Send daily management WhatsApp bundle (top 5, integrity alerts, inactive list)."""
+    try:
+        from app.services.whatsapp_management_updates import send_daily_management_bundle
+        async with AsyncSessionLocal() as session:
+            results = await send_daily_management_bundle(session)
+            sent = sum(1 for r in results if r.get("sent"))
+            logger.info("job_management_updates: %d/%d updates sent", sent, len(results))
+    except Exception as exc:
+        logger.error("job_management_updates failed: %s", exc)
