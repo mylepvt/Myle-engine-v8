@@ -335,3 +335,74 @@ async def send_management_member_approved_alert(
     lines.append(f"\n🕐 {datetime.now(timezone.utc).astimezone().strftime('%d %b %I:%M %p')}")
 
     return await _send_wa_message(session, phone, "\n".join(lines))
+
+
+async def send_management_grace_requested_alert(
+    session: AsyncSession,
+    member_name: str,
+    member_fbo: str,
+    reason: str,
+    end_date: str,
+    phone: str | None = None,
+) -> dict[str, Any]:
+    """Notify management when a member requests grace."""
+    if not phone:
+        phone = await get_management_phone(session)
+    if not phone:
+        return {"ok": False, "error": "No management phone configured"}
+    lines = [
+        "🙏 *Grace Requested*\n",
+        f"👤 *{member_name}* ({member_fbo})",
+        f"📝 Reason: {reason or 'Not specified'}",
+        f"📅 Till: {end_date}",
+        f"\n🕐 {datetime.now(timezone.utc).astimezone().strftime('%d %b %I:%M %p')}",
+    ]
+    return await _send_wa_message(session, phone, "\n".join(lines))
+
+
+async def send_management_grace_decision_alert(
+    session: AsyncSession,
+    member_name: str,
+    member_fbo: str,
+    action: str,  # approved / rejected / granted
+    decided_by: str,
+    phone: str | None = None,
+) -> dict[str, Any]:
+    """Notify management when a grace request is approved/rejected by admin."""
+    if not phone:
+        phone = await get_management_phone(session)
+    if not phone:
+        return {"ok": False, "error": "No management phone configured"}
+    emoji = "✅" if action in ("approved", "granted") else "❌"
+    label = "Grace Approved" if action in ("approved", "granted") else "Grace Rejected"
+    lines = [
+        f"{emoji} *{label}*\n",
+        f"👤 *{member_name}* ({member_fbo})",
+        f"👤 By: {decided_by}",
+        f"\n🕐 {datetime.now(timezone.utc).astimezone().strftime('%d %b %I:%M %p')}",
+    ]
+    return await _send_wa_message(session, phone, "\n".join(lines))
+
+
+async def send_management_final_warning_alert(
+    session: AsyncSession,
+    member_name: str,
+    member_fbo: str,
+    reason: str,
+    streak_days: int,
+    phone: str | None = None,
+) -> dict[str, Any]:
+    """Notify management when a member hits final warning (about to be removed)."""
+    if not phone:
+        phone = await get_management_phone(session)
+    if not phone:
+        return {"ok": False, "error": "No management phone configured"}
+    lines = [
+        "⚠️ *Final Warning — Immediate Attention*\n",
+        f"👤 *{member_name}* ({member_fbo})",
+        f"📝 Issue: {reason}",
+        f"📊 Streak: {streak_days} days",
+        f"\n⏳ Next step: auto-removal if not corrected",
+        f"\n🕐 {datetime.now(timezone.utc).astimezone().strftime('%d %b %I:%M %p')}",
+    ]
+    return await _send_wa_message(session, phone, "\n".join(lines))

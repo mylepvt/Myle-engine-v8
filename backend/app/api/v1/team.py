@@ -454,6 +454,18 @@ async def request_my_grace(
         )
     except Exception:
         pass
+    # Notify management about grace request
+    try:
+        from app.services.whatsapp_management_updates import send_management_grace_requested_alert
+        await send_management_grace_requested_alert(
+            session,
+            member_name=target.name or f"User #{target.id}",
+            member_fbo=target.fbo_id or "",
+            reason=target.grace_request_reason or "",
+            end_date=str(target.grace_request_end_date) if target.grace_request_end_date else "",
+        )
+    except Exception:
+        pass
     return item
 
 
@@ -1164,6 +1176,25 @@ async def update_member_compliance(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Unsupported compliance action",
         )
+
+    # Notify management about grace decisions
+    if body.action in ("grant_grace", "approve_grace_request", "reject_grace_request"):
+        try:
+            from app.services.whatsapp_management_updates import send_management_grace_decision_alert
+            action_label = {
+                "grant_grace": "granted",
+                "approve_grace_request": "approved",
+                "reject_grace_request": "rejected",
+            }[body.action]
+            await send_management_grace_decision_alert(
+                session,
+                member_name=target.name or f"User #{target.id}",
+                member_fbo=target.fbo_id or "",
+                action=action_label,
+                decided_by=user.name or f"Admin #{user.user_id}",
+            )
+        except Exception:
+            pass
 
     await session.commit()
     await session.refresh(target)
