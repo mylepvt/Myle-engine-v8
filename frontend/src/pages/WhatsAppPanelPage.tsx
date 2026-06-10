@@ -189,6 +189,7 @@ export function WhatsAppPanelPage({ title }: Props) {
   const mgmtSaveMutation = useSaveManagementConfigMutation()
   const mgmtSendMutation = useSendManagementUpdateMutation()
   const [mgmtPhone, setMgmtPhone] = useState('')
+  const [mgmtSaveMsg, setMgmtSaveMsg] = useState<string | null>(null)
   const [mgmtResults, setMgmtResults] = useState<Record<string, ManagementSendResult>>({})
   useEffect(() => {
     if (mgmtConfig && mgmtPhone === '') setMgmtPhone(mgmtConfig.phone)
@@ -847,10 +848,21 @@ export function WhatsAppPanelPage({ title }: Props) {
               size="sm"
               variant="outline"
               disabled={mgmtSaveMutation.isPending || !mgmtPhone.trim()}
-              onClick={() => mgmtSaveMutation.mutate(mgmtPhone.trim())}
+              onClick={() => {
+                setMgmtSaveMsg(null)
+                mgmtSaveMutation.mutate(mgmtPhone.trim(), {
+                  onSuccess: () => setMgmtSaveMsg('✓ Saved'),
+                  onError: (e) => setMgmtSaveMsg(`✗ ${e.message}`),
+                })
+              }}
             >
               {mgmtSaveMutation.isPending ? 'Saving…' : 'Save'}
             </Button>
+            {mgmtSaveMsg && (
+              <span className={cn('text-xs', mgmtSaveMsg.startsWith('✓') ? 'text-green-700' : 'text-red-600')}>
+                {mgmtSaveMsg}
+              </span>
+            )}
             {mgmtConfigLoading && <Skeleton className="h-8 w-20" />}
           </div>
 
