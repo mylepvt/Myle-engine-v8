@@ -8,7 +8,7 @@ Uses the existing performer_insights_service + Meta Cloud API for delivery.
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import func, select
@@ -21,6 +21,7 @@ from app.models.daily_report import DailyReport
 from app.models.lead import Lead
 from app.models.user import User
 from app.services.performer_insights_service import PerformerInsightsService
+from app.services.whatsapp_log_service import log_wa_outbound
 from app.services.whatsapp_report_reminder import _send_via_meta_api as send_wa
 from app.services.settings_service import SettingsService
 
@@ -48,6 +49,12 @@ async def set_management_phone(session: AsyncSession, phone: str) -> None:
     await svc.update_app_setting(SETTING_KEY_PHONE, phone, updated_by_user_id=0)
 
 
+async def _toggle_enabled(session: AsyncSession, key: str) -> bool:
+    svc = SettingsService(session)
+    val = await svc.get_app_setting(key)
+    return val and val.lower() in ("1", "true", "yes")
+
+
 async def _get_meta_config(session: AsyncSession) -> dict[str, Any]:
     svc = SettingsService(session)
     pid = await svc.get_app_setting("whatsapp.meta.phone_number_id")
@@ -60,17 +67,33 @@ async def _get_meta_config(session: AsyncSession) -> dict[str, Any]:
     }
 
 
-async def _send_wa_message(session: AsyncSession, phone: str, message: str) -> dict[str, Any]:
+async def _send_wa_message(
+    session: AsyncSession,
+    phone: str,
+    message: str,
+    message_type: str = "management_update",
+    related_user_id: int | None = None,
+) -> dict[str, Any]:
     cfg = await _get_meta_config(session)
     if not cfg["phone_number_id"] or not cfg["access_token"]:
-        return {"ok": False, "error": "Meta API not configured"}
-    return await send_wa(
+        result = {"ok": False, "error": "Meta API not configured"}
+        await log_wa_outbound(session, phone=phone, message=message, message_type=message_type, result=result, related_user_id=related_user_id)
+        return result
+
+    # WhatsApp has a ~4096 char limit; truncate with a note if needed
+    MAX_WHATSAPP_LEN = 4096
+    if len(message) > MAX_WHATSAPP_LEN:
+        message = message[: MAX_WHATSAPP_LEN - 100] + f"\n\n...truncated ({len(message)} chars total)"
+
+    result = await send_wa(
         phone=phone,
         message=message,
         phone_number_id=cfg["phone_number_id"],
         access_token=cfg["access_token"],
         api_version=cfg["api_version"],
     )
+    await log_wa_outbound(session, phone=phone, message=message, message_type=message_type, result=result, related_user_id=related_user_id)
+    return result
 
 
 # ── Message Builders ─────────────────────────────────────────────────
@@ -86,7 +109,7 @@ async def build_top5_daily(session: AsyncSession, days: int = 1) -> str:
     if not top:
         return "📊 *Today's Update*\n\nNo reports submitted today yet."
 
-    yesterday = (date.today() - timedelta(days=1)).strftime("%d %b")
+    yesterday = (today_ist() - timedelta(days=1)).strftime("%d %b")
     lines = [f"📊 *Top Performers — {yesterday}*\n"]
     for i, p in enumerate(top, 1):
         emoji = _TIER_EMOJI.get(p.get("tier", ""), "👤")
@@ -341,6 +364,16 @@ async def build_lead_activity_daily(session: AsyncSession) -> str:
 # ── Unified send function ────────────────────────────────────────────
 
 
+_TOGGLE_MAP: dict[str, str] = {
+    "daily": SETTING_KEY_DAILY,
+    "integrity": SETTING_KEY_DAILY,
+    "inactive": SETTING_KEY_DAILY,
+    "leads": SETTING_KEY_DAILY,
+    "weekly": SETTING_KEY_WEEKLY,
+    "elite_alert": SETTING_KEY_ALERTS,
+}
+
+
 async def send_management_update(
     session: AsyncSession,
     update_type: str,
@@ -350,6 +383,10 @@ async def send_management_update(
 
     update_type: 'daily', 'integrity', 'inactive', 'elite_alert', 'weekly'
     """
+    toggle_key = _TOGGLE_MAP.get(update_type)
+    if toggle_key and not await _toggle_enabled(session, toggle_key):
+        return {"ok": False, "error": f"{update_type} updates are disabled via settings", "sent": False}
+
     if not phone:
         phone = await get_management_phone(session)
     if not phone:
@@ -413,6 +450,8 @@ async def send_management_member_removed_alert(
     phone: str | None = None,
 ) -> dict[str, Any]:
     """Notify management when a member is removed."""
+    if not await _toggle_enabled(session, SETTING_KEY_ALERTS):
+        return {"ok": False, "error": "Instant alerts are disabled", "sent": False}
     if not phone:
         phone = await get_management_phone(session)
     if not phone:
@@ -428,7 +467,7 @@ async def send_management_member_removed_alert(
         lines.append(f"👔 Leader: {leader_name}")
     lines.append(f"\n🕐 {datetime.now(timezone.utc).astimezone().strftime('%d %b %I:%M %p')}")
 
-    return await _send_wa_message(session, phone, "\n".join(lines))
+    return await _send_wa_message(session, phone, "\n".join(lines), message_type="member_removed")
 
 
 async def send_management_member_approved_alert(
@@ -440,6 +479,8 @@ async def send_management_member_approved_alert(
     phone: str | None = None,
 ) -> dict[str, Any]:
     """Notify management when a new member is approved."""
+    if not await _toggle_enabled(session, SETTING_KEY_ALERTS):
+        return {"ok": False, "error": "Instant alerts are disabled", "sent": False}
     if not phone:
         phone = await get_management_phone(session)
     if not phone:
@@ -454,7 +495,7 @@ async def send_management_member_approved_alert(
         lines.append(f"👔 Under leader: {leader_name}")
     lines.append(f"\n🕐 {datetime.now(timezone.utc).astimezone().strftime('%d %b %I:%M %p')}")
 
-    return await _send_wa_message(session, phone, "\n".join(lines))
+    return await _send_wa_message(session, phone, "\n".join(lines), message_type="member_approved")
 
 
 async def send_management_grace_requested_alert(
@@ -466,6 +507,8 @@ async def send_management_grace_requested_alert(
     phone: str | None = None,
 ) -> dict[str, Any]:
     """Notify management when a member requests grace."""
+    if not await _toggle_enabled(session, SETTING_KEY_ALERTS):
+        return {"ok": False, "error": "Instant alerts are disabled", "sent": False}
     if not phone:
         phone = await get_management_phone(session)
     if not phone:
@@ -477,7 +520,7 @@ async def send_management_grace_requested_alert(
         f"📅 Till: {end_date}",
         f"\n🕐 {datetime.now(timezone.utc).astimezone().strftime('%d %b %I:%M %p')}",
     ]
-    return await _send_wa_message(session, phone, "\n".join(lines))
+    return await _send_wa_message(session, phone, "\n".join(lines), message_type="grace_requested")
 
 
 async def send_management_grace_decision_alert(
@@ -489,6 +532,8 @@ async def send_management_grace_decision_alert(
     phone: str | None = None,
 ) -> dict[str, Any]:
     """Notify management when a grace request is approved/rejected by admin."""
+    if not await _toggle_enabled(session, SETTING_KEY_ALERTS):
+        return {"ok": False, "error": "Instant alerts are disabled", "sent": False}
     if not phone:
         phone = await get_management_phone(session)
     if not phone:
@@ -501,7 +546,7 @@ async def send_management_grace_decision_alert(
         f"👤 By: {decided_by}",
         f"\n🕐 {datetime.now(timezone.utc).astimezone().strftime('%d %b %I:%M %p')}",
     ]
-    return await _send_wa_message(session, phone, "\n".join(lines))
+    return await _send_wa_message(session, phone, "\n".join(lines), message_type="grace_decision")
 
 
 async def send_management_final_warning_alert(
@@ -513,6 +558,8 @@ async def send_management_final_warning_alert(
     phone: str | None = None,
 ) -> dict[str, Any]:
     """Notify management when a member hits final warning (about to be removed)."""
+    if not await _toggle_enabled(session, SETTING_KEY_ALERTS):
+        return {"ok": False, "error": "Instant alerts are disabled", "sent": False}
     if not phone:
         phone = await get_management_phone(session)
     if not phone:
@@ -525,4 +572,4 @@ async def send_management_final_warning_alert(
         f"\n⏳ Next step: auto-removal if not corrected",
         f"\n🕐 {datetime.now(timezone.utc).astimezone().strftime('%d %b %I:%M %p')}",
     ]
-    return await _send_wa_message(session, phone, "\n".join(lines))
+    return await _send_wa_message(session, phone, "\n".join(lines), message_type="final_warning")
