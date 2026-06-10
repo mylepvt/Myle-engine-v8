@@ -12,6 +12,7 @@ Jobs (all IST-aware):
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -541,11 +542,38 @@ async def job_daily_leader_team_summary() -> None:
 
 async def job_management_updates() -> None:
     """Send daily management WhatsApp bundle (top 5, integrity alerts, inactive list)."""
-    try:
-        from app.services.whatsapp_management_updates import send_daily_management_bundle
-        async with AsyncSessionLocal() as session:
-            results = await send_daily_management_bundle(session)
-            sent = sum(1 for r in results if r.get("sent"))
-            logger.info("job_management_updates: %d/%d updates sent", sent, len(results))
-    except Exception as exc:
-        logger.error("job_management_updates failed: %s", exc)
+    MAX_RETRIES = 2
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            from app.services.whatsapp_management_updates import send_daily_management_bundle
+            async with AsyncSessionLocal() as session:
+                results = await send_daily_management_bundle(session)
+                sent = sum(1 for r in results if r.get("sent"))
+                failures = [r for r in results if not r.get("ok")]
+                logger.info(
+                    "job_management_updates: %d/%d updates sent (attempt %d/%d)",
+                    sent, len(results), attempt, MAX_RETRIES,
+                )
+                observe_event(
+                    event_type="scheduler.management_updates",
+                    source="scheduler",
+                    detail={"sent": sent, "total": len(results), "attempt": attempt},
+                )
+                if sent == len(results):
+                    return
+                if attempt < MAX_RETRIES:
+                    logger.warning(
+                        "job_management_updates: %d failures, retrying in 60s: %s",
+                        len(failures), [r.get("error", "?") for r in failures],
+                    )
+                    await asyncio.sleep(60)
+        except Exception as exc:
+            logger.error("job_management_updates failed (attempt %d/%d): %s", attempt, MAX_RETRIES, exc)
+            observe_event(
+                event_type="scheduler.failure",
+                source="scheduler",
+                detail={"job": "management_updates", "attempt": attempt, "error": str(exc)},
+            )
+            if attempt < MAX_RETRIES:
+                await asyncio.sleep(60)
+    logger.error("job_management_updates: all %d attempts exhausted", MAX_RETRIES)
