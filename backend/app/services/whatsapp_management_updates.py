@@ -14,6 +14,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.time_ist import IST, today_ist
 from app.models.activity_log import ActivityLog
 from app.models.call_event import CallEvent
@@ -57,12 +58,22 @@ async def _toggle_enabled(session: AsyncSession, key: str) -> bool:
 
 async def _get_meta_config(session: AsyncSession) -> dict[str, Any]:
     svc = SettingsService(session)
-    pid = await svc.get_app_setting("whatsapp.meta.phone_number_id")
-    token = await svc.get_app_setting("whatsapp.meta.access_token")
-    ver = await svc.get_app_setting("whatsapp.meta.api_version") or "v22.0"
+    pid = (
+        (await svc.get_app_setting("whatsapp.meta.phone_number_id") or "").strip()
+        or (settings.whatsapp_meta_phone_number_id or "").strip()
+    )
+    token = (
+        (await svc.get_app_setting("whatsapp.meta.access_token") or "").strip()
+        or (settings.whatsapp_meta_access_token or "").strip()
+    )
+    ver = (
+        (await svc.get_app_setting("whatsapp.meta.api_version") or "").strip()
+        or (settings.whatsapp_meta_api_version or "").strip()
+        or "v22.0"
+    )
     return {
-        "phone_number_id": pid or "",
-        "access_token": token or "",
+        "phone_number_id": pid,
+        "access_token": token,
         "api_version": ver,
     }
 
