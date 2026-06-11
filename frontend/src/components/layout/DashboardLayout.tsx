@@ -26,6 +26,9 @@ import { useShellStore } from '@/stores/shell-store'
 import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
 import { useLocationPingMutation } from '@/hooks/use-location-query'
 import { getGps } from '@/lib/geolocation'
+import { OnboardingTour } from '@/components/onboarding/OnboardingTour'
+import { ONBOARDING_STEPS } from '@/lib/onboarding-steps'
+import { useCompleteTutorialMutation } from '@/hooks/use-tutorial-query'
 
 function isEditableElement(node: Element | null): boolean {
   if (!(node instanceof HTMLElement)) return false
@@ -241,6 +244,8 @@ export function DashboardLayout() {
 
   const trainingStatusLc = (me?.training_status ?? '').toLowerCase()
   const trainingLocked = me?.training_required === true && trainingStatusLc !== 'completed'
+  const showTutorial = me?.tutorial_pending === true && trainingStatusLc === 'completed'
+
   const onTrainingRoute =
     location.pathname === '/dashboard/system/training' ||
     location.pathname.startsWith('/dashboard/system/training/') ||
@@ -273,8 +278,25 @@ export function DashboardLayout() {
     return hit ? resolveItemLabel(hit, shellRole ?? 'team') : 'Dashboard'
   }, [location.pathname, sections, shellRole])
 
+  const completeTutorial = useCompleteTutorialMutation()
+
   if (trainingLocked && !onTrainingRoute) {
     return <Navigate to="/dashboard/system/training" replace />
+  }
+
+  if (showTutorial && completeTutorial.isIdle) {
+    return (
+      <>
+        <div className="dashboard-shell flex min-h-0 w-full min-w-0 max-w-full flex-1 overflow-hidden bg-background">
+          <div className="flex h-full min-w-0 max-w-full flex-1 flex-col overflow-hidden">
+            <main data-tour="dashboard" className="content-dashboard-main relative min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-background p-4 md:p-6 lg:p-8">
+              <Outlet />
+            </main>
+          </div>
+        </div>
+        <OnboardingTour steps={ONBOARDING_STEPS} onNext={() => {}} onSkip={() => completeTutorial.mutate()} onDone={() => completeTutorial.mutate()} />
+      </>
+    )
   }
 
   const displayInitial =
@@ -437,6 +459,7 @@ export function DashboardLayout() {
         </div>
 
         <main
+          data-tour="dashboard"
           className={cn(
             'content-dashboard-main relative min-h-0 min-w-0 flex-1 touch-pan-y overflow-y-auto overflow-x-hidden bg-background p-4 md:p-6 lg:p-8',
             'scroll-ios',

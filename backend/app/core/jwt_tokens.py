@@ -21,6 +21,7 @@ def create_access_token(
     training_status: Optional[str] = None,
     registration_status: Optional[str] = None,
     training_required: Optional[bool] = None,
+    tutorial_pending: Optional[bool] = None,
     ver: Optional[int] = None,
     minutes: int = 60,
 ) -> str:
@@ -47,6 +48,8 @@ def create_access_token(
         payload["registration_status"] = registration_status
     if training_required is not None:
         payload["training_required"] = training_required
+    if tutorial_pending is not None:
+        payload["tutorial_pending"] = tutorial_pending
     if ver is not None:
         payload["ver"] = ver
     return jwt.encode(payload, secret, algorithm=JWT_ALG)
