@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Bell, Lock, Mail, Shield, User } from 'lucide-react'
 
@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
+import { useResetTutorialMutation } from '@/hooks/use-tutorial-query'
 import {
   useAvatarUploadMutation,
   useEmailChangeMutation,
@@ -310,6 +311,9 @@ export default function SettingsPage() {
                   <span className="text-sm font-medium">Member Since</span>
                   <span className="text-sm text-muted-foreground">{memberSince}</span>
                 </div>
+                <div className="pt-2">
+                  <ShowTutorialButton />
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -479,5 +483,30 @@ export default function SettingsPage() {
         </TabsContent>
       </Tabs>
     </div>
+  )
+}
+
+function ShowTutorialButton() {
+  const resetTutorial = useResetTutorialMutation()
+
+  const handleClick = () => {
+    resetTutorial.mutate(undefined, {
+      onSuccess: () => {
+        window.location.href = '/dashboard'
+      },
+    })
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="w-full gap-2 text-xs"
+      onClick={handleClick}
+      disabled={resetTutorial.isPending}
+    >
+      {resetTutorial.isPending ? 'Loading…' : '🔄 Show Tutorial Again'}
+    </Button>
   )
 }

@@ -133,6 +133,14 @@ class User(Base):
     # Set by admin when enrolling a member in a 7-day training batch.
     training_gate_until: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
 
+    # Onboarding tutorial — true until user completes the guided walkthrough
+    tutorial_pending: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+        default=False,
+    )
+
     # XP / gamification columns (added in migration 0031)
     xp_total: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"), default=0)
     xp_level: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'rookie'"), default="rookie")

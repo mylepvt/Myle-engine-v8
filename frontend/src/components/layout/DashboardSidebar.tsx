@@ -80,10 +80,11 @@ export function DashboardSidebar({
                     const label = resolveItemLabel(item, shellRole)
                     const Icon = getDashboardNavIcon(item.path)
                     return (
-                      <li key={item.path || 'index'}>
+                        <li key={item.path || 'index'}>
                         <NavLink
                           to={to}
                           end={item.end ?? false}
+                          data-tour={item.path.split('/')[0]}
                           aria-label={
                             item.path === 'team/flp-min-billing' && pendingEnrollCount > 0
                               ? `${label}, ${pendingEnrollCount} pending`

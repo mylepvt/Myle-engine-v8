@@ -50,6 +50,7 @@ def issue_session_cookies(
         training_status=user.training_status,
         registration_status=user.registration_status,
         training_required=user.training_required,
+        tutorial_pending=bool(user.tutorial_pending),
         ver=AUTH_SESSION_VERSION,
         minutes=settings.jwt_access_minutes,
     )
