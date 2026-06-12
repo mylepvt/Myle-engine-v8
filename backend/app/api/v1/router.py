@@ -10,6 +10,18 @@ from app.api.v1 import (
     admin_management_updates,
     admin_performer_insights,
     admin_training,
+    automation,
+    blocker_intelligence,
+    eos_health,
+    leader_command_center,
+    leader_effectiveness,
+    lead_outcomes,
+    lead_timeline,
+    missions,
+    org_execution,
+    predictive_risk,
+    training_campaign,
+    verification,
     invoices,
     analytics,
     auth,
@@ -59,6 +71,9 @@ api_router.include_router(admin_dashboard.router, prefix="/admin", tags=["admin"
 api_router.include_router(admin_performer_insights.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_management_updates.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_activity.router, prefix="/admin", tags=["admin"])
+api_router.include_router(automation.router, tags=["automation"])
+api_router.include_router(blocker_intelligence.router, tags=["blocker-intelligence"])
+api_router.include_router(eos_health.router, tags=["eos-health"])
 api_router.include_router(media.router, prefix="/media", tags=["media"])
 api_router.include_router(hello.router, prefix="/hello", tags=["hello"])
 api_router.include_router(leads.router, prefix="/leads", tags=["leads"])
@@ -105,4 +120,13 @@ api_router.include_router(xp.router, prefix="/xp", tags=["xp"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
 api_router.include_router(location.router, prefix="/location", tags=["location"])
 api_router.include_router(downloads.router, prefix="/downloads", tags=["downloads"])
+api_router.include_router(verification.router, prefix="/verification", tags=["verification"])
+api_router.include_router(leader_command_center.router, tags=["leader-command-center"])
+api_router.include_router(leader_effectiveness.router, tags=["leader-effectiveness"])
+api_router.include_router(lead_outcomes.router, tags=["lead-outcomes"])
+api_router.include_router(lead_timeline.router, tags=["lead-timeline"])
+api_router.include_router(missions.router, tags=["missions"])
+api_router.include_router(org_execution.router, tags=["org-execution"])
+api_router.include_router(predictive_risk.router, tags=["predictive-risk"])
+api_router.include_router(training_campaign.router, tags=["training-campaign"])
 api_router.include_router(webhooks.router, tags=["webhooks"])

@@ -12,14 +12,18 @@ import {
   ChevronRight,
   ClipboardCheck,
   Clock,
+  Cog,
   CreditCard,
   FileDown,
   FileText,
+  GitBranch,
   GraduationCap,
   Layers3,
+  ListChecks,
   PhoneCall,
   Search,
   Settings,
+  ShieldAlert,
   ShieldCheck,
   Users,
   Video,
@@ -41,6 +45,7 @@ import { CcSummaryCard } from '@/components/dashboard/CcSummaryCard'
 import { LiveTeamActivity } from '@/components/dashboard/LiveTeamActivity'
 import { LiveOpsDashboard } from '@/components/dashboard/live-ops/LiveOpsDashboard'
 import { useLiveDashboardStore } from '@/stores/live-dashboard-store'
+import { ExecutiveDashboard } from '@/components/dashboard/ExecutiveDashboard'
 import { useAppSettingsQuery, useSystemUsersSummaryQuery } from '@/hooks/use-settings-query'
 import { useActiveWatchersQuery } from '@/hooks/use-flp-min-billing-video-query'
 import { useFlpMinBillingApprovalsPendingQuery, useTeamMembersQuery, useUpdateMemberComplianceMutation, type TeamMemberPublic } from '@/hooks/use-team-query'
@@ -52,8 +57,16 @@ import { useInvoicesQuery } from '@/hooks/use-invoices-query'
 import { useLeadControlQuery } from '@/hooks/use-lead-control-query'
 import { LEAD_STATUS_OPTIONS, useLeadsQuery, type LeadPublic } from '@/hooks/use-leads-query'
 import { useLeadPoolQuery } from '@/hooks/use-lead-pool-query'
-import { apiFetch } from '@/lib/api'
+import { RiskDashboard } from '@/components/dashboard/RiskDashboard'
+import { BlockerIntelligencePanel } from '@/components/dashboard/BlockerIntelligencePanel'
+import { AutomationPanel } from '@/components/dashboard/AutomationPanel'
 import { messageFromApiErrorPayload } from '@/lib/http-error-message'
+import { useOrganizationScore } from '@/hooks/use-organization-score-query'
+import { useAdminMissionSummary } from '@/hooks/use-missions-query'
+import { useCampaigns, useCreateCampaign, useCampaignMetrics } from '@/hooks/use-training-campaign-query'
+import { useLeaderEffectiveness } from '@/hooks/use-leader-effectiveness-query'
+import { useVerificationSummary, useAdminTasks, useAdminTasksList } from '@/hooks/use-verification-query'
+import { useOutcomeSummary, useDeadReasons, useZombieLeads, useRecycleLeads } from '@/hooks/use-lead-outcomes-query'
 
 type Props = {
   firstName: string
@@ -158,6 +171,29 @@ function formatInr(cents: number): string {
 
 function statusLabel(status: string): string {
   return LEAD_STATUS_OPTIONS.find((item) => item.value === status)?.label ?? status.replace(/_/g, ' ')
+}
+
+/** Mini metric card for a training campaign — fetch-on-mount inside a card. */
+function CampaignMetricsMini({ campaignId }: { campaignId: number }) {
+  const { data, isPending, isError } = useCampaignMetrics(campaignId, true)
+  if (isPending) return <div className="space-y-2"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /></div>
+  if (isError || !data) return <p className="text-xs text-muted-foreground">—</p>
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-muted-foreground">Attendance</span>
+        <span className="font-semibold tabular-nums">{data.attendance}</span>
+      </div>
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-muted-foreground">Implementation</span>
+        <span className={`font-semibold tabular-nums ${data.implementation_pct >= 50 ? 'text-green-600' : 'text-amber-600'}`}>{data.implementation_pct}%</span>
+      </div>
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-muted-foreground">Success</span>
+        <span className={`font-semibold tabular-nums ${data.success_pct >= 50 ? 'text-green-600' : data.success_pct >= 20 ? 'text-amber-600' : 'text-red-600'}`}>{data.success_pct}%</span>
+      </div>
+    </div>
+  )
 }
 
 async function fetchJson<T>(path: string): Promise<T> {
@@ -580,6 +616,13 @@ const DASHBOARD_TABS: readonly { value: string; label: string; Icon: LucideIcon 
   { value: 'finance', label: 'Finance', Icon: Wallet },
   { value: 'content', label: 'Content', Icon: Settings },
   { value: 'audit', label: 'Audit', Icon: ShieldCheck },
+  { value: 'verification', label: 'Verification', Icon: ListChecks },
+  { value: 'outcomes', label: 'Outcomes', Icon: GitBranch },
+  { value: 'missions', label: 'Missions', Icon: ClipboardCheck },
+  { value: 'effectiveness', label: 'Effectiveness', Icon: Activity },
+  { value: 'campaigns', label: 'Campaigns', Icon: GraduationCap },
+  { value: 'risk', label: 'Risk', Icon: ShieldAlert },
+  { value: 'automation', label: 'Automation', Icon: Cog },
 ]
 
 /** Apple-style single view switcher — replaces an 8-wide tab strip with one clean
@@ -693,6 +736,15 @@ export function AdminCommandCenter({ firstName }: Props) {
   const leadPool = useLeadPoolQuery(true)
   const teamReports = useTeamReportsQuery('', true)
   const activeWatchers = useActiveWatchersQuery(activeTab === 'today')
+  const vSummary = useVerificationSummary(activeTab === 'verification')
+  const outcomeSummary = useOutcomeSummary(activeTab === 'outcomes')
+  const deadReasons = useDeadReasons(activeTab === 'outcomes')
+  const zombieLeads = useZombieLeads(activeTab === 'outcomes')
+  const recycleLeads = useRecycleLeads(activeTab === 'outcomes')
+  const missionSummary = useAdminMissionSummary(['today', 'leads', 'verification', 'outcomes', 'missions', 'effectiveness'].includes(activeTab))
+  const effectiveness = useLeaderEffectiveness(['today', 'leads', 'verification', 'outcomes', 'missions', 'effectiveness'].includes(activeTab))
+  const orgScore = useOrganizationScore(activeTab === 'today')
+  const campaignList = useCampaigns(true, activeTab === 'campaigns')
 
   // Seed live dashboard store from REST data once loaded.
   // MUST run in an effect, not during render: the old in-render guard
@@ -878,6 +930,69 @@ export function AdminCommandCenter({ firstName }: Props) {
         </div>
 
         <TabsContent value="today">
+          {/* Unified Executive Dashboard — CEO View */}
+          <div className="mb-6">
+            <ExecutiveDashboard />
+          </div>
+
+          {/* Organization Execution Score — morning pulse */}
+          {orgScore.data && (
+            <div className="mb-6">
+              <Card className="border-primary/20 bg-gradient-to-br from-card to-primary/[0.03]">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Activity className="size-4 text-primary" />
+                      Organization Execution Score
+                    </CardTitle>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-muted-foreground">
+                        {orgScore.data.total_members} members · {orgScore.data.total_leads} leads
+                      </span>
+                      <Badge variant="secondary" className="text-[10px]">
+                        {new Date(orgScore.data.computed_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                      </Badge>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                    {/* Big score */}
+                    <div className="flex shrink-0 items-center justify-center">
+                      <div className="flex size-24 items-center justify-center rounded-full border-4 border-primary/20">
+                        <span className={`text-3xl font-bold tabular-nums ${
+                          orgScore.data.overall_score >= 70 ? 'text-green-600' : orgScore.data.overall_score >= 40 ? 'text-amber-600' : 'text-red-600'
+                        }`}>{orgScore.data.overall_score}</span>
+                      </div>
+                    </div>
+                    {/* Component bars */}
+                    <div className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-4">
+                      {[
+                        { key: 'mission_completion', label: 'Mission', value: orgScore.data.components.mission_completion },
+                        { key: 'verification', label: 'Verification', value: orgScore.data.components.verification },
+                        { key: 'lead_activity', label: 'Lead Activity', value: orgScore.data.components.lead_activity },
+                        { key: 'zombie_leads', label: 'Zombie Score', value: orgScore.data.components.zombie_leads },
+                      ].map((c) => {
+                        const barColor = c.value >= 70 ? 'bg-green-500' : c.value >= 40 ? 'bg-amber-500' : 'bg-red-500'
+                        return (
+                          <div key={c.key} className="rounded-lg border border-border/40 p-2.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-medium text-muted-foreground">{c.label}</span>
+                              <span className="text-sm font-bold tabular-nums text-foreground">{c.value}</span>
+                            </div>
+                            <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-muted">
+                              <div className={`h-full rounded-full ${barColor}`} style={{ width: `${c.value}%` }} />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           {/* Full live ops dashboard */}
           <div className="mb-6">
             <LiveOpsDashboard />
@@ -1702,7 +1817,517 @@ export function AdminCommandCenter({ firstName }: Props) {
           </section>
         </TabsContent>
 
-        <TabsContent value="audit" className="space-y-6">
+        <TabsContent value="verification" className="space-y-6">
+          <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              label="Verification Rate"
+              value={vSummary.data ? `${vSummary.data.verification_rate_pct}%` : '...'}
+              hint="Members with at least one evidence submission"
+              variant={vSummary.data && vSummary.data.verification_rate_pct >= 50 ? 'success' : vSummary.data && vSummary.data.verification_rate_pct >= 20 ? 'warning' : 'danger'}
+            />
+            <StatCard
+              label="Members Active Today"
+              value={vSummary.data?.members_active_today ?? 0}
+              hint="Members who submitted evidence today"
+            />
+            <StatCard
+              label="Pending Verifications"
+              value={vSummary.data?.pending_verifications ?? 0}
+              hint="Tasks awaiting leader approval"
+              variant="warning"
+            />
+            <StatCard
+              label="Blocked Tasks"
+              value={vSummary.data?.blocked_tasks ?? 0}
+              hint="Tasks marked as blocked with reason"
+              variant="danger"
+            />
+          </section>
+
+          <section className="grid grid-cols-1 gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Leader Verification Ranking</CardTitle>
+                <CardDescription>Leaders sorted by verified tasks. Red = high pending.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {vSummary.isPending ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                  </div>
+                ) : (vSummary.data?.leader_ranking ?? []).length === 0 ? (
+                  <EmptyStatePremium variant="default" title="No data yet" description="Assign tasks to start tracking verification." />
+                ) : (
+                  <div className="space-y-2">
+                    {(vSummary.data?.leader_ranking ?? []).map((l) => (
+                      <div key={l.user_id} className="surface-inset flex items-center justify-between gap-3 rounded-md p-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium">{l.name}</p>
+                          <p className="text-xs text-muted-foreground">Team: {l.total_assigned}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-muted-foreground">{l.verified_count} verified</span>
+                          <span className={`text-xs font-bold tabular-nums ${
+                            l.verification_rate_pct >= 80 ? 'text-green-600' : l.verification_rate_pct >= 50 ? 'text-amber-600' : 'text-red-600'
+                          }`}>{l.verification_rate_pct}%</span>
+                          {l.total_assigned - l.verified_count > 5 && (
+                            <ShieldAlert className="size-4 text-red-500" />
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Quick Actions</CardTitle>
+                  <CardDescription>Create and assign verification tasks</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <DeskShortcut
+                    to="#"
+                    title="Create Task"
+                    description="Define a new verification task"
+                    icon={<ListChecks className="size-4" />}
+                  />
+                  <DeskShortcut
+                    to="#"
+                    title="Bulk Assign"
+                    description="Assign a task to multiple members"
+                    icon={<Users className="size-4" />}
+                  />
+                  <DeskShortcut
+                    to="#"
+                    title="Pending Review"
+                    description={`${vSummary.data?.pending_verifications ?? 0} tasks awaiting verification`}
+                    icon={<ClipboardCheck className="size-4" />}
+                    badge={vSummary.data?.pending_verifications ?? 0}
+                  />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Task Type Breakdown</CardTitle>
+                  <CardDescription>Distribution of active task types</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {(vSummary.data?.task_type_breakdown ?? []).length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No tasks created yet</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {vSummary.data?.task_type_breakdown.map((t) => (
+                        <div key={t.task_type} className="flex items-center justify-between">
+                          <span className="text-sm capitalize">{t.task_type.toLowerCase().replace(/_/g, ' ')}</span>
+                          <Badge variant="secondary">{t.count}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+        </TabsContent>
+
+        <TabsContent value="outcomes" className="space-y-6">
+          <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              label="Active Leads"
+              value={outcomeSummary.data?.outcomes?.active ?? '...'}
+              hint="In pipeline — being worked"
+              variant="success"
+            />
+            <StatCard
+              label="Converted"
+              value={outcomeSummary.data?.outcomes?.converted ?? '...'}
+              hint="Closed won"
+              variant="default"
+            />
+            <StatCard
+              label="Dead"
+              value={outcomeSummary.data?.outcomes?.dead ?? '...'}
+              hint="Closed lost"
+              variant="danger"
+            />
+            <StatCard
+              label="Recycle"
+              value={outcomeSummary.data?.outcomes?.recycle ?? '...'}
+              hint="Retarget / inactive — may re-engage"
+              variant="warning"
+            />
+          </section>
+
+          <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr]">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg">Dead Lead Reasons</CardTitle>
+                  <CardDescription>Per-member breakdown of why leads were lost</CardDescription>
+                </div>
+                <Badge variant="secondary">Known Zone Miss: {deadReasons.data?.members?.reduce((s, m) => s + (m.reasons?.known_zone_miss ?? 0), 0) ?? '?'}</Badge>
+              </CardHeader>
+              <CardContent>
+                {deadReasons.isPending ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                  </div>
+                ) : (deadReasons.data?.members ?? []).length === 0 ? (
+                  <EmptyStatePremium variant="default" title="No dead leads" description="Dead leads with reasons will appear here." />
+                ) : (
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                    {(deadReasons.data?.members ?? []).slice(0, 20).map((m) => (
+                      <div key={m.user_id} className="surface-inset rounded-md p-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium">{m.name}</p>
+                          <Badge variant="secondary">{m.total_dead}</Badge>
+                        </div>
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {Object.entries(m.reasons).map(([reason, count]) => (
+                            <span key={reason} className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                              reason === 'known_zone_miss' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
+                              reason === 'no_budget' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' :
+                              'bg-muted text-muted-foreground'
+                            }`}>
+                              {reason.replace(/_/g, ' ')}: {count}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Zombie Leads</CardTitle>
+                <CardDescription>Active outcome but untouched for 7+ days</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {zombieLeads.isPending ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                  </div>
+                ) : (zombieLeads.data?.leads ?? []).length === 0 ? (
+                  <EmptyStatePremium variant="default" title="No zombies" description="All active leads have been touched recently." />
+                ) : (
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                    {(zombieLeads.data?.leads ?? []).slice(0, 20).map((lead) => (
+                      <div key={lead.id} className="surface-inset flex items-center justify-between rounded-md p-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium">{lead.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {lead.assigned_to_name ?? 'Unassigned'} · {lead.status}
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className={`text-xs font-bold tabular-nums ${
+                            (lead.days_inactive ?? 0) >= 14 ? 'text-red-600' : 'text-amber-600'
+                          }`}>{lead.days_inactive}d</p>
+                          <p className="text-[10px] text-muted-foreground">inactive</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </section>
+
+          <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr]">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Recycle Leads</CardTitle>
+                <CardDescription>Leads eligible for re-engagement</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {recycleLeads.isPending ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                  </div>
+                ) : (recycleLeads.data?.leads ?? []).length === 0 ? (
+                  <EmptyStatePremium variant="default" title="No recycle leads" description="Leads in recycle bucket will appear here." />
+                ) : (
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                    {(recycleLeads.data?.leads ?? []).slice(0, 15).map((lead) => (
+                      <div key={lead.id} className="surface-inset flex items-center justify-between rounded-md p-3">
+                        <div>
+                          <p className="text-sm font-medium">{lead.name}</p>
+                          <p className="text-xs text-muted-foreground">{lead.assigned_to_name ?? 'Unassigned'}</p>
+                          {lead.recycle_reason && (
+                            <p className="text-[10px] text-muted-foreground">Reason: {lead.recycle_reason.replace(/_/g, ' ')}</p>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">{lead.days_in_recycle ?? '?'}d ago</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Outcome Distribution</CardTitle>
+                <CardDescription>Total: {outcomeSummary.data?.total ?? 0} leads</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {outcomeSummary.isPending ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                ) : (
+                  <>
+                    {(['active', 'converted', 'dead', 'recycle'] as const).map((oc) => {
+                      const count = outcomeSummary.data?.outcomes?.[oc] ?? 0
+                      const pct = outcomeSummary.data?.[`${oc}_pct` as keyof typeof outcomeSummary.data] as number ?? 0
+                      const barColor = oc === 'active' ? 'bg-blue-500' : oc === 'converted' ? 'bg-green-500' : oc === 'dead' ? 'bg-red-500' : 'bg-amber-500'
+                      return (
+                        <div key={oc}>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium capitalize">{oc}</span>
+                            <span className="text-muted-foreground">{count} ({pct}%)</span>
+                          </div>
+                          <div className="mt-1 h-2 w-full rounded-full bg-muted">
+                            <div className={`h-2 rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </section>
+        </TabsContent>
+
+        <TabsContent value="missions" className="space-y-6">
+          <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              label="Members Assigned"
+              value={missionSummary.data?.assigned_today ?? 0}
+              hint="Members with a mission today"
+            />
+            <StatCard
+              label="Completed"
+              value={missionSummary.data?.completed ?? 0}
+              hint="Missions marked complete"
+              variant="success"
+            />
+            <StatCard
+              label="Pending"
+              value={missionSummary.data?.pending ?? 0}
+              hint="Missions not yet completed"
+              variant="warning"
+            />
+            <StatCard
+              label="Completion Rate"
+              value={missionSummary.data ? `${missionSummary.data.completion_rate_pct}%` : '...'}
+              hint="Overall completion rate"
+              variant={missionSummary.data && missionSummary.data.completion_rate_pct >= 60 ? 'success' : missionSummary.data && missionSummary.data.completion_rate_pct >= 20 ? 'warning' : 'danger'}
+            />
+          </section>
+
+          <section className="grid grid-cols-1 gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Leader Breakdown</CardTitle>
+                <CardDescription>Mission completion per leader's team</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {missionSummary.isPending ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                  </div>
+                ) : (missionSummary.data?.leader_breakdown ?? []).length === 0 ? (
+                  <EmptyStatePremium variant="default" title="No data yet" description="Create templates to start tracking daily missions." />
+                ) : (
+                  <div className="space-y-2">
+                    {(missionSummary.data?.leader_breakdown ?? []).map((l) => (
+                      <div key={l.user_id} className="surface-inset flex items-center justify-between gap-3 rounded-md p-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium">{l.name}</p>
+                          <p className="text-xs text-muted-foreground">Team: {l.team_size} · Assigned: {l.assigned}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-muted-foreground">{l.completed} done</span>
+                          <span className={`text-xs font-bold tabular-nums ${
+                            l.completion_rate_pct >= 60 ? 'text-green-600' : l.completion_rate_pct >= 20 ? 'text-amber-600' : 'text-red-600'
+                          }`}>{l.completion_rate_pct}%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <BlockerIntelligencePanel />
+          </section>
+        </TabsContent>
+
+        <TabsContent value="effectiveness" className="space-y-6">
+          <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              label="Leaders Ranked"
+              value={effectiveness.data?.total_leaders ?? 0}
+              hint="Leaders with active teams"
+            />
+            <StatCard
+              label="Avg Score"
+              value={effectiveness.data ? `${effectiveness.data.average_score}` : '...'}
+              hint="Organization-wide leader average"
+              variant={effectiveness.data && effectiveness.data.average_score >= 60 ? 'success' : effectiveness.data && effectiveness.data.average_score >= 30 ? 'warning' : 'danger'}
+            />
+            <StatCard
+              label="Elite"
+              value={effectiveness.data?.band_distribution?.elite ?? 0}
+              hint="Score ≥ 80"
+              variant="success"
+            />
+            <StatCard
+              label="Critical"
+              value={effectiveness.data?.band_distribution?.critical ?? 0}
+              hint="Score < 40 — needs intervention"
+              variant={effectiveness.data && effectiveness.data.band_distribution?.critical > 0 ? 'danger' : 'default'}
+            />
+          </section>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Activity className="size-4 text-primary" />
+                  Leader Effectiveness Ranking
+                </CardTitle>
+                <CardDescription>
+                  5-component score: Mission (25%) · Verification (25%) · Conversion (20%) · Zombie (20%) · Blocker (10%)
+                </CardDescription>
+              </div>
+              {effectiveness.data && (
+                <Badge variant="secondary">Updated {new Date(effectiveness.data.computed_at).toLocaleTimeString()}</Badge>
+              )}
+            </CardHeader>
+            <CardContent>
+              {effectiveness.isPending ? (
+                <div className="space-y-2">
+                  {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 w-full" />)}
+                </div>
+              ) : effectiveness.isError ? (
+                <ErrorState
+                  title="Could not load effectiveness"
+                  message={effectiveness.error instanceof Error ? effectiveness.error.message : 'Please try again.'}
+                  onRetry={() => effectiveness.refetch()}
+                />
+              ) : (effectiveness.data?.leaders ?? []).length === 0 ? (
+                <EmptyStatePremium variant="default" title="No leader data" description="Leaders with team members will appear once they have activity." />
+              ) : (
+                <div className="space-y-4">
+                  {effectiveness.data!.leaders.map((leader) => {
+                    const { components } = leader
+                    const bandColor = leader.band === 'elite' ? 'text-green-600' : leader.band === 'average' ? 'text-amber-600' : 'text-red-600'
+                    const bandBg = leader.band === 'elite' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : leader.band === 'average' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                    return (
+                      <div key={leader.user_id} className="rounded-lg border border-border/60 p-4">
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <p className="text-base font-semibold text-foreground">{leader.name}</p>
+                            <Badge className={bandBg}>{leader.band}</Badge>
+                            <span className="text-xs text-muted-foreground">{leader.team_size} members</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-2xl font-bold tabular-nums ${bandColor}`}>{leader.weighted_score}</span>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-5">
+                          {[
+                            { key: 'mission_completion', label: 'Mission', value: components.mission_completion, pct: 25, weak: leader.weakest_component === 'Mission Completion' },
+                            { key: 'verification_rate', label: 'Verification', value: components.verification_rate, pct: 25, weak: leader.weakest_component === 'Verification Rate' },
+                            { key: 'conversion_rate', label: 'Conversion', value: components.conversion_rate, pct: 20, weak: leader.weakest_component === 'Conversion Rate' },
+                            { key: 'zombie_lead_score', label: 'Zombie', value: components.zombie_lead_score, pct: 20, weak: leader.weakest_component === 'Zombie Leads' },
+                            { key: 'blocker_resolution', label: 'Blocker', value: components.blocker_resolution, pct: 10, weak: leader.weakest_component === 'Blocker Resolution' },
+                          ].map((bar) => {
+                            const barColor = bar.value >= 80 ? 'bg-green-500' : bar.value >= 40 ? 'bg-amber-500' : 'bg-red-500'
+                            return (
+                              <div key={bar.key} className={`rounded border p-2 ${bar.weak ? 'border-red-400/50 bg-red-50 dark:bg-red-950/20' : 'border-border/40'}`}>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] font-medium text-muted-foreground">{bar.label} ({bar.pct}%)</span>
+                                  <span className={`text-xs font-bold tabular-nums ${bar.value >= 80 ? 'text-green-600' : bar.value >= 40 ? 'text-amber-600' : 'text-red-600'}`}>{bar.value}</span>
+                                </div>
+                                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                                  <div className={`h-full rounded-full ${barColor}`} style={{ width: `${bar.value}%` }} />
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="campaigns" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Training Campaigns</h2>
+              <p className="text-sm text-muted-foreground">Webinar → Mission → Verification → Metric</p>
+            </div>
+            <Button asChild variant="secondary" size="sm">
+              <Link to="/dashboard/system/training">Create Campaign</Link>
+            </Button>
+          </div>
+
+          {campaignList.isPending ? (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {[1, 2, 3].map(i => <Skeleton key={i} className="h-32" />)}
+            </div>
+          ) : campaignList.isError ? (
+            <ErrorState title="Failed to load" message="Could not load campaigns" onRetry={() => campaignList.refetch()} />
+          ) : (campaignList.data ?? []).length === 0 ? (
+            <EmptyStatePremium variant="default" title="No campaigns yet" description="Create a campaign after a webinar to track training implementation." />
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {campaignList.data!.map((camp) => (
+                <Card key={camp.id} className="flex flex-col">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between">
+                      <CardTitle className="text-sm font-semibold">{camp.name}</CardTitle>
+                      <Badge variant="secondary">{camp.enrollment_count} enrolled</Badge>
+                    </div>
+                    {camp.description && (
+                      <CardDescription className="line-clamp-2 text-xs">{camp.description}</CardDescription>
+                    )}
+                    {camp.webinar_date && (
+                      <p className="text-[10px] text-muted-foreground">Webinar: {new Date(camp.webinar_date).toLocaleDateString()}</p>
+                    )}
+                  </CardHeader>
+                  <CardContent className="flex-1">
+                    <CampaignMetricsMini campaignId={camp.id} />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
           <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <StatCard
               label="History Rows"
@@ -1790,6 +2415,14 @@ export function AdminCommandCenter({ firstName }: Props) {
               </CardContent>
             </Card>
           </section>
+        </TabsContent>
+
+        <TabsContent value="risk" className="space-y-6">
+          <RiskDashboard />
+        </TabsContent>
+
+        <TabsContent value="automation" className="space-y-6">
+          <AutomationPanel />
         </TabsContent>
       </Tabs>
     </div>

@@ -14,6 +14,12 @@ from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db
 from app.core.config import settings
+from app.core.lead_outcome import (
+    OUTCOME_DEAD,
+    OUTCOME_RECYCLE,
+    is_terminal_outcome,
+    outcome_for_status,
+)
 from app.core.pipeline_rules import validate_vl2_status_transition_for_role
 from app.core.stage_pricing import (
     SEAT_HOLD_WINDOW_HOURS,
@@ -205,7 +211,30 @@ def _apply_status_side_effects(
     previous_status: str,
     new_status: str,
     now: datetime,
+    drop_reason: str | None = None,
+    drop_notes: str | None = None,
+    drop_recorded_by_user_id: int | None = None,
+    recycle_reason: str | None = None,
 ) -> None:
+    # Sync outcome from the new status
+    from app.services.lead_outcome_service import (
+        apply_dead_side_effects,
+        apply_recycle_side_effects,
+        clear_dead_state,
+        sync_outcome_from_status,
+    )
+
+    outcome_changed = sync_outcome_from_status(lead, now=now)
+    new_outcome = outcome_for_status(new_status)
+
+    if new_outcome == OUTCOME_DEAD and drop_reason:
+        apply_dead_side_effects(lead, drop_reason, drop_notes, drop_recorded_by_user_id or 0, now=now)
+    elif new_outcome != OUTCOME_DEAD and lead.outcome != OUTCOME_DEAD:
+        clear_dead_state(lead)
+
+    if new_outcome == OUTCOME_RECYCLE:
+        apply_recycle_side_effects(lead, recycle_reason, now=now)
+
     if new_status == "whatsapp_sent" and lead.whatsapp_sent_at is None:
         lead.whatsapp_sent_at = now
 
@@ -988,6 +1017,9 @@ class LeadsService:
                 previous_status=prev_status,
                 new_status=body.status,
                 now=now,
+                drop_reason=body.drop_reason,
+                drop_notes=body.drop_notes,
+                drop_recorded_by_user_id=user.user_id,
             )
             # Team → leader handoff: marking the Enrollment-Live video watched is the team's
             # last step. Reassign the lead to the owner's nearest upline leader so it surfaces
@@ -1324,6 +1356,10 @@ class LeadsService:
             previous_status=prev_status,
             new_status=body.target_status,
             now=now,
+            drop_reason=body.drop_reason,
+            drop_notes=body.drop_notes,
+            drop_recorded_by_user_id=user.user_id,
+            recycle_reason=body.recycle_reason,
         )
         _sync_stage_anchor(lead, previous_status=prev_status, now=now)
         lead = await self._commit_with_shadow_upsert(lead)
@@ -1425,6 +1461,7 @@ class LeadsService:
                 previous_status=prev_status,
                 new_status=lead.status,
                 now=now,
+                drop_recorded_by_user_id=user.user_id if action == "not_interested" else None,
             )
         _sync_stage_anchor(lead, previous_status=prev_status, now=now)
         lead = await self._commit_with_shadow_upsert(lead)
