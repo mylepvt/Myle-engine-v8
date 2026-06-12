@@ -1,3 +1,4 @@
+import { cn } from '@/lib/utils'
 import { AlertCircle, AlertTriangle, CheckCircle2, Clock, GraduationCap, ListChecks, Phone, MessageSquare, Skull, Users, Eye, Send } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
@@ -22,13 +23,13 @@ function KpiCard({ label, value, icon, variant }: { label: string; value: number
     info: 'border-blue-200 bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300',
   }
   return (
-    <div className={`flex items-center gap-3 rounded-xl border p-3 ${styles[variant]}`}>
+    <div className={cn('flex items-center gap-3 rounded-xl border p-3', styles[variant])}>
       <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-background/70">
         {icon}
       </div>
       <div>
         <p className="text-2xl font-bold leading-none tabular-nums">{value}</p>
-        <p className="mt-0.5 text-[11px] font-semibold opacity-80">{label}</p>
+        <p className="mt-0.5 text-ds-caption opacity-80">{label}</p>
       </div>
     </div>
   )
@@ -39,11 +40,11 @@ function HealthBar({ label, value, max }: { label: string; value: number; max?: 
   const color = pct >= 70 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-500' : 'bg-red-500'
   return (
     <div className="flex items-center gap-2">
-      <span className="w-32 shrink-0 text-xs font-medium text-muted-foreground">{label}</span>
+      <span className="w-32 shrink-0 text-ds-caption font-medium">{label}</span>
       <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
         <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(100, pct)}%` }} />
       </div>
-      <span className="w-10 shrink-0 text-right text-xs font-bold tabular-nums text-foreground">{Math.round(value)}</span>
+      <span className="w-10 shrink-0 text-right text-ds-caption font-bold tabular-nums">{Math.round(value)}</span>
     </div>
   )
 }
@@ -59,7 +60,7 @@ function ActionCard({ action }: { action: ActionItem }) {
   const BtnIcon = btn.icon
 
   return (
-    <div className={`flex items-center gap-3 rounded-xl border p-3 ${severityColor}`}>
+    <div className={cn('flex items-center gap-3 rounded-xl border p-3', severityColor)}>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="text-sm font-bold text-foreground">{action.member_name}</span>
@@ -67,8 +68,8 @@ function ActionCard({ action }: { action: ActionItem }) {
             <span className="rounded bg-red-500/15 px-1.5 py-0.5 text-[10px] font-bold text-red-600">URGENT</span>
           )}
         </div>
-        <p className="mt-0.5 text-xs text-muted-foreground">{action.issue}</p>
-        <p className="mt-0.5 text-[11px] text-muted-foreground/70">{action.detail}</p>
+        <p className="mt-0.5 text-ds-caption">{action.issue}</p>
+        <p className="mt-0.5 text-[10px] text-muted-foreground/70">{action.detail}</p>
       </div>
       <Button size="sm" variant={btn.variant} className="shrink-0 h-8 px-3 text-xs gap-1.5">
         <BtnIcon className="size-3.5" />
@@ -126,13 +127,13 @@ export function LeaderActionCenter() {
       {/* ── TEAM KPI DASHBOARD ──────────────────────────────────── */}
       <div>
         <div className="mb-3 flex items-center gap-2">
-          <h2 className="text-base font-bold text-foreground">Team Overview</h2>
+          <h2 className="text-ds-label font-bold">Team Overview</h2>
           <Badge variant="outline" className="text-[10px] ml-auto">{data.team_size} members</Badge>
-          <Badge className={`text-[10px] ${
+          <Badge className={cn('text-[10px]',
             h.leader_band === 'elite' ? 'bg-green-100 text-green-800' :
             h.leader_band === 'average' ? 'bg-amber-100 text-amber-800' :
             'bg-red-100 text-red-800'
-          }`}>
+          )}>
             Score {h.leader_score} — {h.leader_band}
           </Badge>
         </div>
@@ -178,7 +179,7 @@ export function LeaderActionCenter() {
       {data.actions.length > 0 ? (
         <div>
           <div className="mb-3 flex items-center gap-2">
-            <h2 className="flex items-center gap-1.5 text-base font-bold text-foreground">
+            <h2 className="flex items-center gap-1.5 text-ds-label font-bold">
               <AlertTriangle className="size-4 text-amber-500" />
               Action Queue
             </h2>

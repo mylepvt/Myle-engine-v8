@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { AlertCircle, CheckCircle2, Clock, Eye, FileText, ListChecks, XCircle } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -56,7 +57,7 @@ function TaskCard({ task }: { task: TaskAssignmentPublic }) {
             <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{task.evidence_instructions}</p>
           )}
         </div>
-        <Badge className={`shrink-0 text-[10px] ${badge.className}`}>{badge.label}</Badge>
+        <Badge className={cn('shrink-0 text-[10px]', badge.className)}>{badge.label}</Badge>
       </div>
 
       {task.blocker_reason && (
@@ -68,11 +69,11 @@ function TaskCard({ task }: { task: TaskAssignmentPublic }) {
       {task.status === 'pending' && (
         <div className="flex flex-wrap gap-1.5">
           <Button size="sm" variant="outline" onClick={() => setShowSubmit(!showSubmit)}>
-            <FileText className="mr-1 size-3" />
+            <FileText className="mr-1 size-4" />
             Submit
           </Button>
           <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => setShowBlock(!showBlock)}>
-            <XCircle className="mr-1 size-3" />
+            <XCircle className="mr-1 size-4" />
             Can't Do
           </Button>
         </div>
@@ -84,22 +85,22 @@ function TaskCard({ task }: { task: TaskAssignmentPublic }) {
             <p className="text-xs text-red-600 dark:text-red-400">Reason: {task.rejection_reason}</p>
           )}
           <Button size="sm" variant="outline" onClick={() => setShowSubmit(!showSubmit)}>
-            <FileText className="mr-1 size-3" />
+            <FileText className="mr-1 size-4" />
             Resubmit
           </Button>
         </div>
       )}
 
       {task.status === 'submitted' && (
-        <div className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400">
-          <Clock className="size-3" />
+        <div className="flex items-center gap-1.5 text-ds-caption text-blue-600 dark:text-blue-400">
+          <Clock className="size-3.5" />
           Awaiting leader verification
         </div>
       )}
 
       {task.status === 'verified' && (
-        <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
-          <CheckCircle2 className="size-3" />
+        <div className="flex items-center gap-1.5 text-ds-caption text-green-600 dark:text-green-400">
+          <CheckCircle2 className="size-3.5" />
           Verified{task.verified_by_name ? ` by ${task.verified_by_name}` : ''}
         </div>
       )}
