@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ActionQueuePanel } from '@/components/dashboard/ActionQueuePanel'
 import { useLeaderCommandCenter, type ActionItem } from '@/hooks/use-leader-command-center-query'
 
 const ACTION_BUTTONS: Record<string, { label: string; icon: typeof Phone; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
@@ -124,6 +125,9 @@ export function LeaderActionCenter() {
 
   return (
     <div className="space-y-5">
+      {/* ── ONE-TAP ACTION QUEUE ────────────────────────────────── */}
+      <ActionQueuePanel />
+
       {/* ── TEAM KPI DASHBOARD ──────────────────────────────────── */}
       <div>
         <div className="mb-3 flex items-center gap-2">

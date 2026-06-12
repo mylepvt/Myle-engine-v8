@@ -435,8 +435,23 @@ async def _exec_create_recovery_mission(
     if not member_id:
         return {"action": "create_recovery_mission", "status": "skipped", "reason": "no_member_id"}
 
-    # Check existing pending recovery
-    existing = (
+    return await create_recovery_mission_for_member(
+        session, member_id, recovery_items=config.get("recovery_items"),
+    )
+
+
+async def create_recovery_mission_for_member(
+    session: AsyncSession,
+    member_id: int,
+    recovery_items: list[dict] | None = None,
+) -> dict:
+    """Add recovery items to the member's mission for today.
+
+    Daily missions are unique per (user_id, mission_date), so recovery items
+    are merged into today's existing mission instead of creating a new row.
+    A completed mission is reopened so the member has to act again.
+    """
+    pending = (
         await session.execute(
             select(func.count(DailyMission.id)).where(
                 DailyMission.user_id == member_id,
@@ -444,15 +459,15 @@ async def _exec_create_recovery_mission(
             )
         )
     ).scalar() or 0
-    if existing >= 3:
+    if pending >= 3:
         return {"action": "create_recovery_mission", "status": "skipped", "reason": "max_pending_reached"}
 
     today = datetime.now(timezone.utc).date()
-    recovery_items = config.get("recovery_items", [
+    recovery_items = recovery_items or [
         {"key": "recovery_tasks", "label": "Complete pending tasks", "target": 1, "evidence_required": False},
         {"key": "recovery_missions", "label": "Review missed missions", "target": 1, "evidence_required": False},
         {"key": "recovery_leads", "label": "Call your leads", "target": 3, "evidence_required": False},
-    ])
+    ]
     items_dict = {
         item["key"]: {
             "target": item.get("target", 1),
@@ -460,9 +475,44 @@ async def _exec_create_recovery_mission(
             "done": False,
             "evidence": None,
             "evidence_file": None,
+            "label": item.get("label", item["key"]),
         }
         for item in recovery_items
     }
+
+    mission = (
+        await session.execute(
+            select(DailyMission).where(
+                DailyMission.user_id == member_id,
+                DailyMission.mission_date == today,
+            )
+        )
+    ).scalar_one_or_none()
+
+    if mission is not None:
+        merged = dict(mission.items or {})
+        added = [k for k in items_dict if k not in merged]
+        if not added:
+            return {
+                "action": "create_recovery_mission",
+                "status": "skipped",
+                "reason": "recovery_already_added",
+                "mission_id": mission.id,
+            }
+        merged.update({k: items_dict[k] for k in added})
+        mission.items = merged
+        mission.status = "pending"
+        total = len(merged)
+        done = sum(1 for v in merged.values() if isinstance(v, dict) and v.get("done"))
+        mission.completion_pct = round((done / total) * 100, 1) if total else 0.0
+        await session.flush()
+        return {
+            "action": "create_recovery_mission",
+            "status": "merged",
+            "mission_id": mission.id,
+            "member_id": member_id,
+            "items": added,
+        }
 
     mission = DailyMission(
         user_id=member_id,

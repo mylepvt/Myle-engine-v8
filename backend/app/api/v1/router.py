@@ -10,6 +10,7 @@ from app.api.v1 import (
     admin_management_updates,
     admin_performer_insights,
     admin_training,
+    action_queue,
     automation,
     blocker_intelligence,
     eos_health,
@@ -71,6 +72,7 @@ api_router.include_router(admin_dashboard.router, prefix="/admin", tags=["admin"
 api_router.include_router(admin_performer_insights.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_management_updates.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_activity.router, prefix="/admin", tags=["admin"])
+api_router.include_router(action_queue.router, tags=["action-queue"])
 api_router.include_router(automation.router, tags=["automation"])
 api_router.include_router(blocker_intelligence.router, tags=["blocker-intelligence"])
 api_router.include_router(eos_health.router, tags=["eos-health"])

@@ -40,6 +40,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/ui/states'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { useAdminActivitySSE } from '@/hooks/use-admin-activity-sse'
+import { ActionQueuePanel } from '@/components/dashboard/ActionQueuePanel'
 import { AdminActivityPanel } from '@/components/dashboard/AdminActivityPanel'
 import { CcSummaryCard } from '@/components/dashboard/CcSummaryCard'
 import { LiveTeamActivity } from '@/components/dashboard/LiveTeamActivity'
@@ -939,6 +940,9 @@ export function AdminCommandCenter({ firstName }: Props) {
 
         {/* ==================== WAR ROOM ==================== */}
         <TabsContent value="war-room" className="space-y-6">
+          {/* Action Queue — ranked one-tap actions */}
+          <ActionQueuePanel />
+
           {/* EOS Health — Organization Execution Score */}
           {orgScore.data && (
             <Card className="border-primary/20 bg-gradient-to-br from-card to-primary/[0.03]">
