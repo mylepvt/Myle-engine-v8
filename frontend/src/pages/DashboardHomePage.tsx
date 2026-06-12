@@ -35,6 +35,10 @@ import { useTeamReportsQuery } from '@/hooks/use-team-reports-query'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
 import { usePingLoginMutation } from '@/hooks/use-xp-query'
 import { useLosQuery } from '@/hooks/use-los-query'
+import { VerificationHomePanel } from '@/components/dashboard/VerificationHomePanel'
+import { CampaignProgressCard } from '@/components/dashboard/CampaignProgressCard'
+import { LeaderActionCenter } from '@/components/dashboard/LeaderActionCenter'
+import { MissionHomePanel } from '@/components/dashboard/MissionHomePanel'
 import { cn } from '@/lib/utils'
 
 /** Canonical stage labels — same source as leads/workboard (legacy parity; all roles). */
@@ -340,7 +344,15 @@ export function DashboardHomePage() {
         </div>
       ) : null}
 
-      {role !== 'admin' ? <GateAssistantCard sessionReady={sessionReady} /> : null}
+      {role === 'leader' ? <LeaderActionCenter /> : null}
+
+      {role === 'team' ? <GateAssistantCard sessionReady={sessionReady} /> : null}
+
+      {role === 'team' ? <VerificationHomePanel /> : null}
+
+      {role === 'team' ? <MissionHomePanel /> : null}
+
+      {role === 'team' ? <CampaignProgressCard /> : null}
 
       <CcSummaryCard enabled={sessionReady} />
 

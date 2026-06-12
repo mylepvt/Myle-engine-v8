@@ -5,6 +5,12 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
+from app.core.lead_outcome import (
+    DROP_REASON_CHOICES,
+    OUTCOME_CHOICES,
+    outcome_for_status,
+    RECYCLE_REASON_CHOICES,
+)
 from app.core.lead_status import LEAD_STATUS_SET
 
 _CALL_STATUS_SET = {
@@ -32,6 +38,7 @@ class LeadPublic(BaseModel):
     id: int
     name: str
     status: str
+    outcome: Optional[str] = None
     created_by_user_id: int
     owner_user_id: Optional[int] = None
     owner_name: Optional[str] = None
@@ -119,6 +126,11 @@ class LeadPublic(BaseModel):
     next_followup_at: Optional[datetime] = None
     retarget_at: Optional[datetime] = None
     heat_score: int = 0
+    drop_reason: Optional[str] = None
+    drop_notes: Optional[str] = None
+    dropped_at: Optional[datetime] = None
+    outcome_changed_at: Optional[datetime] = None
+    recycle_reason: Optional[str] = None
 
     @computed_field
     @property
@@ -284,6 +296,8 @@ class LeadUpdate(BaseModel):
         default=None,
         description="When to call again (CTCS / follow-up queue)",
     )
+    drop_reason: Optional[str] = Field(default=None, max_length=32)
+    drop_notes: Optional[str] = Field(default=None, max_length=2000)
 
     @model_validator(mode="after")
     def at_least_one_field(self) -> LeadUpdate:
@@ -354,6 +368,16 @@ class LeadUpdate(BaseModel):
             raise ValueError("Invalid lead status")
         return s
 
+
+    @field_validator("drop_reason")
+    @classmethod
+    def drop_reason_allowed(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        s = v.strip()
+        if s not in DROP_REASON_CHOICES:
+            raise ValueError(f"Invalid drop_reason; must be one of {DROP_REASON_CHOICES}")
+        return s
 
     @field_validator("call_status")
     @classmethod
@@ -496,6 +520,15 @@ class LeadPoolImportResponse(BaseModel):
 class LeadTransitionRequest(BaseModel):
     target_status: str = Field(..., max_length=32)
     notes: Optional[str] = Field(default=None, max_length=2000)
+    drop_reason: Optional[str] = Field(
+        default=None, max_length=32,
+        description="Required when target outcome is dead",
+    )
+    drop_notes: Optional[str] = Field(default=None, max_length=2000)
+    recycle_reason: Optional[str] = Field(
+        default=None, max_length=32,
+        description="Required when target outcome is recycle",
+    )
 
     @field_validator("target_status")
     @classmethod
@@ -503,6 +536,26 @@ class LeadTransitionRequest(BaseModel):
         s = v.strip()
         if s not in LEAD_STATUS_SET:
             raise ValueError("Invalid lead status")
+        return s
+
+    @field_validator("drop_reason")
+    @classmethod
+    def drop_reason_allowed(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        s = v.strip()
+        if s not in DROP_REASON_CHOICES:
+            raise ValueError(f"Invalid drop_reason; must be one of {DROP_REASON_CHOICES}")
+        return s
+
+    @field_validator("recycle_reason")
+    @classmethod
+    def recycle_reason_allowed(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        s = v.strip()
+        if s not in RECYCLE_REASON_CHOICES:
+            raise ValueError(f"Invalid recycle_reason; must be one of {RECYCLE_REASON_CHOICES}")
         return s
 
 

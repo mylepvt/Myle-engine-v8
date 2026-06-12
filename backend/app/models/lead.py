@@ -242,6 +242,38 @@ class Lead(Base):
         nullable=True,
     )
 
+    # Lead Outcome Engine
+    outcome: Mapped[Optional[str]] = mapped_column(
+        String(16),
+        nullable=True,
+        index=True,
+        comment="active | converted | dead | recycle — collapsed business outcome",
+    )
+    drop_reason: Mapped[Optional[str]] = mapped_column(
+        String(32),
+        nullable=True,
+        comment="Why lead was marked dead",
+    )
+    drop_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    drop_recorded_by_user_id: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    dropped_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    outcome_changed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    recycle_reason: Mapped[Optional[str]] = mapped_column(
+        String(32),
+        nullable=True,
+        comment="Why lead was moved to recycle",
+    )
+
 
 @event.listens_for(Lead, "before_update", propagate=True)
 def _prevent_owner_reassignment(_mapper, _connection, target: Lead) -> None:

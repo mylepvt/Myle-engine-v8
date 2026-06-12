@@ -31,9 +31,13 @@ from app.models.lead_note import LeadNote
 from app.models.training_day_note import TrainingDayNote
 from app.models.download import Download
 from app.models.user_presence_session import UserPresenceSession
+from app.models.verification_task import VerificationTask
+from app.models.task_assignment import TaskAssignment
+from app.models.daily_mission import MissionTemplate, DailyMission, MissionBlocker
 from app.models.grace_history import GraceHistory
 from app.models.user_location import UserLocation
 from app.models.whatsapp_log import WhatsAppLog
+from app.models.automation import AutomationRule, AutomationActionLog
 
 __all__ = [
     "MemberRemovalOutreach",
@@ -69,7 +73,14 @@ __all__ = [
     "TrainingDayNote",
     "Download",
     "UserPresenceSession",
+    "VerificationTask",
+    "TaskAssignment",
+    "MissionTemplate",
+    "DailyMission",
+    "MissionBlocker",
     "GraceHistory",
     "UserLocation",
     "WhatsAppLog",
+    "AutomationRule",
+    "AutomationActionLog",
 ]

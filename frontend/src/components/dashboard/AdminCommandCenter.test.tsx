@@ -124,6 +124,90 @@ describe('AdminCommandCenter', () => {
           refetch: vi.fn(),
         }
       }
+      if (queryKey[0] === 'training-campaigns') {
+        return {
+          data: [],
+          isPending: false,
+          isError: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (queryKey[0] === 'predictive-risk') {
+        return {
+          data: {
+            member_risks: [],
+            leader_risks: [],
+            org_stats: { total_members: 0, total_leaders: 0, low_risk: 0, medium_risk: 0, high_risk: 0, critical_risk: 0, avg_member_score: 0, band_pct_low: 0, band_pct_medium: 0, band_pct_high: 0, band_pct_critical: 0 },
+            computed_at: '2026-06-12T08:00:00Z',
+          },
+          isPending: false,
+          isError: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (queryKey[0] === 'blocker-intelligence') {
+        return {
+          data: { biggest_blocker_label: 'N/A', blockers: [], computed_at: '2026-06-12T08:00:00Z' },
+          isPending: false,
+          isError: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (queryKey[0] === 'eos-health') {
+        return {
+          data: {
+            health_score: 72,
+            components: {
+              org_score: 65,
+              avg_leader_score: 58,
+              mission_completion: 72,
+              verification_rate: 80,
+              conversion_rate: 45,
+              zombie_pct: 30,
+              risk_score: 25,
+              campaign_success_pct: 60,
+            },
+            band: 'good',
+            computed_at: '2026-06-12T08:00:00Z',
+          },
+          isPending: false,
+          isError: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (queryKey[0] === 'leader-effectiveness' && queryKey[1] === 'admin') {
+        return {
+          data: { average_score: 0, total_leaders: 0, band_distribution: {}, leaders: [], computed_at: '2026-06-12T08:00:00Z' },
+          isPending: false,
+          isError: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (queryKey[0] === 'organization-score') {
+        return {
+          data: {
+            overall_score: 65,
+            components: {
+              mission_completion: 72,
+              verification: 58,
+              lead_activity: 80,
+              zombie_leads: 45,
+            },
+            total_members: 40,
+            total_leads: 120,
+            computed_at: '2026-06-12T08:00:00Z',
+          },
+          isPending: false,
+          isError: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
       return {
         data: {
           grand_totals: {
@@ -426,6 +510,6 @@ describe('AdminCommandCenter', () => {
     fireEvent.click(switcher)
     expect(screen.getByRole('menuitem', { name: /Leads/ })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /Audit/ })).toBeInTheDocument()
-    expect(screen.getByText('Open Leads')).toBeInTheDocument()
+    expect(screen.getByText('Org Score')).toBeInTheDocument()
   })
 })

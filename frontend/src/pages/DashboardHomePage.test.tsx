@@ -35,6 +35,10 @@ vi.mock('@/components/dashboard/AdminCommandCenter', () => ({
   },
 }))
 
+vi.mock('@/components/dashboard/LeaderActionCenter', () => ({
+  LeaderActionCenter: () => <div data-testid="leader-action-center">Leader Action Center</div>,
+}))
+
 vi.mock('@/hooks/use-dashboard-shell-role', () => ({
   useDashboardShellRole: () => mockUseDashboardShellRole(),
 }))
@@ -203,7 +207,7 @@ describe('DashboardHomePage', () => {
     expect(screen.getByTestId('gate-assistant')).toBeInTheDocument()
   })
 
-  it('renders Gate Assistant on the leader dashboard path', () => {
+  it('renders Leader Action Center on the leader dashboard path', () => {
     seedBaseMocks('leader')
 
     render(
@@ -212,7 +216,7 @@ describe('DashboardHomePage', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByTestId('gate-assistant')).toBeInTheDocument()
+    expect(screen.getByTestId('leader-action-center')).toBeInTheDocument()
   })
 
   it('routes admin home to the command center surface', () => {
