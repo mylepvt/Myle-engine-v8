@@ -104,7 +104,7 @@ async def compute_leader_effectiveness(
                             else_=0,
                         )
                     ).label("submitted_or_done"),
-                ).where(TaskAssignment.user_id.in_(downline_ids))
+                ).where(TaskAssignment.assigned_to_user_id.in_(downline_ids))
             )
         ).one()
         total_tasks = ta_count.total or 0

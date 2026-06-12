@@ -95,14 +95,14 @@ async def compute_member_risk(
     ta_total = (
         await session.execute(
             select(func.count(TaskAssignment.id)).where(
-                TaskAssignment.user_id == user_id,
+                TaskAssignment.assigned_to_user_id == user_id,
             )
         )
     ).scalar() or 0
     ta_submitted = (
         await session.execute(
             select(func.count(TaskAssignment.id)).where(
-                TaskAssignment.user_id == user_id,
+                TaskAssignment.assigned_to_user_id == user_id,
                 TaskAssignment.status.in_(["submitted", "verified", "result_produced"]),
             )
         )
@@ -365,14 +365,14 @@ async def compute_leader_risk(
     ta_total = (
         await session.execute(
             select(func.count(TaskAssignment.id)).where(
-                TaskAssignment.user_id.in_(downline_ids),
+                TaskAssignment.assigned_to_user_id.in_(downline_ids),
             )
         )
     ).scalar() or 0
     ta_submitted = (
         await session.execute(
             select(func.count(TaskAssignment.id)).where(
-                TaskAssignment.user_id.in_(downline_ids),
+                TaskAssignment.assigned_to_user_id.in_(downline_ids),
                 TaskAssignment.status.in_(["submitted", "verified", "result_produced"]),
             )
         )

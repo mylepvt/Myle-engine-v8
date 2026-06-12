@@ -107,7 +107,7 @@ async def get_dead_reason_report(session: AsyncSession) -> list[dict[str, Any]]:
             select(
                 Lead.assigned_to_user_id,
                 User.fbo_id,
-                User.display_name,
+                User.name,
                 Lead.drop_reason,
                 func.count(Lead.id).label("count"),
             )
@@ -117,7 +117,7 @@ async def get_dead_reason_report(session: AsyncSession) -> list[dict[str, Any]]:
                 Lead.deleted_at.is_(None),
                 Lead.drop_reason.is_not(None),
             )
-            .group_by(Lead.assigned_to_user_id, User.fbo_id, User.display_name, Lead.drop_reason)
+            .group_by(Lead.assigned_to_user_id, User.fbo_id, User.name, Lead.drop_reason)
             .order_by(func.count(Lead.id).desc())
         )
     ).all()
@@ -129,7 +129,7 @@ async def get_dead_reason_report(session: AsyncSession) -> list[dict[str, Any]]:
         if uid not in member_map:
             member_map[uid] = {
                 "user_id": uid,
-                "name": row.display_name or row.fbo_id or "Unknown",
+                "name": row.name or row.fbo_id or "Unknown",
                 "total_dead": 0,
                 "reasons": {},
             }
@@ -196,7 +196,7 @@ async def get_zombie_leads(
             "id": lead.id,
             "name": lead.name,
             "status": lead.status,
-            "assigned_to_name": assignee.display_name if assignee else None,
+            "assigned_to_name": assignee.name if assignee else None,
             "assigned_to_user_id": lead.assigned_to_user_id,
             "created_at": lead.created_at.isoformat() if lead.created_at else None,
             "last_action_at": lead.last_action_at.isoformat() if lead.last_action_at else None,
@@ -240,7 +240,7 @@ async def get_recycle_leads(
             "name": lead.name,
             "status": lead.status,
             "recycle_reason": lead.recycle_reason,
-            "assigned_to_name": assignee.display_name if assignee else None,
+            "assigned_to_name": assignee.name if assignee else None,
             "assigned_to_user_id": lead.assigned_to_user_id,
             "outcome_changed_at": lead.outcome_changed_at.isoformat() if lead.outcome_changed_at else None,
             "days_in_recycle": (
