@@ -112,7 +112,7 @@ async def compute_eos_health(session: AsyncSession) -> EosHealthResponse:
         await session.execute(
             select(func.count(Lead.id)).where(
                 Lead.outcome == "active",
-                Lead.last_action_at < func.now() - func.make_interval(secs=7 * 24 * 3600),
+                Lead.last_action_at < func.now() - timedelta(days=7),
             )
         )
     ).scalar() or 0

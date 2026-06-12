@@ -58,7 +58,7 @@ async def assign_task_bulk(
     if user.role != "admin":
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admin only")
     assignments = await svc.bulk_assign_task(session, body, user)
-    return [_serialize_assignment(session, a) for a in assignments]
+    return [await _serialize_assignment(session, a) for a in assignments]
 
 
 @router.post("/admin/task-assign/single", response_model=TaskAssignmentPublic)

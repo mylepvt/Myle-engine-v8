@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import Date, and_, case, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -137,7 +137,7 @@ async def compute_leader_effectiveness(
                     Lead.assigned_to_user_id.in_(downline_ids),
                     Lead.outcome == "active",
                     Lead.last_action_at
-                    < func.now() - func.make_interval(secs=7 * 24 * 3600),
+                    < func.now() - timedelta(days=7),
                 )
             )
         ).scalar() or 0
