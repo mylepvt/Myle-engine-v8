@@ -2328,6 +2328,7 @@ export function AdminCommandCenter({ firstName }: Props) {
             </div>
           )}
         </TabsContent>
+        <TabsContent value="audit" className="space-y-6">
           <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <StatCard
               label="History Rows"
