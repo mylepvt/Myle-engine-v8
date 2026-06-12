@@ -143,6 +143,7 @@ export function useLeadControlQuery() {
     queryKey: ['execution', 'lead-control'],
     queryFn: () => fetchJson<LeadControlResponse>('/api/v1/execution/lead-control'),
     staleTime: 30_000,
+    refetchInterval: 60_000,
   })
 }
 
