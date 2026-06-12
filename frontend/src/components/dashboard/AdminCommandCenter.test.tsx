@@ -500,16 +500,14 @@ describe('AdminCommandCenter', () => {
     renderWithProviders()
 
     expect(screen.getByText('Good day, Admin')).toBeInTheDocument()
-    expect(screen.getByText('Action Queue')).toBeInTheDocument()
+    expect(screen.getByText('Do Now')).toBeInTheDocument()
     expect(screen.getByText('Today Snapshot')).toBeInTheDocument()
-    expect(screen.getByText('Reassign ready')).toBeInTheDocument()
-    expect(screen.getByText('Archive incubation')).toBeInTheDocument()
-    // Views are now selected via a single Apple-style dropdown switcher (not an 8-wide tab strip).
-    const switcher = screen.getByRole('button', { name: /Today/ })
+    // Views are now selected via a single Apple-style dropdown switcher (5 tabs instead of 15).
+    const switcher = screen.getByRole('button', { name: /War Room/ })
     expect(switcher).toHaveAttribute('aria-haspopup', 'menu')
     fireEvent.click(switcher)
     expect(screen.getByRole('menuitem', { name: /Leads/ })).toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: /Audit/ })).toBeInTheDocument()
-    expect(screen.getByText('Org Score')).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /System/ })).toBeInTheDocument()
+    expect(screen.getByText('EOS Health')).toBeInTheDocument()
   })
 })
