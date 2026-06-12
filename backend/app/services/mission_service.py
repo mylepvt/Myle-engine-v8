@@ -294,7 +294,7 @@ async def get_team_today_missions(
         mission = mission_map.get(uid)
         result.append({
             "user_id": uid,
-            "name": user.display_name or user.fbo_id or "Unknown",
+            "name": user.name or user.fbo_id or "Unknown",
             "mission_id": mission.id if mission else None,
             "completion_pct": mission.completion_pct if mission else 0.0,
             "status": mission.status if mission else "pending",
@@ -362,7 +362,7 @@ async def get_admin_summary(
         team_done = sum(1 for m in team_missions if m.status == "completed")
         leader_breakdown.append({
             "user_id": leader.id,
-            "name": leader.display_name or leader.fbo_id or "Unknown",
+            "name": leader.name or leader.fbo_id or "Unknown",
             "team_size": len(downline_ids),
             "assigned": team_total,
             "completed": team_done,

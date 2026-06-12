@@ -175,9 +175,9 @@ async def _eval_verification_sla(
     return [
         {
             "entity_type": "member",
-            "entity_id": task.user_id,
+            "entity_id": task.assigned_to_user_id,
             "detail": {
-                "member_name": f"User #{task.user_id}",
+                "member_name": f"User #{task.assigned_to_user_id}",
                 "task_id": task.id,
                 "hours_pending": round((datetime.now(timezone.utc) - task.updated_at).total_seconds() / 3600, 1),
             },

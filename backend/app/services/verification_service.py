@@ -46,7 +46,7 @@ async def _build_chain_snapshot(session: AsyncSession, user_id: int) -> dict[str
     leader = await _nearest_leader(session, user_id)
     if leader:
         chain["leader_user_id"] = leader.id
-        chain["leader_name"] = leader.display_name or leader.fbo_id
+        chain["leader_name"] = leader.name or leader.fbo_id
         upline = await session.get(User, leader.upline_user_id) if leader.upline_user_id else None
         if upline and upline.role == "admin":
             chain["senior_leader_user_id"] = upline.id
@@ -70,17 +70,17 @@ def _assignment_to_public(
         task_type=task.task_type if task else None,
         evidence_instructions=task.evidence_instructions if task else None,
         assigned_to_user_id=assignment.assigned_to_user_id,
-        assigned_to_name=member.display_name if member else None,
+        assigned_to_name=member.name if member else None,
         assigned_by_user_id=assignment.assigned_by_user_id,
         leader_user_id=assignment.leader_user_id,
-        leader_name=leader.display_name if leader else None,
+        leader_name=leader.name if leader else None,
         leader_chain_snapshot=assignment.leader_chain_snapshot,
         status=assignment.status,
         evidence_text=assignment.evidence_text,
         evidence_file_url=assignment.evidence_file_url,
         submitted_at=assignment.submitted_at,
         verified_by_user_id=assignment.verified_by_user_id,
-        verified_by_name=verifier.display_name if verifier else None,
+        verified_by_name=verifier.name if verifier else None,
         verified_at=assignment.verified_at,
         rejection_reason=assignment.rejection_reason,
         blocker_reason=assignment.blocker_reason,
@@ -449,7 +449,7 @@ async def get_admin_summary(
         leader = await session.get(User, row.leader_user_id) if row.leader_user_id else None
         leader_ranking.append({
             "user_id": row.leader_user_id,
-            "name": leader.display_name if leader else "Unknown",
+            "name": leader.name if leader else "Unknown",
             "total_assigned": row.total_assigned,
             "verified_count": row.verified_count,
             "verification_rate_pct": round(
