@@ -35,6 +35,8 @@ export function useLeadPoolQuery(enabled = true) {
     queryKey: ['lead-pool'],
     queryFn: fetchLeadPool,
     enabled,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
   })
 }
 

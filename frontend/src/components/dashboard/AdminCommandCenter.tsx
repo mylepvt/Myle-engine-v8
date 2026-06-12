@@ -735,6 +735,7 @@ export function AdminCommandCenter({ firstName }: Props) {
   const pendingRegistrations = useQuery({
     queryKey: ['team', 'pending-registrations'],
     queryFn: () => fetchJson<PendingRegistrationResponse>('/api/v1/team/pending-registrations'),
+    refetchInterval: 30_000,
   })
   const enrollmentPending = useFlpMinBillingApprovalsPendingQuery()
   const rechargeRequests = useWalletRechargeRequestsQuery()

@@ -205,6 +205,8 @@ export function useTeamMembersQuery(enabled = true) {
     queryKey: ['team', 'members'],
     queryFn: fetchTeamMembers,
     enabled,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
   })
 }
 
@@ -243,6 +245,7 @@ export function useFlpMinBillingApprovalsPendingQuery() {
     queryFn: fetchFlpMinBillingRequests,
     enabled: isApprover && !mePending,
     staleTime: 15_000,
+    refetchInterval: 30_000,
   })
 }
 
