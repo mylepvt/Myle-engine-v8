@@ -82,8 +82,11 @@ function QueueRow({ item }: { item: ActionQueueItem }) {
   )
 }
 
+const COLLAPSED_COUNT = 3
+
 export function ActionQueuePanel({ className }: { className?: string }) {
   const { data, isPending, isError, refetch } = useActionQueue()
+  const [showAll, setShowAll] = useState(false)
 
   if (isPending) {
     return (
@@ -135,7 +138,21 @@ export function ActionQueuePanel({ className }: { className?: string }) {
         </div>
       </CardHeader>
       <CardContent className="space-y-2">
-        {data.items.map((item) => <QueueRow key={item.id} item={item} />)}
+        {(showAll ? data.items : data.items.slice(0, COLLAPSED_COUNT)).map((item) => (
+          <QueueRow key={item.id} item={item} />
+        ))}
+        {data.items.length > COLLAPSED_COUNT && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="w-full text-xs text-muted-foreground"
+            onClick={() => setShowAll((v) => !v)}
+          >
+            {showAll
+              ? 'Show less'
+              : `Show all ${data.items.length} items (${data.items.length - COLLAPSED_COUNT} more)`}
+          </Button>
+        )}
       </CardContent>
     </Card>
   )

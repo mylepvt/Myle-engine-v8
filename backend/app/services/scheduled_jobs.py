@@ -12,6 +12,7 @@ Jobs (all IST-aware):
 - eos_mission_pregeneration       : 06:00 IST daily — create today's mission for every active member
 - eos_automation_rules            : 10:00 & 17:00 IST — evaluate EOS automation rules (alerts/escalations via WhatsApp)
 - eos_verification_escalations    : 11:00 & 18:00 IST — escalate pending tasks 24h→leader, 48h→senior, 72h→admin
+- eos_action_queue_digest         : 09:00 IST daily — WhatsApp queue digest: org-wide to management, scoped to leaders
 """
 from __future__ import annotations
 
@@ -685,4 +686,29 @@ async def job_eos_verification_escalations() -> None:
             event_type="scheduler.failure",
             source="scheduler",
             detail={"job": "eos_verification_escalations", "error": str(exc)},
+        )
+
+
+# ---------------------------------------------------------------------------
+# Job 15: EOS action queue digest → 09:00 IST daily
+# ---------------------------------------------------------------------------
+
+async def job_eos_action_queue_digest() -> None:
+    """WhatsApp the ranked action queue: org-wide to management, scoped to each leader."""
+    try:
+        from app.services import action_queue_service
+        async with AsyncSessionLocal() as session:
+            result = await action_queue_service.send_action_queue_digests(session)
+            logger.info("job_eos_action_queue_digest: %s", result)
+            observe_event(
+                event_type="scheduler.eos_action_queue_digest",
+                source="scheduler",
+                detail=result,
+            )
+    except Exception as exc:
+        logger.error("job_eos_action_queue_digest failed: %s", exc)
+        observe_event(
+            event_type="scheduler.failure",
+            source="scheduler",
+            detail={"job": "eos_action_queue_digest", "error": str(exc)},
         )
