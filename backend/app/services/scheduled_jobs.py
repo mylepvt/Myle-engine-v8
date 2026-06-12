@@ -9,6 +9,9 @@ Jobs (all IST-aware):
 - closing_pipeline_maintenance    : every 30min — archive day2-6 leads idle >24h (reassign is manual only)
 - general_pipeline_maintenance    : every 30min — archive pre-enrollment leads idle >24h (reassign is manual only)
 - leader_basics_enforcement       : 23:30 IST daily — warn/lock leaders whose team missed basics 7/14 days
+- eos_mission_pregeneration       : 06:00 IST daily — create today's mission for every active member
+- eos_automation_rules            : 10:00 & 17:00 IST — evaluate EOS automation rules (alerts/escalations via WhatsApp)
+- eos_verification_escalations    : 11:00 & 18:00 IST — escalate pending tasks 24h→leader, 48h→senior, 72h→admin
 """
 from __future__ import annotations
 
@@ -604,4 +607,82 @@ async def job_management_weekly_report() -> None:
             event_type="scheduler.failure",
             source="scheduler",
             detail={"job": "management_weekly_report", "error": str(exc)},
+        )
+
+
+# ---------------------------------------------------------------------------
+# Job 12: EOS mission pre-generation → 06:00 IST daily
+# ---------------------------------------------------------------------------
+
+async def job_eos_mission_pregeneration() -> None:
+    """Create today's mission for all active members so nobody is invisible to tracking."""
+    try:
+        from app.services import mission_service
+        async with AsyncSessionLocal() as session:
+            created = await mission_service.pregenerate_today_missions(session)
+            logger.info("job_eos_mission_pregeneration: created %d missions", created)
+            observe_event(
+                event_type="scheduler.eos_mission_pregeneration",
+                source="scheduler",
+                detail={"created": created},
+            )
+    except Exception as exc:
+        logger.error("job_eos_mission_pregeneration failed: %s", exc)
+        observe_event(
+            event_type="scheduler.failure",
+            source="scheduler",
+            detail={"job": "eos_mission_pregeneration", "error": str(exc)},
+        )
+
+
+# ---------------------------------------------------------------------------
+# Job 13: EOS automation rules → 10:00 & 17:00 IST
+# ---------------------------------------------------------------------------
+
+async def job_eos_automation_rules() -> None:
+    """Evaluate all active EOS automation rules (missed missions, zombie leads, SLA, inactivity)."""
+    try:
+        from app.services import automation_service
+        async with AsyncSessionLocal() as session:
+            result = await automation_service.evaluate_all_rules(session)
+            logger.info(
+                "job_eos_automation_rules: triggered=%d actions=%d",
+                result.triggered, len(result.actions),
+            )
+            observe_event(
+                event_type="scheduler.eos_automation_rules",
+                source="scheduler",
+                detail={"triggered": result.triggered, "actions": len(result.actions)},
+            )
+    except Exception as exc:
+        logger.error("job_eos_automation_rules failed: %s", exc)
+        observe_event(
+            event_type="scheduler.failure",
+            source="scheduler",
+            detail={"job": "eos_automation_rules", "error": str(exc)},
+        )
+
+
+# ---------------------------------------------------------------------------
+# Job 14: EOS verification escalations → 11:00 & 18:00 IST
+# ---------------------------------------------------------------------------
+
+async def job_eos_verification_escalations() -> None:
+    """Escalate pending verification tasks: 24h→leader, 48h→senior, 72h→admin (WhatsApp)."""
+    try:
+        from app.services import verification_service
+        async with AsyncSessionLocal() as session:
+            escalated = await verification_service.run_escalation_checks(session)
+            logger.info("job_eos_verification_escalations: escalated %d", len(escalated))
+            observe_event(
+                event_type="scheduler.eos_verification_escalations",
+                source="scheduler",
+                detail={"escalated": len(escalated)},
+            )
+    except Exception as exc:
+        logger.error("job_eos_verification_escalations failed: %s", exc)
+        observe_event(
+            event_type="scheduler.failure",
+            source="scheduler",
+            detail={"job": "eos_verification_escalations", "error": str(exc)},
         )

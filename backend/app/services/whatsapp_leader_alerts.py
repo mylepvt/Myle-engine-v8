@@ -454,3 +454,26 @@ async def handle_leader_command(
         )
 
     return None
+
+
+# ---------------------------------------------------------------------------
+# EOS system alerts — automation rules & verification escalations
+# ---------------------------------------------------------------------------
+
+async def send_system_alert(
+    phone: str | None,
+    message: str,
+    session: AsyncSession,
+    message_type: str = "automation_alert",
+    related_user_id: int | None = None,
+) -> bool:
+    """Send a plain-text system alert (automation rule / escalation) to any phone."""
+    if not phone:
+        return False
+    tmpl_name, tmpl_lang = await _get_template(session, "system_alert")
+    return await _send_wa(
+        phone, message, session,
+        message_type=message_type, related_user_id=related_user_id,
+        template_name=tmpl_name, template_lang=tmpl_lang,
+        template_params=[{"type": "text", "text": message}] if tmpl_name else None,
+    )

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
@@ -23,6 +24,8 @@ from app.schemas.verification import (
     VerificationTaskCreate,
     VerificationTaskPublic,
 )
+
+logger = logging.getLogger(__name__)
 
 
 async def _nearest_leader(session: AsyncSession, user_id: int) -> Optional[User]:
@@ -555,5 +558,70 @@ async def run_escalation_checks(session: AsyncSession) -> list[dict[str, Any]]:
 
     if escalated:
         await session.commit()
+        for esc in escalated:
+            try:
+                await _notify_escalation(session, esc)
+            except Exception as exc:
+                logger.warning(
+                    "escalation notify failed assignment_id=%s: %s",
+                    esc.get("assignment_id"), exc,
+                )
 
     return escalated
+
+
+async def _notify_escalation(session: AsyncSession, esc: dict[str, Any]) -> None:
+    """WhatsApp the right person for an escalated assignment.
+
+    Level 1 → member's leader, level 2 → senior leader (chain snapshot),
+    level 3 → management phone.
+    """
+    from app.services.whatsapp_leader_alerts import send_system_alert
+    from app.services.whatsapp_management_updates import get_management_phone
+
+    assignment = await session.get(TaskAssignment, esc["assignment_id"])
+    if assignment is None:
+        return
+    member = await session.get(User, assignment.assigned_to_user_id)
+    task = await session.get(VerificationTask, assignment.verification_task_id)
+    member_name = (
+        (member.name or member.fbo_id) if member else f"User #{assignment.assigned_to_user_id}"
+    )
+    task_title = task.title if task else f"Task #{assignment.verification_task_id}"
+    hours = int((datetime.now(timezone.utc) - assignment.created_at).total_seconds() / 3600)
+    level = esc["escalation_level"]
+
+    message = (
+        f"⏰ *Task Escalation (Level {level})*\n\n"
+        f"Member: {member_name}\n"
+        f"Task: {task_title}\n"
+        f"Pending for: {hours}h — no evidence submitted.\n\n"
+        "Please follow up and get this done.\n\n"
+        "— Myle Team"
+    )
+
+    if level >= 3:
+        phone = await get_management_phone(session)
+        if phone:
+            await send_system_alert(
+                phone, message, session, message_type="verification_escalation",
+            )
+        return
+
+    chain = assignment.leader_chain_snapshot or {}
+    if level == 2:
+        target_id = chain.get("senior_leader_user_id") or chain.get("leader_user_id")
+    else:
+        target_id = assignment.leader_user_id or chain.get("leader_user_id")
+    if target_id is None and member is not None:
+        leader = await _nearest_leader(session, member.id)
+        target_id = leader.id if leader else None
+    if target_id is None:
+        return
+    target = await session.get(User, target_id)
+    if target is None or not target.phone:
+        return
+    await send_system_alert(
+        target.phone, message, session,
+        message_type="verification_escalation", related_user_id=target.id,
+    )
