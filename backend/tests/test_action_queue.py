@@ -164,3 +164,39 @@ async def test_execute_create_recovery_merges_into_today_mission(admin_client: A
         ).scalars().all()
         assert len(log) == 1
         assert log[0].action_type == "create_recovery"
+
+
+@pytest.mark.asyncio
+async def test_digest_sends_to_management_and_scoped_leaders(engine, monkeypatch):
+    sent: list[tuple[str, str]] = []
+
+    async def fake_send(phone, message, session, **kwargs):
+        sent.append((phone, message))
+        return True
+
+    async def fake_mgmt_phone(session):
+        return "+919999999999"
+
+    import app.services.whatsapp_leader_alerts as wla
+    import app.services.whatsapp_management_updates as wmu
+    monkeypatch.setattr(wla, "send_system_alert", fake_send)
+    monkeypatch.setattr(wmu, "get_management_phone", fake_mgmt_phone)
+
+    from app.services.action_queue_service import send_action_queue_digests
+
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        leader = await _seed_user(session, 401, role="leader")
+        leader.phone = "+918888888888"
+        mine = await _seed_user(session, 402, upline_user_id=401)
+        await _seed_zombie_lead(session, assigned_to=mine.id)
+        await session.commit()
+
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        result = await send_action_queue_digests(session)
+
+    assert result["management_sent"] is True
+    assert result["leaders_sent"] >= 1
+    mgmt_msgs = [m for p, m in sent if p == "+919999999999"]
+    leader_msgs = [m for p, m in sent if p == "+918888888888"]
+    assert mgmt_msgs and "Myle Action Queue" in mgmt_msgs[0]
+    assert leader_msgs and "Team Action Queue" in leader_msgs[0]

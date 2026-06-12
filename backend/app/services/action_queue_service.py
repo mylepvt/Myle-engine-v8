@@ -374,3 +374,68 @@ async def execute_action(
         action, entity_type, entity_id, actor_user_id, status,
     )
     return ActionExecuteResult(status=status, action=action, detail=result)
+
+
+# ── DAILY DIGEST ────────────────────────────────────────────────────────────
+
+DIGEST_TOP_N = 8
+
+
+def build_digest_text(items: list[ActionQueueItem], total: int, *, heading: str) -> str | None:
+    """Compact WhatsApp digest of the queue — top items + overflow count."""
+    if not items:
+        return None
+    lines = [f"🔥 *{heading} — {total} item(s)*", ""]
+    for i, item in enumerate(items[:DIGEST_TOP_N], start=1):
+        lines.append(f"{i}. {item.title}")
+    overflow = total - min(len(items), DIGEST_TOP_N)
+    if overflow > 0:
+        lines.append(f"…aur {overflow} more.")
+    lines += ["", "Open the app → Do This Now to act.", "", "— Myle Team"]
+    return "\n".join(lines)
+
+
+async def send_action_queue_digests(session: AsyncSession) -> dict:
+    """Push the queue automatically: org digest to management, scoped digest to each leader."""
+    from app.services.whatsapp_leader_alerts import send_system_alert
+    from app.services.whatsapp_management_updates import get_management_phone
+
+    result = {"management_sent": False, "leaders_sent": 0, "leaders_skipped": 0}
+
+    org = await get_action_queue(session, limit=DIGEST_TOP_N)
+    text = build_digest_text(org.items, org.total, heading="Myle Action Queue")
+    if text:
+        phone = await get_management_phone(session)
+        if phone:
+            result["management_sent"] = await send_system_alert(
+                phone, text, session, message_type="action_queue_digest",
+            )
+
+    leaders = (
+        await session.execute(
+            select(User).where(
+                User.role == "leader",
+                User.registration_status == "approved",
+                User.access_blocked.is_(False),
+                User.removed_at.is_(None),
+                User.phone.isnot(None),
+            )
+        )
+    ).scalars().all()
+
+    for leader in leaders:
+        try:
+            scoped = await get_action_queue(session, leader_user_id=leader.id, limit=DIGEST_TOP_N)
+            text = build_digest_text(scoped.items, scoped.total, heading="Team Action Queue")
+            if not text:
+                result["leaders_skipped"] += 1
+                continue
+            sent = await send_system_alert(
+                leader.phone, text, session,
+                message_type="action_queue_digest", related_user_id=leader.id,
+            )
+            result["leaders_sent"] += 1 if sent else 0
+        except Exception as exc:
+            logger.warning("action queue digest failed leader_id=%s: %s", leader.id, exc)
+
+    return result

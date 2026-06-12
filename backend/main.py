@@ -33,6 +33,7 @@ from app.services.scheduled_jobs import (
     job_closing_pipeline_maintenance,
     job_daily_leader_team_summary,
     job_daily_report_reminder,
+    job_eos_action_queue_digest,
     job_eos_automation_rules,
     job_eos_mission_pregeneration,
     job_eos_verification_escalations,
@@ -163,6 +164,13 @@ async def lifespan(_app: FastAPI):
             job_eos_verification_escalations,
             CronTrigger(hour="11,18", minute=0, timezone="Asia/Kolkata"),
             id="eos_verification_escalations",
+            replace_existing=True,
+            misfire_grace_time=1800,
+        )
+        _scheduler.add_job(
+            job_eos_action_queue_digest,
+            CronTrigger(hour=9, minute=0, timezone="Asia/Kolkata"),
+            id="eos_action_queue_digest",
             replace_existing=True,
             misfire_grace_time=1800,
         )
