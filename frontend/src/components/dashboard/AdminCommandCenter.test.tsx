@@ -133,6 +133,15 @@ describe('AdminCommandCenter', () => {
           refetch: vi.fn(),
         }
       }
+      if (queryKey[0] === 'action-queue') {
+        return {
+          data: { items: [], total: 0, computed_at: '2026-06-12T08:00:00Z' },
+          isPending: false,
+          isError: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
       if (queryKey[0] === 'predictive-risk') {
         return {
           data: {
