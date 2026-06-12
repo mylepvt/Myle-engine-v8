@@ -33,6 +33,9 @@ from app.services.scheduled_jobs import (
     job_closing_pipeline_maintenance,
     job_daily_leader_team_summary,
     job_daily_report_reminder,
+    job_eos_automation_rules,
+    job_eos_mission_pregeneration,
+    job_eos_verification_escalations,
     job_flp_min_billing_proof_alert,
     job_general_pipeline_maintenance,
     job_leader_basics_enforcement,
@@ -141,6 +144,27 @@ async def lifespan(_app: FastAPI):
             id="management_weekly_report",
             replace_existing=True,
             misfire_grace_time=3600,
+        )
+        _scheduler.add_job(
+            job_eos_mission_pregeneration,
+            CronTrigger(hour=6, minute=0, timezone="Asia/Kolkata"),
+            id="eos_mission_pregeneration",
+            replace_existing=True,
+            misfire_grace_time=3600,
+        )
+        _scheduler.add_job(
+            job_eos_automation_rules,
+            CronTrigger(hour="10,17", minute=0, timezone="Asia/Kolkata"),
+            id="eos_automation_rules",
+            replace_existing=True,
+            misfire_grace_time=1800,
+        )
+        _scheduler.add_job(
+            job_eos_verification_escalations,
+            CronTrigger(hour="11,18", minute=0, timezone="Asia/Kolkata"),
+            id="eos_verification_escalations",
+            replace_existing=True,
+            misfire_grace_time=1800,
         )
         _scheduler.start()
     yield

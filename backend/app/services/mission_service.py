@@ -149,6 +149,42 @@ async def get_or_create_today_mission(
     return mission
 
 
+async def pregenerate_today_missions(session: AsyncSession) -> int:
+    """Create today's mission for every active member who doesn't have one yet.
+
+    Run from the morning cron so missed-mission tracking and leader dashboards
+    see every member — not just those who opened the app.
+    """
+    members = (
+        await session.execute(
+            select(User).where(
+                User.role.in_(["team", "leader"]),
+                User.registration_status == "approved",
+                User.access_blocked.is_(False),
+                User.removed_at.is_(None),
+            )
+        )
+    ).scalars().all()
+
+    today = date.today()
+    existing_ids = {
+        row[0]
+        for row in (
+            await session.execute(
+                select(DailyMission.user_id).where(DailyMission.mission_date == today)
+            )
+        ).all()
+    }
+
+    created = 0
+    for member in members:
+        if member.id in existing_ids:
+            continue
+        await get_or_create_today_mission(session, member.id, member.role)
+        created += 1
+    return created
+
+
 async def tick_mission_item(
     session: AsyncSession,
     mission: DailyMission,

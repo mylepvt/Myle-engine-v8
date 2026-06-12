@@ -76,7 +76,12 @@ async def _eval_missed_missions(
     session: AsyncSession,
     rule: AutomationRule,
 ) -> list[dict]:
-    """Find members with N+ missed missions in last D days."""
+    """Find members with N+ missed missions in last D days.
+
+    Counts misses by absence of a completed mission, so members who never
+    open the app (and thus have no mission rows at all) are still caught.
+    Today is excluded — a pending mission for today is not yet a miss.
+    """
     config = rule.trigger_config or {}
     missed_count = config.get("missed_count", 3)
     days = config.get("days", 7)
@@ -97,22 +102,29 @@ async def _eval_missed_missions(
 
     results: list[dict] = []
     for member in members:
-        count = (
+        joined = member.created_at.date() if member.created_at else cutoff_date
+        window_start = max(cutoff_date, joined)
+        window_days = (today - window_start).days
+        if window_days <= 0:
+            continue
+        completed = (
             await session.execute(
                 select(func.count(DailyMission.id)).where(
                     DailyMission.user_id == member.id,
-                    DailyMission.status != "completed",
-                    DailyMission.mission_date >= cutoff_date,
+                    DailyMission.status == "completed",
+                    DailyMission.mission_date >= window_start,
+                    DailyMission.mission_date < today,
                 )
             )
         ).scalar() or 0
-        if count >= missed_count:
+        missed = window_days - completed
+        if missed >= missed_count:
             results.append({
                 "entity_type": "member",
                 "entity_id": member.id,
                 "detail": {
                     "member_name": member.name or member.fbo_id or f"User #{member.id}",
-                    "missed_count": count,
+                    "missed_count": missed,
                     "days": days,
                 },
             })
@@ -306,13 +318,28 @@ async def _exec_alert_leader(
     config = rule.action_config or {}
     message = config.get("message", "Alert triggered.").format(**detail)
 
-    # In future this would send a push notification/WhatsApp
+    sent = False
+    if leader_id is not None:
+        leader = await session.get(User, leader_id)
+        if leader is not None and leader.phone:
+            from app.services.whatsapp_leader_alerts import send_system_alert
+            wa_text = (
+                f"🚨 *Myle Automation Alert*\n\n"
+                f"{message}\n\n"
+                f"Rule: {rule.name}\n\n"
+                "— Myle Team"
+            )
+            sent = await send_system_alert(
+                leader.phone, wa_text, session,
+                message_type="automation_alert", related_user_id=leader.id,
+            )
+
     return {
         "action": "alert_leader",
         "leader_id": leader_id,
         "member_id": member_id,
         "message": message,
-        "status": "logged",
+        "status": "sent" if sent else "logged",
     }
 
 
@@ -465,11 +492,26 @@ async def _exec_escalate(
     config = rule.action_config or {}
     message = config.get("message", "Escalation triggered.").format(**detail)
 
+    sent = False
+    from app.services.whatsapp_leader_alerts import send_system_alert
+    from app.services.whatsapp_management_updates import get_management_phone
+    phone = await get_management_phone(session)
+    if phone:
+        wa_text = (
+            f"🔴 *Myle Escalation ({config.get('priority', 'high').upper()})*\n\n"
+            f"{message}\n\n"
+            f"Rule: {rule.name}\n\n"
+            "— Myle Team"
+        )
+        sent = await send_system_alert(
+            phone, wa_text, session, message_type="automation_escalation",
+        )
+
     return {
         "action": "escalate",
         "priority": config.get("priority", "high"),
         "message": message,
-        "status": "logged",
+        "status": "sent" if sent else "logged",
     }
 
 
