@@ -33,7 +33,7 @@ export function AutomationPanel({ className }: { className?: string }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Cog className="size-5 text-primary" />
-          <h2 className="text-lg font-bold text-foreground">Automation Engine</h2>
+          <h2 className="text-ds-label font-bold">Automation Engine</h2>
           <Badge variant="secondary" className="text-[10px]">
             {rules.data ? `${rules.data.filter(r => r.is_active).length} active / ${rules.data.length} total` : '...'}
           </Badge>
@@ -102,7 +102,7 @@ export function AutomationPanel({ className }: { className?: string }) {
                         {rule.is_active ? 'Active' : 'Paused'}
                       </Badge>
                     </div>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    <p className="mt-0.5 text-ds-caption">
                       {TRIGGER_LABELS[rule.trigger_type] ?? rule.trigger_type} → {ACTION_LABELS[rule.action_type] ?? rule.action_type}
                       {rule.cooldown_hours > 0 && ` · ${rule.cooldown_hours}h cooldown`}
                     </p>

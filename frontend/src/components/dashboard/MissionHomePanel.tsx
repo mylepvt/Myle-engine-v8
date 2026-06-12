@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { cn } from '@/lib/utils'
 import { AlertCircle, CheckCircle2, ListChecks, Send } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
@@ -41,8 +42,8 @@ function MissionItemRow({
       <div className="flex items-center gap-2 rounded-md border border-success/30 bg-success/5 p-2.5">
         <CheckCircle2 className="size-4 shrink-0 text-success" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium">{item.label}</p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-ds-caption font-medium text-foreground">{item.label}</p>
+          <p className="text-ds-caption">
             {item.achieved}/{item.target} · {item.evidence ?? item.evidence_file ?? 'Done'}
           </p>
         </div>
@@ -53,7 +54,7 @@ function MissionItemRow({
   return (
     <div className="space-y-2 rounded-md border border-border/60 p-2.5">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium">{item.label}</p>
+        <p className="text-ds-caption font-medium text-foreground">{item.label}</p>
         <Badge variant="outline">{item.achieved}/{item.target}</Badge>
       </div>
 
@@ -134,10 +135,10 @@ export function MissionHomePanel() {
             <ListChecks className="size-4 text-primary" />
             Today's Mission
           </CardTitle>
-          <CardDescription className="text-xs">Daily tasks to complete</CardDescription>
+          <CardDescription className="text-ds-caption">Daily tasks to complete</CardDescription>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">{completion_pct}%</span>
+          <span className="text-ds-caption">{completion_pct}%</span>
           <div className="h-2 w-16 overflow-hidden rounded-full bg-muted">
             <div
               className="h-full rounded-full bg-primary transition-all"
@@ -166,7 +167,7 @@ export function MissionHomePanel() {
               disabled={completeMutation.isPending}
               onClick={() => completeMutation.mutate()}
             >
-              <CheckCircle2 className="mr-1 size-3" />
+              <CheckCircle2 className="mr-1 size-4" />
               {completeMutation.isPending ? 'Completing...' : 'Complete Mission'}
             </Button>
           )}
@@ -178,14 +179,14 @@ export function MissionHomePanel() {
               className="text-muted-foreground"
               onClick={() => setShowBlocker(!showBlocker)}
             >
-              <AlertCircle className="mr-1 size-3" />
+              <AlertCircle className="mr-1 size-4" />
               Can't Complete
             </Button>
           )}
 
           {isCompleted && (
-            <div className="flex items-center gap-1.5 text-xs text-success">
-              <CheckCircle2 className="size-3" />
+            <div className="flex items-center gap-1.5 text-ds-caption text-success">
+              <CheckCircle2 className="size-3.5" />
               Completed
             </div>
           )}

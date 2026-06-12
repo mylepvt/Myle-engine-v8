@@ -1,6 +1,8 @@
+import { cn } from '@/lib/utils'
 import { CheckCircle2, GraduationCap } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useMyCampaigns, useSubmitCampaignProgress, type CampaignEnrollmentPublic } from '@/hooks/use-training-campaign-query'
@@ -23,7 +25,7 @@ function CampaignProgressRow({
     return (
       <div className="flex items-center gap-2 rounded-md border border-success/30 bg-success/5 p-2">
         <CheckCircle2 className="size-3.5 shrink-0 text-success" />
-        <span className="text-xs font-medium">{item.label}</span>
+        <span className="text-ds-caption font-medium">{item.label}</span>
         <Badge className="ml-auto text-[10px]" variant="success">Done</Badge>
       </div>
     )
@@ -32,20 +34,21 @@ function CampaignProgressRow({
   return (
     <div className="flex items-center justify-between gap-2 rounded-md border border-border/40 p-2">
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium">{item.label}</p>
+        <p className="text-ds-caption font-medium">{item.label}</p>
         <p className="text-[10px] text-muted-foreground">{item.achieved}/{item.target}</p>
       </div>
       {isSubmitted ? (
         <Badge className="text-[10px]" variant="secondary">Submitted</Badge>
       ) : (
-        <button
-          type="button"
-          className="rounded bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary hover:bg-primary/20 disabled:opacity-50"
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 px-2 text-[10px]"
           disabled={ticking}
           onClick={() => onTick(item.campaign_mission_id, item.target)}
         >
           {ticking ? '...' : 'Done'}
-        </button>
+        </Button>
       )}
     </div>
   )
