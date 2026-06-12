@@ -20,7 +20,7 @@ const BAND_STYLES: Record<string, { bg: string; text: string; dot: string }> = {
 function RiskBandBadge({ band }: { band: string }) {
   const s = BAND_STYLES[band] ?? BAND_STYLES.low
   return (
-    <span className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider', s.text, s.bg)}>
+    <span className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-ds-caption font-bold uppercase tracking-wider', s.text, s.bg)}>
       <span className={cn('size-1.5 rounded-full', s.dot)} />
       {band === 'at_risk' ? 'At Risk' : band}
     </span>
@@ -32,7 +32,7 @@ function SignalPill({ signal: s }: { signal: { label: string; value: number } })
                s.value >= 40 ? 'text-amber-600 bg-amber-50 dark:bg-amber-950/20 border-amber-200' :
                'text-green-600 bg-green-50 dark:bg-green-950/20 border-green-200'
   return (
-    <span className={cn('inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium', color)}>
+    <span className={cn('inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-ds-caption font-medium', color)}>
       {s.label}
     </span>
   )
@@ -40,13 +40,13 @@ function SignalPill({ signal: s }: { signal: { label: string; value: number } })
 
 function StatCard({ label, value, icon, color }: { label: string; value: number | string; icon: React.ReactNode; color: string }) {
   return (
-    <div className={cn('flex items-center gap-3 rounded-lg border p-3', color)}>
+    <div className={cn('flex items-center gap-3 rounded-xl border p-3', color)}>
       <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-background/80">
         {icon}
       </div>
       <div>
         <p className="text-2xl font-bold leading-none tabular-nums">{value}</p>
-        <p className="mt-0.5 text-[11px] font-medium">{label}</p>
+        <p className="mt-0.5 text-ds-caption">{label}</p>
       </div>
     </div>
   )
@@ -89,7 +89,7 @@ function MemberRow({ member }: { member: MemberRiskScore }) {
 function LeaderCard({ leader }: { leader: LeaderRiskScore }) {
   const s = BAND_STYLES[leader.band] ?? BAND_STYLES.stable
   return (
-    <Card className={cn('border-2', s.bg)}>
+    <Card className={cn('border', s.bg)}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -173,7 +173,7 @@ export function RiskDashboard() {
       {/* ── LEADER RISKS ──────────────────────────────────────────── */}
       {data.leader_risks.length > 0 && (
         <div>
-          <h2 className="mb-3 flex items-center gap-2 text-base font-bold text-foreground">
+          <h2 className="mb-3 flex items-center gap-2 text-ds-label font-bold">
             <Users className="size-4 text-primary" />
             Leader Risk
             <Badge variant="secondary" className="ml-1 text-[10px]">{data.leader_risks.length}</Badge>
@@ -189,7 +189,7 @@ export function RiskDashboard() {
       {/* ── MEMBER RISK LIST ──────────────────────────────────────── */}
       <div>
         <div className="mb-3 flex items-center gap-2">
-          <h2 className="flex items-center gap-2 text-base font-bold text-foreground">
+          <h2 className="flex items-center gap-2 text-ds-label font-bold">
             <AlertTriangle className="size-4 text-amber-500" />
             Members at Risk
           </h2>

@@ -1,6 +1,6 @@
 import { AlertCircle, AlertTriangle, BarChart3, CheckCircle2, GraduationCap, ListChecks, Skull, TrendingUp, Users } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { useOrganizationScore } from '@/hooks/use-organization-score-query'
@@ -15,7 +15,7 @@ function MetricBox({ label, value, icon, color, suffix }: { label: string; value
       <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-background/70">{icon}</div>
       <div>
         <p className="text-2xl font-bold leading-none tabular-nums">{value}{suffix}</p>
-        <p className="mt-0.5 text-[11px] font-semibold opacity-80">{label}</p>
+        <p className="mt-0.5 text-ds-caption opacity-80">{label}</p>
       </div>
     </div>
   )
@@ -85,7 +85,7 @@ export function ExecutiveDashboard() {
       {/* ── EOS HEALTH BANNER ─────────────────────────────────────────── */}
       {eos.data && (
         <div className={cn(
-          'rounded-2xl border-2 p-4 flex items-center gap-5',
+          'rounded-xl border-2 p-4 flex items-center gap-5',
           eos.data.band === 'excellent' ? 'border-green-300 bg-green-50/50 dark:bg-green-950/10' :
           eos.data.band === 'good' ? 'border-blue-300 bg-blue-50/50 dark:bg-blue-950/10' :
           eos.data.band === 'fair' ? 'border-amber-300 bg-amber-50/50 dark:bg-amber-950/10' :
@@ -104,7 +104,7 @@ export function ExecutiveDashboard() {
                 'bg-red-100 text-red-800'
               )}>{eos.data.band}</Badge>
             </div>
-            <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
+            <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-ds-caption">
               <span>Org Score: {e?.org_score}</span>
               <span>Leader Score: {e?.avg_leader_score}</span>
               <span>Mission: {e?.mission_completion}%</span>
@@ -166,8 +166,10 @@ export function ExecutiveDashboard() {
       {/* ── RISK DISTRIBUTION ────────────────────────────────────────── */}
       {rsk?.org_stats && (
         <Card>
-          <CardContent className="flex items-center gap-4 py-3 px-4">
-            <span className="text-xs font-semibold text-muted-foreground shrink-0">Risk Distribution</span>
+          <CardHeader className="py-3 px-4 pb-0">
+            <CardTitle className="text-ds-label shrink-0">Risk Distribution</CardTitle>
+          </CardHeader>
+          <CardContent className="flex items-center gap-4 px-4 pb-3">
             <div className="flex gap-2 flex-wrap">
               <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
                 Low: {rsk.org_stats.low_risk} ({rsk.org_stats.band_pct_low}%)
