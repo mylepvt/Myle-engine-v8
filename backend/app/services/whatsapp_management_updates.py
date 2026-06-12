@@ -14,7 +14,6 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.core.time_ist import IST, today_ist
 from app.models.activity_log import ActivityLog
 from app.models.call_event import CallEvent
@@ -23,6 +22,7 @@ from app.models.lead import Lead
 from app.models.user import User
 from app.services.performer_insights_service import PerformerInsightsService
 from app.services.whatsapp_log_service import log_wa_outbound
+from app.services.whatsapp_removal import get_meta_config
 from app.services.whatsapp_report_reminder import _send_via_meta_api as send_wa
 from app.services.settings_service import SettingsService
 
@@ -56,28 +56,6 @@ async def _toggle_enabled(session: AsyncSession, key: str) -> bool:
     return val and val.lower() in ("1", "true", "yes")
 
 
-async def _get_meta_config(session: AsyncSession) -> dict[str, Any]:
-    svc = SettingsService(session)
-    pid = (
-        (await svc.get_app_setting("whatsapp.meta.phone_number_id") or "").strip()
-        or (settings.whatsapp_meta_phone_number_id or "").strip()
-    )
-    token = (
-        (await svc.get_app_setting("whatsapp.meta.access_token") or "").strip()
-        or (settings.whatsapp_meta_access_token or "").strip()
-    )
-    ver = (
-        (await svc.get_app_setting("whatsapp.meta.api_version") or "").strip()
-        or (settings.whatsapp_meta_api_version or "").strip()
-        or "v22.0"
-    )
-    return {
-        "phone_number_id": pid,
-        "access_token": token,
-        "api_version": ver,
-    }
-
-
 async def _send_wa_message(
     session: AsyncSession,
     phone: str,
@@ -85,8 +63,8 @@ async def _send_wa_message(
     message_type: str = "management_update",
     related_user_id: int | None = None,
 ) -> dict[str, Any]:
-    cfg = await _get_meta_config(session)
-    if not cfg["phone_number_id"] or not cfg["access_token"]:
+    phone_number_id, access_token, api_version = await get_meta_config(session)
+    if not phone_number_id or not access_token:
         result = {"ok": False, "error": "Meta API not configured"}
         await log_wa_outbound(session, phone=phone, message=message, message_type=message_type, result=result, related_user_id=related_user_id)
         return result
@@ -99,9 +77,9 @@ async def _send_wa_message(
     result = await send_wa(
         phone=phone,
         message=message,
-        phone_number_id=cfg["phone_number_id"],
-        access_token=cfg["access_token"],
-        api_version=cfg["api_version"],
+        phone_number_id=phone_number_id,
+        access_token=access_token,
+        api_version=api_version,
     )
     await log_wa_outbound(session, phone=phone, message=message, message_type=message_type, result=result, related_user_id=related_user_id)
     return result
