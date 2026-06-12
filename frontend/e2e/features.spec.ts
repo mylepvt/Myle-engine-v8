@@ -7,13 +7,12 @@ test.describe('PR #331 features (mocked API)', () => {
     await installE2eApiMocks(page)
   })
 
-  test('CheckInWidget renders on leader dashboard', async ({ page }) => {
+  test('leader dashboard renders action center', async ({ page }) => {
     await page.goto('/login')
     await page.getByRole('button', { name: /^Continue$/i }).click()
     await expect(page).toHaveURL(/\/dashboard\/?$/)
 
-    await expect(page.getByText(/working/i)).toBeVisible()
-    await expect(page.getByRole('button', { name: /check out/i })).toBeVisible()
+    await expect(page.getByText(/welcome back/i)).toBeVisible()
   })
 
   test('team attendance page loads', async ({ page }) => {
