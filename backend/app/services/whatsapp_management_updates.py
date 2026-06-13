@@ -555,6 +555,7 @@ async def send_management_final_warning_alert(
     reason: str,
     streak_days: int,
     phone: str | None = None,
+    related_user_id: int | None = None,
 ) -> dict[str, Any]:
     """Notify management when a member hits final warning (about to be removed)."""
     if not await _toggle_enabled(session, SETTING_KEY_ALERTS):
@@ -571,4 +572,7 @@ async def send_management_final_warning_alert(
         f"\n⏳ Next step: auto-removal if not corrected",
         f"\n🕐 {datetime.now(timezone.utc).astimezone().strftime('%d %b %I:%M %p')}",
     ]
-    return await _send_wa_message(session, phone, "\n".join(lines), message_type="final_warning")
+    return await _send_wa_message(
+        session, phone, "\n".join(lines),
+        message_type="final_warning", related_user_id=related_user_id,
+    )
