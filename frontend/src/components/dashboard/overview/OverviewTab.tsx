@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowRight,
@@ -6,7 +6,6 @@ import {
   Phone,
   Plus,
   Sparkles,
-  TrendingUp,
   UserPlus,
   Users,
 } from 'lucide-react'
@@ -16,18 +15,14 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTeamReportsQuery } from '@/hooks/use-team-reports-query'
 import { useOnlineNowQuery, type OnlineUserItem } from '@/hooks/use-online-now-query'
-import { useWorkboardQuery } from '@/hooks/use-workboard-query'
 import { useSalesDashboardQuery } from '@/hooks/use-sales-query'
-import { LEAD_STATUS_OPTIONS } from '@/hooks/use-leads-query'
+
 import { CaseCreditCheque, TopEarners } from '@/components/dashboard/overview/FinanceEarners'
+import { KanbanPipeline } from '@/components/dashboard/overview/KanbanPipeline'
 
 type Props = {
   firstName: string
   onCreateTask: () => void
-}
-
-function statusLabel(status: string): string {
-  return LEAD_STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status
 }
 
 /** IST-aware greeting by current hour. */
@@ -287,112 +282,14 @@ function KpiStrip({
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
- * Live Pipeline — funnel of lead stages
- * ────────────────────────────────────────────────────────────────────────── */
-const STAGE_COLORS = [
-  'bg-blue-500',
-  'bg-indigo-500',
-  'bg-violet-500',
-  'bg-fuchsia-500',
-  'bg-pink-500',
-  'bg-amber-500',
-  'bg-emerald-500',
-]
-
-function LivePipeline({
-  loading,
-  stages,
-}: {
-  loading: boolean
-  stages: { status: string; total: number; label: string }[]
-}) {
-  const max = Math.max(...stages.map((s) => s.total), 1)
-  const grandTotal = stages.reduce((a, s) => a + s.total, 0)
-
-  return (
-    <Card className="border-border/60">
-      <CardContent className="p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="size-4 text-primary" aria-hidden />
-            <h2 className="font-heading text-ds-h3 font-semibold text-foreground">Live Pipeline</h2>
-          </div>
-          <Link
-            to="/dashboard/work/workboard"
-            className="inline-flex items-center gap-1 text-ds-caption font-medium text-primary hover:underline"
-          >
-            Open board <ArrowRight className="size-3.5" aria-hidden />
-          </Link>
-        </div>
-
-        {loading ? (
-          <div className="space-y-2.5">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-8 w-full" />
-            ))}
-          </div>
-        ) : stages.length === 0 ? (
-          <p className="py-6 text-center text-ds-body text-muted-foreground">
-            No active leads in the pipeline yet.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {stages.map((s, i) => {
-              const pct = Math.round((s.total / max) * 100)
-              const sharePct = grandTotal > 0 ? Math.round((s.total / grandTotal) * 100) : 0
-              return (
-                <div key={s.status} className="group flex items-center gap-2 sm:gap-3">
-                  <span className="w-20 shrink-0 truncate text-right text-ds-caption font-medium text-muted-foreground sm:w-28">
-                    {s.label}
-                  </span>
-                  <div className="relative h-7 flex-1 overflow-hidden rounded-lg bg-muted/50 sm:h-8">
-                    <div
-                      className={cn(
-                        'flex h-full items-center justify-end rounded-lg px-1.5 transition-all duration-500 sm:px-2',
-                        STAGE_COLORS[i % STAGE_COLORS.length],
-                      )}
-                      style={{ width: `${Math.max(pct, 6)}%` }}
-                    >
-                      <span className="text-[11px] font-bold tabular-nums text-white drop-shadow sm:text-xs">
-                        {s.total}
-                      </span>
-                    </div>
-                  </div>
-                  <span className="w-8 shrink-0 text-right text-ds-caption tabular-nums text-subtle sm:w-10">
-                    {sharePct}%
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
-/* ──────────────────────────────────────────────────────────────────────────
  * OverviewTab — orchestrator (Phase 1: hero + KPIs + pipeline)
  * ────────────────────────────────────────────────────────────────────────── */
 export function OverviewTab({ firstName, onCreateTask }: Props) {
   const reports = useTeamReportsQuery('', true)
   const online = useOnlineNowQuery()
-  const wb = useWorkboardQuery(true)
   const sales = useSalesDashboardQuery(true)
 
   const ls = reports.data?.live_summary
-
-  const stages = useMemo(() => {
-    const cols = wb.data?.columns ?? []
-    return cols
-      .filter((c) => c.status !== 'lost')
-      .map((c) => ({
-        status: c.status,
-        total: typeof c.total === 'number' ? c.total : 0,
-        label: statusLabel(c.status),
-      }))
-      .filter((s) => s.total > 0)
-  }, [wb.data?.columns])
 
   return (
     <div className="space-y-5">
@@ -412,7 +309,7 @@ export function OverviewTab({ firstName, onCreateTask }: Props) {
         convertedToday={ls?.converted_total ?? 0}
       />
 
-      <LivePipeline loading={wb.isPending} stages={stages} />
+      <KanbanPipeline />
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         <CaseCreditCheque data={sales.data} loading={sales.isPending} />
