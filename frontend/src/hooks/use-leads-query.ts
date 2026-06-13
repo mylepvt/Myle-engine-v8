@@ -508,6 +508,7 @@ function invalidateLeadRelated(qc: ReturnType<typeof useQueryClient>) {
   void qc.invalidateQueries({ queryKey: ['workboard'] })
   void qc.invalidateQueries({ queryKey: ['retarget'] })
   void qc.invalidateQueries({ queryKey: ['follow-ups'] })
+  void qc.invalidateQueries({ queryKey: ['execution'] })
 }
 
 function isLeadsInfiniteData(data: unknown): data is InfiniteData<LeadListResponse> {
