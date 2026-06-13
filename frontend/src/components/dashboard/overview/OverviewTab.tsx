@@ -17,7 +17,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useTeamReportsQuery } from '@/hooks/use-team-reports-query'
 import { useOnlineNowQuery, type OnlineUserItem } from '@/hooks/use-online-now-query'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
+import { useSalesDashboardQuery } from '@/hooks/use-sales-query'
 import { LEAD_STATUS_OPTIONS } from '@/hooks/use-leads-query'
+import { CaseCreditCheque, TopEarners } from '@/components/dashboard/overview/FinanceEarners'
 
 type Props = {
   firstName: string
@@ -119,8 +121,12 @@ function HeroBand({
     month: 'long',
   })
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-primary/[0.10] via-card to-card p-5 shadow-[var(--shadow-card)] sm:p-6">
-      <div className="pointer-events-none absolute -right-10 -top-10 size-40 rounded-full bg-primary/10 blur-3xl" />
+    <div className="relative rounded-2xl border border-border/60 bg-gradient-to-br from-primary/[0.10] via-card to-card p-5 shadow-[var(--shadow-card)] sm:p-6">
+      {/* Decorative blob — clipped in its own layer so it can't bleed past the
+          rounded corners, while leaving the card free to show the online popover. */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
+        <div className="absolute -right-10 -top-10 size-40 rounded-full bg-primary/10 blur-3xl" />
+      </div>
       <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -372,6 +378,7 @@ export function OverviewTab({ firstName, onCreateTask }: Props) {
   const reports = useTeamReportsQuery('', true)
   const online = useOnlineNowQuery()
   const wb = useWorkboardQuery(true)
+  const sales = useSalesDashboardQuery(true)
 
   const ls = reports.data?.live_summary
 
@@ -406,6 +413,11 @@ export function OverviewTab({ firstName, onCreateTask }: Props) {
       />
 
       <LivePipeline loading={wb.isPending} stages={stages} />
+
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+        <CaseCreditCheque data={sales.data} loading={sales.isPending} />
+        <TopEarners data={sales.data} loading={sales.isPending} />
+      </div>
     </div>
   )
 }

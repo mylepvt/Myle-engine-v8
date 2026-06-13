@@ -43,6 +43,23 @@ export function CreateTaskModal({ open, onClose }: Props) {
     })
   }
 
+  const leaderIds = members.filter((m) => m.role === 'leader').map((m) => m.id)
+  const teamIds = members.filter((m) => m.role === 'team').map((m) => m.id)
+
+  /** Select an exact group of ids; clicking the active group again clears it. */
+  function selectGroup(ids: number[]) {
+    setSelectedIds((prev) => {
+      const isExact = ids.length > 0 && ids.length === prev.size && ids.every((id) => prev.has(id))
+      return isExact ? new Set() : new Set(ids)
+    })
+  }
+
+  const targets: { key: string; label: string; ids: number[] }[] = [
+    { key: 'team', label: `Whole team (${teamIds.length})`, ids: teamIds },
+    { key: 'leaders', label: `All leaders (${leaderIds.length})`, ids: leaderIds },
+    { key: 'everyone', label: `Everyone (${members.length})`, ids: members.map((m) => m.id) },
+  ]
+
   async function handleCreate() {
     if (!title.trim()) return
     const res = await createTask.mutateAsync({
@@ -176,9 +193,29 @@ export function CreateTaskModal({ open, onClose }: Props) {
 
         {step === 'assign' && (
           <>
-            <p className="mb-4 text-sm text-muted-foreground">
-              Select team members to assign this task to. You can also skip and assign later.
+            <p className="mb-3 text-sm text-muted-foreground">
+              Assign to a whole group, or pick members below. You can also skip and assign later.
             </p>
+            <div className="mb-3 flex flex-wrap gap-2">
+              {targets.map((t) => {
+                const active = t.ids.length > 0 && t.ids.length === selectedIds.size && t.ids.every((id) => selectedIds.has(id))
+                return (
+                  <button
+                    key={t.key}
+                    type="button"
+                    disabled={t.ids.length === 0}
+                    onClick={() => selectGroup(t.ids)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition disabled:opacity-40 ${
+                      active
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border bg-background text-foreground hover:border-primary/50'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                )
+              })}
+            </div>
             <div className="relative mb-3">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <input
