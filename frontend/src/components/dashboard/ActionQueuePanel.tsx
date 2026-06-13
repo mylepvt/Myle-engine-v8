@@ -82,9 +82,32 @@ function QueueRow({ item }: { item: ActionQueueItem }) {
   )
 }
 
+function SummaryView({ items }: { items: ActionQueueItem[] }) {
+  const groups: Record<string, { count: number; avgSeverity: number }> = {}
+  for (const item of items) {
+    if (!groups[item.item_type]) groups[item.item_type] = { count: 0, avgSeverity: 0 }
+    groups[item.item_type].count++
+    groups[item.item_type].avgSeverity += item.severity
+  }
+  for (const key of Object.keys(groups)) {
+    groups[key].avgSeverity = Math.round(groups[key].avgSeverity / groups[key].count)
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      {Object.entries(groups).map(([type, g]) => (
+        <div key={type} className="rounded-lg border border-border/60 bg-card/50 p-3 text-center">
+          <p className={cn('text-lg font-bold', severityClasses(g.avgSeverity))}>{g.count}</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">{TYPE_LABEL[type as ActionQueueItem['item_type']] ?? type}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 const COLLAPSED_COUNT = 3
 
-export function ActionQueuePanel({ className }: { className?: string }) {
+export function ActionQueuePanel({ className, admin }: { className?: string; admin?: boolean }) {
   const { data, isPending, isError, refetch } = useActionQueue()
   const [showAll, setShowAll] = useState(false)
 
@@ -127,31 +150,31 @@ export function ActionQueuePanel({ className }: { className?: string }) {
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <Flame className="size-4 text-red-500" />
-          <CardTitle className="text-sm font-semibold">Do This Now</CardTitle>
+          <CardTitle className="text-sm font-semibold">{admin ? 'Overview' : 'Do This Now'}</CardTitle>
           <Badge variant="secondary" className="text-[10px]">{data.total} items</Badge>
-          {data.total > data.items.length && (
-            <span className="text-[10px] text-muted-foreground">showing top {data.items.length}</span>
-          )}
-          <span className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground">
-            <AlertTriangle className="size-3" /> ranked by severity
-          </span>
         </div>
       </CardHeader>
       <CardContent className="space-y-2">
-        {(showAll ? data.items : data.items.slice(0, COLLAPSED_COUNT)).map((item) => (
-          <QueueRow key={item.id} item={item} />
-        ))}
-        {data.items.length > COLLAPSED_COUNT && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="w-full text-xs text-muted-foreground"
-            onClick={() => setShowAll((v) => !v)}
-          >
-            {showAll
-              ? 'Show less'
-              : `Show all ${data.items.length} items (${data.items.length - COLLAPSED_COUNT} more)`}
-          </Button>
+        {admin ? (
+          <SummaryView items={data.items} />
+        ) : (
+          <>
+            {(showAll ? data.items : data.items.slice(0, COLLAPSED_COUNT)).map((item) => (
+              <QueueRow key={item.id} item={item} />
+            ))}
+            {data.items.length > COLLAPSED_COUNT && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="w-full text-xs text-muted-foreground"
+                onClick={() => setShowAll((v) => !v)}
+              >
+                {showAll
+                  ? 'Show less'
+                  : `Show all ${data.items.length} items (${data.items.length - COLLAPSED_COUNT} more)`}
+              </Button>
+            )}
+          </>
         )}
       </CardContent>
     </Card>

@@ -932,7 +932,7 @@ export function AdminCommandCenter({ firstName }: Props) {
         {/* ==================== WAR ROOM ==================== */}
         <TabsContent value="war-room" className="space-y-6">
           {/* Action Queue — ranked one-tap actions */}
-          <ActionQueuePanel />
+          <ActionQueuePanel admin />
 
           {/* EOS Health — Organization Execution Score */}
           {orgScore.data && (

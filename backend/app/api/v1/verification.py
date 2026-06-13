@@ -58,6 +58,21 @@ async def assign_task_bulk(
     if user.role != "admin":
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admin only")
     assignments = await svc.bulk_assign_task(session, body, user)
+    if body.notify_via_whatsapp and assignments:
+        from app.services.whatsapp_leader_alerts import send_system_alert
+        for a in assignments:
+            member = await session.get(User, a.assigned_to_user_id)
+            if member and member.phone:
+                msg = (
+                    f"📋 *New Task Assigned*\n\n"
+                    f"Hello {member.name or member.fbo_id}, a new task has been assigned to you. "
+                    f"Please check your app for details and submit evidence on time.\n\n"
+                    f"— Myle Team"
+                )
+                await send_system_alert(
+                    member.phone, msg, session,
+                    message_type="task_assignment", related_user_id=member.id,
+                )
     return [await _serialize_assignment(session, a) for a in assignments]
 
 

@@ -985,3 +985,61 @@ async def watch_day6_live_page(
         live_ends_at=live_ends_at.isoformat(),
         viewer_count=viewer_count,
     )
+
+
+@router.get("/pending", response_model=LeadListResponse)
+async def pending_leads(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+):
+    """Zombie/untouched leads scoped to the current user (team members see their own)."""
+    from app.services.lead_scope import lead_personal_scope_clause
+    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+    where = lead_personal_scope_clause(user.user_id)
+    base = select(Lead).where(
+        Lead.outcome == "active",
+        Lead.deleted_at.is_(None),
+        Lead.archived_at.is_(None),
+        Lead.last_action_at.is_(None),
+        Lead.created_at < cutoff,
+    )
+    if where is not None:
+        base = base.where(where)
+    total_q = select(func.count()).select_from(base.subquery())
+    total = (await session.execute(total_q)).scalar() or 0
+    rows = (await session.execute(base.order_by(Lead.created_at.asc()).offset(offset).limit(limit))).scalars().all()
+
+    seen = {r.id for r in rows}
+    base2 = select(Lead).where(
+        Lead.outcome == "active",
+        Lead.deleted_at.is_(None),
+        Lead.archived_at.is_(None),
+        Lead.last_action_at.is_not(None),
+        Lead.last_action_at < cutoff,
+    )
+    if where is not None:
+        base2 = base2.where(where)
+    rows2 = (await session.execute(base2.order_by(Lead.last_action_at.asc()).limit(limit))).scalars().all()
+    for r in rows2:
+        if r.id not in seen:
+            rows.append(r)
+            seen.add(r.id)
+            total += 1
+
+    items: list[LeadPublic] = []
+    for lead in rows[:limit]:
+        assignee = await session.get(User, lead.assigned_to_user_id) if lead.assigned_to_user_id else None
+        items.append(LeadPublic(
+            id=lead.id,
+            name=lead.name,
+            phone=lead.phone,
+            status=lead.status,
+            outcome=lead.outcome,
+            assigned_to_user_id=lead.assigned_to_user_id,
+            assigned_to_name=assignee.name if assignee else None,
+            last_action_at=lead.last_action_at,
+            created_at=lead.created_at,
+        ))
+    return LeadListResponse(items=items, total=total)

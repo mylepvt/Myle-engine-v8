@@ -102,6 +102,7 @@ export type FullUiSurface =
   | { kind: 'all-members' }
   | { kind: 'whatsapp-panel' }
   | { kind: 'performer-insights' }
+  | { kind: 'pending-work' }
   /** Loads `ShellStubPage` with a GET that returns `SystemStubResponse` (items + note). */
   | { kind: 'shell-api'; apiPath: string }
 
@@ -223,6 +224,14 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('work/recycle-bin'),
     surface: 'full',
     ui: { kind: 'recycle-bin' },
+  },
+  {
+    path: 'work/pending-work',
+    section: { id: 'work', label: '' },
+    label: 'Pending Work',
+    roles: routeRoles('work/pending-work'),
+    surface: 'full',
+    ui: { kind: 'pending-work' },
   },
   {
     path: 'work/lead-flow',
