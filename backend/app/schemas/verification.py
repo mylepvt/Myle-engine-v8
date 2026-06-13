@@ -46,6 +46,7 @@ class TaskAssignmentBulkCreate(BaseModel):
     verification_task_id: int
     user_ids: list[int] = Field(min_length=1, max_length=200)
     due_at: Optional[datetime] = None
+    notify_via_whatsapp: bool = False
 
 
 class TaskEvidenceSubmit(BaseModel):

@@ -19,6 +19,7 @@ export function CreateTaskModal({ open, onClose }: Props) {
   const [search, setSearch] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [createdTaskId, setCreatedTaskId] = useState<number | null>(null)
+  const [notifyWhatsApp, setNotifyWhatsApp] = useState(true)
 
   const createTask = useCreateTask()
   const bulkAssign = useBulkAssignTask()
@@ -62,6 +63,7 @@ export function CreateTaskModal({ open, onClose }: Props) {
     await bulkAssign.mutateAsync({
       verification_task_id: createdTaskId,
       user_ids: Array.from(selectedIds),
+      notify_via_whatsapp: notifyWhatsApp,
     })
     setStep('done')
   }
@@ -217,7 +219,17 @@ export function CreateTaskModal({ open, onClose }: Props) {
             <p className="mt-2 text-xs text-muted-foreground">
               {selectedIds.size} member(s) selected
             </p>
-            <div className="mt-5 flex justify-end gap-3">
+            <label className="mt-3 flex items-center gap-2 rounded-lg border border-border/60 bg-card/40 p-3">
+              <input
+                type="checkbox"
+                checked={notifyWhatsApp}
+                onChange={(e) => setNotifyWhatsApp(e.target.checked)}
+                className="size-4 accent-primary"
+              />
+              <span className="text-sm text-foreground">Send WhatsApp notification</span>
+              <span className="ml-auto text-xs text-muted-foreground">members will get a WhatsApp alert</span>
+            </label>
+            <div className="mt-3 flex justify-end gap-3">
               <button
                 type="button"
                 onClick={handleClose}
