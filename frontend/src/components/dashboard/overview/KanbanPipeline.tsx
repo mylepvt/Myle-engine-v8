@@ -56,23 +56,16 @@ const STAGE_ROUTES: Record<string, string> = {
 }
 
 export function KanbanPipeline() {
-  const [mode, setMode] = useState<'all' | '24h'>('all')
-  const { data, isPending, isError } = useStageCounts(true, mode === '24h' ? 24 : undefined)
+  const [mode, setMode] = useState<'24h' | 'month'>('24h')
+  const { data, isPending, isError } = useStageCounts(true, mode === '24h' ? 24 : undefined, mode === 'month' ? 'month' : undefined)
 
   const pipelineCounts = useMemo(() => {
-    if (mode === '24h') {
-      if (!data?.today_movements) return {}
-      return {
-        ...data.today_movements,
-        claimed: data.today_claimed ?? 0,
-      }
-    }
-    if (!data?.counts) return {}
+    if (!data?.today_movements) return {}
     return {
-      ...data.counts,
+      ...data.today_movements,
       claimed: data.today_claimed ?? 0,
     }
-  }, [data?.counts, data?.today_movements, data?.today_claimed, mode])
+  }, [data?.today_movements, data?.today_claimed])
 
   const maxCount = useMemo(() => {
     const vals = Object.values(pipelineCounts)
@@ -133,16 +126,16 @@ export function KanbanPipeline() {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setMode(mode === 'all' ? '24h' : 'all')}
+                onClick={() => setMode(mode === '24h' ? 'month' : '24h')}
                 className={cn(
                   'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold transition-all',
-                  mode === '24h'
+                  mode === 'month'
                     ? 'bg-primary/15 text-primary'
                     : 'bg-muted text-muted-foreground hover:bg-muted/80',
                 )}
               >
-                {mode === '24h' ? <Clock className="size-3" /> : <Layers className="size-3" />}
-                {mode === '24h' ? 'Last 24h' : 'All Time'}
+                {mode === 'month' ? <Layers className="size-3" /> : <Clock className="size-3" />}
+                {mode === 'month' ? 'This Month' : '24 Hours'}
               </button>
               <Link
                 to="/dashboard/work/workboard"
@@ -153,7 +146,7 @@ export function KanbanPipeline() {
             </div>
           </div>
           <p className="py-8 text-center text-ds-body text-muted-foreground">
-            {mode === '24h' ? 'No lead movement in the last 24 hours.' : 'No active leads in the pipeline yet.'}
+            {mode === '24h' ? 'No lead movement in the last 24 hours.' : 'No lead movement this month.'}
           </p>
         </CardContent>
       </Card>
@@ -174,16 +167,16 @@ export function KanbanPipeline() {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => setMode(mode === 'all' ? '24h' : 'all')}
+              onClick={() => setMode(mode === '24h' ? 'month' : '24h')}
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold transition-all',
-                mode === '24h'
+                mode === 'month'
                   ? 'bg-primary/15 text-primary'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80',
               )}
             >
-              {mode === '24h' ? <Clock className="size-3" /> : <Layers className="size-3" />}
-              {mode === '24h' ? 'Last 24h' : 'All Time'}
+              {mode === 'month' ? <Layers className="size-3" /> : <Clock className="size-3" />}
+              {mode === 'month' ? 'This Month' : '24 Hours'}
             </button>
             <Link
               to="/dashboard/work/workboard"
