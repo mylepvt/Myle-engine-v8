@@ -157,6 +157,9 @@ async def _eval_zombie_leads(
             "entity_id": lead.id,
             "detail": {
                 "lead_name": lead.name,
+                "phone": lead.phone,
+                "status": lead.status,
+                "call_status": lead.call_status,
                 "days": (datetime.now(timezone.utc) - lead.last_action_at).days,
                 "assigned_to": lead.assigned_to_user_id,
                 "owner_user_id": lead.owner_user_id,
@@ -341,6 +344,93 @@ async def _exec_alert_leader(
         "message": message,
         "status": "sent" if sent else "logged",
     }
+
+
+def _prettify(value: str | None) -> str:
+    """'video_sent' -> 'Video Sent'. Returns '—' for empty values."""
+    if not value:
+        return "—"
+    return str(value).replace("_", " ").strip().title() or "—"
+
+
+def _digest_line(index: int, rule: AutomationRule, entity: dict) -> str:
+    """One compact line for a leader digest entry."""
+    detail = entity.get("detail") or {}
+    if entity.get("entity_type") == "lead":
+        name = detail.get("lead_name") or f"Lead #{entity.get('entity_id')}"
+        phone = detail.get("phone") or "—"
+        stage = _prettify(detail.get("status"))
+        last_ctx = _prettify(detail.get("call_status"))
+        days = detail.get("days", "?")
+        return f"{index}. {name} · {phone} · now: {stage} · last: {last_ctx} · {days}d idle"
+    # Member-based alert (missed missions / incomplete campaigns): reuse the
+    # rule's message template, falling back gracefully on missing keys.
+    config = rule.action_config or {}
+    template = config.get("message", "Needs attention.")
+    try:
+        text = template.format(**detail)
+    except Exception:
+        text = template
+    return f"{index}. {text}"
+
+
+async def _exec_alert_leader_batched(
+    session: AsyncSession,
+    rule: AutomationRule,
+    entities: list[dict],
+) -> dict[int, dict]:
+    """Send one digest per leader (max 50 entries per WhatsApp) instead of one
+    message per entity. Returns a {entity_id: result} map for action logging.
+    """
+    BATCH_SIZE = 50
+
+    # Group entities by their resolved leader.
+    groups: dict[int | None, list[dict]] = {}
+    for entity in entities:
+        detail = entity.get("detail") or {}
+        if entity.get("entity_type") == "lead":
+            member_id = detail.get("assigned_to") or detail.get("owner_user_id")
+        else:
+            member_id = entity.get("entity_id")
+        leader_id = await _get_leader_id(session, member_id) if member_id else None
+        groups.setdefault(leader_id, []).append(entity)
+
+    from app.services.whatsapp_leader_alerts import send_system_alert
+
+    results: dict[int, dict] = {}
+    for leader_id, group in groups.items():
+        leader = await session.get(User, leader_id) if leader_id else None
+        phone = leader.phone if leader else None
+
+        sent_any = False
+        if phone:
+            total = len(group)
+            parts = (total + BATCH_SIZE - 1) // BATCH_SIZE
+            for part_index in range(parts):
+                chunk = group[part_index * BATCH_SIZE : (part_index + 1) * BATCH_SIZE]
+                lines = [
+                    _digest_line(part_index * BATCH_SIZE + offset + 1, rule, entity)
+                    for offset, entity in enumerate(chunk)
+                ]
+                header = f"🚨 *Myle: {rule.name}*"
+                if parts > 1:
+                    header += f"  ({part_index + 1}/{parts})"
+                body = f"{header}\n\n" + "\n".join(lines) + "\n\n— Myle Team"
+                ok = await send_system_alert(
+                    phone, body, session,
+                    message_type="automation_alert", related_user_id=leader_id,
+                )
+                sent_any = sent_any or ok
+
+        status = "sent" if (phone and sent_any) else "logged"
+        for entity in group:
+            results[entity["entity_id"]] = {
+                "action": "alert_leader",
+                "leader_id": leader_id,
+                "status": status,
+                "batched": True,
+            }
+    return results
 
 
 async def _exec_create_task(
@@ -574,17 +664,34 @@ async def evaluate_rule(
         return []
 
     triggered_entities = await evaluator(session, rule)
-    logs: list[AutomationActionLog] = []
 
+    # Drop entities still inside their per-entity cooldown window.
+    eligible: list[dict] = []
     for entity in triggered_entities:
+        if await _was_recently_actioned(
+            session, rule.id, entity["entity_type"], entity["entity_id"], rule.cooldown_hours
+        ):
+            continue
+        eligible.append(entity)
+
+    # alert_leader is batched: one digest per leader (max 50 entries per
+    # WhatsApp) so leaders get a single list, not one message per entity.
+    batched_results: dict[int, dict] = {}
+    if rule.action_type == "alert_leader":
+        batched_results = await _exec_alert_leader_batched(session, rule, eligible)
+
+    logs: list[AutomationActionLog] = []
+    for entity in eligible:
         entity_type = entity["entity_type"]
         entity_id = entity["entity_id"]
 
-        # Cooldown check
-        if await _was_recently_actioned(session, rule.id, entity_type, entity_id, rule.cooldown_hours):
-            continue
+        if rule.action_type == "alert_leader":
+            result = batched_results.get(
+                entity_id, {"action": "alert_leader", "status": "logged"}
+            )
+        else:
+            result = await executor(session, rule, entity)
 
-        result = await executor(session, rule, entity)
         log = await _log_action(
             session,
             rule.id,
