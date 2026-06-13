@@ -17,6 +17,7 @@ import {
   FileText,
   GraduationCap,
   Layers3,
+  LayoutDashboard,
   ListChecks,
   PhoneCall,
   Search,
@@ -59,6 +60,7 @@ import { useLeadPoolQuery } from '@/hooks/use-lead-pool-query'
 import { RiskDashboard } from '@/components/dashboard/RiskDashboard'
 import { BlockerIntelligencePanel } from '@/components/dashboard/BlockerIntelligencePanel'
 import { CreateTaskModal } from '@/components/dashboard/CreateTaskModal'
+import { OverviewTab } from '@/components/dashboard/overview/OverviewTab'
 import { AutomationPanel } from '@/components/dashboard/AutomationPanel'
 import { messageFromApiErrorPayload } from '@/lib/http-error-message'
 import { useOrganizationScore } from '@/hooks/use-organization-score-query'
@@ -608,6 +610,7 @@ function GraceRequestRow({ member }: { member: TeamMemberPublic }) {
 }
 
 const DASHBOARD_TABS: readonly { value: string; label: string; Icon: LucideIcon }[] = [
+  { value: 'overview', label: 'Overview', Icon: LayoutDashboard },
   { value: 'war-room', label: 'War Room', Icon: ShieldAlert },
   { value: 'leads', label: 'Leads', Icon: Search },
   { value: 'people', label: 'People', Icon: Users },
@@ -724,7 +727,7 @@ function DashboardViewSwitcher({
 }
 
 export function AdminCommandCenter({ firstName }: Props) {
-  const [activeTab, setActiveTab] = useState('war-room')
+  const [activeTab, setActiveTab] = useState('overview')
   const [leadSearch, setLeadSearch] = useState('')
   const [showCreateTask, setShowCreateTask] = useState(false)
   const deferredLeadSearch = useDeferredValue(leadSearch.trim())
@@ -928,6 +931,11 @@ export function AdminCommandCenter({ firstName }: Props) {
             onSelect={setActiveTab}
           />
         </div>
+
+        {/* ==================== OVERVIEW ==================== */}
+        <TabsContent value="overview" className="space-y-6">
+          <OverviewTab firstName={firstName} onCreateTask={() => setShowCreateTask(true)} />
+        </TabsContent>
 
         {/* ==================== WAR ROOM ==================== */}
         <TabsContent value="war-room" className="space-y-6">
