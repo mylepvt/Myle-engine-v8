@@ -19,6 +19,8 @@ import { useSalesDashboardQuery } from '@/hooks/use-sales-query'
 import { CaseCreditCheque, TopEarners } from '@/components/dashboard/overview/FinanceEarners'
 import { KanbanPipeline } from '@/components/dashboard/overview/KanbanPipeline'
 import { TodayClaimCalling, TeamWorkTrend } from '@/components/dashboard/overview/TeamWork'
+import { LeaderActivity } from '@/components/dashboard/overview/LeaderActivity'
+import { AdminActivityPanel } from '@/components/dashboard/AdminActivityPanel'
 
 type Props = {
   firstName: string
@@ -319,6 +321,11 @@ export function OverviewTab({ firstName, onCreateTask }: Props) {
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         <TodayClaimCalling data={reports.data} loading={reports.isPending} />
         <TeamWorkTrend />
+      </div>
+
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+        <LeaderActivity />
+        <AdminActivityPanel />
       </div>
     </div>
   )
