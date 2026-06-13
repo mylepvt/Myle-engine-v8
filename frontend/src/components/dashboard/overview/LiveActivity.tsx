@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { Zap } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
@@ -7,12 +8,12 @@ import { useAdminFeedStore, type AdminActivityEntry } from '@/stores/admin-feed-
 type Kind = 'new' | 'claim' | 'conversion' | 'money' | 'handoff' | 'stage'
 
 const ICONS: Record<Kind, string> = {
-  new: '+',
-  claim: '👤',
-  conversion: '✓',
-  money: '₹',
-  handoff: '⇄',
-  stage: '→',
+  new: '✨',
+  claim: '🙋',
+  conversion: '🏆',
+  money: '💰',
+  handoff: '🔄',
+  stage: '📌',
 }
 
 const COLORS: Record<Kind, { box: string; boxText: string; chip: string }> = {
@@ -158,7 +159,10 @@ export function LiveActivity() {
       <CardContent className="p-0">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border/50 px-5 py-4">
-          <h2 className="text-[15px] font-semibold text-foreground tracking-[-0.01em]">Live Activity</h2>
+          <div className="flex items-center gap-2">
+            <Zap className="size-4 text-primary" aria-hidden />
+            <h2 className="text-[15px] font-semibold text-foreground tracking-[-0.01em]">Live Activity</h2>
+          </div>
           <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-500">
             <span className="relative flex size-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />

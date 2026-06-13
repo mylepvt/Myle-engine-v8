@@ -177,6 +177,7 @@ export function KanbanPipeline() {
       <CardContent className="p-5">
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-2">
+            <Layers className="size-4 text-primary" aria-hidden />
             <span className="relative flex size-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
               <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
