@@ -208,12 +208,16 @@ export function useVerifyTask() {
 export function useCreateTask() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { title: string; description?: string; task_type?: string; evidence_instructions?: string }) =>
-      apiFetch('/api/v1/verification/admin/verification-tasks', {
+    mutationFn: async (data: { title: string; description?: string; task_type?: string; evidence_instructions?: string }) => {
+      const res = await apiFetch('/api/v1/verification/admin/verification-tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-      }),
+      })
+      const body = await res.json()
+      if (!res.ok) throw new Error(body?.detail || `HTTP ${res.status}`)
+      return body
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: VERIFICATION_KEYS.all }),
   })
 }
@@ -221,12 +225,16 @@ export function useCreateTask() {
 export function useBulkAssignTask() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { verification_task_id: number; user_ids: number[]; due_at?: string; notify_via_whatsapp?: boolean }) =>
-      apiFetch('/api/v1/verification/admin/task-assign', {
+    mutationFn: async (data: { verification_task_id: number; user_ids: number[]; due_at?: string; notify_via_whatsapp?: boolean }) => {
+      const res = await apiFetch('/api/v1/verification/admin/task-assign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-      }),
+      })
+      const body = await res.json()
+      if (!res.ok) throw new Error(body?.detail || `HTTP ${res.status}`)
+      return body
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: VERIFICATION_KEYS.all }),
   })
 }
