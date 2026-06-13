@@ -1,17 +1,26 @@
 import { useMemo } from 'react'
+import {
+  ArrowRight,
+  ArrowRightLeft,
+  Banknote,
+  CheckCircle2,
+  Sparkles,
+  UserPlus,
+  type LucideIcon,
+} from 'lucide-react'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { useAdminFeedStore, type AdminActivityEntry } from '@/stores/admin-feed-store'
 
 type Kind = 'new' | 'claim' | 'conversion' | 'money' | 'handoff' | 'stage'
 
-const ICONS: Record<Kind, string> = {
-  new: '+',
-  claim: '👤',
-  conversion: '✓',
-  money: '₹',
-  handoff: '⇄',
-  stage: '→',
+const ICONS: Record<Kind, LucideIcon> = {
+  new: Sparkles,
+  claim: UserPlus,
+  conversion: CheckCircle2,
+  money: Banknote,
+  handoff: ArrowRightLeft,
+  stage: ArrowRight,
 }
 
 const COLORS: Record<Kind, { bg: string; text: string; chip: string }> = {
@@ -101,16 +110,16 @@ function Metric({ label, value, color }: { label: string; value: number; color: 
 
 function Row({ entry, kind }: { entry: AdminActivityEntry; kind: Kind }) {
   const c = COLORS[kind]
-  const icon = ICONS[kind]
+  const Icon = ICONS[kind]
   const desc = cleanDesc(kind, entry.description)
 
   return (
     <div className="flex items-start gap-3 border-b border-[#3a3a3c] px-5 py-3 transition-colors hover:bg-[#333335]">
       <span
-        className="flex size-7 shrink-0 items-center justify-center rounded-lg text-sm font-medium"
+        className="flex size-7 shrink-0 items-center justify-center rounded-lg"
         style={{ background: c.bg, color: c.text }}
       >
-        {icon}
+        <Icon className="size-3.5" aria-hidden />
       </span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm leading-snug text-[#f5f5f7]">
