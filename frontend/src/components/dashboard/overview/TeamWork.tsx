@@ -100,8 +100,51 @@ export function TodayClaimCalling({
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
- * Team Work graph — daily calls (bars) with Today/7/30/90 toggle
+ * Team Work graph — daily calls area+line with Today/7/30/90 toggle
  * ────────────────────────────────────────────────────────────────────────── */
+function CallsAreaChart({ points, max }: { points: { date: string; calls: number }[]; max: number }) {
+  const W = 700
+  const H = 150
+  const PAD_T = 10
+  const PAD_B = 8
+  const n = points.length
+  const hasData = points.some((p) => p.calls > 0)
+  const x = (i: number) => (n <= 1 ? W / 2 : (i / (n - 1)) * W)
+  const y = (v: number) => PAD_T + (1 - v / max) * (H - PAD_T - PAD_B)
+
+  // Single day (Today) → draw a flat segment across the width so it's visible.
+  const coords = n === 1 ? [`0,${y(points[0].calls)}`, `${W},${y(points[0].calls)}`] : points.map((p, i) => `${x(i)},${y(p.calls)}`)
+  const line = coords.join(' ')
+  const area = `M0,${H - PAD_B} L${coords.join(' L')} L${W},${H - PAD_B} Z`
+
+  return (
+    <div className="relative">
+      <svg viewBox={`0 0 ${W} ${H}`} className="h-40 w-full" preserveAspectRatio="none" role="img" aria-label="Team work — daily calls">
+        <defs>
+          <linearGradient id="callsFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="rgb(59 130 246)" stopOpacity="0.30" />
+            <stop offset="100%" stopColor="rgb(59 130 246)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {[0.25, 0.5, 0.75].map((g) => (
+          <line key={g} x1="0" x2={W} y1={PAD_T + g * (H - PAD_T - PAD_B)} y2={PAD_T + g * (H - PAD_T - PAD_B)} stroke="currentColor" strokeWidth="1" className="text-border/40" vectorEffect="non-scaling-stroke" />
+        ))}
+        {hasData ? (
+          <>
+            <path d={area} fill="url(#callsFill)" />
+            <polyline points={line} fill="none" stroke="rgb(59 130 246)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+          </>
+        ) : null}
+      </svg>
+      {!hasData && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <p className="text-ds-caption text-muted-foreground">No team reports in this window yet.</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function TeamWorkTrend() {
   const [days, setDays] = useState<number>(7)
   const trend = useTeamWorkTrendQuery(days, true)
@@ -137,21 +180,8 @@ export function TeamWorkTrend() {
           <Skeleton className="h-40 w-full" />
         ) : (
           <>
-            <div className="flex h-40 items-end gap-1">
-              {points.map((p) => {
-                const h = Math.round((p.calls / max) * 100)
-                return (
-                  <div key={p.date} className="group relative flex flex-1 flex-col items-center justify-end">
-                    <div
-                      className="w-full rounded-t bg-blue-500/80 transition-all duration-300 group-hover:bg-blue-500"
-                      style={{ height: `${Math.max(h, 2)}%` }}
-                      title={`${p.date}: ${p.calls} calls · ${p.day1} D1 · ${p.payments} pay`}
-                    />
-                  </div>
-                )
-              })}
-            </div>
-            <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground/70">
+            <CallsAreaChart points={points} max={max} />
+            <div className="mt-1 flex items-center justify-between text-[10px] text-muted-foreground/70">
               <span>{points[0]?.date.slice(5)}</span>
               <span>{points[points.length - 1]?.date.slice(5)}</span>
             </div>
