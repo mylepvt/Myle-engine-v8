@@ -43,7 +43,7 @@ const COLUMNS: { title: string; color: string; stages: StageDef[] }[] = [
 ]
 
 const STAGE_ROUTES: Record<string, string> = {
-  claimed: '/dashboard/work/leads?stage=claimed',
+  claimed: '/dashboard/work/leads',
   contacted: '/dashboard/work/leads?stage=contacted',
   invited: '/dashboard/work/leads?stage=invited',
   video_sent: '/dashboard/work/leads?stage=video_sent',
