@@ -17,7 +17,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useTeamReportsQuery } from '@/hooks/use-team-reports-query'
 import { useOnlineNowQuery, type OnlineUserItem } from '@/hooks/use-online-now-query'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
+import { useSalesDashboardQuery } from '@/hooks/use-sales-query'
 import { LEAD_STATUS_OPTIONS } from '@/hooks/use-leads-query'
+import { CaseCreditCheque, TopEarners } from '@/components/dashboard/overview/FinanceEarners'
 
 type Props = {
   firstName: string
@@ -372,6 +374,7 @@ export function OverviewTab({ firstName, onCreateTask }: Props) {
   const reports = useTeamReportsQuery('', true)
   const online = useOnlineNowQuery()
   const wb = useWorkboardQuery(true)
+  const sales = useSalesDashboardQuery(true)
 
   const ls = reports.data?.live_summary
 
@@ -406,6 +409,11 @@ export function OverviewTab({ firstName, onCreateTask }: Props) {
       />
 
       <LivePipeline loading={wb.isPending} stages={stages} />
+
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+        <CaseCreditCheque data={sales.data} loading={sales.isPending} />
+        <TopEarners data={sales.data} loading={sales.isPending} />
+      </div>
     </div>
   )
 }
