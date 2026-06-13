@@ -46,7 +46,7 @@ export function FollowUpsWorkPage({ title }: Props) {
         f.lead_name.toLowerCase().includes(q) ||
         String(f.lead_id).includes(q),
     )
-  }, [fuQ.data?.items, fuSearch])
+  }, [fuQ.data, fuSearch])
   const createMut = useCreateFollowUpMutation()
   const patchMut = usePatchFollowUpMutation()
   const delMut = useDeleteFollowUpMutation()

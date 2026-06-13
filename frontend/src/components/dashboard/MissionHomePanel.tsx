@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { cn } from '@/lib/utils'
 import { AlertCircle, CheckCircle2, ListChecks, Send } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
@@ -24,12 +23,10 @@ const BLOCKER_OPTIONS = [
 ]
 
 function MissionItemRow({
-  itemKey,
   item,
   onTick,
   ticking,
 }: {
-  itemKey: string
   item: MissionItemData
   onTick: (achieved: number, evidence?: string) => void
   ticking: boolean
@@ -151,7 +148,6 @@ export function MissionHomePanel() {
         {itemEntries.map(([key, item]) => (
           <MissionItemRow
             key={key}
-            itemKey={key}
             item={item}
             onTick={(achieved, evidence) =>
               tickMutation.mutate({ itemKey: key, achieved, evidence })

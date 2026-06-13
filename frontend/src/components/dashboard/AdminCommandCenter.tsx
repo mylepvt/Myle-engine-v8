@@ -6,7 +6,6 @@ import {
   ArrowRightLeft,
   Banknote,
   BellRing,
-  CalendarDays,
   Check,
   ChevronDown,
   ChevronRight,
@@ -16,7 +15,6 @@ import {
   CreditCard,
   FileDown,
   FileText,
-  GitBranch,
   GraduationCap,
   Layers3,
   ListChecks,
@@ -64,9 +62,9 @@ import { AutomationPanel } from '@/components/dashboard/AutomationPanel'
 import { messageFromApiErrorPayload } from '@/lib/http-error-message'
 import { useOrganizationScore } from '@/hooks/use-organization-score-query'
 import { useAdminMissionSummary } from '@/hooks/use-missions-query'
-import { useCampaigns, useCreateCampaign, useCampaignMetrics } from '@/hooks/use-training-campaign-query'
+import { useCampaigns, useCampaignMetrics } from '@/hooks/use-training-campaign-query'
 import { useLeaderEffectiveness } from '@/hooks/use-leader-effectiveness-query'
-import { useVerificationSummary, useAdminTasks, useAdminTasksList } from '@/hooks/use-verification-query'
+import { useVerificationSummary } from '@/hooks/use-verification-query'
 import { useOutcomeSummary, useDeadReasons, useZombieLeads, useRecycleLeads } from '@/hooks/use-lead-outcomes-query'
 
 type Props = {
@@ -728,8 +726,6 @@ export function AdminCommandCenter({ firstName }: Props) {
   const [activeTab, setActiveTab] = useState('war-room')
   const [leadSearch, setLeadSearch] = useState('')
   const deferredLeadSearch = useDeferredValue(leadSearch.trim())
-  const [todayIST] = useState(() => new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10))
-  const [viewerHistoryDate, setViewerHistoryDate] = useState<string>(todayIST)
 
   useAdminActivitySSE(true)
 
@@ -787,9 +783,6 @@ export function AdminCommandCenter({ firstName }: Props) {
   const appSettings = useAppSettingsQuery(activeTab === 'system')
   const leaderHealth = useLeaderHealthQuery(activeTab === 'people')
   const premiereViewers = usePremiereViewersQuery(true)
-  const isHistoryToday = viewerHistoryDate === todayIST
-  const premiereViewersHistory = usePremiereViewersQuery(activeTab === 'system' && !isHistoryToday, viewerHistoryDate)
-  const premiereData = isHistoryToday ? premiereViewers : premiereViewersHistory
   const leadSearchResults = useLeadsQuery(
     deferredLeadSearch.length > 0,
     { q: deferredLeadSearch, status: '' },
@@ -816,10 +809,6 @@ export function AdminCommandCenter({ firstName }: Props) {
   }, [teamMembers.data?.items])
 
   const settingsMap = appSettings.data?.settings ?? {}
-  const configuredBatchKeys = useMemo(
-    () => Object.keys(settingsMap).filter((key) => key.startsWith('batch_') && settingsMap[key].trim()).length,
-    [settingsMap],
-  )
 
   const pendingGraceMembers = useMemo(
     () => (teamMembers.data?.items ?? []).filter((m) => m.grace_request_end_date != null),

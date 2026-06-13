@@ -24,7 +24,6 @@ export function Architecture3DPage() {
     if (id) setSelectedId(id)
   }, [])
 
-  const selNode = ALL_NODES.find(n => n.id === selectedId) ?? null
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-slate-950 flex flex-col">

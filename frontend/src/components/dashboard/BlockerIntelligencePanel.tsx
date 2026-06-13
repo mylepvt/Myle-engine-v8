@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useBlockerIntelligence } from '@/hooks/use-blocker-intelligence-query'
-import { cn } from '@/lib/utils'
 
 function BlockerBar({ label, pct, count, color }: { label: string; pct: number; count: number; color: string }) {
   return (
