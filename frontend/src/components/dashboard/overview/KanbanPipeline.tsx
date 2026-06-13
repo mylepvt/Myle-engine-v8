@@ -56,23 +56,25 @@ const STAGE_ROUTES: Record<string, string> = {
 }
 
 export function KanbanPipeline() {
-  const [mode, setMode] = useState<'all' | '24h'>('all')
-  const { data, isPending, isError } = useStageCounts(true, mode === '24h' ? 24 : undefined)
+  const [mode, setMode] = useState<'24h' | '30d'>('24h')
+  const hours = mode === '30d' ? 720 : 24
+  const { data, isPending, isError } = useStageCounts(true, hours)
 
   const pipelineCounts = useMemo(() => {
-    if (mode === '24h') {
-      if (!data?.today_movements) return {}
-      return {
-        ...data.today_movements,
-        claimed: data.today_claimed ?? 0,
-      }
-    }
-    if (!data?.counts) return {}
+    if (!data?.today_movements) return {}
     return {
-      ...data.counts,
+      ...data.today_movements,
       claimed: data.today_claimed ?? 0,
     }
-  }, [data?.counts, data?.today_movements, data?.today_claimed, mode])
+  }, [data?.today_movements, data?.today_claimed])
+
+  const prevCounts = useMemo(() => {
+    if (!data?.previous_movements) return {}
+    return {
+      ...data.previous_movements,
+      claimed: data.previous_claimed ?? 0,
+    }
+  }, [data?.previous_movements, data?.previous_claimed])
 
   const maxCount = useMemo(() => {
     const vals = Object.values(pipelineCounts)
@@ -83,6 +85,12 @@ export function KanbanPipeline() {
   const totalPipeline = useMemo(() => {
     return Object.values(pipelineCounts).reduce((a, b) => a + b, 0)
   }, [pipelineCounts])
+
+  function trend(current: number, previous: number): 'up' | 'down' | 'same' {
+    if (current > previous) return 'up'
+    if (current < previous) return 'down'
+    return 'same'
+  }
 
   if (isPending) {
     return (
@@ -133,16 +141,16 @@ export function KanbanPipeline() {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setMode(mode === 'all' ? '24h' : 'all')}
+                onClick={() => setMode(mode === '24h' ? '30d' : '24h')}
                 className={cn(
                   'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold transition-all',
-                  mode === '24h'
+                  mode === '30d'
                     ? 'bg-primary/15 text-primary'
                     : 'bg-muted text-muted-foreground hover:bg-muted/80',
                 )}
               >
-                {mode === '24h' ? <Clock className="size-3" /> : <Layers className="size-3" />}
-                {mode === '24h' ? 'Last 24h' : 'All Time'}
+                {mode === '30d' ? <Layers className="size-3" /> : <Clock className="size-3" />}
+                {mode === '30d' ? '30 Days' : '24 Hours'}
               </button>
               <Link
                 to="/dashboard/work/workboard"
@@ -153,7 +161,7 @@ export function KanbanPipeline() {
             </div>
           </div>
           <p className="py-8 text-center text-ds-body text-muted-foreground">
-            {mode === '24h' ? 'No lead movement in the last 24 hours.' : 'No active leads in the pipeline yet.'}
+            {mode === '24h' ? 'No lead movement in the last 24 hours.' : 'No lead movement in the last 30 days.'}
           </p>
         </CardContent>
       </Card>
@@ -174,16 +182,16 @@ export function KanbanPipeline() {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => setMode(mode === 'all' ? '24h' : 'all')}
+              onClick={() => setMode(mode === '24h' ? '30d' : '24h')}
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold transition-all',
-                mode === '24h'
+                mode === '30d'
                   ? 'bg-primary/15 text-primary'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80',
               )}
             >
-              {mode === '24h' ? <Clock className="size-3" /> : <Layers className="size-3" />}
-              {mode === '24h' ? 'Last 24h' : 'All Time'}
+              {mode === '30d' ? <Layers className="size-3" /> : <Clock className="size-3" />}
+              {mode === '30d' ? '30 Days' : '24 Hours'}
             </button>
             <Link
               to="/dashboard/work/workboard"
@@ -197,19 +205,30 @@ export function KanbanPipeline() {
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           {COLUMNS.map((col) => {
             const colTotal = col.stages.reduce((sum, s) => sum + ((pipelineCounts[s.key]) || 0), 0)
+            const colPrev = col.stages.reduce((sum, s) => sum + ((prevCounts[s.key]) || 0), 0)
+            const colTrend = trend(colTotal, colPrev)
             return (
               <div key={col.title} className="rounded-xl border border-border/40 bg-card p-4 transition-colors hover:border-border/60">
                 <div className="mb-3 flex items-center justify-between border-b border-border/30 pb-2.5" style={{ borderColor: `${col.color}30` }}>
                   <span className="text-[11px] font-bold uppercase tracking-[0.08em]" style={{ color: col.color }}>
                     {col.title}
                   </span>
-                  <span className="text-lg font-extrabold tabular-nums" style={{ color: col.color }}>
-                    {colTotal}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {colTrend !== 'same' && (
+                      <span className={cn('text-[10px] font-bold', colTrend === 'up' ? 'text-emerald-500' : 'text-red-400')}>
+                        {colTrend === 'up' ? '↑' : '↓'}
+                      </span>
+                    )}
+                    <span className="text-lg font-extrabold tabular-nums" style={{ color: col.color }}>
+                      {colTotal}
+                    </span>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   {col.stages.map((stage) => {
                     const count = (pipelineCounts[stage.key]) || 0
+                    const prev = (prevCounts[stage.key]) || 0
+                    const stageTrend = trend(count, prev)
                     const pct = maxCount > 0 ? Math.max(3, (count / maxCount) * 100) : 0
                     const sharePct = totalPipeline > 0 ? Math.round((count / totalPipeline) * 100) : 0
                     const route = STAGE_ROUTES[stage.key] || '/dashboard/work/leads'
@@ -231,9 +250,16 @@ export function KanbanPipeline() {
                               {stage.label}
                             </span>
                           </div>
-                          <span className="shrink-0 text-base font-extrabold tabular-nums" style={{ color: stage.color }}>
-                            {count}
-                          </span>
+                          <div className="flex items-center gap-1">
+                            {stageTrend !== 'same' && (
+                              <span className={cn('text-[10px] font-bold', stageTrend === 'up' ? 'text-emerald-500' : 'text-red-400')}>
+                                {stageTrend === 'up' ? '↑' : '↓'}
+                              </span>
+                            )}
+                            <span className="shrink-0 text-base font-extrabold tabular-nums" style={{ color: stage.color }}>
+                              {count}
+                            </span>
+                          </div>
                         </div>
                         <div className="mt-2.5 flex items-center gap-2">
                           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">

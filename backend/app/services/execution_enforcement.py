@@ -2699,12 +2699,15 @@ async def admin_stage_counts(session: AsyncSession, hours: Optional[float] = Non
     """Admin: active lead counts per pipeline stage + today's/rolling activity.
 
     When *hours* is provided, uses a rolling window (now − hours) instead of
-    IST-midnight for the "today" / movement queries.
+    IST-midnight for the "today" / movement queries. Also returns comparison
+    data from the immediately preceding window of the same duration.
     """
     if hours is not None:
         window_start = datetime.now(tz=IST) - timedelta(hours=hours)
+        prev_window_start = window_start - timedelta(hours=hours)
     else:
         window_start = _start_of_day_ist(today_ist().isoformat())
+        prev_window_start = None
     active_scope = and_(
         Lead.deleted_at.is_(None),
         Lead.archived_at.is_(None),
@@ -2751,9 +2754,48 @@ async def admin_stage_counts(session: AsyncSession, hours: Optional[float] = Non
         or 0
     )
 
-    return {
+    result: dict[str, Any] = {
         "counts": counts,
         "today_movements": today_counts,
         "total": sum(counts.values()),
         "today_claimed": claimed_today,
     }
+
+    # Comparison data from the immediately preceding window (same duration).
+    if prev_window_start is not None:
+        prev_stmt = (
+            select(Lead.status, func.count(Lead.id).label("n"))
+            .where(
+                active_scope,
+                _lead_last_activity_ts() >= prev_window_start,
+                _lead_last_activity_ts() < window_start,
+            )
+            .group_by(Lead.status)
+        )
+        prev_rows = (await session.execute(prev_stmt)).all()
+        prev_counts: dict[str, int] = {row[0]: row[1] for row in prev_rows}
+
+        prev_claimed = int(
+            (
+                await session.execute(
+                    select(func.count(ActivityLog.entity_id.distinct()))
+                    .where(
+                        ActivityLog.action.in_(("lead.claimed", "lead.claimed_free")),
+                        ActivityLog.created_at >= prev_window_start,
+                        ActivityLog.created_at < window_start,
+                        exists(
+                            select(Lead.id).where(
+                                Lead.id == ActivityLog.entity_id,
+                                active_scope,
+                            )
+                        ),
+                    )
+                )
+            ).scalar_one()
+            or 0
+        )
+
+        result["previous_movements"] = prev_counts
+        result["previous_claimed"] = prev_claimed
+
+    return result
