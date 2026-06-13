@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -58,6 +58,7 @@ import { LEAD_STATUS_OPTIONS, useLeadsQuery, type LeadPublic } from '@/hooks/use
 import { useLeadPoolQuery } from '@/hooks/use-lead-pool-query'
 import { RiskDashboard } from '@/components/dashboard/RiskDashboard'
 import { BlockerIntelligencePanel } from '@/components/dashboard/BlockerIntelligencePanel'
+import { CreateTaskModal } from '@/components/dashboard/CreateTaskModal'
 import { AutomationPanel } from '@/components/dashboard/AutomationPanel'
 import { messageFromApiErrorPayload } from '@/lib/http-error-message'
 import { useOrganizationScore } from '@/hooks/use-organization-score-query'
@@ -725,6 +726,7 @@ function DashboardViewSwitcher({
 export function AdminCommandCenter({ firstName }: Props) {
   const [activeTab, setActiveTab] = useState('war-room')
   const [leadSearch, setLeadSearch] = useState('')
+  const [showCreateTask, setShowCreateTask] = useState(false)
   const deferredLeadSearch = useDeferredValue(leadSearch.trim())
 
   useAdminActivitySSE(true)
@@ -1536,7 +1538,16 @@ export function AdminCommandCenter({ firstName }: Props) {
                   <CardDescription>Create and assign verification tasks</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <DeskShortcut to="#" title="Create Task" description="Define a new verification task" icon={<ListChecks className="size-4" />} />
+                  <button type="button" onClick={() => setShowCreateTask(true)} className="group flex w-full items-center gap-3.5 rounded border border-border/60 bg-card/40 p-3.5 text-left no-underline transition-[background-color,border-color] duration-100 hover:border-border hover:bg-card">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded bg-muted/60 text-primary ring-1 ring-border/40 transition-colors duration-200 group-hover:bg-primary/[0.08] group-hover:ring-primary/30">
+                      <ListChecks className="size-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-foreground">Create Task</p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">Define a new verification task</p>
+                    </div>
+                    <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-primary/70" />
+                  </button>
                   <DeskShortcut to="#" title="Bulk Assign" description="Assign a task to multiple members" icon={<Users className="size-4" />} />
                   <DeskShortcut to="#" title="Pending Review" description={`${vSummary.data?.pending_verifications ?? 0} tasks awaiting verification`} icon={<ClipboardCheck className="size-4" />} badge={vSummary.data?.pending_verifications ?? 0} />
                 </CardContent>
@@ -1745,6 +1756,7 @@ export function AdminCommandCenter({ firstName }: Props) {
           </ReportsSection>
         </TabsContent>
       </Tabs>
+      <CreateTaskModal open={showCreateTask} onClose={() => setShowCreateTask(false)} />
     </div>
   )
 }
