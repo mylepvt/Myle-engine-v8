@@ -1,8 +1,9 @@
 import { type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, ClipboardCheck, Home, Menu, PanelLeftClose, Search, Settings } from 'lucide-react'
+import { ClipboardCheck, Home, Megaphone, Menu, PanelLeftClose, Search, Settings } from 'lucide-react'
 
 import { ShellHeaderFeedbackControls } from '@/components/layout/ShellHeaderFeedbackControls'
+import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { Button } from '@/components/ui/button'
 import { StatusDot } from '@/components/ui/status-dot'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
@@ -141,6 +142,8 @@ export function DashboardHeader({
       <div className="ml-auto flex shrink-0 items-center gap-0.5">
         <ShellHeaderFeedbackControls />
 
+        <NotificationBell />
+
         <Link
           to="/dashboard/settings/profile"
           className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground md:flex"
@@ -173,7 +176,7 @@ export function DashboardHeader({
             className="relative flex min-h-[44px] min-w-[44px] items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground"
             aria-label={noticeBoardUnread > 0 ? `Notice board — ${noticeBoardUnread} new` : 'Notice board'}
           >
-            <Bell className="size-[17px]" />
+            <Megaphone className="size-[17px]" />
           </Link>
           {noticeBoardUnread > 0 ? (
             <span

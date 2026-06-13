@@ -1,16 +1,18 @@
 """Web Push notification endpoints."""
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
+from app.models.notification import Notification
 from app.models.push_subscription import PushSubscription
 from app.services.push_service import get_vapid_public_key
 
@@ -156,3 +158,141 @@ async def push_status(
     )
     sub = count_result.scalar_one_or_none()
     return PushStatusResponse(subscribed=sub is not None)
+
+
+# ---------------------------------------------------------------------------
+# In-app notification feed (the bell)
+# ---------------------------------------------------------------------------
+
+class NotificationItem(BaseModel):
+    id: int
+    title: str
+    body: str
+    url: str
+    category: str
+    read: bool
+    created_at: datetime
+
+
+class NotificationFeedResponse(BaseModel):
+    items: list[NotificationItem]
+    unread: int
+    total: int
+
+
+class UnreadCountResponse(BaseModel):
+    unread: int
+
+
+@router.get("/feed", response_model=NotificationFeedResponse)
+async def list_notifications(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 30,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> NotificationFeedResponse:
+    """Return the current user's notification feed, newest first."""
+    rows = (
+        await session.execute(
+            select(Notification)
+            .where(Notification.user_id == user.user_id)
+            .order_by(Notification.created_at.desc(), Notification.id.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+    ).scalars().all()
+
+    total = (
+        await session.execute(
+            select(func.count())
+            .select_from(Notification)
+            .where(Notification.user_id == user.user_id)
+        )
+    ).scalar_one()
+
+    unread = (
+        await session.execute(
+            select(func.count())
+            .select_from(Notification)
+            .where(
+                Notification.user_id == user.user_id,
+                Notification.read_at.is_(None),
+            )
+        )
+    ).scalar_one()
+
+    items = [
+        NotificationItem(
+            id=row.id,
+            title=row.title,
+            body=row.body,
+            url=row.url,
+            category=row.category,
+            read=row.read_at is not None,
+            created_at=row.created_at,
+        )
+        for row in rows
+    ]
+    return NotificationFeedResponse(items=items, unread=int(unread), total=int(total))
+
+
+@router.get("/feed/unread-count", response_model=UnreadCountResponse)
+async def notifications_unread_count(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> UnreadCountResponse:
+    """Cheap badge count for the bell — number of unread notifications."""
+    unread = (
+        await session.execute(
+            select(func.count())
+            .select_from(Notification)
+            .where(
+                Notification.user_id == user.user_id,
+                Notification.read_at.is_(None),
+            )
+        )
+    ).scalar_one()
+    return UnreadCountResponse(unread=int(unread))
+
+
+@router.post("/feed/{notification_id}/read")
+async def mark_notification_read(
+    notification_id: int,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Mark a single notification as read."""
+    row = (
+        await session.execute(
+            select(Notification).where(
+                Notification.id == notification_id,
+                Notification.user_id == user.user_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND, detail="Notification not found"
+        )
+    if row.read_at is None:
+        row.read_at = datetime.now(timezone.utc)
+        await session.commit()
+    return {"ok": True}
+
+
+@router.post("/feed/read-all")
+async def mark_all_notifications_read(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Mark every unread notification for the user as read."""
+    result = await session.execute(
+        update(Notification)
+        .where(
+            Notification.user_id == user.user_id,
+            Notification.read_at.is_(None),
+        )
+        .values(read_at=datetime.now(timezone.utc))
+    )
+    await session.commit()
+    return {"ok": True, "updated": result.rowcount or 0}

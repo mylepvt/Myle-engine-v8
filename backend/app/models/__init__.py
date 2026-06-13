@@ -38,8 +38,10 @@ from app.models.grace_history import GraceHistory
 from app.models.user_location import UserLocation
 from app.models.whatsapp_log import WhatsAppLog
 from app.models.automation import AutomationRule, AutomationActionLog
+from app.models.notification import Notification
 
 __all__ = [
+    "Notification",
     "MemberRemovalOutreach",
     "ReportReminderOutreach",
     "AdminActivityFeed",
