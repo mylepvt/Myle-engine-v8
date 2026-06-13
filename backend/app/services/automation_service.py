@@ -397,6 +397,10 @@ async def _exec_alert_leader_batched(
 
     from app.services.whatsapp_leader_alerts import send_system_alert
 
+    # Management sees only a per-leader rollup (leader name + phone + count) so
+    # Shikha can ring the responsible leader — not every lead's number/details.
+    rollup_rows: list[tuple[str, str, int]] = []
+
     results: dict[int, dict] = {}
     for leader_id, group in groups.items():
         leader = await session.get(User, leader_id) if leader_id else None
@@ -422,6 +426,12 @@ async def _exec_alert_leader_batched(
                 )
                 sent_any = sent_any or ok
 
+        lead_count = sum(1 for e in group if e.get("entity_type") == "lead")
+        if lead_count:
+            leader_name = (leader.name or leader.fbo_id) if leader else "Unassigned"
+            leader_phone = (leader.phone if leader else None) or "—"
+            rollup_rows.append((leader_name, leader_phone, lead_count))
+
         status = "sent" if (phone and sent_any) else "logged"
         for entity in group:
             results[entity["entity_id"]] = {
@@ -430,7 +440,55 @@ async def _exec_alert_leader_batched(
                 "status": status,
                 "batched": True,
             }
+
+    await _send_management_leader_rollup(session, rule, rollup_rows)
     return results
+
+
+async def _send_management_leader_rollup(
+    session: AsyncSession,
+    rule: AutomationRule,
+    rollup_rows: list[tuple[str, str, int]],
+) -> None:
+    """Management (Shikha) gets a leader-level rollup only: each leader's name +
+    phone + how many of their team's leads need attention — so she can call the
+    leader. No individual lead numbers/details. Max 50 leaders per message.
+    """
+    if not rollup_rows:
+        return
+    from app.services.whatsapp_leader_alerts import send_system_alert
+    from app.services.whatsapp_management_updates import get_management_phone
+
+    mgmt_phone = await get_management_phone(session)
+    if not mgmt_phone:
+        return
+
+    rollup_rows.sort(key=lambda r: r[2], reverse=True)
+    BATCH_SIZE = 50
+    total_leaders = len(rollup_rows)
+    total_leads = sum(c for _, _, c in rollup_rows)
+    parts = (total_leaders + BATCH_SIZE - 1) // BATCH_SIZE
+    for part_index in range(parts):
+        chunk = rollup_rows[part_index * BATCH_SIZE : (part_index + 1) * BATCH_SIZE]
+        lines = [
+            f"{part_index * BATCH_SIZE + offset + 1}. {name} 📞 {phone} — "
+            f"{count} lead{'s' if count != 1 else ''}"
+            for offset, (name, phone, count) in enumerate(chunk)
+        ]
+        header = f"🧟 *Leads needing attention — by team* ({total_leads} across {total_leaders} leaders)"
+        if parts > 1:
+            header += f"  ({part_index + 1}/{parts})"
+        body = (
+            f"{header}\n\nCall the leader to action their team's stale leads:\n\n"
+            + "\n".join(lines)
+            + "\n\n— Myle Team"
+        )
+        try:
+            await send_system_alert(
+                mgmt_phone, body, session, message_type="automation_alert_management",
+            )
+        except Exception:
+            pass
 
 
 async def _exec_create_task(
