@@ -552,6 +552,7 @@ async def job_management_updates() -> None:
             from app.services.whatsapp_management_updates import send_daily_management_bundle
             async with AsyncSessionLocal() as session:
                 results = await send_daily_management_bundle(session)
+                await session.commit()
                 sent = sum(1 for r in results if r.get("sent"))
                 failures = [r for r in results if not r.get("ok")]
                 logger.info(

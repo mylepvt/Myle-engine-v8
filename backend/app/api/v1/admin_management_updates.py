@@ -43,7 +43,8 @@ async def trigger_management_update(
 
     try:
         if type == "bundle":
-            results = await send_daily_management_bundle(session)
+            target_phone = phone.strip() or None
+            results = await send_daily_management_bundle(session, target_phone)
             sent_count = sum(1 for r in results if r.get("sent"))
             return ManagementSendResponse(
                 ok=True,

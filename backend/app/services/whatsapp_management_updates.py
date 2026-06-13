@@ -423,9 +423,10 @@ async def send_management_update(
     return result
 
 
-async def send_daily_management_bundle(session: AsyncSession) -> list[dict[str, Any]]:
+async def send_daily_management_bundle(session: AsyncSession, phone: str | None = None) -> list[dict[str, Any]]:
     """Send the full daily bundle: top 5 + integrity + inactive."""
-    phone = await get_management_phone(session)
+    if not phone:
+        phone = await get_management_phone(session)
     if not phone:
         return [{"ok": False, "error": "No management phone configured"}]
 
