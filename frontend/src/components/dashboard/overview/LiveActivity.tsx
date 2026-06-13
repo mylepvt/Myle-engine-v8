@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Zap } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -135,6 +135,7 @@ function SectionDivider({ label, cls }: { label: string; cls: string }) {
 export function LiveActivity() {
   const entries = useAdminFeedStore((s) => s.entries)
   const initialized = useAdminFeedStore((s) => s.initialized)
+  const [showAll, setShowAll] = useState(false)
 
   const meaningful = useMemo(() => {
     return entries
@@ -143,7 +144,7 @@ export function LiveActivity() {
   }, [entries])
 
   const pulse = computePulse(meaningful)
-  const feed = meaningful.slice(0, 30)
+  const feed = showAll ? meaningful : meaningful.slice(0, 30)
 
   const grouped = useMemo(() => {
     const order: Kind[] = ['new', 'claim', 'conversion', 'money', 'handoff', 'stage']
@@ -210,9 +211,20 @@ export function LiveActivity() {
         {/* Footer */}
         <div className="flex items-center justify-between border-t border-border/50 px-5 py-2.5">
           <span className="text-[11px] font-medium text-muted-foreground/50">Updated in real-time</span>
-          {feed.length > 0 && (
-            <span className="text-[11px] font-medium text-muted-foreground/40">{feed.length} events</span>
-          )}
+          <div className="flex items-center gap-3">
+            {feed.length > 0 && (
+              <span className="text-[11px] font-medium text-muted-foreground/40">{feed.length} events</span>
+            )}
+            {meaningful.length > 30 && (
+              <button
+                type="button"
+                onClick={() => setShowAll(!showAll)}
+                className="text-[11px] font-semibold text-primary hover:underline"
+              >
+                {showAll ? 'Show Less' : 'View All →'}
+              </button>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
