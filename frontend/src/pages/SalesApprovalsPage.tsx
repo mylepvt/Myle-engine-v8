@@ -39,9 +39,32 @@ export function SalesApprovalsPage({ title }: Props) {
   const isAdmin = me?.authenticated && me.role === 'admin'
   const busy = approve.isPending || reject.isPending
   const [rejectTarget, setRejectTarget] = useState<number | null>(null)
+  // Per-row CC / amount edits (admin corrects what OCR missed before booking).
+  const [edits, setEdits] = useState<Record<number, { cc: string; amount: string }>>({})
 
-  async function handleApprove(saleId: number) {
-    await approve.mutateAsync(saleId)
+  function ccValue(row: LeadSale): string {
+    return edits[row.id]?.cc ?? (row.case_credits ?? '')
+  }
+  function amountValue(row: LeadSale): string {
+    return edits[row.id]?.amount ?? (row.amount_cents != null ? String(row.amount_cents / 100) : '')
+  }
+  function setEdit(row: LeadSale, patch: Partial<{ cc: string; amount: string }>) {
+    setEdits((prev) => ({
+      ...prev,
+      [row.id]: { cc: ccValue(row), amount: amountValue(row), ...patch },
+    }))
+  }
+
+  async function handleApprove(row: LeadSale) {
+    const ccStr = ccValue(row).trim()
+    const amtStr = amountValue(row).trim()
+    const overrides: { case_credits?: string; amount_cents?: number } = {}
+    if (ccStr) overrides.case_credits = ccStr
+    if (amtStr) {
+      const rupees = Number(amtStr)
+      if (Number.isFinite(rupees)) overrides.amount_cents = Math.round(rupees * 100)
+    }
+    await approve.mutateAsync({ saleId: row.id, overrides })
     playAppSound('claim')
   }
 
@@ -122,11 +145,50 @@ export function SalesApprovalsPage({ title }: Props) {
                         {row.status}
                       </Badge>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      {row.case_credits ? <span>CC: {row.case_credits} · </span> : null}
-                      {amount ? <span>{amount} · </span> : null}
-                      {row.invoice_number ? <span>#{row.invoice_number}</span> : null}
-                    </div>
+                    {isAdmin ? (
+                      <div className="flex flex-wrap items-end gap-3 pt-1">
+                        <label className="flex flex-col gap-0.5">
+                          <span className="text-[11px] font-medium text-muted-foreground">Case credits</span>
+                          <input
+                            type="number"
+                            step="0.001"
+                            min="0"
+                            inputMode="decimal"
+                            value={ccValue(row)}
+                            onChange={(e) => setEdit(row, { cc: e.target.value })}
+                            placeholder="0.000"
+                            className="h-9 w-28 rounded border border-border bg-background px-2 text-sm tabular-nums focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          />
+                        </label>
+                        <label className="flex flex-col gap-0.5">
+                          <span className="text-[11px] font-medium text-muted-foreground">Amount (₹)</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            inputMode="decimal"
+                            value={amountValue(row)}
+                            onChange={(e) => setEdit(row, { amount: e.target.value })}
+                            placeholder="0.00"
+                            className="h-9 w-32 rounded border border-border bg-background px-2 text-sm tabular-nums focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          />
+                        </label>
+                        {row.invoice_number ? (
+                          <span className="pb-2 text-[11px] text-muted-foreground">#{row.invoice_number}</span>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground">
+                        {row.case_credits ? <span>CC: {row.case_credits} · </span> : null}
+                        {amount ? <span>{amount} · </span> : null}
+                        {row.invoice_number ? <span>#{row.invoice_number}</span> : null}
+                      </div>
+                    )}
+                    {isAdmin && (!ccValue(row).trim() || !amountValue(row).trim()) ? (
+                      <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                        Enter CC and amount to book this invoice.
+                      </p>
+                    ) : null}
                     {row.verify_notes ? (
                       <p className="text-xs text-amber-600/90 dark:text-amber-300/90">{row.verify_notes}</p>
                     ) : null}
@@ -154,7 +216,7 @@ export function SalesApprovalsPage({ title }: Props) {
                         variant="default"
                         disabled={busy}
                         className="h-11 min-w-[5.5rem] flex-1 font-semibold sm:flex-none"
-                        onClick={() => void handleApprove(row.id)}
+                        onClick={() => void handleApprove(row)}
                       >
                         Approve
                       </Button>
