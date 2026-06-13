@@ -39,6 +39,10 @@ vi.mock('@/components/dashboard/LeaderActionCenter', () => ({
   LeaderActionCenter: () => <div data-testid="leader-action-center">Leader Action Center</div>,
 }))
 
+vi.mock('@/components/dashboard/VerificationHomePanel', () => ({
+  VerificationHomePanel: () => <div data-testid="verification-home-panel" />,
+}))
+
 vi.mock('@/hooks/use-dashboard-shell-role', () => ({
   useDashboardShellRole: () => mockUseDashboardShellRole(),
 }))
