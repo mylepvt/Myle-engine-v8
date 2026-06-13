@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.app_setting import AppSetting
+from app.models.notification import Notification
 from app.models.push_subscription import PushSubscription
 from app.models.user import User
 
@@ -171,6 +172,46 @@ async def _send_and_cleanup(
     return ok_count
 
 
+# ---------------------------------------------------------------------------
+# In-app notification feed (the bell). Persisted for EVERY notification so users
+# see their full history in-app, independent of browser-push availability.
+# ---------------------------------------------------------------------------
+
+async def _persist_feed(
+    session: AsyncSession,
+    user_ids: list[int] | tuple[int, ...],
+    *,
+    title: str,
+    body: str,
+    url: str,
+    category: str,
+) -> None:
+    """Write one notification row per recipient. Never raises."""
+    unique_ids = {int(uid) for uid in user_ids if uid is not None}
+    if not unique_ids:
+        return
+    try:
+        session.add_all(
+            [
+                Notification(
+                    user_id=uid,
+                    title=title[:255],
+                    body=body or "",
+                    url=url or "/dashboard",
+                    category=category or "general",
+                )
+                for uid in unique_ids
+            ]
+        )
+        await session.commit()
+    except Exception as exc:  # noqa: BLE001
+        logger.error("persist notification feed failed: %s", exc)
+        try:
+            await session.rollback()
+        except Exception:  # noqa: BLE001
+            pass
+
+
 async def send_push_to_user(
     session: AsyncSession,
     user_id: int,
@@ -178,8 +219,14 @@ async def send_push_to_user(
     title: str,
     body: str,
     url: str = "/dashboard",
+    category: str = "general",
+    persist: bool = True,
 ) -> int:
     """Send push to all subscriptions for user_id. Returns success count."""
+    if persist:
+        await _persist_feed(
+            session, [user_id], title=title, body=body, url=url, category=category
+        )
     if not _PUSH_AVAILABLE:
         return 0
     try:
@@ -205,19 +252,22 @@ async def send_push_to_role(
     title: str,
     body: str,
     url: str = "/dashboard",
+    category: str = "general",
+    persist: bool = True,
 ) -> int:
     """Send push to all subscribed users with the given role."""
-    if not _PUSH_AVAILABLE:
+    user_ids_result = await session.execute(
+        select(User.id).where(User.role == role)
+    )
+    user_ids = [r for r in user_ids_result.scalars().all()]
+    if persist:
+        await _persist_feed(
+            session, user_ids, title=title, body=body, url=url, category=category
+        )
+    if not _PUSH_AVAILABLE or not user_ids:
         return 0
     try:
         private_pem, _ = await _get_or_create_vapid_keys(session)
-        # Join users to subscriptions filtered by role
-        user_ids_result = await session.execute(
-            select(User.id).where(User.role == role)
-        )
-        user_ids = [r for r in user_ids_result.scalars().all()]
-        if not user_ids:
-            return 0
         subs = (
             await session.execute(
                 select(PushSubscription).where(PushSubscription.user_id.in_(user_ids))
@@ -239,16 +289,15 @@ async def send_push_to_roles(
     title: str,
     body: str,
     url: str = "/dashboard",
+    category: str = "general",
+    persist: bool = True,
 ) -> int:
     """Send push to active subscribed users across multiple roles."""
-    if not _PUSH_AVAILABLE:
-        return 0
     role_list = [str(role).strip().lower() for role in roles if str(role).strip()]
     if not role_list:
         return 0
-    try:
-        private_pem, _ = await _get_or_create_vapid_keys(session)
-        user_ids = (
+    user_ids = list(
+        (
             await session.execute(
                 select(User.id).where(
                     User.role.in_(role_list),
@@ -258,8 +307,15 @@ async def send_push_to_roles(
                 )
             )
         ).scalars().all()
-        if not user_ids:
-            return 0
+    )
+    if persist:
+        await _persist_feed(
+            session, user_ids, title=title, body=body, url=url, category=category
+        )
+    if not _PUSH_AVAILABLE or not user_ids:
+        return 0
+    try:
+        private_pem, _ = await _get_or_create_vapid_keys(session)
         subs = (
             await session.execute(
                 select(PushSubscription).where(PushSubscription.user_id.in_(list(user_ids)))
@@ -280,19 +336,25 @@ async def broadcast_push(
     title: str,
     body: str,
     url: str = "/dashboard",
+    category: str = "general",
+    persist: bool = True,
 ) -> int:
     """Send push to all non-admin subscribed users."""
-    if not _PUSH_AVAILABLE:
-        return 0
-    try:
-        private_pem, _ = await _get_or_create_vapid_keys(session)
-        non_admin_ids = (
+    non_admin_ids = list(
+        (
             await session.execute(
                 select(User.id).where(User.role != "admin")
             )
         ).scalars().all()
-        if not non_admin_ids:
-            return 0
+    )
+    if persist:
+        await _persist_feed(
+            session, non_admin_ids, title=title, body=body, url=url, category=category
+        )
+    if not _PUSH_AVAILABLE or not non_admin_ids:
+        return 0
+    try:
+        private_pem, _ = await _get_or_create_vapid_keys(session)
         subs = (
             await session.execute(
                 select(PushSubscription).where(PushSubscription.user_id.in_(list(non_admin_ids)))
@@ -318,11 +380,14 @@ async def send_push_to_user_bg(
     title: str,
     body: str,
     url: str = "/dashboard",
+    category: str = "general",
 ) -> None:
     """Background-safe push: opens its own DB session."""
     try:
         async with session_factory() as session:
-            await send_push_to_user(session, user_id, title=title, body=body, url=url)
+            await send_push_to_user(
+                session, user_id, title=title, body=body, url=url, category=category
+            )
     except Exception as exc:  # noqa: BLE001
         logger.error("send_push_to_user_bg failed: %s", exc)
 
@@ -334,11 +399,14 @@ async def send_push_to_role_bg(
     title: str,
     body: str,
     url: str = "/dashboard",
+    category: str = "general",
 ) -> None:
     """Background-safe role push: opens its own DB session."""
     try:
         async with session_factory() as session:
-            await send_push_to_role(session, role, title=title, body=body, url=url)
+            await send_push_to_role(
+                session, role, title=title, body=body, url=url, category=category
+            )
     except Exception as exc:  # noqa: BLE001
         logger.error("send_push_to_role_bg failed: %s", exc)
 
@@ -350,10 +418,13 @@ async def send_push_to_roles_bg(
     title: str,
     body: str,
     url: str = "/dashboard",
+    category: str = "general",
 ) -> None:
     """Background-safe multi-role push for active users."""
     try:
         async with session_factory() as session:
-            await send_push_to_roles(session, roles, title=title, body=body, url=url)
+            await send_push_to_roles(
+                session, roles, title=title, body=body, url=url, category=category
+            )
     except Exception as exc:  # noqa: BLE001
         logger.error("send_push_to_roles_bg failed: %s", exc)
