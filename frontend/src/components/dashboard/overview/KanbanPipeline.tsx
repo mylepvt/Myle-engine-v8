@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Clock, Layers } from 'lucide-react'
+import { ArrowRight, Clock, Layers, TrendingDown, TrendingUp } from 'lucide-react'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -55,6 +55,17 @@ const STAGE_ROUTES: Record<string, string> = {
   converted: '/dashboard/work/leads?stage=converted',
 }
 
+function Trend({ current, previous }: { current: number; previous?: number }) {
+  if (previous == null) return null
+  if (current > previous) {
+    return <TrendingUp className="size-3 text-emerald-500" aria-label="up" />
+  }
+  if (current < previous) {
+    return <TrendingDown className="size-3 text-red-500" aria-label="down" />
+  }
+  return null
+}
+
 export function KanbanPipeline() {
   const [mode, setMode] = useState<'24h' | 'month'>('24h')
   const { data, isPending, isError } = useStageCounts(true, mode === '24h' ? 24 : undefined, mode === 'month' ? 'month' : undefined)
@@ -66,6 +77,14 @@ export function KanbanPipeline() {
       claimed: data.today_claimed ?? 0,
     }
   }, [data?.today_movements, data?.today_claimed])
+
+  const prevCounts = useMemo(() => {
+    if (!data?.previous_movements) return null
+    return {
+      ...data.previous_movements,
+      claimed: data.previous_claimed ?? 0,
+    }
+  }, [data?.previous_movements, data?.previous_claimed])
 
   const maxCount = useMemo(() => {
     const vals = Object.values(pipelineCounts)
@@ -196,8 +215,14 @@ export function KanbanPipeline() {
                   <span className="text-[11px] font-bold uppercase tracking-[0.08em]" style={{ color: col.color }}>
                     {col.title}
                   </span>
-                  <span className="text-lg font-extrabold tabular-nums" style={{ color: col.color }}>
+                  <span className="inline-flex items-center gap-1 text-lg font-extrabold tabular-nums" style={{ color: col.color }}>
                     {colTotal}
+                    {prevCounts && (
+                      <Trend
+                        current={colTotal}
+                        previous={col.stages.reduce((s, st) => s + ((prevCounts[st.key]) || 0), 0)}
+                      />
+                    )}
                   </span>
                 </div>
                 <div className="space-y-2">
@@ -224,8 +249,9 @@ export function KanbanPipeline() {
                               {stage.label}
                             </span>
                           </div>
-                          <span className="shrink-0 text-base font-extrabold tabular-nums" style={{ color: stage.color }}>
+                          <span className="inline-flex items-center gap-1 shrink-0 text-base font-extrabold tabular-nums" style={{ color: stage.color }}>
                             {count}
+                            {prevCounts && <Trend current={count} previous={prevCounts[stage.key]} />}
                           </span>
                         </div>
                         <div className="mt-2.5 flex items-center gap-2">
