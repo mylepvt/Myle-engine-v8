@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 
+import { cn } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAdminFeedStore, type AdminActivityEntry } from '@/stores/admin-feed-store'
 
@@ -14,13 +15,13 @@ const ICONS: Record<Kind, string> = {
   stage: '→',
 }
 
-const COLORS: Record<Kind, { bg: string; text: string; chip: string }> = {
-  new:        { bg: '#1e3a5f', text: '#93c5fd', chip: '#60a5fa' },
-  claim:      { bg: '#3b2f0e', text: '#fde68a', chip: '#fbbf24' },
-  conversion: { bg: '#0d3320', text: '#6ee7b7', chip: '#34d399' },
-  money:      { bg: '#1f1438', text: '#c4b5fd', chip: '#a78bfa' },
-  handoff:    { bg: '#1e1b2e', text: '#a5b4fc', chip: '#a5b4fc' },
-  stage:      { bg: '#3a3a3c', text: '#a1a1a6', chip: '#8e8e93' },
+const COLORS: Record<Kind, { box: string; boxText: string; chip: string }> = {
+  new:        { box: 'bg-blue-500/15', boxText: 'text-blue-400', chip: 'text-blue-400' },
+  claim:      { box: 'bg-amber-500/15', boxText: 'text-amber-400', chip: 'text-amber-400' },
+  conversion: { box: 'bg-emerald-500/15', boxText: 'text-emerald-400', chip: 'text-emerald-400' },
+  money:      { box: 'bg-violet-500/15', boxText: 'text-violet-400', chip: 'text-violet-400' },
+  handoff:    { box: 'bg-indigo-500/15', boxText: 'text-indigo-400', chip: 'text-indigo-400' },
+  stage:      { box: 'bg-muted', boxText: 'text-muted-foreground', chip: 'text-muted-foreground' },
 }
 
 function classify(action: string): Kind | null {
@@ -29,7 +30,7 @@ function classify(action: string): Kind | null {
   if (action === 'lead:closed') return 'conversion'
   if (action.startsWith('wallet')) return 'money'
   if (action === 'lead:assigned' || action === 'lead:auto_reassigned') return 'handoff'
-  if (action === 'lead:transitioned' || action === 'lead_state') return 'stage'
+  if (action === 'lead:transitioned' || action === 'lead_state' || action === 'commit_boundary') return 'stage'
   return null
 }
 
@@ -90,11 +91,11 @@ function cleanDesc(kind: Kind, desc: string): string {
   return desc
 }
 
-function Metric({ label, value, color }: { label: string; value: number; color: string }) {
+function Metric({ label, value, cls }: { label: string; value: number; cls: string }) {
   return (
-    <div className="flex-1 rounded-xl bg-[#3a3a3c] px-3 py-3 text-center">
-      <p className="text-xl font-bold tabular-nums" style={{ color }}>{value}</p>
-      <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.03em] text-[#8e8e93]">{label}</p>
+    <div className="flex-1 rounded-xl bg-muted px-3 py-3 text-center">
+      <p className={cn('text-xl font-bold tabular-nums', cls)}>{value}</p>
+      <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.03em] text-muted-foreground">{label}</p>
     </div>
   )
 }
@@ -105,28 +106,27 @@ function Row({ entry, kind }: { entry: AdminActivityEntry; kind: Kind }) {
   const desc = cleanDesc(kind, entry.description)
 
   return (
-    <div className="flex items-start gap-3 border-b border-[#3a3a3c] px-5 py-3 transition-colors hover:bg-[#333335]">
+    <div className="flex items-start gap-3 border-b border-border/50 px-5 py-3 transition-colors hover:bg-muted/40">
       <span
-        className="flex size-7 shrink-0 items-center justify-center rounded-lg text-sm font-medium"
-        style={{ background: c.bg, color: c.text }}
+        className={cn('flex size-7 shrink-0 items-center justify-center rounded-lg text-sm font-medium', c.box, c.boxText)}
       >
         {icon}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm leading-snug text-[#f5f5f7]">
-          {entry.actorName ? <strong className="font-semibold text-white">{entry.actorName} </strong> : null}
-          <span className="text-[#a1a1a6]">{desc}</span>
+        <p className="truncate text-sm leading-snug text-foreground">
+          {entry.actorName ? <strong className="font-semibold text-foreground">{entry.actorName} </strong> : null}
+          <span className="text-muted-foreground/70">{desc}</span>
         </p>
       </div>
-      <span className="shrink-0 pt-0.5 text-[11px] tabular-nums text-[#48484a]">{timeAgo(entry.timestamp)}</span>
+      <span className="shrink-0 pt-0.5 text-[11px] tabular-nums text-muted-foreground/40">{timeAgo(entry.timestamp)}</span>
     </div>
   )
 }
 
-function SectionDivider({ label, color }: { label: string; color: string }) {
+function SectionDivider({ label, cls }: { label: string; cls: string }) {
   return (
     <div className="px-5 pb-1 pt-3">
-      <span className="text-[10px] font-semibold uppercase tracking-[0.06em]" style={{ color }}>{label}</span>
+      <span className={cn('text-[10px] font-semibold uppercase tracking-[0.06em]', cls)}>{label}</span>
     </div>
   )
 }
@@ -154,15 +154,15 @@ export function LiveActivity() {
   }, [feed])
 
   return (
-    <Card className="border-none bg-[#2c2c2e] shadow-[0_4px_12px_rgba(0,0,0,0.3)]">
+    <Card>
       <CardContent className="p-0">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#3a3a3c] px-5 py-4">
-          <h2 className="text-[15px] font-semibold text-[#f5f5f7] tracking-[-0.01em]">Live Activity</h2>
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#34d399]">
+        <div className="flex items-center justify-between border-b border-border/50 px-5 py-4">
+          <h2 className="text-[15px] font-semibold text-foreground tracking-[-0.01em]">Live Activity</h2>
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-500">
             <span className="relative flex size-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#34d399] opacity-75" />
-              <span className="relative inline-flex size-1.5 rounded-full bg-[#34d399]" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-emerald-500" />
             </span>
             Live
           </span>
@@ -170,28 +170,31 @@ export function LiveActivity() {
 
         {/* Metrics */}
         <div className="flex gap-2 px-5 py-4">
-          <Metric label="New" value={pulse.newLeads} color="#60a5fa" />
-          <Metric label="Claims" value={pulse.claims} color="#fbbf24" />
-          <Metric label="Conv." value={pulse.conversions} color="#34d399" />
-          <Metric label="Revenue" value={pulse.money} color="#a78bfa" />
+          <Metric label="New" value={pulse.newLeads} cls="text-blue-400" />
+          <Metric label="Claims" value={pulse.claims} cls="text-amber-400" />
+          <Metric label="Conv." value={pulse.conversions} cls="text-emerald-400" />
+          <Metric label="Revenue" value={pulse.money} cls="text-violet-400" />
         </div>
 
         {/* Feed header */}
-        <div className="flex items-center justify-between border-t border-[#3a3a3c] px-5 pb-1 pt-2">
-          <span className="text-[11px] font-medium text-[#8e8e93]">Activity</span>
-          <span className="text-[11px] font-medium text-[#636366]">{pulse.total} events · Last hour</span>
+        <div className="flex items-center justify-between border-t border-border/50 px-5 pb-1 pt-2">
+          <span className="text-[11px] font-medium text-muted-foreground">Activity</span>
+          <span className="text-[11px] font-medium text-muted-foreground/50">{pulse.total} events · Last hour</span>
         </div>
 
         {/* Feed */}
         <div className="max-h-80 overflow-y-auto">
           {feed.length === 0 ? (
-            <p className="py-12 text-center text-sm text-[#636366]">
+            <p className="py-12 text-center text-sm text-muted-foreground/50">
               {!initialized ? 'Connecting to live stream…' : 'No activity in the last hour.'}
             </p>
           ) : (
             grouped.map((g) => (
               <div key={g.kind}>
-                <SectionDivider label={g.kind === 'conversion' ? 'Conversions' : `${g.kind.charAt(0).toUpperCase() + g.kind.slice(1)}s`} color={COLORS[g.kind].chip} />
+                <SectionDivider
+                  label={g.kind === 'conversion' ? 'Conversions' : `${g.kind.charAt(0).toUpperCase() + g.kind.slice(1)}s`}
+                  cls={COLORS[g.kind].chip}
+                />
                 {g.items.map(({ e, kind }) => (
                   <Row key={e.id} entry={e} kind={kind} />
                 ))}
@@ -201,10 +204,10 @@ export function LiveActivity() {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-[#3a3a3c] px-5 py-2.5">
-          <span className="text-[11px] font-medium text-[#636366]">Updated in real-time</span>
+        <div className="flex items-center justify-between border-t border-border/50 px-5 py-2.5">
+          <span className="text-[11px] font-medium text-muted-foreground/50">Updated in real-time</span>
           {feed.length > 0 && (
-            <span className="text-[11px] font-medium text-[#48484a]">{feed.length} events</span>
+            <span className="text-[11px] font-medium text-muted-foreground/40">{feed.length} events</span>
           )}
         </div>
       </CardContent>
