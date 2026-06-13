@@ -269,6 +269,35 @@ async def test_dashboard_scoping(session, monkeypatch, tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_trend_series_buckets_approved_sale_today(session, monkeypatch, tmp_path):
+    from app.core.time_ist import today_ist
+
+    monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
+    monkeypatch.setattr(sales_mod, "extract_forever_invoice", lambda data: _good_ocr())
+    ids = await _seed(session)
+    svc = SalesService(session)
+
+    await svc.submit_sale(
+        lead_id=ids["lead"], billing_stage="day3",
+        file=_FakeUpload(_png_bytes()), manual=SaleManualFields(),
+        actor_user_id=ids["team"], actor_role="team",
+    )
+
+    out = await svc.trend(user_id=ids["admin"], role="admin", days=30)
+    assert out["scope"] == "all"
+    assert out["days"] == 30
+    assert len(out["points"]) == 30
+    # auto-approved today → CC lands on today's IST bucket
+    today = today_ist().isoformat()
+    today_pt = next(p for p in out["points"] if p["date"] == today)
+    assert today_pt["case_credits"] == Decimal("1.002")
+    assert out["total_case_credits"] == Decimal("1.002")
+    assert out["total_cheque_cents"] >= 0
+    # clamps out-of-range day counts
+    assert (await svc.trend(user_id=ids["admin"], role="admin", days=999))["days"] == 90
+
+
+@pytest.mark.asyncio
 async def test_team_cannot_access_out_of_scope_lead(session, monkeypatch, tmp_path):
     monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
     monkeypatch.setattr(sales_mod, "extract_forever_invoice", lambda data: _good_ocr())

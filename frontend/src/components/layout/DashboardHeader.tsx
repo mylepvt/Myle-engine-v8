@@ -1,13 +1,13 @@
 import { type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, ClipboardCheck, Home, Menu, PanelLeftClose, Search, Settings } from 'lucide-react'
+import { Bell, Home, Menu, PanelLeftClose, Search, Settings } from 'lucide-react'
 
+import { NotificationsBell } from '@/components/layout/NotificationsBell'
 import { ShellHeaderFeedbackControls } from '@/components/layout/ShellHeaderFeedbackControls'
 import { Button } from '@/components/ui/button'
 import { StatusDot } from '@/components/ui/status-dot'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
-import { useFlpMinBillingApprovalsPendingQuery } from '@/hooks/use-team-query'
 import { useNoticeBoardUnread } from '@/hooks/use-notice-board-unread'
 import { useShellPreviewStore } from '@/stores/shell-preview-store'
 import { apiUrl } from '@/lib/api'
@@ -48,8 +48,6 @@ export function DashboardHeader({
   const setViewAsRole = useShellPreviewStore((s) => s.setViewAsRole)
   const { data: me } = useAuthMeQuery()
   const { unread: noticeBoardUnread } = useNoticeBoardUnread()
-  const enrollmentPending = useFlpMinBillingApprovalsPendingQuery()
-  const pendingEnrollCount = enrollmentPending.data?.total ?? 0
   const approverForEnroll =
     Boolean(me?.authenticated) && me?.role === 'admin'
 
@@ -149,41 +147,27 @@ export function DashboardHeader({
           <Settings className="size-[17px]" />
         </Link>
 
-        {approverForEnroll && pendingEnrollCount > 0 ? (
+        {approverForEnroll ? (
+          <NotificationsBell />
+        ) : (
           <div className="relative">
             <Link
-              to="/dashboard/team/flp-min-billing"
+              to="/dashboard/other/notice-board"
               className="relative flex min-h-[44px] min-w-[44px] items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground"
-              aria-label={`Min. FLP approvals — ${pendingEnrollCount} pending`}
+              aria-label={noticeBoardUnread > 0 ? `Notice board — ${noticeBoardUnread} new` : 'Notice board'}
             >
-              <ClipboardCheck className="size-[17px] text-success" />
+              <Bell className="size-[17px]" />
             </Link>
-            <span
-              className="pointer-events-none absolute -right-0.5 -top-0.5 flex min-w-[16px] items-center justify-center rounded bg-success px-1 text-[10px] font-bold leading-4 text-white"
-              aria-hidden
-            >
-              {pendingEnrollCount > 9 ? '9+' : pendingEnrollCount}
-            </span>
+            {noticeBoardUnread > 0 ? (
+              <span
+                className="pointer-events-none absolute -right-0.5 -top-0.5 flex min-w-[16px] items-center justify-center rounded bg-destructive px-1 text-[10px] font-bold leading-4 text-white"
+                aria-hidden
+              >
+                {noticeBoardUnread > 9 ? '9+' : noticeBoardUnread}
+              </span>
+            ) : null}
           </div>
-        ) : null}
-
-        <div className="relative">
-          <Link
-            to="/dashboard/other/notice-board"
-            className="relative flex min-h-[44px] min-w-[44px] items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground"
-            aria-label={noticeBoardUnread > 0 ? `Notice board — ${noticeBoardUnread} new` : 'Notice board'}
-          >
-            <Bell className="size-[17px]" />
-          </Link>
-          {noticeBoardUnread > 0 ? (
-            <span
-              className="pointer-events-none absolute -right-0.5 -top-0.5 flex min-w-[16px] items-center justify-center rounded bg-destructive px-1 text-[10px] font-bold leading-4 text-white"
-              aria-hidden
-            >
-              {noticeBoardUnread > 9 ? '9+' : noticeBoardUnread}
-            </span>
-          ) : null}
-        </div>
+        )}
 
         {shellRole != null ? (
           <span

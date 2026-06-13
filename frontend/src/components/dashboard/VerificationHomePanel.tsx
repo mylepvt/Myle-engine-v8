@@ -67,10 +67,19 @@ function TaskCard({ task }: { task: TaskAssignmentPublic }) {
       )}
 
       {task.status === 'pending' && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Button
+            size="sm"
+            className="bg-emerald-600 text-white hover:bg-emerald-700"
+            disabled={submitEvidence.isPending}
+            onClick={() => submitEvidence.mutate({ assignmentId: task.id, evidenceText: '✓ Marked done' })}
+          >
+            <CheckCircle2 className="mr-1 size-4" />
+            {submitEvidence.isPending ? 'Saving…' : 'Mark done'}
+          </Button>
           <Button size="sm" variant="outline" onClick={() => setShowSubmit(!showSubmit)}>
             <FileText className="mr-1 size-4" />
-            Submit
+            Add note
           </Button>
           <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => setShowBlock(!showBlock)}>
             <XCircle className="mr-1 size-4" />
