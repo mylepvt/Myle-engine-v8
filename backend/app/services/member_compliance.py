@@ -5,13 +5,14 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from typing import Iterable, Literal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.time_ist import IST, today_ist
 from app.models.daily_report import DailyReport
 from app.models.user import User
+from app.models.whatsapp_log import WhatsAppLog
 from app.services.live_metrics import (
     fresh_call_counts_by_user,
     fresh_lead_counts_by_user,
@@ -295,6 +296,34 @@ def _summarize_active_stage(
     if not labels:
         return title, "No active discipline warning."
     return title, " | ".join(labels)
+
+
+async def _final_warning_alert_sent_today(
+    session: AsyncSession, user_id: int, today: date
+) -> bool:
+    """True if a final-warning management WhatsApp for this member already went out today (IST).
+
+    ``build_compliance_snapshots(apply_actions=True)`` runs on essentially every
+    authenticated request, so without this guard a member sitting at final
+    warning would re-trigger the management alert on every request — spamming
+    management. We dedupe on the outbound WhatsApp log: one alert per member
+    per IST day.
+    """
+    day_start = datetime(today.year, today.month, today.day, tzinfo=IST)
+    day_end = day_start + timedelta(days=1)
+    existing = (
+        await session.execute(
+            select(func.count(WhatsAppLog.id)).where(
+                WhatsAppLog.direction == "out",
+                WhatsAppLog.message_type == "final_warning",
+                WhatsAppLog.related_user_id == user_id,
+                WhatsAppLog.status == "sent",
+                WhatsAppLog.created_at >= day_start,
+                WhatsAppLog.created_at < day_end,
+            )
+        )
+    ).scalar() or 0
+    return existing > 0
 
 
 async def build_compliance_snapshots(
@@ -601,7 +630,11 @@ async def build_compliance_snapshots(
             missing_report_streak=snapshot.missing_report_streak,
             call_target=call_target,
         )
-        if apply_actions and winning_level == "final_warning":
+        if (
+            apply_actions
+            and winning_level == "final_warning"
+            and not await _final_warning_alert_sent_today(session, user.id, today_date)
+        ):
             try:
                 from app.services.whatsapp_management_updates import send_management_final_warning_alert
                 await send_management_final_warning_alert(
@@ -610,7 +643,11 @@ async def build_compliance_snapshots(
                     member_fbo=user.fbo_id or "",
                     reason=snapshot.compliance_summary,
                     streak_days=max(snapshot.calls_short_streak, snapshot.missing_report_streak),
+                    related_user_id=user.id,
                 )
+                # Persist the outbound-log row so the per-day dedup holds across
+                # requests (most GET requests would otherwise not commit it).
+                changed = True
             except Exception as mgmt_exc:
                 logger.info("management final-warning alert failed user_id=%s: %s", user.id, mgmt_exc)
         snapshots[user.id] = snapshot
