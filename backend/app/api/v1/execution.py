@@ -182,10 +182,11 @@ async def execution_stage_counts(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
     hours: Optional[float] = Query(default=None, description="Rolling window hours instead of IST-today"),
+    range: Optional[str] = Query(default=None, description="'month' for current calendar month window"),
 ) -> dict:
     """Admin: active lead counts per pipeline stage + today's movements."""
     _require_admin(user)
-    return await enf.admin_stage_counts(session, hours=hours)
+    return await enf.admin_stage_counts(session, hours=hours, range=range)
 
 
 @router.get("/at-risk-leads", response_model=list[AtRiskLeadRow])

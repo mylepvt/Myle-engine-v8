@@ -2695,16 +2695,40 @@ def default_today_iso() -> str:
     return today_ist().isoformat()
 
 
-async def admin_stage_counts(session: AsyncSession, hours: Optional[float] = None) -> dict:
+def _start_of_month_ist(d: datetime.date) -> datetime:
+    """First day of the given date's month at 00:00 IST."""
+    return datetime.combine(d.replace(day=1), time(0, 0, 0), tzinfo=IST)
+
+
+def _start_of_prev_month_ist(d: datetime.date) -> datetime:
+    """First day of the previous month at 00:00 IST."""
+    month = d.month - 1 or 12
+    year = d.year if month != 12 else d.year - 1
+    return datetime.combine(d.replace(year=year, month=month, day=1), time(0, 0, 0), tzinfo=IST)
+
+
+async def admin_stage_counts(session: AsyncSession, hours: Optional[float] = None, range: Optional[str] = None) -> dict:
     """Admin: active lead counts per pipeline stage + today's/rolling activity.
 
-    When *hours* is provided, uses a rolling window (now − hours) instead of
-    IST-midnight for the "today" / movement queries.
+    When *range='month'* uses the current calendar month (IST) as the window
+    and the full previous month as the comparison. When *hours* is provided,
+    uses a rolling window (now − hours) with same-duration comparison.
     """
-    if hours is not None:
-        window_start = datetime.now(tz=IST) - timedelta(hours=hours)
+    now = datetime.now(tz=IST)
+    today = today_ist()
+    prev_window_start: Optional[datetime] = None
+    prev_window_end: Optional[datetime] = None
+
+    if range == 'month':
+        window_start = _start_of_month_ist(today)
+        prev_window_start = _start_of_prev_month_ist(today)
+        prev_window_end = window_start
+    elif hours is not None:
+        window_start = now - timedelta(hours=hours)
+        prev_window_start = window_start - timedelta(hours=hours)
+        prev_window_end = window_start
     else:
-        window_start = _start_of_day_ist(today_ist().isoformat())
+        window_start = _start_of_day_ist(today.isoformat())
     active_scope = and_(
         Lead.deleted_at.is_(None),
         Lead.archived_at.is_(None),
@@ -2751,9 +2775,49 @@ async def admin_stage_counts(session: AsyncSession, hours: Optional[float] = Non
         or 0
     )
 
-    return {
+    result = {
         "counts": counts,
         "today_movements": today_counts,
         "total": sum(counts.values()),
         "today_claimed": claimed_today,
     }
+
+    # Comparison data from the immediately preceding window.
+    if prev_window_start is not None:
+        p_end = prev_window_end or window_start
+        prev_stmt = (
+            select(Lead.status, func.count(Lead.id).label("n"))
+            .where(
+                active_scope,
+                _lead_last_activity_ts() >= prev_window_start,
+                _lead_last_activity_ts() < p_end,
+            )
+            .group_by(Lead.status)
+        )
+        prev_rows = (await session.execute(prev_stmt)).all()
+        prev_counts: dict[str, int] = {row[0]: row[1] for row in prev_rows}
+
+        prev_claimed = int(
+            (
+                await session.execute(
+                    select(func.count(ActivityLog.entity_id.distinct()))
+                    .where(
+                        ActivityLog.action.in_(("lead.claimed", "lead.claimed_free")),
+                        ActivityLog.created_at >= prev_window_start,
+                        ActivityLog.created_at < p_end,
+                        exists(
+                            select(Lead.id).where(
+                                Lead.id == ActivityLog.entity_id,
+                                active_scope,
+                            )
+                        ),
+                    )
+                )
+            ).scalar_one()
+            or 0
+        )
+
+        result["previous_movements"] = prev_counts
+        result["previous_claimed"] = prev_claimed
+
+    return result
