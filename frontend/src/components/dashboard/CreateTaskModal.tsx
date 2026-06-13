@@ -22,7 +22,8 @@ export function CreateTaskModal({ open, onClose }: Props) {
 
   const createTask = useCreateTask()
   const bulkAssign = useBulkAssignTask()
-  const { data: members = [] } = useTeamMembersQuery()
+  const { data } = useTeamMembersQuery()
+  const members = data?.items ?? []
 
   const filtered = members.filter((m) => {
     const q = search.toLowerCase()
