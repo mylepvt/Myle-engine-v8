@@ -56,8 +56,8 @@ const TEMPLATES: Template[] = [
     key: 'report',
     label: 'Daily report',
     Icon: MessageSquare,
-    title: 'Submit today’s daily report',
-    task_type: 'FOLLOWUP',
+    title: 'Submit today\'s daily report',
+    task_type: 'REPORT',
     evidence_instructions: 'Confirm your daily report is submitted.',
   },
   {

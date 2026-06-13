@@ -1,11 +1,8 @@
-import { useStageCounts } from '@/hooks/use-stage-counts-query'
 import { LiveFunnelColumn } from './LiveFunnelColumn'
 import { PeopleOpsPanel } from './PeopleOpsPanel'
 import { OpsKpiBar } from './OpsKpiBar'
 
 export function LiveOpsDashboard() {
-  useStageCounts()
-
   return (
     <div className="flex flex-col gap-4">
       {/* Mobile: stacked. Desktop lg+: 60/40 flex split — funnel left, people ops right */}

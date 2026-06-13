@@ -341,24 +341,24 @@ function LivePipeline({
               const pct = Math.round((s.total / max) * 100)
               const sharePct = grandTotal > 0 ? Math.round((s.total / grandTotal) * 100) : 0
               return (
-                <div key={s.status} className="group flex items-center gap-3">
-                  <span className="w-28 shrink-0 truncate text-right text-ds-caption font-medium text-muted-foreground">
+                <div key={s.status} className="group flex items-center gap-2 sm:gap-3">
+                  <span className="w-20 shrink-0 truncate text-right text-ds-caption font-medium text-muted-foreground sm:w-28">
                     {s.label}
                   </span>
-                  <div className="relative h-8 flex-1 overflow-hidden rounded-lg bg-muted/50">
+                  <div className="relative h-7 flex-1 overflow-hidden rounded-lg bg-muted/50 sm:h-8">
                     <div
                       className={cn(
-                        'flex h-full items-center justify-end rounded-lg px-2 transition-all duration-500',
+                        'flex h-full items-center justify-end rounded-lg px-1.5 transition-all duration-500 sm:px-2',
                         STAGE_COLORS[i % STAGE_COLORS.length],
                       )}
                       style={{ width: `${Math.max(pct, 6)}%` }}
                     >
-                      <span className="text-xs font-bold tabular-nums text-white drop-shadow">
+                      <span className="text-[11px] font-bold tabular-nums text-white drop-shadow sm:text-xs">
                         {s.total}
                       </span>
                     </div>
                   </div>
-                  <span className="w-10 shrink-0 text-right text-ds-caption tabular-nums text-subtle">
+                  <span className="w-8 shrink-0 text-right text-ds-caption tabular-nums text-subtle sm:w-10">
                     {sharePct}%
                   </span>
                 </div>
