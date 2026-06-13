@@ -2729,7 +2729,8 @@ async def admin_stage_counts(session: AsyncSession) -> dict:
     today_rows = (await session.execute(today_stmt)).all()
     today_counts: dict[str, int] = {row[0]: row[1] for row in today_rows}
 
-    # Pool claims today: count distinct leads claimed (paid or free) from pool today.
+    # Pool claims today: count distinct leads claimed (paid or free) from pool today,
+    # but only if the lead is still active (not archived/deleted/in_pool).
     claimed_today = int(
         (
             await session.execute(
@@ -2737,6 +2738,12 @@ async def admin_stage_counts(session: AsyncSession) -> dict:
                 .where(
                     ActivityLog.action.in_(("lead.claimed", "lead.claimed_free")),
                     ActivityLog.created_at >= today_start,
+                    exists(
+                        select(Lead.id).where(
+                            Lead.id == ActivityLog.entity_id,
+                            active_scope,
+                        )
+                    ),
                 )
             )
         ).scalar_one()

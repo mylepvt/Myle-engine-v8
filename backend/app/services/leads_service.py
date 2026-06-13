@@ -1327,8 +1327,8 @@ class LeadsService:
         body: LeadTransitionRequest,
         user: AuthUser,
     ) -> LeadTransitionResponse:
-        lead = await self._get_lead_or_404(lead_id)
-        if lead.deleted_at is not None:
+        lead = await self._repository.get_lead_for_update(lead_id)
+        if lead is None or lead.deleted_at is not None:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
         if not await self._repository.can_mutate_lead(user, lead):
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")

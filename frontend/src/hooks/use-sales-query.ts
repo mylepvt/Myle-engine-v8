@@ -166,6 +166,9 @@ async function rejectSale(saleId: number, reason: string): Promise<LeadSale> {
 function invalidateSales(qc: ReturnType<typeof useQueryClient>, leadId?: number) {
   void qc.invalidateQueries({ queryKey: ['sales-pending'] })
   void qc.invalidateQueries({ queryKey: ['sales-dashboard'] })
+  void qc.invalidateQueries({ queryKey: ['leads', 'list'] })
+  void qc.invalidateQueries({ queryKey: ['workboard'] })
+  void qc.invalidateQueries({ queryKey: ['execution'] })
   if (leadId != null) void qc.invalidateQueries({ queryKey: ['lead-sales', leadId] })
 }
 

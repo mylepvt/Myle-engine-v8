@@ -26,6 +26,7 @@ from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
 from app.models.lead_sale import LeadSale
 from app.models.user import User
+from app.core.realtime_hub import notify_topics
 from app.core.time_ist import IST, today_ist
 from app.schemas.sales import SaleApproveRequest, SaleManualFields
 from app.services.downline import (
@@ -266,6 +267,7 @@ class SalesService:
 
         await self.session.commit()
         await self.session.refresh(sale)
+        await notify_topics("leads")
         msg = (
             "Invoice verified and approved automatically"
             if auto_approved
@@ -321,6 +323,7 @@ class SalesService:
         await self._open_payment_gate_for_day3_sale(sale)
         await self.session.commit()
         await self.session.refresh(sale)
+        await notify_topics("leads")
         return True, "Sale approved", sale
 
     async def reject_sale(
@@ -337,6 +340,7 @@ class SalesService:
         await self._log(sale.lead_id, admin_user_id, "sale_rejected", sale.billing_stage)
         await self.session.commit()
         await self.session.refresh(sale)
+        await notify_topics("leads")
         return True, "Sale rejected", sale
 
     # ── Reads ────────────────────────────────────────────────────────────────
