@@ -181,6 +181,34 @@ export function useSalesDashboardQuery(enabled = true) {
   })
 }
 
+export type SaleTrendPoint = {
+  date: string
+  case_credits: string
+  cheque_cents: number
+}
+
+export type SaleTrendResponse = {
+  scope: 'self' | 'downline' | 'all'
+  days: number
+  points: SaleTrendPoint[]
+  total_case_credits: string
+  total_cheque_cents: number
+}
+
+async function fetchSalesTrend(days: number): Promise<SaleTrendResponse> {
+  const res = await apiFetch(`/api/v1/sales/trend?days=${days}`)
+  if (!res.ok) await parseError(res)
+  return res.json()
+}
+
+export function useSalesTrendQuery(days: number, enabled = true) {
+  return useQuery({
+    queryKey: ['sales-trend', days],
+    queryFn: () => fetchSalesTrend(days),
+    enabled,
+  })
+}
+
 export function useSubmitSaleMutation() {
   const qc = useQueryClient()
   return useMutation({

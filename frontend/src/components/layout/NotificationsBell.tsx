@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -31,7 +32,9 @@ type NotifyRow = {
 /** Admin pending-requests bell — aggregates every pending action into one dropdown. */
 export function NotificationsBell() {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<{ top: number; right: number }>({ top: 56, right: 12 })
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   const registrations = useQuery({
     queryKey: ['team', 'pending-registrations', 'bell'],
@@ -88,10 +91,28 @@ export function NotificationsBell() {
   const pendingTotal = rows.reduce((a, r) => a + r.count, 0)
   const badge = pendingTotal + noticeUnread
 
+  // Anchor the portal panel just under the bell, top-right aligned.
+  useLayoutEffect(() => {
+    if (!open) return
+    const place = () => {
+      const r = btnRef.current?.getBoundingClientRect()
+      if (r) setPos({ top: r.bottom + 8, right: Math.max(8, window.innerWidth - r.right) })
+    }
+    place()
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
+    return () => {
+      window.removeEventListener('resize', place)
+      window.removeEventListener('scroll', place, true)
+    }
+  }, [open])
+
   useEffect(() => {
     if (!open) return
     const onDocClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      const t = e.target as Node
+      if (btnRef.current?.contains(t) || panelRef.current?.contains(t)) return
+      setOpen(false)
     }
     const onEsc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
     document.addEventListener('mousedown', onDocClick)
@@ -103,8 +124,9 @@ export function NotificationsBell() {
   }, [open])
 
   return (
-    <div ref={ref} className="relative">
+    <div className="relative">
       <button
+        ref={btnRef}
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
@@ -120,19 +142,21 @@ export function NotificationsBell() {
         ) : null}
       </button>
 
-      {open && (
+      {open && createPortal(
         <div
+          ref={panelRef}
           role="menu"
-          className="absolute right-0 z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-border/60 bg-popover/95 shadow-xl backdrop-blur-xl"
+          style={{ position: 'fixed', top: pos.top, right: pos.right, maxHeight: 'calc(100vh - 72px)' }}
+          className="z-[60] flex w-72 max-w-[calc(100vw-16px)] flex-col overflow-hidden rounded-2xl border border-border/60 bg-popover/95 shadow-xl backdrop-blur-xl"
         >
-          <div className="flex items-center justify-between border-b border-border/40 px-4 py-2.5">
+          <div className="flex shrink-0 items-center justify-between border-b border-border/40 px-4 py-2.5">
             <span className="text-sm font-semibold text-foreground">Notifications</span>
             <span className="text-[11px] text-muted-foreground">
               {pendingTotal > 0 ? `${pendingTotal} pending` : 'All clear'}
             </span>
           </div>
 
-          <div className="p-1.5">
+          <div className="min-h-0 flex-1 overflow-y-auto p-1.5">
             {rows.map((r) => {
               const Icon = r.Icon
               const has = r.count > 0
@@ -164,7 +188,7 @@ export function NotificationsBell() {
           <Link
             to="/dashboard/other/notice-board"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-3 border-t border-border/40 px-4 py-2.5 text-sm text-foreground/90 transition hover:bg-muted/60"
+            className="flex shrink-0 items-center gap-3 border-t border-border/40 px-4 py-2.5 text-sm text-foreground/90 transition hover:bg-muted/60"
           >
             <Megaphone className="size-4 shrink-0 text-muted-foreground" />
             <span className="flex-1 text-left">Notice board</span>
@@ -174,7 +198,8 @@ export function NotificationsBell() {
               </span>
             ) : null}
           </Link>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

@@ -26,6 +26,7 @@ from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
 from app.models.lead_sale import LeadSale
 from app.models.user import User
+from app.core.time_ist import IST, today_ist
 from app.schemas.sales import SaleManualFields
 from app.services.downline import (
     is_user_in_downline_of,
@@ -421,6 +422,67 @@ class SalesService:
                 }
                 for owner_id, username, cnt, cc, amt, net in rows
             ],
+        }
+
+    async def trend(self, *, user_id: int, role: str, days: int = 30) -> dict:
+        """Daily approved-sales series (CC + approx cheque) over the last ``days``,
+        role-scoped. Bucketed by IST calendar day in Python so it is portable
+        across Postgres (timestamptz) and the SQLite test DB (naive IST wall clock).
+        """
+        days = max(1, min(days, 90))
+        owner_ids = await self._scope_owner_ids(user_id, role)
+        scope = "all" if owner_ids is None else ("downline" if role == "leader" else "self")
+
+        today = today_ist()
+        start = today - timedelta(days=days - 1)
+        # Coarse DB filter with a buffer to absorb tz boundary fuzz; precise
+        # bucketing happens below in IST.
+        cutoff = datetime.combine(start - timedelta(days=2), datetime.min.time())
+
+        where = [LeadSale.status == "approved", LeadSale.created_at >= cutoff]
+        if owner_ids is not None:
+            where.append(LeadSale.owner_user_id.in_(owner_ids))
+
+        rows = (
+            await self.session.execute(
+                select(
+                    LeadSale.approved_at,
+                    LeadSale.created_at,
+                    func.coalesce(LeadSale.case_credits, 0),
+                    _NET_CENTS,
+                ).where(and_(*where))
+            )
+        ).all()
+
+        cc_by_day: dict[date, Decimal] = {}
+        net_by_day: dict[date, int] = {}
+        for approved_at, created_at, cc, net in rows:
+            stamp = approved_at or created_at
+            if stamp is None:
+                continue
+            d = (stamp.astimezone(IST) if stamp.tzinfo else stamp).date()
+            if d < start or d > today:
+                continue
+            cc_by_day[d] = cc_by_day.get(d, Decimal("0")) + Decimal(str(cc or 0))
+            net_by_day[d] = net_by_day.get(d, 0) + int(net or 0)
+
+        points = []
+        total_cc = Decimal("0")
+        total_cheque = 0
+        for i in range(days):
+            d = start + timedelta(days=i)
+            cc = cc_by_day.get(d, Decimal("0"))
+            cheque = commission_from_net_cents(net_by_day.get(d, 0))
+            total_cc += cc
+            total_cheque += cheque
+            points.append({"date": d.isoformat(), "case_credits": cc, "cheque_cents": cheque})
+
+        return {
+            "scope": scope,
+            "days": days,
+            "points": points,
+            "total_case_credits": total_cc,
+            "total_cheque_cents": total_cheque,
         }
 
     async def _log(self, lead_id: int, user_id: int, action: str, stage: str) -> None:

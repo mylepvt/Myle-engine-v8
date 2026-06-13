@@ -28,6 +28,7 @@ from app.schemas.sales import (
     SaleManualFields,
     SaleRejectRequest,
     SaleSubmitResponse,
+    SaleTrendResponse,
 )
 from app.services.sales_service import SalesService
 
@@ -166,3 +167,15 @@ async def sales_dashboard(
     svc = SalesService(session)
     data = await svc.dashboard(user_id=user.user_id, role=user.role)
     return SaleDashboardResponse.model_validate(data)
+
+
+@router.get("/sales/trend", response_model=SaleTrendResponse)
+async def sales_trend(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    days: int = 30,
+) -> SaleTrendResponse:
+    """Daily approved CC + approx-cheque series (role-scoped) for the dashboard graph."""
+    svc = SalesService(session)
+    data = await svc.trend(user_id=user.user_id, role=user.role, days=days)
+    return SaleTrendResponse.model_validate(data)
