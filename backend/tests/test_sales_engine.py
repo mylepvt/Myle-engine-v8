@@ -210,8 +210,21 @@ async def test_admin_approve_and_reject(session, monkeypatch, tmp_path):
     )
     assert sale.status == "pending"
 
-    ok, _, approved = await svc.approve_sale(sale_id=sale.id, admin_user_id=ids["admin"])
+    # OCR missed CC → approving without entering it must be blocked, otherwise
+    # the booked sale would count 0 CC.
+    ok, msg, _ = await svc.approve_sale(sale_id=sale.id, admin_user_id=ids["admin"])
+    assert ok is False and "case credits" in msg.lower()
+
+    # Admin enters the real CC at approval → booked correctly.
+    from app.schemas.sales import SaleApproveRequest
+
+    ok, _, approved = await svc.approve_sale(
+        sale_id=sale.id,
+        admin_user_id=ids["admin"],
+        overrides=SaleApproveRequest(case_credits=Decimal("2.500")),
+    )
     assert ok and approved.status == "approved"
+    assert approved.case_credits == Decimal("2.500")
     assert approved.approved_by_user_id == ids["admin"]
     assert approved.auto_verified is False
 

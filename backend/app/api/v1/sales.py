@@ -23,6 +23,7 @@ from app.api.deps import AuthUser, get_db, require_auth_user
 from app.core.payment_validator import require_admin_role
 from app.schemas.sales import (
     LeadSalePublic,
+    SaleApproveRequest,
     SaleDashboardResponse,
     SaleListResponse,
     SaleManualFields,
@@ -122,10 +123,13 @@ async def approve_sale(
     sale_id: int,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    body: Optional[SaleApproveRequest] = None,
 ) -> LeadSalePublic:
     require_admin_role(user)
     svc = SalesService(session)
-    ok, msg, sale = await svc.approve_sale(sale_id=sale_id, admin_user_id=user.user_id)
+    ok, msg, sale = await svc.approve_sale(
+        sale_id=sale_id, admin_user_id=user.user_id, overrides=body
+    )
     if not ok or sale is None:
         code = (
             http_status.HTTP_404_NOT_FOUND

@@ -135,8 +135,20 @@ async function submitSale(args: {
   return res.json()
 }
 
-async function approveSale(saleId: number): Promise<LeadSale> {
-  const res = await apiFetch(`/api/v1/sales/${saleId}/approve`, { method: 'POST' })
+export type SaleApproveOverride = {
+  case_credits?: string
+  amount_cents?: number
+  cgst_cents?: number
+  sgst_cents?: number
+  invoice_number?: string
+}
+
+async function approveSale(saleId: number, overrides?: SaleApproveOverride): Promise<LeadSale> {
+  const res = await apiFetch(`/api/v1/sales/${saleId}/approve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(overrides ?? {}),
+  })
   if (!res.ok) await parseError(res)
   return res.json()
 }
@@ -192,7 +204,8 @@ export function useSubmitSaleMutation() {
 export function useApproveSaleMutation() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (saleId: number) => approveSale(saleId),
+    mutationFn: ({ saleId, overrides }: { saleId: number; overrides?: SaleApproveOverride }) =>
+      approveSale(saleId, overrides),
     onSuccess: (sale) => invalidateSales(qc, sale.lead_id),
   })
 }

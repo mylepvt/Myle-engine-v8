@@ -26,7 +26,7 @@ from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
 from app.models.lead_sale import LeadSale
 from app.models.user import User
-from app.schemas.sales import SaleManualFields
+from app.schemas.sales import SaleApproveRequest, SaleManualFields
 from app.services.downline import (
     is_user_in_downline_of,
     lead_execution_visible_to_leader_clause,
@@ -274,13 +274,39 @@ class SalesService:
 
     # ── Admin approve / reject ───────────────────────────────────────────────
     async def approve_sale(
-        self, *, sale_id: int, admin_user_id: int
+        self,
+        *,
+        sale_id: int,
+        admin_user_id: int,
+        overrides: Optional[SaleApproveRequest] = None,
     ) -> Tuple[bool, str, Optional[LeadSale]]:
         sale = await self.session.get(LeadSale, sale_id)
         if not sale:
             return False, "Sale not found", None
         if sale.status == "approved":
             return False, "Already approved", sale
+
+        # Admin can correct values OCR missed before booking — otherwise
+        # approving a blank-OCR invoice would count 0 CC / ₹0.
+        if overrides is not None:
+            if overrides.case_credits is not None:
+                sale.case_credits = overrides.case_credits
+            if overrides.amount_cents is not None:
+                sale.amount_cents = overrides.amount_cents
+            if overrides.cgst_cents is not None:
+                sale.cgst_cents = overrides.cgst_cents
+            if overrides.sgst_cents is not None:
+                sale.sgst_cents = overrides.sgst_cents
+            if overrides.invoice_number is not None:
+                sale.invoice_number = overrides.invoice_number.strip() or None
+
+        # A booked sale must carry real CC + amount, else it contributes nothing
+        # to the rollup or the graph.
+        if sale.case_credits is None or sale.case_credits <= 0:
+            return False, "Enter case credits before approving", sale
+        if sale.amount_cents is None or sale.amount_cents <= 0:
+            return False, "Enter the invoice amount before approving", sale
+
         # Re-run the duplicate guard at approval time too.
         num = (sale.invoice_number or "").strip()
         if num and await self._invoice_number_in_use(num, exclude_sale_id=sale.id):

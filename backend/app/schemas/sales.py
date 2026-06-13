@@ -72,6 +72,21 @@ class SaleRejectRequest(BaseModel):
     reason: str = Field(min_length=1, max_length=512)
 
 
+class SaleApproveRequest(BaseModel):
+    """Optional value corrections applied at approval time.
+
+    When OCR can't read an invoice it lands ``pending`` — the admin then enters
+    the real CC / amount here so the approved sale books the right numbers
+    (otherwise approving a blank-OCR invoice would count 0 CC / ₹0).
+    """
+
+    case_credits: Optional[Decimal] = Field(default=None, ge=0)
+    amount_cents: Optional[int] = Field(default=None, ge=0)
+    cgst_cents: Optional[int] = Field(default=None, ge=0)
+    sgst_cents: Optional[int] = Field(default=None, ge=0)
+    invoice_number: Optional[str] = Field(default=None, max_length=64)
+
+
 class SaleDashboardRow(BaseModel):
     """Per-owner CC + revenue rollup (approved sales only)."""
 
