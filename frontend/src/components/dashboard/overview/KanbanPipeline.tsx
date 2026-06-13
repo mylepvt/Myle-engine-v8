@@ -56,8 +56,8 @@ const STAGE_ROUTES: Record<string, string> = {
 }
 
 export function KanbanPipeline() {
-  const { data, isPending, isError } = useStageCounts()
   const [mode, setMode] = useState<'all' | '24h'>('all')
+  const { data, isPending, isError } = useStageCounts(true, mode === '24h' ? 24 : undefined)
 
   const pipelineCounts = useMemo(() => {
     if (mode === '24h') {
