@@ -28,6 +28,76 @@ def ist_day_bounds(d: date) -> tuple[datetime, datetime]:
     return start, start + timedelta(days=1)
 
 
+async def compute_work_trend(
+    session: AsyncSession,
+    *,
+    user_ids: Iterable[int] | None,
+    days: int = 30,
+) -> dict:
+    """Daily team-work series (calls + Day 1 + payments + reporters) over the
+    last ``days``, scoped to ``user_ids``. ``report_date`` is already an IST
+    calendar day, so we group on it directly. Missing days are zero-filled.
+    """
+    from app.models.daily_report import DailyReport
+
+    days = max(1, min(days, 90))
+    today = datetime.now(IST).date()
+    start = today - timedelta(days=days - 1)
+
+    where = [DailyReport.report_date >= start, DailyReport.report_date <= today]
+    ids = _normalized_user_ids(user_ids)
+    if ids is not None:
+        if not ids:
+            return {
+                "days": days,
+                "points": [
+                    {"date": (start + timedelta(days=i)).isoformat(), "calls": 0, "day1": 0, "payments": 0, "reporters": 0}
+                    for i in range(days)
+                ],
+                "total_calls": 0,
+                "total_day1": 0,
+                "total_payments": 0,
+            }
+        where.append(DailyReport.user_id.in_(ids))
+
+    rows = (
+        await session.execute(
+            select(
+                DailyReport.report_date,
+                func.coalesce(func.sum(DailyReport.total_calling), 0),
+                func.coalesce(func.sum(DailyReport.day1_count), 0),
+                func.coalesce(func.sum(DailyReport.payments_actual), 0),
+                func.count(DailyReport.id),
+            )
+            .where(and_(*where))
+            .group_by(DailyReport.report_date)
+        )
+    ).all()
+    by_day = {r[0]: r for r in rows}
+
+    points = []
+    tot_calls = tot_day1 = tot_pay = 0
+    for i in range(days):
+        d = start + timedelta(days=i)
+        r = by_day.get(d)
+        calls = int(r[1]) if r else 0
+        day1 = int(r[2]) if r else 0
+        pay = int(r[3]) if r else 0
+        reporters = int(r[4]) if r else 0
+        tot_calls += calls
+        tot_day1 += day1
+        tot_pay += pay
+        points.append({"date": d.isoformat(), "calls": calls, "day1": day1, "payments": pay, "reporters": reporters})
+
+    return {
+        "days": days,
+        "points": points,
+        "total_calls": tot_calls,
+        "total_day1": tot_day1,
+        "total_payments": tot_pay,
+    }
+
+
 def _active_pipeline_filter():
     """Same idea as main lead list: working set, not pool / archive / deleted."""
     return and_(

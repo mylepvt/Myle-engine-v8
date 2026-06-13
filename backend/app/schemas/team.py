@@ -153,6 +153,22 @@ class TeamReportsLiveSummary(BaseModel):
     converted_total: int
 
 
+class TeamWorkTrendPoint(BaseModel):
+    date: str
+    calls: int = 0
+    day1: int = 0
+    payments: int = 0
+    reporters: int = 0
+
+
+class TeamWorkTrendResponse(BaseModel):
+    days: int
+    points: list[TeamWorkTrendPoint] = Field(default_factory=list)
+    total_calls: int = 0
+    total_day1: int = 0
+    total_payments: int = 0
+
+
 class TeamReportsMemberBase(BaseModel):
     user_id: int
     member_name: str
