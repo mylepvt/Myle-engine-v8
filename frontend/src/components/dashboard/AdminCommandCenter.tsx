@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode, useCallback } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -846,7 +846,8 @@ export function AdminCommandCenter({ firstName }: Props) {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 overflow-x-hidden">
-      {/* ── Compact operational summary ── */}
+      {/* ── Compact operational summary (hidden on Overview — HeroBand replaces it) ── */}
+      {activeTab !== 'overview' && (
       <div className="rounded border border-border/60 bg-card px-2 sm:px-3 py-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0 flex-1">
@@ -917,6 +918,7 @@ export function AdminCommandCenter({ firstName }: Props) {
           </div>
         </div>
       </div>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="mb-5 flex items-center justify-between gap-3">
