@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 
 export type AdminActivityEntry = {
   id: string
@@ -29,32 +30,43 @@ type AdminFeedState = {
 
 const MAX_ENTRIES = 500
 
-export const useAdminFeedStore = create<AdminFeedState>((set, get) => ({
-  entries: [],
-  unreadCount: 0,
-  paused: false,
-  initialized: false,
-  _refreshFn: null,
+export const useAdminFeedStore = create<AdminFeedState>()(
+  persist(
+    (set, get) => ({
+      entries: [],
+      unreadCount: 0,
+      paused: false,
+      initialized: false,
+      _refreshFn: null,
 
-  pushEntry: (entry) => {
-    set((s) => {
-      const next = [entry, ...s.entries].slice(0, MAX_ENTRIES)
-      return {
-        entries: next,
-        initialized: true,
-        unreadCount: s.paused ? s.unreadCount + 1 : 0,
-      }
-    })
-  },
+      pushEntry: (entry) => {
+        set((s) => {
+          const next = [entry, ...s.entries].slice(0, MAX_ENTRIES)
+          return {
+            entries: next,
+            initialized: true,
+            unreadCount: s.paused ? s.unreadCount + 1 : 0,
+          }
+        })
+      },
 
-  setInitialEntries: (initial) =>
-    set({ entries: initial.slice(0, MAX_ENTRIES), initialized: true }),
+      setInitialEntries: (initial) =>
+        set((s) => ({
+          entries: initial.length > s.entries.length ? initial.slice(0, MAX_ENTRIES) : s.entries,
+          initialized: true,
+        })),
 
-  markAllRead: () => set({ unreadCount: 0 }),
+      markAllRead: () => set({ unreadCount: 0 }),
 
-  setPaused: (v) => set({ paused: v }),
+      setPaused: (v) => set({ paused: v }),
 
-  setRefreshFn: (fn) => set({ _refreshFn: fn }),
+      setRefreshFn: (fn) => set({ _refreshFn: fn }),
 
-  refresh: () => get()._refreshFn?.(),
-}))
+      refresh: () => get()._refreshFn?.(),
+    }),
+    {
+      name: 'admin-activity-feed',
+      partialize: (state) => ({ entries: state.entries }),
+    },
+  ),
+)
