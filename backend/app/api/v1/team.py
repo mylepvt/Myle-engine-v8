@@ -39,6 +39,7 @@ from app.schemas.team import (
     TeamReportMissingMember,
     TeamReportsLiveSummary,
     TeamReportsResponse,
+    TeamWorkTrendResponse,
     TeamSelfGraceRequestBody,
 )
 from app.db.session import AsyncSessionLocal
@@ -52,7 +53,7 @@ from app.services.grace_intelligence import (
 )
 from app.services.payment_service import PaymentService
 from app.services.push_service import send_push_to_user
-from app.services.team_reports_metrics import IST, compute_live_summary
+from app.services.team_reports_metrics import IST, compute_live_summary, compute_work_trend
 from app.services.user_hierarchy import (
     load_user_hierarchy_entries,
     nearest_leader_entry,
@@ -704,6 +705,21 @@ async def team_reports(
             "Daily report rows are read-only and ordered by latest submission time."
         ),
     )
+
+
+@router.get("/reports/trend", response_model=TeamWorkTrendResponse)
+async def team_reports_trend(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    days: int = Query(default=30, ge=1, le=90),
+) -> TeamWorkTrendResponse:
+    """Daily team-work series (calls / Day 1 / payments) for the dashboard graph,
+    scoped the same way as /team/reports."""
+    _require_admin_or_leader(user)
+    scope_members = await _team_reports_scope_members(session, user)
+    scope_user_ids = [member.user_id for member in scope_members]
+    data = await compute_work_trend(session, user_ids=scope_user_ids, days=days)
+    return TeamWorkTrendResponse.model_validate(data)
 
 
 @router.get("/pending-registrations", response_model=PendingRegistrationsResponse)
