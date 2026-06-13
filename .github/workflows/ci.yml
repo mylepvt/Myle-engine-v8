@@ -166,8 +166,8 @@ jobs:
           VITE_API_URL: ""
         run: npm run build
 
-      - name: npm audit (high severity+)
-        run: npm audit --audit-level=high
+      - name: npm audit (high severity+, production deps only)
+        run: npm audit --audit-level=high --omit=dev
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium

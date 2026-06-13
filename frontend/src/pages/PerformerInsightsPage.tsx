@@ -21,13 +21,11 @@ import {
   ShieldAlert,
   ShieldCheck,
   Activity,
-  ExternalLink,
 } from 'lucide-react'
 import {
   usePerformerInsightsQuery,
   type SuggestedMember,
   type FlaggedMember,
-  type EliteAtRiskMember,
 } from '@/hooks/use-performer-insights-query'
 import { cn } from '@/lib/utils'
 
@@ -120,7 +118,7 @@ function SuggestedCard({ member, isElite }: { member: SuggestedMember; isElite: 
 
 type Props = { title?: string }
 
-export default function PerformerInsightsPage({ title: _title }: Props) {
+export default function PerformerInsightsPage({ title = 'Performer Insights' }: Props) {
   const [days, setDays] = useState(30)
   const [filterMode, setFilterMode] = useState<FilterMode>('all')
   const [copied, setCopied] = useState(false)
@@ -224,7 +222,7 @@ export default function PerformerInsightsPage({ title: _title }: Props) {
         <div>
           <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
             <Trophy className="w-5 h-5 text-amber-500" />
-            Performer Insights
+            {title}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             Statistical engine ranking genuine contributors with integrity audit &amp; elite risk prediction

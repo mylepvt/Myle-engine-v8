@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import delete, func, select
 
 from app.models.activity_log import ActivityLog
-from app.models.enroll_share_link import EnrollShareLink
+from app.models.flp_min_billing_share_link import FlpMinBillingShareLink
 from app.models.lead import Lead
 from app.models.user import User
 from app.models.wallet_ledger import WalletLedgerEntry
@@ -22,7 +22,7 @@ async def _reset_state() -> None:
     factory = test_conftest.get_test_session_factory()
     async with factory() as session:
         await session.execute(delete(ActivityLog))
-        await session.execute(delete(EnrollShareLink))
+        await session.execute(delete(FlpMinBillingShareLink))
         await session.execute(delete(WalletLedgerEntry))
         await session.execute(delete(Lead))
         await session.execute(delete(User).where(User.id > 3))
@@ -146,7 +146,7 @@ async def _seed_cycle_data() -> dict[str, int]:
 
         session.add_all(
             [
-                EnrollShareLink(
+                FlpMinBillingShareLink(
                     token="archive-only-token",
                     lead_id=archive_only.id,
                     created_by_user_id=3,
@@ -156,7 +156,7 @@ async def _seed_cycle_data() -> dict[str, int]:
                     last_viewed_at=archive_only_at,
                     expires_at=now + timedelta(minutes=5),
                 ),
-                EnrollShareLink(
+                FlpMinBillingShareLink(
                     token="archive-and-reassign-token",
                     lead_id=archive_and_reassign.id,
                     created_by_user_id=3,
@@ -166,7 +166,7 @@ async def _seed_cycle_data() -> dict[str, int]:
                     last_viewed_at=archive_and_reassign_at,
                     expires_at=now + timedelta(minutes=5),
                 ),
-                EnrollShareLink(
+                FlpMinBillingShareLink(
                     token="already-archived-token",
                     lead_id=already_archived_stale.id,
                     created_by_user_id=3,
@@ -176,7 +176,7 @@ async def _seed_cycle_data() -> dict[str, int]:
                     last_viewed_at=archived_stale_watch_at,
                     expires_at=now + timedelta(minutes=5),
                 ),
-                EnrollShareLink(
+                FlpMinBillingShareLink(
                     token="stale-paid-token",
                     lead_id=stale_paid.id,
                     created_by_user_id=3,

@@ -10,7 +10,7 @@ from sqlalchemy import delete, select
 
 from app.models.app_setting import AppSetting
 from app.models.crm_outbox import CrmOutbox
-from app.models.enroll_share_link import EnrollShareLink
+from app.models.flp_min_billing_share_link import FlpMinBillingShareLink
 from app.models.lead import Lead
 from main import app
 from util_jwt_patch import patch_jwt_settings
@@ -20,7 +20,7 @@ async def _clear_state() -> None:
     factory = test_conftest.get_test_session_factory()
     async with factory() as session:
         await session.execute(delete(CrmOutbox))
-        await session.execute(delete(EnrollShareLink))
+        await session.execute(delete(FlpMinBillingShareLink))
         await session.execute(delete(AppSetting))
         await session.execute(delete(Lead))
         await session.commit()
@@ -100,7 +100,7 @@ def test_send_enrollment_video_creates_secure_link_without_starting_expiry_until
                 assert lead.status == "video_sent"
                 assert lead.call_status == "not_called"
                 assert lead.whatsapp_sent_at is not None
-                link = (await session.execute(select(EnrollShareLink))).scalar_one()
+                link = (await session.execute(select(FlpMinBillingShareLink))).scalar_one()
                 assert link.youtube_url == "https://cdn.example.com/private/enrollment.mp4"
                 assert link.expires_at is None
 
@@ -156,7 +156,7 @@ def test_watch_link_requires_matching_phone_and_marks_completion_time(
                 assert lead.status == "video_sent"
                 assert lead.call_status == "not_called"
                 assert lead.last_action_at is not None
-                link = (await session.execute(select(EnrollShareLink))).scalar_one()
+                link = (await session.execute(select(FlpMinBillingShareLink))).scalar_one()
                 assert link.status_synced is True
                 assert link.viewer_name == "Priya Sharma"
                 assert link.viewer_phone == "9876543210"
@@ -218,7 +218,7 @@ def test_watch_link_expires_after_fifty_minutes(monkeypatch: pytest.MonkeyPatch)
         async def _expire() -> None:
             factory = test_conftest.get_test_session_factory()
             async with factory() as session:
-                link = (await session.execute(select(EnrollShareLink))).scalar_one()
+                link = (await session.execute(select(FlpMinBillingShareLink))).scalar_one()
                 link.expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
                 await session.commit()
 
@@ -264,7 +264,7 @@ def test_send_enrollment_video_uses_selected_live_session_slot_when_provided(
         async def _assert_db() -> None:
             factory = test_conftest.get_test_session_factory()
             async with factory() as session:
-                link = (await session.execute(select(EnrollShareLink))).scalar_one()
+                link = (await session.execute(select(FlpMinBillingShareLink))).scalar_one()
                 assert link.youtube_url == "https://cdn.example.com/private/live-12.mp4"
                 assert link.title == "Enrollment Live Session • 12:00 PM"
 

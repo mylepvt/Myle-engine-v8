@@ -38,8 +38,6 @@ const STEPS = [
 
 // ─── Connection paths ───
 function ConnPaths({ visible, selectedId }: { visible: boolean; selectedId: string | null }) {
-  if (!visible) return null
-
   const groups = useMemo(() => {
     const m = new Map<string, typeof allConns>()
     for (const c of allConns) {
@@ -51,6 +49,8 @@ function ConnPaths({ visible, selectedId }: { visible: boolean; selectedId: stri
     }
     return Array.from(m.entries())
   }, [])
+
+  if (!visible) return null
 
   const pathD = (x1: number, y1: number, x2: number, y2: number) => {
     const d = Math.abs(y2 - y1)
@@ -79,7 +79,7 @@ function ConnPaths({ visible, selectedId }: { visible: boolean; selectedId: stri
             <text x={midX} y={midY - 12} textAnchor="middle" fill={LAYER_CONFIG[fl as keyof typeof LAYER_CONFIG]?.color ?? '#475569'} fontSize="7" fontWeight={600} fontFamily="monospace" opacity={0.4}>
               {fl.replace('-', ' ')} → {tl.replace('-', ' ')}
             </text>
-            {conns.map((c, ci) => {
+            {conns.map((c) => {
               const f = nodeLayout.get(c.from); const t = nodeLayout.get(c.to)
               if (!f || !t) return null
               const x1 = f.x, y1 = f.y + f.h / 2
@@ -113,6 +113,7 @@ function NodeCard({
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState({ x: lp.x, y: lp.y })
+  const [dragging, setDragging] = useState(false)
   const drag = useRef({ active: false, sx: 0, sy: 0, ox: 0, oy: 0, moved: false })
 
   useEffect(() => { setPos({ x: lp.x, y: lp.y }) }, [lp.x, lp.y])
@@ -120,13 +121,14 @@ function NodeCard({
   const hd = useCallback((e: React.PointerEvent) => {
     e.stopPropagation(); (e.target as HTMLElement).setPointerCapture(e.pointerId)
     drag.current = { active: true, sx: e.clientX, sy: e.clientY, ox: pos.x, oy: pos.y, moved: false }
+    setDragging(true)
   }, [pos])
   const hm = useCallback((e: React.PointerEvent) => {
     if (!drag.current.active) return
     if (Math.hypot(e.clientX - drag.current.sx, e.clientY - drag.current.sy) > 4) drag.current.moved = true
     setPos({ x: drag.current.ox + (e.clientX - drag.current.sx), y: drag.current.oy + (e.clientY - drag.current.sy) })
   }, [])
-  const hu = useCallback(() => { drag.current.active = false }, [])
+  const hu = useCallback(() => { drag.current.active = false; setDragging(false) }, [])
   const hc = useCallback(() => { if (!drag.current.moved) onSelect(sel ? null : node.id) }, [node.id, sel, onSelect])
 
   const dim = searchActive && !isMatch
@@ -136,7 +138,7 @@ function NodeCard({
       style={{
         position: 'absolute', left: pos.x, top: pos.y, transform: 'translate(-50%, -50%)',
         width: lp.w, zIndex: sel ? 100 : hov ? 50 : 10, opacity: dim ? 0.1 : 1, cursor: 'grab',
-        transition: drag.current.active ? 'none' : 'box-shadow 0.2s, transform 0.15s',
+        transition: dragging ? 'none' : 'box-shadow 0.2s, transform 0.15s',
       }}>
       <div className={`rounded-lg border transition-all bg-slate-900/90 backdrop-blur-sm ${sel ? 'ring-2' : hov ? 'ring-1' : ''}`}
         style={{
@@ -162,7 +164,7 @@ function NodeCard({
 function StepSidebar({ selectedLayer, onStepClick }: { selectedLayer: string | null; onStepClick: (layer: string) => void }) {
   return (
     <div className="flex flex-col gap-1 py-2">
-      {STEPS.map((step, i) => {
+      {STEPS.map((step) => {
         const active = selectedLayer === step.layer
         // Find the layer color
         const cfg = LAYER_CONFIG[step.layer as keyof typeof LAYER_CONFIG]

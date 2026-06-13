@@ -32,7 +32,7 @@ function useReducedMotion(): boolean {
   return reduced
 }
 
-export function OnboardingTour({ steps, onNext, onSkip, onDone }: OnboardingTourProps) {
+export function OnboardingTour({ steps, onSkip, onDone }: OnboardingTourProps) {
   const [current, setCurrent] = useState(0)
   const reduced = useReducedMotion()
   const cardRef = useRef<HTMLDivElement>(null)

@@ -20,8 +20,6 @@ for (const n of ALL_NODES) {
     if (ALL_NODES.find(x => x.id === cid)) allEdges.push({ from: n.id, to: cid, color: n.color })
   }
 }
-const edgeSet = new Set(allEdges.map(e => `${e.from}-${e.to}`))
-
 function getNodeEdges(nodeId: string): Edge[] {
   return allEdges.filter(e => e.from === nodeId || e.to === nodeId)
 }
@@ -104,9 +102,9 @@ function ConnectionLines({ visible, selectedId }: { visible: boolean; selectedId
     }
   })
 
-  if (!visible) return null
-
   const coneGeo = useMemo(() => new THREE.ConeGeometry(0.2, 0.4, 6), [])
+
+  if (!visible) return null
 
   return (
     <group>

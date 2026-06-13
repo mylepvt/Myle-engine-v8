@@ -170,7 +170,7 @@ export function AuditLogsPage({ title }: Props) {
         (e.entity_type ?? '').toLowerCase().includes(q) ||
         String(e.entity_id ?? '').includes(q),
     )
-  }, [data?.items, qText])
+  }, [data, qText])
 
   return (
     <div className="space-y-5">

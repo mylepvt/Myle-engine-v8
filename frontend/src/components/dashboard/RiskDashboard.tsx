@@ -117,7 +117,6 @@ export function RiskDashboard() {
   const { data, isPending, isError, refetch } = usePredictiveRisk()
   const [search, setSearch] = useState('')
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc')
-  const [tab, setTab] = useState<'members' | 'leaders'>('members')
 
   const filteredMembers = useMemo(() => {
     if (!data) return []

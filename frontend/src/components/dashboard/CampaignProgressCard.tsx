@@ -1,4 +1,3 @@
-import { cn } from '@/lib/utils'
 import { CheckCircle2, GraduationCap } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
@@ -9,7 +8,6 @@ import { useMyCampaigns, useSubmitCampaignProgress, type CampaignEnrollmentPubli
 
 function CampaignProgressRow({
   item,
-  enrollmentId,
   onTick,
   ticking,
 }: {

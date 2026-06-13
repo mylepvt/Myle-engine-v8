@@ -51,9 +51,19 @@ async def set_management_phone(session: AsyncSession, phone: str) -> None:
 
 
 async def _toggle_enabled(session: AsyncSession, key: str) -> bool:
+    """Management updates are ON by default (opt-out).
+
+    The toggle keys are only ever read here — nothing in the app writes them
+    (there is no UI/endpoint to turn them on). Treating "unset" as disabled
+    silently blocked every automatic update to management. So an update is
+    only considered disabled when the setting is explicitly set to a falsy
+    value; otherwise it stays enabled.
+    """
     svc = SettingsService(session)
     val = await svc.get_app_setting(key)
-    return val and val.lower() in ("1", "true", "yes")
+    if val is None or not val.strip():
+        return True
+    return val.strip().lower() not in ("0", "false", "no", "off", "disabled")
 
 
 async def _send_wa_message(

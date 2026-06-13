@@ -34,7 +34,7 @@ export function RetargetWorkPage({ title }: Props) {
         l.name.toLowerCase().includes(q) ||
         l.phone?.toLowerCase().includes(q),
     )
-  }, [data?.items, qInput])
+  }, [data, qInput])
 
   return (
     <div className="max-w-2xl space-y-4">

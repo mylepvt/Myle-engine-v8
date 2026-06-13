@@ -14,7 +14,7 @@ from app.models.activity_log import ActivityLog
 from app.models.batch_day_submission import BatchDaySubmission
 from app.models.call_event import CallEvent
 from app.models.crm_outbox import CrmOutbox
-from app.models.enroll_share_link import EnrollShareLink
+from app.models.flp_min_billing_share_link import FlpMinBillingShareLink
 from app.models.lead import Lead
 from app.models.user import User
 from main import app
@@ -32,7 +32,7 @@ async def _reset_execution_tables() -> None:
     factory = get_test_session_factory()
     async with factory() as session:
         await session.execute(delete(BatchDaySubmission))
-        await session.execute(delete(EnrollShareLink))
+        await session.execute(delete(FlpMinBillingShareLink))
         await session.execute(delete(CallEvent))
         await session.execute(delete(CrmOutbox))
         await session.execute(delete(ActivityLog))
@@ -161,7 +161,7 @@ async def _seed_lead_control_data() -> dict[str, int]:
 
         session.add_all(
             [
-                EnrollShareLink(
+                FlpMinBillingShareLink(
                     token="lead-control-watch-token",
                     lead_id=lead.id,
                     created_by_user_id=1,
@@ -171,7 +171,7 @@ async def _seed_lead_control_data() -> dict[str, int]:
                     last_viewed_at=now - timedelta(hours=52),
                     expires_at=now + timedelta(minutes=30),
                 ),
-                EnrollShareLink(
+                FlpMinBillingShareLink(
                     token="lead-control-incubating-token",
                     lead_id=incubating_lead.id,
                     created_by_user_id=1,
@@ -458,7 +458,7 @@ def test_admin_bulk_manual_reassign_moves_only_stale_queue_leads(
                 lead.archived_at = now - timedelta(hours=27)
                 lead.last_action_at = now - timedelta(hours=40)
                 session.add(
-                    EnrollShareLink(
+                    FlpMinBillingShareLink(
                         token="second-stale-watch-token",
                         lead_id=lead.id,
                         created_by_user_id=1,
