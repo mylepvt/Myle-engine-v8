@@ -348,7 +348,7 @@ export function DashboardHomePage() {
 
       {role === 'team' ? <GateAssistantCard sessionReady={sessionReady} /> : null}
 
-      {role === 'team' ? <VerificationHomePanel /> : null}
+      {role === 'team' || role === 'leader' ? <VerificationHomePanel /> : null}
 
       {role === 'team' ? <MissionHomePanel /> : null}
 
