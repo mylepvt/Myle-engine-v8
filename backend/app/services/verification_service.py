@@ -558,29 +558,70 @@ async def run_escalation_checks(session: AsyncSession) -> list[dict[str, Any]]:
 
     if escalated:
         await session.commit()
+        # Batch one digest per recipient (max 50 entries) instead of one
+        # WhatsApp per task, so a leader/senior isn't flooded with separate
+        # messages when many tasks cross the SLA in the same run.
+        groups: dict[int, tuple[User, list[str]]] = {}
         for esc in escalated:
             try:
-                await _notify_escalation(session, esc)
+                target, line = await _escalation_target_and_line(session, esc)
             except Exception as exc:
                 logger.warning(
-                    "escalation notify failed assignment_id=%s: %s",
+                    "escalation resolve failed assignment_id=%s: %s",
                     esc.get("assignment_id"), exc,
                 )
+                continue
+            if target is None or not line:
+                continue
+            groups.setdefault(target.id, (target, []))[1].append(line)
+
+        from app.services.whatsapp_leader_alerts import send_system_alert
+        BATCH_SIZE = 50
+        for _target_id, (target, lines) in groups.items():
+            parts = (len(lines) + BATCH_SIZE - 1) // BATCH_SIZE
+            for part_index in range(parts):
+                chunk = lines[part_index * BATCH_SIZE : (part_index + 1) * BATCH_SIZE]
+                numbered = [
+                    f"{part_index * BATCH_SIZE + offset + 1}. {ln}"
+                    for offset, ln in enumerate(chunk)
+                ]
+                header = "⏰ *Task Escalations — Action Needed*"
+                if parts > 1:
+                    header += f"  ({part_index + 1}/{parts})"
+                body = (
+                    f"{header}\n\n"
+                    + "\n".join(numbered)
+                    + "\n\nPlease follow up and get these done.\n\n— Myle Team"
+                )
+                try:
+                    await send_system_alert(
+                        target.phone, body, session,
+                        message_type="verification_escalation", related_user_id=target.id,
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "escalation digest send failed target_id=%s: %s", target.id, exc,
+                    )
 
     return escalated
 
 
-async def _notify_escalation(session: AsyncSession, esc: dict[str, Any]) -> None:
-    """WhatsApp the right person for an escalated assignment.
+async def _escalation_target_and_line(
+    session: AsyncSession, esc: dict[str, Any]
+) -> tuple[Optional[User], Optional[str]]:
+    """Resolve the recipient and a one-line summary for an escalated assignment.
 
-    Level 1 → member's leader, level 2 → senior leader (chain snapshot),
-    level 3 → management phone.
+    Level 1 → member's leader, level 2 → senior leader (chain snapshot).
+    Level 3 (admin) sends no WhatsApp — unchanged. Returns (None, None) when
+    there is nothing to notify.
     """
-    from app.services.whatsapp_leader_alerts import send_system_alert
+    level = esc["escalation_level"]
+    if level >= 3:
+        return None, None
 
     assignment = await session.get(TaskAssignment, esc["assignment_id"])
     if assignment is None:
-        return
+        return None, None
     member = await session.get(User, assignment.assigned_to_user_id)
     task = await session.get(VerificationTask, assignment.verification_task_id)
     member_name = (
@@ -588,19 +629,6 @@ async def _notify_escalation(session: AsyncSession, esc: dict[str, Any]) -> None
     )
     task_title = task.title if task else f"Task #{assignment.verification_task_id}"
     hours = int((datetime.now(timezone.utc) - assignment.created_at).total_seconds() / 3600)
-    level = esc["escalation_level"]
-
-    message = (
-        f"⏰ *Task Escalation (Level {level})*\n\n"
-        f"Member: {member_name}\n"
-        f"Task: {task_title}\n"
-        f"Pending for: {hours}h — no evidence submitted.\n\n"
-        "Please follow up and get this done.\n\n"
-        "— Myle Team"
-    )
-
-    if level >= 3:
-        return
 
     chain = assignment.leader_chain_snapshot or {}
     if level == 2:
@@ -611,11 +639,10 @@ async def _notify_escalation(session: AsyncSession, esc: dict[str, Any]) -> None
         leader = await _nearest_leader(session, member.id)
         target_id = leader.id if leader else None
     if target_id is None:
-        return
+        return None, None
     target = await session.get(User, target_id)
     if target is None or not target.phone:
-        return
-    await send_system_alert(
-        target.phone, message, session,
-        message_type="verification_escalation", related_user_id=target.id,
-    )
+        return None, None
+
+    line = f"{member_name} · {task_title} · L{level} · {hours}h pending"
+    return target, line
