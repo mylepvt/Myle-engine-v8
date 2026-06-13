@@ -47,11 +47,9 @@ import { LiveOpsDashboard } from '@/components/dashboard/live-ops/LiveOpsDashboa
 import { useLiveDashboardStore } from '@/stores/live-dashboard-store'
 import { ExecutiveDashboard } from '@/components/dashboard/ExecutiveDashboard'
 import { useAppSettingsQuery, useSystemUsersSummaryQuery } from '@/hooks/use-settings-query'
-import { useActiveWatchersQuery } from '@/hooks/use-flp-min-billing-video-query'
 import { useFlpMinBillingApprovalsPendingQuery, useTeamMembersQuery, useUpdateMemberComplianceMutation, type TeamMemberPublic } from '@/hooks/use-team-query'
 import { useTeamReportsQuery } from '@/hooks/use-team-reports-query'
 import { useLeaderHealthQuery, type LeaderHealthItem } from '@/hooks/use-admin-leader-health-query'
-import { useOnlineNowQuery, type OnlineUserItem } from '@/hooks/use-online-now-query'
 import { useWalletRechargeRequestsQuery } from '@/hooks/use-wallet-recharge-query'
 import { useInvoicesQuery } from '@/hooks/use-invoices-query'
 import { useLeadControlQuery } from '@/hooks/use-lead-control-query'
@@ -297,59 +295,6 @@ function DeskShortcut({
       </div>
       <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-primary/70" />
     </Link>
-  )
-}
-
-function LiveOnlinePanel({ users }: { users: OnlineUserItem[] }) {
-  const working = users.filter((u) => u.is_working)
-  const idle = users.filter((u) => !u.is_working)
-
-  const Row = ({ u }: { u: OnlineUserItem }) => (
-    <div className="flex items-center gap-2 py-1.5">
-      <span
-        className={`size-1.5 shrink-0 rounded-full ${
-          u.presence_status === 'online' ? 'bg-success' : 'bg-warning'
-        }`}
-        aria-label={u.presence_status}
-      />
-      <span className="min-w-0 flex-1 truncate text-xs text-foreground">{u.name}</span>
-      <span className="shrink-0 text-[10px] text-muted-foreground/60 capitalize">{u.role}</span>
-      {u.is_working ? (
-        <span className="shrink-0 text-[10px] text-success">
-          {u.calls_today > 0 ? `${u.calls_today}c` : ''}{u.leads_today > 0 ? ` ${u.leads_today}l` : ''}
-        </span>
-      ) : (
-        <span className="shrink-0 text-[10px] text-muted-foreground/40">idle</span>
-      )}
-    </div>
-  )
-
-  return (
-    <div className="max-h-72 overflow-y-auto divide-y divide-border/40">
-      {working.length > 0 && (
-        <div className="pb-1">
-          <p className="sticky top-0 bg-card px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-success">
-            Working ({working.length})
-          </p>
-          <div className="px-3">
-            {working.map((u) => <Row key={u.user_id} u={u} />)}
-          </div>
-        </div>
-      )}
-      {idle.length > 0 && (
-        <div className="pb-1">
-          <p className="sticky top-0 bg-card px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60">
-            Not working ({idle.length})
-          </p>
-          <div className="px-3">
-            {idle.map((u) => <Row key={u.user_id} u={u} />)}
-          </div>
-        </div>
-      )}
-      {users.length === 0 && (
-        <p className="px-3 py-4 text-center text-xs text-muted-foreground/50">No one online</p>
-      )}
-    </div>
   )
 }
 
@@ -745,7 +690,6 @@ export function AdminCommandCenter({ firstName }: Props) {
   const liveDash = useLiveDashboardStore()
   const leadPool = useLeadPoolQuery(true)
   const teamReports = useTeamReportsQuery('', true)
-  const activeWatchers = useActiveWatchersQuery(activeTab === 'war-room')
   const vSummary = useVerificationSummary(activeTab === 'execution')
   const outcomeSummary = useOutcomeSummary(activeTab === 'leads')
   const deadReasons = useDeadReasons(activeTab === 'leads')
@@ -827,99 +771,8 @@ export function AdminCommandCenter({ firstName }: Props) {
     pendingRechargeItems.length +
     pendingGraceCount
 
-  const liveWatcherCount = activeWatchers.data?.total ?? 0
-  const premiereActiveCount = (premiereViewers.data ?? []).filter((v) => isActiveNow(v.last_seen_at)).length
-
-  const onlineNow = useOnlineNowQuery()
-  const [onlinePanelOpen, setOnlinePanelOpen] = useState(false)
-  const onlinePanelRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!onlinePanelOpen) return
-    const handler = (e: MouseEvent) => {
-      if (onlinePanelRef.current && !onlinePanelRef.current.contains(e.target as Node)) {
-        setOnlinePanelOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [onlinePanelOpen])
-
   return (
     <div className="mx-auto max-w-7xl space-y-6 overflow-x-hidden">
-      {/* ── Compact operational summary (hidden on Overview — HeroBand replaces it) ── */}
-      {activeTab !== 'overview' && (
-      <div className="rounded border border-border/60 bg-card px-2 sm:px-3 py-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-              <p className="text-sm font-medium text-foreground shrink-0">Good day, {firstName}</p>
-              {pendingTotal > 0 && (
-                <span className="flex items-center gap-1 rounded border border-warning/20 bg-warning/[0.07] px-1.5 py-0.5 text-[10px]">
-                  <span className="relative flex size-1.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-warning opacity-75" />
-                    <span className="relative inline-flex size-1.5 rounded-full bg-warning" />
-                  </span>
-                  <span className="font-semibold text-warning">{pendingTotal} pending</span>
-                </span>
-              )}
-              {liveWatcherCount > 0 && (
-                <span className="flex items-center gap-1 rounded border border-destructive/20 bg-destructive/[0.07] px-1.5 py-0.5 text-[10px]">
-                  <span className="relative flex size-1.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
-                    <span className="relative inline-flex size-1.5 rounded-full bg-destructive" />
-                  </span>
-                  <span className="font-semibold text-destructive">{liveWatcherCount} watching</span>
-                </span>
-              )}
-              {premiereActiveCount > 0 && (
-                <span className="flex items-center gap-1 rounded border border-destructive/20 bg-destructive/[0.07] px-1.5 py-0.5 text-[10px]">
-                  <span className="relative flex size-1.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
-                    <span className="relative inline-flex size-1.5 rounded-full bg-destructive" />
-                  </span>
-                  <span className="font-semibold text-destructive">{premiereActiveCount} live</span>
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5 shrink-0 min-w-0">
-            {/* Live online counter */}
-            <div ref={onlinePanelRef} className="relative shrink-0">
-              <button
-                onClick={() => setOnlinePanelOpen((v) => !v)}
-                className="flex items-center gap-1 rounded border border-success/20 bg-success/[0.07] px-1.5 py-0.5 text-[10px] hover:bg-success/[0.12] transition-colors whitespace-nowrap"
-              >
-                <span className="relative flex size-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
-                  <span className="relative inline-flex size-1.5 rounded-full bg-success" />
-                </span>
-                <span className="font-semibold text-success">
-                  {onlineNow.data?.online_count ?? 0} online
-                </span>
-              </button>
-              {onlinePanelOpen && (
-                <div className="fixed right-2 sm:absolute sm:right-0 top-auto sm:top-full z-50 mt-1.5 w-72 sm:w-64 rounded border border-border/60 bg-card shadow-xl max-sm:right-2">
-                  <div className="flex items-center justify-between border-b border-border/40 px-3 py-2">
-                    <span className="text-[11px] font-semibold text-foreground">Online now</span>
-                    <span className="text-[10px] text-muted-foreground/60">
-                      {onlineNow.data?.working_count ?? 0} working · {onlineNow.data?.not_working_count ?? 0} idle
-                    </span>
-                  </div>
-                  <LiveOnlinePanel users={onlineNow.data?.users ?? []} />
-                </div>
-              )}
-            </div>
-            <Button asChild variant="secondary" size="sm" className="h-7 px-2 text-xs">
-              <Link to="/dashboard/work/leads">Leads</Link>
-            </Button>
-            <Button asChild variant="secondary" size="sm" className="h-7 px-2 text-xs">
-              <Link to="/dashboard/finance/recharge-admin">Finance</Link>
-            </Button>
-          </div>
-        </div>
-      </div>
-      )}
-
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="mb-5 flex items-center justify-between gap-3">
           <DashboardViewSwitcher
