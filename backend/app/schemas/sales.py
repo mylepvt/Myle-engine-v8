@@ -94,3 +94,19 @@ class SaleDashboardResponse(BaseModel):
     # themselves only, never downline/team billing. Same for every role.
     personal_commission_cents: int = 0
     rows: list[SaleDashboardRow] = Field(default_factory=list)
+
+
+class SaleTrendPoint(BaseModel):
+    """One IST calendar day of approved CC + approx cheque."""
+
+    date: str
+    case_credits: Decimal = Decimal("0")
+    cheque_cents: int = 0
+
+
+class SaleTrendResponse(BaseModel):
+    scope: Literal["self", "downline", "all"]
+    days: int
+    points: list[SaleTrendPoint] = Field(default_factory=list)
+    total_case_credits: Decimal = Decimal("0")
+    total_cheque_cents: int = 0
