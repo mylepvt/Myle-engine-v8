@@ -577,7 +577,6 @@ async def _notify_escalation(session: AsyncSession, esc: dict[str, Any]) -> None
     level 3 → management phone.
     """
     from app.services.whatsapp_leader_alerts import send_system_alert
-    from app.services.whatsapp_management_updates import get_management_phone
 
     assignment = await session.get(TaskAssignment, esc["assignment_id"])
     if assignment is None:
@@ -601,11 +600,6 @@ async def _notify_escalation(session: AsyncSession, esc: dict[str, Any]) -> None
     )
 
     if level >= 3:
-        phone = await get_management_phone(session)
-        if phone:
-            await send_system_alert(
-                phone, message, session, message_type="verification_escalation",
-            )
         return
 
     chain = assignment.leader_chain_snapshot or {}

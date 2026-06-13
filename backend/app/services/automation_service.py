@@ -542,26 +542,11 @@ async def _exec_escalate(
     config = rule.action_config or {}
     message = config.get("message", "Escalation triggered.").format(**detail)
 
-    sent = False
-    from app.services.whatsapp_leader_alerts import send_system_alert
-    from app.services.whatsapp_management_updates import get_management_phone
-    phone = await get_management_phone(session)
-    if phone:
-        wa_text = (
-            f"🔴 *Myle Escalation ({config.get('priority', 'high').upper()})*\n\n"
-            f"{message}\n\n"
-            f"Rule: {rule.name}\n\n"
-            "— Myle Team"
-        )
-        sent = await send_system_alert(
-            phone, wa_text, session, message_type="automation_escalation",
-        )
-
     return {
         "action": "escalate",
         "priority": config.get("priority", "high"),
         "message": message,
-        "status": "sent" if sent else "logged",
+        "status": "logged",
     }
 
 

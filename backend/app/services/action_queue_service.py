@@ -282,7 +282,6 @@ async def execute_action(
     actor_role: str,
 ) -> ActionExecuteResult:
     from app.services.whatsapp_leader_alerts import send_system_alert
-    from app.services.whatsapp_management_updates import get_management_phone
 
     member, lead = await _resolve_member(session, entity_type, entity_id)
 
@@ -333,22 +332,7 @@ async def execute_action(
             result = await automation_service.create_recovery_mission_for_member(session, member.id)
 
     elif action == "escalate":
-        phone = await get_management_phone(session)
-        if not phone:
-            result = {"status": "failed", "reason": "no_management_phone"}
-        else:
-            msg = (
-                f"🔴 *Myle Escalation (Action Queue)*\n\n"
-                f"Member: {member_name}\n"
-                f"{context}"
-                f"Issue: {reason}\n\n"
-                "Escalated manually from the Action Queue.\n\n"
-                "— Myle Team"
-            )
-            sent = await send_system_alert(
-                phone, msg, session, message_type="action_queue_escalation",
-            )
-            result = {"status": "sent" if sent else "failed"}
+        result = {"status": "logged", "reason": "management_escalation_disabled"}
 
     else:
         raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Unknown action")
@@ -398,18 +382,8 @@ def build_digest_text(items: list[ActionQueueItem], total: int, *, heading: str)
 async def send_action_queue_digests(session: AsyncSession) -> dict:
     """Push the queue automatically: org digest to management, scoped digest to each leader."""
     from app.services.whatsapp_leader_alerts import send_system_alert
-    from app.services.whatsapp_management_updates import get_management_phone
 
-    result = {"management_sent": False, "leaders_sent": 0, "leaders_skipped": 0}
-
-    org = await get_action_queue(session, limit=DIGEST_TOP_N)
-    text = build_digest_text(org.items, org.total, heading="Myle Action Queue")
-    if text:
-        phone = await get_management_phone(session)
-        if phone:
-            result["management_sent"] = await send_system_alert(
-                phone, text, session, message_type="action_queue_digest",
-            )
+    result = {"leaders_sent": 0, "leaders_skipped": 0}
 
     leaders = (
         await session.execute(

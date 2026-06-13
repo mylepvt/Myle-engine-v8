@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "capture:guide": "node scripts/capture-guide-screenshots.cjs",
     "test:watch": "vitest",
     "generate-api-types": "python3 ../scripts/export_openapi.py && npx --yes openapi-typescript@7.13.0 ./openapi.json -o ./src/lib/api-v1.d.ts"
   },
