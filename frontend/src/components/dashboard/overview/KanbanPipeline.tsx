@@ -1,9 +1,10 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Clock, Layers } from 'lucide-react'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 import { useStageCounts } from '@/hooks/use-stage-counts-query'
 
 type StageDef = {
@@ -55,15 +56,23 @@ const STAGE_ROUTES: Record<string, string> = {
 }
 
 export function KanbanPipeline() {
-  const { data, isPending, isError } = useStageCounts()
+  const [mode, setMode] = useState<'all' | '24h'>('all')
+  const { data, isPending, isError } = useStageCounts(true, mode === '24h' ? 24 : undefined)
 
   const pipelineCounts = useMemo(() => {
+    if (mode === '24h') {
+      if (!data?.today_movements) return {}
+      return {
+        ...data.today_movements,
+        claimed: data.today_claimed ?? 0,
+      }
+    }
     if (!data?.counts) return {}
     return {
       ...data.counts,
       claimed: data.today_claimed ?? 0,
     }
-  }, [data?.counts, data?.today_claimed])
+  }, [data?.counts, data?.today_movements, data?.today_claimed, mode])
 
   const maxCount = useMemo(() => {
     const vals = Object.values(pipelineCounts)
@@ -121,15 +130,30 @@ export function KanbanPipeline() {
             <div className="flex items-center gap-2">
               <h2 className="font-heading text-ds-h3 font-semibold text-foreground">Pipeline Board</h2>
             </div>
-            <Link
-              to="/dashboard/work/workboard"
-              className="inline-flex items-center gap-1 text-ds-caption font-medium text-primary hover:underline"
-            >
-              Open board <ArrowRight className="size-3.5" aria-hidden />
-            </Link>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setMode(mode === 'all' ? '24h' : 'all')}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold transition-all',
+                  mode === '24h'
+                    ? 'bg-primary/15 text-primary'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80',
+                )}
+              >
+                {mode === '24h' ? <Clock className="size-3" /> : <Layers className="size-3" />}
+                {mode === '24h' ? 'Last 24h' : 'All Time'}
+              </button>
+              <Link
+                to="/dashboard/work/workboard"
+                className="inline-flex items-center gap-1 text-ds-caption font-medium text-primary hover:underline"
+              >
+                Open board <ArrowRight className="size-3.5" aria-hidden />
+              </Link>
+            </div>
           </div>
           <p className="py-8 text-center text-ds-body text-muted-foreground">
-            No active leads in the pipeline yet.
+            {mode === '24h' ? 'No lead movement in the last 24 hours.' : 'No active leads in the pipeline yet.'}
           </p>
         </CardContent>
       </Card>
@@ -147,12 +171,27 @@ export function KanbanPipeline() {
             </span>
             <h2 className="font-heading text-ds-h3 font-semibold text-foreground">Pipeline Board</h2>
           </div>
-          <Link
-            to="/dashboard/work/workboard"
-            className="inline-flex items-center gap-1 text-ds-caption font-medium text-primary hover:underline"
-          >
-            Open board <ArrowRight className="size-3.5" aria-hidden />
-          </Link>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setMode(mode === 'all' ? '24h' : 'all')}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold transition-all',
+                mode === '24h'
+                  ? 'bg-primary/15 text-primary'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80',
+              )}
+            >
+              {mode === '24h' ? <Clock className="size-3" /> : <Layers className="size-3" />}
+              {mode === '24h' ? 'Last 24h' : 'All Time'}
+            </button>
+            <Link
+              to="/dashboard/work/workboard"
+              className="inline-flex items-center gap-1 text-ds-caption font-medium text-primary hover:underline"
+            >
+              Open board <ArrowRight className="size-3.5" aria-hidden />
+            </Link>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">

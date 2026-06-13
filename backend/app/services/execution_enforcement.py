@@ -2695,15 +2695,16 @@ def default_today_iso() -> str:
     return today_ist().isoformat()
 
 
-async def admin_stage_counts(session: AsyncSession) -> dict:
-    """Admin: active lead counts per pipeline stage + today's activity (IST).
+async def admin_stage_counts(session: AsyncSession, hours: Optional[float] = None) -> dict:
+    """Admin: active lead counts per pipeline stage + today's/rolling activity.
 
-    The live funnel should reflect the full active working set, not just leads
-    whose ``last_action_at`` happened to update recently. Some valid active
-    leads still carry stage signals only through older timestamps such as
-    ``created_at`` or ``payment_proof_uploaded_at``.
+    When *hours* is provided, uses a rolling window (now − hours) instead of
+    IST-midnight for the "today" / movement queries.
     """
-    today_start = _start_of_day_ist(today_ist().isoformat())
+    if hours is not None:
+        window_start = datetime.now(tz=IST) - timedelta(hours=hours)
+    else:
+        window_start = _start_of_day_ist(today_ist().isoformat())
     active_scope = and_(
         Lead.deleted_at.is_(None),
         Lead.archived_at.is_(None),
@@ -2722,7 +2723,7 @@ async def admin_stage_counts(session: AsyncSession) -> dict:
         select(Lead.status, func.count(Lead.id).label("n"))
         .where(
             active_scope,
-            _lead_last_activity_ts() >= today_start,
+            _lead_last_activity_ts() >= window_start,
         )
         .group_by(Lead.status)
     )
@@ -2737,7 +2738,7 @@ async def admin_stage_counts(session: AsyncSession) -> dict:
                 select(func.count(ActivityLog.entity_id.distinct()))
                 .where(
                     ActivityLog.action.in_(("lead.claimed", "lead.claimed_free")),
-                    ActivityLog.created_at >= today_start,
+                    ActivityLog.created_at >= window_start,
                     exists(
                         select(Lead.id).where(
                             Lead.id == ActivityLog.entity_id,
