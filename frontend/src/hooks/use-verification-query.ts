@@ -82,7 +82,7 @@ async function fetchJson<T>(path: string): Promise<T> {
 
 // Member hooks
 export function useMyTasks(status?: string) {
-  const path = status ? `/verification/tasks/my?status=${status}` : '/verification/tasks/my'
+  const path = status ? `/api/v1/verification/tasks/my?status=${status}` : '/api/v1/verification/tasks/my'
   return useQuery({
     queryKey: VERIFICATION_KEYS.myTasks(status),
     queryFn: () => fetchJson<TaskAssignmentPublic[]>(path),
@@ -92,7 +92,7 @@ export function useMyTasks(status?: string) {
 export function useTodayTasks() {
   return useQuery({
     queryKey: [...VERIFICATION_KEYS.myTasks(), 'today'],
-    queryFn: () => fetchJson<TaskAssignmentPublic[]>('/verification/tasks/today'),
+    queryFn: () => fetchJson<TaskAssignmentPublic[]>('/api/v1/verification/tasks/today'),
     refetchInterval: 60_000,
   })
 }
@@ -100,7 +100,7 @@ export function useTodayTasks() {
 export function usePendingVerifications() {
   return useQuery({
     queryKey: [...VERIFICATION_KEYS.myTasks(), 'pending'],
-    queryFn: () => fetchJson<TaskAssignmentPublic[]>('/verification/tasks/pending-verification'),
+    queryFn: () => fetchJson<TaskAssignmentPublic[]>('/api/v1/verification/tasks/pending-verification'),
     refetchInterval: 30_000,
   })
 }
@@ -108,14 +108,14 @@ export function usePendingVerifications() {
 export function useBlockedTasks() {
   return useQuery({
     queryKey: [...VERIFICATION_KEYS.myTasks(), 'blocked'],
-    queryFn: () => fetchJson<TaskAssignmentPublic[]>('/verification/tasks/blocked'),
+    queryFn: () => fetchJson<TaskAssignmentPublic[]>('/api/v1/verification/tasks/blocked'),
   })
 }
 
 export function useExecutionScore() {
   return useQuery({
     queryKey: VERIFICATION_KEYS.executionScore,
-    queryFn: () => fetchJson<{ execution_score: number }>('/verification/tasks/execution-score'),
+    queryFn: () => fetchJson<{ execution_score: number }>('/api/v1/verification/tasks/execution-score'),
     refetchInterval: 60_000,
   })
 }
@@ -124,7 +124,7 @@ export function useExecutionScore() {
 export function useVerificationSummary(enabled = true) {
   return useQuery({
     queryKey: VERIFICATION_KEYS.summary,
-    queryFn: () => fetchJson<AdminVerificationSummary>('/verification/admin/verification-summary'),
+    queryFn: () => fetchJson<AdminVerificationSummary>('/api/v1/verification/admin/verification-summary'),
     enabled,
     refetchInterval: 30_000,
   })
@@ -137,14 +137,14 @@ export function useAdminTasks(params?: { status?: string; userId?: number; leade
   if (params?.leaderId) qs.set('leader_id', String(params.leaderId))
   return useQuery({
     queryKey: [...VERIFICATION_KEYS.all, 'admin-tasks', params],
-    queryFn: () => fetchJson<TaskAssignmentPublic[]>(`/verification/admin/tasks/all?${qs.toString()}`),
+    queryFn: () => fetchJson<TaskAssignmentPublic[]>(`/api/v1/verification/admin/tasks/all?${qs.toString()}`),
   })
 }
 
 export function useAdminTasksList() {
   return useQuery({
     queryKey: [...VERIFICATION_KEYS.all, 'admin-tasks-list'],
-    queryFn: () => fetchJson<VerificationTaskPublic[]>('/verification/admin/verification-tasks'),
+    queryFn: () => fetchJson<VerificationTaskPublic[]>('/api/v1/verification/admin/verification-tasks'),
   })
 }
 
@@ -157,7 +157,7 @@ export function useSubmitEvidence() {
       evidenceText?: string
       evidenceFileUrl?: string
     }) =>
-      apiFetch(`/verification/tasks/${assignmentId}/submit`, {
+      apiFetch(`/api/v1/verification/tasks/${assignmentId}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ evidence_text: evidenceText ?? null, evidence_file_url: evidenceFileUrl ?? null }),
@@ -174,7 +174,7 @@ export function useBlockTask() {
       blockerReason: string
       blockerNotes?: string
     }) =>
-      apiFetch(`/verification/tasks/${assignmentId}/block`, {
+      apiFetch(`/api/v1/verification/tasks/${assignmentId}/block`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ blocker_reason: blockerReason, blocker_notes: blockerNotes ?? null }),
@@ -192,7 +192,7 @@ export function useVerifyTask() {
       rejectionReason?: string
       resultNotes?: string
     }) =>
-      apiFetch(`/verification/admin/tasks/${assignmentId}/verify`, {
+      apiFetch(`/api/v1/verification/admin/tasks/${assignmentId}/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -209,7 +209,7 @@ export function useCreateTask() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (data: { title: string; description?: string; task_type?: string; evidence_instructions?: string }) =>
-      apiFetch('/verification/admin/verification-tasks', {
+      apiFetch('/api/v1/verification/admin/verification-tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -222,7 +222,7 @@ export function useBulkAssignTask() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (data: { verification_task_id: number; user_ids: number[]; due_at?: string }) =>
-      apiFetch('/verification/admin/task-assign', {
+      apiFetch('/api/v1/verification/admin/task-assign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -234,7 +234,7 @@ export function useBulkAssignTask() {
 export function useRunEscalation() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: () => apiFetch('/verification/admin/tasks/escalate', { method: 'POST' }),
+    mutationFn: () => apiFetch('/api/v1/verification/admin/tasks/escalate', { method: 'POST' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: VERIFICATION_KEYS.all }),
   })
 }
