@@ -6,6 +6,8 @@ export type StageCounts = {
   today_movements: Record<string, number>
   total: number
   today_claimed?: number
+  previous_movements?: Record<string, number>
+  previous_claimed?: number
 }
 
 async function fetchStageCounts(hours?: number, range?: string): Promise<StageCounts> {

@@ -70,7 +70,7 @@ export function KanbanPipeline() {
   const [mode, setMode] = useState<'24h' | 'month'>('24h')
   const { data, isPending, isError } = useStageCounts(true, mode === '24h' ? 24 : undefined, mode === 'month' ? 'month' : undefined)
 
-  const pipelineCounts = useMemo(() => {
+  const pipelineCounts = useMemo<Record<string, number>>(() => {
     if (!data?.today_movements) return {}
     return {
       ...data.today_movements,
@@ -78,7 +78,7 @@ export function KanbanPipeline() {
     }
   }, [data?.today_movements, data?.today_claimed])
 
-  const prevCounts = useMemo(() => {
+  const prevCounts = useMemo<Record<string, number> | null>(() => {
     if (!data?.previous_movements) return null
     return {
       ...data.previous_movements,
@@ -243,7 +243,7 @@ export function KanbanPipeline() {
                           <div className="flex items-center gap-2.5 min-w-0">
                             <span
                               className="size-2 shrink-0 rounded-full ring-1"
-                              style={{ backgroundColor: stage.color, ringColor: `${stage.color}40` }}
+                              style={{ backgroundColor: stage.color, boxShadow: `0 0 0 1px ${stage.color}40` }}
                             />
                             <span className="truncate text-[13px] font-medium text-foreground/70 group-hover:text-foreground/90">
                               {stage.label}
