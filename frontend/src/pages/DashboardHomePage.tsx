@@ -39,6 +39,7 @@ import { VerificationHomePanel } from '@/components/dashboard/VerificationHomePa
 import { CampaignProgressCard } from '@/components/dashboard/CampaignProgressCard'
 import { useLeaderCommandCenter } from '@/hooks/use-leader-command-center-query'
 import { MissionHomePanel } from '@/components/dashboard/MissionHomePanel'
+import { KanbanPipeline } from '@/components/dashboard/overview/KanbanPipeline'
 import { cn } from '@/lib/utils'
 
 function CollapsibleSection({ title, defaultOpen = false, children }: { title: string; defaultOpen?: boolean; children: ReactNode }) {
@@ -469,6 +470,9 @@ function WarRoomDashboard({
           </div>
         </div>
       </div>
+
+      {/* ── Pipeline Board ─────────────────────────────────────── */}
+      <KanbanPipeline />
 
       {/* ── Team Pipeline ──────────────────────────────────────── */}
       {memberPipeline.length > 0 && (
