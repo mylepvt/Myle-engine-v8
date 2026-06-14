@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -33,6 +33,9 @@ export function TeamMembersPage({ title }: Props) {
     me?.authenticated && (me.role === 'admin' || me.role === 'leader')
   const { data, isPending, isError, error, refetch } = useTeamMembersQuery()
 
+  const [searchParams, setSearchParams] = useSearchParams()
+  const graceFilter = searchParams.get('grace') === '1'
+
   const [memberQuery, setMemberQuery] = useState('')
 
   const [resetTarget, setResetTarget] = useState<ResetTarget | null>(null)
@@ -43,9 +46,13 @@ export function TeamMembersPage({ title }: Props) {
   useBackClose({ open: !!resetTarget, onClose: () => setResetTarget(null) })
   const deferredMemberQuery = useDeferredValue(memberQuery)
   const searchActive = memberQuery.trim().length > 0
-  const filteredMembers = data
+  const filteredByQuery = data
     ? filterCollectionByQuery(data.items, deferredMemberQuery, (member) => directorySearchValues(member))
     : []
+  const filteredMembers = graceFilter
+    ? filteredByQuery.filter((m) => m.grace_request_end_date != null)
+    : filteredByQuery
+  const graceCount = graceFilter ? filteredMembers.length : (data?.items ?? []).filter((m) => m.grace_request_end_date != null).length
 
   useEffect(() => {
     if (!toastMsg) return
@@ -85,9 +92,18 @@ export function TeamMembersPage({ title }: Props) {
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <p className="font-medium text-foreground">Total: {data.total}</p>
-              <p className="mt-1 text-ds-caption text-muted-foreground">
-                Responsive member cards with wrapped details and quick actions.
-              </p>
+              {graceFilter ? (
+                <p className="mt-1 text-ds-caption text-violet-500">
+                  Showing {graceCount} grace request{graceCount !== 1 ? 's' : ''} —
+                  <button type="button" onClick={() => setSearchParams({})} className="ml-1 underline underline-offset-2 hover:text-violet-400">
+                    Clear filter
+                  </button>
+                </p>
+              ) : (
+                <p className="mt-1 text-ds-caption text-muted-foreground">
+                  Responsive member cards with wrapped details and quick actions.
+                </p>
+              )}
             </div>
           </div>
           <div className="mb-5 flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">

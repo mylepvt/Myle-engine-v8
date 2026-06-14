@@ -82,7 +82,7 @@ export function NotificationsBell() {
       key: 'grace',
       label: 'Grace requests',
       count: gracePending,
-      to: '/dashboard/team/members',
+      to: '/dashboard/team/members?grace=1',
       Icon: PauseCircle,
       accent: 'text-violet-600 dark:text-violet-400',
     },
