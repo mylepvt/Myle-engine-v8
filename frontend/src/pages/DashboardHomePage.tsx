@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, ChevronRight, Circle, ClipboardCheck, Skull, TrendingUp, UserPlus, Users, Zap } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, ChevronRight, Circle, ClipboardCheck, Layers, Skull, TrendingUp, UserPlus, Users, Zap } from 'lucide-react'
 
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { XpBadge } from '@/components/xp/XpBadge'
@@ -39,7 +39,6 @@ import { VerificationHomePanel } from '@/components/dashboard/VerificationHomePa
 import { CampaignProgressCard } from '@/components/dashboard/CampaignProgressCard'
 import { useLeaderCommandCenter } from '@/hooks/use-leader-command-center-query'
 import { MissionHomePanel } from '@/components/dashboard/MissionHomePanel'
-import { KanbanPipeline } from '@/components/dashboard/overview/KanbanPipeline'
 import { cn } from '@/lib/utils'
 
 function CollapsibleSection({ title, defaultOpen = false, children }: { title: string; defaultOpen?: boolean; children: ReactNode }) {
@@ -158,13 +157,6 @@ function Day1PipelineRow({
   )
 }
 
-const STAGE_GROUPS = [
-  { key: 'new', label: 'New', statuses: ['new_lead', 'new', 'contacted'], color: 'bg-blue-500' },
-  { key: 'engaged', label: 'Engaged', statuses: ['invited', 'whatsapp_sent', 'video_watched'], color: 'bg-amber-500' },
-  { key: 'pipeline', label: 'Pipeline', statuses: ['paid', 'day1', 'day2', 'day3', 'day4', 'day5'], color: 'bg-purple-500' },
-  { key: 'converted', label: 'Done', statuses: ['converted'], color: 'bg-emerald-500' },
-]
-
 function WarRoomDashboard({
   los,
   lcc,
@@ -218,44 +210,53 @@ function WarRoomDashboard({
     s.calls_team_target > 0 ? Math.round((s.total_calls_today / s.calls_team_target) * 100) : 0
   const totalCritical = actions.filter((a) => a.severity === 'critical').length
 
-  const memberPipeline = useMemo(() => {
-    const columns = wb.data?.columns
-    if (!columns) return []
-    const allLeads = columns.flatMap((c) => c.items ?? [])
-    const memberNames = new Map((s.members ?? []).map((m) => [m.user_id, m.name]))
-    const groups = new Map<number, { name: string; stageCounts: Record<string, number>; total: number }>()
-    for (const lead of allLeads) {
-      const uid = lead.assigned_to_user_id
-      if (uid == null || uid === 0) continue
-      if (!groups.has(uid)) {
-        groups.set(uid, { name: memberNames.get(uid) ?? lead.assigned_to_name ?? 'Unknown', stageCounts: {}, total: 0 })
-      }
-      const g = groups.get(uid)!
-      g.total++
-      const s = lead.status
-      g.stageCounts[s] = (g.stageCounts[s] ?? 0) + 1
+  const pipelineColumns = useMemo(() => {
+    const colMap = new Map<string, number>()
+    for (const col of wb.data?.columns ?? []) {
+      colMap.set(col.status, col.total)
     }
-    const memberOrder = new Map((s.members ?? []).map((m, i) => [m.user_id, i]))
-    return Array.from(groups.entries())
-      .map(([userId, g]) => {
-        const groupCounts: Record<string, number> = {}
-        for (const sg of STAGE_GROUPS) {
-          let count = 0
-          for (const st of sg.statuses) {
-            count += g.stageCounts[st] ?? 0
-          }
-          if (count > 0) groupCounts[sg.key] = count
-        }
-        return { userId, name: g.name, total: g.total, stageCounts: g.stageCounts, groupCounts }
-      })
-      .sort((a, b) => {
-        const ai = memberOrder.get(a.userId) ?? 999
-        const bi = memberOrder.get(b.userId) ?? 999
-        return ai - bi
-      })
-  }, [wb.data, s.members])
+    const maxCount = Math.max(1, ...Array.from(colMap.values()))
+    const stages = [
+      {
+        title: 'Top of Funnel',
+        color: '#818cf8',
+        stages: [
+          { key: 'new_lead', label: 'Just Claimed', color: '#818cf8' },
+          { key: 'contacted', label: 'Contacted', color: '#60a5fa' },
+          { key: 'invited', label: 'Invited', color: '#38bdf8' },
+        ],
+      },
+      {
+        title: 'Engagement',
+        color: '#22d3ee',
+        stages: [
+          { key: 'whatsapp_sent', label: 'WhatsApp Sent', color: '#22d3ee' },
+          { key: 'video_watched', label: 'Video Watched', color: '#6ee7b7' },
+          { key: 'paid', label: 'Paid', color: '#a3e635' },
+          { key: 'day1', label: 'Day 1', color: '#84cc16' },
+        ],
+      },
+      {
+        title: 'Conversion',
+        color: '#f43f5e',
+        stages: [
+          { key: 'day2', label: 'Day 2', color: '#eab308' },
+          { key: 'day3', label: 'Day 3', color: '#fb923c' },
+          { key: 'day4', label: 'Day 4', color: '#f97316' },
+          { key: 'day5', label: 'Day 5', color: '#ef4444' },
+          { key: 'converted', label: 'Converted', color: '#f43f5e' },
+        ],
+      },
+    ]
+    return { stages, maxCount, colMap }
+  }, [wb.data])
 
-  const totalPipeline = useMemo(() => memberPipeline.reduce((a, m) => a + m.total, 0), [memberPipeline])
+  const { stages: pipelineStageDefs, maxCount: pipelineMaxCount, colMap: pipelineColMap } = pipelineColumns
+
+  const pipelineTotal = useMemo(
+    () => pipelineStageDefs.reduce((sum, col) => sum + col.stages.reduce((s, st) => s + (pipelineColMap.get(st.key) ?? 0), 0), 0),
+    [pipelineStageDefs, pipelineColMap],
+  )
 
   return (
     <div className="space-y-5">
@@ -472,69 +473,87 @@ function WarRoomDashboard({
       </div>
 
       {/* ── Pipeline Board ─────────────────────────────────────── */}
-      <KanbanPipeline />
-
-      {/* ── Team Pipeline ──────────────────────────────────────── */}
-      {memberPipeline.length > 0 && (
-        <div className="rounded-2xl border bg-card p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="flex items-center gap-2 text-sm font-bold">
-              <Users className="size-4 text-primary" />
-              Team Pipeline
-            </h3>
-            <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">
-              {totalPipeline} total leads
+      <div className="rounded-2xl border bg-card p-5">
+        <div className="mb-5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Layers className="size-4 text-primary" aria-hidden />
+            <span className="relative flex size-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
+              <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
             </span>
+            <h3 className="text-sm font-bold">Pipeline Board</h3>
           </div>
-          <div className="space-y-2">
-            {memberPipeline.map((m) => {
-              const pct = totalPipeline > 0 ? Math.round((m.total / totalPipeline) * 100) : 0
+          <Link
+            to="/dashboard/work/workboard"
+            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+          >
+            Open board <ArrowRight className="size-3.5" aria-hidden />
+          </Link>
+        </div>
+
+        {pipelineTotal === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            No leads in pipeline.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            {pipelineStageDefs.map((col) => {
+              const colTotal = col.stages.reduce((s, st) => s + (pipelineColMap.get(st.key) ?? 0), 0)
               return (
-                <div
-                  key={m.userId}
-                  className="group rounded-lg border border-border/30 bg-background/40 p-3 transition-all hover:border-border/60 hover:bg-muted/30"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium text-foreground">{m.name}</span>
-                    <span className="text-base font-extrabold tabular-nums text-foreground">{m.total}</span>
+                <div key={col.title} className="rounded-xl border border-border/40 bg-card p-4 transition-colors hover:border-border/60">
+                  <div className="mb-3 flex items-center justify-between border-b border-border/30 pb-2.5" style={{ borderColor: `${col.color}30` }}>
+                    <span className="text-[11px] font-bold uppercase tracking-[0.08em]" style={{ color: col.color }}>
+                      {col.title}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-lg font-extrabold tabular-nums" style={{ color: col.color }}>
+                      {colTotal}
+                    </span>
                   </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
-                    {STAGE_GROUPS.map((sg) => {
-                      const count = m.groupCounts[sg.key] ?? 0
+                  <div className="space-y-2">
+                    {col.stages.map((stage) => {
+                      const count = pipelineColMap.get(stage.key) ?? 0
+                      const pct = pipelineMaxCount > 0 ? Math.max(3, (count / pipelineMaxCount) * 100) : 0
+                      const sharePct = pipelineTotal > 0 ? Math.round((count / pipelineTotal) * 100) : 0
                       return (
-                        <span key={sg.key} className="flex items-center gap-1.5 text-xs">
-                          <span className={cn('size-2 shrink-0 rounded-full', count > 0 ? sg.color : 'bg-muted ring-1 ring-border/40')} />
-                          <span className="text-muted-foreground">{sg.label}</span>
-                          <span className={cn('font-bold tabular-nums', count > 0 ? 'text-foreground' : 'text-muted-foreground/40')}>
-                            {count}
-                          </span>
-                        </span>
+                        <div
+                          key={stage.key}
+                          className="block rounded-lg border border-border/30 bg-background/40 p-3 transition-all hover:border-border/60 hover:bg-muted/30"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span
+                                className="size-2 shrink-0 rounded-full"
+                                style={{ backgroundColor: stage.color, boxShadow: `0 0 0 1px ${stage.color}40` }}
+                              />
+                              <span className="truncate text-[13px] font-medium text-muted-foreground">
+                                {stage.label}
+                              </span>
+                            </div>
+                            <span className="inline-flex items-center gap-1 shrink-0 text-base font-extrabold tabular-nums" style={{ color: stage.color }}>
+                              {count}
+                            </span>
+                          </div>
+                          <div className="mt-2.5 flex items-center gap-2">
+                            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                              <div
+                                className="h-full rounded-full transition-all duration-700"
+                                style={{ width: `${pct}%`, backgroundColor: stage.color }}
+                              />
+                            </div>
+                            <span className="text-[10px] font-semibold text-muted-foreground/60 tabular-nums">
+                              {sharePct}%
+                            </span>
+                          </div>
+                        </div>
                       )
                     })}
-                  </div>
-                  <div className="mt-2.5 flex items-center gap-2">
-                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full bg-primary/60 transition-all duration-700"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <span className="text-[10px] font-semibold text-muted-foreground/60 tabular-nums">{pct}%</span>
                   </div>
                 </div>
               )
             })}
           </div>
-          <div className="mt-3 flex items-center gap-4 text-[10px] text-muted-foreground">
-            {STAGE_GROUPS.map((sg) => (
-              <span key={sg.key} className="flex items-center gap-1.5">
-                <span className={cn('size-2 rounded-sm', sg.color)} />
-                {sg.label}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ── Insights Footer ─────────────────────────────────────── */}
       <div className="flex flex-wrap gap-3">
