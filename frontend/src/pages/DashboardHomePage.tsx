@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, ChevronRight, Circle, ClipboardCheck, Layers, Skull, TrendingUp, UserPlus, Users, Zap } from 'lucide-react'
 
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
@@ -258,220 +258,12 @@ function WarRoomDashboard({
     [pipelineStageDefs, pipelineColMap],
   )
 
+  const navigate = useNavigate()
+  const [showAllActions, setShowAllActions] = useState(false)
+  const displayedActions = showAllActions ? actions : actions.slice(0, 3)
+
   return (
     <div className="space-y-5">
-      {/* ── Score Hero ──────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
-        <div className={cn('rounded-2xl border bg-card p-6 text-center', tierBorder)}>
-          <div className="relative mx-auto mb-3 size-28">
-            <svg viewBox="0 0 36 36" className="size-28 -rotate-90">
-              <circle cx="18" cy="18" r="15.9" fill="none" strokeWidth="3" className="stroke-muted" />
-              <circle
-                cx="18" cy="18" r="15.9" fill="none" strokeWidth="3"
-                strokeDasharray={`${s.leader_score} 100`}
-                strokeLinecap="round"
-                className={tierStroke}
-              />
-            </svg>
-            <span className={cn('absolute inset-0 flex items-center justify-center text-3xl font-extrabold tabular-nums', tierText)}>
-              {s.leader_score}
-            </span>
-          </div>
-          <div className={cn('mx-auto mb-1 inline-block rounded-full px-3 py-0.5 text-xs font-bold', tierBg, tierText)}>
-            ★ {tierLabel}
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {s.active_count} active · {s.total_members} total
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="rounded-xl border bg-card p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Team Size</p>
-            <p className="mt-1.5 text-3xl font-extrabold tabular-nums text-blue-500">{s.total_members}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{s.active_count} active now</p>
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-              <div className="h-full rounded-full bg-blue-500" style={{ width: `${s.total_members > 0 ? (s.active_count / s.total_members) * 100 : 0}%` }} />
-            </div>
-          </div>
-          <div className="rounded-xl border bg-card p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Calls Today</p>
-            <p className={cn('mt-1.5 text-3xl font-extrabold tabular-nums', callsPct >= 80 ? 'text-emerald-500' : callsPct >= 60 ? 'text-amber-500' : 'text-red-500')}>
-              {s.total_calls_today}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">Target: {s.calls_team_target} &middot; {callsPct}%</p>
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-              <div className={cn('h-full rounded-full', callsPct >= 80 ? 'bg-emerald-500' : callsPct >= 60 ? 'bg-amber-500' : 'bg-red-500')} style={{ width: `${callsPct}%` }} />
-            </div>
-          </div>
-          <div className="rounded-xl border bg-card p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">At-Risk Members</p>
-            <p className={cn('mt-1.5 text-3xl font-extrabold tabular-nums', (f?.members_at_risk ?? 0) > 0 ? 'text-red-500' : 'text-emerald-500')}>
-              {f?.members_at_risk ?? '—'}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">Need attention today</p>
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-              <div className="h-full rounded-full bg-red-500" style={{ width: `${f ? Math.min(100, (f.members_at_risk / (lcc.data?.team_size ?? 1)) * 100) : 0}%` }} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Priority Matrix + Team Health ───────────────────────── */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl border bg-card p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="flex items-center gap-2 text-sm font-bold">
-              <Zap className="size-4 text-amber-500" />
-              Priority Matrix
-            </h3>
-            {totalCritical > 0 && (
-              <span className="rounded-md bg-red-500/15 px-2 py-0.5 text-[11px] font-bold text-red-500">{totalCritical} urgent</span>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-center">
-              <p className="text-2xl font-extrabold tabular-nums text-red-500">{f?.campaign_failures ?? '—'}</p>
-              <p className="mt-1 text-xs text-red-400">Missed Missions</p>
-            </div>
-            <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-center">
-              <p className="text-2xl font-extrabold tabular-nums text-amber-500">{f?.zombie_leads ?? '—'}</p>
-              <p className="mt-1 text-xs text-amber-400">Zombie Leads</p>
-            </div>
-            <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-4 text-center">
-              <p className="text-2xl font-extrabold tabular-nums text-blue-500">{f?.pending_verifications ?? '—'}</p>
-              <p className="mt-1 text-xs text-blue-400">Pending Verif.</p>
-            </div>
-            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-center">
-              <p className="text-2xl font-extrabold tabular-nums text-emerald-500">{f?.campaigns_running ?? '—'}</p>
-              <p className="mt-1 text-xs text-emerald-400">Campaigns Running</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border bg-card p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="flex items-center gap-2 text-sm font-bold">
-              <TrendingUp className="size-4 text-emerald-500" />
-              Team Health
-            </h3>
-            {h && (
-              <span className={cn('rounded-md px-2 py-0.5 text-[11px] font-bold', h.leader_band === 'elite' ? 'bg-emerald-500/15 text-emerald-500' : h.leader_band === 'average' ? 'bg-amber-500/15 text-amber-500' : 'bg-red-500/15 text-red-500')}>
-                Score: {h.leader_score}
-              </span>
-            )}
-          </div>
-          <div className="space-y-3">
-            {h ? (
-              <>
-                {[
-                  { label: 'Mission', value: h.mission_completion_pct, color: 'bg-emerald-500' },
-                  { label: 'Verification', value: h.verification_pct, color: 'bg-amber-500' },
-                  { label: 'Conversion', value: h.conversion_pct, color: 'bg-red-500' },
-                  { label: 'Zombie Score', value: h.zombie_score, color: 'bg-amber-500' },
-                  { label: 'Blocker Res.', value: h.blocker_resolution_pct, color: 'bg-emerald-500' },
-                ].map((item) => {
-                  const textColor = item.value >= 70 ? 'text-emerald-500' : item.value >= 40 ? 'text-amber-500' : 'text-red-500'
-                  return (
-                    <div key={item.label} className="flex items-center gap-3">
-                      <span className="w-24 shrink-0 text-xs text-muted-foreground">{item.label}</span>
-                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                        <div className={cn('h-full rounded-full', item.color)} style={{ width: `${Math.min(100, item.value)}%` }} />
-                      </div>
-                      <span className={cn('w-8 shrink-0 text-right text-xs font-bold tabular-nums', textColor)}>
-                        {Math.round(item.value)}
-                      </span>
-                    </div>
-                  )
-                })}
-                {(f?.blockers_waiting ?? 0) > 0 && (
-                  <p className="pt-1 text-[11px] text-muted-foreground">{f?.blockers_waiting} blocker(s) currently unresolved.</p>
-                )}
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">Loading health data…</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Action Queue + Team Members ─────────────────────────── */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl border bg-card p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="flex items-center gap-2 text-sm font-bold">
-              <AlertTriangle className="size-4 text-amber-500" />
-              Action Queue
-            </h3>
-            {actions.length > 0 && (
-              <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">{actions.length} items</span>
-            )}
-          </div>
-          {actions.length > 0 ? (
-            <div className="space-y-2">
-              {actions.map((a, i) => {
-                const severityDot = a.severity === 'critical' ? 'bg-red-500' : a.severity === 'warning' ? 'bg-amber-500' : 'bg-blue-500'
-                const btnStyle = a.action_type === 'call'
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : a.action_type === 'message'
-                    ? 'bg-purple-600 text-white hover:bg-purple-700'
-                    : 'bg-muted text-foreground hover:bg-muted/80 border border-border'
-                const btnLabel = a.action_type === 'call' ? 'Call'
-                  : a.action_type === 'message' ? 'Message'
-                  : a.action_type === 'review' ? 'Review'
-                  : a.action_type === 'verify' ? 'Verify'
-                  : a.action_type === 'follow_up' ? 'Follow Up'
-                  : 'Action'
-                return (
-                  <div key={`${a.member_id}-${i}`} className={cn(
-                    'flex items-center gap-3 rounded-xl border p-3',
-                    a.severity === 'critical' ? 'border-red-500/20 bg-red-500/5' :
-                    a.severity === 'warning' ? 'border-amber-500/20 bg-amber-500/5' :
-                    'border-blue-500/20 bg-blue-500/5',
-                  )}>
-                    <span className={cn('size-2 shrink-0 rounded-full', severityDot)} />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold">{a.member_name}</p>
-                      <p className="text-xs text-muted-foreground">{a.issue}</p>
-                    </div>
-                    <button type="button" className={cn('shrink-0 cursor-default rounded-lg px-3 py-1.5 text-xs font-bold', btnStyle)}>
-                      {btnLabel}
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-          ) : (
-            <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-5">
-              <CheckCircle2 className="size-5 shrink-0 text-emerald-500" />
-              <p className="text-sm font-bold text-emerald-500">All Clear!</p>
-              <p className="text-xs text-muted-foreground">No actions needed right now.</p>
-            </div>
-          )}
-        </div>
-
-        <div className="rounded-2xl border bg-card p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="flex items-center gap-2 text-sm font-bold">
-              <Users className="size-4 text-blue-500" />
-              Team Members
-            </h3>
-            <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">
-              {s.total_members} total
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {s.members.slice(0, 8).map((m) => (
-              <div key={m.user_id} className="flex items-center gap-2 rounded-xl border bg-muted/30 px-3 py-2.5 text-xs font-medium">
-                <span className={cn('size-2 shrink-0 rounded-full', m.is_active ? 'bg-emerald-500' : 'bg-red-500')} />
-                <span className="truncate">{m.name}</span>
-                <span className="ml-auto text-muted-foreground tabular-nums">{m.calls_today}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {/* ── Pipeline Board ─────────────────────────────────────── */}
       <div className="rounded-2xl border bg-card p-5">
         <div className="mb-5 flex items-center justify-between">
@@ -555,32 +347,174 @@ function WarRoomDashboard({
         )}
       </div>
 
-      {/* ── Insights Footer ─────────────────────────────────────── */}
-      <div className="flex flex-wrap gap-3">
-        {s.inactive_count > 0 && (
-          <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2 text-xs font-semibold text-red-500">
-            <AlertTriangle className="size-3.5 shrink-0" />
-            {s.inactive_count} member{s.inactive_count > 1 ? 's' : ''} below call target &mdash; action needed
+      {/* ── Priority Matrix + Team Health ───────────────────────── */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="rounded-2xl border bg-card p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="flex items-center gap-2 text-sm font-bold">
+              <Zap className="size-4 text-amber-500" />
+              Priority Matrix
+            </h3>
+            {totalCritical > 0 && (
+              <span className="rounded-md bg-red-500/15 px-2 py-0.5 text-[11px] font-bold text-red-500">{totalCritical} urgent</span>
+            )}
           </div>
-        )}
-        {(f?.zombie_leads ?? 0) > 0 && (
-          <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-2 text-xs font-semibold text-amber-500">
-            <Skull className="size-3.5 shrink-0" />
-            {f?.zombie_leads} zombie lead{f?.zombie_leads !== 1 ? 's' : ''} &mdash; review this week
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-center">
+              <p className="text-2xl font-extrabold tabular-nums text-red-500">{f?.campaign_failures ?? '—'}</p>
+              <p className="mt-1 text-xs text-red-400">Missed Missions</p>
+            </div>
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-center">
+              <p className="text-2xl font-extrabold tabular-nums text-amber-500">{f?.zombie_leads ?? '—'}</p>
+              <p className="mt-1 text-xs text-amber-400">Zombie Leads</p>
+            </div>
+            <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-4 text-center">
+              <p className="text-2xl font-extrabold tabular-nums text-blue-500">{f?.pending_verifications ?? '—'}</p>
+              <p className="mt-1 text-xs text-blue-400">Pending Verif.</p>
+            </div>
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-center">
+              <p className="text-2xl font-extrabold tabular-nums text-emerald-500">{f?.campaigns_running ?? '—'}</p>
+              <p className="mt-1 text-xs text-emerald-400">Campaigns Running</p>
+            </div>
           </div>
-        )}
-        {(f?.campaigns_running ?? 0) > 0 && (
-          <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-xs font-semibold text-emerald-500">
-            <CheckCircle2 className="size-3.5 shrink-0" />
-            {f?.campaigns_running} campaign{f?.campaigns_running !== 1 ? 's' : ''} running on track
+        </div>
+
+        <div className="rounded-2xl border bg-card p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="flex items-center gap-2 text-sm font-bold">
+              <TrendingUp className="size-4 text-emerald-500" />
+              Team Health
+            </h3>
+            {h && (
+              <span className={cn('rounded-md px-2 py-0.5 text-[11px] font-bold', h.leader_band === 'elite' ? 'bg-emerald-500/15 text-emerald-500' : h.leader_band === 'average' ? 'bg-amber-500/15 text-amber-500' : 'bg-red-500/15 text-red-500')}>
+                Score: {h.leader_score}
+              </span>
+            )}
           </div>
-        )}
-        {s.basics_streak >= 7 && (
-          <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2 text-xs font-semibold text-red-500">
-            <AlertTriangle className="size-3.5 shrink-0" />
-            {s.basics_streak >= 14 ? 'Account locked' : `${14 - s.basics_streak} days until lock`} &mdash; basics not met
+          <div className="space-y-3">
+            {h ? (
+              <>
+                {[
+                  { label: 'Mission', value: h.mission_completion_pct, color: 'bg-emerald-500' },
+                  { label: 'Verification', value: h.verification_pct, color: 'bg-amber-500' },
+                  { label: 'Conversion', value: h.conversion_pct, color: 'bg-red-500' },
+                  { label: 'Zombie Score', value: h.zombie_score, color: 'bg-amber-500' },
+                  { label: 'Blocker Res.', value: h.blocker_resolution_pct, color: 'bg-emerald-500' },
+                ].map((item) => {
+                  const textColor = item.value >= 70 ? 'text-emerald-500' : item.value >= 40 ? 'text-amber-500' : 'text-red-500'
+                  return (
+                    <div key={item.label} className="flex items-center gap-3">
+                      <span className="w-24 shrink-0 text-xs text-muted-foreground">{item.label}</span>
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                        <div className={cn('h-full rounded-full', item.color)} style={{ width: `${Math.min(100, item.value)}%` }} />
+                      </div>
+                      <span className={cn('w-8 shrink-0 text-right text-xs font-bold tabular-nums', textColor)}>
+                        {Math.round(item.value)}
+                      </span>
+                    </div>
+                  )
+                })}
+                {(f?.blockers_waiting ?? 0) > 0 && (
+                  <p className="pt-1 text-[11px] text-muted-foreground">{f?.blockers_waiting} blocker(s) currently unresolved.</p>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">Loading health data…</p>
+            )}
           </div>
-        )}
+        </div>
+      </div>
+
+      {/* ── Team Members + Action Queue ──────────────────────────── */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="rounded-2xl border bg-card p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="flex items-center gap-2 text-sm font-bold">
+              <Users className="size-4 text-blue-500" />
+              Team Members
+            </h3>
+            <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">
+              {s.total_members} total
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {s.members.slice(0, 8).map((m) => (
+              <div key={m.user_id} className="flex items-center gap-2 rounded-xl border bg-muted/30 px-3 py-2.5 text-xs font-medium">
+                <span className={cn('size-2 shrink-0 rounded-full', m.is_active ? 'bg-emerald-500' : 'bg-red-500')} />
+                <span className="truncate">{m.name}</span>
+                <span className="ml-auto text-muted-foreground tabular-nums">{m.calls_today}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border bg-card p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="flex items-center gap-2 text-sm font-bold">
+              <AlertTriangle className="size-4 text-amber-500" />
+              Action Queue
+            </h3>
+            {actions.length > 0 && (
+              <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">{actions.length} items</span>
+            )}
+          </div>
+          {actions.length > 0 ? (
+            <>
+              <div className="space-y-2">
+                {displayedActions.map((a, i) => {
+                  const severityDot = a.severity === 'critical' ? 'bg-red-500' : a.severity === 'warning' ? 'bg-amber-500' : 'bg-blue-500'
+                  const btnStyle = a.action_type === 'call'
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    : a.action_type === 'message'
+                      ? 'bg-purple-600 text-white hover:bg-purple-700'
+                      : 'bg-muted text-foreground hover:bg-muted/80 border border-border'
+                  const btnLabel = a.action_type === 'call' ? 'Call'
+                    : a.action_type === 'message' ? 'Message'
+                    : a.action_type === 'review' ? 'Review'
+                    : a.action_type === 'verify' ? 'Verify'
+                    : a.action_type === 'follow_up' ? 'Follow Up'
+                    : 'Action'
+                  return (
+                    <div key={`${a.member_id}-${i}`} className={cn(
+                      'flex items-center gap-3 rounded-xl border p-3',
+                      a.severity === 'critical' ? 'border-red-500/20 bg-red-500/5' :
+                      a.severity === 'warning' ? 'border-amber-500/20 bg-amber-500/5' :
+                      'border-blue-500/20 bg-blue-500/5',
+                    )}>
+                      <span className={cn('size-2 shrink-0 rounded-full', severityDot)} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold">{a.member_name}</p>
+                        <p className="text-xs text-muted-foreground">{a.issue}</p>
+                      </div>
+                      <button
+                        type="button"
+                        className={cn('shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold', btnStyle)}
+                        onClick={() => navigate(a.action_ref || `/dashboard/team/tracking/${a.member_id}`)}
+                      >
+                        {btnLabel}
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+              {actions.length > 3 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllActions((o) => !o)}
+                  className="mt-2 w-full rounded-lg border border-border/40 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted/50 transition-colors"
+                >
+                  {showAllActions ? 'Show less' : `Show all ${actions.length} items`}
+                </button>
+              )}
+            </>
+          ) : (
+            <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-5">
+              <CheckCircle2 className="size-5 shrink-0 text-emerald-500" />
+              <p className="text-sm font-bold text-emerald-500">All Clear!</p>
+              <p className="text-xs text-muted-foreground">No actions needed right now.</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -996,7 +930,34 @@ export function DashboardHomePage() {
         </CardContent>
       </Card>
 
-
+      {role === 'leader' && (lcc.data?.fires?.members_at_risk ?? 0) > 0 && (
+        <Card className="border-red-500/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-ds-h3">
+              <AlertTriangle className="size-5 text-red-500" />
+              At Risk
+            </CardTitle>
+            <CardDescription>
+              {lcc.data?.fires?.members_at_risk} member{lcc.data?.fires?.members_at_risk !== 1 ? 's' : ''} need attention
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex items-center justify-between rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3">
+              <span className="text-sm font-medium">Members at risk</span>
+              <span className="text-lg font-extrabold text-red-500 tabular-nums">{lcc.data?.fires?.members_at_risk}</span>
+            </div>
+            {los.data?.inactive_count != null && los.data.inactive_count > 0 && (
+              <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+                <span className="text-sm font-medium">Below call target</span>
+                <span className="text-lg font-extrabold text-amber-500 tabular-nums">{los.data.inactive_count}</span>
+              </div>
+            )}
+            <Button variant="outline" size="sm" className="mt-2 w-full" asChild>
+              <Link to="/dashboard/team/tracking">View team tracking</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <CollapsibleSection title="Recent Leads" defaultOpen={false}>
         <Card className="border-primary/20">
