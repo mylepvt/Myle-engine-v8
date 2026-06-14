@@ -39,6 +39,7 @@ import { VerificationHomePanel } from '@/components/dashboard/VerificationHomePa
 import { CampaignProgressCard } from '@/components/dashboard/CampaignProgressCard'
 import { useLeaderCommandCenter } from '@/hooks/use-leader-command-center-query'
 import { MissionHomePanel } from '@/components/dashboard/MissionHomePanel'
+import { KanbanPipeline } from '@/components/dashboard/overview/KanbanPipeline'
 import { cn } from '@/lib/utils'
 
 function CollapsibleSection({ title, defaultOpen = false, children }: { title: string; defaultOpen?: boolean; children: ReactNode }) {
@@ -157,12 +158,21 @@ function Day1PipelineRow({
   )
 }
 
+const STAGE_GROUPS = [
+  { key: 'new', label: 'New', statuses: ['new_lead', 'new', 'contacted'], color: 'bg-blue-500' },
+  { key: 'engaged', label: 'Engaged', statuses: ['invited', 'whatsapp_sent', 'video_watched'], color: 'bg-amber-500' },
+  { key: 'pipeline', label: 'Pipeline', statuses: ['paid', 'day1', 'day2', 'day3', 'day4', 'day5'], color: 'bg-purple-500' },
+  { key: 'converted', label: 'Done', statuses: ['converted'], color: 'bg-emerald-500' },
+]
+
 function WarRoomDashboard({
   los,
   lcc,
+  wb,
 }: {
   los: ReturnType<typeof useLosQuery>
   lcc: ReturnType<typeof useLeaderCommandCenter>
+  wb: ReturnType<typeof useWorkboardQuery>
 }) {
   const isLoading = los.isPending && !los.data
   const isError = los.isError && !los.data
@@ -207,6 +217,45 @@ function WarRoomDashboard({
   const callsPct =
     s.calls_team_target > 0 ? Math.round((s.total_calls_today / s.calls_team_target) * 100) : 0
   const totalCritical = actions.filter((a) => a.severity === 'critical').length
+
+  const memberPipeline = useMemo(() => {
+    const columns = wb.data?.columns
+    if (!columns) return []
+    const allLeads = columns.flatMap((c) => c.items ?? [])
+    const memberNames = new Map((s.members ?? []).map((m) => [m.user_id, m.name]))
+    const groups = new Map<number, { name: string; stageCounts: Record<string, number>; total: number }>()
+    for (const lead of allLeads) {
+      const uid = lead.assigned_to_user_id
+      if (uid == null || uid === 0) continue
+      if (!groups.has(uid)) {
+        groups.set(uid, { name: memberNames.get(uid) ?? lead.assigned_to_name ?? 'Unknown', stageCounts: {}, total: 0 })
+      }
+      const g = groups.get(uid)!
+      g.total++
+      const s = lead.status
+      g.stageCounts[s] = (g.stageCounts[s] ?? 0) + 1
+    }
+    const memberOrder = new Map((s.members ?? []).map((m, i) => [m.user_id, i]))
+    return Array.from(groups.entries())
+      .map(([userId, g]) => {
+        const groupCounts: Record<string, number> = {}
+        for (const sg of STAGE_GROUPS) {
+          let count = 0
+          for (const st of sg.statuses) {
+            count += g.stageCounts[st] ?? 0
+          }
+          if (count > 0) groupCounts[sg.key] = count
+        }
+        return { userId, name: g.name, total: g.total, stageCounts: g.stageCounts, groupCounts }
+      })
+      .sort((a, b) => {
+        const ai = memberOrder.get(a.userId) ?? 999
+        const bi = memberOrder.get(b.userId) ?? 999
+        return ai - bi
+      })
+  }, [wb.data, s.members])
+
+  const totalPipeline = useMemo(() => memberPipeline.reduce((a, m) => a + m.total, 0), [memberPipeline])
 
   return (
     <div className="space-y-5">
@@ -421,6 +470,71 @@ function WarRoomDashboard({
           </div>
         </div>
       </div>
+
+      {/* ── Pipeline Board ─────────────────────────────────────── */}
+      <KanbanPipeline />
+
+      {/* ── Team Pipeline ──────────────────────────────────────── */}
+      {memberPipeline.length > 0 && (
+        <div className="rounded-2xl border bg-card p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="flex items-center gap-2 text-sm font-bold">
+              <Users className="size-4 text-primary" />
+              Team Pipeline
+            </h3>
+            <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">
+              {totalPipeline} total leads
+            </span>
+          </div>
+          <div className="space-y-2">
+            {memberPipeline.map((m) => {
+              const pct = totalPipeline > 0 ? Math.round((m.total / totalPipeline) * 100) : 0
+              return (
+                <div
+                  key={m.userId}
+                  className="group rounded-lg border border-border/30 bg-background/40 p-3 transition-all hover:border-border/60 hover:bg-muted/30"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-foreground">{m.name}</span>
+                    <span className="text-base font-extrabold tabular-nums text-foreground">{m.total}</span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+                    {STAGE_GROUPS.map((sg) => {
+                      const count = m.groupCounts[sg.key] ?? 0
+                      return (
+                        <span key={sg.key} className="flex items-center gap-1.5 text-xs">
+                          <span className={cn('size-2 shrink-0 rounded-full', count > 0 ? sg.color : 'bg-muted ring-1 ring-border/40')} />
+                          <span className="text-muted-foreground">{sg.label}</span>
+                          <span className={cn('font-bold tabular-nums', count > 0 ? 'text-foreground' : 'text-muted-foreground/40')}>
+                            {count}
+                          </span>
+                        </span>
+                      )
+                    })}
+                  </div>
+                  <div className="mt-2.5 flex items-center gap-2">
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary/60 transition-all duration-700"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] font-semibold text-muted-foreground/60 tabular-nums">{pct}%</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <div className="mt-3 flex items-center gap-4 text-[10px] text-muted-foreground">
+            {STAGE_GROUPS.map((sg) => (
+              <span key={sg.key} className="flex items-center gap-1.5">
+                <span className={cn('size-2 rounded-sm', sg.color)} />
+                {sg.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Insights Footer ─────────────────────────────────────── */}
       <div className="flex flex-wrap gap-3">
@@ -679,7 +793,7 @@ export function DashboardHomePage() {
         />
       ) : null}
 
-      {role === 'leader' && <WarRoomDashboard los={los} lcc={lcc} />}
+      {role === 'leader' && <WarRoomDashboard los={los} lcc={lcc} wb={wb} />}
 
       <div>
         <h2 className="mb-4 font-heading text-ds-h2 text-foreground">
