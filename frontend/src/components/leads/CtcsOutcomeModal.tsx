@@ -5,12 +5,20 @@ import type { CtcsAction } from '@/hooks/use-leads-query'
 import { telHref, whatsAppChatHref } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
 
-const OPTIONS: { action: CtcsAction; label: string }[] = [
-  { action: 'not_picked', label: 'Not Picked' },
+// Left column — lead INTEREST decision (drives the pipeline).
+const INTEREST_OPTIONS: { action: CtcsAction; label: string }[] = [
   { action: 'interested', label: 'Interested' },
   { action: 'call_later', label: 'Call Later' },
   { action: 'not_interested', label: 'Not Interested' },
   { action: 'paid', label: 'Paid' },
+]
+
+// Right column — what physically happened on the LINE (sets call_status only).
+const CALL_OUTCOME_OPTIONS: { slug: string; label: string }[] = [
+  { slug: 'call_received', label: 'Call Received' },
+  { slug: 'no_answer', label: 'No Response' },
+  { slug: 'call_cut', label: 'Call Cut' },
+  { slug: 'person_block', label: 'Person Block' },
 ]
 
 function defaultCallLaterLocalInput(): string {
@@ -28,9 +36,11 @@ type Props = {
   onClose: () => void
   /** For ``call_later``, optional ISO follow-up time; omit for server default (+24h). */
   onPick: (action: CtcsAction, followupAt?: string | null) => void
+  /** Right-column line outcome — records ``call_status`` (call_received/no_answer/call_cut/person_block). */
+  onCallOutcome?: (slug: string) => void
 }
 
-export function CtcsOutcomeModal({ open, leadName, phone, busy, onClose, onPick }: Props) {
+export function CtcsOutcomeModal({ open, leadName, phone, busy, onClose, onPick, onCallOutcome }: Props) {
   const [step, setStep] = useState<'outcomes' | 'call_later_time'>('outcomes')
   const [localFollowup, setLocalFollowup] = useState(defaultCallLaterLocalInput)
   const innerRef = useRef<HTMLDivElement>(null)
@@ -120,25 +130,46 @@ export function CtcsOutcomeModal({ open, leadName, phone, busy, onClose, onPick 
         ) : null}
 
         {step === 'outcomes' ? (
-          <div className="mt-4 grid grid-cols-1 gap-2">
-            {OPTIONS.map((o) => (
-              <button
-                key={o.action}
-                type="button"
-                disabled={busy}
-                onClick={() => {
-                  if (o.action === 'call_later') {
-                    setLocalFollowup(defaultCallLaterLocalInput())
-                    setStep('call_later_time')
-                    return
-                  }
-                  onPick(o.action)
-                }}
-                className="min-h-12 rounded border border-border bg-muted/50 px-4 py-3 text-left text-base font-medium text-foreground transition hover:border-primary/40 hover:bg-muted disabled:opacity-50"
-              >
-                {o.label}
-              </button>
-            ))}
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <p className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Interest
+              </p>
+              {INTEREST_OPTIONS.map((o) => (
+                <button
+                  key={o.action}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    if (o.action === 'call_later') {
+                      setLocalFollowup(defaultCallLaterLocalInput())
+                      setStep('call_later_time')
+                      return
+                    }
+                    onPick(o.action)
+                  }}
+                  className="min-h-12 w-full rounded border border-border bg-muted/50 px-3 py-3 text-left text-sm font-medium text-foreground transition hover:border-primary/40 hover:bg-muted disabled:opacity-50"
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+            <div className="space-y-2">
+              <p className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Call outcome
+              </p>
+              {CALL_OUTCOME_OPTIONS.map((o) => (
+                <button
+                  key={o.slug}
+                  type="button"
+                  disabled={busy || !onCallOutcome}
+                  onClick={() => onCallOutcome?.(o.slug)}
+                  className="min-h-12 w-full rounded border border-border bg-muted/30 px-3 py-3 text-left text-sm font-medium text-foreground transition hover:border-primary/40 hover:bg-muted disabled:opacity-50"
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           <div className="mt-4 space-y-3">

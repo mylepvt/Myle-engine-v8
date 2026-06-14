@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { CtcsLeadCard } from '@/components/leads/CtcsLeadCard'
 import { StaggerContainer } from '@/components/ui/motion'
@@ -48,6 +48,14 @@ const TABS: { id: CtcsTab; label: string }[] = [
   { id: 'all', label: 'All' },
 ]
 
+const TAB_STORAGE_KEY = 'ctcs-active-tab'
+
+function initialTab(): CtcsTab {
+  if (typeof sessionStorage === 'undefined') return 'all'
+  const saved = sessionStorage.getItem(TAB_STORAGE_KEY) as CtcsTab | null
+  return saved && TABS.some((t) => t.id === saved) ? saved : 'all'
+}
+
 type Props = {
   filters: LeadListFilters
   patchBusyLeadId: number | null
@@ -58,7 +66,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
   const { data: me } = useAuthMeQuery()
   const enrollAllowed = me?.role === 'admin' || me?.enrollment_link_access === true
-  const [tab, setTab] = useState<CtcsTab>('all')
+  const [tab, setTab] = useState<CtcsTab>(initialTab)
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [sendingLeadId, setSendingLeadId] = useState<number | null>(null)
   const [enrollBusyLeadId, setEnrollBusyLeadId] = useState<number | null>(null)
@@ -93,6 +101,15 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
     return () => window.clearInterval(id)
   }, [])
 
+  // Remember the open tab so a dialer round-trip / reload reopens the same view.
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(TAB_STORAGE_KEY, tab)
+    } catch {
+      /* private mode — ignore */
+    }
+  }, [tab])
+
   const leadsQ = useLeadsInfiniteQuery(true, filters, 'active', 50, ctcsOpts)
   const items = useMemo(() => leadsQ.data?.pages.flatMap((p) => p.items) ?? [], [leadsQ.data])
   const total = leadsQ.data?.pages[0]?.total ?? 0
@@ -123,6 +140,19 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
     if (activeLeadId != null && items.some((x) => x.id === activeLeadId)) return
     setActiveLeadId(items[0]?.id ?? null)
   }, [callMode, items, activeLeadId, setActiveLeadId])
+
+  // After a reload (dialer round-trip), scroll the restored active lead back into
+  // view once it has rendered — so the user lands on the same card, not the top.
+  const scrollRestoredRef = useRef(false)
+  useEffect(() => {
+    if (scrollRestoredRef.current) return
+    if (activeLeadId == null || items.length === 0) return
+    const el = document.querySelector(`[data-ctcs-lead="${activeLeadId}"]`)
+    if (el) {
+      el.scrollIntoView({ block: 'center' })
+      scrollRestoredRef.current = true
+    }
+  }, [activeLeadId, items])
 
   const outcomeLead = useMemo(
     () => items.find((x) => x.id === outcomeLeadId) ?? null,
@@ -230,6 +260,30 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
       setOutcomeLeadId(null)
     },
     [ctcsMut, callMode, setActiveLeadId, setOutcomeLeadId, leadsQ],
+  )
+
+  // Right-column "Call outcome" in the post-dial modal — records what happened on
+  // the line (call_status). No-connect outcomes also re-arm a +2h retry so the lead
+  // comes back on the board instead of going silent.
+  const onCallOutcome = useCallback(
+    async (id: number, slug: string) => {
+      const RETRY_OUTCOMES = new Set(['no_answer', 'call_cut', 'person_block'])
+      const body: { call_status: string; next_followup_at?: string } = { call_status: slug }
+      if (RETRY_OUTCOMES.has(slug)) {
+        body.next_followup_at = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
+      }
+      try {
+        await patchMut.mutateAsync({ id, body })
+      } catch (err) {
+        window.alert('Call outcome save failed: ' + (err instanceof Error ? err.message : 'Unknown error'))
+        return
+      }
+      const ref = await leadsQ.refetch()
+      const fresh = ref.data?.pages.flatMap((p) => p.items) ?? []
+      if (callMode) setActiveLeadId(nextLeadId(fresh, id))
+      setOutcomeLeadId(null)
+    },
+    [patchMut, leadsQ, callMode, setActiveLeadId, setOutcomeLeadId],
   )
 
   const onCall = useCallback(
@@ -355,8 +409,8 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
 
       <StaggerContainer className="space-y-3" staggerDelay={35}>
         {items.map((l) => (
+          <div key={l.id} data-ctcs-lead={l.id}>
           <CtcsLeadCard
-            key={l.id}
             lead={l}
             nowMs={nowMs}
             isActive={callMode && activeLeadId === l.id}
@@ -373,6 +427,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
             enrollLinkCopied={enrollCopiedLeadId === l.id}
             onCopyEnrollLink={onCopyEnrollLink}
           />
+          </div>
         ))}
       </StaggerContainer>
 
@@ -412,6 +467,10 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
         onPick={(action, followupAt) => {
           if (outcomeLeadId == null) return
           void onCtcsAction(outcomeLeadId, action, { followupAt })
+        }}
+        onCallOutcome={(slug) => {
+          if (outcomeLeadId == null) return
+          void onCallOutcome(outcomeLeadId, slug)
         }}
       />
     </div>

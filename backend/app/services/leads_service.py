@@ -1451,9 +1451,12 @@ class LeadsService:
                 ),
             )
         elif action == "not_interested":
+            # Mark lost but DO NOT archive — an archived lead is hidden from the
+            # Retarget queue and can't be re-called via CTCS (apply_ctcs_action
+            # rejects archived leads). Leaving it un-archived keeps it visible in
+            # Retarget so the owner can re-engage later.
             advance_lead_status_toward(lead=lead, target_slug="lost", role=user.role)
             lead.heat_score = 0
-            lead.archived_at = now
             lead.in_pool = False
         if lead.status != prev_status:
             _apply_status_side_effects(
