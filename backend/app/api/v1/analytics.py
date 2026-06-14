@@ -23,6 +23,8 @@ from app.schemas.analytics import (
     DailyTrendsResponse,
 )
 from app.services.analytics_service import AnalyticsService
+from app.services.downline import recursive_downline_user_ids
+from app.services.member_activity_map import build_activity_map
 
 router = APIRouter()
 
@@ -350,3 +352,22 @@ async def export_analytics(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Export failed: {str(e)}",
         )
+
+
+@router.get("/member-activity-map")
+async def member_activity_map(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user_id: int = Query(..., description="Target member"),
+    days: int = Query(default=30, ge=0, le=365, description="0 = lifetime"),
+) -> dict[str, Any]:
+    """Per-member behavior map from activity_log. Admin: any member; leader:
+    own downline; everyone: themselves."""
+    if user.role != "admin" and user_id != user.user_id:
+        if user.role == "leader":
+            downline = await recursive_downline_user_ids(session, user.user_id)
+            if user_id not in set(downline):
+                raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Out of your scope")
+        else:
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Not allowed")
+    return await build_activity_map(session, user_id=user_id, days=days)
