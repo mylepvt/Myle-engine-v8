@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronDown, ChevronRight, ArrowRight, CheckCircle2, Circle, ClipboardCheck, TrendingUp, UserPlus } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, ChevronRight, Circle, ClipboardCheck, Skull, TrendingUp, UserPlus, Users, Zap } from 'lucide-react'
 
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { XpBadge } from '@/components/xp/XpBadge'
@@ -37,7 +37,7 @@ import { usePingLoginMutation } from '@/hooks/use-xp-query'
 import { useLosQuery } from '@/hooks/use-los-query'
 import { VerificationHomePanel } from '@/components/dashboard/VerificationHomePanel'
 import { CampaignProgressCard } from '@/components/dashboard/CampaignProgressCard'
-import { LeaderActionCenter } from '@/components/dashboard/LeaderActionCenter'
+import { useLeaderCommandCenter } from '@/hooks/use-leader-command-center-query'
 import { MissionHomePanel } from '@/components/dashboard/MissionHomePanel'
 import { cn } from '@/lib/utils'
 
@@ -157,6 +157,302 @@ function Day1PipelineRow({
   )
 }
 
+function WarRoomDashboard({
+  los,
+  lcc,
+}: {
+  los: ReturnType<typeof useLosQuery>
+  lcc: ReturnType<typeof useLeaderCommandCenter>
+}) {
+  const isLoading = los.isPending && !los.data
+  const isError = los.isError && !los.data
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Skeleton key={i} className="h-32 rounded-xl" />
+        ))}
+      </div>
+    )
+  }
+
+  if (isError || !los.data) {
+    return (
+      <ErrorState
+        message="Could not load team data."
+        onRetry={() => {
+          los.refetch()
+          lcc.refetch()
+        }}
+      />
+    )
+  }
+
+  const s = los.data
+  const h = lcc.data?.team_health
+  const f = lcc.data?.fires
+  const actions = lcc.data?.actions ?? []
+
+  const tierText =
+    s.leader_tier === 'strong' ? 'text-emerald-500' : s.leader_tier === 'average' ? 'text-amber-500' : 'text-red-500'
+  const tierBg =
+    s.leader_tier === 'strong' ? 'bg-emerald-500/15' : s.leader_tier === 'average' ? 'bg-amber-500/15' : 'bg-red-500/15'
+  const tierBorder =
+    s.leader_tier === 'strong' ? 'border-emerald-500/20' : s.leader_tier === 'average' ? 'border-amber-500/20' : 'border-red-500/20'
+  const tierStroke =
+    s.leader_tier === 'strong' ? 'stroke-emerald-500' : s.leader_tier === 'average' ? 'stroke-amber-500' : 'stroke-red-500'
+  const tierLabel = s.leader_tier === 'strong' ? 'ELITE' : s.leader_tier === 'average' ? 'AVERAGE' : 'AT RISK'
+
+  const callsPct =
+    s.calls_team_target > 0 ? Math.round((s.total_calls_today / s.calls_team_target) * 100) : 0
+  const totalCritical = actions.filter((a) => a.severity === 'critical').length
+
+  return (
+    <div className="space-y-5">
+      {/* ── Score Hero ──────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
+        <div className={cn('rounded-2xl border bg-card p-6 text-center', tierBorder)}>
+          <div className="relative mx-auto mb-3 size-28">
+            <svg viewBox="0 0 36 36" className="size-28 -rotate-90">
+              <circle cx="18" cy="18" r="15.9" fill="none" strokeWidth="3" className="stroke-muted" />
+              <circle
+                cx="18" cy="18" r="15.9" fill="none" strokeWidth="3"
+                strokeDasharray={`${s.leader_score} 100`}
+                strokeLinecap="round"
+                className={tierStroke}
+              />
+            </svg>
+            <span className={cn('absolute inset-0 flex items-center justify-center text-3xl font-extrabold tabular-nums', tierText)}>
+              {s.leader_score}
+            </span>
+          </div>
+          <div className={cn('mx-auto mb-1 inline-block rounded-full px-3 py-0.5 text-xs font-bold', tierBg, tierText)}>
+            ★ {tierLabel}
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {s.active_count} active · {s.total_members} total
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border bg-card p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Team Size</p>
+            <p className="mt-1.5 text-3xl font-extrabold tabular-nums text-blue-500">{s.total_members}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{s.active_count} active now</p>
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
+              <div className="h-full rounded-full bg-blue-500" style={{ width: `${s.total_members > 0 ? (s.active_count / s.total_members) * 100 : 0}%` }} />
+            </div>
+          </div>
+          <div className="rounded-xl border bg-card p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Calls Today</p>
+            <p className={cn('mt-1.5 text-3xl font-extrabold tabular-nums', callsPct >= 80 ? 'text-emerald-500' : callsPct >= 60 ? 'text-amber-500' : 'text-red-500')}>
+              {s.total_calls_today}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">Target: {s.calls_team_target} &middot; {callsPct}%</p>
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
+              <div className={cn('h-full rounded-full', callsPct >= 80 ? 'bg-emerald-500' : callsPct >= 60 ? 'bg-amber-500' : 'bg-red-500')} style={{ width: `${callsPct}%` }} />
+            </div>
+          </div>
+          <div className="rounded-xl border bg-card p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">At-Risk Members</p>
+            <p className={cn('mt-1.5 text-3xl font-extrabold tabular-nums', (f?.members_at_risk ?? 0) > 0 ? 'text-red-500' : 'text-emerald-500')}>
+              {f?.members_at_risk ?? '—'}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">Need attention today</p>
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
+              <div className="h-full rounded-full bg-red-500" style={{ width: `${f ? Math.min(100, (f.members_at_risk / (lcc.data?.team_size ?? 1)) * 100) : 0}%` }} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Priority Matrix + Team Health ───────────────────────── */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="rounded-2xl border bg-card p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="flex items-center gap-2 text-sm font-bold">
+              <Zap className="size-4 text-amber-500" />
+              Priority Matrix
+            </h3>
+            {totalCritical > 0 && (
+              <span className="rounded-md bg-red-500/15 px-2 py-0.5 text-[11px] font-bold text-red-500">{totalCritical} urgent</span>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-center">
+              <p className="text-2xl font-extrabold tabular-nums text-red-500">{f?.campaign_failures ?? '—'}</p>
+              <p className="mt-1 text-xs text-red-400">Missed Missions</p>
+            </div>
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-center">
+              <p className="text-2xl font-extrabold tabular-nums text-amber-500">{f?.zombie_leads ?? '—'}</p>
+              <p className="mt-1 text-xs text-amber-400">Zombie Leads</p>
+            </div>
+            <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-4 text-center">
+              <p className="text-2xl font-extrabold tabular-nums text-blue-500">{f?.pending_verifications ?? '—'}</p>
+              <p className="mt-1 text-xs text-blue-400">Pending Verif.</p>
+            </div>
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-center">
+              <p className="text-2xl font-extrabold tabular-nums text-emerald-500">{f?.campaigns_running ?? '—'}</p>
+              <p className="mt-1 text-xs text-emerald-400">Campaigns Running</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border bg-card p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="flex items-center gap-2 text-sm font-bold">
+              <TrendingUp className="size-4 text-emerald-500" />
+              Team Health
+            </h3>
+            {h && (
+              <span className={cn('rounded-md px-2 py-0.5 text-[11px] font-bold', h.leader_band === 'elite' ? 'bg-emerald-500/15 text-emerald-500' : h.leader_band === 'average' ? 'bg-amber-500/15 text-amber-500' : 'bg-red-500/15 text-red-500')}>
+                Score: {h.leader_score}
+              </span>
+            )}
+          </div>
+          <div className="space-y-3">
+            {h ? (
+              <>
+                {[
+                  { label: 'Mission', value: h.mission_completion_pct, color: 'bg-emerald-500' },
+                  { label: 'Verification', value: h.verification_pct, color: 'bg-amber-500' },
+                  { label: 'Conversion', value: h.conversion_pct, color: 'bg-red-500' },
+                  { label: 'Zombie Score', value: h.zombie_score, color: 'bg-amber-500' },
+                  { label: 'Blocker Res.', value: h.blocker_resolution_pct, color: 'bg-emerald-500' },
+                ].map((item) => {
+                  const textColor = item.value >= 70 ? 'text-emerald-500' : item.value >= 40 ? 'text-amber-500' : 'text-red-500'
+                  return (
+                    <div key={item.label} className="flex items-center gap-3">
+                      <span className="w-24 shrink-0 text-xs text-muted-foreground">{item.label}</span>
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                        <div className={cn('h-full rounded-full', item.color)} style={{ width: `${Math.min(100, item.value)}%` }} />
+                      </div>
+                      <span className={cn('w-8 shrink-0 text-right text-xs font-bold tabular-nums', textColor)}>
+                        {Math.round(item.value)}
+                      </span>
+                    </div>
+                  )
+                })}
+                {(f?.blockers_waiting ?? 0) > 0 && (
+                  <p className="pt-1 text-[11px] text-muted-foreground">{f?.blockers_waiting} blocker(s) currently unresolved.</p>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">Loading health data…</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Action Queue + Team Members ─────────────────────────── */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="rounded-2xl border bg-card p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="flex items-center gap-2 text-sm font-bold">
+              <AlertTriangle className="size-4 text-amber-500" />
+              Action Queue
+            </h3>
+            {actions.length > 0 && (
+              <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">{actions.length} items</span>
+            )}
+          </div>
+          {actions.length > 0 ? (
+            <div className="space-y-2">
+              {actions.map((a, i) => {
+                const severityDot = a.severity === 'critical' ? 'bg-red-500' : a.severity === 'warning' ? 'bg-amber-500' : 'bg-blue-500'
+                const btnStyle = a.action_type === 'call'
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : a.action_type === 'message'
+                    ? 'bg-purple-600 text-white hover:bg-purple-700'
+                    : 'bg-muted text-foreground hover:bg-muted/80 border border-border'
+                const btnLabel = a.action_type === 'call' ? 'Call'
+                  : a.action_type === 'message' ? 'Message'
+                  : a.action_type === 'review' ? 'Review'
+                  : a.action_type === 'verify' ? 'Verify'
+                  : a.action_type === 'follow_up' ? 'Follow Up'
+                  : 'Action'
+                return (
+                  <div key={`${a.member_id}-${i}`} className={cn(
+                    'flex items-center gap-3 rounded-xl border p-3',
+                    a.severity === 'critical' ? 'border-red-500/20 bg-red-500/5' :
+                    a.severity === 'warning' ? 'border-amber-500/20 bg-amber-500/5' :
+                    'border-blue-500/20 bg-blue-500/5',
+                  )}>
+                    <span className={cn('size-2 shrink-0 rounded-full', severityDot)} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold">{a.member_name}</p>
+                      <p className="text-xs text-muted-foreground">{a.issue}</p>
+                    </div>
+                    <button type="button" className={cn('shrink-0 cursor-default rounded-lg px-3 py-1.5 text-xs font-bold', btnStyle)}>
+                      {btnLabel}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-5">
+              <CheckCircle2 className="size-5 shrink-0 text-emerald-500" />
+              <p className="text-sm font-bold text-emerald-500">All Clear!</p>
+              <p className="text-xs text-muted-foreground">No actions needed right now.</p>
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-2xl border bg-card p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="flex items-center gap-2 text-sm font-bold">
+              <Users className="size-4 text-blue-500" />
+              Team Members
+            </h3>
+            <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">
+              {s.total_members} total
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {s.members.slice(0, 8).map((m) => (
+              <div key={m.user_id} className="flex items-center gap-2 rounded-xl border bg-muted/30 px-3 py-2.5 text-xs font-medium">
+                <span className={cn('size-2 shrink-0 rounded-full', m.is_active ? 'bg-emerald-500' : 'bg-red-500')} />
+                <span className="truncate">{m.name}</span>
+                <span className="ml-auto text-muted-foreground tabular-nums">{m.calls_today}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Insights Footer ─────────────────────────────────────── */}
+      <div className="flex flex-wrap gap-3">
+        {s.inactive_count > 0 && (
+          <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2 text-xs font-semibold text-red-500">
+            <AlertTriangle className="size-3.5 shrink-0" />
+            {s.inactive_count} member{s.inactive_count > 1 ? 's' : ''} below call target &mdash; action needed
+          </div>
+        )}
+        {(f?.zombie_leads ?? 0) > 0 && (
+          <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-2 text-xs font-semibold text-amber-500">
+            <Skull className="size-3.5 shrink-0" />
+            {f?.zombie_leads} zombie lead{f?.zombie_leads !== 1 ? 's' : ''} &mdash; review this week
+          </div>
+        )}
+        {(f?.campaigns_running ?? 0) > 0 && (
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-xs font-semibold text-emerald-500">
+            <CheckCircle2 className="size-3.5 shrink-0" />
+            {f?.campaigns_running} campaign{f?.campaigns_running !== 1 ? 's' : ''} running on track
+          </div>
+        )}
+        {s.basics_streak >= 7 && (
+          <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2 text-xs font-semibold text-red-500">
+            <AlertTriangle className="size-3.5 shrink-0" />
+            {s.basics_streak >= 14 ? 'Account locked' : `${14 - s.basics_streak} days until lock`} &mdash; basics not met
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function DashboardHomePage() {
   const { role } = useDashboardShellRole()
   const { data: me, isPending: mePending } = useAuthMeQuery()
@@ -172,6 +468,7 @@ export function DashboardHomePage() {
   const pool = useLeadPoolQuery(sessionReady && role === 'admin')
   const adminReports = useTeamReportsQuery('', sessionReady && role === 'admin')
   const los = useLosQuery(sessionReady && role === 'leader')
+  const lcc = useLeaderCommandCenter(sessionReady && role === 'leader')
   const pingLogin = usePingLoginMutation()
 
   useEffect(() => {
@@ -271,7 +568,7 @@ export function DashboardHomePage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4 md:space-y-6">
+    <div className={cn('mx-auto space-y-4 md:space-y-6', role === 'leader' ? 'max-w-7xl' : 'max-w-6xl')}>
       <div className="flex items-center gap-2 px-0.5">
         <h1 className="text-ds-h2 font-semibold capitalize tracking-tight text-foreground">
           Welcome back, {firstName}
@@ -382,53 +679,7 @@ export function DashboardHomePage() {
         />
       ) : null}
 
-      {role === 'leader' && (
-        <Link
-          to="/dashboard/team/los"
-          className="block rounded no-underline outline-none ring-offset-background transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
-        >
-          <Card className={cn(
-            'border transition-colors hover:border-opacity-50',
-            !los.data ? 'border-primary/20' :
-            los.data.leader_tier === 'strong' ? 'border-emerald-500/30 bg-gradient-to-r from-emerald-500/[0.06] to-transparent' :
-            los.data.leader_tier === 'average' ? 'border-amber-500/30 bg-gradient-to-r from-amber-500/[0.06] to-transparent' :
-            'border-red-500/30 bg-gradient-to-r from-red-500/[0.06] to-transparent',
-          )}>
-            <CardContent className="flex items-center justify-between gap-4 px-5 py-4">
-              <div className="flex items-center gap-4 min-w-0">
-                <div className={cn(
-                  'flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold tabular-nums',
-                  !los.data ? 'bg-muted text-muted-foreground' :
-                   los.data.leader_tier === 'strong' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' :
-                   los.data.leader_tier === 'average' ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400' :
-                   'bg-red-500/15 text-red-600 dark:text-red-400',
-                )}>
-                  {los.data ? los.data.leader_score : '—'}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-ds-label uppercase text-muted-foreground">Leader OS</p>
-                  {los.isPending ? (
-                    <p className="mt-0.5 text-sm text-muted-foreground">Loading team data…</p>
-                  ) : los.data ? (
-                    <p className="mt-0.5 text-sm font-medium text-foreground">
-                      {los.data.active_count} active · {los.data.total_calls_today}/{los.data.calls_team_target} calls ·{' '}
-                      <span className={cn(
-                        los.data.leader_tier === 'strong' ? 'text-emerald-600 dark:text-emerald-400' :
-                        los.data.leader_tier === 'average' ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400',
-                      )}>
-                        {los.data.leader_tier === 'strong' ? 'Strong' : los.data.leader_tier === 'average' ? 'Average' : 'At Risk'}
-                      </span>
-                    </p>
-                  ) : (
-                    <p className="mt-0.5 text-sm text-muted-foreground">View team snapshot</p>
-                  )}
-                </div>
-              </div>
-              <ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-            </CardContent>
-          </Card>
-        </Link>
-      )}
+      {role === 'leader' && <WarRoomDashboard los={los} lcc={lcc} />}
 
       <div>
         <h2 className="mb-4 font-heading text-ds-h2 text-foreground">
@@ -612,11 +863,7 @@ export function DashboardHomePage() {
         </CardContent>
       </Card>
 
-      {role === 'leader' && (
-        <CollapsibleSection title="Leader Command Center" defaultOpen={false}>
-          <LeaderActionCenter />
-        </CollapsibleSection>
-      )}
+
 
       <CollapsibleSection title="Recent Leads" defaultOpen={false}>
         <Card className="border-primary/20">
