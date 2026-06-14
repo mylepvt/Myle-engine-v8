@@ -727,13 +727,9 @@ export function DashboardHomePage() {
 
       {role === 'team' ? <GateAssistantCard sessionReady={sessionReady} /> : null}
 
-      {role === 'team' || role === 'leader' ? <VerificationHomePanel /> : null}
-
       {role === 'team' ? <MissionHomePanel /> : null}
 
       {role === 'team' ? <CampaignProgressCard /> : null}
-
-      <CcSummaryCard enabled={sessionReady} />
 
       {wb.isError ? (
         <ErrorState
@@ -958,6 +954,10 @@ export function DashboardHomePage() {
           </CardContent>
         </Card>
       )}
+
+      {role === 'team' || role === 'leader' ? <VerificationHomePanel /> : null}
+
+      <CcSummaryCard enabled={sessionReady} />
 
       <CollapsibleSection title="Recent Leads" defaultOpen={false}>
         <Card className="border-primary/20">
