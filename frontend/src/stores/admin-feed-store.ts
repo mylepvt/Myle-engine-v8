@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 
 export type AdminActivityEntry = {
   id: string
@@ -67,6 +67,13 @@ export const useAdminFeedStore = create<AdminFeedState>()(
     {
       name: 'admin-activity-feed',
       partialize: (state) => ({ entries: state.entries }),
+      // Guard storage so the store works in envs without localStorage
+      // (tests / SSR) instead of throwing on persist writes.
+      storage: createJSONStorage(() =>
+        typeof window !== 'undefined' && window.localStorage
+          ? window.localStorage
+          : { getItem: () => null, setItem: () => {}, removeItem: () => {} },
+      ),
     },
   ),
 )

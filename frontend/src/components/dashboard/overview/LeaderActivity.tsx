@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useLeaderHealthQuery, type LeaderHealthItem } from '@/hooks/use-admin-leader-health-query'
+import { MemberActivityMap } from '@/components/dashboard/overview/MemberActivityMap'
 
 type View = 'team' | 'personal'
 
@@ -27,9 +28,13 @@ function bandColor(band: string): string {
   return 'text-red-600 dark:text-red-400'
 }
 
-function LeaderRow({ l, view }: { l: LeaderHealthItem; view: View }) {
+function LeaderRow({ l, view, onOpen }: { l: LeaderHealthItem; view: View; onOpen: (id: number, name: string) => void }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-border/40 bg-background/40 px-3 py-2.5">
+    <button
+      type="button"
+      onClick={() => onOpen(l.leader_id, l.leader_name)}
+      className="flex w-full items-center gap-3 rounded-xl border border-border/40 bg-background/40 px-3 py-2.5 text-left transition hover:border-primary/40 hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+    >
       <span className={cn('size-2 shrink-0 rounded-full', PRESENCE[l.presence_status] ?? PRESENCE.offline)} aria-label={l.presence_status} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-foreground">{l.leader_name}</p>
@@ -64,7 +69,7 @@ function LeaderRow({ l, view }: { l: LeaderHealthItem; view: View }) {
           </div>
         </div>
       )}
-    </div>
+    </button>
   )
 }
 
@@ -73,6 +78,7 @@ function LeaderRow({ l, view }: { l: LeaderHealthItem; view: View }) {
  * ────────────────────────────────────────────────────────────────────────── */
 export function LeaderActivity() {
   const [view, setView] = useState<View>('team')
+  const [selected, setSelected] = useState<{ id: number; name: string } | null>(null)
   const health = useLeaderHealthQuery(true)
   const leaders = health.data?.leaders ?? []
 
@@ -112,7 +118,7 @@ export function LeaderActivity() {
         ) : (
           <div className="max-h-80 space-y-1.5 overflow-y-auto">
             {leaders.map((l) => (
-              <LeaderRow key={l.leader_id} l={l} view={view} />
+              <LeaderRow key={l.leader_id} l={l} view={view} onOpen={(id, name) => setSelected({ id, name })} />
             ))}
           </div>
         )}
@@ -124,6 +130,10 @@ export function LeaderActivity() {
           All members <ArrowRight className="size-3.5" aria-hidden />
         </Link>
       </CardContent>
+
+      {selected ? (
+        <MemberActivityMap userId={selected.id} name={selected.name} onClose={() => setSelected(null)} />
+      ) : null}
     </Card>
   )
 }
