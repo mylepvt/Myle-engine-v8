@@ -520,6 +520,15 @@ function isLeadsInfiniteData(data: unknown): data is InfiniteData<LeadListRespon
   )
 }
 
+function isLeadListResponse(data: unknown): data is LeadListResponse {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'items' in data &&
+    Array.isArray((data as LeadListResponse).items)
+  )
+}
+
 export type LeadFileImportResult = {
   imported: number
   skipped: number
@@ -605,6 +614,7 @@ export function usePatchLeadMutation() {
 
       await qc.cancelQueries({ queryKey: ['leads', 'list', 'paged'], exact: false })
       await qc.cancelQueries({ queryKey: ['workboard'] })
+      await qc.cancelQueries({ queryKey: ['retarget'] })
 
       const previous = qc.getQueriesData({ queryKey: ['leads', 'list', 'paged'], exact: false })
       previous.forEach(([queryKey, data]) => {
@@ -630,13 +640,28 @@ export function usePatchLeadMutation() {
         })
       })
 
-      return { previous, previousWb }
+      // Retarget list is a flat LeadListResponse — patch its row in place so the
+      // status dropdown there reflects the change on the FIRST tap (was reverting
+      // to the stale server value until the refetch landed → "update twice" bug).
+      const previousRt = qc.getQueriesData({ queryKey: ['retarget'] })
+      previousRt.forEach(([queryKey, data]) => {
+        if (!isLeadListResponse(data)) return
+        qc.setQueryData(queryKey, {
+          ...data,
+          items: data.items.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+        })
+      })
+
+      return { previous, previousWb, previousRt }
     },
     onError: (_err, _variables, context) => {
       context?.previous?.forEach(([queryKey, data]) => {
         qc.setQueryData(queryKey, data)
       })
       context?.previousWb?.forEach(([queryKey, data]) => {
+        qc.setQueryData(queryKey, data)
+      })
+      context?.previousRt?.forEach(([queryKey, data]) => {
         qc.setQueryData(queryKey, data)
       })
     },

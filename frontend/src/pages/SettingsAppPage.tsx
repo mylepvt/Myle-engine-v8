@@ -36,6 +36,27 @@ const BATCH_VIDEO_FIELDS: readonly SettingsTextField[] = [
   { key: 'batch_d2_evening_v2', label: 'Day 2 - Evening Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'Video URL for watch/batch/d2_evening/2.' },
 ]
 
+const LIVE_SESSION_FIELDS: readonly SettingsTextField[] = [
+  {
+    key: 'live_session_url',
+    label: 'Join Link (Zoom/Meet)',
+    placeholder: 'https://us06web.zoom.us/j/...',
+    help: 'Daily 2 PM session join link. Members tap this on the Home + Live Session screen.',
+  },
+  {
+    key: 'live_session_title',
+    label: 'Topic / Title',
+    placeholder: "Today's Live Session — topic + speaker",
+    help: 'Shown as the heading on the live card.',
+  },
+  {
+    key: 'live_session_schedule',
+    label: 'Time / Meeting ID / Passcode',
+    placeholder: '⏰ 2:00 PM · ID 836 4190 3667 · Passcode 303948',
+    help: 'Free text under the title — put the time, Meeting ID and Passcode here.',
+  },
+]
+
 const CONTENT_LINK_FIELDS: readonly SettingsTextField[] = [
   {
     key: 'content.esbi_model',
@@ -92,6 +113,9 @@ export function SettingsAppPage({ title }: Props) {
   const [batchEdits, setBatchEdits] = useState<Record<string, string>>({})
   const [batchSaveMsg, setBatchSaveMsg] = useState<string | null>(null)
   const [batchErrorMsg, setBatchErrorMsg] = useState<string | null>(null)
+  const [liveSessionEdits, setLiveSessionEdits] = useState<Record<string, string>>({})
+  const [liveSessionSaveMsg, setLiveSessionSaveMsg] = useState<string | null>(null)
+  const [liveSessionErrorMsg, setLiveSessionErrorMsg] = useState<string | null>(null)
   const [contentSaveMsg, setContentSaveMsg] = useState<string | null>(null)
   const [waSaveMsg, setWaSaveMsg] = useState<string | null>(null)
   const [contentErrorMsg, setContentErrorMsg] = useState<string | null>(null)
@@ -114,6 +138,8 @@ export function SettingsAppPage({ title }: Props) {
     Object.prototype.hasOwnProperty.call(waEdits, key) ? (waEdits[key] ?? '') : (settingsSource[key] ?? '')
   const resolvedBatchValue = (key: string): string =>
     Object.prototype.hasOwnProperty.call(batchEdits, key) ? (batchEdits[key] ?? '') : (settingsSource[key] ?? '')
+  const resolvedLiveSessionValue = (key: string): string =>
+    Object.prototype.hasOwnProperty.call(liveSessionEdits, key) ? (liveSessionEdits[key] ?? '') : (settingsSource[key] ?? '')
 
   const rows = useMemo(() => {
     const settings = appSettingsData?.settings ?? {}
@@ -126,6 +152,22 @@ export function SettingsAppPage({ title }: Props) {
       (r) => r.key.toLowerCase().includes(needle) || r.value.toLowerCase().includes(needle),
     )
   }, [appSettingsData, q])
+
+  const handleSaveLiveSession = async () => {
+    setLiveSessionSaveMsg(null)
+    setLiveSessionErrorMsg(null)
+    try {
+      for (const field of LIVE_SESSION_FIELDS) {
+        const value = resolvedLiveSessionValue(field.key).trim()
+        await updateAppSetting.mutateAsync({ key: field.key, value })
+      }
+      setLiveSessionEdits({})
+      setLiveSessionSaveMsg('Live session updated — visible to all members now.')
+      void refetchAppSettings()
+    } catch (error) {
+      setLiveSessionErrorMsg(error instanceof Error ? error.message : 'Could not save live session.')
+    }
+  }
 
   const handleSaveContentLinks = async () => {
     setContentSaveMsg(null)
@@ -356,6 +398,52 @@ export function SettingsAppPage({ title }: Props) {
         copy (e.g. live session text).
       </p>
 
+
+      <section className="surface-elevated space-y-3 p-4">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">🔴 Daily Live Session (2 PM)</h2>
+          <p className="text-xs text-muted-foreground">
+            Roz ka naya Zoom link yahan paste karo. Ye turant sabhi members ke Home aur Live Session screen par dikhega.
+          </p>
+        </div>
+
+        {appSettingsPending ? (
+          <Skeleton className="h-9 w-full" />
+        ) : appSettingsError ? (
+          <div className="text-sm text-destructive" role="alert">
+            {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load app settings.'}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3">
+            {LIVE_SESSION_FIELDS.map((field) => (
+              <label key={field.key} className="block text-sm">
+                <span className="mb-1 block text-ds-caption text-muted-foreground">{field.label}</span>
+                <input
+                  type="text"
+                  value={resolvedLiveSessionValue(field.key)}
+                  onChange={(e) => setLiveSessionEdits((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                  placeholder={field.placeholder}
+                  className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                />
+                <span className="mt-1 block text-muted-foreground/80">{field.help}</span>
+              </label>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            disabled={updateAppSetting.isPending || appSettingsPending || appSettingsError}
+            onClick={() => void handleSaveLiveSession()}
+            className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-medium text-primary disabled:opacity-50"
+          >
+            {updateAppSetting.isPending ? 'Saving...' : 'Update live session'}
+          </button>
+          {liveSessionSaveMsg ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{liveSessionSaveMsg}</p> : null}
+          {liveSessionErrorMsg ? <p className="text-xs text-destructive">{liveSessionErrorMsg}</p> : null}
+        </div>
+      </section>
 
       <section className="surface-elevated space-y-3 p-4">
         <div>

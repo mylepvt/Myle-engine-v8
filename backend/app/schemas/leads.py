@@ -26,6 +26,10 @@ _CALL_STATUS_SET = {
     "video_sent",
     "video_watched",
     "payment_done",
+    # Dial / line outcomes (CTCS call-outcome picker, right column)
+    "call_received",
+    "person_block",
+    "call_cut",
 }
 
 _PAYMENT_STATUS_SET = {"pending", "proof_uploaded", "approved", "rejected"}

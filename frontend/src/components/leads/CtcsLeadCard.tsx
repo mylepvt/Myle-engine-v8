@@ -14,6 +14,18 @@ import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 
 const ASSIGNEE_PALETTE = ['bg-blue-500', 'bg-pink-500', 'bg-violet-500', 'bg-cyan-500', 'bg-amber-500'] as const
 
+/** Stages where the green "send Enrollment-Live video" WhatsApp button is offered. */
+const ENROLLMENT_SENDABLE_STATUSES = new Set<LeadStatus>([
+  'new_lead',
+  'new',
+  'contacted',
+  'invited',
+  'video_sent',
+  'retarget',
+  'lost',
+  'inactive',
+])
+
 /** Native `<select>` — compact so Call + Lead sit one row beside Dial/WA. */
 const pillSelectInner =
   'max-w-[min(11rem,46vw)] min-w-0 h-full flex-1 cursor-pointer appearance-none rounded-full border-0 bg-transparent py-0 pl-0.5 pr-5 text-left text-ds-caption font-medium leading-none text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1 disabled:opacity-40'
@@ -91,7 +103,12 @@ export function CtcsLeadCard({
   const wa = whatsAppChatHref(lead.phone ?? '')
   const tel = telHref(lead.phone)
   const canDial = tel !== '#'
-  const secureEnrollmentWhatsapp = wa !== '#' && lead.status === 'video_sent'
+  // Show the "send Enrollment-Live video" button for every stage where sending it
+  // is useful — fresh imports, leads being worked, and re-engaged retarget/lost
+  // leads (not just `video_sent`). `/flp-min-billing/send` advances the lead to
+  // `video_sent` from any of these, so re-sending / first-sending both work.
+  const secureEnrollmentWhatsapp =
+    wa !== '#' && ENROLLMENT_SENDABLE_STATUSES.has(lead.status as LeadStatus)
   /** Dial / WhatsApp stay usable while CTCS runs; only this card’s patch blocks. */
   const dialBlocked = patchBusy || !canDial
   const phoneRaw = lead.phone?.trim() ?? ''
