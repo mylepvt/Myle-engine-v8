@@ -53,6 +53,7 @@ vi.mock('@/hooks/use-team-query', () => ({
 
 vi.mock('@/hooks/use-team-reports-query', () => ({
   useTeamReportsQuery: (...args: unknown[]) => mockUseTeamReportsQuery(...args),
+  useTeamWorkTrendQuery: () => ({ data: undefined, isPending: false }),
 }))
 
 vi.mock('@/hooks/use-wallet-recharge-query', () => ({
@@ -508,15 +509,15 @@ describe('AdminCommandCenter', () => {
 
     renderWithProviders()
 
-    expect(screen.getByText('Good day, Admin')).toBeInTheDocument()
-    expect(screen.getByText('Do Now')).toBeInTheDocument()
-    expect(screen.getByText('Today Snapshot')).toBeInTheDocument()
-    // Views are now selected via a single Apple-style dropdown switcher (5 tabs instead of 15).
-    const switcher = screen.getByRole('button', { name: /War Room/ })
+    // Default landing is now the smart Overview tab.
+    expect(screen.getByText('Pipeline Board')).toBeInTheDocument()
+    expect(screen.getAllByText('Claimed today').length).toBeGreaterThan(0)
+    // Views are selected via a single Apple-style dropdown switcher; Overview is current.
+    const switcher = screen.getByRole('button', { name: /Overview/ })
     expect(switcher).toHaveAttribute('aria-haspopup', 'menu')
     fireEvent.click(switcher)
+    expect(screen.getByRole('menuitem', { name: /War Room/ })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /Leads/ })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /System/ })).toBeInTheDocument()
-    expect(screen.getByText('EOS Health')).toBeInTheDocument()
   })
 })

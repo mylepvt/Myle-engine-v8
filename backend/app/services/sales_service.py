@@ -490,7 +490,10 @@ class SalesService:
             stamp = approved_at or created_at
             if stamp is None:
                 continue
-            d = (stamp.astimezone(IST) if stamp.tzinfo else stamp).date()
+            # Naive stamps (SQLite) are stored in UTC; normalize before IST.
+            if stamp.tzinfo is None:
+                stamp = stamp.replace(tzinfo=timezone.utc)
+            d = stamp.astimezone(IST).date()
             if d < start or d > today:
                 continue
             cc_by_day[d] = cc_by_day.get(d, Decimal("0")) + Decimal(str(cc or 0))
