@@ -1,6 +1,6 @@
 import { type CSSProperties, type FormEvent, type UIEvent, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, WifiOff, X } from 'lucide-react'
+import { WifiOff, X } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 
 import { DashboardHeader } from '@/components/layout/DashboardHeader'
@@ -14,8 +14,8 @@ import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { useFlpMinBillingApprovalsAlertBanner } from '@/hooks/use-flp-min-billing-approvals-alert'
 import { useFlpMinBillingApprovalsPendingQuery } from '@/hooks/use-team-query'
 import { useOnline } from '@/hooks/use-online'
-import { usePushNotifications } from '@/hooks/use-push-notifications'
 import { useRealtimeInvalidation } from '@/hooks/use-realtime-invalidation'
+import { PushNotificationGate } from '@/components/notifications/PushNotificationGate'
 import { useSyncRoleFromMe } from '@/hooks/use-sync-role-from-me'
 import { cn } from '@/lib/utils'
 import { authLogout } from '@/lib/auth-api'
@@ -67,12 +67,6 @@ export function DashboardLayout() {
   const enrollmentAlert = useFlpMinBillingApprovalsAlertBanner(pendingEnrollCount, {
     enabled: approverForEnroll,
   })
-  const push = usePushNotifications()
-  const showPushPrompt =
-    Boolean(me?.authenticated) &&
-    push.isSupported &&
-    !push.isSubscribed &&
-    push.permission !== 'denied'
   const locationPing = useLocationPingMutation()
   useEffect(() => {
     if (shellRole !== 'team' && shellRole !== 'leader') return
@@ -315,6 +309,7 @@ export function DashboardLayout() {
   }
 
   return (
+    <PushNotificationGate>
     <div
       className="dashboard-shell flex min-h-0 w-full min-w-0 max-w-full flex-1 overflow-hidden bg-background"
       style={shellStyle}
@@ -427,34 +422,6 @@ export function DashboardLayout() {
           </div>
         ) : null}
 
-        {showPushPrompt ? (
-          <div
-            role="status"
-            className="flex shrink-0 items-center justify-between gap-3 border-b border-blue-500/30 bg-blue-500/10 px-3 py-2.5 dark:border-blue-400/25 dark:bg-blue-400/10"
-          >
-            <div className="flex min-w-0 items-center gap-2">
-              <Bell className="size-4 shrink-0 text-blue-700 dark:text-blue-300" aria-hidden />
-              <p className="min-w-0 text-sm text-blue-900 dark:text-blue-100">
-                <span className="font-semibold">Enable notifications</span>
-                {' — '}
-                {push.requiresStandaloneInstall
-                  ? push.supportMessage
-                  : 'Get reminders for daily targets, reports, and compliance alerts.'}
-              </p>
-            </div>
-            {!push.requiresStandaloneInstall ? (
-              <button
-                type="button"
-                onClick={() => void push.subscribe()}
-                disabled={push.isLoading}
-                className="shrink-0 rounded-md bg-blue-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60 dark:bg-blue-500 dark:hover:bg-blue-400"
-              >
-                {push.isLoading ? 'Enabling…' : 'Enable'}
-              </button>
-            ) : null}
-          </div>
-        ) : null}
-
         {(shellRole === 'team' || shellRole === 'leader') && <LocationPermissionGate />}
         </div>
 
@@ -503,5 +470,6 @@ export function DashboardLayout() {
         ) : null}
       </div>
     </div>
+    </PushNotificationGate>
   )
 }
