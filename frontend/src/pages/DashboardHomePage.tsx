@@ -254,6 +254,8 @@ function WarRoomDashboard({
       })
   }, [wb.data, s.members])
 
+  const totalPipeline = useMemo(() => memberPipeline.reduce((a, m) => a + m.total, 0), [memberPipeline])
+
   return (
     <div className="space-y-5">
       {/* ── Score Hero ──────────────────────────────────────────── */}
@@ -473,51 +475,52 @@ function WarRoomDashboard({
         <div className="rounded-2xl border bg-card p-5">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="flex items-center gap-2 text-sm font-bold">
-              <TrendingUp className="size-4 text-blue-500" />
+              <Users className="size-4 text-primary" />
               Team Pipeline
             </h3>
             <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">
-              {memberPipeline.reduce((a, m) => a + m.total, 0)} total leads
+              {totalPipeline} total leads
             </span>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-border text-muted-foreground">
-                  <th className="pb-2 pr-3 text-left font-semibold">Member</th>
-                  {STAGE_GROUPS.map((sg) => (
-                    <th key={sg.key} className="pb-2 px-2 text-right font-semibold">{sg.label}</th>
-                  ))}
-                  <th className="pb-2 pl-3 text-right font-semibold">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {memberPipeline.map((m) => {
-                  const maxGroup = STAGE_GROUPS.reduce((mx, sg) => Math.max(mx, m.groupCounts[sg.key] ?? 0), 0)
-                  return (
-                    <tr key={m.userId} className="border-b border-border/50 last:border-0">
-                      <td className="py-2.5 pr-3 text-left font-medium text-foreground">{m.name}</td>
-                      {STAGE_GROUPS.map((sg) => {
-                        const count = m.groupCounts[sg.key] ?? 0
-                        return (
-                          <td key={sg.key} className="py-2.5 px-2 text-right tabular-nums">
-                            <span className={cn(
-                              'inline-flex items-center justify-center rounded-md px-1.5 py-0.5 font-bold min-w-[1.5rem]',
-                              count > 0 ? `${sg.color}/15 ${sg.color.replace('bg-', 'text-')}` : 'text-muted-foreground/40',
-                            )}>
-                              {count || '—'}
-                            </span>
-                          </td>
-                        )
-                      })}
-                      <td className="py-2.5 pl-3 text-right font-bold tabular-nums text-foreground">{m.total}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+          <div className="space-y-2">
+            {memberPipeline.map((m) => {
+              const pct = totalPipeline > 0 ? Math.round((m.total / totalPipeline) * 100) : 0
+              return (
+                <div
+                  key={m.userId}
+                  className="group rounded-lg border border-border/30 bg-background/40 p-3 transition-all hover:border-border/60 hover:bg-muted/30"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-foreground">{m.name}</span>
+                    <span className="text-base font-extrabold tabular-nums text-foreground">{m.total}</span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+                    {STAGE_GROUPS.map((sg) => {
+                      const count = m.groupCounts[sg.key] ?? 0
+                      return (
+                        <span key={sg.key} className="flex items-center gap-1.5 text-xs">
+                          <span className={cn('size-2 shrink-0 rounded-full', count > 0 ? sg.color : 'bg-muted ring-1 ring-border/40')} />
+                          <span className="text-muted-foreground">{sg.label}</span>
+                          <span className={cn('font-bold tabular-nums', count > 0 ? 'text-foreground' : 'text-muted-foreground/40')}>
+                            {count}
+                          </span>
+                        </span>
+                      )
+                    })}
+                  </div>
+                  <div className="mt-2.5 flex items-center gap-2">
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary/60 transition-all duration-700"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] font-semibold text-muted-foreground/60 tabular-nums">{pct}%</span>
+                  </div>
+                </div>
+              )
+            })}
           </div>
-          {/* Mini stacked bar legend */}
           <div className="mt-3 flex items-center gap-4 text-[10px] text-muted-foreground">
             {STAGE_GROUPS.map((sg) => (
               <span key={sg.key} className="flex items-center gap-1.5">
