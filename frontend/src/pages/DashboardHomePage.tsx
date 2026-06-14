@@ -1,6 +1,6 @@
-import { Fragment, useEffect, useMemo } from 'react'
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, CheckCircle2, Circle, ClipboardCheck, TrendingUp, UserPlus } from 'lucide-react'
+import { ChevronDown, ChevronRight, ArrowRight, CheckCircle2, Circle, ClipboardCheck, TrendingUp, UserPlus } from 'lucide-react'
 
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { XpBadge } from '@/components/xp/XpBadge'
@@ -40,6 +40,23 @@ import { CampaignProgressCard } from '@/components/dashboard/CampaignProgressCar
 import { LeaderActionCenter } from '@/components/dashboard/LeaderActionCenter'
 import { MissionHomePanel } from '@/components/dashboard/MissionHomePanel'
 import { cn } from '@/lib/utils'
+
+function CollapsibleSection({ title, defaultOpen = false, children }: { title: string; defaultOpen?: boolean; children: ReactNode }) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div className="border-t border-border/40 pt-4 mt-6">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+      >
+        {open ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
+        {title}
+      </button>
+      {open && <div className="mt-4 space-y-4">{children}</div>}
+    </div>
+  )
+}
 
 /** Canonical stage labels — same source as leads/workboard (legacy parity; all roles). */
 function statusLabel(status: string): string {
@@ -344,8 +361,6 @@ export function DashboardHomePage() {
         </div>
       ) : null}
 
-      {role === 'leader' ? <LeaderActionCenter /> : null}
-
       {role === 'team' ? <GateAssistantCard sessionReady={sessionReady} /> : null}
 
       {role === 'team' || role === 'leader' ? <VerificationHomePanel /> : null}
@@ -597,89 +612,97 @@ export function DashboardHomePage() {
         </CardContent>
       </Card>
 
-      <Card className="border-primary/20">
-        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
-          <div>
-            <CardTitle className="text-ds-h3">Recent leads</CardTitle>
-            <CardDescription>
-              Your 8 most recent leads
-            </CardDescription>
-          </div>
-          <Button variant="secondary" size="sm" asChild>
-            <Link to="/dashboard/work/leads">View all</Link>
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {wb.isPending && sessionReady ? (
-            <div className="space-y-2">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
+      {role === 'leader' && (
+        <CollapsibleSection title="Leader Command Center" defaultOpen={false}>
+          <LeaderActionCenter />
+        </CollapsibleSection>
+      )}
+
+      <CollapsibleSection title="Recent Leads" defaultOpen={false}>
+        <Card className="border-primary/20">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+            <div>
+              <CardTitle className="text-ds-h3">Recent leads</CardTitle>
+              <CardDescription>
+                Your 8 most recent leads
+              </CardDescription>
             </div>
-          ) : recentLeads.length === 0 ? (
-            <p className="text-ds-body text-muted-foreground">
-              No leads yet. Open{' '}
-              <Link
-                to="/dashboard/work/leads"
-                className="font-medium text-primary underline-offset-2 hover:underline"
-              >
-                Leads
-              </Link>{' '}
-              to create or import.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Stage</TableHead>
-                  <TableHead className="text-right">Created</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentLeads.map((lead) => {
-                  const isDay1 = lead.status === 'day1' && (role === 'leader' || role === 'admin')
-                  return (
-                    <Fragment key={lead.id}>
-                      <TableRow>
-                        <TableCell className="font-medium capitalize">{lead.name?.toLowerCase()}</TableCell>
-                        <TableCell>
-                          {lead.phone?.trim() ? (
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-ds-caption tabular-nums text-muted-foreground">{lead.phone}</span>
-                              <LeadContactActions phone={lead.phone} />
-                            </div>
-                          ) : (
-                            <span className="text-ds-caption text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{statusLabel(lead.status)}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right text-ds-caption text-muted-foreground">
-                          {new Date(lead.created_at).toLocaleDateString(undefined, {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })}
-                        </TableCell>
-                      </TableRow>
-                      {isDay1 && (
-                        <Day1PipelineRow
-                          lead={lead}
-                          patching={patchLead.isPending}
-                          onPatch={(id, body) => patchLead.mutate({ id, body })}
-                        />
-                      )}
-                    </Fragment>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+            <Button variant="secondary" size="sm" asChild>
+              <Link to="/dashboard/work/leads">View all</Link>
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {wb.isPending && sessionReady ? (
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : recentLeads.length === 0 ? (
+              <p className="text-ds-body text-muted-foreground">
+                No leads yet. Open{' '}
+                <Link
+                  to="/dashboard/work/leads"
+                  className="font-medium text-primary underline-offset-2 hover:underline"
+                >
+                  Leads
+                </Link>{' '}
+                to create or import.
+              </p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Stage</TableHead>
+                    <TableHead className="text-right">Created</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentLeads.map((lead) => {
+                    const isDay1 = lead.status === 'day1' && (role === 'leader' || role === 'admin')
+                    return (
+                      <Fragment key={lead.id}>
+                        <TableRow>
+                          <TableCell className="font-medium capitalize">{lead.name?.toLowerCase()}</TableCell>
+                          <TableCell>
+                            {lead.phone?.trim() ? (
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-ds-caption tabular-nums text-muted-foreground">{lead.phone}</span>
+                                <LeadContactActions phone={lead.phone} />
+                              </div>
+                            ) : (
+                              <span className="text-ds-caption text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{statusLabel(lead.status)}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right text-ds-caption text-muted-foreground">
+                            {new Date(lead.created_at).toLocaleDateString(undefined, {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </TableCell>
+                        </TableRow>
+                        {isDay1 && (
+                          <Day1PipelineRow
+                            lead={lead}
+                            patching={patchLead.isPending}
+                            onPatch={(id, body) => patchLead.mutate({ id, body })}
+                          />
+                        )}
+                      </Fragment>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </CollapsibleSection>
 
       {mePending && !me ? (
         <div className="flex justify-center py-8">
