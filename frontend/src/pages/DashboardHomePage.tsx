@@ -157,12 +157,21 @@ function Day1PipelineRow({
   )
 }
 
+const STAGE_GROUPS = [
+  { key: 'new', label: 'New', statuses: ['new_lead', 'new', 'contacted'], color: 'bg-blue-500' },
+  { key: 'engaged', label: 'Engaged', statuses: ['invited', 'whatsapp_sent', 'video_watched'], color: 'bg-amber-500' },
+  { key: 'pipeline', label: 'Pipeline', statuses: ['paid', 'day1', 'day2', 'day3', 'day4', 'day5'], color: 'bg-purple-500' },
+  { key: 'converted', label: 'Done', statuses: ['converted'], color: 'bg-emerald-500' },
+]
+
 function WarRoomDashboard({
   los,
   lcc,
+  wb,
 }: {
   los: ReturnType<typeof useLosQuery>
   lcc: ReturnType<typeof useLeaderCommandCenter>
+  wb: ReturnType<typeof useWorkboardQuery>
 }) {
   const isLoading = los.isPending && !los.data
   const isError = los.isError && !los.data
@@ -207,6 +216,43 @@ function WarRoomDashboard({
   const callsPct =
     s.calls_team_target > 0 ? Math.round((s.total_calls_today / s.calls_team_target) * 100) : 0
   const totalCritical = actions.filter((a) => a.severity === 'critical').length
+
+  const memberPipeline = useMemo(() => {
+    const columns = wb.data?.columns
+    if (!columns) return []
+    const allLeads = columns.flatMap((c) => c.items ?? [])
+    const memberNames = new Map((s.members ?? []).map((m) => [m.user_id, m.name]))
+    const groups = new Map<number, { name: string; stageCounts: Record<string, number>; total: number }>()
+    for (const lead of allLeads) {
+      const uid = lead.assigned_to_user_id
+      if (uid == null || uid === 0) continue
+      if (!groups.has(uid)) {
+        groups.set(uid, { name: memberNames.get(uid) ?? lead.assigned_to_name ?? 'Unknown', stageCounts: {}, total: 0 })
+      }
+      const g = groups.get(uid)!
+      g.total++
+      const s = lead.status
+      g.stageCounts[s] = (g.stageCounts[s] ?? 0) + 1
+    }
+    const memberOrder = new Map((s.members ?? []).map((m, i) => [m.user_id, i]))
+    return Array.from(groups.entries())
+      .map(([userId, g]) => {
+        const groupCounts: Record<string, number> = {}
+        for (const sg of STAGE_GROUPS) {
+          let count = 0
+          for (const st of sg.statuses) {
+            count += g.stageCounts[st] ?? 0
+          }
+          if (count > 0) groupCounts[sg.key] = count
+        }
+        return { userId, name: g.name, total: g.total, stageCounts: g.stageCounts, groupCounts }
+      })
+      .sort((a, b) => {
+        const ai = memberOrder.get(a.userId) ?? 999
+        const bi = memberOrder.get(b.userId) ?? 999
+        return ai - bi
+      })
+  }, [wb.data, s.members])
 
   return (
     <div className="space-y-5">
@@ -421,6 +467,67 @@ function WarRoomDashboard({
           </div>
         </div>
       </div>
+
+      {/* ── Team Pipeline ──────────────────────────────────────── */}
+      {memberPipeline.length > 0 && (
+        <div className="rounded-2xl border bg-card p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="flex items-center gap-2 text-sm font-bold">
+              <TrendingUp className="size-4 text-blue-500" />
+              Team Pipeline
+            </h3>
+            <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">
+              {memberPipeline.reduce((a, m) => a + m.total, 0)} total leads
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-border text-muted-foreground">
+                  <th className="pb-2 pr-3 text-left font-semibold">Member</th>
+                  {STAGE_GROUPS.map((sg) => (
+                    <th key={sg.key} className="pb-2 px-2 text-right font-semibold">{sg.label}</th>
+                  ))}
+                  <th className="pb-2 pl-3 text-right font-semibold">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {memberPipeline.map((m) => {
+                  const maxGroup = STAGE_GROUPS.reduce((mx, sg) => Math.max(mx, m.groupCounts[sg.key] ?? 0), 0)
+                  return (
+                    <tr key={m.userId} className="border-b border-border/50 last:border-0">
+                      <td className="py-2.5 pr-3 text-left font-medium text-foreground">{m.name}</td>
+                      {STAGE_GROUPS.map((sg) => {
+                        const count = m.groupCounts[sg.key] ?? 0
+                        return (
+                          <td key={sg.key} className="py-2.5 px-2 text-right tabular-nums">
+                            <span className={cn(
+                              'inline-flex items-center justify-center rounded-md px-1.5 py-0.5 font-bold min-w-[1.5rem]',
+                              count > 0 ? `${sg.color}/15 ${sg.color.replace('bg-', 'text-')}` : 'text-muted-foreground/40',
+                            )}>
+                              {count || '—'}
+                            </span>
+                          </td>
+                        )
+                      })}
+                      <td className="py-2.5 pl-3 text-right font-bold tabular-nums text-foreground">{m.total}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          {/* Mini stacked bar legend */}
+          <div className="mt-3 flex items-center gap-4 text-[10px] text-muted-foreground">
+            {STAGE_GROUPS.map((sg) => (
+              <span key={sg.key} className="flex items-center gap-1.5">
+                <span className={cn('size-2 rounded-sm', sg.color)} />
+                {sg.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Insights Footer ─────────────────────────────────────── */}
       <div className="flex flex-wrap gap-3">
@@ -679,7 +786,7 @@ export function DashboardHomePage() {
         />
       ) : null}
 
-      {role === 'leader' && <WarRoomDashboard los={los} lcc={lcc} />}
+      {role === 'leader' && <WarRoomDashboard los={los} lcc={lcc} wb={wb} />}
 
       <div>
         <h2 className="mb-4 font-heading text-ds-h2 text-foreground">
