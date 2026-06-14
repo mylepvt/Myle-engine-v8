@@ -793,8 +793,6 @@ export function DashboardHomePage() {
         />
       ) : null}
 
-      {role === 'leader' && <WarRoomDashboard los={los} lcc={lcc} wb={wb} />}
-
       <div>
         <h2 className="mb-4 font-heading text-ds-h2 text-foreground">
           Overview
@@ -936,6 +934,8 @@ export function DashboardHomePage() {
           </div>
         )}
       </div>
+
+      {role === 'leader' && <WarRoomDashboard los={los} lcc={lcc} wb={wb} />}
 
       <XpBadge />
 
