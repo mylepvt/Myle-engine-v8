@@ -725,7 +725,7 @@ export function DashboardHomePage() {
         </div>
       ) : null}
 
-      {role === 'team' ? <GateAssistantCard sessionReady={sessionReady} /> : null}
+      {role === 'team' || role === 'leader' ? <GateAssistantCard sessionReady={sessionReady} /> : null}
 
       {role === 'team' ? <MissionHomePanel /> : null}
 
