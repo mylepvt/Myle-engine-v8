@@ -177,7 +177,7 @@
     min-height: 100dvh;
     transition: background-color 0.28s ease, color 0.22s ease;
     font-feature-settings: 'kern' 1;
-    -webkit-tap-highlight-color: color-mix(in oklch, var(--primary) 15%, transparent);
+    -webkit-tap-highlight-color: color-mix(in srgb, var(--primary) 15%, transparent);
     max-width: 100%;
     overflow-x: clip;
     touch-action: manipulation;
@@ -240,7 +240,7 @@
   }
 
   ::selection {
-    background-color: color-mix(in oklch, var(--primary) 35%, transparent);
+    background-color: color-mix(in srgb, var(--primary) 35%, transparent);
     color: var(--primary-foreground);
   }
 
@@ -261,7 +261,7 @@
 
 @layer utilities {
   .shadow-focus-ring-primary {
-    box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 18%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
   }
 
   /* iOS momentum scrolling for scroll containers */
@@ -304,19 +304,6 @@
     scroll-behavior: smooth;
   }
 
-  /* GRADIENT BORDERS */
-  .gradient-border {
-    position: relative;
-    background: linear-gradient(135deg, var(--primary), var(--accent));
-    padding: 1px;
-    border-radius: var(--radius);
-  }
-
-  .gradient-border-inner {
-    background: var(--card);
-    border-radius: calc(var(--radius) - 1px);
-  }
-
   /* Auth card dark header — always dark regardless of theme */
   .auth-header-banner {
     background: linear-gradient(
@@ -347,34 +334,12 @@
   }
 }
 
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
 @keyframes shimmer {
   0% {
     background-position: 200% 0;
   }
   100% {
     background-position: -200% 0;
-  }
-}
-
-@keyframes countUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
   }
 }
 
@@ -400,15 +365,6 @@
   .animate-pulse-soft {
     animation: none !important;
     opacity: 0.65;
-  }
-}
-
-@keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 5px color-mix(in srgb, var(--primary) 50%, transparent);
-  }
-  50% {
-    box-shadow: 0 0 20px color-mix(in srgb, var(--primary) 80%, transparent);
   }
 }
 
@@ -444,25 +400,25 @@
   }
 
   .surface-elevated:hover {
-    border-color: color-mix(in oklch, var(--border) 110%, transparent);
+    border-color: color-mix(in srgb, var(--border) 110%, transparent);
     background-color: color-mix(in srgb, var(--card) 92%, var(--primary) 8%);
     box-shadow: var(--shadow-card-hover);
   }
 
   .surface-elevated:active {
-    border-color: color-mix(in oklch, var(--border) 100%, transparent);
+    border-color: color-mix(in srgb, var(--border) 100%, transparent);
   }
 
   /* Discord-style inset surface (flat, no inset shadow) */
   .surface-inset {
     @apply rounded border transition-all duration-100;
-    border-color: color-mix(in oklch, var(--border) 85%, transparent);
-    background-color: color-mix(in oklch, var(--muted) 45%, transparent);
+    border-color: color-mix(in srgb, var(--border) 85%, transparent);
+    background-color: color-mix(in srgb, var(--muted) 45%, transparent);
   }
 
   .surface-inset:hover {
-    border-color: color-mix(in oklch, var(--border) 100%, transparent);
-    background-color: color-mix(in oklch, var(--muted) 55%, transparent);
+    border-color: color-mix(in srgb, var(--border) 100%, transparent);
+    background-color: color-mix(in srgb, var(--muted) 55%, transparent);
   }
 
   .field-label {
@@ -520,24 +476,24 @@
     @apply absolute bottom-0 right-0 z-10 size-3 rounded-full border-2 border-background;
   }
   .status-dot.online {
-    background: #23a55a;
-    box-shadow: 0 0 6px rgba(35,165,90,0.5);
+    background: var(--success);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--success) 50%, transparent);
   }
   .status-dot.online::before {
     content: '';
     @apply absolute inset-0 rounded-full;
     animation: statusPulse 1.5s ease-in-out infinite;
-    background: #23a55a;
+    background: var(--success);
     opacity: 0.4;
   }
   .status-dot.idle {
-    background: #f0b232;
+    background: var(--warning);
   }
   .status-dot.dnd {
-    background: #da373c;
+    background: var(--destructive);
   }
   .status-dot.offline {
-    background: #80848e;
+    background: var(--muted-foreground);
   }
 
   /* ── Discord modal animations ───────────────────────────────────── */
@@ -934,12 +890,6 @@ html.pwa-standalone * {
   textarea:focus,
   select:focus {
     outline: none;
-  }
-}
-
-@layer utilities {
-  .animate-pulse {
-    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 }
 

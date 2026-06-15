@@ -57,13 +57,6 @@ export default {
           { lineHeight: '1rem', fontWeight: '600', letterSpacing: '0.07em' },
         ],
       },
-      spacing: {
-        'ds-1': '4px',
-        'ds-2': '8px',
-        'ds-3': '16px',
-        'ds-4': '24px',
-        'ds-5': '32px',
-      },
       colors: {
         /* oklch tokens from CSS variables (shadcn / v0 export compatible) */
         palette: {
@@ -134,57 +127,15 @@ export default {
         },
       },
       animation: {
-        'fade-in': 'fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
-        'slide-up': 'slideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards',
-        'slide-down': 'slideDown 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-        'scale-up': 'scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
-        'bounce-in': 'bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards',
-        'pulse-soft': 'pulseSoft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'status-pulse': 'statusPulse 1.5s ease-in-out infinite',
-        'sidebar-indicator': 'sidebarIndicator 0.15s ease-out forwards',
-        'dc-spinner': 'dcSpinner 0.8s steps(4) infinite',
+        /* statusPulse / global fadeIn + slideUp keyframes live in index.css;
+           dot-in is the only config-defined animation still in use */
         'dot-in': 'dotIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both',
       },
       keyframes: {
-        fadeIn: {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
-        },
-        slideUp: {
-          '0%': { transform: 'translateY(8px)', opacity: '0' },
-          '100%': { transform: 'translateY(0)', opacity: '1' },
-        },
-        slideDown: {
-          '0%': { transform: 'translateY(-8px)', opacity: '0' },
-          '100%': { transform: 'translateY(0)', opacity: '1' },
-        },
-        scaleUp: {
-          '0%': { transform: 'scale(0.95)', opacity: '0' },
-          '100%': { transform: 'scale(1)', opacity: '1' },
-        },
-        bounceIn: {
-          '0%': { transform: 'scale(0.9)', opacity: '0' },
-          '50%': { transform: 'scale(1.02)' },
-          '100%': { transform: 'scale(1)', opacity: '1' },
-        },
-        pulseSoft: {
-          '0%, 100%': { opacity: '1' },
-          '50%': { opacity: '0.8' },
-        },
+        /* statusPulse is consumed directly by .status-dot in index.css */
         statusPulse: {
           '0%, 100%': { opacity: '1', transform: 'scale(1)' },
           '50%': { opacity: '0.75', transform: 'scale(1.15)' },
-        },
-        sidebarIndicator: {
-          '0%': { transform: 'scaleY(0)' },
-          '100%': { transform: 'scaleY(1)' },
-        },
-        dcSpinner: {
-          '0%': { transform: 'translateY(0)' },
-          '25%': { transform: 'translateY(-4px)' },
-          '50%': { transform: 'translateY(0)' },
-          '75%': { transform: 'translateY(4px)' },
-          '100%': { transform: 'translateY(0)' },
         },
         dotIn: {
           '0%': { opacity: '0', transform: 'translateY(-8px) scale(0.6)' },
