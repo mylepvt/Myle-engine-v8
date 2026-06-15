@@ -219,6 +219,11 @@ def _calls_short_streak(
     for day in days:
         if day < start_floor:
             break
+        # Days inside a discipline pause window don't count toward the streak —
+        # stop here so a member doesn't emerge from a pause already at a
+        # strong/final-warning stage ("whiplash").
+        if discipline_warnings_paused(day):
+            break
         fresh_leads = int(fresh_leads_by_day.get(day, {}).get(user.id, 0))
         calls = int(fresh_calls_by_day.get(day, {}).get(user.id, 0))
         if fresh_leads > 0 and calls < call_target:
@@ -239,6 +244,9 @@ def _missing_report_streak(
     start_floor = _discipline_start_floor(user, policy_start_date)
     for day in days:
         if day < start_floor:
+            break
+        # Paused days don't accumulate the streak (avoids post-pause whiplash).
+        if discipline_warnings_paused(day):
             break
         if (user.id, day) not in submitted_reports:
             streak += 1

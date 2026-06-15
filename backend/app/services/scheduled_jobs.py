@@ -386,6 +386,15 @@ async def job_leader_basics_enforcement() -> None:
     try:
         async with AsyncSessionLocal() as session:
             today = today_ist()
+
+            # Don't warn or lock during a configured discipline pause
+            # (rollout window, festival/holiday freeze) — same rule the member
+            # discipline system honours.
+            from app.services.member_compliance import discipline_warnings_paused
+            if discipline_warnings_paused(today):
+                logger.info("leader_basics_enforcement: skipped (discipline warnings paused)")
+                return
+
             daily_call_target = await get_daily_call_target(session)
 
             leaders = (
@@ -421,6 +430,11 @@ async def job_leader_basics_enforcement() -> None:
                 if not team_ids:
                     continue
 
+                # A leader who is themselves on an approved grace window is not
+                # locked for their team's dip during that window.
+                if leader.grace_end_date is not None and leader.grace_end_date >= today:
+                    continue
+
                 streak = await enf._leader_team_basics_streak(
                     session,
                     team_ids,
@@ -430,21 +444,16 @@ async def job_leader_basics_enforcement() -> None:
                 )
 
                 if streak >= _LEADER_LOCK_STREAK:
+                    # Reversible LOCK, not an automatic terminal removal: block
+                    # access so an admin can review and restore (matches the
+                    # "contact admin to restore access" message below). We do
+                    # NOT set removed_at / fire the removal pipeline here.
                     leader.access_blocked = True
-                    leader.discipline_status = "removed"
-                    from datetime import timezone as tz
-                    leader.removed_at = datetime.now(tz.utc)
-                    leader.removed_by_user_id = None
                     leader.removal_reason = (
                         f"Leader basics not met: team missed call targets for "
-                        f"{streak} consecutive days."
+                        f"{streak} consecutive days. (auto-locked, pending admin review)"
                     )
                     locked_count += 1
-                    try:
-                        from app.services.whatsapp_removal import send_removal_whatsapp
-                        await send_removal_whatsapp(user=leader, session=session)
-                    except Exception as wa_exc:
-                        logger.warning("removal whatsapp failed leader_id=%s during basics enforcement: %s", leader.id, wa_exc)
                     try:
                         await send_push_to_user(
                             session,
