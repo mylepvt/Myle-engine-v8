@@ -298,9 +298,16 @@ async def record_reply(
     if not digits:
         return None
 
+    # Match by this phone's last 10 digits directly in SQL so a reply is found
+    # regardless of how many other pending outreaches exist (the old global
+    # "20 most recent" scan could orphan replies on a busy system).
+    tail = digits[-10:]
     stmt = (
         select(MemberRemovalOutreach)
-        .where(MemberRemovalOutreach.reply_text.is_(None))
+        .where(
+            MemberRemovalOutreach.reply_text.is_(None),
+            MemberRemovalOutreach.phone.like(f"%{tail}"),
+        )
         .order_by(MemberRemovalOutreach.created_at.desc())
         .limit(20)
     )
