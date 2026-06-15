@@ -244,11 +244,17 @@ class PerformerInsightsService:
                 if actual_calls > 0 or reported_calls > 0
                 else 0
             )
-            # Trust score: 100 = perfect match, 0 = completely fabricated
+            # Trust score: 100 = perfect match, 0 = completely fabricated.
+            # When the system logged zero calls we can't tell "made no calls"
+            # apart from "call tracking didn't capture them" (common on day 1 or
+            # when a device isn't logging). Forgive a small reported count as a
+            # likely tracking gap; only treat a substantial over-report as
+            # fabrication so genuine new/low-volume members aren't branded.
+            _MIN_FABRICATION_REPORTED = 3
             if reported_calls == 0 and actual_calls == 0:
                 trust_score = 100.0
             elif actual_calls == 0 and reported_calls > 0:
-                trust_score = 0.0
+                trust_score = 0.0 if reported_calls >= _MIN_FABRICATION_REPORTED else 100.0
             else:
                 ratio = min(actual_calls, reported_calls) / max(actual_calls, reported_calls, 1)
                 trust_score = ratio * 100
