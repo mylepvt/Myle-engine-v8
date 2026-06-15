@@ -161,4 +161,61 @@ sale_invoice_storage, certificate, day2_certificate_pdf, forever_invoice_ocr,
 invoice_records, wallet_ledger, training_uploads, flp_min_billing_video,
 gate_assistant, training_overview.
 
-(Domain 6 — auth/access/settings/rule_engine/CTCS/storage — pending, will be appended.)
+---
+
+## DOMAIN 6 — Auth / Access / Settings / Rules / CTCS / Storage
+
+Good news first: the **auth layer is solid** — blocked and removed users are correctly
+prevented from logging in (`ensure_may_issue_session_cookies`, role-based API guards),
+`login_identity` validates FBO IDs/usernames/upline properly, R2 storage and enrollment
+tokens use strong randomness and short expiry, and CTCS status-chain transitions are
+role-checked with loop guards. Findings below are about defaults and edge cases.
+
+### HIGH
+- **Feature flags default to ON** — `settings_service.py:283-287`
+  `enable_wallet/training/reports/analytics/notifications` all default to `"true"` when
+  the setting row is missing. A deleted/never-created flag silently re-enables the
+  feature (fail-open). Sensitive features (wallet) should fail *closed*.
+- **FSM "unknown status = allowed"** — `pipeline_rules.py:202-211`
+  `is_valid_forward_status_transition()` returns `True` for unmapped statuses, so a
+  crafted/unknown status bypasses all forward-transition validation.
+- **`auto_approve_registrations` hardcoded True** — `settings_service.py:271`
+  The default config always reports auto-approve = True (real enforcement is elsewhere).
+  Misleading; a future refactor could accidentally honor it and auto-approve everyone.
+
+### MEDIUM
+- **Dev-login backdoor if misconfigured** — `auth.py:355-395`, seeded via migration
+  `/dev-login` is gated by `auth_dev_login_enabled` (default False) but auto-creates a
+  dev admin/leader/team with known FBO IDs + `DEV_LOGIN_PASSWORD_PLAIN`. If the env var
+  is ever flipped on in prod, it's instant role access. Consider compiling it out of
+  prod builds, not just config-gating.
+- **No audit trail on settings/profile changes** — `settings_service.py:35-63,108-173`
+  `update_app_setting()` / `update_user_profile()` take `updated_by_user_id` but never
+  record it. Can't trace who changed a critical setting or user field.
+- **Escalation not idempotent / no cascade** — `verification_service.py:507-606`
+  If the job crashes mid-run a task can be skipped; escalation_level only bumps once per
+  run, so a 72h gap won't cascade through all levels.
+
+### LOW
+- **`audit_service.log_action` stores `meta` unsanitized** — `audit_service.py:11-31`
+  Sensitive data passed by callers is persisted permanently; no redaction.
+- **Avatar upload symlink/race edge** — `avatar_storage.py:36-60`
+  Relies on magic-byte detection; minor symlink/race risk only under OS misconfig.
+
+### OK in this domain
+login_identity, rule_engine, ctcs_heat, ctcs_maintenance, ctcs_status_chain,
+r2_storage, enrollment_video.
+
+---
+
+## OVERALL TALLY
+- Domain 1 (messaging/scheduling): ~15 findings
+- Domain 2 (scoring/risk/compliance): ~15
+- Domain 3 (leads/hierarchy): ~14
+- Domain 4 (money): ~10 (4 HIGH — most critical)
+- Domain 5 (training/EOS): ~12
+- Domain 6 (auth/access): ~8 (auth layer itself is sound)
+
+**Biggest themes:** (1) money correctness (wallet/invoice), (2) unfairness to new/
+onboarding members, (3) leads routed to ineligible members, (4) fail-open defaults,
+(5) discipline auto-actions without grace/warning, (6) spam/dedupe gaps.
