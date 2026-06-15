@@ -268,7 +268,9 @@ class SettingsService:
             "system_defaults": {
                 "default_role": "team",
                 "require_training": False,
-                "auto_approve_registrations": True,
+                # Registrations require admin approval (enforced in the
+                # registration endpoint); report that honestly here.
+                "auto_approve_registrations": False,
                 "default_language": "en",
                 "default_timezone": "UTC",
                 "session_timeout": 3600,  # 1 hour

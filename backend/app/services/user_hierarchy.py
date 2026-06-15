@@ -121,15 +121,20 @@ async def is_user_in_downline_of(
     if member_user_id == leader_user_id:
         return False
     current: int | None = member_user_id
+    seen: set[int] = {member_user_id}
     for _ in range(_MAX_UPLINE_WALK):
         parent = (
             await session.execute(select(User.upline_user_id).where(User.id == current))
         ).scalar_one_or_none()
         if parent is None:
             return False
-        if int(parent) == leader_user_id:
+        parent = int(parent)
+        if parent == leader_user_id:
             return True
-        current = int(parent)
+        if parent in seen:
+            return False  # corrupt cyclic upline — stop instead of looping
+        seen.add(parent)
+        current = parent
     return False
 
 
