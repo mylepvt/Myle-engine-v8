@@ -2,7 +2,51 @@
 
 Date: 2026-06-15
 Scope: Full read-only audit of `backend/app/services/` across 6 domains.
-Status: 5/6 domains complete. Domain 6 (auth/access/security) pending — will be appended.
+Status: All 6 domains complete. Fixes applied in batches (see "FIXES APPLIED").
+Constraint: wallet recharge / wallet ledger intentionally NOT touched (sensitive).
+
+---
+
+## FIXES APPLIED (this branch)
+
+1. **Eligibility leaks closed** — mission generation + admin summary counts,
+   predictive risk (members + leaders), leader effectiveness, org-score
+   headcount, and `push_service.send_push_to_role` (singular) now exclude
+   removed/blocked/onboarding members.
+2. **Leads not stranded** — reassigning a lead to an inactive/blocked/removed
+   member is rejected; freshly reassigned leads aren't flagged "zombie".
+3. **New members not punished** — predictive risk has a 7-day ramp grace;
+   integrity trust no longer brands a small reported count as "fabrication"
+   when the system logged zero calls (likely tracking gap).
+4. **Fairer discipline** — leader basics enforcement skips during a discipline
+   pause and for leaders on grace, and at 14 days applies a REVERSIBLE lock
+   (admin review) instead of an automatic terminal removal; compliance streaks
+   stop at a pause boundary (no post-pause "whiplash").
+5. **Reliable removal-reply matching** — match by phone's last 10 digits in SQL.
+6. **Honest config** — `auto_approve_registrations` reported as False; hierarchy
+   downline walk has a cycle guard.
+7. **Invoice counter race** — first-creation race handled with a savepoint.
+8. **Training unlock uses IST** — no more UTC off-by-one on day unlocks.
+
+## DELIBERATELY NOT CHANGED (and why)
+- **Wallet recharge/ledger** — out of scope per owner (sensitive money flow).
+- **Invoice NULL numbers / GST split** — on inspection these are intentional and
+  internally consistent (NULL = "no verified number yet, pending review"; IGST
+  is the balancing figure). Not bugs.
+- **Payment-proof amount check** — the amount isn't in that approval path;
+  adding a guard there risks blocking legitimate approvals.
+- **Feature flags ON by default / FSM unknown=allow** — intended (app works on a
+  fresh deploy; terminal/side statuses legitimately sit outside the linear FSM).
+- **1-view enrollment video / single-attempt Day-2 test** — deliberate
+  anti-sharing / anti-fraud gates; left intact.
+- **Weekend/holiday reminder skip** — needs a working-days policy that also
+  governs compliance (which currently counts every day); a reminder-only hack
+  would be inconsistent. Flagged for a product decision.
+- **Percentile on tiny cohorts / XP daily cap / org-score averaging** — these are
+  scoring-policy choices; changing them could suppress legitimate recognition.
+  Flagged for discussion.
+
+---
 
 This report lists places where the automated logic is *technically* working but
 behaves without "common sense" — i.e. it can be unfair, spammy, or wrong for real
