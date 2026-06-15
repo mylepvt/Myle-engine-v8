@@ -21,7 +21,7 @@ type AdminFeedState = {
   initialized: boolean
   _refreshFn: (() => void) | null
   pushEntry: (entry: AdminActivityEntry) => void
-  setInitialEntries: (entries: AdminActivityEntry[]) => void
+  setInitialEntries: (entries: AdminActivityEntry[], replace?: boolean) => void
   markAllRead: () => void
   setPaused: (v: boolean) => void
   setRefreshFn: (fn: () => void) => void
@@ -50,9 +50,14 @@ export const useAdminFeedStore = create<AdminFeedState>()(
         })
       },
 
-      setInitialEntries: (initial) =>
+      setInitialEntries: (initial, replace = false) =>
         set((s) => ({
-          entries: initial.length > s.entries.length ? initial.slice(0, MAX_ENTRIES) : s.entries,
+          // On explicit refresh (replace=true) always swap in the fresh list.
+          // On initial seed, only adopt if it adds to what we already have
+          // (avoids clobbering live SSE entries with a smaller REST snapshot).
+          entries: replace || initial.length > s.entries.length
+            ? initial.slice(0, MAX_ENTRIES)
+            : s.entries,
           initialized: true,
         })),
 
