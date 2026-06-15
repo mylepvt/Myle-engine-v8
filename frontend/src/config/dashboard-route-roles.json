@@ -6,7 +6,6 @@
   "work/follow-ups": ["admin", "leader"],
   "work/pending-as": ["admin", "leader"],
   "work/retarget": ["admin", "leader", "team"],
-  "work/pending-work": ["leader", "team"],
   "work/lead-flow": ["leader", "team"],
   "work/archived": ["admin", "leader", "team"],
   "work/add-lead": ["admin"],
