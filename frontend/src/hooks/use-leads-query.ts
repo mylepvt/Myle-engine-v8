@@ -504,6 +504,9 @@ export function useLeadsInfiniteQuery(
 
 function invalidateLeadRelated(qc: ReturnType<typeof useQueryClient>) {
   void qc.invalidateQueries({ queryKey: ['leads', 'list'] })
+  // Pending Work tab (zombie/untouched leads) — once a lead's status/action is
+  // updated its last_action_at is bumped, so it must drop off the pending list.
+  void qc.invalidateQueries({ queryKey: ['leads', 'pending'] })
   void qc.invalidateQueries({ queryKey: ['lead-pool'] })
   void qc.invalidateQueries({ queryKey: ['workboard'] })
   void qc.invalidateQueries({ queryKey: ['retarget'] })
