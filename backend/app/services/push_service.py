@@ -211,9 +211,16 @@ async def send_push_to_role(
         return 0
     try:
         private_pem, _ = await _get_or_create_vapid_keys(session)
-        # Join users to subscriptions filtered by role
+        # Join users to subscriptions filtered by role. Mirror send_push_to_roles:
+        # never push to unapproved, access-blocked, removed, or disciplined users.
         user_ids_result = await session.execute(
-            select(User.id).where(User.role == role)
+            select(User.id).where(
+                User.role == role,
+                User.registration_status == "approved",
+                User.access_blocked.is_(False),
+                User.removed_at.is_(None),
+                User.discipline_status == "active",
+            )
         )
         user_ids = [r for r in user_ids_result.scalars().all()]
         if not user_ids:

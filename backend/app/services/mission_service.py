@@ -10,6 +10,7 @@ from starlette import status as http_status
 
 from app.models.daily_mission import DailyMission, MissionBlocker, MissionTemplate
 from app.models.user import User
+from app.services.report_eligibility import report_eligibility_conditions
 from app.schemas.missions import (
     AdminMissionSummary,
     DailyMissionPublic,
@@ -155,14 +156,12 @@ async def pregenerate_today_missions(session: AsyncSession) -> int:
     Run from the morning cron so missed-mission tracking and leader dashboards
     see every member — not just those who opened the app.
     """
+    # Only report-eligible members get daily missions. Members still in their
+    # 7-day onboarding/training window are exempt from daily sales missions and
+    # must not be tracked for "missed missions" yet.
     members = (
         await session.execute(
-            select(User).where(
-                User.role.in_(["team", "leader"]),
-                User.registration_status == "approved",
-                User.access_blocked.is_(False),
-                User.removed_at.is_(None),
-            )
+            select(User).where(*report_eligibility_conditions())
         )
     ).scalars().all()
 
@@ -348,12 +347,12 @@ async def get_admin_summary(
 ) -> AdminMissionSummary:
     today = mission_date or date.today()
 
-    # Total team + leader members
+    # Total report-eligible team + leader members (matches who actually gets
+    # missions, so completion rates use a consistent denominator).
     total_members = (
         await session.execute(
             select(func.count()).select_from(User).where(
-                User.role.in_(["team", "leader"]),
-                User.removed_at.is_(None),
+                *report_eligibility_conditions(today)
             )
         )
     ).scalar() or 0
@@ -375,7 +374,7 @@ async def get_admin_summary(
     # Leader breakdown
     leaders = (
         await session.execute(
-            select(User).where(User.role == "leader", User.removed_at.is_(None))
+            select(User).where(*report_eligibility_conditions(today, roles=("leader",)))
         )
     ).scalars().all()
 
