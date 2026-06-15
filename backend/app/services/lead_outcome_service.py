@@ -147,7 +147,12 @@ async def get_zombie_leads(
     """Leads in ACTIVE outcome but untouched for N days."""
     from app.models.user import User
 
+    from sqlalchemy import or_
+
     cutoff = datetime.now(timezone.utc) - timedelta(days=inactive_days)
+    # A lead that was just reassigned is fresh for its new owner even if it was
+    # created long ago — don't flag it as a zombie until the new owner has had
+    # the same N-day window.
     rows = (
         await session.execute(
             select(Lead)
@@ -157,6 +162,7 @@ async def get_zombie_leads(
                 Lead.archived_at.is_(None),
                 Lead.last_action_at.is_(None),
                 Lead.created_at < cutoff,
+                or_(Lead.reassigned_at.is_(None), Lead.reassigned_at < cutoff),
             )
             .order_by(Lead.created_at.asc())
             .limit(limit)
@@ -192,6 +198,14 @@ async def get_zombie_leads(
             if lead.assigned_to_user_id
             else None
         )
+        # "Inactive since" = most recent of last action, reassignment, or creation.
+        anchor = max(
+            d for d in (lead.last_action_at, lead.reassigned_at, lead.created_at)
+            if d is not None
+        ) if any(
+            d is not None
+            for d in (lead.last_action_at, lead.reassigned_at, lead.created_at)
+        ) else None
         result.append({
             "id": lead.id,
             "name": lead.name,
@@ -201,9 +215,7 @@ async def get_zombie_leads(
             "created_at": lead.created_at.isoformat() if lead.created_at else None,
             "last_action_at": lead.last_action_at.isoformat() if lead.last_action_at else None,
             "days_inactive": (
-                (datetime.now(timezone.utc) - (lead.last_action_at or lead.created_at)).days
-                if lead.last_action_at or lead.created_at
-                else None
+                (datetime.now(timezone.utc) - anchor).days if anchor else None
             ),
         })
     return result
