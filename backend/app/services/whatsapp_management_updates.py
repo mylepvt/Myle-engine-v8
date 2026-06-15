@@ -21,6 +21,7 @@ from app.models.daily_report import DailyReport
 from app.models.lead import Lead
 from app.models.user import User
 from app.services.performer_insights_service import PerformerInsightsService
+from app.services.report_eligibility import report_eligibility_conditions
 from app.services.whatsapp_log_service import log_wa_outbound
 from app.services.whatsapp_removal import get_meta_config
 from app.services.whatsapp_report_reminder import _send_via_meta_api as send_wa
@@ -151,15 +152,14 @@ async def build_inactive_list(session: AsyncSession, days: int = 1) -> str | Non
     day_start = datetime(today.year, today.month, today.day, tzinfo=IST)
     day_end = day_start + timedelta(days=1)
 
-    # All active team/leader members
+    # All report-eligible team/leader members. Members still inside their 7-day
+    # training gate are exempt from daily reporting, so they must not be listed
+    # as "inactive / missing report".
     all_members = (
         await session.execute(
-            select(User.id, User.name, User.fbo_id).where(
-                User.role.in_(["team", "leader"]),
-                User.registration_status == "approved",
-                User.access_blocked.is_(False),
-                User.removed_at.is_(None),
-            ).order_by(User.name)
+            select(User.id, User.name, User.fbo_id)
+            .where(*report_eligibility_conditions(today))
+            .order_by(User.name)
         )
     ).all()
 
@@ -295,15 +295,13 @@ async def build_lead_activity_daily(session: AsyncSession) -> str:
     ).all()
     claim_map: dict[int, int] = {r.user_id: r.claim_count for r in claim_rows}
 
-    # 2) All active team/leader users
+    # 2) All report-eligible team/leader users (excludes removed, blocked and
+    #    members still in their onboarding/training window).
     active_users = (
         await session.execute(
-            select(User).where(
-                User.role.in_(["team", "leader"]),
-                User.registration_status == "approved",
-                User.access_blocked.is_(False),
-                User.removed_at.is_(None),
-            ).order_by(User.name)
+            select(User)
+            .where(*report_eligibility_conditions(today))
+            .order_by(User.name)
         )
     ).scalars().all()
 

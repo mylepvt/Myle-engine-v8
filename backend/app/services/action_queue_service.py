@@ -30,6 +30,7 @@ from app.schemas.action_queue import (
     ActionQueueResponse,
 )
 from app.services import automation_service
+from app.services.report_eligibility import report_eligibility_conditions
 from app.services.user_hierarchy import nearest_leader_for_user, recursive_downline_user_ids
 
 logger = logging.getLogger(__name__)
@@ -60,12 +61,7 @@ def _display(user: User | None, fallback_id: int) -> str:
 
 
 async def _active_members(session: AsyncSession, scope_ids: set[int] | None) -> list[User]:
-    stmt = select(User).where(
-        User.role.in_(["team", "leader"]),
-        User.registration_status == "approved",
-        User.access_blocked.is_(False),
-        User.removed_at.is_(None),
-    )
+    stmt = select(User).where(*report_eligibility_conditions())
     if scope_ids is not None:
         stmt = stmt.where(User.id.in_(scope_ids))
     return list((await session.execute(stmt)).scalars().all())
@@ -388,10 +384,7 @@ async def send_action_queue_digests(session: AsyncSession) -> dict:
     leaders = (
         await session.execute(
             select(User).where(
-                User.role == "leader",
-                User.registration_status == "approved",
-                User.access_blocked.is_(False),
-                User.removed_at.is_(None),
+                *report_eligibility_conditions(roles=("leader",)),
                 User.phone.isnot(None),
             )
         )
