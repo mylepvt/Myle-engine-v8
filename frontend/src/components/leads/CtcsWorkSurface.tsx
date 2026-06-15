@@ -43,6 +43,7 @@ const TABS: { id: CtcsTab; label: string }[] = [
   { id: 'today', label: 'Today' },
   { id: 'followups', label: 'Follow-ups' },
   { id: 'hot', label: 'Hot' },
+  { id: 'pending', label: 'Pending Work' },
   { id: 'converted', label: 'Converted' },
   { id: 'reassigned', label: 'Reassigned' },
   { id: 'all', label: 'All' },
@@ -93,6 +94,10 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
     if (tab === 'today') {
       // Today = leads claimed today via paid recharge, shown at ANY pipeline stage.
       return { ctcsFilter: 'today' as const, ctcsPrioritySort: true as const }
+    }
+    if (tab === 'pending') {
+      // Pending Work = zombie/untouched leads at ANY stage — no pre-enrollment limit.
+      return { ctcsFilter: 'pending' as const, ctcsPrioritySort: true as const }
     }
     return { ctcsFilter: tab, ctcsPrioritySort: true as const, preEnrollmentOnly: true as const }
   }, [searchMode, tab, surfaceRole])
