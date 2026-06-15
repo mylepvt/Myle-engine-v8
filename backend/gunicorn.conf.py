@@ -30,3 +30,18 @@ preload_app = not (_render and workers == 1)
 accesslog = "-"
 errorlog = "-"
 loglevel = "info"
+
+
+def on_starting(server):
+    # The admin activity feed (app/services/activity_feed.py) broadcasts SSE
+    # events from an in-process ring buffer + subscriber registry. With more
+    # than one worker, a DB write lands in worker A while the admin's SSE
+    # connection is pinned to worker B → events are NOT delivered cross-worker.
+    # Until a shared broadcaster (Redis pub/sub) is added, >1 worker silently
+    # drops most live-activity events. Warn loudly.
+    if workers > 1:
+        server.log.warning(
+            "WEB_CONCURRENCY=%s (>1): admin live-activity SSE feed is per-process "
+            "and will drop cross-worker events. Use 1 worker or add Redis pub/sub.",
+            workers,
+        )

@@ -221,7 +221,7 @@ export function useAdminActivitySSE(enabled: boolean) {
   const mountedRef = useRef(true)
   const connectRef = useRef<(() => void) | null>(null)
 
-  const fetchRest = useCallback(() => {
+  const fetchRest = useCallback((replace = false) => {
     fetch(REST_URL, { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
@@ -231,16 +231,16 @@ export function useAdminActivitySSE(enabled: boolean) {
         const initial = events
           .map(parseEventFromObj)
           .filter((e): e is AdminActivityEntry => e !== null)
-        setInitialEntries(initial)
+        setInitialEntries(initial, replace)
       })
       .catch(() => {
-        if (mountedRef.current) setInitialEntries([])
+        if (mountedRef.current && replace) setInitialEntries([], true)
       })
   }, [setInitialEntries])
 
   const refresh = useCallback(() => {
-    // Re-fetch latest from REST
-    fetchRest()
+    // Re-fetch latest from REST — explicit user action, replace stale list
+    fetchRest(true)
     // Reconnect SSE with reset backoff
     esRef.current?.close()
     esRef.current = null
