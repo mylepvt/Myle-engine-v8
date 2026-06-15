@@ -13,6 +13,7 @@ from app.core.time_ist import IST, today_ist
 from app.models.daily_report import DailyReport
 from app.models.user import User
 from app.models.whatsapp_log import WhatsAppLog
+from app.services.report_eligibility import is_user_report_eligible
 from app.services.live_metrics import (
     fresh_call_counts_by_user,
     fresh_lead_counts_by_user,
@@ -355,11 +356,7 @@ async def build_compliance_snapshots(
     eligible_ids = [
         user.id
         for user in rows
-        if (user.role or "").strip().lower() in _ELIGIBLE_ROLES
-        and (user.registration_status or "").strip().lower() == "approved"
-        and not user.training_required
-        and (user.training_status or "").strip().lower() in {"completed", "not_required"}
-        and not (user.training_gate_until is not None and user.training_gate_until >= today_date)
+        if is_user_report_eligible(user, today_date, roles=_ELIGIBLE_ROLES)
     ]
 
     fresh_leads_by_day: dict[date, dict[int, int]] = {}

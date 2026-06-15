@@ -254,6 +254,7 @@ async def send_push_to_roles(
                     User.role.in_(role_list),
                     User.registration_status == "approved",
                     User.access_blocked.is_(False),
+                    User.removed_at.is_(None),
                     User.discipline_status == "active",
                 )
             )

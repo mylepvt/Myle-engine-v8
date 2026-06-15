@@ -33,6 +33,7 @@ from app.services.live_metrics import fresh_call_counts_by_user, get_daily_call_
 from app.services.member_compliance import build_compliance_snapshots
 from app.services.observation_logger import observe_event
 from app.services.push_service import send_push_to_role, send_push_to_user
+from app.services.report_eligibility import report_eligibility_conditions
 from app.services import execution_enforcement as enf
 
 logger = logging.getLogger(__name__)
@@ -99,9 +100,7 @@ async def job_weekly_compliance_digest() -> None:
             leader_ids = (
                 await session.execute(
                     select(User.id).where(
-                        User.role == "leader",
-                        User.registration_status == "approved",
-                        User.removed_at.is_(None),
+                        *report_eligibility_conditions(roles=("leader",))
                     )
                 )
             ).scalars().all()
@@ -121,9 +120,7 @@ async def _send_digest_for_leader(session: AsyncSession, leader_id: int) -> None
         await session.execute(
             select(User).where(
                 User.upline_user_id == leader_id,
-                User.registration_status == "approved",
-                User.role == "team",
-                User.removed_at.is_(None),
+                *report_eligibility_conditions(roles=("team",)),
             )
         )
     ).scalars().all()
@@ -179,24 +176,14 @@ _ELIGIBLE_ROLES = {"team", "leader"}
 
 
 async def _get_eligible_users(session: AsyncSession) -> list[User]:
-    from app.core.time_ist import today_ist as _today_ist
-    today = _today_ist()
-    rows = (
+    today = today_ist()
+    return (
         await session.execute(
             select(User).where(
-                User.role.in_(list(_ELIGIBLE_ROLES)),
-                User.registration_status == "approved",
-                User.access_blocked.is_(False),
-                User.removed_at.is_(None),
-                User.training_required.is_(False),
+                *report_eligibility_conditions(today, roles=_ELIGIBLE_ROLES)
             )
         )
     ).scalars().all()
-    return [
-        u for u in rows
-        if (u.training_status or "").strip().lower() in {"completed", "not_required"}
-        and not (u.training_gate_until is not None and u.training_gate_until >= today)
-    ]
 
 
 async def job_daily_report_reminder() -> None:

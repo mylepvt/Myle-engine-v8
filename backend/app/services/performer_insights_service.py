@@ -19,6 +19,7 @@ from app.models.lead import Lead
 from app.models.user import User
 from app.models.user_presence_session import UserPresenceSession
 from app.services.grace_intelligence import get_grace_contexts_batch
+from app.services.report_eligibility import report_eligibility_conditions
 
 # ---------------------------------------------------------------------------
 # Weights — each is a fraction of the 100-point composite. Sum = 1.0.
@@ -114,13 +115,11 @@ class PerformerInsightsService:
         start_date = end_date - timedelta(days=days)
         period_len = max((end_date - start_date).days, 1)
 
-        # 1. Load users
+        # 1. Load users — only approved, active members who have finished
+        # onboarding. Removed, access-blocked, and in-training (7-day gate)
+        # members must never surface in performance/integrity/at-risk reports.
         users_q = await self.session.execute(
-            select(User).where(
-                User.role.in_(["leader", "team"]),
-                User.registration_status == "approved",
-                User.removed_at.is_(None),
-            )
+            select(User).where(*report_eligibility_conditions())
         )
         users = users_q.scalars().all()
         user_map = {u.id: u for u in users}
