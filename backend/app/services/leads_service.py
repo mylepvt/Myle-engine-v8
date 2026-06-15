@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from fastapi import BackgroundTasks, Depends, HTTPException
-from sqlalchemy import and_, exists, func, select
+from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
@@ -176,9 +176,17 @@ def _ctcs_filter_clause(ctcs_filter: Optional[str]) -> Any:
             Lead.is_reassigned.is_(True),
             Lead.reassigned_at >= day_start,
         )
+    if key == "pending":
+        # "Pending Work" = zombie + untouched leads. Untouched = never actioned and
+        # 7+ days old; zombie = last action was 7+ days ago. Mirrors GET /leads/pending.
+        cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+        return or_(
+            and_(Lead.last_action_at.is_(None), Lead.created_at < cutoff),
+            Lead.last_action_at < cutoff,
+        )
     raise HTTPException(
         status_code=http_status.HTTP_422_UNPROCESSABLE_CONTENT,
-        detail="Invalid ctcs_filter (use: all|today|followups|hot|converted|reassigned)",
+        detail="Invalid ctcs_filter (use: all|today|followups|hot|converted|reassigned|pending)",
     )
 
 

@@ -59,7 +59,6 @@ import { WhatsAppPanelPage } from '@/pages/WhatsAppPanelPage'
 import { AuditLogsPage } from '@/pages/AuditLogsPage'
 import { TeamAttendancePage } from '@/pages/TeamAttendancePage'
 import PerformerInsightsPage from '@/pages/PerformerInsightsPage'
-import { PendingWorkPage } from '@/pages/PendingWorkPage'
 
 function renderFullUi(ui: FullUiSurface, title: string) {
   switch (ui.kind) {
@@ -152,8 +151,6 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <WhatsAppPanelPage title={title} />
     case 'performer-insights':
       return <PerformerInsightsPage title={title} />
-    case 'pending-work':
-      return <PendingWorkPage title={title} />
     case 'shell-api':
       return <ShellStubPage title={title} apiPath={ui.apiPath} />
     default: {
