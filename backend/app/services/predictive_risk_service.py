@@ -15,6 +15,7 @@ from app.schemas.predictive_risk import (
     PredictiveRiskResponse,
     RiskSignal,
 )
+from app.services.report_eligibility import report_eligibility_conditions
 from app.services.user_hierarchy import recursive_downline_user_ids
 
 
@@ -47,6 +48,16 @@ async def compute_member_risk(
         return None
     name = member.name or member.fbo_id or f"User #{user_id}"
     signals: list[RiskSignal] = []
+
+    # Ramp grace: a member who just joined (or just finished their training
+    # gate) hasn't had a fair chance to build lead activity. Suppress
+    # "no activity"-style risk during a short ramp so brand-new members aren't
+    # flagged as high-risk on day 2.
+    _RAMP_DAYS = 7
+    member_start = member.created_at.date() if member.created_at else today
+    if member.training_gate_until is not None and member.training_gate_until > member_start:
+        member_start = member.training_gate_until
+    in_ramp = (today - member_start).days < _RAMP_DAYS
 
     # 1 — Missed missions (last 7 days)
     missed_count = (
@@ -145,7 +156,7 @@ async def compute_member_risk(
         )
     ).scalar() or 0
 
-    if owned_leads > 0:
+    if owned_leads > 0 and not in_ramp:
         if last_active is None:
             lead_score = 80.0
             signals.append(RiskSignal(
@@ -254,12 +265,7 @@ async def compute_all_member_risks(
 
     members = (
         await session.execute(
-            select(User).where(
-                User.role.in_(["team", "leader"]),
-                User.registration_status == "approved",
-                User.access_blocked == False,
-                User.removed_at == None,
-            )
+            select(User).where(*report_eligibility_conditions(today))
         )
     ).scalars().all()
 
@@ -458,12 +464,7 @@ async def compute_all_leader_risks(
 
     leaders = (
         await session.execute(
-            select(User).where(
-                User.role == "leader",
-                User.registration_status == "approved",
-                User.access_blocked == False,
-                User.removed_at == None,
-            )
+            select(User).where(*report_eligibility_conditions(today, roles=("leader",)))
         )
     ).scalars().all()
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.time_ist import now_ist
@@ -17,9 +18,18 @@ async def allocate_invoice_number(session: AsyncSession) -> str:
     res = await session.execute(stmt)
     row = res.scalar_one_or_none()
     if row is None:
-        row = AppSetting(key="invoice_counter", value=json.dumps({"year": 0, "seq": 0}))
-        session.add(row)
-        await session.flush()
+        # First invoice ever: two concurrent requests could both try to create
+        # the counter row. Create inside a savepoint and, if another request
+        # won the race, fall back to its row under the row lock.
+        try:
+            async with session.begin_nested():
+                row = AppSetting(
+                    key="invoice_counter", value=json.dumps({"year": 0, "seq": 0})
+                )
+                session.add(row)
+                await session.flush()
+        except IntegrityError:
+            row = (await session.execute(stmt)).scalar_one()
 
     try:
         data = json.loads(row.value or "{}")

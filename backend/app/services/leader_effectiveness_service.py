@@ -12,6 +12,7 @@ from app.schemas.leader_effectiveness import (
     LeaderEffectivenessPublic,
     LeaderEffectivenessResponse,
 )
+from app.services.report_eligibility import report_eligibility_conditions
 from app.services.user_hierarchy import recursive_downline_user_ids
 
 WEIGHTS = {
@@ -51,12 +52,7 @@ async def compute_leader_effectiveness(
 
     leaders = (
         await session.execute(
-            select(User).where(
-                User.role == "leader",
-                User.registration_status == "approved",
-                User.access_blocked == False,
-                User.removed_at == None,
-            )
+            select(User).where(*report_eligibility_conditions(today, roles=("leader",)))
         )
     ).scalars().all()
 

@@ -7,6 +7,7 @@ from app.models.lead import Lead
 from app.models.user import User
 from app.schemas.org_execution import OrgComponentScores, OrganizationScoreResponse
 from app.services.leader_effectiveness_service import compute_leader_effectiveness
+from app.services.report_eligibility import report_eligibility_conditions
 
 
 async def compute_org_score(
@@ -19,12 +20,7 @@ async def compute_org_score(
 
     total_members = (
         await session.execute(
-            select(func.count(User.id)).where(
-                User.role.in_(["team", "leader"]),
-                User.registration_status == "approved",
-                User.access_blocked == False,
-                User.removed_at == None,
-            )
+            select(func.count(User.id)).where(*report_eligibility_conditions())
         )
     ).scalar() or 0
 

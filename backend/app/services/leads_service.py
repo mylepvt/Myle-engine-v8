@@ -977,6 +977,19 @@ class LeadsService:
                     status_code=http_status.HTTP_403_FORBIDDEN,
                     detail="Only admin or leader can re-assign leads",
                 )
+            # Never hand a lead to someone who can't work it — a removed,
+            # access-blocked, or unapproved member would just strand the lead.
+            target = await self._session.get(User, body.assigned_to_user_id)
+            if (
+                target is None
+                or (target.registration_status or "").strip().lower() != "approved"
+                or target.access_blocked
+                or target.removed_at is not None
+            ):
+                raise HTTPException(
+                    status_code=http_status.HTTP_400_BAD_REQUEST,
+                    detail="Cannot assign lead to an inactive, blocked, or removed member",
+                )
             lead.assigned_to_user_id = body.assigned_to_user_id
             lead.is_reassigned = True
             lead.reassigned_at = datetime.now(timezone.utc)

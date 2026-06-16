@@ -8,6 +8,7 @@ from typing import Dict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.time_ist import IST, today_ist
 from app.models.training_day_note import TrainingDayNote
 from app.models.training_progress import TrainingProgress
 from app.models.training_video import TrainingVideo
@@ -36,9 +37,15 @@ def _calculate_unlock_day_map(progress_rows: list[TrainingProgressRow]) -> Dict[
     except (ValueError, AttributeError, TypeError):
         return {}
 
+    # Anchor the unlock calendar to the IST day of completion (the app reports in
+    # IST). A naive timestamp is treated as UTC before converting.
+    if day1_date.tzinfo is None:
+        day1_date = day1_date.replace(tzinfo=UTC)
+    day1_ist_date = day1_date.astimezone(IST).date()
+
     unlock_dates: Dict[int, date] = {}
     for day in range(2, 8):
-        unlock_dates[day] = day1_date.date() + timedelta(days=day - 1)
+        unlock_dates[day] = day1_ist_date + timedelta(days=day - 1)
 
     return unlock_dates
 
@@ -63,7 +70,7 @@ def _is_unlocked(
     unlock_date = unlock_day_map.get(day_number)
     if unlock_date is None:
         return False
-    return datetime.now(UTC).date() >= unlock_date
+    return today_ist() >= unlock_date
 
 
 async def build_training_surface(session: AsyncSession, user_id: int) -> TrainingSurfaceResponse:
