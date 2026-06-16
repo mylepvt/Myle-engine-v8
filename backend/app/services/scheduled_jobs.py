@@ -426,6 +426,8 @@ async def job_leader_basics_enforcement() -> None:
                             User.role == "team",
                             User.registration_status == "approved",
                             User.removed_at.is_(None),
+                            User.training_required.is_(False),
+                            User.training_status.in_(["completed", "not_required"]),
                         )
                     )
                 ).scalars().all()
@@ -443,6 +445,10 @@ async def job_leader_basics_enforcement() -> None:
                 )
 
                 if streak >= _LEADER_LOCK_STREAK:
+                    if leader.grace_end_date is not None and leader.grace_end_date >= today:
+                        continue
+                    if leader.grace_request_end_date is not None and leader.grace_request_end_date >= today:
+                        continue
                     leader.access_blocked = True
                     leader.discipline_status = "removed"
                     from datetime import timezone as tz

@@ -235,6 +235,8 @@ async def alert_leader_member_replied(
 async def send_daily_team_summary(leader: User, today: date, session: AsyncSession) -> None:
     if not leader.phone:
         return
+    if not leader.whatsapp_notifications_enabled:
+        return
 
     # Get all active direct/indirect downline members
     from app.services.downline import recursive_downline_user_ids
