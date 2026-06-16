@@ -17,6 +17,9 @@ sys.path.insert(0, str(_BACKEND))
 
 # Disable APScheduler background jobs during tests — prevents DB connection hangs
 os.environ.setdefault("DISABLE_SCHEDULER", "1")
+# Discipline is time-relative; pin rollout far in the future so test dev-users
+# (which have no reports) are not auto-removed by the missing-report streak.
+os.environ.setdefault("DISCIPLINE_ROLLOUT_START_DATE", "2099-01-01")
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
