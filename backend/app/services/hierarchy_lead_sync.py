@@ -20,7 +20,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from app.core.pipeline_legacy import team_in_pre_day1_execution
+from app.core.pipeline_rules import team_in_pre_day1_execution
 from app.core.row_utils import mapping_get as sqlite_row_get
 from app.core.time_ist import now_ist
 

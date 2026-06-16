@@ -39,3 +39,8 @@ apps/crm-api/prisma/seed.d.ts.map
 # User uploads (profile photos, payment proofs, training media, etc.)
 backend/data/uploads/
 backend/uploads/
+
+# Generated / derived (never commit)
+frontend/openapi.json
+*.bak
+.DS_Store
