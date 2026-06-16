@@ -2543,17 +2543,34 @@ async def _leader_team_basics_streak(
     """
     Consecutive days (backwards from yesterday) where team's active members
     collectively missed the call target. Stateless — derived from call history.
+
+    Filters out members who are still in their training gate window so that
+    trainees don't unfairly penalise the leader's streak.
     """
     from datetime import date as date_type, timedelta  # local to avoid circular
+
+    active_team_ids = [
+        int(uid) for (uid,) in (
+            await session.execute(
+                select(User.id).where(
+                    User.id.in_(team_ids),
+                    User.training_required.is_(False),
+                    User.training_status.in_(["completed", "not_required"]),
+                )
+            )
+        ).all()
+    ]
+    if not active_team_ids:
+        return 0
 
     streak = 0
     for offset in range(1, max_window + 1):
         day = today - timedelta(days=offset)
-        fresh_leads_map = await fresh_lead_counts_by_user(session, team_ids, day)
-        calls_map = await fresh_call_counts_by_user(session, team_ids, day)
+        fresh_leads_map = await fresh_lead_counts_by_user(session, active_team_ids, day)
+        calls_map = await fresh_call_counts_by_user(session, active_team_ids, day)
 
         active_ids_that_day = [
-            uid for uid in team_ids
+            uid for uid in active_team_ids
             if int(fresh_leads_map.get(uid, 0)) > 0
         ]
         if not active_ids_that_day:

@@ -213,17 +213,19 @@ class SettingsService:
         }
 
     async def get_user_preferences(self, user_id: int) -> Dict:
-        """Get user notification preferences and settings."""
-        # This would typically come from a user_preferences table
-        # For now, return default preferences
+        """Get user notification preferences and settings — reads from User columns."""
+        user = await self.session.get(User, user_id)
+        if user is None:
+            return {}
         return {
             "email_notifications": True,
-            "push_notifications": True,
-            "daily_report_reminders": True,
-            "lead_assignment_alerts": True,
+            "push_notifications": bool(user.push_notifications_enabled),
+            "whatsapp_notifications": bool(user.whatsapp_notifications_enabled),
+            "daily_report_reminders": bool(user.daily_report_reminders_enabled),
+            "lead_assignment_alerts": bool(user.lead_assignment_alerts_enabled),
+            "weekly_summary": bool(user.weekly_summary_enabled),
             "payment_notifications": True,
             "training_reminders": True,
-            "weekly_summary": True,
             "language": "en",
             "timezone": "UTC",
             "theme": "light",
@@ -232,32 +234,48 @@ class SettingsService:
     async def update_user_preferences(
         self, user_id: int, preferences: dict[str, any]
     ) -> Tuple[bool, str]:
-        """Update user notification preferences."""
-        # Validate preferences
-        valid_preferences = [
-            "email_notifications", "push_notifications", "daily_report_reminders",
-            "lead_assignment_alerts", "payment_notifications", "training_reminders",
-            "weekly_summary", "language", "timezone", "theme"
-        ]
-        
-        invalid_keys = [key for key in preferences.keys() if key not in valid_preferences]
-        if invalid_keys:
-            return False, f"Invalid preference keys: {', '.join(invalid_keys)}"
-        
-        # Validate boolean preferences
-        boolean_prefs = [
-            "email_notifications", "push_notifications", "daily_report_reminders",
-            "lead_assignment_alerts", "payment_notifications", "training_reminders",
-            "weekly_summary"
-        ]
-        
-        for key in boolean_prefs:
-            if key in preferences and not isinstance(preferences[key], bool):
-                return False, f"Preference {key} must be boolean"
-        
-        # This would typically save to a user_preferences table
-        # For now, just return success
-        return True, "Preferences updated successfully"
+        """Update user notification preferences — persists to User columns."""
+        user = await self.session.get(User, user_id)
+        if user is None:
+            return False, "User not found"
+
+        # Keys mapped to User columns
+        column_map = {
+            "push_notifications": "push_notifications_enabled",
+            "whatsapp_notifications": "whatsapp_notifications_enabled",
+            "daily_report_reminders": "daily_report_reminders_enabled",
+            "lead_assignment_alerts": "lead_assignment_alerts_enabled",
+            "weekly_summary": "weekly_summary_enabled",
+        }
+        # Known keys without persistent storage yet
+        _accepted_ignored_keys = {
+            "email_notifications", "payment_notifications",
+            "training_reminders", "language", "timezone", "theme",
+        }
+
+        all_valid = set(column_map.keys()) | _accepted_ignored_keys
+        for key in preferences:
+            if key not in all_valid:
+                return False, f"Invalid preference key: {key}"
+
+        updated = []
+        for pref_key, col_name in column_map.items():
+            if pref_key in preferences:
+                value = preferences[pref_key]
+                if not isinstance(value, bool):
+                    return False, f"Preference {pref_key} must be boolean"
+                setattr(user, col_name, value)
+                updated.append(pref_key)
+
+        if not updated:
+            return True, "No changes needed"
+
+        try:
+            await self.session.commit()
+            return True, f"Preferences updated: {', '.join(updated)}"
+        except Exception as e:
+            await self.session.rollback()
+            return False, f"Failed to update preferences: {str(e)}"
 
     async def get_system_configuration(self) -> Dict:
         """Get system configuration and defaults."""
