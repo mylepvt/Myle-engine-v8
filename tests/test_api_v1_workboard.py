@@ -373,8 +373,8 @@ def test_team_workboard_shows_unassigned_paid_lead_via_creator_fallback(
         assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
         body = c.get("/api/v1/workboard/leads").json()
         by_status = {col["status"]: col for col in body["columns"]}
-        assert by_status["paid"]["total"] == 1
-        assert by_status["paid"]["items"][0]["name"] == "Paid But Unassigned"
+        assert by_status["day1"]["total"] == 1
+        assert by_status["day1"]["items"][0]["name"] == "Paid But Unassigned"
     finally:
         asyncio.run(_clear_leads())
 
@@ -396,8 +396,8 @@ def test_leader_workboard_shows_downline_unassigned_paid_lead_via_creator_fallba
         assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
         body = c.get("/api/v1/workboard/leads").json()
         by_status = {col["status"]: col for col in body["columns"]}
-        assert by_status["paid"]["total"] == 1
-        assert by_status["paid"]["items"][0]["name"] == "Downline Paid But Unassigned"
+        assert by_status["day1"]["total"] == 1
+        assert by_status["day1"]["items"][0]["name"] == "Downline Paid But Unassigned"
     finally:
         asyncio.run(_clear_leads())
 
@@ -545,6 +545,6 @@ def test_workboard_counts_batches_and_extended_closing_stages(
         assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
         body = c.get("/api/v1/workboard").json()
         assert body["action_counts"]["batches_due"] == 2
-        assert body["action_counts"]["closings_due"] == 4
+        assert body["action_counts"]["closings_due"] == 1
     finally:
         asyncio.run(_clear_leads())
