@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from uuid import uuid4
 
 from fastapi import UploadFile
+
+logger = logging.getLogger(__name__)
 
 from app.services.flp_min_billing_video import normalize_video_source_url
 from app.services.r2_storage import (
@@ -96,8 +99,8 @@ def remove_managed_flp_min_billing_video_file(source_url: str | None) -> None:
         import asyncio
         try:
             asyncio.get_event_loop().run_until_complete(delete_from_r2(key))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("R2 cleanup failed for temp key: %s", exc)
         return
 
     # Local disk

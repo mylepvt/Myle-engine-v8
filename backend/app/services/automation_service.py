@@ -360,7 +360,8 @@ def _digest_line(index: int, rule: AutomationRule, entity: dict) -> str:
     template = config.get("message", "Needs attention.")
     try:
         text = template.format(**detail)
-    except Exception:
+    except Exception as exc:
+        logger.warning("Template format failed for rule_id=%s: %s", rule.id, exc)
         text = template
     return f"{index}. {text}"
 
@@ -478,8 +479,8 @@ async def _send_management_leader_rollup(
             await send_system_alert(
                 mgmt_phone, body, session, message_type="automation_alert_management",
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Management alert send failed: %s", exc)
 
 
 async def _exec_create_task(

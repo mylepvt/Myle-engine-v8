@@ -193,8 +193,8 @@ def _emit_json(line: str, record: dict[str, Any]) -> None:
     try:
         with open(_OBS_LOG_FILE, "a") as _f:
             _f.write(f"{line}\n")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Observation log file write failed: %s", exc)
     # Overflow protection: async queue
     try:
         q = _ensure_queue()

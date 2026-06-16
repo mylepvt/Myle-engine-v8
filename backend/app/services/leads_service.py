@@ -69,12 +69,6 @@ from app.services.whatsapp_ctcs import send_interested_flp_min_billing_assets
 from app.services.execution_enforcement import run_completed_watch_pipeline_maintenance
 from app.validators.leads_validator import lead_list_conditions, parse_status_query, validate_list_flags
 
-# Early-enrollment FLP-billing payment gate (old Day 4 / Day 5 / Day 6 stages).
-# Those stages were removed from the pipeline; FLP billing now wires at the Day 3
-# close via the sale-engine (see Pending-as-Process / FLP invoice OCR flow), not
-# as a status-entry gate. Kept as an (empty) extension point.
-_PAYMENT_REQUIRED_STATUSES: frozenset[str] = frozenset()
-
 _POOL_CLAIM_ROLES: frozenset[str] = frozenset({"team", "leader", "admin"})
 _POOL_SINGLE_CLAIM_ROLES: frozenset[str] = frozenset({"admin"})
 _PHONE_DIGIT_RE = re.compile(r"\D")
@@ -1009,14 +1003,6 @@ class LeadsService:
                             status_code=http_status.HTTP_400_BAD_REQUEST,
                             detail="Day 2 business test must be passed before advancing to Day 3.",
                         )
-                # Payment gate: non-admins cannot enter a post-Day-3 status without an
-                # approved ₹1500 FLP-billing proof. Mirrors transition_lead_status.
-                if body.status in _PAYMENT_REQUIRED_STATUSES and user.role != "admin":
-                    if lead.payment_status != "approved":
-                        raise HTTPException(
-                            status_code=http_status.HTTP_400_BAD_REQUEST,
-                            detail="Payment proof must be approved before moving to this status.",
-                        )
             prev_status = lead.status
             lead.status = body.status
             bump_heat_on_entering_contacted(lead, prev_status)
@@ -1280,8 +1266,8 @@ class LeadsService:
             if body.outcome in {"answered", "callback_requested"}:
                 await _grant_xp(self._session, user.user_id, "connected_call", lead_id)
             await self._session.commit()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Connected-call XP grant failed user_id=%s lead_id=%s: %s", user.user_id, lead_id, exc)
         await refresh_daily_member_stat_after_change(
             self._session,
             user_id=user.user_id,
@@ -1348,13 +1334,6 @@ class LeadsService:
             )
             if not ok:
                 raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
-        # Only entering Min. FLP Billing is payment-gated; post-paid stages stay unlocked.
-        if body.target_status in _PAYMENT_REQUIRED_STATUSES and user.role != "admin":
-            if lead.payment_status != "approved":
-                raise HTTPException(
-                    status_code=http_status.HTTP_400_BAD_REQUEST,
-                    detail="Payment proof must be approved before moving to this status.",
-                )
         now = datetime.now(timezone.utc)
         prev_status = lead.status
         lead.status = body.target_status
@@ -1383,8 +1362,8 @@ class LeadsService:
             if prev_status == "converted" and body.target_status != "converted":
                 await revoke_won_xp(self._session, lead.id)
             await self._session.commit()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("XP revocation failed lead_id=%s: %s", lead.id, exc)
 
         await self._notifier("leads")
         return LeadTransitionResponse(

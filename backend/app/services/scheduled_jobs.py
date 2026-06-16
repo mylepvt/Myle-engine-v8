@@ -80,8 +80,8 @@ async def job_flp_min_billing_proof_alert() -> None:
                         body=body,
                         url="/dashboard/team/flp-min-billing",
                     )
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning("FLP billing alert push failed for role=%s: %s", role, exc)
 
             logger.info("flp_min_billing_proof_alert: %d overdue proofs notified", count)
 
@@ -164,8 +164,8 @@ async def _send_digest_for_leader(session: AsyncSession, leader_id: int) -> None
             body=body,
             url="/dashboard/team",
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Weekly digest push failed for leader_id=%s: %s", leader_id, exc)
 
 
 # ---------------------------------------------------------------------------
@@ -220,8 +220,8 @@ async def job_daily_report_reminder() -> None:
                         body="You haven't submitted today's daily report yet. Submit before midnight to avoid a compliance warning.",
                         url="/dashboard/work/report",
                     )
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning("Report reminder push failed for user_id=%s: %s", member.id, exc)
 
             # WhatsApp reminder — skip members already reminded today
             from app.services.whatsapp_report_reminder import send_report_reminder
@@ -285,8 +285,8 @@ async def job_call_target_reminder() -> None:
                         body=f"You've made {done}/{call_target} calls today. {remaining} more needed to stay on track.",
                         url="/dashboard/work/leads",
                     )
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning("Call target reminder push failed for user_id=%s: %s", user.id, exc)
 
             logger.info("call_target_reminder: pushed %d users short on calls", len(short))
 
@@ -462,8 +462,8 @@ async def job_leader_basics_enforcement() -> None:
                             ),
                             url="/dashboard/team/los",
                         )
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.warning("Leader lock push failed leader_id=%s: %s", leader.id, exc)
 
                 elif streak >= _LEADER_WARN_STREAK:
                     warned_count += 1
@@ -479,8 +479,8 @@ async def job_leader_basics_enforcement() -> None:
                             ),
                             url="/dashboard/team/los",
                         )
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.warning("Leader warning push failed leader_id=%s: %s", leader.id, exc)
 
             if locked_count or warned_count:
                 await session.commit()
