@@ -1,7 +1,7 @@
 """
 Facade for migrating call sites from monolith ``helpers.py``.
 
-Prefer importing from the specific modules (``pipeline_rules``,
+Prefer importing from the specific modules (``pipeline_rules``, ``pipeline_legacy``,
 ``time_ist``, ``row_utils``, ``legacy_status_bridge``) in new code.
 """
 
@@ -16,7 +16,7 @@ from app.core.legacy_status_bridge import (
     legacy_canonical_to_vl2_status,
     vl2_status_labels,
 )
-from app.core.pipeline_rules import (
+from app.core.pipeline_legacy import (
     ADMIN_PIPELINE_BUCKET_CLOSING,
     ADMIN_PIPELINE_BUCKET_ENROLLMENT,
     ADMIN_PIPELINE_BUCKET_TRAINING,
