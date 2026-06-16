@@ -11,6 +11,7 @@ from app.models.task_assignment import TaskAssignment
 from app.models.training_campaign import CampaignEnrollment, TrainingCampaign
 from app.models.user import User
 from app.models.verification_task import VerificationTask
+from app.services.report_eligibility import report_eligibility_conditions
 from app.schemas.automation import AutomationActionLogPublic, AutomationEvaluateResponse, AutomationRulePublic
 from app.services.user_hierarchy import nearest_leader_for_user
 
@@ -91,12 +92,7 @@ async def _eval_missed_missions(
 
     members = (
         await session.execute(
-            select(User).where(
-                User.role.in_(["team", "leader"]),
-                User.registration_status == "approved",
-                User.access_blocked == False,
-                User.removed_at == None,
-            )
+            select(User).where(*report_eligibility_conditions())
         )
     ).scalars().all()
 
@@ -251,12 +247,7 @@ async def _eval_inactivity(
 
     members = (
         await session.execute(
-            select(User).where(
-                User.role.in_(["team", "leader"]),
-                User.registration_status == "approved",
-                User.access_blocked == False,
-                User.removed_at == None,
-            )
+            select(User).where(*report_eligibility_conditions())
         )
     ).scalars().all()
 

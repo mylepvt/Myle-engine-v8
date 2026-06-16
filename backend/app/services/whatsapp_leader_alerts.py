@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models.daily_report import DailyReport
 from app.models.user import User
+from app.services.report_eligibility import report_eligibility_conditions
 from app.services.settings_service import SettingsService
 from app.services.user_hierarchy import nearest_leader_for_user
 from app.services.whatsapp_removal import _send_via_meta_api, get_meta_config
@@ -248,10 +249,7 @@ async def send_daily_team_summary(leader: User, today: date, session: AsyncSessi
         await session.execute(
             select(User).where(
                 User.id.in_(downline_ids),
-                User.role == "team",
-                User.registration_status == "approved",
-                User.removed_at.is_(None),
-                User.access_blocked.is_(False),
+                *report_eligibility_conditions(today, roles=("team",)),
             )
         )
     ).scalars().all()
@@ -377,10 +375,7 @@ async def handle_leader_command(
         await session.execute(
             select(User).where(
                 User.id.in_(downline_ids),
-                User.role == "team",
-                User.registration_status == "approved",
-                User.removed_at.is_(None),
-                User.access_blocked.is_(False),
+                *report_eligibility_conditions(roles=("team",)),
             )
         )
     ).scalars().all()

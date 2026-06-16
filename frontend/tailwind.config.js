@@ -4,6 +4,13 @@ import tailwindcssAnimate from 'tailwindcss-animate'
 export default {
   darkMode: ['class'],
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  // On touch devices (mobile / Capacitor app) `hover:` styles otherwise "stick"
+  // after the first tap, so the real action needs a second tap. Gating hover
+  // variants behind `@media (hover: hover)` makes them apply only with a real
+  // pointer (mouse), so a single tap activates everywhere on touch.
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   theme: {
     extend: {
       fontFamily: {
