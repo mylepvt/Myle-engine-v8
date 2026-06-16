@@ -141,6 +141,38 @@ class User(Base):
         default=False,
     )
 
+    # Notification preferences
+    push_notifications_enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("true"),
+        default=True,
+    )
+    whatsapp_notifications_enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("true"),
+        default=True,
+    )
+    daily_report_reminders_enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("true"),
+        default=True,
+    )
+    lead_assignment_alerts_enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("true"),
+        default=True,
+    )
+    weekly_summary_enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("true"),
+        default=True,
+    )
+
     # XP / gamification columns (added in migration 0031)
     xp_total: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"), default=0)
     xp_level: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'rookie'"), default="rookie")
