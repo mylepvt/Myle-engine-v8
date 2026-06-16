@@ -7,7 +7,8 @@ def test_rule_engine_reexports_pipeline_rules() -> None:
     from app.services import rule_engine
 
     assert rule_engine.normalize_flow_status("New") == "New Lead"
-    assert "Paid" in str(rule_engine.TEAM_ALLOWED_STATUSES)
+    # "Paid" was renamed to "Min. FLP Billing" in the canonical status set.
+    assert "Min. FLP Billing" in str(rule_engine.TEAM_ALLOWED_STATUSES)
 
 
 def test_wallet_ledger_fragment() -> None:
