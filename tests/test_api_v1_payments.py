@@ -141,14 +141,14 @@ def test_public_payment_proof_upload_reaches_admin_queue(
         admin = TestClient(app)
         assert admin.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
 
-        queue = admin.get("/api/v1/team/enrollment-requests")
+        queue = admin.get("/api/v1/team/flp-min-billing-requests")
         assert queue.status_code == 200
         body = queue.json()
         assert body["total"] == 1
         assert body["items"][0]["lead_id"] == 1
         assert body["items"][0]["status"] == "proof_uploaded"
 
-        approve = admin.post("/api/v1/team/enrollment-requests/1/decision", json={"action": "approve"})
+        approve = admin.post("/api/v1/team/flp-min-billing-requests/1/decision", json={"action": "approve"})
         assert approve.status_code == 200
         assert approve.json()["payment_status"] == "approved"
 
@@ -194,7 +194,7 @@ def test_payment_approval_restores_missing_assignee_for_workboard_route(
         admin = TestClient(app)
         assert admin.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
 
-        approve = admin.post("/api/v1/team/enrollment-requests/1/decision", json={"action": "approve"})
+        approve = admin.post("/api/v1/team/flp-min-billing-requests/1/decision", json={"action": "approve"})
         assert approve.status_code == 200
         assert approve.json()["payment_status"] == "approved"
 
@@ -221,7 +221,7 @@ def test_enrollment_history_returns_calendar_wise_payment_decisions(
         assert admin.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
 
         history = admin.get(
-            "/api/v1/team/enrollment-requests/history",
+            "/api/v1/team/flp-min-billing-requests/history",
             params={"date": "2026-04-21"},
         )
         assert history.status_code == 200
@@ -269,7 +269,7 @@ def test_flp_min_billing_flow_keeps_paid_to_mindset_to_day2_to_day3_intact(
 
         admin = TestClient(app)
         assert admin.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
-        approve = admin.post("/api/v1/team/enrollment-requests/1/decision", json={"action": "approve"})
+        approve = admin.post("/api/v1/team/flp-min-billing-requests/1/decision", json={"action": "approve"})
         assert approve.status_code == 200
 
         paid = team.get("/api/v1/leads/1")
