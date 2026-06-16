@@ -139,7 +139,23 @@ async def send_report_reminder(
     reminder_date: date,
     session: AsyncSession,
 ) -> ReportReminderOutreach:
-    """Send WhatsApp reminder for unsubmitted daily report and record the attempt."""
+    """Send WhatsApp reminder for unsubmitted daily report and record the attempt.
+
+    Skips if the user has daily report reminders disabled.
+    """
+    if not user.daily_report_reminders_enabled:
+        logger.info("report reminder skipped user_id=%s (reminders disabled)", user.id)
+        record = ReportReminderOutreach(
+            user_id=user.id,
+            reminder_date=reminder_date,
+            phone=getattr(user, "phone", None),
+            member_name=(user.name or user.username or user.fbo_id or "Member").strip(),
+            send_status="skipped",
+        )
+        session.add(record)
+        await session.flush()
+        return record
+
     phone = getattr(user, "phone", None)
     member_name = (
         (user.name or "").strip()
