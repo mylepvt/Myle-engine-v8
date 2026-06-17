@@ -53,3 +53,42 @@ def test_notice_board_team_cannot_post(monkeypatch: pytest.MonkeyPatch) -> None:
     c = _client_role(monkeypatch, "team")
     r = c.post("/api/v1/other/notice-board", json={"message": "x", "pin": False})
     assert r.status_code == 403
+
+
+def test_notice_board_react_toggle(monkeypatch: pytest.MonkeyPatch) -> None:
+    admin = _client_role(monkeypatch, "admin")
+    r = admin.post("/api/v1/other/notice-board", json={"message": "React test", "pin": False})
+    assert r.status_code == 201
+    aid = r.json()["id"]
+
+    team = _client_role(monkeypatch, "team")
+    r1 = team.post(f"/api/v1/other/notice-board/{aid}/react", json={"emoji": "👍"})
+    assert r1.status_code == 200
+    body = r1.json()
+    thumbs = [rr for rr in body["reactions"] if rr["emoji"] == "👍"]
+    assert len(thumbs) == 1
+    assert thumbs[0]["count"] == 1
+    assert thumbs[0]["reacted_by_me"] is True
+
+    r2 = team.post(f"/api/v1/other/notice-board/{aid}/react", json={"emoji": "👍"})
+    assert r2.status_code == 200
+    body2 = r2.json()
+    thumbs2 = [rr for rr in body2["reactions"] if rr["emoji"] == "👍"]
+    assert len(thumbs2) == 1
+    assert thumbs2[0]["count"] == 0
+    assert thumbs2[0]["reacted_by_me"] is False
+
+    admin2 = _client_role(monkeypatch, "admin")
+    r3 = admin2.post(f"/api/v1/other/notice-board/{aid}/react", json={"emoji": "👍"})
+    assert r3.status_code == 200
+    body3 = r3.json()
+    thumbs3 = [rr for rr in body3["reactions"] if rr["emoji"] == "👍"]
+    assert len(thumbs3) == 1
+    assert thumbs3[0]["count"] == 1
+    assert thumbs3[0]["reacted_by_me"] is True
+
+
+def test_notice_board_react_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
+    c = _client_role(monkeypatch, "team")
+    r = c.post("/api/v1/other/notice-board/999999/react", json={"emoji": "❤️"})
+    assert r.status_code == 404

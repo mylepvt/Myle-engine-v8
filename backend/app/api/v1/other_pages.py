@@ -18,6 +18,7 @@ from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.models.announcement import Announcement
+from app.models.announcement_reaction import AnnouncementReaction
 from app.models.app_setting import AppSetting
 from app.models.lead import Lead
 from app.models.premiere_viewer import PremiereViewer
@@ -26,7 +27,7 @@ from app.models.training_day_note import TrainingDayNote
 from app.models.training_progress import TrainingProgress
 from app.models.training_video import TrainingVideo
 from app.models.user import User
-from app.schemas.notice_board import AnnouncementCreate, AnnouncementOut, NoticeBoardResponse
+from app.schemas.notice_board import AnnouncementCreate, AnnouncementOut, NoticeBoardResponse, ReactionSummary, ReactionToggle
 from app.schemas.system_surface import SystemStubResponse, TrainingSurfaceResponse
 from app.services.flp_min_billing_video import normalize_phone_for_match
 from app.services.team_reports_metrics import IST
@@ -121,6 +122,37 @@ def _acting_label(user: AuthUser) -> str:
     return str(user.user_id)
 
 
+async def _attach_reactions(
+    items: list[AnnouncementOut],
+    session: AsyncSession,
+    user_id: int,
+) -> None:
+    if not items:
+        return
+    ids = [r.id for r in items]
+    rows = (
+        await session.execute(
+            select(
+                AnnouncementReaction.announcement_id,
+                AnnouncementReaction.emoji,
+                AnnouncementReaction.user_id,
+            ).where(AnnouncementReaction.announcement_id.in_(ids))
+        )
+    ).all()
+    grouped: dict[int, dict[str, dict]] = {}
+    for announcement_id, emoji, uid in rows:
+        g = grouped.setdefault(announcement_id, {})
+        e = g.setdefault(emoji, {"count": 0, "reacted_by_me": False})
+        e["count"] += 1
+        if uid == user_id:
+            e["reacted_by_me"] = True
+    for item in items:
+        raw = grouped.get(item.id, {})
+        item.reactions = [
+            ReactionSummary(emoji=emoji, **data) for emoji, data in raw.items()
+        ]
+
+
 def _is_missing_premiere_viewers_table_error(exc: Exception) -> bool:
     parts = [str(exc).lower()]
     original = getattr(exc, "orig", None)
@@ -206,7 +238,6 @@ async def other_notice_board_list(
     limit: int = Query(50, ge=1, le=100),
 ) -> NoticeBoardResponse:
     """All logged-in roles — pinned first, then newest (legacy ``/announcements``)."""
-    _ = user
     total_q = await session.execute(select(func.count()).select_from(Announcement))
     total = int(total_q.scalar_one())
     stmt = (
@@ -216,6 +247,7 @@ async def other_notice_board_list(
     )
     rows = (await session.execute(stmt)).scalars().all()
     items = [AnnouncementOut.model_validate(r) for r in rows]
+    await _attach_reactions(items, session, user.user_id)
     return NoticeBoardResponse(items=items, total=total, note=None)
 
 
@@ -238,7 +270,9 @@ async def other_notice_board_create(
     session.add(row)
     await session.commit()
     await session.refresh(row)
-    return AnnouncementOut.model_validate(row)
+    item = AnnouncementOut.model_validate(row)
+    await _attach_reactions([item], session, user.user_id)
+    return item
 
 
 @router.delete("/notice-board/{announcement_id}", status_code=http_status.HTTP_204_NO_CONTENT)
@@ -271,7 +305,51 @@ async def other_notice_board_toggle_pin(
     row.pin = not row.pin
     await session.commit()
     await session.refresh(row)
-    return AnnouncementOut.model_validate(row)
+    item = AnnouncementOut.model_validate(row)
+    await _attach_reactions([item], session, user.user_id)
+    return item
+
+
+@router.post(
+    "/notice-board/{announcement_id}/react",
+    response_model=AnnouncementOut,
+)
+async def other_notice_board_react(
+    announcement_id: int,
+    body: ReactionToggle,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> AnnouncementOut:
+    """Toggle an emoji reaction on an announcement (any logged-in role)."""
+    row = await session.get(Announcement, announcement_id)
+    if row is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Not found")
+
+    existing = (
+        await session.execute(
+            select(AnnouncementReaction).where(
+                AnnouncementReaction.announcement_id == announcement_id,
+                AnnouncementReaction.user_id == user.user_id,
+                AnnouncementReaction.emoji == body.emoji,
+            )
+        )
+    ).scalar_one_or_none()
+
+    if existing is not None:
+        await session.delete(existing)
+    else:
+        session.add(
+            AnnouncementReaction(
+                announcement_id=announcement_id,
+                user_id=user.user_id,
+                emoji=body.emoji,
+            )
+        )
+    await session.commit()
+
+    item = AnnouncementOut.model_validate(row)
+    await _attach_reactions([item], session, user.user_id)
+    return item
 
 
 @router.get("/live-session", response_model=SystemStubResponse)
