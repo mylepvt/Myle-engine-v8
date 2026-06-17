@@ -7,6 +7,8 @@ import { useNoticeBoardMutations, useNoticeBoardQuery } from '@/hooks/use-notice
 import { useNoticeBoardUnread } from '@/hooks/use-notice-board-unread'
 import { cn } from '@/lib/utils'
 
+const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏']
+
 type Props = { title: string }
 
 function formatWhen(iso: string) {
@@ -20,11 +22,49 @@ function formatWhen(iso: string) {
   }
 }
 
+function ReactionBar({
+  reactions,
+  announcementId,
+  disabled,
+  onReact,
+}: {
+  reactions: { emoji: string; count: number; reacted_by_me: boolean }[]
+  announcementId: number
+  disabled: boolean
+  onReact: (id: number, emoji: string) => void
+}) {
+  const reactionMap = new Map(reactions.map((r) => [r.emoji, r]))
+  return (
+    <div className="mt-3 flex flex-wrap gap-1.5">
+      {REACTION_EMOJIS.map((emoji) => {
+        const r = reactionMap.get(emoji)
+        return (
+          <button
+            key={emoji}
+            type="button"
+            disabled={disabled}
+            onClick={() => onReact(announcementId, emoji)}
+            className={cn(
+              'inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs leading-tight transition-colors',
+              r?.reacted_by_me
+                ? 'border-primary/50 bg-primary/10 text-primary'
+                : 'border-border/60 text-muted-foreground hover:border-border hover:bg-muted/50',
+            )}
+          >
+            <span className="text-sm leading-none">{emoji}</span>
+            {r && r.count > 0 ? <span className="tabular-nums">{r.count}</span> : null}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 export function NoticeBoardPage({ title }: Props) {
   const { data: me } = useAuthMeQuery()
   const isAdmin = me?.authenticated && me.role === 'admin'
   const { data, isPending, isError, error, refetch } = useNoticeBoardQuery()
-  const { create, remove, togglePin } = useNoticeBoardMutations()
+  const { create, remove, togglePin, react } = useNoticeBoardMutations()
 
   const { markAllSeen } = useNoticeBoardUnread()
 
@@ -137,6 +177,12 @@ export function NoticeBoardPage({ title }: Props) {
                 <p className="mt-2 text-xs text-muted-foreground">
                   {row.created_by} · {formatWhen(row.created_at)}
                 </p>
+                <ReactionBar
+                  reactions={row.reactions}
+                  announcementId={row.id}
+                  disabled={react.isPending}
+                  onReact={(id, emoji) => void react.mutateAsync({ id, emoji })}
+                />
                 {isAdmin ? (
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Button

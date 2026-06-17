@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.core.config import settings
 from app.db.base import Base
-from app.models import Announcement, CrmOutbox, Lead, LegacyRowSnapshot, User, VerificationTask, TaskAssignment  # noqa: F401
+from app.models import Announcement, AnnouncementReaction, CrmOutbox, Lead, LegacyRowSnapshot, User, VerificationTask, TaskAssignment  # noqa: F401
 
 config = context.config
 
