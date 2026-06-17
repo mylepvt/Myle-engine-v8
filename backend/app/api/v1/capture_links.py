@@ -42,7 +42,7 @@ async def list_links(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ):
-    links = await svc.list_my_links(session, owner_user_id=user.id)
+    links = await svc.list_my_links(session, owner_user_id=user.user_id)
     return CaptureLinkListResponse(links=[_to_public(link) for link in links])
 
 
@@ -53,7 +53,7 @@ async def create_link(
     session: Annotated[AsyncSession, Depends(get_db)],
 ):
     try:
-        link = await svc.create_link(session, owner_user_id=user.id, category=body.category)
+        link = await svc.create_link(session, owner_user_id=user.user_id, category=body.category)
     except svc.CaptureError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message)
     return _to_public(link)
@@ -66,7 +66,7 @@ async def deactivate_link(
     session: Annotated[AsyncSession, Depends(get_db)],
 ):
     try:
-        link = await svc.deactivate_link(session, owner_user_id=user.id, link_id=link_id)
+        link = await svc.deactivate_link(session, owner_user_id=user.user_id, link_id=link_id)
     except svc.CaptureError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message)
     return _to_public(link)
