@@ -213,3 +213,74 @@ async def _run_http_public_flow() -> None:
 
 def test_capture_public_http_flow() -> None:
     asyncio.run(_run_http_public_flow())
+
+
+async def _run_http_authed_flow() -> None:
+    """Drive the authed member endpoints over HTTP (catches AuthUser attr mistakes)."""
+    from httpx import ASGITransport, AsyncClient
+    from sqlalchemy.pool import StaticPool
+
+    from app.api.deps import require_auth_user
+    from app.db.session import get_db
+    from main import app
+
+    engine = create_async_engine(
+        "sqlite+aiosqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    Session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    async with Session() as seed:
+        member = User(fbo_id="FBO300", email="m3@example.com", role="team", name="Ravi")
+        seed.add(member)
+        await seed.commit()
+        await seed.refresh(member)
+        member_id = member.id
+
+    async def _override_get_db():
+        async with Session() as s:
+            yield s
+
+    app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[require_auth_user] = lambda: AuthUser(
+        user_id=member_id, role="team", email="m3@example.com"
+    )
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            # categories
+            rc = await client.get("/api/v1/capture/categories")
+            assert rc.status_code == 200, rc.text
+            assert any(c["slug"] == "referral" for c in rc.json())
+
+            # create link
+            r = await client.post("/api/v1/capture/links", json={"category": "referral"})
+            assert r.status_code == 201, r.text
+            link = r.json()
+            assert link["category"] == "referral"
+            assert link["token"]
+
+            # invalid category → 400
+            rbad = await client.post("/api/v1/capture/links", json={"category": "nope"})
+            assert rbad.status_code == 400
+
+            # list links
+            rl = await client.get("/api/v1/capture/links")
+            assert rl.status_code == 200, rl.text
+            assert len(rl.json()["links"]) == 1
+
+            # deactivate
+            rd = await client.delete(f"/api/v1/capture/links/{link['id']}")
+            assert rd.status_code == 200, rd.text
+            assert rd.json()["active"] is False
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(require_auth_user, None)
+        await engine.dispose()
+
+
+def test_capture_authed_http_flow() -> None:
+    asyncio.run(_run_http_authed_flow())
