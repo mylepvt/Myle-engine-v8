@@ -498,6 +498,10 @@ export function SettingsAppPage({ title }: Props) {
             Day 1 aur Day 2 ke 6 slots (Morning/Afternoon/Evening) × 2 videos = 12 URL yahan set karo.
             These YouTube links are served directly on watch pages when a lead opens their token link.
           </p>
+          <p className="mt-2 rounded-md border border-amber-400/30 bg-amber-400/10 px-2.5 py-1.5 text-ds-caption text-amber-700 dark:text-amber-300">
+            Direct .mp4 link daal rahe ho to <strong>H.264 (AVC) codec</strong> use karo — AV1/HEVC videos
+            zyada phones (iPhone, purane Android) pr nahi chalte. YouTube link sabse safe hai.
+          </p>
         </div>
 
         {appSettingsPending ? (
