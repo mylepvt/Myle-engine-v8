@@ -2,12 +2,19 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
 
+export type ReactionSummary = {
+  emoji: string
+  count: number
+  reacted_by_me: boolean
+}
+
 export type NoticeBoardItem = {
   id: number
   message: string
   created_by: string
   pin: boolean
   created_at: string
+  reactions: ReactionSummary[]
 }
 
 export type NoticeBoardPayload = {
@@ -68,6 +75,23 @@ export async function deleteAnnouncement(id: number): Promise<void> {
   }
 }
 
+export async function toggleReaction(id: number, emoji: string): Promise<NoticeBoardItem> {
+  const res = await apiFetch(`/api/v1/other/notice-board/${id}/react`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ emoji }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    const msg =
+      typeof err === 'object' && err !== null && 'error' in err
+        ? String((err as { error?: { message?: string } }).error?.message ?? res.statusText)
+        : res.statusText
+    throw new Error(msg || `HTTP ${res.status}`)
+  }
+  return res.json() as Promise<NoticeBoardItem>
+}
+
 export async function togglePinAnnouncement(id: number): Promise<NoticeBoardItem> {
   const res = await apiFetch(`/api/v1/other/notice-board/${id}/toggle-pin`, {
     method: 'POST',
@@ -100,5 +124,10 @@ export function useNoticeBoardMutations() {
     mutationFn: togglePinAnnouncement,
     onSuccess: invalidate,
   })
-  return { create, remove, togglePin }
+  const react = useMutation({
+    mutationFn: ({ id, emoji }: { id: number; emoji: string }) =>
+      toggleReaction(id, emoji),
+    onSuccess: invalidate,
+  })
+  return { create, remove, togglePin, react }
 }

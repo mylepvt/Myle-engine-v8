@@ -2,6 +2,7 @@ from app.models.member_removal_outreach import MemberRemovalOutreach
 from app.models.report_reminder_outreach import ReportReminderOutreach
 from app.models.admin_activity_feed import AdminActivityFeed
 from app.models.announcement import Announcement
+from app.models.announcement_reaction import AnnouncementReaction
 from app.models.activity_log import ActivityLog
 from app.models.batch_day_submission import BatchDaySubmission
 from app.models.call_event import CallEvent
@@ -44,6 +45,7 @@ __all__ = [
     "ReportReminderOutreach",
     "AdminActivityFeed",
     "Announcement",
+    "AnnouncementReaction",
     "ActivityLog",
     "BatchDaySubmission",
     "CallEvent",

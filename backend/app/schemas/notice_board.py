@@ -8,6 +8,12 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class ReactionSummary(BaseModel):
+    emoji: str
+    count: int
+    reacted_by_me: bool
+
+
 class AnnouncementOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -16,6 +22,7 @@ class AnnouncementOut(BaseModel):
     created_by: str
     pin: bool
     created_at: datetime
+    reactions: list[ReactionSummary] = []
 
 
 class NoticeBoardResponse(BaseModel):
@@ -29,3 +36,7 @@ class NoticeBoardResponse(BaseModel):
 class AnnouncementCreate(BaseModel):
     message: str = Field(min_length=1, max_length=20000)
     pin: bool = False
+
+
+class ReactionToggle(BaseModel):
+    emoji: str = Field(min_length=1, max_length=32)
