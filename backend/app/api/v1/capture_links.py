@@ -10,6 +10,8 @@ from app.api.deps import AuthUser, get_db, require_auth_user
 from app.core.capture_categories import category_label, category_message
 from app.models.lead_capture_link import LeadCaptureLink
 from app.schemas.capture import (
+    CaptureLeadRow,
+    CaptureLeadsResponse,
     CaptureLinkCreate,
     CaptureLinkListResponse,
     CaptureLinkPublic,
@@ -94,6 +96,34 @@ async def upload_poster(
         raise HTTPException(status_code=400, detail=result)
     link = await svc.set_poster_url(session, link=link, poster_url=result)
     return _to_public(link)
+
+
+@router.get("/links/{link_id}/leads", response_model=CaptureLeadsResponse)
+async def list_link_leads(
+    link_id: int,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+):
+    try:
+        leads = await svc.list_link_leads(
+            session, owner_user_id=user.user_id, link_id=link_id
+        )
+    except svc.CaptureError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message)
+    return CaptureLeadsResponse(
+        leads=[
+            CaptureLeadRow(
+                id=l.id,
+                name=l.name,
+                phone=l.phone,
+                city=l.city,
+                age=l.age,
+                status=l.status,
+                created_at=l.created_at,
+            )
+            for l in leads
+        ]
+    )
 
 
 @router.patch("/links/{link_id}/message", response_model=CaptureLinkPublic)
