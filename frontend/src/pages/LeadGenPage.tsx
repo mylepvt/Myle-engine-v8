@@ -16,6 +16,27 @@ import {
 
 type CategoryOption = { slug: string; label: string; message: string }
 
+type CaptureLeadRow = {
+  id: number
+  name: string
+  phone: string | null
+  city: string | null
+  age: number | null
+  status: string
+  created_at: string
+}
+
+function formatWhen(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleString(undefined, {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 type CaptureLink = {
   id: number
   token: string
@@ -55,6 +76,7 @@ export function LeadGenPage({ title }: { title?: string }) {
   const [note, setNote] = useState<string | null>(null)
   const [editMsgFor, setEditMsgFor] = useState<number | null>(null)
   const [msgDraft, setMsgDraft] = useState('')
+  const [leadsFor, setLeadsFor] = useState<number | null>(null)
   const fileInputs = useRef<Record<number, HTMLInputElement | null>>({})
 
   const categoriesQuery = useQuery({
@@ -315,6 +337,19 @@ export function LeadGenPage({ title }: { title?: string }) {
                   )
                 ) : null}
 
+                <div>
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+                    onClick={() => setLeadsFor(leadsFor === link.id ? null : link.id)}
+                  >
+                    {leadsFor === link.id
+                      ? 'Hide responses'
+                      : `View responses (${link.leads_count})`}
+                  </button>
+                  {leadsFor === link.id ? <LinkResponses linkId={link.id} /> : null}
+                </div>
+
                 {link.active ? (
                   <div className="space-y-3">
                     <input
@@ -412,6 +447,47 @@ export function LeadGenPage({ title }: { title?: string }) {
           ))
         )}
       </div>
+    </div>
+  )
+}
+
+function LinkResponses({ linkId }: { linkId: number }) {
+  const q = useQuery({
+    queryKey: ['capture-link-leads', linkId],
+    queryFn: async (): Promise<CaptureLeadRow[]> => {
+      const data = await jsonOrThrow(
+        await apiFetch(`/api/v1/capture/links/${linkId}/leads`),
+      )
+      return data.leads as CaptureLeadRow[]
+    },
+  })
+
+  if (q.isLoading) {
+    return <Skeleton className="mt-2 h-16 w-full" />
+  }
+  const rows = q.data ?? []
+  if (rows.length === 0) {
+    return (
+      <p className="mt-2 text-xs text-muted-foreground">No responses yet.</p>
+    )
+  }
+  return (
+    <div className="mt-2 divide-y rounded-md border">
+      {rows.map((r) => (
+        <div key={r.id} className="flex items-start justify-between gap-3 p-2.5">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">{r.name}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {[r.phone, r.city, r.age ? `${r.age}y` : null]
+                .filter(Boolean)
+                .join(' · ')}
+            </p>
+          </div>
+          <span className="whitespace-nowrap text-[11px] text-muted-foreground">
+            {formatWhen(r.created_at)}
+          </span>
+        </div>
+      ))}
     </div>
   )
 }

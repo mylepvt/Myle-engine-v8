@@ -86,6 +86,18 @@ async def _run_flow() -> None:
         await session.refresh(link)
         assert link.leads_count == 1
 
+        # responses list (Google-Forms style) — owner sees the captured row
+        rows = await capture_service.list_link_leads(
+            session, owner_user_id=member.id, link_id=link.id
+        )
+        assert len(rows) == 1
+        assert rows[0].name == "Prospect One"
+        # another user can't read this link's responses
+        with pytest.raises(capture_service.CaptureError):
+            await capture_service.list_link_leads(
+                session, owner_user_id=member.id + 999, link_id=link.id
+            )
+
         # 5. Add a NORMAL (non-captured) lead to prove isolation
         normal = Lead(
             name="Walk-in Lead",
