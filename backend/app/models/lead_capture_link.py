@@ -24,6 +24,8 @@ class LeadCaptureLink(Base):
         ForeignKey("users.id"), nullable=False, index=True
     )
     category: Mapped[str] = mapped_column(String(50), nullable=False)
+    # Member-uploaded poster (their own design) with the QR/link overlaid, saved server-side.
+    poster_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("true"), default=True
     )

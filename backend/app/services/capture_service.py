@@ -77,6 +77,24 @@ async def deactivate_link(
     return link
 
 
+async def get_owned_link(
+    session: AsyncSession, *, owner_user_id: int, link_id: int
+) -> LeadCaptureLink:
+    link = await session.get(LeadCaptureLink, link_id)
+    if link is None or link.owner_user_id != owner_user_id:
+        raise CaptureError("Link not found", status_code=404)
+    return link
+
+
+async def set_poster_url(
+    session: AsyncSession, *, link: LeadCaptureLink, poster_url: str
+) -> LeadCaptureLink:
+    link.poster_url = poster_url
+    await session.commit()
+    await session.refresh(link)
+    return link
+
+
 # ── Public (no-auth) ──────────────────────────────────────────────────────────
 
 async def _get_active_link(session: AsyncSession, token: str) -> LeadCaptureLink:

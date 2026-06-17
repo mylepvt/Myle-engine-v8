@@ -256,12 +256,30 @@ async def _run_http_authed_flow() -> None:
             assert rc.status_code == 200, rc.text
             assert any(c["slug"] == "referral" for c in rc.json())
 
+            # categories carry an English share message
+            assert all("{link}" in c["message"] for c in rc.json())
+
             # create link
             r = await client.post("/api/v1/capture/links", json={"category": "referral"})
             assert r.status_code == 201, r.text
             link = r.json()
             assert link["category"] == "referral"
             assert link["token"]
+            assert link["poster_url"] is None
+            assert "{link}" in link["share_message"]
+
+            # upload a poster (1x1 PNG)
+            import base64
+
+            png = base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+            )
+            rp = await client.post(
+                f"/api/v1/capture/links/{link['id']}/poster",
+                files={"poster": ("poster.png", png, "image/png")},
+            )
+            assert rp.status_code == 200, rp.text
+            assert rp.json()["poster_url"].startswith("/api/v1/media/capture-posters/")
 
             # invalid category → 400
             rbad = await client.post("/api/v1/capture/links", json={"category": "nope"})

@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 class CategoryOption(BaseModel):
     slug: str
     label: str
+    message: str
 
 
 class CaptureLinkCreate(BaseModel):
@@ -23,6 +24,9 @@ class CaptureLinkPublic(BaseModel):
     active: bool
     leads_count: int
     created_at: datetime
+    poster_url: str | None = None
+    # English share-message template for this category; client substitutes {link}.
+    share_message: str
 
 
 class CaptureLinkListResponse(BaseModel):

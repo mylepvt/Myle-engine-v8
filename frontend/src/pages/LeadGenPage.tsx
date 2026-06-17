@@ -1,18 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { apiFetch } from '@/lib/api'
+import { apiFetch, apiUrl } from '@/lib/api'
 import {
   buildLeadPoster,
-  downloadDataUrl,
+  buildPosterFromImageFile,
+  dataUrlToFile,
   POSTER_TEMPLATES,
+  sharePosterOrFallback,
   type PosterTemplate,
 } from '@/lib/lead-poster'
 
-type CategoryOption = { slug: string; label: string }
+type CategoryOption = { slug: string; label: string; message: string }
 
 type CaptureLink = {
   id: number
@@ -22,10 +24,16 @@ type CaptureLink = {
   active: boolean
   leads_count: number
   created_at: string
+  poster_url: string | null
+  share_message: string
 }
 
 function publicUrl(token: string): string {
   return `${window.location.origin}/c/${token}`
+}
+
+function messageFor(link: CaptureLink): string {
+  return link.share_message.replace('{link}', publicUrl(link.token))
 }
 
 async function jsonOrThrow(res: Response) {
@@ -40,8 +48,10 @@ export function LeadGenPage({ title }: { title?: string }) {
   const queryClient = useQueryClient()
   const [category, setCategory] = useState('')
   const [copiedToken, setCopiedToken] = useState<string | null>(null)
-  const [posterFor, setPosterFor] = useState<CaptureLink | null>(null)
+  const [templatesFor, setTemplatesFor] = useState<number | null>(null)
   const [ownerName, setOwnerName] = useState('')
+  const [note, setNote] = useState<string | null>(null)
+  const fileInputs = useRef<Record<number, HTMLInputElement | null>>({})
 
   const categoriesQuery = useQuery({
     queryKey: ['capture-categories'],
@@ -74,11 +84,25 @@ export function LeadGenPage({ title }: { title?: string }) {
 
   const deactivateMutation = useMutation({
     mutationFn: async (id: number) =>
-      jsonOrThrow(
-        await apiFetch(`/api/v1/capture/links/${id}`, { method: 'DELETE' }),
-      ),
-    onSuccess: () =>
-      void queryClient.invalidateQueries({ queryKey: ['capture-links'] }),
+      jsonOrThrow(await apiFetch(`/api/v1/capture/links/${id}`, { method: 'DELETE' })),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['capture-links'] }),
+  })
+
+  const uploadMutation = useMutation({
+    mutationFn: async ({ link, file }: { link: CaptureLink; file: File }) => {
+      // Overlay the QR/link badge onto the member's own poster, then save it.
+      const composedDataUrl = await buildPosterFromImageFile(file, publicUrl(link.token))
+      const composed = dataUrlToFile(composedDataUrl, `poster-${link.token}.png`)
+      const form = new FormData()
+      form.append('poster', composed)
+      return jsonOrThrow(
+        await apiFetch(`/api/v1/capture/links/${link.id}/poster`, {
+          method: 'POST',
+          body: form,
+        }),
+      )
+    },
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['capture-links'] }),
   })
 
   async function copyLink(token: string) {
@@ -87,28 +111,58 @@ export function LeadGenPage({ title }: { title?: string }) {
       setCopiedToken(token)
       setTimeout(() => setCopiedToken((t) => (t === token ? null : t)), 1800)
     } catch {
-      /* clipboard unavailable — user can long-press the link */
+      /* clipboard unavailable */
     }
   }
 
-  async function downloadPoster(link: CaptureLink, template: PosterTemplate) {
+  async function sharePoster(link: CaptureLink) {
+    if (!link.poster_url) return
+    setNote(null)
+    try {
+      const res = await apiFetch(link.poster_url)
+      const blob = await res.blob()
+      const file = new File([blob], `poster-${link.token}.png`, { type: blob.type || 'image/png' })
+      const outcome = await sharePosterOrFallback(file, messageFor(link))
+      if (outcome === 'fallback') {
+        setNote('Poster downloaded and message copied — attach it in WhatsApp.')
+      }
+    } catch {
+      setNote('Could not share. Try downloading the poster instead.')
+    }
+  }
+
+  async function shareTemplate(link: CaptureLink, template: PosterTemplate) {
     const dataUrl = await buildLeadPoster({
       template,
       ownerName: ownerName || 'Our team',
       url: publicUrl(link.token),
     })
-    downloadDataUrl(dataUrl, `poster-${template.id}-${link.token}.png`)
+    const file = dataUrlToFile(dataUrl, `poster-${template.id}-${link.token}.png`)
+    const outcome = await sharePosterOrFallback(file, messageFor(link))
+    if (outcome === 'fallback') {
+      setNote('Poster downloaded and message copied — attach it in WhatsApp.')
+    }
+  }
+
+  function onPickFile(link: CaptureLink, e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (file) uploadMutation.mutate({ link, file })
   }
 
   const links = linksQuery.data ?? []
+  const uploadingId =
+    uploadMutation.isPending && uploadMutation.variables
+      ? uploadMutation.variables.link.id
+      : null
 
   return (
     <div className="space-y-6 p-4">
       <div>
         <h1 className="text-xl font-semibold">{title ?? 'Lead Generation'}</h1>
         <p className="text-sm text-muted-foreground">
-          Create your own capture link for each category. Anyone who fills the form becomes
-          a lead in your list automatically.
+          Make a link for each category, add your own poster, and share both with a ready
+          message. Anyone who fills the form becomes a lead in your list.
         </p>
       </div>
 
@@ -144,25 +198,14 @@ export function LeadGenPage({ title }: { title?: string }) {
             </div>
           )}
           {createMutation.isError ? (
-            <p className="text-sm text-red-600">
-              {(createMutation.error as Error).message}
-            </p>
+            <p className="text-sm text-red-600">{(createMutation.error as Error).message}</p>
           ) : null}
-
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground" htmlFor="ownerName">
-              Name shown on the poster (optional)
-            </label>
-            <input
-              id="ownerName"
-              className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-              placeholder="e.g. Karan Singh"
-              value={ownerName}
-              onChange={(e) => setOwnerName(e.target.value)}
-            />
-          </div>
         </CardContent>
       </Card>
+
+      {note ? (
+        <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">{note}</p>
+      ) : null}
 
       {/* My links */}
       <div className="space-y-3">
@@ -204,34 +247,96 @@ export function LeadGenPage({ title }: { title?: string }) {
                 </div>
 
                 {link.active ? (
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => setPosterFor(posterFor?.id === link.id ? null : link)}
-                  >
-                    {posterFor?.id === link.id ? 'Hide posters' : 'Make a poster'}
-                  </Button>
+                  <div className="space-y-3">
+                    <input
+                      ref={(el) => {
+                        fileInputs.current[link.id] = el
+                      }}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="hidden"
+                      onChange={(e) => onPickFile(link, e)}
+                    />
+
+                    {link.poster_url ? (
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={apiUrl(link.poster_url)}
+                          alt="Your poster"
+                          className="h-20 w-20 rounded-md border object-cover"
+                        />
+                        <div className="flex flex-1 flex-col gap-2">
+                          <Button className="w-full" onClick={() => sharePoster(link)}>
+                            Share poster + message
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="w-full"
+                            disabled={uploadingId === link.id}
+                            onClick={() => fileInputs.current[link.id]?.click()}
+                          >
+                            {uploadingId === link.id ? 'Uploading…' : 'Replace poster'}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        disabled={uploadingId === link.id}
+                        onClick={() => fileInputs.current[link.id]?.click()}
+                      >
+                        {uploadingId === link.id ? 'Adding QR…' : 'Upload your poster'}
+                      </Button>
+                    )}
+
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+                      onClick={() =>
+                        setTemplatesFor(templatesFor === link.id ? null : link.id)
+                      }
+                    >
+                      {templatesFor === link.id
+                        ? 'Hide quick templates'
+                        : 'No poster? Use a quick template'}
+                    </button>
+
+                    {templatesFor === link.id ? (
+                      <div className="space-y-2">
+                        <input
+                          className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                          placeholder="Name shown on template (optional)"
+                          value={ownerName}
+                          onChange={(e) => setOwnerName(e.target.value)}
+                        />
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                          {POSTER_TEMPLATES.map((tpl) => (
+                            <button
+                              key={tpl.id}
+                              type="button"
+                              className="rounded-lg p-3 text-left text-xs font-medium text-white"
+                              style={{
+                                background: `linear-gradient(160deg, ${tpl.bg[0]}, ${tpl.bg[1]})`,
+                              }}
+                              onClick={() => shareTemplate(link, tpl)}
+                            >
+                              {tpl.name}
+                              <span className="mt-1 block text-[10px] opacity-80">
+                                Tap to share
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
                 ) : null}
 
-                {posterFor?.id === link.id ? (
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    {POSTER_TEMPLATES.map((tpl) => (
-                      <button
-                        key={tpl.id}
-                        type="button"
-                        className="rounded-lg p-3 text-left text-xs font-medium text-white"
-                        style={{
-                          background: `linear-gradient(160deg, ${tpl.bg[0]}, ${tpl.bg[1]})`,
-                        }}
-                        onClick={() => downloadPoster(link, tpl)}
-                      >
-                        {tpl.name}
-                        <span className="mt-1 block text-[10px] opacity-80">
-                          Tap to download
-                        </span>
-                      </button>
-                    ))}
-                  </div>
+                {uploadMutation.isError && uploadingId === link.id ? (
+                  <p className="text-sm text-red-600">
+                    {(uploadMutation.error as Error).message}
+                  </p>
                 ) : null}
               </CardContent>
             </Card>
