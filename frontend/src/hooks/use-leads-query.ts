@@ -198,6 +198,8 @@ export type CtcsListOptions = {
   preEnrollmentOnly?: boolean
   searchAllSections?: boolean
   leaderAllScope?: boolean
+  /** Only leads captured via member capture links — the "Generated" pill. */
+  generatedOnly?: boolean
 }
 
 const DEFAULT_PAGE_SIZE = 50
@@ -231,6 +233,9 @@ function buildLeadsQueryString(
   }
   if (ctcs?.leaderAllScope) {
     p.set('leader_all_scope', 'true')
+  }
+  if (ctcs?.generatedOnly) {
+    p.set('generated_only', 'true')
   }
   const qs = p.toString()
   return qs ? `?${qs}` : ''
@@ -486,6 +491,7 @@ export function useLeadsInfiniteQuery(
       ctcs?.preEnrollmentOnly,
       ctcs?.searchAllSections,
       ctcs?.leaderAllScope,
+      ctcs?.generatedOnly,
     ],
     initialPageParam: 0,
     queryFn: ({ pageParam }) =>

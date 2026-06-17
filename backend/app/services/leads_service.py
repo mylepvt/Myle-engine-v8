@@ -411,6 +411,7 @@ class LeadsService:
         pre_flp_min_billing_only: bool = False,
         search_all_sections: bool = False,
         leader_all_scope: bool = False,
+        generated_only: bool = False,
     ) -> LeadListResponse:
         await run_completed_watch_pipeline_maintenance(self._session)
         await expire_stale_seat_holds(self._session)
@@ -428,6 +429,14 @@ class LeadsService:
         extra = _ctcs_filter_clause(ctcs_filter)
         if extra is not None:
             condition = and_(condition, extra) if condition is not None else extra
+        # "Generated" leads (captured via member capture links) live in their own pill:
+        # only here when generated_only, excluded from every other leads view by default.
+        gen_clause = (
+            Lead.capture_link_id.is_not(None)
+            if generated_only
+            else Lead.capture_link_id.is_(None)
+        )
+        condition = and_(condition, gen_clause) if condition is not None else gen_clause
         # leader_all_scope shows all statuses — skip pre_flp_min_billing_only restriction
         if pre_flp_min_billing_only and not (leader_all_scope and user.role == "leader"):
             pre_enroll = Lead.status.in_(

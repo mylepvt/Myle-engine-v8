@@ -67,6 +67,15 @@ class Lead(Base):
     source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    # Set when the lead was captured via a member's public capture link
+    # (app.models.lead_capture_link). Non-null = "Generated" lead — kept in its own
+    # Calling Board pill and excluded from the default leads list.
+    capture_link_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("lead_capture_links.id"),
+        nullable=True,
+        index=True,
+    )
+
     # Permanent owner (creator / personal importer / pool claimer). Never changes after set.
     owner_user_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("users.id"),

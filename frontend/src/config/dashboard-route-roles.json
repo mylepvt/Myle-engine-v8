@@ -7,6 +7,7 @@
   "work/pending-as": ["admin", "leader"],
   "work/retarget": ["admin", "leader", "team"],
   "work/lead-flow": ["leader", "team"],
+  "work/lead-gen": ["admin", "leader", "team"],
   "work/archived": ["admin", "leader", "team"],
   "work/add-lead": ["admin"],
   "work/lead-pool": ["leader", "team"],

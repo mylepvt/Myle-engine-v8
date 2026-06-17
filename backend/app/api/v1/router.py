@@ -26,6 +26,7 @@ from app.api.v1 import (
     invoices,
     analytics,
     auth,
+    capture_links,
     location,
     media,
     certificate,
@@ -131,4 +132,5 @@ api_router.include_router(missions.router, tags=["missions"])
 api_router.include_router(org_execution.router, tags=["org-execution"])
 api_router.include_router(predictive_risk.router, tags=["predictive-risk"])
 api_router.include_router(training_campaign.router, tags=["training-campaign"])
+api_router.include_router(capture_links.router, tags=["capture-links"])
 api_router.include_router(webhooks.router, tags=["webhooks"])

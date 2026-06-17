@@ -14,6 +14,7 @@ from app.models.enrollment_share_link import EnrollmentShareLink
 from app.models.flp_min_billing_share_link import FlpMinBillingShareLink
 from app.models.invoice import Invoice
 from app.models.lead import Lead
+from app.models.lead_capture_link import LeadCaptureLink
 from app.models.lead_sale import LeadSale
 from app.models.legacy_row_snapshot import LegacyRowSnapshot
 from app.models.user import User
@@ -56,6 +57,7 @@ __all__ = [
     "FlpMinBillingShareLink",
     "Invoice",
     "Lead",
+    "LeadCaptureLink",
     "LeadSale",
     "LegacyRowSnapshot",
     "User",

@@ -59,6 +59,7 @@ export type FullUiSurface =
   | { kind: 'follow-ups' }
   | { kind: 'retarget' }
   | { kind: 'lead-flow' }
+  | { kind: 'lead-gen' }
   | { kind: 'lead-pool' }
   | { kind: 'recycle-bin' }
   | { kind: 'team-members' }
@@ -231,6 +232,14 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('work/lead-flow'),
     surface: 'full',
     ui: { kind: 'lead-flow' },
+  },
+  {
+    path: 'work/lead-gen',
+    section: { id: 'work', label: '' },
+    label: 'Lead Generation',
+    roles: routeRoles('work/lead-gen'),
+    surface: 'full',
+    ui: { kind: 'lead-gen' },
   },
   {
     path: 'team/members',

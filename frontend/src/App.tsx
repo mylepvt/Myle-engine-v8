@@ -18,6 +18,7 @@ import { WatchPage } from '@/pages/WatchPage'
 import { EnrollmentWatchPage } from '@/pages/EnrollmentWatchPage'
 import { LivePremierePage } from '@/pages/LivePremierePage'
 import { Day6LivePage } from '@/pages/Day6LivePage'
+import { CaptureFormPage } from '@/pages/CaptureFormPage'
 import { t } from '@/lib/i18n'
 
 const DashboardNestedPage = lazy(async () => {
@@ -75,6 +76,7 @@ export function App() {
         <Route path="/premiere" element={<LivePremierePage />} />
         <Route path="/watch/live/day6" element={<Day6LivePage />} />
         <Route path="/test/d2/:token" element={<Day2TestPage />} />
+        <Route path="/c/:token" element={<CaptureFormPage />} />
 
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardLayout />}>

@@ -17,6 +17,7 @@ import { LeadsWorkPage } from '@/pages/LeadsWorkPage'
 import { EnrollmentAdminPage } from '@/pages/EnrollmentAdminPage'
 import { FollowUpsWorkPage } from '@/pages/FollowUpsWorkPage'
 import { LeadFlowPage } from '@/pages/LeadFlowPage'
+import { LeadGenPage } from '@/pages/LeadGenPage'
 import { LeadPoolWorkPage } from '@/pages/LeadPoolWorkPage'
 import { RecycleBinWorkPage } from '@/pages/RecycleBinWorkPage'
 import { TeamApprovalsPage } from '@/pages/TeamApprovalsPage'
@@ -74,6 +75,8 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <RetargetWorkPage title={title} />
     case 'lead-flow':
       return <LeadFlowPage title={title} />
+    case 'lead-gen':
+      return <LeadGenPage title={title} />
     case 'lead-pool':
       return <LeadPoolWorkPage title={title} />
     case 'recycle-bin':
