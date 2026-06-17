@@ -25,12 +25,20 @@ class CaptureLinkPublic(BaseModel):
     leads_count: int
     created_at: datetime
     poster_url: str | None = None
-    # English share-message template for this category; client substitutes {link}.
+    views: int = 0
+    # Member's custom message if set, else null (UI shows the category default as placeholder).
+    custom_message: str | None = None
+    # Effective share-message (custom or category default); client substitutes {link}.
     share_message: str
 
 
 class CaptureLinkListResponse(BaseModel):
     links: list[CaptureLinkPublic]
+
+
+class CaptureMessageUpdate(BaseModel):
+    # Empty/whitespace clears the override → falls back to the category default.
+    message: str | None = Field(default=None, max_length=2000)
 
 
 # ── Public (no-auth) form ─────────────────────────────────────────────────────
@@ -48,6 +56,8 @@ class PublicLeadSubmit(BaseModel):
     phone: str = Field(..., min_length=4, max_length=20)
     city: str | None = Field(default=None, max_length=100)
     age: int | None = Field(default=None, ge=1, le=120)
+    # Hidden honeypot — real users leave it empty; bots fill it and get silently dropped.
+    company: str | None = Field(default=None, max_length=200)
 
 
 class PublicSubmitResponse(BaseModel):

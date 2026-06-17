@@ -7,8 +7,9 @@ the owner's calling board, tagged by where it came from.
 from __future__ import annotations
 
 import secrets
+from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.capture_categories import (
@@ -19,6 +20,17 @@ from app.core.capture_categories import (
 from app.models.lead import Lead
 from app.models.lead_capture_link import LeadCaptureLink
 from app.models.user import User
+
+# Public-form abuse guard: max successful submissions per link inside the window.
+_RATE_LIMIT_WINDOW_SECONDS = 60
+_RATE_LIMIT_MAX = 8
+
+
+def _normalize_phone(raw: str | None) -> str | None:
+    if not raw:
+        return None
+    digits = "".join(ch for ch in raw if ch.isdigit())
+    return digits[-10:] if len(digits) >= 10 else (digits or None)
 
 
 class CaptureError(Exception):
@@ -95,6 +107,17 @@ async def set_poster_url(
     return link
 
 
+async def set_custom_message(
+    session: AsyncSession, *, owner_user_id: int, link_id: int, message: str | None
+) -> LeadCaptureLink:
+    link = await get_owned_link(session, owner_user_id=owner_user_id, link_id=link_id)
+    cleaned = (message or "").strip()
+    link.custom_message = cleaned or None
+    await session.commit()
+    await session.refresh(link)
+    return link
+
+
 # ── Public (no-auth) ──────────────────────────────────────────────────────────
 
 async def _get_active_link(session: AsyncSession, token: str) -> LeadCaptureLink:
@@ -112,6 +135,9 @@ async def get_public_info(session: AsyncSession, token: str) -> dict[str, str]:
     link = await _get_active_link(session, token)
     owner = await session.get(User, link.owner_user_id)
     owner_name = (getattr(owner, "name", None) or "Our team").strip() or "Our team"
+    # Count the form open (drives conversion % = leads_count / views). Recording only.
+    link.views = (link.views or 0) + 1
+    await session.commit()
     return {
         "owner_name": owner_name,
         "category": link.category,
@@ -127,8 +153,42 @@ async def submit_public_lead(
     phone: str,
     city: str | None,
     age: int | None,
+    honeypot: str | None = None,
 ) -> None:
     link = await _get_active_link(session, token)
+
+    # Bot trap: humans never see/fill the hidden field — drop silently (look successful).
+    if honeypot and honeypot.strip():
+        return
+
+    # Rate limit: cap successful captures per link inside the window.
+    since = datetime.now(timezone.utc) - timedelta(seconds=_RATE_LIMIT_WINDOW_SECONDS)
+    recent = (
+        await session.execute(
+            select(func.count())
+            .select_from(Lead)
+            .where(Lead.capture_link_id == link.id, Lead.created_at >= since)
+        )
+    ).scalar_one()
+    if recent >= _RATE_LIMIT_MAX:
+        raise CaptureError("Too many submissions, please try again shortly", status_code=429)
+
+    # Duplicate guard: same phone already captured for this owner → don't create another.
+    # Suffix match on the last 10 digits handles "+91"/spacing variants (portable SQL).
+    norm = _normalize_phone(phone)
+    if norm:
+        existing = (
+            await session.execute(
+                select(Lead.id).where(
+                    Lead.owner_user_id == link.owner_user_id,
+                    Lead.deleted_at.is_(None),
+                    Lead.phone.like(f"%{norm}"),
+                )
+            )
+        ).first()
+        if existing is not None:
+            return
+
     lead = Lead(
         name=name.strip(),
         status="new_lead",

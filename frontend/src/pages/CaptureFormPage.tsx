@@ -19,6 +19,7 @@ export function CaptureFormPage() {
   const [phone, setPhone] = useState('')
   const [city, setCity] = useState('')
   const [age, setAge] = useState('')
+  const [company, setCompany] = useState('') // honeypot — must stay empty for humans
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
@@ -58,6 +59,7 @@ export function CaptureFormPage() {
           phone: phone.trim(),
           city: city.trim() || null,
           age: age ? Number(age) : null,
+          company: company || null,
         }),
       })
       if (!res.ok) {
@@ -119,6 +121,17 @@ export function CaptureFormPage() {
                 placeholder="WhatsApp / mobile number"
               />
             </Field>
+            {/* Honeypot — hidden from humans; bots that fill it get dropped server-side */}
+            <input
+              type="text"
+              name="company"
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              value={company}
+              onChange={(e) => setCompany(e.target.value)}
+              style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }}
+            />
             <Field label="City">
               <input
                 className="form-input"

@@ -50,6 +50,7 @@ async def public_submit(
             phone=body.phone,
             city=body.city,
             age=body.age,
+            honeypot=body.company,
         )
     except svc.CaptureError as exc:
         raise _handle(exc)
