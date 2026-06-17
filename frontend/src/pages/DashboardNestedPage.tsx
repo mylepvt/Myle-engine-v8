@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 
 import {
@@ -7,10 +8,13 @@ import {
   routeDefAccessible,
   type FullUiSurface,
 } from '@/config/dashboard-registry'
+import { PageTransition } from '@/components/ui/motion'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
+import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DashboardPlaceholderPage } from '@/pages/DashboardPlaceholderPage'
 import { LeadsWorkPage } from '@/pages/LeadsWorkPage'
+import { EnrollmentAdminPage } from '@/pages/EnrollmentAdminPage'
 import { FollowUpsWorkPage } from '@/pages/FollowUpsWorkPage'
 import { LeadFlowPage } from '@/pages/LeadFlowPage'
 import { LeadGenPage } from '@/pages/LeadGenPage'
@@ -21,7 +25,9 @@ import { TeamMembersPage } from '@/pages/TeamMembersPage'
 import { TeamTrackingDetailPage } from '@/pages/TeamTrackingDetailPage'
 import { TeamTrackingPage } from '@/pages/TeamTrackingPage'
 import { MyTeamPage } from '@/pages/MyTeamPage'
-import { EnrollmentApprovalsPage } from '@/pages/EnrollmentApprovalsPage'
+import { FlpMinBillingApprovalsPage } from '@/pages/FlpMinBillingApprovalsPage'
+import { SalesApprovalsPage } from '@/pages/SalesApprovalsPage'
+import { PendingAsProcessPage } from '@/pages/PendingAsProcessPage'
 import { AnalyticsSurfacePage } from '@/pages/AnalyticsSurfacePage'
 import { SystemSurfacePage } from '@/pages/SystemSurfacePage'
 import { RetargetWorkPage } from '@/pages/RetargetWorkPage'
@@ -40,6 +46,7 @@ import SettingsPage from '@/pages/SettingsPage'
 import { LeaderboardPage } from '@/pages/LeaderboardPage'
 import { LiveSessionPage } from '@/pages/LiveSessionPage'
 import { CommunityTrainingPage } from '@/pages/CommunityTrainingPage'
+import { TrainingProgressPage } from '@/pages/TrainingProgressPage'
 import { BudgetExportPage } from '@/pages/BudgetExportPage'
 import { LeadControlPage } from '@/pages/LeadControlPage'
 import { SettingsAppPage } from '@/pages/SettingsAppPage'
@@ -50,15 +57,18 @@ import { AdminInvoicesPage } from '@/pages/AdminInvoicesPage'
 import { LeaderOSPage } from '@/pages/LeaderOSPage'
 import { DownloadsPage } from '@/pages/DownloadsPage'
 import { WhatsAppPanelPage } from '@/pages/WhatsAppPanelPage'
+import { AuditLogsPage } from '@/pages/AuditLogsPage'
+import { TeamAttendancePage } from '@/pages/TeamAttendancePage'
+import PerformerInsightsPage from '@/pages/PerformerInsightsPage'
 
 function renderFullUi(ui: FullUiSurface, title: string) {
   switch (ui.kind) {
     case 'leads':
       return <LeadsWorkPage title={title} listMode={ui.listMode} />
-    case 'mindset-lock':
-      return <WorkboardPage title={title} mode="mindset-lock" />
+    case 'enroll-link':
+      return <EnrollmentAdminPage pageTitle={title} />
     case 'workboard':
-      return <WorkboardPage title={title} mode="pipeline" />
+      return <WorkboardPage title={title} />
     case 'follow-ups':
       return <FollowUpsWorkPage title={title} />
     case 'retarget':
@@ -73,6 +83,8 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <RecycleBinWorkPage title={title} />
     case 'team-members':
       return <TeamMembersPage title={title} />
+    case 'team-attendance':
+      return <TeamAttendancePage title={title} />
     case 'team-tracking':
       return <TeamTrackingPage title={title} />
     case 'leader-os':
@@ -81,15 +93,22 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <TeamApprovalsPage title={title} />
     case 'my-team':
       return <MyTeamPage title={title} />
-    case 'enrollment-approvals':
-      return <EnrollmentApprovalsPage title={title} />
+    case 'flp-min-billing':
+      return <FlpMinBillingApprovalsPage title={title} />
+    case 'sales-approvals':
+      return <SalesApprovalsPage title={title} />
+    case 'pending-as':
+      return <PendingAsProcessPage title={title} />
     case 'system':
       return <SystemSurfacePage title={title} surface={ui.surface} />
     case 'lead-control':
       return <LeadControlPage title={title} />
     case 'analytics':
+      if ('surface' in ui && ui.surface === 'activity-log') {
+        return <AuditLogsPage title={title} />
+      }
       return 'surface' in ui ? (
-        <AnalyticsSurfacePage title={title} surface={ui.surface} />
+        <AnalyticsSurfacePage title={title} surface={ui.surface as 'activity-log'} />
       ) : (
         <AnalyticsPage />
       )
@@ -117,6 +136,8 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <LiveSessionPage title={title} />
     case 'community-training':
       return <CommunityTrainingPage title={title} />
+    case 'training-progress':
+      return <TrainingProgressPage title={title} />
     case 'downloads':
       return <DownloadsPage title={title} />
     case 'budget-export':
@@ -131,6 +152,8 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <AllMembersPage title={title} />
     case 'whatsapp-panel':
       return <WhatsAppPanelPage title={title} />
+    case 'performer-insights':
+      return <PerformerInsightsPage title={title} />
     case 'shell-api':
       return <ShellStubPage title={title} apiPath={ui.apiPath} />
     default: {
@@ -147,6 +170,8 @@ export function DashboardNestedPage() {
   const { '*': splat } = useParams()
   const path = (splat ?? '').replace(/^\/+|\/+$/g, '')
   const { role: navRole, isPending: rolePending } = useDashboardShellRole()
+  const { data: me } = useAuthMeQuery()
+  const enrollAllowed = me?.role === 'admin' || me?.enrollment_link_access === true
 
   const leadDetailMatch = /^work\/leads\/(\d+)$/.exec(path)
   if (leadDetailMatch) {
@@ -194,18 +219,34 @@ export function DashboardNestedPage() {
     return <Navigate to="/dashboard" replace />
   }
 
+  // Per-user capability gate: enrollment-link page needs the admin-granted flag.
+  if (def.surface === 'full' && def.ui.kind === 'enroll-link' && !enrollAllowed) {
+    return <Navigate to="/dashboard" replace />
+  }
+
   const title = resolveTitleForPath(path, navRole) ?? path
 
+  let content: ReactNode
   switch (def.surface) {
     case 'placeholder':
-      return <DashboardPlaceholderPage title={title} />
+      content = <DashboardPlaceholderPage title={title} />
+      break
     case 'dashboard-home':
       return <Navigate to="/dashboard" replace />
     case 'full':
-      return renderFullUi(def.ui, title)
+      content = renderFullUi(def.ui, title)
+      break
     default: {
       const _exhaustive: never = def
       return _exhaustive
     }
   }
+
+  // Smooth enter animation on every route change (keyed by path → re-runs on nav).
+  // PageTransition no-ops under prefers-reduced-motion.
+  return (
+    <PageTransition key={path} className="h-full">
+      {content}
+    </PageTransition>
+  )
 }

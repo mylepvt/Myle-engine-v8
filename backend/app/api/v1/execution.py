@@ -5,14 +5,19 @@ from __future__ import annotations
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.core.realtime_hub import notify_topics
+from app.models.lead import Lead
 from app.models.user import User
 from app.models.wallet_ledger import WalletLedgerEntry
+from app.repositories.leads_repository import SqlAlchemyLeadsRepository
+from app.schemas.leads import LeadPublic
+from app.services.lead_owner import lead_owner_clause
+from app.services.lead_payloads import build_lead_public_payloads
 from app.schemas.execution_enforcement import (
     AtRiskLeadRow,
     Day2ReviewOut,
@@ -24,6 +29,8 @@ from app.schemas.execution_enforcement import (
     LeadControlManualReassignIn,
     LeadControlManualReassignOut,
     LeadControlOut,
+    LeadControlRevertIn,
+    LeadControlRevertOut,
     LosSnapshotOut,
     MemberExecutionStats,
     StaleRedistributeOut,
@@ -60,6 +67,31 @@ async def execution_personal_funnel(
     """Team: assigned-lead funnel counts (vl2 status + payment fields)."""
     _require_team(user)
     return await enf.team_personal_funnel(session, user.user_id)
+
+
+@router.get("/handed-off-leads", response_model=list[LeadPublic])
+async def execution_handed_off_leads(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = Query(default=50, ge=1, le=200),
+) -> list[LeadPublic]:
+    """Team: read-only progress of own leads now handed off to a leader.
+
+    Owner sticky (`owner_user_id`), but execution moved to the upline leader
+    (`assigned_to_user_id` points elsewhere). Returns each lead with its current
+    stage + process_tracking so the original team member can follow progress.
+    """
+    _require_team(user)
+    condition = and_(
+        lead_owner_clause(user.user_id),
+        Lead.assigned_to_user_id.is_not(None),
+        Lead.assigned_to_user_id != user.user_id,
+        Lead.in_pool.is_(False),
+        Lead.deleted_at.is_(None),
+    )
+    repo = SqlAlchemyLeadsRepository(session)
+    rows = await repo.list_leads(condition=condition, limit=limit, offset=0)
+    return await build_lead_public_payloads(session, rows)
 
 
 @router.get("/team-today-stats", response_model=TeamTodayStatsOut)
@@ -114,7 +146,7 @@ async def execution_downline_stats(
     for uid, d in raw.items():
         stats[str(uid)] = MemberExecutionStats(
             total_active=d["total_active"],
-            enrollments=d["enrollments"],
+            flp_min_billings=d["flp_min_billings"],
             proof_pend=d["proof_pend"],
             fu_due=d["fu_due"],
             conv_pct=d["conv_pct"],
@@ -149,10 +181,12 @@ async def execution_los_snapshot(
 async def execution_stage_counts(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    hours: Optional[float] = Query(default=None, description="Rolling window hours instead of IST-today"),
+    range: Optional[str] = Query(default=None, description="'month' for current calendar month window"),
 ) -> dict:
     """Admin: active lead counts per pipeline stage + today's movements."""
     _require_admin(user)
-    return await enf.admin_stage_counts(session)
+    return await enf.admin_stage_counts(session, hours=hours, range=range)
 
 
 @router.get("/at-risk-leads", response_model=list[AtRiskLeadRow])
@@ -280,6 +314,34 @@ async def execution_bulk_manual_reassign(
         )
     except ValueError as exc:
         detail = str(exc).strip() or "Unable to bulk reassign leads"
+        status_code = (
+            http_status.HTTP_404_NOT_FOUND
+            if detail == "Lead not found"
+            else http_status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=status_code, detail=detail) from exc
+    await notify_topics("leads", "workboard", "team_tracking")
+    return result
+
+
+@router.post("/lead-control/revert", response_model=LeadControlRevertOut)
+async def execution_revert_reassignment(
+    body: LeadControlRevertIn,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> LeadControlRevertOut:
+    """Admin: revert a reassignment, restoring the lead to its previous assignee."""
+    _require_admin(user)
+    try:
+        result = await enf.admin_revert_lead_reassignment(
+            session,
+            admin_user_id=user.user_id,
+            lead_id=body.lead_id,
+            activity_id=body.activity_id,
+            reason=body.reason,
+        )
+    except ValueError as exc:
+        detail = str(exc).strip() or "Unable to revert reassignment"
         status_code = (
             http_status.HTTP_404_NOT_FOUND
             if detail == "Lead not found"

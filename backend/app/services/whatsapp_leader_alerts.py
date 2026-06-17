@@ -17,12 +17,35 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.models.daily_report import DailyReport
 from app.models.user import User
+from app.services.report_eligibility import report_eligibility_conditions
+from app.services.settings_service import SettingsService
 from app.services.user_hierarchy import nearest_leader_for_user
 from app.services.whatsapp_removal import _send_via_meta_api, get_meta_config
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Helpers — resolve template config from DB / env
+# ---------------------------------------------------------------------------
+
+async def _get_template(
+    session: AsyncSession,
+    db_key: str,
+    env_attr: str = "",
+) -> tuple[str, str]:
+    """Return (template_name, template_lang) — DB first, env fallback."""
+    svc = SettingsService(session)
+    name_key = f"whatsapp.{db_key}_template_name"
+    lang_key = f"whatsapp.{db_key}_template_lang"
+    tmpl_name = (await svc.get_app_setting(name_key) or "").strip()
+    if not tmpl_name and env_attr:
+        tmpl_name = (getattr(settings, env_attr, None) or "").strip()
+    tmpl_lang = (await svc.get_app_setting(lang_key) or "").strip() or "en"
+    return tmpl_name, tmpl_lang
 
 
 # ---------------------------------------------------------------------------
@@ -35,6 +58,9 @@ async def _send_wa(
     session: AsyncSession,
     message_type: str = "leader_alert",
     related_user_id: int | None = None,
+    template_name: str = "",
+    template_lang: str = "en",
+    template_params: list[dict[str, str]] | None = None,
 ) -> bool:
     if not phone:
         return False
@@ -49,6 +75,9 @@ async def _send_wa(
             phone_number_id=phone_number_id,
             access_token=access_token,
             api_version=api_version,
+            template_name=template_name,
+            template_lang=template_lang,
+            template_params=template_params,
         )
         await log_wa_outbound(
             session,
@@ -94,7 +123,17 @@ async def alert_leader_member_removed(
         "Please review your team's status on the app.\n\n"
         "— Myle Team"
     )
-    await _send_wa(leader.phone, msg, session, message_type="leader_alert", related_user_id=leader.id)
+    tmpl_name, tmpl_lang = await _get_template(session, "leader_member_removed")
+    await _send_wa(
+        leader.phone, msg, session,
+        message_type="leader_alert", related_user_id=leader.id,
+        template_name=tmpl_name, template_lang=tmpl_lang,
+        template_params=[
+            {"type": "text", "text": _display(leader)},
+            {"type": "text", "text": _display(member)},
+            {"type": "text", "text": removal_reason or "Not specified"},
+        ],
+    )
     logger.info("leader removal alert sent leader_id=%s member_id=%s", leader.id, member.id)
 
 
@@ -119,7 +158,18 @@ async def alert_leader_grace_requested(
         "Admin will review and approve/reject on the app.\n\n"
         "— Myle Team"
     )
-    await _send_wa(leader.phone, msg, session, message_type="leader_alert", related_user_id=leader.id)
+    tmpl_name, tmpl_lang = await _get_template(session, "leader_grace_requested")
+    await _send_wa(
+        leader.phone, msg, session,
+        message_type="leader_alert", related_user_id=leader.id,
+        template_name=tmpl_name, template_lang=tmpl_lang,
+        template_params=[
+            {"type": "text", "text": _display(leader)},
+            {"type": "text", "text": _display(member)},
+            {"type": "text", "text": grace_reason or "Not specified"},
+            {"type": "text", "text": str(grace_end_date) if grace_end_date else "N/A"},
+        ],
+    )
     logger.info("leader grace alert sent leader_id=%s member_id=%s", leader.id, member.id)
 
 
@@ -140,7 +190,16 @@ async def alert_leader_new_member_approved(
         "Welcome them and ensure they submit their first daily report!\n\n"
         "— Myle Team"
     )
-    await _send_wa(leader.phone, msg, session, message_type="leader_alert", related_user_id=leader.id)
+    tmpl_name, tmpl_lang = await _get_template(session, "leader_new_member")
+    await _send_wa(
+        leader.phone, msg, session,
+        message_type="leader_alert", related_user_id=leader.id,
+        template_name=tmpl_name, template_lang=tmpl_lang,
+        template_params=[
+            {"type": "text", "text": _display(leader)},
+            {"type": "text", "text": _display(member)},
+        ],
+    )
     logger.info("leader new-member alert sent leader_id=%s member_id=%s", leader.id, member.id)
 
 
@@ -177,6 +236,8 @@ async def alert_leader_member_replied(
 async def send_daily_team_summary(leader: User, today: date, session: AsyncSession) -> None:
     if not leader.phone:
         return
+    if not leader.whatsapp_notifications_enabled:
+        return
 
     # Get all active direct/indirect downline members
     from app.services.downline import recursive_downline_user_ids
@@ -188,10 +249,7 @@ async def send_daily_team_summary(leader: User, today: date, session: AsyncSessi
         await session.execute(
             select(User).where(
                 User.id.in_(downline_ids),
-                User.role == "team",
-                User.registration_status == "approved",
-                User.removed_at.is_(None),
-                User.access_blocked.is_(False),
+                *report_eligibility_conditions(today, roles=("team",)),
             )
         )
     ).scalars().all()
@@ -223,6 +281,16 @@ async def send_daily_team_summary(leader: User, today: date, session: AsyncSessi
             f"Great news! All {total} team members submitted their daily report today. \U0001f389\n\n"
             "— Myle Team"
         )
+        tmpl_name, tmpl_lang = await _get_template(session, "daily_team_summary_all_clear")
+        await _send_wa(
+            leader.phone, msg, session,
+            message_type="leader_alert", related_user_id=leader.id,
+            template_name=tmpl_name, template_lang=tmpl_lang,
+            template_params=[
+                {"type": "text", "text": _display(leader)},
+                {"type": "text", "text": str(total)},
+            ],
+        )
     else:
         missing_names = ", ".join(_display(m) for m in missing[:5])
         more = f" +{len(missing) - 5} more" if len(missing) > 5 else ""
@@ -235,8 +303,18 @@ async def send_daily_team_summary(leader: User, today: date, session: AsyncSessi
             "Please follow up with them.\n\n"
             "— Myle Team"
         )
-
-    await _send_wa(leader.phone, msg, session, message_type="leader_alert", related_user_id=leader.id)
+        tmpl_name, tmpl_lang = await _get_template(session, "daily_team_summary")
+        await _send_wa(
+            leader.phone, msg, session,
+            message_type="leader_alert", related_user_id=leader.id,
+            template_name=tmpl_name, template_lang=tmpl_lang,
+            template_params=[
+                {"type": "text", "text": _display(leader)},
+                {"type": "text", "text": str(submitted_count)},
+                {"type": "text", "text": str(total)},
+                {"type": "text", "text": f"{missing_names}{more}"},
+            ],
+        )
     logger.info(
         "daily summary sent leader_id=%s submitted=%d missing=%d",
         leader.id, submitted_count, len(missing),
@@ -297,10 +375,7 @@ async def handle_leader_command(
         await session.execute(
             select(User).where(
                 User.id.in_(downline_ids),
-                User.role == "team",
-                User.registration_status == "approved",
-                User.removed_at.is_(None),
-                User.access_blocked.is_(False),
+                *report_eligibility_conditions(roles=("team",)),
             )
         )
     ).scalars().all()
@@ -376,3 +451,26 @@ async def handle_leader_command(
         )
 
     return None
+
+
+# ---------------------------------------------------------------------------
+# EOS system alerts — automation rules & verification escalations
+# ---------------------------------------------------------------------------
+
+async def send_system_alert(
+    phone: str | None,
+    message: str,
+    session: AsyncSession,
+    message_type: str = "automation_alert",
+    related_user_id: int | None = None,
+) -> bool:
+    """Send a plain-text system alert (automation rule / escalation) to any phone."""
+    if not phone:
+        return False
+    tmpl_name, tmpl_lang = await _get_template(session, "system_alert")
+    return await _send_wa(
+        phone, message, session,
+        message_type=message_type, related_user_id=related_user_id,
+        template_name=tmpl_name, template_lang=tmpl_lang,
+        template_params=[{"type": "text", "text": message}] if tmpl_name else None,
+    )

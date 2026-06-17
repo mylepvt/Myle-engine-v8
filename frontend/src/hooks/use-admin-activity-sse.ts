@@ -10,7 +10,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import { useAdminFeedStore, type AdminActivityEntry } from '@/stores/admin-feed-store'
 import { useLiveDashboardStore } from '@/stores/live-dashboard-store'
 import { useFunnelActivityStore } from '@/stores/funnel-activity-store'
-import { playFileSound } from '@/lib/app-sounds'
+import { playAppSound } from '@/lib/app-sounds'
 
 const REST_URL = '/api/v1/admin/activity-feed?limit=50'
 
@@ -29,7 +29,6 @@ function severityFor(eventType: string): AdminActivityEntry['severity'] {
 const STAGE_LABELS: Record<string, string> = {
   new: 'New',
   contacted: 'Contacted',
-  mindset_lock: 'Mindset Lock',
   day1: 'Day 1',
   day2: 'Day 2',
   day3: 'Day 3',
@@ -43,7 +42,7 @@ const STAGE_LABELS: Record<string, string> = {
   day3_pending: 'Day 3 Pending',
   day3_attended: 'Day 3 Attended',
   interview: 'Interview',
-  enrolled: 'Enrolled',
+  enrolled: 'Min. FLP Billed',
   closed: 'Closed',
   rejected: 'Rejected',
   pool: 'In Pool',
@@ -54,7 +53,6 @@ const STAGE_LABELS: Record<string, string> = {
   lost: 'Lost',
   retarget: 'Retarget',
   follow_up: 'Follow Up',
-  interview: 'Interview',
   converted: 'Converted',
 }
 
@@ -154,7 +152,7 @@ function describeEvent(eventType: string, payload: Record<string, unknown>): str
       return leadRef ? `Join link created for ${leadRef}` : 'Join link created'
 
     case eventType.startsWith('enrollment.'):
-      return leadRef ? `Enrollment update for ${leadRef}` : 'Enrollment updated'
+      return leadRef ? `Min. FLP Billing update for ${leadRef}` : 'Min. FLP Billing updated'
 
     default:
       // Fallback: clean up any remaining snake_case / dots
@@ -194,14 +192,14 @@ function parseEventFromObj(data: Record<string, unknown>): AdminActivityEntry | 
 
 // ── Activity sounds ──────────────────────────────────────────────────────────
 function activitySound(action: string) {
-  if (action === 'lead:created') playFileSound('pop', 0.5)
-  else if (action === 'lead:transitioned' || action === 'lead_state') playFileSound('notify', 0.4)
-  else if (action === 'lead:closed') playFileSound('ching', 0.5)
-  else if (action === 'lead:claimed' || action === 'lead:batch_claimed') playFileSound('ching', 0.4)
-  else if (action.startsWith('wallet:')) playFileSound('paySuccess', 0.5)
-  else if (action === 'enrollment.link_generated') playFileSound('success', 0.4)
-  else if (action === 'lead:assigned') playFileSound('pop', 0.35)
-  else if (action.includes('failure') || action.includes('duplicate')) playFileSound('click', 0.3)
+  if (action === 'lead:created') playAppSound('notify')
+  else if (action === 'lead:transitioned' || action === 'lead_state') playAppSound('notify')
+  else if (action === 'lead:closed') playAppSound('claim')
+  else if (action === 'lead:claimed' || action === 'lead:batch_claimed') playAppSound('claim')
+  else if (action.startsWith('wallet:')) playAppSound('success')
+  else if (action === 'enrollment.link_generated') playAppSound('notify')
+  else if (action === 'lead:assigned') playAppSound('notify')
+  else if (action.includes('failure') || action.includes('duplicate')) playAppSound('error')
 }
 
 // Parse raw SSE data string → AdminActivityEntry
@@ -223,7 +221,7 @@ export function useAdminActivitySSE(enabled: boolean) {
   const mountedRef = useRef(true)
   const connectRef = useRef<(() => void) | null>(null)
 
-  const fetchRest = useCallback(() => {
+  const fetchRest = useCallback((replace = false) => {
     fetch(REST_URL, { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
@@ -233,16 +231,16 @@ export function useAdminActivitySSE(enabled: boolean) {
         const initial = events
           .map(parseEventFromObj)
           .filter((e): e is AdminActivityEntry => e !== null)
-        setInitialEntries(initial)
+        setInitialEntries(initial, replace)
       })
       .catch(() => {
-        if (mountedRef.current) setInitialEntries([])
+        if (mountedRef.current && replace) setInitialEntries([], true)
       })
   }, [setInitialEntries])
 
   const refresh = useCallback(() => {
-    // Re-fetch latest from REST
-    fetchRest()
+    // Re-fetch latest from REST — explicit user action, replace stale list
+    fetchRest(true)
     // Reconnect SSE with reset backoff
     esRef.current?.close()
     esRef.current = null

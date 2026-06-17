@@ -15,11 +15,11 @@ class TeamPersonalFunnelOut(BaseModel):
     video_reached: int
     proof_pending: int
     paid_flp: int
-    enrolled_total: int
+    flp_min_billing_total: int
     pct_video_vs_claimed: float
     pct_proof_vs_video: float
-    pct_enrolled_vs_video: float
-    pct_enrolled_vs_claimed: float
+    pct_flp_min_billing_vs_video: float
+    pct_flp_min_billing_vs_claimed: float
 
 
 class TeamTodayStatsOut(BaseModel):
@@ -29,7 +29,7 @@ class TeamTodayStatsOut(BaseModel):
     fresh_leads_today: int = 0
     calls_today: int
     call_target: int = 0
-    enrolled_today: int
+    flp_min_billing_today: int
 
 
 class FollowUpAttackRow(BaseModel):
@@ -43,7 +43,7 @@ class FollowUpAttackRow(BaseModel):
 
 class MemberExecutionStats(BaseModel):
     total_active: int
-    enrollments: int
+    flp_min_billings: int
     proof_pend: int
     fu_due: int
     conv_pct: float
@@ -91,7 +91,7 @@ class WeakMemberRow(BaseModel):
     username: Optional[str] = None
     role: str
     total_leads: int
-    enrollments: int
+    flp_min_billings: int
     fu_pending: int
     conv_pct: float
 
@@ -123,7 +123,7 @@ class StaleRedistributeOut(BaseModel):
     worker_counts: dict[str, int] = Field(default_factory=dict)
     worker_pool_size: int = 0
     source_bucket: str = ""
-    max_active_per_worker: int = 50
+    max_active_per_worker: Optional[int] = None
 
 
 class LeadControlAssignableUser(BaseModel):
@@ -246,6 +246,24 @@ class LeadControlBulkReassignOut(BaseModel):
     assigned_to_name: str
 
 
+class LeadControlRevertIn(BaseModel):
+    lead_id: int = Field(ge=1)
+    activity_id: Optional[int] = Field(default=None, ge=1)
+    reason: Optional[str] = Field(default=None, max_length=500)
+
+
+class LeadControlRevertOut(BaseModel):
+    success: bool = True
+    message: str
+    lead_id: int
+    restored_to_user_id: Optional[int] = None
+    restored_to_name: str = ""
+    undone_assignee_user_id: Optional[int] = None
+    undone_assignee_name: str = ""
+    owner_user_id: Optional[int] = None
+    owner_name: str = ""
+
+
 class LosMemberRow(BaseModel):
     user_id: int
     name: str
@@ -253,7 +271,7 @@ class LosMemberRow(BaseModel):
     calls_today: int
     call_target: int
     call_gate_met: bool
-    enrollments: int
+    flp_min_billings: int
     fu_due: int
     is_active: bool
     downline_count: int = 0

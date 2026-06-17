@@ -4,7 +4,10 @@ import type { LeadStatus } from '@/hooks/use-leads-query'
 /** API `call_status` slugs allowed by `LeadUpdate` — labels mirror legacy dial-outcome copy. */
 export const CALL_STATUS_API_VALUES = [
   'not_called',
+  'call_received',
   'no_answer',
+  'call_cut',
+  'person_block',
   'interested',
   'not_interested',
   'follow_up',
@@ -18,7 +21,10 @@ export type CallStatusApi = (typeof CALL_STATUS_API_VALUES)[number]
 
 const LABEL: Record<CallStatusApi, string> = {
   not_called: 'Not Called Yet',
-  no_answer: 'Called - No Answer',
+  call_received: 'Call Received',
+  no_answer: 'No Response',
+  call_cut: 'Call Cut',
+  person_block: 'Person Block',
   interested: 'Called - Interested',
   not_interested: 'Called - Not Interested',
   follow_up: 'Called - Follow Up',
@@ -28,10 +34,13 @@ const LABEL: Record<CallStatusApi, string> = {
   converted: 'Already / Converted',
 }
 
-/** Legacy `TEAM_CALL_STATUS_VALUES` — dial/line only (subset of API). */
+/** Dial/line outcomes — what physically happened on the call. */
 const TEAM_ORDER: CallStatusApi[] = [
   'not_called',
+  'call_received',
   'no_answer',
+  'call_cut',
+  'person_block',
   'interested',
   'not_interested',
   'follow_up',
@@ -41,7 +50,10 @@ const TEAM_ORDER: CallStatusApi[] = [
 
 const BASE_ORDER: CallStatusApi[] = [
   'not_called',
+  'call_received',
   'no_answer',
+  'call_cut',
+  'person_block',
   'interested',
   'not_interested',
   'follow_up',
@@ -52,17 +64,9 @@ const BASE_ORDER: CallStatusApi[] = [
 const VIDEO_SENT_STAGES = new Set<LeadStatus>([
   'video_sent',
   'video_watched',
-  'paid',
-  'mindset_lock',
   'day1',
   'day2',
   'day3',
-  'interview',
-  'track_selected',
-  'seat_hold',
-  'plan_2cc',
-  'pending',
-  'level_up',
   'converted',
 ])
 

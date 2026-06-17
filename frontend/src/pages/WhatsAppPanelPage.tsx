@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   AlertCircle,
@@ -10,6 +10,7 @@ import {
   Phone,
   RefreshCw,
   Send,
+  Settings,
   Smartphone,
   Users,
   WifiOff,
@@ -28,15 +29,19 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import {
+  useManagementConfigQuery,
+  useSaveManagementConfigMutation,
   useSendBroadcastMutation,
   useSendCustomMessageMutation,
   useSendInsightsMutation,
+  useSendManagementUpdateMutation,
   useTriggerDailySummaryMutation,
   useWhatsAppLeadersQuery,
   useWhatsAppLogsQuery,
   useWhatsAppStatusQuery,
   type BroadcastResultItem,
   type LogFilters,
+  type ManagementSendResult,
   type WhatsAppLogItem,
 } from '@/hooks/use-whatsapp-panel-query'
 import { apiFetch } from '@/lib/api'
@@ -54,15 +59,17 @@ const TYPE_LABELS: Record<string, string> = {
   inbound_member: 'Member Reply',
   inbound_leader: 'Leader Cmd',
   inbound_unknown: 'Unknown',
+  report_reminder: 'Report Reminder',
 }
 
 const TYPE_COLORS: Record<string, string> = {
-  removal_outreach: 'bg-orange-100 text-orange-800',
-  leader_alert: 'bg-blue-100 text-blue-800',
-  command_reply: 'bg-purple-100 text-purple-800',
-  inbound_member: 'bg-green-100 text-green-800',
-  inbound_leader: 'bg-indigo-100 text-indigo-800',
-  inbound_unknown: 'bg-gray-100 text-gray-600',
+  removal_outreach: 'bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300',
+  leader_alert: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
+  command_reply: 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300',
+  inbound_member: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300',
+  inbound_leader: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300',
+  inbound_unknown: 'bg-gray-100 text-gray-600 dark:bg-gray-800/50 dark:text-gray-400',
+  report_reminder: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300',
 }
 
 function formatTime(iso: string) {
@@ -177,6 +184,78 @@ export function WhatsAppPanelPage({ title }: Props) {
   const [reminderResults, setReminderResults] = useState<ReminderResult[] | null>(null)
   const [reminderError, setReminderError] = useState<string | null>(null)
 
+  // Management Updates
+  const { data: mgmtConfig, isLoading: mgmtConfigLoading } = useManagementConfigQuery()
+  const mgmtSaveMutation = useSaveManagementConfigMutation()
+  const mgmtSendMutation = useSendManagementUpdateMutation()
+  const [mgmtPhone, setMgmtPhone] = useState('')
+  const [mgmtSaveMsg, setMgmtSaveMsg] = useState<string | null>(null)
+  const [mgmtResults, setMgmtResults] = useState<Record<string, ManagementSendResult>>({})
+  useEffect(() => {
+    if (mgmtConfig && mgmtPhone === '') setMgmtPhone(mgmtConfig.phone)
+  }, [mgmtConfig]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const MGMT_UPDATE_TYPES = [
+    { type: 'bundle', label: 'Full Daily Bundle', desc: 'Top 5 + integrity alerts + inactive list + lead activity ek saath' },
+    { type: 'daily', label: 'Daily Top 5', desc: 'Aaj ke top 5 performers send karo' },
+    { type: 'leads', label: 'Lead Activity', desc: 'Kisne kitne leads claim ki, kisne nahi, kisne call nahi ki' },
+    { type: 'integrity', label: 'Integrity Alerts', desc: 'Low trust-score members ki alert' },
+    { type: 'inactive', label: 'Inactive Members', desc: 'Members with no recent reports' },
+    { type: 'elite_alert', label: 'Elite-at-Risk', desc: 'Elite members jo risk mein hain' },
+    { type: 'weekly', label: 'Weekly Report', desc: 'Weekly performance roundup' },
+  ] as const
+
+  // Template settings
+  const TEMPLATE_DEFS = [
+    { key: 'report_reminder', label: 'Report Reminder', desc: 'Daily report not submitted — to members' },
+    { key: 'member_removal_notice', label: 'Member Removal Notice', desc: 'WhatsApp to removed member' },
+    { key: 'leader_member_removed', label: 'Leader: Member Removed', desc: 'Alert to leader when member is removed' },
+    { key: 'leader_grace_requested', label: 'Leader: Grace Requested', desc: 'Alert to leader on grace request' },
+    { key: 'leader_new_member', label: 'Leader: New Member Approved', desc: 'Alert to leader on new approval' },
+    { key: 'daily_team_summary', label: 'Daily Summary (Missing)', desc: 'Summary to leader with missing members' },
+    { key: 'daily_team_summary_all_clear', label: 'Daily Summary (All Clear)', desc: 'Summary to leader when all submitted' },
+  ] as const
+  const [templatesOpen, setTemplatesOpen] = useState(false)
+  const [tplValues, setTplValues] = useState<Record<string, string>>({})
+  const [tplSaving, setTplSaving] = useState(false)
+  const [tplMsg, setTplMsg] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!templatesOpen) return
+    apiFetch('/api/v1/settings-enhanced/system/app-settings')
+      .then((r) => r.json())
+      .then((data: { settings: Record<string, string> }) => {
+        const init: Record<string, string> = {}
+        for (const def of TEMPLATE_DEFS) {
+          init[`whatsapp.${def.key}_template_name`] = data.settings[`whatsapp.${def.key}_template_name`] ?? ''
+          init[`whatsapp.${def.key}_template_lang`] = data.settings[`whatsapp.${def.key}_template_lang`] ?? ''
+        }
+        setTplValues(init)
+      })
+      .catch(() => { /* settings load failed silently */ })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templatesOpen])
+
+  async function saveTemplates() {
+    setTplSaving(true)
+    setTplMsg(null)
+    try {
+      for (const [key, value] of Object.entries(tplValues)) {
+        if (value.trim() === '' && !key.endsWith('_lang')) continue
+        await apiFetch('/api/v1/settings-enhanced/system/app-settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key, value: value.trim() }),
+        })
+      }
+      setTplMsg('✓ Templates saved')
+    } catch {
+      setTplMsg('✗ Save failed')
+    } finally {
+      setTplSaving(false)
+    }
+  }
+
   async function sendReportReminders() {
     setReminderSending(true)
     setReminderError(null)
@@ -244,7 +323,7 @@ export function WhatsAppPanelPage({ title }: Props) {
         )}>
           <CardContent className="flex items-center gap-4 py-4">
             {!status.configured ? (
-              <WifiOff className="h-8 w-8 text-gray-400" />
+              <WifiOff className="h-8 w-8 text-muted-foreground" />
             ) : status.connected ? (
               <MessageSquare className="h-8 w-8 text-green-600" />
             ) : (
@@ -252,7 +331,7 @@ export function WhatsAppPanelPage({ title }: Props) {
             )}
             <div>
               {!status.configured ? (
-                <p className="font-medium text-gray-600">WhatsApp not configured</p>
+                <p className="font-medium text-muted-foreground">WhatsApp not configured</p>
               ) : status.connected ? (
                 <>
                   <p className="font-medium text-green-700">Connected</p>
@@ -277,49 +356,108 @@ export function WhatsAppPanelPage({ title }: Props) {
 
       {/* Today's stats */}
       {logsLoading ? (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           {[0, 1, 2].map((i) => <Skeleton key={i} className="h-20" />)}
         </div>
       ) : logs ? (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <Card>
-            <CardHeader className="pb-1 pt-3">
-              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <CardHeader className="pb-1 px-3 pt-3 sm:px-6">
+              <CardTitle className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">
                 Sent Today
               </CardTitle>
             </CardHeader>
-            <CardContent className="pb-3">
-              <p className="text-2xl font-bold text-green-700">{logs.sent_today}</p>
+            <CardContent className="pb-3 px-3 sm:px-6">
+              <p className="text-xl sm:text-2xl font-bold text-green-700">{logs.sent_today}</p>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-1 pt-3">
-              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <CardHeader className="pb-1 px-3 pt-3 sm:px-6">
+              <CardTitle className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">
                 Failed Today
               </CardTitle>
             </CardHeader>
-            <CardContent className="pb-3">
-              <p className={cn('text-2xl font-bold', logs.failed_today > 0 ? 'text-red-600' : 'text-muted-foreground')}>
+            <CardContent className="pb-3 px-3 sm:px-6">
+              <p className={cn('text-xl sm:text-2xl font-bold', logs.failed_today > 0 ? 'text-red-600' : 'text-muted-foreground')}>
                 {logs.failed_today}
               </p>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-1 pt-3">
-              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <CardHeader className="pb-1 px-3 pt-3 sm:px-6">
+              <CardTitle className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">
                 Received Today
               </CardTitle>
             </CardHeader>
-            <CardContent className="pb-3">
-              <p className="text-2xl font-bold text-blue-700">{logs.received_today}</p>
+            <CardContent className="pb-3 px-3 sm:px-6">
+              <p className="text-xl sm:text-2xl font-bold text-blue-700">{logs.received_today}</p>
             </CardContent>
           </Card>
         </div>
       ) : null}
 
-      {/* Filters */}
+      {/* Template Settings */}
+      <Card>
+        <CardHeader className="pb-2 pt-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+              <Settings className="h-4 w-4 text-muted-foreground" />
+              Approved Template Settings
+            </CardTitle>
+            <Button size="sm" variant="ghost" onClick={() => setTemplatesOpen((v) => !v)}>
+              {templatesOpen ? 'Hide' : 'Configure'}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Set approved Meta template names so messages work outside the 24-hour window.
+          </p>
+        </CardHeader>
+        {templatesOpen && (
+          <CardContent className="pb-4 space-y-4">
+            {TEMPLATE_DEFS.map((def) => {
+              const nameKey = `whatsapp.${def.key}_template_name`
+              const langKey = `whatsapp.${def.key}_template_lang`
+              return (
+                <div key={def.key} className="space-y-1.5">
+                  <div>
+                    <p className="text-xs font-medium text-foreground">{def.label}</p>
+                    <p className="text-[11px] text-muted-foreground">{def.desc}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="template_name (e.g. myle_report_reminder)"
+                      value={tplValues[nameKey] ?? ''}
+                      onChange={(e) => setTplValues((v) => ({ ...v, [nameKey]: e.target.value }))}
+                      className="flex-1 rounded border border-input bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring font-mono"
+                    />
+                    <input
+                      type="text"
+                      placeholder="en"
+                      value={tplValues[langKey] ?? ''}
+                      onChange={(e) => setTplValues((v) => ({ ...v, [langKey]: e.target.value }))}
+                      className="w-16 rounded border border-input bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring font-mono"
+                    />
+                  </div>
+                </div>
+              )
+            })}
+            <div className="flex items-center gap-3 pt-1">
+              <Button size="sm" disabled={tplSaving} onClick={() => void saveTemplates()}>
+                {tplSaving ? 'Saving…' : 'Save All Templates'}
+              </Button>
+              {tplMsg && (
+                <span className={cn('text-xs', tplMsg.startsWith('✓') ? 'text-green-700' : 'text-red-600')}>
+                  {tplMsg}
+                </span>
+              )}
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
       {/* Manual Controls */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {/* Send custom message — one person OR broadcast */}
         <Card className="lg:col-span-2">
           <CardHeader className="pb-2 pt-4">
@@ -638,8 +776,8 @@ export function WhatsAppPanelPage({ title }: Props) {
           {/* Preview */}
           <div className="rounded border border-emerald-500/20 bg-emerald-500/5 p-3 text-[11px] text-muted-foreground font-mono whitespace-pre-line">
             {insightsPeriod === 7
-              ? `Hi Rahul,\n\nLast 7 days ki teri performance:\n✅ Reports: 5/7 submitted\n🔥 Current streak: 3 days\n📞 Total calls: 42\n⚠️ Missed: Sat, Sun\n💪 Best day: Mon (12 calls)\n\n— Myle Team`
-              : `Hi Rahul,\n\nLast 30 days ki teri analysis:\n✅ Reports: 22/30 submitted\n🔥 Best streak: 8 days\n📞 Avg calls/day: 9\n\n📊 Weekly trend:\n  Week 1: 38 calls · 6/7\n  Week 2: 44 calls · 7/7\n  Week 3: 31 calls · 4/7\n  Week 4: 42 calls · 5/7\n⚠️ Pattern: Saturday pe 3/4 weeks miss ki\n\n— Myle Team`}
+              ? `Hi Rahul,\n\nHere's your performance summary for the last 7 days:\n✅ Reports submitted: 5/7\n🔥 Current streak: 3 days\n📞 Total calls made: 42\n⚠️ Days missed: Sat, Sun\n💪 Best day: Mon (12 calls)\n\nKeep it up — consistency is everything.\n\n— Myle Team`
+              : `Hi Rahul,\n\nHere's your 30-day performance analysis:\n✅ Reports submitted: 22/30\n🔥 Best streak: 8 days\n📞 Average calls/day: 9\n\n📊 Weekly breakdown (oldest → recent):\n  Week 1: 38 calls · 6/7 reports\n  Week 2: 44 calls · 7/7 reports\n  Week 3: 31 calls · 4/7 reports\n  Week 4: 42 calls · 5/7 reports\n⚠️ Pattern noticed: Reports were missed on Saturday in 3 out of the last 4 weeks.\n💡 Try to stay consistent on that day — small habits make big results.\n\n— Myle Team`}
           </div>
 
           <Button
@@ -683,6 +821,91 @@ export function WhatsAppPanelPage({ title }: Props) {
               ))}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Management Updates */}
+      <Card>
+        <CardHeader className="pb-2 pt-4">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+            <Settings className="h-4 w-4 text-rose-600" />
+            Management WhatsApp Updates
+            <span className="ml-2 text-[10px] font-normal text-muted-foreground">(to Shikha / configured phone)</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 pb-4">
+          {/* Phone config */}
+          <div className="flex items-center gap-2">
+            <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+            <input
+              type="text"
+              placeholder="+91 96729 47625"
+              value={mgmtPhone}
+              onChange={(e) => setMgmtPhone(e.target.value)}
+              className="flex-1 rounded border border-input bg-background px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={mgmtSaveMutation.isPending || !mgmtPhone.trim()}
+              onClick={() => {
+                setMgmtSaveMsg(null)
+                mgmtSaveMutation.mutate(mgmtPhone.trim(), {
+                  onSuccess: () => setMgmtSaveMsg('✓ Saved'),
+                  onError: (e) => setMgmtSaveMsg(`✗ ${e.message}`),
+                })
+              }}
+            >
+              {mgmtSaveMutation.isPending ? 'Saving…' : 'Save'}
+            </Button>
+            {mgmtSaveMsg && (
+              <span className={cn('text-xs', mgmtSaveMsg.startsWith('✓') ? 'text-green-700' : 'text-red-600')}>
+                {mgmtSaveMsg}
+              </span>
+            )}
+            {mgmtConfigLoading && <Skeleton className="h-8 w-20" />}
+          </div>
+
+          {/* Update type buttons */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {MGMT_UPDATE_TYPES.map((u) => {
+              const result = mgmtResults[u.type]
+              return (
+                <div key={u.type} className="space-y-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full justify-start border-rose-200 text-xs hover:border-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                    disabled={mgmtSendMutation.isPending}
+                    onClick={() => {
+                      mgmtSendMutation.mutate(
+                        { type: u.type, phone: mgmtPhone.trim() || undefined },
+                        {
+                          onSuccess: (r) => setMgmtResults((prev) => ({ ...prev, [u.type]: r })),
+                          onError: (e) => setMgmtResults((prev) => ({ ...prev, [u.type]: { ok: false, label: u.label, info: '', error: e.message, sent: false } })),
+                        },
+                      )
+                    }}
+                  >
+                    <Send className="mr-1.5 h-3 w-3 shrink-0 text-rose-500" />
+                    <span className="truncate">{u.label}</span>
+                  </Button>
+                  {result && (
+                    <p className={cn('px-1 text-[10px] leading-tight', result.sent ? 'text-green-700' : 'text-red-600')}>
+                      {result.sent ? `✓ ${result.info || 'Sent'}` : `✗ ${result.error || 'Failed'}`}
+                    </p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            {MGMT_UPDATE_TYPES.map((u) => (
+              <span key={u.type} className="mr-3">
+                <span className="font-medium text-rose-600">{u.label}</span>: {u.desc}
+              </span>
+            ))}
+          </p>
         </CardContent>
       </Card>
 
@@ -782,7 +1005,7 @@ export function WhatsAppPanelPage({ title }: Props) {
         ))}
         <span className="self-center text-muted-foreground">|</span>
         {/* Type */}
-        {(['', 'removal_outreach', 'leader_alert', 'command_reply', 'inbound_member', 'inbound_leader', 'inbound_unknown'] as const).map((t) => (
+        {(['', 'removal_outreach', 'report_reminder', 'leader_alert', 'command_reply', 'inbound_member', 'inbound_leader', 'inbound_unknown'] as const).map((t) => (
           <Button
             key={t || 'all-type'}
             size="sm"
@@ -808,21 +1031,23 @@ export function WhatsAppPanelPage({ title }: Props) {
               <p className="text-xs">Activity will appear here as WhatsApp messages are sent or received.</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-28">Time</TableHead>
-                  <TableHead className="w-10">Dir</TableHead>
-                  <TableHead className="w-32">Type</TableHead>
-                  <TableHead className="w-36">Phone</TableHead>
-                  <TableHead>Message preview</TableHead>
-                  <TableHead className="w-24">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {logs.items.map((item) => <LogRow key={item.id} item={item} />)}
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto">
+              <Table className="min-w-[600px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-28">Time</TableHead>
+                    <TableHead className="w-10">Dir</TableHead>
+                    <TableHead className="w-32">Type</TableHead>
+                    <TableHead className="w-36">Phone</TableHead>
+                    <TableHead>Message preview</TableHead>
+                    <TableHead className="w-24">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {logs.items.map((item) => <LogRow key={item.id} item={item} />)}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

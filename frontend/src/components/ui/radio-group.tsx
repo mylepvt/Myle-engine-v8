@@ -34,7 +34,7 @@ function RadioGroup({
 
   return (
     <RadioGroupContext.Provider value={ctx}>
-      <div role="radiogroup" className={cn('grid gap-2', className)} {...props}>
+      <div role="radiogroup" className={cn('grid grid-cols-1 gap-2', className)} {...props}>
         {children}
       </div>
     </RadioGroupContext.Provider>

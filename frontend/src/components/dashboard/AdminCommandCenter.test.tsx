@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 
@@ -9,7 +9,7 @@ const mockUseQuery = vi.fn()
 const mockUseActiveWatchersQuery = vi.fn()
 const mockUseAppSettingsQuery = vi.fn()
 const mockUseSystemUsersSummaryQuery = vi.fn()
-const mockUseEnrollmentApprovalsPendingQuery = vi.fn()
+const mockUseFlpMinBillingApprovalsPendingQuery = vi.fn()
 const mockUseTeamMembersQuery = vi.fn()
 const mockUseTeamReportsQuery = vi.fn()
 const mockUseWalletRechargeRequestsQuery = vi.fn()
@@ -31,7 +31,7 @@ vi.mock('@/hooks/use-settings-query', () => ({
   useSystemUsersSummaryQuery: (...args: unknown[]) => mockUseSystemUsersSummaryQuery(...args),
 }))
 
-vi.mock('@/hooks/use-enroll-query', () => ({
+vi.mock('@/hooks/use-flp-min-billing-video-query', () => ({
   useActiveWatchersQuery: (...args: unknown[]) => mockUseActiveWatchersQuery(...args),
   useBatchLiveWatchersQuery: () => ({ data: [], isPending: false }),
 }))
@@ -47,12 +47,13 @@ vi.mock('@/hooks/use-admin-leader-health-query', () => ({
 }))
 
 vi.mock('@/hooks/use-team-query', () => ({
-  useEnrollmentApprovalsPendingQuery: (...args: unknown[]) => mockUseEnrollmentApprovalsPendingQuery(...args),
+  useFlpMinBillingApprovalsPendingQuery: (...args: unknown[]) => mockUseFlpMinBillingApprovalsPendingQuery(...args),
   useTeamMembersQuery: (...args: unknown[]) => mockUseTeamMembersQuery(...args),
 }))
 
 vi.mock('@/hooks/use-team-reports-query', () => ({
   useTeamReportsQuery: (...args: unknown[]) => mockUseTeamReportsQuery(...args),
+  useTeamWorkTrendQuery: () => ({ data: undefined, isPending: false }),
 }))
 
 vi.mock('@/hooks/use-wallet-recharge-query', () => ({
@@ -124,6 +125,99 @@ describe('AdminCommandCenter', () => {
           refetch: vi.fn(),
         }
       }
+      if (queryKey[0] === 'training-campaigns') {
+        return {
+          data: [],
+          isPending: false,
+          isError: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (queryKey[0] === 'action-queue') {
+        return {
+          data: { items: [], total: 0, computed_at: '2026-06-12T08:00:00Z' },
+          isPending: false,
+          isError: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (queryKey[0] === 'predictive-risk') {
+        return {
+          data: {
+            member_risks: [],
+            leader_risks: [],
+            org_stats: { total_members: 0, total_leaders: 0, low_risk: 0, medium_risk: 0, high_risk: 0, critical_risk: 0, avg_member_score: 0, band_pct_low: 0, band_pct_medium: 0, band_pct_high: 0, band_pct_critical: 0 },
+            computed_at: '2026-06-12T08:00:00Z',
+          },
+          isPending: false,
+          isError: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (queryKey[0] === 'blocker-intelligence') {
+        return {
+          data: { biggest_blocker_label: 'N/A', blockers: [], computed_at: '2026-06-12T08:00:00Z' },
+          isPending: false,
+          isError: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (queryKey[0] === 'eos-health') {
+        return {
+          data: {
+            health_score: 72,
+            components: {
+              org_score: 65,
+              avg_leader_score: 58,
+              mission_completion: 72,
+              verification_rate: 80,
+              conversion_rate: 45,
+              zombie_pct: 30,
+              risk_score: 25,
+              campaign_success_pct: 60,
+            },
+            band: 'good',
+            computed_at: '2026-06-12T08:00:00Z',
+          },
+          isPending: false,
+          isError: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (queryKey[0] === 'leader-effectiveness' && queryKey[1] === 'admin') {
+        return {
+          data: { average_score: 0, total_leaders: 0, band_distribution: {}, leaders: [], computed_at: '2026-06-12T08:00:00Z' },
+          isPending: false,
+          isError: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (queryKey[0] === 'organization-score') {
+        return {
+          data: {
+            overall_score: 65,
+            components: {
+              mission_completion: 72,
+              verification: 58,
+              lead_activity: 80,
+              zombie_leads: 45,
+            },
+            total_members: 40,
+            total_leads: 120,
+            computed_at: '2026-06-12T08:00:00Z',
+          },
+          isPending: false,
+          isError: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
       return {
         data: {
           grand_totals: {
@@ -140,7 +234,7 @@ describe('AdminCommandCenter', () => {
         refetch: vi.fn(),
       }
     })
-    mockUseEnrollmentApprovalsPendingQuery.mockReturnValue({
+    mockUseFlpMinBillingApprovalsPendingQuery.mockReturnValue({
       data: { total: 3, items: [] },
       isPending: false,
       isError: false,
@@ -254,7 +348,7 @@ describe('AdminCommandCenter', () => {
         live_summary: {
           leads_claimed_today: 12,
           calls_made_today: 41,
-          enrolled_today: 4,
+          flp_min_billing_today: 4,
           payment_proofs_approved_today: 3,
           day1_total: 8,
           day2_total: 6,
@@ -415,13 +509,15 @@ describe('AdminCommandCenter', () => {
 
     renderWithProviders()
 
-    expect(screen.getByText('Good day, Admin')).toBeInTheDocument()
-    expect(screen.getByText('Today Queue')).toBeInTheDocument()
-    expect(screen.getByText('Today Snapshot')).toBeInTheDocument()
-    expect(screen.getByText('Reassign ready')).toBeInTheDocument()
-    expect(screen.getByText('Archive incubation')).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Leads' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Audit' })).toBeInTheDocument()
-    expect(screen.getByText('Open Leads')).toBeInTheDocument()
+    // Default landing is now the smart Overview tab.
+    expect(screen.getByText('Pipeline Board')).toBeInTheDocument()
+    expect(screen.getAllByText('Claimed today').length).toBeGreaterThan(0)
+    // Views are selected via a single Apple-style dropdown switcher; Overview is current.
+    const switcher = screen.getByRole('button', { name: /Overview/ })
+    expect(switcher).toHaveAttribute('aria-haspopup', 'menu')
+    fireEvent.click(switcher)
+    expect(screen.getByRole('menuitem', { name: /War Room/ })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /Leads/ })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /System/ })).toBeInTheDocument()
   })
 })

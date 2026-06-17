@@ -9,6 +9,7 @@ import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { useGateAssistantQuery } from '@/hooks/use-gate-assistant-query'
 import {
   useCancelMyGraceRequestMutation,
+  useEndMyActiveGraceMutation,
   useRequestMyGraceMutation,
 } from '@/hooks/use-team-query'
 import { cn } from '@/lib/utils'
@@ -46,12 +47,24 @@ function formatShortDate(value: string | null) {
   return date.toLocaleDateString(undefined, { dateStyle: 'medium' })
 }
 
+const GRACE_OUTCOME_LABEL: Record<string, { text: string; cls: string }> = {
+  auto_restored:  { text: 'Kept working — auto-restored ✓', cls: 'text-emerald-600 dark:text-emerald-400' },
+  approved:       { text: 'Approved by admin',              cls: 'text-emerald-600 dark:text-emerald-400' },
+  auto_removed:   { text: 'Removed (no compliance)',        cls: 'text-destructive' },
+  rejected:       { text: 'Rejected by admin',              cls: 'text-destructive' },
+  cleared:        { text: 'Cleared by admin',               cls: 'text-muted-foreground' },
+}
+
 export function GateAssistantCard({ sessionReady }: Props) {
   const { isAdminPreviewing } = useDashboardShellRole()
   const { data, isPending, isError, error, refetch } = useGateAssistantQuery(sessionReady)
   const requestGraceMut = useRequestMyGraceMutation()
   const cancelGraceRequestMut = useCancelMyGraceRequestMutation()
+  const endGraceMut = useEndMyActiveGraceMutation()
   const [requestOpen, setRequestOpen] = useState(false)
+  const [gracePromptDismissed, setGracePromptDismissed] = useState(
+    () => sessionStorage.getItem('grace-early-end-dismissed') === '1',
+  )
   const [requestEndDate, setRequestEndDate] = useState('')
   const [requestReason, setRequestReason] = useState('')
   const [requestError, setRequestError] = useState<string | null>(null)
@@ -130,6 +143,37 @@ export function GateAssistantCard({ sessionReady }: Props) {
   const disciplineDate = formatShortDate(data.grace_end_date)
   const requestDate = formatShortDate(data.grace_request_end_date)
   const requestBusy = requestGraceMut.isPending || cancelGraceRequestMut.isPending
+
+  // Detect: member is working during an active grace period.
+  // Only show once per session, not if grace ends tomorrow (let it expire naturally).
+  const reportDoneToday = Boolean(data.checklist.find((c) => c.id === 'daily_report_submitted')?.done)
+  const workingDuringGrace =
+    data.role !== 'admin' &&
+    data.grace_active &&
+    !data.grace_ending_tomorrow &&
+    !data.grace_request_pending &&
+    (data.calls_today > 0 || reportDoneToday)
+  const showEarlyEndPrompt = workingDuringGrace && !gracePromptDismissed
+
+  function buildActivitySummary(): string {
+    if (!data) return ''
+    const parts: string[] = []
+    if (data.calls_today > 0)
+      parts.push(`${data.calls_today} fresh call${data.calls_today !== 1 ? 's' : ''} logged`)
+    if (reportDoneToday) parts.push("today's report submitted")
+    return parts.join(' and ')
+  }
+
+  function dismissGracePrompt() {
+    sessionStorage.setItem('grace-early-end-dismissed', '1')
+    setGracePromptDismissed(true)
+  }
+
+  function handleEndGraceEarly() {
+    endGraceMut.mutate(undefined, {
+      onSuccess: dismissGracePrompt,
+    })
+  }
 
   function handleGraceRequestSubmit() {
     if (!requestEndDate.trim()) {
@@ -259,6 +303,44 @@ export function GateAssistantCard({ sessionReady }: Props) {
           </div>
         ) : null}
 
+        {showEarlyEndPrompt ? (
+          <div className="rounded-lg border border-amber-400/40 bg-amber-50/60 px-3 py-3 text-sm dark:bg-amber-900/20">
+            <p className="font-semibold text-amber-800 dark:text-amber-300">
+              You're working during grace
+            </p>
+            <p className="mt-1 text-ds-caption text-amber-700 dark:text-amber-400">
+              {buildActivitySummary()} while your grace is active
+              {disciplineDate ? ` (runs till ${disciplineDate})` : ''}.
+              Want to end grace early and get back on normal track?
+            </p>
+            {endGraceMut.isError ? (
+              <p className="mt-1 text-ds-caption text-destructive" role="alert">
+                {endGraceMut.error instanceof Error ? endGraceMut.error.message : 'Something went wrong'}
+              </p>
+            ) : null}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                disabled={endGraceMut.isPending}
+                onClick={handleEndGraceEarly}
+                className="bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600"
+              >
+                {endGraceMut.isPending ? 'Ending grace…' : 'Yes, end grace now'}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={endGraceMut.isPending}
+                onClick={dismissGracePrompt}
+              >
+                Keep grace, continue later
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
         {data.role !== 'admin' ? (
           <div className="rounded-lg border border-border/60 bg-background/70 px-3 py-2 text-sm">
             <div className="flex flex-wrap items-start justify-between gap-2">
@@ -274,13 +356,41 @@ export function GateAssistantCard({ sessionReady }: Props) {
                 {data.grace_request_reason ? (
                   <p className="mt-1 text-ds-caption text-muted-foreground">{data.grace_request_reason}</p>
                 ) : null}
+                {/* Grace intelligence: credits used + last outcome */}
+                {(() => {
+                  const limit = data.grace_monthly_limit ?? 2
+                  const used = data.grace_count_30d ?? 0
+                  const atLimit = used >= limit
+                  const outcome = data.grace_last_outcome
+                    ? (GRACE_OUTCOME_LABEL[data.grace_last_outcome] ?? null)
+                    : null
+                  return (
+                    <div className="mt-2 space-y-0.5">
+                      <p className={cn(
+                        'text-ds-caption font-medium',
+                        atLimit ? 'text-destructive' : 'text-muted-foreground',
+                      )}>
+                        {atLimit
+                          ? `Monthly limit reached (${used}/${limit} graces used)`
+                          : used > 0
+                            ? `${used} of ${limit} monthly grace credits used`
+                            : `Up to ${limit} grace requests allowed per month`}
+                      </p>
+                      {outcome ? (
+                        <p className={cn('text-ds-caption', outcome.cls)}>
+                          Last grace: {outcome.text}
+                        </p>
+                      ) : null}
+                    </div>
+                  )
+                })()}
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={requestBusy}
+                  disabled={requestBusy || (!data.grace_request_pending && (data.grace_count_30d ?? 0) >= (data.grace_monthly_limit ?? 2))}
                   onClick={() => {
                     setRequestError(null)
                     setRequestOpen((value) => !value)

@@ -12,7 +12,7 @@ class TeamPerformanceReports(BaseModel):
     total_reports: int
     total_calls: int
     calls_picked: int
-    enrollments: int
+    flp_min_billings: int
     payments: int
     avg_daily_calls: float
     pickup_rate: float
@@ -47,7 +47,7 @@ class IndividualPerformanceReports(BaseModel):
     """Individual performance reports metrics."""
     total_reports: int
     total_calls: int
-    total_enrollments: int
+    total_flp_min_billings: int
     total_payments: int
     avg_daily_calls: float
 
@@ -69,7 +69,7 @@ class DailyTrendData(BaseModel):
     """Daily trend data point."""
     date: str
     calls: int
-    enrollments: int
+    flp_min_billings: int
     payments: int
     points: int
 
@@ -112,7 +112,7 @@ class SystemOverviewReports(BaseModel):
     """System overview report metrics."""
     total_reports: int
     total_calls: int
-    total_enrollments: int
+    total_flp_min_billings: int
     total_payments: int
     avg_calls_per_user: float
 
@@ -133,6 +133,15 @@ class SystemOverviewWallet(BaseModel):
     net_volume: int
 
 
+class SystemOverviewSales(BaseModel):
+    """System overview CC/sale-engine metrics (approved invoices)."""
+    sale_count: int
+    total_case_credits: float
+    total_amount_cents: int
+    # Grand-total personal-sale commission (sum of every owner's 25% cheque).
+    total_commission_cents: int = 0
+
+
 class SystemOverviewResponse(BaseModel):
     """Response for system overview endpoint."""
     period: str
@@ -140,6 +149,7 @@ class SystemOverviewResponse(BaseModel):
     reports: SystemOverviewReports
     leads: SystemOverviewLeads
     wallet: SystemOverviewWallet
+    sales: SystemOverviewSales
 
 
 class DailyTrendEntry(BaseModel):
@@ -147,7 +157,7 @@ class DailyTrendEntry(BaseModel):
     date: str
     reports_count: int
     total_calls: int
-    total_enrollments: int
+    total_flp_min_billings: int
     total_payments: int
     avg_calls_per_report: float
 

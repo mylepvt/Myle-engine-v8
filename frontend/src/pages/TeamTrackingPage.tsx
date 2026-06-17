@@ -288,15 +288,15 @@ function buildLeaderHealth(items: TeamTrackingMemberSummary[]) {
 }
 
 function liveBadgeClass(status: TeamTrackingMemberSummary['presence_status']) {
-  if (status === 'online') return 'bg-emerald-400'
-  if (status === 'idle') return 'bg-amber-400'
-  return 'bg-slate-400'
+  if (status === 'online') return 'bg-emerald-500 dark:bg-emerald-400'
+  if (status === 'idle') return 'bg-amber-500 dark:bg-amber-400'
+  return 'bg-slate-500 dark:bg-slate-400'
 }
 
 function scoreRailClass(band: TeamTrackingMemberSummary['consistency_band']) {
-  if (band === 'high') return 'bg-emerald-400/90'
-  if (band === 'medium') return 'bg-amber-400/90'
-  return 'bg-rose-400/90'
+  if (band === 'high') return 'bg-emerald-500/90 dark:bg-emerald-400/90'
+  if (band === 'medium') return 'bg-amber-500/90 dark:bg-amber-400/90'
+  return 'bg-rose-500/90 dark:bg-rose-400/90'
 }
 
 function updateParam(
@@ -411,13 +411,13 @@ function AttentionRow({ item, dateIso }: { item: TeamTrackingMemberSummary; date
             last activity {formatRelativeTime(item.last_activity_at)}
           </p>
         </div>
-        <div className="rounded-full border border-rose-400/20 px-2 py-1 text-ds-label uppercase text-rose-200">
+        <div className="rounded-full border border-rose-400/20 px-2 py-1 text-ds-label uppercase text-rose-600 dark:text-rose-200">
           priority
         </div>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
         {reasons.slice(0, 3).map((reason) => (
-          <Badge key={reason} variant="secondary" className="bg-white/[0.08] text-foreground">
+          <Badge key={reason} variant="secondary" className="bg-[color-mix(in_srgb,var(--foreground)_8%,transparent)] text-foreground">
             {reason}
           </Badge>
         ))}
@@ -577,7 +577,7 @@ export function TeamTrackingPage({ title }: Props) {
       </Card>
 
       <Card className="space-y-4 px-4 py-4">
-        <div className="grid gap-3 xl:grid-cols-[minmax(18rem,1.25fr)_12rem]">
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(18rem,1.25fr)_12rem]">
           <ListSearchInput
             value={searchQuery}
             onValueChange={(value) => updateParam(params, setParams, 'q', value)}
@@ -597,7 +597,7 @@ export function TeamTrackingPage({ title }: Props) {
           </label>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <label className="space-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             <span>Presence</span>
             <select
@@ -704,7 +704,7 @@ export function TeamTrackingPage({ title }: Props) {
 
       {isPending ? (
         <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
             {Array.from({ length: 6 }).map((_, index) => (
               <Skeleton key={index} className="h-32 rounded-md" />
             ))}
@@ -729,7 +729,7 @@ export function TeamTrackingPage({ title }: Props) {
 
       {data ? (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
             <MetricPanel
               icon={Users}
               label="Members in scope"
@@ -814,7 +814,7 @@ export function TeamTrackingPage({ title }: Props) {
                   No removed members match the current filters.
                 </div>
               ) : (
-                <div className="grid gap-2 p-4 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="grid grid-cols-1 gap-2 p-4 sm:grid-cols-2 xl:grid-cols-3">
                   {removedMembers.map((item) => (
                     <div
                       key={item.user_id}
@@ -832,25 +832,25 @@ export function TeamTrackingPage({ title }: Props) {
                       <div className="mt-2 space-y-1 text-xs text-muted-foreground">
                         {item.member_phone ? (
                           <p>
-                            <span className="text-foreground/60">Phone:</span>{' '}
+                            <span className="text-[color-mix(in_srgb,var(--foreground)_60%,transparent)]">Phone:</span>{' '}
                             <span className="font-medium text-foreground">{item.member_phone}</span>
                           </p>
                         ) : (
                           <p className="italic">No phone on record</p>
                         )}
                         <p>
-                          <span className="text-foreground/60">Email:</span>{' '}
+                          <span className="text-[color-mix(in_srgb,var(--foreground)_60%,transparent)]">Email:</span>{' '}
                           <span className="text-foreground">{item.member_email}</span>
                         </p>
                         {item.leader_name ? (
                           <p>
-                            <span className="text-foreground/60">Leader:</span>{' '}
+                            <span className="text-[color-mix(in_srgb,var(--foreground)_60%,transparent)]">Leader:</span>{' '}
                             {item.leader_name}
                           </p>
                         ) : null}
                         {item.compliance_summary ? (
                           <p className="mt-1 border-t border-rose-400/15 pt-1">
-                            <span className="text-foreground/60">Reason:</span>{' '}
+                            <span className="text-[color-mix(in_srgb,var(--foreground)_60%,transparent)]">Reason:</span>{' '}
                             <span className="text-rose-600 dark:text-rose-400">{item.compliance_summary}</span>
                           </p>
                         ) : null}
@@ -882,7 +882,7 @@ export function TeamTrackingPage({ title }: Props) {
                                   type="button"
                                   disabled={isSending}
                                   onClick={() => sendOutreach.mutate({ userId: item.user_id, force: true })}
-                                  className="inline-flex items-center gap-1 rounded border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-white/10 disabled:opacity-50"
+                                  className="inline-flex items-center gap-1 rounded border border-border dark:border-white/10 bg-[color-mix(in_srgb,var(--foreground)_5%,transparent)] px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_10%,transparent)] disabled:opacity-50"
                                 >
                                   {isSending ? <Loader2 className="size-2.5 animate-spin" /> : <MessageCircle className="size-2.5" />}
                                   {isSending ? 'Sending…' : 'Resend'}
@@ -898,7 +898,7 @@ export function TeamTrackingPage({ title }: Props) {
                                     placeholder="10-digit mobile number"
                                     value={stubPhones[item.user_id] ?? ''}
                                     onChange={(e) => setStubPhones((prev) => ({ ...prev, [item.user_id]: e.target.value }))}
-                                    className="flex-1 rounded border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                                    className="flex-1 rounded border border-border dark:border-white/10 bg-[color-mix(in_srgb,var(--foreground)_5%,transparent)] px-2 py-0.5 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
                                   />
                                   <button
                                     type="button"
@@ -966,7 +966,7 @@ export function TeamTrackingPage({ title }: Props) {
             </section>
           ) : null}
 
-          <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+          <div className="grid grid-cols-1 gap-4 2xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
             <section className="overflow-hidden rounded-md border border-border bg-card shadow-[var(--shadow-card)]">
               <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
                 <div>
@@ -977,7 +977,7 @@ export function TeamTrackingPage({ title }: Props) {
                 </div>
                 <Badge variant="success">{liveNow.length} visible</Badge>
               </div>
-              <div className="grid gap-3 p-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 p-4 md:grid-cols-2">
                 {liveNow.length === 0 ? (
                   <div className="rounded-md border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground md:col-span-2">
                     No live members match these filters right now.
@@ -1028,7 +1028,7 @@ export function TeamTrackingPage({ title }: Props) {
                 No leader groups match the active filters.
               </div>
             ) : (
-              <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="grid grid-cols-1 gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
                 {leaderHealth.map((leader) => (
                   <Card key={leader.key} className="border-border/60 bg-muted/30">
                     <CardHeader className="space-y-2 pb-3">
@@ -1109,6 +1109,7 @@ export function TeamTrackingPage({ title }: Props) {
                                   'size-2.5 rounded-full',
                                   liveBadgeClass(item.presence_status),
                                 )}
+                                aria-label={item.presence_status}
                               />
                               <span className="font-medium text-foreground">{item.member_name}</span>
                               <Badge variant={scoreVariant(item.consistency_band)}>
@@ -1182,7 +1183,7 @@ export function TeamTrackingPage({ title }: Props) {
                                 {item.consistency_band}
                               </span>
                             </div>
-                            <div className="h-2 rounded-full bg-white/[0.08]">
+                            <div className="h-2 rounded-full bg-[color-mix(in_srgb,var(--foreground)_8%,transparent)]">
                               <div
                                 className={cn('h-2 rounded-full', scoreRailClass(item.consistency_band))}
                                 style={{ width: `${Math.max(6, item.consistency_score)}%` }}

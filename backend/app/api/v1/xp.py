@@ -13,7 +13,9 @@ from app.models.user import User
 from app.services.xp_service import (
     DAILY_CAP,
     admin_force_reset_all,
+    admin_recalc_cutoff,
     get_leaderboard,
+    get_process_leaderboard,
     get_user_xp_history,
     get_user_xp_summary,
     grant_xp,
@@ -69,8 +71,6 @@ async def leaderboard(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> List[dict]:
-    if user.role not in ("admin", "leader"):
-        raise HTTPException(status_code=403, detail="Forbidden")
     return await get_leaderboard(session, limit=10)
 
 
@@ -107,6 +107,31 @@ async def ping_login(
     }
 
 
+@router.get("/process-leaderboard")
+async def process_leaderboard_endpoint(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    days: int = 7,
+) -> List[dict]:
+    """Process-based ranking — excludes result actions. All authenticated users."""
+    return await get_process_leaderboard(session, limit=10, days=max(1, min(days, 30)))
+
+
+@router.get("/reassign-eligible")
+async def reassign_eligible(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> List[dict]:
+    """Top process performers for reassigned lead routing. Leader sees own team, admin sees all."""
+    if user.role not in ("admin", "leader"):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    within_ids = None
+    if user.role == "leader":
+        from app.services.downline import recursive_downline_user_ids
+        within_ids = await recursive_downline_user_ids(session, user.user_id)
+    return await get_process_leaderboard(session, limit=10, within_user_ids=within_ids)
+
+
 @router.post("/admin/reset-month")
 async def admin_reset_month(
     user: Annotated[AuthUser, Depends(require_auth_user)],
@@ -123,3 +148,32 @@ async def admin_reset_month(
     count = await admin_force_reset_all(session)
     await session.commit()
     return {"reset_count": count, "message": f"Reset XP for {count} users. Season archived."}
+
+
+@router.post("/admin/recalc-cutoff")
+async def admin_recalc_cutoff_endpoint(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    cutoff: datetime | None = None,
+) -> dict:
+    """Admin-only: delete xp_events before cutoff (default: 2026-06-01),
+    recalculate xp_total from remaining events.
+
+    Use when the lazy monthly reset didn't fire for inactive users.
+    Post-cutoff points are preserved.
+    """
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    if cutoff is None:
+        cutoff = datetime(2026, 6, 1, 0, 0, 0, tzinfo=timezone.utc)
+    result = await admin_recalc_cutoff(session, cutoff)
+    await session.commit()
+    return {
+        "cutoff": cutoff.isoformat(),
+        "users_updated": result["users_updated"],
+        "events_deleted": result["events_deleted"],
+        "message": (
+            f"Deleted {result['events_deleted']} XP events before {cutoff.date()}, "
+            f"recalculated XP for {result['users_updated']} users."
+        ),
+    }

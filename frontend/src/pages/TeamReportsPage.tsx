@@ -117,14 +117,14 @@ function SubmissionCard({ item }: { item: TeamReportItem }) {
           <div className="text-center text-sm font-semibold tabular-nums text-emerald-300">{item.calls_picked}</div>
         </div>
         <div className="surface-inset rounded-lg px-2 py-2">
-          <p className="text-[0.68rem] uppercase tracking-wide text-muted-foreground">Enroll</p>
+          <p className="text-[0.68rem] uppercase tracking-wide text-muted-foreground">Min. FLP</p>
           <ReportMetric reported={item.day1_count + item.day2_count + item.day3_count} system={item.payments_actual} tone="text-amber-300" />
         </div>
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2 text-[0.68rem] text-muted-foreground">
-        <span className="rounded-full border border-white/10 px-2 py-1">2CC {item.plan_2cc}</span>
-        <span className="rounded-full border border-white/10 px-2 py-1">Seat {item.seat_holdings}</span>
+        <span className="rounded-full border border-border dark:border-white/10 px-2 py-1">2CC {item.plan_2cc}</span>
+        <span className="rounded-full border border-border dark:border-white/10 px-2 py-1">Seat {item.seat_holdings}</span>
       </div>
 
       {item.remarks ? <p className="mt-3 text-sm text-muted-foreground">{item.remarks}</p> : null}
@@ -135,7 +135,7 @@ function SubmissionCard({ item }: { item: TeamReportItem }) {
 const TILES: { key: keyof TeamReportsLiveSummary; label: string; color: string }[] = [
   { key: 'leads_claimed_today', label: 'Claimed (day)', color: 'text-primary' },
   { key: 'calls_made_today', label: 'Calls (day)', color: 'text-emerald-400' },
-  { key: 'enrolled_today', label: 'Proof uploaded (day)', color: 'text-amber-400' },
+  { key: 'flp_min_billing_today', label: 'Proof uploaded (day)', color: 'text-amber-400' },
   {
     key: 'payment_proofs_approved_today',
     label: 'FLP invoice approved (day)',
@@ -157,7 +157,7 @@ export function TeamReportsPage({ title }: Props) {
       scopeTotal: data?.scope_total_members ?? 0,
       missing: data?.missing_members.length ?? 0,
       totalCalls: items.reduce((sum, item) => sum + item.total_calling, 0),
-      totalEnrollments: items.reduce((sum, item) => sum + item.day1_count + item.day2_count + item.day3_count, 0),
+      totalFlpMinBillings: items.reduce((sum, item) => sum + item.day1_count + item.day2_count + item.day3_count, 0),
     }
   }, [data])
 
@@ -178,7 +178,7 @@ export function TeamReportsPage({ title }: Props) {
             type="date"
             value={dateIso}
             onChange={(e) => setDateIso(e.target.value)}
-            className="rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground"
+            className="rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground"
           />
         </label>
         <span className="text-xs text-muted-foreground">
@@ -191,7 +191,7 @@ export function TeamReportsPage({ title }: Props) {
 
       {isPending ? (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="h-28 rounded" />
             ))}
@@ -215,7 +215,7 @@ export function TeamReportsPage({ title }: Props) {
 
       {data ? (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard
               label="Members in scope"
               value={summary.scopeTotal}
@@ -234,7 +234,7 @@ export function TeamReportsPage({ title }: Props) {
             <MetricCard
               label="Reported calls"
               value={summary.totalCalls}
-              hint={`${summary.totalEnrollments} enrollments reported in submitted rows.`}
+              hint={`${summary.totalFlpMinBillings} flp_min_billings reported in submitted rows.`}
             />
           </div>
 
@@ -257,7 +257,7 @@ export function TeamReportsPage({ title }: Props) {
             </div>
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(18rem,0.7fr)]">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(18rem,0.7fr)]">
             <section className="surface-elevated p-4 md:p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
@@ -270,7 +270,7 @@ export function TeamReportsPage({ title }: Props) {
               </div>
 
               {data.items.length === 0 ? (
-                <div className="rounded border border-dashed border-white/12 px-4 py-6 text-sm text-muted-foreground">
+                <div className="rounded border border-dashed border-border dark:border-white/12 px-4 py-6 text-sm text-muted-foreground">
                   No reports submitted for {data.date}.
                 </div>
               ) : (
@@ -284,12 +284,12 @@ export function TeamReportsPage({ title }: Props) {
                   <div className="hidden overflow-x-auto md:block">
                     <table className="min-w-full text-sm">
                       <thead className="text-left text-ds-caption uppercase tracking-wide text-muted-foreground">
-                        <tr className="border-b border-white/10">
+                        <tr className="border-b border-border dark:border-white/10">
                           <th className="pb-3 pr-4 font-medium">Member</th>
                           <th className="pb-3 pr-4 font-medium">Submitted</th>
                           <th className="pb-3 px-3 font-medium text-center">Calls</th>
                           <th className="pb-3 px-3 font-medium text-center">Picked</th>
-                          <th className="pb-3 px-3 font-medium text-center">Enroll</th>
+                          <th className="pb-3 px-3 font-medium text-center">Min. FLP</th>
                           <th className="pb-3 px-3 font-medium text-center">Pending</th>
                           <th className="pb-3 px-3 font-medium text-center">2CC</th>
                           <th className="pb-3 pl-4 font-medium">Remarks</th>
@@ -302,7 +302,7 @@ export function TeamReportsPage({ title }: Props) {
                             item.payments_actual !== (item.day1_count + item.day2_count + item.day3_count)
 
                           return (
-                            <tr key={item.report_id} className="border-b border-white/[0.06] align-top">
+                            <tr key={item.report_id} className="border-b border-border dark:border-white/[0.06] align-top">
                               <td className="py-4 pr-4">
                                 <div className="min-w-[15rem]">
                                   <div className="flex flex-wrap items-center gap-2">
@@ -377,7 +377,7 @@ export function TeamReportsPage({ title }: Props) {
               </div>
 
               {data.missing_members.length === 0 ? (
-                <div className="rounded border border-dashed border-white/12 px-4 py-6 text-sm text-muted-foreground">
+                <div className="rounded border border-dashed border-border dark:border-white/12 px-4 py-6 text-sm text-muted-foreground">
                   Everyone in scope has submitted for {data.date}.
                 </div>
               ) : (

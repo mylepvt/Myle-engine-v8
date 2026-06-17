@@ -1,19 +1,21 @@
 import { type CSSProperties, type FormEvent, type UIEvent, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, X } from 'lucide-react'
+import { WifiOff, X } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 
 import { DashboardHeader } from '@/components/layout/DashboardHeader'
 import { DashboardMobileTabBar } from '@/components/layout/DashboardMobileTabBar'
 import { DashboardSidebar } from '@/components/layout/DashboardSidebar'
+import { LocationPermissionGate } from '@/components/layout/LocationPermissionGate'
 import { DashboardOutletErrorBoundary } from '@/components/routing/DashboardOutletErrorBoundary'
 import { filterDashboardNav, resolveItemLabel } from '@/config/dashboard-nav'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
-import { useEnrollmentApprovalsAlertBanner } from '@/hooks/use-enrollment-approvals-alert'
-import { useEnrollmentApprovalsPendingQuery } from '@/hooks/use-team-query'
-import { usePushNotifications } from '@/hooks/use-push-notifications'
+import { useFlpMinBillingApprovalsAlertBanner } from '@/hooks/use-flp-min-billing-approvals-alert'
+import { useFlpMinBillingApprovalsPendingQuery } from '@/hooks/use-team-query'
+import { useOnline } from '@/hooks/use-online'
 import { useRealtimeInvalidation } from '@/hooks/use-realtime-invalidation'
+import { PushNotificationGate } from '@/components/notifications/PushNotificationGate'
 import { useSyncRoleFromMe } from '@/hooks/use-sync-role-from-me'
 import { cn } from '@/lib/utils'
 import { authLogout } from '@/lib/auth-api'
@@ -22,6 +24,11 @@ import { useAuthStore } from '@/stores/auth-store'
 import { useShellPreviewStore } from '@/stores/shell-preview-store'
 import { useShellStore } from '@/stores/shell-store'
 import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
+import { useLocationPingMutation } from '@/hooks/use-location-query'
+import { getGps } from '@/lib/geolocation'
+import { OnboardingTour } from '@/components/onboarding/OnboardingTour'
+import { ONBOARDING_STEPS } from '@/lib/onboarding-steps'
+import { useCompleteTutorialMutation } from '@/hooks/use-tutorial-query'
 
 function isEditableElement(node: Element | null): boolean {
   if (!(node instanceof HTMLElement)) return false
@@ -31,6 +38,7 @@ function isEditableElement(node: Element | null): boolean {
 export function DashboardLayout() {
   useSyncRoleFromMe()
   useRealtimeInvalidation(true)
+  const isOnline = useOnline()
   const location = useLocation()
   const { data: me } = useAuthMeQuery()
   const { role: shellRole } = useDashboardShellRole()
@@ -52,19 +60,28 @@ export function DashboardLayout() {
   )
   const theme = useUiFeedbackStore((s) => s.theme)
   const logout = useAuthStore((s) => s.logout)
-  const enrollmentPending = useEnrollmentApprovalsPendingQuery()
+  const enrollmentPending = useFlpMinBillingApprovalsPendingQuery()
   const pendingEnrollCount = enrollmentPending.data?.total ?? 0
   const approverForEnroll =
     Boolean(me?.authenticated) && me?.role === 'admin'
-  const enrollmentAlert = useEnrollmentApprovalsAlertBanner(pendingEnrollCount, {
+  const enrollmentAlert = useFlpMinBillingApprovalsAlertBanner(pendingEnrollCount, {
     enabled: approverForEnroll,
   })
-  const push = usePushNotifications()
-  const showPushPrompt =
-    Boolean(me?.authenticated) &&
-    push.isSupported &&
-    !push.isSubscribed &&
-    push.permission !== 'denied'
+  const locationPing = useLocationPingMutation()
+  useEffect(() => {
+    if (shellRole !== 'team' && shellRole !== 'leader') return
+    const doPing = () => {
+      void getGps().then((coords) => {
+        // Only ping if we actually got a location — never overwrite with empty coords
+        if (coords.latitude !== undefined) locationPing.mutate(coords)
+      })
+    }
+    doPing()
+    const id = setInterval(doPing, 15 * 60 * 1000)
+    return () => clearInterval(id)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shellRole])
+
   const [headerSearch, setHeaderSearch] = useState('')
   const [isMobile, setIsMobile] = useState(false)
   const [keyboardInset, setKeyboardInset] = useState(0)
@@ -221,20 +238,29 @@ export function DashboardLayout() {
 
   const trainingStatusLc = (me?.training_status ?? '').toLowerCase()
   const trainingLocked = me?.training_required === true && trainingStatusLc !== 'completed'
+  const showTutorial = me?.tutorial_pending === true && trainingStatusLc === 'completed'
+
   const onTrainingRoute =
     location.pathname === '/dashboard/system/training' ||
     location.pathname.startsWith('/dashboard/system/training/') ||
     location.pathname === '/dashboard/other/training' ||
     location.pathname.startsWith('/dashboard/other/training/')
 
+  const enrollAllowed = me?.role === 'admin' || me?.enrollment_link_access === true
   const sections = useMemo(() => {
     if (shellRole == null) return []
     const full = filterDashboardNav(shellRole)
-    if (!trainingLocked) return full
-    const flat = full.flatMap((s) => s.items)
+    // Hide the Enrollment Link page unless this user is admin-granted access.
+    const capped = enrollAllowed
+      ? full
+      : full
+          .map((s) => ({ ...s, items: s.items.filter((i) => i.path !== 'work/enroll-link') }))
+          .filter((s) => s.items.length > 0)
+    if (!trainingLocked) return capped
+    const flat = capped.flatMap((s) => s.items)
     const tr = flat.find((i) => i.path === 'system/training')
-    return tr ? [{ id: 'training-only', label: '', items: [tr] }] : full
-  }, [shellRole, trainingLocked])
+    return tr ? [{ id: 'training-only', label: '', items: [tr] }] : capped
+  }, [shellRole, trainingLocked, enrollAllowed])
 
   const currentPageLabel = useMemo(() => {
     const rel = location.pathname.replace('/dashboard/', '')
@@ -246,8 +272,25 @@ export function DashboardLayout() {
     return hit ? resolveItemLabel(hit, shellRole ?? 'team') : 'Dashboard'
   }, [location.pathname, sections, shellRole])
 
+  const completeTutorial = useCompleteTutorialMutation()
+
   if (trainingLocked && !onTrainingRoute) {
     return <Navigate to="/dashboard/system/training" replace />
+  }
+
+  if (showTutorial && completeTutorial.isIdle) {
+    return (
+      <>
+        <div className="dashboard-shell flex min-h-0 w-full min-w-0 max-w-full flex-1 overflow-hidden bg-background">
+          <div className="flex h-full min-w-0 max-w-full flex-1 flex-col overflow-hidden">
+            <main data-tour="dashboard" className="content-dashboard-main relative min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-background p-4 md:p-6 lg:p-8">
+              <Outlet />
+            </main>
+          </div>
+        </div>
+        <OnboardingTour steps={ONBOARDING_STEPS} onNext={() => {}} onSkip={() => completeTutorial.mutate()} onDone={() => completeTutorial.mutate()} />
+      </>
+    )
   }
 
   const displayInitial =
@@ -266,6 +309,7 @@ export function DashboardLayout() {
   }
 
   return (
+    <PushNotificationGate>
     <div
       className="dashboard-shell flex min-h-0 w-full min-w-0 max-w-full flex-1 overflow-hidden bg-background"
       style={shellStyle}
@@ -305,6 +349,7 @@ export function DashboardLayout() {
           displayInitial={displayInitial}
         />
 
+        <div className="max-h-[132px] space-y-0 overflow-y-auto">
         {enrollmentAlert.open && approverForEnroll ? (
           <div
             role="status"
@@ -318,7 +363,7 @@ export function DashboardLayout() {
             </p>
             <div className="flex shrink-0 items-center gap-2">
               <Link
-                to="/dashboard/team/enrollment-approvals"
+                to="/dashboard/team/flp-min-billing"
                 className="text-sm font-semibold text-amber-950 underline underline-offset-2 dark:text-amber-50"
                 onClick={() => enrollmentAlert.dismiss()}
               >
@@ -326,7 +371,7 @@ export function DashboardLayout() {
               </Link>
               <button
                 type="button"
-                className="rounded-md p-1 text-amber-950/80 transition hover:bg-amber-500/20 dark:text-amber-100/90"
+                className="rounded-md p-2 text-amber-950/80 transition hover:bg-amber-500/20 dark:text-amber-100/90"
                 aria-label="Dismiss"
                 onClick={() => enrollmentAlert.dismiss()}
               >
@@ -362,35 +407,26 @@ export function DashboardLayout() {
           </div>
         ) : null}
 
-        {showPushPrompt ? (
+        {!isOnline ? (
           <div
             role="status"
-            className="flex shrink-0 items-center justify-between gap-3 border-b border-blue-500/30 bg-blue-500/10 px-3 py-2.5 dark:border-blue-400/25 dark:bg-blue-400/10"
+            aria-live="polite"
+            className="flex shrink-0 items-center gap-2.5 border-b border-slate-500/30 bg-slate-500/10 px-3 py-2 dark:border-slate-400/20 dark:bg-slate-400/8"
           >
-            <div className="flex min-w-0 items-center gap-2">
-              <Bell className="size-4 shrink-0 text-blue-700 dark:text-blue-300" aria-hidden />
-              <p className="min-w-0 text-sm text-blue-900 dark:text-blue-100">
-                <span className="font-semibold">Enable notifications</span>
-                {' — '}
-                {push.requiresStandaloneInstall
-                  ? push.supportMessage
-                  : 'Get reminders for daily targets, reports, and compliance alerts.'}
-              </p>
-            </div>
-            {!push.requiresStandaloneInstall ? (
-              <button
-                type="button"
-                onClick={() => void push.subscribe()}
-                disabled={push.isLoading}
-                className="shrink-0 rounded-md bg-blue-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60 dark:bg-blue-500 dark:hover:bg-blue-400"
-              >
-                {push.isLoading ? 'Enabling…' : 'Enable'}
-              </button>
-            ) : null}
+            <WifiOff className="size-3.5 shrink-0 text-slate-500 dark:text-slate-400" aria-hidden />
+            <p className="min-w-0 text-xs text-slate-700 dark:text-slate-300">
+              <span className="font-semibold">You&apos;re offline</span>
+              {' — '}
+              viewing cached data. Changes will sync when connected.
+            </p>
           </div>
         ) : null}
 
+        {(shellRole === 'team' || shellRole === 'leader') && <LocationPermissionGate />}
+        </div>
+
         <main
+          data-tour="dashboard"
           className={cn(
             'content-dashboard-main relative min-h-0 min-w-0 flex-1 touch-pan-y overflow-y-auto overflow-x-hidden bg-background p-4 md:p-6 lg:p-8',
             'scroll-ios',
@@ -434,5 +470,6 @@ export function DashboardLayout() {
         ) : null}
       </div>
     </div>
+    </PushNotificationGate>
   )
 }

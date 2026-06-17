@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.daily_report import DailyReport
 from app.models.daily_score import DailyScore
 from app.models.lead import Lead
+from app.models.lead_sale import LeadSale
 from app.models.user import User
 from app.models.wallet_ledger import WalletLedgerEntry
 from app.services.live_metrics import analytics_scope_user_ids
@@ -41,7 +42,7 @@ class AnalyticsService:
                     "total_reports": 0,
                     "total_calls": 0,
                     "calls_picked": 0,
-                    "enrollments": 0,
+                    "flp_min_billings": 0,
                     "payments": 0,
                     "avg_daily_calls": 0.0,
                     "pickup_rate": 0.0,
@@ -66,7 +67,7 @@ class AnalyticsService:
                 func.count(DailyReport.id).label("total_reports"),
                 func.sum(DailyReport.total_calling).label("total_calls"),
                 func.sum(DailyReport.calls_picked).label("calls_picked"),
-                func.sum(DailyReport.day1_count + DailyReport.day2_count + DailyReport.day3_count).label("enrollments"),
+                func.sum(DailyReport.day1_count + DailyReport.day2_count + DailyReport.day3_count).label("flp_min_billings"),
                 func.sum(DailyReport.payments_actual).label("payments"),
                 func.avg(DailyReport.total_calling).label("avg_daily_calls"),
             )
@@ -85,7 +86,7 @@ class AnalyticsService:
             select(
                 func.count(Lead.id).label("total_leads"),
                 func.sum(case((Lead.status == "converted", 1), else_=0)).label("converted_leads"),
-                func.sum(case((Lead.status == "paid", 1), else_=0)).label("paid_leads"),
+                func.sum(case((Lead.payment_status == "approved", 1), else_=0)).label("paid_leads"),
             )
             .where(
                 and_(
@@ -132,7 +133,7 @@ class AnalyticsService:
                 "total_reports": reports_data.total_reports or 0,
                 "total_calls": total_calls,
                 "calls_picked": calls_picked,
-                "enrollments": reports_data.enrollments or 0,
+                "flp_min_billings": reports_data.flp_min_billings or 0,
                 "payments": reports_data.payments or 0,
                 "avg_daily_calls": round(reports_data.avg_daily_calls or 0, 1),
                 "pickup_rate": round(pickup_rate, 2),
@@ -177,7 +178,7 @@ class AnalyticsService:
             select(
                 func.count(Lead.id).label("total_leads"),
                 func.sum(case((Lead.status == "converted", 1), else_=0)).label("converted_leads"),
-                func.sum(case((Lead.status == "paid", 1), else_=0)).label("paid_leads"),
+                func.sum(case((Lead.payment_status == "approved", 1), else_=0)).label("paid_leads"),
             )
             .where(
                 and_(
@@ -222,7 +223,7 @@ class AnalyticsService:
             daily_data.append({
                 "date": current_date.isoformat(),
                 "calls": report.total_calling if report else 0,
-                "enrollments": (report.day1_count + report.day2_count + report.day3_count) if report else 0,
+                "flp_min_billings": (report.day1_count + report.day2_count + report.day3_count) if report else 0,
                 "payments": report.payments_actual if report else 0,
                 "points": 20 if report else 0,  # 20 points per report
             })
@@ -232,7 +233,7 @@ class AnalyticsService:
             "reports": {
                 "total_reports": len(reports),
                 "total_calls": sum(r.total_calling for r in reports),
-                "total_enrollments": sum(r.day1_count + r.day2_count + r.day3_count for r in reports),
+                "total_flp_min_billings": sum(r.day1_count + r.day2_count + r.day3_count for r in reports),
                 "total_payments": sum(r.payments_actual for r in reports),
                 "avg_daily_calls": round(sum(r.total_calling for r in reports) / len(reports), 1) if reports else 0,
             },
@@ -339,7 +340,7 @@ class AnalyticsService:
             select(
                 func.count(DailyReport.id).label("total_reports"),
                 func.sum(DailyReport.total_calling).label("total_calls"),
-                func.sum(DailyReport.day1_count + DailyReport.day2_count + DailyReport.day3_count).label("total_enrollments"),
+                func.sum(DailyReport.day1_count + DailyReport.day2_count + DailyReport.day3_count).label("total_flp_min_billings"),
                 func.sum(DailyReport.payments_actual).label("total_payments"),
             )
             .where(
@@ -356,7 +357,7 @@ class AnalyticsService:
             select(
                 func.count(Lead.id).label("total_leads"),
                 func.sum(case((Lead.status == "converted", 1), else_=0)).label("converted_leads"),
-                func.sum(case((Lead.status == "paid", 1), else_=0)).label("paid_leads"),
+                func.sum(case((Lead.payment_status == "approved", 1), else_=0)).label("paid_leads"),
             )
             .where(
                 and_(
@@ -381,6 +382,29 @@ class AnalyticsService:
         )
         wallet_data = wallet_q.first()
 
+        # CC/sale revenue — approved invoices from the sale engine (Phase 3).
+        # net = amount − CGST − SGST; the 25% personal-sale commission total is
+        # the sum of every owner's cheque (admin sees the grand total).
+        _net = (
+            func.coalesce(LeadSale.amount_cents, 0)
+            - func.coalesce(LeadSale.cgst_cents, 0)
+            - func.coalesce(LeadSale.sgst_cents, 0)
+        )
+        sales_q = await self.session.execute(
+            select(
+                func.count(LeadSale.id).label("sale_count"),
+                func.coalesce(func.sum(LeadSale.case_credits), 0).label("total_case_credits"),
+                func.coalesce(func.sum(LeadSale.amount_cents), 0).label("total_amount_cents"),
+                func.coalesce(func.sum(_net), 0).label("total_net_cents"),
+            )
+            .where(
+                LeadSale.status == "approved",
+                LeadSale.created_at >= datetime.combine(start_date, datetime.min.time()),
+                LeadSale.created_at <= datetime.combine(end_date, datetime.max.time()),
+            )
+        )
+        sales_data = sales_q.first()
+
         return {
             "period": f"{days} days",
             "users": {
@@ -390,7 +414,7 @@ class AnalyticsService:
             "reports": {
                 "total_reports": reports_data.total_reports or 0,
                 "total_calls": reports_data.total_calls or 0,
-                "total_enrollments": reports_data.total_enrollments or 0,
+                "total_flp_min_billings": reports_data.total_flp_min_billings or 0,
                 "total_payments": reports_data.total_payments or 0,
                 "avg_calls_per_user": round((reports_data.total_calls or 0) / active_users, 1) if active_users > 0 else 0,
             },
@@ -405,6 +429,12 @@ class AnalyticsService:
                 "total_credits": wallet_data.total_credits or 0,
                 "total_debits": wallet_data.total_debits or 0,
                 "net_volume": (wallet_data.total_credits or 0) - (wallet_data.total_debits or 0),
+            },
+            "sales": {
+                "sale_count": sales_data.sale_count or 0,
+                "total_case_credits": float(sales_data.total_case_credits or 0),
+                "total_amount_cents": int(sales_data.total_amount_cents or 0),
+                "total_commission_cents": (max(int(sales_data.total_net_cents or 0), 0) * 25) // 100,
             },
         }
 
@@ -447,7 +477,7 @@ class AnalyticsService:
                 DailyReport.report_date,
                 func.count(DailyReport.id).label("reports_count"),
                 func.sum(DailyReport.total_calling).label("total_calls"),
-                func.sum(DailyReport.day1_count + DailyReport.day2_count + DailyReport.day3_count).label("total_enrollments"),
+                func.sum(DailyReport.day1_count + DailyReport.day2_count + DailyReport.day3_count).label("total_flp_min_billings"),
                 func.sum(DailyReport.payments_actual).label("total_payments"),
             )
             .where(where_clause)
@@ -461,7 +491,7 @@ class AnalyticsService:
                 "date": row.report_date.isoformat(),
                 "reports_count": row.reports_count or 0,
                 "total_calls": row.total_calls or 0,
-                "total_enrollments": row.total_enrollments or 0,
+                "total_flp_min_billings": row.total_flp_min_billings or 0,
                 "total_payments": row.total_payments or 0,
                 "avg_calls_per_report": round((row.total_calls or 0) / (row.reports_count or 1), 1),
             }

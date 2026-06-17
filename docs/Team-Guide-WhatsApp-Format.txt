@@ -1,0 +1,117 @@
+============================================================
+ MYLE APP — STEP BY STEP GUIDE (WhatsApp format)
+ Niyam: har step ka text bhejo, phir uske neeche [SS] wala
+ screenshot laga do. Text seedha WhatsApp me paste ho jaata hai.
+============================================================
+
+
+────────────────────────────
+ PART A — CALL KAISE KAREIN & LOG HO
+────────────────────────────
+
+*📞 STEP 1 — Leads page kholo*
+App kholo → menu se *"Leads / Work"* par jao.
+Yahan har lead ek _card_ ki tarah dikhti hai.
+
+[📸 SS 1 — Leads list page, jisme lead cards dikh rahe ho]
+
+
+*📞 STEP 2 — Lead ka card dhundo*
+Jis customer ko call karni hai uska card dhundo.
+Card pe naam, phone number aur ek _clock timer_ 🕐 dikhega.
+
+[📸 SS 2 — Ek single lead card — naam, phone, timer clearly dikhe]
+
+
+*📞 STEP 3 — Green Dial button dabao*
+Card ke neeche *green 📞 (Dial)* button dabao.
+➡️ Phone dialer khulega *aur* system call apne aap log kar lega.
+
+[📸 SS 3 — Card ka green Dial button highlight karke]
+
+
+*📞 STEP 4 — Call status set karo*
+Call ke baad card pe *📞 Call status ▾* dropdown kholo aur chuno:
+• Called - No Answer  (uthaya nahi)
+• Called - Interested  (interested hai)
+• Called - Not Interested  (mana kar diya)
+• Called - Follow Up  (baad me baat)
+• Called - Busy  (line busy)
+• Call Back  (usne wapas call bola)
+
+[📸 SS 4 — Call status dropdown khula hua, options dikhte hue]
+
+
+*📞 STEP 5 — Lead status update karo*
+Agar lead aage badhi (jaise video bhejna hai) to
+*● Lead status ▾* dropdown se stage update karo.
+
+[📸 SS 5 — Lead status dropdown khula hua]
+
+✅ _Bas! Call log ho gayi. Phone na uthe tab bhi Call status zaroor set karo._
+
+
+────────────────────────────
+ PART B — STALE LEAD (THANDI LEAD) MAT HONE DO
+────────────────────────────
+
+*🕐 STEP 1 — Timer dekho*
+Har card pe ek clock timer hai.
+• Green = time hai, sab theek
+• Red / "SLA" = time khatam, lead thandi pad rahi hai ⚠️
+
+[📸 SS 6 — Ek card jisme RED/overdue timer dikh raha ho]
+
+
+*🕐 STEP 2 — Lead garam rakho*
+Time khatam hone se pehle koi action lo:
+📞 Call  /  💬 WhatsApp  /  *… (3 dots) "Follow-up +24h"*
+"Follow-up +24h" timer ko 24 ghante aage badha deta hai.
+
+[📸 SS 7 — 3 dots (…) Follow-up button highlight karke]
+
+
+*🕐 STEP 3 — Agar archive ho gayi*
+24 ghante tak koi action na ho to lead _archive_ ho jaati hai.
+Neeche *"View archived leads"* link dabao → lead dhundo → *Restore* karo.
+
+[📸 SS 8 — "View archived leads" link + archived list]
+
+⚠️ _Archive = delete nahi. Restore se wapas aa jaati hai._
+
+
+────────────────────────────
+ PART C — LEADER KO UPDATE / ESCALATE
+────────────────────────────
+
+*🎖️ Team member ke liye:*
+Koi dikkat ho (lead handle nahi ho rahi, verification, payment proof)
+to leader ko *WhatsApp* pe turant batao.
+_11:00 baje verification escalations chalti hain — pending task turant clear karwao._
+
+[📸 SS 9 — (optional) WhatsApp pe leader ko update bhejte hue]
+
+
+*🎖️ Leader ke liye — WhatsApp commands:*
+App ke WhatsApp number pe sirf ye word bhejo, jawab turant aata hai:
+• `status`  → aaj kitni report submit / missing
+• `missing` → kin members ne report nahi di
+• `top`     → is hafte ke top performers
+
+[📸 SS 10 — WhatsApp chat jisme "status" bhej ke reply aaya ho]
+
+
+*🎖️ Lead kisi aur ko dena (sirf leader/admin):*
+Card pe *⚙ (Reassign)* button dabao → lead top performer ko transfer.
+
+[📸 SS 11 — Card ka Reassign (⚙) button highlight karke]
+
+
+────────────────────────────
+ 🎯 3 SABSE ZAROORI BAATEIN
+────────────────────────────
+1️⃣ *Har call log karo* — Dial + Call status set karo
+2️⃣ *Lead garam rakho* — timer khatam hone se pehle action
+3️⃣ *Report time pe* — raat 11:59 se pehle submit (+20 points)
+
+_Confusion ho to leader se pucho — lead thandi mat hone do._ 😊

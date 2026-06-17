@@ -5,6 +5,12 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
+from app.core.lead_outcome import (
+    DROP_REASON_CHOICES,
+    OUTCOME_CHOICES,
+    outcome_for_status,
+    RECYCLE_REASON_CHOICES,
+)
 from app.core.lead_status import LEAD_STATUS_SET
 
 _CALL_STATUS_SET = {
@@ -13,13 +19,17 @@ _CALL_STATUS_SET = {
     "callback_requested",
     "not_interested",
     "converted",
-    # Enrollment funnel (workboard + team UI)
+    # Min. FLP Billing funnel (workboard + team UI)
     "no_answer",
     "interested",
     "follow_up",
     "video_sent",
     "video_watched",
     "payment_done",
+    # Dial / line outcomes (CTCS call-outcome picker, right column)
+    "call_received",
+    "person_block",
+    "call_cut",
 }
 
 _PAYMENT_STATUS_SET = {"pending", "proof_uploaded", "approved", "rejected"}
@@ -32,6 +42,7 @@ class LeadPublic(BaseModel):
     id: int
     name: str
     status: str
+    outcome: Optional[str] = None
     created_by_user_id: int
     owner_user_id: Optional[int] = None
     owner_name: Optional[str] = None
@@ -58,6 +69,8 @@ class LeadPublic(BaseModel):
     assigned_to_role: Optional[str] = None
     leader_user_id: Optional[int] = None
     leader_name: Optional[str] = None
+    is_reassigned: bool = False
+    reassigned_at: Optional[datetime] = None
 
     # Call tracking
     call_status: Optional[str] = None
@@ -81,6 +94,18 @@ class LeadPublic(BaseModel):
     day4_completed_at: Optional[datetime] = None
     day5_completed_at: Optional[datetime] = None
 
+    # Day 2 cheat-proof business test
+    day2_test_status: str = "pending"
+    day2_test_score: Optional[int] = None
+    day2_test_attempts: int = 0
+    day2_test_completed_at: Optional[datetime] = None
+
+    # Day 3 closing — Stage selection + seat-hold
+    stage_selected: Optional[str] = None
+    stage_price_cents: Optional[int] = None
+    seat_hold_amount_cents: Optional[int] = None
+    seat_hold_expiry: Optional[datetime] = None
+
     # Batch slots (M/A/E)
     d1_morning: bool = False
     d1_afternoon: bool = False
@@ -103,7 +128,13 @@ class LeadPublic(BaseModel):
     # CTCS fields (nullable for legacy rows until touched)
     last_action_at: Optional[datetime] = None
     next_followup_at: Optional[datetime] = None
+    retarget_at: Optional[datetime] = None
     heat_score: int = 0
+    drop_reason: Optional[str] = None
+    drop_notes: Optional[str] = None
+    dropped_at: Optional[datetime] = None
+    outcome_changed_at: Optional[datetime] = None
+    recycle_reason: Optional[str] = None
 
     @computed_field
     @property
@@ -118,7 +149,7 @@ class LeadPublic(BaseModel):
             return "DAY1"
         if self.status == "day2":
             return "DAY2"
-        if self.status in ("day3", "interview", "track_selected", "seat_hold", "converted"):
+        if self.status in ("day3", "day4", "day5", "interview", "converted"):
             return "DAY3"
         return "NONE"
 
@@ -256,11 +287,21 @@ class LeadUpdate(BaseModel):
     process_stage: Optional[str] = Field(default=None, max_length=64)
     process_task: Optional[str] = Field(default=None, max_length=128)
     process_task_done: Optional[bool] = Field(default=None)
+    # Day 3 closing — Stage picker + seat-hold (leader/admin)
+    stage_selected: Optional[str] = Field(
+        default=None, description="Stage track: 'stage1' | 'stage2' | 'stage3' (price auto-set)"
+    )
+    collect_seat_hold: Optional[bool] = Field(
+        default=None,
+        description="True = start the seat-hold reserve window (needs a selected stage)",
+    )
     no_response_attempt_count: Optional[int] = Field(default=None, ge=0, description="Optional counter")
     next_followup_at: Optional[datetime] = Field(
         default=None,
         description="When to call again (CTCS / follow-up queue)",
     )
+    drop_reason: Optional[str] = Field(default=None, max_length=32)
+    drop_notes: Optional[str] = Field(default=None, max_length=2000)
 
     @model_validator(mode="after")
     def at_least_one_field(self) -> LeadUpdate:
@@ -303,6 +344,8 @@ class LeadUpdate(BaseModel):
             self.process_stage,
             self.process_task,
             self.process_task_done,
+            self.stage_selected,
+            self.collect_seat_hold,
             self.no_response_attempt_count,
             self.next_followup_at,
         ]
@@ -329,6 +372,16 @@ class LeadUpdate(BaseModel):
             raise ValueError("Invalid lead status")
         return s
 
+
+    @field_validator("drop_reason")
+    @classmethod
+    def drop_reason_allowed(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        s = v.strip()
+        if s not in DROP_REASON_CHOICES:
+            raise ValueError(f"Invalid drop_reason; must be one of {DROP_REASON_CHOICES}")
+        return s
 
     @field_validator("call_status")
     @classmethod
@@ -471,6 +524,15 @@ class LeadPoolImportResponse(BaseModel):
 class LeadTransitionRequest(BaseModel):
     target_status: str = Field(..., max_length=32)
     notes: Optional[str] = Field(default=None, max_length=2000)
+    drop_reason: Optional[str] = Field(
+        default=None, max_length=32,
+        description="Required when target outcome is dead",
+    )
+    drop_notes: Optional[str] = Field(default=None, max_length=2000)
+    recycle_reason: Optional[str] = Field(
+        default=None, max_length=32,
+        description="Required when target outcome is recycle",
+    )
 
     @field_validator("target_status")
     @classmethod
@@ -478,6 +540,26 @@ class LeadTransitionRequest(BaseModel):
         s = v.strip()
         if s not in LEAD_STATUS_SET:
             raise ValueError("Invalid lead status")
+        return s
+
+    @field_validator("drop_reason")
+    @classmethod
+    def drop_reason_allowed(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        s = v.strip()
+        if s not in DROP_REASON_CHOICES:
+            raise ValueError(f"Invalid drop_reason; must be one of {DROP_REASON_CHOICES}")
+        return s
+
+    @field_validator("recycle_reason")
+    @classmethod
+    def recycle_reason_allowed(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        s = v.strip()
+        if s not in RECYCLE_REASON_CHOICES:
+            raise ValueError(f"Invalid recycle_reason; must be one of {RECYCLE_REASON_CHOICES}")
         return s
 
 

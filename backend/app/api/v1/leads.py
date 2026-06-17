@@ -19,6 +19,7 @@ from app.models.batch_day_submission import BatchDaySubmission
 from app.models.batch_share_link import BatchShareLink
 from app.models.lead import Lead
 from app.schemas.call_events import CallEventCreate, CallEventListResponse, CallEventPublic
+from pydantic import BaseModel
 from app.schemas.leads import (
     AllLeadsResponse,
     BatchShareUrlRequest,
@@ -42,10 +43,12 @@ from app.services.batch_watch_uploads import (
     save_batch_submission_video_file,
     save_batch_submission_voice_file,
 )
+from app.services import day2_test_service
 from app.services.lead_file_import import run_personal_lead_import
 from app.services.leads_service import LeadsService, get_leads_service, _PAYMENT_REQUIRED_STATUSES
 from app.services.team_tracking import refresh_daily_member_stat_after_change
 from app.services.downline import is_user_in_downline_of
+from app.services.lead_scope import user_can_access_lead
 from app.services.lead_owner import resolved_owner_user_id
 from app.services.leads_service import _sync_batch_completion_timestamps
 from app.db.session import AsyncSessionLocal
@@ -57,6 +60,8 @@ watch_router = APIRouter()
 
 _MAX_LIMIT = 100
 _DEFAULT_LIMIT = 50
+# MAE batches run for Day 1 and Day 2 only (3 slots each: morning/afternoon/evening).
+# Legacy d3–d6 columns remain on the model but are no longer accepted by the API.
 _BATCH_SLOTS = frozenset(
     {
         "d1_morning",
@@ -65,17 +70,6 @@ _BATCH_SLOTS = frozenset(
         "d2_morning",
         "d2_afternoon",
         "d2_evening",
-        "d3_morning",
-        "d3_afternoon",
-        "d3_evening",
-        "d4_morning",
-        "d4_afternoon",
-        "d4_evening",
-        "d5_morning",
-        "d5_afternoon",
-        "d5_evening",
-        "d6_6pm",
-        "d6_8pm",
     }
 )
 _YOUTUBE_ID_RE = re.compile(
@@ -195,26 +189,8 @@ def _parse_batch_slot_time(raw_value: str, fallback: time) -> time:
 
 
 async def _batch_slot_gate(session: AsyncSession, slot: str) -> tuple[bool, datetime | None, str | None]:
-    day_number = _batch_day_number(slot)
-    if day_number in (4, 5):
-        return True, None, None
-    # d6: time-gated at 6 PM / 8 PM IST — falls through to period-based logic below
-    period = _batch_slot_period(slot)
-    default_start = _BATCH_SLOT_DEFAULT_STARTS_IST[period]
-    configured_start = _parse_batch_slot_time(
-        await _get_setting_value(session, f"batch_{period}_start_ist"),
-        default_start,
-    )
-    now_local = now_ist()
-    opens_at = datetime.combine(now_local.date(), configured_start, tzinfo=IST)
-    if now_local >= opens_at:
-        return True, opens_at.astimezone(timezone.utc), None
-    readable = opens_at.strftime("%I:%M %p").lstrip("0")
-    return (
-        False,
-        opens_at.astimezone(timezone.utc),
-        f"This {period} batch unlocks at {readable} IST. Please come back at your scheduled batch time.",
-    )
+    # No time gating — batch links are always open, same as the original app.
+    return True, None, None
 
 
 def _to_batch_submission_public(
@@ -334,7 +310,7 @@ async def list_leads(
         default=False,
         description="When true, order leads for calling (new → follow-ups → hot → old).",
     ),
-    pre_enrollment_only: bool = Query(
+    pre_flp_min_billing_only: bool = Query(
         default=False,
         description="When true, only return leads in pre-enrollment statuses (calling board clean mode).",
     ),
@@ -361,7 +337,7 @@ async def list_leads(
         deleted_only=deleted_only,
         ctcs_filter=ctcs_filter,
         ctcs_priority_sort=ctcs_priority_sort,
-        pre_enrollment_only=pre_enrollment_only,
+        pre_flp_min_billing_only=pre_flp_min_billing_only,
         search_all_sections=search_all_sections,
         leader_all_scope=leader_all_scope,
         generated_only=generated_only,
@@ -471,6 +447,14 @@ async def generate_batch_share_url(
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
     if not await _actor_may_share_batch_link(session=session, user=user, lead=lead, slot=slot):
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    # Day-4+ batch links sit past the Day-3 FLP-billing boundary — non-admins need
+    # an approved ₹1500 payment proof first (mirrors the post-Day-3 status gate).
+    if slot[:3] in {"d4_", "d5_", "d6_"} and user.role != "admin":
+        if lead.payment_status != "approved":
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="Payment proof must be approved before sharing Day-4+ batch links.",
+            )
     existing = (
         await session.execute(
             select(BatchShareLink).where(
@@ -504,6 +488,46 @@ async def generate_batch_share_url(
     )
 
 
+class Day2TestLinkResponse(BaseModel):
+    token: str
+    test_url: str
+    status: str
+
+
+@router.post("/{lead_id}/day2-test-link", response_model=Day2TestLinkResponse)
+async def generate_day2_test_link(
+    lead_id: int,
+    request: Request,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Day2TestLinkResponse:
+    """Leader/admin issues the prospect's single Day 2 business-test link.
+
+    The prospect opens it on their own phone; the test is server-locked (random subset,
+    option shuffle, timer, no-back, server scoring). Admin can advance Day 2 → Day 3
+    only once ``day2_test_status == 'passed'``.
+    """
+    if user.role not in ("leader", "admin"):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    lead = await session.get(Lead, lead_id)
+    if lead is None or lead.deleted_at is not None or lead.in_pool:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    if not await user_can_access_lead(session, user, lead):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    try:
+        link = await day2_test_service.create_link(
+            session, lead=lead, created_by_user_id=user.user_id
+        )
+    except day2_test_service.Day2TestError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message)
+    base = str(request.base_url).rstrip("/")
+    return Day2TestLinkResponse(
+        token=link.token,
+        test_url=f"{base}/test/d2/{link.token}",
+        status=link.status,
+    )
+
+
 @router.patch("/{lead_id}", response_model=LeadPublic)
 async def update_lead(
     lead_id: int,
@@ -530,6 +554,52 @@ async def update_lead(
             body=f"Lead '{lead.name}' has been assigned to you",
             url="/dashboard/work/leads",
         )
+    return await service.serialize_lead_public(lead)
+
+
+class _ReassignBody(BaseModel):
+    assigned_to_user_id: int
+
+
+@router.post("/{lead_id}/reassign", response_model=LeadPublic)
+async def reassign_lead(
+    lead_id: int,
+    body: _ReassignBody,
+    background_tasks: BackgroundTasks,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    service: Annotated[LeadsService, Depends(get_leads_service)],
+) -> LeadPublic:
+    """Leader/admin manual reassign. Leader must own the lead's scope; target must be in their downline."""
+    if user.role not in ("admin", "leader"):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    lead = (await session.execute(select(Lead).where(Lead.id == lead_id))).scalar_one_or_none()
+    if lead is None or lead.deleted_at is not None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
+
+    if user.role == "leader":
+        if not await user_can_access_lead(session, user, lead):
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Lead not in your scope")
+        if not await is_user_in_downline_of(session, body.assigned_to_user_id, user.user_id):
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Target not in your team")
+
+    lead.assigned_to_user_id = body.assigned_to_user_id
+    lead.is_reassigned = True
+    lead.reassigned_at = datetime.now(timezone.utc)
+    await session.commit()
+    await session.refresh(lead)
+
+    if body.assigned_to_user_id != user.user_id:
+        background_tasks.add_task(
+            send_push_to_user_bg,
+            AsyncSessionLocal,
+            body.assigned_to_user_id,
+            title="Lead Assigned",
+            body=f"Lead '{lead.name}' has been assigned to you",
+            url="/dashboard/work/leads",
+        )
+
     return await service.serialize_lead_public(lead)
 
 

@@ -388,6 +388,34 @@ async def training_test_submit(
     )
 
 
+@router.post("/tutorial-complete")
+async def tutorial_complete(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Mark onboarding tutorial as completed so the walkthrough no longer shows."""
+    urow = await session.get(User, user.user_id)
+    if urow is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    urow.tutorial_pending = False
+    await session.commit()
+    return {"ok": True}
+
+
+@router.post("/tutorial-reset")
+async def tutorial_reset(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Reset tutorial flag so the walkthrough shows again on next load."""
+    urow = await session.get(User, user.user_id)
+    if urow is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    urow.tutorial_pending = True
+    await session.commit()
+    return {"ok": True}
+
+
 @router.get("/decision-engine", response_model=SystemStubResponse)
 async def system_decision_engine(
     user: Annotated[AuthUser, Depends(require_auth_user)],

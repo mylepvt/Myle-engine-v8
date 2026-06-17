@@ -147,6 +147,73 @@ export function useWhatsAppLeadersQuery(enabled = true) {
   })
 }
 
+// ── Management Updates ──────────────────────────────────────────────
+
+export type ManagementSendResult = {
+  ok: boolean
+  label: string
+  info: string
+  error: string
+  sent: boolean
+}
+
+export type ManagementConfigResult = {
+  phone: string
+}
+
+async function sendManagementUpdate(payload: { type: string; phone?: string }) {
+  const params = new URLSearchParams({ type: payload.type })
+  if (payload.phone) params.set('phone', payload.phone)
+  const res = await apiFetch(`/api/v1/admin/whatsapp/management-update?${params}`, { method: 'POST' })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { detail?: string }).detail ?? `HTTP ${res.status}`)
+  }
+  return res.json() as Promise<ManagementSendResult>
+}
+
+export function useSendManagementUpdateMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: sendManagementUpdate,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['whatsapp', 'logs'] }),
+  })
+}
+
+async function fetchManagementConfig(): Promise<ManagementConfigResult> {
+  const res = await apiFetch('/api/v1/admin/whatsapp/management-config')
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
+}
+
+export function useManagementConfigQuery(enabled = true) {
+  return useQuery({
+    queryKey: ['whatsapp', 'management-config'],
+    queryFn: fetchManagementConfig,
+    enabled,
+    staleTime: 60_000,
+  })
+}
+
+async function saveManagementConfig(phone: string) {
+  const res = await apiFetch(`/api/v1/admin/whatsapp/management-config?phone=${encodeURIComponent(phone)}`, {
+    method: 'POST',
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { detail?: string }).detail ?? `HTTP ${res.status}`)
+  }
+  return res.json() as Promise<ManagementConfigResult>
+}
+
+export function useSaveManagementConfigMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: saveManagementConfig,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['whatsapp', 'management-config'] }),
+  })
+}
+
 export type BroadcastResultItem = {
   user_id: number
   name: string

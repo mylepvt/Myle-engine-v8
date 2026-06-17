@@ -80,12 +80,13 @@ export function DashboardSidebar({
                     const label = resolveItemLabel(item, shellRole)
                     const Icon = getDashboardNavIcon(item.path)
                     return (
-                      <li key={item.path || 'index'}>
+                        <li key={item.path || 'index'}>
                         <NavLink
                           to={to}
                           end={item.end ?? false}
+                          data-tour={item.path.split('/')[0]}
                           aria-label={
-                            item.path === 'team/enrollment-approvals' && pendingEnrollCount > 0
+                            item.path === 'team/flp-min-billing' && pendingEnrollCount > 0
                               ? `${label}, ${pendingEnrollCount} pending`
                               : undefined
                           }
@@ -97,8 +98,8 @@ export function DashboardSidebar({
                               'group flex min-h-[36px] items-center gap-2.5 rounded px-2 py-1.5 text-sm font-medium',
                               'transition-[background-color,color] duration-100',
                               isActive
-                                ? 'bg-[rgba(88,101,242,0.20)] text-primary font-semibold'
-                                : 'text-muted-foreground hover:bg-[rgba(255,255,255,0.06)] hover:text-foreground',
+                                ? 'bg-primary/20 text-primary font-semibold'
+                                : 'text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground',
                             )
                           }
                         >
@@ -114,7 +115,7 @@ export function DashboardSidebar({
                                 aria-hidden
                               />
                               <span className="min-w-0 flex-1 truncate">{label}</span>
-                              {item.path === 'team/enrollment-approvals' && pendingEnrollCount > 0 ? (
+                              {item.path === 'team/flp-min-billing' && pendingEnrollCount > 0 ? (
                                 <span
                                   className={cn(
                                     'shrink-0 rounded px-1.5 py-0.5 text-ds-label font-bold tabular-nums',

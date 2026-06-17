@@ -1,6 +1,11 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Headphones, MessageSquareText, NotebookPen, Video } from 'lucide-react'
+import {
+  Headphones,
+  MessageSquareText,
+  NotebookPen,
+  Video,
+} from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -14,17 +19,14 @@ import {
   usePatchLeadDetailMutation,
   useResetStageClockMutation,
 } from '@/hooks/use-lead-detail-query'
-import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
+import { LeadBillingCard } from '@/components/leads/LeadBillingCard'
 import { LeadNextStepPanel } from '@/components/leads/LeadNextStepPanel'
 import { LeadNotesPanel } from '@/components/leads/LeadNotesPanel'
 import { apiUrl } from '@/lib/api'
 import { callStatusSelectOptions } from '@/lib/call-status-options'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
-import {
-  openExternalShareUrl,
-} from '@/lib/external-share-window'
-import { buildLiveSessionWhatsAppUrl, type LiveSessionSlotOption } from '@/lib/live-session-slots'
+import { sendEnrollmentLiveLink } from '@/lib/enrollment-send'
 import { leadStatusSelectOptionsForLead, teamLeadStatusSelectOptions } from '@/lib/team-lead-status'
 
 type Props = {
@@ -47,16 +49,15 @@ function StatusBadge({ status }: { status: string }) {
   const cls: Record<string, string> = {
     new: 'bg-primary/15 text-primary',
     new_lead: 'bg-primary/15 text-primary',
-    contacted: 'bg-sky-400/15 text-sky-400',
-    invited: 'bg-violet-400/15 text-violet-400',
-    whatsapp_sent: 'bg-pink-400/15 text-pink-400',
-    video_sent: 'bg-indigo-400/15 text-indigo-400',
-    video_watched: 'bg-blue-400/15 text-blue-400',
-    paid: 'bg-amber-400/15 text-amber-400',
-    mindset_lock: 'bg-fuchsia-400/15 text-fuchsia-400',
-    day1: 'bg-orange-400/15 text-orange-400',
-    day2: 'bg-yellow-400/15 text-yellow-400',
-    day3: 'bg-lime-400/15 text-lime-400',
+    contacted: 'bg-sky-500/10 text-sky-600 dark:bg-sky-400/15 dark:text-sky-400',
+    invited: 'bg-violet-500/10 text-violet-600 dark:bg-violet-400/15 dark:text-violet-400',
+    whatsapp_sent: 'bg-pink-500/10 text-pink-600 dark:bg-pink-400/15 dark:text-pink-400',
+    video_sent: 'bg-indigo-500/10 text-indigo-600 dark:bg-indigo-400/15 dark:text-indigo-400',
+    video_watched: 'bg-blue-500/10 text-blue-600 dark:bg-blue-400/15 dark:text-blue-400',
+    paid: 'bg-amber-500/10 text-amber-600 dark:bg-amber-400/15 dark:text-amber-400',
+    day1: 'bg-orange-500/10 text-orange-600 dark:bg-orange-400/15 dark:text-orange-400',
+    day2: 'bg-yellow-500/10 text-yellow-600 dark:bg-yellow-400/15 dark:text-yellow-400',
+    day3: 'bg-lime-500/10 text-lime-600 dark:bg-lime-400/15 dark:text-lime-400',
     converted: 'bg-[hsl(142_71%_48%)]/15 text-[hsl(142_71%_48%)]',
     lost: 'bg-destructive/15 text-destructive',
   }
@@ -71,8 +72,8 @@ function StatusBadge({ status }: { status: string }) {
 
 function PaymentStatusBadge({ status }: { status: string }) {
   const cls: Record<string, string> = {
-    pending: 'bg-amber-400/15 text-amber-400',
-    proof_uploaded: 'bg-sky-400/15 text-sky-400',
+    pending: 'bg-amber-500/10 text-amber-600 dark:bg-amber-400/15 dark:text-amber-400',
+    proof_uploaded: 'bg-sky-500/10 text-sky-600 dark:bg-sky-400/15 dark:text-sky-400',
     approved: 'bg-[hsl(142_71%_48%)]/15 text-[hsl(142_71%_48%)]',
     rejected: 'bg-destructive/15 text-destructive',
   }
@@ -113,7 +114,7 @@ function BatchSubmissionCard({ submission }: { submission: LeadBatchSubmission }
           <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
             {batchSubmissionLabel(submission.slot)}
           </span>
-          <span className="rounded-full border border-white/10 bg-muted/50 px-2.5 py-0.5 text-xs text-muted-foreground">
+          <span className="rounded-full border border-border dark:border-white/10 bg-muted/50 px-2.5 py-0.5 text-xs text-muted-foreground">
             Day {submission.day_number}
           </span>
         </div>
@@ -123,7 +124,7 @@ function BatchSubmissionCard({ submission }: { submission: LeadBatchSubmission }
       </div>
 
       {submission.notes_text ? (
-        <div className="rounded-md border border-white/10 bg-muted/40 p-3">
+        <div className="rounded-md border border-border dark:border-white/10 bg-muted/40 p-3">
           <div className="mb-2 flex items-center gap-2 text-ds-label uppercase text-muted-foreground">
             <MessageSquareText className="size-3.5" />
             Lead message
@@ -132,8 +133,8 @@ function BatchSubmissionCard({ submission }: { submission: LeadBatchSubmission }
         </div>
       ) : null}
 
-      <div className="grid gap-3">
-        <div className="rounded-md border border-white/10 bg-muted/40 p-3">
+      <div className="grid grid-cols-1 gap-3">
+        <div className="rounded-md border border-border dark:border-white/10 bg-muted/40 p-3">
           <div className="flex items-center gap-2 text-sm font-medium text-foreground">
             <NotebookPen className="size-4" />
             Notes file
@@ -152,7 +153,7 @@ function BatchSubmissionCard({ submission }: { submission: LeadBatchSubmission }
           )}
         </div>
 
-        <div className="rounded-md border border-white/10 bg-muted/40 p-3">
+        <div className="rounded-md border border-border dark:border-white/10 bg-muted/40 p-3">
           <div className="flex items-center gap-2 text-sm font-medium text-foreground">
             <Headphones className="size-4" />
             Voice note
@@ -164,7 +165,7 @@ function BatchSubmissionCard({ submission }: { submission: LeadBatchSubmission }
           )}
         </div>
 
-        <div className="rounded-md border border-white/10 bg-muted/40 p-3">
+        <div className="rounded-md border border-border dark:border-white/10 bg-muted/40 p-3">
           <div className="flex items-center gap-2 text-sm font-medium text-foreground">
             <Video className="size-4" />
             Practice video
@@ -190,6 +191,7 @@ function BatchSubmissionCard({ submission }: { submission: LeadBatchSubmission }
   )
 }
 
+
 export function LeadDetailPage({ leadId }: Props) {
   const { role, serverRole } = useDashboardShellRole()
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
@@ -214,7 +216,6 @@ export function LeadDetailPage({ leadId }: Props) {
   const [pipelineStatus, setPipelineStatus] = useState('')
   const [pipelineCallStatus, setPipelineCallStatus] = useState('')
   const [pipelineError, setPipelineError] = useState('')
-  const [pipelineSlotPickerOpen, setPipelineSlotPickerOpen] = useState(false)
   const [resetClockError, setResetClockError] = useState('')
 
   // Notes card
@@ -250,31 +251,18 @@ export function LeadDetailPage({ leadId }: Props) {
     setPipelineError('')
     try {
       if (pipelineStatus === 'video_sent') {
-        setPipelineSlotPickerOpen(true)
+        // Enrollment-Live: one tokenized /watch link (no time-slot picker); the send
+        // moves the lead to video_sent server-side.
+        await sendEnrollmentLiveLink(lead)
+        if (pipelineCallStatus) {
+          await patchMut.mutateAsync({ leadId, body: { call_status: pipelineCallStatus } })
+        }
         return
       }
       await patchMut.mutateAsync({
         leadId,
         body: { status: pipelineStatus as LeadStatus, call_status: pipelineCallStatus || undefined },
       })
-    } catch (e) {
-      setPipelineError(e instanceof Error ? e.message : 'Save failed')
-    }
-  }
-
-  async function handlePipelineSessionShare(option: LiveSessionSlotOption) {
-    if (!lead) return
-    setPipelineError('')
-    try {
-      await patchMut.mutateAsync({
-        leadId,
-        body: { status: 'video_sent', call_status: pipelineCallStatus || undefined },
-      })
-      const shareUrl = buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option)
-      if (!shareUrl || !openExternalShareUrl(shareUrl)) {
-        throw new Error('Could not open WhatsApp share window')
-      }
-      setPipelineSlotPickerOpen(false)
     } catch (e) {
       setPipelineError(e instanceof Error ? e.message : 'Save failed')
     }
@@ -345,9 +333,7 @@ export function LeadDetailPage({ leadId }: Props) {
     setResetClockError('')
     const currentStageLabel = LEAD_STATUS_OPTIONS.find((option) => option.value === lead.status)?.label ?? lead.status
     const confirmed = window.confirm(
-      lead.status === 'mindset_lock'
-        ? 'Reset the Mindset Lock timer for this lead? This keeps the lead in Mindset Lock and restarts the 5-minute countdown.'
-        : `Reset the ${currentStageLabel} clock for this lead? This keeps the lead in ${currentStageLabel} and restarts that stage timer.`,
+      `Reset the ${currentStageLabel} clock for this lead? This keeps the lead in ${currentStageLabel} and restarts that stage timer.`,
     )
     if (!confirmed) return
     try {
@@ -361,7 +347,7 @@ export function LeadDetailPage({ leadId }: Props) {
     return (
       <div className="max-w-4xl space-y-4 p-4" aria-busy="true">
         <Skeleton className="h-8 w-64" />
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Skeleton className="h-40 w-full" />
           <Skeleton className="h-40 w-full" />
         </div>
@@ -392,11 +378,8 @@ export function LeadDetailPage({ leadId }: Props) {
 
   const currentStageLabel = LEAD_STATUS_OPTIONS.find((option) => option.value === lead.status)?.label ?? lead.status
   const stageClockHelpText =
-    lead.status === 'mindset_lock'
-      ? 'Admin-only: restart the 5-minute Mindset Lock timer without moving this lead out of Mindset Lock.'
-      : `Admin-only: restart the ${currentStageLabel} stage clock without moving this lead out of ${currentStageLabel}.`
-  const stageClockButtonLabel =
-    lead.status === 'mindset_lock' ? 'Reset Mindset Lock Clock' : `Reset ${currentStageLabel} Clock`
+    `Admin-only: restart the ${currentStageLabel} stage clock without moving this lead out of ${currentStageLabel}.`
+  const stageClockButtonLabel = `Reset ${currentStageLabel} Clock`
 
   return (
     <>
@@ -418,7 +401,7 @@ export function LeadDetailPage({ leadId }: Props) {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-2">
         {/* LEFT COLUMN */}
         <div className="space-y-4">
           {/* Contact card */}
@@ -488,7 +471,7 @@ export function LeadDetailPage({ leadId }: Props) {
                   id="pipeline-status"
                   value={pipelineStatus}
                   onChange={(e) => setPipelineStatus(e.target.value)}
-                  className="w-full rounded-md border border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+                  className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
                 >
                   {pipelineStatusOptions.map((o) => (
                     <option key={o.value} value={o.value}>
@@ -508,7 +491,7 @@ export function LeadDetailPage({ leadId }: Props) {
                   id="pipeline-call-status"
                   value={pipelineCallStatus}
                   onChange={(e) => setPipelineCallStatus(e.target.value)}
-                  className="w-full rounded-md border border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+                  className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
                 >
                   <option value="">None</option>
                   {pipelineCallStatusOptions.map((o) => (
@@ -532,7 +515,7 @@ export function LeadDetailPage({ leadId }: Props) {
                 </p>
               ) : null}
               {surfaceRole === 'admin' ? (
-                <div className="rounded-md border border-amber-400/20 bg-amber-400/5 p-3">
+                <div className="rounded-md border border-amber-500/20 bg-amber-500/5 p-3 dark:border-amber-400/20 dark:bg-amber-400/5">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-sm font-medium text-foreground">Stage Clock Control</p>
@@ -575,7 +558,7 @@ export function LeadDetailPage({ leadId }: Props) {
                     checked={!!lead[field]}
                     disabled={patchMut.isPending}
                     onChange={() => void toggleDayCompleted(field, lead[field])}
-                    className="h-4 w-4 rounded border-white/12 bg-muted/50 accent-primary"
+                    className="h-4 w-4 rounded border-border dark:border-white/12 bg-muted/50 accent-primary"
                   />
                   <span className="text-foreground">{label}</span>
                   {lead[field] ? (
@@ -623,7 +606,7 @@ export function LeadDetailPage({ leadId }: Props) {
                     id="call-outcome"
                     value={callOutcome}
                     onChange={(e) => setCallOutcome(e.target.value)}
-                    className="w-full rounded-md border border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+                    className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
                   >
                     {CALL_OUTCOME_OPTIONS.map((o) => (
                       <option key={o.value} value={o.value}>
@@ -645,7 +628,7 @@ export function LeadDetailPage({ leadId }: Props) {
                     min="0"
                     value={callDuration}
                     onChange={(e) => setCallDuration(e.target.value)}
-                    className="w-full rounded-md border border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+                    className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
                     placeholder="e.g. 120"
                   />
                 </div>
@@ -661,7 +644,7 @@ export function LeadDetailPage({ leadId }: Props) {
                     value={callNotes}
                     onChange={(e) => setCallNotes(e.target.value)}
                     rows={2}
-                    className="w-full rounded-md border border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 resize-none"
+                    className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 resize-none"
                     placeholder="What was discussed…"
                   />
                 </div>
@@ -708,7 +691,6 @@ export function LeadDetailPage({ leadId }: Props) {
               </ul>
             ) : null}
           </div>
-
           {/* Notes card */}
           <div className="surface-elevated p-4 space-y-3">
             <p className="text-ds-label uppercase text-muted-foreground">Notes</p>
@@ -716,7 +698,7 @@ export function LeadDetailPage({ leadId }: Props) {
               value={notes}
               onChange={(e) => handleNotesChange(e.target.value)}
               rows={4}
-              className="w-full rounded-md border border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 resize-none"
+              className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 resize-none"
               placeholder="Add notes about this lead…"
             />
             <div className="flex items-center gap-3">
@@ -815,7 +797,7 @@ export function LeadDetailPage({ leadId }: Props) {
                           FLP invoice leader Workboard par upload karta hai. Yahan se sirf status dekh
                           ya{' '}
                           <Link
-                            to="/dashboard/team/enrollment-approvals"
+                            to="/dashboard/team/flp-min-billing"
                             className="font-medium text-primary underline-offset-2 hover:underline"
                           >
                             approvals
@@ -829,15 +811,12 @@ export function LeadDetailPage({ leadId }: Props) {
               </div>
             </div>
           </div>
+
+          {/* CC / Billing card — Day 3 + Day 6 invoice capture */}
+          <LeadBillingCard leadId={lead.id} surfaceRole={surfaceRole} />
         </div>
       </div>
     </div>
-    <LiveSessionSlotPicker
-      open={pipelineSlotPickerOpen}
-      busy={patchMut.isPending}
-      onClose={() => setPipelineSlotPickerOpen(false)}
-      onConfirm={(option) => void handlePipelineSessionShare(option)}
-    />
     </>
   )
 }

@@ -41,29 +41,6 @@ function resolveWish(date: Date): string {
   return 'Good night'
 }
 
-function formatRemaining(expiresAt: string | null, nowMs: number): string {
-  if (!expiresAt) return '50m starts when this room opens'
-  const diff = new Date(expiresAt).getTime() - nowMs
-  if (diff <= 0) return 'Expired'
-  const totalSeconds = Math.ceil(diff / 1000)
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  return `${minutes}m ${seconds.toString().padStart(2, '0')}s left`
-}
-
-function formatPlaybackTime(value: number): string {
-  if (!Number.isFinite(value) || value <= 0) return '0:00'
-  const safeSeconds = Math.max(0, Math.floor(value))
-  const minutes = Math.floor(safeSeconds / 60)
-  const seconds = safeSeconds % 60
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`
-}
-
-function easeOutCubic(value: number): number {
-  const clamped = Math.min(1, Math.max(0, value))
-  return 1 - Math.pow(1 - clamped, 3)
-}
-
 function resolveGreetingName(rawValue: string | null | undefined): string | null {
   const value = (rawValue || '').trim()
   if (!value) return null
@@ -140,7 +117,6 @@ export function WatchPage() {
   const [watchCompleted, setWatchCompleted] = useState(false)
   const [playing, setPlaying] = useState(false)
   const [playerError, setPlayerError] = useState<string | null>(null)
-  const [currentSeconds, setCurrentSeconds] = useState(0)
   const [durationSeconds, setDurationSeconds] = useState(0)
   const [completing, setCompleting] = useState(false)
   const [nowMs, setNowMs] = useState(() => Date.now())
@@ -184,7 +160,6 @@ export function WatchPage() {
         maxAllowedTimeRef.current = 0
         setPlaying(false)
         setPlayerError(null)
-        setCurrentSeconds(0)
         setDurationSeconds(0)
         setLoading(false)
       })
@@ -206,46 +181,7 @@ export function WatchPage() {
   const greetingName = useMemo(() => resolveGreetingName(data?.lead_name), [data?.lead_name])
   const heroGreeting = greetingName ? `${wish}, ${greetingName}` : wish
   const heroHeading = useMemo(() => resolveProspectHeading(data?.title), [data?.title])
-  const countdown = useMemo(
-    () => (data ? formatRemaining(data.expires_at, nowMs) : ''),
-    [data, nowMs],
-  )
   const videoSrc = data?.stream_url ? apiUrl(data.stream_url) : null
-  const playbackWindowSeconds = durationSeconds > 0 ? durationSeconds : 15 * 60
-  const socialProofProgress = easeOutCubic(playbackWindowSeconds > 0 ? currentSeconds / playbackWindowSeconds : 0)
-  const socialProofStart = data?.social_proof_count != null
-    ? Math.max(data.social_proof_count - Math.min(24, Math.max(8, Math.round(data.social_proof_count * 0.06))), 0)
-    : null
-  const displayedSocialProof = data?.social_proof_count != null && socialProofStart != null
-    ? Math.round(socialProofStart + (data.social_proof_count - socialProofStart) * socialProofProgress)
-    : null
-  const seatsLeftStart = data?.seats_left != null
-    ? Math.min(
-        data.total_seats ?? Number.MAX_SAFE_INTEGER,
-        data.seats_left + Math.min(6, Math.max(2, Math.round((data.total_seats ?? data.seats_left) * 0.12))),
-      )
-    : null
-  const displayedSeatsLeft = data?.seats_left != null && seatsLeftStart != null
-    ? Math.max(
-        data.seats_left,
-        Math.round(seatsLeftStart - (seatsLeftStart - data.seats_left) * socialProofProgress),
-      )
-    : null
-  const intakeHighlights = [
-    displayedSocialProof != null ? `${displayedSocialProof} applications reviewed` : null,
-    displayedSeatsLeft != null ? `${displayedSeatsLeft} places currently available` : null,
-  ].filter((value): value is string => Boolean(value))
-  const intakeSummary = intakeHighlights.join(' • ')
-  const showSoftSnapshot = Boolean(intakeSummary || data?.trust_note)
-  const progressPercent = durationSeconds > 0 ? Math.min(100, (currentSeconds / durationSeconds) * 100) : 0
-  const progressLabel = `${formatPlaybackTime(currentSeconds)} / ${formatPlaybackTime(durationSeconds)}`
-  const playerButtonLabel = playing
-    ? 'Pause'
-    : watchCompleted
-      ? 'Play again'
-      : currentSeconds > 0
-        ? 'Resume'
-        : 'Play introduction'
   const playerStatusTitle = watchCompleted ? 'Thanks for watching' : playMarked ? 'Now playing' : 'Press play to begin'
   const playerStatusBody = watchCompleted
     ? 'You can replay this introduction anytime while this private access window is active.'
@@ -275,10 +211,10 @@ export function WatchPage() {
       maxAllowedTimeRef.current = 0
       setPlaying(false)
       setPlayerError(null)
-      setCurrentSeconds(0)
       setDurationSeconds(0)
       setName('')
       setPhone('')
+      setTimeout(() => videoRef.current?.play(), 100)
     } catch (err) {
       setUnlockError(err instanceof Error ? err.message : 'Could not verify number.')
     } finally {
@@ -356,26 +292,6 @@ export function WatchPage() {
     }
   }
 
-  async function togglePlayback() {
-    const video = videoRef.current
-    if (!video) return
-    setPlayerError(null)
-    try {
-      if (video.paused) {
-        if (watchCompleted && durationSeconds > 0 && currentSeconds >= Math.max(0, durationSeconds - 1)) {
-          video.currentTime = 0
-          maxAllowedTimeRef.current = 0
-          setCurrentSeconds(0)
-        }
-        await video.play()
-        return
-      }
-      video.pause()
-    } catch (err) {
-      setPlayerError(err instanceof Error ? err.message : 'Could not control secure playback.')
-    }
-  }
-
   useEffect(() => {
     if (!token || !data?.access_granted || !playing) return
     const id = window.setInterval(() => {
@@ -408,11 +324,7 @@ export function WatchPage() {
                   Live
                 </span>
               ) : null}
-              {data ? (
-                <p className="rounded-full border border-[#3f537d] bg-[#0b1120] px-4 py-2 text-sm font-semibold text-[#c9d9ff] shadow-[0_14px_34px_-24px_rgba(132,165,255,0.35)]">
-                  {countdown}
-                </p>
-              ) : null}
+
             </div>
           </div>
         </header>
@@ -457,19 +369,6 @@ export function WatchPage() {
                   </div>
                 </div>
               </section>
-
-              {showSoftSnapshot ? (
-                <section className="rounded-[1.8rem] border border-white/8 bg-white/[0.035] px-5 py-4 shadow-[0_24px_90px_-70px_rgba(0,0,0,0.9)] backdrop-blur-xl sm:px-6">
-                  {intakeSummary ? (
-                    <p className="text-sm font-medium text-[#d9e7ff]">{intakeSummary}</p>
-                  ) : null}
-                  {data.trust_note ? (
-                    <p className={`${intakeSummary ? 'mt-1.5' : ''} text-ds-body text-[#9eabc7]`}>
-                      {data.trust_note}
-                    </p>
-                  ) : null}
-                </section>
-              ) : null}
 
               {!data.access_granted ? (
                 <section className="mx-auto w-full max-w-xl rounded-[2rem] border border-white/10 bg-[linear-gradient(170deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] px-5 py-6 shadow-[0_34px_120px_-80px_rgba(0,0,0,0.95)] backdrop-blur-2xl sm:px-6">
@@ -537,6 +436,7 @@ export function WatchPage() {
                             src={videoSrc}
                             crossOrigin="use-credentials"
                             playsInline
+                            autoPlay
                             preload="metadata"
                             controls={false}
                             controlsList="nodownload nofullscreen noplaybackrate noremoteplayback"
@@ -548,7 +448,6 @@ export function WatchPage() {
                                 ? e.currentTarget.duration
                                 : 0
                               setDurationSeconds(nextDuration)
-                              setCurrentSeconds(e.currentTarget.currentTime || 0)
                               maxAllowedTimeRef.current = Math.max(maxAllowedTimeRef.current, e.currentTarget.currentTime || 0)
                             }}
                             onPlay={() => {
@@ -557,13 +456,15 @@ export function WatchPage() {
                                 void handleFirstPlay()
                               }
                             }}
-                            onPause={() => setPlaying(false)}
+                            onPause={() => {
+                              setPlaying(false)
+                              videoRef.current?.play()
+                            }}
                             onTimeUpdate={(e) => {
                               const nextTime = e.currentTarget.currentTime || 0
                               const nextDuration = Number.isFinite(e.currentTarget.duration)
                                 ? e.currentTarget.duration
                                 : 0
-                              setCurrentSeconds(nextTime)
                               if (nextDuration > 0) {
                                 setDurationSeconds(nextDuration)
                               }
@@ -581,7 +482,6 @@ export function WatchPage() {
                             }}
                             onEnded={() => {
                               setPlaying(false)
-                              setCurrentSeconds(durationSeconds)
                               maxAllowedTimeRef.current = durationSeconds
                               void handleCompleteWatch()
                             }}
@@ -590,37 +490,8 @@ export function WatchPage() {
                         </div>
 
                         <div className="mt-4 rounded-[1.4rem] border border-white/10 bg-white/[0.045] p-4 text-white/90">
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                              <p className="text-base font-semibold text-white">{playerStatusTitle}</p>
-                              <p className="mt-1 text-ds-body text-[#b6c6e7]">{playerStatusBody}</p>
-                              {data.viewer_name || data.viewer_phone ? (
-                                <p className="mt-2 text-xs text-white/55">
-                                  Watching as {[data.viewer_name, data.viewer_phone].filter(Boolean).join(' · ')}
-                                </p>
-                              ) : null}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => void togglePlayback()}
-                              disabled={!videoSrc || completing}
-                              className="inline-flex h-11 items-center justify-center rounded-md bg-[#dce7ff] px-5 text-sm font-semibold text-[#0a1530] transition hover:bg-[#c6d8ff] disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              {playerButtonLabel}
-                            </button>
-                          </div>
-
-                          <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
-                            <div
-                              className="h-full rounded-full bg-[#8fb4ff] transition-[width]"
-                              style={{ width: `${progressPercent}%` }}
-                            />
-                          </div>
-
-                          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-white/70">
-                            <span>{currentSeconds > 0 || watchCompleted ? progressLabel : null}</span>
-                            <span>{watchCompleted ? 'Thanks for watching.' : 'Please watch through to the end.'}</span>
-                          </div>
+                          <p className="text-base font-semibold text-white">{playerStatusTitle}</p>
+                          <p className="mt-1 text-ds-body text-[#b6c6e7]">{playerStatusBody}</p>
 
                           {completing ? <p className="mt-3 text-xs text-[#8fb4ff]">Finishing up…</p> : null}
                           {playerError ? (

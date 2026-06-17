@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom'
 import { ArrowRight, Clock3 } from 'lucide-react'
 
+import { CcSummaryCard } from '@/components/dashboard/CcSummaryCard'
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
+import { HandedOffLeadsSection } from '@/components/dashboard/HandedOffLeadsSection'
 import { XpBadge } from '@/components/xp/XpBadge'
 import { Card, CardContent } from '@/components/ui/card'
 import type { HomeQuickAction } from '@/config/dashboard-home-actions'
@@ -18,6 +20,8 @@ type Props = {
   funnel: TeamPersonalFunnel | undefined
   today: TeamTodayStats | undefined
   recentLeads: LeadPublic[]
+  handedOffLeads: LeadPublic[]
+  handedOffPending: boolean
   quickActions: HomeQuickAction[]
 }
 
@@ -40,6 +44,8 @@ export function TeamDashboardHomeModern({
   funnel,
   today,
   recentLeads,
+  handedOffLeads,
+  handedOffPending,
   quickActions,
 }: Props) {
   const topActions = quickActions.slice(0, 4)
@@ -87,12 +93,12 @@ export function TeamDashboardHomeModern({
               </p>
             </div>
 
-            <div className="shrink-0 rounded-[1.2rem] border border-white/10 bg-white/10 px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md">
+            <div className="shrink-0 rounded-[1.2rem] border border-border dark:border-white/10 bg-[color-mix(in_srgb,var(--foreground)_10%,transparent)] px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md">
               <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-blue-100/68">
-                Enrolled
+                Min. FLP Billed
               </p>
               <p className="mt-1 text-2xl font-semibold leading-none text-white">
-                {today?.enrolled_today ?? 0}
+                {today?.flp_min_billing_today ?? 0}
               </p>
               <p className="mt-1 text-[0.72rem] text-blue-100/70">
                 {enrolledPct}% from claimed
@@ -101,7 +107,7 @@ export function TeamDashboardHomeModern({
           </div>
 
           <div className="grid grid-cols-3 gap-2">
-            <div className="rounded-[1.15rem] border border-white/10 bg-white/[0.08] px-3 py-3 backdrop-blur-sm">
+            <div className="rounded-[1.15rem] border border-border dark:border-white/10 bg-[color-mix(in_srgb,var(--foreground)_8%,transparent)] px-3 py-3 backdrop-blur-sm">
               <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-blue-100/64">
                 Today&apos;s leads
               </p>
@@ -109,7 +115,7 @@ export function TeamDashboardHomeModern({
                 {today?.claimed_today ?? 0}
               </p>
             </div>
-            <div className="rounded-[1.15rem] border border-white/10 bg-white/[0.08] px-3 py-3 backdrop-blur-sm">
+            <div className="rounded-[1.15rem] border border-border dark:border-white/10 bg-[color-mix(in_srgb,var(--foreground)_8%,transparent)] px-3 py-3 backdrop-blur-sm">
               <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-blue-100/64">
                 Calls
               </p>
@@ -122,7 +128,7 @@ export function TeamDashboardHomeModern({
           {primaryAction ? (
             <Link
               to={primaryAction.to}
-              className="group flex items-center justify-between rounded-[1.25rem] border border-white/10 bg-white/[0.14] px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md transition hover:bg-white/[0.18]"
+              className="group flex items-center justify-between rounded-[1.25rem] border border-border dark:border-white/10 bg-[color-mix(in_srgb,var(--foreground)_14%,transparent)] px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md transition hover:bg-[color-mix(in_srgb,var(--foreground)_18%,transparent)]"
             >
               <div className="min-w-0">
                 <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-blue-100/64">
@@ -150,7 +156,7 @@ export function TeamDashboardHomeModern({
                 <Link
                   key={action.path}
                   to={action.to}
-                  className="inline-flex min-h-[42px] items-center gap-2 rounded-full border border-white/10 bg-white/[0.08] px-3.5 py-2 text-xs font-semibold text-blue-50 transition hover:bg-white/[0.13]"
+                  className="inline-flex min-h-[42px] items-center gap-2 rounded-full border border-border dark:border-white/10 bg-[color-mix(in_srgb,var(--foreground)_8%,transparent)] px-3.5 py-2 text-xs font-semibold text-blue-50 transition hover:bg-[color-mix(in_srgb,var(--foreground)_13%,transparent)]"
                 >
                   <action.Icon
                     className="size-3.5 shrink-0 text-blue-100/90"
@@ -158,7 +164,7 @@ export function TeamDashboardHomeModern({
                   />
                   <span>{action.label}</span>
                   {action.badgeCount != null ? (
-                    <span className="rounded-full bg-white/12 px-1.5 py-0.5 text-[0.65rem] text-blue-50">
+                    <span className="rounded-full bg-[color-mix(in_srgb,var(--foreground)_12%,transparent)] px-1.5 py-0.5 text-[0.65rem] text-blue-50">
                       {action.badgeCount}
                     </span>
                   ) : null}
@@ -172,6 +178,10 @@ export function TeamDashboardHomeModern({
       <XpBadge />
 
       <GateAssistantCard sessionReady={sessionReady} />
+
+      <CcSummaryCard enabled={sessionReady} />
+
+      <HandedOffLeadsSection leads={handedOffLeads} pending={handedOffPending} />
 
       <section className="space-y-2">
         <div className="flex items-center justify-between px-1">

@@ -10,6 +10,8 @@ import {
   useLeadControlBulkReassignMutation,
   useLeadControlManualReassignMutation,
   useLeadControlQuery,
+  useLeadControlRevertMutation,
+  type LeadControlHistoryRow,
 } from '@/hooks/use-lead-control-query'
 import { LEAD_STATUS_OPTIONS } from '@/hooks/use-leads-query'
 
@@ -63,6 +65,7 @@ export function LeadControlPage({ title }: Props) {
   const query = useLeadControlQuery()
   const manualReassign = useLeadControlManualReassignMutation()
   const bulkReassign = useLeadControlBulkReassignMutation()
+  const revert = useLeadControlRevertMutation()
   const queue = query.data?.queue ?? []
   const assignableUsers = query.data?.assignable_users ?? []
   const historySummary = query.data?.history_summary ?? []
@@ -74,6 +77,9 @@ export function LeadControlPage({ title }: Props) {
   const [reason, setReason] = useState('')
   const [submitError, setSubmitError] = useState('')
   const [submitMessage, setSubmitMessage] = useState('')
+  const [revertingId, setRevertingId] = useState<number | null>(null)
+  const [revertError, setRevertError] = useState('')
+  const [revertMessage, setRevertMessage] = useState('')
 
   useEffect(() => {
     if (queue.length === 0) {
@@ -147,6 +153,23 @@ export function LeadControlPage({ title }: Props) {
       setSubmitMessage(result.message)
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'Could not reassign this lead right now.')
+    }
+  }
+
+  async function handleRevert(row: LeadControlHistoryRow) {
+    setRevertError('')
+    setRevertMessage('')
+    setRevertingId(row.activity_id)
+    try {
+      const result = await revert.mutateAsync({
+        leadId: row.lead_id,
+        activityId: row.activity_id,
+      })
+      setRevertMessage(result.message)
+    } catch (error) {
+      setRevertError(error instanceof Error ? error.message : 'Could not revert this reassignment right now.')
+    } finally {
+      setRevertingId(null)
     }
   }
 
@@ -243,7 +266,7 @@ export function LeadControlPage({ title }: Props) {
             </CardContent>
           </Card>
 
-          <section className="grid gap-4 md:grid-cols-4">
+          <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <StatCard
               label="Ready Now"
               value={query.data.queue_total}
@@ -266,7 +289,7 @@ export function LeadControlPage({ title }: Props) {
             />
           </section>
 
-          <section className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+          <section className="grid grid-cols-1 gap-4 lg:grid-cols-[1.05fr_0.95fr]">
             <Card className="surface-elevated overflow-hidden border-border/60">
               <CardHeader className="border-b border-border/60 px-5 py-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -285,7 +308,7 @@ export function LeadControlPage({ title }: Props) {
                         type="checkbox"
                         checked={selectedLeadIds.length === queue.length}
                         onChange={(event) => toggleSelectAll(event.target.checked)}
-                        className="size-4 rounded border-white/[0.16] bg-background accent-primary"
+                        className="size-4 rounded border-border bg-background accent-primary"
                       />
                       Select all stale leads
                     </label>
@@ -301,7 +324,7 @@ export function LeadControlPage({ title }: Props) {
                     />
                   </div>
                 ) : (
-                  <div className="max-h-[34rem] divide-y divide-white/[0.08] overflow-y-auto">
+                  <div className="max-h-[34rem] divide-y divide-border overflow-y-auto">
                     {queue.map((lead) => {
                       const active = lead.lead_id === selectedLeadId
                       return (
@@ -327,13 +350,13 @@ export function LeadControlPage({ title }: Props) {
                                   toggleLeadSelection(lead.lead_id, event.target.checked)
                                 }}
                                 onClick={(event) => event.stopPropagation()}
-                                className="mt-1 size-4 rounded border-white/[0.16] bg-background accent-primary"
+                                className="mt-1 size-4 rounded border-border bg-background accent-primary"
                                 aria-label={`Select ${lead.lead_name}`}
                               />
                               <div className="space-y-1">
                               <div className="flex flex-wrap items-center gap-2">
                                 <p className="font-medium text-foreground">{lead.lead_name}</p>
-                                <span className="rounded-full border border-white/[0.12] px-2 py-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+                                <span className="rounded-full border border-border px-2 py-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">
                                   {statusLabel(lead.status)}
                                 </span>
                               </div>
@@ -409,7 +432,7 @@ export function LeadControlPage({ title }: Props) {
                             <Link to={`/dashboard/work/leads/${selectedLead.lead_id}`}>Open lead</Link>
                           </Button>
                         </div>
-                        <div className="grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-3 text-sm text-muted-foreground sm:grid-cols-2">
                           <div>
                             <p className="text-xs uppercase tracking-wide">Current assignee</p>
                             <p className="mt-1 text-foreground">{selectedLead.assigned_to_name}</p>
@@ -495,7 +518,7 @@ export function LeadControlPage({ title }: Props) {
             </Card>
           </section>
 
-          <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+          <section className="grid grid-cols-1 gap-4 xl:grid-cols-[0.9fr_1.1fr]">
             <Card className="surface-elevated border-border/60">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
@@ -550,6 +573,12 @@ export function LeadControlPage({ title }: Props) {
                 <CardDescription>Soft audit trail for recent auto and manual lead movement.</CardDescription>
               </CardHeader>
               <CardContent>
+                {revertError ? (
+                  <p className="mb-3 text-sm text-destructive">{revertError}</p>
+                ) : null}
+                {revertMessage ? (
+                  <p className="mb-3 text-sm text-success">{revertMessage}</p>
+                ) : null}
                 {history.length === 0 ? (
                   <EmptyState
                     title="No recent movement"
@@ -574,10 +603,23 @@ export function LeadControlPage({ title }: Props) {
                           {row.previous_assignee_name || 'Unassigned'} →{' '}
                           <span className="font-medium text-foreground">{row.assigned_to_name || 'Unassigned'}</span>
                         </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Actor: {row.actor_name}
-                          {row.reason ? ` · ${row.reason}` : ''}
-                        </p>
+                        <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-xs text-muted-foreground">
+                            Actor: {row.actor_name}
+                            {row.reason ? ` · ${row.reason}` : ''}
+                          </p>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={revert.isPending && revertingId === row.activity_id}
+                            onClick={() => void handleRevert(row)}
+                          >
+                            {revert.isPending && revertingId === row.activity_id
+                              ? 'Reverting...'
+                              : `Revert to ${row.previous_assignee_name || 'Unassigned'}`}
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>

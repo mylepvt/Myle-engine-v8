@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -9,6 +10,17 @@ import { ThemeAndFeedbackProvider } from '@/components/providers/ThemeAndFeedbac
 import { AppErrorBoundary } from '@/components/routing/AppErrorBoundary'
 import { initPerformanceProfile, isLowEndDevice } from '@/lib/device-performance'
 import './index.css'
+
+const _sentryDsn = import.meta.env.VITE_SENTRY_DSN as string | undefined
+if (_sentryDsn) {
+  Sentry.init({
+    dsn: _sentryDsn,
+    integrations: [Sentry.browserTracingIntegration()],
+    tracesSampleRate: 0.05,
+    environment: import.meta.env.MODE,
+    sendDefaultPii: false,
+  })
+}
 
 initPerformanceProfile()
 

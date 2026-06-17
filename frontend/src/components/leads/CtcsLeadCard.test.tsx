@@ -70,6 +70,8 @@ function makeLead(status: LeadPublic['status']): LeadPublic {
     day1_completed_at: null,
     day2_completed_at: null,
     day3_completed_at: null,
+    day4_completed_at: null,
+    day5_completed_at: null,
     d1_morning: false,
     d1_afternoon: false,
     d1_evening: false,
@@ -79,6 +81,14 @@ function makeLead(status: LeadPublic['status']): LeadPublic {
     d3_morning: false,
     d3_afternoon: false,
     d3_evening: false,
+    d4_morning: false,
+    d4_afternoon: false,
+    d4_evening: false,
+    d5_morning: false,
+    d5_afternoon: false,
+    d5_evening: false,
+    d6_6pm: false,
+    d6_8pm: false,
     no_response_attempt_count: 0,
     last_action_at: '2026-04-24T12:00:00Z',
     next_followup_at: null,
@@ -100,12 +110,12 @@ describe('CtcsLeadCard proof gating', () => {
   it('shows the secure enrollment WhatsApp button for video_sent', () => {
     renderCard(makeLead('video_sent'))
 
-    expect(screen.getByTitle('Send secure enrollment video on WhatsApp')).toBeInTheDocument()
+    expect(screen.getByTitle('Send secure Min. FLP Billing video on WhatsApp')).toBeInTheDocument()
   })
 
   it('hides the secure enrollment WhatsApp button after video_watched', () => {
     renderCard(makeLead('video_watched'))
 
-    expect(screen.queryByTitle('Send secure enrollment video on WhatsApp')).not.toBeInTheDocument()
+    expect(screen.queryByTitle('Send secure Min. FLP Billing video on WhatsApp')).not.toBeInTheDocument()
   })
 })

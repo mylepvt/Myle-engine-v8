@@ -49,6 +49,7 @@ from app.services.login_identity import (
 )
 from app.services.member_compliance import ensure_user_compliance_snapshot
 from app.services.push_service import send_push_to_role_bg
+from app.services.audit_service import log_action
 from app.services.team_tracking import record_login_activity
 
 router = APIRouter()
@@ -98,6 +99,8 @@ async def read_me(
     avatar_url_s: str | None = None
     compliance_level_s: str | None = None
     compliance_summary_s: str | None = None
+    enroll_access_b: bool | None = None
+    tp_b: bool | None = None
     if user_id is not None:
         compliance_snapshot = await ensure_user_compliance_snapshot(
             session, user_id=user_id, apply_actions=True
@@ -117,7 +120,9 @@ async def read_me(
             dn_s = (row.name or row.username or row.fbo_id or "").strip() or None
             ts_s = row.training_status
             tr_b = bool(row.training_required)
+            tp_b = bool(row.tutorial_pending)
             rs_s = row.registration_status
+            enroll_access_b = bool(getattr(row, "enrollment_link_access", False))
             if compliance_snapshot is not None:
                 compliance_level_s = compliance_snapshot.compliance_level
                 compliance_summary_s = compliance_snapshot.compliance_summary
@@ -135,7 +140,9 @@ async def read_me(
         auth_version=ver_s,
         training_status=ts_s,
         training_required=tr_b,
+        tutorial_pending=tp_b,
         registration_status=rs_s,
+        enrollment_link_access=enroll_access_b,
         avatar_url=avatar_url_s,
         compliance_level=compliance_level_s,
         compliance_summary=compliance_summary_s,
@@ -271,6 +278,7 @@ async def register(
         phone=phone,
         training_required=training_required,
         training_status=training_status,
+        tutorial_pending=body.is_new_joining,
         name=body.username.strip(),
         joining_date=body.joining_date,
     )
@@ -390,6 +398,7 @@ async def dev_login(
 @router.post("/login", response_model=DevLoginResponse)
 async def login_with_password(
     body: LoginRequest,
+    request: Request,
     response: Response,
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> DevLoginResponse:
@@ -413,6 +422,12 @@ async def login_with_password(
     await session.refresh(user)
     ensure_may_issue_session_cookies(user)
     await record_login_activity(session, user_id=user.id)
+    await log_action(
+        session=session,
+        user_id=user.id,
+        action="user.login",
+        ip_address=request.client.host if request.client else None,
+    )
     await session.commit()
     issue_session_cookies(response, user, remember_me=body.remember_me)
     return DevLoginResponse()

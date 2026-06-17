@@ -51,6 +51,14 @@ class User(Base):
         server_default=text("'not_required'"),
         default="not_required",
     )
+    # Admin-granted capability: may open the secure enrollment-link generator
+    # and create /enroll links. Off by default; admins always allowed.
+    enrollment_link_access: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+        default=False,
+    )
     access_blocked: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
@@ -124,6 +132,46 @@ class User(Base):
     # Discipline gate: exempt from compliance removal until this date (inclusive).
     # Set by admin when enrolling a member in a 7-day training batch.
     training_gate_until: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+
+    # Onboarding tutorial — true until user completes the guided walkthrough
+    tutorial_pending: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+        default=False,
+    )
+
+    # Notification preferences
+    push_notifications_enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("true"),
+        default=True,
+    )
+    whatsapp_notifications_enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("true"),
+        default=True,
+    )
+    daily_report_reminders_enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("true"),
+        default=True,
+    )
+    lead_assignment_alerts_enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("true"),
+        default=True,
+    )
+    weekly_summary_enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("true"),
+        default=True,
+    )
 
     # XP / gamification columns (added in migration 0031)
     xp_total: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"), default=0)

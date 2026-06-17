@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ChevronRight, MessageCircle, MoreHorizontal, Phone } from 'lucide-react'
+import { Check, ChevronRight, Link2, MessageCircle, MoreHorizontal, Phone, UserRoundCog } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { callStatusSelectOptions, type CallStatusApi } from '@/lib/call-status-options'
@@ -14,15 +14,27 @@ import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 
 const ASSIGNEE_PALETTE = ['bg-blue-500', 'bg-pink-500', 'bg-violet-500', 'bg-cyan-500', 'bg-amber-500'] as const
 
+/** Stages where the green "send Enrollment-Live video" WhatsApp button is offered. */
+const ENROLLMENT_SENDABLE_STATUSES = new Set<LeadStatus>([
+  'new_lead',
+  'new',
+  'contacted',
+  'invited',
+  'video_sent',
+  'retarget',
+  'lost',
+  'inactive',
+])
+
 /** Native `<select>` — compact so Call + Lead sit one row beside Dial/WA. */
 const pillSelectInner =
-  'max-w-[min(9.5rem,34vw)] min-w-0 h-full flex-1 cursor-pointer appearance-none rounded-full border-0 bg-transparent py-0 pl-0.5 pr-5 text-left text-ds-caption font-medium leading-none text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1 disabled:opacity-40'
+  'max-w-[min(11rem,46vw)] min-w-0 h-full flex-1 cursor-pointer appearance-none rounded-full border-0 bg-transparent py-0 pl-0.5 pr-5 text-left text-ds-caption font-medium leading-none text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1 disabled:opacity-40'
 
 function statusDotClass(status: string): string {
   if (status === 'contacted') return 'bg-yellow-500'
   if (status === 'lost' || status === 'inactive') return 'bg-gray-500'
   if (status === 'new_lead' || status === 'new') return 'bg-sky-400'
-  if (['mindset_lock', 'day1', 'day2'].includes(status)) return 'bg-emerald-400'
+  if (['day1', 'day2'].includes(status)) return 'bg-emerald-400'
   return 'bg-orange-400'
 }
 
@@ -52,6 +64,12 @@ type Props = {
   onSendEnrollment: (id: number) => void
   onCall: (lead: LeadPublic) => void
   onFollowUp: (id: number) => void
+  onReassign?: (lead: LeadPublic) => void
+  /** Granted users only: show a "copy secure enrollment link" button. */
+  showEnrollLink?: boolean
+  enrollLinkCopied?: boolean
+  enrollLinkBusy?: boolean
+  onCopyEnrollLink?: (lead: LeadPublic) => void
 }
 
 export function CtcsLeadCard({
@@ -65,6 +83,11 @@ export function CtcsLeadCard({
   onSendEnrollment,
   onCall,
   onFollowUp,
+  onReassign,
+  showEnrollLink,
+  enrollLinkCopied,
+  enrollLinkBusy,
+  onCopyEnrollLink,
 }: Props) {
   const { role, serverRole } = useDashboardShellRole()
   const selectBusy = patchBusy || actionBusy
@@ -80,7 +103,12 @@ export function CtcsLeadCard({
   const wa = whatsAppChatHref(lead.phone ?? '')
   const tel = telHref(lead.phone)
   const canDial = tel !== '#'
-  const secureEnrollmentWhatsapp = wa !== '#' && lead.status === 'video_sent'
+  // Show the "send Enrollment-Live video" button for every stage where sending it
+  // is useful — fresh imports, leads being worked, and re-engaged retarget/lost
+  // leads (not just `video_sent`). `/flp-min-billing/send` advances the lead to
+  // `video_sent` from any of these, so re-sending / first-sending both work.
+  const secureEnrollmentWhatsapp =
+    wa !== '#' && ENROLLMENT_SENDABLE_STATUSES.has(lead.status as LeadStatus)
   /** Dial / WhatsApp stay usable while CTCS runs; only this card’s patch blocks. */
   const dialBlocked = patchBusy || !canDial
   const phoneRaw = lead.phone?.trim() ?? ''
@@ -110,7 +138,7 @@ export function CtcsLeadCard({
     <div
       className={cn(
         'relative overflow-hidden rounded border p-2.5 text-card-foreground backdrop-blur-md',
-        'bg-card/90 dark:bg-card/80 supports-[backdrop-filter]:bg-card/75 supports-[backdrop-filter]:dark:bg-card/60',
+        'bg-card dark:bg-card/80 supports-[backdrop-filter]:dark:bg-card/60',
         timeColors.border,
         timeColors.cardGlow,
         isActive && 'ring-2 ring-cyan-500/90 ring-offset-2 ring-offset-background dark:ring-[var(--palette-cyan-dull)]',
@@ -150,6 +178,12 @@ export function CtcsLeadCard({
               {cityLine ? <span>{cityLine}</span> : null}
             </p>
           ) : null}
+          {lead.is_reassigned ? (
+            <span className="mt-1 inline-flex items-center gap-1 rounded bg-orange-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-orange-500">
+              <UserRoundCog className="size-3" aria-hidden />
+              Reassigned
+            </span>
+          ) : null}
         </div>
 
         {/* Keep call + lead status compact on one row. */}
@@ -160,7 +194,7 @@ export function CtcsLeadCard({
           )}
         >
           {pipelineReadonly ? (
-            <div className="flex h-8 min-w-[6.5rem] max-w-[38%] shrink-0 items-center gap-1.5 rounded-full border border-border/50 bg-muted/60 px-2.5">
+            <div className="flex h-8 min-w-[6.5rem] max-w-[52%] shrink-0 items-center gap-1.5 rounded-full border border-border/50 bg-muted/60 px-2.5">
               <span className={cn('size-1.5 shrink-0 rounded-full', statusDotClass(lead.status))} aria-hidden />
               <span className="truncate text-ds-caption text-foreground">
                 {LEAD_STATUS_OPTIONS.find((o) => o.value === lead.status)?.label ?? lead.status}
@@ -169,7 +203,7 @@ export function CtcsLeadCard({
               <span className="text-ds-caption text-muted-foreground">Leader</span>
             </div>
           ) : (
-            <div className="relative flex h-8 min-w-[7rem] max-w-[40%] shrink-0 items-center gap-1.5 rounded-full border border-border/50 bg-muted/60 pl-2 pr-6">
+            <div className="relative flex h-8 min-w-[7rem] max-w-[52%] shrink-0 items-center gap-1.5 rounded-full border border-border/50 bg-muted/60 pl-2 pr-6">
               <span className={cn('size-1.5 shrink-0 rounded-full', statusDotClass(lead.status))} aria-hidden />
               <select
                 className={pillSelectInner}
@@ -191,7 +225,7 @@ export function CtcsLeadCard({
               />
             </div>
           )}
-          <div className="relative flex h-8 min-w-[7.25rem] max-w-[40%] shrink-0 items-center gap-1.5 rounded-full border border-border/50 bg-muted/60 pl-2 pr-6">
+          <div className="relative flex h-8 min-w-[7.25rem] max-w-[52%] shrink-0 items-center gap-1.5 rounded-full border border-border/50 bg-muted/60 pl-2 pr-6">
             <Phone className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
             <select
               className={pillSelectInner}
@@ -311,8 +345,8 @@ export function CtcsLeadCard({
                   'dark:border-[#25D366]/75 dark:bg-[#25D366]/20 dark:text-[#dcf8c6] dark:shadow-[0_0_12px_rgba(37,211,102,0.45)] dark:ring-[#25D366]/35',
                   'dark:hover:border-[#34eb75] dark:hover:bg-[#25D366]/30',
                 )}
-                title="Send secure enrollment video on WhatsApp"
-                aria-label="Send secure enrollment video on WhatsApp"
+                title="Send secure Min. FLP Billing video on WhatsApp"
+                aria-label="Send secure Min. FLP Billing video on WhatsApp"
               >
                 <MessageCircle className="size-3.5 text-[#047857] dark:text-[#b8f5c4]" aria-hidden />
               </button>
@@ -339,6 +373,23 @@ export function CtcsLeadCard({
                 <MessageCircle className="size-3.5 text-muted-foreground" aria-hidden />
               </span>
             )}
+            {showEnrollLink && onCopyEnrollLink ? (
+              <button
+                type="button"
+                disabled={enrollLinkBusy}
+                onClick={() => onCopyEnrollLink(lead)}
+                className={cn(
+                  'flex size-10 items-center justify-center rounded-full border-2 transition active:scale-95 disabled:opacity-50',
+                  enrollLinkCopied
+                    ? 'border-emerald-500/60 bg-emerald-500/15 text-emerald-600 dark:text-emerald-300'
+                    : 'border-primary/50 bg-primary/10 text-primary hover:bg-primary/20',
+                )}
+                title="Send secure enrollment link on WhatsApp"
+                aria-label="Send secure enrollment link on WhatsApp"
+              >
+                {enrollLinkCopied ? <Check className="size-3.5" aria-hidden /> : <Link2 className="size-3.5" aria-hidden />}
+              </button>
+            ) : null}
             <button
               type="button"
               disabled={selectBusy}
@@ -349,6 +400,18 @@ export function CtcsLeadCard({
             >
               <MoreHorizontal className="size-3" aria-hidden />
             </button>
+            {onReassign ? (
+              <button
+                type="button"
+                disabled={selectBusy}
+                onClick={() => onReassign(lead)}
+                className="flex size-10 items-center justify-center rounded-full border border-border bg-muted/70 text-muted-foreground transition hover:border-primary/40 hover:text-foreground active:scale-95 disabled:opacity-40"
+                title="Reassign to top performer"
+                aria-label="Reassign lead"
+              >
+                <UserRoundCog className="size-3.5" aria-hidden />
+              </button>
+            ) : null}
           </div>
         </div>
 

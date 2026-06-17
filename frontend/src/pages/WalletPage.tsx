@@ -19,8 +19,8 @@ export function WalletPage({ title }: Props) {
       <p className="text-sm text-muted-foreground">
         Balance is the sum of all ledger lines (append-only). Credits and debits are applied by admins via Finance →
         Recharges. When a document exists, use{' '}
-        <span className="text-foreground/90">Download payment receipt</span> or{' '}
-        <span className="text-foreground/90">Download tax invoice</span> to open a printable page (save as PDF from the
+        <span className="text-[color-mix(in_srgb,var(--foreground)_90%,transparent)]">Download payment receipt</span> or{' '}
+        <span className="text-[color-mix(in_srgb,var(--foreground)_90%,transparent)]">Download tax invoice</span> to open a printable page (save as PDF from the
         browser if you need a file).
       </p>
 
@@ -40,7 +40,12 @@ export function WalletPage({ title }: Props) {
       ) : null}
 
       <div>
-        <h2 className="mb-2 text-sm font-medium text-foreground">Recent activity</h2>
+        <div className="mb-2 flex items-baseline justify-between">
+          <h2 className="text-sm font-medium text-foreground">Recent activity</h2>
+          {ledger.data && ledger.data.total > (me.data?.recent_entries.length ?? 0) ? (
+            <span className="text-xs text-muted-foreground">{ledger.data.total} total entries</span>
+          ) : null}
+        </div>
         {me.isPending ? <Skeleton className="h-24 w-full" /> : null}
         {me.data && me.data.recent_entries.length === 0 ? (
           <p className="text-sm text-muted-foreground">No ledger lines yet.</p>
@@ -75,7 +80,7 @@ export function WalletPage({ title }: Props) {
       </div>
 
       <div>
-        <h2 className="mb-2 text-sm font-medium text-foreground">Transaction History</h2>
+        <h2 className="mb-2 text-sm font-medium text-foreground">All Transactions</h2>
         {ledger.isPending ? <Skeleton className="h-20 w-full" /> : null}
         {ledger.isError ? (
           <p className="text-sm text-destructive" role="alert">
@@ -92,7 +97,7 @@ export function WalletPage({ title }: Props) {
             {ledger.data.items.map((e) => (
               <li
                 key={e.id}
-                className="flex flex-col gap-2 rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-2 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-2 rounded-md border border-border dark:border-white/[0.06] bg-muted/10 dark:bg-white/[0.02] px-2 py-2 sm:flex-row sm:items-center sm:justify-between"
               >
                 <span className="min-w-0">
                   #{e.id} · {e.amount_cents >= 0 ? '+' : ''}

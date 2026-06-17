@@ -38,7 +38,7 @@ export type TeamReportItem = TeamReportsMember & {
 export type TeamReportsLiveSummary = {
   leads_claimed_today: number
   calls_made_today: number
-  enrolled_today: number
+  flp_min_billing_today: number
   /** Enroll payment proofs approved today (Asia/Kolkata calendar day). */
   payment_proofs_approved_today: number
   day1_total: number
@@ -76,6 +76,36 @@ export function useTeamReportsQuery(dateIso: string, enabled = true) {
   return useQuery({
     queryKey: ['team', 'reports', dateIso],
     queryFn: () => fetchTeamReports(dateIso),
+    enabled,
+  })
+}
+
+export type TeamWorkTrendPoint = {
+  date: string
+  calls: number
+  day1: number
+  payments: number
+  reporters: number
+}
+
+export type TeamWorkTrendResponse = {
+  days: number
+  points: TeamWorkTrendPoint[]
+  total_calls: number
+  total_day1: number
+  total_payments: number
+}
+
+async function fetchTeamWorkTrend(days: number): Promise<TeamWorkTrendResponse> {
+  const res = await apiFetch(`/api/v1/team/reports/trend?days=${days}`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<TeamWorkTrendResponse>
+}
+
+export function useTeamWorkTrendQuery(days: number, enabled = true) {
+  return useQuery({
+    queryKey: ['team', 'reports', 'trend', days],
+    queryFn: () => fetchTeamWorkTrend(days),
     enabled,
   })
 }

@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
 import { Button } from '@/components/ui/button'
 import {
   pickPrimaryNextTransition,
@@ -13,10 +12,7 @@ import { LEAD_STATUS_OPTIONS } from '@/hooks/use-leads-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { cn } from '@/lib/utils'
 import { ChevronDown, ChevronUp, MessageCircle } from 'lucide-react'
-import {
-  openExternalShareUrl,
-} from '@/lib/external-share-window'
-import { buildLiveSessionWhatsAppUrl, buildLiveSessionWhatsAppBusinessUrl, type LiveSessionSlotOption } from '@/lib/live-session-slots'
+import { sendEnrollmentLiveLink } from '@/lib/enrollment-send'
 
 type LeadMini = {
   id: number
@@ -37,7 +33,6 @@ export function LeadNextStepPanel({ lead, className }: Props) {
   const mut = useTransitionLeadMutation()
   const [showAll, setShowAll] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
-  const [pickerOpen, setPickerOpen] = useState(false)
 
   const primary = transitions?.length
     ? pickPrimaryNextTransition(lead.status, transitions)
@@ -73,28 +68,14 @@ export function LeadNextStepPanel({ lead, className }: Props) {
     }
   }
 
-  async function handleSendSelectedSession(option: LiveSessionSlotOption, useBusinessWhatsApp = false) {
-    setLocalError(null)
-    try {
-      await runTransition('video_sent')
-      const shareUrl = useBusinessWhatsApp
-        ? buildLiveSessionWhatsAppBusinessUrl(lead.phone, lead.name, option)
-        : buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option)
-      if (!shareUrl || !openExternalShareUrl(shareUrl)) {
-        throw new Error('Could not open WhatsApp share window')
-      }
-      setPickerOpen(false)
-    } catch (e) {
-      setLocalError(e instanceof Error ? e.message : 'Could not update stage')
-    }
-  }
-
   async function onPrimaryClick() {
     if (!primary) return
     setLocalError(null)
     try {
       if (primary === 'video_sent') {
-        setPickerOpen(true)
+        // One tokenized Enrollment-Live link (no time-slot picker); backend moves to video_sent.
+        await sendEnrollmentLiveLink(lead)
+        await refetch()
         return
       }
       await runTransition(primary)
@@ -159,7 +140,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
             </Link>
           ) : (
             <Link
-              to="/dashboard/team/enrollment-approvals"
+              to="/dashboard/team/flp-min-billing"
               className="mt-2 inline-flex font-semibold text-primary underline-offset-2 hover:underline"
             >
               Open Min. FLP Approvals
@@ -203,13 +184,6 @@ export function LeadNextStepPanel({ lead, className }: Props) {
           ) : null}
         </div>
       ) : null}
-
-      <LiveSessionSlotPicker
-        open={pickerOpen}
-        busy={mut.isPending}
-        onClose={() => setPickerOpen(false)}
-        onConfirm={(option, useBusiness) => void handleSendSelectedSession(option, useBusiness)}
-      />
     </div>
   )
 }

@@ -35,7 +35,7 @@ export default function SystemOverviewCard({ overview, isLoading }: SystemOvervi
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Users & reports</CardTitle>
@@ -67,6 +67,43 @@ export default function SystemOverviewCard({ overview, isLoading }: SystemOvervi
           <div className="flex justify-between">
             <span className="text-muted-foreground">Net volume</span>
             <span className="font-medium">{overview.wallet.net_volume}</span>
+          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">CC / Sale revenue</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Approved sales</span>
+            <span className="font-medium">{overview.sales.sale_count}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Total CC</span>
+            <span className="font-medium text-emerald-400">
+              {overview.sales.total_case_credits.toFixed(3)}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Revenue</span>
+            <span className="font-medium">
+              {new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: 'INR',
+                maximumFractionDigits: 0,
+              }).format(overview.sales.total_amount_cents / 100)}
+            </span>
+          </div>
+          <div className="flex justify-between border-t border-border/40 pt-2">
+            <span className="text-muted-foreground">Commission (cheques)</span>
+            <span className="font-medium text-emerald-400">
+              {new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: 'INR',
+                maximumFractionDigits: 0,
+              }).format((overview.sales.total_commission_cents ?? 0) / 100)}
+            </span>
           </div>
         </CardContent>
       </Card>

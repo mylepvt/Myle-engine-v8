@@ -1,10 +1,15 @@
-import { Moon, Sparkles } from 'lucide-react'
+import { Moon, Sparkles, Sun, Volume2, VolumeX } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
 
 export function ShellHeaderFeedbackControls() {
   const satisfactionPoints = useUiFeedbackStore((s) => s.satisfactionPoints)
+  const theme = useUiFeedbackStore((s) => s.theme)
+  const cycleTheme = useUiFeedbackStore((s) => s.cycleTheme)
+  const soundEnabled = useUiFeedbackStore((s) => s.soundEnabled)
+  const toggleSound = useUiFeedbackStore((s) => s.toggleSound)
+  const isDark = theme === 'dark'
 
   return (
     <div
@@ -14,9 +19,27 @@ export function ShellHeaderFeedbackControls() {
         'md:gap-0.5 md:rounded md:border md:border-border/50 md:bg-muted/25 md:p-0.5',
       )}
     >
-      <div className="flex size-8 items-center justify-center text-muted-foreground" title="Dark mode">
-        <Moon className="size-4" aria-hidden />
-      </div>
+      <button
+        type="button"
+        onClick={cycleTheme}
+        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground max-md:min-h-[36px] max-md:min-w-[36px]"
+        title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+        aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
+        {isDark ? <Moon className="size-4" aria-hidden /> : <Sun className="size-4" aria-hidden />}
+      </button>
+
+      <button
+        type="button"
+        onClick={toggleSound}
+        data-no-tap-sound
+        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground max-md:min-h-[36px] max-md:min-w-[36px]"
+        title={soundEnabled ? 'Mute app sounds' : 'Unmute app sounds'}
+        aria-label={soundEnabled ? 'Mute app sounds' : 'Unmute app sounds'}
+        aria-pressed={soundEnabled}
+      >
+        {soundEnabled ? <Volume2 className="size-4" aria-hidden /> : <VolumeX className="size-4" aria-hidden />}
+      </button>
 
       <div className="mx-0 hidden h-6 w-px bg-border/70 md:mx-0.5 md:block" aria-hidden />
 

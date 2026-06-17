@@ -3,7 +3,6 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Filter, Mail, MapPin, Phone, Plus, Search, Share2, Upload, UserPlus, X } from 'lucide-react'
 
 import { CtcsWorkSurface } from '@/components/leads/CtcsWorkSurface'
-import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
 import { LeadsVirtualizedBody } from '@/components/leads/LeadsVirtualizedBody'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -19,12 +18,9 @@ import {
   useLeadsInfiniteQuery,
   usePatchLeadMutation,
 } from '@/hooks/use-leads-query'
-import {
-  openExternalShareUrl,
-} from '@/lib/external-share-window'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
-import { buildLiveSessionWhatsAppUrl, type LiveSessionSlotOption } from '@/lib/live-session-slots'
+import { sendEnrollmentLiveLink } from '@/lib/enrollment-send'
 import { teamLeadStatusSelectOptions } from '@/lib/team-lead-status'
 import type { Role } from '@/types/role'
 
@@ -70,7 +66,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const qParam = searchParams.get('q') ?? ''
   const stageParam = searchParams.get('stage') ?? ''
   const [qInput, setQInput] = useState(qParam)
-  const [filters, setFilters] = useState<LeadListFilters>({ ...emptyFilters, q: qParam, status: stageParam })
+  const [filters, setFilters] = useState<LeadListFilters>({ ...emptyFilters, q: qParam, status: stageParam as LeadListFilters['status'] })
   const crossSectionSearch =
     !archivedOnly &&
     filters.q.trim().length > 0 &&
@@ -85,7 +81,6 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const [advancedTableOpen, setAdvancedTableOpen] = useState(false)
   const [filterOpen, setFilterOpen] = useState(false)
   const [quickAddOpen, setQuickAddOpen] = useState(false)
-  const [slotPickerLeadId, setSlotPickerLeadId] = useState<number | null>(null)
   const [importHint, setImportHint] = useState<string | null>(null)
   const importFileRef = useRef<HTMLInputElement>(null)
   const importMut = useImportLeadsFileMutation()
@@ -145,11 +140,13 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const onPatchStatus = useCallback(
     (id: number, status: LeadStatus) => {
       if (status === 'video_sent') {
-        setSlotPickerLeadId(id)
+        // Enrollment-Live: send one tokenized /watch link (no time-slot picker).
+        void sendEnroll(id)
         return
       }
       void patchMut.mutateAsync({ id, body: { status } })
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [patchMut],
   )
   const onPatchPool = useCallback(
@@ -164,28 +161,22 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
     (id: number) => void deleteMut.mutateAsync(id),
     [deleteMut],
   )
-  const handleSendEnrollment = useCallback(
-    async (option: LiveSessionSlotOption) => {
-      if (slotPickerLeadId == null) return
+  const sendEnroll = useCallback(
+    async (id: number) => {
       const allVisibleItems: LeadPublic[] = [
         ...items,
         ...(classicLeadsQ.data?.pages.flatMap((page) => page.items) ?? []),
       ]
-      const lead = allVisibleItems.find((item) => item.id === slotPickerLeadId)
+      const lead = allVisibleItems.find((item) => item.id === id)
       if (!lead) return
       try {
-        await patchMut.mutateAsync({ id: lead.id, body: { status: 'video_sent' } })
-        const shareUrl = buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option)
-        if (!shareUrl || !openExternalShareUrl(shareUrl)) {
-          window.alert('WhatsApp link nahi bana. Lead ka phone number check karo.')
-          return
-        }
-        setSlotPickerLeadId(null)
+        await sendEnrollmentLiveLink(lead)
+        await refetch()
       } catch (err) {
-        window.alert('Status update failed: ' + (err instanceof Error ? err.message : 'Unknown error'))
+        window.alert('Could not send enrollment link: ' + (err instanceof Error ? err.message : 'Unknown error'))
       }
     },
-    [classicLeadsQ.data?.pages, items, patchMut, slotPickerLeadId],
+    [classicLeadsQ.data?.pages, items, refetch],
   )
 
   async function handleImportFilePick(e: ChangeEvent<HTMLInputElement>) {
@@ -255,6 +246,19 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
         <p className="text-sm text-muted-foreground">
           Restore a lead to send it back to your main list and workboard.
         </p>
+
+        <div className="surface-inset flex h-9 items-center gap-1.5 rounded-lg px-2.5">
+          <Search className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+          <input
+            type="text"
+            value={qInput}
+            onChange={(e) => setQInput(e.target.value)}
+            placeholder="Search name, phone, email..."
+            aria-label="Search archived leads"
+            className="min-w-0 flex-1 bg-transparent text-ds-caption text-foreground outline-none placeholder:text-muted-foreground"
+            autoComplete="off"
+          />
+        </div>
 
         {isPending ? (
           <div className="space-y-2">
@@ -329,12 +333,6 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
           </div>
         ) : null}
       </div>
-      <LiveSessionSlotPicker
-        open={slotPickerLeadId != null}
-        busy={patchMut.isPending}
-        onClose={() => setSlotPickerLeadId(null)}
-        onConfirm={(option) => void handleSendEnrollment(option)}
-      />
       </>
     )
   }
@@ -365,9 +363,9 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                 type="button"
                 aria-label="Filters"
                 onClick={() => setFilterOpen((o) => !o)}
-                className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-sm transition hover:bg-muted hover:text-foreground"
+                className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-sm transition hover:bg-muted hover:text-foreground"
               >
-                <Filter className="size-3.5" />
+                <Filter className="size-4" />
               </button>
               {canFileImport ? (
                 <>
@@ -385,9 +383,9 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                     aria-label="Import leads from PDF"
                     disabled={importMut.isPending}
                     onClick={() => importFileRef.current?.click()}
-                    className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-sm transition hover:bg-muted hover:text-foreground disabled:opacity-50"
+                    className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-sm transition hover:bg-muted hover:text-foreground disabled:opacity-50"
                   >
-                    <Upload className="size-3.5" />
+                    <Upload className="size-4" />
                   </button>
                 </>
               ) : null}
@@ -395,9 +393,9 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                 type="button"
                 aria-label="Add lead"
                 onClick={() => setQuickAddOpen(true)}
-                className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-md transition active:scale-95"
+                className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-md transition active:scale-95"
               >
-                <Plus className="size-3.5" />
+                <Plus className="size-4" />
               </button>
             </div>
           </div>
@@ -740,12 +738,6 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
           </div>
         ) : null}
       </div>
-      <LiveSessionSlotPicker
-        open={slotPickerLeadId != null}
-        busy={patchMut.isPending}
-        onClose={() => setSlotPickerLeadId(null)}
-        onConfirm={(option) => void handleSendEnrollment(option)}
-      />
     </>
   )
 }

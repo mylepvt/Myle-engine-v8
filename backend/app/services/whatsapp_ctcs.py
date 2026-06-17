@@ -27,7 +27,7 @@ def _post_json_sync(url: str, payload: dict[str, Any], headers: dict[str, str], 
         return int(resp.status), body[:2000]
 
 
-async def send_interested_enrollment_assets(*, lead_id: int, phone: str | None) -> dict[str, Any]:
+async def send_interested_flp_min_billing_assets(*, lead_id: int, phone: str | None) -> dict[str, Any]:
     url = (settings.ctcs_whatsapp_webhook_url or "").strip()
     if not url:
         payload = {"lead_id": lead_id, "phone_tail": (phone or "")[-4:] if phone else None}

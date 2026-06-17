@@ -57,14 +57,16 @@ def _build_7day_message(first_name: str, reports: list[DailyReport], period_star
     if best_day_entry and (best_day_entry.total_calling or 0) > 0:
         best_day_str = f"{_DAY_NAMES[best_day_entry.report_date.weekday()]} ({best_day_entry.total_calling} calls)"
 
-    lines = [f"Hi {first_name},", "", f"Last 7 days ki teri performance:"]
-    lines.append(f"✅ Reports: {submitted_count}/{total_days} submitted")
+    lines = [f"Hi {first_name},", "", "Here's your performance summary for the last 7 days:"]
+    lines.append(f"✅ Reports submitted: {submitted_count}/{total_days}")
     lines.append(f"🔥 Current streak: {streak} day{'s' if streak != 1 else ''}")
-    lines.append(f"📞 Total calls: {total_calls}")
+    lines.append(f"📞 Total calls made: {total_calls}")
     if missed:
-        lines.append(f"⚠️ Missed: {', '.join(missed)}")
+        lines.append(f"⚠️ Days missed: {', '.join(missed)}")
     if best_day_str:
         lines.append(f"💪 Best day: {best_day_str}")
+    lines.append("")
+    lines.append("Keep it up — consistency is everything.")
     lines.append("")
     lines.append("— Myle Team")
     return "\n".join(lines)
@@ -112,18 +114,18 @@ def _build_30day_message(first_name: str, reports: list[DailyReport], period_sta
             pattern_day = (_DAY_NAMES_HI[wd], count)
             break
 
-    lines = [f"Hi {first_name},", "", "📅 Last 30 days ki teri analysis:"]
-    lines.append(f"✅ Reports: {submitted_count}/{total_days} submitted")
-    lines.append(f"🔥 Best streak: {best_streak} days")
-    lines.append(f"📞 Avg calls/day: {avg_calls}")
+    lines = [f"Hi {first_name},", "", "Here's your 30-day performance analysis:"]
+    lines.append(f"✅ Reports submitted: {submitted_count}/{total_days}")
+    lines.append(f"🔥 Best streak: {best_streak} day{'s' if best_streak != 1 else ''}")
+    lines.append(f"📞 Average calls/day: {avg_calls}")
     lines.append("")
-    lines.append("📊 Weekly trend (oldest → recent):")
+    lines.append("📊 Weekly breakdown (oldest → recent):")
     for i, ws in enumerate(week_stats, 1):
         lines.append(f"  Week {i}: {ws['calls']} calls · {ws['reports']}/7 reports")
     if pattern_day:
         lines.append("")
-        lines.append(f"⚠️ Pattern: {pattern_day[0]} pe {pattern_day[1]}/4 weeks report miss ki")
-        lines.append("💡 Iss din pe thoda extra dhyan do!")
+        lines.append(f"⚠️ Pattern noticed: Reports were missed on {pattern_day[0]} in {pattern_day[1]} out of the last 4 weeks.")
+        lines.append("💡 Try to stay consistent on that day — small habits make big results.")
     lines.append("")
     lines.append("— Myle Team")
     return "\n".join(lines)

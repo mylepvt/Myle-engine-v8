@@ -209,7 +209,7 @@ function iconLabel(action: string): string {
 function activityLink(entry: AdminActivityEntry): string {
   if (entry.targetType === 'lead' && entry.targetId) return `/dashboard/work/leads/${entry.targetId}`
   if (entry.action.startsWith('wallet')) return '/dashboard/finance/recharge-admin'
-  if (entry.action.startsWith('enrollment')) return '/dashboard/team/enrollment-approvals'
+  if (entry.action.startsWith('enrollment')) return '/dashboard/team/flp-min-billing'
   if (entry.action.startsWith('lead:')) return '/dashboard/work/leads'
   return '/dashboard/analytics/activity-log'
 }
@@ -304,14 +304,14 @@ export function AdminActivityPanel() {
           )}
         </div>
         <div className="flex items-center gap-1">
-          <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPaused(!paused)} title={paused ? 'Resume' : 'Pause'}>
-            {paused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
+          <Button type="button" variant="ghost" size="icon" onClick={() => setPaused(!paused)} title={paused ? 'Resume' : 'Pause'}>
+            {paused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
           </Button>
-          <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={refresh} title="Refresh">
-            <RefreshCw className="h-3 w-3" />
+          <Button type="button" variant="ghost" size="icon" onClick={refresh} title="Refresh">
+            <RefreshCw className="h-3.5 w-3.5" />
           </Button>
-          <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={markAllRead} title="Mark all read">
-            <Activity className="h-3 w-3" />
+          <Button type="button" variant="ghost" size="icon" onClick={markAllRead} title="Mark all read">
+            <Activity className="h-3.5 w-3.5" />
           </Button>
         </div>
       </CardHeader>

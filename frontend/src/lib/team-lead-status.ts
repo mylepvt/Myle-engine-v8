@@ -5,29 +5,19 @@ const TEAM_FORBIDDEN: ReadonlySet<LeadStatus> = new Set([
   'day1',
   'day2',
   'day3',
-  'day4',
-  'day5',
-  'interview',
-  'track_selected',
-  'seat_hold',
   'converted',
-  'level_up',
   'training',
-  'pending',
-  'plan_2cc',
 ])
 
 const NON_ADMIN_HIDDEN: ReadonlySet<LeadStatus> = new Set(LEGACY_COMPAT_STATUSES)
-const DIRECT_PICK_HIDDEN: ReadonlySet<LeadStatus> = new Set(['whatsapp_sent'])
-
+const DIRECT_PICK_HIDDEN: ReadonlySet<LeadStatus> = new Set<LeadStatus>([])
 
 const TEAM_STAGE_VISIBILITY: Partial<Record<LeadStatus, LeadStatus[]>> = {
   new_lead: ['new_lead', 'contacted', 'invited'],
   contacted: ['contacted', 'invited', 'video_sent'],
   invited: ['invited', 'video_sent'],
-  whatsapp_sent: ['whatsapp_sent', 'video_sent'],
-  video_sent: ['video_sent', 'mindset_lock'],
-  mindset_lock: ['mindset_lock'],
+  video_sent: ['video_sent', 'video_watched'],
+  video_watched: ['video_watched'],
   lost: ['lost', 'retarget', 'inactive'],
   retarget: ['retarget', 'contacted', 'invited'],
   inactive: ['inactive', 'retarget'],
@@ -57,13 +47,13 @@ export function leadStatusSelectOptionsForLead(
   all: { value: LeadStatus; label: string }[],
 ): { value: LeadStatus; label: string }[] {
   const roleFiltered = teamLeadStatusSelectOptions(role, all)
-  if (role === 'admin') return roleFiltered
-  if (role === 'leader') {
+  // Leader has full status control (same as admin): any stage, any direction,
+  // from wherever the lead currently sits. Keep the current value selectable
+  // even when it would otherwise be hidden (e.g. a legacy/training stage).
+  if (role === 'admin' || role === 'leader') {
+    if (roleFiltered.some((o) => o.value === currentStatus)) return roleFiltered
     const currentOption = all.find((o) => o.value === currentStatus)
-    if (currentOption && !roleFiltered.some((o) => o.value === currentStatus)) {
-      return [currentOption, ...roleFiltered]
-    }
-    return roleFiltered
+    return currentOption ? [currentOption, ...roleFiltered] : roleFiltered
   }
 
   const stageMap = TEAM_STAGE_VISIBILITY

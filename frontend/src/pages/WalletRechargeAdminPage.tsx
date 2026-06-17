@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -36,7 +36,7 @@ function formatReviewerLabel(item: WalletRecharge): string {
 function RechargeStatusBadge({ status }: { status: string }) {
   const cls: Record<string, string> = {
     pending: 'bg-amber-400/15 text-amber-400',
-    approved: 'bg-[hsl(142_71%_48%)]/15 text-[hsl(142_71%_48%)]',
+    approved: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
     rejected: 'bg-destructive/15 text-destructive',
   }
   const c = cls[status] ?? 'bg-muted/30 text-muted-foreground'
@@ -74,7 +74,7 @@ function RechargeRow({
     setRowError('')
     try {
       await reviewMut.mutateAsync({ id: item.id, body: { status: 'approved' } })
-      playAppSound('cashier')
+      playAppSound('claim')
     } catch (e) {
       setRowError(e instanceof Error ? e.message : 'Action failed')
     }
@@ -87,7 +87,7 @@ function RechargeRow({
         id: item.id,
         body: { status: 'rejected', admin_note: rejectNote.trim() || undefined },
       })
-      playAppSound('decline')
+      playAppSound('error')
       setShowRejectNote(false)
       setRejectNote('')
     } catch (e) {
@@ -176,7 +176,7 @@ function RechargeRow({
             value={rejectNote}
             onChange={(e) => setRejectNote(e.target.value)}
             placeholder="Reason…"
-            className="w-full rounded-md border border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+            className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
           />
           <div className="flex gap-2">
             <Button
@@ -211,6 +211,7 @@ function RechargeRow({
 }
 
 export function WalletRechargeAdminPage({ title }: Props) {
+  const navigate = useNavigate()
   const requestsQuery = useWalletRechargeRequestsQuery()
   const reviewMut = useReviewRechargeRequestMutation()
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
@@ -221,9 +222,9 @@ export function WalletRechargeAdminPage({ title }: Props) {
 
   return (
     <div className="max-w-3xl space-y-4 md:space-y-6">
-      <Link to="/dashboard/finance/recharge-request" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        ← Recharge
-      </Link>
+      <button type="button" onClick={() => navigate(-1)} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        ← Back
+      </button>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-ds-h2">{title}</h1>
         <Button
@@ -253,7 +254,7 @@ export function WalletRechargeAdminPage({ title }: Props) {
               className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                 isActive
                   ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted/50 text-muted-foreground hover:bg-white/[0.08] hover:text-foreground'
+                  : 'bg-muted/50 text-muted-foreground hover:bg-muted/60 dark:hover:bg-white/[0.08] hover:text-foreground'
               }`}
             >
               {tab.label}

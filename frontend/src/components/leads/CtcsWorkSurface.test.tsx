@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 
@@ -23,6 +23,8 @@ vi.mock('@/hooks/use-leads-query', async () => {
     usePatchLeadMutation: (...args: unknown[]) => mockUsePatchLeadMutation(...args),
     useLeadCtcsActionMutation: (...args: unknown[]) => mockUseLeadCtcsActionMutation(...args),
     useLeadCallLogMutation: (...args: unknown[]) => mockUseLeadCallLogMutation(...args),
+    // Stub out the reassigned-count query so it doesn't consume the global fetch mock
+    useLeadsQuery: () => ({ data: { total: 0, items: [] }, isPending: false, isError: false }),
   }
 })
 
@@ -36,6 +38,11 @@ vi.mock('@/stores/call-to-close-store', () => ({
       toggleCallMode: vi.fn(),
       setOutcomeLeadId: vi.fn(),
     }),
+}))
+
+const mockSendEnrollmentLiveLink = vi.fn().mockResolvedValue(undefined)
+vi.mock('@/lib/enrollment-send', () => ({
+  sendEnrollmentLiveLink: (...args: unknown[]) => mockSendEnrollmentLiveLink(...args),
 }))
 
 function makeLead(): LeadPublic {
@@ -76,6 +83,8 @@ function makeLead(): LeadPublic {
     day1_completed_at: null,
     day2_completed_at: null,
     day3_completed_at: null,
+    day4_completed_at: null,
+    day5_completed_at: null,
     d1_morning: false,
     d1_afternoon: false,
     d1_evening: false,
@@ -85,6 +94,14 @@ function makeLead(): LeadPublic {
     d3_morning: false,
     d3_afternoon: false,
     d3_evening: false,
+    d4_morning: false,
+    d4_afternoon: false,
+    d4_evening: false,
+    d5_morning: false,
+    d5_afternoon: false,
+    d5_evening: false,
+    d6_6pm: false,
+    d6_8pm: false,
     no_response_attempt_count: 0,
     last_action_at: '2026-05-05T10:00:00Z',
     next_followup_at: null,
@@ -121,7 +138,7 @@ describe('CtcsWorkSurface', () => {
     vi.unstubAllGlobals()
   })
 
-  it('opens the live session slot picker when Sent Enroll Video is selected', async () => {
+  it('sends the Enrollment-Live link (no time-slot picker) when Sent Enroll Video is selected', async () => {
     mockUseLeadsInfiniteQuery.mockReturnValue({
       data: { pages: [{ items: [makeLead()], total: 1 }] },
       isPending: false,
@@ -146,34 +163,36 @@ describe('CtcsWorkSurface', () => {
     })
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            slots: [
-              {
-                hour: 11,
-                label: '11:00 AM',
-                state: 'live',
-                live_starts_at: '2026-05-05T11:00:00+05:30',
-                live_ends_at: '2026-05-05T11:49:00+05:30',
-              },
-              {
-                hour: 12,
-                label: '12:00 PM',
-                state: 'upcoming',
-                live_starts_at: '2026-05-05T12:00:00+05:30',
-                live_ends_at: '2026-05-05T12:49:00+05:30',
-              },
-              {
-                hour: 13,
-                label: '1:00 PM',
-                state: 'upcoming',
-                live_starts_at: '2026-05-05T13:00:00+05:30',
-                live_ends_at: '2026-05-05T13:49:00+05:30',
-              },
-            ],
-          }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } },
+      vi.fn().mockImplementation(() =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              slots: [
+                {
+                  hour: 11,
+                  label: '11:00 AM',
+                  state: 'live',
+                  live_starts_at: '2026-05-05T11:00:00+05:30',
+                  live_ends_at: '2026-05-05T11:49:00+05:30',
+                },
+                {
+                  hour: 12,
+                  label: '12:00 PM',
+                  state: 'upcoming',
+                  live_starts_at: '2026-05-05T12:00:00+05:30',
+                  live_ends_at: '2026-05-05T12:49:00+05:30',
+                },
+                {
+                  hour: 13,
+                  label: '1:00 PM',
+                  state: 'upcoming',
+                  live_starts_at: '2026-05-05T13:00:00+05:30',
+                  live_ends_at: '2026-05-05T13:49:00+05:30',
+                },
+              ],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
         ),
       ),
     )
@@ -182,8 +201,8 @@ describe('CtcsWorkSurface', () => {
 
     fireEvent.change(screen.getByLabelText('Lead status'), { target: { value: 'video_sent' } })
 
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByText('Choose a time slot')).toBeInTheDocument()
-    expect(await screen.findByText(/slot=12/i)).toBeInTheDocument()
+    // No time-slot picker anymore — selecting Enrollment-Live sends the token link directly.
+    await waitFor(() => expect(mockSendEnrollmentLiveLink).toHaveBeenCalledTimes(1))
+    expect(screen.queryByText('Choose a time slot')).not.toBeInTheDocument()
   })
 })

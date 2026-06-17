@@ -32,6 +32,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--stale-hours", type=int, default=24, help="Hours to wait inside archived before reassignment.")
     parser.add_argument("--top-n", type=int, default=10, help="Top XP team pool size.")
     parser.add_argument("--limit", type=int, default=500, help="Maximum stale leads to process per cycle.")
+    parser.add_argument(
+        "--auto-reassign",
+        action="store_true",
+        help="Opt in to auto-reassign stale archived leads. Off by default — reassignment is manual only.",
+    )
     return parser
 
 
@@ -43,7 +48,7 @@ async def _run(args: argparse.Namespace) -> None:
             stale_hours=args.stale_hours,
             top_n=args.top_n,
             limit=args.limit,
-            auto_reassign=True,
+            auto_reassign=args.auto_reassign,
         )
     print(
         "watch_pipeline_maintenance:",

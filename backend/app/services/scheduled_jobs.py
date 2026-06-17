@@ -1,15 +1,22 @@
 """Scheduled cron jobs for Myle automation.
 
 Jobs (all IST-aware):
-- enrollment_proof_alert      : every 30min — pending proof > 2h → push admin/leaders
-- weekly_compliance_digest    : Monday 09:00 IST — compliance summary to leaders
-- daily_report_reminder       : 21:00 IST daily — push eligible users who haven't submitted report
-- call_target_reminder        : 17:00 IST daily — push eligible users short on calls
-- watch_archive_maintenance   : every 30min — archive completed-watch leads > 24h + redistribute stale
-- leader_basics_enforcement   : 23:30 IST daily — warn/lock leaders whose team missed basics 7/14 days
+- flp_min_billing_proof_alert          : every 30min — pending proof > 2h → push admin/leaders
+- weekly_compliance_digest        : Monday 09:00 IST — compliance summary to leaders
+- daily_report_reminder           : 21:00 IST daily — push eligible users who haven't submitted report
+- call_target_reminder            : 17:00 IST daily — push eligible users short on calls
+- watch_archive_maintenance       : every 30min — archive completed-watch leads > 24h + redistribute stale
+- closing_pipeline_maintenance    : every 30min — archive day2-6 leads idle >24h (reassign is manual only)
+- general_pipeline_maintenance    : every 30min — archive pre-enrollment leads idle >24h (reassign is manual only)
+- leader_basics_enforcement       : 23:30 IST daily — warn/lock leaders whose team missed basics 7/14 days
+- eos_mission_pregeneration       : 06:00 IST daily — create today's mission for every active member
+- eos_automation_rules            : 10:00 & 17:00 IST — evaluate EOS automation rules (alerts/escalations via WhatsApp)
+- eos_verification_escalations    : 11:00 & 18:00 IST — escalate pending tasks 24h→leader, 48h→senior, 72h→admin
+- eos_action_queue_digest         : 09:00 IST daily — WhatsApp queue digest: org-wide to management, scoped to leaders
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -26,6 +33,7 @@ from app.services.live_metrics import fresh_call_counts_by_user, get_daily_call_
 from app.services.member_compliance import build_compliance_snapshots
 from app.services.observation_logger import observe_event
 from app.services.push_service import send_push_to_role, send_push_to_user
+from app.services.report_eligibility import report_eligibility_conditions
 from app.services import execution_enforcement as enf
 
 logger = logging.getLogger(__name__)
@@ -35,7 +43,7 @@ logger = logging.getLogger(__name__)
 # Job 1: enrollment proof pending > 2h → alert admin + leaders
 # ---------------------------------------------------------------------------
 
-async def job_enrollment_proof_alert() -> None:
+async def job_flp_min_billing_proof_alert() -> None:
     """Push admin and leaders when a payment proof has been waiting > 2 hours."""
     cutoff = datetime.now(timezone.utc) - timedelta(hours=2)
     try:
@@ -68,17 +76,17 @@ async def job_enrollment_proof_alert() -> None:
                     await send_push_to_role(
                         session,
                         role,
-                        title="Enrollment approval overdue",
+                        title="Min. FLP Billing approval overdue",
                         body=body,
-                        url="/dashboard/team/enrollment-approvals",
+                        url="/dashboard/team/flp-min-billing",
                     )
                 except Exception:
                     pass
 
-            logger.info("enrollment_proof_alert: %d overdue proofs notified", count)
+            logger.info("flp_min_billing_proof_alert: %d overdue proofs notified", count)
 
     except Exception as exc:
-        logger.error("job_enrollment_proof_alert failed: %s", exc)
+        logger.error("job_flp_min_billing_proof_alert failed: %s", exc)
 
 
 # ---------------------------------------------------------------------------
@@ -92,9 +100,7 @@ async def job_weekly_compliance_digest() -> None:
             leader_ids = (
                 await session.execute(
                     select(User.id).where(
-                        User.role == "leader",
-                        User.registration_status == "approved",
-                        User.removed_at.is_(None),
+                        *report_eligibility_conditions(roles=("leader",))
                     )
                 )
             ).scalars().all()
@@ -114,9 +120,7 @@ async def _send_digest_for_leader(session: AsyncSession, leader_id: int) -> None
         await session.execute(
             select(User).where(
                 User.upline_user_id == leader_id,
-                User.registration_status == "approved",
-                User.role == "team",
-                User.removed_at.is_(None),
+                *report_eligibility_conditions(roles=("team",)),
             )
         )
     ).scalars().all()
@@ -172,24 +176,14 @@ _ELIGIBLE_ROLES = {"team", "leader"}
 
 
 async def _get_eligible_users(session: AsyncSession) -> list[User]:
-    from app.core.time_ist import today_ist as _today_ist
-    today = _today_ist()
-    rows = (
+    today = today_ist()
+    return (
         await session.execute(
             select(User).where(
-                User.role.in_(list(_ELIGIBLE_ROLES)),
-                User.registration_status == "approved",
-                User.access_blocked.is_(False),
-                User.removed_at.is_(None),
-                User.training_required.is_(False),
+                *report_eligibility_conditions(today, roles=_ELIGIBLE_ROLES)
             )
         )
     ).scalars().all()
-    return [
-        u for u in rows
-        if (u.training_status or "").strip().lower() in {"completed", "not_required"}
-        and not (u.training_gate_until is not None and u.training_gate_until >= today)
-    ]
 
 
 async def job_daily_report_reminder() -> None:
@@ -326,7 +320,57 @@ async def job_watch_archive_maintenance() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Job 6: leader basics enforcement — 23:30 IST daily
+# Job 6: closing pipeline maintenance — every 30min
+# ---------------------------------------------------------------------------
+
+async def job_closing_pipeline_maintenance() -> None:
+    """Archive day2-6 leads idle >24h. Reassign is manual only (no auto-reassign)."""
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await enf.run_closing_pipeline_maintenance(session, auto_reassign=False)
+            logger.info(
+                "closing_pipeline_maintenance: archived=%d reassigned=%d skipped=%d",
+                result["auto_archived"],
+                result["reassigned"],
+                result["skipped"],
+            )
+            observe_event(event_type="scheduler.closing_pipeline", source="scheduler",
+                          auto_archived=result.get("auto_archived"),
+                          reassigned=result.get("reassigned"),
+                          skipped=result.get("skipped"))
+    except Exception as exc:
+        logger.error("job_closing_pipeline_maintenance failed: %s", exc)
+        observe_event(event_type="scheduler.failure", source="scheduler",
+                      job="closing_pipeline_maintenance", error=str(exc)[:200])
+
+
+# ---------------------------------------------------------------------------
+# Job 7: general pipeline maintenance — every 30min
+# ---------------------------------------------------------------------------
+
+async def job_general_pipeline_maintenance() -> None:
+    """Archive pre-enrollment leads idle >24h. Reassign is manual only (no auto-reassign)."""
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await enf.run_general_pipeline_maintenance(session, auto_reassign=False)
+            logger.info(
+                "general_pipeline_maintenance: archived=%d reassigned=%d skipped=%d",
+                result["auto_archived"],
+                result["reassigned"],
+                result["skipped"],
+            )
+            observe_event(event_type="scheduler.general_pipeline", source="scheduler",
+                          auto_archived=result.get("auto_archived"),
+                          reassigned=result.get("reassigned"),
+                          skipped=result.get("skipped"))
+    except Exception as exc:
+        logger.error("job_general_pipeline_maintenance failed: %s", exc)
+        observe_event(event_type="scheduler.failure", source="scheduler",
+                      job="general_pipeline_maintenance", error=str(exc)[:200])
+
+
+# ---------------------------------------------------------------------------
+# Job 8: leader basics enforcement — 23:30 IST daily
 # ---------------------------------------------------------------------------
 
 _LEADER_WARN_STREAK = 7   # consecutive days team missed target → warning
@@ -369,6 +413,8 @@ async def job_leader_basics_enforcement() -> None:
                             User.role == "team",
                             User.registration_status == "approved",
                             User.removed_at.is_(None),
+                            User.training_required.is_(False),
+                            User.training_status.in_(["completed", "not_required"]),
                         )
                     )
                 ).scalars().all()
@@ -386,6 +432,10 @@ async def job_leader_basics_enforcement() -> None:
                 )
 
                 if streak >= _LEADER_LOCK_STREAK:
+                    if leader.grace_end_date is not None and leader.grace_end_date >= today:
+                        continue
+                    if leader.grace_request_end_date is not None and leader.grace_request_end_date >= today:
+                        continue
                     leader.access_blocked = True
                     leader.discipline_status = "removed"
                     from datetime import timezone as tz
@@ -451,7 +501,7 @@ async def job_leader_basics_enforcement() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Job 7: daily team summary → leaders at 22:00 IST
+# Job 9: daily team summary → leaders at 22:00 IST
 # ---------------------------------------------------------------------------
 
 async def job_daily_leader_team_summary() -> None:
@@ -481,3 +531,178 @@ async def job_daily_leader_team_summary() -> None:
             logger.info("job_daily_leader_team_summary: sent to %d leaders", len(leaders))
     except Exception as exc:
         logger.error("job_daily_leader_team_summary failed: %s", exc)
+
+
+# ---------------------------------------------------------------------------
+# Job 10: management updates → Shikha at 21:30 IST (daily bundle)
+# ---------------------------------------------------------------------------
+
+async def job_management_updates() -> None:
+    """Send daily management WhatsApp bundle (top 5, integrity alerts, inactive list)."""
+    MAX_RETRIES = 2
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            from app.services.whatsapp_management_updates import send_daily_management_bundle
+            async with AsyncSessionLocal() as session:
+                results = await send_daily_management_bundle(session)
+                await session.commit()
+                sent = sum(1 for r in results if r.get("sent"))
+                failures = [r for r in results if not r.get("ok")]
+                logger.info(
+                    "job_management_updates: %d/%d updates sent (attempt %d/%d)",
+                    sent, len(results), attempt, MAX_RETRIES,
+                )
+                observe_event(
+                    event_type="scheduler.management_updates",
+                    source="scheduler",
+                    detail={"sent": sent, "total": len(results), "attempt": attempt},
+                )
+                if sent == len(results):
+                    return
+                if attempt < MAX_RETRIES:
+                    logger.warning(
+                        "job_management_updates: %d failures, retrying in 60s: %s",
+                        len(failures), [r.get("error", "?") for r in failures],
+                    )
+                    await asyncio.sleep(60)
+        except Exception as exc:
+            logger.error("job_management_updates failed (attempt %d/%d): %s", attempt, MAX_RETRIES, exc)
+            observe_event(
+                event_type="scheduler.failure",
+                source="scheduler",
+                detail={"job": "management_updates", "attempt": attempt, "error": str(exc)},
+            )
+            if attempt < MAX_RETRIES:
+                await asyncio.sleep(60)
+    logger.error("job_management_updates: all %d attempts exhausted", MAX_RETRIES)
+
+
+# ---------------------------------------------------------------------------
+# Job 11: weekly management report → Shikha at Mon 09:00 IST
+# ---------------------------------------------------------------------------
+
+async def job_management_weekly_report() -> None:
+    """Send weekly performance report to management every Monday 09:00 IST."""
+    try:
+        from app.services.whatsapp_management_updates import send_management_update
+        async with AsyncSessionLocal() as session:
+            result = await send_management_update(session, "weekly")
+            if result.get("sent"):
+                logger.info("job_management_weekly_report: sent successfully")
+            else:
+                logger.warning("job_management_weekly_report: %s", result.get("error", "unknown"))
+            observe_event(
+                event_type="scheduler.management_weekly_report",
+                source="scheduler",
+                detail=result,
+            )
+    except Exception as exc:
+        logger.error("job_management_weekly_report failed: %s", exc)
+        observe_event(
+            event_type="scheduler.failure",
+            source="scheduler",
+            detail={"job": "management_weekly_report", "error": str(exc)},
+        )
+
+
+# ---------------------------------------------------------------------------
+# Job 12: EOS mission pre-generation → 06:00 IST daily
+# ---------------------------------------------------------------------------
+
+async def job_eos_mission_pregeneration() -> None:
+    """Create today's mission for all active members so nobody is invisible to tracking."""
+    try:
+        from app.services import mission_service
+        async with AsyncSessionLocal() as session:
+            created = await mission_service.pregenerate_today_missions(session)
+            logger.info("job_eos_mission_pregeneration: created %d missions", created)
+            observe_event(
+                event_type="scheduler.eos_mission_pregeneration",
+                source="scheduler",
+                detail={"created": created},
+            )
+    except Exception as exc:
+        logger.error("job_eos_mission_pregeneration failed: %s", exc)
+        observe_event(
+            event_type="scheduler.failure",
+            source="scheduler",
+            detail={"job": "eos_mission_pregeneration", "error": str(exc)},
+        )
+
+
+# ---------------------------------------------------------------------------
+# Job 13: EOS automation rules → 10:00 & 17:00 IST
+# ---------------------------------------------------------------------------
+
+async def job_eos_automation_rules() -> None:
+    """Evaluate all active EOS automation rules (missed missions, zombie leads, SLA, inactivity)."""
+    try:
+        from app.services import automation_service
+        async with AsyncSessionLocal() as session:
+            result = await automation_service.evaluate_all_rules(session)
+            logger.info(
+                "job_eos_automation_rules: triggered=%d actions=%d",
+                result.triggered, len(result.actions),
+            )
+            observe_event(
+                event_type="scheduler.eos_automation_rules",
+                source="scheduler",
+                detail={"triggered": result.triggered, "actions": len(result.actions)},
+            )
+    except Exception as exc:
+        logger.error("job_eos_automation_rules failed: %s", exc)
+        observe_event(
+            event_type="scheduler.failure",
+            source="scheduler",
+            detail={"job": "eos_automation_rules", "error": str(exc)},
+        )
+
+
+# ---------------------------------------------------------------------------
+# Job 14: EOS verification escalations → 11:00 & 18:00 IST
+# ---------------------------------------------------------------------------
+
+async def job_eos_verification_escalations() -> None:
+    """Escalate pending verification tasks: 24h→leader, 48h→senior, 72h→admin (WhatsApp)."""
+    try:
+        from app.services import verification_service
+        async with AsyncSessionLocal() as session:
+            escalated = await verification_service.run_escalation_checks(session)
+            logger.info("job_eos_verification_escalations: escalated %d", len(escalated))
+            observe_event(
+                event_type="scheduler.eos_verification_escalations",
+                source="scheduler",
+                detail={"escalated": len(escalated)},
+            )
+    except Exception as exc:
+        logger.error("job_eos_verification_escalations failed: %s", exc)
+        observe_event(
+            event_type="scheduler.failure",
+            source="scheduler",
+            detail={"job": "eos_verification_escalations", "error": str(exc)},
+        )
+
+
+# ---------------------------------------------------------------------------
+# Job 15: EOS action queue digest → 09:00 IST daily
+# ---------------------------------------------------------------------------
+
+async def job_eos_action_queue_digest() -> None:
+    """WhatsApp the ranked action queue: org-wide to management, scoped to each leader."""
+    try:
+        from app.services import action_queue_service
+        async with AsyncSessionLocal() as session:
+            result = await action_queue_service.send_action_queue_digests(session)
+            logger.info("job_eos_action_queue_digest: %s", result)
+            observe_event(
+                event_type="scheduler.eos_action_queue_digest",
+                source="scheduler",
+                detail=result,
+            )
+    except Exception as exc:
+        logger.error("job_eos_action_queue_digest failed: %s", exc)
+        observe_event(
+            event_type="scheduler.failure",
+            source="scheduler",
+            detail={"job": "eos_action_queue_digest", "error": str(exc)},
+        )

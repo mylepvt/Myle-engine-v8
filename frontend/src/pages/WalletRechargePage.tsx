@@ -19,7 +19,7 @@ type Props = {
 function RechargeStatusBadge({ status }: { status: string }) {
   const cls: Record<string, string> = {
     pending: 'bg-amber-400/15 text-amber-400',
-    approved: 'bg-[hsl(142_71%_48%)]/15 text-[hsl(142_71%_48%)]',
+    approved: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
     rejected: 'bg-destructive/15 text-destructive',
   }
   const c = cls[status] ?? 'bg-muted/30 text-muted-foreground'
@@ -112,7 +112,7 @@ export function WalletRechargePage({ title }: Props) {
               <img
                 src={instructionsQuery.data.qr_image_url}
                 alt="Recharge UPI QR code"
-                className="max-h-64 w-full max-w-xs rounded-md border border-white/12 object-contain"
+                className="max-h-64 w-full max-w-xs rounded-md border border-border dark:border-white/12 object-contain"
               />
             ) : null}
             <p className="text-xs text-muted-foreground">
@@ -143,7 +143,7 @@ export function WalletRechargePage({ title }: Props) {
             required
             disabled={createMut.isPending}
             placeholder="e.g. 500"
-            className="w-full rounded-md border border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 disabled:opacity-50"
+            className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 disabled:opacity-50"
           />
         </div>
 
@@ -162,7 +162,7 @@ export function WalletRechargePage({ title }: Props) {
             placeholder="Bank reference number"
             required
             disabled={createMut.isPending}
-            className="w-full rounded-md border border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 disabled:opacity-50"
+            className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 disabled:opacity-50"
           />
         </div>
 
@@ -180,7 +180,7 @@ export function WalletRechargePage({ title }: Props) {
             onChange={(e) => setProofUrl(e.target.value)}
             placeholder="https://…"
             disabled={createMut.isPending}
-            className="w-full rounded-md border border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 disabled:opacity-50"
+            className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 disabled:opacity-50"
           />
         </div>
 
@@ -197,7 +197,7 @@ export function WalletRechargePage({ title }: Props) {
         ) : null}
 
         {createMut.isSuccess ? (
-          <p className="text-xs text-[hsl(142_71%_48%)]">
+          <p className="text-xs text-emerald-600 dark:text-emerald-400">
             Request submitted! An admin will review it shortly.
           </p>
         ) : null}

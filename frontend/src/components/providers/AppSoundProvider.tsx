@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect } from 'react'
 
 import { playAppSound, primeAppSounds } from '@/lib/app-sounds'
+import { useXpRewardSound } from '@/hooks/use-xp-reward-sound'
 
 // Elements matching these selectors get the tap sound on pointerdown.
 const TAP_SELECTOR =
@@ -22,39 +23,58 @@ function isInteractive(target: EventTarget | null): boolean {
 }
 
 export function AppSoundProvider({ children }: { children: ReactNode }) {
+  useXpRewardSound()
+
   useEffect(() => {
     let primed = false
+    let touchStartX = 0
+    let touchStartY = 0
 
-    const handlePointerDown = (e: PointerEvent) => {
-      // Always prime audio context on first interaction
+    const prime = () => {
       if (!primed) {
         primeAppSounds()
         primed = true
       }
-      // iOS-style tap sound on interactive elements (pointer = touch or mouse primary)
-      if (e.pointerType === 'touch' || (e.pointerType === 'mouse' && e.isPrimary)) {
+    }
+
+    const handlePointerDown = (e: PointerEvent) => {
+      prime()
+      if (e.pointerType === 'touch') {
+        touchStartX = e.clientX
+        touchStartY = e.clientY
+      }
+      // Mouse click is always intentional — play immediately
+      if (e.pointerType === 'mouse' && e.isPrimary) {
         if (isInteractive(e.target)) {
-          playAppSound('softTap')
+          playAppSound('tap')
         }
       }
     }
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!primed) {
-        primeAppSounds()
-        primed = true
+    const handlePointerUp = (e: PointerEvent) => {
+      if (e.pointerType !== 'touch') return
+      // Only play if finger barely moved (< 10px) = real tap, not scroll
+      const dx = Math.abs(e.clientX - touchStartX)
+      const dy = Math.abs(e.clientY - touchStartY)
+      if (dx + dy < 10 && isInteractive(e.target)) {
+        playAppSound('tap')
       }
-      // Space / Enter on focused interactive = tap sound
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      prime()
       if ((e.key === ' ' || e.key === 'Enter') && isInteractive(document.activeElement)) {
-        playAppSound('softTap')
+        playAppSound('tap')
       }
     }
 
     window.addEventListener('pointerdown', handlePointerDown, { capture: true, passive: true })
+    window.addEventListener('pointerup', handlePointerUp, { capture: true, passive: true })
     window.addEventListener('keydown', handleKeyDown, { capture: true })
 
     return () => {
       window.removeEventListener('pointerdown', handlePointerDown, { capture: true })
+      window.removeEventListener('pointerup', handlePointerUp, { capture: true })
       window.removeEventListener('keydown', handleKeyDown, { capture: true })
     }
   }, [])

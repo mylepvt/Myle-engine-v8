@@ -1,4 +1,4 @@
-import { type FormEvent, useDeferredValue, useState } from 'react'
+import { useDeferredValue, useState } from 'react'
 
 import { InsightList } from '@/components/dashboard/InsightList'
 import { Button } from '@/components/ui/button'
@@ -16,6 +16,14 @@ function memberSelectLabel(m: TeamMemberPublic): string {
   return `${display} · ${m.fbo_id} (${m.role})`
 }
 
+function formatInr(cents: number): string {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 2,
+  }).format(cents / 100)
+}
+
 export function FinanceRechargesPage({ title }: Props) {
   const stub = useShellStubQuery('/api/v1/finance/recharges')
   const members = useTeamMembersQuery(true)
@@ -24,6 +32,7 @@ export function FinanceRechargesPage({ title }: Props) {
   const [amountCents, setAmountCents] = useState('')
   const [memberQuery, setMemberQuery] = useState('')
   const [note, setNote] = useState('')
+  const [showConfirm, setShowConfirm] = useState(false)
   const deferredMemberQuery = useDeferredValue(memberQuery)
   const searchActive = memberQuery.trim().length > 0
   const filteredMembers = members.data
@@ -34,9 +43,13 @@ export function FinanceRechargesPage({ title }: Props) {
     selectedMember && !filteredMembers.some((member) => member.id === selectedMember.id)
       ? [selectedMember, ...filteredMembers]
       : filteredMembers
+  const parsedCents = Number(amountCents)
+  const inrDisplay = Number.isFinite(parsedCents) && parsedCents !== 0
+    ? formatInr(Math.abs(parsedCents))
+    : null
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault()
+  async function onSubmit() {
+    setShowConfirm(false)
     const uid = Number(userId)
     const cents = Number(amountCents)
     if (!Number.isFinite(uid) || uid < 1 || !Number.isFinite(cents)) return
@@ -75,11 +88,8 @@ export function FinanceRechargesPage({ title }: Props) {
         </div>
       ) : null}
 
-      <form onSubmit={(e) => void onSubmit(e)} className="surface-elevated space-y-4 p-4">
-        <p className="text-sm font-medium text-foreground">Credit / debit user wallet</p>
-        <p className="text-xs text-muted-foreground">
-          Amount in <strong>minor units (paise / cents)</strong> (e.g. 10000 = INR 100.00 credit). Negative values debit.
-        </p>
+        <form onSubmit={(e) => { e.preventDefault(); setShowConfirm(true) }} className="surface-elevated space-y-4 p-4">
+          <p className="text-sm font-medium text-foreground">Credit / debit user wallet</p>
         {members.isPending ? <Skeleton className="h-10 w-full" /> : null}
         {members.data ? (
           <div className="space-y-3">
@@ -112,7 +122,7 @@ export function FinanceRechargesPage({ title }: Props) {
                 onChange={(e) => setUserId(e.target.value)}
                 required
                 disabled={mut.isPending}
-                className="w-full rounded-md border border-white/12 bg-muted/50 backdrop-blur-sm px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 disabled:opacity-50"
+                className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 backdrop-blur-sm px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 disabled:opacity-50"
               >
                 <option value="">Select…</option>
                 {visibleMembers.map((m) => (
@@ -134,17 +144,27 @@ export function FinanceRechargesPage({ title }: Props) {
         ) : null}
         <div>
           <label htmlFor="recharge-cents" className="mb-1 block text-xs text-muted-foreground">
-            Amount (cents)
+            Amount in <strong>paise (cents)</strong>
           </label>
-          <input
-            id="recharge-cents"
-            type="number"
-            value={amountCents}
-            onChange={(e) => setAmountCents(e.target.value)}
-            required
-            disabled={mut.isPending}
-            className="w-full rounded-md border border-white/12 bg-muted/50 backdrop-blur-sm px-3 py-2 text-sm text-foreground disabled:opacity-50"
-          />
+          <div className="flex items-center gap-2">
+            <input
+              id="recharge-cents"
+              type="number"
+              value={amountCents}
+              onChange={(e) => setAmountCents(e.target.value)}
+              required
+              disabled={mut.isPending}
+              className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 backdrop-blur-sm px-3 py-2 text-sm text-foreground disabled:opacity-50"
+            />
+            {inrDisplay ? (
+              <span className="shrink-0 text-sm font-medium text-muted-foreground">
+                ≈ {parsedCents > 0 ? '+' : ''}{inrDisplay}
+              </span>
+            ) : null}
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Negative values = debit. Example: 10000 = {formatInr(10000)} credit, -5000 = {formatInr(5000)} debit.
+          </p>
         </div>
         <div>
           <label htmlFor="recharge-note" className="mb-1 block text-xs text-muted-foreground">
@@ -155,11 +175,11 @@ export function FinanceRechargesPage({ title }: Props) {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             disabled={mut.isPending}
-            className="w-full rounded-md border border-white/12 bg-muted/50 backdrop-blur-sm px-3 py-2 text-sm text-foreground disabled:opacity-50"
+            className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 backdrop-blur-sm px-3 py-2 text-sm text-foreground disabled:opacity-50"
           />
         </div>
-        <Button type="submit" disabled={mut.isPending || !userId}>
-          {mut.isPending ? 'Applying…' : 'Apply adjustment'}
+        <Button type="submit" disabled={mut.isPending || !userId || !amountCents}>
+          {mut.isPending ? 'Applying…' : 'Review & confirm'}
         </Button>
         {mut.isError ? (
           <p className="text-xs text-destructive" role="alert">
@@ -168,6 +188,44 @@ export function FinanceRechargesPage({ title }: Props) {
         ) : null}
         {mut.isSuccess ? <p className="text-xs text-emerald-500">Ledger line recorded.</p> : null}
       </form>
+
+      {showConfirm && selectedMember ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowConfirm(false) }}
+          onKeyDown={(e) => { if (e.key === 'Escape') setShowConfirm(false) }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm wallet adjustment"
+        >
+          <div className="mx-4 w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-2xl">
+            <h3 className="text-lg font-semibold text-foreground">Confirm wallet adjustment</h3>
+            <div className="mt-3 space-y-2 text-sm">
+              <p><span className="text-muted-foreground">User:</span> {memberSelectLabel(selectedMember)}</p>
+              <p><span className="text-muted-foreground">Amount:</span> <strong className={parsedCents >= 0 ? 'text-emerald-500' : 'text-destructive'}>{parsedCents >= 0 ? '+' : ''}{formatInr(Math.abs(parsedCents))}</strong></p>
+              {note.trim() ? <p><span className="text-muted-foreground">Note:</span> {note.trim()}</p> : null}
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">This action cannot be undone. Review carefully before confirming.</p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowConfirm(false)}
+                className="rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void onSubmit()}
+                disabled={mut.isPending}
+                className="rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
+              >
+                {mut.isPending ? 'Applying…' : 'Confirm adjustment'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

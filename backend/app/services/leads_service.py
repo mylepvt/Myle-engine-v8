@@ -8,14 +8,28 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from fastapi import BackgroundTasks, Depends, HTTPException
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db
 from app.core.config import settings
+from app.core.lead_outcome import (
+    OUTCOME_DEAD,
+    OUTCOME_RECYCLE,
+    is_terminal_outcome,
+    outcome_for_status,
+)
 from app.core.pipeline_rules import validate_vl2_status_transition_for_role
+from app.core.stage_pricing import (
+    SEAT_HOLD_WINDOW_HOURS,
+    STAGE_KEYS,
+    stage_price_cents,
+    stage_seat_hold_cents,
+)
 from app.core.realtime_hub import notify_topics
+from app.core.time_ist import IST
+from app.models.activity_log import ActivityLog
 from app.models.batch_day_submission import BatchDaySubmission
 from app.models.follow_up import FollowUp
 from app.models.lead import Lead
@@ -51,10 +65,14 @@ from app.services.ctcs_status_chain import advance_lead_status_toward
 from app.services.lead_payloads import build_lead_public_payloads
 from app.services.team_tracking import refresh_daily_member_stat_after_change
 from app.services.user_hierarchy import nearest_leader_for_user
-from app.services.whatsapp_ctcs import send_interested_enrollment_assets
+from app.services.whatsapp_ctcs import send_interested_flp_min_billing_assets
 from app.services.execution_enforcement import run_completed_watch_pipeline_maintenance
 from app.validators.leads_validator import lead_list_conditions, parse_status_query, validate_list_flags
 
+# Early-enrollment FLP-billing payment gate (old Day 4 / Day 5 / Day 6 stages).
+# Those stages were removed from the pipeline; FLP billing now wires at the Day 3
+# close via the sale-engine (see Pending-as-Process / FLP invoice OCR flow), not
+# as a status-entry gate. Kept as an (empty) extension point.
 _PAYMENT_REQUIRED_STATUSES: frozenset[str] = frozenset()
 
 _POOL_CLAIM_ROLES: frozenset[str] = frozenset({"team", "leader", "admin"})
@@ -63,7 +81,7 @@ _PHONE_DIGIT_RE = re.compile(r"\D")
 
 
 async def _deliver_ctcs_interested_whatsapp(lead_id: int, phone: str | None) -> None:
-    await send_interested_enrollment_assets(lead_id=lead_id, phone=phone)
+    await send_interested_flp_min_billing_assets(lead_id=lead_id, phone=phone)
 
 
 def _display_name_from_fields(name: str | None, username: str | None, email: str | None) -> str:
@@ -115,13 +133,27 @@ def _free_pool_available_clause() -> Any:
 def _ctcs_filter_clause(ctcs_filter: Optional[str]) -> Any:
     if ctcs_filter is None:
         return None
-    now = datetime.now(timezone.utc)
-    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    now_ist = datetime.now(IST)
+    day_start_ist = now_ist.replace(hour=0, minute=0, second=0, microsecond=0)
+    day_start = day_start_ist.astimezone(timezone.utc)
+    day_end = (day_start_ist + timedelta(days=1)).astimezone(timezone.utc)
     key = ctcs_filter.strip().lower()
     if key in ("", "all"):
         return None
     if key == "today":
-        return Lead.created_at >= day_start
+        # "Today" = leads claimed today (IST) via PAID recharge claim only.
+        # Paid claim is recorded as ActivityLog action "lead.claimed"
+        # (free-pool claims use "lead.claimed_free" and are excluded here).
+        # There is no claimed_at column, so we read it from ActivityLog.
+        return exists(
+            select(1).where(
+                ActivityLog.entity_type == "lead",
+                ActivityLog.entity_id == Lead.id,
+                ActivityLog.action == "lead.claimed",
+                ActivityLog.created_at >= day_start,
+                ActivityLog.created_at < day_end,
+            )
+        )
     if key in ("followups", "follow_ups"):
         return Lead.next_followup_at.is_not(None)
     if key == "hot":
@@ -130,18 +162,31 @@ def _ctcs_filter_clause(ctcs_filter: Optional[str]) -> Any:
         return Lead.status.in_(
             (
                 "converted",
-                "seat_hold",
                 "mindset_lock",
                 "day1",
                 "day2",
                 "day3",
+                "day4",
+                "day5",
                 "interview",
-                "track_selected",
             ),
+        )
+    if key == "reassigned":
+        return and_(
+            Lead.is_reassigned.is_(True),
+            Lead.reassigned_at >= day_start,
+        )
+    if key == "pending":
+        # "Pending Work" = zombie + untouched leads. Untouched = never actioned and
+        # 7+ days old; zombie = last action was 7+ days ago. Mirrors GET /leads/pending.
+        cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+        return or_(
+            and_(Lead.last_action_at.is_(None), Lead.created_at < cutoff),
+            Lead.last_action_at < cutoff,
         )
     raise HTTPException(
         status_code=http_status.HTTP_422_UNPROCESSABLE_CONTENT,
-        detail="Invalid ctcs_filter (use: all|today|followups|hot|converted)",
+        detail="Invalid ctcs_filter (use: all|today|followups|hot|converted|reassigned|pending)",
     )
 
 
@@ -174,13 +219,40 @@ def _apply_status_side_effects(
     previous_status: str,
     new_status: str,
     now: datetime,
+    drop_reason: str | None = None,
+    drop_notes: str | None = None,
+    drop_recorded_by_user_id: int | None = None,
+    recycle_reason: str | None = None,
 ) -> None:
+    # Sync outcome from the new status
+    from app.services.lead_outcome_service import (
+        apply_dead_side_effects,
+        apply_recycle_side_effects,
+        clear_dead_state,
+        sync_outcome_from_status,
+    )
+
+    outcome_changed = sync_outcome_from_status(lead, now=now)
+    new_outcome = outcome_for_status(new_status)
+
+    if new_outcome == OUTCOME_DEAD and drop_reason:
+        apply_dead_side_effects(lead, drop_reason, drop_notes, drop_recorded_by_user_id or 0, now=now)
+    elif new_outcome != OUTCOME_DEAD and lead.outcome != OUTCOME_DEAD:
+        clear_dead_state(lead)
+
+    if new_outcome == OUTCOME_RECYCLE:
+        apply_recycle_side_effects(lead, recycle_reason, now=now)
+
     if new_status == "whatsapp_sent" and lead.whatsapp_sent_at is None:
         lead.whatsapp_sent_at = now
 
     if new_status in {"lost", "retarget"}:
         # Legacy parity: terminal retarget/lost moves clear pending follow-up timers.
         lead.next_followup_at = None
+        # Stamp entry into the retarget bucket (re-stamp only on a fresh entry) so the
+        # 1-month re-highlight to the owner is measured from the latest lost/retarget move.
+        if previous_status not in {"lost", "retarget"} or lead.retarget_at is None:
+            lead.retarget_at = now
 
     if new_status == "mindset_lock":
         lead.mindset_lock_state = "mindset_lock"
@@ -198,7 +270,7 @@ def _apply_status_side_effects(
 
     if new_status == "day3":
         lead.day3_completed_at = None
-    elif new_status == "converted" and previous_status in {"day3", "interview", "track_selected", "seat_hold"}:
+    elif new_status == "converted" and previous_status in {"day3", "day4", "day5", "interview"}:
         if lead.day3_completed_at is None:
             lead.day3_completed_at = now
 
@@ -220,6 +292,35 @@ def _toggle_process_task(
     current_stage[task] = done
     tracking[stage] = current_stage
     lead.process_tracking = tracking
+
+
+async def expire_stale_seat_holds(
+    session: AsyncSession, *, now: datetime | None = None
+) -> int:
+    """Lapse seat-holds whose reserve window passed — clears the expiry + the
+    day3_seat_hold checklist flag so the seat reopens for the prospect.
+
+    Mirrors the old-app ``_check_seat_hold_expiry`` (which reverted seat_hold → day3);
+    here Day 3 is the closing stage and the seat-hold is a sub-step, so we only reset
+    the seat-hold state rather than changing ``status``.
+    """
+    ts = now or datetime.now(timezone.utc)
+    rows = (
+        await session.execute(
+            select(Lead).where(
+                Lead.status == "day3",
+                Lead.seat_hold_expiry.is_not(None),
+                Lead.seat_hold_expiry < ts,
+                Lead.deleted_at.is_(None),
+            )
+        )
+    ).scalars().all()
+    for lead in rows:
+        lead.seat_hold_expiry = None
+        _toggle_process_task(lead, stage="day3", task="day3_seat_hold", done=False)
+    if rows:
+        await session.commit()
+    return len(rows)
 
 
 class LeadsService:
@@ -307,12 +408,13 @@ class LeadsService:
         deleted_only: bool,
         ctcs_filter: Optional[str] = None,
         ctcs_priority_sort: bool = False,
-        pre_enrollment_only: bool = False,
+        pre_flp_min_billing_only: bool = False,
         search_all_sections: bool = False,
         leader_all_scope: bool = False,
         generated_only: bool = False,
     ) -> LeadListResponse:
         await run_completed_watch_pipeline_maintenance(self._session)
+        await expire_stale_seat_holds(self._session)
         validate_list_flags(archived_only=archived_only, deleted_only=deleted_only, user=user)
         cross_section_search = search_all_sections and bool((q or "").strip())
         condition = lead_list_conditions(
@@ -335,8 +437,8 @@ class LeadsService:
             else Lead.capture_link_id.is_(None)
         )
         condition = and_(condition, gen_clause) if condition is not None else gen_clause
-        # leader_all_scope shows all statuses — skip pre_enrollment_only restriction
-        if pre_enrollment_only and not (leader_all_scope and user.role == "leader"):
+        # leader_all_scope shows all statuses — skip pre_flp_min_billing_only restriction
+        if pre_flp_min_billing_only and not (leader_all_scope and user.role == "leader"):
             pre_enroll = Lead.status.in_(
                 ["new_lead", "contacted", "invited", "whatsapp_sent", "video_sent"]
             )
@@ -885,16 +987,45 @@ class LeadsService:
                     detail="Only admin or leader can re-assign leads",
                 )
             lead.assigned_to_user_id = body.assigned_to_user_id
+            lead.is_reassigned = True
+            lead.reassigned_at = datetime.now(timezone.utc)
         if body.name is not None:
             lead.name = body.name.strip()
         if body.status is not None:
-            ok, msg = validate_vl2_status_transition_for_role(
-                current_slug=lead.status,
-                target_slug=body.status,
-                role=user.role,
-            )
-            if not ok:
-                raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
+            if user.role != "admin":
+                ok, msg = validate_vl2_status_transition_for_role(
+                    current_slug=lead.status,
+                    target_slug=body.status,
+                    role=user.role,
+                )
+                if not ok:
+                    raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
+                # Day 2 → Day 3 gate: mirrors the old-app ACTION_MAP 'day2_complete' which
+                # required BOTH all Day-2 batches done AND lead_day2_business_test_passed.
+                # Leader/admin have full status control and may move a lead anywhere.
+                if (
+                    body.status == "day3"
+                    and lead.status == "day2"
+                    and user.role not in ("admin", "leader")
+                ):
+                    if not (lead.d2_morning and lead.d2_afternoon and lead.d2_evening):
+                        raise HTTPException(
+                            status_code=http_status.HTTP_400_BAD_REQUEST,
+                            detail="All Day 2 batches (morning/afternoon/evening) must be done before Day 3.",
+                        )
+                    if (getattr(lead, "day2_test_status", "pending") or "pending") != "passed":
+                        raise HTTPException(
+                            status_code=http_status.HTTP_400_BAD_REQUEST,
+                            detail="Day 2 business test must be passed before advancing to Day 3.",
+                        )
+                # Payment gate: non-admins cannot enter a post-Day-3 status without an
+                # approved ₹1500 FLP-billing proof. Mirrors transition_lead_status.
+                if body.status in _PAYMENT_REQUIRED_STATUSES and user.role != "admin":
+                    if lead.payment_status != "approved":
+                        raise HTTPException(
+                            status_code=http_status.HTTP_400_BAD_REQUEST,
+                            detail="Payment proof must be approved before moving to this status.",
+                        )
             prev_status = lead.status
             lead.status = body.status
             bump_heat_on_entering_contacted(lead, prev_status)
@@ -903,12 +1034,60 @@ class LeadsService:
                 previous_status=prev_status,
                 new_status=body.status,
                 now=now,
+                drop_reason=body.drop_reason,
+                drop_notes=body.drop_notes,
+                drop_recorded_by_user_id=user.user_id,
             )
+            # Team → leader handoff: marking the Enrollment-Live video watched is the team's
+            # last step. Reassign the lead to the owner's nearest upline leader so it surfaces
+            # on the leader's board for Day 1 (replaces the removed mindset-lock handoff).
+            # Admin is exempt — they have full status control.
+            if body.status == "video_watched" and prev_status != "video_watched" and user.role != "admin":
+                owner_id = (
+                    lead.owner_user_id
+                    or lead.assigned_to_user_id
+                    or lead.created_by_user_id
+                )
+                leader = await self._nearest_leader(owner_id) if owner_id else None
+                if leader is not None and lead.assigned_to_user_id != leader[0]:
+                    from_uid = lead.assigned_to_user_id
+                    lead.assigned_to_user_id = leader[0]
+                    lead.is_reassigned = True
+                    lead.reassigned_at = now
+                    await self._repository.add_lead_activity(
+                        user_id=user.user_id,
+                        action="leader_handoff_video_watched",
+                        lead_id=lead.id,
+                        meta={
+                            "from_user_id": from_uid,
+                            "to_user_id": leader[0],
+                            "leader_id": leader[0],
+                        },
+                    )
+                # Auto-advance to Day 1 so the handed-off lead lands directly on the
+                # leader's workboard Day 1 instead of resting at video_watched on the
+                # calling board. video_watched stays a transient record of the watch.
+                lead.status = "day1"
+                _apply_status_side_effects(
+                    lead,
+                    previous_status="video_watched",
+                    new_status="day1",
+                    now=now,
+                )
+                await self._repository.add_lead_activity(
+                    user_id=user.user_id,
+                    action="auto_advance_day1_on_video_watched",
+                    lead_id=lead.id,
+                    meta={"from_status": "video_watched", "to_status": "day1"},
+                )
         if body.archived is True:
             lead.archived_at = now
             lead.in_pool = False
         elif body.archived is False:
+            # Restore from Archived: clear the flag AND restart the 24h watch,
+            # else the stale anchor re-archives the lead on the next sweep.
             lead.archived_at = None
+            lead.last_action_at = now
         if body.phone is not None:
             dup = await self._find_duplicate_phone_lead(body.phone, exclude_lead_id=lead.id)
             if dup is not None:
@@ -962,6 +1141,32 @@ class LeadsService:
                 task=body.process_task.strip(),
                 done=body.process_task_done,
             )
+        # Day 3 closing — Stage picker (price auto-set) + seat-hold reserve window.
+        if body.stage_selected is not None:
+            if user.role not in ("leader", "admin"):
+                raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+            if body.stage_selected not in STAGE_KEYS:
+                raise HTTPException(
+                    status_code=http_status.HTTP_400_BAD_REQUEST, detail="Invalid stage"
+                )
+            lead.stage_selected = body.stage_selected
+            lead.stage_price_cents = stage_price_cents(body.stage_selected)
+            lead.seat_hold_amount_cents = stage_seat_hold_cents(body.stage_selected)
+            _toggle_process_task(lead, stage="day3", task="day3_stage_selection", done=True)
+        if body.collect_seat_hold is not None:
+            if user.role not in ("leader", "admin"):
+                raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+            if body.collect_seat_hold:
+                if not lead.stage_selected:
+                    raise HTTPException(
+                        status_code=http_status.HTTP_400_BAD_REQUEST,
+                        detail="Select a stage before collecting the seat-hold.",
+                    )
+                lead.seat_hold_expiry = now + timedelta(hours=SEAT_HOLD_WINDOW_HOURS)
+                _toggle_process_task(lead, stage="day3", task="day3_seat_hold", done=True)
+            else:
+                lead.seat_hold_expiry = None
+                _toggle_process_task(lead, stage="day3", task="day3_seat_hold", done=False)
         explicit_d1 = (body.d1_morning, body.d1_afternoon, body.d1_evening)
         if any(x is not None for x in explicit_d1):
             if body.d1_morning is not None:
@@ -1077,6 +1282,15 @@ class LeadsService:
         await self._session.flush()
         enqueue_lead_shadow_upsert(self._session, lead)
         await self._repository.commit()
+        # XP for process activity — never blocks call logging
+        try:
+            from app.services.xp_service import grant_xp as _grant_xp
+            await _grant_xp(self._session, user.user_id, "call_logged", lead_id)
+            if body.outcome in {"answered", "callback_requested"}:
+                await _grant_xp(self._session, user.user_id, "connected_call", lead_id)
+            await self._session.commit()
+        except Exception:
+            pass
         await refresh_daily_member_stat_after_change(
             self._session,
             user_id=user.user_id,
@@ -1130,18 +1344,19 @@ class LeadsService:
         body: LeadTransitionRequest,
         user: AuthUser,
     ) -> LeadTransitionResponse:
-        lead = await self._get_lead_or_404(lead_id)
-        if lead.deleted_at is not None:
+        lead = await self._repository.get_lead_for_update(lead_id)
+        if lead is None or lead.deleted_at is not None:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
         if not await self._repository.can_mutate_lead(user, lead):
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
-        ok, msg = validate_vl2_status_transition_for_role(
-            current_slug=lead.status,
-            target_slug=body.target_status,
-            role=user.role,
-        )
-        if not ok:
-            raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
+        if user.role != "admin":
+            ok, msg = validate_vl2_status_transition_for_role(
+                current_slug=lead.status,
+                target_slug=body.target_status,
+                role=user.role,
+            )
+            if not ok:
+                raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
         # Only entering Min. FLP Billing is payment-gated; post-paid stages stay unlocked.
         if body.target_status in _PAYMENT_REQUIRED_STATUSES and user.role != "admin":
             if lead.payment_status != "approved":
@@ -1158,6 +1373,10 @@ class LeadsService:
             previous_status=prev_status,
             new_status=body.target_status,
             now=now,
+            drop_reason=body.drop_reason,
+            drop_notes=body.drop_notes,
+            drop_recorded_by_user_id=user.user_id,
+            recycle_reason=body.recycle_reason,
         )
         _sync_stage_anchor(lead, previous_status=prev_status, now=now)
         lead = await self._commit_with_shadow_upsert(lead)
@@ -1213,7 +1432,7 @@ class LeadsService:
                 background_tasks.add_task(_deliver_ctcs_interested_whatsapp, lead.id, lead.phone)
                 wa_meta: dict[str, Any] = {"queued": True, "channel": "whatsapp"}
             else:
-                wa_meta = await send_interested_enrollment_assets(lead_id=lead.id, phone=lead.phone)
+                wa_meta = await send_interested_flp_min_billing_assets(lead_id=lead.id, phone=lead.phone)
             await self._repository.add_lead_activity(
                 user_id=user.user_id,
                 action="ctcs.interested",
@@ -1249,9 +1468,12 @@ class LeadsService:
                 ),
             )
         elif action == "not_interested":
+            # Mark lost but DO NOT archive — an archived lead is hidden from the
+            # Retarget queue and can't be re-called via CTCS (apply_ctcs_action
+            # rejects archived leads). Leaving it un-archived keeps it visible in
+            # Retarget so the owner can re-engage later.
             advance_lead_status_toward(lead=lead, target_slug="lost", role=user.role)
             lead.heat_score = 0
-            lead.archived_at = now
             lead.in_pool = False
         if lead.status != prev_status:
             _apply_status_side_effects(
@@ -1259,6 +1481,7 @@ class LeadsService:
                 previous_status=prev_status,
                 new_status=lead.status,
                 now=now,
+                drop_recorded_by_user_id=user.user_id if action == "not_interested" else None,
             )
         _sync_stage_anchor(lead, previous_status=prev_status, now=now)
         lead = await self._commit_with_shadow_upsert(lead)

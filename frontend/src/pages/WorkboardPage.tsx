@@ -1,24 +1,35 @@
-import { memo, useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Check, CheckSquare, Eye, Pencil, Search, Send, Square, Video, X } from 'lucide-react'
+import {
+  ArrowLeftRight,
+  Check,
+  CheckSquare,
+  Copy,
+  Eye,
+  Moon,
+  Pencil,
+  Search,
+  Send,
+  Sun,
+  Sunrise,
+  Video,
+  X,
+} from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
-import { LiveSessionSlotPicker } from '@/components/leads/LiveSessionSlotPicker'
+import { LeadBillingCard } from '@/components/leads/LeadBillingCard'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import {
-  fetchMindsetLockPreview,
   LEAD_STATUS_OPTIONS,
-  postMindsetLockComplete,
   type LeadPublic,
   type LeadStatus,
-  type MindsetLockPreviewResponse,
   usePatchLeadMutation,
 } from '@/hooks/use-leads-query'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
-import { apiFetch } from '@/lib/api'
+import { apiFetch, apiUrl } from '@/lib/api'
 import { callStatusSelectOptions } from '@/lib/call-status-options'
 import { formatCountdown, timerRemainingMs } from '@/lib/ctcs-timer'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
@@ -28,16 +39,16 @@ import {
   openExternalShareUrl,
   reserveExternalShareWindow,
 } from '@/lib/external-share-window'
-import { getMindsetLockSendState } from '@/lib/mindset-lock'
 import { useContentLinksQuery } from '@/hooks/use-content-links-query'
 import { checklistForStage } from '@/lib/lead-process-map'
 import { LEAD_SLA_SMOOTH_REFRESH_MS, formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
-import { buildLiveSessionWhatsAppUrl, buildLiveSessionWhatsAppBusinessUrl, type LiveSessionSlotOption } from '@/lib/live-session-slots'
+import { buildDay2BusinessTestWhatsAppUrl } from '@/lib/day2-business-test'
+import { isDay2AdvanceUnlocked } from '@/lib/workboard-stage'
 import { whatsAppChatWithTextHref, whatsappDigits } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-type Props = { title: string; mode?: 'mindset-lock' | 'pipeline' }
+type Props = { title: string }
 type Col = { status: string; total: number; items: LeadPublic[] }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -49,28 +60,33 @@ const BADGE: Record<string, string> = {
   video_sent:     'bg-indigo-400/15 text-indigo-300 border-indigo-400/25',
   video_watched:  'bg-blue-400/15 text-blue-300 border-blue-400/25',
   paid:           'bg-amber-400/15 text-amber-300 border-amber-400/25',
-  mindset_lock:   'bg-fuchsia-400/15 text-fuchsia-300 border-fuchsia-400/25',
   day1:           'bg-orange-400/15 text-orange-300 border-orange-400/25',
   day2:           'bg-yellow-400/15 text-yellow-300 border-yellow-400/25',
   day3:           'bg-lime-400/15 text-lime-300 border-lime-400/25',
+  day4:           'bg-emerald-400/15 text-emerald-300 border-emerald-400/25',
+  day5:           'bg-teal-400/15 text-teal-300 border-teal-400/25',
   interview:      'bg-lime-400/15 text-lime-300 border-lime-400/25',
-  track_selected: 'bg-emerald-400/15 text-emerald-300 border-emerald-400/25',
-  seat_hold:      'bg-teal-400/15 text-teal-300 border-teal-400/25',
   converted:      'bg-green-500/15 text-green-300 border-green-500/25',
   lost:           'bg-destructive/15 text-destructive border-destructive/25',
 }
 const CLOSE:  LeadStatus[] = ['converted','lost']
-const MIN_MINDSET_SECONDS = 300
-type BatchSlotKey = 'd1_morning' | 'd1_afternoon' | 'd1_evening' | 'd2_morning' | 'd2_afternoon' | 'd2_evening' | 'd3_morning' | 'd3_afternoon' | 'd3_evening' | 'd4_morning' | 'd4_afternoon' | 'd4_evening' | 'd5_morning' | 'd5_afternoon' | 'd5_evening' | 'd6_6pm' | 'd6_8pm'
+type BatchSlotKey = 'd1_morning' | 'd1_afternoon' | 'd1_evening' | 'd2_morning' | 'd2_afternoon' | 'd2_evening'
 type WorkboardStageKey =
   | 'day1'
   | 'day2'
   | 'day3'
-  | 'day4'
-  | 'day5'
-  | 'interview'
-  | 'pending'
-  | 'level_up'
+type BatchSlotChip = 'M' | 'A' | 'E'
+type BatchLinkVariant = 'v1' | 'v2'
+type BatchModalState = {
+  slot: BatchSlotChip
+  slotKey: BatchSlotKey
+  label: string
+  watchUrlV1: string
+  watchUrlV2: string
+  loading: boolean
+  error: string | null
+  copied: BatchLinkVariant | null
+}
 const slabel  = (s: string) => LEAD_STATUS_OPTIONS.find((o) => o.value === s)?.label ?? s
 
 const ADMIN_STAGE_TABS: {
@@ -81,18 +97,14 @@ const ADMIN_STAGE_TABS: {
   nextStatus?: LeadStatus
   nextLabel?: string
 }[] = [
+  { id: 'day1', label: 'Day 1', statuses: ['day1'], stageKey: 'day1', nextStatus: 'day2', nextLabel: 'Push to Day 2' },
   { id: 'day2', label: 'Day 2', statuses: ['day2'], stageKey: 'day2', nextStatus: 'day3', nextLabel: 'Push to Day 3' },
-  { id: 'day3', label: 'Day 3', statuses: ['day3'], stageKey: 'day3', nextStatus: 'day4', nextLabel: 'Push to Day 4' },
-  { id: 'day4', label: 'Day 4', statuses: ['day4'], stageKey: 'day4', nextStatus: 'day5', nextLabel: 'Push to Day 5' },
-  { id: 'day5', label: 'Day 5', statuses: ['day5'], stageKey: 'day5', nextStatus: 'interview', nextLabel: 'Push to Day 6' },
-  { id: 'interview', label: 'Day 6', statuses: ['interview', 'plan_2cc'], stageKey: 'interview', nextStatus: 'pending', nextLabel: 'Push to Next 3 Days' },
-  { id: 'pending', label: 'Next 3 Days', statuses: ['pending'], stageKey: 'pending', nextStatus: 'level_up', nextLabel: 'Push to Final Stage' },
-  { id: 'level_up', label: 'Final Stage', statuses: ['level_up'], stageKey: 'level_up', nextStatus: 'converted', nextLabel: 'Mark converted' },
+  { id: 'day3', label: 'Day 3', statuses: ['day3'], stageKey: 'day3', nextStatus: 'converted', nextLabel: 'Mark converted' },
   { id: 'closing', label: 'Closing', statuses: CLOSE },
 ]
 
 const STATUS_TAB_LABEL: Partial<Record<LeadStatus, string>> = {
-  day1: 'Day 2', day2: 'Day 3', day3: 'Day 3', interview: 'Day 6', plan_2cc: 'Day 6',
+  day1: 'Day 1', day2: 'Day 2', day3: 'Day 3',
   converted: 'Closing', lost: 'Closing',
 }
 type ATab = WorkboardStageKey | 'closing'
@@ -174,7 +186,7 @@ function Tabs({ tabs, active, onChange }: {
   onChange: (id: string) => void
 }) {
   return (
-    <div className="flex flex-wrap gap-1 border-b border-white/10">
+    <div className="flex flex-wrap gap-1 border-b border-border dark:border-white/10">
       {tabs.map((t) => (
         <button key={t.id} type="button" onClick={() => onChange(t.id)}
           className={cn('-mb-px shrink-0 border-b-2 px-2.5 py-2 text-ds-caption font-medium transition min-[400px]:px-3 sm:px-4 sm:text-sm',
@@ -189,7 +201,7 @@ function Tabs({ tabs, active, onChange }: {
 function IconBtn({ href, onClick, title, colorHover, children }: {
   href?: string; onClick?: () => void; title: string; colorHover: string; children: React.ReactNode
 }) {
-  const cls = cn('flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-muted/30 text-foreground transition', colorHover)
+  const cls = cn('flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-muted/30 text-foreground transition active:scale-95', colorHover)
   if (href) return <a href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" title={title} className={cls}>{children}</a>
   return <button type="button" title={title} onClick={onClick} className={cls}>{children}</button>
 }
@@ -199,9 +211,6 @@ const LeadCard = memo(function LeadCard({
   lead,
   pm,
   leadPatchBusy,
-  mindsetBusy,
-  mindsetPreview,
-  onRequestMindsetSend,
   stageKey,
   onMoveNext,
   nextLabel,
@@ -211,62 +220,57 @@ const LeadCard = memo(function LeadCard({
   lead: LeadPublic
   pm: PM
   leadPatchBusy: boolean
-  mindsetBusy?: boolean
-  mindsetPreview?: MindsetLockPreviewResponse | null
-  onRequestMindsetSend?: (lead: LeadPublic) => void
   stageKey?: WorkboardStageKey
   onMoveNext?: () => void
   nextLabel?: string
   nowMs: number
   showClosingActions?: boolean
 }) {
+  const qc = useQueryClient()
   const { role, serverRole } = useDashboardShellRole()
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
   const [sendError, setSendError] = useState<string | null>(null)
-  const [pickerOpen, setPickerOpen] = useState(false)
   const stageOpsCard = stageKey != null
 
-  async function handleSendEnrollmentVideo(option: LiveSessionSlotOption, useBusinessWhatsApp = false) {
+  // Enrollment-Live send: create the single open token /watch/{token} link (detail-form
+  // gate + first-open timer + auto video_sent→video_watched on finish), then WhatsApp it.
+  // Enrollment-Live send — one tokenized /watch link, no time-slot picker.
+  async function handleSendFlpMinBillingVideo() {
     setSendError(null)
     try {
-      await pm.mutateAsync({ id: lead.id, body: { status: 'video_sent' } })
-      const shareUrl = useBusinessWhatsApp
-        ? buildLiveSessionWhatsAppBusinessUrl(lead.phone, lead.name, option)
-        : buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option)
-      if (!shareUrl || !openExternalShareUrl(shareUrl)) {
-        throw new Error('Could not open WhatsApp share window')
+      const res = await apiFetch('/api/v1/flp-min-billing/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lead_id: lead.id }),
+      })
+      if (!res.ok) throw new Error(await readResponseError(res))
+      const data = (await res.json()) as { link?: { share_url?: string } }
+      const share = data.link?.share_url
+      const watchUrl = share ? `${window.location.origin}${share}` : null
+      if (watchUrl) {
+        const digits = whatsappDigits(lead.phone ?? '')
+        const msg =
+          `Hi ${lead.name || 'there'},\n\n` +
+          `Aapki Enrollment-Live video ready hai. Is link pe apna naam aur registered number daal ke dekhiye:\n${watchUrl}`
+        const waUrl = digits ? `https://wa.me/${digits}?text=${encodeURIComponent(msg)}` : null
+        if (waUrl) openExternalShareUrl(waUrl)
       }
-      setPickerOpen(false)
+      await qc.refetchQueries({ queryKey: ['workboard'] })
     } catch (err) {
       setSendError(err instanceof Error ? err.message : 'Could not send enrollment video')
     }
   }
 
-  const badge = BADGE[lead.status] ?? 'bg-muted/30 text-muted-foreground border-white/10'
+  const badge = BADGE[lead.status] ?? 'bg-muted/30 text-muted-foreground border-border dark:border-white/10'
   const isWatched = lead.status === 'video_watched' || lead.call_status === 'video_watched'
   const isSent = !isWatched && (lead.status === 'video_sent' || lead.call_status === 'video_sent')
+  const isReassigned = Boolean(lead.is_reassigned)
   const slaMs = timerRemainingMs(lead.last_action_at ?? null, lead.created_at, nowMs)
   const slaOverdue = slaMs < 0
   const slaRemainingSec = Math.max(0, Math.floor(slaMs / 1000))
   const slaTone = leadSlaTone(slaOverdue ? 0 : slaRemainingSec)
   const { hourAngle: slaHourAngle, minuteAngle: slaMinuteAngle, secondAngle: slaSecondAngle } =
     leadSlaClockAngles(slaOverdue ? 0 : slaMs)
-  const mindsetStartable =
-    lead.status === 'day1' &&
-    !lead.mindset_started_at
-  const mindsetReady =
-    lead.status === 'mindset_lock' &&
-    lead.mindset_lock_state !== 'leader_assigned'
-  const startedAtMs = lead.mindset_started_at ? new Date(lead.mindset_started_at).getTime() : null
-  const elapsedSeconds = startedAtMs ? Math.max(0, Math.floor((nowMs - startedAtMs) / 1000)) : 0
-  const remainingSeconds = Math.max(0, MIN_MINDSET_SECONDS - elapsedSeconds)
-  const { canSend } = getMindsetLockSendState({
-    mindsetReady,
-    remainingSeconds,
-    preview: mindsetPreview,
-  })
-  const isLeaderMindsetFlow = surfaceRole === 'leader'
-  const mindsetChecklistDone = stageChecklistComplete(lead, 'mindset_lock')
   const callOptions = callStatusSelectOptions(surfaceRole ?? null, lead.status as LeadStatus)
   const rawCallStatus = (lead.call_status ?? '').trim()
   const callValue = callOptions.some((option) => option.value === rawCallStatus)
@@ -278,7 +282,7 @@ const LeadCard = memo(function LeadCard({
     <article
       className={cn(
         'relative overflow-hidden rounded-md border p-3 text-card-foreground backdrop-blur-md sm:p-3.5',
-        'bg-card/90 dark:bg-card/80 supports-[backdrop-filter]:bg-card/75 supports-[backdrop-filter]:dark:bg-card/60',
+        'bg-card dark:bg-card/80 supports-[backdrop-filter]:dark:bg-card/60',
         slaTone.border,
         slaTone.cardGlow,
       )}
@@ -287,7 +291,7 @@ const LeadCard = memo(function LeadCard({
         className={cn('absolute bottom-2 left-0 top-2 w-[3px] rounded-full', slaTone.leftBorder)}
         aria-hidden
       />
-      <div className="relative flex flex-col gap-2.5 pl-3">
+      <div className="relative flex flex-col gap-2 pl-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1">
             <p className="break-words text-sm font-semibold leading-tight text-foreground sm:text-base">{lead.name}</p>
@@ -303,16 +307,22 @@ const LeadCard = memo(function LeadCard({
           <span className={cn('self-start rounded-full border px-2 py-0.5 text-ds-caption font-semibold', badge)}>{STATUS_TAB_LABEL[lead.status as LeadStatus] ?? slabel(lead.status)}</span>
         </div>
         {!stageOpsCard && isWatched ? (
-          <div className="flex items-center gap-1.5 rounded-md bg-blue-400/10 px-2 py-1 text-ds-caption font-medium text-blue-300">
+          <div className="flex items-center gap-1.5 rounded-lg border border-blue-500/25 bg-blue-500/10 px-2 py-1 text-ds-caption font-medium text-blue-700 dark:text-blue-300">
             <Eye className="size-3.5 shrink-0" aria-hidden />
             <span>Prospect watched the video — call now!</span>
           </div>
         ) : null}
         {!stageOpsCard && isSent ? (
-          <div className="flex items-center gap-1.5 rounded-md bg-indigo-400/10 px-2 py-1 text-ds-caption font-medium text-indigo-300">
+          <div className="flex items-center gap-1.5 rounded-lg border border-indigo-500/25 bg-indigo-500/10 px-2 py-1 text-ds-caption font-medium text-indigo-700 dark:text-indigo-300">
             <Send className="size-3.5 shrink-0" aria-hidden />
             <span>Video sent — waiting for response</span>
           </div>
+        ) : null}
+        {isReassigned ? (
+          <span className="flex w-fit items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+            <ArrowLeftRight className="size-3 shrink-0" aria-hidden />
+            Reassigned
+          </span>
         ) : null}
         {!stageOpsCard ? (
           <select
@@ -383,69 +393,19 @@ const LeadCard = memo(function LeadCard({
               <>
                 <LeadContactActions phone={lead.phone} />
                 {!stageOpsCard ? (
-                  <IconBtn title="Send Video" colorHover="hover:border-indigo-400/40 hover:text-indigo-400 disabled:opacity-50"
-                    onClick={() => setPickerOpen(true)}>
+                  <IconBtn title="Send Enrollment-Live video" colorHover="hover:border-indigo-400/40 hover:text-indigo-400 disabled:opacity-50"
+                    onClick={() => void handleSendFlpMinBillingVideo()}>
                     <Video className="h-3.5 w-3.5"/>
                   </IconBtn>
                 ) : null}
               </>
             ) : null}
             <Link to={`/dashboard/work/leads/${lead.id}`} title="Edit"
-              className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-muted/30 transition hover:border-primary/40 hover:text-primary">
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-muted/30 text-foreground transition active:scale-95 hover:border-primary/40 hover:text-primary">
               <Pencil className="h-3.5 w-3.5"/>
             </Link>
           </div>
         </div>
-        {mindsetStartable ? (
-          <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 px-2 py-2">
-            <p className="text-ds-caption text-muted-foreground">
-              {isLeaderMindsetFlow
-                ? 'Start Mindset Lock before pushing this lead into Day 2.'
-                : 'Start the After Day 1 mindset lock before leader handoff.'}
-            </p>
-            <button
-              type="button"
-              disabled={leadPatchBusy}
-              onClick={() => void pm.mutateAsync({ id: lead.id, body: { status: 'mindset_lock' as LeadStatus } })}
-              className="flex h-10 w-full items-center justify-center gap-1 rounded-md border border-fuchsia-400/40 bg-fuchsia-400/12 px-3 text-ds-caption font-semibold text-fuchsia-300 transition hover:bg-fuchsia-400/20 disabled:opacity-50"
-            >
-              <CheckSquare className="h-3.5 w-3.5" />
-              <span>Start Mindset Lock</span>
-            </button>
-          </div>
-        ) : null}
-        {mindsetReady ? (
-          <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 px-2 py-2">
-            <ProcessChecklistSection
-              lead={lead}
-              stage="mindset_lock"
-              pm={pm}
-              leadPatchBusy={leadPatchBusy}
-            />
-            <button
-              type="button"
-              disabled={!canSend || !mindsetChecklistDone || mindsetBusy}
-              onClick={() => onRequestMindsetSend?.(lead)}
-              className={cn(
-                'flex h-10 w-full items-center justify-center gap-1 rounded-md border px-3 text-ds-caption font-semibold transition disabled:cursor-not-allowed disabled:opacity-50',
-                canSend && mindsetChecklistDone
-                  ? 'border-emerald-400/40 bg-emerald-400/12 text-emerald-300 hover:bg-emerald-400/20'
-                  : 'border-border bg-muted/30 text-muted-foreground',
-              )}
-            >
-              <CheckSquare className="h-3.5 w-3.5" />
-              <span>
-                {mindsetBusy ? 'Moving...' : isLeaderMindsetFlow ? 'Push to Day 2' : 'Send to Leader'}
-              </span>
-            </button>
-          </div>
-        ) : null}
-        <LiveSessionSlotPicker
-          open={pickerOpen}
-          busy={pm.isPending}
-          onClose={() => setPickerOpen(false)}
-          onConfirm={(option, useBusiness) => void handleSendEnrollmentVideo(option, useBusiness)}
-        />
         {stageKey ? (
           <StageAdvanceSection
             lead={lead}
@@ -478,6 +438,9 @@ const LeadCard = memo(function LeadCard({
             </button>
           </div>
         )}
+        {showClosingActions && lead.status === 'converted' ? (
+          <LeadBillingCard leadId={lead.id} surfaceRole={surfaceRole} />
+        ) : null}
         {sendError ? (
           <p className="text-ds-caption text-destructive" role="alert">
             {sendError}
@@ -572,10 +535,9 @@ function ProcessChecklistSection({
     setTaskError(null)
     setBusyTask(taskKey)
     try {
-      const digits = (lead.phone ?? '').replace(/\D/g, '')
-      if (!digits) throw new Error('Phone number missing.')
       const msg = `Hi ${lead.name || 'there'},\n\nWatch this video:\n${videoUrl}`
-      const waUrl = `https://wa.me/${digits}?text=${encodeURIComponent(msg)}`
+      const waUrl = whatsAppChatWithTextHref(lead.phone, msg)
+      if (waUrl === '#') throw new Error('Phone number missing or invalid.')
       if (!openExternalShareUrl(waUrl)) throw new Error('Could not open WhatsApp.')
       await toggleTask(taskKey, true)
     } catch (err) {
@@ -593,7 +555,7 @@ function ProcessChecklistSection({
     <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 p-3">
       {!taskKeys && (
         <div className="space-y-0.5">
-          <p className="text-ds-caption font-bold uppercase tracking-wider text-foreground/70">{def.title}</p>
+          <p className="text-ds-caption font-bold uppercase tracking-wider text-[color-mix(in_srgb,var(--foreground)_70%,transparent)]">{def.title}</p>
           <p className="text-ds-caption text-muted-foreground">{def.helper}</p>
         </div>
       )}
@@ -613,7 +575,7 @@ function ProcessChecklistSection({
             >
               <div className="flex min-w-0 items-center gap-2">
                 {done && <Check className="h-3.5 w-3.5 shrink-0 text-emerald-400" aria-hidden />}
-                <p className={cn('text-sm font-medium', done ? 'text-emerald-300/80' : 'text-foreground/90')}>
+                <p className={cn('text-sm font-medium', done ? 'text-emerald-300/80' : 'text-[color-mix(in_srgb,var(--foreground)_90%,transparent)]')}>
                   {task.label}
                 </p>
               </div>
@@ -695,6 +657,309 @@ function ProcessChecklistSection({
   )
 }
 
+// ── Day 3 Stage picker (1/2/3) + seat-hold ──────────────────────────────────
+const STAGE_OPTIONS = [
+  { key: 'stage1', label: 'Stage 1', sub: 'Slow', priceCents: 800_000, seatHoldCents: 200_000 },
+  { key: 'stage2', label: 'Stage 2', sub: 'Medium', priceCents: 1_800_000, seatHoldCents: 400_000 },
+  { key: 'stage3', label: 'Stage 3', sub: 'Fast', priceCents: 3_800_000, seatHoldCents: 800_000 },
+] as const
+
+function rupees(cents: number): string {
+  return `₹${(cents / 100).toLocaleString('en-IN')}`
+}
+
+function Day3StagePicker({ lead, pm, leadPatchBusy }: {
+  lead: LeadPublic; pm: PM; leadPatchBusy: boolean
+}) {
+  const qc = useQueryClient()
+  const [busy, setBusy] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  const [nowMs, setNowMs] = useState(() => Date.now())
+
+  const selected = lead.stage_selected ?? null
+  const seatHoldCents = lead.seat_hold_amount_cents ?? null
+  const expiryMs = lead.seat_hold_expiry ? new Date(lead.seat_hold_expiry).getTime() : null
+  const seatHeld = expiryMs != null && expiryMs > nowMs
+  const seatExpired = expiryMs != null && expiryMs <= nowMs
+
+  useEffect(() => {
+    if (expiryMs == null) return
+    const id = setInterval(() => setNowMs(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [expiryMs])
+
+  const patch = async (body: Record<string, unknown>, key: string) => {
+    setErr(null)
+    setBusy(key)
+    try {
+      await pm.mutateAsync({ id: lead.id, body })
+      await qc.refetchQueries({ queryKey: ['workboard'] })
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not update stage')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const countdown = (() => {
+    if (expiryMs == null || !seatHeld) return null
+    const totalSec = Math.max(0, Math.ceil((expiryMs - nowMs) / 1000))
+    const h = Math.floor(totalSec / 3600)
+    const m = Math.floor((totalSec % 3600) / 60)
+    return `${h}h ${String(m).padStart(2, '0')}m left`
+  })()
+
+  return (
+    <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 p-3">
+      <p className="text-ds-caption font-bold uppercase tracking-wider text-[color-mix(in_srgb,var(--foreground)_70%,transparent)]">Stage Selection</p>
+      <div className="grid grid-cols-3 gap-1.5">
+        {STAGE_OPTIONS.map((s) => {
+          const active = selected === s.key
+          return (
+            <button
+              key={s.key}
+              type="button"
+              disabled={leadPatchBusy || busy !== null}
+              onClick={() => void patch({ stage_selected: s.key }, s.key)}
+              className={cn(
+                'flex flex-col items-center rounded-lg border px-2 py-2 text-center transition disabled:opacity-50',
+                active
+                  ? 'border-cyan-400/50 bg-cyan-400/[0.12] text-cyan-200'
+                  : 'border-border/50 bg-card/40 text-[color-mix(in_srgb,var(--foreground)_80%,transparent)] hover:border-cyan-400/30',
+              )}
+            >
+              <span className="text-sm font-bold">{s.label}</span>
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{s.sub}</span>
+              <span className="mt-1 text-xs font-semibold">{rupees(s.priceCents)}</span>
+              <span className="text-[10px] text-muted-foreground">seat {rupees(s.seatHoldCents)}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {selected ? (
+        <div className="space-y-1.5 border-t border-border/40 pt-2">
+          <div className="flex items-center justify-between">
+            <span className="text-ds-caption text-muted-foreground">
+              Seat-hold {seatHoldCents != null ? rupees(seatHoldCents) : ''}
+            </span>
+            {seatHeld ? (
+              <span className="rounded-full border border-emerald-400/30 bg-emerald-400/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                Held · {countdown}
+              </span>
+            ) : seatExpired ? (
+              <span className="rounded-full border border-amber-400/30 bg-amber-400/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                Expired
+              </span>
+            ) : null}
+          </div>
+          {seatHeld ? (
+            <button
+              type="button"
+              disabled={leadPatchBusy || busy !== null}
+              onClick={() => void patch({ collect_seat_hold: false }, 'release')}
+              className="w-full rounded-md border border-border/60 bg-muted/30 px-2 py-1 text-ds-caption font-semibold text-muted-foreground transition hover:bg-muted/50 disabled:opacity-50"
+            >
+              {busy === 'release' ? 'Releasing…' : 'Release seat-hold'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={leadPatchBusy || busy !== null}
+              onClick={() => void patch({ collect_seat_hold: true }, 'collect')}
+              className="w-full rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-ds-caption font-semibold text-emerald-300 transition hover:bg-emerald-400/20 disabled:opacity-50"
+            >
+              {busy === 'collect' ? 'Saving…' : seatExpired ? 'Re-collect seat-hold' : 'Collect seat-hold'}
+            </button>
+          )}
+        </div>
+      ) : (
+        <p className="text-ds-caption text-muted-foreground">Pick a stage to set price + seat-hold.</p>
+      )}
+      {err ? <p className="text-ds-caption text-destructive">{err}</p> : null}
+    </div>
+  )
+}
+
+// ── Day 3 Stage payment — screenshot → leader account → admin approve ────────
+function Day3StagePayment({ lead, leadPatchBusy }: { lead: LeadPublic; leadPatchBusy: boolean }) {
+  const qc = useQueryClient()
+  const { role, serverRole } = useDashboardShellRole()
+  const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
+  const isAdmin = surfaceRole === 'admin'
+
+  const status = lead.payment_status ?? null // null | proof_uploaded | approved | rejected
+  const [file, setFile] = useState<File | null>(null)
+  const [amount, setAmount] = useState(() =>
+    lead.stage_price_cents != null ? String(Math.round(lead.stage_price_cents / 100)) : '',
+  )
+  const [busy, setBusy] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+
+  if (!lead.stage_selected) return null
+
+  const refetch = () => qc.refetchQueries({ queryKey: ['workboard'] })
+
+  const upload = async () => {
+    setErr(null)
+    if (!file) { setErr('Screenshot select karo.'); return }
+    const cents = Math.round(Number(amount) * 100)
+    if (!Number.isFinite(cents) || cents <= 0) { setErr('Valid amount daalo.'); return }
+    setBusy('upload')
+    try {
+      const form = new FormData()
+      form.append('proof_file', file)
+      form.append('lead_id', String(lead.id))
+      form.append('payment_amount_cents', String(cents))
+      form.append('notes', 'Day 3 stage payment')
+      const res = await apiFetch('/api/v1/payments/proof/upload', { method: 'POST', body: form })
+      if (!res.ok) throw new Error(await readResponseError(res))
+      setFile(null)
+      await refetch()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Upload failed')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const review = async (action: 'approve' | 'reject') => {
+    setErr(null)
+    setBusy(action)
+    try {
+      const res = await apiFetch(`/api/v1/payments/proof/${action}?lead_id=${lead.id}`, { method: 'POST' })
+      if (!res.ok) throw new Error(await readResponseError(res))
+      await refetch()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : `Could not ${action}`)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const badge = (() => {
+    if (status === 'approved') return ['Paid ✓ (recorded)', 'border-emerald-400/30 bg-emerald-400/15 text-emerald-300']
+    if (status === 'proof_uploaded') return ['Pending review', 'border-amber-400/30 bg-amber-400/15 text-amber-300']
+    if (status === 'rejected') return ['Rejected', 'border-destructive/30 bg-destructive/15 text-destructive']
+    return ['Not paid', 'border-border/50 bg-muted text-muted-foreground']
+  })()
+
+  const showForm = status == null || status === 'rejected'
+
+  return (
+    <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 p-3">
+      <div className="flex items-center justify-between">
+        <p className="text-ds-caption font-bold uppercase tracking-wider text-[color-mix(in_srgb,var(--foreground)_70%,transparent)]">Stage Payment</p>
+        <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-bold', badge[1])}>{badge[0]}</span>
+      </div>
+      <p className="text-ds-caption text-muted-foreground">Prospect ka payment leader ke account me. Screenshot upload → admin approve.</p>
+
+      {lead.payment_proof_url ? (
+        <a href={apiUrl(lead.payment_proof_url)} target="_blank" rel="noreferrer"
+          className="block text-ds-caption font-semibold text-primary underline">
+          View uploaded screenshot
+        </a>
+      ) : null}
+
+      {showForm ? (
+        <div className="space-y-1.5">
+          <div className="flex gap-1.5">
+            <span className="flex items-center rounded-md border border-border/50 bg-card/40 px-2 text-ds-caption text-muted-foreground">₹</span>
+            <input
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              inputMode="numeric"
+              placeholder="Amount"
+              className="h-9 flex-1 rounded-md border border-border/50 bg-card/40 px-2 text-sm outline-none focus:border-cyan-400/40"
+            />
+          </div>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            className="block w-full text-ds-caption text-muted-foreground file:mr-2 file:rounded-md file:border-0 file:bg-primary/15 file:px-2 file:py-1 file:text-primary"
+          />
+          <button
+            type="button"
+            disabled={leadPatchBusy || busy !== null}
+            onClick={() => void upload()}
+            className="w-full rounded-md border border-cyan-400/30 bg-cyan-400/10 px-2 py-1 text-ds-caption font-semibold text-cyan-300 transition hover:bg-cyan-400/20 disabled:opacity-50"
+          >
+            {busy === 'upload' ? 'Uploading…' : 'Upload payment screenshot'}
+          </button>
+        </div>
+      ) : null}
+
+      {isAdmin && status === 'proof_uploaded' ? (
+        <div className="flex gap-1.5">
+          <button
+            type="button"
+            disabled={busy !== null}
+            onClick={() => void review('approve')}
+            className="flex-1 rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-ds-caption font-semibold text-emerald-300 transition hover:bg-emerald-400/20 disabled:opacity-50"
+          >
+            {busy === 'approve' ? '…' : 'Approve'}
+          </button>
+          <button
+            type="button"
+            disabled={busy !== null}
+            onClick={() => void review('reject')}
+            className="flex-1 rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1 text-ds-caption font-semibold text-destructive transition hover:bg-destructive/20 disabled:opacity-50"
+          >
+            {busy === 'reject' ? '…' : 'Reject'}
+          </button>
+        </div>
+      ) : null}
+      {err ? <p className="text-ds-caption text-destructive">{err}</p> : null}
+    </div>
+  )
+}
+
+// ── Day 2 cheat-proof business-test link + status ───────────────────────────
+function Day2TestLinkRow({ lead, busy, onSend }: {
+  lead: LeadPublic; busy: boolean; onSend: () => void
+}) {
+  const status = lead.day2_test_status ?? 'pending'
+  const done = status === 'passed' || status === 'failed'
+  const badge: Record<string, string> = {
+    pending: 'bg-muted text-muted-foreground border-border/50',
+    in_progress: 'bg-amber-400/15 text-amber-300 border-amber-400/30',
+    passed: 'bg-emerald-400/15 text-emerald-300 border-emerald-400/30',
+    failed: 'bg-destructive/15 text-destructive border-destructive/30',
+  }
+  const label: Record<string, string> = {
+    pending: 'Test not started',
+    in_progress: 'Test in progress',
+    passed: `Passed${lead.day2_test_score != null ? ` (${lead.day2_test_score}/30)` : ''}`,
+    failed: `Failed${lead.day2_test_score != null ? ` (${lead.day2_test_score}/30)` : ''}`,
+  }
+  return (
+    <div className="border-t border-border/40 pt-1.5 space-y-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-ds-caption font-semibold text-muted-foreground">Day 2 Business Test</span>
+        <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-bold', badge[status])}>
+          {label[status]}
+        </span>
+      </div>
+      {!done ? (
+        <button type="button"
+          disabled={busy}
+          onClick={onSend}
+          className="relative flex h-10 w-full items-center justify-center gap-2 overflow-hidden rounded-xl border border-cyan-400/40 bg-gradient-to-r from-cyan-400/15 to-emerald-400/10 px-3 text-sm font-bold text-cyan-200 transition hover:border-cyan-400/60 hover:from-cyan-400/20 disabled:opacity-50">
+          <Send className="h-4 w-4 shrink-0" />
+          <span>{busy ? 'Preparing...' : status === 'in_progress' ? 'Resend test link' : 'Send test link'}</span>
+        </button>
+      ) : (
+        <p className="text-ds-caption text-muted-foreground">
+          {status === 'passed'
+            ? 'Test cleared — admin can advance to Day 3.'
+            : 'Test failed — prospect cannot advance to Day 3.'}
+        </p>
+      )}
+    </div>
+  )
+}
+
 // ── StageAdvanceSection — day flow + post-Day-3 progression ──────────────────
 function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, nextLabel }: {
   lead: LeadPublic
@@ -706,35 +971,45 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
 }) {
   const qc = useQueryClient()
   const [sharingSlot, setSharingSlot] = useState<BatchSlotKey | null>(null)
-  const [toggleSlot, setToggleSlot] = useState<BatchSlotKey | null>(null)
+  const [markingSlot, setMarkingSlot] = useState<BatchSlotKey | null>(null)
   const [batchError, setBatchError] = useState<string | null>(null)
-  const [pickerOpen, setPickerOpen] = useState(false)
-  const [pickerBusy, setPickerBusy] = useState(false)
-  const [uploadBusy, setUploadBusy] = useState(false)
-  const [uploadErr, setUploadErr] = useState<string | null>(null)
+  const [testLinkBusy, setTestLinkBusy] = useState(false)
+  const [batchModal, setBatchModal] = useState<BatchModalState | null>(null)
 
-  const hasBatchSlots = stageKey === 'day1' || stageKey === 'day2' || stageKey === 'day3' || stageKey === 'day4' || stageKey === 'day5' || stageKey === 'interview'
-  const dayKey = stageKey === 'interview' ? 6 : stageKey === 'day5' ? 5 : stageKey === 'day4' ? 4 : stageKey === 'day3' ? 3 : stageKey === 'day2' ? 2 : 1
+  const hasBatchSlots = stageKey === 'day1' || stageKey === 'day2'
+  const dayKey = stageKey === 'day3' ? 3 : stageKey === 'day2' ? 2 : 1
   const batchSlots: readonly BatchSlotKey[] =
-    stageKey === 'interview'
-      ? (['d6_6pm', 'd6_8pm'] as const)
-      : stageKey === 'day5'
-      ? (['d5_morning', 'd5_afternoon', 'd5_evening'] as const)
-      : stageKey === 'day4'
-      ? (['d4_morning', 'd4_afternoon', 'd4_evening'] as const)
-      : stageKey === 'day3'
-      ? (['d3_morning', 'd3_afternoon', 'd3_evening'] as const)
-      : stageKey === 'day2'
+    stageKey === 'day2'
       ? (['d2_morning', 'd2_afternoon', 'd2_evening'] as const)
       : (['d1_morning', 'd1_afternoon', 'd1_evening'] as const)
 
   const allSlotsDone = hasBatchSlots && batchSlots.every((k) => lead[k])
+  const doneCount = hasBatchSlots ? batchSlots.filter((k) => lead[k]).length : 0
+  const day2AdvanceUnlocked = stageKey !== 'day2' || isDay2AdvanceUnlocked(lead)
+  const slotButtonMeta: Record<BatchSlotChip, { icon: typeof Sunrise; label: string }> = {
+    M: { icon: Sunrise, label: 'Morning' },
+    A: { icon: Sun, label: 'Afternoon' },
+    E: { icon: Moon, label: 'Evening' },
+  }
 
-  // day1 M/A slots — tokenized batch link
-  const handleBatchShare = async (slot: 'M' | 'A' | 'E' | '6PM' | '8PM', slotKey: BatchSlotKey) => {
+  const closeBatchModal = () => {
+    if (sharingSlot != null || markingSlot != null) return
+    setBatchModal(null)
+  }
+
+  const handleBatchButtonClick = async (slot: BatchSlotChip, slotKey: BatchSlotKey) => {
     setBatchError(null)
     setSharingSlot(slotKey)
-    const popup = reserveExternalShareWindow('Preparing batch share...')
+    setBatchModal({
+      slot,
+      slotKey,
+      label: `${slotButtonMeta[slot].label} Batch`,
+      watchUrlV1: '',
+      watchUrlV2: '',
+      loading: true,
+      error: null,
+      copied: null,
+    })
     try {
       const res = await apiFetch(`/api/v1/leads/${lead.id}/batch-share-url`, {
         method: 'POST',
@@ -743,351 +1018,383 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
       })
       if (!res.ok) throw new Error(await readResponseError(res))
       const body = (await res.json()) as { watch_url_v1?: string; watch_url_v2?: string }
-      const waUrl = workboardBatchWhatsAppUrl(lead, dayKey, slot, { v1: body.watch_url_v1, v2: body.watch_url_v2 })
-      if (!waUrl) throw new Error('Phone number missing for WhatsApp batch share.')
-      if (!completeExternalShareWindow(popup, waUrl)) throw new Error('Could not open WhatsApp share window.')
-      await pm.mutateAsync({ id: lead.id, body: { [slotKey]: true } })
-      await qc.refetchQueries({ queryKey: ['workboard'] })
+      setBatchModal((prev) =>
+        prev && prev.slotKey === slotKey
+          ? {
+              ...prev,
+              watchUrlV1: body.watch_url_v1 ?? '',
+              watchUrlV2: body.watch_url_v2 ?? '',
+              loading: false,
+            }
+          : prev,
+      )
     } catch (err) {
-      closeExternalShareWindow(popup)
-      setBatchError(err instanceof Error ? err.message : 'Could not generate batch links')
+      const message = err instanceof Error ? err.message : 'Could not generate batch links'
+      setBatchError(message)
+      setBatchModal((prev) =>
+        prev && prev.slotKey === slotKey
+          ? {
+              ...prev,
+              loading: false,
+              error: message,
+            }
+          : prev,
+      )
     } finally {
       setSharingSlot(null)
     }
   }
 
-  const handleBatchToggle = async (slotKey: BatchSlotKey) => {
+  const markBatchDone = async (slotKey: BatchSlotKey) => {
     setBatchError(null)
-    setToggleSlot(slotKey)
+    setMarkingSlot(slotKey)
     try {
-      await pm.mutateAsync({ id: lead.id, body: { [slotKey]: !lead[slotKey] } })
-      await qc.refetchQueries({ queryKey: ['workboard'] })
+      await pm.mutateAsync({ id: lead.id, body: { [slotKey]: true } })
+      // Optimistic cache update already painted; mutation onSettled invalidates
+      // the board in the background — no awaited refetch needed.
+      setBatchModal(null)
     } catch (err) {
-      setBatchError(err instanceof Error ? err.message : 'Could not update batch state')
+      const message = err instanceof Error ? err.message : 'Could not update batch state'
+      setBatchError(message)
+      setBatchModal((prev) =>
+        prev && prev.slotKey === slotKey
+          ? {
+              ...prev,
+              error: message,
+            }
+          : prev,
+      )
     } finally {
-      setToggleSlot(null)
+      setMarkingSlot(null)
     }
   }
 
-  // day1-evening + day2/day3-all: live session slot picker → WhatsApp premiere link
-  const slotKeyForHour = (hour: number): BatchSlotKey | null => {
-    const p = stageKey === 'day5' ? 'd5' : stageKey === 'day4' ? 'd4' : stageKey === 'day3' ? 'd3' : stageKey === 'day2' ? 'd2' : 'd1'
-    if (hour === 17) return `${p}_morning` as BatchSlotKey
-    if (hour === 18) return `${p}_afternoon` as BatchSlotKey
-    if (hour === 19) return `${p}_evening` as BatchSlotKey
-    return null
+  // Tapping an already-done batch toggles it back off (no share modal).
+  const unmarkBatchDone = async (slotKey: BatchSlotKey) => {
+    setBatchError(null)
+    setMarkingSlot(slotKey)
+    try {
+      await pm.mutateAsync({ id: lead.id, body: { [slotKey]: false } })
+      // Optimistic cache update already painted; onSettled invalidates in bg.
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not update batch state'
+      setBatchError(message)
+    } finally {
+      setMarkingSlot(null)
+    }
   }
 
-  const handlePickerConfirm = async (option: LiveSessionSlotOption, useBusinessWhatsApp = false) => {
-    setPickerBusy(true)
-    setBatchError(null)
+  const handleSendAndMark = async () => {
+    if (!batchModal) return
+    const waUrl = workboardBatchWhatsAppUrl(lead, dayKey, batchModal.slot, {
+      v1: batchModal.watchUrlV1,
+      v2: batchModal.watchUrlV2,
+    })
+    if (!waUrl) {
+      const message = 'Phone number missing for WhatsApp batch share.'
+      setBatchError(message)
+      setBatchModal((prev) => (prev ? { ...prev, error: message } : prev))
+      return
+    }
+    if (!openExternalShareUrl(waUrl)) {
+      const message = 'Could not open WhatsApp share window.'
+      setBatchError(message)
+      setBatchModal((prev) => (prev ? { ...prev, error: message } : prev))
+      return
+    }
+    await markBatchDone(batchModal.slotKey)
+  }
+
+  const handleCopyBatchLink = async (variant: BatchLinkVariant) => {
+    if (!batchModal) return
+    const value = variant === 'v1' ? batchModal.watchUrlV1 : batchModal.watchUrlV2
+    if (!value) return
     try {
-      // day1 evening sends day2 premiere; other days send their own day premiere
-      const targetDay = stageKey === 'day1' ? 2 : dayKey
-      const shareUrl = useBusinessWhatsApp
-        ? buildLiveSessionWhatsAppBusinessUrl(lead.phone, lead.name, option, targetDay)
-        : buildLiveSessionWhatsAppUrl(lead.phone, lead.name, option, targetDay)
-      if (!shareUrl || !openExternalShareUrl(shareUrl)) {
-        setBatchError('WhatsApp link nahi bana. Phone number check karo.')
-        return
-      }
-      const slotKey = slotKeyForHour(option.hour)
-      if (slotKey) {
-        await pm.mutateAsync({ id: lead.id, body: { [slotKey]: true } })
-        await qc.refetchQueries({ queryKey: ['workboard'] })
-      }
-      setPickerOpen(false)
+      await navigator.clipboard.writeText(value)
+      setBatchModal((prev) => (prev ? { ...prev, copied: variant } : prev))
+      window.setTimeout(() => {
+        setBatchModal((prev) => (prev ? { ...prev, copied: null } : prev))
+      }, 1800)
+    } catch {
+      setBatchError('Could not copy link.')
+    }
+  }
+
+
+  // day2: issue the prospect's single cheat-proof business-test link → WhatsApp
+  const handleSendTestLink = async () => {
+    setBatchError(null)
+    setTestLinkBusy(true)
+    const popup = reserveExternalShareWindow('Preparing test link...')
+    try {
+      const res = await apiFetch(`/api/v1/leads/${lead.id}/day2-test-link`, { method: 'POST' })
+      if (!res.ok) throw new Error(await readResponseError(res))
+      const body = (await res.json()) as { test_url?: string }
+      const waUrl = buildDay2BusinessTestWhatsAppUrl({
+        leadName: lead.name,
+        phone: lead.phone,
+        testUrl: body.test_url,
+      })
+      if (!waUrl) throw new Error('Phone number missing for WhatsApp test share.')
+      if (!completeExternalShareWindow(popup, waUrl)) throw new Error('Could not open WhatsApp share window.')
+      await qc.refetchQueries({ queryKey: ['workboard'] })
     } catch (err) {
-      setBatchError(err instanceof Error ? err.message : 'Could not send live session')
+      closeExternalShareWindow(popup)
+      setBatchError(err instanceof Error ? err.message : 'Could not generate test link')
     } finally {
-      setPickerBusy(false)
+      setTestLinkBusy(false)
     }
   }
 
   if (!hasBatchSlots) {
+    // day3 closing sub-flow: interview → 2CC → blueprint → stage → seat-hold → converted
+    const day3Done = stageChecklistComplete(lead, 'day3')
     return (
-      <ProcessChecklistSection
-        lead={lead}
-        stage={stageKey}
-        pm={pm}
-        leadPatchBusy={leadPatchBusy}
-        onMoveNext={onMoveNext}
-        nextLabel={nextLabel}
-      />
-    )
-  }
-
-  // interview (Day 6): interview checkbox + Send Day 6 2CC Live Session
-  if (stageKey === 'interview') {
-    const interviewDone = !!lead.process_tracking?.['interview']?.['interview_done']
-
-    const handleInterviewToggle = async () => {
-      try {
-        await pm.mutateAsync({ id: lead.id, body: {
-          process_stage: 'interview',
-          process_task: 'interview_done',
-          process_task_done: !interviewDone,
-        }})
-        await qc.refetchQueries({ queryKey: ['workboard'] })
-      } catch { /* handled by pm */ }
-    }
-
-    return (
-      <div className="space-y-1.5 border-t border-border/40 pt-1.5">
-        <button
-          type="button"
-          disabled={leadPatchBusy}
-          onClick={() => void handleInterviewToggle()}
-          className={cn(
-            'flex h-6 items-center gap-1.5 rounded px-2 text-ds-caption font-semibold transition disabled:opacity-50',
-            interviewDone
-              ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
-              : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
-          )}
-        >
-          {interviewDone ? <CheckSquare className="h-3 w-3" /> : <Square className="h-3 w-3" />}
-          Interview
-        </button>
-
-        {!pickerOpen ? (
+      <div className="space-y-1.5">
+        <ProcessChecklistSection
+          lead={lead}
+          stage={stageKey}
+          pm={pm}
+          leadPatchBusy={leadPatchBusy}
+          taskKeys={['day3_interview', 'day3_2cc_plan', 'day3_blueprint_video']}
+        />
+        <Day3StagePicker lead={lead} pm={pm} leadPatchBusy={leadPatchBusy} />
+        <Day3StagePayment lead={lead} leadPatchBusy={leadPatchBusy} />
+        {onMoveNext ? (
           <button
             type="button"
-            disabled={leadPatchBusy || pickerBusy}
-            onClick={() => setPickerOpen(true)}
-            className="flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-indigo-400/40 bg-indigo-400/10 px-3 text-ds-caption font-semibold text-indigo-300 transition hover:bg-indigo-400/20 disabled:opacity-50"
+            disabled={leadPatchBusy || !day3Done}
+            onClick={onMoveNext}
+            className="w-full rounded-md border border-green-500/40 bg-green-500/10 px-2 py-1 text-ds-caption font-semibold text-green-300 transition hover:bg-green-500/20 disabled:opacity-50"
           >
-            <Video className="h-3.5 w-3.5" />
-            Send Day 6 2CC Live Session
+            {nextLabel ?? 'Mark Converted'}
           </button>
-        ) : (
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span className="text-ds-caption text-muted-foreground">Links:</span>
-              {(['6PM', '8PM'] as const).map((slotLabel) => {
-                const slotKey = slotLabel === '6PM' ? 'd6_6pm' as const : 'd6_8pm' as const
-                const busy = sharingSlot === slotKey
-                const done = lead[slotKey]
-                return (
-                  <button key={slotKey} type="button"
-                    disabled={leadPatchBusy || busy}
-                    onClick={() => void handleBatchShare(slotLabel, slotKey)}
-                    className={cn(
-                      'flex h-6 min-w-12 items-center justify-center rounded px-1.5 text-ds-caption font-semibold transition disabled:opacity-50',
-                      done
-                        ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
-                        : 'border border-indigo-400/40 bg-indigo-400/10 text-indigo-300 hover:bg-indigo-400/20',
-                    )}>
-                    {busy ? '...' : slotLabel}
-                  </button>
-                )
-              })}
-              <button type="button" onClick={() => setPickerOpen(false)}
-                className="text-ds-caption text-muted-foreground hover:text-foreground">✕</button>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-ds-caption text-muted-foreground">Check:</span>
-              {(['d6_6pm', 'd6_8pm'] as const).map((slotKey) => {
-                const done = lead[slotKey]
-                const busy = toggleSlot === slotKey
-                const label = slotKey === 'd6_6pm' ? '6PM' : '8PM'
-                return (
-                  <button key={slotKey} type="button"
-                    disabled={leadPatchBusy || busy}
-                    onClick={() => void handleBatchToggle(slotKey)}
-                    className={cn(
-                      'flex h-6 min-w-10 items-center justify-center rounded px-1.5 text-ds-caption font-semibold transition disabled:opacity-50',
-                      done
-                        ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
-                        : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
-                    )}>
-                    {busy ? '...' : done ? <CheckSquare className="h-3 w-3" /> : <span>{label}</span>}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {batchError ? <p className="text-ds-caption text-destructive">{batchError}</p> : null}
-        {onMoveNext && (
-          <button type="button" disabled={leadPatchBusy} onClick={onMoveNext}
-            className="w-full rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50">
-            {nextLabel ?? 'Move to next stage →'}
-          </button>
-        )}
+        ) : null}
       </div>
     )
   }
 
   const slotTimeLabels = (['M', 'A', 'E'] as const)
 
-  // day1, day4, day5: send tokenized batch links
-  if (stageKey === 'day1' || stageKey === 'day4' || stageKey === 'day5') {
+  // day1 + day2: send tokenized batch links (M/A/E) — mirrors old app's 3 batch
+  // buttons. Day 2 also carries the business-test link. (No expose/follow-up/id
+  // checklist — old app had none.)
+  if (hasBatchSlots) {
     return (
       <div className="space-y-1.5">
-        <div className="space-y-1.5 border-t border-border/40 pt-1.5">
-          <div className="flex items-center gap-2">
-            <span className="text-ds-caption text-muted-foreground">Links:</span>
-            {batchSlots.map((slotKey, i) => {
-              const slot = (slotTimeLabels as readonly string[])[i] as 'M' | 'A' | 'E' | '6PM' | '8PM'
-              const timeLabel = slotTimeLabels[i]
-              const slotDone = lead[slotKey]
-              const busy = sharingSlot === slotKey
-              return (
-                <button key={`share-${slotKey}`} type="button"
-                  disabled={leadPatchBusy || busy}
-                  onClick={() => void handleBatchShare(slot, slotKey)}
-                  className={cn(
-                    'flex h-6 min-w-10 items-center justify-center rounded px-1.5 text-ds-caption font-semibold transition disabled:opacity-50',
-                    slotDone
-                      ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
-                      : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
-                  )}>
-                  {busy ? '...' : timeLabel}
-                </button>
-              )
-            })}
+        <div className="space-y-2 border-t border-border/40 pt-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-ds-caption font-medium text-muted-foreground">Batch progress</span>
+            <span
+              className={cn(
+                'rounded-full border px-2 py-0.5 text-[10px] font-semibold',
+                doneCount === 3
+                  ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
+                  : doneCount > 0
+                    ? 'border-amber-400/30 bg-amber-400/15 text-amber-300'
+                    : 'border-border bg-muted/30 text-muted-foreground',
+              )}
+            >
+              {doneCount}/3
+            </span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-ds-caption text-muted-foreground">Check:</span>
+          <div className="h-1.5 overflow-hidden rounded-full bg-muted/40">
+            <div
+              className={cn(
+                'h-full rounded-full transition-all',
+                doneCount === 3 ? 'bg-emerald-400' : doneCount > 0 ? 'bg-amber-400' : 'bg-border',
+              )}
+              style={{ width: `${Math.round((doneCount / 3) * 100)}%` }}
+            />
+          </div>
+          <p className="text-[11px] text-muted-foreground">{doneCount}/3 batches done</p>
+          <div className="flex gap-2">
             {batchSlots.map((slotKey, i) => {
+              const slot = slotTimeLabels[i]
+              const meta = slotButtonMeta[slot]
+              const Icon = meta.icon
               const slotDone = lead[slotKey]
-              const busy = toggleSlot === slotKey
+              const busy = sharingSlot === slotKey || markingSlot === slotKey
               return (
-                <button key={`toggle-${slotKey}`} type="button"
+                <button
+                  key={`share-${slotKey}`}
+                  type="button"
                   disabled={leadPatchBusy || busy}
-                  aria-label={slotDone ? `Uncheck ${slotTimeLabels[i]}` : `Check ${slotTimeLabels[i]}`}
-                  onClick={() => void handleBatchToggle(slotKey)}
-                  className={cn(
-                    'flex h-6 min-w-10 items-center justify-center rounded px-1.5 text-ds-caption font-semibold transition disabled:opacity-50',
+                  title={slotDone ? `${meta.label} batch — tap to undo` : `${meta.label} batch`}
+                  onClick={() =>
                     slotDone
-                      ? 'border border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
-                      : 'border border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
-                  )}>
-                  {busy ? '...' : slotDone ? <CheckSquare className="h-3 w-3" /> : <span>{slotTimeLabels[i]}</span>}
+                      ? void unmarkBatchDone(slotKey)
+                      : void handleBatchButtonClick(slot, slotKey)
+                  }
+                  className={cn(
+                    'flex min-h-11 flex-1 flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-xs font-semibold transition disabled:opacity-50',
+                    slotDone
+                      ? 'border-emerald-400/35 bg-emerald-400/12 text-emerald-300'
+                      : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
+                  )}
+                >
+                  {busy ? (
+                    <span className="text-[11px]">...</span>
+                  ) : slotDone ? (
+                    <CheckSquare className="h-4 w-4" />
+                  ) : (
+                    <Icon className="h-4 w-4" />
+                  )}
+                  <span>{slot}</span>
                 </button>
               )
             })}
           </div>
           {batchError ? <p className="text-ds-caption text-destructive">{batchError}</p> : null}
-          {allSlotsDone && onMoveNext && (
-            <button type="button" disabled={leadPatchBusy} onClick={onMoveNext}
-              className="w-full rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50">
-              {nextLabel ?? 'Move to next stage →'}
-            </button>
-          )}
         </div>
-      </div>
-    )
-  }
-
-  // day2: Send Live button + checklist
-  if (stageKey === 'day2') {
-    return (
-      <div className="space-y-1.5">
-        <div className="border-t border-border/40 pt-1.5 space-y-1.5">
-          <button type="button"
-            disabled={leadPatchBusy || pickerBusy}
-            onClick={() => setPickerOpen(true)}
-            className="relative flex h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-xl border border-indigo-400/40 bg-gradient-to-r from-indigo-400/15 to-violet-400/10 px-3 text-sm font-bold text-indigo-200 shadow-[0_0_16px_-6px_rgba(99,102,241,0.5)] transition hover:border-indigo-400/60 hover:from-indigo-400/20 hover:to-violet-400/15 disabled:opacity-50">
-            <Video className="h-4 w-4 shrink-0" />
-            <span>{pickerBusy ? 'Sending...' : `Send Day ${dayKey} Live Session`}</span>
+        {stageKey === 'day2' ? (
+          allSlotsDone ? (
+            <Day2TestLinkRow lead={lead} busy={testLinkBusy} onSend={() => void handleSendTestLink()} />
+          ) : (
+            <p className="border-t border-border/40 pt-1.5 text-ds-caption text-muted-foreground">
+              Complete all 3 Day 2 batches to unlock the business test.
+            </p>
+          )
+        ) : null}
+        {stageKey === 'day2' && allSlotsDone && !day2AdvanceUnlocked ? (
+          <p className="border-t border-border/40 pt-1.5 text-ds-caption text-muted-foreground">
+            Pass the Day 2 business test to unlock Day 3.
+          </p>
+        ) : null}
+        {allSlotsDone && onMoveNext && day2AdvanceUnlocked && (
+          <button type="button" disabled={leadPatchBusy} onClick={onMoveNext}
+            className="w-full rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50">
+            {nextLabel ?? 'Move to next stage →'}
           </button>
-          {batchError ? <p className="text-ds-caption text-destructive">{batchError}</p> : null}
-        </div>
-        <ProcessChecklistSection
-          lead={lead}
-          stage={stageKey}
-          pm={pm}
-          leadPatchBusy={leadPatchBusy}
-          onMoveNext={onMoveNext}
-          nextLabel={nextLabel}
-        />
-        <LiveSessionSlotPicker open={pickerOpen} busy={pickerBusy} day={dayKey}
-          onClose={() => setPickerOpen(false)}
-          onConfirm={(option, useBusiness) => void handlePickerConfirm(option, useBusiness)} />
+        )}
+        {batchModal ? createPortal(
+          <div className="keyboard-safe-modal fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4">
+            <div
+              className="keyboard-safe-sheet w-full max-w-lg overflow-y-auto rounded border border-border bg-card p-4 shadow-2xl"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={`batch-modal-title-${lead.id}`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 id={`batch-modal-title-${lead.id}`} className="text-base font-semibold text-foreground">
+                    Day {dayKey} - {batchModal.label}
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{lead.name}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeBatchModal}
+                  disabled={sharingSlot != null || markingSlot != null}
+                  className="rounded-md border border-border bg-muted/30 p-1 text-muted-foreground transition hover:text-foreground disabled:opacity-50"
+                  aria-label="Close batch dialog"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                {batchModal.loading ? (
+                  <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-4 text-sm text-muted-foreground">
+                    Generating tokenized batch links...
+                  </div>
+                ) : batchModal.error ? (
+                  <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-3 text-sm text-destructive">
+                    {batchModal.error}
+                  </div>
+                ) : batchModal.watchUrlV1 || batchModal.watchUrlV2 ? (
+                  <>
+                    {([
+                      ['v1', batchModal.watchUrlV1, 'Video 1'],
+                      ['v2', batchModal.watchUrlV2, 'Video 2'],
+                    ] as const)
+                      .filter(([, url]) => url)
+                      .map(([variant, url, label]) => (
+                        <div
+                          key={variant}
+                          className="rounded-xl border border-primary/20 bg-primary/5 p-3"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-foreground">{label}</p>
+                              <p className="mt-1 truncate text-xs text-primary">{url}</p>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2">
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded-md border border-primary/25 bg-background/70 px-2.5 py-1 text-xs font-semibold text-primary transition hover:bg-background"
+                              >
+                                Open
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => void handleCopyBatchLink(variant)}
+                                className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-xs font-semibold text-foreground transition hover:border-primary/35 hover:text-primary"
+                              >
+                                <Copy className="h-3.5 w-3.5" />
+                                {batchModal.copied === variant ? 'Copied' : 'Copy'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    <p className="text-xs text-muted-foreground">
+                      Send on WhatsApp to mark this batch done, or use already sent if the prospect already has the link.
+                    </p>
+                  </>
+                ) : (
+                  <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-3 text-sm text-muted-foreground">
+                    Video URLs are not configured for this batch yet.
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={closeBatchModal}
+                  disabled={sharingSlot != null || markingSlot != null}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void markBatchDone(batchModal.slotKey)}
+                  disabled={markingSlot != null || batchModal.loading}
+                >
+                  {markingSlot === batchModal.slotKey ? 'Marking...' : 'Already Sent'}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => void handleSendAndMark()}
+                  disabled={
+                    markingSlot != null ||
+                    batchModal.loading ||
+                    (!batchModal.watchUrlV1 && !batchModal.watchUrlV2)
+                  }
+                >
+                  {markingSlot === batchModal.slotKey ? 'Sending...' : 'Send & Mark'}
+                </Button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        ) : null}
       </div>
     )
   }
 
-  // day3: top tasks → Send Live → FLP billing with upload button
-  const proofUploaded = Boolean(lead.payment_proof_url)
-  const paymentApproved = lead.payment_status === 'approved'
-
-  async function handleProofUpload(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploadBusy(true)
-    setUploadErr(null)
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('lead_id', String(lead.id))
-      formData.append('amount_cents', '150000')
-      const res = await apiFetch('/api/v1/payments/proof/upload', { method: 'POST', body: formData })
-      if (!res.ok) throw new Error('Upload failed')
-      await qc.refetchQueries({ queryKey: ['workboard'] })
-    } catch (err) {
-      setUploadErr(err instanceof Error ? err.message : 'Upload failed')
-    } finally {
-      setUploadBusy(false)
-    }
-  }
-
-  // Block Day 4 push until admin has approved the billing proof
-  const gatedMoveNext = paymentApproved ? onMoveNext : undefined
-
-  return (
-    <div className="space-y-1.5">
-      <ProcessChecklistSection
-        lead={lead} stage={stageKey} pm={pm} leadPatchBusy={leadPatchBusy}
-        onMoveNext={gatedMoveNext}
-        nextLabel={nextLabel}
-      />
-      <div className="border-t border-border/40 pt-1.5 space-y-1.5">
-        <button type="button"
-          disabled={leadPatchBusy || pickerBusy}
-          onClick={() => setPickerOpen(true)}
-          className="relative flex h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-xl border border-indigo-400/40 bg-gradient-to-r from-indigo-400/15 to-violet-400/10 px-3 text-sm font-bold text-indigo-200 shadow-[0_0_16px_-6px_rgba(99,102,241,0.5)] transition hover:border-indigo-400/60 hover:from-indigo-400/20 hover:to-violet-400/15 disabled:opacity-50">
-          <Video className="h-4 w-4 shrink-0" />
-          <span>{pickerBusy ? 'Sending...' : 'Send Day 3 Live Session'}</span>
-        </button>
-        {batchError ? <p className="text-ds-caption text-destructive">{batchError}</p> : null}
-      </div>
-      <div className="space-y-2 rounded border border-amber-400/30 bg-amber-400/[0.05] p-3">
-        <p className="text-ds-caption font-semibold uppercase tracking-wide text-muted-foreground">Min. FLP Billing</p>
-        <p className="text-ds-caption text-muted-foreground">₹1500 payment — upload proof for admin approval.</p>
-        {paymentApproved ? (
-          <div className="flex items-center gap-2 rounded-md border border-emerald-400/30 bg-emerald-400/[0.08] px-3 py-2 text-ds-caption font-semibold text-emerald-300">
-            ✅ Payment approved — lead can be pushed to Day 4
-          </div>
-        ) : proofUploaded ? (
-          <div className="flex items-center gap-2 rounded-md border border-amber-400/30 bg-amber-400/[0.08] px-3 py-2 text-ds-caption font-semibold text-amber-300">
-            ⏳ Proof uploaded — awaiting admin approval before Day 4
-          </div>
-        ) : (
-          <>
-            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-amber-400/40 bg-amber-400/[0.06] px-3 py-3 text-ds-caption font-semibold text-amber-300 transition hover:bg-amber-400/[0.12]">
-              <input type="file" accept="image/*,.pdf" onChange={handleProofUpload} disabled={uploadBusy} className="sr-only" />
-              {uploadBusy ? 'Uploading...' : '📷 Upload Payment Proof'}
-            </label>
-            <p className="text-ds-caption text-destructive/80">⚠️ Proof upload required — Day 4 push blocked until approved</p>
-          </>
-        )}
-        {uploadErr ? <p className="text-ds-caption text-destructive">{uploadErr}</p> : null}
-      </div>
-      <LiveSessionSlotPicker open={pickerOpen} busy={pickerBusy} day={3}
-        onClose={() => setPickerOpen(false)}
-        onConfirm={(option, useBusiness) => void handlePickerConfirm(option, useBusiness)} />
-    </div>
-  )
+  // day3 closing sub-flow renders via the ProcessChecklistSection early-return above.
+  return null
 }
 
-function LeadCardItem({ lead, stageKey, nextStatus, pm, patchBusyLeadId, mindsetBusyLeadId, mindsetPreviewByLeadId, onRequestMindsetSend, nextLabel, nowMs, showClosingActions }: {
+function LeadCardItem({ lead, stageKey, nextStatus, pm, patchBusyLeadId, nextLabel, nowMs, showClosingActions }: {
   lead: LeadPublic; stageKey?: WorkboardStageKey; nextStatus?: LeadStatus
-  pm: PM; patchBusyLeadId: number | null; mindsetBusyLeadId: number | null
-  mindsetPreviewByLeadId: Record<number, MindsetLockPreviewResponse | undefined>
-  onRequestMindsetSend?: (lead: LeadPublic) => void
+  pm: PM; patchBusyLeadId: number | null
   nextLabel?: string; nowMs: number; showClosingActions?: boolean
 }) {
   const _moveNext = useCallback(
@@ -1101,9 +1408,6 @@ function LeadCardItem({ lead, stageKey, nextStatus, pm, patchBusyLeadId, mindset
       stageKey={stageKey}
       pm={pm}
       leadPatchBusy={patchBusyLeadId === lead.id}
-      mindsetBusy={mindsetBusyLeadId === lead.id}
-      mindsetPreview={mindsetPreviewByLeadId[lead.id] ?? null}
-      onRequestMindsetSend={onRequestMindsetSend}
       onMoveNext={onMoveNext}
       nextLabel={nextLabel}
       nowMs={nowMs}
@@ -1116,9 +1420,6 @@ function ResponsiveLeadGrid({
   leads,
   pm,
   patchBusyLeadId,
-  mindsetBusyLeadId,
-  mindsetPreviewByLeadId,
-  onRequestMindsetSend,
   empty,
   nowMs,
   stageKey,
@@ -1129,9 +1430,6 @@ function ResponsiveLeadGrid({
   leads: LeadPublic[]
   pm: PM
   patchBusyLeadId: number | null
-  mindsetBusyLeadId: number | null
-  mindsetPreviewByLeadId: Record<number, MindsetLockPreviewResponse | undefined>
-  onRequestMindsetSend?: (lead: LeadPublic) => void
   empty?: string
   nowMs: number
   stageKey?: WorkboardStageKey
@@ -1158,9 +1456,6 @@ function ResponsiveLeadGrid({
           nextStatus={nextStatus}
           pm={pm}
           patchBusyLeadId={patchBusyLeadId}
-          mindsetBusyLeadId={mindsetBusyLeadId}
-          mindsetPreviewByLeadId={mindsetPreviewByLeadId}
-          onRequestMindsetSend={onRequestMindsetSend}
           nextLabel={nextLabel}
           nowMs={nowMs}
           showClosingActions={showClosingActions}
@@ -1175,9 +1470,6 @@ function Grid({
   leads,
   pm,
   patchBusyLeadId,
-  mindsetBusyLeadId = null,
-  mindsetPreviewByLeadId = {},
-  onRequestMindsetSend,
   empty,
   nowMs,
   stageKey,
@@ -1188,9 +1480,6 @@ function Grid({
   leads: LeadPublic[]
   pm: PM
   patchBusyLeadId: number | null
-  mindsetBusyLeadId?: number | null
-  mindsetPreviewByLeadId?: Record<number, MindsetLockPreviewResponse | undefined>
-  onRequestMindsetSend?: (lead: LeadPublic) => void
   empty?: string
   nowMs: number
   stageKey?: WorkboardStageKey
@@ -1203,9 +1492,6 @@ function Grid({
       leads={leads}
       pm={pm}
       patchBusyLeadId={patchBusyLeadId}
-      mindsetBusyLeadId={mindsetBusyLeadId}
-      mindsetPreviewByLeadId={mindsetPreviewByLeadId}
-      onRequestMindsetSend={onRequestMindsetSend}
       empty={empty}
       nowMs={nowMs}
       stageKey={stageKey}
@@ -1213,128 +1499,6 @@ function Grid({
       nextLabel={nextLabel}
       showClosingActions={showClosingActions}
     />
-  )
-}
-
-// ── TeamView ───────────────────────────────────────────────────────────────────
-function MindsetQueueView({
-  cols,
-  pm,
-  patchBusyLeadId,
-  mindsetBusyLeadId,
-  mindsetPreviewByLeadId,
-  ensureMindsetPreview,
-  onRequestMindsetSend,
-  search,
-  nowMs,
-  queueRole,
-  currentUserId,
-}: {
-  cols: Col[]
-  pm: PM
-  patchBusyLeadId: number | null
-  mindsetBusyLeadId: number | null
-  mindsetPreviewByLeadId: Record<number, MindsetLockPreviewResponse | undefined>
-  ensureMindsetPreview: (lead: LeadPublic) => void
-  onRequestMindsetSend?: (lead: LeadPublic) => void
-  search: string
-  nowMs: number
-  queueRole: 'team' | 'leader' | 'admin'
-  currentUserId: number | null
-}) {
-  const byS = Object.fromEntries(cols.map((c) => [c.status, c]))
-  const needle = search.trim().toLowerCase()
-  const allowLead = (lead: LeadPublic) =>
-    queueRole === 'admin' || queueRole !== 'leader' || (currentUserId != null && lead.assigned_to_user_id === currentUserId)
-  const day1Leads = (byS.day1?.items ?? []).filter(
-    (l) =>
-      allowLead(l) &&
-      !l.mindset_started_at &&
-      (!needle || l.name.toLowerCase().includes(needle) || (l.phone ?? '').includes(needle)),
-  )
-  const mindsetLeads = (byS.mindset_lock?.items ?? []).filter(
-    (l) =>
-      allowLead(l) &&
-      (!needle || l.name.toLowerCase().includes(needle) || (l.phone ?? '').includes(needle)),
-  )
-  const mindsetQueue = [...day1Leads, ...mindsetLeads]
-  useEffect(() => {
-    mindsetLeads.forEach((lead) => {
-      const ready =
-        lead.status === 'mindset_lock' &&
-        lead.mindset_lock_state !== 'leader_assigned'
-      if (!ready) return
-      if (Object.prototype.hasOwnProperty.call(mindsetPreviewByLeadId, lead.id)) return
-      ensureMindsetPreview(lead)
-    })
-  }, [mindsetLeads, mindsetPreviewByLeadId, ensureMindsetPreview])
-
-  if (queueRole === 'admin') {
-    const grouped = mindsetQueue.reduce<Record<string, LeadPublic[]>>((acc, lead) => {
-      const ownerKey = lead.owner_name ?? `User #${lead.owner_user_id ?? '?'}`
-      ;(acc[ownerKey] ??= []).push(lead)
-      return acc
-    }, {})
-    const entries = Object.entries(grouped).sort((a, b) => a[0].localeCompare(b[0]))
-    return (
-      <div id="mindset-lock" className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-muted-foreground">Mindset Lock — All Team</h2>
-          <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-ds-caption font-semibold tabular-nums text-muted-foreground">
-            {mindsetQueue.length}
-          </span>
-        </div>
-        {mindsetQueue.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No mindset-lock leads across team.</p>
-        ) : (
-          entries.map(([ownerName, leads]) => (
-            <div key={ownerName} className="space-y-2">
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-semibold text-foreground">{ownerName}</h3>
-                <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-ds-caption font-semibold tabular-nums text-muted-foreground">
-                  {leads.length}
-                </span>
-              </div>
-              <Grid
-                leads={leads}
-                pm={pm}
-                patchBusyLeadId={patchBusyLeadId}
-                mindsetBusyLeadId={mindsetBusyLeadId}
-                mindsetPreviewByLeadId={mindsetPreviewByLeadId}
-                onRequestMindsetSend={onRequestMindsetSend}
-                empty=""
-                nowMs={nowMs}
-              />
-            </div>
-          ))
-        )}
-      </div>
-    )
-  }
-
-  return (
-    <div id="mindset-lock" className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-muted-foreground">Mindset Lock</h2>
-        <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-ds-caption font-semibold tabular-nums text-muted-foreground">
-          {mindsetQueue.length}
-        </span>
-      </div>
-      <Grid
-        leads={mindsetQueue}
-        pm={pm}
-        patchBusyLeadId={patchBusyLeadId}
-        mindsetBusyLeadId={mindsetBusyLeadId}
-        mindsetPreviewByLeadId={mindsetPreviewByLeadId}
-        onRequestMindsetSend={onRequestMindsetSend}
-        empty={
-          queueRole === 'leader'
-            ? 'No personal mindset-lock leads yet'
-            : 'No mindset-lock leads yet'
-        }
-        nowMs={nowMs}
-      />
-    </div>
   )
 }
 
@@ -1376,7 +1540,7 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance
           <div className="flex flex-wrap gap-2">
             {[['Complete', day2.filter((l) => !!l.day2_completed_at).length, 'bg-emerald-400/15 text-emerald-300 border-emerald-400/25'],
               ['In Progress', day2.filter((l) => !l.day2_completed_at && !!l.day1_completed_at).length, 'bg-amber-400/15 text-amber-300 border-amber-400/25'],
-              ['Not Started', day2.filter((l) => !l.day1_completed_at).length, 'bg-muted/30 text-muted-foreground border-white/10'],
+              ['Not Started', day2.filter((l) => !l.day1_completed_at).length, 'bg-muted/30 text-muted-foreground border-border dark:border-white/10'],
             ].map(([label, count, cls]) =>
               <span key={label as string} className={cn('rounded-full border px-2.5 py-0.5 text-ds-caption font-medium', cls as string)}>{label}: {count}</span>)}
           </div>
@@ -1422,29 +1586,20 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance
 }
 
 // ── Page ───────────────────────────────────────────────────────────────────────
-export function WorkboardPage({ title, mode = 'pipeline' }: Props) {
+export function WorkboardPage({ title }: Props) {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { role, serverRole } = useDashboardShellRole()
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
-  const { data: me } = useAuthMeQuery()
-  const qc = useQueryClient()
   const { data, isPending, isError, error, refetch } = useWorkboardQuery(true)
   const pm = usePatchLeadMutation()
   const patchBusyLeadId =
     pm.isPending && pm.variables && typeof pm.variables.id === 'number' ? pm.variables.id : null
-  const [mindsetBusyLeadId, setMindsetBusyLeadId] = useState<number | null>(null)
-  const [mindsetErr, setMindsetErr] = useState<string | null>(null)
-  const [mindsetPreviewByLeadId, setMindsetPreviewByLeadId] = useState<
-    Record<number, MindsetLockPreviewResponse | undefined>
-  >({})
-  const [confirmLead, setConfirmLead] = useState<LeadPublic | null>(null)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
   const [qInput, setQInput] = useState('')
   const [search, setSearch] = useState('')
   const [nowMs, setNowMs] = useState(() => Date.now())
   const adminTab = parseAdminTab(searchParams.get('tab'))
-  const currentUserId = me?.authenticated ? (me.user_id ?? null) : null
   useEffect(() => {
     const id = window.setInterval(() => setNowMs(Date.now()), LEAD_SLA_SMOOTH_REFRESH_MS)
     return () => window.clearInterval(id)
@@ -1462,30 +1617,11 @@ export function WorkboardPage({ title, mode = 'pipeline' }: Props) {
       items: Array.isArray(c.items) ? c.items : [],
     }))
   }, [data])
-
   useEffect(() => {
     if (!toastMsg) return
     const id = window.setTimeout(() => setToastMsg(null), 2200)
     return () => window.clearTimeout(id)
   }, [toastMsg])
-
-  const ensureMindsetPreview = useCallback((lead: LeadPublic) => {
-    let shouldFetch = false
-    setMindsetPreviewByLeadId((prev) => {
-      if (Object.prototype.hasOwnProperty.call(prev, lead.id)) return prev
-      shouldFetch = true
-      return { ...prev, [lead.id]: undefined }
-    })
-    if (!shouldFetch) return
-    void (async () => {
-      try {
-        const p = await fetchMindsetLockPreview(lead.id)
-        setMindsetPreviewByLeadId((prev) => ({ ...prev, [lead.id]: p }))
-      } catch {
-        setMindsetPreviewByLeadId((prev) => ({ ...prev, [lead.id]: undefined }))
-      }
-    })()
-  }, [])
 
   const setAdminTab = useCallback((tab: ATab) => {
     const next = new URLSearchParams(searchParams)
@@ -1497,58 +1633,28 @@ export function WorkboardPage({ title, mode = 'pipeline' }: Props) {
     setSearchParams(next, { replace: true })
   }, [searchParams, setSearchParams])
 
-  async function completeMindsetLock(leadId: number) {
-    setMindsetErr(null)
-    setMindsetBusyLeadId(leadId)
-    try {
-      await postMindsetLockComplete(leadId)
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: ['workboard'] }),
-        qc.invalidateQueries({ queryKey: ['leads'] }),
-      ])
-      await refetch()
-      setMindsetPreviewByLeadId((prev) => {
-        const next = { ...prev }
-        delete next[leadId]
-        return next
-      })
-      setToastMsg('Mindset Lock complete. Lead moved to Day 2')
-    } catch (e) {
-      setMindsetErr(e instanceof Error ? e.message : 'Could not complete mindset lock')
-    } finally {
-      setMindsetBusyLeadId(null)
-      setConfirmLead(null)
-    }
-  }
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 pb-20 md:pb-10">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <button type="button" onClick={() => navigate(-1)} className="mb-1 text-sm text-primary underline-offset-2 hover:underline">← Back</button>
           <h1 className="text-ds-h2">{title}</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            {mode === 'mindset-lock'
-              ? surfaceRole === 'admin'
-                ? 'All team mindset-lock leads — grouped by member.'
-                : surfaceRole === 'leader'
-                ? 'Your assigned leads ready for mindset lock — complete before Day 2.'
-                : 'Complete mindset lock for your leads before they move to Day 2.'
-              : surfaceRole === 'admin'
-                ? 'Organization pipeline — Day 2 onwards.'
-                : 'Day 2 onwards execution pipeline.'}
+            {surfaceRole === 'admin'
+              ? 'Organization pipeline — Day 2 onwards.'
+              : 'Day 2 onwards execution pipeline.'}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button type="button" size="sm" asChild>
-            <Link to="/dashboard/work/add-lead">Add Lead</Link>
+            <Link to="/dashboard/work/leads">Add Lead</Link>
           </Button>
         </div>
       </div>
 
       {/* Search */}
-      <div className="surface-elevated px-4 py-3">
+      <div className="surface-elevated px-3 py-2">
         <div className="relative max-w-sm">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden/>
           <input value={qInput} onChange={(e) => setQInput(e.target.value)}
@@ -1560,7 +1666,7 @@ export function WorkboardPage({ title, mode = 'pipeline' }: Props) {
 
       {/* Loading skeleton */}
       {isPending && (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({length:8}).map((_,i) => <Skeleton key={i} className="h-32 rounded"/>)}
         </div>
       )}
@@ -1579,85 +1685,20 @@ export function WorkboardPage({ title, mode = 'pipeline' }: Props) {
           {pm.error instanceof Error ? pm.error.message : 'Could not update lead'}
         </p>
       )}
-      {mindsetErr ? (
-        <p className="text-ds-caption text-destructive" role="alert">
-          {mindsetErr}
-        </p>
-      ) : null}
 
       {/* Main content */}
       {data && !isPending && (
-        mode === 'mindset-lock'
-          ? (
-            <MindsetQueueView
-              cols={cols}
-              pm={pm}
-              patchBusyLeadId={patchBusyLeadId}
-              mindsetBusyLeadId={mindsetBusyLeadId}
-              mindsetPreviewByLeadId={mindsetPreviewByLeadId}
-              ensureMindsetPreview={ensureMindsetPreview}
-              onRequestMindsetSend={(lead) => setConfirmLead(lead)}
-              search={search}
-              nowMs={nowMs}
-              queueRole={surfaceRole === 'admin' ? 'admin' : surfaceRole === 'leader' ? 'leader' : 'team'}
-              currentUserId={currentUserId}
-            />
-          )
-          : (
-            <AdminView
-              cols={cols}
-              pm={pm}
-              patchBusyLeadId={patchBusyLeadId}
-              search={search}
-              nowMs={nowMs}
-              allowStageAdvance={surfaceRole !== 'team'}
-              tab={adminTab}
-              onTabChange={setAdminTab}
-            />
-          )
+        <AdminView
+          cols={cols}
+          pm={pm}
+          patchBusyLeadId={patchBusyLeadId}
+          search={search}
+          nowMs={nowMs}
+          allowStageAdvance={surfaceRole !== 'team'}
+          tab={adminTab}
+          onTabChange={setAdminTab}
+        />
       )}
-      {confirmLead ? (
-        <div className="keyboard-safe-modal fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4">
-          <div className="keyboard-safe-sheet w-full max-w-md overflow-y-auto rounded border border-border bg-card p-4 shadow-2xl">
-            <h3 className="text-base font-semibold text-foreground">
-              {surfaceRole === 'leader' ? 'Complete Mindset Lock?' : 'Send to Leader?'}
-            </h3>
-            <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-              {surfaceRole === 'leader' ? (
-                <>
-                  <li>You have completed the After Day 1 checklist and mindset call</li>
-                  <li>This action will complete Mindset Lock and move the lead into your Day 2 queue</li>
-                  <li>You can continue execution from the Day 2 tab</li>
-                </>
-              ) : (
-                <>
-                  <li>You have completed the After Day 1 checklist and mindset call</li>
-                  <li>This action will complete Mindset Lock and move the lead to Day 2 under your leader</li>
-                  <li>You won't be able to edit after this</li>
-                </>
-              )}
-            </ul>
-            <div className="mt-4 flex items-center justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setConfirmLead(null)}>
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                onClick={() => void completeMindsetLock(confirmLead.id)}
-                disabled={mindsetBusyLeadId === confirmLead.id}
-              >
-                {mindsetBusyLeadId === confirmLead.id
-                  ? surfaceRole === 'leader'
-                    ? 'Starting…'
-                    : 'Sending…'
-                  : surfaceRole === 'leader'
-                    ? 'Confirm & Start Day 2'
-                    : 'Confirm & Send'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
       {toastMsg ? (
         <div className="fixed bottom-24 right-4 z-[85] rounded-md border border-emerald-400/35 bg-emerald-400/15 px-3 py-2 text-ds-caption font-semibold text-emerald-200 shadow-lg">
           {toastMsg}

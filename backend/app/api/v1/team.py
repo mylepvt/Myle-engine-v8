@@ -24,12 +24,12 @@ from app.models.lead import Lead
 from app.models.user import User
 from app.schemas.system_surface import SystemStubResponse
 from app.schemas.team import (
-    EnrollmentDecisionBody,
+    FlpMinBillingDecisionBody,
     PendingRegistrationsResponse,
     PendingRegistrationItem,
     RegistrationDecisionBody,
-    TeamEnrollmentHistoryResponse,
-    TeamEnrollmentListResponse,
+    TeamFlpMinBillingHistoryResponse,
+    TeamFlpMinBillingListResponse,
     TeamMemberComplianceUpdate,
     TeamMemberCreate,
     TeamMemberListResponse,
@@ -39,14 +39,21 @@ from app.schemas.team import (
     TeamReportMissingMember,
     TeamReportsLiveSummary,
     TeamReportsResponse,
+    TeamWorkTrendResponse,
     TeamSelfGraceRequestBody,
 )
 from app.db.session import AsyncSessionLocal
 from app.services.downline import is_user_in_downline_of
 from app.services.lead_owner import lead_owner_clause
 from app.services.member_compliance import build_compliance_snapshots
+from app.services.grace_intelligence import (
+    get_grace_contexts_batch,
+    record_grace_outcome,
+    MONTHLY_GRACE_LIMIT,
+)
 from app.services.payment_service import PaymentService
-from app.services.team_reports_metrics import IST, compute_live_summary
+from app.services.push_service import send_push_to_user
+from app.services.team_reports_metrics import IST, compute_live_summary, compute_work_trend
 from app.services.user_hierarchy import (
     load_user_hierarchy_entries,
     nearest_leader_entry,
@@ -68,6 +75,18 @@ async def _send_removal_whatsapp_bg(user_id: int, removal_reason: str) -> None:
         user.removal_reason = removal_reason
         await send_removal_whatsapp(user=user, session=session)
         await alert_leader_member_removed(user, removal_reason, session)
+        try:
+            from app.services.whatsapp_management_updates import send_management_member_removed_alert
+            await send_management_member_removed_alert(
+                session,
+                member_name=user.name or f"User #{user.id}",
+                member_fbo=user.fbo_id or "",
+                removed_by="Admin",
+                reason=removal_reason,
+                leader_name="",
+            )
+        except Exception:
+            logger.exception("management removal alert failed")
         await session.commit()
 
 
@@ -127,6 +146,24 @@ async def _attach_team_member_compliance(
     return items
 
 
+async def _attach_grace_intelligence(
+    session: AsyncSession,
+    items: list[TeamMemberPublic],
+) -> list[TeamMemberPublic]:
+    """Attach grace risk / history fields for members with pending requests."""
+    pending_ids = [item.id for item in items if item.grace_request_end_date is not None]
+    if not pending_ids:
+        return items
+    contexts = await get_grace_contexts_batch(session, pending_ids)
+    for item in items:
+        ctx = contexts.get(item.id)
+        if ctx:
+            item.grace_risk = ctx["risk"]
+            item.grace_count_30d = ctx["count_30d"]
+            item.grace_last_outcome = ctx["last_outcome"]
+    return items
+
+
 async def _finalize_team_member_items(
     session: AsyncSession,
     items: list[TeamMemberPublic],
@@ -142,6 +179,7 @@ async def _finalize_team_member_items(
                 _attach_pending_grace_request(item, member)
     items = await _attach_team_member_hierarchy(session, items)
     items = await _attach_team_member_compliance(session, items)
+    items = await _attach_grace_intelligence(session, items)
     return items
 
 
@@ -390,6 +428,18 @@ async def request_my_grace(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="grace_end_date cannot be in the past",
         )
+    # Check frequency before saving — warn member if approaching/over monthly limit.
+    from app.services.grace_intelligence import get_grace_context
+    ctx = await get_grace_context(session, user.user_id)
+    if ctx["count_30d"] >= MONTHLY_GRACE_LIMIT:
+        raise HTTPException(
+            status_code=http_status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=(
+                f"Grace limit reached: you have already used {ctx['count_30d']} grace "
+                f"period{'s' if ctx['count_30d'] != 1 else ''} this month "
+                f"(limit is {MONTHLY_GRACE_LIMIT}). Contact your admin directly."
+            ),
+        )
     target.grace_request_end_date = body.grace_end_date
     target.grace_request_reason = (body.reason or "").strip() or None
     target.grace_request_requested_at = datetime.now(timezone.utc)
@@ -405,6 +455,56 @@ async def request_my_grace(
         )
     except Exception:
         pass
+    # Notify management about grace request
+    try:
+        from app.services.whatsapp_management_updates import send_management_grace_requested_alert
+        await send_management_grace_requested_alert(
+            session,
+            member_name=target.name or f"User #{target.id}",
+            member_fbo=target.fbo_id or "",
+            reason=target.grace_request_reason or "",
+            end_date=str(target.grace_request_end_date) if target.grace_request_end_date else "",
+        )
+    except Exception:
+        pass
+    return item
+
+
+@router.delete("/me/grace", response_model=TeamMemberPublic)
+async def end_my_active_grace(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> TeamMemberPublic:
+    """Member voluntarily ends their own active grace period early."""
+    _require_team_or_leader(user)
+    target = await session.get(User, user.user_id)
+    if target is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    if (target.discipline_status or "").strip().lower() != "grace" or not target.grace_end_date:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="No active grace period to end.",
+        )
+    now = datetime.now(timezone.utc)
+    today = datetime.now(IST).date()
+    record_grace_outcome(
+        session=session,
+        user=target,
+        outcome="cleared",
+        outcome_at=now,
+        final_end_date=target.grace_end_date,
+    )
+    target.access_blocked = False
+    target.discipline_status = "active"
+    target.grace_end_date = None
+    target.grace_reason = None
+    target.grace_updated_at = None
+    target.grace_set_by_user_id = None
+    target.discipline_reset_on = today
+    await session.commit()
+    await session.refresh(target)
+    [item] = await _finalize_team_member_items(session, [TeamMemberPublic.model_validate(target)])
+    await notify_topics("team", "team_tracking")
     return item
 
 
@@ -425,24 +525,24 @@ async def cancel_my_grace_request(
     return item
 
 
-@router.get("/enrollment-requests", response_model=TeamEnrollmentListResponse)
-async def list_enrollment_requests(
+@router.get("/flp-min-billing-requests", response_model=TeamFlpMinBillingListResponse)
+async def list_flp_min_billing_requests(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
     limit: int = Query(default=_DEFAULT_LIMIT, ge=1, le=_MAX_LIMIT),
     offset: int = Query(default=0, ge=0),
-) -> TeamEnrollmentListResponse:
+) -> TeamFlpMinBillingListResponse:
     """Min. FLP Billing proof approval queue for admin/leader review."""
     _require_admin_or_leader(user)
     service = PaymentService(session)
     items = await service.get_pending_payment_proofs(user.user_id, user.role)
     total = len(items)
     page = items[offset : offset + limit]
-    return TeamEnrollmentListResponse(items=page, total=total, limit=limit, offset=offset)
+    return TeamFlpMinBillingListResponse(items=page, total=total, limit=limit, offset=offset)
 
 
-@router.get("/enrollment-requests/history", response_model=TeamEnrollmentHistoryResponse)
-async def enrollment_request_history(
+@router.get("/flp-min-billing-requests/history", response_model=TeamFlpMinBillingHistoryResponse)
+async def flp_min_billing_request_history(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
     date: Optional[str] = Query(
@@ -451,7 +551,7 @@ async def enrollment_request_history(
     ),
     limit: int = Query(default=_DEFAULT_LIMIT, ge=1, le=_MAX_LIMIT),
     offset: int = Query(default=0, ge=0),
-) -> TeamEnrollmentHistoryResponse:
+) -> TeamFlpMinBillingHistoryResponse:
     """Calendar-wise proof approval / rejection history for admin / leader review."""
     _require_admin_or_leader(user)
     target_day = _parse_report_date_param(date)
@@ -466,13 +566,13 @@ async def enrollment_request_history(
         limit=limit,
         offset=offset,
     )
-    return TeamEnrollmentHistoryResponse(items=items, total=total, date=target_day.isoformat())
+    return TeamFlpMinBillingHistoryResponse(items=items, total=total, date=target_day.isoformat())
 
 
-@router.post("/enrollment-requests/{lead_id}/decision")
-async def decide_enrollment_request(
+@router.post("/flp-min-billing-requests/{lead_id}/decision")
+async def decide_flp_min_billing_request(
     lead_id: int,
-    body: EnrollmentDecisionBody,
+    body: FlpMinBillingDecisionBody,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
@@ -607,6 +707,21 @@ async def team_reports(
     )
 
 
+@router.get("/reports/trend", response_model=TeamWorkTrendResponse)
+async def team_reports_trend(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    days: int = Query(default=30, ge=1, le=90),
+) -> TeamWorkTrendResponse:
+    """Daily team-work series (calls / Day 1 / payments) for the dashboard graph,
+    scoped the same way as /team/reports."""
+    _require_admin_or_leader(user)
+    scope_members = await _team_reports_scope_members(session, user)
+    scope_user_ids = [member.user_id for member in scope_members]
+    data = await compute_work_trend(session, user_ids=scope_user_ids, days=days)
+    return TeamWorkTrendResponse.model_validate(data)
+
+
 @router.get("/pending-registrations", response_model=PendingRegistrationsResponse)
 async def list_pending_registrations(
     user: Annotated[AuthUser, Depends(require_auth_user)],
@@ -658,6 +773,30 @@ async def decide_pending_registration(
         try:
             from app.services.whatsapp_leader_alerts import alert_leader_new_member_approved
             await alert_leader_new_member_approved(row, session)
+        except Exception:
+            pass
+        try:
+            from app.services.whatsapp_management_updates import send_management_member_approved_alert
+            leader_name = ""
+            if row.upline_user_id:
+                leader = await session.get(User, row.upline_user_id)
+                leader_name = leader.name if leader else ""
+            await send_management_member_approved_alert(
+                session,
+                member_name=row.name or f"User #{row.id}",
+                member_fbo=row.fbo_id or "",
+                approved_by=user.name or f"Admin #{user.user_id}",
+                leader_name=leader_name,
+            )
+        except Exception:
+            pass
+        try:
+            await send_push_to_user(
+                session, target_user_id,
+                title="Welcome to Myle! 🎉",
+                body="Your account has been approved. You can now log in and get started.",
+                url="/dashboard",
+            )
         except Exception:
             pass
     return {"ok": True, "registration_status": row.registration_status}
@@ -819,6 +958,19 @@ async def update_member_role(
             target.removal_reason = None
     if previous_role == "leader" and body.role == "team":
         upline_leader = await _find_upline_leader(session, target)
+        # Re-parent the demoted leader's direct downline. If we leave them pointing
+        # at a now-team node, their handoff has to walk past it to the next leader —
+        # and if none exists above (e.g. the demoted leader reported straight to an
+        # admin), the whole subtree is orphaned with no leader to hand off to. Move
+        # them under the nearest upline leader when there is one, otherwise under the
+        # demoted leader's own upline so the chain stays intact.
+        new_parent_id = upline_leader.id if upline_leader is not None else target.upline_user_id
+        if new_parent_id is not None and new_parent_id != target_user_id:
+            await session.execute(
+                update(User)
+                .where(User.upline_user_id == target_user_id)
+                .values(upline_user_id=new_parent_id)
+            )
         if upline_leader is not None:
             # Only transfer Day-2 handoff leads: owner is a team member (not the leader
             # themselves). These are leads that came to the leader after mindset lock
@@ -831,8 +983,54 @@ async def update_member_role(
                     Lead.deleted_at.is_(None),
                     Lead.in_pool.is_(False),
                 )
-                .values(assigned_to_user_id=upline_leader.id)
+                .values(assigned_to_user_id=upline_leader.id, is_reassigned=True, reassigned_at=datetime.now(timezone.utc))
             )
+    await session.commit()
+    await session.refresh(target)
+    [item] = await _finalize_team_member_items(session, [TeamMemberPublic.model_validate(target)])
+    return item
+
+
+class UpdateUplineBody(BaseModel):
+    upline_user_id: int
+
+
+@router.patch("/members/{target_user_id}/upline", response_model=TeamMemberPublic)
+async def update_member_upline(
+    target_user_id: int,
+    body: UpdateUplineBody,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> TeamMemberPublic:
+    """Move a member under a different leader. Admin only.
+
+    The new upline must be a leader or admin so the member's handoff always
+    resolves to a real leader, and it cannot be the member itself or anyone in
+    the member's own downline (which would create a cycle).
+    """
+    _require_admin(user)
+    target = await session.get(User, target_user_id)
+    if target is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    if body.upline_user_id == target_user_id:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="A member cannot be their own upline",
+        )
+    new_upline = await session.get(User, body.upline_user_id)
+    if new_upline is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Upline user not found")
+    if (new_upline.role or "").strip().lower() not in ("leader", "admin"):
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="Upline must be a leader or admin",
+        )
+    if await is_user_in_downline_of(session, body.upline_user_id, target_user_id):
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="Cannot move a member under their own downline",
+        )
+    target.upline_user_id = body.upline_user_id
     await session.commit()
     await session.refresh(target)
     [item] = await _finalize_team_member_items(session, [TeamMemberPublic.model_validate(target)])
@@ -876,11 +1074,20 @@ async def update_member_compliance(
                 status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="grace_end_date cannot be in the past",
             )
+        now_utc = datetime.now(timezone.utc)
+        record_grace_outcome(
+            session=session,
+            user=target,
+            outcome="approved",
+            outcome_at=now_utc,
+            final_end_date=body.grace_end_date,
+            action_by_user_id=user.user_id,
+        )
         target.access_blocked = False
         target.discipline_status = "grace"
         target.grace_end_date = body.grace_end_date
         target.grace_reason = (body.reason or "").strip() or None
-        target.grace_updated_at = datetime.now(timezone.utc)
+        target.grace_updated_at = now_utc
         target.grace_set_by_user_id = user.user_id
         target.discipline_reset_on = None
         target.removed_at = None
@@ -888,11 +1095,21 @@ async def update_member_compliance(
         target.removal_reason = None
         _clear_pending_grace_request(target)
     elif body.action == "clear_grace":
+        now_utc = datetime.now(timezone.utc)
+        if (target.discipline_status or "").strip().lower() == "grace":
+            record_grace_outcome(
+                session=session,
+                user=target,
+                outcome="cleared",
+                outcome_at=now_utc,
+                final_end_date=target.grace_end_date,
+                action_by_user_id=user.user_id,
+            )
         target.access_blocked = False
         target.discipline_status = "active"
         target.grace_end_date = None
         target.grace_reason = None
-        target.grace_updated_at = datetime.now(timezone.utc)
+        target.grace_updated_at = now_utc
         target.grace_set_by_user_id = user.user_id
         target.discipline_reset_on = datetime.now(IST).date()
         _clear_pending_grace_request(target)
@@ -916,12 +1133,21 @@ async def update_member_compliance(
                     "Use 'Grant Grace' with a future date instead."
                 ),
             )
+        now_utc = datetime.now(timezone.utc)
         grace_reason = (body.reason or target.grace_request_reason or "").strip() or None
+        record_grace_outcome(
+            session=session,
+            user=target,
+            outcome="approved",
+            outcome_at=now_utc,
+            final_end_date=target.grace_request_end_date,
+            action_by_user_id=user.user_id,
+        )
         target.access_blocked = False
         target.discipline_status = "grace"
         target.grace_end_date = target.grace_request_end_date
         target.grace_reason = grace_reason
-        target.grace_updated_at = datetime.now(timezone.utc)
+        target.grace_updated_at = now_utc
         target.grace_set_by_user_id = user.user_id
         target.discipline_reset_on = None
         target.removed_at = None
@@ -929,6 +1155,13 @@ async def update_member_compliance(
         target.removal_reason = None
         _clear_pending_grace_request(target)
     elif body.action == "reject_grace_request":
+        record_grace_outcome(
+            session=session,
+            user=target,
+            outcome="rejected",
+            outcome_at=datetime.now(timezone.utc),
+            action_by_user_id=user.user_id,
+        )
         _clear_pending_grace_request(target)
     elif body.action == "restore_access":
         target.access_blocked = False
@@ -959,6 +1192,25 @@ async def update_member_compliance(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Unsupported compliance action",
         )
+
+    # Notify management about grace decisions
+    if body.action in ("grant_grace", "approve_grace_request", "reject_grace_request"):
+        try:
+            from app.services.whatsapp_management_updates import send_management_grace_decision_alert
+            action_label = {
+                "grant_grace": "granted",
+                "approve_grace_request": "approved",
+                "reject_grace_request": "rejected",
+            }[body.action]
+            await send_management_grace_decision_alert(
+                session,
+                member_name=target.name or f"User #{target.id}",
+                member_fbo=target.fbo_id or "",
+                action=action_label,
+                decided_by=user.name or f"Admin #{user.user_id}",
+            )
+        except Exception:
+            pass
 
     await session.commit()
     await session.refresh(target)
@@ -1034,6 +1286,31 @@ async def toggle_training_lock(
     }
 
 
+class EnrollmentAccessToggleBody(BaseModel):
+    enabled: bool  # True = this member may create secure enrollment links
+
+
+@router.patch("/members/{target_user_id}/enrollment-access")
+async def toggle_enrollment_access(
+    target_user_id: int,
+    body: EnrollmentAccessToggleBody,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Admin: grant or revoke the secure enrollment-link feature for a member."""
+    _require_admin(user)
+    target = await session.get(User, target_user_id)
+    if target is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    target.enrollment_link_access = bool(body.enabled)
+    await session.commit()
+    return {
+        "user_id": target.id,
+        "fbo_id": target.fbo_id,
+        "enrollment_link_access": target.enrollment_link_access,
+    }
+
+
 @router.delete("/members/{target_user_id}", status_code=http_status.HTTP_204_NO_CONTENT)
 async def delete_member(
     target_user_id: int,
@@ -1068,8 +1345,8 @@ async def team_approvals(
             },
             {
                 "title": "Min. FLP Billing queue",
-                "detail": "Enrollment proof + approvals: Team → Min. FLP Billing Approvals.",
-                "href": "team/enrollment-approvals",
+                "detail": "Min. FLP Billing proof + approvals: Team → Min. FLP Billing Approvals.",
+                "href": "team/flp-min-billing",
             },
         ],
         total=2,

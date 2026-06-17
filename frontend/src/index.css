@@ -15,43 +15,53 @@
     --palette-cyan-neon: #00ffd4;
     --palette-cyan-dull: color-mix(in srgb, var(--palette-cyan-neon) 52%, #64748b 48%);
 
+    /* ── Light theme — soft blue-grey / white-card / blue-accent (mockup) ── */
     color-scheme: light;
-    --background: color-mix(in srgb, var(--palette-mist) 38%, white 62%);
-    --foreground: var(--palette-ink);
+    --background: #e9edf4;
+    --foreground: #141a29;
     --card: #ffffff;
-    --card-foreground: var(--palette-ink);
+    --card-foreground: #141a29;
     --popover: #ffffff;
-    --popover-foreground: var(--palette-ink);
-    --primary: var(--palette-blue);
-    --primary-foreground: #f8fafc;
-    --secondary: color-mix(in srgb, var(--palette-mist) 60%, #e2e8f0 40%);
-    --secondary-foreground: var(--palette-ink);
-    --muted: color-mix(in srgb, var(--palette-mist) 55%, #f1f5f9 45%);
-    --muted-foreground: color-mix(in srgb, var(--palette-ink) 62%, #64748b 38%);
-    --accent: color-mix(in srgb, var(--palette-cyan-dull) 22%, var(--palette-mist) 78%);
-    --accent-foreground: var(--palette-ink);
-    --destructive: #dc2626;
-    --destructive-foreground: #fef2f2;
-    --border: color-mix(in srgb, var(--palette-ink) 28%, var(--palette-mist) 72%);
-    --input: color-mix(in srgb, var(--palette-mist) 62%, white 38%);
-    --ring: var(--palette-blue);
-    --radius: 0.25rem;
+    --popover-foreground: #141a29;
+    --primary: #3b6ef6;
+    --primary-foreground: #ffffff;
+    --secondary: #eef1f8;
+    --secondary-foreground: #141a29;
+    --muted: #eef1f8;
+    /* darkened from #6b7488 so caption text clears WCAG AA (4.5:1) on the
+       page background, not just on white cards */
+    --muted-foreground: #565f73;
+    --accent: #e6edfd;
+    --accent-foreground: #2952cc;
+    --destructive: #e0444d;
+    --destructive-foreground: #ffffff;
+    /* darkened from #e3e8f1 — the old border was ~1.2:1 on white, so cards,
+       inputs and dividers were nearly invisible in light mode */
+    --border: #c8d0de;
+    --input: #eef1f8;
+    --ring: #3b6ef6;
+    /* one radius across both themes — single brand identity (was 0.85rem
+       light / 0.25rem dark, which made the two themes feel like two kits) */
+    --radius: 0.625rem;
     --chart-1: var(--palette-blue);
     --chart-2: var(--palette-cyan-dull);
     --chart-3: color-mix(in srgb, var(--palette-blue) 55%, var(--palette-mist) 45%);
     --chart-4: color-mix(in srgb, var(--palette-mist) 70%, var(--palette-blue) 30%);
     --chart-5: color-mix(in srgb, var(--palette-ink) 40%, var(--palette-mist) 60%);
-    --surface: color-mix(in srgb, var(--palette-mist) 45%, #f8fafc 55%);
-    --subtle: color-mix(in srgb, var(--palette-ink) 48%, var(--palette-mist) 52%);
+    --surface: #f3f5fb;
+    /* darkened from #8b93a7 so faint/subtle text still clears AA */
+    --subtle: #616a7d;
     --success: #23a55a;
     --success-foreground: #ffffff;
     --warning: #f0b232;
     --warning-foreground: #000000;
-    --glass-base: color-mix(in srgb, var(--palette-mist) 55%, white 45%);
-    --shadow-card: 0 1px 0 rgba(0,0,0,0.06);
-    --shadow-card-hover: 0 1px 0 rgba(0,0,0,0.08);
-    --shadow-ios-bar: 0 0.5px 0 0 color-mix(in srgb, var(--palette-mist) 55%, transparent),
-      0 8px 24px -12px color-mix(in srgb, var(--palette-ink) 22%, transparent);
+    --glass-base: #ffffff;
+    /* soft neumorphic card shadows — strengthened so white cards lift off the
+       light page / white panels they nest inside (was 0.12/0.06) */
+    --shadow-card: 0 4px 16px -6px rgba(45,70,120,0.18), 0 1px 3px -1px rgba(45,70,120,0.10);
+    --shadow-card-hover: 0 12px 28px -8px rgba(45,70,120,0.24), 0 2px 6px -2px rgba(45,70,120,0.12);
+    --shadow-ios-bar: 0 1px 0 0 rgba(255,255,255,0.7),
+      0 10px 30px -16px rgba(45,70,120,0.22);
 
     --palette-blue-light: color-mix(in srgb, var(--palette-blue) 70%, white 30%);
 
@@ -78,6 +88,8 @@
 
   .dark {
     color-scheme: dark;
+    /* match light radius — one rounded identity across both themes */
+    --radius: 0.625rem;
     --palette-ink: #0f1014;
     /* ── Surfaces ─── deeper than Discord, matte charcoal blacks */
     --background: #111214;
@@ -86,35 +98,40 @@
     --card-foreground: #c8ccd0;
     --popover: #0f1014;
     --popover-foreground: #c8ccd0;
-    --primary: #5865f2;
+    /* unified brand blue — same hue as light (#3b6ef6); dropped the
+       Discord-blurple #5865f2 so the brand colour is identical in both themes */
+    --primary: #3b6ef6;
     --primary-foreground: #ffffff;
     --secondary: #1e2028;
     --secondary-foreground: #9a9fa8;
     --muted: #15171c;
-    --muted-foreground: #72767d;
-    --accent: #5865f2;
+    /* lightened from #72767d (3.73:1 on card — AA fail) to clear WCAG AA */
+    --muted-foreground: #8e939d;
+    --accent: #3b6ef6;
     --accent-foreground: #ffffff;
     --destructive: #da373c;
     --destructive-foreground: #ffffff;
-    /* ── Borders: extremely subtle — almost invisible */
-    --border: rgba(255,255,255,0.07);
+    /* ── Borders: subtle but visible (was 0.07 — too faint to separate
+       surfaces in dark mode) */
+    --border: rgba(255,255,255,0.10);
     --input: #15171c;
-    --ring: #5865f2;
-    --chart-1: #5865f2;
+    --ring: #3b6ef6;
+    --chart-1: #3b6ef6;
     --chart-2: #23a55a;
     --chart-3: #4752c4;
     --chart-4: #9a9fa8;
     --chart-5: #72767d;
     --surface: #1e2028;
-    --subtle: #72767d;
+    --subtle: #8e939d;
     --success: #23a55a;
     --success-foreground: #ffffff;
     --warning: #f0b232;
     --warning-foreground: #000000;
     --glass-base: #1a1c22;
-    /* ── Shadows: use darkness, not light */
-    --shadow-card: 0 1px 3px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.03);
-    --shadow-card-hover: 0 2px 6px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.04);
+    /* ── Shadows: darkness + a hairline ring so cards/modals actually lift off
+       the near-black surfaces (was 1px/3px with no ring — zero elevation) */
+    --shadow-card: 0 2px 8px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06);
+    --shadow-card-hover: 0 8px 22px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.09);
     --shadow-ios-bar: 0 1px 0 rgba(255,255,255,0.03);
   }
 }
@@ -160,7 +177,7 @@
     min-height: 100dvh;
     transition: background-color 0.28s ease, color 0.22s ease;
     font-feature-settings: 'kern' 1;
-    -webkit-tap-highlight-color: color-mix(in oklch, var(--primary) 15%, transparent);
+    -webkit-tap-highlight-color: color-mix(in srgb, var(--primary) 15%, transparent);
     max-width: 100%;
     overflow-x: clip;
     touch-action: manipulation;
@@ -223,7 +240,7 @@
   }
 
   ::selection {
-    background-color: color-mix(in oklch, var(--primary) 35%, transparent);
+    background-color: color-mix(in srgb, var(--primary) 35%, transparent);
     color: var(--primary-foreground);
   }
 
@@ -244,7 +261,7 @@
 
 @layer utilities {
   .shadow-focus-ring-primary {
-    box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 18%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
   }
 
   /* iOS momentum scrolling for scroll containers */
@@ -287,19 +304,6 @@
     scroll-behavior: smooth;
   }
 
-  /* GRADIENT BORDERS */
-  .gradient-border {
-    position: relative;
-    background: linear-gradient(135deg, var(--primary), var(--accent));
-    padding: 1px;
-    border-radius: var(--radius);
-  }
-
-  .gradient-border-inner {
-    background: var(--card);
-    border-radius: calc(var(--radius) - 1px);
-  }
-
   /* Auth card dark header — always dark regardless of theme */
   .auth-header-banner {
     background: linear-gradient(
@@ -330,34 +334,12 @@
   }
 }
 
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
 @keyframes shimmer {
   0% {
     background-position: 200% 0;
   }
   100% {
     background-position: -200% 0;
-  }
-}
-
-@keyframes countUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
   }
 }
 
@@ -386,15 +368,6 @@
   }
 }
 
-@keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 5px color-mix(in srgb, var(--primary) 50%, transparent);
-  }
-  50% {
-    box-shadow: 0 0 20px color-mix(in srgb, var(--primary) 80%, transparent);
-  }
-}
-
 @layer utilities {
   /**
    * dashboard-shell — lock the app shell to the visible viewport and keep
@@ -419,30 +392,33 @@
 }
 
 @layer components {
-  /* Discord-style flat card (no blur, minimal shadow) */
+  /* Elevated card — resting depth + a stronger lift on hover (wires the
+     --shadow-card / --shadow-card-hover tokens that were defined but unused) */
   .surface-elevated {
-    @apply rounded border border-border bg-card text-card-foreground transition-all duration-100;
+    @apply rounded border border-border bg-card text-card-foreground transition-all duration-150;
+    box-shadow: var(--shadow-card);
   }
 
   .surface-elevated:hover {
-    border-color: color-mix(in oklch, var(--border) 110%, transparent);
+    border-color: color-mix(in srgb, var(--border) 110%, transparent);
     background-color: color-mix(in srgb, var(--card) 92%, var(--primary) 8%);
+    box-shadow: var(--shadow-card-hover);
   }
 
   .surface-elevated:active {
-    border-color: color-mix(in oklch, var(--border) 100%, transparent);
+    border-color: color-mix(in srgb, var(--border) 100%, transparent);
   }
 
   /* Discord-style inset surface (flat, no inset shadow) */
   .surface-inset {
     @apply rounded border transition-all duration-100;
-    border-color: color-mix(in oklch, var(--border) 85%, transparent);
-    background-color: color-mix(in oklch, var(--muted) 45%, transparent);
+    border-color: color-mix(in srgb, var(--border) 85%, transparent);
+    background-color: color-mix(in srgb, var(--muted) 45%, transparent);
   }
 
   .surface-inset:hover {
-    border-color: color-mix(in oklch, var(--border) 100%, transparent);
-    background-color: color-mix(in oklch, var(--muted) 55%, transparent);
+    border-color: color-mix(in srgb, var(--border) 100%, transparent);
+    background-color: color-mix(in srgb, var(--muted) 55%, transparent);
   }
 
   .field-label {
@@ -466,10 +442,10 @@
     transition: background-color 0.1s ease;
   }
   .discord-hover:hover {
-    background-color: rgba(255,255,255,0.06);
+    background-color: color-mix(in srgb, var(--foreground) 7%, transparent);
   }
   .discord-hover:active {
-    background-color: rgba(255,255,255,0.09);
+    background-color: color-mix(in srgb, var(--foreground) 11%, transparent);
   }
   html.dark .discord-hover-active {
     background-color: rgba(255,255,255,0.09);
@@ -488,11 +464,11 @@
     border: none;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.08);
+    background: color-mix(in srgb, var(--foreground) 18%, transparent);
     border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255,255,255,0.14);
+    background: color-mix(in srgb, var(--foreground) 30%, transparent);
   }
 
   /* ── Discord-style status dots ──────────────────────────────────── */
@@ -500,40 +476,48 @@
     @apply absolute bottom-0 right-0 z-10 size-3 rounded-full border-2 border-background;
   }
   .status-dot.online {
-    background: #23a55a;
-    box-shadow: 0 0 6px rgba(35,165,90,0.5);
+    background: var(--success);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--success) 50%, transparent);
   }
   .status-dot.online::before {
     content: '';
     @apply absolute inset-0 rounded-full;
     animation: statusPulse 1.5s ease-in-out infinite;
-    background: #23a55a;
+    background: var(--success);
     opacity: 0.4;
   }
   .status-dot.idle {
-    background: #f0b232;
+    background: var(--warning);
   }
   .status-dot.dnd {
-    background: #da373c;
+    background: var(--destructive);
   }
   .status-dot.offline {
-    background: #80848e;
+    background: var(--muted-foreground);
   }
 
   /* ── Discord modal animations ───────────────────────────────────── */
   .keyboard-safe-modal {
-    animation: dcFadeIn 0.12s ease-out;
+    animation: dcFadeIn 0.16s ease-out;
   }
   .keyboard-safe-sheet {
-    animation: dcSlideUp 0.15s ease-out;
+    /* decelerate (ease-out-expo) for a settled, native feel */
+    animation: dcSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
   }
   @keyframes dcFadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
   }
   @keyframes dcSlideUp {
-    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+    from { opacity: 0; transform: translateY(14px) scale(0.985); }
     to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  /* Honour reduced-motion: snap, don't slide */
+  @media (prefers-reduced-motion: reduce) {
+    .keyboard-safe-modal,
+    .keyboard-safe-sheet {
+      animation: none;
+    }
   }
 
   /* ── Discord shimmer skeleton ───────────────────────────────────── */
@@ -544,9 +528,9 @@
   .skeleton-shimmer {
     background: linear-gradient(
       90deg,
-      rgba(255,255,255,0.04) 25%,
-      rgba(255,255,255,0.08) 50%,
-      rgba(255,255,255,0.04) 75%
+      color-mix(in srgb, var(--foreground) 5%, transparent) 25%,
+      color-mix(in srgb, var(--foreground) 10%, transparent) 50%,
+      color-mix(in srgb, var(--foreground) 5%, transparent) 75%
     );
     background-size: 200% 100%;
     animation: dcShimmer 1.5s ease-in-out infinite;
@@ -626,29 +610,32 @@
   }
 
   .keyboard-safe-sheet {
-    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - var(--keyboard-inset-height, 0px) - 0.5rem);
+    /* Match the overlay's padding (top + bottom safe-area insets) so the sheet
+       fits fully inside the padded, centred box. Subtracting the bottom inset
+       too is what stops the sheet from overflowing above the viewport on
+       notched iPhones (header unreachable + no scroll). */
+    max-height: calc(
+      100dvh - (env(safe-area-inset-top, 0px) + 0.5rem) -
+        (max(env(safe-area-inset-bottom), var(--keyboard-inset-height, 0px)) + 0.5rem)
+    );
   }
 
   /* ─── Mobile bottom tab bar ──────────────────────────────────────────────── */
 
+  /* Docked glass tab bar — the bar fills all the way to the screen bottom; the
+     iPhone home-indicator safe area is tinted bar background (NOT empty space).
+     Nav items sit in the top row, above the indicator. */
+  /* ── Floating pill tab bar (mockup style) ──────────────────────────
+     The outer bar is a transparent, in-flow container; the visible pill
+     is the __inner element, detached from the screen edges. */
   .dashboard-mobile-tabbar {
     position: relative;
     isolation: isolate;
-    min-height: calc(60px + env(safe-area-inset-bottom, 0px));
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    /* Dark mode: use --card (#070a12) so bar is visually distinct from
-       --background (#000000). Light mode: semi-transparent background. */
-    background-color: color-mix(in srgb, var(--card) 94%, transparent);
-    border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-    box-shadow: var(--shadow-ios-bar);
-    backdrop-filter: saturate(145%) blur(16px);
-    -webkit-backdrop-filter: saturate(145%) blur(16px);
-    transition:
-      background-color 0.2s ease,
-      backdrop-filter 0.22s ease,
-      box-shadow 0.22s ease,
-      opacity 0.18s ease,
-      transform 0.18s ease;
+    pointer-events: none;
+    padding: 6px 14px;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+    background: transparent;
+    transition: opacity 0.2s ease, transform 0.22s ease;
   }
 
   /* Hide tab bar when software keyboard is open (keyboard inset > 0) */
@@ -656,38 +643,119 @@
     display: none;
   }
 
-  .dashboard-mobile-tabbar--scrolled {
-    background-color: color-mix(in srgb, var(--card) 88%, transparent);
-    backdrop-filter: saturate(168%) blur(20px);
-    -webkit-backdrop-filter: saturate(168%) blur(20px);
+  /* The pill itself */
+  /* Liquid-glass pill — layered material: blur, saturation, top sheen, inset rims */
+  .dashboard-mobile-tabbar__inner {
+    position: relative;
+    pointer-events: auto;
+    height: 62px;
+    border-radius: 9999px;
+    overflow: hidden;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--card) 84%, transparent),
+      color-mix(in srgb, var(--card) 97%, transparent)
+    );
+    border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    box-shadow:
+      0 16px 38px -14px rgba(0, 0, 0, 0.45),
+      0 3px 10px -5px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 color-mix(in srgb, white 55%, transparent),
+      inset 0 -1px 1px color-mix(in srgb, var(--foreground) 7%, transparent);
+    backdrop-filter: saturate(200%) blur(28px);
+    -webkit-backdrop-filter: saturate(200%) blur(28px);
+    transition: background 0.2s ease, box-shadow 0.22s ease;
   }
 
-  .dashboard-mobile-tabbar::before {
+  /* specular gloss across the top of the glass */
+  .dashboard-mobile-tabbar__inner::after {
     content: '';
     position: absolute;
     inset: 0;
+    border-radius: inherit;
     pointer-events: none;
-    background: linear-gradient(180deg, rgba(255,255,255,0.025), transparent 40%);
-    opacity: 1;
-    z-index: -1;
+    z-index: 0;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, white 22%, transparent) 0%,
+      transparent 46%
+    );
   }
 
-  .dashboard-mobile-tabbar__inner {
-    position: relative;
+  .dashboard-mobile-tabbar--scrolled .dashboard-mobile-tabbar__inner {
+    box-shadow:
+      0 20px 46px -14px rgba(0, 0, 0, 0.55),
+      0 3px 10px -5px rgba(0, 0, 0, 0.38),
+      inset 0 1px 0 color-mix(in srgb, white 60%, transparent),
+      inset 0 -1px 1px color-mix(in srgb, var(--foreground) 8%, transparent);
+  }
+
+  /* The sliding liquid indicator — springs to the active tab */
+  .dashboard-mobile-tabbar__indicator {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    height: 46px;
+    margin-top: -23px;
+    border-radius: 9999px;
+    z-index: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--primary) 88%, white),
+      var(--primary)
+    );
+    box-shadow:
+      0 8px 20px -6px color-mix(in srgb, var(--primary) 60%, transparent),
+      inset 0 1px 0 color-mix(in srgb, white 42%, transparent);
+    transition:
+      transform 0.44s cubic-bezier(0.34, 1.4, 0.5, 1),
+      width 0.3s ease,
+      opacity 0.2s ease;
+    will-change: transform;
+  }
+
+  /* During drag: no transition — follows finger instantly */
+  .dashboard-mobile-tabbar__indicator--dragging {
+    transition: none !important;
   }
 
   .dashboard-mobile-tabbar__tab {
+    position: relative;
+    z-index: 1;
     border: 1px solid transparent;
+    transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1),
+      color 0.18s ease;
   }
 
-  .dashboard-mobile-tabbar__tab--active {
-    border-color: color-mix(in srgb, var(--primary) 30%, transparent);
-    background-color: color-mix(in srgb, var(--primary) 15%, transparent);
-    box-shadow: inset 0 1px 0 color-mix(in srgb, white 24%, transparent);
+  .dashboard-mobile-tabbar__tab:active {
+    transform: scale(0.86);
   }
 
-  .dashboard-mobile-tabbar__tab--idle:hover {
-    background-color: color-mix(in srgb, var(--muted) 72%, transparent);
+  /* Icons-only pill: hide labels visually but keep them for screen readers
+     (preserves each icon-only link's accessible name) */
+  .dashboard-mobile-tabbar__tab > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .dashboard-mobile-tabbar__tab--active svg {
+    position: relative;
+    z-index: 1;
+    color: var(--primary-foreground) !important;
+    transform: scale(1.05);
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .dashboard-mobile-tabbar__tab--idle:active svg {
+    color: var(--foreground);
   }
 
   .dashboard-sidebar {
@@ -695,7 +763,7 @@
   }
 
   html.dark .dashboard-sidebar {
-    background-color: #0f1014;
+    background-color: var(--popover);
   }
 }
 
@@ -782,7 +850,14 @@ html.pwa-standalone .keyboard-safe-modal {
 }
 
 html.pwa-standalone .keyboard-safe-sheet {
-  max-height: calc(100lvh - env(safe-area-inset-top, 0px) - var(--keyboard-inset-height, 0px) - 0.5rem);
+  /* Standalone PWA uses lvh for the shell; mirror the overlay padding (top +
+     bottom safe-area insets) so the sheet never exceeds the visible safe area.
+     Without the bottom inset the sheet overflowed past the home indicator and,
+     once centred, pushed its sticky header off the top of the screen. */
+  max-height: calc(
+    100lvh - (env(safe-area-inset-top, 0px) + 0.5rem) -
+      (max(env(safe-area-inset-bottom), var(--keyboard-inset-height, 0px)) + 0.5rem)
+  );
 }
 
 /* Prevent callout popup on long-press for interactive elements in PWA */
@@ -797,60 +872,35 @@ html.pwa-standalone * {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Premium smooth interactions */
-@layer components {
-  /* Smooth transitions on all interactive elements */
-  button,
-  a,
-  [role="button"],
-  [role="tab"],
-  input,
-  select,
-  textarea {
-    @apply transition-all duration-200 ease-smooth;
-  }
-
-  /* Focus states — no outline, just ring */
+/* Focus states — no outline, just ring */
+@layer base {
   button:focus-visible,
   a:focus-visible,
   input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible,
   [role="button"]:focus-visible {
     outline: none;
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 50%, transparent);
   }
 
-  /* Input smooth focus */
+  /* Plain :focus strips the native outline; textarea + select now get the ring
+     above via :focus-visible, so keyboard focus stays visible on them. */
   input:focus,
   textarea:focus,
   select:focus {
-    @apply outline-none;
+    outline: none;
   }
+}
 
-  /* Smooth skeleton loading */
-  .animate-pulse {
-    @apply animate-pulse-soft;
-  }
-
-  @media (pointer: coarse) {
-    button,
-    a,
-    [role="button"],
-    [role="tab"],
-    input,
-    select,
-    textarea {
-      transition-property: background-color, border-color, color, opacity, transform;
-      transition-duration: 100ms;
-    }
-
-    button:not([disabled]):hover,
-    a:hover,
-    [role="button"]:not([disabled]):hover,
-    [role="tab"]:hover,
-    .card:hover {
-      box-shadow: none !important;
-      transform: none !important;
-    }
+@media (pointer: coarse) {
+  button:not([disabled]):hover,
+  a:hover,
+  [role="button"]:not([disabled]):hover,
+  [role="tab"]:hover,
+  .card:hover {
+    box-shadow: none !important;
+    transform: none !important;
   }
 }
 

@@ -93,7 +93,7 @@ def _extract_meta_message_value(msg: dict[str, Any]) -> tuple[str, str | None]:
 def _extract_meta_messages(body: dict[str, Any]) -> list[dict[str, Any]]:
     """
     Parse Meta's nested webhook payload and return a flat list of
-    supported inbound message dicts.
+    all inbound message dicts (including non-text types like images/audio).
     """
     results: list[dict[str, Any]] = []
     for entry in body.get("entry", []):
@@ -101,11 +101,9 @@ def _extract_meta_messages(body: dict[str, Any]) -> list[dict[str, Any]]:
             value = change.get("value", {})
             for msg in value.get("messages", []):
                 message_type, message_text = _extract_meta_message_value(msg)
-                if not message_text:
-                    continue
                 results.append({
                     "phone": msg.get("from", ""),
-                    "message": message_text,
+                    "message": message_text,  # may be None for non-text types
                     "message_type": message_type,
                     "wa_message_id": msg.get("id"),
                 })
@@ -222,25 +220,76 @@ async def receive_whatsapp_reply(
     # Detect Meta format by presence of "object" = "whatsapp_business_account"
     is_meta_format = body.get("object") == "whatsapp_business_account"
 
+    logger.info(
+        "wa_webhook_received: is_meta=%s keys=%s",
+        is_meta_format,
+        list(body.keys()),
+    )
+
     if is_meta_format:
-        # Meta sends its own signature header (x-hub-signature-256) for security.
-        # For now we trust the verify_token handshake is sufficient.
         messages = _extract_meta_messages(body)
+
+        # Log every entry/change so we can see status updates vs real messages
+        for entry in body.get("entry", []):
+            for change in entry.get("changes", []):
+                value = change.get("value", {})
+                has_messages = bool(value.get("messages"))
+                has_statuses = bool(value.get("statuses"))
+                logger.info(
+                    "wa_webhook_change: field=%s has_messages=%s has_statuses=%s msg_count=%d",
+                    change.get("field"),
+                    has_messages,
+                    has_statuses,
+                    len(value.get("messages", [])),
+                )
+                if has_messages:
+                    for m in value.get("messages", []):
+                        logger.info(
+                            "wa_raw_msg: type=%s from=%s id=%s",
+                            m.get("type"),
+                            m.get("from", "")[-4:],
+                            m.get("id", "")[:12],
+                        )
+
         if not messages:
-            # Meta sends status updates (delivery, read) too — just ack them
             return {"ok": True, "matched": False, "note": "no_supported_messages"}
 
         matched = 0
+        from app.services.whatsapp_log_service import log_wa_inbound
         for msg in messages:
-            if not msg["phone"] or not msg["message"]:
+            phone = msg["phone"] or ""
+            message_text = msg["message"]
+            msg_type = msg.get("message_type") or "inbound_unknown"
+            if not phone:
                 continue
-            logged_type, related_user_id = await _handle_inbound_message(
-                session=session,
-                phone=msg["phone"],
-                message=msg["message"],
-                wa_message_id=msg.get("wa_message_id"),
-                message_type_hint=msg.get("message_type") or "inbound_unknown",
-            )
+            if not message_text:
+                await log_wa_inbound(
+                    session,
+                    phone=phone,
+                    message=f"[{msg_type}]",
+                    message_type=msg_type,
+                    wa_message_id=msg.get("wa_message_id"),
+                )
+                continue
+            try:
+                logged_type, related_user_id = await _handle_inbound_message(
+                    session=session,
+                    phone=phone,
+                    message=message_text,
+                    wa_message_id=msg.get("wa_message_id"),
+                    message_type_hint=msg_type,
+                )
+            except Exception:
+                logger.exception("wa_inbound_handle_error: phone_tail=%s", phone[-4:] if phone else "?")
+                # still log so Received Today increments
+                await log_wa_inbound(
+                    session,
+                    phone=phone,
+                    message=message_text[:400],
+                    message_type="inbound_error",
+                    wa_message_id=msg.get("wa_message_id"),
+                )
+                continue
             if logged_type == "inbound_member" and related_user_id is not None:
                 matched += 1
 
@@ -679,9 +728,9 @@ async def get_whatsapp_logs(
     )).scalars().all()
 
     # Today's stats (IST midnight → now)
-    from app.core.time_ist import today_ist
+    from app.core.time_ist import today_ist, IST
     today_dt = today_ist()
-    today_start = _dt.datetime(today_dt.year, today_dt.month, today_dt.day, tzinfo=_tz.utc)
+    today_start = _dt.datetime(today_dt.year, today_dt.month, today_dt.day, tzinfo=IST).astimezone(_tz.utc)
 
     sent_today = (await session.execute(
         select(_func.count()).where(

@@ -25,7 +25,7 @@ from app.models.activity_log import ActivityLog
 from app.models.batch_day_submission import BatchDaySubmission
 from app.models.follow_up import FollowUp
 from app.models.call_event import CallEvent
-from app.models.enroll_share_link import EnrollShareLink
+from app.models.flp_min_billing_share_link import FlpMinBillingShareLink
 from app.models.lead import Lead
 from app.models.user import User
 from app.services.crm_outbox import enqueue_lead_shadow_upsert
@@ -47,6 +47,7 @@ from app.schemas.execution_enforcement import (
     LeadControlManualReassignOut,
     LeadControlOut,
     LeadControlQueueLead,
+    LeadControlRevertOut,
     LosMemberRow,
     LosSnapshotOut,
     MemberExecutionStats,
@@ -74,8 +75,6 @@ _REDISTRIBUTION_TERMINAL_STATUSES = frozenset(
         "day2",
         "day3",
         "interview",
-        "track_selected",
-        "seat_hold",
         "converted",
         "lost",
         "inactive",
@@ -89,23 +88,46 @@ _ENROLLED_SIGNAL_STATUSES = frozenset(
         "day2",
         "day3",
         "interview",
-        "track_selected",
-        "seat_hold",
         "converted",
     }
 )
 _WATCH_PIPELINE_STATUSES = frozenset({"video_sent", "video_watched"})
+# Day 2-6 closing pipeline stages — stale archive + 24h owner restore window + auto-reassign.
+_CLOSING_PIPELINE_STATUSES = frozenset({
+    "day2", "day3", "day4", "day5", "interview"
+})
+# Pre-enrollment general pipeline — same 24h rule, reassign to team workers.
+_GENERAL_PIPELINE_STATUSES = frozenset({
+    "new_lead", "contacted", "invited", "whatsapp_sent", "mindset_lock", "day1", "paid"
+})
 # ₹1500 minimum FLP billing threshold in paise (rupees × 100).
 RUPEES_1500_CENTS = 1500 * 100
 RUPEES_196_CENTS = RUPEES_1500_CENTS  # policy: ₹196 replaced by Min. FLP Billing ₹1500
 _WATCH_ARCHIVE_BUCKET = "completed_watch_archived_leads"
 _STALE_WATCH_BUCKET = "archived_completed_watch_stale_leads"
+_CLOSING_ARCHIVE_BUCKET = "closing_pipeline_archived_leads"
+_STALE_CLOSING_BUCKET = "archived_closing_pipeline_stale_leads"
+_GENERAL_ARCHIVE_BUCKET = "general_pipeline_archived_leads"
+_STALE_GENERAL_BUCKET = "archived_general_pipeline_stale_leads"
 _DEFAULT_MAX_ACTIVE_LEADS_PER_WORKER = 50
 _DEFAULT_WATCH_ARCHIVE_AFTER_HOURS = 24
 _DEFAULT_ARCHIVED_WATCH_REASSIGN_AFTER_HOURS = 24
+_DEFAULT_CLOSING_ARCHIVE_AFTER_HOURS = 24
+_DEFAULT_CLOSING_STALE_REASSIGN_AFTER_HOURS = 24
+_DEFAULT_GENERAL_ARCHIVE_AFTER_HOURS = 24
+_DEFAULT_GENERAL_STALE_REASSIGN_AFTER_HOURS = 24
 _AUTO_REASSIGNMENT_ACTION = "lead.stale_watch_reassigned"
 _MANUAL_REASSIGNMENT_ACTION = "lead.manual_watch_reassigned"
+_CLOSING_REASSIGNMENT_ACTION = "lead.closing_pipeline_stale_reassigned"
+_GENERAL_REASSIGNMENT_ACTION = "lead.general_pipeline_stale_reassigned"
 _REASSIGNMENT_HISTORY_ACTIONS = (_AUTO_REASSIGNMENT_ACTION, _MANUAL_REASSIGNMENT_ACTION)
+_ALL_REASSIGNMENT_ACTIONS = (
+    _AUTO_REASSIGNMENT_ACTION,
+    _MANUAL_REASSIGNMENT_ACTION,
+    _CLOSING_REASSIGNMENT_ACTION,
+    _GENERAL_REASSIGNMENT_ACTION,
+)
+_REVERT_ACTION = "lead.reassignment_reverted"
 
 
 def _user_label(user: User | None, user_id: int | None = None) -> str:
@@ -170,8 +192,8 @@ def _redistribution_eligible_filters() -> ColumnElement[bool]:
 def _completed_watch_exists() -> ColumnElement[bool]:
     return exists(
         select(1).where(
-            EnrollShareLink.lead_id == Lead.id,
-            EnrollShareLink.status_synced.is_(True),
+            FlpMinBillingShareLink.lead_id == Lead.id,
+            FlpMinBillingShareLink.status_synced.is_(True),
         )
     )
 
@@ -181,15 +203,15 @@ def _completed_watch_anchor_ts():
         select(
             func.max(
                 func.coalesce(
-                    EnrollShareLink.last_viewed_at,
-                    EnrollShareLink.first_viewed_at,
-                    EnrollShareLink.created_at,
+                    FlpMinBillingShareLink.last_viewed_at,
+                    FlpMinBillingShareLink.first_viewed_at,
+                    FlpMinBillingShareLink.created_at,
                 )
             )
         )
         .where(
-            EnrollShareLink.lead_id == Lead.id,
-            EnrollShareLink.status_synced.is_(True),
+            FlpMinBillingShareLink.lead_id == Lead.id,
+            FlpMinBillingShareLink.status_synced.is_(True),
         )
         .scalar_subquery()
     )
@@ -218,7 +240,7 @@ def bottleneck_tags_for_member(
         tags.append("Proof stuck")
     if int(stats.get("fu_due") or 0) >= 3 or (
         int(stats.get("fu_due") or 0) >= 1
-        and int(stats.get("enrollments") or 0) == 0
+        and int(stats.get("flp_min_billings") or 0) == 0
         and int(stats.get("total_active") or 0) >= 4
     ):
         tags.append("Follow-up slow")
@@ -300,11 +322,11 @@ async def team_personal_funnel(session: AsyncSession, user_id: int) -> TeamPerso
         video_reached=video,
         proof_pending=proof,
         paid_flp=paid,
-        enrolled_total=paid,
+        flp_min_billing_total=paid,
         pct_video_vs_claimed=_pct(video, claimed),
         pct_proof_vs_video=_pct(proof, video),
-        pct_enrolled_vs_video=_pct(paid, video),
-        pct_enrolled_vs_claimed=_pct(paid, claimed),
+        pct_flp_min_billing_vs_video=_pct(paid, video),
+        pct_flp_min_billing_vs_claimed=_pct(paid, claimed),
     )
 
 
@@ -324,7 +346,7 @@ async def team_today_stats(
     call_target = await get_daily_call_target(session)
     effective_call_target = call_target if fresh_leads_today > 0 else 0
 
-    enrolled_today = int(
+    flp_min_billing_today = int(
         (
             await session.execute(
                 select(func.count())
@@ -354,7 +376,7 @@ async def team_today_stats(
         fresh_leads_today=fresh_leads_today,
         calls_today=calls_today,
         call_target=effective_call_target,
-        enrolled_today=enrolled_today,
+        flp_min_billing_today=flp_min_billing_today,
     )
 
 
@@ -402,7 +424,7 @@ async def downline_member_execution_stats(
     user_ids: list[int],
     today_iso: str,
 ) -> dict[int, dict[str, Any]]:
-    """Per assignee: totals, enrollments, proof queue, follow-up pressure."""
+    """Per assignee: totals, flp_min_billings, proof queue, follow-up pressure."""
     if not user_ids:
         return {}
     day = datetime.strptime(today_iso, "%Y-%m-%d").date()
@@ -448,7 +470,7 @@ async def downline_member_execution_stats(
         select(
             Lead.assigned_to_user_id.label("uid"),
             func.count(Lead.id).label("total_active"),
-            func.sum(enrolled_expr).label("enrollments"),
+            func.sum(enrolled_expr).label("flp_min_billings"),
             func.sum(proof_expr).label("proof_pend"),
             func.sum(fu_expr).label("fu_due"),
         )
@@ -463,13 +485,13 @@ async def downline_member_execution_stats(
     for r in result.mappings().all():
         uid = int(r["uid"])
         tot = int(r["total_active"] or 0)
-        enr = int(r["enrollments"] or 0)
+        enr = int(r["flp_min_billings"] or 0)
         calls_today = int(calls_today_map.get(uid, 0))
         fresh_leads_today = int(fresh_leads_today_map.get(uid, 0))
         call_target = daily_call_target if fresh_leads_today > 0 else 0
         out[uid] = {
             "total_active": tot,
-            "enrollments": enr,
+            "flp_min_billings": enr,
             "proof_pend": int(r["proof_pend"] or 0),
             "fu_due": int(r["fu_due"] or 0),
             "conv_pct": round(100.0 * enr / tot, 1) if tot else 0.0,
@@ -631,7 +653,7 @@ async def _get_top_xp_workers(
     rows = await session.execute(
         select(User.id, User.username, User.fbo_id)
         .where(
-            User.role == "team",
+            User.role.in_(("leader", "team")),
             User.access_blocked.is_(False),
             User.registration_status == "approved",
             User.removed_at.is_(None),
@@ -784,20 +806,20 @@ async def _get_watch_completion_map(
     rows = (
         await session.execute(
             select(
-                EnrollShareLink.lead_id,
+                FlpMinBillingShareLink.lead_id,
                 func.max(
                     func.coalesce(
-                        EnrollShareLink.last_viewed_at,
-                        EnrollShareLink.first_viewed_at,
-                        EnrollShareLink.created_at,
+                        FlpMinBillingShareLink.last_viewed_at,
+                        FlpMinBillingShareLink.first_viewed_at,
+                        FlpMinBillingShareLink.created_at,
                     )
                 ).label("watch_completed_at"),
             )
             .where(
-                EnrollShareLink.lead_id.in_(lead_ids),
-                EnrollShareLink.status_synced.is_(True),
+                FlpMinBillingShareLink.lead_id.in_(lead_ids),
+                FlpMinBillingShareLink.status_synced.is_(True),
             )
-            .group_by(EnrollShareLink.lead_id)
+            .group_by(FlpMinBillingShareLink.lead_id)
         )
     ).all()
     out: dict[int, datetime] = {}
@@ -919,8 +941,7 @@ async def auto_archive_completed_watch_leads(
         safe_activity = _ensure_utc_datetime(activity_at) or _lead_last_activity_value(lead)
         if safe_activity > cutoff:
             continue
-        archive_mark_at = safe_activity + timedelta(hours=archive_hours)
-        lead.archived_at = archive_mark_at
+        lead.archived_at = ts
         lead.in_pool = False
         archived += 1
         audit_logs.append(
@@ -935,7 +956,7 @@ async def auto_archive_completed_watch_leads(
                     "watch_completed": True,
                     "status": lead.status,
                     "watch_completed_at": safe_activity.isoformat(),
-                    "archived_at": archive_mark_at.isoformat(),
+                    "archived_at": ts.isoformat(),
                     "owner_user_id": int(lead.owner_user_id) if lead.owner_user_id is not None else None,
                     "assigned_to_user_id": int(lead.assigned_to_user_id) if lead.assigned_to_user_id is not None else None,
                     "auto_cycle_hours": archive_hours,
@@ -984,6 +1005,36 @@ async def run_completed_watch_pipeline_maintenance(
     }
 
 
+async def _get_previous_assignees(
+    session: AsyncSession,
+    lead_ids: list[int],
+) -> dict[int, set[int]]:
+    """Return map of lead_id → set of user_ids who previously received this lead via auto-reassign."""
+    if not lead_ids:
+        return {}
+    rows = await session.execute(
+        select(ActivityLog.entity_id, ActivityLog.meta)
+        .where(
+            ActivityLog.action.in_([
+                _AUTO_REASSIGNMENT_ACTION,
+                _MANUAL_REASSIGNMENT_ACTION,
+                _CLOSING_REASSIGNMENT_ACTION,
+                _GENERAL_REASSIGNMENT_ACTION,
+            ]),
+            ActivityLog.entity_type == "lead",
+            ActivityLog.entity_id.in_(lead_ids),
+        )
+    )
+    result: dict[int, set[int]] = {}
+    for entity_id, meta in rows.all():
+        if not isinstance(meta, dict):
+            continue
+        uid = meta.get("assigned_to_user_id")
+        if uid is not None:
+            result.setdefault(int(entity_id), set()).add(int(uid))
+    return result
+
+
 def _assign_leads(
     *,
     leads: list[Lead],
@@ -992,8 +1043,9 @@ def _assign_leads(
     cutoff: datetime,
     now: datetime,
     worker_rank: dict[int, int],
-    max_active_per_worker: int,
+    max_active_per_worker: int | None,
     auto_cycle_hours: int,
+    previously_assigned: dict[int, set[int]] | None = None,
     audit_log_user_id: int | None = None,
 ) -> tuple[int, int, list[list[Any]], list[ActivityLog]]:
     assigned = 0
@@ -1008,18 +1060,33 @@ def _assign_leads(
             continue
 
         from_uid = int(lead.assigned_to_user_id) if lead.assigned_to_user_id is not None else None
+        prior_assignees = (previously_assigned or {}).get(int(lead.id), set())
         eligible_workers = sorted(
             workers,
             key=lambda wid: (int(load_map.get(wid, 0)), int(worker_rank.get(wid, 9999)), int(wid)),
         )
+        # First try: skip prior assignees who already let this lead go stale
         to_uid = next(
             (
                 wid
                 for wid in eligible_workers
-                if wid != from_uid and int(load_map.get(wid, 0)) < max_active_per_worker
+                if wid != from_uid
+                and wid not in prior_assignees
+                and (max_active_per_worker is None or int(load_map.get(wid, 0)) < max_active_per_worker)
             ),
             None,
         )
+        # Fallback: all prior assignees exhausted — pick anyone except current holder
+        if to_uid is None:
+            to_uid = next(
+                (
+                    wid
+                    for wid in eligible_workers
+                    if wid != from_uid
+                    and (max_active_per_worker is None or int(load_map.get(wid, 0)) < max_active_per_worker)
+                ),
+                None,
+            )
         if to_uid is None:
             skipped += 1
             continue
@@ -1031,6 +1098,8 @@ def _assign_leads(
 
         # Ownership safety: only assignee can change.
         lead.assigned_to_user_id = to_uid
+        lead.is_reassigned = True
+        lead.reassigned_at = now
         lead.archived_at = None
         lead.last_action_at = now
 
@@ -1081,14 +1150,12 @@ async def stale_redistribute(
     - never change ``owner_user_id``
     - only reassign from the archived completed-watch stale bucket
     - only assign into the top-XP approved team pool
-    - cap each selected worker at 50 active leads
     """
     sh = max(1, int(stale_hours))
     n_workers = max(1, int(top_n))
     max_rows = max(1, int(limit))
     ts = _ensure_utc_datetime(now) or datetime.now(timezone.utc)
     cutoff = ts - timedelta(hours=sh)
-    max_active_per_worker = _DEFAULT_MAX_ACTIVE_LEADS_PER_WORKER
 
     workers = await _get_top_xp_workers(session, top_n=n_workers)
     if not workers:
@@ -1096,23 +1163,12 @@ async def stale_redistribute(
             implemented=True,
             message="No eligible top-XP team members found for redistribution.",
             source_bucket=_STALE_WATCH_BUCKET,
-            max_active_per_worker=max_active_per_worker,
         )
 
     worker_ids = [wid for wid, _label in workers]
     worker_meta = {wid: label for wid, label in workers}
     worker_rank = {wid: idx for idx, wid in enumerate(worker_ids)}
     load_map = await _get_worker_load(session, worker_ids)
-    eligible_workers = [wid for wid in worker_ids if int(load_map.get(wid, 0)) < max_active_per_worker]
-    if not eligible_workers:
-        return StaleRedistributeOut(
-            implemented=True,
-            message="Top-XP team members are already at the active-lead cap.",
-            source_bucket=_STALE_WATCH_BUCKET,
-            max_active_per_worker=max_active_per_worker,
-            worker_pool_size=len(worker_ids),
-            worker_counts={worker_meta[wid]: int(load_map.get(wid, 0)) for wid in worker_ids},
-        )
 
     stale_leads = await _get_completed_watch_stale_leads(
         session,
@@ -1124,23 +1180,28 @@ async def stale_redistribute(
             implemented=True,
             message="No archived completed-watch stale leads matched the given threshold.",
             source_bucket=_STALE_WATCH_BUCKET,
-            max_active_per_worker=max_active_per_worker,
             worker_pool_size=len(worker_ids),
             worker_counts={worker_meta[wid]: int(load_map.get(wid, 0)) for wid in worker_ids},
         )
 
-    audit_log_user_id = next((wid for wid in worker_ids if int(load_map.get(wid, 0)) < max_active_per_worker), None)
+    audit_log_user_id = worker_ids[0] if worker_ids else None
+    lead_map = {lead.id: lead for lead in stale_leads}
+    previously_assigned = await _get_previous_assignees(session, [lead.id for lead in stale_leads])
     assigned, skipped, assignments, audit_logs = _assign_leads(
         leads=stale_leads,
-        workers=eligible_workers,
+        workers=worker_ids,
         load_map=load_map,
         cutoff=cutoff,
         now=ts,
         worker_rank=worker_rank,
-        max_active_per_worker=max_active_per_worker,
+        max_active_per_worker=None,
         auto_cycle_hours=sh,
+        previously_assigned=previously_assigned,
         audit_log_user_id=audit_log_user_id,
     )
+    for lead_id, _from_uid, _to_uid in assignments:
+        if lead_id in lead_map:
+            enqueue_lead_shadow_upsert(session, lead_map[lead_id])
     session.add_all(audit_logs)
 
     await session.commit()
@@ -1163,7 +1224,7 @@ async def stale_redistribute(
         "stale_watch_redistribute assigned=%s skipped=%s workers=%s stale_hours=%s limit=%s",
         assigned,
         skipped,
-        len(eligible_workers),
+        len(worker_ids),
         sh,
         max_rows,
     )
@@ -1176,8 +1237,540 @@ async def stale_redistribute(
         worker_counts={worker_meta[wid]: int(load_map.get(wid, 0)) for wid in worker_ids},
         worker_pool_size=len(worker_ids),
         source_bucket=_STALE_WATCH_BUCKET,
-        max_active_per_worker=max_active_per_worker,
+        max_active_per_worker=None,
     )
+
+
+def _closing_pipeline_anchor_ts():
+    """Best proxy for when the lead last moved in the closing pipeline."""
+    return func.coalesce(
+        Lead.last_action_at,
+        Lead.day5_completed_at,
+        Lead.day4_completed_at,
+        Lead.day3_completed_at,
+        Lead.day2_completed_at,
+        Lead.day1_completed_at,
+        Lead.mindset_completed_at,
+        Lead.created_at,
+    )
+
+
+def _closing_redistribution_eligible_filters() -> ColumnElement[bool]:
+    return and_(
+        Lead.in_pool.is_(False),
+        Lead.deleted_at.is_(None),
+        Lead.archived_at.is_not(None),
+        Lead.status.in_(tuple(_CLOSING_PIPELINE_STATUSES)),
+    )
+
+
+async def _get_archivable_closing_pipeline_leads(
+    session: AsyncSession,
+    *,
+    cutoff: datetime,
+    limit: int,
+) -> list[tuple[Lead, datetime]]:
+    anchor = _closing_pipeline_anchor_ts()
+    rows = await session.execute(
+        select(Lead, anchor.label("activity_at"))
+        .where(
+            Lead.in_pool.is_(False),
+            Lead.deleted_at.is_(None),
+            Lead.archived_at.is_(None),
+            Lead.status.in_(tuple(_CLOSING_PIPELINE_STATUSES)),
+            anchor <= cutoff,
+        )
+        .order_by(anchor.asc(), Lead.id.asc())
+        .limit(limit)
+    )
+    out: list[tuple[Lead, datetime]] = []
+    for lead, activity_at in rows.all():
+        safe = _ensure_utc_datetime(activity_at)
+        if safe is None:
+            safe = _lead_last_activity_value(lead)
+        out.append((lead, safe))
+    return out
+
+
+async def _get_closing_pipeline_stale_leads(
+    session: AsyncSession,
+    *,
+    cutoff: datetime,
+    limit: int,
+) -> list[Lead]:
+    rows = await session.execute(
+        select(Lead)
+        .where(
+            _closing_redistribution_eligible_filters(),
+            Lead.archived_at <= cutoff,
+        )
+        .order_by(Lead.archived_at.asc(), Lead.id.asc())
+        .limit(limit)
+    )
+    return rows.scalars().all()
+
+
+async def _get_top_xp_leaders(
+    session: AsyncSession,
+    *,
+    top_n: int,
+) -> list[tuple[int, str]]:
+    rows = await session.execute(
+        select(User.id, User.username, User.fbo_id)
+        .where(
+            User.role == "leader",
+            User.access_blocked.is_(False),
+            User.registration_status == "approved",
+            User.removed_at.is_(None),
+        )
+        .order_by(User.xp_total.desc(), User.id.asc())
+        .limit(top_n)
+    )
+    workers: list[tuple[int, str]] = []
+    for uid, uname, fbo in rows.all():
+        label = (uname or fbo or f"user_{int(uid)}")
+        workers.append((int(uid), label))
+    return workers
+
+
+async def auto_archive_closing_pipeline_leads(
+    session: AsyncSession,
+    *,
+    archive_after_hours: int = _DEFAULT_CLOSING_ARCHIVE_AFTER_HOURS,
+    limit: int = 500,
+    now: datetime | None = None,
+) -> int:
+    """Archive day2-6 leads idle for more than archive_after_hours. Owner gets a push to restore."""
+    ts = _ensure_utc_datetime(now) or datetime.now(timezone.utc)
+    archive_hours = max(1, int(archive_after_hours))
+    cutoff = ts - timedelta(hours=archive_hours)
+    rows = await _get_archivable_closing_pipeline_leads(session, cutoff=cutoff, limit=max(1, int(limit)))
+    if not rows:
+        return 0
+
+    audit_logs: list[ActivityLog] = []
+    archived = 0
+    notified_owners: set[int] = set()
+    for lead, activity_at in rows:
+        safe = _ensure_utc_datetime(activity_at) or _lead_last_activity_value(lead)
+        if safe > cutoff:
+            continue
+        lead.archived_at = ts
+        lead.in_pool = False
+        archived += 1
+        owner_uid = int(lead.assigned_to_user_id or lead.owner_user_id or lead.created_by_user_id)
+        audit_logs.append(
+            ActivityLog(
+                user_id=owner_uid,
+                action="lead.auto_archived_closing_pipeline",
+                entity_type="lead",
+                entity_id=lead.id,
+                meta={
+                    "actor": "system.closing_pipeline_cycle",
+                    "source_bucket": _CLOSING_ARCHIVE_BUCKET,
+                    "status": lead.status,
+                    "activity_at": safe.isoformat(),
+                    "archived_at": ts.isoformat(),
+                    "auto_cycle_hours": archive_hours,
+                    "owner_user_id": int(lead.owner_user_id) if lead.owner_user_id is not None else None,
+                    "assigned_to_user_id": int(lead.assigned_to_user_id) if lead.assigned_to_user_id is not None else None,
+                },
+            )
+        )
+        notified_owners.add(owner_uid)
+
+    if archived:
+        session.add_all(audit_logs)
+        await session.commit()
+        for uid in notified_owners:
+            try:
+                await send_push_to_user(
+                    session,
+                    uid,
+                    title="Lead archived — action needed",
+                    body="A lead moved off your Day 2-6 pipeline (no activity 24h). Restore within 24h or it will be reassigned.",
+                    url="/dashboard/work/leads",
+                )
+            except Exception:
+                logger.exception("Failed to send closing pipeline archive push to user %s", uid)
+    return archived
+
+
+async def stale_redistribute_closing_pipeline(
+    session: AsyncSession,
+    *,
+    stale_hours: int = _DEFAULT_CLOSING_STALE_REASSIGN_AFTER_HOURS,
+    top_n: int = 10,
+    limit: int = 500,
+    now: datetime | None = None,
+) -> StaleRedistributeOut:
+    """Reassign closing-pipeline archived leads (>stale_hours in archive) to top-XP leaders."""
+    sh = max(1, int(stale_hours))
+    n_leaders = max(1, int(top_n))
+    max_rows = max(1, int(limit))
+    ts = _ensure_utc_datetime(now) or datetime.now(timezone.utc)
+    cutoff = ts - timedelta(hours=sh)
+
+    workers = await _get_top_xp_leaders(session, top_n=n_leaders)
+    if not workers:
+        return StaleRedistributeOut(
+            implemented=True,
+            message="No eligible leaders found for closing pipeline redistribution.",
+            source_bucket=_STALE_CLOSING_BUCKET,
+            max_active_per_worker=None,
+        )
+
+    worker_ids = [wid for wid, _label in workers]
+    worker_meta = {wid: label for wid, label in workers}
+    worker_rank = {wid: idx for idx, wid in enumerate(worker_ids)}
+    load_map = await _get_worker_load(session, worker_ids)
+
+    stale_leads = await _get_closing_pipeline_stale_leads(session, cutoff=cutoff, limit=max_rows)
+    if not stale_leads:
+        return StaleRedistributeOut(
+            implemented=True,
+            message="No stale closing-pipeline archived leads matched the threshold.",
+            source_bucket=_STALE_CLOSING_BUCKET,
+            worker_pool_size=len(worker_ids),
+            worker_counts={worker_meta[wid]: int(load_map.get(wid, 0)) for wid in worker_ids},
+        )
+
+    audit_log_user_id = worker_ids[0] if worker_ids else None
+    lead_map = {lead.id: lead for lead in stale_leads}
+    previously_assigned = await _get_previous_assignees(session, [lead.id for lead in stale_leads])
+    assigned, skipped, assignments, audit_logs = _assign_leads(
+        leads=stale_leads,
+        workers=worker_ids,
+        load_map=load_map,
+        cutoff=cutoff,
+        now=ts,
+        worker_rank=worker_rank,
+        max_active_per_worker=None,
+        auto_cycle_hours=sh,
+        previously_assigned=previously_assigned,
+        audit_log_user_id=audit_log_user_id,
+    )
+    for log in audit_logs:
+        log.action = _CLOSING_REASSIGNMENT_ACTION
+        if isinstance(log.meta, dict):
+            log.meta["source_bucket"] = _STALE_CLOSING_BUCKET
+            log.meta["actor"] = "system.closing_pipeline_cycle"
+            log.meta.pop("watch_completed", None)
+    for lead_id, _from_uid, _to_uid in assignments:
+        if lead_id in lead_map:
+            enqueue_lead_shadow_upsert(session, lead_map[lead_id])
+    session.add_all(audit_logs)
+    await session.commit()
+
+    notified_users: set[int] = set()
+    for _lead_id, _from_uid, to_uid in assignments:
+        if to_uid is None or int(to_uid) in notified_users:
+            continue
+        notified_users.add(int(to_uid))
+        try:
+            await send_push_to_user(
+                session,
+                int(to_uid),
+                title="Closing pipeline leads assigned",
+                body="Stale Day 2-6 leads have been moved into your board.",
+                url="/dashboard/work/leads",
+            )
+        except Exception:
+            logger.exception("Failed to send closing pipeline reassign push to user %s", to_uid)
+
+    logger.info(
+        "stale_closing_pipeline_redistribute assigned=%s skipped=%s leaders=%s stale_hours=%s",
+        assigned, skipped, len(worker_ids), sh,
+    )
+    return StaleRedistributeOut(
+        implemented=True,
+        message=f"Redistributed {assigned} stale closing-pipeline lead(s); skipped {skipped}.",
+        assigned=assigned,
+        skipped=skipped,
+        assignments=assignments,
+        worker_counts={worker_meta[wid]: int(load_map.get(wid, 0)) for wid in worker_ids},
+        worker_pool_size=len(worker_ids),
+        source_bucket=_STALE_CLOSING_BUCKET,
+        max_active_per_worker=None,
+    )
+
+
+async def run_closing_pipeline_maintenance(
+    session: AsyncSession,
+    *,
+    archive_after_hours: int = _DEFAULT_CLOSING_ARCHIVE_AFTER_HOURS,
+    stale_hours: int = _DEFAULT_CLOSING_STALE_REASSIGN_AFTER_HOURS,
+    top_n: int = 10,
+    limit: int = 500,
+    now: datetime | None = None,
+    auto_reassign: bool = True,
+) -> dict[str, int]:
+    ts = _ensure_utc_datetime(now) or datetime.now(timezone.utc)
+    auto_archived = await auto_archive_closing_pipeline_leads(
+        session, archive_after_hours=archive_after_hours, limit=limit, now=ts
+    )
+    redistributed = 0
+    skipped = 0
+    if auto_reassign:
+        redistribution = await stale_redistribute_closing_pipeline(
+            session, stale_hours=stale_hours, top_n=top_n, limit=limit, now=ts
+        )
+        redistributed = int(redistribution.assigned)
+        skipped = int(redistribution.skipped)
+    return {"auto_archived": int(auto_archived), "reassigned": redistributed, "skipped": skipped}
+
+
+# ---------------------------------------------------------------------------
+# General pipeline — universal 24h rule for pre-enrollment stages
+# ---------------------------------------------------------------------------
+
+def _general_pipeline_anchor_ts():
+    return func.coalesce(
+        Lead.last_action_at,
+        Lead.payment_proof_uploaded_at,
+        Lead.whatsapp_sent_at,
+        Lead.created_at,
+    )
+
+
+def _general_redistribution_eligible_filters() -> ColumnElement[bool]:
+    return and_(
+        Lead.in_pool.is_(False),
+        Lead.deleted_at.is_(None),
+        Lead.archived_at.is_not(None),
+        Lead.status.in_(tuple(_GENERAL_PIPELINE_STATUSES)),
+    )
+
+
+async def _get_archivable_general_pipeline_leads(
+    session: AsyncSession,
+    *,
+    cutoff: datetime,
+    limit: int,
+) -> list[tuple[Lead, datetime]]:
+    anchor = _general_pipeline_anchor_ts()
+    rows = await session.execute(
+        select(Lead, anchor.label("activity_at"))
+        .where(
+            Lead.in_pool.is_(False),
+            Lead.deleted_at.is_(None),
+            Lead.archived_at.is_(None),
+            Lead.status.in_(tuple(_GENERAL_PIPELINE_STATUSES)),
+            anchor <= cutoff,
+        )
+        .order_by(anchor.asc(), Lead.id.asc())
+        .limit(limit)
+    )
+    out: list[tuple[Lead, datetime]] = []
+    for lead, activity_at in rows.all():
+        safe = _ensure_utc_datetime(activity_at)
+        if safe is None:
+            safe = _lead_last_activity_value(lead)
+        out.append((lead, safe))
+    return out
+
+
+async def _get_general_pipeline_stale_leads(
+    session: AsyncSession,
+    *,
+    cutoff: datetime,
+    limit: int,
+) -> list[Lead]:
+    rows = await session.execute(
+        select(Lead)
+        .where(
+            _general_redistribution_eligible_filters(),
+            Lead.archived_at <= cutoff,
+        )
+        .order_by(Lead.archived_at.asc(), Lead.id.asc())
+        .limit(limit)
+    )
+    return rows.scalars().all()
+
+
+async def auto_archive_general_pipeline_leads(
+    session: AsyncSession,
+    *,
+    archive_after_hours: int = _DEFAULT_GENERAL_ARCHIVE_AFTER_HOURS,
+    limit: int = 500,
+    now: datetime | None = None,
+) -> int:
+    """Archive pre-enrollment pipeline leads idle for more than archive_after_hours."""
+    ts = _ensure_utc_datetime(now) or datetime.now(timezone.utc)
+    archive_hours = max(1, int(archive_after_hours))
+    cutoff = ts - timedelta(hours=archive_hours)
+    rows = await _get_archivable_general_pipeline_leads(session, cutoff=cutoff, limit=max(1, int(limit)))
+    if not rows:
+        return 0
+
+    audit_logs: list[ActivityLog] = []
+    archived = 0
+    notified_owners: set[int] = set()
+    for lead, activity_at in rows:
+        safe = _ensure_utc_datetime(activity_at) or _lead_last_activity_value(lead)
+        if safe > cutoff:
+            continue
+        lead.archived_at = ts
+        lead.in_pool = False
+        archived += 1
+        owner_uid = int(lead.assigned_to_user_id or lead.owner_user_id or lead.created_by_user_id)
+        audit_logs.append(
+            ActivityLog(
+                user_id=owner_uid,
+                action="lead.auto_archived_general_pipeline",
+                entity_type="lead",
+                entity_id=lead.id,
+                meta={
+                    "actor": "system.general_pipeline_cycle",
+                    "source_bucket": _GENERAL_ARCHIVE_BUCKET,
+                    "status": lead.status,
+                    "activity_at": safe.isoformat(),
+                    "archived_at": ts.isoformat(),
+                    "auto_cycle_hours": archive_hours,
+                    "owner_user_id": int(lead.owner_user_id) if lead.owner_user_id is not None else None,
+                    "assigned_to_user_id": int(lead.assigned_to_user_id) if lead.assigned_to_user_id is not None else None,
+                },
+            )
+        )
+        notified_owners.add(owner_uid)
+
+    if archived:
+        session.add_all(audit_logs)
+        await session.commit()
+        for uid in notified_owners:
+            try:
+                await send_push_to_user(
+                    session,
+                    uid,
+                    title="Lead archived — action needed",
+                    body="A lead went idle on your pipeline (no activity 24h). Restore within 24h or it will be reassigned.",
+                    url="/dashboard/work/leads",
+                )
+            except Exception:
+                logger.exception("Failed to send general pipeline archive push to user %s", uid)
+    return archived
+
+
+async def stale_redistribute_general_pipeline(
+    session: AsyncSession,
+    *,
+    stale_hours: int = _DEFAULT_GENERAL_STALE_REASSIGN_AFTER_HOURS,
+    top_n: int = 10,
+    limit: int = 500,
+    now: datetime | None = None,
+) -> StaleRedistributeOut:
+    """Reassign general-pipeline archived leads (>stale_hours in archive) to top-XP team workers."""
+    sh = max(1, int(stale_hours))
+    ts = _ensure_utc_datetime(now) or datetime.now(timezone.utc)
+    cutoff = ts - timedelta(hours=sh)
+
+    workers = await _get_top_xp_workers(session, top_n=top_n)
+    if not workers:
+        return StaleRedistributeOut(
+            implemented=True,
+            message="No eligible team workers for general pipeline redistribution.",
+            source_bucket=_STALE_GENERAL_BUCKET,
+            max_active_per_worker=None,
+        )
+
+    worker_ids = [wid for wid, _label in workers]
+    worker_meta = {wid: label for wid, label in workers}
+    worker_rank = {wid: idx for idx, wid in enumerate(worker_ids)}
+    load_map = await _get_worker_load(session, worker_ids)
+
+    stale_leads = await _get_general_pipeline_stale_leads(session, cutoff=cutoff, limit=max(1, int(limit)))
+    if not stale_leads:
+        return StaleRedistributeOut(
+            implemented=True,
+            message="No stale general-pipeline archived leads matched the threshold.",
+            source_bucket=_STALE_GENERAL_BUCKET,
+            worker_pool_size=len(worker_ids),
+            worker_counts={worker_meta[wid]: int(load_map.get(wid, 0)) for wid in worker_ids},
+        )
+
+    audit_log_user_id = worker_ids[0] if worker_ids else None
+    lead_map = {lead.id: lead for lead in stale_leads}
+    previously_assigned = await _get_previous_assignees(session, [lead.id for lead in stale_leads])
+    assigned, skipped, assignments, audit_logs = _assign_leads(
+        leads=stale_leads,
+        workers=worker_ids,
+        load_map=load_map,
+        cutoff=cutoff,
+        now=ts,
+        worker_rank=worker_rank,
+        max_active_per_worker=None,
+        auto_cycle_hours=sh,
+        previously_assigned=previously_assigned,
+        audit_log_user_id=audit_log_user_id,
+    )
+    for log in audit_logs:
+        log.action = _GENERAL_REASSIGNMENT_ACTION
+        if isinstance(log.meta, dict):
+            log.meta["source_bucket"] = _STALE_GENERAL_BUCKET
+            log.meta["actor"] = "system.general_pipeline_cycle"
+            log.meta.pop("watch_completed", None)
+    for lead_id, _from_uid, _to_uid in assignments:
+        if lead_id in lead_map:
+            enqueue_lead_shadow_upsert(session, lead_map[lead_id])
+    session.add_all(audit_logs)
+    await session.commit()
+
+    notified_users: set[int] = set()
+    for _lead_id, _from_uid, to_uid in assignments:
+        if to_uid is None or int(to_uid) in notified_users:
+            continue
+        notified_users.add(int(to_uid))
+        try:
+            await send_push_to_user(
+                session,
+                int(to_uid),
+                title="Leads assigned to you",
+                body="Stale pipeline leads have been moved into your board.",
+                url="/dashboard/work/leads",
+            )
+        except Exception:
+            logger.exception("Failed to send general pipeline reassign push to user %s", to_uid)
+
+    logger.info(
+        "stale_general_pipeline_redistribute assigned=%s skipped=%s workers=%s stale_hours=%s",
+        assigned, skipped, len(worker_ids), sh,
+    )
+    return StaleRedistributeOut(
+        implemented=True,
+        message=f"Redistributed {assigned} stale general-pipeline lead(s); skipped {skipped}.",
+        assigned=assigned,
+        skipped=skipped,
+        assignments=assignments,
+        worker_counts={worker_meta[wid]: int(load_map.get(wid, 0)) for wid in worker_ids},
+        worker_pool_size=len(worker_ids),
+        source_bucket=_STALE_GENERAL_BUCKET,
+        max_active_per_worker=None,
+    )
+
+
+async def run_general_pipeline_maintenance(
+    session: AsyncSession,
+    *,
+    archive_after_hours: int = _DEFAULT_GENERAL_ARCHIVE_AFTER_HOURS,
+    stale_hours: int = _DEFAULT_GENERAL_STALE_REASSIGN_AFTER_HOURS,
+    top_n: int = 10,
+    limit: int = 500,
+    now: datetime | None = None,
+    auto_reassign: bool = True,
+) -> dict[str, int]:
+    ts = _ensure_utc_datetime(now) or datetime.now(timezone.utc)
+    auto_archived = await auto_archive_general_pipeline_leads(
+        session, archive_after_hours=archive_after_hours, limit=limit, now=ts
+    )
+    redistributed = 0
+    skipped = 0
+    if auto_reassign:
+        redistribution = await stale_redistribute_general_pipeline(
+            session, stale_hours=stale_hours, top_n=top_n, limit=limit, now=ts
+        )
+        redistributed = int(redistribution.assigned)
+        skipped = int(redistribution.skipped)
+    return {"auto_archived": int(auto_archived), "reassigned": redistributed, "skipped": skipped}
 
 
 async def admin_lead_control_snapshot(
@@ -1668,6 +2261,141 @@ async def admin_manual_bulk_reassign_archived_completed_watch_leads(
     )
 
 
+async def admin_revert_lead_reassignment(
+    session: AsyncSession,
+    *,
+    admin_user_id: int,
+    lead_id: int,
+    activity_id: int | None = None,
+    reason: str | None = None,
+) -> LeadControlRevertOut:
+    """Admin: undo a reassignment, restoring the lead to its previous assignee.
+
+    Only the working assignee is restored — the lifetime owner never changes.
+    """
+    lead = await session.get(Lead, int(lead_id))
+    if lead is None or lead.deleted_at is not None:
+        raise ValueError("Lead not found")
+
+    stmt = (
+        select(ActivityLog)
+        .where(
+            ActivityLog.entity_type == "lead",
+            ActivityLog.entity_id == int(lead_id),
+            ActivityLog.action.in_(_ALL_REASSIGNMENT_ACTIONS),
+        )
+        .order_by(ActivityLog.created_at.desc(), ActivityLog.id.desc())
+    )
+    if activity_id is not None:
+        stmt = stmt.where(ActivityLog.id == int(activity_id))
+    log = (await session.execute(stmt.limit(1))).scalar_one_or_none()
+    if log is None:
+        raise ValueError("No reassignment found to revert for this lead")
+
+    meta = log.meta if isinstance(log.meta, dict) else {}
+    reassigned_to = _coerce_int(meta.get("assigned_to_user_id"))
+    previous_assignee = _coerce_int(meta.get("previous_assignee_user_id"))
+    current = int(lead.assigned_to_user_id) if lead.assigned_to_user_id is not None else None
+
+    if reassigned_to is not None and current != reassigned_to:
+        raise ValueError("Lead has moved since this reassignment — nothing to revert")
+    if previous_assignee == current:
+        raise ValueError("Lead is already with the previous assignee")
+
+    restored_user: User | None = None
+    if previous_assignee is not None:
+        restored_user = (
+            await session.execute(
+                select(User).where(
+                    User.id == previous_assignee,
+                    User.role.in_(("leader", "team")),
+                    User.registration_status == "approved",
+                    User.removed_at.is_(None),
+                    User.access_blocked.is_(False),
+                )
+            )
+        ).scalar_one_or_none()
+        if restored_user is None:
+            raise ValueError("Previous assignee is no longer active — reassign manually instead")
+
+    now = datetime.now(timezone.utc)
+    reason_text = (reason or "").strip() or None
+    lead.assigned_to_user_id = previous_assignee
+    lead.is_reassigned = False
+    lead.reassigned_at = None
+    lead.archived_at = None
+    lead.in_pool = False
+    lead.last_action_at = now
+    enqueue_lead_shadow_upsert(session, lead)
+    session.add(
+        ActivityLog(
+            user_id=int(admin_user_id),
+            action=_REVERT_ACTION,
+            entity_type="lead",
+            entity_id=int(lead.id),
+            meta={
+                "actor": "admin.revert_reassignment",
+                "reverted_activity_id": int(log.id),
+                "reverted_action": log.action,
+                "undone_assignee_user_id": reassigned_to,
+                "assigned_to_user_id": previous_assignee,
+                "owner_user_id": int(lead.owner_user_id) if lead.owner_user_id is not None else None,
+                "owner_preserved": True,
+                "reason": reason_text,
+                "status": lead.status,
+            },
+        )
+    )
+    await session.commit()
+
+    users_by_id = await _load_users_by_ids(
+        session,
+        {
+            int(x)
+            for x in (previous_assignee, reassigned_to, lead.owner_user_id)
+            if x is not None
+        },
+    )
+    if previous_assignee is not None:
+        try:
+            await send_push_to_user(
+                session,
+                int(previous_assignee),
+                title="Lead restored to you",
+                body=f"Lead '{lead.name}' was reverted back into your Calling Board by admin.",
+                url="/dashboard/work/leads",
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception("Failed to send revert push for lead %s", lead.id)
+
+    return LeadControlRevertOut(
+        success=True,
+        message=(
+            "Reassignment reverted. Lead restored to its previous assignee; owner unchanged."
+            if previous_assignee is not None
+            else "Reassignment reverted. Lead is now unassigned; owner unchanged."
+        ),
+        lead_id=int(lead.id),
+        restored_to_user_id=previous_assignee,
+        restored_to_name=(
+            _user_label(restored_user, previous_assignee)
+            if previous_assignee is not None
+            else "Unassigned"
+        ),
+        undone_assignee_user_id=reassigned_to,
+        undone_assignee_name=(
+            _user_label(users_by_id.get(reassigned_to), reassigned_to)
+            if reassigned_to is not None
+            else "Unassigned"
+        ),
+        owner_user_id=int(lead.owner_user_id) if lead.owner_user_id is not None else None,
+        owner_name=_user_label(
+            users_by_id.get(int(lead.owner_user_id)) if lead.owner_user_id is not None else None,
+            lead.owner_user_id,
+        ),
+    )
+
+
 async def admin_weak_members(
     session: AsyncSession,
     today_iso: str,
@@ -1701,7 +2429,7 @@ async def admin_weak_members(
             User.username,
             User.role,
             func.count(Lead.id).label("total_leads"),
-            func.sum(enrolled_expr).label("enrollments"),
+            func.sum(enrolled_expr).label("flp_min_billings"),
             func.sum(fu_expr).label("fu_pending"),
         )
         .select_from(User)
@@ -1730,7 +2458,7 @@ async def admin_weak_members(
                 username=un,
                 role=role,
                 total_leads=tot_i,
-                enrollments=enr_i,
+                flp_min_billings=enr_i,
                 fu_pending=fu_i,
                 conv_pct=conv,
             )
@@ -1740,30 +2468,50 @@ async def admin_weak_members(
 
 
 async def admin_leak_map(session: AsyncSession) -> LeakMapOut:
+    today_start = _start_of_day_ist(today_ist().isoformat())
+
     stmt = (
         select(Lead.status, func.count())
         .where(
             Lead.in_pool.is_(False),
             Lead.deleted_at.is_(None),
+            Lead.archived_at.is_(None),
         )
         .group_by(Lead.status)
         .order_by(func.count().desc())
     )
     rows = (await session.execute(stmt)).all()
     hist_list = [StatusHistogramRow(status=s, count=int(c or 0)) for s, c in rows]
+
+    # Today's pool claims — virtual top-of-funnel entry (not a Lead.status value).
+    claimed_today = int(
+        (
+            await session.execute(
+                select(func.count(ActivityLog.entity_id.distinct()))
+                .where(
+                    ActivityLog.action.in_(("lead.claimed", "lead.claimed_free")),
+                    ActivityLog.created_at >= today_start,
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+    hist_list.insert(0, StatusHistogramRow(status="claimed_today", count=claimed_today))
+
     m = {x.status: x.count for x in hist_list}
+    # Funnel: Claimed Today → Invite → Day1Live → Mindset →
+    # Day2 → Day3 → MinFLP → Day4 → Day5 → Interview → Converted
     funnel_order = [
-        "new_lead",
-        "contacted",
+        "claimed_today",
         "invited",
-        "whatsapp_sent",
         "video_sent",
-        "video_watched",
-        "paid",
         "mindset_lock",
-        "day1",
         "day2",
         "day3",
+        "paid",
+        "day4",
+        "day5",
+        "interview",
         "converted",
     ]
     drops: list[FunnelDropRow] = []
@@ -1777,7 +2525,7 @@ async def admin_leak_map(session: AsyncSession) -> LeakMapOut:
                     to_status=st,
                     from_count=prev[1],
                     to_count=c,
-                    drop_pct=_pct(prev[1] - c, prev[1]),
+                    drop_pct=max(0.0, _pct(prev[1] - c, prev[1])),
                 )
             )
         prev = (st, c)
@@ -1795,17 +2543,34 @@ async def _leader_team_basics_streak(
     """
     Consecutive days (backwards from yesterday) where team's active members
     collectively missed the call target. Stateless — derived from call history.
+
+    Filters out members who are still in their training gate window so that
+    trainees don't unfairly penalise the leader's streak.
     """
     from datetime import date as date_type, timedelta  # local to avoid circular
+
+    active_team_ids = [
+        int(uid) for (uid,) in (
+            await session.execute(
+                select(User.id).where(
+                    User.id.in_(team_ids),
+                    User.training_required.is_(False),
+                    User.training_status.in_(["completed", "not_required"]),
+                )
+            )
+        ).all()
+    ]
+    if not active_team_ids:
+        return 0
 
     streak = 0
     for offset in range(1, max_window + 1):
         day = today - timedelta(days=offset)
-        fresh_leads_map = await fresh_lead_counts_by_user(session, team_ids, day)
-        calls_map = await fresh_call_counts_by_user(session, team_ids, day)
+        fresh_leads_map = await fresh_lead_counts_by_user(session, active_team_ids, day)
+        calls_map = await fresh_call_counts_by_user(session, active_team_ids, day)
 
         active_ids_that_day = [
-            uid for uid in team_ids
+            uid for uid in active_team_ids
             if int(fresh_leads_map.get(uid, 0)) > 0
         ]
         if not active_ids_that_day:
@@ -1872,11 +2637,11 @@ async def leader_los_snapshot(
     for uid in team_ids:
         d = raw.get(uid, {
             "calls_today": 0, "call_target": daily_call_target,
-            "call_gate_met": False, "enrollments": 0, "fu_due": 0,
+            "call_gate_met": False, "flp_min_billings": 0, "fu_due": 0,
         })
         calls_today = int(d.get("calls_today", 0))
         call_target = int(d.get("call_target", daily_call_target)) or daily_call_target
-        enrollments = int(d.get("enrollments", 0))
+        flp_min_billings = int(d.get("flp_min_billings", 0))
         fu_due = int(d.get("fu_due", 0))
         is_active = calls_today >= call_target
 
@@ -1888,13 +2653,13 @@ async def leader_los_snapshot(
             calls_today=calls_today,
             call_target=call_target,
             call_gate_met=bool(d.get("call_gate_met", is_active)),
-            enrollments=enrollments,
+            flp_min_billings=flp_min_billings,
             fu_due=fu_due,
             is_active=is_active,
             downline_count=downline_map.get(uid, 0),
         ))
         total_calls += calls_today
-        total_activations += enrollments
+        total_activations += flp_min_billings
         total_fu += fu_due
         if is_active:
             active_count += 1
@@ -1947,46 +2712,129 @@ def default_today_iso() -> str:
     return today_ist().isoformat()
 
 
-async def admin_stage_counts(session: AsyncSession) -> dict:
-    """Admin: active lead counts per pipeline stage + today's arrivals (IST).
+def _start_of_month_ist(d: datetime.date) -> datetime:
+    """First day of the given date's month at 00:00 IST."""
+    return datetime.combine(d.replace(day=1), time(0, 0, 0), tzinfo=IST)
 
-    Only leads with last_action_at within 24 h are counted — leads silent for
-    longer than 24 h are either already archived by the SQL watch or will be
-    soon, so including them would inflate funnel numbers.
+
+def _start_of_prev_month_ist(d: datetime.date) -> datetime:
+    """First day of the previous month at 00:00 IST."""
+    month = d.month - 1 or 12
+    year = d.year if month != 12 else d.year - 1
+    return datetime.combine(d.replace(year=year, month=month, day=1), time(0, 0, 0), tzinfo=IST)
+
+
+async def admin_stage_counts(session: AsyncSession, hours: Optional[float] = None, range: Optional[str] = None) -> dict:
+    """Admin: active lead counts per pipeline stage + today's/rolling activity.
+
+    When *range='month'* uses the current calendar month (IST) as the window
+    and the full previous month as the comparison. When *hours* is provided,
+    uses a rolling window (now − hours) with same-duration comparison.
     """
-    now_utc = datetime.now(timezone.utc)
-    cutoff_24h = now_utc - timedelta(hours=24)
-    today_start = _start_of_day_ist(today_ist().isoformat())
+    now = datetime.now(tz=IST)
+    today = today_ist()
+    prev_window_start: Optional[datetime] = None
+    prev_window_end: Optional[datetime] = None
 
-    # Active leads that moved within the last 24 h (exclude deleted, archived, pool)
+    if range == 'month':
+        window_start = _start_of_month_ist(today)
+        prev_window_start = _start_of_prev_month_ist(today)
+        prev_window_end = window_start
+    elif hours is not None:
+        window_start = now - timedelta(hours=hours)
+        prev_window_start = window_start - timedelta(hours=hours)
+        prev_window_end = window_start
+    else:
+        window_start = _start_of_day_ist(today.isoformat())
+    active_scope = and_(
+        Lead.deleted_at.is_(None),
+        Lead.archived_at.is_(None),
+        Lead.in_pool.is_(False),
+    )
+
     cnt_stmt = (
         select(Lead.status, func.count(Lead.id).label("n"))
-        .where(
-            Lead.deleted_at.is_(None),
-            Lead.archived_at.is_(None),
-            Lead.in_pool.is_(False),
-            Lead.last_action_at >= cutoff_24h,
-        )
+        .where(active_scope)
         .group_by(Lead.status)
     )
     rows = (await session.execute(cnt_stmt)).all()
     counts: dict[str, int] = {row[0]: row[1] for row in rows}
 
-    # Leads whose last_action_at is today (IST) — stage arrivals today
     today_stmt = (
         select(Lead.status, func.count(Lead.id).label("n"))
         .where(
-            Lead.deleted_at.is_(None),
-            Lead.archived_at.is_(None),
-            Lead.last_action_at >= today_start,
+            active_scope,
+            _lead_last_activity_ts() >= window_start,
         )
         .group_by(Lead.status)
     )
     today_rows = (await session.execute(today_stmt)).all()
     today_counts: dict[str, int] = {row[0]: row[1] for row in today_rows}
 
-    return {
+    # Pool claims today: count distinct leads claimed (paid or free) from pool today,
+    # but only if the lead is still active (not archived/deleted/in_pool).
+    claimed_today = int(
+        (
+            await session.execute(
+                select(func.count(ActivityLog.entity_id.distinct()))
+                .where(
+                    ActivityLog.action.in_(("lead.claimed", "lead.claimed_free")),
+                    ActivityLog.created_at >= window_start,
+                    exists(
+                        select(Lead.id).where(
+                            Lead.id == ActivityLog.entity_id,
+                            active_scope,
+                        )
+                    ),
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+
+    result = {
         "counts": counts,
         "today_movements": today_counts,
         "total": sum(counts.values()),
+        "today_claimed": claimed_today,
     }
+
+    # Comparison data from the immediately preceding window.
+    if prev_window_start is not None:
+        p_end = prev_window_end or window_start
+        prev_stmt = (
+            select(Lead.status, func.count(Lead.id).label("n"))
+            .where(
+                active_scope,
+                _lead_last_activity_ts() >= prev_window_start,
+                _lead_last_activity_ts() < p_end,
+            )
+            .group_by(Lead.status)
+        )
+        prev_rows = (await session.execute(prev_stmt)).all()
+        prev_counts: dict[str, int] = {row[0]: row[1] for row in prev_rows}
+
+        prev_claimed = int(
+            (
+                await session.execute(
+                    select(func.count(ActivityLog.entity_id.distinct()))
+                    .where(
+                        ActivityLog.action.in_(("lead.claimed", "lead.claimed_free")),
+                        ActivityLog.created_at >= prev_window_start,
+                        ActivityLog.created_at < p_end,
+                        exists(
+                            select(Lead.id).where(
+                                Lead.id == ActivityLog.entity_id,
+                                active_scope,
+                            )
+                        ),
+                    )
+                )
+            ).scalar_one()
+            or 0
+        )
+
+        result["previous_movements"] = prev_counts
+        result["previous_claimed"] = prev_claimed
+
+    return result

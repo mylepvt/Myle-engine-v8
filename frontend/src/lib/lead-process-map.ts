@@ -20,24 +20,22 @@ export type ProcessStageDef = {
 }
 
 export const PROCESS_STAGE_DEFS: Record<string, ProcessStageDef> = {
-  mindset_lock: {
-    status: 'mindset_lock',
-    title: 'Mindset Lock',
-    helper: 'Bridge between Calling Board Day 1 and Workboard Day 2. Team completes these tasks here before leader handoff.',
+  day1: {
+    status: 'day1',
+    title: 'Day 1',
+    helper: 'Day 1 live session — leader. Run the session, follow up, build hype for Day 2.',
     nextStatus: 'day2',
     nextLabel: 'Push to Day 2',
     tasks: [
-      { key: 'esbi_model_session', label: 'ESBI Model', kind: 'whatsapp_video', settingKey: 'content.esbi_model' },
-      { key: 'esbi_follow_up', label: 'Follow-up' },
-      { key: 'power_of_network_session', label: 'Power of Network', kind: 'whatsapp_video', settingKey: 'content.power_of_network' },
-      { key: 'power_of_network_follow_up', label: 'Follow-up' },
-      { key: 'hype_create_day2_leader', label: 'Hype Create for Day 2 + Leader' },
+      { key: 'day1_live_session', label: 'Day 1 Live Session' },
+      { key: 'day1_follow_up', label: 'Follow-up' },
+      { key: 'hype_create_day2', label: 'Hype Create for Day 2' },
     ],
   },
   day2: {
     status: 'day2',
     title: 'Day 2',
-    helper: 'Send Day 2 live session link, share expose video, follow up, confirm ID creation.',
+    helper: 'Day 2 live session — admin advances. Share expose video, follow up, confirm ID creation.',
     nextStatus: 'day3',
     nextLabel: 'Push to Day 3',
     tasks: [
@@ -49,102 +47,23 @@ export const PROCESS_STAGE_DEFS: Record<string, ProcessStageDef> = {
   day3: {
     status: 'day3',
     title: 'Day 3',
-    helper: 'Morning → testimony → follow-up → 3rd party → closing mindset → send live session → Min. FLP billing.',
-    nextStatus: 'day4',
-    nextLabel: 'Push to Day 4',
-    tasks: [
-      { key: 'testimony_videos', label: 'Testimony Videos' },
-      { key: 'morning_follow_up', label: 'Follow-up' },
-      { key: 'third_party_session', label: '3rd Party' },
-      { key: 'closing_environment_build_up', label: 'Closing Environment Build-up' },
-    ],
-  },
-  day4: {
-    status: 'day4',
-    title: 'Day 4',
-    helper: 'Morning → Afternoon → Evening batch videos. All 3 batches done to push to Day 5.',
-    nextStatus: 'day5',
-    nextLabel: 'Push to Day 5',
-    tasks: [
-      { key: 'batch_morning', label: 'Morning Batch Video', kind: 'share_video' },
-      { key: 'batch_afternoon', label: 'Afternoon Batch Video', kind: 'share_video' },
-      { key: 'batch_evening', label: 'Evening Batch Video', kind: 'share_video' },
-    ],
-  },
-  day5: {
-    status: 'day5',
-    title: 'Day 5',
-    helper: 'Morning → Afternoon → Evening batch videos. All 3 batches done to push to Day 6.',
-    nextStatus: 'interview',
-    nextLabel: 'Push to Day 6',
-    tasks: [
-      { key: 'batch_morning', label: 'Morning Batch Video', kind: 'share_video' },
-      { key: 'batch_afternoon', label: 'Afternoon Batch Video', kind: 'share_video' },
-      { key: 'batch_evening', label: 'Evening Batch Video', kind: 'share_video' },
-    ],
-  },
-  interview: {
-    status: 'interview',
-    title: 'Day 6 Closing',
-    helper: 'Leader closes the Day 6 conversion push and records the immediate closing follow-up.',
-    nextStatus: 'plan_2cc',
-    nextLabel: 'Push to Pending Process',
-    tasks: [
-      { key: 'closing_1500', label: '₹1500 Closing' },
-      { key: 'follow_up_closing', label: 'Follow-up Closing' },
-    ],
-  },
-  plan_2cc: {
-    status: 'plan_2cc',
-    title: '2CC Plan',
-    helper: 'Leader records the Day-6 interview, 2CC plan, and closing push in one place.',
-    nextStatus: 'pending',
-    nextLabel: 'Push to Pending Process',
-    tasks: [
-      { key: 'day6_interview', label: 'Interview' },
-      { key: 'day6_2cc_plan', label: '2CC Plan' },
-      { key: 'day6_closing', label: 'Closing' },
-    ],
-  },
-  pending: {
-    status: 'pending',
-    title: 'Pending Process',
-    helper: 'Next 3 days of leader-led follow-up sessions before the final close.',
-    nextStatus: 'level_up',
-    nextLabel: 'Push to Final Stage',
-    tasks: [
-      { key: 'abhishek_utane', label: 'Abhishek Utane' },
-      { key: 'abhishek_follow_up', label: 'Follow-up' },
-      { key: 'vishakha_maam', label: "Vishakha Ma'am" },
-      { key: 'vishakha_follow_up', label: 'Follow-up' },
-      { key: 'azhar_sir', label: 'Azhar Sir' },
-      { key: 'azhar_follow_up', label: 'Follow-up' },
-      { key: 'md_imran', label: 'MD Imran' },
-      { key: 'md_imran_follow_up', label: 'Follow-up' },
-    ],
-  },
-  level_up: {
-    status: 'level_up',
-    title: 'Final Stage',
-    helper: 'Admin and leader finish the level-up close and final 2CC / 5000 close here.',
+    helper: 'Closing environment — leader. Interview → 2CC paper plan → Blueprint video → Stage selection (1/2/3) → seat-hold → converted.',
     nextStatus: 'converted',
     nextLabel: 'Mark Converted',
     tasks: [
-      { key: 'level_up_closing', label: 'Level Up Closing' },
-      { key: 'closing_5000_or_2cc', label: '₹5000 / 2CC Closing' },
+      { key: 'day3_interview', label: 'Interview' },
+      { key: 'day3_2cc_plan', label: '2CC Paper Plan' },
+      { key: 'day3_blueprint_video', label: 'Blueprint Video', kind: 'share_video' },
+      { key: 'day3_stage_selection', label: 'Stage Selection (1 / 2 / 3)' },
+      { key: 'day3_seat_hold', label: 'Seat-Hold' },
     ],
   },
 }
 
 export const PROCESS_STAGE_ORDER = [
+  'day1',
   'day2',
   'day3',
-  'day4',
-  'day5',
-  'interview',
-  'plan_2cc',
-  'pending',
-  'level_up',
 ] as const
 
 export function checklistForStage(status: string): ProcessStageDef | null {

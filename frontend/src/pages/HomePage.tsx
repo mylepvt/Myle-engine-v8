@@ -82,7 +82,7 @@ export function HomePage() {
         )}
       </header>
 
-      <footer className="mt-auto border-t border-white/[0.06] py-6 text-center text-ds-caption text-muted-foreground/80">
+      <footer className="mt-auto border-t border-border dark:border-white/[0.06] py-6 text-center text-ds-caption text-muted-foreground/80">
         © {new Date().getFullYear()} {t('appTitle')} · Internal use
       </footer>
     </div>

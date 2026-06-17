@@ -129,7 +129,7 @@ export function DailyReportFormPage({ title }: Props) {
             value={dateIso}
             onChange={(e) => setDateIso(e.target.value)}
             disabled={mut.isPending || !canPickDate}
-            className="rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground disabled:opacity-50"
+            className="rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground disabled:opacity-50"
           />
         </label>
       </div>
@@ -148,7 +148,7 @@ export function DailyReportFormPage({ title }: Props) {
           void mut.mutateAsync()
         }}
       >
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {INT_FIELDS.map(({ key, label }) => (
             <label key={key} className="flex flex-col gap-1 text-sm">
               <span className="text-muted-foreground">{label}</span>
@@ -161,7 +161,7 @@ export function DailyReportFormPage({ title }: Props) {
                   setInts((prev) => ({ ...prev, [key]: Math.max(0, parseInt(e.target.value, 10) || 0) }))
                 }
                 className={cn(
-                  'rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 tabular-nums text-foreground disabled:opacity-50',
+                  'rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 tabular-nums text-foreground disabled:opacity-50',
                 )}
               />
             </label>
@@ -174,21 +174,21 @@ export function DailyReportFormPage({ title }: Props) {
             onChange={(e) => setRemarks(e.target.value)}
             rows={3}
             disabled={mut.isPending}
-            className="rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground disabled:opacity-50"
+            className="rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground disabled:opacity-50"
           />
         </label>
         <button
           type="submit"
           disabled={mut.isPending}
          
-          className="rounded-lg border border-primary/40 bg-primary/15 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary/25 disabled:opacity-50"
+          className="rounded-lg border border-primary/40 bg-primary/15 px-4 py-3 text-sm font-semibold text-primary transition hover:bg-primary/25 disabled:opacity-50 min-h-[44px]"
         >
           {mut.isPending ? 'Saving…' : 'Save report'}
         </button>
       </form>
 
       {mut.isSuccess && mut.data ? (
-        <p className="text-sm text-emerald-400/90">
+        <p className="text-sm text-emerald-600 dark:text-emerald-400/90">
           Saved. Points awarded this request:{' '}
           <span className="font-mono tabular-nums">{mut.data.points_awarded}</span>
         </p>

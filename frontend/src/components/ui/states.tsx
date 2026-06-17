@@ -1,4 +1,3 @@
-import { Loader2 } from 'lucide-react'
 import * as React from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -41,18 +40,20 @@ type LoadingStateProps = {
 }
 
 export function LoadingState({ label, className }: LoadingStateProps) {
+  // Content-shaped shimmer placeholders (SaaS feel) instead of a bare spinner —
+  // reads as "the page is building" and avoids the empty/blank flash.
   return (
     <div
-      className={cn(
-        'flex flex-col items-center justify-center gap-3 py-10 text-muted-foreground',
-        className,
-      )}
+      className={cn('space-y-3 py-2', className)}
       role="status"
       aria-busy
       aria-live="polite"
     >
-      <Loader2 className="size-8 animate-spin text-primary" aria-hidden />
-      {label ? <p className="text-ds-caption">{label}</p> : null}
+      <span className="sr-only">{label ?? 'Loading…'}</span>
+      <div className="skeleton-shimmer h-8 w-44 rounded-lg bg-foreground/10" />
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="skeleton-shimmer h-20 w-full rounded-xl bg-foreground/10" />
+      ))}
     </div>
   )
 }

@@ -11,10 +11,12 @@ export type TeamMemberPublic = {
   email: string
   role: string
   created_at: string
+  upline_user_id?: number | null
   upline_fbo_id?: string | null
   upline_name?: string | null
   training_required?: boolean | null
   training_status?: string | null
+  enrollment_link_access?: boolean | null
   access_blocked?: boolean | null
   discipline_status?: string | null
   grace_end_date?: string | null
@@ -42,6 +44,9 @@ export type TeamMemberPublic = {
   compliance_summary?: string | null
   grace_active?: boolean | null
   grace_ending_tomorrow?: boolean | null
+  grace_risk?: 'low' | 'medium' | 'high' | null
+  grace_count_30d?: number
+  grace_last_outcome?: string | null
 }
 
 export type TeamMemberListResponse = {
@@ -58,14 +63,14 @@ export type TeamMyTeamResponse = {
   total_downline?: number
 }
 
-export type TeamEnrollmentListResponse = {
-  items: TeamEnrollmentRequest[]
+export type TeamFlpMinBillingListResponse = {
+  items: TeamFlpMinBillingRequest[]
   total: number
   limit: number
   offset: number
 }
 
-export type TeamEnrollmentHistoryItem = TeamEnrollmentRequest & {
+export type TeamFlpMinBillingHistoryItem = TeamFlpMinBillingRequest & {
   reviewed_at: string
   reviewed_by_user_id: number | null
   reviewed_by_username: string | null
@@ -73,13 +78,13 @@ export type TeamEnrollmentHistoryItem = TeamEnrollmentRequest & {
   review_note: string | null
 }
 
-export type TeamEnrollmentHistoryResponse = {
-  items: TeamEnrollmentHistoryItem[]
+export type TeamFlpMinBillingHistoryResponse = {
+  items: TeamFlpMinBillingHistoryItem[]
   total: number
   date: string
 }
 
-export type TeamEnrollmentRequest = {
+export type TeamFlpMinBillingRequest = {
   lead_id: number
   lead_name: string
   lead_phone: string | null
@@ -136,36 +141,36 @@ async function fetchMyTeam(): Promise<TeamMyTeamResponse> {
   return res.json()
 }
 
-async function fetchEnrollmentRequests(): Promise<TeamEnrollmentListResponse> {
-  const res = await apiFetch('/api/v1/team/enrollment-requests')
+async function fetchFlpMinBillingRequests(): Promise<TeamFlpMinBillingListResponse> {
+  const res = await apiFetch('/api/v1/team/flp-min-billing-requests')
   if (!res.ok) await parseError(res)
-  const body = (await res.json()) as TeamEnrollmentListResponse
+  const body = (await res.json()) as TeamFlpMinBillingListResponse
   return {
     ...body,
     items: body.items.map((item) => ({
       ...item,
       // Backend still stores actionable queue rows as payment_status=proof_uploaded.
       // Normalize that to "pending" so the approvals UI behaves consistently.
-      status: (item.status === 'proof_uploaded' ? 'pending' : item.status) as TeamEnrollmentRequest['status'],
+      status: (item.status === 'proof_uploaded' ? 'pending' : item.status) as TeamFlpMinBillingRequest['status'],
     })),
   }
 }
 
-async function fetchEnrollmentHistory(date: string): Promise<TeamEnrollmentHistoryResponse> {
+async function fetchFlpMinBillingHistory(date: string): Promise<TeamFlpMinBillingHistoryResponse> {
   const params = new URLSearchParams()
   if (date.trim()) params.set('date', date.trim())
   const qs = params.toString()
-  const res = await apiFetch(`/api/v1/team/enrollment-requests/history${qs ? `?${qs}` : ''}`)
+  const res = await apiFetch(`/api/v1/team/flp-min-billing-requests/history${qs ? `?${qs}` : ''}`)
   if (!res.ok) await parseError(res)
   return res.json()
 }
 
-export async function decideEnrollmentRequest(body: {
+export async function decideFlpMinBillingRequest(body: {
   leadId: number
   action: 'approve' | 'reject'
   reason?: string | null
 }): Promise<{ ok: boolean; payment_status: string; message: string }> {
-  const res = await apiFetch(`/api/v1/team/enrollment-requests/${body.leadId}/decision`, {
+  const res = await apiFetch(`/api/v1/team/flp-min-billing-requests/${body.leadId}/decision`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -200,6 +205,8 @@ export function useTeamMembersQuery(enabled = true) {
     queryKey: ['team', 'members'],
     queryFn: fetchTeamMembers,
     enabled,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
   })
 }
 
@@ -211,33 +218,34 @@ export function useMyTeamQuery(enabled = true) {
   })
 }
 
-export function useEnrollmentRequestsQuery(enabled = true) {
+export function useFlpMinBillingRequestsQuery(enabled = true) {
   return useQuery({
-    queryKey: ['team', 'enrollment-requests'],
-    queryFn: fetchEnrollmentRequests,
+    queryKey: ['team', 'flp-min-billing-requests'],
+    queryFn: fetchFlpMinBillingRequests,
     enabled,
   })
 }
 
-export function useEnrollmentHistoryQuery(date: string, enabled = true) {
+export function useFlpMinBillingHistoryQuery(date: string, enabled = true) {
   return useQuery({
-    queryKey: ['team', 'enrollment-history', date],
-    queryFn: () => fetchEnrollmentHistory(date),
+    queryKey: ['team', 'flp-min-billing-history', date],
+    queryFn: () => fetchFlpMinBillingHistory(date),
     enabled: enabled && date.trim().length > 0,
   })
 }
 
-/** Admin / leader: shared cache with `useEnrollmentRequestsQuery` — for sidebar + header badges. */
-export function useEnrollmentApprovalsPendingQuery() {
+/** Admin / leader: shared cache with `useFlpMinBillingRequestsQuery` — for sidebar + header badges. */
+export function useFlpMinBillingApprovalsPendingQuery() {
   const { data: me, isPending: mePending } = useAuthMeQuery()
   const isApprover =
     Boolean(me?.authenticated) && me?.role === 'admin'
 
   return useQuery({
-    queryKey: ['team', 'enrollment-requests'],
-    queryFn: fetchEnrollmentRequests,
+    queryKey: ['team', 'flp-min-billing-requests'],
+    queryFn: fetchFlpMinBillingRequests,
     enabled: isApprover && !mePending,
     staleTime: 15_000,
+    refetchInterval: 30_000,
   })
 }
 
@@ -336,6 +344,29 @@ export function useUpdateMemberRoleMutation() {
   })
 }
 
+export async function updateMemberUpline(body: {
+  userId: number
+  uplineUserId: number
+}): Promise<TeamMemberPublic> {
+  const res = await apiFetch(`/api/v1/team/members/${body.userId}/upline`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ upline_user_id: body.uplineUserId }),
+  })
+  if (!res.ok) await parseError(res)
+  return res.json()
+}
+
+export function useUpdateMemberUplineMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: updateMemberUpline,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['team', 'members'] })
+    },
+  })
+}
+
 export async function updateMemberCompliance(body: {
   userId: number
   action:
@@ -398,6 +429,25 @@ export async function cancelMyGraceRequest(): Promise<TeamMemberPublic> {
   return res.json()
 }
 
+export async function endMyActiveGrace(): Promise<TeamMemberPublic> {
+  const res = await apiFetch('/api/v1/team/me/grace', { method: 'DELETE' })
+  if (!res.ok) await parseError(res)
+  return res.json()
+}
+
+export function useEndMyActiveGraceMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: endMyActiveGrace,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['gate-assistant'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'my-team'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'members'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'tracking'] })
+    },
+  })
+}
+
 export function useRequestMyGraceMutation() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -439,13 +489,13 @@ export function useDeleteMemberMutation() {
   })
 }
 
-export function useEnrollmentDecisionMutation() {
+export function useFlpMinBillingDecisionMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: decideEnrollmentRequest,
+    mutationFn: decideFlpMinBillingRequest,
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['team', 'enrollment-requests'] })
-      void queryClient.invalidateQueries({ queryKey: ['team', 'enrollment-history'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'flp-min-billing-requests'] })
+      void queryClient.invalidateQueries({ queryKey: ['team', 'flp-min-billing-history'] })
     },
   })
 }
@@ -467,6 +517,29 @@ export function useToggleTrainingLockMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: toggleTrainingLock,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['team', 'members'] })
+    },
+  })
+}
+
+async function toggleEnrollmentAccess(body: { userId: number; enabled: boolean }): Promise<{ enrollment_link_access: boolean }> {
+  const res = await apiFetch(`/api/v1/team/members/${body.userId}/enrollment-access`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled: body.enabled }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { detail?: string }).detail ?? res.statusText)
+  }
+  return res.json()
+}
+
+export function useToggleEnrollmentAccessMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: toggleEnrollmentAccess,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['team', 'members'] })
     },

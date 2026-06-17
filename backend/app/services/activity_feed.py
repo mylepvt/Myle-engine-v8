@@ -52,27 +52,38 @@ class ActivityFeedBuffer:
             self.buffer.append(event)
 
     async def get_since(self, since_id: int | None, limit: int = 50) -> list[dict[str, Any]]:
-        """Get events since ID (from buffer + DB fallback)."""
+        """Get events since ID (from buffer + DB fallback).
+
+        Returns newest-first to match the DB path (``order_by(desc(id))``) and
+        the frontend, which assumes index 0 = newest.
+        """
         async with self._lock:
             if since_id is None:
-                # Return last `limit` events from buffer
-                return list(self.buffer)[-limit:]
+                # Last `limit` events, newest-first
+                return list(self.buffer)[-limit:][::-1]
 
-            # Return events with id > since_id
-            return [e for e in self.buffer if e.get("id", 0) > since_id][-limit:]
+            # Events with id > since_id, newest-first
+            return [e for e in self.buffer if e.get("id", 0) > since_id][-limit:][::-1]
 
     async def get_all(self, limit: int = 50) -> list[dict[str, Any]]:
-        """Get last N events."""
+        """Get last N events, newest-first."""
         async with self._lock:
-            return list(self.buffer)[-limit:]
+            return list(self.buffer)[-limit:][::-1]
 
 
 # Global buffer instance
 _buffer = ActivityFeedBuffer()
 
-# SSE subscribers (admin_user_id → queue)
-_sse_subscribers: dict[int, asyncio.Queue[str]] = {}
+# SSE subscribers — one queue per *connection*, not per admin.
+# Keyed by a unique connection id so multiple tabs (same admin) each get events.
+_sse_subscribers: dict[str, asyncio.Queue[str]] = {}
 _subscribers_lock = asyncio.Lock()
+
+# Monotonic id for buffer events so since_id polling / latest_id work in-memory.
+_event_seq = 0
+
+# Monotonic id for SSE connections — disambiguates multiple tabs per admin.
+_conn_seq = 0
 
 
 async def write_event(
@@ -86,7 +97,10 @@ async def write_event(
 
     Called from observation_logger after emit_observation().
     """
+    global _event_seq
+    _event_seq += 1
     event = {
+        "id": _event_seq,
         "event_type": event_type,
         "lead_id": lead_id,
         "actor_id": actor_id,
@@ -127,29 +141,36 @@ async def _persist_to_db(
 
 
 async def _broadcast_event(event: dict[str, Any]) -> None:
-    """Send event to all connected SSE subscribers."""
+    """Send event to all connected SSE subscribers (one queue per connection)."""
     async with _subscribers_lock:
         event_json = json.dumps(event)
-        dead_subscribers = []
+        dead_connections = []
 
-        for admin_id, queue in _sse_subscribers.items():
+        for conn_id, queue in _sse_subscribers.items():
             try:
                 queue.put_nowait(event_json)
             except asyncio.QueueFull:
                 # Subscriber queue overflowing — likely disconnected
-                dead_subscribers.append(admin_id)
+                dead_connections.append(conn_id)
 
-        # Clean up dead subscribers
-        for admin_id in dead_subscribers:
-            del _sse_subscribers[admin_id]
+        # Clean up dead connections
+        for conn_id in dead_connections:
+            del _sse_subscribers[conn_id]
 
 
 async def subscribe_sse(admin_id: int) -> AsyncIterator[str]:
-    """Generator for SSE subscriber. Yields JSON events as they arrive."""
+    """Generator for SSE subscriber. Yields JSON events as they arrive.
+
+    Each connection gets its own queue under a unique id, so multiple tabs
+    for the same admin all receive events (no overwrite/orphaning).
+    """
+    global _conn_seq
+    _conn_seq += 1
+    conn_id = f"{admin_id}:{_conn_seq}"
     queue: asyncio.Queue[str] = asyncio.Queue(maxsize=100)
 
     async with _subscribers_lock:
-        _sse_subscribers[admin_id] = queue
+        _sse_subscribers[conn_id] = queue
 
     try:
         while True:
@@ -161,9 +182,9 @@ async def subscribe_sse(admin_id: int) -> AsyncIterator[str]:
                 # Send heartbeat to keep connection alive
                 yield ": heartbeat\n\n"
     finally:
-        # Cleanup on disconnect
+        # Cleanup on disconnect — only this connection's queue
         async with _subscribers_lock:
-            _sse_subscribers.pop(admin_id, None)
+            _sse_subscribers.pop(conn_id, None)
 
 
 async def get_recent_events(

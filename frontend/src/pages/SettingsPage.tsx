@@ -1,142 +1,77 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { ArrowRight, Bell, Lock, Mail, Shield, User } from 'lucide-react'
+
 import { PushNotificationToggle } from '@/components/notifications/PushNotificationToggle'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import {
-  User,
-  Bell,
-  Shield,
-  Settings as SettingsIcon,
-  Lock,
-  Mail,
-  Users,
-  Database,
-} from 'lucide-react'
-import { 
-  useUserProfileQuery,
-  useUserPreferencesQuery,
-  useSystemConfigurationQuery,
-  useSystemUsersSummaryQuery,
-  useUserProfileUpdateMutation,
-  useUserPreferencesUpdateMutation,
-  useSystemConfigurationUpdateMutation,
-  useAppSettingsQuery,
-  useAppSettingUpdateMutation,
-  useAppSettingDeleteMutation,
-  usePasswordChangeMutation,
-  useEmailChangeMutation,
-  useAvatarUploadMutation,
-} from '@/hooks/use-settings-query'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
-import { type Role } from '@/types/role'
-import { cn } from '@/lib/utils'
+import { useResetTutorialMutation } from '@/hooks/use-tutorial-query'
+import {
+  useAvatarUploadMutation,
+  useEmailChangeMutation,
+  usePasswordChangeMutation,
+  useUserPreferencesQuery,
+  useUserPreferencesUpdateMutation,
+  useUserProfileQuery,
+  useUserProfileUpdateMutation,
+} from '@/hooks/use-settings-query'
 import { apiUrl } from '@/lib/api'
-
-function BatchLinkInput({ label, value, onSave }: {
-  label: string
-  settingsKey: string
-  value: string
-  onSave: (val: string) => void
-}) {
-  const [draft, setDraft] = useState(value)
-  const [saving, setSaving] = useState(false)
-  useEffect(() => setDraft(value), [value])
-  const handleSave = async () => {
-    if (draft === value) return
-    setSaving(true)
-    onSave(draft)
-    await new Promise((r) => setTimeout(r, 100))
-    setSaving(false)
-  }
-  return (
-    <div className="space-y-1">
-      <Label className="text-ds-caption text-muted-foreground">{label}</Label>
-      <div className="flex gap-1.5">
-        <Input value={draft} onChange={(e) => setDraft(e.target.value)}
-          placeholder="YouTube URL" className="text-xs" />
-        <Button size="sm" variant="outline" onClick={handleSave}
-          disabled={saving || draft === value} className="shrink-0">
-          {saving ? '...' : 'Save'}
-        </Button>
-      </div>
-    </div>
-  )
-}
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile')
   const { data: authData } = useAuthMeQuery()
-  const userRole = authData?.role as Role | undefined
-  const isAdmin = userRole === 'admin'
-  
-  // Queries
+  const isAdmin = authData?.role === 'admin'
+
   const userProfile = useUserProfileQuery()
   const userPreferences = useUserPreferencesQuery()
-  const systemConfig = useSystemConfigurationQuery(isAdmin)
-  const usersSummary = useSystemUsersSummaryQuery(isAdmin)
-  const appSettings = useAppSettingsQuery(isAdmin)
-  
-  // Mutations
+
   const updateProfile = useUserProfileUpdateMutation()
   const updatePreferences = useUserPreferencesUpdateMutation()
-  const updateSystemConfig = useSystemConfigurationUpdateMutation()
-  const updateAppSetting = useAppSettingUpdateMutation()
-  const deleteAppSetting = useAppSettingDeleteMutation()
   const changePassword = usePasswordChangeMutation()
   const changeEmail = useEmailChangeMutation()
   const avatarUpload = useAvatarUploadMutation()
-  
-  // Form states
+
   const [profileForm, setProfileForm] = useState({
     username: '',
     phone: '',
     name: '',
   })
-  
   const [passwordForm, setPasswordForm] = useState({
     current_password: '',
     new_password: '',
     confirm_password: '',
   })
-  
   const [emailForm, setEmailForm] = useState({
     new_email: '',
     current_password: '',
   })
-  
-  const [newSetting, setNewSetting] = useState({
-    key: '',
-    value: '',
-  })
-  const [passwordError, setPasswordError] = useState<string | null>(null)
-  const [settingError, setSettingError] = useState<string | null>(null)
-  const [deleteConfirmKey, setDeleteConfirmKey] = useState<string | null>(null)
-
   const [profileSuccess, setProfileSuccess] = useState<string | null>(null)
   const [profileError, setProfileError] = useState<string | null>(null)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
 
-  // Sync form fields when profile data first arrives from the server.
   useEffect(() => {
-    if (userProfile.data) {
-      setProfileForm({
-        username: userProfile.data.username || '',
-        phone: userProfile.data.phone || '',
-        name: userProfile.data.name || '',
-      })
-    }
+    if (!userProfile.data) return
+    setProfileForm({
+      username: userProfile.data.username || '',
+      phone: userProfile.data.phone || '',
+      name: userProfile.data.name || '',
+    })
   }, [userProfile.data])
 
   const handleProfileUpdate = () => {
     setProfileSuccess(null)
     setProfileError(null)
     updateProfile.mutate(profileForm, {
-      onSuccess: () => { setProfileSuccess('Profile updated successfully.') },
-      onError: (e) => setProfileError(e instanceof Error ? e.message : 'Update failed.'),
+      onSuccess: () => setProfileSuccess('Profile updated successfully.'),
+      onError: (error) =>
+        setProfileError(error instanceof Error ? error.message : 'Update failed.'),
     })
   }
 
@@ -156,10 +91,15 @@ export default function SettingsPage() {
     }
     changePassword.mutate(passwordForm, {
       onSuccess: () => {
-        setPasswordForm({ current_password: '', new_password: '', confirm_password: '' })
+        setPasswordForm({
+          current_password: '',
+          new_password: '',
+          confirm_password: '',
+        })
         setPasswordError(null)
       },
-      onError: (e) => setPasswordError(e instanceof Error ? e.message : 'Password change failed'),
+      onError: (error) =>
+        setPasswordError(error instanceof Error ? error.message : 'Password change failed.'),
     })
   }
 
@@ -171,91 +111,83 @@ export default function SettingsPage() {
     updatePreferences.mutate({ [key]: value })
   }
 
-  const handleAppSettingUpdate = () => {
-    setSettingError(null)
-    if (!newSetting.key.trim() || !newSetting.value.trim()) {
-      setSettingError('Both key and value are required.')
-      return
-    }
-    updateAppSetting.mutate(newSetting, {
-      onSuccess: () => {
-        setNewSetting({ key: '', value: '' })
-        setSettingError(null)
-      },
-      onError: (e) => setSettingError(e instanceof Error ? e.message : 'Failed to save setting'),
-    })
-  }
-
-  const handleAppSettingDelete = (key: string) => {
-    if (deleteConfirmKey === key) {
-      deleteAppSetting.mutate(key, { onSettled: () => setDeleteConfirmKey(null) })
-    } else {
-      setDeleteConfirmKey(key)
-    }
-  }
+  const createdAt = userProfile.data?.created_at
+  const memberSince = createdAt ? new Date(createdAt).toLocaleDateString() : '--'
 
   return (
-    <div className="max-w-5xl space-y-6">
-      {/* Header */}
+    <div className="max-w-4xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Settings</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Manage your profile, preferences, and system configuration
+            Manage your profile, preferences, and account security.
           </p>
         </div>
-        <div>
-          <Badge variant="outline" className="text-sm">
-            {authData?.role?.toUpperCase()}
-          </Badge>
-        </div>
+        <Badge variant="outline" className="text-sm">
+          {authData?.role?.toUpperCase() ?? '--'}
+        </Badge>
       </div>
 
+      {userProfile.isPending || userPreferences.isPending ? (
+        <div className="space-y-4">
+          <Skeleton className="h-24 w-full rounded-lg" />
+          <Skeleton className="h-64 w-full rounded-lg" />
+        </div>
+      ) : null}
+
+      {userProfile.isError ? (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert">
+          Failed to load profile. Try refreshing the page.
+        </div>
+      ) : null}
+
+      {isAdmin ? (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-foreground">Profile page cleaned up</p>
+              <p className="text-sm text-muted-foreground">
+                App, video, and WhatsApp links <span className="font-medium text-foreground">General</span> me
+                rakhe gaye hain. Yahan sirf personal account settings rahengi.
+              </p>
+            </div>
+            <Link
+              to="/dashboard/settings/app"
+              className="inline-flex items-center gap-1 rounded-md border border-primary/25 bg-background/70 px-3 py-2 text-sm font-medium text-primary hover:bg-background"
+            >
+              Open General
+              <ArrowRight className="size-4" />
+            </Link>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList
-          className={cn(
-            'flex h-auto w-full flex-wrap gap-1 p-1',
-            isAdmin ? 'sm:grid sm:grid-cols-5' : 'sm:grid sm:grid-cols-3',
-          )}
-        >
-          <TabsTrigger value="profile" className="min-h-9 flex-1 sm:flex-none">
+        <TabsList className="grid h-auto w-full grid-cols-3 gap-1 p-1">
+          <TabsTrigger value="profile" className="min-h-9">
             Profile
           </TabsTrigger>
-          <TabsTrigger value="preferences" className="min-h-9 flex-1 sm:flex-none">
+          <TabsTrigger value="preferences" className="min-h-9">
             Preferences
           </TabsTrigger>
-          <TabsTrigger value="security" className="min-h-9 flex-1 sm:flex-none">
+          <TabsTrigger value="security" className="min-h-9">
             Security
           </TabsTrigger>
-          {isAdmin ? (
-            <>
-              <TabsTrigger value="system" className="min-h-9 flex-1 sm:flex-none">
-                System
-              </TabsTrigger>
-              <TabsTrigger value="advanced" className="min-h-9 flex-1 sm:flex-none">
-                Advanced
-              </TabsTrigger>
-            </>
-          ) : null}
         </TabsList>
 
-        {/* Profile Tab */}
         <TabsContent value="profile" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-            {/* Basic Information */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg flex items-center">
-                  <User className="w-5 h-5 mr-2" />
+                <CardTitle className="flex items-center text-lg">
+                  <User className="mr-2 h-5 w-5" />
                   Basic Information
                 </CardTitle>
-                <CardDescription>
-                  Update your personal information
-                </CardDescription>
+                <CardDescription>Update your personal information.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <div className="relative size-24 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-100 dark:border-border dark:bg-muted">
+                  <div className="relative size-24 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
                     {userProfile.data?.avatar_url ? (
                       <img
                         src={apiUrl(userProfile.data.avatar_url)}
@@ -271,7 +203,7 @@ export default function SettingsPage() {
                         height={96}
                       />
                     ) : (
-                      <div className="flex size-full items-center justify-center text-2xl text-gray-400">
+                      <div className="flex size-full items-center justify-center text-2xl text-muted-foreground">
                         {(userProfile.data?.username?.[0] ?? userProfile.data?.email?.[0] ?? '?').toUpperCase()}
                       </div>
                     )}
@@ -286,45 +218,36 @@ export default function SettingsPage() {
                       className="mt-1 block w-full max-w-sm text-sm file:mr-2 file:rounded-md file:border-0 file:bg-primary file:px-2 file:py-1 file:text-xs file:font-medium file:text-primary-foreground"
                       disabled={avatarUpload.isPending}
                       onChange={(e) => {
-                        const f = e.target.files?.[0]
-                        if (f) avatarUpload.mutate(f)
+                        const file = e.target.files?.[0]
+                        if (file) avatarUpload.mutate(file)
                         e.target.value = ''
                       }}
                     />
-                    <p className="mt-1 text-xs text-gray-600 dark:text-muted-foreground">
-                      JPEG, PNG, or WebP — max 2 MB. Shown in the header after save.
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      JPEG, PNG, or WebP. Max 2 MB.
                     </p>
                     {avatarUpload.isError ? (
-                      <p className="mt-1 text-xs text-red-600" role="alert">
+                      <p className="mt-1 text-xs text-destructive" role="alert">
                         {avatarUpload.error instanceof Error ? avatarUpload.error.message : 'Upload failed'}
                       </p>
                     ) : null}
                   </div>
                 </div>
+
                 <div>
                   <Label htmlFor="fbo_id">FBO ID</Label>
-                  <Input
-                    id="fbo_id"
-                    value={userProfile.data?.fbo_id || '—'}
-                    disabled
-                    className="bg-muted/40 text-muted-foreground"
-                  />
+                  <Input id="fbo_id" value={userProfile.data?.fbo_id || '--'} disabled className="bg-muted/40 text-muted-foreground" />
                 </div>
                 <div>
                   <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    value={userProfile.data?.email || '—'}
-                    disabled
-                    className="bg-muted/40 text-muted-foreground"
-                  />
+                  <Input id="email" value={userProfile.data?.email || '--'} disabled className="bg-muted/40 text-muted-foreground" />
                 </div>
                 <div>
                   <Label htmlFor="username">Username</Label>
                   <Input
                     id="username"
                     value={profileForm.username}
-                    onChange={(e) => setProfileForm(prev => ({ ...prev, username: e.target.value }))}
+                    onChange={(e) => setProfileForm((prev) => ({ ...prev, username: e.target.value }))}
                   />
                 </div>
                 <div>
@@ -332,7 +255,7 @@ export default function SettingsPage() {
                   <Input
                     id="name"
                     value={profileForm.name}
-                    onChange={(e) => setProfileForm(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={(e) => setProfileForm((prev) => ({ ...prev, name: e.target.value }))}
                   />
                 </div>
                 <div>
@@ -340,87 +263,78 @@ export default function SettingsPage() {
                   <Input
                     id="phone"
                     value={profileForm.phone}
-                    onChange={(e) => setProfileForm(prev => ({ ...prev, phone: e.target.value }))}
+                    onChange={(e) => setProfileForm((prev) => ({ ...prev, phone: e.target.value }))}
                   />
                 </div>
                 <Button onClick={handleProfileUpdate} disabled={updateProfile.isPending}>
-                  {updateProfile.isPending ? 'Saving…' : 'Save Profile'}
+                  {updateProfile.isPending ? 'Saving...' : 'Save Profile'}
                 </Button>
-                {profileSuccess ? (
-                  <p className="text-sm text-emerald-500" role="status">{profileSuccess}</p>
-                ) : null}
-                {profileError ? (
-                  <p className="text-sm text-destructive" role="alert">{profileError}</p>
-                ) : null}
+                {profileSuccess ? <p className="text-sm text-emerald-500" role="status">{profileSuccess}</p> : null}
+                {profileError ? <p className="text-sm text-destructive" role="alert">{profileError}</p> : null}
               </CardContent>
             </Card>
 
-            {/* Account Status */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg flex items-center">
-                  <Shield className="w-5 h-5 mr-2" />
+                <CardTitle className="flex items-center text-lg">
+                  <Shield className="mr-2 h-5 w-5" />
                   Account Status
                 </CardTitle>
-                <CardDescription>
-                  Your current account status and permissions
-                </CardDescription>
+                <CardDescription>Your current account status and permissions.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex justify-between items-center">
+                <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Role</span>
                   <Badge variant={userProfile.data?.role === 'admin' ? 'default' : 'outline'}>
-                    {userProfile.data?.role}
+                    {userProfile.data?.role ?? '--'}
                   </Badge>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Registration Status</span>
                   <Badge variant={userProfile.data?.registration_status === 'approved' ? 'default' : 'secondary'}>
-                    {userProfile.data?.registration_status}
+                    {userProfile.data?.registration_status ?? '--'}
                   </Badge>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Training Status</span>
                   <Badge variant={userProfile.data?.training_status === 'completed' ? 'default' : 'outline'}>
-                    {userProfile.data?.training_status}
+                    {userProfile.data?.training_status ?? '--'}
                   </Badge>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Access Status</span>
                   <Badge variant={userProfile.data?.access_blocked ? 'destructive' : 'default'}>
                     {userProfile.data?.access_blocked ? 'Blocked' : 'Active'}
                   </Badge>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Member Since</span>
-                  <span className="text-sm text-gray-600">
-                    {new Date(userProfile.data?.created_at || '').toLocaleDateString()}
-                  </span>
+                  <span className="text-sm text-muted-foreground">{memberSince}</span>
+                </div>
+                <div className="pt-2">
+                  <ShowTutorialButton />
                 </div>
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
-        {/* Preferences Tab */}
         <TabsContent value="preferences" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg flex items-center">
-                <Bell className="w-5 h-5 mr-2" />
+              <CardTitle className="flex items-center text-lg">
+                <Bell className="mr-2 h-5 w-5" />
                 Notification Preferences
               </CardTitle>
-              <CardDescription>
-                Choose how you want to receive notifications
-              </CardDescription>
+              <CardDescription>Choose how you want to receive notifications.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {userPreferences.data && (
+              {userPreferences.data ? (
                 <>
                   <div className="flex items-center justify-between">
                     <div>
                       <Label htmlFor="email_notifications">Email Notifications</Label>
-                      <p className="text-sm text-gray-600">Receive notifications via email</p>
+                      <p className="text-sm text-muted-foreground">Receive notifications via email.</p>
                     </div>
                     <Switch
                       id="email_notifications"
@@ -431,14 +345,14 @@ export default function SettingsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <Label>Push Notifications</Label>
-                      <p className="text-sm text-gray-600">Receive browser push notifications</p>
+                      <p className="text-sm text-muted-foreground">Receive browser push notifications.</p>
                     </div>
                     <PushNotificationToggle />
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
                       <Label htmlFor="daily_report_reminders">Daily Report Reminders</Label>
-                      <p className="text-sm text-gray-600">Get reminded to submit daily reports</p>
+                      <p className="text-sm text-muted-foreground">Get reminded to submit daily reports.</p>
                     </div>
                     <Switch
                       id="daily_report_reminders"
@@ -449,7 +363,7 @@ export default function SettingsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <Label htmlFor="lead_assignment_alerts">Lead Assignment Alerts</Label>
-                      <p className="text-sm text-gray-600">Notify when new leads are assigned</p>
+                      <p className="text-sm text-muted-foreground">Notify when new leads are assigned.</p>
                     </div>
                     <Switch
                       id="lead_assignment_alerts"
@@ -460,7 +374,7 @@ export default function SettingsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <Label htmlFor="payment_notifications">Payment Notifications</Label>
-                      <p className="text-sm text-gray-600">Get notified about payment updates</p>
+                      <p className="text-sm text-muted-foreground">Get notified about payment updates.</p>
                     </div>
                     <Switch
                       id="payment_notifications"
@@ -471,7 +385,7 @@ export default function SettingsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <Label htmlFor="weekly_summary">Weekly Summary</Label>
-                      <p className="text-sm text-gray-600">Receive weekly performance summary</p>
+                      <p className="text-sm text-muted-foreground">Receive weekly performance summary.</p>
                     </div>
                     <Switch
                       id="weekly_summary"
@@ -480,24 +394,20 @@ export default function SettingsPage() {
                     />
                   </div>
                 </>
-              )}
+              ) : null}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Security Tab */}
         <TabsContent value="security" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-            {/* Change Password */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg flex items-center">
-                  <Lock className="w-5 h-5 mr-2" />
+                <CardTitle className="flex items-center text-lg">
+                  <Lock className="mr-2 h-5 w-5" />
                   Change Password
                 </CardTitle>
-                <CardDescription>
-                  Update your account password
-                </CardDescription>
+                <CardDescription>Update your account password.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
@@ -506,7 +416,7 @@ export default function SettingsPage() {
                     id="current_password"
                     type="password"
                     value={passwordForm.current_password}
-                    onChange={(e) => setPasswordForm(prev => ({ ...prev, current_password: e.target.value }))}
+                    onChange={(e) => setPasswordForm((prev) => ({ ...prev, current_password: e.target.value }))}
                   />
                 </div>
                 <div>
@@ -515,7 +425,7 @@ export default function SettingsPage() {
                     id="new_password"
                     type="password"
                     value={passwordForm.new_password}
-                    onChange={(e) => setPasswordForm(prev => ({ ...prev, new_password: e.target.value }))}
+                    onChange={(e) => setPasswordForm((prev) => ({ ...prev, new_password: e.target.value }))}
                   />
                 </div>
                 <div>
@@ -524,12 +434,10 @@ export default function SettingsPage() {
                     id="confirm_password"
                     type="password"
                     value={passwordForm.confirm_password}
-                    onChange={(e) => setPasswordForm(prev => ({ ...prev, confirm_password: e.target.value }))}
+                    onChange={(e) => setPasswordForm((prev) => ({ ...prev, confirm_password: e.target.value }))}
                   />
                 </div>
-                {passwordError ? (
-                  <p className="text-sm text-destructive" role="alert">{passwordError}</p>
-                ) : null}
+                {passwordError ? <p className="text-sm text-destructive" role="alert">{passwordError}</p> : null}
                 {changePassword.isSuccess ? (
                   <p className="text-sm text-green-600" role="status">Password changed successfully.</p>
                 ) : null}
@@ -539,16 +447,13 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
 
-            {/* Change Email */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg flex items-center">
-                  <Mail className="w-5 h-5 mr-2" />
+                <CardTitle className="flex items-center text-lg">
+                  <Mail className="mr-2 h-5 w-5" />
                   Change Email
                 </CardTitle>
-                <CardDescription>
-                  Update your email address
-                </CardDescription>
+                <CardDescription>Update your email address.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
@@ -557,7 +462,7 @@ export default function SettingsPage() {
                     id="new_email"
                     type="email"
                     value={emailForm.new_email}
-                    onChange={(e) => setEmailForm(prev => ({ ...prev, new_email: e.target.value }))}
+                    onChange={(e) => setEmailForm((prev) => ({ ...prev, new_email: e.target.value }))}
                   />
                 </div>
                 <div>
@@ -566,7 +471,7 @@ export default function SettingsPage() {
                     id="email_password"
                     type="password"
                     value={emailForm.current_password}
-                    onChange={(e) => setEmailForm(prev => ({ ...prev, current_password: e.target.value }))}
+                    onChange={(e) => setEmailForm((prev) => ({ ...prev, current_password: e.target.value }))}
                   />
                 </div>
                 <Button onClick={handleEmailChange} disabled={changeEmail.isPending}>
@@ -576,206 +481,32 @@ export default function SettingsPage() {
             </Card>
           </div>
         </TabsContent>
-
-        {/* System Tab (Admin Only) */}
-        {isAdmin && (
-          <TabsContent value="system" className="space-y-6">
-            {/* Users Summary */}
-            {usersSummary.data && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center">
-                    <Users className="w-5 h-5 mr-2" />
-                    Users Summary
-                  </CardTitle>
-                  <CardDescription>
-                    Overview of all users in the system
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold">{usersSummary.data.total_users}</div>
-                      <div className="text-sm text-gray-600">Total Users</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-red-600">{usersSummary.data.blocked_users}</div>
-                      <div className="text-sm text-gray-600">Blocked Users</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-green-600">{usersSummary.data.by_role.admin || 0}</div>
-                      <div className="text-sm text-gray-600">Admins</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-600">{usersSummary.data.by_role.leader || 0}</div>
-                      <div className="text-sm text-gray-600">Leaders</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Feature Flags */}
-            {systemConfig.data && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center">
-                    <SettingsIcon className="w-5 h-5 mr-2" />
-                    Feature Flags
-                  </CardTitle>
-                  <CardDescription>
-                    Enable or disable system features
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {Object.entries(systemConfig.data.feature_flags).map(([key, value]) => (
-                    <div key={key} className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor={key}>{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</Label>
-                        <p className="text-sm text-gray-600">Toggle {key} feature</p>
-                      </div>
-                      <Switch
-                        id={key}
-                        checked={value}
-                        onCheckedChange={(checked) => updateSystemConfig.mutate({ [key]: checked })}
-                      />
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-        )}
-
-        {/* Advanced Tab (Admin Only) */}
-        {isAdmin && (
-          <TabsContent value="advanced" className="space-y-6">
-            {/* App Settings */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center">
-                  <Database className="w-5 h-5 mr-2" />
-                  Application Settings
-                </CardTitle>
-                <CardDescription>
-                  Manage application configuration
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Add New Setting */}
-                <div className="space-y-4">
-                  <h4 className="font-medium">Add New Setting</h4>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Key"
-                      value={newSetting.key}
-                      onChange={(e) => { setNewSetting(prev => ({ ...prev, key: e.target.value })); setSettingError(null) }}
-                    />
-                    <Input
-                      placeholder="Value"
-                      value={newSetting.value}
-                      onChange={(e) => { setNewSetting(prev => ({ ...prev, value: e.target.value })); setSettingError(null) }}
-                    />
-                    <Button onClick={handleAppSettingUpdate} disabled={updateAppSetting.isPending}>
-                      Add
-                    </Button>
-                  </div>
-                  {settingError ? (
-                    <p className="text-sm text-destructive" role="alert">{settingError}</p>
-                  ) : null}
-                </div>
-
-                {/* Existing Settings */}
-                {appSettings.data && (
-                  <div className="space-y-4">
-                    <h4 className="font-medium">Current Settings</h4>
-                    <div className="space-y-2">
-                      {Object.entries(appSettings.data.settings).map(([key, value]) => (
-                        <div key={key} className="flex items-center justify-between p-2 border rounded">
-                          <div>
-                            <div className="font-medium">{key}</div>
-                            <div className="text-sm text-gray-600">{String(value)}</div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {deleteConfirmKey === key ? (
-                              <>
-                                <span className="text-xs text-muted-foreground">Sure?</span>
-                                <Button
-                                  variant="default"
-                                  size="sm"
-                                  className="bg-destructive text-white hover:bg-destructive/90"
-                                  onClick={() => handleAppSettingDelete(key)}
-                                  disabled={deleteAppSetting.isPending}
-                                >
-                                  Yes, delete
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setDeleteConfirmKey(null)}
-                                >
-                                  Cancel
-                                </Button>
-                              </>
-                            ) : (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-destructive hover:bg-destructive/10"
-                                onClick={() => handleAppSettingDelete(key)}
-                                disabled={deleteAppSetting.isPending}
-                              >
-                                Delete
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Day 4 & Day 5 Batch Links */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center">
-                  <Database className="w-5 h-5 mr-2" />
-                  Day 4 & Day 5 Batch Video Links
-                </CardTitle>
-                <CardDescription>
-                  YouTube video URLs for Day 4 and Day 5 MAE batches. Each slot needs v1 (required) and v2 (optional).
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {(['d4', 'd5'] as const).map((day) => (
-                  <div key={day} className="space-y-4">
-                    <h4 className="font-semibold text-foreground">Day {day === 'd4' ? 4 : 5}</h4>
-                    <div className="grid gap-4 sm:grid-cols-3">
-                      {(['morning', 'afternoon', 'evening'] as const).map((slot) => {
-                        const v1Key = `batch_${day}_${slot}_v1`
-                        const v2Key = `batch_${day}_${slot}_v2`
-                        const v1Val = appSettings.data?.settings?.[v1Key] ?? ''
-                        const v2Val = appSettings.data?.settings?.[v2Key] ?? ''
-                        return (
-                          <div key={slot} className="space-y-2 rounded-lg border border-border/60 p-3">
-                            <p className="text-sm font-medium capitalize text-foreground">{slot}</p>
-                            <BatchLinkInput label="Video 1" settingsKey={v1Key}
-                              value={v1Val} onSave={(val) => updateAppSetting.mutate({ key: v1Key, value: val })} />
-                            <BatchLinkInput label="Video 2 (optional)" settingsKey={v2Key}
-                              value={v2Val} onSave={(val) => updateAppSetting.mutate({ key: v2Key, value: val })} />
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        )}
       </Tabs>
     </div>
+  )
+}
+
+function ShowTutorialButton() {
+  const resetTutorial = useResetTutorialMutation()
+
+  const handleClick = () => {
+    resetTutorial.mutate(undefined, {
+      onSuccess: () => {
+        window.location.href = '/dashboard'
+      },
+    })
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="w-full gap-2 text-xs"
+      onClick={handleClick}
+      disabled={resetTutorial.isPending}
+    >
+      {resetTutorial.isPending ? 'Loading…' : '🔄 Show Tutorial Again'}
+    </Button>
   )
 }

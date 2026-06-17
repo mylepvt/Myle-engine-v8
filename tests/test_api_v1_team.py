@@ -291,3 +291,70 @@ def test_enrollment_requests_forbidden_for_team(monkeypatch: pytest.MonkeyPatch)
     c = _authed_client(monkeypatch)
     assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
     assert c.get("/api/v1/team/enrollment-requests").status_code == 403
+
+
+def _create_member(c: TestClient, *, suffix: str, role: str) -> int:
+    res = c.post(
+        "/api/v1/team/members",
+        json={
+            "fbo_id": f"fbo-{suffix}",
+            "email": f"{suffix}@myle.local",
+            "password": "password123",
+            "role": role,
+        },
+    )
+    assert res.status_code == 201, res.text
+    return int(res.json()["id"])
+
+
+def _set_upline(c: TestClient, member_id: int, upline_user_id: int) -> None:
+    # create_team_member does not accept an upline, so hierarchy is built via the endpoint.
+    res = c.patch(f"/api/v1/team/members/{member_id}/upline", json={"upline_user_id": upline_user_id})
+    assert res.status_code == 200, res.text
+
+
+def _member_row(c: TestClient, member_id: int) -> dict:
+    members = c.get("/api/v1/team/members").json()["items"]
+    return next(x for x in members if x["id"] == member_id)
+
+
+def test_admin_can_change_member_upline(monkeypatch: pytest.MonkeyPatch) -> None:
+    c = _authed_client(monkeypatch)
+    assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+    new_leader = _create_member(c, suffix="upline-leader", role="leader")
+    member = _create_member(c, suffix="upline-member", role="team")
+    res = c.patch(f"/api/v1/team/members/{member}/upline", json={"upline_user_id": new_leader})
+    assert res.status_code == 200, res.text
+    assert res.json()["upline_user_id"] == new_leader
+    assert _member_row(c, member)["upline_user_id"] == new_leader
+
+
+def test_change_upline_rejects_self_team_and_cycle(monkeypatch: pytest.MonkeyPatch) -> None:
+    c = _authed_client(monkeypatch)
+    assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+    leader = _create_member(c, suffix="guard-leader", role="leader")
+    plain_team = _create_member(c, suffix="guard-team", role="team")
+    sub_leader = _create_member(c, suffix="guard-subleader", role="leader")
+    _set_upline(c, sub_leader, leader)
+    # self
+    assert c.patch(f"/api/v1/team/members/{leader}/upline", json={"upline_user_id": leader}).status_code == 400
+    # upline must be leader/admin, not a team member
+    assert c.patch(f"/api/v1/team/members/{leader}/upline", json={"upline_user_id": plain_team}).status_code == 400
+    # cycle: cannot move a leader under its own downline
+    assert c.patch(f"/api/v1/team/members/{leader}/upline", json={"upline_user_id": sub_leader}).status_code == 400
+
+
+def test_demote_leader_reparents_downline_to_upline_leader(monkeypatch: pytest.MonkeyPatch) -> None:
+    c = _authed_client(monkeypatch)
+    assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
+    # leaderA (seed id 2) -> leaderB -> teamC
+    leader_b = _create_member(c, suffix="demote-leaderb", role="leader")
+    _set_upline(c, leader_b, 2)
+    team_c = _create_member(c, suffix="demote-teamc", role="team")
+    _set_upline(c, team_c, leader_b)
+    # demote leaderB back to team
+    res = c.patch(f"/api/v1/team/members/{leader_b}/role", json={"role": "team"})
+    assert res.status_code == 200, res.text
+    # teamC must now report to the nearest upline leader (seed leader id 2), not the
+    # demoted (now-team) node — otherwise its handoff would be orphaned.
+    assert _member_row(c, team_c)["upline_user_id"] == 2

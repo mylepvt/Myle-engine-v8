@@ -1,247 +1,155 @@
+"""Security core for the standalone, highly-secured enrollment-video page.
+
+Layers enforced here:
+  * unguessable 256-bit token
+  * JWT watch cookie bound to (token + device fingerprint)
+  * first-device lock
+  * hard view cap (default 1)
+  * open-based countdown expiry (+ outer creation cap)
+  * server-side R2 presign + proxy so the real video URL never reaches the
+    browser
+"""
 from __future__ import annotations
 
 import hashlib
 import hmac
 import re
+import secrets
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from typing import Any
-from urllib.parse import quote, unquote, urlparse, urlsplit, urlunsplit
+from typing import Optional
 
 import jwt
-from fastapi import HTTPException, Request, Response
-from sqlalchemy import or_, select, update
+from fastapi import Request, Response
+
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette import status as http_status
 
 from app.core.config import settings
 from app.models.app_setting import AppSetting
-from app.models.enroll_share_link import EnrollShareLink
-from app.models.lead import Lead
+from app.models.enrollment_share_link import EnrollmentShareLink
+from app.services import r2_storage
 
-ENROLL_LINK_TTL_MINUTES = 50
-ENROLL_WATCH_COOKIE = "myle_enroll_watch"
+ENROLL2_WATCH_COOKIE = "myle_enroll2_watch"
 
-_PHONE_DIGIT_RE = re.compile(r"\D")
-_PUBLIC_TOKEN_RE = re.compile(r"[^A-Za-z0-9_-]+")
-_YOUTUBE_HOSTS = {"youtube.com", "youtu.be", "youtube-nocookie.com"}
-_UPLOADS_ROOT = Path(__file__).resolve().parents[2] / "uploads"
+# Defaults: 16:56 (1016s) video + ~1-min buffer = 18 min, single device, single view.
+DEFAULT_WINDOW_SECONDS = 18 * 60
+DEFAULT_CREATION_CAP = timedelta(days=2)
+DEFAULT_MAX_VIEWS = 1
 
-
-def sanitize_public_token(raw_token: str) -> str:
-    return _PUBLIC_TOKEN_RE.sub("", (raw_token or "").strip())
-
-
-def normalize_phone_for_match(raw_phone: str | None) -> str | None:
-    digits = _PHONE_DIGIT_RE.sub("", raw_phone or "")
-    if len(digits) >= 10:
-        return digits[-10:]
-    return None
+_PUBLIC_TOKEN_RE = re.compile(r"[^A-Za-z0-9_\-]")
+_FINGERPRINT_RE = re.compile(r"[^A-Za-z0-9]")
+_HAS_SCHEME_RE = re.compile(r"^[a-z][a-z0-9+.\-]*://", re.IGNORECASE)
 
 
-def whatsapp_digits(raw_phone: str | None) -> str:
-    digits = _PHONE_DIGIT_RE.sub("", raw_phone or "")
-    if not digits:
-        return ""
-    if len(digits) == 10 and digits[0] in {"6", "7", "8", "9"}:
-        return f"91{digits}"
-    if digits.startswith("0") and len(digits) == 11:
-        return f"91{digits[1:]}"
-    return digits
+def new_token() -> str:
+    return secrets.token_urlsafe(32)
 
 
-def mask_phone(raw_phone: str | None) -> str:
-    normalized = normalize_phone_for_match(raw_phone)
-    if not normalized:
-        return "registered number"
-    return f"*******{normalized[-3:]}"
-
-
-def is_youtube_like_url(raw_url: str | None) -> bool:
-    candidate = (raw_url or "").strip()
-    if not candidate:
-        return False
-    try:
-        parsed = urlparse(candidate)
-        host = (parsed.hostname or "").strip().lower()
-        host = re.sub(r"^(www|m|music)\.", "", host)
-        return host in _YOUTUBE_HOSTS
-    except ValueError:
-        return "youtu" in candidate.lower()
-
-
-def normalize_video_source_url(raw_url: str | None) -> str:
-    value = (raw_url or "").strip()
-    if not value:
-        return ""
-
-    if value.startswith(("http://", "https://")):
-        parsed = urlsplit(value)
-        safe_path = quote(unquote(parsed.path or ""), safe="/")
-        return urlunsplit((parsed.scheme, parsed.netloc, safe_path, parsed.query, parsed.fragment))
-
-    safe_path = quote(unquote(value), safe="/")
-    if safe_path.startswith("/"):
-        return safe_path
-    return f"/{safe_path.lstrip('/')}"
-
-
-def resolve_local_upload_source_path(raw_url: str | None) -> Path | None:
-    normalized = normalize_video_source_url(raw_url)
-    if not normalized:
-        return None
-
-    parsed = urlparse(normalized)
-    if parsed.scheme or parsed.netloc:
-        return None
-
-    path = unquote(parsed.path or "")
-    if not path.startswith("/uploads/"):
-        return None
-
-    candidate = (_UPLOADS_ROOT / path.removeprefix("/uploads/")).resolve()
-    uploads_root = _UPLOADS_ROOT.resolve()
-    try:
-        candidate.relative_to(uploads_root)
-    except ValueError:
-        return None
-    return candidate
-
-
-def local_video_source_exists(raw_url: str | None) -> bool | None:
-    local_path = resolve_local_upload_source_path(raw_url)
-    if local_path is None:
-        return None
-    return local_path.is_file()
-
-
-def build_enrollment_stream_source_candidates(*raw_sources: str | None) -> list[str]:
-    candidates: list[str] = []
-    for raw_source in raw_sources:
-        normalized = normalize_video_source_url(raw_source)
-        if not normalized or normalized in candidates or is_youtube_like_url(normalized):
-            continue
-        local_exists = local_video_source_exists(normalized)
-        if local_exists is False:
-            continue
-        candidates.append(normalized)
-    return candidates
-
-
-def absolute_video_source_url(request: Request, raw_url: str) -> str:
-    value = normalize_video_source_url(raw_url)
-    if value.startswith(("http://", "https://")):
-        return value
-    base = str(request.base_url).rstrip("/")
-    return f"{base}{value}"
-
-
-async def get_app_setting(session: AsyncSession, key: str) -> str:
+async def _app_setting(session: AsyncSession, key: str) -> str:
     row = (
         await session.execute(select(AppSetting.value).where(AppSetting.key == key))
     ).scalar_one_or_none()
     return str(row or "").strip()
 
 
-async def get_enrollment_video_title(session: AsyncSession) -> str:
-    title = await get_app_setting(session, "enrollment_video_title")
-    return title or "Enrollment video"
+async def resolve_default_video_source(session: AsyncSession) -> str:
+    """Default enrollment video for per-lead quick links.
+
+    Prefers a dedicated key, then reuses the already-configured Enrollment-Live
+    video so no extra setup is needed.
+    """
+    for key in ("enrollment_video_source_url", "flp_min_billing_video_source_url", "flp_min_billing_video_url"):
+        value = await _app_setting(session, key)
+        if value:
+            return value
+    return ""
 
 
-async def get_enrollment_video_source(session: AsyncSession) -> str:
-    source = await get_app_setting(session, "enrollment_video_source_url")
-    if not source:
-        source = await get_app_setting(session, "enrollment_video_url")
-    return source
+def sanitize_public_token(raw_token: str) -> str:
+    return _PUBLIC_TOKEN_RE.sub("", (raw_token or "").strip())
 
 
-async def require_secure_enrollment_video_source(session: AsyncSession) -> str:
-    source = await get_enrollment_video_source(session)
-    if not source:
-        raise HTTPException(
-            status_code=http_status.HTTP_400_BAD_REQUEST,
-            detail="Enrollment video source is not configured.",
-        )
-    if is_youtube_like_url(source):
-        raise HTTPException(
-            status_code=http_status.HTTP_400_BAD_REQUEST,
-            detail="Enrollment video must be a direct hosted video URL, not YouTube.",
-        )
-    return source
+def sanitize_fingerprint(raw_fp: str | None) -> str:
+    return _FINGERPRINT_RE.sub("", (raw_fp or "").strip())[:128]
 
 
-async def resolve_public_app_url(session: AsyncSession, request: Request) -> str:
-    configured = await get_app_setting(session, "public_app_url")
-    if not configured:
-        configured = await get_app_setting(session, "frontend_public_url")
-    if not configured:
-        configured = str(request.base_url)
-    return configured.rstrip("/")
+def normalize_phone(raw_phone: str | None) -> str:
+    return re.sub(r"\D", "", raw_phone or "")[-10:]
 
 
-def enrollment_expires_at(now: datetime | None = None) -> datetime:
-    anchor = now or datetime.now(timezone.utc)
-    return anchor + timedelta(minutes=ENROLL_LINK_TTL_MINUTES)
+def mask_phone(raw_phone: str | None) -> str:
+    digits = normalize_phone(raw_phone)
+    if len(digits) < 4:
+        return "•••• ••••"
+    return f"•••• •••• {digits[-4:]}"
 
 
-def resolve_effective_expiry(value: datetime | None) -> datetime | None:
-    if value is None:
-        return None
-    return ensure_utc_datetime(value)
-
-
-def ensure_utc_datetime(value: datetime) -> datetime:
+def ensure_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc)
 
 
-def _watch_phone_proof(normalized_phone: str) -> str:
-    secret = settings.secret_key.encode("utf-8")
-    return hmac.new(secret, normalized_phone.encode("utf-8"), hashlib.sha256).hexdigest()
+# ── expiry ────────────────────────────────────────────────────────────────
+
+def effective_expiry(link: EnrollmentShareLink) -> Optional[datetime]:
+    """Earliest of the open-countdown expiry and the outer creation cap."""
+    candidates = [v for v in (link.expires_at, link.creation_expires_at) if v is not None]
+    if not candidates:
+        return None
+    return min(ensure_utc(v) for v in candidates)
 
 
-def _watch_cookie_payload(
-    *,
-    token: str,
-    lead: Lead,
-    expires_at: datetime,
-) -> dict[str, Any]:
-    normalized_phone = normalize_phone_for_match(lead.phone)
-    if not normalized_phone:
-        raise HTTPException(
-            status_code=http_status.HTTP_400_BAD_REQUEST,
-            detail="Lead phone number is not set.",
-        )
+def is_dead(link: EnrollmentShareLink, *, now: datetime) -> bool:
+    if link.revoked:
+        return True
+    expiry = effective_expiry(link)
+    if expiry is not None and now >= expiry:
+        return True
+    if int(link.view_count or 0) >= int(link.max_views or DEFAULT_MAX_VIEWS) and link.opened_at is None:
+        # cap already consumed before this device ever bound — defensive
+        return True
+    return False
+
+
+# ── watermark ───────────────────────────────────────────────────────────────
+
+def watermark_label(link: EnrollmentShareLink) -> str:
+    name = (link.viewer_name or "").strip()
+    phone = mask_phone(link.viewer_phone)
+    short = (link.token or "")[:6]
+    parts = [p for p in (name, phone, f"#{short}") if p]
+    return " · ".join(parts)
+
+
+# ── cookie (token + device fingerprint bound, JWT signed) ────────────────────
+
+def _cookie_payload(*, token: str, fingerprint: str, expires_at: datetime) -> dict[str, object]:
     return {
-        "typ": "enroll_watch",
-        "token": token,
-        "lead_id": int(lead.id),
-        "phone_proof": _watch_phone_proof(normalized_phone),
-        "iat": int(datetime.now(timezone.utc).timestamp()),
-        "exp": int(expires_at.timestamp()),
+        "t": token,
+        "fp": fingerprint,
+        "exp": int(ensure_utc(expires_at).timestamp()),
     }
 
 
-def issue_watch_cookie(
+def issue_cookie(
     response: Response,
     *,
     token: str,
-    lead: Lead,
+    fingerprint: str,
     expires_at: datetime,
 ) -> None:
+    safe_expiry = ensure_utc(expires_at)
     encoded = jwt.encode(
-        _watch_cookie_payload(token=token, lead=lead, expires_at=ensure_utc_datetime(expires_at)),
+        _cookie_payload(token=token, fingerprint=fingerprint, expires_at=safe_expiry),
         settings.secret_key,
         algorithm="HS256",
     )
-    safe_expiry = ensure_utc_datetime(expires_at)
-    max_age = max(1, int((safe_expiry - datetime.now(timezone.utc)).total_seconds()))
+    max_age = max(int((safe_expiry - datetime.now(timezone.utc)).total_seconds()), 0)
     response.set_cookie(
-        key=ENROLL_WATCH_COOKIE,
-        value=encoded,
+        ENROLL2_WATCH_COOKIE,
+        encoded,
         max_age=max_age,
-        expires=max_age,
         httponly=True,
         samesite=settings.auth_cookie_samesite,
         secure=settings.session_cookie_secure,
@@ -249,65 +157,81 @@ def issue_watch_cookie(
     )
 
 
-def clear_watch_cookie(response: Response) -> None:
+def clear_cookie(response: Response) -> None:
     response.delete_cookie(
-        key=ENROLL_WATCH_COOKIE,
-        httponly=True,
+        ENROLL2_WATCH_COOKIE,
+        path="/",
         samesite=settings.auth_cookie_samesite,
         secure=settings.session_cookie_secure,
-        path="/",
     )
 
 
-def has_watch_access(request: Request, *, link: EnrollShareLink, lead: Lead) -> bool:
-    raw_cookie = request.cookies.get(ENROLL_WATCH_COOKIE)
-    if not raw_cookie:
+def has_access(request: Request, *, link: EnrollmentShareLink) -> bool:
+    """True only when the request carries a valid cookie bound to this token
+    AND the device fingerprint matches the one locked on first open."""
+    raw = request.cookies.get(ENROLL2_WATCH_COOKIE)
+    if not raw:
         return False
     try:
-        payload = jwt.decode(raw_cookie, settings.secret_key, algorithms=["HS256"])
+        payload = jwt.decode(raw, settings.secret_key, algorithms=["HS256"])
     except jwt.PyJWTError:
         return False
-    if payload.get("typ") != "enroll_watch":
+    if payload.get("t") != link.token:
         return False
-    if payload.get("token") != link.token:
+    locked = link.device_fingerprint
+    if not locked:
         return False
-    if int(payload.get("lead_id") or 0) != int(lead.id):
+    if payload.get("fp") != locked:
         return False
-    normalized_phone = normalize_phone_for_match(lead.phone)
-    if not normalized_phone:
-        return False
-    return payload.get("phone_proof") == _watch_phone_proof(normalized_phone)
+    return True
 
 
-async def expire_active_links_for_lead(
-    session: AsyncSession,
-    *,
-    lead_id: int,
-    now: datetime,
-) -> None:
-    await session.execute(
-        update(EnrollShareLink)
-        .where(
-            EnrollShareLink.lead_id == lead_id,
-            or_(
-                EnrollShareLink.expires_at.is_(None),
-                EnrollShareLink.expires_at > now,
-            ),
-        )
-        .values(expires_at=now)
-    )
+def device_matches(link: EnrollmentShareLink, fingerprint: str) -> bool:
+    locked = (link.device_fingerprint or "").strip()
+    if not locked:
+        return True  # not yet bound
+    return hmac.compare_digest(locked, fingerprint)
 
 
-async def ensure_watch_timer_started(
-    session: AsyncSession,
-    *,
-    link: EnrollShareLink,
-    now: datetime | None = None,
-) -> EnrollShareLink:
-    if link.expires_at is not None:
-        return link
-    started_at = now or datetime.now(timezone.utc)
-    link.expires_at = enrollment_expires_at(started_at)
-    await session.commit()
-    await session.refresh(link)
-    return link
+# ── video source resolution (server-side only) ──────────────────────────────
+
+def is_youtube_like(url: str | None) -> bool:
+    value = (url or "").lower()
+    return "youtube.com" in value or "youtu.be" in value
+
+
+async def resolve_stream_upstream(request: Request, link: EnrollmentShareLink) -> Optional[str]:
+    """Resolve the link's ``video_source`` into an upstream URL to proxy.
+
+    * bare R2 object key (no scheme) → short-lived presigned GET URL
+    * an R2 public URL → extract key + presign
+    * any other http(s) URL → used directly
+    * a local '/...' path → absolute URL against this request
+    Returns None when nothing usable is configured.
+    """
+    source = (link.video_source or "").strip()
+    if not source:
+        return None
+    if is_youtube_like(source):
+        return None
+
+    # R2 public URL → key
+    key = r2_storage.r2_key_from_url(source)
+    if key is None and not _HAS_SCHEME_RE.match(source) and not source.startswith("/"):
+        # treat as a bare R2 object key
+        key = source.lstrip("/")
+
+    if key and r2_storage.r2_enabled():
+        try:
+            return await r2_storage.presign_get_url(key=key, expires_seconds=120)
+        except Exception:
+            return None
+
+    if _HAS_SCHEME_RE.match(source):
+        return source
+
+    if source.startswith("/"):
+        base = str(request.base_url).rstrip("/")
+        return f"{base}{source}"
+
+    return None

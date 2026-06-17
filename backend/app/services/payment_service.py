@@ -13,6 +13,7 @@ from sqlalchemy.orm import aliased
 from app.core.config import settings
 from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
+from app.models.lead_sale import LeadSale
 from app.models.user import User
 from app.services.crm_outbox import crm_shadow_stage_for_lead, enqueue_lead_shadow_upsert
 from app.services.observation_logger import (
@@ -167,14 +168,9 @@ class PaymentService:
         self._restore_execution_owner(lead)
         lead.payment_status = "approved"
 
-        if lead.status == "video_watched":
-            lead.status = "paid"
-        if lead.status == "paid":
-            lead.mindset_lock_state = None
-            lead.mindset_started_at = None
-            lead.mindset_completed_at = None
-            lead.mindset_completed_by_user_id = None
-            lead.mindset_leader_user_id = None
+        # Payment-proof approval no longer auto-advances pipeline status. The old
+        # enrollment "paid" step + mindset_lock were removed; stage payments in the
+        # Day-3 closing flow are tracked separately (Phase 5).
         if lead.status != prev_status:
             lead.last_action_at = now
 
@@ -182,8 +178,70 @@ class PaymentService:
             lead_id, approved_by_user_id, "payment_proof_approved"
         )
 
+        # Connect the legacy payment-proof flow to the CC/sale engine so an
+        # approved Day-3/Day-6 billing payment lands in the revenue rollup.
+        await self._upsert_sale_from_payment(lead, approved_by_user_id, now)
+
         await self._commit_with_shadow_upsert(lead)
         return True, "Payment proof approved"
+
+    @staticmethod
+    def _billing_stage_for_lead(lead: Lead) -> str:
+        """Map a lead's pipeline stage to a CC billing stage bucket.
+
+        Day-4/Day-6 enrollment billing was removed; all closing-stage billing now
+        rolls up under the single ``day3`` bucket.
+        """
+        return "day3"
+
+    async def _upsert_sale_from_payment(
+        self, lead: Lead, approved_by_user_id: int, now: datetime
+    ) -> None:
+        """Create/refresh an approved LeadSale row from an approved payment proof.
+
+        Revenue (``amount_cents``) flows into the system-overview sales rollup.
+        Case credits stay ``None`` here — only a real FOREVER Tax Invoice (the
+        CC sale-engine upload) carries a ``case_credits`` value; we never clobber
+        an existing CC figure on re-approval.
+        """
+        stage = self._billing_stage_for_lead(lead)
+        owner_id = resolved_owner_user_id(lead) or approved_by_user_id
+
+        existing = (
+            await self.session.execute(
+                select(LeadSale).where(
+                    LeadSale.lead_id == lead.id,
+                    LeadSale.billing_stage == stage,
+                )
+            )
+        ).scalar_one_or_none()
+
+        if existing is None:
+            self.session.add(
+                LeadSale(
+                    lead_id=lead.id,
+                    billing_stage=stage,
+                    amount_cents=lead.payment_amount_cents,
+                    proof_url=lead.payment_proof_url,
+                    status="approved",
+                    submitted_by_user_id=owner_id,
+                    owner_user_id=owner_id,
+                    approved_by_user_id=approved_by_user_id,
+                    approved_at=now,
+                    verify_notes="Auto-linked from approved Day-3/6 payment proof",
+                )
+            )
+            return
+
+        # Row already exists (e.g. a prior CC invoice upload) — promote to
+        # approved and backfill revenue/proof without overwriting CC data.
+        existing.status = "approved"
+        existing.approved_by_user_id = approved_by_user_id
+        existing.approved_at = now
+        if existing.amount_cents is None:
+            existing.amount_cents = lead.payment_amount_cents
+        if not (existing.proof_url or "").strip():
+            existing.proof_url = lead.payment_proof_url
 
     async def reject_payment_proof(
         self,

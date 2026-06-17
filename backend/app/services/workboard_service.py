@@ -63,6 +63,7 @@ class WorkboardService:
                 limit=limit_per_column,
             )
             buckets[status] = await build_lead_public_payloads(self._session, rows)
+
         return WorkboardLeadsResponse(
             columns=[
                 WorkboardColumnOut(status=status, total=totals.get(status, 0), items=buckets[status])
@@ -119,7 +120,7 @@ class WorkboardService:
                 )
             )
             videos_to_send = await self._repository.count_leads(
-                and_(scope, Lead.status.in_(("new_lead", "new", "contacted", "invited", "whatsapp_sent")))
+                and_(scope, Lead.status.in_(("new_lead", "new", "contacted", "invited")))
             )
         batches_due = await self._repository.count_leads(
             and_(
@@ -145,7 +146,7 @@ class WorkboardService:
             )
         )
         closings_due = await self._repository.count_leads(
-            and_(scope, Lead.status.in_(("day3", "interview", "track_selected", "seat_hold", "plan_2cc", "pending", "level_up")))
+            and_(scope, Lead.status.in_(("day3",)))
         )
         stale_before = datetime.now(timezone.utc) - timedelta(hours=stale_hours)
         stale_total = await self._repository.count_leads(

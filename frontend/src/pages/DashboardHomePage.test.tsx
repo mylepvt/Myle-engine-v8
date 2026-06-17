@@ -24,11 +24,23 @@ vi.mock('@/components/dashboard/GateAssistantCard', () => ({
   GateAssistantCard: () => <div data-testid="gate-assistant">Gate Assistant</div>,
 }))
 
+vi.mock('@/components/dashboard/CcSummaryCard', () => ({
+  CcSummaryCard: () => <div data-testid="cc-summary">CC Summary</div>,
+}))
+
 vi.mock('@/components/dashboard/AdminCommandCenter', () => ({
   AdminCommandCenter: (props: { firstName: string }) => {
     mockAdminCommandCenter(props)
     return <div data-testid="admin-command-center">{props.firstName}</div>
   },
+}))
+
+vi.mock('@/components/dashboard/LeaderActionCenter', () => ({
+  LeaderActionCenter: () => <div data-testid="leader-action-center">Leader Action Center</div>,
+}))
+
+vi.mock('@/components/dashboard/VerificationHomePanel', () => ({
+  VerificationHomePanel: () => <div data-testid="verification-home-panel" />,
 }))
 
 vi.mock('@/hooks/use-dashboard-shell-role', () => ({
@@ -53,6 +65,10 @@ vi.mock('@/hooks/use-team-personal-funnel-query', () => ({
 
 vi.mock('@/hooks/use-team-today-stats-query', () => ({
   useTeamTodayStatsQuery: () => mockUseTeamTodayStatsQuery(),
+}))
+
+vi.mock('@/hooks/use-handed-off-leads-query', () => ({
+  useHandedOffLeadsQuery: () => ({ data: [], isPending: false }),
 }))
 
 vi.mock('@/hooks/use-lead-pool-query', () => ({
@@ -124,7 +140,7 @@ function seedBaseMocks(role: 'team' | 'leader' | 'admin') {
     data: {
       claimed_today: 0,
       calls_today: 0,
-      enrolled_today: 0,
+      flp_min_billing_today: 0,
     },
     isPending: false,
   })
@@ -195,7 +211,7 @@ describe('DashboardHomePage', () => {
     expect(screen.getByTestId('gate-assistant')).toBeInTheDocument()
   })
 
-  it('renders Gate Assistant on the leader dashboard path', () => {
+  it('renders Leader Action Center on the leader dashboard path', () => {
     seedBaseMocks('leader')
 
     render(
@@ -204,7 +220,7 @@ describe('DashboardHomePage', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByTestId('gate-assistant')).toBeInTheDocument()
+    expect(screen.getByTestId('leader-action-center')).toBeInTheDocument()
   })
 
   it('routes admin home to the command center surface', () => {

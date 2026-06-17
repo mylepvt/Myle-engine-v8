@@ -428,10 +428,12 @@ async def admin_today_pulse(
     )
     leads_today = int(leads_r.scalar_one() or 0)
 
-    # ── Min. FLP Billing — leads currently at 'paid' stage ───────────────────
+    # ── FLP Billing — leads whose stage payment proof is approved ────────────
+    # (Old enrollment 'paid' stage was removed; billing now lands at the Day-3
+    # stage payment, tracked via payment_status == 'approved'.)
     flp_r = await session.execute(
         select(func.count()).select_from(Lead).where(
-            Lead.status == "paid",
+            Lead.payment_status == "approved",
             Lead.deleted_at.is_(None),
             Lead.archived_at.is_(None),
             Lead.in_pool.is_(False),

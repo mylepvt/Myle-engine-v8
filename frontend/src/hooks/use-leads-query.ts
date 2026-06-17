@@ -8,73 +8,49 @@ import {
 
 import { apiFetch } from '@/lib/api'
 import { applyCtcsOptimisticToLead } from '@/lib/ctcs-optimistic'
+import type { WorkboardResponse } from '@/hooks/use-workboard-query'
 
 export type LeadStatus =
   | 'new_lead'
   | 'contacted'
   | 'invited'
-  | 'whatsapp_sent'
   | 'video_sent'
-  | 'mindset_lock'
+  | 'video_watched'
   | 'day1'
   | 'day2'
   | 'day3'
-  | 'day4'
-  | 'day5'
-  | 'interview'
-  | 'track_selected'
-  | 'seat_hold'
   | 'converted'
   | 'lost'
   | 'retarget'
   | 'inactive'
   | 'training'
-  | 'plan_2cc'
-  | 'level_up'
-  | 'pending'
   | 'new'
 
 export const LEAD_STATUS_OPTIONS: { value: LeadStatus; label: string }[] = [
   { value: 'new_lead',       label: 'New Lead' },
   { value: 'contacted',      label: 'Contacted' },
   { value: 'invited',        label: 'Invited' },
-  { value: 'whatsapp_sent',  label: 'WhatsApp Sent' },
-  { value: 'video_sent',     label: 'Sent Day 1 Video' },
-  { value: 'mindset_lock',   label: 'Mindset Lock' },
+  { value: 'video_sent',     label: 'Enrollment Live' },
+  { value: 'video_watched',  label: 'Video Watched' },
+  { value: 'day1',           label: 'Day 1' },
   { value: 'day2',           label: 'Day 2' },
   { value: 'day3',           label: 'Day 3' },
-  { value: 'day4',           label: 'Day 4' },
-  { value: 'day5',           label: 'Day 5' },
-  { value: 'interview',      label: 'Interview' },
-  { value: 'track_selected', label: 'Track Selected' },
-  { value: 'seat_hold',      label: 'Seat Hold' },
   { value: 'converted',      label: 'Converted' },
   { value: 'lost',           label: 'Lost' },
   { value: 'retarget',       label: 'Retarget' },
   { value: 'inactive',       label: 'Inactive' },
   { value: 'training',       label: 'Training' },
-  { value: 'plan_2cc',       label: '2CC Plan' },
-  { value: 'level_up',       label: 'Level Up' },
-  { value: 'pending',        label: 'Pending' },
   { value: 'new',            label: 'New (Legacy)' },
 ]
 
 export const PRIMARY_USER_FLOW_STATUSES: LeadStatus[] = [
   'new_lead',
   'invited',
-  'whatsapp_sent',
   'video_sent',
-  'mindset_lock',
+  'video_watched',
+  'day1',
   'day2',
   'day3',
-  'day4',
-  'day5',
-  'interview',
-  'track_selected',
-  'seat_hold',
-  'plan_2cc',
-  'pending',
-  'level_up',
   'converted',
 ]
 
@@ -118,6 +94,7 @@ export type LeadPublic = {
   assigned_to_role?: string | null
   leader_user_id?: number | null
   leader_name?: string | null
+  is_reassigned?: boolean | null
   // Call tracking
   call_status: string | null
   call_count: number
@@ -137,6 +114,16 @@ export type LeadPublic = {
   day3_completed_at: string | null
   day4_completed_at: string | null
   day5_completed_at: string | null
+  // Day 2 cheat-proof business test
+  day2_test_status?: 'pending' | 'in_progress' | 'passed' | 'failed'
+  day2_test_score?: number | null
+  day2_test_attempts?: number
+  day2_test_completed_at?: string | null
+  // Day 3 closing — Stage selection + seat-hold
+  stage_selected?: 'stage1' | 'stage2' | 'stage3' | null
+  stage_price_cents?: number | null
+  seat_hold_amount_cents?: number | null
+  seat_hold_expiry?: string | null
   d1_morning: boolean
   d1_afternoon: boolean
   d1_evening: boolean
@@ -201,9 +188,9 @@ async function parseError(res: Response): Promise<never> {
 
 export type LeadsListMode = 'active' | 'archived' | 'recycle'
 
-export type CtcsTab = 'all' | 'today' | 'followups' | 'hot' | 'converted'
+export type CtcsTab = 'all' | 'today' | 'followups' | 'hot' | 'converted' | 'reassigned' | 'pending'
 
-export type CtcsAction = 'not_picked' | 'interested' | 'call_later' | 'not_interested'
+export type CtcsAction = 'not_picked' | 'interested' | 'call_later' | 'not_interested' | 'paid'
 
 export type CtcsListOptions = {
   ctcsFilter?: CtcsTab | null
@@ -239,7 +226,7 @@ function buildLeadsQueryString(
     p.set('ctcs_priority_sort', 'true')
   }
   if (ctcs?.preEnrollmentOnly) {
-    p.set('pre_enrollment_only', 'true')
+    p.set('pre_flp_min_billing_only', 'true')
   }
   if (ctcs?.searchAllSections) {
     p.set('search_all_sections', 'true')
@@ -298,6 +285,7 @@ export async function createLead(body: CreateLeadBody): Promise<LeadPublic> {
 export type PatchLeadBody = {
   name?: string
   status?: LeadStatus
+  assigned_to_user_id?: number
   archived?: boolean
   in_pool?: boolean
   restored?: boolean
@@ -526,6 +514,7 @@ function invalidateLeadRelated(qc: ReturnType<typeof useQueryClient>) {
   void qc.invalidateQueries({ queryKey: ['workboard'] })
   void qc.invalidateQueries({ queryKey: ['retarget'] })
   void qc.invalidateQueries({ queryKey: ['follow-ups'] })
+  void qc.invalidateQueries({ queryKey: ['execution'] })
 }
 
 function isLeadsInfiniteData(data: unknown): data is InfiniteData<LeadListResponse> {
@@ -534,6 +523,15 @@ function isLeadsInfiniteData(data: unknown): data is InfiniteData<LeadListRespon
     data !== null &&
     'pages' in data &&
     Array.isArray((data as InfiniteData<LeadListResponse>).pages)
+  )
+}
+
+function isLeadListResponse(data: unknown): data is LeadListResponse {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'items' in data &&
+    Array.isArray((data as LeadListResponse).items)
   )
 }
 
@@ -575,6 +573,30 @@ export function useImportLeadsFileMutation() {
   })
 }
 
+// Fields whose value can be copied straight onto a cached lead card for an
+// instant optimistic update (no derived/server-computed values here).
+const OPTIMISTIC_PATCH_FIELDS = [
+  'status',
+  'call_status',
+  'name',
+  'd1_morning',
+  'd1_afternoon',
+  'd1_evening',
+  'd2_morning',
+  'd2_afternoon',
+  'd2_evening',
+  'd6_6pm',
+  'd6_8pm',
+] as const
+
+function isWorkboardData(data: unknown): data is WorkboardResponse {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    Array.isArray((data as WorkboardResponse).columns)
+  )
+}
+
 export function usePatchLeadMutation() {
   const qc = useQueryClient()
   return useMutation({
@@ -585,6 +607,91 @@ export function usePatchLeadMutation() {
       id: number
       body: Parameters<typeof patchLead>[1]
     }) => patchLead(id, body),
+    onMutate: async ({ id, body }) => {
+      // Optimistically reflect every field that maps 1:1 onto a card so clicks
+      // (status, batch M/A/E toggles, etc.) paint instantly instead of waiting
+      // for the PATCH round-trip + refetch.
+      const patch: Partial<LeadPublic> = {}
+      const src = body as Record<string, unknown>
+      for (const key of OPTIMISTIC_PATCH_FIELDS) {
+        if (src[key] !== undefined) (patch as Record<string, unknown>)[key] = src[key]
+      }
+      if (Object.keys(patch).length === 0) return { previous: undefined, previousWb: undefined }
+
+      await qc.cancelQueries({ queryKey: ['leads', 'list', 'paged'], exact: false })
+      await qc.cancelQueries({ queryKey: ['workboard'] })
+      await qc.cancelQueries({ queryKey: ['retarget'] })
+
+      const previous = qc.getQueriesData({ queryKey: ['leads', 'list', 'paged'], exact: false })
+      previous.forEach(([queryKey, data]) => {
+        if (!isLeadsInfiniteData(data)) return
+        qc.setQueryData(queryKey, {
+          ...data,
+          pages: data.pages.map((page) => ({
+            ...page,
+            items: page.items.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+          })),
+        })
+      })
+
+      const previousWb = qc.getQueriesData({ queryKey: ['workboard'] })
+      previousWb.forEach(([queryKey, data]) => {
+        if (!isWorkboardData(data)) return
+        qc.setQueryData(queryKey, {
+          ...data,
+          columns: data.columns.map((col) => ({
+            ...col,
+            items: col.items.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+          })),
+        })
+      })
+
+      // Retarget list is a flat LeadListResponse — patch its row in place so the
+      // status dropdown there reflects the change on the FIRST tap (was reverting
+      // to the stale server value until the refetch landed → "update twice" bug).
+      const previousRt = qc.getQueriesData({ queryKey: ['retarget'] })
+      previousRt.forEach(([queryKey, data]) => {
+        if (!isLeadListResponse(data)) return
+        qc.setQueryData(queryKey, {
+          ...data,
+          items: data.items.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+        })
+      })
+
+      return { previous, previousWb, previousRt }
+    },
+    onError: (_err, _variables, context) => {
+      context?.previous?.forEach(([queryKey, data]) => {
+        qc.setQueryData(queryKey, data)
+      })
+      context?.previousWb?.forEach(([queryKey, data]) => {
+        qc.setQueryData(queryKey, data)
+      })
+      context?.previousRt?.forEach(([queryKey, data]) => {
+        qc.setQueryData(queryKey, data)
+      })
+    },
+    onSettled: () => {
+      invalidateLeadRelated(qc)
+    },
+  })
+}
+
+async function reassignLead(leadId: number, assignedToUserId: number): Promise<LeadPublic> {
+  const res = await apiFetch(`/api/v1/leads/${leadId}/reassign`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ assigned_to_user_id: assignedToUserId }),
+  })
+  if (!res.ok) await parseError(res)
+  return res.json()
+}
+
+export function useReassignLeadMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ leadId, userId }: { leadId: number; userId: number }) =>
+      reassignLead(leadId, userId),
     onSuccess: () => {
       invalidateLeadRelated(qc)
     },

@@ -5,13 +5,15 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from typing import Iterable, Literal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.time_ist import IST, today_ist
 from app.models.daily_report import DailyReport
 from app.models.user import User
+from app.models.whatsapp_log import WhatsAppLog
+from app.services.report_eligibility import is_user_report_eligible
 from app.services.live_metrics import (
     fresh_call_counts_by_user,
     fresh_lead_counts_by_user,
@@ -259,6 +261,17 @@ def _mark_removed(
     user.removal_reason = reason
 
 
+def _clear_grace_auto_restore(user: User, *, reset_on: date) -> None:
+    """Clear expired grace and restore member when compliance is met during expiry buffer."""
+    user.access_blocked = False
+    user.discipline_status = "active"
+    user.grace_end_date = None
+    user.grace_reason = None
+    user.grace_updated_at = None
+    user.grace_set_by_user_id = None
+    user.discipline_reset_on = reset_on
+
+
 def _summarize_active_stage(
     *,
     level: ComplianceLevel,
@@ -284,6 +297,34 @@ def _summarize_active_stage(
     if not labels:
         return title, "No active discipline warning."
     return title, " | ".join(labels)
+
+
+async def _final_warning_alert_sent_today(
+    session: AsyncSession, user_id: int, today: date
+) -> bool:
+    """True if a final-warning management WhatsApp for this member already went out today (IST).
+
+    ``build_compliance_snapshots(apply_actions=True)`` runs on essentially every
+    authenticated request, so without this guard a member sitting at final
+    warning would re-trigger the management alert on every request — spamming
+    management. We dedupe on the outbound WhatsApp log: one alert per member
+    per IST day.
+    """
+    day_start = datetime(today.year, today.month, today.day, tzinfo=IST)
+    day_end = day_start + timedelta(days=1)
+    existing = (
+        await session.execute(
+            select(func.count(WhatsAppLog.id)).where(
+                WhatsAppLog.direction == "out",
+                WhatsAppLog.message_type == "final_warning",
+                WhatsAppLog.related_user_id == user_id,
+                WhatsAppLog.status == "sent",
+                WhatsAppLog.created_at >= day_start,
+                WhatsAppLog.created_at < day_end,
+            )
+        )
+    ).scalar() or 0
+    return existing > 0
 
 
 async def build_compliance_snapshots(
@@ -315,11 +356,7 @@ async def build_compliance_snapshots(
     eligible_ids = [
         user.id
         for user in rows
-        if (user.role or "").strip().lower() in _ELIGIBLE_ROLES
-        and (user.registration_status or "").strip().lower() == "approved"
-        and not user.training_required
-        and (user.training_status or "").strip().lower() in {"completed", "not_required"}
-        and not (user.training_gate_until is not None and user.training_gate_until >= today_date)
+        if is_user_report_eligible(user, today_date, roles=_ELIGIBLE_ROLES)
     ]
 
     fresh_leads_by_day: dict[date, dict[int, int]] = {}
@@ -427,7 +464,40 @@ async def build_compliance_snapshots(
             continue
 
         if not ignore_grace_for_rollout and _has_expired_grace(user, today_date):
-            # One-day buffer: warn on grace_end_date+1, remove on grace_end_date+2
+            # One-day buffer: warn on grace_end_date+1, remove on grace_end_date+2.
+            # If member meets compliance (calls >= target AND report submitted) on the
+            # day being evaluated, grace is cleared and access is auto-restored instead.
+            yesterday = today_date - timedelta(days=1)
+            calls_yesterday = int(fresh_calls_by_day.get(yesterday, {}).get(user.id, 0))
+            report_yesterday = (user.id, yesterday) in submitted_reports
+            met_compliance = calls_yesterday >= call_target and report_yesterday
+
+            if met_compliance:
+                # Member proved compliance during the expiry buffer — auto-restore.
+                if apply_actions:
+                    from app.services.grace_intelligence import record_grace_outcome
+                    record_grace_outcome(
+                        session=session,
+                        user=user,
+                        outcome="auto_restored",
+                        outcome_at=now,
+                        final_end_date=user.grace_end_date,
+                    )
+                    _clear_grace_auto_restore(user, reset_on=today_date)
+                    changed = True
+                snapshot.discipline_status = "active"
+                snapshot.grace_end_date = None
+                snapshot.grace_reason = None
+                snapshot.grace_active = False
+                snapshot.compliance_level = "clear"
+                snapshot.compliance_title = "Grace lifted — compliance met"
+                snapshot.compliance_summary = (
+                    f"{calls_yesterday} fresh calls and daily report submitted on "
+                    f"{yesterday.isoformat()} — grace cleared, access restored."
+                )
+                snapshots[user.id] = snapshot
+                continue
+
             if user.grace_end_date == today_date - timedelta(days=1):
                 snapshot.compliance_level = "grace_expired_warning"
                 snapshot.compliance_title = "Grace ended — removal tomorrow"
@@ -441,11 +511,28 @@ async def build_compliance_snapshots(
                 f"Grace ended on {user.grace_end_date.isoformat()} and the system removed this member."
             )
             if apply_actions:
+                from app.services.grace_intelligence import record_grace_outcome
+                record_grace_outcome(
+                    session=session,
+                    user=user,
+                    outcome="auto_removed",
+                    outcome_at=now,
+                    final_end_date=user.grace_end_date,
+                )
                 _mark_removed(user, reason=reason, removed_by_user_id=None, now=now)
                 try:
                     await send_removal_whatsapp(user=user, session=session)
                 except Exception as wa_exc:
                     logger.info("removal whatsapp failed user_id=%s during grace-expiry removal: %s", user.id, wa_exc)
+                try:
+                    from app.services.whatsapp_management_updates import send_management_member_removed_alert
+                    await send_management_member_removed_alert(
+                        session, member_name=user.name or f"User #{user.id}",
+                        member_fbo=user.fbo_id or "", removed_by="System (grace-expiry)",
+                        reason=reason,
+                    )
+                except Exception as mgmt_exc:
+                    logger.info("management alert failed user_id=%s grace-expiry: %s", user.id, mgmt_exc)
                 changed = True
             snapshot.access_blocked = True
             snapshot.discipline_status = "removed"
@@ -513,6 +600,15 @@ async def build_compliance_snapshots(
                     await send_removal_whatsapp(user=user, session=session)
                 except Exception as wa_exc:
                     logger.info("removal whatsapp failed user_id=%s during streak removal: %s", user.id, wa_exc)
+                try:
+                    from app.services.whatsapp_management_updates import send_management_member_removed_alert
+                    await send_management_member_removed_alert(
+                        session, member_name=user.name or f"User #{user.id}",
+                        member_fbo=user.fbo_id or "", removed_by="System (streak)",
+                        reason=reason,
+                    )
+                except Exception as mgmt_exc:
+                    logger.info("management alert failed user_id=%s streak: %s", user.id, mgmt_exc)
                 changed = True
             snapshot.access_blocked = True
             snapshot.discipline_status = "removed"
@@ -531,6 +627,26 @@ async def build_compliance_snapshots(
             missing_report_streak=snapshot.missing_report_streak,
             call_target=call_target,
         )
+        if (
+            apply_actions
+            and winning_level == "final_warning"
+            and not await _final_warning_alert_sent_today(session, user.id, today_date)
+        ):
+            try:
+                from app.services.whatsapp_management_updates import send_management_final_warning_alert
+                await send_management_final_warning_alert(
+                    session,
+                    member_name=user.name or f"User #{user.id}",
+                    member_fbo=user.fbo_id or "",
+                    reason=snapshot.compliance_summary,
+                    streak_days=max(snapshot.calls_short_streak, snapshot.missing_report_streak),
+                    related_user_id=user.id,
+                )
+                # Persist the outbound-log row so the per-day dedup holds across
+                # requests (most GET requests would otherwise not commit it).
+                changed = True
+            except Exception as mgmt_exc:
+                logger.info("management final-warning alert failed user_id=%s: %s", user.id, mgmt_exc)
         snapshots[user.id] = snapshot
 
     if changed:

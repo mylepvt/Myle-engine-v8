@@ -12,18 +12,10 @@ const NEXT_STATUS_BY_STATUS: Partial<Record<string, string>> = {
   invited: 'video_sent',
   whatsapp_sent: 'video_sent',
   video_sent: 'video_watched',
-  video_watched: 'paid',
-  paid: 'day1',
-  day1: 'mindset_lock',
-  mindset_lock: 'day2',
+  video_watched: 'day1',
+  day1: 'day2',
   day2: 'day3',
-  day3: 'interview',
-  interview: 'track_selected',
-  track_selected: 'seat_hold',
-  seat_hold: 'plan_2cc',
-  plan_2cc: 'pending',
-  pending: 'level_up',
-  level_up: 'converted',
+  day3: 'converted',
   lost: 'retarget',
   inactive: 'retarget',
 }
@@ -40,9 +32,6 @@ function sectionForStatus(status: string, role: Role | null): LeadSectionInfo {
   if (status === 'retarget' || status === 'lost' || status === 'inactive') {
     return { label: 'Retarget', path: '/dashboard/work/retarget' }
   }
-  if (status === 'mindset_lock') {
-    return { label: 'Mindset Lock', path: '/dashboard/work/mindset-lock' }
-  }
   if (status === 'paid') {
     return { label: 'Workboard -> Day 1', path: workboardTabPath('day1') }
   }
@@ -55,23 +44,17 @@ function sectionForStatus(status: string, role: Role | null): LeadSectionInfo {
   if (status === 'day3') {
     return { label: 'Workboard -> Day 3', path: workboardTabPath('day3') }
   }
+  if (status === 'day4') {
+    return { label: 'Workboard -> Day 4', path: workboardTabPath('day4') }
+  }
+  if (status === 'day5') {
+    return { label: 'Workboard -> Day 5', path: workboardTabPath('day5') }
+  }
   if (status === 'interview') {
-    return { label: 'Workboard -> Interview', path: workboardTabPath('interview') }
-  }
-  if (status === 'track_selected') {
-    return { label: 'Workboard -> Track', path: workboardTabPath('track_selected') }
-  }
-  if (status === 'seat_hold') {
-    return { label: 'Workboard -> Day 6', path: workboardTabPath('seat_hold') }
-  }
-  if (status === 'plan_2cc') {
-    return { label: 'Workboard -> 2CC Plan', path: workboardTabPath('plan_2cc') }
+    return { label: 'Workboard -> Day 6', path: workboardTabPath('interview') }
   }
   if (status === 'pending') {
-    return { label: 'Workboard -> Next 3 Days', path: workboardTabPath('pending') }
-  }
-  if (status === 'level_up') {
-    return { label: 'Workboard -> Final Stage', path: workboardTabPath('level_up') }
+    return { label: 'Workboard -> Pending', path: workboardTabPath('pending') }
   }
   if (status === 'converted') {
     return { label: 'Workboard -> Closing', path: workboardTabPath('closing') }

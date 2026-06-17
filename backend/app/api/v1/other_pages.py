@@ -22,14 +22,13 @@ from app.models.app_setting import AppSetting
 from app.models.lead import Lead
 from app.models.premiere_viewer import PremiereViewer
 from app.models.daily_report import DailyReport
-from app.models.daily_score import DailyScore
 from app.models.training_day_note import TrainingDayNote
 from app.models.training_progress import TrainingProgress
 from app.models.training_video import TrainingVideo
 from app.models.user import User
 from app.schemas.notice_board import AnnouncementCreate, AnnouncementOut, NoticeBoardResponse
 from app.schemas.system_surface import SystemStubResponse, TrainingSurfaceResponse
-from app.services.enrollment_video import normalize_phone_for_match
+from app.services.flp_min_billing_video import normalize_phone_for_match
 from app.services.team_reports_metrics import IST
 from app.services.training_surface import build_training_surface
 from app.services.training_uploads import save_training_notes_image
@@ -168,26 +167,23 @@ async def other_leaderboard(
             User.username,
             User.email,
             User.role,
-            func.coalesce(func.sum(DailyScore.points), 0).label("pts"),
             func.coalesce(User.xp_total, 0).label("xp"),
             func.coalesce(User.xp_level, "rookie").label("lvl"),
         )
         .select_from(User)
-        .outerjoin(DailyScore, DailyScore.user_id == User.id)
         .where(and_(*lb_conds))
-        .group_by(User.id, User.fbo_id, User.username, User.email, User.role, User.xp_total, User.xp_level)
-        .order_by(desc("pts"))
+        .order_by(desc("xp"))
         .limit(20)
     )
     rows = (await session.execute(stmt)).all()
     items: list[dict] = []
     for rank, r in enumerate(rows, start=1):
-        _uid, fbo, uname, email, role, pts, xp, lvl = r
+        _uid, fbo, uname, email, role, xp, lvl = r
         label = (uname or "").strip() or (email.split("@", 1)[0] if email else "") or fbo
         items.append(
             {
                 "title": f"#{rank} {label}",
-                "detail": f"{role} · {email} · total points: {int(pts)} · xp: {int(xp)} · level: {lvl or 'rookie'}",
+                "detail": f"{role} · {email} · xp: {int(xp)} · level: {lvl or 'rookie'}",
                 "count": rank,
             }
         )
@@ -196,7 +192,7 @@ async def other_leaderboard(
         items=items,
         total=len(items),
         note=(
-            f"Top 20 by summed `daily_scores.points` ({scope}). "
+            f"Top 20 by XP ({scope}). "
             "Legacy Flask used `users.total_points` + `daily_scores` for today only; "
             "see `backend/legacy/myle_dashboard_main3/routes/social_routes.py` leaderboard()."
         ),
@@ -648,7 +644,7 @@ async def get_premiere_state(
         video_url = (
             await _s(f"premiere_day{session_day}_video_url")
             or await _s("premiere_video_url")
-            or await _s("enrollment_video_source_url")
+            or await _s("flp_min_billing_video_source_url")
             or None
         )
 

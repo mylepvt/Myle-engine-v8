@@ -19,6 +19,7 @@ from app.api.deps import get_db
 from app.api.capture_public import router as capture_public_router
 from app.api.invoice_public import router as invoice_public_router
 from app.api.legal_public import router as legal_public_router
+from app.api.day2_test_public import router as day2_test_public_router
 from app.api.v1 import api_router
 from app.core.config import settings
 from app.health_migrations import alembic_head_revisions, db_alembic_revision
@@ -30,15 +31,37 @@ from app.middleware.request_id import RequestIdMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.services.scheduled_jobs import (
     job_call_target_reminder,
+    job_closing_pipeline_maintenance,
     job_daily_leader_team_summary,
     job_daily_report_reminder,
-    job_enrollment_proof_alert,
+    job_eos_action_queue_digest,
+    job_eos_automation_rules,
+    job_eos_mission_pregeneration,
+    job_eos_verification_escalations,
+    job_flp_min_billing_proof_alert,
+    job_general_pipeline_maintenance,
     job_leader_basics_enforcement,
+    job_management_updates,
+    job_management_weekly_report,
     job_watch_archive_maintenance,
     job_weekly_compliance_digest,
 )
 
 import os as _os
+
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+_sentry_dsn = _os.environ.get("SENTRY_DSN", "")
+if _sentry_dsn:
+    sentry_sdk.init(
+        dsn=_sentry_dsn,
+        integrations=[FastApiIntegration(), SqlalchemyIntegration()],
+        traces_sample_rate=0.05,
+        environment=_os.environ.get("ENVIRONMENT", "production"),
+        send_default_pii=False,
+    )
 
 _scheduler = AsyncIOScheduler(timezone="Asia/Kolkata")
 _SCHEDULER_ENABLED = _os.environ.get("DISABLE_SCHEDULER", "").lower() not in {"1", "true", "yes"}
@@ -48,9 +71,9 @@ _SCHEDULER_ENABLED = _os.environ.get("DISABLE_SCHEDULER", "").lower() not in {"1
 async def lifespan(_app: FastAPI):
     if _SCHEDULER_ENABLED:
         _scheduler.add_job(
-            job_enrollment_proof_alert,
+            job_flp_min_billing_proof_alert,
             IntervalTrigger(minutes=30),
-            id="enrollment_proof_alert",
+            id="flp_min_billing_proof_alert",
             replace_existing=True,
             misfire_grace_time=120,
         )
@@ -83,6 +106,20 @@ async def lifespan(_app: FastAPI):
             misfire_grace_time=120,
         )
         _scheduler.add_job(
+            job_closing_pipeline_maintenance,
+            IntervalTrigger(minutes=30),
+            id="closing_pipeline_maintenance",
+            replace_existing=True,
+            misfire_grace_time=120,
+        )
+        _scheduler.add_job(
+            job_general_pipeline_maintenance,
+            IntervalTrigger(minutes=30),
+            id="general_pipeline_maintenance",
+            replace_existing=True,
+            misfire_grace_time=120,
+        )
+        _scheduler.add_job(
             job_leader_basics_enforcement,
             CronTrigger(hour=23, minute=30, timezone="Asia/Kolkata"),
             id="leader_basics_enforcement",
@@ -93,6 +130,48 @@ async def lifespan(_app: FastAPI):
             job_daily_leader_team_summary,
             CronTrigger(hour=22, minute=0, timezone="Asia/Kolkata"),
             id="daily_leader_team_summary",
+            replace_existing=True,
+            misfire_grace_time=1800,
+        )
+        _scheduler.add_job(
+            job_management_updates,
+            CronTrigger(hour=21, minute=30, timezone="Asia/Kolkata"),
+            id="management_updates",
+            replace_existing=True,
+            misfire_grace_time=1800,
+        )
+        _scheduler.add_job(
+            job_management_weekly_report,
+            CronTrigger(day_of_week="mon", hour=9, minute=0, timezone="Asia/Kolkata"),
+            id="management_weekly_report",
+            replace_existing=True,
+            misfire_grace_time=3600,
+        )
+        _scheduler.add_job(
+            job_eos_mission_pregeneration,
+            CronTrigger(hour=6, minute=0, timezone="Asia/Kolkata"),
+            id="eos_mission_pregeneration",
+            replace_existing=True,
+            misfire_grace_time=3600,
+        )
+        _scheduler.add_job(
+            job_eos_automation_rules,
+            CronTrigger(hour="10,17", minute=0, timezone="Asia/Kolkata"),
+            id="eos_automation_rules",
+            replace_existing=True,
+            misfire_grace_time=1800,
+        )
+        _scheduler.add_job(
+            job_eos_verification_escalations,
+            CronTrigger(hour="11,18", minute=0, timezone="Asia/Kolkata"),
+            id="eos_verification_escalations",
+            replace_existing=True,
+            misfire_grace_time=1800,
+        )
+        _scheduler.add_job(
+            job_eos_action_queue_digest,
+            CronTrigger(hour=9, minute=0, timezone="Asia/Kolkata"),
+            id="eos_action_queue_digest",
             replace_existing=True,
             misfire_grace_time=1800,
         )
@@ -123,6 +202,7 @@ app.add_middleware(
 app.include_router(api_router, prefix="/api/v1")
 app.include_router(invoice_public_router)
 app.include_router(legal_public_router)
+app.include_router(day2_test_public_router)
 app.include_router(capture_public_router)
 
 _uploads_dir = Path(__file__).resolve().parent / "uploads"

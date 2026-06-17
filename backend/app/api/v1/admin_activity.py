@@ -46,7 +46,8 @@ async def get_activity_feed(
     _require_admin(user)
 
     events = await activity_feed.get_recent_events(db, since_id=since_id, limit=limit)
-    latest_id: int | None = events[-1].get("id") if events else None
+    # events are newest-first → newest is index 0
+    latest_id: int | None = events[0].get("id") if events else None
 
     return {"events": events, "latest_id": latest_id}
 

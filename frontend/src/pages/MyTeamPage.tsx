@@ -40,9 +40,9 @@ function initials(name: string): string {
 }
 
 function avatarTone(role: string): string {
-  if (role === 'admin') return 'bg-amber-400/15 text-amber-300 border border-amber-400/20'
+  if (role === 'admin') return 'bg-amber-400/15 text-amber-600 dark:text-amber-300 border border-amber-400/20'
   if (role === 'leader') return 'bg-primary/15 text-primary border border-primary/20'
-  return 'bg-emerald-400/15 text-emerald-300 border border-emerald-400/20'
+  return 'bg-emerald-400/15 text-emerald-600 dark:text-emerald-300 border border-emerald-400/20'
 }
 
 function OrgBranch({ node, depth }: { node: OrgTreeNode; depth: number }) {
@@ -50,7 +50,7 @@ function OrgBranch({ node, depth }: { node: OrgTreeNode; depth: number }) {
   const hasChildren = node.children.length > 0
 
   return (
-    <div className={cn('min-w-0 space-y-2', depth > 0 ? 'ml-4 border-l border-white/10 pl-3' : '')}>
+    <div className={cn('min-w-0 space-y-2', depth > 0 ? 'ml-4 border-l border-border dark:border-white/10 pl-3' : '')}>
       <button
         type="button"
         onClick={() => hasChildren && setOpen((o) => !o)}
@@ -80,7 +80,7 @@ function OrgBranch({ node, depth }: { node: OrgTreeNode; depth: number }) {
           </div>
 
           {hasChildren ? (
-            <div className="shrink-0 rounded-full border border-white/10 bg-muted/30 p-1 text-muted-foreground">
+            <div className="shrink-0 rounded-full border border-border dark:border-white/10 bg-muted/30 p-1 text-muted-foreground">
               {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
             </div>
           ) : null}
@@ -197,7 +197,7 @@ export function MyTeamPage({ title }: Props) {
       ) : null}
 
       {!initialLoading ? (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]">
           <section className="surface-elevated p-4 md:p-5">
             <div className="mb-4 flex items-center gap-2">
               <div className="rounded border border-primary/20 bg-primary/[0.08] p-2 text-primary">

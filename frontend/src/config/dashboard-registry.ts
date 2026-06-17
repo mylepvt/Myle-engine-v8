@@ -54,8 +54,8 @@ export type DashboardNavSection = {
 /** What to render for product surfaces (includes `shell-api` list pages backed by `SystemStubResponse`). */
 export type FullUiSurface =
   | { kind: 'leads'; listMode: 'active' | 'archived' }
+  | { kind: 'enroll-link' }
   | { kind: 'workboard' }
-  | { kind: 'mindset-lock' }
   | { kind: 'follow-ups' }
   | { kind: 'retarget' }
   | { kind: 'lead-flow' }
@@ -64,14 +64,18 @@ export type FullUiSurface =
   | { kind: 'recycle-bin' }
   | { kind: 'team-members' }
   | { kind: 'team-tracking' }
+  | { kind: 'team-attendance' }
   | { kind: 'leader-os' }
   | { kind: 'my-team' }
   | { kind: 'team-approvals' }
-  | { kind: 'enrollment-approvals' }
+  | { kind: 'flp-min-billing' }
+  | { kind: 'sales-approvals' }
+  | { kind: 'pending-as' }
   | {
       kind: 'system'
       surface: 'training' | 'decision-engine' | 'coaching'
     }
+  | { kind: 'training-progress' }
   | { kind: 'lead-control' }
   | {
       kind: 'analytics'
@@ -98,6 +102,7 @@ export type FullUiSurface =
   | { kind: 'settings-org-tree' }
   | { kind: 'all-members' }
   | { kind: 'whatsapp-panel' }
+  | { kind: 'performer-insights' }
   /** Loads `ShellStubPage` with a GET that returns `SystemStubResponse` (items + note). */
   | { kind: 'shell-api'; apiPath: string }
 
@@ -121,7 +126,7 @@ const SECTION_ORDER: { id: string; label: string }[] = [
   { id: 'work', label: '' },
   { id: 'finance', label: 'Wallet' },
   { id: 'team', label: 'Team' },
-  { id: 'other', label: 'Community' },
+  { id: 'other', label: 'More' },
   { id: 'system', label: 'System' },
   { id: 'settings', label: 'Settings' },
 ]
@@ -148,12 +153,12 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     ui: { kind: 'leads', listMode: 'active' },
   },
   {
-    path: 'work/mindset-lock',
+    path: 'work/enroll-link',
     section: { id: 'work', label: '' },
-    label: 'Mindset Lock',
-    roles: routeRoles('work/mindset-lock'),
+    label: 'Enrollment Link',
+    roles: routeRoles('work/enroll-link'),
     surface: 'full',
-    ui: { kind: 'mindset-lock' },
+    ui: { kind: 'enroll-link' },
   },
   {
     path: 'work/workboard',
@@ -192,6 +197,7 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     section: { id: 'work', label: '' },
     label: 'Add Lead',
     roles: routeRoles('work/add-lead'),
+    navHidden: true,
     surface: 'full',
     ui: { kind: 'leads', listMode: 'active' },
   },
@@ -252,15 +258,39 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     ui: { kind: 'team-reports' },
   },
   {
-    path: 'team/enrollment-approvals',
+    path: 'team/flp-min-billing',
     section: { id: 'team', label: 'Team' },
     label: 'Min. FLP Billing',
     labelByRole: {
       admin: 'Min. FLP Billing (all teams)',
     },
-    roles: routeRoles('team/enrollment-approvals'),
+    roles: routeRoles('team/flp-min-billing'),
     surface: 'full',
-    ui: { kind: 'enrollment-approvals' },
+    ui: { kind: 'flp-min-billing' },
+  },
+  {
+    path: 'team/sales-approvals',
+    section: { id: 'team', label: 'Team' },
+    label: 'CC / Sale Approvals',
+    roles: routeRoles('team/sales-approvals'),
+    surface: 'full',
+    ui: { kind: 'sales-approvals' },
+  },
+  {
+    path: 'work/pending-as',
+    section: { id: 'work', label: '' },
+    label: 'Pending AS Process',
+    roles: routeRoles('work/pending-as'),
+    surface: 'full',
+    ui: { kind: 'pending-as' },
+  },
+  {
+    path: 'team/attendance',
+    section: { id: 'team', label: 'Team' },
+    label: 'Attendance',
+    roles: routeRoles('team/attendance'),
+    surface: 'full',
+    ui: { kind: 'team-attendance' },
   },
   {
     path: 'team/tracking',
@@ -317,6 +347,14 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('system/training'),
     surface: 'full',
     ui: { kind: 'system', surface: 'training' },
+  },
+  {
+    path: 'system/training-progress',
+    section: { id: 'system', label: 'System' },
+    label: 'Training Progress',
+    roles: routeRoles('system/training-progress'),
+    surface: 'full',
+    ui: { kind: 'training-progress' },
   },
   {
     path: 'system/decision-engine',
@@ -401,7 +439,7 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
   {
     path: 'other/training',
     section: { id: 'other', label: 'Community' },
-    label: 'Training',
+    label: 'Community Training',
     roles: routeRoles('other/training'),
     surface: 'full',
     ui: { kind: 'community-training' },
@@ -439,6 +477,14 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     ui: { kind: 'whatsapp-panel' },
   },
   {
+    path: 'system/performer-insights',
+    section: { id: 'system', label: 'System' },
+    label: 'Performer Insights',
+    roles: routeRoles('system/performer-insights'),
+    surface: 'full',
+    ui: { kind: 'performer-insights' },
+  },
+  {
     path: 'settings/app',
     section: { id: 'settings', label: 'Settings' },
     label: 'General',
@@ -451,6 +497,7 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     section: { id: 'settings', label: 'Settings' },
     label: 'Help',
     roles: routeRoles('settings/help'),
+    navHidden: true,
     surface: 'full',
     ui: { kind: 'settings-help' },
   },

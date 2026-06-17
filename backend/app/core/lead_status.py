@@ -5,52 +5,39 @@ Matches the old Myle Dashboard pipeline exactly — do not reorder, only append.
 
 from __future__ import annotations
 
-# Full pipeline sequence — mirrors old app statuses exactly.
+# Active pipeline sequence — mirrors the old Myle-Dashboard flow.
+# Team scope: new_lead → … → video_watched. Leader/admin scope: day1 → … → converted.
+# Handoff at video_watched→day1 (team records the Day-1-live watch, then leader takes over).
+# Per-day ownership: day1 = leader, day2 = admin, day3 = leader (closing).
+# Removed (root): whatsapp_sent (merged into the Day 1 Live link step), paid/Min-FLP-early
+# (FLP billing now wires at Day 3 close), mindset_lock, day4, day5, interview (now a Day 3
+# closing sub-step), pending.
 LEAD_STATUS_SEQUENCE: tuple[str, ...] = (
-    "new_lead",           # Fresh / just added
-    "contacted",          # Called / WhatsApp sent
-    "invited",            # Invited to watch enrollment video
-    "whatsapp_sent",      # WhatsApp message sent before video share
-    "video_sent",         # Day 1 video link shared
-    "video_watched",      # Prospect watched the video
-    "paid",               # Min. FLP Billing paid & approved
-    "mindset_lock",       # 5-minute mindset lock before leader handoff
-    "day1",               # Attending Day 1 session
-    "day2",               # Attending Day 2 session
-    "day3",               # Day 3 closer stage
-    "day4",               # Day 4 MAE batches
-    "day5",               # Day 5 MAE batches
-    "interview",          # Post Day5 interview stage
-    "track_selected",     # Chose Slow/Medium/Fast track
-    "seat_hold",          # Seat hold amount paid
-    "converted",          # Fully converted / closed won
+    "new_lead",           # Fresh / just claimed → Today's tab
+    "contacted",          # Connected on call
+    "invited",            # Invitation call done, ready for Day 1
+    "video_sent",         # Day 1 Live link shared (single open token link)
+    "video_watched",      # Prospect watched the Day 1 link (name+number gate)
+    "day1",               # Day 1 live session — leader
+    "day2",               # Day 2 live session — admin
+    "day3",               # Day 3 closing environment (interview → 2CC → blueprint → stage) — leader
+    "converted",          # Closed won → onboarding
     "lost",               # Closed lost
-    "retarget",           # Re-engage after lost/inactive
+    "retarget",           # Re-engage 1 month later with context
     "inactive",           # No response, on hold
-    "training",           # In 7-day training program
-    "plan_2cc",           # 2-call coaching plan
-    "level_up",           # Upsell / level-up stage
-    "pending",            # Awaiting action / review
+    "training",           # 7-day onboarding training program
     "new",                # Legacy alias kept for backwards compat
 )
 
 LEAD_STATUS_SET: frozenset[str] = frozenset(LEAD_STATUS_SEQUENCE)
 
-# Team role cannot PATCH these statuses (legacy ``TEAM_FORBIDDEN_STATUSES`` — vl2 slugs).
+# Team role cannot PATCH these statuses — all post-handoff (leader/admin) stages.
 TEAM_FORBIDDEN_STATUS_SLUGS: frozenset[str] = frozenset(
     {
+        "day1",
         "day2",
-        "day3",
-        "day4",
-        "day5",
-        "interview",
-        "track_selected",
-        "seat_hold",
         "converted",
-        "level_up",
         "training",
-        "pending",
-        "plan_2cc",
     }
 )
 
@@ -59,27 +46,16 @@ LEAD_STATUS_LABELS: dict[str, str] = {
     "new_lead":       "New Lead",
     "contacted":      "Contacted",
     "invited":        "Invited",
-    "whatsapp_sent":  "WhatsApp Sent",
-    "video_sent":     "Video Sent",
+    "video_sent":     "Enrollment Live",
     "video_watched":  "Video Watched",
-    "paid":           "Min. FLP Billing",
-    "mindset_lock":   "Mindset Lock",
     "day1":           "Day 1",
     "day2":           "Day 2",
     "day3":           "Day 3",
-    "day4":           "Day 4",
-    "day5":           "Day 5",
-    "interview":      "Interview",
-    "track_selected": "Track Selected",
-    "seat_hold":      "Seat Hold",
     "converted":      "Converted",
     "lost":           "Lost",
     "retarget":       "Retarget",
     "inactive":       "Inactive",
     "training":       "Training",
-    "plan_2cc":       "2CC Plan",
-    "level_up":       "Level Up",
-    "pending":        "Pending",
     "new":            "New",
 }
 
@@ -88,22 +64,29 @@ WORKBOARD_COLUMNS: tuple[str, ...] = (
     "new_lead",
     "contacted",
     "invited",
-    "whatsapp_sent",
     "video_sent",
     "video_watched",
-    "paid",
-    "mindset_lock",
     "day1",
     "day2",
     "day3",
-    "day4",
-    "day5",
-    "interview",
-    "track_selected",
-    "seat_hold",
-    "plan_2cc",
-    "pending",
-    "level_up",
     "converted",
     "lost",
 )
+
+# Legacy → new status remap (used by data migration + defensive normalization).
+LEGACY_STATUS_REMAP: dict[str, str] = {
+    "whatsapp_sent":  "video_sent",
+    "paid":           "day1",
+    "mindset_lock":   "day1",
+    "day4":           "day3",
+    "day5":           "day3",
+    "interview":      "day3",
+    "day6":           "day3",
+    "pending":        "day3",
+}
+
+
+def normalize_status_slug(slug: str | None) -> str:
+    """Map any removed/legacy slug onto its active replacement."""
+    s = (slug or "").strip()
+    return LEGACY_STATUS_REMAP.get(s, s)

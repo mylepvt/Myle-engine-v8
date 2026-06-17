@@ -1,4 +1,4 @@
-import { type HTMLAttributes, useMemo, useState } from 'react'
+import { type HTMLAttributes, useEffect, useMemo, useState } from 'react'
 import { Eye, EyeOff, CheckCircle2, XCircle, Smartphone } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
@@ -21,94 +21,62 @@ type SettingsTextField = {
   inputMode?: HTMLAttributes<HTMLInputElement>['inputMode']
 }
 
+const BATCH_VIDEO_FIELDS: readonly SettingsTextField[] = [
+  { key: 'batch_d1_morning_v1', label: 'Day 1 - Morning Video 1', placeholder: 'https://youtube.com/watch?v=...', help: 'Serves as the video URL for watch/batch/d1_morning/1 when a token link is generated.' },
+  { key: 'batch_d1_morning_v2', label: 'Day 1 - Morning Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'Video URL for watch/batch/d1_morning/2.' },
+  { key: 'batch_d1_afternoon_v1', label: 'Day 1 - Afternoon Video 1', placeholder: 'https://youtube.com/watch?v=...', help: 'Video URL for watch/batch/d1_afternoon/1.' },
+  { key: 'batch_d1_afternoon_v2', label: 'Day 1 - Afternoon Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'Video URL for watch/batch/d1_afternoon/2.' },
+  { key: 'batch_d1_evening_v1', label: 'Day 1 - Evening Video 1', placeholder: 'https://youtube.com/watch?v=...', help: 'Video URL for watch/batch/d1_evening/1.' },
+  { key: 'batch_d1_evening_v2', label: 'Day 1 - Evening Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'Video URL for watch/batch/d1_evening/2.' },
+  { key: 'batch_d2_morning_v1', label: 'Day 2 - Morning Video 1', placeholder: 'https://youtube.com/watch?v=...', help: 'Video URL for watch/batch/d2_morning/1.' },
+  { key: 'batch_d2_morning_v2', label: 'Day 2 - Morning Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'Video URL for watch/batch/d2_morning/2.' },
+  { key: 'batch_d2_afternoon_v1', label: 'Day 2 - Afternoon Video 1', placeholder: 'https://youtube.com/watch?v=...', help: 'Video URL for watch/batch/d2_afternoon/1.' },
+  { key: 'batch_d2_afternoon_v2', label: 'Day 2 - Afternoon Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'Video URL for watch/batch/d2_afternoon/2.' },
+  { key: 'batch_d2_evening_v1', label: 'Day 2 - Evening Video 1', placeholder: 'https://youtube.com/watch?v=...', help: 'Video URL for watch/batch/d2_evening/1.' },
+  { key: 'batch_d2_evening_v2', label: 'Day 2 - Evening Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'Video URL for watch/batch/d2_evening/2.' },
+]
+
+const LIVE_SESSION_FIELDS: readonly SettingsTextField[] = [
+  {
+    key: 'live_session_url',
+    label: 'Join Link (Zoom/Meet)',
+    placeholder: 'https://us06web.zoom.us/j/...',
+    help: 'Daily 2 PM session join link. Members tap this on the Home + Live Session screen.',
+  },
+  {
+    key: 'live_session_title',
+    label: 'Topic / Title',
+    placeholder: "Today's Live Session — topic + speaker",
+    help: 'Shown as the heading on the live card.',
+  },
+  {
+    key: 'live_session_schedule',
+    label: 'Time / Meeting ID / Passcode',
+    placeholder: '⏰ 2:00 PM · ID 836 4190 3667 · Passcode 303948',
+    help: 'Free text under the title — put the time, Meeting ID and Passcode here.',
+  },
+]
+
 const CONTENT_LINK_FIELDS: readonly SettingsTextField[] = [
   {
     key: 'content.esbi_model',
     label: 'ESBI Model Video',
     placeholder: 'https://youtube.com/watch?v=...',
-    help: 'Mindset Lock me ESBI Model task ka Watch button is link pe jaata hai.',
+    help: 'Day 2 card — ESBI Model task Watch button uses this link.',
   },
   {
     key: 'content.power_of_network',
     label: 'Power of Network Video',
     placeholder: 'https://youtube.com/watch?v=...',
-    help: 'Mindset Lock me Power of Network task ka Watch button is link pe jaata hai.',
+    help: 'Day 2 card — Power of Network task Watch button uses this link.',
   },
   {
     key: 'content.manik_expose',
     label: 'Expose Video (Manik Aggarwal)',
     placeholder: 'https://youtube.com/watch?v=...',
-    help: 'Day 2 me Expose Video Share button WhatsApp pe yahi link bhejta hai.',
+    help: 'Day 2 — Expose Video Share button sends this link on WhatsApp.',
   },
 ]
-
-const PREMIERE_SETTING_FIELDS: readonly SettingsTextField[] = [
-  {
-    key: 'premiere_day1_video_url',
-    label: 'Day 1 video URL (Power of Digital India)',
-    placeholder: 'https://cdn.example.com/day1.mp4',
-    help: 'Cloudflare R2 / HLS URL for Day 1 premiere session. Plays at 5pm, 6pm, 7pm.',
-  },
-  {
-    key: 'premiere_day2_video_url',
-    label: 'Day 2 video URL (Secret Industry Reveal)',
-    placeholder: 'https://cdn.example.com/day2.mp4',
-    help: 'Cloudflare R2 / HLS URL for Day 2 premiere session. Plays at 5pm, 6pm, 7pm.',
-  },
-  {
-    key: 'premiere_day3_video_url',
-    label: 'Day 3 video URL (Final Day)',
-    placeholder: 'https://cdn.example.com/day3.mp4',
-    help: 'Cloudflare R2 / HLS URL for Day 3 premiere session. Plays at 5pm, 6pm, 7pm.',
-  },
-  {
-    key: 'premiere_session_hours',
-    label: 'Session hours (IST)',
-    placeholder: '17,18,19',
-    inputMode: 'text',
-    help: 'Comma-separated 24h hours when premiere goes live. Default: 5 PM, 6 PM, 7 PM (17,18,19).',
-  },
-  {
-    key: 'premiere_waiting_minutes',
-    label: 'Waiting room opens (minutes before live)',
-    placeholder: '30',
-    inputMode: 'numeric',
-    help: 'How many minutes before each session the waiting room opens. Default: 30.',
-  },
-  {
-    key: 'premiere_duration_minutes',
-    label: 'Session duration (minutes)',
-    placeholder: '49',
-    inputMode: 'numeric',
-    help: 'How long each premiere session runs. Default: 49 minutes.',
-  },
-]
-
-
-type BatchVideoField = { slot: string; label: string }
-
-const BATCH_VIDEO_SLOTS: readonly BatchVideoField[] = [
-  { slot: 'd4_morning', label: 'Day 4 Morning' },
-  { slot: 'd4_afternoon', label: 'Day 4 Afternoon' },
-  { slot: 'd4_evening', label: 'Day 4 Evening' },
-  { slot: 'd5_morning', label: 'Day 5 Morning' },
-  { slot: 'd5_afternoon', label: 'Day 5 Afternoon' },
-  { slot: 'd5_evening', label: 'Day 5 Evening' },
-]
-
-const YOUTUBE_HOSTS = new Set(['youtube.com', 'youtu.be', 'youtube-nocookie.com'])
-
-function looksLikeYouTubeUrl(rawValue: string): boolean {
-  const value = rawValue.trim()
-  if (!value) return false
-  try {
-    const parsed = new URL(value)
-    const host = parsed.hostname.replace(/^(www|m|music)\./i, '').toLowerCase()
-    return YOUTUBE_HOSTS.has(host)
-  } catch {
-    return value.toLowerCase().includes('youtu')
-  }
-}
 
 
 export function SettingsAppPage({ title }: Props) {
@@ -129,34 +97,49 @@ export function SettingsAppPage({ title }: Props) {
   const [waTestPhone, setWaTestPhone] = useState('')
 
   const [q, setQ] = useState('')
-  const [premiereEdits, setPremiereEdits] = useState<Record<string, string>>({})
   const [contentEdits, setContentEdits] = useState<Record<string, string>>({})
-  const [batchVideoEdits, setBatchVideoEdits] = useState<Record<string, string>>({})
+  const [enrollmentUrlValue, setEnrollmentUrlValue] = useState('')
+  const [enrollmentSaveMsg, setEnrollmentSaveMsg] = useState<string | null>(null)
+  const [enrollmentErrorMsg, setEnrollmentErrorMsg] = useState<string | null>(null)
+  const [secureEnrollUrlValue, setSecureEnrollUrlValue] = useState('')
+  const [secureEnrollSaveMsg, setSecureEnrollSaveMsg] = useState<string | null>(null)
+  const [secureEnrollErrorMsg, setSecureEnrollErrorMsg] = useState<string | null>(null)
   const [waEdits, setWaEdits] = useState<Record<string, string>>({})
   const [showAccessToken, setShowAccessToken] = useState(false)
   const [reminderSending, setReminderSending] = useState(false)
   const [reminderSummary, setReminderSummary] = useState<Omit<SendRemindersResponse, 'results'> | null>(null)
   const [reminderResults, setReminderResults] = useState<ReminderResult[] | null>(null)
   const [reminderError, setReminderError] = useState<string | null>(null)
-  const [premiereSaveMsg, setPremiereSaveMsg] = useState<string | null>(null)
+  const [batchEdits, setBatchEdits] = useState<Record<string, string>>({})
+  const [batchSaveMsg, setBatchSaveMsg] = useState<string | null>(null)
+  const [batchErrorMsg, setBatchErrorMsg] = useState<string | null>(null)
+  const [liveSessionEdits, setLiveSessionEdits] = useState<Record<string, string>>({})
+  const [liveSessionSaveMsg, setLiveSessionSaveMsg] = useState<string | null>(null)
+  const [liveSessionErrorMsg, setLiveSessionErrorMsg] = useState<string | null>(null)
   const [contentSaveMsg, setContentSaveMsg] = useState<string | null>(null)
-  const [batchVideoSaveMsg, setBatchVideoSaveMsg] = useState<string | null>(null)
   const [waSaveMsg, setWaSaveMsg] = useState<string | null>(null)
-  const [premiereErrorMsg, setPremiereErrorMsg] = useState<string | null>(null)
   const [contentErrorMsg, setContentErrorMsg] = useState<string | null>(null)
-  const [batchVideoErrorMsg, setBatchVideoErrorMsg] = useState<string | null>(null)
   const [waErrorMsg, setWaErrorMsg] = useState<string | null>(null)
   const settingsSource = appSettingsData?.settings ?? {}
-  const resolvedPremiereValue = (key: string): string =>
-    Object.prototype.hasOwnProperty.call(premiereEdits, key)
-      ? (premiereEdits[key] ?? '')
-      : (settingsSource[key] ?? '')
+
+  useEffect(() => {
+    if (!enrollmentUrlValue && settingsSource.flp_min_billing_video_source_url) {
+      setEnrollmentUrlValue(settingsSource.flp_min_billing_video_source_url)
+    }
+  }, [settingsSource.flp_min_billing_video_source_url])
+  useEffect(() => {
+    if (!secureEnrollUrlValue && settingsSource.enrollment_video_source_url) {
+      setSecureEnrollUrlValue(settingsSource.enrollment_video_source_url)
+    }
+  }, [settingsSource.enrollment_video_source_url])
   const resolvedContentValue = (key: string): string =>
     Object.prototype.hasOwnProperty.call(contentEdits, key) ? (contentEdits[key] ?? '') : (settingsSource[key] ?? '')
-  const resolvedBatchVideoValue = (key: string): string =>
-    Object.prototype.hasOwnProperty.call(batchVideoEdits, key) ? (batchVideoEdits[key] ?? '') : (settingsSource[key] ?? '')
   const resolvedWaValue = (key: string): string =>
     Object.prototype.hasOwnProperty.call(waEdits, key) ? (waEdits[key] ?? '') : (settingsSource[key] ?? '')
+  const resolvedBatchValue = (key: string): string =>
+    Object.prototype.hasOwnProperty.call(batchEdits, key) ? (batchEdits[key] ?? '') : (settingsSource[key] ?? '')
+  const resolvedLiveSessionValue = (key: string): string =>
+    Object.prototype.hasOwnProperty.call(liveSessionEdits, key) ? (liveSessionEdits[key] ?? '') : (settingsSource[key] ?? '')
 
   const rows = useMemo(() => {
     const settings = appSettingsData?.settings ?? {}
@@ -169,6 +152,22 @@ export function SettingsAppPage({ title }: Props) {
       (r) => r.key.toLowerCase().includes(needle) || r.value.toLowerCase().includes(needle),
     )
   }, [appSettingsData, q])
+
+  const handleSaveLiveSession = async () => {
+    setLiveSessionSaveMsg(null)
+    setLiveSessionErrorMsg(null)
+    try {
+      for (const field of LIVE_SESSION_FIELDS) {
+        const value = resolvedLiveSessionValue(field.key).trim()
+        await updateAppSetting.mutateAsync({ key: field.key, value })
+      }
+      setLiveSessionEdits({})
+      setLiveSessionSaveMsg('Live session updated — visible to all members now.')
+      void refetchAppSettings()
+    } catch (error) {
+      setLiveSessionErrorMsg(error instanceof Error ? error.message : 'Could not save live session.')
+    }
+  }
 
   const handleSaveContentLinks = async () => {
     setContentSaveMsg(null)
@@ -186,43 +185,49 @@ export function SettingsAppPage({ title }: Props) {
     }
   }
 
-  const handleSaveBatchVideos = async () => {
-    setBatchVideoSaveMsg(null)
-    setBatchVideoErrorMsg(null)
+  const handleSaveBatchLinks = async () => {
+    setBatchSaveMsg(null)
+    setBatchErrorMsg(null)
     try {
-      for (const { slot } of BATCH_VIDEO_SLOTS) {
-        for (const v of [1, 2] as const) {
-          const key = `batch_${slot}_v${v}`
-          const value = resolvedBatchVideoValue(key).trim()
-          await updateAppSetting.mutateAsync({ key, value })
-        }
+      for (const field of BATCH_VIDEO_FIELDS) {
+        const value = resolvedBatchValue(field.key).trim()
+        await updateAppSetting.mutateAsync({ key: field.key, value })
       }
-      setBatchVideoEdits({})
-      setBatchVideoSaveMsg('Batch video URLs saved.')
+      setBatchEdits({})
+      setBatchSaveMsg('Batch video links saved.')
       void refetchAppSettings()
     } catch (error) {
-      setBatchVideoErrorMsg(error instanceof Error ? error.message : 'Could not save batch video URLs.')
+      setBatchErrorMsg(error instanceof Error ? error.message : 'Could not save batch video links.')
     }
   }
 
-  const handleSavePremiere = async () => {
-    setPremiereSaveMsg(null)
-    setPremiereErrorMsg(null)
-    const videoUrl = resolvedPremiereValue('premiere_video_url').trim()
-    if (videoUrl && looksLikeYouTubeUrl(videoUrl)) {
-      setPremiereErrorMsg('YouTube link allowed nahi hai. Direct hosted .mp4 / HLS URL use karein.')
-      return
-    }
+  const handleSaveEnrollmentUrl = async () => {
+    setEnrollmentSaveMsg(null)
+    setEnrollmentErrorMsg(null)
     try {
-      for (const field of PREMIERE_SETTING_FIELDS) {
-        const value = resolvedPremiereValue(field.key).trim()
-        await updateAppSetting.mutateAsync({ key: field.key, value })
-      }
-      setPremiereEdits({})
-      setPremiereSaveMsg('Premiere settings updated successfully.')
+      await updateAppSetting.mutateAsync({
+        key: 'flp_min_billing_video_source_url',
+        value: enrollmentUrlValue.trim(),
+      })
+      setEnrollmentSaveMsg('Enrollment video URL saved.')
       void refetchAppSettings()
     } catch (error) {
-      setPremiereErrorMsg(error instanceof Error ? error.message : 'Could not update premiere settings.')
+      setEnrollmentErrorMsg(error instanceof Error ? error.message : 'Could not save enrollment video URL.')
+    }
+  }
+
+  const handleSaveSecureEnrollUrl = async () => {
+    setSecureEnrollSaveMsg(null)
+    setSecureEnrollErrorMsg(null)
+    try {
+      await updateAppSetting.mutateAsync({
+        key: 'enrollment_video_source_url',
+        value: secureEnrollUrlValue.trim(),
+      })
+      setSecureEnrollSaveMsg('Secure enrollment link video saved.')
+      void refetchAppSettings()
+    } catch (error) {
+      setSecureEnrollErrorMsg(error instanceof Error ? error.message : 'Could not save secure enrollment video URL.')
     }
   }
 
@@ -249,13 +254,13 @@ export function SettingsAppPage({ title }: Props) {
       key: 'whatsapp.meta.verify_token',
       label: 'Webhook Verify Token',
       placeholder: 'myle-webhook-secret-2026',
-      help: 'Khud banao koi bhi string. Meta Console mein bhi yahi daalna hoga.',
+      help: 'Create any string. Must match what is set in Meta Console.',
     },
     {
       key: 'whatsapp.removal_template_name',
       label: 'Removal Template Name',
       placeholder: 'member_removal_v1',
-      help: 'Meta pe approved template ka exact naam — removal outreach ke liye. Set hone pe 24-hour window ke bahar bhi deliver hoga.',
+      help: 'Exact approved template name in Meta — for removal outreach. Delivers even outside the 24-hour window once set.',
     },
     {
       key: 'whatsapp.removal_template_lang',
@@ -267,11 +272,83 @@ export function SettingsAppPage({ title }: Props) {
       key: 'whatsapp.report_reminder_template_name',
       label: 'Report Reminder Template Name',
       placeholder: 'daily_report_reminder',
-      help: 'Meta pe approved template naam — report reminder ke liye. Set hone pe 24-hour window ke bahar bhi deliver hoga.',
+      help: 'Exact approved template name in Meta — for report reminders. Delivers even outside the 24-hour window once set.',
     },
     {
       key: 'whatsapp.report_reminder_template_lang',
       label: 'Report Reminder Template Language',
+      placeholder: 'en',
+      help: 'Template language code. Default: en',
+    },
+    {
+      key: 'whatsapp.daily_team_summary_template_name',
+      label: 'Daily Team Summary Template',
+      placeholder: 'daily_team_summary',
+      help: 'Leader ko daily report summary — jab kuch members ne submit nahi kiya ho.',
+    },
+    {
+      key: 'whatsapp.daily_team_summary_template_lang',
+      label: '… Language',
+      placeholder: 'en',
+      help: 'Template language code. Default: en',
+    },
+    {
+      key: 'whatsapp.daily_team_summary_all_clear_template_name',
+      label: 'Daily Team Summary (All Clear) Template',
+      placeholder: 'daily_team_summary_all_clear',
+      help: 'Leader ko daily report summary — jab saare members ne submit kar diya ho.',
+    },
+    {
+      key: 'whatsapp.daily_team_summary_all_clear_template_lang',
+      label: '… Language',
+      placeholder: 'en',
+      help: 'Template language code. Default: en',
+    },
+    {
+      key: 'whatsapp.leader_member_removed_template_name',
+      label: 'Member Removed (Leader Alert) Template',
+      placeholder: 'leader_member_removed',
+      help: 'Leader ko alert jab uske team se koi member remove kiya jaye.',
+    },
+    {
+      key: 'whatsapp.leader_member_removed_template_lang',
+      label: '… Language',
+      placeholder: 'en',
+      help: 'Template language code. Default: en',
+    },
+    {
+      key: 'whatsapp.leader_new_member_template_name',
+      label: 'New Member (Leader Alert) Template',
+      placeholder: 'leader_new_member',
+      help: 'Leader ko alert jab naya member approve hoke team mein add ho.',
+    },
+    {
+      key: 'whatsapp.leader_new_member_template_lang',
+      label: '… Language',
+      placeholder: 'en',
+      help: 'Template language code. Default: en',
+    },
+    {
+      key: 'whatsapp.leader_grace_requested_template_name',
+      label: 'Grace Requested (Leader Alert) Template',
+      placeholder: 'leader_grace_requested',
+      help: 'Leader ko alert jab kisi member ne grace period request kiya ho.',
+    },
+    {
+      key: 'whatsapp.leader_grace_requested_template_lang',
+      label: '… Language',
+      placeholder: 'en',
+      help: 'Template language code. Default: en',
+    },
+    {
+      key: 'whatsapp.member_removal_notice_template_name',
+      label: 'Member Removal Notice Template',
+      placeholder: 'member_removal_notice',
+      help: 'Member ko removal notification — jab use system se hata diya jaye.',
+    },
+    {
+      key: 'whatsapp.member_removal_notice_template_lang',
+      label: '… Language',
       placeholder: 'en',
       help: 'Template language code. Default: en',
     },
@@ -316,17 +393,17 @@ export function SettingsAppPage({ title }: Props) {
     <div className="max-w-4xl space-y-6">
       <h1 className="text-ds-h2">{title}</h1>
       <p className="text-sm text-muted-foreground">
-        All rows from <code className="rounded bg-white/10 px-1 text-xs">app_settings</code>. Sensitive
+        All rows from <code className="rounded bg-[color-mix(in_srgb,var(--foreground)_10%,transparent)] px-1 text-xs">app_settings</code>. Sensitive
         secrets should stay in server environment variables — this table is for product toggles and
         copy (e.g. live session text).
       </p>
-      {/* Premiere Settings */}
+
+
       <section className="surface-elevated space-y-3 p-4">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">Live Premiere</h2>
+          <h2 className="text-sm font-semibold text-foreground">🔴 Daily Live Session (2 PM)</h2>
           <p className="text-xs text-muted-foreground">
-            Prospects <code className="rounded bg-white/10 px-1 text-[10px]">/premiere</code> page ka config.
-            Video URL set karo aur session hours define karo. Admin premiere tab mein viewers real-time dikhenge.
+            Roz ka naya Zoom link yahan paste karo. Ye turant sabhi members ke Home aur Live Session screen par dikhega.
           </p>
         </div>
 
@@ -337,22 +414,16 @@ export function SettingsAppPage({ title }: Props) {
             {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load app settings.'}
           </div>
         ) : (
-          <div className="grid gap-3">
-            {PREMIERE_SETTING_FIELDS.map((field) => (
+          <div className="grid grid-cols-1 gap-3">
+            {LIVE_SESSION_FIELDS.map((field) => (
               <label key={field.key} className="block text-sm">
                 <span className="mb-1 block text-ds-caption text-muted-foreground">{field.label}</span>
                 <input
                   type="text"
-                  inputMode={field.inputMode}
-                  value={resolvedPremiereValue(field.key)}
-                  onChange={(e) =>
-                    setPremiereEdits((prev) => ({
-                      ...prev,
-                      [field.key]: e.target.value,
-                    }))
-                  }
+                  value={resolvedLiveSessionValue(field.key)}
+                  onChange={(e) => setLiveSessionEdits((prev) => ({ ...prev, [field.key]: e.target.value }))}
                   placeholder={field.placeholder}
-                  className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                  className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
                 />
                 <span className="mt-1 block text-muted-foreground/80">{field.help}</span>
               </label>
@@ -364,13 +435,13 @@ export function SettingsAppPage({ title }: Props) {
           <button
             type="button"
             disabled={updateAppSetting.isPending || appSettingsPending || appSettingsError}
-            onClick={() => void handleSavePremiere()}
+            onClick={() => void handleSaveLiveSession()}
             className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-medium text-primary disabled:opacity-50"
           >
-            {updateAppSetting.isPending ? 'Saving...' : 'Save premiere settings'}
+            {updateAppSetting.isPending ? 'Saving...' : 'Update live session'}
           </button>
-          {premiereSaveMsg ? <p className="text-xs text-emerald-400">{premiereSaveMsg}</p> : null}
-          {premiereErrorMsg ? <p className="text-xs text-destructive">{premiereErrorMsg}</p> : null}
+          {liveSessionSaveMsg ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{liveSessionSaveMsg}</p> : null}
+          {liveSessionErrorMsg ? <p className="text-xs text-destructive">{liveSessionErrorMsg}</p> : null}
         </div>
       </section>
 
@@ -378,7 +449,7 @@ export function SettingsAppPage({ title }: Props) {
         <div>
           <h2 className="text-sm font-semibold text-foreground">Content Links</h2>
           <p className="text-xs text-muted-foreground">
-            ESBI Model, Power of Network, aur Expose Video ke links yahan set karo. Ye links Mindset Lock aur Day 2 cards mein directly use hote hain.
+            ESBI Model, Power of Network, aur Expose Video ke links yahan set karo. Ye links Day 2 cards mein directly use hote hain.
           </p>
         </div>
 
@@ -389,7 +460,7 @@ export function SettingsAppPage({ title }: Props) {
             {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load app settings.'}
           </div>
         ) : (
-          <div className="grid gap-3">
+          <div className="grid grid-cols-1 gap-3">
             {CONTENT_LINK_FIELDS.map((field) => (
               <label key={field.key} className="block text-sm">
                 <span className="mb-1 block text-ds-caption text-muted-foreground">{field.label}</span>
@@ -398,7 +469,7 @@ export function SettingsAppPage({ title }: Props) {
                   value={resolvedContentValue(field.key)}
                   onChange={(e) => setContentEdits((prev) => ({ ...prev, [field.key]: e.target.value }))}
                   placeholder={field.placeholder}
-                  className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                  className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
                 />
                 <span className="mt-1 block text-muted-foreground/80">{field.help}</span>
               </label>
@@ -415,16 +486,17 @@ export function SettingsAppPage({ title }: Props) {
           >
             {updateAppSetting.isPending ? 'Saving...' : 'Save content links'}
           </button>
-          {contentSaveMsg ? <p className="text-xs text-emerald-400">{contentSaveMsg}</p> : null}
+          {contentSaveMsg ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{contentSaveMsg}</p> : null}
           {contentErrorMsg ? <p className="text-xs text-destructive">{contentErrorMsg}</p> : null}
         </div>
       </section>
 
       <section className="surface-elevated space-y-3 p-4">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">Batch Videos (Day 4 &amp; 5)</h2>
+          <h2 className="text-sm font-semibold text-foreground">Batch Video Links</h2>
           <p className="text-xs text-muted-foreground">
-            Day 4 aur Day 5 ke batch watch links ke liye video URLs. Har slot ke 2 versions hain (v1 aur v2). Lead ke paas jo link jaata hai usmein yahi URLs play hote hain.
+            Day 1 aur Day 2 ke 6 slots (Morning/Afternoon/Evening) × 2 videos = 12 URL yahan set karo.
+            These YouTube links are served directly on watch pages when a lead opens their token link.
           </p>
         </div>
 
@@ -435,25 +507,35 @@ export function SettingsAppPage({ title }: Props) {
             {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load app settings.'}
           </div>
         ) : (
-          <div className="grid gap-4">
-            {BATCH_VIDEO_SLOTS.map(({ slot, label }) => (
-              <div key={slot} className="space-y-2">
-                <p className="text-xs font-medium text-foreground">{label}</p>
-                {([1, 2] as const).map((v) => {
-                  const key = `batch_${slot}_v${v}`
-                  return (
-                    <label key={key} className="block text-sm">
-                      <span className="mb-1 block text-ds-caption text-muted-foreground">V{v} URL</span>
-                      <input
-                        type="text"
-                        value={resolvedBatchVideoValue(key)}
-                        onChange={(e) => setBatchVideoEdits((prev) => ({ ...prev, [key]: e.target.value }))}
-                        placeholder="https://cdn.example.com/batch-d5-afternoon.mp4"
-                        className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
-                      />
-                    </label>
-                  )
-                })}
+          <div className="grid grid-cols-1 gap-3">
+            {(['d1', 'd2'] as const).map((day) => (
+              <div key={day} className="rounded-lg border border-border dark:border-white/10 p-3">
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Day {day === 'd1' ? '1' : '2'}
+                </h3>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  {(['morning', 'afternoon', 'evening'] as const).map((slot) => (
+                    <div key={`${day}_${slot}`} className="space-y-2">
+                      <p className="text-ds-caption font-medium capitalize text-muted-foreground/80">{slot}</p>
+                      {([1, 2] as const).map((v) => {
+                        const key = `batch_${day}_${slot}_v${v}`
+                        const field = BATCH_VIDEO_FIELDS.find((f) => f.key === key)
+                        return (
+                          <label key={key} className="block text-sm">
+                            <span className="mb-0.5 block text-ds-caption text-muted-foreground/60">Video {v}</span>
+                            <input
+                              type="text"
+                              value={resolvedBatchValue(key)}
+                              onChange={(e) => setBatchEdits((prev) => ({ ...prev, [key]: e.target.value }))}
+                              placeholder={field?.placeholder}
+                              className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                            />
+                          </label>
+                        )
+                      })}
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
@@ -463,21 +545,21 @@ export function SettingsAppPage({ title }: Props) {
           <button
             type="button"
             disabled={updateAppSetting.isPending || appSettingsPending || appSettingsError}
-            onClick={() => void handleSaveBatchVideos()}
+            onClick={() => void handleSaveBatchLinks()}
             className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-medium text-primary disabled:opacity-50"
           >
-            {updateAppSetting.isPending ? 'Saving...' : 'Save batch video URLs'}
+            {updateAppSetting.isPending ? 'Saving...' : 'Save batch video links'}
           </button>
-          {batchVideoSaveMsg ? <p className="text-xs text-emerald-400">{batchVideoSaveMsg}</p> : null}
-          {batchVideoErrorMsg ? <p className="text-xs text-destructive">{batchVideoErrorMsg}</p> : null}
+          {batchSaveMsg ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{batchSaveMsg}</p> : null}
+          {batchErrorMsg ? <p className="text-xs text-destructive">{batchErrorMsg}</p> : null}
         </div>
       </section>
 
       <section className="surface-elevated space-y-3 p-4">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">Day 6 Final Video</h2>
+          <h2 className="text-sm font-semibold text-foreground">Enrollment Live Video</h2>
           <p className="text-xs text-muted-foreground">
-            Day 6 ke 6 PM aur 8 PM dono batches ke liye ek hi video URL. Cloudflare R2 ya koi bhi direct hosted URL. 6 PM se pehle lead ke paas link hoga lekin video locked rahega — 6 PM aur 8 PM IST pe automatically unlock hota hai.
+            When "Send Enrollment-Live video" is sent from the calling board, the lead receives a token link. Set the video URL here.
           </p>
         </div>
 
@@ -489,15 +571,15 @@ export function SettingsAppPage({ title }: Props) {
           </div>
         ) : (
           <label className="block text-sm">
-            <span className="mb-1 block text-ds-caption text-muted-foreground">Video URL (6 PM &amp; 8 PM dono ke liye)</span>
+            <span className="mb-1 block text-ds-caption text-muted-foreground">Video URL</span>
             <input
               type="text"
-              value={resolvedBatchVideoValue('batch_d6_video_url')}
-              onChange={(e) => setBatchVideoEdits((prev) => ({ ...prev, batch_d6_video_url: e.target.value }))}
-              placeholder="https://pub-xxxx.r2.dev/final-video.mp4"
-              className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+              value={enrollmentUrlValue}
+              onChange={(e) => setEnrollmentUrlValue(e.target.value)}
+              placeholder="https://pub-xxxx.r2.dev/enrollment.mp4"
+              className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
             />
-            <span className="mt-1 block text-muted-foreground/80">R2 public URL, .mp4 / .webm / HLS — YouTube nahi.</span>
+            <span className="mt-1 block text-muted-foreground/80">Direct hosted URL (R2 / .mp4 / HLS) — YouTube nahi.</span>
           </label>
         )}
 
@@ -505,11 +587,55 @@ export function SettingsAppPage({ title }: Props) {
           <button
             type="button"
             disabled={updateAppSetting.isPending || appSettingsPending || appSettingsError}
-            onClick={() => void updateAppSetting.mutateAsync({ key: 'batch_d6_video_url', value: resolvedBatchVideoValue('batch_d6_video_url').trim() }).then(() => { setBatchVideoEdits((prev) => { const next = { ...prev }; delete next['batch_d6_video_url']; return next }); void refetchAppSettings() })}
+            onClick={() => void handleSaveEnrollmentUrl()}
             className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-medium text-primary disabled:opacity-50"
           >
-            {updateAppSetting.isPending ? 'Saving...' : 'Save Day 6 video URL'}
+            {updateAppSetting.isPending ? 'Saving...' : 'Save enrollment video URL'}
           </button>
+          {enrollmentSaveMsg ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{enrollmentSaveMsg}</p> : null}
+          {enrollmentErrorMsg ? <p className="text-xs text-destructive">{enrollmentErrorMsg}</p> : null}
+        </div>
+      </section>
+
+      <section className="surface-elevated space-y-3 p-4">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">New Enrollment Link (Secure Video)</h2>
+          <p className="text-xs text-muted-foreground">
+            Secure enrollment link (Today tab 🔗 button + Enrollment Link page) sends this video. Set Cloudflare R2 link/key.
+          </p>
+        </div>
+
+        {appSettingsPending ? (
+          <Skeleton className="h-9 w-full" />
+        ) : appSettingsError ? (
+          <div className="text-sm text-destructive" role="alert">
+            {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load app settings.'}
+          </div>
+        ) : (
+          <label className="block text-sm">
+            <span className="mb-1 block text-ds-caption text-muted-foreground">Cloudflare R2 link / object key</span>
+            <input
+              type="text"
+              value={secureEnrollUrlValue}
+              onChange={(e) => setSecureEnrollUrlValue(e.target.value)}
+              placeholder="videos/enrollment/master.mp4  ya  https://pub-xxxx.r2.dev/enrollment.mp4"
+              className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+            />
+            <span className="mt-1 block text-muted-foreground/80">R2 object key (recommended — private + signed) ya direct R2 URL. YouTube nahi.</span>
+          </label>
+        )}
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            disabled={updateAppSetting.isPending || appSettingsPending || appSettingsError}
+            onClick={() => void handleSaveSecureEnrollUrl()}
+            className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-medium text-primary disabled:opacity-50"
+          >
+            {updateAppSetting.isPending ? 'Saving...' : 'Save enrollment link video'}
+          </button>
+          {secureEnrollSaveMsg ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{secureEnrollSaveMsg}</p> : null}
+          {secureEnrollErrorMsg ? <p className="text-xs text-destructive">{secureEnrollErrorMsg}</p> : null}
         </div>
       </section>
 
@@ -521,8 +647,8 @@ export function SettingsAppPage({ title }: Props) {
             {waStatusFetching ? (
               <span className="text-[11px] text-muted-foreground">Checking…</span>
             ) : waStatus?.connected === true ? (
-              <span className="flex items-center gap-1 text-[11px] text-emerald-400">
-                <span className="h-2 w-2 rounded-full bg-emerald-400" />
+              <span className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-400" />
                 Connected
                 {waStatus.display_phone_number ? (
                   <span className="text-muted-foreground">({waStatus.display_phone_number})</span>
@@ -541,12 +667,12 @@ export function SettingsAppPage({ title }: Props) {
             ) : null}
           </div>
           <p className="text-xs text-muted-foreground">
-            Removed member ko automatically WhatsApp message bhejne ke liye Meta credentials yahan set karo.
+            Set Meta credentials here for automatic WhatsApp messages to removed members.
             Ye settings env vars se override karti hain.
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             Webhook URL jo Meta Console mein dalna hai:{' '}
-            <code className="rounded bg-white/10 px-1 text-[10px]">
+            <code className="rounded bg-[color-mix(in_srgb,var(--foreground)_10%,transparent)] px-1 text-[10px]">
               https://yourdomain.com/api/v1/webhooks/whatsapp/reply
             </code>
           </p>
@@ -561,7 +687,7 @@ export function SettingsAppPage({ title }: Props) {
             {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load settings.'}
           </div>
         ) : (
-          <div className="grid gap-3">
+          <div className="grid grid-cols-1 gap-3">
             {WA_FIELDS.map((field) => {
               const isTokenField = field.key === 'whatsapp.meta.access_token'
               return (
@@ -574,7 +700,7 @@ export function SettingsAppPage({ title }: Props) {
                       onChange={(e) => setWaEdits((prev) => ({ ...prev, [field.key]: e.target.value }))}
                       placeholder={field.placeholder}
                       autoComplete="off"
-                      className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 pr-9 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                      className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 pr-9 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
                     />
                     {isTokenField && (
                       <button
@@ -603,7 +729,7 @@ export function SettingsAppPage({ title }: Props) {
           >
             {updateAppSetting.isPending ? 'Saving...' : 'Save WhatsApp settings'}
           </button>
-          {waSaveMsg ? <p className="text-xs text-emerald-400">{waSaveMsg}</p> : null}
+          {waSaveMsg ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{waSaveMsg}</p> : null}
           {waErrorMsg ? <p className="text-xs text-destructive">{waErrorMsg}</p> : null}
           {waStatus?.connected === false && waStatus.error ? (
             <p className="text-xs text-destructive/80">API error: {waStatus.error}</p>
@@ -611,10 +737,10 @@ export function SettingsAppPage({ title }: Props) {
         </div>
 
         {/* Test send — debug delivery */}
-        <div className="mt-4 border-t border-white/10 pt-3">
-          <p className="mb-2 text-xs font-medium text-foreground">Test message bhejo (debug)</p>
-          <p className="mb-2 text-[11px] text-muted-foreground">
-            Kisi number pe test message bhej ke Meta ka exact response dekho — pata chalega delivery ho rahi hai ya nahi.
+        <div className="mt-4 border-t border-border dark:border-white/10 pt-3">
+          <p className="mb-2 text-xs font-medium text-foreground">Send test message (debug)</p>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Send a test message to any number to see Meta's exact response — check if delivery is working.
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <input
@@ -622,7 +748,7 @@ export function SettingsAppPage({ title }: Props) {
               value={waTestPhone}
               onChange={(e) => setWaTestPhone(e.target.value)}
               placeholder="10-digit number, e.g. 7230930370"
-              className="flex-1 min-w-[200px] rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-sm text-foreground"
+              className="flex-1 min-w-[200px] rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-sm text-foreground"
             />
             <button
               type="button"
@@ -639,26 +765,26 @@ export function SettingsAppPage({ title }: Props) {
             </p>
           ) : null}
           {waTestSend.data ? (
-            <pre className="mt-2 max-h-64 overflow-auto rounded bg-black/40 p-3 text-[11px] text-emerald-300 ring-1 ring-white/10">
+            <pre className="mt-2 max-h-64 overflow-auto rounded bg-black/40 p-3 text-[11px] text-emerald-500 dark:text-emerald-300 ring-1 ring-white/10">
               {JSON.stringify(waTestSend.data, null, 2)}
             </pre>
           ) : null}
         </div>
 
         {/* Report reminder resend panel */}
-        <div className="mt-4 border-t border-white/10 pt-3">
-          <p className="mb-1 text-xs font-medium text-foreground">Report reminder manually bhejo</p>
+        <div className="mt-4 border-t border-border dark:border-white/10 pt-3">
+          <p className="mb-1 text-xs font-medium text-foreground">Send report reminder manually</p>
           <p className="mb-3 text-[11px] text-muted-foreground">
-            Aaj ki report abhi tak submit nahi ki aur pehle reminder nahi mila — unhe WhatsApp pe reminder bhejo.
-            Jinhe aaj already reminder mila hai wo skip honge.
+            Send WhatsApp reminders to members who haven't submitted today's report and haven't received a reminder yet.
+            Members who already got a reminder today will be skipped.
           </p>
           <button
             type="button"
             disabled={reminderSending}
             onClick={() => void handleSendReportReminders()}
-            className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-400 hover:bg-amber-500/20 disabled:opacity-50"
+            className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-500/20 disabled:opacity-50 dark:text-amber-400"
           >
-            {reminderSending ? 'Bhej raha hoon…' : 'Send report reminders'}
+            {reminderSending ? 'Sending…' : 'Send report reminders'}
           </button>
 
           {reminderError ? (
@@ -667,36 +793,36 @@ export function SettingsAppPage({ title }: Props) {
 
           {reminderSummary ? (
             <div className="mt-3 flex flex-wrap gap-3">
-              <span className="text-[11px] font-semibold text-emerald-400">✅ {reminderSummary.sent} sent</span>
+              <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">✅ {reminderSummary.sent} sent</span>
               {reminderSummary.failed > 0 && (
-                <span className="text-[11px] font-semibold text-red-400">❌ {reminderSummary.failed} failed</span>
+                <span className="text-[11px] font-semibold text-red-600 dark:text-red-400">❌ {reminderSummary.failed} failed</span>
               )}
               {reminderSummary.no_phone > 0 && (
                 <span className="text-[11px] font-semibold text-muted-foreground/60">📵 {reminderSummary.no_phone} no phone</span>
               )}
               {reminderSummary.sent === 0 && reminderSummary.failed === 0 && reminderSummary.no_phone === 0 && (
-                <span className="text-[11px] text-muted-foreground">Koi pending nahi — sab ne report submit kar di ya pehle reminder mil chuka hai.</span>
+                <span className="text-[11px] text-muted-foreground">No pending — everyone submitted or already reminded.</span>
               )}
             </div>
           ) : null}
 
           {reminderResults && reminderResults.length > 0 ? (
-            <div className="mt-3 max-h-64 overflow-y-auto rounded border border-white/[0.08] bg-black/30">
+            <div className="mt-3 max-h-64 overflow-y-auto rounded border border-border dark:border-white/[0.08] bg-black/30">
               {reminderResults.map((r) => (
-                <div key={r.user_id} className="flex items-center gap-2 border-b border-white/[0.05] px-3 py-1.5 last:border-0">
+                <div key={r.user_id} className="flex items-center gap-2 border-b border-border dark:border-white/[0.05] px-3 py-1.5 last:border-0">
                   {r.status === 'sent' || r.status === 'stub'
-                    ? <CheckCircle2 className="size-3 shrink-0 text-emerald-400" />
+                    ? <CheckCircle2 className="size-3 shrink-0 text-emerald-600 dark:text-emerald-400" />
                     : r.status === 'no_phone'
                     ? <Smartphone className="size-3 shrink-0 text-muted-foreground/40" />
-                    : <XCircle className="size-3 shrink-0 text-red-400" />}
+                    : <XCircle className="size-3 shrink-0 text-red-600 dark:text-red-400" />}
                   <span className="flex-1 truncate text-[11px] text-foreground">{r.name}</span>
                   <span className="text-[10px] text-muted-foreground/50">
                     {r.phone_tail !== '—' ? `…${r.phone_tail}` : '—'}
                   </span>
                   <span className={`text-[10px] font-medium ${
-                    r.status === 'sent' || r.status === 'stub' ? 'text-emerald-400'
+                    r.status === 'sent' || r.status === 'stub' ? 'text-emerald-600 dark:text-emerald-400'
                     : r.status === 'no_phone' ? 'text-muted-foreground/40'
-                    : 'text-red-400'
+                    : 'text-red-600 dark:text-red-400'
                   }`}>
                     {r.status === 'stub' ? 'sent' : r.status}
                   </span>
@@ -707,6 +833,9 @@ export function SettingsAppPage({ title }: Props) {
         </div>
       </section>
 
+      {/* XP Recalc — admin only */}
+      <XpRecalcSection />
+
       {appSettingsData ? (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -715,7 +844,7 @@ export function SettingsAppPage({ title }: Props) {
               type="button"
               disabled={appSettingsPending}
               onClick={() => void refetchAppSettings()}
-              className="rounded-md bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground hover:bg-white/[0.08] disabled:opacity-50"
+              className="rounded-md bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_8%,transparent)] disabled:opacity-50"
             >
               {appSettingsPending ? 'Refreshing…' : 'Refresh'}
             </button>
@@ -726,20 +855,20 @@ export function SettingsAppPage({ title }: Props) {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search…"
-              className="w-full rounded-lg border border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+              className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
             />
           </label>
           <div className="surface-elevated max-h-[min(32rem,70vh)] overflow-auto p-3">
             <table className="w-full border-collapse text-left text-sm">
               <thead className="sticky top-0 z-[1] bg-muted/40 backdrop-blur-sm">
-                <tr className="border-b border-white/10 text-ds-caption text-muted-foreground">
+                <tr className="border-b border-border dark:border-white/10 text-ds-caption text-muted-foreground">
                   <th className="py-2 pr-3 font-medium">Key</th>
                   <th className="py-2 font-medium">Value</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r, idx) => (
-                  <tr key={r.key ? `${r.key}:${idx}` : `row-${idx}`} className="border-b border-white/[0.06] align-top">
+                  <tr key={r.key ? `${r.key}:${idx}` : `row-${idx}`} className="border-b border-border dark:border-white/[0.06] align-top">
                     <td className="whitespace-nowrap py-2 pr-3 font-mono text-xs text-primary">{r.key}</td>
                     <td className="py-2 break-all text-muted-foreground">{r.value || '—'}</td>
                   </tr>
@@ -761,5 +890,87 @@ export function SettingsAppPage({ title }: Props) {
         </div>
       ) : null}
     </div>
+  )
+}
+
+function XpRecalcSection() {
+  const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const [result, setResult] = useState<string | null>(null)
+  const [showConfirm, setShowConfirm] = useState(false)
+
+  const handleRecalc = async () => {
+    setShowConfirm(false)
+    setState('loading')
+    setResult(null)
+    try {
+      const res = await apiFetch('/api/v1/xp/admin/recalc-cutoff', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail ?? 'Failed')
+      setResult(data.message ?? `Done — ${data.users_updated} users, ${data.events_deleted} events deleted.`)
+      setState('done')
+    } catch (err) {
+      setResult(err instanceof Error ? err.message : 'Unknown error')
+      setState('error')
+    }
+  }
+
+  return (
+    <section className="surface-elevated space-y-3 p-4">
+      <div>
+        <h2 className="text-sm font-semibold text-foreground">XP Reset (Pre-June Cleanup)</h2>
+        <p className="text-xs text-muted-foreground">
+          Deletes all XP points before June 1st, keeps points from June onwards. Admin-only.
+        </p>
+      </div>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          disabled={state === 'loading'}
+          onClick={() => setShowConfirm(true)}
+          className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-500/20 disabled:opacity-50 dark:text-amber-400"
+        >
+          {state === 'loading' ? 'Processing…' : 'Reset Pre-June XP'}
+        </button>
+        {result && (
+          <span className={`text-xs ${state === 'error' ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
+            {result}
+          </span>
+        )}
+      </div>
+
+      {showConfirm ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowConfirm(false) }}
+          onKeyDown={(e) => { if (e.key === 'Escape') setShowConfirm(false) }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm XP reset"
+        >
+          <div className="mx-4 w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-2xl">
+            <h3 className="text-lg font-semibold text-foreground">Confirm XP Reset</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              This will permanently delete all XP events before June 1st. This action cannot be undone.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowConfirm(false)}
+                className="rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleRecalc()}
+                className="rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90"
+              >
+                Yes, Reset XP
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </section>
   )
 }

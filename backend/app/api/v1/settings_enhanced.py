@@ -21,16 +21,16 @@ from app.schemas.settings import (
     SystemConfigurationUpdateRequest,
     AppSettingsResponse,
     AppSettingUpdateRequest,
-    EnrollmentVideoUploadResponse,
+    FlpMinBillingVideoUploadResponse,
     SystemUsersSummaryResponse,
     AuditLogResponse,
 )
-from app.services.enrollment_video_uploads import (
-    cleanup_replaced_managed_enrollment_video,
-    remove_managed_enrollment_video_file,
-    save_enrollment_video_file,
+from app.services.flp_min_billing_video_uploads import (
+    cleanup_replaced_managed_flp_min_billing_video,
+    remove_managed_flp_min_billing_video_file,
+    save_flp_min_billing_video_file,
 )
-from app.services.enrollment_video import normalize_video_source_url
+from app.services.flp_min_billing_video import normalize_video_source_url
 from app.services.settings_service import SettingsService
 
 router = APIRouter()
@@ -242,8 +242,8 @@ async def create_or_update_app_setting(
     try:
         previous_source = None
         value = request.value
-        if request.key == "enrollment_video_source_url":
-            previous_source = await service.get_app_setting("enrollment_video_source_url")
+        if request.key == "flp_min_billing_video_source_url":
+            previous_source = await service.get_app_setting("flp_min_billing_video_source_url")
             value = normalize_video_source_url(request.value)
         success, message = await service.update_app_setting(
             request.key, value, user.user_id
@@ -253,8 +253,8 @@ async def create_or_update_app_setting(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail=message,
             )
-        if request.key == "enrollment_video_source_url":
-            cleanup_replaced_managed_enrollment_video(previous_source, value)
+        if request.key == "flp_min_billing_video_source_url":
+            cleanup_replaced_managed_flp_min_billing_video(previous_source, value)
         return {"message": message}
     except HTTPException:
         raise
@@ -265,34 +265,34 @@ async def create_or_update_app_setting(
         )
 
 
-@router.post("/system/app-settings/enrollment-video/upload", response_model=EnrollmentVideoUploadResponse)
-async def upload_enrollment_video(
+@router.post("/system/app-settings/enrollment-video/upload", response_model=FlpMinBillingVideoUploadResponse)
+async def upload_flp_min_billing_video(
     file: Annotated[UploadFile, File()],
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
-) -> EnrollmentVideoUploadResponse:
+) -> FlpMinBillingVideoUploadResponse:
     """Upload enrollment video into backend/uploads and update the app setting automatically."""
     _require_admin(user)
 
     service = SettingsService(session)
-    previous_source = await service.get_app_setting("enrollment_video_source_url")
+    previous_source = await service.get_app_setting("flp_min_billing_video_source_url")
 
-    ok, message, source_url = await save_enrollment_video_file(file)
+    ok, message, source_url = await save_flp_min_billing_video_file(file)
     if not ok or not source_url:
         raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=message)
 
     success, update_message = await service.update_app_setting(
-        "enrollment_video_source_url",
+        "flp_min_billing_video_source_url",
         source_url,
         user.user_id,
     )
     if not success:
-        remove_managed_enrollment_video_file(source_url)
+        remove_managed_flp_min_billing_video_file(source_url)
         raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=update_message)
 
-    cleanup_replaced_managed_enrollment_video(previous_source, source_url)
+    cleanup_replaced_managed_flp_min_billing_video(previous_source, source_url)
 
-    return EnrollmentVideoUploadResponse(
+    return FlpMinBillingVideoUploadResponse(
         source_url=source_url,
         file_name=source_url.rsplit("/", 1)[-1],
         message=message,

@@ -9,7 +9,7 @@ export type LosMemberRow = {
   calls_today: number
   call_target: number
   call_gate_met: boolean
-  enrollments: number
+  flp_min_billings: number
   fu_due: number
   is_active: boolean
 }
@@ -28,6 +28,7 @@ export type LosSnapshot = {
   members: LosMemberRow[]
   leader_score: number
   leader_tier: 'strong' | 'average' | 'at_risk'
+  basics_streak: number
 }
 
 async function fetchLosSnapshot(activationsTarget: number): Promise<LosSnapshot> {

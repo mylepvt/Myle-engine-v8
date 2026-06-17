@@ -5,7 +5,7 @@ import { apiFetch } from '@/lib/api'
 export type TeamTodayStats = {
   claimed_today: number
   calls_today: number
-  enrolled_today: number
+  flp_min_billing_today: number
 }
 
 async function fetchTeamTodayStats(): Promise<TeamTodayStats> {
@@ -15,7 +15,7 @@ async function fetchTeamTodayStats(): Promise<TeamTodayStats> {
     return {
       claimed_today: 0,
       calls_today: 0,
-      enrolled_today: 0,
+      flp_min_billing_today: 0,
     }
   }
   if (!res.ok) {

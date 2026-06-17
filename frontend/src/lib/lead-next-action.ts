@@ -1,4 +1,5 @@
 import { LEAD_STATUS_OPTIONS, PRIMARY_USER_FLOW_STATUSES, USER_OUTCOME_STATUSES } from '@/hooks/use-leads-query'
+import { whatsAppChatWithTextHref } from './phone-links'
 
 /** Preferred primary action order — mirrors the real team journey instead of legacy compat stages. */
 export const LEAD_PIPELINE_ORDER: readonly string[] = [
@@ -7,23 +8,15 @@ export const LEAD_PIPELINE_ORDER: readonly string[] = [
 ]
 
 const PRIMARY_NEXT_BY_STATUS: Record<string, string> = {
-  new_lead: 'invited',
+  new_lead: 'contacted',
   contacted: 'invited',
   invited: 'video_sent',
-  whatsapp_sent: 'video_sent',
   video_sent: 'video_watched',
-  video_watched: 'paid',
-  paid: 'day1',
-  day1: 'mindset_lock',
-  mindset_lock: 'day2',
+  // Team scope ends here: marking watched hands the lead off to the leader for Day 1.
+  video_watched: 'day1',
+  day1: 'day2',
   day2: 'day3',
-  day3: 'interview',
-  interview: 'track_selected',
-  track_selected: 'seat_hold',
-  seat_hold: 'plan_2cc',
-  plan_2cc: 'pending',
-  pending: 'level_up',
-  level_up: 'converted',
+  day3: 'converted',
 }
 
 const VISIBLE_ALTERNATIVE_TARGETS = new Set<string>([
@@ -78,21 +71,18 @@ export function primaryActionLabel(targetSlug: string): string {
     invited: 'Mark invited',
     video_sent: 'Send video (WhatsApp) → mark sent',
     video_watched: 'Mark video watched',
-    paid: 'Mark paid Enroll',
-    mindset_lock: 'Open After Day 1 mindset lock',
+    paid: 'Mark paid Min. FLP Billing',
     day1: 'Move to Day 1',
     day2: 'Move to Day 2',
     day3: 'Move to Day 3',
-    interview: 'Move to Day 4',
-    track_selected: 'Move to Day 5',
-    seat_hold: 'Move to Day 6',
+    day4: 'Move to Day 4',
+    day5: 'Move to Day 5',
+    interview: 'Move to Day 6 interview',
     converted: 'Mark converted',
     lost: 'Mark lost',
     retarget: 'Move to Retarget',
     inactive: 'Mark inactive',
     training: 'Move to Training',
-    plan_2cc: 'Move to 2CC plan',
-    level_up: 'Move to final stage',
     pending: 'Move to pending process',
     new: 'Set legacy New',
   }
@@ -102,11 +92,10 @@ export function primaryActionLabel(targetSlug: string): string {
 /** Open WhatsApp with a short video message — only meaningful when moving to `video_sent`. */
 export function buildWhatsAppVideoUrl(phone: string | null | undefined, leadName: string): string | null {
   if (!phone?.trim()) return null
-  const digits = phone.replace(/\D/g, '')
-  if (digits.length < 10) return null
   const n = leadName.trim() || 'there'
   const text = `Hi ${n}, watch this 15-min video — link below.\n[your enrollment link]`
-  return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`
+  const waUrl = whatsAppChatWithTextHref(phone, text)
+  return waUrl === '#' ? null : waUrl
 }
 
 export function shouldOfferWhatsAppForTransition(

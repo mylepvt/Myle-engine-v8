@@ -9,10 +9,10 @@ type Props = { title: string }
 
 const LEVEL_META: Record<string, { label: string; cls: string }> = {
   rookie:    { label: 'Rookie',    cls: 'bg-muted/60 text-muted-foreground' },
-  hustler:   { label: 'Hustler',   cls: 'bg-blue-500/15 text-blue-400' },
-  closer:    { label: 'Closer',    cls: 'bg-violet-500/15 text-violet-400' },
-  champion:  { label: 'Champion',  cls: 'bg-amber-500/15 text-amber-400' },
-  legend:    { label: 'Legend',    cls: 'bg-gradient-to-r from-amber-400/20 to-orange-400/20 text-amber-300 font-bold' },
+  hustler:   { label: 'Hustler',   cls: 'bg-blue-500/15 text-blue-600 dark:text-blue-400' },
+  closer:    { label: 'Closer',    cls: 'bg-violet-500/15 text-violet-600 dark:text-violet-400' },
+  champion:  { label: 'Champion',  cls: 'bg-amber-500/15 text-amber-600 dark:text-amber-400' },
+  legend:    { label: 'Legend',    cls: 'bg-gradient-to-r from-amber-400/20 to-orange-400/20 text-amber-600 dark:text-amber-300 font-bold' },
 }
 
 function LevelBadge({ level }: { level: string }) {
@@ -64,7 +64,7 @@ export function LeaderboardPage({ title }: Props) {
         <>
           {/* Podium top-3 */}
           {topThree.length > 0 ? (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
               {topThree.map((r) => {
                 const medals = ['🥇', '🥈', '🥉']
                 const golds = [
@@ -84,11 +84,8 @@ export function LeaderboardPage({ title }: Props) {
                     <p className="max-w-full truncate text-sm font-semibold text-foreground">{r.name}</p>
                     <LevelBadge level={r.level} />
                     <p className="tabular-nums text-xs text-muted-foreground">
-                      <span className="font-medium text-foreground">{r.points}</span> pts
+                      <span className="font-medium text-foreground">{r.xp}</span> XP
                     </p>
-                    {r.xp !== '—' ? (
-                      <p className="text-[0.6rem] text-muted-foreground/70">{r.xp} XP</p>
-                    ) : null}
                   </div>
                 )
               })}
@@ -106,7 +103,6 @@ export function LeaderboardPage({ title }: Props) {
                     <th scope="col" className="px-4 py-2.5 font-medium">Member</th>
                     <th scope="col" className="px-4 py-2.5 font-medium hidden sm:table-cell">Level</th>
                     <th scope="col" className="px-4 py-2.5 font-medium hidden md:table-cell">Role</th>
-                    <th scope="col" className="px-4 py-2.5 text-right font-medium">Points</th>
                     <th scope="col" className="px-4 py-2.5 text-right font-medium hidden sm:table-cell">XP</th>
                   </tr>
                 </thead>
@@ -127,8 +123,7 @@ export function LeaderboardPage({ title }: Props) {
                         <LevelBadge level={r.level} />
                       </td>
                       <td className="px-4 py-2.5 capitalize text-muted-foreground hidden md:table-cell">{r.role}</td>
-                      <td className="px-4 py-2.5 text-right tabular-nums font-medium">{r.points}</td>
-                      <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground hidden sm:table-cell">{r.xp}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums font-medium hidden sm:table-cell">{r.xp}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -36,7 +36,7 @@ function SectionTitle({ children }: { children: string }) {
       <span className="whitespace-nowrap text-ds-label uppercase text-muted-foreground">
         {children}
       </span>
-      <div className="h-px min-w-0 flex-1 bg-white/[0.08]" />
+      <div className="h-px min-w-0 flex-1 bg-border" />
     </div>
   )
 }
@@ -289,7 +289,7 @@ export function RegisterPage() {
                       type="button"
                       tabIndex={-1}
                       onClick={() => setShowPassword((s) => !s)}
-                      className="flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                      className="flex size-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
                       {showPassword ? (
@@ -330,7 +330,7 @@ export function RegisterPage() {
                   <p
                     className={`mt-2 flex items-start gap-2 text-ds-caption ${
                       uplineLookup.is_valid_upline
-                        ? 'text-emerald-400/95'
+                        ? 'text-emerald-600/95 dark:text-emerald-400/95'
                         : 'text-amber-200/90'
                     }`}
                   >

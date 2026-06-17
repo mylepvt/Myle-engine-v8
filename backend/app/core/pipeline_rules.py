@@ -61,7 +61,7 @@ STATUS_TO_STAGE = {
     "Invited": "prospecting",
     "WhatsApp Sent": "prospecting",
     "Video Sent": "prospecting",
-    "Mindset Lock": "enrolled",
+    "Min. FLP Billing": "enrolled",
     "Day 1": "day1",
     "Day 2": "day2",
     "Day 3": "day3",
@@ -117,26 +117,27 @@ TEAM_ALLOWED_STATUSES = (
     "Invited",
     "WhatsApp Sent",
     "Video Sent",
-    "Mindset Lock",
+    "Video Watched",
+    "Min. FLP Billing",
     "Lost",
     "Retarget",
 )
 
 # ── Canonical status flow (FSM) ───────────────────────────────────────────────
 
+# Canonical FSM flow — labels MUST mirror ``LEAD_STATUS_LABELS`` exactly so the
+# slug→label lookup in ``validate_vl2_status_transition_for_role`` lands in-flow.
+# Team forward scope ends at "Video Watched"; "Day 1"+ are post-handoff (leader/admin).
 STATUS_FLOW_ORDER = [
-    "New Lead",
-    "Contacted",
-    "Invited",
-    "WhatsApp Sent",
-    "Video Sent",
-    "Mindset Lock",
-    "Day 1",
-    "Day 2",
-    "Day 3",
-    "Day 4",
-    "Day 5",
-    "Fully Converted",
+    "New Lead",          # new_lead
+    "Contacted",         # contacted
+    "Invited",           # invited
+    "Enrollment Live",   # video_sent  (single open token link, replaces enrollment)
+    "Video Watched",     # video_watched  ← team forward boundary
+    "Day 1",             # day1   (post-handoff / leader)
+    "Day 2",             # day2   (admin advances)
+    "Day 3",             # day3   (closing — leader)
+    "Fully Converted",   # converted (normalize maps "Converted" → here)
 ]
 
 CALL_STATUS_VALUES = [
@@ -168,13 +169,6 @@ TEAM_CALL_STATUS_VALUES = [
     "Wrong Number",
 ]
 
-TRACKS = {
-    "Slow Track": {"price": 8000, "seat_hold": 2000},
-    "Medium Track": {"price": 18000, "seat_hold": 4000},
-    "Fast Track": {"price": 38000, "seat_hold": 5000},
-}
-
-
 def normalize_flow_status(status: str) -> str:
     """Normalize legacy status aliases to canonical names."""
     s = (status or "").strip()
@@ -195,10 +189,10 @@ def is_valid_forward_status_transition(
     """
     Canonical FSM flow rules.
     - Backward / same / statuses outside STATUS_FLOW_ORDER: allowed.
-    - Admin (admin_may_skip_fsm=True): any forward jump.
-    - Team: any forward jump up to and including Mindset Lock; blocked post-Mindset Lock.
-    - Leader: +1 forward for post-Mindset Lock stages.
-    Flow: New Lead → ... → Video Sent → Mindset Lock → Day 1 → Day 2 → Day 3 → Fully Converted
+    - Admin & Leader (admin_may_skip_fsm=True): any forward jump.
+    - Team: forward jumps only up to and including Video Watched; blocked beyond.
+    Flow: New Lead → … → Enrollment Live → Video Watched →
+          Day 1 → Day 2 → Day 3 → Fully Converted
     """
     cur = normalize_flow_status(current_status)
     tgt = normalize_flow_status(target_status)
@@ -208,28 +202,29 @@ def is_valid_forward_status_transition(
     if cur not in flow_idx or tgt not in flow_idx:
         return True
     if flow_idx[tgt] <= flow_idx[cur]:
-        return True
+        return True  # same / backward always allowed
     if admin_may_skip_fsm:
-        return True
-    if tgt == "Min. FLP Billing":
-        # Only team/leader can set paid from Video Watched; leader cannot jump past paid.
-        if for_team:
-            return cur in ("Video Watched", "Min. FLP Billing")
-        return cur in ("Video Watched", "Min. FLP Billing")
-    if tgt == "Day 1":
-        return cur in ("Min. FLP Billing", "Mindset Lock", "Day 1")
-    if tgt == "Mindset Lock":
-        return cur in ("New Lead", "Contacted", "Invited", "WhatsApp Sent", "Video Sent", "Min. FLP Billing", "Day 1", "Mindset Lock")
-    if tgt == "Day 2" and cur == "Mindset Lock":
-        return True
-    mindset_i = flow_idx.get("Mindset Lock", 999)
-    # Pre-Mindset Lock: both team and leader may skip steps freely.
-    if flow_idx[tgt] <= mindset_i:
-        return flow_idx[tgt] > flow_idx[cur]
+        return True  # admin & leader: free forward jumps
     if for_team:
-        return False
-    # Leader: +1 for post-Mindset Lock stages only.
-    return flow_idx[tgt] == flow_idx[cur] + 1
+        team_boundary = flow_idx.get("Video Watched", len(STATUS_FLOW_ORDER) - 1)
+        return flow_idx[tgt] <= team_boundary
+    return True
+
+
+# ── Per-day advance role gate (mirrors old-app ACTION_MAP) ────────────────────
+# Who is allowed to ADVANCE a lead INTO each post-handoff stage. Backward moves
+# and same-stage edits are not gated here. Team is already blocked beyond
+# Video Watched by ``TEAM_FORBIDDEN_STATUS_SLUGS``.
+#   day1   = leader/admin (handoff: team records video_watched, leader takes over)
+#   day2   = leader/admin
+#   day3   = leader/admin/team (team members may advance once batches+test gate is met)
+#   converted = leader/admin (Day 3 close)
+DAY_ADVANCE_ALLOWED_ROLES: dict[str, frozenset[str]] = {
+    "day1": frozenset({"leader", "admin"}),
+    "day2": frozenset({"leader", "admin"}),
+    "day3": frozenset({"leader", "admin", "team"}),
+    "converted": frozenset({"leader", "admin"}),
+}
 
 
 def validate_vl2_status_transition_for_role(
@@ -239,30 +234,55 @@ def validate_vl2_status_transition_for_role(
     role: str,
 ) -> tuple[bool, str]:
     """
-    Validate a ``Lead.status`` change (vl2 slug) using FSM + team forbidden set.
+    Validate a ``Lead.status`` change (vl2 slug) using FSM + team forbidden set
+    + per-day advance role gate.
 
     - Admin: any forward jump.
-    - Leader: +1 forward post-Mindset Lock; free jumps before.
-    - Team: free jumps up to Mindset Lock; cannot set ``TEAM_FORBIDDEN_STATUS_SLUGS``.
+    - Leader: full control — any forward jump including Day 3.
+    - Team: free jumps up to Video Watched; cannot set ``TEAM_FORBIDDEN_STATUS_SLUGS``.
     """
-    from app.core.lead_status import LEAD_STATUS_LABELS, TEAM_FORBIDDEN_STATUS_SLUGS
+    from app.core.lead_status import (
+        LEAD_STATUS_LABELS,
+        LEAD_STATUS_SEQUENCE,
+        TEAM_FORBIDDEN_STATUS_SLUGS,
+    )
 
     if current_slug == target_slug:
         return True, ""
     if role == "team" and target_slug in TEAM_FORBIDDEN_STATUS_SLUGS:
         return False, "Team cannot set this pipeline status"
-    cur_label = LEAD_STATUS_LABELS.get(current_slug, current_slug)
-    tgt_label = LEAD_STATUS_LABELS.get(target_slug, target_slug)
-    cur_h = normalize_flow_status(cur_label)
-    tgt_h = normalize_flow_status(tgt_label)
-    ok = is_valid_forward_status_transition(
-        cur_h,
-        tgt_h,
-        for_team=(role == "team"),
-        admin_may_skip_fsm=(role in ("admin", "leader")),
+
+    # Per-day advance gate — only on a genuine FORWARD move into the gated stage.
+    seq_idx = {s: i for i, s in enumerate(LEAD_STATUS_SEQUENCE)}
+    is_forward = (
+        current_slug in seq_idx
+        and target_slug in seq_idx
+        and seq_idx[target_slug] > seq_idx[current_slug]
     )
-    if not ok:
-        return False, "Invalid status transition for your role"
+    if is_forward:
+        allowed = DAY_ADVANCE_ALLOWED_ROLES.get(target_slug)
+        if allowed is not None and role not in allowed:
+            if target_slug == "day3":
+                return False, "Only an admin can advance a lead to Day 3"
+            return False, "You are not allowed to advance the lead to this stage"
+
+    # Team may advance day2→day3 once the batch+test gate is satisfied
+    # (checked in leads_service). Skip the FSM boundary restriction for this path.
+    if role == "team" and current_slug == "day2" and target_slug == "day3":
+        pass
+    else:
+        cur_label = LEAD_STATUS_LABELS.get(current_slug, current_slug)
+        tgt_label = LEAD_STATUS_LABELS.get(target_slug, target_slug)
+        cur_h = normalize_flow_status(cur_label)
+        tgt_h = normalize_flow_status(tgt_label)
+        ok = is_valid_forward_status_transition(
+            cur_h,
+            tgt_h,
+            for_team=(role == "team"),
+            admin_may_skip_fsm=(role in ("admin", "leader")),
+        )
+        if not ok:
+            return False, "Invalid status transition for your role"
     return True, ""
 
 
@@ -270,15 +290,8 @@ def validate_lead_business_rules(
     status: str,
     payment_done: int,
     payment_amount: float,
-    seat_hold_amount: float,
-    track_price: float,
 ) -> tuple[bool, str]:
-    """Hard validation before DB write (legacy float rupees + flags)."""
-    st = (status or "").strip()
+    """Hard validation before DB write (Min. FLP Billing payment flag)."""
     if int(payment_done or 0) == 1 and float(payment_amount or 0) <= 0:
         return False, "payment_done=1 requires payment_amount > 0"
-    if st == "Seat Hold Confirmed" and float(seat_hold_amount or 0) <= 0:
-        return False, "Seat Hold Confirmed requires seat_hold_amount > 0"
-    if st == "Fully Converted" and float(track_price or 0) <= 0:
-        return False, "Fully Converted requires track_price > 0"
     return True, ""

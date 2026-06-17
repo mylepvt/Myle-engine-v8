@@ -179,10 +179,24 @@ async def send_push_to_user(
     body: str,
     url: str = "/dashboard",
 ) -> int:
-    """Send push to all subscriptions for user_id. Returns success count."""
+    """Send push to all subscriptions for user_id.
+
+    Only sends if user is active (not blocked/removed) and has
+    push notifications enabled. Returns success count.
+    """
     if not _PUSH_AVAILABLE:
         return 0
     try:
+        user = await session.get(User, user_id)
+        if user is None:
+            return 0
+        if user.access_blocked or user.removed_at is not None:
+            return 0
+        if user.discipline_status == "removed":
+            return 0
+        if not user.push_notifications_enabled:
+            return 0
+
         private_pem, _ = await _get_or_create_vapid_keys(session)
         subs = (
             await session.execute(
@@ -206,14 +220,23 @@ async def send_push_to_role(
     body: str,
     url: str = "/dashboard",
 ) -> int:
-    """Send push to all subscribed users with the given role."""
+    """Send push to active subscribed users with the given role.
+
+    Filters out blocked/removed users and those with push disabled.
+    """
     if not _PUSH_AVAILABLE:
         return 0
     try:
         private_pem, _ = await _get_or_create_vapid_keys(session)
-        # Join users to subscriptions filtered by role
         user_ids_result = await session.execute(
-            select(User.id).where(User.role == role)
+            select(User.id).where(
+                User.role == role,
+                User.registration_status == "approved",
+                User.access_blocked.is_(False),
+                User.removed_at.is_(None),
+                User.discipline_status != "removed",
+                User.push_notifications_enabled.is_(True),
+            )
         )
         user_ids = [r for r in user_ids_result.scalars().all()]
         if not user_ids:
@@ -254,7 +277,9 @@ async def send_push_to_roles(
                     User.role.in_(role_list),
                     User.registration_status == "approved",
                     User.access_blocked.is_(False),
-                    User.discipline_status == "active",
+                    User.removed_at.is_(None),
+                    User.discipline_status != "removed",
+                    User.push_notifications_enabled.is_(True),
                 )
             )
         ).scalars().all()
@@ -281,21 +306,31 @@ async def broadcast_push(
     body: str,
     url: str = "/dashboard",
 ) -> int:
-    """Send push to all non-admin subscribed users."""
+    """Send push to active non-admin subscribed users.
+
+    Filters out blocked/removed users and those with push disabled.
+    """
     if not _PUSH_AVAILABLE:
         return 0
     try:
         private_pem, _ = await _get_or_create_vapid_keys(session)
-        non_admin_ids = (
+        active_ids = (
             await session.execute(
-                select(User.id).where(User.role != "admin")
+                select(User.id).where(
+                    User.role != "admin",
+                    User.registration_status == "approved",
+                    User.access_blocked.is_(False),
+                    User.removed_at.is_(None),
+                    User.discipline_status != "removed",
+                    User.push_notifications_enabled.is_(True),
+                )
             )
         ).scalars().all()
-        if not non_admin_ids:
+        if not active_ids:
             return 0
         subs = (
             await session.execute(
-                select(PushSubscription).where(PushSubscription.user_id.in_(list(non_admin_ids)))
+                select(PushSubscription).where(PushSubscription.user_id.in_(list(active_ids)))
             )
         ).scalars().all()
         if not subs:

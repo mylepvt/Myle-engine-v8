@@ -1,85 +1,33 @@
-export type AppSound = 'softTap' | 'success' | 'cashier' | 'decline'
+export type AppSound = 'tap' | 'success' | 'error' | 'claim' | 'notify' | 'reward'
 
-// ─── File-based sounds ───────────────────────────────────────────────────────
+// ─── Global enable/mute (SaaS: user-controllable, persisted) ──────────────────
+const SOUND_PREF_KEY = 'myle-sound-enabled'
 
-export type FileSoundName = 'ching' | 'paySuccess' | 'notify' | 'pop'
-
-const FILE_SOUND_URLS: Record<FileSoundName, string> = {
-  ching: '/sounds/ching.mp3',
-  paySuccess: '/sounds/pay-success.mp3',
-  notify: '/sounds/notify.mp3',
-  pop: '/sounds/pop.mp3',
-}
-
-const fileBufferCache: Partial<Record<FileSoundName, AudioBuffer>> = {}
-const fileLoadPromise: Partial<Record<FileSoundName, Promise<AudioBuffer | null>>> = {}
-
-async function loadFileBuffer(name: FileSoundName): Promise<AudioBuffer | null> {
-  const cached = fileBufferCache[name]
-  if (cached) return cached
-
-  if (fileLoadPromise[name]) return fileLoadPromise[name]!
-
-  const Ctor = getAudioContextCtor()
-  if (!Ctor) return null
-
-  const promise = (async () => {
-    try {
-      const res = await fetch(FILE_SOUND_URLS[name])
-      const arrayBuffer = await res.arrayBuffer()
-      const tmpCtx = new Ctor()
-      const decoded = await tmpCtx.decodeAudioData(arrayBuffer)
-      void tmpCtx.close()
-      fileBufferCache[name] = decoded
-      return decoded
-    } catch {
-      return null
-    }
-  })()
-
-  fileLoadPromise[name] = promise
-  return promise
-}
-
-/** Preload all file-based sounds into AudioBuffer cache. */
-export function preloadFileSounds() {
-  for (const name of Object.keys(FILE_SOUND_URLS) as FileSoundName[]) {
-    void loadFileBuffer(name)
+function readInitialSoundPref(): boolean {
+  try {
+    const raw = localStorage.getItem(SOUND_PREF_KEY)
+    if (raw === '0') return false
+    if (raw === '1') return true
+    return !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  } catch {
+    return true
   }
 }
 
-const fileLastPlayedAt: Partial<Record<FileSoundName, number>> = {}
-const FILE_SOUND_COOLDOWN_MS: Record<FileSoundName, number> = {
-  ching: 1000,
-  paySuccess: 1200,
-  notify: 800,
-  pop: 300,
+let soundsEnabled = readInitialSoundPref()
+
+export function getSoundsEnabled(): boolean {
+  return soundsEnabled
 }
 
-/** Play a real MP3 sound effect via Web Audio API (decoded, low-latency). */
-export async function playFileSound(name: FileSoundName, volume = 1.0) {
-  const last = fileLastPlayedAt[name] ?? 0
-  if (Date.now() - last < FILE_SOUND_COOLDOWN_MS[name]) return
-  fileLastPlayedAt[name] = Date.now()
-
-  const graph = ensureAudioGraph()
-  if (!graph) return
-
-  const buffer = await loadFileBuffer(name)
-  if (!buffer) return
-
-  const { ctx, output } = graph
-  const source = ctx.createBufferSource()
-  const gainNode = ctx.createGain()
-
-  source.buffer = buffer
-  gainNode.gain.setValueAtTime(Math.min(1, Math.max(0, volume)), ctx.currentTime)
-
-  source.connect(gainNode)
-  gainNode.connect(output)
-  source.start(ctx.currentTime + 0.005)
+export function setSoundsEnabled(value: boolean): void {
+  soundsEnabled = value
+  try {
+    localStorage.setItem(SOUND_PREF_KEY, value ? '1' : '0')
+  } catch { /* ignore */ }
 }
 
+// ─── Types ────────────────────────────────────────────────────────────────────
 type AudioContextCtor = typeof AudioContext
 
 type AudioGraph = {
@@ -115,10 +63,12 @@ type NoiseOptions = {
 }
 
 const SOUND_COOLDOWN_MS: Record<AppSound, number> = {
-  softTap: 45,
+  tap: 45,
   success: 850,
-  cashier: 1100,
-  decline: 450,
+  error: 450,
+  claim: 1100,
+  notify: 800,
+  reward: 1500,
 }
 
 let audioGraph: AudioGraph | null = null
@@ -127,10 +77,8 @@ const lastPlayedAt: Partial<Record<AppSound, number>> = {}
 
 function getAudioContextCtor(): AudioContextCtor | null {
   if (typeof window === 'undefined') return null
-  const withWebkit = window as Window & typeof globalThis & {
-    webkitAudioContext?: AudioContextCtor
-  }
-  return withWebkit.AudioContext ?? withWebkit.webkitAudioContext ?? null
+  const w = window as Window & typeof globalThis & { webkitAudioContext?: AudioContextCtor }
+  return w.AudioContext ?? w.webkitAudioContext ?? null
 }
 
 function ensureAudioGraph(): AudioGraph | null {
@@ -138,7 +86,6 @@ function ensureAudioGraph(): AudioGraph | null {
     if (audioGraph.ctx.state === 'suspended') void audioGraph.ctx.resume()
     return audioGraph
   }
-
   const Ctor = getAudioContextCtor()
   if (!Ctor) return null
 
@@ -253,55 +200,43 @@ function canPlay(kind: AppSound) {
   return true
 }
 
-function playSoftTap(graph: AudioGraph) {
+// ─── tap ─────────────────────────────────────────────────────────────────────
+// Apple-keyboard-style keypress: crisp noise "tac" + soft low body "pock".
+// NOT a pitched beep. Per-press jitter for natural typing feel.
+function playTap(graph: AudioGraph) {
   const { ctx, output } = graph
-  const now = ctx.currentTime + 0.005
+  const now = ctx.currentTime + 0.003
+  const lvl = 0.82 + Math.random() * 0.34
+  const pitch = 1 + (Math.random() * 0.08 - 0.04)
+
   scheduleTone(ctx, output, {
     at: now,
-    frequency: 720,
-    endFrequency: 470,
-    type: 'triangle',
-    peak: 0.011,
-    attack: 0.002,
-    decay: 0.024,
-    filter: {
-      type: 'lowpass',
-      frequency: 1350,
-      q: 0.35,
-    },
-  })
-  scheduleTone(ctx, output, {
-    at: now + 0.001,
-    frequency: 1480,
-    endFrequency: 1180,
-    type: 'square',
-    peak: 0.0028,
-    attack: 0.001,
-    decay: 0.012,
-    filter: {
-      type: 'bandpass',
-      frequency: 1850,
-      q: 1.3,
-    },
-  })
-  scheduleTone(ctx, output, {
-    at: now,
-    frequency: 420,
-    endFrequency: 340,
+    frequency: 176 * pitch,
+    endFrequency: 112 * pitch,
     type: 'sine',
-    peak: 0.0022,
-    attack: 0.002,
-    decay: 0.03,
+    peak: 0.036 * lvl,
+    attack: 0.001,
+    decay: 0.033,
+    filter: { type: 'lowpass', frequency: 900, q: 0.6 },
   })
   scheduleNoise(ctx, output, {
     at: now,
     duration: 0.01,
-    peak: 0.00075,
-    highpass: 1900,
-    lowpass: 4200,
+    peak: 0.045 * lvl,
+    highpass: 1400,
+    lowpass: 5000,
+  })
+  scheduleNoise(ctx, output, {
+    at: now + 0.0005,
+    duration: 0.004,
+    peak: 0.017 * lvl,
+    highpass: 3800,
+    lowpass: 8200,
   })
 }
 
+// ─── success ─────────────────────────────────────────────────────────────────
+// Ascending major arpeggio — positive completion.
 function playSuccess(graph: AudioGraph) {
   const { ctx, output } = graph
   const now = ctx.currentTime + 0.02
@@ -312,130 +247,136 @@ function playSuccess(graph: AudioGraph) {
   ]
 
   scheduleTone(ctx, output, {
-    at: now,
-    frequency: 329.63,
-    type: 'sine',
-    peak: 0.006,
-    decay: 0.62,
+    at: now, frequency: 329.63, type: 'sine', peak: 0.006, decay: 0.62,
   })
   scheduleNoise(ctx, output, {
-    at: now,
-    duration: 0.06,
-    peak: 0.0015,
-    highpass: 2800,
-    lowpass: 9000,
+    at: now, duration: 0.06, peak: 0.0015, highpass: 2800, lowpass: 9000,
   })
 
-  notes.forEach((note, index) => {
+  notes.forEach((note, i) => {
     const at = now + note.offset
-    const peak = index === notes.length - 1 ? 0.022 : 0.018
-
+    const peak = i === notes.length - 1 ? 0.022 : 0.018
     scheduleTone(ctx, output, {
-      at,
-      frequency: note.freq,
-      type: 'triangle',
-      peak,
-      decay: 0.5 + index * 0.08,
-      pan: note.pan,
-      detune: index === 1 ? -4 : 4,
+      at, frequency: note.freq, type: 'triangle', peak,
+      decay: 0.5 + i * 0.08, pan: note.pan, detune: i === 1 ? -4 : 4,
     })
     scheduleTone(ctx, output, {
-      at: at + 0.008,
-      frequency: note.freq * 2,
-      type: 'sine',
-      peak: peak * 0.38,
-      decay: 0.34 + index * 0.05,
-      pan: note.pan * 0.7,
+      at: at + 0.008, frequency: note.freq * 2, type: 'sine',
+      peak: peak * 0.38, decay: 0.34 + i * 0.05, pan: note.pan * 0.7,
     })
     scheduleTone(ctx, output, {
-      at: at + 0.18,
-      frequency: note.freq,
-      type: 'sine',
-      peak: peak * 0.18,
-      decay: 0.24,
-      pan: note.pan * 0.5,
+      at: at + 0.18, frequency: note.freq, type: 'sine',
+      peak: peak * 0.18, decay: 0.24, pan: note.pan * 0.5,
     })
   })
 }
 
-function playCashier(graph: AudioGraph) {
+// ─── error ───────────────────────────────────────────────────────────────────
+// Short descending minor — clear negative feedback.
+function playError(graph: AudioGraph) {
+  const { ctx, output } = graph
+  const now = ctx.currentTime + 0.01
+
+  scheduleTone(ctx, output, {
+    at: now, frequency: 493.88, endFrequency: 392, type: 'triangle',
+    peak: 0.014, decay: 0.16, pan: -0.08,
+  })
+  scheduleTone(ctx, output, {
+    at: now + 0.055, frequency: 392, endFrequency: 311.13, type: 'sine',
+    peak: 0.011, decay: 0.18, pan: 0.06,
+  })
+}
+
+// ─── claim ───────────────────────────────────────────────────────────────────
+// Cash-register ka-ching — dopamine on lead claim / approval.
+function playClaim(graph: AudioGraph) {
   const { ctx, output } = graph
   const now = ctx.currentTime + 0.01
 
   scheduleNoise(ctx, output, {
-    at: now,
-    duration: 0.045,
-    peak: 0.0026,
-    highpass: 2200,
-    lowpass: 8400,
+    at: now, duration: 0.045, peak: 0.0026, highpass: 2200, lowpass: 8400,
   })
 
   const bell = (at: number, base: number, peak: number, pan: number) => {
     scheduleTone(ctx, output, {
-      at,
-      frequency: base,
-      type: 'sine',
-      peak,
-      decay: 0.9,
-      pan,
+      at, frequency: base, type: 'sine', peak, decay: 0.9, pan,
     })
     scheduleTone(ctx, output, {
-      at: at + 0.004,
-      frequency: base * 2.72,
-      type: 'sine',
-      peak: peak * 0.45,
-      decay: 0.48,
-      pan: pan * 0.8,
+      at: at + 0.004, frequency: base * 2.72, type: 'sine',
+      peak: peak * 0.45, decay: 0.48, pan: pan * 0.8,
     })
     scheduleTone(ctx, output, {
-      at: at + 0.01,
-      frequency: base * 4.1,
-      type: 'triangle',
-      peak: peak * 0.18,
-      decay: 0.26,
-      pan: pan * 0.6,
+      at: at + 0.01, frequency: base * 4.1, type: 'triangle',
+      peak: peak * 0.18, decay: 0.26, pan: pan * 0.6,
     })
   }
 
   bell(now, 1046.5, 0.022, -0.12)
   bell(now + 0.07, 1567.98, 0.018, 0.14)
 
-  ;[0.12, 0.18, 0.24].forEach((offset, index) => {
+  ;[0.12, 0.18, 0.24].forEach((offset, i) => {
     scheduleTone(ctx, output, {
-      at: now + offset,
-      frequency: 1975.53 + index * 210,
-      endFrequency: 1720 + index * 120,
-      type: 'sine',
-      peak: 0.0055 - index * 0.0009,
-      decay: 0.13,
-      pan: index === 1 ? 0.2 : -0.15 + index * 0.1,
+      at: now + offset, frequency: 1975.53 + i * 210,
+      endFrequency: 1720 + i * 120, type: 'sine',
+      peak: 0.0055 - i * 0.0009, decay: 0.13,
+      pan: i === 1 ? 0.2 : -0.15 + i * 0.1,
     })
   })
 }
 
-function playDecline(graph: AudioGraph) {
+// ─── notify ─────────────────────────────────────────────────────────────────
+// Short two-tone ping — new event arrived, attention without urgency.
+function playNotify(graph: AudioGraph) {
   const { ctx, output } = graph
-  const now = ctx.currentTime + 0.01
+  const now = ctx.currentTime + 0.005
 
   scheduleTone(ctx, output, {
-    at: now,
-    frequency: 493.88,
-    endFrequency: 392,
-    type: 'triangle',
-    peak: 0.014,
-    decay: 0.16,
-    pan: -0.08,
+    at: now, frequency: 880, type: 'sine', peak: 0.012, decay: 0.12, pan: -0.1,
+    filter: { type: 'lowpass', frequency: 2400 },
   })
   scheduleTone(ctx, output, {
-    at: now + 0.055,
-    frequency: 392,
-    endFrequency: 311.13,
-    type: 'sine',
-    peak: 0.011,
-    decay: 0.18,
-    pan: 0.06,
+    at: now + 0.075, frequency: 1174.66, type: 'sine', peak: 0.01, decay: 0.14, pan: 0.1,
+    filter: { type: 'lowpass', frequency: 2200 },
+  })
+  scheduleNoise(ctx, output, {
+    at: now, duration: 0.02, peak: 0.0012, highpass: 4000, lowpass: 10000,
   })
 }
+
+// ─── reward ──────────────────────────────────────────────────────────────────
+// Bright ascending sparkle — XP earned / level-up / streak milestone.
+function playReward(graph: AudioGraph) {
+  const { ctx, output } = graph
+  const now = ctx.currentTime + 0.02
+  const notes = [
+    { offset: 0, freq: 783.99, pan: -0.2 },
+    { offset: 0.08, freq: 987.77, pan: -0.08 },
+    { offset: 0.16, freq: 1174.66, pan: 0.05 },
+    { offset: 0.24, freq: 1567.98, pan: 0.2 },
+  ]
+
+  scheduleTone(ctx, output, {
+    at: now, frequency: 392, type: 'triangle', peak: 0.007, decay: 0.5,
+  })
+
+  notes.forEach((note, i) => {
+    const at = now + note.offset
+    const peak = 0.018 - i * 0.002
+    scheduleTone(ctx, output, {
+      at, frequency: note.freq, type: 'triangle', peak,
+      decay: 0.35 + i * 0.04, pan: note.pan, detune: i * 3,
+    })
+    scheduleTone(ctx, output, {
+      at: at + 0.005, frequency: note.freq * 2, type: 'sine',
+      peak: peak * 0.3, decay: 0.2, pan: note.pan * 0.6,
+    })
+  })
+  scheduleNoise(ctx, output, {
+    at: now + 0.12, duration: 0.07, peak: 0.0015, highpass: 5000, lowpass: 12000,
+  })
+}
+
+// ─── Exports ─────────────────────────────────────────────────────────────────
 
 export function primeAppSounds() {
   const graph = ensureAudioGraph()
@@ -444,22 +385,17 @@ export function primeAppSounds() {
 }
 
 export function playAppSound(kind: AppSound) {
+  if (!soundsEnabled) return
   if (!canPlay(kind)) return
   const graph = ensureAudioGraph()
   if (!graph) return
 
   switch (kind) {
-    case 'softTap':
-      playSoftTap(graph)
-      break
-    case 'success':
-      playSuccess(graph)
-      break
-    case 'cashier':
-      playCashier(graph)
-      break
-    case 'decline':
-      playDecline(graph)
-      break
+    case 'tap':    playTap(graph); break
+    case 'success':  playSuccess(graph); break
+    case 'error':    playError(graph); break
+    case 'claim':    playClaim(graph); break
+    case 'notify':   playNotify(graph); break
+    case 'reward':   playReward(graph); break
   }
 }

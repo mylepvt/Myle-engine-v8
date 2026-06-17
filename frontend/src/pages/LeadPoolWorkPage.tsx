@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
+import { Search, Users } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { EmptyStatePremium } from '@/components/ui/empty-state-premium'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   LEAD_STATUS_OPTIONS,
@@ -61,6 +63,7 @@ function parseRupeesToCents(value: string): number | null {
 }
 
 export function LeadPoolWorkPage({ title }: Props) {
+  const [poolQ, setPoolQ] = useState('')
   const qc = useQueryClient()
   const { role, serverRole, isAdminPreviewing } = useDashboardShellRole()
   const signedInRole = serverRole ?? role
@@ -117,6 +120,18 @@ export function LeadPoolWorkPage({ title }: Props) {
     refetch: refetchBatchPreview,
   } = useLeadPoolBatchPreviewQuery(requestedBatchCount, canClaimPool)
 
+  const poolItems = useMemo(() => {
+    if (!data?.items) return [] as PoolLead[]
+    const q = poolQ.trim().toLowerCase()
+    if (!q) return data.items as PoolLead[]
+    return (data.items as PoolLead[]).filter(
+      (l) =>
+        l.name.toLowerCase().includes(q) ||
+        l.phone?.toLowerCase().includes(q) ||
+        l.city?.toLowerCase().includes(q),
+    )
+  }, [data?.items, poolQ])
+
   useEffect(() => {
     if (!poolDefaults || defaultPriceHydrated) return
     setDefaultRupees(formatRupeesInput(poolDefaults.default_pool_price_cents ?? 0))
@@ -138,7 +153,7 @@ export function LeadPoolWorkPage({ title }: Props) {
   async function handleClaim(leadId: number) {
     try {
       await claimMut.mutateAsync(leadId)
-      playAppSound('cashier')
+      playAppSound('claim')
       setConfirmId(null)
     } catch {
       /* error surfaced below */
@@ -153,7 +168,7 @@ export function LeadPoolWorkPage({ title }: Props) {
   async function handleBatchClaim() {
     try {
       await batchClaimMut.mutateAsync(requestedBatchCount)
-      playAppSound('cashier')
+      playAppSound('claim')
       setBatchConfirmOpen(false)
     } catch {
       /* surfaced below */
@@ -237,7 +252,7 @@ export function LeadPoolWorkPage({ title }: Props) {
   async function handleFreePoolBatchClaim() {
     try {
       await freeClaimMut.mutateAsync(requestedFreeBatchCount)
-      playAppSound('cashier')
+      playAppSound('claim')
       setFreeBatchConfirmOpen(false)
     } catch {
       /* surfaced below */
@@ -313,7 +328,7 @@ export function LeadPoolWorkPage({ title }: Props) {
               placeholder="₹ per claim"
               value={defaultRupees}
               onChange={(e) => setDefaultRupees(e.target.value)}
-              className="w-40 rounded-md border border-white/12 bg-muted/50 px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+              className="w-40 rounded-md border border-border dark:border-white/12 bg-muted/50 px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
             />
             <Button
               type="button"
@@ -389,7 +404,7 @@ export function LeadPoolWorkPage({ title }: Props) {
       {canClaimPool && walletData !== undefined ? (
         <div className="surface-inset inline-flex items-center gap-2 px-3 py-1.5 text-sm">
           <span className="text-muted-foreground">Wallet balance:</span>
-          <span className={`font-semibold ${walletBalance > 0 ? 'text-[hsl(142_71%_48%)]' : 'text-destructive'}`}>
+          <span className={`font-semibold ${walletBalance > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}`}>
             {formatRupees(walletBalance)}
           </span>
           <Link to="/dashboard/finance/wallet" className="text-xs text-primary underline-offset-2 hover:underline">
@@ -436,7 +451,7 @@ export function LeadPoolWorkPage({ title }: Props) {
           ) : null}
 
           {batchPreview != null ? (
-            <div className="mb-4 rounded-lg border border-white/10 bg-muted/30 p-3 text-xs">
+            <div className="mb-4 rounded-lg border border-border dark:border-white/10 bg-muted/30 p-3 text-xs">
               <p className="font-medium text-foreground">Bulk claim (FIFO, max 50)</p>
               <p className="mt-1 text-muted-foreground">
                 Server picks the oldest leads in the pool first and returns the exact combined price for this request.
@@ -479,7 +494,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                       step={1}
                       value={batchCountStr}
                       onChange={(e) => setBatchCountStr(e.target.value)}
-                      className="w-20 rounded-md border border-white/12 bg-muted/50 px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+                      className="w-20 rounded-md border border-border dark:border-white/12 bg-muted/50 px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
                     />
                     <span className="ml-2 text-muted-foreground">(max {maxBatch})</span>
                   </div>
@@ -502,12 +517,22 @@ export function LeadPoolWorkPage({ title }: Props) {
             </div>
           ) : null}
 
-          {canViewPoolList && data != null && data.items.length === 0 ? (
-            <p>No leads in pool right now.</p>
+          {canViewPoolList && data != null && data.items.length === 0 && !poolQ.trim() ? (
+            <EmptyStatePremium
+              variant="leads"
+              title="No leads in pool"
+              description="Import leads or wait for admin to add them."
+              icon={Users}
+            />
           ) : null}
 
           {!canViewPoolList && batchPreview != null && batchPreview.available_count === 0 ? (
-            <p>No leads in pool right now.</p>
+            <EmptyStatePremium
+              variant="leads"
+              title="No leads in pool"
+              description="No leads available to claim right now. Check back later."
+              icon={Users}
+            />
           ) : null}
 
           {!canViewPoolList ? (
@@ -518,8 +543,24 @@ export function LeadPoolWorkPage({ title }: Props) {
           ) : null}
 
           {canViewPoolList && data != null && data.items.length > 0 ? (
+            <div className="space-y-2">
+              <div className="surface-inset flex h-9 items-center gap-1.5 rounded-lg px-2.5">
+                <Search className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                <input
+                  type="text"
+                  value={poolQ}
+                  onChange={(e) => setPoolQ(e.target.value)}
+                  placeholder="Search name, phone, city..."
+                  aria-label="Search pool leads"
+                  className="min-w-0 flex-1 bg-transparent text-ds-caption text-foreground outline-none placeholder:text-muted-foreground"
+                  autoComplete="off"
+                />
+              </div>
+            {poolItems.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No pool leads match your search.</p>
+            ) : (
             <ul className="space-y-3">
-              {(data.items as PoolLead[]).map((l) => {
+              {poolItems.map((l) => {
                 const price = l.pool_price_cents ?? 0
                 const isFree = price === 0
                 const canAfford = walletBalance >= price
@@ -548,8 +589,8 @@ export function LeadPoolWorkPage({ title }: Props) {
                       {/* Price badge */}
                       <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                         isFree
-                          ? 'bg-[hsl(142_71%_45%)]/15 text-[hsl(142_71%_45%)]'
-                          : 'bg-amber-400/15 text-amber-400'
+                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                          : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
                       }`}>
                         {isFree ? 'Free' : formatRupees(price)}
                       </span>
@@ -565,7 +606,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                           placeholder={`Override ₹ — row ${isFree ? 'free' : formatRupeesInput(price)} · saved default ₹${formatRupeesInput(poolDefaults?.default_pool_price_cents ?? 0)}`}
                           value={priceInputs[l.id] ?? ''}
                           onChange={(e) => setPriceInputs((p) => ({ ...p, [l.id]: e.target.value }))}
-                          className="w-40 rounded-md border border-white/12 bg-muted/50 px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+                          className="w-40 rounded-md border border-border dark:border-white/12 bg-muted/50 px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
                         />
                         <Button
                           type="button"
@@ -631,6 +672,8 @@ export function LeadPoolWorkPage({ title }: Props) {
                 )
               })}
             </ul>
+            )}
+          </div>
           ) : null}
 
           {claimMut.isError || batchClaimMut.isError ? (
@@ -652,7 +695,7 @@ export function LeadPoolWorkPage({ title }: Props) {
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <p className="font-semibold text-foreground">
             Free Lead Pool{' '}
-            <span className="ml-1 rounded-full bg-[hsl(142_71%_45%)]/15 px-2 py-0.5 text-xs font-medium text-[hsl(142_71%_45%)]">
+            <span className="ml-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
               Free
             </span>
           </p>
@@ -662,17 +705,16 @@ export function LeadPoolWorkPage({ title }: Props) {
         </div>
 
         <p className="mb-4 text-xs text-muted-foreground">
-          Admin ne yahan free leads add ki hain — claim karo bina kisi wallet debit ke. Server oldest leads pehle
-          deta hai (FIFO). Max 50 per request.
+          Free leads added by admin — claim without any wallet debit. Server uses FIFO (oldest first). Max 50 per request.
         </p>
 
         {/* Admin: import free pool leads */}
         {canManagePool ? (
           <div className="surface-inset mb-4 space-y-3 p-4 text-sm">
-            <p className="font-medium text-foreground">Admin: Free Pool mein leads import karo (Excel)</p>
+            <p className="font-medium text-foreground">Admin: Import leads to Free Pool (Excel)</p>
             <p className="text-xs text-muted-foreground">
-              Same format jaise paid pool — .xlsx with Full Name, Phone, City, Age, Gender, AD Name columns.
-              Yeh leads bilkul free hain — koi price set nahi hogi.
+              Same format as paid pool — .xlsx with Full Name, Phone, City, Age, Gender, AD Name columns.
+              These leads are completely free — no price will be set.
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <label htmlFor="free-pool-import-file" className="sr-only">
@@ -682,7 +724,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                 id="free-pool-import-file"
                 type="file"
                 accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                className="max-w-full text-xs file:mr-2 file:rounded-md file:border-0 file:bg-[hsl(142_71%_45%)] file:px-2 file:py-1 file:text-xs file:font-medium file:text-white"
+                className="max-w-full text-xs file:mr-2 file:rounded-md file:border-0 file:bg-emerald-600 dark:file:bg-emerald-500 file:px-2 file:py-1 file:text-xs file:font-medium file:text-white"
                 onChange={(e) => setFreeImportFile(e.target.files?.[0] ?? null)}
               />
               <Button
@@ -719,21 +761,27 @@ export function LeadPoolWorkPage({ title }: Props) {
             ) : null}
 
             {freePoolPreview != null ? (
-              <div className="rounded-lg border border-[hsl(142_71%_45%)]/25 bg-[hsl(142_71%_45%)]/5 p-3 text-xs">
+              <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/5 p-3 text-xs">
                 <p className="font-medium text-foreground">
                   Available free leads:{' '}
-                  <span className="tabular-nums text-[hsl(142_71%_45%)]">
+                  <span className="tabular-nums text-emerald-600 dark:text-emerald-400">
                     {freePoolPreview.available_count}
                   </span>
                 </p>
 
                 {freePoolPreview.available_count === 0 ? (
-                  <p className="mt-2 text-muted-foreground">Abhi koi free lead available nahi hai.</p>
+                  <EmptyStatePremium
+                    variant="leads"
+                    title="No free leads available"
+                    description="Ask admin to add leads to the free pool."
+                    className="mt-2"
+                    icon={Users}
+                  />
                 ) : freeBatchConfirmOpen ? (
-                  <div className="mt-3 space-y-2 rounded-md border border-[hsl(142_71%_45%)]/30 bg-[hsl(142_71%_45%)]/10 p-2">
+                  <div className="mt-3 space-y-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2">
                     <p className="text-foreground">
-                      <strong className="tabular-nums">{freePoolPreview.claim_count}</strong> free lead(s) claim
-                      karna chahte ho? Bilkul free — wallet se kuch nahi katega.
+                      Claim <strong className="tabular-nums">{freePoolPreview.claim_count}</strong> free lead(s)?
+                      Completely free — nothing will be deducted from your wallet.
                     </p>
                     <div className="flex flex-wrap gap-2">
                       <Button
@@ -768,7 +816,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                         step={1}
                         value={freeBatchCountStr}
                         onChange={(e) => setFreeBatchCountStr(e.target.value)}
-                        className="w-20 rounded-md border border-white/12 bg-muted/50 px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-[hsl(142_71%_45%)]/35"
+                        className="w-20 rounded-md border border-border dark:border-white/12 bg-muted/50 px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-emerald-500/35"
                       />
                       <span className="ml-2 text-muted-foreground">
                         (max {Math.min(50, freePoolPreview.available_count)})

@@ -37,9 +37,17 @@ class MeResponse(BaseModel):
         default=None,
         description="When true, user must complete training before full dashboard (legacy gate)",
     )
+    tutorial_pending: Optional[bool] = Field(
+        default=None,
+        description="When true, user should see the onboarding tutorial walkthrough",
+    )
     registration_status: Optional[str] = Field(
         default=None,
         description="pending | approved | rejected — account approval gate",
+    )
+    enrollment_link_access: Optional[bool] = Field(
+        default=None,
+        description="Admin-granted: may open the secure enrollment-link generator",
     )
     avatar_url: Optional[str] = Field(
         default=None,

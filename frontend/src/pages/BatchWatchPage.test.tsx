@@ -11,7 +11,7 @@ describe('BatchWatchPage', () => {
     vi.unstubAllGlobals()
   })
 
-  it('renders personalized greeting and only loads the iframe after play is tapped', async () => {
+  it('renders a video-first layout and only loads the iframe after play is tapped', async () => {
     const payload = {
       token: 'demo-token',
       slot: 'd2_morning',
@@ -42,23 +42,15 @@ describe('BatchWatchPage', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('Good Morning Rahul')).toBeInTheDocument()
+      expect(screen.getByText('Your Day 2 Morning Batch is ready')).toBeInTheDocument()
     })
 
-    const playerHeading = screen.getByText('In-app player')
-    const greeting = screen.getByText('Good Morning Rahul')
-
-    expect(screen.getByText('Your Day 2 Morning Batch is ready')).toBeInTheDocument()
-    expect(screen.getByText('Reserved for Rahul')).toBeInTheDocument()
-    expect(screen.getByText('Tap play to start the batch inside Myle without showing external video clutter before the session begins.')).toBeInTheDocument()
+    expect(screen.getByText('Tap play to watch this video inside Myle.')).toBeInTheDocument()
     expect(screen.getByText('Post-batch upload')).toBeInTheDocument()
     expect(screen.getByText('Upload after this batch')).toBeInTheDocument()
-    expect(screen.getByText('Business evaluation stays separate')).toBeInTheDocument()
-    expect(screen.getByText('Unlocks after the 3rd Day 2 batch')).toBeInTheDocument()
-    expect(playerHeading.compareDocumentPosition(greeting) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.queryByTitle('Day 2 Morning Batch')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Start batch now' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Play video' }))
 
     const iframe = await screen.findByTitle('Day 2 Morning Batch')
     expect(iframe).toHaveAttribute(
@@ -104,10 +96,10 @@ describe('BatchWatchPage', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('Good Morning Rahul')).toBeInTheDocument()
+      expect(screen.getByText('Your Day 2 Morning Batch is ready')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Start batch now' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Play video' }))
 
     await waitFor(() => {
       expect(container.querySelector('video[title="Day 2 Morning Batch"]')).not.toBeNull()
@@ -119,7 +111,6 @@ describe('BatchWatchPage', () => {
     expect(container.querySelector('iframe')).not.toBeInTheDocument()
     expect(screen.getByText('Playback stays inside Myle with native controls and fullscreen available from the player.')).toBeInTheDocument()
     expect(screen.getByText('Latest upload for this batch')).toBeInTheDocument()
-    expect(screen.getByText('Ready for old test link flow')).toBeInTheDocument()
   })
 
   it('shows a locked state before the scheduled slot opens', async () => {

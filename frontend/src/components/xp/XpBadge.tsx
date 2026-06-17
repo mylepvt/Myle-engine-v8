@@ -42,7 +42,7 @@ export function XpBadge() {
                 colors.bg, colors.text, colors.border,
               )}
             >
-              ⚡ {data.level_label.toUpperCase()}
+              ⚡ {data.level_label?.toUpperCase() ?? data.level?.toUpperCase() ?? '???'}
             </span>
             {seasonLabel && (
               <span className="text-ds-label text-muted-foreground/70 font-medium">
@@ -87,7 +87,7 @@ export function XpBadge() {
 
         {/* Last month result */}
         {lastMonth && (
-          <div className="mt-3 rounded border border-white/[0.07] bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          <div className="mt-3 rounded border border-border dark:border-white/[0.07] bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
             Last month ({MONTH_NAMES[lastMonth.month - 1]}):&nbsp;
             <span className="font-semibold text-foreground">
               {lastMonth.final_xp.toLocaleString()} XP
