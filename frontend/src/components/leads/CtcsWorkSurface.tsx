@@ -51,6 +51,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   const { role, serverRole } = useDashboardShellRole()
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
   const [tab, setTab] = useState<CtcsTab>('all')
+  const [generated, setGenerated] = useState(false)
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [slotPickerLeadId, setSlotPickerLeadId] = useState<number | null>(null)
   const [slotPickerTargetStatus, setSlotPickerTargetStatus] = useState<LeadStatus>('video_sent')
@@ -58,6 +59,14 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
     filters.q.trim().length > 0 && (surfaceRole === 'admin' || surfaceRole === 'leader')
   const ctcsOpts = useMemo(() => {
     if (searchMode) return { searchAllSections: true as const }
+    if (generated) {
+      return {
+        generatedOnly: true as const,
+        ctcsFilter: 'all' as const,
+        ctcsPrioritySort: true as const,
+        leaderAllScope: surfaceRole === 'leader',
+      }
+    }
     if (tab === 'all') {
       return {
         ctcsFilter: 'all' as const,
@@ -66,7 +75,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
       }
     }
     return { ctcsFilter: tab, ctcsPrioritySort: true as const, preEnrollmentOnly: true as const }
-  }, [searchMode, tab, surfaceRole])
+  }, [searchMode, generated, tab, surfaceRole])
   useEffect(() => {
     const id = window.setInterval(() => setNowMs(Date.now()), LEAD_SLA_SMOOTH_REFRESH_MS)
     return () => window.clearInterval(id)
@@ -190,12 +199,15 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
       ) : (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pb-1">
           {TABS.map((t) => {
-            const active = tab === t.id
+            const active = tab === t.id && !generated
             return (
               <button
                 key={t.id}
                 type="button"
-                onClick={() => setTab(t.id)}
+                onClick={() => {
+                  setGenerated(false)
+                  setTab(t.id)
+                }}
                 className={cn(
                   'flex min-w-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
                   active
@@ -210,6 +222,21 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
               </button>
             )
           })}
+          <button
+            type="button"
+            onClick={() => setGenerated(true)}
+            className={cn(
+              'flex min-w-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
+              generated
+                ? 'border-primary/45 bg-primary/10 text-foreground'
+                : 'border-border/70 text-muted-foreground hover:border-border hover:text-foreground',
+            )}
+          >
+            <span>Generated</span>
+            {generated && total > 0 ? (
+              <span className="rounded bg-muted px-1.5 py-0.5 text-ds-caption text-muted-foreground">{total}</span>
+            ) : null}
+          </button>
         </div>
       )}
 
