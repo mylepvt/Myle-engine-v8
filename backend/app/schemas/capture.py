@@ -41,6 +41,22 @@ class CaptureMessageUpdate(BaseModel):
     message: str | None = Field(default=None, max_length=2000)
 
 
+class CaptureLeadRow(BaseModel):
+    """One captured response — Google-Forms-style list under the link."""
+
+    id: int
+    name: str
+    phone: str | None = None
+    city: str | None = None
+    age: int | None = None
+    status: str
+    created_at: datetime
+
+
+class CaptureLeadsResponse(BaseModel):
+    leads: list[CaptureLeadRow]
+
+
 # ── Public (no-auth) form ─────────────────────────────────────────────────────
 
 class PublicLinkInfo(BaseModel):

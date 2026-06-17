@@ -98,6 +98,24 @@ async def get_owned_link(
     return link
 
 
+async def list_link_leads(
+    session: AsyncSession, *, owner_user_id: int, link_id: int
+) -> list[Lead]:
+    """Captured responses for one link (owner-scoped), newest first."""
+    await get_owned_link(session, owner_user_id=owner_user_id, link_id=link_id)
+    rows = (
+        await session.execute(
+            select(Lead)
+            .where(
+                Lead.capture_link_id == link_id,
+                Lead.deleted_at.is_(None),
+            )
+            .order_by(Lead.created_at.desc())
+        )
+    ).scalars().all()
+    return list(rows)
+
+
 async def set_poster_url(
     session: AsyncSession, *, link: LeadCaptureLink, poster_url: str
 ) -> LeadCaptureLink:
