@@ -13,6 +13,7 @@ from app.schemas.capture import (
     CaptureLinkCreate,
     CaptureLinkListResponse,
     CaptureLinkPublic,
+    CaptureMessageUpdate,
     CategoryOption,
 )
 from app.services import capture_service as svc
@@ -31,7 +32,9 @@ def _to_public(link: LeadCaptureLink) -> CaptureLinkPublic:
         leads_count=link.leads_count or 0,
         created_at=link.created_at,
         poster_url=link.poster_url,
-        share_message=category_message(link.category),
+        views=link.views or 0,
+        custom_message=link.custom_message,
+        share_message=link.custom_message or category_message(link.category),
     )
 
 
@@ -90,4 +93,20 @@ async def upload_poster(
     if not ok:
         raise HTTPException(status_code=400, detail=result)
     link = await svc.set_poster_url(session, link=link, poster_url=result)
+    return _to_public(link)
+
+
+@router.patch("/links/{link_id}/message", response_model=CaptureLinkPublic)
+async def update_message(
+    link_id: int,
+    body: CaptureMessageUpdate,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+):
+    try:
+        link = await svc.set_custom_message(
+            session, owner_user_id=user.user_id, link_id=link_id, message=body.message
+        )
+    except svc.CaptureError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message)
     return _to_public(link)

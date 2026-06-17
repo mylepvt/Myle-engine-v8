@@ -186,6 +186,9 @@ async def _run_http_public_flow() -> None:
             r404 = await client.get("/api/capture/does-not-exist")
             assert r404.status_code == 404
 
+            # opening the form a second time bumps the view counter
+            await client.get(f"/api/capture/{token}")
+
             # submit form
             r2 = await client.post(
                 f"/api/capture/{token}",
@@ -198,9 +201,31 @@ async def _run_http_public_flow() -> None:
             r422 = await client.post(f"/api/capture/{token}", json={"name": "NoPhone"})
             assert r422.status_code == 422
 
+            # honeypot filled → silently dropped (no lead)
+            rhp = await client.post(
+                f"/api/capture/{token}",
+                json={"name": "Bot", "phone": "9111111111", "company": "spam-co"},
+            )
+            assert rhp.status_code == 200
+
+            # duplicate phone for same owner → no second lead, still ok
+            rdup = await client.post(
+                f"/api/capture/{token}",
+                json={"name": "Web Lead Again", "phone": "+91 90012 34567"},
+            )
+            assert rdup.status_code == 200
+
         async with Session() as verify:
             rows = (await verify.execute(Lead.__table__.select())).fetchall()
-            assert len(rows) == 1
+            assert len(rows) == 1  # honeypot + duplicate created nothing
+            from app.models.lead_capture_link import LeadCaptureLink
+
+            link_row = (
+                await verify.execute(
+                    LeadCaptureLink.__table__.select().where(LeadCaptureLink.token == token)
+                )
+            ).first()
+            assert link_row.views == 2
             lead = await verify.get(Lead, rows[0].id)
             assert lead.name == "Web Lead"
             assert lead.source == "known_zone"
@@ -284,6 +309,19 @@ async def _run_http_authed_flow() -> None:
             # invalid category → 400
             rbad = await client.post("/api/v1/capture/links", json={"category": "nope"})
             assert rbad.status_code == 400
+
+            # custom message overrides the category default; clearing reverts
+            rm = await client.patch(
+                f"/api/v1/capture/links/{link['id']}/message",
+                json={"message": "My own pitch {link}"},
+            )
+            assert rm.status_code == 200, rm.text
+            assert rm.json()["share_message"] == "My own pitch {link}"
+            rm2 = await client.patch(
+                f"/api/v1/capture/links/{link['id']}/message", json={"message": ""}
+            )
+            assert rm2.json()["custom_message"] is None
+            assert "{link}" in rm2.json()["share_message"]
 
             # list links
             rl = await client.get("/api/v1/capture/links")

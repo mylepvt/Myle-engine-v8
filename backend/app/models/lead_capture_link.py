@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -26,6 +26,12 @@ class LeadCaptureLink(Base):
     category: Mapped[str] = mapped_column(String(50), nullable=False)
     # Member-uploaded poster (their own design) with the QR/link overlaid, saved server-side.
     poster_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Optional member-written share message; overrides the category default when set.
+    custom_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # How many times the public form page was opened (for conversion % = leads_count / views).
+    views: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0"), default=0
+    )
     active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("true"), default=True
     )

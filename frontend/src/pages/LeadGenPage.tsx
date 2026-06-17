@@ -25,6 +25,8 @@ type CaptureLink = {
   leads_count: number
   created_at: string
   poster_url: string | null
+  views: number
+  custom_message: string | null
   share_message: string
 }
 
@@ -51,6 +53,8 @@ export function LeadGenPage({ title }: { title?: string }) {
   const [templatesFor, setTemplatesFor] = useState<number | null>(null)
   const [ownerName, setOwnerName] = useState('')
   const [note, setNote] = useState<string | null>(null)
+  const [editMsgFor, setEditMsgFor] = useState<number | null>(null)
+  const [msgDraft, setMsgDraft] = useState('')
   const fileInputs = useRef<Record<number, HTMLInputElement | null>>({})
 
   const categoriesQuery = useQuery({
@@ -86,6 +90,21 @@ export function LeadGenPage({ title }: { title?: string }) {
     mutationFn: async (id: number) =>
       jsonOrThrow(await apiFetch(`/api/v1/capture/links/${id}`, { method: 'DELETE' })),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['capture-links'] }),
+  })
+
+  const messageMutation = useMutation({
+    mutationFn: async ({ id, message }: { id: number; message: string | null }) =>
+      jsonOrThrow(
+        await apiFetch(`/api/v1/capture/links/${id}/message`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message }),
+        }),
+      ),
+    onSuccess: () => {
+      setEditMsgFor(null)
+      void queryClient.invalidateQueries({ queryKey: ['capture-links'] })
+    },
   })
 
   const uploadMutation = useMutation({
@@ -222,7 +241,9 @@ export function LeadGenPage({ title }: { title?: string }) {
                   <div>
                     <p className="font-medium">{link.category_label}</p>
                     <p className="text-xs text-muted-foreground">
-                      {link.leads_count} lead{link.leads_count === 1 ? '' : 's'} captured
+                      {link.views} open{link.views === 1 ? '' : 's'} · {link.leads_count} lead
+                      {link.leads_count === 1 ? '' : 's'} ·{' '}
+                      {link.views > 0 ? Math.round((link.leads_count / link.views) * 100) : 0}%
                       {link.active ? '' : ' · inactive'}
                     </p>
                   </div>
@@ -245,6 +266,54 @@ export function LeadGenPage({ title }: { title?: string }) {
                     {copiedToken === link.token ? 'Copied!' : 'Copy'}
                   </Button>
                 </div>
+
+                {link.active ? (
+                  editMsgFor === link.id ? (
+                    <div className="space-y-2">
+                      <textarea
+                        className="min-h-[96px] w-full rounded-md border border-input bg-background p-2 text-sm"
+                        value={msgDraft}
+                        onChange={(e) => setMsgDraft(e.target.value)}
+                        placeholder={link.share_message}
+                      />
+                      <p className="text-[11px] text-muted-foreground">
+                        Tip: use {'{link}'} where your link should appear.
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          disabled={messageMutation.isPending}
+                          onClick={() =>
+                            messageMutation.mutate({ id: link.id, message: msgDraft })
+                          }
+                        >
+                          {messageMutation.isPending ? 'Saving…' : 'Save message'}
+                        </Button>
+                        {link.custom_message ? (
+                          <Button
+                            variant="outline"
+                            onClick={() => messageMutation.mutate({ id: link.id, message: '' })}
+                          >
+                            Reset to default
+                          </Button>
+                        ) : null}
+                        <Button variant="ghost" onClick={() => setEditMsgFor(null)}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+                      onClick={() => {
+                        setEditMsgFor(link.id)
+                        setMsgDraft(link.custom_message ?? link.share_message)
+                      }}
+                    >
+                      {link.custom_message ? 'Edit share message' : 'Customise share message'}
+                    </button>
+                  )
+                ) : null}
 
                 {link.active ? (
                   <div className="space-y-3">
