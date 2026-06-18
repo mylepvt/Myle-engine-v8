@@ -871,7 +871,9 @@ async def broadcast_whatsapp(
     if not message:
         raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="message required")
 
+    from app.core.time_ist import today_ist
     from app.models.user import User
+    from app.services.report_eligibility import report_eligibility_conditions
     from app.services.whatsapp_removal import _send_via_meta_api
     from app.services.whatsapp_log_service import log_wa_outbound
 
@@ -886,10 +888,7 @@ async def broadcast_whatsapp(
     users = (
         await session.execute(
             select(User).where(
-                User.role.in_(roles),
-                User.registration_status == "approved",
-                User.removed_at.is_(None),
-                User.access_blocked.is_(False),
+                *report_eligibility_conditions(today_ist(), roles=roles),
                 User.phone.isnot(None),
             ).order_by(User.name.asc())
         )
@@ -960,7 +959,9 @@ async def send_insights_broadcast(
     if body.period not in (7, 30):
         raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="period must be 7 or 30")
 
+    from app.core.time_ist import today_ist
     from app.models.user import User
+    from app.services.report_eligibility import report_eligibility_conditions
     from app.services.whatsapp_insights import build_insight_message
     from app.services.whatsapp_removal import _send_via_meta_api
     from app.services.whatsapp_log_service import log_wa_outbound
@@ -976,10 +977,7 @@ async def send_insights_broadcast(
     users = (
         await session.execute(
             select(User).where(
-                User.role.in_(roles),
-                User.registration_status == "approved",
-                User.removed_at.is_(None),
-                User.access_blocked.is_(False),
+                *report_eligibility_conditions(today_ist(), roles=roles),
                 User.phone.isnot(None),
             ).order_by(User.name.asc())
         )

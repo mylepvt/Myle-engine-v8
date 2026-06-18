@@ -267,8 +267,8 @@ async def grant_xp(
                 body=f"You reached {user.xp_level.title()} level. Keep it up!",
                 url="/dashboard",
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Level-up push failed user_id=%s: %s", user.id, exc)
 
     await session.flush()
     return actual_xp

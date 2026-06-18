@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models.daily_report import DailyReport
 from app.models.user import User
+from app.services.messaging_gate import can_receive_automated_message
 from app.services.report_eligibility import report_eligibility_conditions
 from app.services.settings_service import SettingsService
 from app.services.user_hierarchy import nearest_leader_for_user
@@ -114,7 +115,7 @@ async def alert_leader_member_removed(
     session: AsyncSession,
 ) -> None:
     leader = await _get_leader(member.id, session)
-    if leader is None or not leader.phone:
+    if leader is None or not leader.phone or not can_receive_automated_message(leader):
         return
     reason_line = f"\nReason: {removal_reason}" if removal_reason else ""
     msg = (
@@ -148,7 +149,7 @@ async def alert_leader_grace_requested(
     session: AsyncSession,
 ) -> None:
     leader = await _get_leader(member.id, session)
-    if leader is None or not leader.phone:
+    if leader is None or not leader.phone or not can_receive_automated_message(leader):
         return
     reason_line = f"\nReason: {grace_reason}" if grace_reason else ""
     till_line = f"\nRequested till: {grace_end_date}" if grace_end_date else ""
@@ -182,7 +183,7 @@ async def alert_leader_new_member_approved(
     session: AsyncSession,
 ) -> None:
     leader = await _get_leader(member.id, session)
-    if leader is None or not leader.phone:
+    if leader is None or not leader.phone or not can_receive_automated_message(leader):
         return
     msg = (
         f"Hi {_display(leader)},\n\n"
@@ -216,7 +217,7 @@ async def alert_leader_member_replied(
     if member is None:
         return
     leader = await _get_leader(member_user_id, session)
-    if leader is None or not leader.phone:
+    if leader is None or not leader.phone or not can_receive_automated_message(leader):
         return
     msg = (
         f"Hi {_display(leader)},\n\n"

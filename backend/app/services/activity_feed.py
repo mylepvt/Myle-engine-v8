@@ -136,8 +136,8 @@ async def _persist_to_db(
                 payload=metadata or {},
             ))
             await session.commit()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Activity feed event write failed: %s", exc)
 
 
 async def _broadcast_event(event: dict[str, Any]) -> None:

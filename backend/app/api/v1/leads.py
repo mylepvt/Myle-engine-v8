@@ -45,7 +45,7 @@ from app.services.batch_watch_uploads import (
 )
 from app.services import day2_test_service
 from app.services.lead_file_import import run_personal_lead_import
-from app.services.leads_service import LeadsService, get_leads_service, _PAYMENT_REQUIRED_STATUSES
+from app.services.leads_service import LeadsService, get_leads_service
 from app.services.team_tracking import refresh_daily_member_stat_after_change
 from app.services.downline import is_user_in_downline_of
 from app.services.lead_scope import user_can_access_lead
@@ -710,14 +710,6 @@ async def transition_lead_status(
     lead = await service._get_lead_or_404(lead_id)
     if not await service._repository.can_mutate_lead(user, lead):
         raise HTTPException(status_code=403, detail="Forbidden")
-
-    # Only entering Min. FLP Billing is payment-gated here; later stages must stay unlocked.
-    if body.target_status in _PAYMENT_REQUIRED_STATUSES and user.role != "admin":
-        if lead.payment_status != "approved":
-            raise HTTPException(
-                status_code=http_status.HTTP_400_BAD_REQUEST,
-                detail="Payment proof must be approved before moving to this status.",
-            )
 
     result = await service.transition_lead_status(lead_id=lead_id, body=body, user=user)
     return result

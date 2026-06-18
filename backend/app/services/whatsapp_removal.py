@@ -156,7 +156,7 @@ async def _send_via_meta_api(
         try:
             wa_message_id = json.loads(body).get("messages", [{}])[0].get("id")
         except Exception:
-            pass
+            logger.warning("WhatsApp removal response JSON parse failed: status=%s", status)
         return {"ok": ok, "channel": "meta_cloud_api", "http_status": status, "body": body[:500], "wa_message_id": wa_message_id}
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")[:500] if exc.fp else ""

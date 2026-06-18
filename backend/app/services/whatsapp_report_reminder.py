@@ -141,10 +141,19 @@ async def send_report_reminder(
 ) -> ReportReminderOutreach:
     """Send WhatsApp reminder for unsubmitted daily report and record the attempt.
 
-    Skips if the user has daily report reminders disabled.
+    Skips if the user has daily report reminders disabled, or if the common-sense
+    messaging gate says this member should not receive automated nudges (removed,
+    blocked, not approved, or still onboarding). The scheduled caller already
+    filters on eligibility — this is defence-in-depth so no future caller can
+    leak a reminder to a member who has left the org.
     """
-    if not user.daily_report_reminders_enabled:
-        logger.info("report reminder skipped user_id=%s (reminders disabled)", user.id)
+    from app.services.messaging_gate import (
+        automated_block_reason,
+        can_receive_automated_message,
+    )
+
+    def _skip(reason: str) -> ReportReminderOutreach:
+        logger.info("report reminder skipped user_id=%s (%s)", user.id, reason)
         record = ReportReminderOutreach(
             user_id=user.id,
             reminder_date=reminder_date,
@@ -153,6 +162,15 @@ async def send_report_reminder(
             send_status="skipped",
         )
         session.add(record)
+        return record
+
+    if not can_receive_automated_message(user):
+        skipped = _skip(automated_block_reason(user) or "not_eligible")
+        await session.flush()
+        return skipped
+
+    if not user.daily_report_reminders_enabled:
+        record = _skip("reminders disabled")
         await session.flush()
         return record
 

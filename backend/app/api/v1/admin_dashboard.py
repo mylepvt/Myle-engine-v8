@@ -20,6 +20,7 @@ from app.models.lead import Lead
 from app.models.report_reminder_outreach import ReportReminderOutreach
 from app.models.user import User
 from app.models.user_presence_session import UserPresenceSession
+from app.services.report_eligibility import report_eligibility_conditions
 from app.services.user_hierarchy import recursive_downline_user_ids
 from app.services.whatsapp_report_reminder import send_report_reminder
 
@@ -566,13 +567,11 @@ async def admin_send_report_reminders(
     _require_admin(user)
     today = _today_ist()
 
-    # All approved team + leader members
+    # All report-eligible team + leader members
     active_members = (
         await session.execute(
             select(User).where(
-                User.role.in_(["leader", "team"]),
-                User.registration_status == "approved",
-                User.removed_at.is_(None),
+                *report_eligibility_conditions(today)
             ).order_by(User.name.asc())
         )
     ).scalars().all()

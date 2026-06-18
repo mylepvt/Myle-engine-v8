@@ -11,6 +11,8 @@ surface when they are:
 * still **in onboarding/training** — either ``training_required`` is set, the
   ``training_status`` is not finished, or they are inside their 7-day training
   gate window (``training_gate_until >= today``).
+* **in active grace** — ``discipline_status == "grace"`` and their grace window
+  hasn't expired yet (``grace_end_date >= today``).
 
 Historically each report builder re-implemented this check by hand and several
 of them drifted out of sync (missing the ``access_blocked`` and/or
@@ -71,6 +73,11 @@ def report_eligibility_conditions(
             User.training_gate_until.is_(None),
             User.training_gate_until < today,
         ),
+        or_(
+            User.discipline_status != "grace",
+            User.grace_end_date.is_(None),
+            User.grace_end_date < today,
+        ),
     ]
 
 
@@ -102,5 +109,7 @@ def is_user_report_eligible(
     if (user.training_status or "").strip().lower() not in _FINISHED_TRAINING_STATUSES:
         return False
     if user.training_gate_until is not None and user.training_gate_until >= today:
+        return False
+    if (user.discipline_status or "").strip().lower() == "grace" and user.grace_end_date is not None and user.grace_end_date >= today:
         return False
     return True
