@@ -14,18 +14,6 @@ import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 
 const ASSIGNEE_PALETTE = ['bg-blue-500', 'bg-pink-500', 'bg-violet-500', 'bg-cyan-500', 'bg-amber-500'] as const
 
-/** Stages where the green "send Enrollment-Live video" WhatsApp button is offered. */
-const ENROLLMENT_SENDABLE_STATUSES = new Set<LeadStatus>([
-  'new_lead',
-  'new',
-  'contacted',
-  'invited',
-  'video_sent',
-  'retarget',
-  'lost',
-  'inactive',
-])
-
 /** Native `<select>` — compact so Call + Lead sit one row beside Dial/WA. */
 const pillSelectInner =
   'max-w-[min(11rem,46vw)] min-w-0 h-full flex-1 cursor-pointer appearance-none rounded-full border-0 bg-transparent py-0 pl-0.5 pr-5 text-left text-ds-caption font-medium leading-none text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1 disabled:opacity-40'
@@ -61,7 +49,6 @@ type Props = {
   actionBusy: boolean
   onPatchStatus: (id: number, status: LeadStatus) => void
   onPatchCallStatus: (id: number, callStatus: string) => void
-  onSendEnrollment: (id: number) => void
   onCall: (lead: LeadPublic) => void
   onFollowUp: (id: number) => void
   onReassign?: (lead: LeadPublic) => void
@@ -80,7 +67,6 @@ export function CtcsLeadCard({
   actionBusy,
   onPatchStatus,
   onPatchCallStatus,
-  onSendEnrollment,
   onCall,
   onFollowUp,
   onReassign,
@@ -103,13 +89,7 @@ export function CtcsLeadCard({
   const wa = whatsAppChatHref(lead.phone ?? '')
   const tel = telHref(lead.phone)
   const canDial = tel !== '#'
-  // Show the "send Enrollment-Live video" button for every stage where sending it
-  // is useful — fresh imports, leads being worked, and re-engaged retarget/lost
-  // leads (not just `video_sent`). `/flp-min-billing/send` advances the lead to
-  // `video_sent` from any of these, so re-sending / first-sending both work.
-  const secureEnrollmentWhatsapp =
-    wa !== '#' && ENROLLMENT_SENDABLE_STATUSES.has(lead.status as LeadStatus)
-  /** Dial / WhatsApp stay usable while CTCS runs; only this card’s patch blocks. */
+  /** Dial / WhatsApp stay usable while CTCS runs; only this card's patch blocks. */
   const dialBlocked = patchBusy || !canDial
   const phoneRaw = lead.phone?.trim() ?? ''
   const cityRaw = lead.city?.trim() ?? ''
@@ -332,25 +312,7 @@ export function CtcsLeadCard({
                 <Phone className="size-3.5 text-muted-foreground" aria-hidden />
               </span>
             )}
-            {secureEnrollmentWhatsapp ? (
-              <button
-                type="button"
-                disabled={selectBusy}
-                onClick={() => onSendEnrollment(lead.id)}
-                className={cn(
-                  'flex size-10 items-center justify-center rounded-full border-2 transition active:scale-95 disabled:opacity-50',
-                  'border-[#128C7E]/60 bg-[#25D366]/15 text-[#065f46]',
-                  'shadow-[0_0_10px_rgba(37,211,102,0.28)] ring-1 ring-[#25D366]/25 hover:bg-[#25D366]/25',
-                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#128C7E]/70',
-                  'dark:border-[#25D366]/75 dark:bg-[#25D366]/20 dark:text-[#dcf8c6] dark:shadow-[0_0_12px_rgba(37,211,102,0.45)] dark:ring-[#25D366]/35',
-                  'dark:hover:border-[#34eb75] dark:hover:bg-[#25D366]/30',
-                )}
-                title="Send secure Min. FLP Billing video on WhatsApp"
-                aria-label="Send secure Min. FLP Billing video on WhatsApp"
-              >
-                <MessageCircle className="size-3.5 text-[#047857] dark:text-[#b8f5c4]" aria-hidden />
-              </button>
-            ) : wa !== '#' ? (
+            {wa !== '#' ? (
               <a
                 href={wa}
                 target="_blank"
