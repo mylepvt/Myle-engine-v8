@@ -450,7 +450,6 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
             actionBusy={actionBusy}
             onPatchStatus={onPatchStatus}
             onPatchCallStatus={onPatchCallStatus}
-            onSendEnrollment={onSendEnrollment}
             onCall={onCall}
             onFollowUp={onFollowUp}
             onReassign={surfaceRole === 'leader' || surfaceRole === 'admin' ? onReassign : undefined}

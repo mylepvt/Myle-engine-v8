@@ -23,7 +23,6 @@ function renderCard(lead: LeadPublic) {
           actionBusy={false}
           onPatchStatus={() => {}}
           onPatchCallStatus={() => {}}
-          onSendEnrollment={() => {}}
           onCall={() => {}}
           onFollowUp={() => {}}
         />
