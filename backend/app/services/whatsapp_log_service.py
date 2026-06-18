@@ -17,8 +17,8 @@ def _push_realtime() -> None:
     try:
         from app.core.realtime_hub import notify_topics
         asyncio.ensure_future(notify_topics("whatsapp_log"))
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("WhatsApp log notify_topics failed: %s", exc)
 
 
 async def log_wa_outbound(

@@ -302,8 +302,8 @@ async def deliver_crm_outbox_event(
                     "crm_stage": crm_data.get("stage"),
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 })
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("CRM outbox sync failed for lead_id=%s: %s", lead_id, exc)
 
 
 async def process_crm_outbox_batch(
