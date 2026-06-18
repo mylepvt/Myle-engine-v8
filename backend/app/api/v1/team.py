@@ -1349,6 +1349,18 @@ async def delete_member(
     target.grace_set_by_user_id = None
     _clear_pending_grace_request(target)
     await session.commit()
+
+    # Post-action verify: re-read from the DB and confirm the removal actually
+    # persisted. Catches the silent-failure class of bug where a commit looks
+    # like it succeeded but the row is unchanged (FK violation, stale session).
+    verify = await session.get(User, target_user_id)
+    ensure(
+        verify is not None and verify.removed_at is not None
+        and verify.discipline_status == "removed",
+        f"delete_member did not persist removal for user_id={target_user_id}",
+        code="member_removal_not_persisted",
+    )
+
     background_tasks.add_task(_send_removal_whatsapp_bg, target_user_id, target.removal_reason)
 
 

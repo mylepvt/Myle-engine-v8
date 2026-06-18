@@ -307,19 +307,23 @@ async def execute_action(
         if leader_user is None or not leader_user.phone:
             result = {"status": "failed", "reason": "no_leader_phone"}
         else:
-            msg = (
-                f"🚨 *Myle Action Required*\n\n"
-                f"Member: {member_name}\n"
-                f"{context}"
-                f"Issue: {reason}\n\n"
-                "Please follow up today and get this moving.\n\n"
-                "— Myle Team"
-            )
-            sent = await send_system_alert(
-                leader_user.phone, msg, session,
-                message_type="action_queue_alert", related_user_id=leader_user.id,
-            )
-            result = {"status": "sent" if sent else "failed", "leader_id": leader_user.id}
+            from app.services.messaging_gate import can_receive_automated_message
+            if not can_receive_automated_message(leader_user):
+                result = {"status": "skipped", "reason": "ineligible", "leader_id": leader_user.id}
+            else:
+                msg = (
+                    f"🚨 *Myle Action Required*\n\n"
+                    f"Member: {member_name}\n"
+                    f"{context}"
+                    f"Issue: {reason}\n\n"
+                    "Please follow up today and get this moving.\n\n"
+                    "— Myle Team"
+                )
+                sent = await send_system_alert(
+                    leader_user.phone, msg, session,
+                    message_type="action_queue_alert", related_user_id=leader_user.id,
+                )
+                result = {"status": "sent" if sent else "failed", "leader_id": leader_user.id}
 
     elif action == "create_recovery":
         if member is None:

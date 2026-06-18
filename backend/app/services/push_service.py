@@ -13,9 +13,11 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.time_ist import today_ist
 from app.models.app_setting import AppSetting
 from app.models.push_subscription import PushSubscription
 from app.models.user import User
+from app.services.report_eligibility import report_eligibility_conditions
 
 logger = logging.getLogger(__name__)
 
@@ -190,9 +192,9 @@ async def send_push_to_user(
         user = await session.get(User, user_id)
         if user is None:
             return 0
-        if user.access_blocked or user.removed_at is not None:
-            return 0
-        if user.discipline_status == "removed":
+        # Common-sense gate: never push to a removed / blocked account.
+        from app.services.messaging_gate import is_account_active
+        if not is_account_active(user):
             return 0
         if not user.push_notifications_enabled:
             return 0
@@ -230,11 +232,7 @@ async def send_push_to_role(
         private_pem, _ = await _get_or_create_vapid_keys(session)
         user_ids_result = await session.execute(
             select(User.id).where(
-                User.role == role,
-                User.registration_status == "approved",
-                User.access_blocked.is_(False),
-                User.removed_at.is_(None),
-                User.discipline_status != "removed",
+                *report_eligibility_conditions(today_ist(), roles=(role,)),
                 User.push_notifications_enabled.is_(True),
             )
         )
@@ -274,11 +272,7 @@ async def send_push_to_roles(
         user_ids = (
             await session.execute(
                 select(User.id).where(
-                    User.role.in_(role_list),
-                    User.registration_status == "approved",
-                    User.access_blocked.is_(False),
-                    User.removed_at.is_(None),
-                    User.discipline_status != "removed",
+                    *report_eligibility_conditions(today_ist(), roles=role_list),
                     User.push_notifications_enabled.is_(True),
                 )
             )
@@ -317,11 +311,7 @@ async def broadcast_push(
         active_ids = (
             await session.execute(
                 select(User.id).where(
-                    User.role != "admin",
-                    User.registration_status == "approved",
-                    User.access_blocked.is_(False),
-                    User.removed_at.is_(None),
-                    User.discipline_status != "removed",
+                    *report_eligibility_conditions(today_ist()),
                     User.push_notifications_enabled.is_(True),
                 )
             )

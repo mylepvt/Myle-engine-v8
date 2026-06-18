@@ -316,7 +316,10 @@ async def _exec_alert_leader(
     if leader_id is not None:
         leader = await session.get(User, leader_id)
         if leader is not None and leader.phone:
+            from app.services.messaging_gate import can_receive_automated_message
             from app.services.whatsapp_leader_alerts import send_system_alert
+            if not can_receive_automated_message(leader):
+                return {"action": "alert_leader", "leader_id": leader_id, "member_id": member_id, "message": message, "status": "skipped", "reason": "ineligible"}
             wa_text = (
                 f"🚨 *Myle Automation Alert*\n\n"
                 f"{message}\n\n"
@@ -398,8 +401,11 @@ async def _exec_alert_leader_batched(
         leader = await session.get(User, leader_id) if leader_id else None
         phone = leader.phone if leader else None
 
+        from app.services.messaging_gate import can_receive_automated_message
+        eligible = leader is not None and can_receive_automated_message(leader)
+
         sent_any = False
-        if phone:
+        if phone and eligible:
             total = len(group)
             parts = (total + BATCH_SIZE - 1) // BATCH_SIZE
             for part_index in range(parts):

@@ -13,6 +13,7 @@ Jobs (all IST-aware):
 - eos_automation_rules            : 10:00 & 17:00 IST — evaluate EOS automation rules (alerts/escalations via WhatsApp)
 - eos_verification_escalations    : 11:00 & 18:00 IST — escalate pending tasks 24h→leader, 48h→senior, 72h→admin
 - eos_action_queue_digest         : 09:00 IST daily — WhatsApp queue digest: org-wide to management, scoped to leaders
+- integrity_audit                 : 02:30 IST daily — self-audit for data contradictions; auto-fix safe ones + alert management
 """
 from __future__ import annotations
 
@@ -391,10 +392,7 @@ async def job_leader_basics_enforcement() -> None:
             leaders = (
                 await session.execute(
                     select(User).where(
-                        User.role == "leader",
-                        User.registration_status == "approved",
-                        User.removed_at.is_(None),
-                        User.access_blocked.is_(False),
+                        *report_eligibility_conditions(today, roles=("leader",)),
                     )
                 )
             ).scalars().all()
@@ -513,10 +511,7 @@ async def job_daily_leader_team_summary() -> None:
             leaders = (
                 await session.execute(
                     select(User).where(
-                        User.role == "leader",
-                        User.registration_status == "approved",
-                        User.removed_at.is_(None),
-                        User.access_blocked.is_(False),
+                        *report_eligibility_conditions(today, roles=("leader",)),
                         User.phone.isnot(None),
                     )
                 )
@@ -705,4 +700,41 @@ async def job_eos_action_queue_digest() -> None:
             event_type="scheduler.failure",
             source="scheduler",
             detail={"job": "eos_action_queue_digest", "error": str(exc)},
+        )
+
+
+# ---------------------------------------------------------------------------
+# Job 16: integrity self-audit → 02:30 IST daily
+# ---------------------------------------------------------------------------
+
+async def job_integrity_audit() -> None:
+    """Find data contradictions, auto-fix the safe ones, alert management on issues."""
+    try:
+        from app.services.integrity_audit_service import run_integrity_audit
+        from app.services.whatsapp_leader_alerts import send_system_alert
+        from app.services.whatsapp_management_updates import get_management_phone
+        async with AsyncSessionLocal() as session:
+            report = await run_integrity_audit(session, auto_fix=True)
+            message = report.to_message()
+            if message:
+                phone = await get_management_phone(session)
+                if phone:
+                    await send_system_alert(
+                        phone, message, session, message_type="integrity_audit"
+                    )
+            logger.info(
+                "job_integrity_audit: issues=%d fixed=%d",
+                report.total_issues, report.total_fixed,
+            )
+            observe_event(
+                event_type="scheduler.integrity_audit",
+                source="scheduler",
+                detail={"issues": report.total_issues, "fixed": report.total_fixed},
+            )
+    except Exception as exc:
+        logger.error("job_integrity_audit failed: %s", exc)
+        observe_event(
+            event_type="scheduler.failure",
+            source="scheduler",
+            detail={"job": "integrity_audit", "error": str(exc)},
         )

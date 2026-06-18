@@ -8,8 +8,10 @@ from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
+from app.core.time_ist import today_ist
 from app.models.daily_mission import DailyMission, MissionBlocker, MissionTemplate
 from app.models.user import User
+from app.services.report_eligibility import report_eligibility_conditions
 from app.schemas.missions import (
     AdminMissionSummary,
     DailyMissionPublic,
@@ -158,10 +160,7 @@ async def pregenerate_today_missions(session: AsyncSession) -> int:
     members = (
         await session.execute(
             select(User).where(
-                User.role.in_(["team", "leader"]),
-                User.registration_status == "approved",
-                User.access_blocked.is_(False),
-                User.removed_at.is_(None),
+                *report_eligibility_conditions(today_ist()),
             )
         )
     ).scalars().all()

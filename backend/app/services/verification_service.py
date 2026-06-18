@@ -594,10 +594,12 @@ async def run_escalation_checks(session: AsyncSession) -> list[dict[str, Any]]:
                     + "\n\nPlease follow up and get these done.\n\n— Myle Team"
                 )
                 try:
-                    await send_system_alert(
-                        target.phone, body, session,
-                        message_type="verification_escalation", related_user_id=target.id,
-                    )
+                    from app.services.messaging_gate import can_receive_automated_message
+                    if can_receive_automated_message(target):
+                        await send_system_alert(
+                            target.phone, body, session,
+                            message_type="verification_escalation", related_user_id=target.id,
+                        )
                 except Exception as exc:
                     logger.warning(
                         "escalation digest send failed target_id=%s: %s", target.id, exc,
