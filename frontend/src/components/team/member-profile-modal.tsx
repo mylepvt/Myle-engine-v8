@@ -602,7 +602,7 @@ export function MemberProfileModal({
         title={danger === 'delete' ? 'Delete account' : 'Remove member now'}
         description={
           danger === 'delete'
-            ? `This permanently deletes ${currentMember.fbo_id} and cannot be undone.`
+            ? `This removes ${currentMember.fbo_id} from the system and revokes access immediately. Their history is kept and access can be restored later.`
             : `Remove ${currentMember.fbo_id} from the system right now? They lose access immediately.`
         }
         confirmLabel={danger === 'delete' ? 'Delete account' : 'Remove now'}

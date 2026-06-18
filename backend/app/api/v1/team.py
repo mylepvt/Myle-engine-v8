@@ -1314,10 +1314,18 @@ async def toggle_enrollment_access(
 @router.delete("/members/{target_user_id}", status_code=http_status.HTTP_204_NO_CONTENT)
 async def delete_member(
     target_user_id: int,
+    background_tasks: BackgroundTasks,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
-    """Delete a user account. Admin only. Cannot delete yourself."""
+    """Remove a user account. Admin only. Cannot remove yourself.
+
+    Soft-delete: the row is kept (so related leads, sales, reports and activity
+    history stay intact and foreign-key constraints are not violated), but the
+    member is marked ``removed`` + access-blocked. This immediately stops every
+    automated message surface, which all filter on ``removed_at`` /
+    ``access_blocked`` via report_eligibility.
+    """
     _require_admin(user)
     target = await session.get(User, target_user_id)
     if target is None:
@@ -1327,8 +1335,21 @@ async def delete_member(
             status_code=http_status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete your own account",
         )
-    await session.delete(target)
+    if target.removed_at is not None:
+        # Already removed — nothing to do, keep delete idempotent.
+        return
+    target.access_blocked = True
+    target.discipline_status = "removed"
+    target.removed_at = datetime.now(timezone.utc)
+    target.removed_by_user_id = user.user_id
+    target.removal_reason = "Removed by admin."
+    target.grace_end_date = None
+    target.grace_reason = None
+    target.grace_updated_at = None
+    target.grace_set_by_user_id = None
+    _clear_pending_grace_request(target)
     await session.commit()
+    background_tasks.add_task(_send_removal_whatsapp_bg, target_user_id, target.removal_reason)
 
 
 @router.get("/approvals", response_model=SystemStubResponse)
