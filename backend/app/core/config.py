@@ -34,7 +34,7 @@ class Settings(BaseSettings):
         "postgresql+asyncpg://myle:myle@localhost:5432/myle"
     )
     backend_cors_origins: str = (
-        "http://localhost:5173,http://127.0.0.1:5173"
+        "http://localhost:5173,http://127.0.0.1:5173,https://mylepvt.github.io"
     )
     secret_key: str = Field(
         default="myle-vl2-dev-secret-change-with-SECRET_KEY-env",
