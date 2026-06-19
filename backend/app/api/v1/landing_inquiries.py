@@ -39,8 +39,8 @@ async def submit_inquiry(
 
 @router.get("", response_model=list[LandingInquiryResponse])
 async def list_inquiries(
-    key: str = Query(default=""),
     session: Annotated[AsyncSession, Depends(get_db)],
+    key: str = Query(default=""),
 ):
     admin_key = _get_admin_key()
     if not admin_key:
