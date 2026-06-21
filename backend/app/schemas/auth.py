@@ -95,11 +95,23 @@ class RegisterRequest(BaseModel):
     phone: str = Field(min_length=10, max_length=32)
     is_new_joining: bool = False
     joining_date: Optional[date] = None
+    # Present when the prospect arrived from a converted lead's register link.
+    register_token: Optional[str] = Field(default=None, max_length=64)
 
 
 class RegisterResponse(BaseModel):
     ok: bool = True
     message: str = "Registration submitted! Your account is pending admin approval."
+
+
+class RegisterLinkInfo(BaseModel):
+    """Prefill payload for a converted lead's one-time register link."""
+
+    found: bool = False
+    already_used: bool = False
+    name: str = ""
+    phone: str = ""
+    upline_fbo_id: str = ""
 
 
 class UplineLookupResponse(BaseModel):

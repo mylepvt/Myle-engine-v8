@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Check, ChevronRight, Link2, MessageCircle, MoreHorizontal, Phone, UserRoundCog } from 'lucide-react'
+import { Check, ChevronRight, Link2, MessageCircle, MoreHorizontal, Phone, UserPlus, UserRoundCog } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { callStatusSelectOptions, type CallStatusApi } from '@/lib/call-status-options'
@@ -9,10 +10,61 @@ import { leadStatusSelectOptionsForLead, teamMayChangeLeadStatus } from '@/lib/t
 import { formatCountdown, timerRemainingMs } from '@/lib/ctcs-timer'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import { telHref, whatsAppChatHref } from '@/lib/phone-links'
-import { LEAD_STATUS_OPTIONS, type LeadPublic, type LeadStatus } from '@/hooks/use-leads-query'
+import { LEAD_STATUS_OPTIONS, type LeadPublic, type LeadStatus, useLeadRegisterLinkMutation } from '@/hooks/use-leads-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 
 const ASSIGNEE_PALETTE = ['bg-blue-500', 'bg-pink-500', 'bg-violet-500', 'bg-cyan-500', 'bg-amber-500'] as const
+
+/** Shown only on a closed (converted) lead — the register link auto-fires on close;
+ * this lets the closer copy / re-send it (and shows when the prospect has joined). */
+function ConvertedRegisterButton({ lead }: { lead: LeadPublic }) {
+  const mut = useLeadRegisterLinkMutation()
+  const [done, setDone] = useState(false)
+  if (lead.registered_at) {
+    return (
+      <span
+        className="flex h-8 items-center gap-1 rounded-full border border-emerald-500/50 bg-emerald-500/10 px-2.5 text-ds-caption font-semibold text-emerald-600 dark:text-emerald-300"
+        title="This lead has registered as a member"
+      >
+        <Check className="size-3.5" aria-hidden /> Registered
+      </span>
+    )
+  }
+  return (
+    <button
+      type="button"
+      disabled={mut.isPending}
+      onClick={async () => {
+        try {
+          const r = await mut.mutateAsync({ id: lead.id, resend: true })
+          if (r.register_url) {
+            try {
+              await navigator.clipboard.writeText(r.register_url)
+            } catch {
+              /* clipboard blocked — manual share still opens */
+            }
+          }
+          if (r.manual_share_url) window.open(r.manual_share_url, '_blank', 'noopener')
+          setDone(true)
+          window.setTimeout(() => setDone(false), 2000)
+        } catch {
+          /* surfaced by the disabled→enabled state; no-op */
+        }
+      }}
+      className={cn(
+        'flex h-8 items-center gap-1 rounded-full border px-2.5 text-ds-caption font-semibold transition active:scale-95 disabled:opacity-50',
+        done
+          ? 'border-emerald-500/60 bg-emerald-500/15 text-emerald-600 dark:text-emerald-300'
+          : 'border-primary/50 bg-primary/10 text-primary hover:bg-primary/20',
+      )}
+      title="Copy & re-send the register link on WhatsApp"
+      aria-label="Send register link"
+    >
+      {done ? <Check className="size-3.5" aria-hidden /> : <UserPlus className="size-3.5" aria-hidden />}
+      {done ? 'Sent' : 'Register link'}
+    </button>
+  )
+}
 
 /** Native `<select>` — compact so Call + Lead sit one row beside Dial/WA. */
 const pillSelectInner =
@@ -335,6 +387,7 @@ export function CtcsLeadCard({
                 <MessageCircle className="size-3.5 text-muted-foreground" aria-hidden />
               </span>
             )}
+            {lead.status === 'converted' ? <ConvertedRegisterButton lead={lead} /> : null}
             {showEnrollLink && onCopyEnrollLink ? (
               <button
                 type="button"

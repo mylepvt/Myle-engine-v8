@@ -20,7 +20,7 @@ import { AuthCard } from '@/components/auth/AuthCard'
 import { IconInput } from '@/components/auth/IconInput'
 import { Button } from '@/components/ui/button'
 import { apiFetch } from '@/lib/api'
-import { authRegister } from '@/lib/auth-api'
+import { authRegister, fetchRegisterLinkInfo } from '@/lib/auth-api'
 
 function RequiredMark() {
   return (
@@ -66,6 +66,9 @@ export function RegisterPage() {
   const [uplineLookup, setUplineLookup] = useState<UplineLookup | null>(null)
   const [uplineLookupPending, setUplineLookupPending] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  /** Set when arriving from a converted lead's register link (?rt=…). */
+  const [registerToken, setRegisterToken] = useState<string | null>(null)
+  const [fromLead, setFromLead] = useState(false)
 
   useEffect(() => {
     const fromUrl =
@@ -75,6 +78,35 @@ export function RegisterPage() {
     if (fromUrl) {
       setUplineFboId(fromUrl)
     }
+  }, [searchParams])
+
+  // Converted-lead register link: prefill name/phone + upline, force new-joining so
+  // the 7-day onboarding training kicks in.
+  useEffect(() => {
+    const rt = searchParams.get('rt')?.trim()
+    if (!rt) return
+    setRegisterToken(rt)
+    let cancelled = false
+    void (async () => {
+      try {
+        const info = await fetchRegisterLinkInfo(rt)
+        if (cancelled || !info.found || info.already_used) return
+        setFromLead(true)
+        setNewJoining(true)
+        if (info.name) setUsername(info.name)
+        if (info.phone) setPhone(info.phone)
+        if (info.upline_fbo_id) {
+          setUplineFboId(info.upline_fbo_id)
+          void refreshUplineLookup(info.upline_fbo_id)
+        }
+      } catch {
+        /* fall back to a blank form */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
   async function refreshUplineLookup(raw: string) {
@@ -135,6 +167,7 @@ export function RegisterPage() {
         upline_fbo_id: uplineFboId.trim(),
         phone: phoneDigits,
         is_new_joining: newJoining,
+        ...(registerToken ? { register_token: registerToken } : {}),
       })
       setSuccessMessage(res.message ?? 'Registration submitted! Your account is pending admin approval.')
       setSubmitted(true)
@@ -198,6 +231,14 @@ export function RegisterPage() {
             </div>
           ) : (
           <form className="space-y-4 md:space-y-6" onSubmit={(e) => void handleSubmit(e)} noValidate>
+            {fromLead ? (
+              <div
+                className="rounded border border-primary/35 bg-primary/[0.08] px-3 py-2 text-center text-sm text-foreground"
+                role="status"
+              >
+                🎉 Welcome! Finish signing up to start your 7-day onboarding training.
+              </div>
+            ) : null}
             {formError ? (
               <div
                 className="rounded border border-destructive/40 bg-destructive/10 px-3 py-2 text-center text-sm text-destructive"

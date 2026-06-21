@@ -76,6 +76,28 @@ class Lead(Base):
         index=True,
     )
 
+    # Post-close onboarding. When a lead is marked ``converted`` we mint a one-time
+    # register link so the prospect can sign up as a new member (and land in the
+    # 7-day onboarding training). ``registered_user_id`` links back once they join.
+    register_token: Mapped[Optional[str]] = mapped_column(
+        String(64),
+        nullable=True,
+        unique=True,
+        index=True,
+    )
+    register_link_sent_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    registered_user_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=True,
+    )
+    registered_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
     # Permanent owner (creator / personal importer / pool claimer). Never changes after set.
     owner_user_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("users.id"),

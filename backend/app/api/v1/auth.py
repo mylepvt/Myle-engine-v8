@@ -31,6 +31,7 @@ from app.schemas.auth import (
     ForgotPasswordResponse,
     LoginRequest,
     MeResponse,
+    RegisterLinkInfo,
     RegisterRequest,
     RegisterResponse,
     ResetPasswordRequest,
@@ -205,6 +206,20 @@ async def lookup_upline_fbo(
     )
 
 
+@router.get("/register-link/{token}", response_model=RegisterLinkInfo)
+async def resolve_register_link_info(
+    token: str,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> RegisterLinkInfo:
+    """Public: prefill data for a converted lead's one-time register link."""
+    from app.services.lead_conversion import resolve_register_link
+
+    data = await resolve_register_link(session, token)
+    if data is None:
+        return RegisterLinkInfo(found=False)
+    return RegisterLinkInfo(**data)
+
+
 @router.post("/register", response_model=RegisterResponse)
 async def register(
     body: RegisterRequest,
@@ -265,8 +280,11 @@ async def register(
             status_code=400,
             detail=f"{msg_u} Please enter a valid upline FBO ID.",
         )
-    training_required = body.is_new_joining
-    training_status = "pending" if body.is_new_joining else "not_required"
+    # Arriving from a converted lead's register link = a fresh joiner → always run
+    # the 7-day onboarding training.
+    is_new_joining = body.is_new_joining or bool(body.register_token)
+    training_required = is_new_joining
+    training_status = "pending" if is_new_joining else "not_required"
     user = User(
         fbo_id=fbo_stored,
         username=body.username.strip(),
@@ -278,12 +296,20 @@ async def register(
         phone=phone,
         training_required=training_required,
         training_status=training_status,
-        tutorial_pending=body.is_new_joining,
+        tutorial_pending=is_new_joining,
         name=body.username.strip(),
         joining_date=body.joining_date,
     )
     session.add(user)
     await session.commit()
+    # Bind the new member back to the lead they registered from (attribution + stops
+    # the register link being reused).
+    if body.register_token:
+        from app.services.lead_conversion import link_registered_user
+
+        await session.refresh(user)
+        await link_registered_user(session, token=body.register_token, user_id=user.id)
+        await session.commit()
     # Notify admins and leaders of new pending registration
     username_display = body.username.strip()
     for role in ("admin", "leader"):

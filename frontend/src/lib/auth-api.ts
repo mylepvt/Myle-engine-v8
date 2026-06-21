@@ -69,6 +69,22 @@ export type RegisterPayload = {
   upline_fbo_id: string
   phone: string
   is_new_joining: boolean
+  /** Present when signing up from a converted lead's register link. */
+  register_token?: string
+}
+
+export type RegisterLinkInfo = {
+  found: boolean
+  already_used: boolean
+  name: string
+  phone: string
+  upline_fbo_id: string
+}
+
+/** Resolve a converted lead's register link → prefill data (public). */
+export async function fetchRegisterLinkInfo(token: string): Promise<RegisterLinkInfo> {
+  const res = await apiFetch(`/api/v1/auth/register-link/${encodeURIComponent(token)}`)
+  return (await res.json()) as RegisterLinkInfo
 }
 
 /** Self-serve signup — account stays pending until admin approves (Team role). */
