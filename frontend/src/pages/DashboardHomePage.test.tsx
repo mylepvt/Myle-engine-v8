@@ -36,10 +36,6 @@ vi.mock('@/components/dashboard/AdminCommandCenter', () => ({
   },
 }))
 
-vi.mock('@/components/dashboard/LeaderActionCenter', () => ({
-  LeaderActionCenter: () => <div data-testid="leader-action-center">Leader Action Center</div>,
-}))
-
 vi.mock('@/components/dashboard/VerificationHomePanel', () => ({
   VerificationHomePanel: () => <div data-testid="verification-home-panel" />,
 }))
@@ -222,7 +218,7 @@ describe('DashboardHomePage', () => {
     expect(screen.getByTestId('gate-assistant')).toBeInTheDocument()
   })
 
-  it('renders Leader Action Center on the leader dashboard path', () => {
+  it('renders leader war room dashboard on the leader path', () => {
     seedBaseMocks('leader')
 
     render(
@@ -231,7 +227,8 @@ describe('DashboardHomePage', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByTestId('leader-action-center')).toBeInTheDocument()
+    // GateAssistantCard is rendered directly for leader role in the main layout
+    expect(screen.getByTestId('gate-assistant')).toBeInTheDocument()
   })
 
   it('routes admin home to the command center surface', () => {
