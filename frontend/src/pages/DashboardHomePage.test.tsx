@@ -18,6 +18,7 @@ const mockUseXpHistoryQuery = vi.fn()
 const mockUseXpLeaderboardQuery = vi.fn()
 const mockUsePatchLeadMutation = vi.fn()
 const mockUseLosQuery = vi.fn()
+const mockUseLeaderCommandCenter = vi.fn()
 const mockAdminCommandCenter = vi.fn()
 
 vi.mock('@/components/dashboard/GateAssistantCard', () => ({
@@ -96,6 +97,10 @@ vi.mock('@/hooks/use-leads-query', () => ({
 
 vi.mock('@/hooks/use-los-query', () => ({
   useLosQuery: () => mockUseLosQuery(),
+}))
+
+vi.mock('@/hooks/use-leader-command-center-query', () => ({
+  useLeaderCommandCenter: () => mockUseLeaderCommandCenter(),
 }))
 
 function seedBaseMocks(role: 'team' | 'leader' | 'admin') {
@@ -190,6 +195,12 @@ function seedBaseMocks(role: 'team' | 'leader' | 'admin') {
     data: null,
     isPending: false,
     isError: false,
+  })
+  mockUseLeaderCommandCenter.mockReturnValue({
+    data: null,
+    isPending: false,
+    isError: false,
+    refetch: vi.fn(),
   })
 }
 
