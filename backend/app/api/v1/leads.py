@@ -537,6 +537,11 @@ async def update_lead(
     service: Annotated[LeadsService, Depends(get_leads_service)],
 ):
     lead = await service.update_lead(lead_id=lead_id, body=body, user=user)
+    # Push a realtime invalidate so the change (status, stage, assignment, …) shows
+    # live on every other surface/device instead of only the editor's optimistic
+    # cache. Create/follow-up/execution endpoints already do this; PATCH didn't —
+    # that's why a status change felt like it "didn't sync" elsewhere.
+    await notify_topics("leads", "follow_ups", "team_tracking")
     # Notify newly assigned user (skip if assigning to self). LeadUpdate may omit assignment;
     # only fire when the schema includes an explicit assignee change.
     assigned_uid = getattr(lead, "assigned_to_user_id", None)
@@ -589,6 +594,8 @@ async def reassign_lead(
     lead.reassigned_at = datetime.now(timezone.utc)
     await session.commit()
     await session.refresh(lead)
+
+    await notify_topics("leads", "team", "team_tracking")
 
     if body.assigned_to_user_id != user.user_id:
         background_tasks.add_task(
