@@ -95,6 +95,11 @@ export type LeadPublic = {
   leader_user_id?: number | null
   leader_name?: string | null
   is_reassigned?: boolean | null
+  // Post-close onboarding (register link → 7-day training)
+  register_token?: string | null
+  register_link_sent_at?: string | null
+  registered_user_id?: number | null
+  registered_at?: string | null
   // Call tracking
   call_status: string | null
   call_count: number
@@ -333,6 +338,27 @@ export async function patchLead(
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    await parseError(res)
+  }
+  return res.json()
+}
+
+export type RegisterLinkResult = {
+  register_url: string
+  manual_share_url: string | null
+  auto_sent: boolean
+  already_registered: boolean
+}
+
+/** Get (or re-send) a converted lead's register link. */
+export async function postLeadRegisterLink(
+  id: number,
+  resend = false,
+): Promise<RegisterLinkResult> {
+  const res = await apiFetch(`/api/v1/leads/${id}/register-link?resend=${resend ? 'true' : 'false'}`, {
+    method: 'POST',
   })
   if (!res.ok) {
     await parseError(res)
@@ -707,6 +733,17 @@ export function usePatchLeadMutation() {
     },
     onSettled: () => {
       invalidateLeadRelated(qc)
+    },
+  })
+}
+
+export function useLeadRegisterLinkMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, resend }: { id: number; resend?: boolean }) =>
+      postLeadRegisterLink(id, resend),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['leads', 'list'] })
     },
   })
 }

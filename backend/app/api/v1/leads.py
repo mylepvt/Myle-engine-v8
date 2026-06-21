@@ -651,6 +651,25 @@ async def ctcs_lead_action(
     return await service.serialize_lead_public(lead)
 
 
+class RegisterLinkOut(BaseModel):
+    register_url: str
+    manual_share_url: Optional[str] = None
+    auto_sent: bool = False
+    already_registered: bool = False
+
+
+@router.post("/{lead_id}/register-link", response_model=RegisterLinkOut)
+async def lead_register_link(
+    lead_id: int,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    service: Annotated[LeadsService, Depends(get_leads_service)],
+    resend: bool = Query(default=False, description="Also re-send the WhatsApp invite"),
+) -> RegisterLinkOut:
+    """Get or re-send a converted lead's register link (card copy / resend button)."""
+    payload = await service.get_register_link(lead_id=lead_id, user=user, resend=resend)
+    return RegisterLinkOut(**payload)
+
+
 @router.post(
     "/{lead_id}/call-log",
     response_model=CallEventPublic,

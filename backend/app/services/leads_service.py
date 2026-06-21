@@ -240,6 +240,11 @@ def _apply_status_side_effects(
     if new_status == "whatsapp_sent" and lead.whatsapp_sent_at is None:
         lead.whatsapp_sent_at = now
 
+    if new_status in {"lost", "inactive"} and lead.archived_at is None:
+        # Not-closed terminal outcomes auto-archive so they leave the active boards
+        # (Converted = won → onboarding; Lost/Inactive = not closed → archived).
+        lead.archived_at = now
+
     if new_status in {"lost", "retarget"}:
         # Legacy parity: terminal retarget/lost moves clear pending follow-up timers.
         lead.next_followup_at = None
@@ -1195,8 +1200,33 @@ class LeadsService:
             lead.d6_8pm = body.d6_8pm
         _sync_batch_completion_timestamps(lead, now)
         lead = await self._commit_with_shadow_upsert(lead)
+        await self._handle_conversion_if_won(lead, previous_status=stage_status_before)
         await self._notifier("leads")
         return lead
+
+    async def _handle_conversion_if_won(self, lead: Lead, *, previous_status: str) -> None:
+        """On the first move into ``converted``, mint + auto-send the register link
+        and alert the closer's leader. Never blocks the status change on failure."""
+        if lead.status != "converted" or previous_status == "converted":
+            return
+        from app.services.lead_conversion import handle_lead_converted
+        try:
+            await handle_lead_converted(self._session, lead=lead)
+            await self._session.commit()
+        except Exception as exc:  # noqa: BLE001 - onboarding side-effects are best-effort
+            logger.warning("conversion onboarding failed lead_id=%s: %s", lead.id, exc)
+
+    async def get_register_link(self, *, lead_id: int, user: AuthUser, resend: bool) -> dict:
+        """Fetch (or resend) the converted lead's register link — backs the card's
+        copy / resend button."""
+        lead = await self._get_lead_or_404(lead_id)
+        if not await self._repository.can_mutate_lead(user, lead):
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        from app.services.lead_conversion import build_or_resend_register_link
+
+        payload = await build_or_resend_register_link(self._session, lead=lead, resend=resend)
+        await self._session.commit()
+        return payload
 
     async def delete_lead(self, *, lead_id: int, user: AuthUser) -> None:
         lead = await self._repository.get_lead_for_update(lead_id)
@@ -1374,6 +1404,7 @@ class LeadsService:
         except Exception as exc:
             logger.warning("XP revocation failed lead_id=%s: %s", lead.id, exc)
 
+        await self._handle_conversion_if_won(lead, previous_status=prev_status)
         await self._notifier("leads")
         return LeadTransitionResponse(
             success=True,

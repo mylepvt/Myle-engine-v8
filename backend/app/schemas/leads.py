@@ -72,6 +72,12 @@ class LeadPublic(BaseModel):
     is_reassigned: bool = False
     reassigned_at: Optional[datetime] = None
 
+    # Post-close onboarding (register link → 7-day training)
+    register_token: Optional[str] = None
+    register_link_sent_at: Optional[datetime] = None
+    registered_user_id: Optional[int] = None
+    registered_at: Optional[datetime] = None
+
     # Call tracking
     call_status: Optional[str] = None
     call_count: int = 0
