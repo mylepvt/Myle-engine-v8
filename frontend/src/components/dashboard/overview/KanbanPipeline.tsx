@@ -76,7 +76,7 @@ export function KanbanPipeline() {
       ...data.today_movements,
       claimed: data.today_claimed ?? 0,
     }
-  }, [data?.today_movements, data?.today_claimed])
+  }, [data])
 
   const prevCounts = useMemo<Record<string, number> | null>(() => {
     if (!data?.previous_movements) return null
