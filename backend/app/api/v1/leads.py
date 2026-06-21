@@ -537,11 +537,11 @@ async def update_lead(
     service: Annotated[LeadsService, Depends(get_leads_service)],
 ):
     lead = await service.update_lead(lead_id=lead_id, body=body, user=user)
-    # Push a realtime invalidate so the change (status, stage, assignment, …) shows
-    # live on every other surface/device instead of only the editor's optimistic
-    # cache. Create/follow-up/execution endpoints already do this; PATCH didn't —
-    # that's why a status change felt like it "didn't sync" elsewhere.
-    await notify_topics("leads", "follow_ups", "team_tracking")
+    # NOTE: service.update_lead already broadcasts notify_topics("leads") on every
+    # update, so the leads/workboard/lead-pool/retarget boards refresh live. We only
+    # add "follow_ups" here because the "leads" topic does NOT invalidate the
+    # follow-up board, and a status change can arm/clear a follow-up.
+    await notify_topics("follow_ups")
     # Notify newly assigned user (skip if assigning to self). LeadUpdate may omit assignment;
     # only fire when the schema includes an explicit assignee change.
     assigned_uid = getattr(lead, "assigned_to_user_id", None)
@@ -595,7 +595,10 @@ async def reassign_lead(
     await session.commit()
     await session.refresh(lead)
 
-    await notify_topics("leads", "team", "team_tracking")
+    # reassign_lead writes the session directly (not via service.update_lead), so
+    # nothing broadcasts on its own — push the invalidate so both the old and new
+    # assignee's boards reflect the handover live.
+    await notify_topics("leads", "follow_ups")
 
     if body.assigned_to_user_id != user.user_id:
         background_tasks.add_task(
@@ -642,6 +645,9 @@ async def ctcs_lead_action(
         user=user,
         background_tasks=background_tasks,
     )
+    # apply_ctcs_action arms/clears a FollowUp row but only broadcasts "leads"; the
+    # "leads" topic doesn't refresh the follow-up board, so add "follow_ups" here.
+    await notify_topics("follow_ups")
     return await service.serialize_lead_public(lead)
 
 
