@@ -84,7 +84,7 @@ export function KanbanPipeline() {
       ...data.previous_movements,
       claimed: data.previous_claimed ?? 0,
     }
-  }, [data?.previous_movements, data?.previous_claimed])
+  }, [data])
 
   const maxCount = useMemo(() => {
     const vals = Object.values(pipelineCounts)

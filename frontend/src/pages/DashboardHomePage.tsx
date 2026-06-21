@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, ChevronRight, Circle, ClipboardCheck, Layers, Skull, TrendingUp, UserPlus, Users, Zap } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, ChevronRight, Circle, ClipboardCheck, Layers, TrendingUp, UserPlus, Users, Zap } from 'lucide-react'
 
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { XpBadge } from '@/components/xp/XpBadge'
@@ -169,47 +169,6 @@ function WarRoomDashboard({
   const isLoading = los.isPending && !los.data
   const isError = los.isError && !los.data
 
-  if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <Skeleton key={i} className="h-32 rounded-xl" />
-        ))}
-      </div>
-    )
-  }
-
-  if (isError || !los.data) {
-    return (
-      <ErrorState
-        message="Could not load team data."
-        onRetry={() => {
-          los.refetch()
-          lcc.refetch()
-        }}
-      />
-    )
-  }
-
-  const s = los.data
-  const h = lcc.data?.team_health
-  const f = lcc.data?.fires
-  const actions = lcc.data?.actions ?? []
-
-  const tierText =
-    s.leader_tier === 'strong' ? 'text-emerald-500' : s.leader_tier === 'average' ? 'text-amber-500' : 'text-red-500'
-  const tierBg =
-    s.leader_tier === 'strong' ? 'bg-emerald-500/15' : s.leader_tier === 'average' ? 'bg-amber-500/15' : 'bg-red-500/15'
-  const tierBorder =
-    s.leader_tier === 'strong' ? 'border-emerald-500/20' : s.leader_tier === 'average' ? 'border-amber-500/20' : 'border-red-500/20'
-  const tierStroke =
-    s.leader_tier === 'strong' ? 'stroke-emerald-500' : s.leader_tier === 'average' ? 'stroke-amber-500' : 'stroke-red-500'
-  const tierLabel = s.leader_tier === 'strong' ? 'ELITE' : s.leader_tier === 'average' ? 'AVERAGE' : 'AT RISK'
-
-  const callsPct =
-    s.calls_team_target > 0 ? Math.round((s.total_calls_today / s.calls_team_target) * 100) : 0
-  const totalCritical = actions.filter((a) => a.severity === 'critical').length
-
   const pipelineColumns = useMemo(() => {
     const colMap = new Map<string, number>()
     for (const col of wb.data?.columns ?? []) {
@@ -260,6 +219,34 @@ function WarRoomDashboard({
 
   const navigate = useNavigate()
   const [showAllActions, setShowAllActions] = useState(false)
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Skeleton key={i} className="h-32 rounded-xl" />
+        ))}
+      </div>
+    )
+  }
+
+  if (isError || !los.data) {
+    return (
+      <ErrorState
+        message="Could not load team data."
+        onRetry={() => {
+          los.refetch()
+          lcc.refetch()
+        }}
+      />
+    )
+  }
+
+  const s = los.data
+  const h = lcc.data?.team_health
+  const f = lcc.data?.fires
+  const actions = lcc.data?.actions ?? []
+  const totalCritical = actions.filter((a) => a.severity === 'critical').length
   const displayedActions = showAllActions ? actions : actions.slice(0, 3)
 
   return (
