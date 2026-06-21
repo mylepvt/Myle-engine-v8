@@ -76,7 +76,7 @@ export function KanbanPipeline() {
       ...data.today_movements,
       claimed: data.today_claimed ?? 0,
     }
-  }, [data?.today_movements, data?.today_claimed])
+  }, [data])
 
   const prevCounts = useMemo<Record<string, number> | null>(() => {
     if (!data?.previous_movements) return null
@@ -84,7 +84,7 @@ export function KanbanPipeline() {
       ...data.previous_movements,
       claimed: data.previous_claimed ?? 0,
     }
-  }, [data?.previous_movements, data?.previous_claimed])
+  }, [data])
 
   const maxCount = useMemo(() => {
     const vals = Object.values(pipelineCounts)

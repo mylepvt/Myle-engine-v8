@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AlertTriangle, CheckCircle2, Flame, MessageCircle, Megaphone, LifeBuoy } from 'lucide-react'
+import { CheckCircle2, Flame, MessageCircle, Megaphone, LifeBuoy } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'

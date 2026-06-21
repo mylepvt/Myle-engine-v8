@@ -18,6 +18,7 @@ const mockUseXpHistoryQuery = vi.fn()
 const mockUseXpLeaderboardQuery = vi.fn()
 const mockUsePatchLeadMutation = vi.fn()
 const mockUseLosQuery = vi.fn()
+const mockUseLeaderCommandCenter = vi.fn()
 const mockAdminCommandCenter = vi.fn()
 
 vi.mock('@/components/dashboard/GateAssistantCard', () => ({
@@ -33,10 +34,6 @@ vi.mock('@/components/dashboard/AdminCommandCenter', () => ({
     mockAdminCommandCenter(props)
     return <div data-testid="admin-command-center">{props.firstName}</div>
   },
-}))
-
-vi.mock('@/components/dashboard/LeaderActionCenter', () => ({
-  LeaderActionCenter: () => <div data-testid="leader-action-center">Leader Action Center</div>,
 }))
 
 vi.mock('@/components/dashboard/VerificationHomePanel', () => ({
@@ -96,6 +93,10 @@ vi.mock('@/hooks/use-leads-query', () => ({
 
 vi.mock('@/hooks/use-los-query', () => ({
   useLosQuery: () => mockUseLosQuery(),
+}))
+
+vi.mock('@/hooks/use-leader-command-center-query', () => ({
+  useLeaderCommandCenter: () => mockUseLeaderCommandCenter(),
 }))
 
 function seedBaseMocks(role: 'team' | 'leader' | 'admin') {
@@ -191,6 +192,12 @@ function seedBaseMocks(role: 'team' | 'leader' | 'admin') {
     isPending: false,
     isError: false,
   })
+  mockUseLeaderCommandCenter.mockReturnValue({
+    data: null,
+    isPending: false,
+    isError: false,
+    refetch: vi.fn(),
+  })
 }
 
 describe('DashboardHomePage', () => {
@@ -211,7 +218,7 @@ describe('DashboardHomePage', () => {
     expect(screen.getByTestId('gate-assistant')).toBeInTheDocument()
   })
 
-  it('renders Leader Action Center on the leader dashboard path', () => {
+  it('renders leader war room dashboard on the leader path', () => {
     seedBaseMocks('leader')
 
     render(
@@ -220,7 +227,8 @@ describe('DashboardHomePage', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByTestId('leader-action-center')).toBeInTheDocument()
+    // GateAssistantCard is rendered directly for leader role in the main layout
+    expect(screen.getByTestId('gate-assistant')).toBeInTheDocument()
   })
 
   it('routes admin home to the command center surface', () => {

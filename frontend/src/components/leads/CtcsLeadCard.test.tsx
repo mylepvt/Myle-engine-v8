@@ -10,7 +10,10 @@ vi.mock('@/hooks/use-dashboard-shell-role', () => ({
   useDashboardShellRole: () => ({ role: 'team', serverRole: 'team' }),
 }))
 
-function renderCard(lead: LeadPublic) {
+function renderCard(
+  lead: LeadPublic,
+  extra?: { showEnrollLink?: boolean; onCopyEnrollLink?: () => void },
+) {
   const client = new QueryClient()
   render(
     <QueryClientProvider client={client}>
@@ -25,6 +28,7 @@ function renderCard(lead: LeadPublic) {
           onPatchCallStatus={() => {}}
           onCall={() => {}}
           onFollowUp={() => {}}
+          {...extra}
         />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -107,14 +111,17 @@ describe('CtcsLeadCard proof gating', () => {
   })
 
   it('shows the secure enrollment WhatsApp button for video_sent', () => {
-    renderCard(makeLead('video_sent'))
+    renderCard(makeLead('video_sent'), {
+      showEnrollLink: true,
+      onCopyEnrollLink: () => {},
+    })
 
-    expect(screen.getByTitle('Send secure Min. FLP Billing video on WhatsApp')).toBeInTheDocument()
+    expect(screen.getByTitle('Send secure enrollment link on WhatsApp')).toBeInTheDocument()
   })
 
-  it('hides the secure enrollment WhatsApp button after video_watched', () => {
-    renderCard(makeLead('video_watched'))
+  it('hides the secure enrollment WhatsApp button when showEnrollLink is not set', () => {
+    renderCard(makeLead('video_sent'))
 
-    expect(screen.queryByTitle('Send secure Min. FLP Billing video on WhatsApp')).not.toBeInTheDocument()
+    expect(screen.queryByTitle('Send secure enrollment link on WhatsApp')).not.toBeInTheDocument()
   })
 })
