@@ -40,6 +40,27 @@ function leadStatus(qc: QueryClient): string {
   return data!.pages[0].items[0].status
 }
 
+function makeClientWithWorkboard() {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  })
+  qc.setQueryData(['workboard', 'view'], {
+    columns: [
+      { status: 'day1', total: 1, items: [seedLead('day1')] },
+      { status: 'day2', total: 0, items: [] },
+    ],
+    max_rows_fetched: 50,
+    action_counts: {},
+  })
+  return qc
+}
+
+function wbColumns(qc: QueryClient) {
+  return (qc.getQueryData(['workboard', 'view']) as {
+    columns: { status: string; total: number; items: LeadPublic[] }[]
+  }).columns
+}
+
 function wrapper(qc: QueryClient) {
   return ({ children }: { children: ReactNode }) =>
     createElement(QueryClientProvider, { client: qc }, children)
@@ -77,5 +98,24 @@ describe('usePatchLeadMutation optimistic status update', () => {
 
     // After failure the optimistic change is reverted (not left stuck or silently stale).
     expect(leadStatus(qc)).toBe('video_sent')
+  })
+
+  it('relocates the card to its new workboard column immediately on a status change', async () => {
+    const qc = makeClientWithWorkboard()
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})))
+
+    const { result } = renderHook(() => usePatchLeadMutation(), { wrapper: wrapper(qc) })
+    result.current.mutate({ id: 1, body: { status: 'day2' } })
+
+    await waitFor(() => {
+      const cols = wbColumns(qc)
+      const day1 = cols.find((c) => c.status === 'day1')!
+      const day2 = cols.find((c) => c.status === 'day2')!
+      // Card left day1 and lives in day2 now, with totals adjusted.
+      expect(day1.items.map((i) => i.id)).not.toContain(1)
+      expect(day1.total).toBe(0)
+      expect(day2.items.map((i) => i.id)).toContain(1)
+      expect(day2.total).toBe(1)
+    })
   })
 })

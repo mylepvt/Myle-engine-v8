@@ -635,15 +635,49 @@ export function usePatchLeadMutation() {
       })
 
       const previousWb = qc.getQueriesData({ queryKey: ['workboard'] })
+      const nextStatus = typeof patch.status === 'string' ? patch.status : undefined
       previousWb.forEach(([queryKey, data]) => {
         if (!isWorkboardData(data)) return
-        qc.setQueryData(queryKey, {
-          ...data,
-          columns: data.columns.map((col) => ({
+        // A status change must RELOCATE the card to its new column instantly. The
+        // old in-place patch left the card sitting in its original column until the
+        // refetch landed → on the workboard it looked like nothing happened, so
+        // users re-clicked ("doesn't change in one try") and the move only showed
+        // after a lag.
+        const isMove =
+          nextStatus !== undefined &&
+          data.columns.some(
+            (col) => col.status !== nextStatus && col.items.some((it) => it.id === id),
+          )
+        if (!isMove) {
+          qc.setQueryData(queryKey, {
+            ...data,
+            columns: data.columns.map((col) => ({
+              ...col,
+              items: col.items.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+            })),
+          })
+          return
+        }
+        // Pull the patched card out of its current column…
+        let moved: LeadPublic | undefined
+        const stripped = data.columns.map((col) => {
+          const found = col.items.find((it) => it.id === id)
+          if (!found) return col
+          moved = { ...found, ...patch }
+          return {
             ...col,
-            items: col.items.map((item) => (item.id === id ? { ...item, ...patch } : item)),
-          })),
+            total: Math.max(0, col.total - 1),
+            items: col.items.filter((it) => it.id !== id),
+          }
         })
+        // …and drop it on top of the destination column (if that column is in view;
+        // otherwise it just leaves this board and the refetch reconciles the rest).
+        const columns = stripped.map((col) =>
+          moved && col.status === nextStatus
+            ? { ...col, total: col.total + 1, items: [moved, ...col.items] }
+            : col,
+        )
+        qc.setQueryData(queryKey, { ...data, columns })
       })
 
       // Retarget list is a flat LeadListResponse — patch its row in place so the
