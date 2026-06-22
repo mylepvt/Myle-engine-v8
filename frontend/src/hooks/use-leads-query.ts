@@ -203,6 +203,8 @@ export type CtcsListOptions = {
   preEnrollmentOnly?: boolean
   searchAllSections?: boolean
   leaderAllScope?: boolean
+  /** Leader Pending Work (zombie) tab — whole-team ACTIVE leads, no archived. */
+  leaderTeamScope?: boolean
   /** Only leads captured via member capture links — the "Generated" pill. */
   generatedOnly?: boolean
 }
@@ -238,6 +240,9 @@ function buildLeadsQueryString(
   }
   if (ctcs?.leaderAllScope) {
     p.set('leader_all_scope', 'true')
+  }
+  if (ctcs?.leaderTeamScope) {
+    p.set('leader_team_scope', 'true')
   }
   if (ctcs?.generatedOnly) {
     p.set('generated_only', 'true')
@@ -517,6 +522,7 @@ export function useLeadsInfiniteQuery(
       ctcs?.preEnrollmentOnly,
       ctcs?.searchAllSections,
       ctcs?.leaderAllScope,
+      ctcs?.leaderTeamScope,
       ctcs?.generatedOnly,
     ],
     initialPageParam: 0,

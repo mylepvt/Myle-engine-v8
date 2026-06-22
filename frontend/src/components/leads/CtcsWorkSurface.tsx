@@ -106,7 +106,12 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
     }
     if (tab === 'pending') {
       // Pending Work = zombie/untouched leads at ANY stage — no pre-enrollment limit.
-      return { ctcsFilter: 'pending' as const, ctcsPrioritySort: true as const }
+      // Leaders see their whole team's pending leads; team members see their own.
+      return {
+        ctcsFilter: 'pending' as const,
+        ctcsPrioritySort: true as const,
+        leaderTeamScope: surfaceRole === 'leader',
+      }
     }
     return { ctcsFilter: tab, ctcsPrioritySort: true as const, preEnrollmentOnly: true as const }
   }, [searchMode, generated, tab, surfaceRole])

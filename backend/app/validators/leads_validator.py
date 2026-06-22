@@ -46,10 +46,15 @@ def lead_list_conditions(
     deleted_only: bool,
     search_all_sections: bool = False,
     leader_all_scope: bool = False,
+    leader_team_scope: bool = False,
 ):
     parts: list = []
     if leader_all_scope and user.role == "leader":
         # Leader "All" board tab: full team visibility across all lead states
+        visibility = lead_management_visible_to_leader_clause(user.user_id)
+    elif leader_team_scope and user.role == "leader":
+        # Leader "Pending Work" (zombie) tab: whole-team visibility, but the
+        # normal active-section filter below still applies (no archived/inactive).
         visibility = lead_management_visible_to_leader_clause(user.user_id)
     elif search_all_sections:
         visibility = (

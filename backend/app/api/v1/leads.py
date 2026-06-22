@@ -322,6 +322,10 @@ async def list_leads(
         default=False,
         description="When true, leader sees all team leads across all states (active, inactive, archived) in the All board tab.",
     ),
+    leader_team_scope: bool = Query(
+        default=False,
+        description="When true, leader sees the whole team's ACTIVE leads (Pending Work / zombie tab) — no archived/inactive.",
+    ),
     generated_only: bool = Query(
         default=False,
         description="When true, only return leads captured via member capture links (the 'Generated' pill). Default excludes them from every other view.",
@@ -340,6 +344,7 @@ async def list_leads(
         pre_flp_min_billing_only=pre_flp_min_billing_only,
         search_all_sections=search_all_sections,
         leader_all_scope=leader_all_scope,
+        leader_team_scope=leader_team_scope,
         generated_only=generated_only,
     )
 

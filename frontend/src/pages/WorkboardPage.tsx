@@ -19,6 +19,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LeadBillingCard } from '@/components/leads/LeadBillingCard'
+import { RegisterLinkButton } from '@/components/leads/RegisterLinkButton'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -438,6 +439,11 @@ const LeadCard = memo(function LeadCard({
             </button>
           </div>
         )}
+        {showClosingActions && lead.status === 'converted' ? (
+          <div className="flex justify-end">
+            <RegisterLinkButton lead={lead} />
+          </div>
+        ) : null}
         {showClosingActions && lead.status === 'converted' ? (
           <LeadBillingCard leadId={lead.id} surfaceRole={surfaceRole} />
         ) : null}
