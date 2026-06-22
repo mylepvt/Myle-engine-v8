@@ -410,6 +410,7 @@ class LeadsService:
         pre_flp_min_billing_only: bool = False,
         search_all_sections: bool = False,
         leader_all_scope: bool = False,
+        leader_team_scope: bool = False,
         generated_only: bool = False,
     ) -> LeadListResponse:
         await run_completed_watch_pipeline_maintenance(self._session)
@@ -424,6 +425,7 @@ class LeadsService:
             deleted_only=deleted_only,
             search_all_sections=cross_section_search,
             leader_all_scope=leader_all_scope and user.role == "leader",
+            leader_team_scope=leader_team_scope and user.role == "leader",
         )
         extra = _ctcs_filter_clause(ctcs_filter)
         if extra is not None:
