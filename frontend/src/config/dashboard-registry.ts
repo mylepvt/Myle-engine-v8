@@ -305,7 +305,7 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
   {
     path: 'team/current-cc',
     section: { id: 'team', label: 'Team' },
-    label: 'Current CC',
+    label: 'Tracking Report',
     roles: routeRoles('team/current-cc'),
     surface: 'full',
     ui: { kind: 'current-cc' },
