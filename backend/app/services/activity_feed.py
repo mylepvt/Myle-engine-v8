@@ -197,12 +197,16 @@ async def get_recent_events(
     If since_id provided, return events since that ID (for polling).
     Otherwise return last `limit` events.
     """
-    # Try buffer first (faster)
-    buffered = await _buffer.get_since(since_id, limit)
-    if buffered:
-        return buffered
+    # Buffer is a fast-path ONLY for delta polling (since_id given). For the
+    # initial/full load (since_id is None) read the DB — it is authoritative and
+    # survives restarts; the in-memory buffer could be cold or stale and was
+    # causing the dashboard to show days-old data after a reload.
+    if since_id is not None:
+        buffered = await _buffer.get_since(since_id, limit)
+        if buffered:
+            return buffered
 
-    # Fallback to DB
+    # DB load (authoritative)
     stmt = select(AdminActivityFeed).order_by(desc(AdminActivityFeed.id)).limit(limit)
     if since_id is not None:
         stmt = stmt.where(AdminActivityFeed.id > since_id)
