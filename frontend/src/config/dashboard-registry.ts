@@ -89,6 +89,8 @@ export type FullUiSurface =
   | { kind: 'notice-board' }
   | { kind: 'team-reports' }
   | { kind: 'daily-report-form' }
+  | { kind: 'current-cc' }
+  | { kind: 'current-cc-board' }
   | { kind: 'analytics' }
   | { kind: 'settings' }
   | { kind: 'leaderboard' }
@@ -299,6 +301,22 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('team/tracking'),
     surface: 'full',
     ui: { kind: 'team-tracking' },
+  },
+  {
+    path: 'team/current-cc',
+    section: { id: 'team', label: 'Team' },
+    label: 'Current CC',
+    roles: routeRoles('team/current-cc'),
+    surface: 'full',
+    ui: { kind: 'current-cc' },
+  },
+  {
+    path: 'team/cc-board',
+    section: { id: 'team', label: 'Team' },
+    label: 'CC Board',
+    roles: routeRoles('team/cc-board'),
+    surface: 'full',
+    ui: { kind: 'current-cc-board' },
   },
   {
     path: 'team/approvals',

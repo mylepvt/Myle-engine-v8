@@ -41,6 +41,9 @@ import { WalletRechargeAdminPage } from '@/pages/WalletRechargeAdminPage'
 import { NoticeBoardPage } from '@/pages/NoticeBoardPage'
 import { TeamReportsPage } from '@/pages/TeamReportsPage'
 import { DailyReportFormPage } from '@/pages/DailyReportFormPage'
+import { CurrentCcPage } from '@/pages/CurrentCcPage'
+import { CurrentCcBoardPage } from '@/pages/CurrentCcBoardPage'
+import { CurrentCcBoardDetailPage } from '@/pages/CurrentCcBoardDetailPage'
 import AnalyticsPage from '@/pages/AnalyticsPage'
 import SettingsPage from '@/pages/SettingsPage'
 import { LeaderboardPage } from '@/pages/LeaderboardPage'
@@ -128,6 +131,10 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <TeamReportsPage title={title} />
     case 'daily-report-form':
       return <DailyReportFormPage title={title} />
+    case 'current-cc':
+      return <CurrentCcPage title={title} />
+    case 'current-cc-board':
+      return <CurrentCcBoardPage title={title} />
     case 'settings':
       return <SettingsPage />
     case 'leaderboard':
@@ -177,6 +184,23 @@ export function DashboardNestedPage() {
   if (leadDetailMatch) {
     const leadId = parseInt(leadDetailMatch[1], 10)
     return <LeadDetailPage leadId={leadId} />
+  }
+
+  const ccBoardDetailMatch = /^team\/cc-board\/(\d+)$/.exec(path)
+  if (ccBoardDetailMatch) {
+    if (rolePending) {
+      return (
+        <div className="space-y-3 p-4" aria-busy="true" aria-label="Loading">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-24 w-full max-w-2xl" />
+        </div>
+      )
+    }
+    if (!navRole || (navRole !== 'admin' && navRole !== 'leader')) {
+      return <Navigate to="/dashboard" replace />
+    }
+    const targetUserId = parseInt(ccBoardDetailMatch[1], 10)
+    return <CurrentCcBoardDetailPage userId={targetUserId} />
   }
 
   const trackingDetailMatch = /^team\/tracking\/(\d+)$/.exec(path)
