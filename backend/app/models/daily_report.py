@@ -37,6 +37,8 @@ class DailyReport(Base):
     calls_made_actual: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     payments_actual: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     remarks: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Private complaint/feedback — visible to admin only (never to leaders/teammates).
+    private_feedback: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     submitted_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

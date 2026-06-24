@@ -199,6 +199,8 @@ class TeamReportItem(TeamReportsMemberBase):
     calls_made_actual: int
     payments_actual: int
     remarks: Optional[str] = None
+    # Admin-only private complaint/feedback; None for leader viewers.
+    private_feedback: Optional[str] = None
     system_verified: bool
 
 

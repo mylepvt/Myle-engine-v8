@@ -11,6 +11,7 @@ type DailyReportPublic = {
   report_date: string
   total_calling: number
   remarks: string | null
+  private_feedback: string | null
   calls_picked: number
   wrong_numbers: number
   day1_count: number
@@ -57,6 +58,7 @@ export function DailyReportFormPage({ title }: Props) {
   const { data: me } = useAuthMeQuery()
   const [dateIso, setDateIso] = useState(todayIsoLocal)
   const [remarks, setRemarks] = useState('')
+  const [privateFeedback, setPrivateFeedback] = useState('')
   const [ints, setInts] = useState<Record<string, number>>(() =>
     Object.fromEntries(INT_FIELDS.map(({ key }) => [key, 0])),
   )
@@ -79,6 +81,7 @@ export function DailyReportFormPage({ title }: Props) {
     if (!row) {
       setInts(Object.fromEntries(INT_FIELDS.map(({ key }) => [key, 0])))
       setRemarks('')
+      setPrivateFeedback('')
       return
     }
     const next: Record<string, number> = {}
@@ -87,6 +90,7 @@ export function DailyReportFormPage({ title }: Props) {
     }
     setInts(next)
     setRemarks(row.remarks ?? '')
+    setPrivateFeedback(row.private_feedback ?? '')
   }, [q.data])
 
   const mut = useMutation({
@@ -94,6 +98,7 @@ export function DailyReportFormPage({ title }: Props) {
       const body = {
         report_date: dateIso,
         remarks: remarks.trim() || null,
+        private_feedback: privateFeedback.trim() || null,
         ...Object.fromEntries(INT_FIELDS.map(({ key }) => [key, ints[key] ?? 0])),
       }
       const res = await apiFetch('/api/v1/reports/daily', {
@@ -173,6 +178,20 @@ export function DailyReportFormPage({ title }: Props) {
             value={remarks}
             onChange={(e) => setRemarks(e.target.value)}
             rows={3}
+            disabled={mut.isPending}
+            className="rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground disabled:opacity-50"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-muted-foreground">Private feedback (admin only)</span>
+          <span className="text-xs text-muted-foreground">
+            Share any complaint or concern openly — only the admin can see this. Your leader and teammates cannot.
+          </span>
+          <textarea
+            value={privateFeedback}
+            onChange={(e) => setPrivateFeedback(e.target.value)}
+            rows={3}
+            placeholder="Anything you want to share privately with the admin…"
             disabled={mut.isPending}
             className="rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground disabled:opacity-50"
           />
