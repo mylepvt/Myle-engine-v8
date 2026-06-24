@@ -16,6 +16,8 @@
   "team/members": ["admin"],
   "team/attendance": ["admin", "leader", "team"],
   "team/tracking": ["admin", "leader"],
+  "team/current-cc": ["admin", "leader", "team"],
+  "team/cc-board": ["admin", "leader"],
   "team/los": ["leader"],
   "team/reports": ["admin", "leader"],
   "team/approvals": ["admin"],
