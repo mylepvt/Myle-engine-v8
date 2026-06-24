@@ -5,6 +5,7 @@
  */
 import type { LucideIcon } from 'lucide-react'
 import {
+  Activity,
   ClipboardCheck,
   ClipboardList,
   FileBarChart,
@@ -40,6 +41,7 @@ const HOME_QUICK_ACTION_PATHS: readonly string[] = [
   'finance/recharge-request',
   'system/training',
   'other/daily-report',
+  'team/current-cc',
   'team/flp-min-billing',
   'system/lead-control',
   'team/reports',
@@ -56,6 +58,7 @@ const PATH_ICONS: Partial<Record<string, LucideIcon>> = {
   'finance/recharge-request': Wallet,
   'system/training': GraduationCap,
   'other/daily-report': ClipboardList,
+  'team/current-cc': Activity,
   'team/flp-min-billing': ClipboardCheck,
   'system/lead-control': Shield,
   'team/reports': FileBarChart,
@@ -86,7 +89,9 @@ export function getHomeQuickActions(
     const label =
       path === 'settings/profile'
         ? 'Settings'
-        : resolveTitleForPath(path, role) ?? def.label
+        : path === 'team/current-cc'
+          ? 'Tracking Report'
+          : resolveTitleForPath(path, role) ?? def.label
     const poolPaths = new Set(['work/lead-pool', 'work/lead-pool-admin'])
     const badgeCount =
       poolPaths.has(path) && opts.poolTotal > 0 ? opts.poolTotal : undefined

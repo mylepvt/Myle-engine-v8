@@ -784,6 +784,13 @@ export function AdminCommandCenter({ firstName }: Props) {
             }}
             onSelect={setActiveTab}
           />
+          <Link
+            to="/dashboard/team/cc-board"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/40 bg-primary/15 px-3 py-1.5 text-sm font-semibold text-primary transition hover:bg-primary/25"
+          >
+            <Activity className="size-4" />
+            Tracking Reports
+          </Link>
         </div>
 
         {/* ==================== OVERVIEW ==================== */}

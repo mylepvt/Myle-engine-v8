@@ -50,7 +50,7 @@ export function CurrentCcBoardDetailPage({ userId }: Props) {
           <p className="text-sm text-muted-foreground">Last 30 days — real growth & pipeline movement.</p>
         </div>
         <Link
-          to="/dashboard/team/current-cc"
+          to={`/dashboard/team/current-cc?member=${userId}`}
           className="rounded-lg border border-primary/40 bg-primary/15 px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/25"
         >
           Open sheet

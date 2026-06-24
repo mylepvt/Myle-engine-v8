@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -52,7 +53,7 @@ function todayIsoLocal() {
 }
 
 const inputCls =
-  'rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-2.5 py-2 text-sm text-foreground disabled:opacity-50'
+  'w-full min-w-0 rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-2.5 py-2 text-sm text-foreground disabled:opacity-50'
 
 const emptyPerson = (): PersonRow => ({ name: '', ccs: 0, current_state: '', next_task: '' })
 const emptyEnroll = (): EnrollmentRow => ({ name: '', fresh_lead: 0, old_lead: 0 })
@@ -112,6 +113,11 @@ export function CurrentCcPage({ title }: Props) {
   const isLeaderOrAdmin = me?.role === 'admin' || me?.role === 'leader'
   const canPickDate = me?.role === 'admin'
 
+  const [searchParams] = useSearchParams()
+  // Deep-link: /dashboard/team/current-cc?member=<id> opens that member's form
+  // (admin/leader only). Members always see their own.
+  const memberParam = searchParams.get('member')
+
   const [subjectId, setSubjectId] = useState<number | null>(null)
   const [dateIso, setDateIso] = useState(todayIsoLocal)
   const [form, setForm] = useState<FormState>(blankForm)
@@ -126,8 +132,11 @@ export function CurrentCcPage({ title }: Props) {
   })
 
   useEffect(() => {
-    if (subjectId == null && me?.user_id != null) setSubjectId(me.user_id)
-  }, [me?.user_id, subjectId])
+    if (subjectId != null || me?.user_id == null) return
+    // Admin/leader can open a specific member via ?member=<id>; others get self.
+    const wanted = isLeaderOrAdmin && memberParam ? parseInt(memberParam, 10) : NaN
+    setSubjectId(Number.isFinite(wanted) ? wanted : me.user_id)
+  }, [me?.user_id, subjectId, isLeaderOrAdmin, memberParam])
 
   const sheetQ = useQuery({
     queryKey: ['current-cc-sheet', subjectId, dateIso],
@@ -322,113 +331,123 @@ export function CurrentCcPage({ title }: Props) {
       ) : null}
 
       <form
-        className="grid grid-cols-1 gap-6 lg:grid-cols-2"
+        className="space-y-6"
         onSubmit={(e) => {
           e.preventDefault()
           void mut.mutateAsync()
         }}
       >
-        {/* 1. Direct Person's */}
-        <Section title="1. Direct Person's (Team)" right={
-          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            Total CCs
-            <input
-              type="number" min={0} step="0.001" value={form.direct_total_ccs} disabled={disabled}
-              onChange={(e) => setForm((p) => ({ ...p, direct_total_ccs: e.target.value }))}
-              className={cn(inputCls, 'w-24 tabular-nums')}
-            />
-          </label>
-        }>
-          <NameList names={form.direct_persons} disabled={disabled} onChange={(i, v) => setNames('direct_persons', i, v)} onAdd={() => addRow('direct_persons', () => '')} />
-        </Section>
+        {/* Two true columns: left = sections 1-5, right = 6-9 (matches the paper
+            sheet). On mobile both stack in natural order 1→9. */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
+          {/* LEFT COLUMN — 1 to 5 */}
+          <div className="space-y-6">
+            {/* 1. Direct Person's */}
+            <Section title="1. Direct Person's (Team)" right={
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                Total CCs
+                <input
+                  type="number" min={0} step="0.001" value={form.direct_total_ccs} disabled={disabled}
+                  onChange={(e) => setForm((p) => ({ ...p, direct_total_ccs: e.target.value }))}
+                  className={cn(inputCls, 'w-24 tabular-nums')}
+                />
+              </label>
+            }>
+              <NameList names={form.direct_persons} disabled={disabled} onChange={(i, v) => setNames('direct_persons', i, v)} onAdd={() => addRow('direct_persons', () => '')} />
+            </Section>
 
-        {/* 6. Enrollment */}
-        <Section title="6. Enrollment (Prospect)" right={<TotalChip label="Total" value={enrollmentTotal} />}>
-          <RowHeader cols={['Name', 'Fresh', 'Old', 'Total', '']} grid="grid-cols-[1fr_4rem_4rem_4rem_1.5rem]" />
-          {form.enrollment_rows.map((r, i) => (
-            <div key={i} className="grid grid-cols-[1fr_4rem_4rem_4rem_1.5rem] gap-1.5">
-              <input value={r.name} placeholder="Name" disabled={disabled} onChange={(e) => updateRow('enrollment_rows', i, { name: e.target.value })} className={inputCls} />
-              <input type="number" min={0} value={r.fresh_lead} disabled={disabled} onChange={(e) => updateRow('enrollment_rows', i, { fresh_lead: int(e.target.value) })} className={cn(inputCls, 'tabular-nums')} />
-              <input type="number" min={0} value={r.old_lead} disabled={disabled} onChange={(e) => updateRow('enrollment_rows', i, { old_lead: int(e.target.value) })} className={cn(inputCls, 'tabular-nums')} />
-              <div className="flex items-center px-1 text-sm font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{(r.fresh_lead || 0) + (r.old_lead || 0)}</div>
-              <RemoveBtn onClick={() => removeRow('enrollment_rows', i)} />
-            </div>
-          ))}
-          <AddBtn onClick={() => addRow('enrollment_rows', emptyEnroll)} />
-        </Section>
+            {/* 2. Real Active */}
+            <Section title="2. Real Active Person's (Team)">
+              <NameList names={form.real_active_persons} disabled={disabled} onChange={(i, v) => setNames('real_active_persons', i, v)} onAdd={() => addRow('real_active_persons', () => '')} />
+            </Section>
 
-        {/* 2. Real Active */}
-        <Section title="2. Real Active Person's (Team)">
-          <NameList names={form.real_active_persons} disabled={disabled} onChange={(i, v) => setNames('real_active_persons', i, v)} onAdd={() => addRow('real_active_persons', () => '')} />
-        </Section>
+            {/* 3. Light Active */}
+            <Section title="3. Light Active Person (Team)">
+              <NameList names={form.light_active_persons} disabled={disabled} onChange={(i, v) => setNames('light_active_persons', i, v)} onAdd={() => addRow('light_active_persons', () => '')} />
+            </Section>
 
-        {/* 7. Lead Cycle Daily */}
-        <Section title="7. Lead Cycle Daily (Team)">
-          <RowHeader cols={['Name', 'Enroll', 'Budget', 'Check', '']} grid="grid-cols-[1fr_4rem_3.5rem_3rem_1.5rem]" />
-          {form.lead_cycle_rows.map((r, i) => (
-            <div key={i} className="grid grid-cols-[1fr_4rem_3.5rem_3rem_1.5rem] items-center gap-1.5">
-              <input value={r.name} placeholder="Name" disabled={disabled} onChange={(e) => updateRow('lead_cycle_rows', i, { name: e.target.value })} className={inputCls} />
-              <input type="number" min={0} value={r.enrollment} disabled={disabled} onChange={(e) => updateRow('lead_cycle_rows', i, { enrollment: int(e.target.value) })} className={cn(inputCls, 'tabular-nums')} />
-              <CheckCell checked={r.budget_check} disabled={disabled} onChange={(v) => updateRow('lead_cycle_rows', i, { budget_check: v })} />
-              <CheckCell checked={r.checked} disabled={disabled} onChange={(v) => updateRow('lead_cycle_rows', i, { checked: v })} />
-              <RemoveBtn onClick={() => removeRow('lead_cycle_rows', i)} />
-            </div>
-          ))}
-          <AddBtn onClick={() => addRow('lead_cycle_rows', emptyCycle)} />
-          <TextLine label="Lead Covered" value={form.lead_covered} disabled={disabled} onChange={(v) => setForm((p) => ({ ...p, lead_covered: v }))} />
-          <TextLine label="Process Check" value={form.process_check} disabled={disabled} onChange={(v) => setForm((p) => ({ ...p, process_check: v }))} />
-        </Section>
+            {/* 4. Closed Person's List */}
+            <Section title="4. Closed Person's List (CC Tracking)" right={<TotalChip label="Total CCs" value={Number(closedTotalCcs.toFixed(3))} />}>
+              <PersonTable rows={form.closed_persons} disabled={disabled}
+                onChange={(i, patch) => updateRow('closed_persons', i, patch)}
+                onAdd={() => addRow('closed_persons', emptyPerson)}
+                onRemove={(i) => removeRow('closed_persons', i)} />
+            </Section>
 
-        {/* 3. Light Active */}
-        <Section title="3. Light Active Person (Team)">
-          <NameList names={form.light_active_persons} disabled={disabled} onChange={(i, v) => setNames('light_active_persons', i, v)} onAdd={() => addRow('light_active_persons', () => '')} />
-        </Section>
+            {/* 5. Pending Person CCs */}
+            <Section title="5. Pending Person CCs (Prospect)">
+              <PersonTable rows={form.pending_persons} disabled={disabled}
+                onChange={(i, patch) => updateRow('pending_persons', i, patch)}
+                onAdd={() => addRow('pending_persons', emptyPerson)}
+                onRemove={(i) => removeRow('pending_persons', i)} />
+            </Section>
+          </div>
 
-        {/* 8. Enrollment Tracking */}
-        <Section title="8. Enrollment Tracking (Prospect)">
-          <RowHeader cols={['Name', 'State', 'Drop/Cont', 'Day-1', '']} grid="grid-cols-[1fr_1fr_5.5rem_3.5rem_1.5rem]" />
-          {form.enrollment_tracking_rows.map((r, i) => (
-            <div key={i} className="grid grid-cols-[1fr_1fr_5.5rem_3.5rem_1.5rem] items-center gap-1.5">
-              <input value={r.name} placeholder="Name" disabled={disabled} onChange={(e) => updateRow('enrollment_tracking_rows', i, { name: e.target.value })} className={inputCls} />
-              <input value={r.current_state} placeholder="State" disabled={disabled} onChange={(e) => updateRow('enrollment_tracking_rows', i, { current_state: e.target.value })} className={inputCls} />
-              <select value={r.drop_continue} disabled={disabled} onChange={(e) => updateRow('enrollment_tracking_rows', i, { drop_continue: e.target.value })} className={inputCls}>
-                <option value="">—</option>
-                <option value="continue">Continue</option>
-                <option value="drop">Drop</option>
-              </select>
-              <input value={r.day1} placeholder="D1" disabled={disabled} onChange={(e) => updateRow('enrollment_tracking_rows', i, { day1: e.target.value })} className={inputCls} />
-              <RemoveBtn onClick={() => removeRow('enrollment_tracking_rows', i)} />
-            </div>
-          ))}
-          <AddBtn onClick={() => addRow('enrollment_tracking_rows', emptyTrack)} />
-          <TextLine label="Reason for drop" value={form.drop_reason_remarks} disabled={disabled} onChange={(v) => setForm((p) => ({ ...p, drop_reason_remarks: v }))} />
-        </Section>
+          {/* RIGHT COLUMN — 6 to 9 */}
+          <div className="space-y-6">
+            {/* 6. Enrollment */}
+            <Section title="6. Enrollment (Prospect)" right={<TotalChip label="Total" value={enrollmentTotal} />}>
+              <RowHeader cols={['Name', 'Fresh', 'Old', 'Total', '']} grid="grid-cols-[minmax(0,1fr)_3.5rem_3.5rem_2.5rem_1.25rem]" />
+              {form.enrollment_rows.map((r, i) => (
+                <div key={i} className="grid grid-cols-[minmax(0,1fr)_3.5rem_3.5rem_2.5rem_1.25rem] items-center gap-1.5">
+                  <input value={r.name} placeholder="Name" disabled={disabled} onChange={(e) => updateRow('enrollment_rows', i, { name: e.target.value })} className={inputCls} />
+                  <input type="number" min={0} value={r.fresh_lead} disabled={disabled} onChange={(e) => updateRow('enrollment_rows', i, { fresh_lead: int(e.target.value) })} className={cn(inputCls, 'tabular-nums')} />
+                  <input type="number" min={0} value={r.old_lead} disabled={disabled} onChange={(e) => updateRow('enrollment_rows', i, { old_lead: int(e.target.value) })} className={cn(inputCls, 'tabular-nums')} />
+                  <div className="flex items-center justify-center text-sm font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{(r.fresh_lead || 0) + (r.old_lead || 0)}</div>
+                  <RemoveBtn onClick={() => removeRow('enrollment_rows', i)} />
+                </div>
+              ))}
+              <AddBtn onClick={() => addRow('enrollment_rows', emptyEnroll)} />
+            </Section>
 
-        {/* 4. Closed Person's List */}
-        <Section title="4. Closed Person's List (CC Tracking)" right={<TotalChip label="Total CCs" value={Number(closedTotalCcs.toFixed(3))} />}>
-          <PersonTable rows={form.closed_persons} disabled={disabled}
-            onChange={(i, patch) => updateRow('closed_persons', i, patch)}
-            onAdd={() => addRow('closed_persons', emptyPerson)}
-            onRemove={(i) => removeRow('closed_persons', i)} />
-        </Section>
+            {/* 7. Lead Cycle Daily */}
+            <Section title="7. Lead Cycle Daily (Team)">
+              <RowHeader cols={['Name', 'Enroll', 'Budget', 'Check', '']} grid="grid-cols-[minmax(0,1fr)_3.5rem_3rem_2.5rem_1.25rem]" />
+              {form.lead_cycle_rows.map((r, i) => (
+                <div key={i} className="grid grid-cols-[minmax(0,1fr)_3.5rem_3rem_2.5rem_1.25rem] items-center gap-1.5">
+                  <input value={r.name} placeholder="Name" disabled={disabled} onChange={(e) => updateRow('lead_cycle_rows', i, { name: e.target.value })} className={inputCls} />
+                  <input type="number" min={0} value={r.enrollment} disabled={disabled} onChange={(e) => updateRow('lead_cycle_rows', i, { enrollment: int(e.target.value) })} className={cn(inputCls, 'tabular-nums')} />
+                  <CheckCell checked={r.budget_check} disabled={disabled} onChange={(v) => updateRow('lead_cycle_rows', i, { budget_check: v })} />
+                  <CheckCell checked={r.checked} disabled={disabled} onChange={(v) => updateRow('lead_cycle_rows', i, { checked: v })} />
+                  <RemoveBtn onClick={() => removeRow('lead_cycle_rows', i)} />
+                </div>
+              ))}
+              <AddBtn onClick={() => addRow('lead_cycle_rows', emptyCycle)} />
+              <TextLine label="Lead Covered" value={form.lead_covered} disabled={disabled} onChange={(v) => setForm((p) => ({ ...p, lead_covered: v }))} />
+              <TextLine label="Process Check" value={form.process_check} disabled={disabled} onChange={(v) => setForm((p) => ({ ...p, process_check: v }))} />
+            </Section>
 
-        {/* 9. Improvement Area */}
-        <Section title="9. Improvement Area (Your & Team)">
-          <textarea rows={4} value={form.improvement_area} disabled={disabled}
-            onChange={(e) => setForm((p) => ({ ...p, improvement_area: e.target.value }))}
-            className={cn(inputCls, 'w-full')} />
-        </Section>
+            {/* 8. Enrollment Tracking */}
+            <Section title="8. Enrollment Tracking (Prospect)">
+              <RowHeader cols={['Name', 'State', 'Drop/Cont', 'Day-1', '']} grid="grid-cols-[minmax(0,1fr)_minmax(0,1fr)_5rem_3rem_1.25rem]" />
+              {form.enrollment_tracking_rows.map((r, i) => (
+                <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_5rem_3rem_1.25rem] items-center gap-1.5">
+                  <input value={r.name} placeholder="Name" disabled={disabled} onChange={(e) => updateRow('enrollment_tracking_rows', i, { name: e.target.value })} className={inputCls} />
+                  <input value={r.current_state} placeholder="State" disabled={disabled} onChange={(e) => updateRow('enrollment_tracking_rows', i, { current_state: e.target.value })} className={inputCls} />
+                  <select value={r.drop_continue} disabled={disabled} onChange={(e) => updateRow('enrollment_tracking_rows', i, { drop_continue: e.target.value })} className={inputCls}>
+                    <option value="">—</option>
+                    <option value="continue">Continue</option>
+                    <option value="drop">Drop</option>
+                  </select>
+                  <input value={r.day1} placeholder="D1" disabled={disabled} onChange={(e) => updateRow('enrollment_tracking_rows', i, { day1: e.target.value })} className={inputCls} />
+                  <RemoveBtn onClick={() => removeRow('enrollment_tracking_rows', i)} />
+                </div>
+              ))}
+              <AddBtn onClick={() => addRow('enrollment_tracking_rows', emptyTrack)} />
+              <TextLine label="Reason for drop" value={form.drop_reason_remarks} disabled={disabled} onChange={(v) => setForm((p) => ({ ...p, drop_reason_remarks: v }))} />
+            </Section>
 
-        {/* 5. Pending Person CCs */}
-        <Section title="5. Pending Person CCs (Prospect)">
-          <PersonTable rows={form.pending_persons} disabled={disabled}
-            onChange={(i, patch) => updateRow('pending_persons', i, patch)}
-            onAdd={() => addRow('pending_persons', emptyPerson)}
-            onRemove={(i) => removeRow('pending_persons', i)} />
-        </Section>
+            {/* 9. Improvement Area */}
+            <Section title="9. Improvement Area (Your & Team)">
+              <textarea rows={4} value={form.improvement_area} disabled={disabled}
+                onChange={(e) => setForm((p) => ({ ...p, improvement_area: e.target.value }))}
+                className={cn(inputCls, 'w-full')} />
+            </Section>
+          </div>
+        </div>
 
         {/* Save */}
-        <div className="flex items-center gap-3 lg:col-span-2">
+        <div className="flex items-center gap-3">
           <button type="submit" disabled={disabled || subjectId == null}
             className="rounded-lg border border-primary/40 bg-primary/15 px-4 py-3 text-sm font-semibold text-primary transition hover:bg-primary/25 disabled:opacity-50 min-h-[44px]">
             {mut.isPending ? 'Saving…' : 'Save sheet'}
@@ -482,9 +501,9 @@ function PersonTable({ rows, disabled, onChange, onAdd, onRemove }: {
 }) {
   return (
     <div className="space-y-1.5">
-      <RowHeader cols={['Name', 'CCs', 'Current State', 'Next Task', '']} grid="grid-cols-[1fr_3.5rem_1fr_1fr_1.5rem]" />
+      <RowHeader cols={['Name', 'CCs', 'Current State', 'Next Task', '']} grid="grid-cols-[minmax(0,1fr)_3rem_minmax(0,1fr)_minmax(0,1fr)_1.25rem]" />
       {rows.map((r, i) => (
-        <div key={i} className="grid grid-cols-[1fr_3.5rem_1fr_1fr_1.5rem] items-center gap-1.5">
+        <div key={i} className="grid grid-cols-[minmax(0,1fr)_3rem_minmax(0,1fr)_minmax(0,1fr)_1.25rem] items-center gap-1.5">
           <input value={r.name} placeholder="Name" disabled={disabled} onChange={(e) => onChange(i, { name: e.target.value })} className={inputCls} />
           <input type="number" min={0} step="0.001" value={r.ccs} disabled={disabled} onChange={(e) => onChange(i, { ccs: Math.max(0, parseFloat(e.target.value) || 0) })} className={cn(inputCls, 'tabular-nums')} />
           <input value={r.current_state} placeholder="State" disabled={disabled} onChange={(e) => onChange(i, { current_state: e.target.value })} className={inputCls} />
