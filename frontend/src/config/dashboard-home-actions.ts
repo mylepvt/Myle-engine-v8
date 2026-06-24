@@ -79,8 +79,16 @@ export function getHomeQuickActions(
   role: Role,
   opts: { poolTotal: number },
 ): HomeQuickAction[] {
+  // Leader & team see the Tracking Report shortcut first (top of the grid).
+  const paths =
+    role === 'leader' || role === 'team'
+      ? [
+          'team/current-cc',
+          ...HOME_QUICK_ACTION_PATHS.filter((p) => p !== 'team/current-cc'),
+        ]
+      : HOME_QUICK_ACTION_PATHS
   const out: HomeQuickAction[] = []
-  for (const path of HOME_QUICK_ACTION_PATHS) {
+  for (const path of paths) {
     const def = getDashboardChildRoute(path)
     if (!def) continue
     if (!routeDefAccessible(def, role)) continue
@@ -89,9 +97,7 @@ export function getHomeQuickActions(
     const label =
       path === 'settings/profile'
         ? 'Settings'
-        : path === 'team/current-cc'
-          ? 'Tracking Report'
-          : resolveTitleForPath(path, role) ?? def.label
+        : resolveTitleForPath(path, role) ?? def.label
     const poolPaths = new Set(['work/lead-pool', 'work/lead-pool-admin'])
     const badgeCount =
       poolPaths.has(path) && opts.poolTotal > 0 ? opts.poolTotal : undefined
