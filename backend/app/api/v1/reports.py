@@ -16,7 +16,7 @@ from app.models.daily_score import DailyScore
 from app.schemas.reports import DailyReportPublic, DailyReportSubmit
 from app.models.user import User as _UserModel
 from app.services.audit_service import log_action
-from app.services.push_service import send_push_to_user
+from app.services.push_service import send_push_to_role, send_push_to_user
 from app.services.team_reports_metrics import IST
 
 router = APIRouter()
@@ -52,6 +52,7 @@ def _report_to_public(row: DailyReport, *, points_awarded: int = 0) -> DailyRepo
         report_date=row.report_date,
         total_calling=row.total_calling,
         remarks=row.remarks,
+        private_feedback=row.private_feedback,
         submitted_at=row.submitted_at,
         system_verified=row.system_verified,
         points_awarded=points_awarded,
@@ -109,12 +110,20 @@ async def submit_daily_report(
     row = r.scalar_one_or_none()
     points_awarded = 0
     now = datetime.now(timezone.utc)
+    new_feedback = (body.private_feedback or "").strip()
+    # Notify admins only when a member writes (or changes) a private complaint.
+    notify_admin_feedback = False
+    if row is None:
+        notify_admin_feedback = bool(new_feedback)
+    else:
+        notify_admin_feedback = bool(new_feedback) and new_feedback != (row.private_feedback or "").strip()
     if row is None:
         row = DailyReport(
             user_id=user.user_id,
             report_date=body.report_date,
             total_calling=body.total_calling,
             remarks=body.remarks,
+            private_feedback=body.private_feedback,
             submitted_at=now,
             system_verified=False,
             calls_picked=body.calls_picked,
@@ -162,6 +171,7 @@ async def submit_daily_report(
     else:
         row.total_calling = body.total_calling
         row.remarks = body.remarks
+        row.private_feedback = body.private_feedback
         row.submitted_at = now
         row.calls_picked = body.calls_picked
         row.wrong_numbers = body.wrong_numbers
@@ -199,6 +209,16 @@ async def submit_daily_report(
                 session, upline_to_notify,
                 title="📋 Daily Report Submitted",
                 body="A team member submitted their daily report.",
+                url="/dashboard/team/reports",
+            )
+        except Exception:
+            pass
+    if notify_admin_feedback and user.role != "admin":
+        try:
+            await send_push_to_role(
+                session, "admin",
+                title="🔒 Private feedback received",
+                body="A team member shared private feedback on their daily report.",
                 url="/dashboard/team/reports",
             )
         except Exception:

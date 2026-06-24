@@ -678,6 +678,7 @@ async def team_reports(
                     calls_made_actual=int(report.calls_made_actual or 0),
                     payments_actual=int(report.payments_actual or 0),
                     remarks=report.remarks,
+                    private_feedback=(report.private_feedback if user.role == "admin" else None),
                     system_verified=bool(report.system_verified),
                 )
             )

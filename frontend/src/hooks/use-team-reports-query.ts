@@ -32,6 +32,7 @@ export type TeamReportItem = TeamReportsMember & {
   calls_made_actual: number
   payments_actual: number
   remarks: string | null
+  private_feedback: string | null
   system_verified: boolean
 }
 

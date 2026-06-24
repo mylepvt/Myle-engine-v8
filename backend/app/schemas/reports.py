@@ -10,6 +10,7 @@ class DailyReportSubmit(BaseModel):
     report_date: date
     total_calling: int = Field(default=0, ge=0)
     remarks: Optional[str] = Field(default=None, max_length=8000)
+    private_feedback: Optional[str] = Field(default=None, max_length=8000)
     calls_picked: int = Field(default=0, ge=0)
     wrong_numbers: int = Field(default=0, ge=0)
     day1_count: int = Field(default=0, ge=0)
@@ -30,6 +31,7 @@ class DailyReportPublic(BaseModel):
     report_date: date
     total_calling: int
     remarks: Optional[str] = None
+    private_feedback: Optional[str] = None
     calls_picked: int = 0
     wrong_numbers: int = 0
     day1_count: int = 0

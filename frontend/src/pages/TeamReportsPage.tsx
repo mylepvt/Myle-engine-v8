@@ -128,6 +128,11 @@ function SubmissionCard({ item }: { item: TeamReportItem }) {
       </div>
 
       {item.remarks ? <p className="mt-3 text-sm text-muted-foreground">{item.remarks}</p> : null}
+      {item.private_feedback ? (
+        <p className="mt-3 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-200">
+          🔒 Private feedback: {item.private_feedback}
+        </p>
+      ) : null}
     </article>
   )
 }
@@ -351,7 +356,12 @@ export function TeamReportsPage({ title }: Props) {
                                 </span>
                               </td>
                               <td className="py-4 pl-4 text-sm text-muted-foreground">
-                                {item.remarks ? item.remarks : '—'}
+                                <div>{item.remarks ? item.remarks : '—'}</div>
+                                {item.private_feedback ? (
+                                  <div className="mt-2 rounded-lg border border-amber-400/30 bg-amber-400/10 px-2 py-1.5 text-xs text-amber-700 dark:text-amber-200">
+                                    🔒 Private feedback: {item.private_feedback}
+                                  </div>
+                                ) : null}
                               </td>
                             </tr>
                           )
