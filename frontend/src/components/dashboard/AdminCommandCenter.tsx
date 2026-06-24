@@ -41,7 +41,6 @@ import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { useAdminActivitySSE } from '@/hooks/use-admin-activity-sse'
 import { ActionQueuePanel } from '@/components/dashboard/ActionQueuePanel'
 import { AdminActivityPanel } from '@/components/dashboard/AdminActivityPanel'
-import { CcSummaryCard } from '@/components/dashboard/CcSummaryCard'
 import { LiveTeamActivity } from '@/components/dashboard/LiveTeamActivity'
 import { LiveOpsDashboard } from '@/components/dashboard/live-ops/LiveOpsDashboard'
 import { useLiveDashboardStore } from '@/stores/live-dashboard-store'
@@ -874,6 +873,8 @@ export function AdminCommandCenter({ firstName }: Props) {
                   { title: 'Grace requests', count: pendingGraceCount, icon: <Clock className="size-4" />, to: '/dashboard/team/members', urgent: pendingGraceCount > 3 },
                   { title: 'Pending verifications', count: vSummary.data?.pending_verifications ?? 0, icon: <ListChecks className="size-4" />, to: '#', urgent: (vSummary.data?.pending_verifications ?? 0) > 5 },
                   { title: 'Zombie leads', count: zombieLeads.data?.leads?.length ?? 0, icon: <ShieldAlert className="size-4" />, to: '/dashboard/work/leads', urgent: (zombieLeads.data?.leads?.length ?? 0) > 10 },
+                  { title: 'Reassign ready', count: leadControl.data?.queue_total ?? 0, icon: <ArrowRightLeft className="size-4" />, to: '/dashboard/system/lead-control', urgent: false },
+                  { title: 'Archive incubation', count: leadControl.data?.incubation_total ?? 0, icon: <Layers3 className="size-4" />, to: '/dashboard/system/lead-control', urgent: false },
                 ].map((item) => {
                   const active = item.count > 0
                   return (
@@ -917,8 +918,7 @@ export function AdminCommandCenter({ firstName }: Props) {
           <LiveOpsDashboard />
 
           {/* Today Snapshot */}
-          <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            <CcSummaryCard />
+          <section className="grid grid-cols-1 gap-4">
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Today Snapshot</CardTitle>
@@ -954,34 +954,9 @@ export function AdminCommandCenter({ firstName }: Props) {
             </Card>
           </section>
 
-          {/* Collapsible: Grace Requests + Full Action Queue */}
-          <ReportsSection title="All Action Queue Items">
-            <Card>
-              <CardContent className="grid grid-cols-1 gap-2 pt-4">
-                {[
-                  { title: 'Pending registrations', description: 'Self-serve signups awaiting admin approval.', count: pendingRegistrations.data?.total ?? 0, icon: <Users className="size-4" />, to: '/dashboard/team/approvals' },
-                  { title: 'Min. FLP Billing', description: 'FLP billing proofs pending review.', count: enrollmentPending.data?.total ?? 0, icon: <ClipboardCheck className="size-4" />, to: '/dashboard/team/flp-min-billing' },
-                  { title: 'Recharge requests', description: 'Wallet recharges awaiting finance approval.', count: pendingRechargeItems.length, icon: <Wallet className="size-4" />, to: '/dashboard/finance/recharge-admin' },
-                  { title: 'Grace requests', description: 'Team grace-period requests to review.', count: pendingGraceCount, icon: <Clock className="size-4" />, to: '/dashboard/team/members' },
-                  { title: 'Reassign ready', description: 'Archived leads eligible for redistribution.', count: leadControl.data?.queue_total ?? 0, icon: <ArrowRightLeft className="size-4" />, to: '/dashboard/system/lead-control' },
-                  { title: 'Archive incubation', description: 'Archived leads nearing stale reassignment.', count: leadControl.data?.incubation_total ?? 0, icon: <Layers3 className="size-4" />, to: '/dashboard/system/lead-control' },
-                ].map((row) => {
-                  const active = row.count > 0
-                  return (
-                    <Link key={row.title} to={row.to} className={cn('group flex items-center gap-3 rounded-xl border px-3 py-2.5 transition', active ? 'border-amber-400/30 bg-amber-400/[0.06] hover:bg-amber-400/[0.1]' : 'border-border/50 bg-card/40 hover:bg-muted/40')}>
-                      <span className={cn('grid size-9 shrink-0 place-items-center rounded-lg', active ? 'bg-amber-400/15 text-amber-300' : 'bg-muted/50 text-muted-foreground')}>{row.icon}</span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold text-foreground">{row.title}</span>
-                        <span className="block truncate text-xs text-muted-foreground">{row.description}</span>
-                      </span>
-                      <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-sm font-bold tabular-nums', active ? 'bg-amber-400/20 text-amber-300' : 'text-muted-foreground/40')}>{row.count}</span>
-                      <ChevronRight className="size-4 shrink-0 text-muted-foreground/50 transition group-hover:translate-x-0.5 group-hover:text-foreground" />
-                    </Link>
-                  )
-                })}
-              </CardContent>
-            </Card>
-            {pendingGraceCount > 0 && (
+          {/* Collapsible: Grace Requests (action-queue counts live in "Do Now" above) */}
+          {pendingGraceCount > 0 && (
+            <ReportsSection title="Pending Grace Requests">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
@@ -995,8 +970,8 @@ export function AdminCommandCenter({ firstName }: Props) {
                   {pendingGraceMembers.map((member) => (<GraceRequestRow key={member.id} member={member} />))}
                 </CardContent>
               </Card>
-            )}
-          </ReportsSection>
+            </ReportsSection>
+          )}
 
           <ReportsSection title="Activity Log">
             <AdminActivityPanel />
