@@ -380,6 +380,7 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     label: 'Decision Engine',
     roles: routeRoles('system/decision-engine'),
     surface: 'full',
+    navHidden: true,
     ui: { kind: 'system', surface: 'decision-engine' },
   },
   {
@@ -388,6 +389,7 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     label: 'Coaching Panel',
     roles: routeRoles('system/coaching'),
     surface: 'full',
+    navHidden: true,
     ui: { kind: 'system', surface: 'coaching' },
   },
   {
