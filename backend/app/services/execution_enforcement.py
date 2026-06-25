@@ -1503,7 +1503,7 @@ async def run_closing_pipeline_maintenance(
     top_n: int = 10,
     limit: int = 500,
     now: datetime | None = None,
-    auto_reassign: bool = True,
+    auto_reassign: bool = False,
 ) -> dict[str, int]:
     ts = _ensure_utc_datetime(now) or datetime.now(timezone.utc)
     auto_archived = await auto_archive_closing_pipeline_leads(
@@ -1756,7 +1756,7 @@ async def run_general_pipeline_maintenance(
     top_n: int = 10,
     limit: int = 500,
     now: datetime | None = None,
-    auto_reassign: bool = True,
+    auto_reassign: bool = False,
 ) -> dict[str, int]:
     ts = _ensure_utc_datetime(now) or datetime.now(timezone.utc)
     auto_archived = await auto_archive_general_pipeline_leads(

@@ -4,6 +4,7 @@ Jobs (all IST-aware):
 - flp_min_billing_proof_alert          : every 30min — pending proof > 2h → push admin/leaders
 - weekly_compliance_digest        : Monday 09:00 IST — compliance summary to leaders
 - daily_report_reminder           : 21:00 IST daily — push eligible users who haven't submitted report
+- tracking_report_reminder        : 21:30 IST daily — WhatsApp leaders who haven't submitted tracking report
 - call_target_reminder            : 17:00 IST daily — push eligible users short on calls
 - watch_archive_maintenance       : every 30min — archive completed-watch leads > 24h + redistribute stale
 - closing_pipeline_maintenance    : every 30min — archive day2-6 leads idle >24h (reassign is manual only)
@@ -26,8 +27,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.time_ist import today_ist
 from app.db.session import AsyncSessionLocal
+from app.models.current_cc import CurrentCcSheet
 from app.models.daily_report import DailyReport
 from app.models.lead import Lead
+from app.models.whatsapp_log import WhatsAppLog
 from app.models.report_reminder_outreach import ReportReminderOutreach
 from app.models.user import User
 from app.services.live_metrics import fresh_call_counts_by_user, get_daily_call_target
@@ -252,6 +255,103 @@ async def job_daily_report_reminder() -> None:
 
     except Exception as exc:
         logger.error("job_daily_report_reminder failed: %s", exc)
+
+
+# ---------------------------------------------------------------------------
+# Job 3b: tracking report reminder → leaders at 21:30 IST
+# ---------------------------------------------------------------------------
+
+async def job_tracking_report_reminder() -> None:
+    """WhatsApp leaders who haven't submitted today's tracking report (runs 21:30 IST).
+
+    The tracking report = the leader's own CURRENT CCs v/s TARGET CCs sheet
+    (``current_cc_sheets`` row where ``subject_user_id`` is the leader). Only
+    leaders missing today's sheet are messaged; anyone already nudged today is
+    skipped (dedup via the WhatsApp log).
+    """
+    try:
+        from app.services.whatsapp_tracking_reminder import send_tracking_report_reminder
+
+        async with AsyncSessionLocal() as session:
+            today = today_ist()
+            leaders = (
+                await session.execute(
+                    select(User).where(
+                        *report_eligibility_conditions(today, roles=("leader",)),
+                        User.phone.isnot(None),
+                    )
+                )
+            ).scalars().all()
+            if not leaders:
+                return
+
+            leader_ids = [u.id for u in leaders]
+
+            submitted = {
+                int(uid)
+                for (uid,) in (
+                    await session.execute(
+                        select(CurrentCcSheet.subject_user_id).where(
+                            CurrentCcSheet.subject_user_id.in_(leader_ids),
+                            CurrentCcSheet.sheet_date == today,
+                        )
+                    )
+                ).all()
+            }
+
+            missing = [u for u in leaders if u.id not in submitted]
+            if not missing:
+                logger.info("tracking_report_reminder: all leaders submitted")
+                return
+
+            # Dedup — skip leaders already messaged in the last 6h (guards re-fire).
+            cutoff = datetime.now(timezone.utc) - timedelta(hours=6)
+            already_reminded: set[int] = {
+                int(uid)
+                for (uid,) in (
+                    await session.execute(
+                        select(WhatsAppLog.related_user_id).where(
+                            WhatsAppLog.message_type == "tracking_reminder",
+                            WhatsAppLog.status == "sent",
+                            WhatsAppLog.created_at >= cutoff,
+                            WhatsAppLog.related_user_id.in_([u.id for u in missing]),
+                        )
+                    )
+                ).all()
+                if uid is not None
+            }
+
+            sent = 0
+            for leader in missing:
+                if leader.id in already_reminded:
+                    continue
+                try:
+                    result = await send_tracking_report_reminder(
+                        user=leader, reminder_date=today, session=session
+                    )
+                    if result.get("ok"):
+                        sent += 1
+                except Exception as exc:
+                    logger.warning("tracking reminder failed leader_id=%s: %s", leader.id, exc)
+            if sent:
+                await session.commit()
+
+            logger.info(
+                "tracking_report_reminder: leaders=%d missing=%d sent=%d",
+                len(leaders), len(missing), sent,
+            )
+            observe_event(
+                event_type="scheduler.tracking_report_reminder",
+                source="scheduler",
+                detail={"leaders": len(leaders), "missing": len(missing), "sent": sent},
+            )
+    except Exception as exc:
+        logger.error("job_tracking_report_reminder failed: %s", exc)
+        observe_event(
+            event_type="scheduler.failure",
+            source="scheduler",
+            detail={"job": "tracking_report_reminder", "error": str(exc)},
+        )
 
 
 # ---------------------------------------------------------------------------

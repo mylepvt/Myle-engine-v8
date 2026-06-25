@@ -64,7 +64,16 @@ def lead_list_conditions(
             if user.role == "leader"
             else lead_visibility_where(user)
         )
-    elif archived_only or deleted_only:
+    elif archived_only:
+        # Archived tab: admin sees all, leader sees own + whole team (downline),
+        # everyone else only their own assigned leads.
+        if user.role == "admin":
+            visibility = None
+        elif user.role == "leader":
+            visibility = lead_management_visible_to_leader_clause(user.user_id)
+        else:
+            visibility = Lead.assigned_to_user_id == user.user_id
+    elif deleted_only:
         visibility = None if user.role == "admin" else Lead.assigned_to_user_id == user.user_id
     else:
         visibility = lead_visibility_where(user)

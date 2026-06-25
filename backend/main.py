@@ -44,6 +44,7 @@ from app.services.scheduled_jobs import (
     job_leader_basics_enforcement,
     job_management_updates,
     job_management_weekly_report,
+    job_tracking_report_reminder,
     job_watch_archive_maintenance,
     job_weekly_compliance_digest,
 )
@@ -96,6 +97,13 @@ async def lifespan(_app: FastAPI):
             job_call_target_reminder,
             CronTrigger(hour=17, minute=0, timezone="Asia/Kolkata"),
             id="call_target_reminder",
+            replace_existing=True,
+            misfire_grace_time=1800,
+        )
+        _scheduler.add_job(
+            job_tracking_report_reminder,
+            CronTrigger(hour=21, minute=30, timezone="Asia/Kolkata"),
+            id="tracking_report_reminder",
             replace_existing=True,
             misfire_grace_time=1800,
         )
