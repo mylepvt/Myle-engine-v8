@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, Clock3 } from 'lucide-react'
 
 import { CcSummaryCard } from '@/components/dashboard/CcSummaryCard'
+import { DashboardFeedbackCard } from '@/components/dashboard/DashboardFeedbackCard'
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
 import { HandedOffLeadsSection } from '@/components/dashboard/HandedOffLeadsSection'
 import { XpBadge } from '@/components/xp/XpBadge'
@@ -239,6 +240,8 @@ export function TeamDashboardHomeModern({
           </div>
         )}
       </section>
+
+      <DashboardFeedbackCard enabled={sessionReady} />
     </div>
   )
 }
