@@ -8,6 +8,7 @@ import { XpLeaderboard } from '@/components/xp/XpLeaderboard'
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
 import { AdminCommandCenter } from '@/components/dashboard/AdminCommandCenter'
 import { CcSummaryCard } from '@/components/dashboard/CcSummaryCard'
+import { DashboardFeedbackCard } from '@/components/dashboard/DashboardFeedbackCard'
 import { TeamDashboardHomeModern } from '@/components/dashboard/TeamDashboardHomeModern'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -1037,6 +1038,8 @@ export function DashboardHomePage() {
           <LoadingState label="Loading session…" />
         </div>
       ) : null}
+
+      <DashboardFeedbackCard enabled={sessionReady} />
     </div>
   )
 }

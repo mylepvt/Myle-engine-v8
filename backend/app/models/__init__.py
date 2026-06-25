@@ -25,6 +25,7 @@ from app.models.password_reset_token import PasswordResetToken
 from app.models.training_video import TrainingVideo
 from app.models.training_progress import TrainingProgress
 from app.models.daily_report import DailyReport
+from app.models.member_feedback import MemberFeedback
 from app.models.current_cc import CurrentCcSheet
 from app.models.daily_score import DailyScore
 from app.models.app_setting import AppSetting
@@ -71,6 +72,7 @@ __all__ = [
     "TrainingVideo",
     "TrainingProgress",
     "DailyReport",
+    "MemberFeedback",
     "CurrentCcSheet",
     "DailyScore",
     "AppSetting",
