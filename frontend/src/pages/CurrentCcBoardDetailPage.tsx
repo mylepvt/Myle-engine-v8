@@ -1,29 +1,36 @@
 import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { apiFetch } from '@/lib/api'
-import { ComparePills, GrowthTrio, type ComparePeriod, type TrendPoint } from '@/components/current-cc/growth'
+import { SheetView, type SheetPublic } from '@/components/current-cc/sheet-view'
 
 type TeamMember = { user_id: number; name: string }
 
 type Props = { userId: number }
 
+function todayIsoLocal() {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 export function CurrentCcBoardDetailPage({ userId }: Props) {
-  const trendsQ = useQuery({
-    queryKey: ['current-cc-trends', userId, 30],
+  const [dateIso, setDateIso] = useState(todayIsoLocal)
+
+  // Same sheet the member fills — read it back read-only so the admin sees the
+  // exact submitted form, not just summary numbers.
+  const sheetQ = useQuery({
+    queryKey: ['current-cc-sheet', userId, dateIso],
     queryFn: async () => {
-      const res = await apiFetch(`/api/v1/current-cc/trends?subject_user_id=${userId}&days=30`)
+      const res = await apiFetch(
+        `/api/v1/current-cc/sheet?subject_user_id=${userId}&date=${encodeURIComponent(dateIso)}`,
+      )
       if (!res.ok) throw new Error(await res.text())
-      return (await res.json()) as { points: TrendPoint[] }
-    },
-  })
-  const compareQ = useQuery({
-    queryKey: ['current-cc-compare', userId],
-    queryFn: async () => {
-      const res = await apiFetch(`/api/v1/current-cc/compare?subject_user_id=${userId}`)
-      if (!res.ok) throw new Error(await res.text())
-      return (await res.json()) as { week: ComparePeriod; month: ComparePeriod }
+      return (await res.json()) as SheetPublic | null
     },
   })
   const membersQ = useQuery({
@@ -36,57 +43,51 @@ export function CurrentCcBoardDetailPage({ userId }: Props) {
   })
 
   const name = membersQ.data?.find((m) => m.user_id === userId)?.name ?? `User #${userId}`
-  const points = trendsQ.data?.points ?? []
-  const latest = points.length ? points[points.length - 1] : null
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="max-w-5xl space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <Link to="/dashboard/team/cc-board" className="text-xs text-primary hover:underline">
             ‹ Back to board
           </Link>
           <h1 className="text-ds-h1">{name}</h1>
-          <p className="text-sm text-muted-foreground">Last 30 days — real growth & pipeline movement.</p>
+          <p className="text-sm text-muted-foreground">Tracking Report — exactly as the member filled it.</p>
         </div>
         <Link
           to={`/dashboard/team/current-cc?member=${userId}`}
           className="rounded-lg border border-primary/40 bg-primary/15 px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/25"
         >
-          Open sheet
+          Open / edit sheet
         </Link>
       </div>
 
-      {trendsQ.isPending ? <Skeleton className="h-64 w-full rounded" /> : null}
-      {trendsQ.isError ? (
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>Date</span>
+          <input
+            type="date"
+            value={dateIso}
+            onChange={(e) => setDateIso(e.target.value)}
+            className="rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground"
+          />
+        </label>
+      </div>
+
+      {sheetQ.isPending ? <Skeleton className="h-64 w-full rounded" /> : null}
+      {sheetQ.isError ? (
         <p className="text-sm text-destructive" role="alert">
-          {trendsQ.error instanceof Error ? trendsQ.error.message : 'Failed to load'}
+          {sheetQ.error instanceof Error ? sheetQ.error.message : 'Failed to load'}
         </p>
       ) : null}
 
-      {latest ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="Current CC" value={latest.closed_ccs.toFixed(2)} accent />
-          <Stat label="Target CC" value={latest.target_ccs.toFixed(2)} />
-          <Stat label="Closed people" value={String(latest.closed)} />
-          <Stat label="Activity today" value={String(latest.calls + latest.leads_added + latest.followups)} />
+      {sheetQ.isSuccess && !sheetQ.data ? (
+        <div className="surface-elevated rounded border border-dashed border-border dark:border-white/12 px-4 py-8 text-center text-sm text-muted-foreground">
+          {name} ne {dateIso} ka Tracking Report form abhi nahi bhara.
         </div>
       ) : null}
 
-      {compareQ.data ? <ComparePills week={compareQ.data.week} month={compareQ.data.month} /> : null}
-
-      {trendsQ.data ? <GrowthTrio points={points} /> : null}
-    </div>
-  )
-}
-
-function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <div className="rounded-lg border border-border/50 bg-background/40 px-3 py-2">
-      <p className={accent ? 'text-lg font-bold tabular-nums text-emerald-600 dark:text-emerald-400' : 'text-lg font-bold tabular-nums text-foreground'}>
-        {value}
-      </p>
-      <p className="text-[11px] text-muted-foreground">{label}</p>
+      {sheetQ.data ? <SheetView sheet={sheetQ.data} /> : null}
     </div>
   )
 }

@@ -12,39 +12,15 @@ import {
   type ComparePeriod,
   type TrendPoint,
 } from '@/components/current-cc/growth'
-
-type PersonRow = { name: string; ccs: number; current_state: string; next_task: string }
-type EnrollmentRow = { name: string; fresh_lead: number; old_lead: number }
-type LeadCycleRow = { name: string; enrollment: number; budget_check: boolean; checked: boolean }
-type TrackingRow = { name: string; current_state: string; drop_continue: string; day1: string }
-
-type Actuals = { calls: number; leads_added: number; followups: number }
-type MatchItem = { metric: string; label: string; claimed: number; actual: number; status: string }
-type MatchInfo = { overall: string; flagged: boolean; items: MatchItem[] }
-
-type SheetPublic = {
-  subject_user_id: number
-  sheet_date: string
-  actuals: Actuals
-  match: MatchInfo
-  target_ccs: number | null
-  direct_persons: string[]
-  direct_total_ccs: number | null
-  real_active_persons: string[]
-  light_active_persons: string[]
-  closed_persons: PersonRow[]
-  pending_persons: PersonRow[]
-  enrollment_rows: EnrollmentRow[]
-  lead_cycle_rows: LeadCycleRow[]
-  lead_covered: string | null
-  process_check: string | null
-  enrollment_tracking_rows: TrackingRow[]
-  drop_reason_remarks: string | null
-  improvement_area: string | null
-  closed_total_ccs: number
-  current_ccs: number
-  enrollment_total: number
-}
+import type {
+  Actuals,
+  EnrollmentRow,
+  LeadCycleRow,
+  MatchInfo,
+  PersonRow,
+  SheetPublic,
+  TrackingRow,
+} from '@/components/current-cc/sheet-view'
 
 type TeamMember = { user_id: number; name: string }
 function todayIsoLocal() {
