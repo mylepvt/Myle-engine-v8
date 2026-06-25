@@ -34,6 +34,7 @@ from app.api.v1 import (
     certificate,
     downloads,
     enrollment,
+    feedback,
     flp_min_billing,
     execution,
     finance_surfaces,
@@ -107,6 +108,7 @@ api_router.include_router(follow_ups.router, prefix="/follow-ups", tags=["follow
 api_router.include_router(lead_notes.router, prefix="/leads", tags=["lead-notes"])
 api_router.include_router(workboard.router, prefix="/workboard", tags=["workboard"])
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
+api_router.include_router(feedback.router, prefix="/feedback", tags=["feedback"])
 api_router.include_router(current_cc.router, prefix="/current-cc", tags=["current-cc"])
 api_router.include_router(
     gate_assistant.router, prefix="/gate-assistant", tags=["gate-assistant"]
