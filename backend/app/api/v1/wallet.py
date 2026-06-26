@@ -349,7 +349,12 @@ async def create_recharge_request(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> WalletRechargePublic:
-    """Submit a wallet recharge request; idempotent via idempotency_key."""
+    """Submit a wallet recharge request; idempotent via idempotency_key.
+
+    A UTR number can be used once: if any non-rejected recharge already carries
+    the same UTR, the request is refused (prevents reusing one payment reference
+    for multiple recharges).
+    """
     # Idempotency check
     if body.idempotency_key is not None:
         existing = await session.execute(
@@ -362,10 +367,27 @@ async def create_recharge_request(
         if hit is not None:
             return await _wallet_recharge_public_response(session, hit)
 
+    # Normalise UTR (trim + uppercase) so casing/spacing can't dodge the check.
+    norm_utr = (body.utr_number or "").strip().upper()
+
+    # Duplicate-UTR guard — a used UTR (pending or approved) cannot be reused.
+    if norm_utr:
+        dup = await session.execute(
+            select(WalletRecharge.id).where(
+                func.upper(WalletRecharge.utr_number) == norm_utr,
+                WalletRecharge.status != "rejected",
+            ).limit(1)
+        )
+        if dup.scalar_one_or_none() is not None:
+            raise HTTPException(
+                status_code=http_status.HTTP_409_CONFLICT,
+                detail="This UTR number has already been used for a recharge request.",
+            )
+
     recharge = WalletRecharge(
         user_id=user.user_id,
         amount_cents=body.amount_cents,
-        utr_number=body.utr_number,
+        utr_number=norm_utr,
         proof_url=body.proof_url,
         idempotency_key=body.idempotency_key,
         status="pending",
