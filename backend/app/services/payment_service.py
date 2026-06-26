@@ -69,7 +69,9 @@ class PaymentService:
 
     async def upload_payment_proof(self, file: UploadFile, *, lead_id: int) -> str:
         """Upload payment proof file and return URL."""
-        ok, result = await save_payment_proof_file(lead_id=lead_id, file=file)
+        ok, result = await save_payment_proof_file(
+            session=self.session, lead_id=lead_id, file=file
+        )
         if not ok:
             raise ValueError(result)
         return result
