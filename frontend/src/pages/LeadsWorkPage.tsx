@@ -1,4 +1,5 @@
 import { type ChangeEvent, type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Filter, Mail, MapPin, Phone, Plus, Search, Share2, Upload, UserPlus, X } from 'lucide-react'
 
@@ -96,7 +97,14 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
       if (e.key === 'Escape') setQuickAddOpen(false)
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    // Lock the page behind the sheet so touch-scroll stays inside the modal
+    // instead of being stolen by the dashboard content pane.
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prevOverflow
+    }
   }, [quickAddOpen])
 
   useEffect(() => {
@@ -542,7 +550,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
         </div>
         </div>
 
-        {quickAddOpen ? (
+        {quickAddOpen ? createPortal(
           <div
           className="keyboard-safe-modal fixed inset-0 z-[60] flex items-end justify-center bg-background/80 p-0 backdrop-blur-sm sm:items-center sm:p-4 dark:bg-black/60"
           role="presentation"
@@ -735,7 +743,8 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
               </form>
             </div>
           </div>
-          </div>
+          </div>,
+          document.body,
         ) : null}
       </div>
     </>
