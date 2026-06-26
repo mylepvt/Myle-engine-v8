@@ -17,7 +17,7 @@ class WalletRecharge(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     amount_cents: Mapped[int] = mapped_column(Integer, nullable=False)
-    utr_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    utr_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, index=True)
     proof_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     status: Mapped[str] = mapped_column(
         String(20),
