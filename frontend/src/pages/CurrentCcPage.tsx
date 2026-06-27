@@ -21,6 +21,7 @@ import type {
   SheetPublic,
   TrackingRow,
 } from '@/components/current-cc/sheet-view'
+import type { AutoReport } from '@/components/current-cc/auto-view'
 
 type TeamMember = { user_id: number; name: string }
 function todayIsoLocal() {
@@ -78,6 +79,28 @@ function padTo(list: string[], n: number): string[] {
   return out
 }
 
+/** Map the system-computed report into form state. Process Check & Improvement
+ *  Area are intentionally left blank — those are the leader's own judgement. */
+function autoToForm(auto: AutoReport): FormState {
+  const rows = <T,>(list: T[], empty: () => T): T[] => (list?.length ? list : [empty(), empty()])
+  return {
+    target_ccs: '',
+    direct_persons: padTo(auto.direct_persons ?? [], 5),
+    direct_total_ccs: '',
+    real_active_persons: padTo(auto.real_active_persons ?? [], 5),
+    light_active_persons: padTo(auto.light_active_persons ?? [], 5),
+    closed_persons: rows(auto.closed_persons, emptyPerson),
+    pending_persons: rows(auto.pending_persons, emptyPerson),
+    enrollment_rows: rows(auto.enrollment_rows, emptyEnroll),
+    lead_cycle_rows: rows(auto.lead_cycle_rows, emptyCycle),
+    lead_covered: auto.lead_covered ?? '',
+    process_check: '',
+    enrollment_tracking_rows: rows(auto.enrollment_tracking_rows, emptyTrack),
+    drop_reason_remarks: auto.drop_reason_remarks ?? '',
+    improvement_area: '',
+  }
+}
+
 const num = (v: string) => (v.trim() ? Math.max(0, parseFloat(v) || 0) : null)
 const int = (v: string) => Math.max(0, parseInt(v, 10) || 0)
 
@@ -126,6 +149,19 @@ export function CurrentCcPage({ title }: Props) {
     },
   })
 
+  // System-computed report — prefills a blank sheet and powers the "Auto-fill" button.
+  const autoQ = useQuery({
+    queryKey: ['current-cc-auto', subjectId, dateIso],
+    enabled: subjectId != null,
+    queryFn: async () => {
+      const res = await apiFetch(
+        `/api/v1/current-cc/auto?subject_user_id=${subjectId}&date=${encodeURIComponent(dateIso)}`,
+      )
+      if (!res.ok) throw new Error(await res.text())
+      return (await res.json()) as AutoReport
+    },
+  })
+
   const trendsQ = useQuery({
     queryKey: ['current-cc-trends', subjectId],
     enabled: subjectId != null,
@@ -149,7 +185,8 @@ export function CurrentCcPage({ title }: Props) {
   useEffect(() => {
     const row = sheetQ.data
     if (!row) {
-      setForm(blankForm())
+      // No saved sheet yet → prefill from the system so the member only verifies.
+      setForm(autoQ.data ? autoToForm(autoQ.data) : blankForm())
       return
     }
     const rows = <T,>(list: T[], empty: () => T): T[] => (list?.length ? list : [empty(), empty()])
@@ -169,7 +206,7 @@ export function CurrentCcPage({ title }: Props) {
       drop_reason_remarks: row.drop_reason_remarks ?? '',
       improvement_area: row.improvement_area ?? '',
     })
-  }, [sheetQ.data])
+  }, [sheetQ.data, autoQ.data])
 
   const closedTotalCcs = useMemo(
     () => form.closed_persons.reduce((s, r) => s + (r.ccs || 0), 0),
@@ -295,6 +332,15 @@ export function CurrentCcPage({ title }: Props) {
         <span className="rounded-lg border border-emerald-500/25 bg-emerald-500/[0.06] px-3 py-2 text-sm">
           Current CCs: <span className="font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{closedTotalCcs.toFixed(3)}</span>
         </span>
+        <button
+          type="button"
+          disabled={disabled || !autoQ.data}
+          onClick={() => autoQ.data && setForm(autoToForm(autoQ.data))}
+          title="System ke data se sheet bhar do (Process Check & Improvement Area chhod ke)"
+          className="rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition hover:bg-primary/20 disabled:opacity-50"
+        >
+          ⟳ Auto-fill from system
+        </button>
       </div>
 
       {sheetQ.data ? <MatchPanel actuals={sheetQ.data.actuals} match={sheetQ.data.match} /> : null}

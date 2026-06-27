@@ -211,3 +211,135 @@ async def test_trends_after_save(team_client: AsyncClient):
     assert pt["closed_ccs"] == 2.0
     assert pt["enrollment_total"] == 6
     assert pt["target_ccs"] == 10.0
+
+
+# ── Auto-compute (system-derived Tracking Report) ─────────────────────────────
+
+AUTO_URL = "/api/v1/current-cc/auto"
+
+
+async def _seed_auto_fixture(engine) -> None:
+    """Leader 402 with one downline member 460 who has a closed sale, a seat-held
+    lead, an enrollment share, and an approved recharge — all dated today."""
+    from datetime import datetime
+    from decimal import Decimal
+
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+    from app.models.enrollment_share_link import EnrollmentShareLink
+    from app.models.lead import Lead
+    from app.models.lead_sale import LeadSale
+    from app.models.user import User
+    from app.models.wallet_recharge import WalletRecharge
+
+    now = datetime.utcnow()
+    factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async with factory() as s:
+        # In-memory DB is shared across the session — seed only once.
+        if await s.get(User, 402) is not None:
+            return
+        s.add(User(id=402, fbo_id="F00402", email="leader402@t.myle", role="leader", name="Lead Boss"))
+        s.add(
+            User(
+                id=460, fbo_id="F00460", email="child460@t.myle", role="team",
+                name="Child Member", upline_user_id=402,
+            )
+        )
+        await s.flush()
+
+        closed = Lead(
+            name="Closed Lead", status="converted", outcome="converted",
+            owner_user_id=460, created_by_user_id=460,
+        )
+        pending = Lead(
+            name="Pending Lead", status="seat_hold", outcome="active",
+            owner_user_id=460, created_by_user_id=460, seat_hold_amount_cents=50000,
+            last_action_at=now,
+        )
+        s.add_all([closed, pending])
+        await s.flush()
+
+        s.add(
+            LeadSale(
+                lead_id=closed.id, billing_stage="day6", case_credits=Decimal("2.5"),
+                status="approved", owner_user_id=460, submitted_by_user_id=460, created_at=now,
+            )
+        )
+        s.add(
+            EnrollmentShareLink(
+                token="tok-auto-460", created_by_user_id=460, video_source="r2://x",
+                viewer_phone="9990001111", created_at=now,
+            )
+        )
+        s.add(
+            WalletRecharge(
+                user_id=460, amount_cents=119600, status="approved",
+                utr_number="UTR460", reviewed_at=now, created_at=now,
+            )
+        )
+        await s.commit()
+
+
+async def test_auto_computes_all_sections(engine, admin_client: AsyncClient):
+    await _seed_auto_fixture(engine)
+    resp = await admin_client.get(AUTO_URL, params={"subject_user_id": 402})
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+
+    # 1 — direct team from the org tree; below the healthy threshold.
+    assert body["direct_count"] == 1
+    assert "Child Member" in body["direct_persons"]
+    assert body["recruitment_low"] is True
+
+    # 4 — closed CCs from the approved sale (not OCR).
+    assert body["closed_total_ccs"] == 2.5
+    assert any(p["name"] == "Closed Lead" for p in body["closed_persons"])
+
+    # 5 — seat-held, not converted.
+    assert any(p["name"] == "Pending Lead" for p in body["pending_persons"])
+
+    # 6/7 — enrollment share + budget recharge submitted & approved (Gurveer check).
+    assert body["enrollment_total"] == 1
+    cycle = next(r for r in body["lead_cycle_rows"] if r["name"] == "Child Member")
+    assert cycle["enrollment"] == 1
+    assert cycle["budget_check"] is True
+    assert cycle["checked"] is True
+
+    # 2 — member gave a CC this month → real active (not light).
+    assert "Child Member" in body["real_active_persons"]
+    assert "Child Member" not in body["light_active_persons"]
+
+
+async def test_auto_scopes_out_non_downline(engine, admin_client: AsyncClient):
+    """A member outside 402's downline must not leak into the report."""
+    from datetime import datetime
+    from decimal import Decimal
+
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+    from app.models.lead import Lead
+    from app.models.lead_sale import LeadSale
+    from app.models.user import User
+
+    await _seed_auto_fixture(engine)
+    factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async with factory() as s:
+        s.add(User(id=470, fbo_id="F00470", email="stranger470@t.myle", role="team", name="Stranger"))
+        await s.flush()
+        outsider = Lead(name="Outsider Lead", status="converted", outcome="converted",
+                        owner_user_id=470, created_by_user_id=470)
+        s.add(outsider)
+        await s.flush()
+        s.add(LeadSale(lead_id=outsider.id, billing_stage="day6", case_credits=Decimal("9.0"),
+                       status="approved", owner_user_id=470, submitted_by_user_id=470,
+                       created_at=datetime.utcnow()))
+        await s.commit()
+
+    body = (await admin_client.get(AUTO_URL, params={"subject_user_id": 402})).json()
+    assert body["closed_total_ccs"] == 2.5  # outsider's 9.0 excluded
+    assert not any(p["name"] == "Outsider Lead" for p in body["closed_persons"])
+
+
+async def test_auto_forbidden_for_other(team_client: AsyncClient):
+    resp = await team_client.get(AUTO_URL, params={"subject_user_id": 999})
+    assert resp.status_code == 403
