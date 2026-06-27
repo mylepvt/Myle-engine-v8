@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Filter, Mail, MapPin, Phone, Plus, Search, Share2, Upload, UserPlus, X } from 'lucide-react'
 
+import { ArchivedLeadCard } from '@/components/leads/ArchivedLeadCard'
 import { CtcsWorkSurface } from '@/components/leads/CtcsWorkSurface'
 import { LeadsVirtualizedBody } from '@/components/leads/LeadsVirtualizedBody'
 import { Button } from '@/components/ui/button'
@@ -302,19 +303,36 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
             {items.length === 0 ? (
               <p>{emptyListHint(surfaceRole ?? null, archivedOnly)}</p>
             ) : (
-              <div className="-mx-1 max-w-full overflow-x-auto rounded-md border border-border/50">
-                <LeadsVirtualizedBody
-                  items={items}
-                  archivedOnly={archivedOnly}
-                  role={surfaceRole ?? null}
-                  patchBusyLeadId={patchBusyLeadId}
-                  deleteBusyLeadId={deleteBusyLeadId}
-                  onPatchStatus={onPatchStatus}
-                  onPatchPool={onPatchPool}
-                  onPatchArchive={onPatchArchive}
-                  onDelete={onDeleteLead}
-                />
-              </div>
+              <>
+                {/* Mobile: stacked cards (no horizontal scroll on phones). */}
+                <ul className="space-y-2 md:hidden">
+                  {items.map((l) => (
+                    <ArchivedLeadCard
+                      key={l.id}
+                      lead={l}
+                      role={surfaceRole ?? null}
+                      patchBusy={patchBusyLeadId === l.id}
+                      deleteBusy={deleteBusyLeadId === l.id}
+                      onRestoreArchive={onPatchArchive}
+                      onDelete={onDeleteLead}
+                    />
+                  ))}
+                </ul>
+                {/* Desktop: virtualized table (owns its own horizontal scroll). */}
+                <div className="hidden overflow-hidden rounded-md border border-border/50 md:block">
+                  <LeadsVirtualizedBody
+                    items={items}
+                    archivedOnly={archivedOnly}
+                    role={surfaceRole ?? null}
+                    patchBusyLeadId={patchBusyLeadId}
+                    deleteBusyLeadId={deleteBusyLeadId}
+                    onPatchStatus={onPatchStatus}
+                    onPatchPool={onPatchPool}
+                    onPatchArchive={onPatchArchive}
+                    onDelete={onDeleteLead}
+                  />
+                </div>
+              </>
             )}
             {items.length > 0 && leadsQ.hasNextPage ? (
               <div className="mt-4 flex justify-center">
