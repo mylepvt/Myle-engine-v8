@@ -48,13 +48,15 @@ class SqlAlchemyLeadsRepository:
         limit: int,
         offset: int,
         ctcs_priority_sort: bool = False,
+        archived_only: bool = False,
         now_utc: Optional[datetime] = None,
     ) -> list[Lead]:
         stmt = select(Lead).limit(limit).offset(offset)
         if condition is not None:
             stmt = stmt.where(condition)
-        if ctcs_priority_sort:
-            stmt = stmt.order_by(Lead.created_at.desc(), Lead.id.desc())
+        if archived_only:
+            # Archived view: most recently archived first, oldest last.
+            stmt = stmt.order_by(Lead.archived_at.desc(), Lead.id.desc())
         else:
             stmt = stmt.order_by(Lead.created_at.desc(), Lead.id.desc())
         return (await self._session.execute(stmt)).scalars().all()
