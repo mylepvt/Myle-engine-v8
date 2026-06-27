@@ -45,6 +45,9 @@ export function ArchivedLeadCard({
   onDelete,
 }: ArchivedLeadCardProps) {
   const section = currentSectionForLead(lead, role)
+  // Admins/leaders see many members' leads, so surface who the lead belongs to.
+  const showMember = role === 'admin' || role === 'leader'
+  const memberName = lead.assigned_to_name ?? lead.owner_name ?? 'Unassigned'
   return (
     <li className="surface-elevated rounded-lg border border-border/50 p-3">
       <div className="flex items-start justify-between gap-2">
@@ -67,6 +70,12 @@ export function ArchivedLeadCard({
       </div>
 
       <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+        {showMember ? (
+          <div className="col-span-2 min-w-0">
+            <dt className="text-ds-label uppercase text-muted-foreground">Member</dt>
+            <dd className="truncate text-foreground">{memberName}</dd>
+          </div>
+        ) : null}
         <div className="min-w-0">
           <dt className="text-ds-label uppercase text-muted-foreground">Stage</dt>
           <dd className="truncate text-foreground">{statusLabel(lead.status)}</dd>
