@@ -450,6 +450,7 @@ class LeadsService:
             limit=limit,
             offset=offset,
             ctcs_priority_sort=ctcs_priority_sort,
+            archived_only=archived_only,
             now_utc=datetime.now(timezone.utc),
         )
         items = await self.serialize_lead_public_list(rows)

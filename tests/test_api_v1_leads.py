@@ -1440,6 +1440,39 @@ def test_archived_only_list(
         asyncio.run(_clear_leads())
 
 
+def test_archived_only_list_ordered_by_archived_at_desc(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    base = datetime.now(timezone.utc)
+    # Seed out of order so created_at can't accidentally produce the right order.
+    asyncio.run(
+        _seed_one_lead(
+            user_id=2, name="Archived first", archived_at=base - timedelta(days=2)
+        )
+    )
+    asyncio.run(
+        _seed_one_lead(
+            user_id=2, name="Archived most recently", archived_at=base
+        )
+    )
+    asyncio.run(
+        _seed_one_lead(
+            user_id=2, name="Archived middle", archived_at=base - timedelta(days=1)
+        )
+    )
+    try:
+        c = _authed_client(monkeypatch)
+        assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
+        body = c.get("/api/v1/leads", params={"archived_only": "true"}).json()
+        assert [item["name"] for item in body["items"]] == [
+            "Archived most recently",
+            "Archived middle",
+            "Archived first",
+        ]
+    finally:
+        asyncio.run(_clear_leads())
+
+
 def test_slice4_archived_team_sees_assigned_not_creator(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
