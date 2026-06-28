@@ -27,6 +27,15 @@ export type AutoReport = {
   enrollment_tracking_rows: TrackingRow[]
   drop_reason_remarks: string | null
   actuals: Actuals
+  activity_breakdown: ActivityBreakdown
+}
+
+export type ActivityBreakdown = {
+  leads_created: number
+  leads_uploaded: number
+  leads_claimed: number
+  calls_total: number
+  retarget_calls: number
 }
 
 /**
@@ -54,6 +63,20 @@ export function AutoView({ auto }: { auto: AutoReport }) {
           Direct team chhota hai ({auto.direct_count}) — front recruitment badhane ki zarurat.
         </p>
       ) : null}
+
+      {/* Exact counts from app logs (activity_log + call_events) — cannot be inflated. */}
+      <div className="space-y-1.5">
+        <p className="text-[11px] uppercase text-muted-foreground">
+          Aaj ka actual kaam (app logs se ginaa — claim nahi)
+        </p>
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+          <Metric label="Leads created" value={auto.activity_breakdown.leads_created} />
+          <Metric label="Uploaded" value={auto.activity_breakdown.leads_uploaded} />
+          <Metric label="Claimed" value={auto.activity_breakdown.leads_claimed} />
+          <Metric label="Calls" value={auto.activity_breakdown.calls_total} accent />
+          <Metric label="Retarget calls" value={auto.activity_breakdown.retarget_calls} />
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
         <div className="space-y-5">
@@ -246,6 +269,17 @@ function Chip({ label, value, accent }: { label: string; value: string; accent?:
         {value}
       </span>
     </span>
+  )
+}
+
+function Metric({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
+  return (
+    <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-2 text-center">
+      <p className={cn('text-lg font-bold tabular-nums', accent ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground')}>
+        {value}
+      </p>
+      <p className="text-[10px] leading-tight text-muted-foreground">{label}</p>
+    </div>
   )
 }
 

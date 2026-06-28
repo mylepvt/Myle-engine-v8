@@ -343,3 +343,47 @@ async def test_auto_scopes_out_non_downline(engine, admin_client: AsyncClient):
 async def test_auto_forbidden_for_other(team_client: AsyncClient):
     resp = await team_client.get(AUTO_URL, params={"subject_user_id": 999})
     assert resp.status_code == 403
+
+
+async def test_auto_activity_breakdown_counts_app_logs(engine, admin_client: AsyncClient):
+    """Created/uploaded/claimed/calls/retarget come from activity_log + call_events."""
+    from datetime import datetime
+
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+    from app.models.activity_log import ActivityLog
+    from app.models.call_event import CallEvent
+    from app.models.lead import Lead
+    from app.models.user import User
+
+    now = datetime.utcnow()
+    factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async with factory() as s:
+        s.add(User(id=480, fbo_id="F00480", email="caller480@t.myle", role="team", name="Caller"))
+        await s.flush()
+        # Two leads: one normal, one in retarget state.
+        normal = Lead(name="Normal", status="contacted", outcome="active",
+                      owner_user_id=480, created_by_user_id=480)
+        retgt = Lead(name="Retgt", status="contacted", outcome="recycle",
+                     owner_user_id=480, created_by_user_id=480, retarget_at=now)
+        s.add_all([normal, retgt])
+        await s.flush()
+
+        s.add_all([
+            ActivityLog(user_id=480, action="lead.created", created_at=now),
+            ActivityLog(user_id=480, action="lead.pool_import", created_at=now),
+            ActivityLog(user_id=480, action="lead.claimed", created_at=now),
+            ActivityLog(user_id=480, action="lead.claimed_free", created_at=now),
+            CallEvent(user_id=480, lead_id=normal.id, outcome="connected", called_at=now),
+            CallEvent(user_id=480, lead_id=retgt.id, outcome="connected", called_at=now),
+            CallEvent(user_id=480, lead_id=retgt.id, outcome="no_answer", called_at=now),
+        ])
+        await s.commit()
+
+    body = (await admin_client.get(AUTO_URL, params={"subject_user_id": 480})).json()
+    b = body["activity_breakdown"]
+    assert b["leads_created"] == 1
+    assert b["leads_uploaded"] == 1
+    assert b["leads_claimed"] == 2          # claimed + claimed_free
+    assert b["calls_total"] == 3
+    assert b["retarget_calls"] == 2         # both calls to the retarget lead
