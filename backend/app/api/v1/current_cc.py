@@ -12,6 +12,7 @@ from starlette import status as http_status
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.schemas.current_cc import (
     CcCompareResponse,
+    CurrentCcAuto,
     CurrentCcOverviewResponse,
     CurrentCcSheetPublic,
     CurrentCcSheetUpsert,
@@ -27,6 +28,7 @@ from app.services.current_cc import (
     today_ist,
     upsert_sheet,
 )
+from app.services.current_cc_auto import get_auto
 
 router = APIRouter()
 
@@ -84,6 +86,23 @@ async def save_sheet(
         raise HTTPException(
             status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(exc)
         ) from exc
+
+
+@router.get("/auto", response_model=CurrentCcAuto)
+async def read_auto(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    subject_user_id: int = Query(..., description="Team member the report is about"),
+    sheet_date: date | None = Query(default=None, alias="date"),
+) -> CurrentCcAuto:
+    """System-computed Tracking Report — used to prefill the form and compare."""
+    _require_actor(user)
+    try:
+        return await get_auto(
+            session, actor=user, subject_user_id=subject_user_id, day=sheet_date or today_ist()
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
 
 
 @router.get("/overview", response_model=CurrentCcOverviewResponse)

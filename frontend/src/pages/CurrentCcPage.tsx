@@ -21,6 +21,7 @@ import type {
   SheetPublic,
   TrackingRow,
 } from '@/components/current-cc/sheet-view'
+import { AutoView, type AutoReport } from '@/components/current-cc/auto-view'
 
 type TeamMember = { user_id: number; name: string }
 function todayIsoLocal() {
@@ -78,6 +79,7 @@ function padTo(list: string[], n: number): string[] {
   return out
 }
 
+
 const num = (v: string) => (v.trim() ? Math.max(0, parseFloat(v) || 0) : null)
 const int = (v: string) => Math.max(0, parseInt(v, 10) || 0)
 
@@ -126,6 +128,19 @@ export function CurrentCcPage({ title }: Props) {
     },
   })
 
+  // System-computed report — prefills a blank sheet and powers the "Auto-fill" button.
+  const autoQ = useQuery({
+    queryKey: ['current-cc-auto', subjectId, dateIso],
+    enabled: subjectId != null,
+    queryFn: async () => {
+      const res = await apiFetch(
+        `/api/v1/current-cc/auto?subject_user_id=${subjectId}&date=${encodeURIComponent(dateIso)}`,
+      )
+      if (!res.ok) throw new Error(await res.text())
+      return (await res.json()) as AutoReport
+    },
+  })
+
   const trendsQ = useQuery({
     queryKey: ['current-cc-trends', subjectId],
     enabled: subjectId != null,
@@ -149,6 +164,8 @@ export function CurrentCcPage({ title }: Props) {
   useEffect(() => {
     const row = sheetQ.data
     if (!row) {
+      // Members fill manually — the system's own numbers are shown separately
+      // (AutoView) for comparison, not poured into the form.
       setForm(blankForm())
       return
     }
@@ -298,6 +315,20 @@ export function CurrentCcPage({ title }: Props) {
       </div>
 
       {sheetQ.data ? <MatchPanel actuals={sheetQ.data.actuals} match={sheetQ.data.match} /> : null}
+
+      {/* Members fill the form manually below. This read-only panel shows what
+          the system actually detected today, so you can compare your entry with
+          reality (and admins see the same numbers). */}
+      {autoQ.data ? (
+        <details open className="space-y-2">
+          <summary className="cursor-pointer text-sm font-semibold text-primary">
+            🔎 System ne aaj kya detect kiya — apni entry se milao (reference)
+          </summary>
+          <div className="mt-2">
+            <AutoView auto={autoQ.data} />
+          </div>
+        </details>
+      ) : null}
 
       {sheetQ.isPending && subjectId != null ? <Skeleton className="h-40 w-full rounded" /> : null}
       {sheetQ.isError ? (

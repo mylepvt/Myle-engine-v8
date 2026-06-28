@@ -160,6 +160,50 @@ class CurrentCcOverviewResponse(BaseModel):
     not_filled_count: int = 0
 
 
+class CurrentCcAuto(BaseModel):
+    """System-computed Tracking Report — everything derivable from real data.
+
+    Mirrors the manual sheet sections so the form can prefill from it and the
+    admin can compare "system computed" vs "member wrote". Two sections are NOT
+    here because they are pure human judgement: Process Check (leader's diagnosis)
+    and Improvement Area (leader's solution).
+    """
+
+    subject_user_id: int
+    sheet_date: date
+
+    # 1 — direct downline (children in the org tree)
+    direct_persons: List[str] = Field(default_factory=list)
+    direct_count: int = 0
+    recruitment_low: bool = False  # True when the direct team is below a healthy size
+
+    # 2 / 3 — team activity buckets (this month)
+    real_active_persons: List[str] = Field(default_factory=list)
+    light_active_persons: List[str] = Field(default_factory=list)
+
+    # 4 — closed leads with realised CCs (approved LeadSale.case_credits)
+    closed_persons: List[CcPersonRow] = Field(default_factory=list)
+    closed_total_ccs: float = 0.0
+
+    # 5 — seat-held but not yet closed
+    pending_persons: List[CcPersonRow] = Field(default_factory=list)
+
+    # 6 — enrollment video shares (per member), fresh/old split is best-effort
+    enrollment_rows: List[EnrollmentRow] = Field(default_factory=list)
+    enrollment_total: int = 0
+    enrollment_split_approx: bool = False
+
+    # 7 — lead cycle: enrollment count + budget recharge submitted/approved
+    lead_cycle_rows: List[LeadCycleRow] = Field(default_factory=list)
+    lead_covered: Optional[str] = None  # informational summary, leader confirms
+
+    # 8 — today's enrollment movement (state / drop-continue / day-1)
+    enrollment_tracking_rows: List[EnrollmentTrackingRow] = Field(default_factory=list)
+    drop_reason_remarks: Optional[str] = None
+
+    actuals: CurrentCcActuals = Field(default_factory=CurrentCcActuals)
+
+
 class TeamMemberOption(BaseModel):
     user_id: int
     name: str

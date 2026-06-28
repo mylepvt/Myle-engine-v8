@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { Skeleton } from '@/components/ui/skeleton'
 import { apiFetch } from '@/lib/api'
 import { SheetView, type SheetPublic } from '@/components/current-cc/sheet-view'
+import { AutoView, type AutoReport } from '@/components/current-cc/auto-view'
 
 type TeamMember = { user_id: number; name: string }
 
@@ -39,6 +40,18 @@ export function CurrentCcBoardDetailPage({ userId }: Props) {
       const res = await apiFetch('/api/v1/current-cc/team-members')
       if (!res.ok) throw new Error(await res.text())
       return res.json() as Promise<TeamMember[]>
+    },
+  })
+
+  // System-computed report for the same member/date — shown next to the sheet.
+  const autoQ = useQuery({
+    queryKey: ['current-cc-auto', userId, dateIso],
+    queryFn: async () => {
+      const res = await apiFetch(
+        `/api/v1/current-cc/auto?subject_user_id=${userId}&date=${encodeURIComponent(dateIso)}`,
+      )
+      if (!res.ok) throw new Error(await res.text())
+      return (await res.json()) as AutoReport
     },
   })
 
@@ -87,7 +100,14 @@ export function CurrentCcBoardDetailPage({ userId }: Props) {
         </div>
       ) : null}
 
-      {sheetQ.data ? <SheetView sheet={sheetQ.data} /> : null}
+      {autoQ.data ? <AutoView auto={autoQ.data} /> : null}
+
+      {sheetQ.data ? (
+        <div className="space-y-2">
+          <h2 className="text-ds-label uppercase text-muted-foreground">Member ne jo bhara</h2>
+          <SheetView sheet={sheetQ.data} />
+        </div>
+      ) : null}
     </div>
   )
 }
