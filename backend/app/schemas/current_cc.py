@@ -160,6 +160,18 @@ class CurrentCcOverviewResponse(BaseModel):
     not_filled_count: int = 0
 
 
+class CurrentCcActivityBreakdown(BaseModel):
+    """Exact, app-logged activity for the subject on the day — counted from
+    ``activity_log`` + ``call_events`` (not the member's claim). Each lead action
+    is a distinct logged event, so these numbers cannot be inflated by hand."""
+
+    leads_created: int = 0   # action="lead.created"
+    leads_uploaded: int = 0  # action in lead.pool_import / lead.free_pool_import
+    leads_claimed: int = 0   # action in lead.claimed / lead.claimed_free
+    calls_total: int = 0     # rows in call_events
+    retarget_calls: int = 0  # call_events on recycle/retarget leads (subset of calls)
+
+
 class CurrentCcAuto(BaseModel):
     """System-computed Tracking Report — everything derivable from real data.
 
@@ -202,6 +214,9 @@ class CurrentCcAuto(BaseModel):
     drop_reason_remarks: Optional[str] = None
 
     actuals: CurrentCcActuals = Field(default_factory=CurrentCcActuals)
+    activity_breakdown: CurrentCcActivityBreakdown = Field(
+        default_factory=CurrentCcActivityBreakdown
+    )
 
 
 class TeamMemberOption(BaseModel):

@@ -24,7 +24,14 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthUser
-from app.core.lead_outcome import DROP_REASON_LABELS, OUTCOME_CONVERTED, OUTCOME_DEAD
+from app.core.lead_outcome import (
+    DROP_REASON_LABELS,
+    OUTCOME_CONVERTED,
+    OUTCOME_DEAD,
+    OUTCOME_RECYCLE,
+)
+from app.models.activity_log import ActivityLog
+from app.models.call_event import CallEvent
 from app.models.daily_member_stat import DailyMemberStat  # noqa: F401 (used via compute_actuals)
 from app.models.enrollment_share_link import EnrollmentShareLink
 from app.models.lead import Lead
@@ -33,6 +40,7 @@ from app.models.user import User
 from app.models.wallet_recharge import WalletRecharge
 from app.schemas.current_cc import (
     CcPersonRow,
+    CurrentCcActivityBreakdown,
     CurrentCcActuals,
     CurrentCcAuto,
     EnrollmentRow,
@@ -45,6 +53,11 @@ from app.services.team_reports_metrics import IST
 
 # A direct team smaller than this nudges the leader to recruit more at the front.
 RECRUITMENT_MIN_DIRECT = 5
+
+# activity_log action names that distinguish how a lead entered the member's book.
+_CREATED_ACTIONS = ("lead.created",)
+_UPLOADED_ACTIONS = ("lead.pool_import", "lead.free_pool_import")
+_CLAIMED_ACTIONS = ("lead.claimed", "lead.claimed_free")
 
 
 def _ist_date(stamp: datetime | None) -> date | None:
@@ -174,7 +187,83 @@ async def compute_auto(
 
     # ── Activity (reliable, for the subject) ──────────────────────────────────
     auto.actuals = await compute_actuals(session, subject_user_id=subject_user_id, day=day)
+    auto.activity_breakdown = await compute_activity_breakdown(
+        session, subject_user_id=subject_user_id, day=day
+    )
     return auto
+
+
+async def compute_activity_breakdown(
+    session: AsyncSession, *, subject_user_id: int, day: date
+) -> CurrentCcActivityBreakdown:
+    """Exact per-category counts from app logs (subject's own actions on ``day``).
+
+    Each lead action is a distinct ``activity_log`` row and each call a
+    ``call_events`` row, so these are the un-inflatable truth the member's
+    claimed numbers can be cross-checked against. Retarget calls are calls to
+    leads currently in the recycle/retarget state (best-effort: the lead's
+    state at call time is not snapshotted).
+    """
+    coarse = _coarse_cutoff(day)
+
+    # Lead-origin actions from the activity log.
+    log_rows = (
+        await session.execute(
+            select(ActivityLog.action, ActivityLog.created_at).where(
+                ActivityLog.user_id == subject_user_id,
+                ActivityLog.created_at >= coarse,
+            )
+        )
+    ).all()
+    created = uploaded = claimed = 0
+    for action, ts in log_rows:
+        if _ist_date(ts) != day:
+            continue
+        if action in _CREATED_ACTIONS:
+            created += 1
+        elif action in _UPLOADED_ACTIONS:
+            uploaded += 1
+        elif action in _CLAIMED_ACTIONS:
+            claimed += 1
+
+    # Calls from the call log (exact, per-call rows).
+    call_rows = (
+        await session.execute(
+            select(CallEvent.lead_id, CallEvent.called_at).where(
+                CallEvent.user_id == subject_user_id,
+                CallEvent.called_at >= coarse,
+            )
+        )
+    ).all()
+    todays_calls = [(lid, ts) for lid, ts in call_rows if _ist_date(ts) == day]
+    calls_total = len(todays_calls)
+
+    retarget_calls = 0
+    lead_ids = {lid for lid, _ in todays_calls if lid is not None}
+    if lead_ids:
+        retarget_lead_ids = {
+            int(lid)
+            for (lid,) in (
+                await session.execute(
+                    select(Lead.id).where(
+                        Lead.id.in_(lead_ids),
+                        or_(
+                            Lead.retarget_at.isnot(None),
+                            Lead.outcome == OUTCOME_RECYCLE,
+                        ),
+                    )
+                )
+            ).all()
+        }
+        retarget_calls = sum(1 for lid, _ in todays_calls if lid in retarget_lead_ids)
+
+    return CurrentCcActivityBreakdown(
+        leads_created=created,
+        leads_uploaded=uploaded,
+        leads_claimed=claimed,
+        calls_total=calls_total,
+        retarget_calls=retarget_calls,
+    )
 
 
 async def _attach_enrollment_and_budget(
@@ -387,4 +476,4 @@ async def get_auto(
     return await compute_auto(session, subject_user_id=subject_user_id, day=day)
 
 
-__all__ = ["compute_auto", "get_auto", "today_ist"]
+__all__ = ["compute_auto", "compute_activity_breakdown", "get_auto", "today_ist"]
