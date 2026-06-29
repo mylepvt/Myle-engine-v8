@@ -28,6 +28,8 @@ export type XpLeaderboardEntry = {
   level_label: string
   xp_total: number
   process_score_7d: number
+  /** Present in the admin reassign roster ("leader" | "team") — absent elsewhere. */
+  role?: string
 }
 
 export const LEVEL_COLORS: Record<string, { bg: string; text: string; border: string }> = {

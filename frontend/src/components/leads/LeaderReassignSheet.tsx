@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useReassignEligibleQuery, LEVEL_COLORS } from '@/hooks/use-xp-query'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -24,6 +25,16 @@ export function LeaderReassignSheet({
   revertNotice,
 }: Props) {
   const { data, isPending, isError } = useReassignEligibleQuery()
+  const [search, setSearch] = useState('')
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return data ?? []
+    return (data ?? []).filter((e) => e.name.toLowerCase().includes(q))
+  }, [data, search])
+
+  // Big roster (admin) → searchable picker; small list (leader top performers) → plain.
+  const showSearch = (data?.length ?? 0) > 8
 
   return (
     <div
@@ -62,8 +73,18 @@ export function LeaderReassignSheet({
 
         <div className="px-4 py-3">
           <p className="mb-3 text-ds-caption text-muted-foreground">
-            Top performers by 7-day process score
+            {showSearch ? 'Pick any member to reassign to' : 'Top performers by 7-day process score'}
           </p>
+
+          {showSearch ? (
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name…"
+              className="mb-3 w-full rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none"
+            />
+          ) : null}
 
           {isPending ? (
             <div className="space-y-2">
@@ -75,9 +96,13 @@ export function LeaderReassignSheet({
             <p className="py-4 text-center text-sm text-muted-foreground">
               No eligible team members found.
             </p>
+          ) : filtered.length === 0 ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">
+              No member matches “{search.trim()}”.
+            </p>
           ) : (
-            <ul className="space-y-1.5">
-              {data.map((entry, idx) => {
+            <ul className="max-h-72 space-y-1.5 overflow-y-auto">
+              {filtered.map((entry, idx) => {
                 const colors = LEVEL_COLORS[entry.level] ?? LEVEL_COLORS['rookie']
                 return (
                   <li key={entry.user_id}>
@@ -88,14 +113,21 @@ export function LeaderReassignSheet({
                       className={cn(
                         'flex w-full items-center gap-3 rounded-lg border border-border/50 bg-muted/30 px-3 py-2.5 text-left transition',
                         'hover:border-primary/40 hover:bg-muted/60 active:scale-[0.98] disabled:opacity-50',
-                        idx === 0 && 'border-amber-500/30 bg-amber-500/[0.06]',
+                        idx === 0 && !search.trim() && 'border-amber-500/30 bg-amber-500/[0.06]',
                       )}
                     >
                       <span className="w-4 shrink-0 text-center text-xs font-bold text-muted-foreground tabular-nums">
                         {idx + 1}
                       </span>
-                      <span className="flex-1 truncate text-sm font-medium text-foreground">
-                        {entry.name}
+                      <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                        <span className="truncate text-sm font-medium text-foreground">
+                          {entry.name}
+                        </span>
+                        {entry.role === 'leader' ? (
+                          <span className="shrink-0 rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-primary">
+                            Leader
+                          </span>
+                        ) : null}
                       </span>
                       <span
                         className={cn(
