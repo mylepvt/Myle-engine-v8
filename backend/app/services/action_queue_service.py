@@ -396,8 +396,13 @@ async def send_action_queue_digests(session: AsyncSession) -> dict:
 
     for leader in leaders:
         try:
-            scoped = await get_action_queue(session, leader_user_id=leader.id, limit=DIGEST_TOP_N)
-            text = build_digest_text(scoped.items, scoped.total, heading="Team Action Queue")
+            scoped = await get_action_queue(session, leader_user_id=leader.id, limit=50)
+            # Zombie-lead WhatsApp alerts are disabled — exclude them from the
+            # digest. Dashboard Action Queue panel still shows zombie items.
+            non_zombie = [it for it in scoped.items if it.item_type != "zombie_lead"]
+            text = build_digest_text(
+                non_zombie[:DIGEST_TOP_N], len(non_zombie), heading="Team Action Queue"
+            )
             if not text:
                 result["leaders_skipped"] += 1
                 continue

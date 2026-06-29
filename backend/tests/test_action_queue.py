@@ -194,9 +194,11 @@ async def test_digest_sends_to_management_and_scoped_leaders(engine, monkeypatch
     async with AsyncSession(engine, expire_on_commit=False) as session:
         result = await send_action_queue_digests(session)
 
-    assert result["management_sent"] is True
+    # Management WhatsApp was intentionally stopped (commit 0653e5bd); only
+    # leaders get a scoped digest now.
     assert result["leaders_sent"] >= 1
-    mgmt_msgs = [m for p, m in sent if p == "+919999999999"]
     leader_msgs = [m for p, m in sent if p == "+918888888888"]
-    assert mgmt_msgs and "Myle Action Queue" in mgmt_msgs[0]
     assert leader_msgs and "Team Action Queue" in leader_msgs[0]
+    # Zombie-lead alerts are disabled — the seeded zombie lead must not appear
+    # in the digest (the member still surfaces via the inactivity signal).
+    assert "untouched" not in leader_msgs[0]
