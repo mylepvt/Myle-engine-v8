@@ -14,6 +14,7 @@ from app.services.xp_service import (
     DAILY_CAP,
     admin_force_reset_all,
     admin_recalc_cutoff,
+    get_assignable_members,
     get_leaderboard,
     get_process_leaderboard,
     get_user_xp_history,
@@ -122,13 +123,14 @@ async def reassign_eligible(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> List[dict]:
-    """Top process performers for reassigned lead routing. Leader sees own team, admin sees all."""
+    """Reassign target picker. Admin gets the full active roster (any leader/member,
+    searchable); leader gets the top process performers within their own downline."""
     if user.role not in ("admin", "leader"):
         raise HTTPException(status_code=403, detail="Forbidden")
-    within_ids = None
-    if user.role == "leader":
-        from app.services.downline import recursive_downline_user_ids
-        within_ids = await recursive_downline_user_ids(session, user.user_id)
+    if user.role == "admin":
+        return await get_assignable_members(session)
+    from app.services.downline import recursive_downline_user_ids
+    within_ids = await recursive_downline_user_ids(session, user.user_id)
     return await get_process_leaderboard(session, limit=10, within_user_ids=within_ids)
 
 

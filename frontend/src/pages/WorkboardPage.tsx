@@ -27,7 +27,10 @@ import {
   type LeadPublic,
   type LeadStatus,
   usePatchLeadMutation,
+  useReassignLeadMutation,
 } from '@/hooks/use-leads-query'
+import { useLeadControlRevertMutation } from '@/hooks/use-lead-control-query'
+import { LeaderReassignSheet } from '@/components/leads/LeaderReassignSheet'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { apiFetch, apiUrl } from '@/lib/api'
@@ -233,6 +236,32 @@ const LeadCard = memo(function LeadCard({
   const [sendError, setSendError] = useState<string | null>(null)
   const stageOpsCard = stageKey != null
 
+  // Reassign — admin/leader can hand this lead to another member from the workboard.
+  const canReassign = surfaceRole === 'admin' || surfaceRole === 'leader'
+  const [reassignOpen, setReassignOpen] = useState(false)
+  const [revertNotice, setRevertNotice] = useState<string | null>(null)
+  const reassignMut = useReassignLeadMutation()
+  const revertMut = useLeadControlRevertMutation()
+
+  async function handleReassignConfirm(userId: number) {
+    await reassignMut.mutateAsync({ leadId: lead.id, userId })
+    setReassignOpen(false)
+  }
+
+  async function handleReassignRevert() {
+    if (!lead.is_reassigned) {
+      setRevertNotice('Already with original assignee — nothing to revert.')
+      return
+    }
+    try {
+      await revertMut.mutateAsync({ leadId: lead.id })
+      setReassignOpen(false)
+      setRevertNotice(null)
+    } catch (err) {
+      setRevertNotice(err instanceof Error ? err.message : 'Revert failed')
+    }
+  }
+
   // Enrollment-Live send: create the single open token /watch/{token} link (detail-form
   // gate + first-open timer + auto video_sent→video_watched on finish), then WhatsApp it.
   // Enrollment-Live send — one tokenized /watch link, no time-slot picker.
@@ -401,6 +430,12 @@ const LeadCard = memo(function LeadCard({
                 ) : null}
               </>
             ) : null}
+            {canReassign ? (
+              <IconBtn title="Reassign lead" colorHover="hover:border-amber-400/40 hover:text-amber-400"
+                onClick={() => { setRevertNotice(null); setReassignOpen(true) }}>
+                <ArrowLeftRight className="h-3.5 w-3.5"/>
+              </IconBtn>
+            ) : null}
             <Link to={`/dashboard/work/leads/${lead.id}`} title="Edit"
               className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-muted/30 text-foreground transition active:scale-95 hover:border-primary/40 hover:text-primary">
               <Pencil className="h-3.5 w-3.5"/>
@@ -453,6 +488,18 @@ const LeadCard = memo(function LeadCard({
           </p>
         ) : null}
       </div>
+      {reassignOpen ? (
+        <LeaderReassignSheet
+          leadName={lead.name}
+          isReassigned={Boolean(lead.is_reassigned)}
+          onClose={() => { setReassignOpen(false); setRevertNotice(null) }}
+          onConfirm={(userId) => { void handleReassignConfirm(userId) }}
+          onRevert={() => { void handleReassignRevert() }}
+          busy={reassignMut.isPending}
+          reverting={revertMut.isPending}
+          revertNotice={revertNotice}
+        />
+      ) : null}
     </article>
   )
 })

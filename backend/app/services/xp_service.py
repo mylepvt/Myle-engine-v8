@@ -520,6 +520,65 @@ async def get_process_leaderboard(
     return result
 
 
+async def get_assignable_members(session: AsyncSession, days: int = 7) -> list[dict]:
+    """All approved, active leaders + team members — admin reassign target picker.
+
+    Unlike :func:`get_process_leaderboard` this is not capped and includes members
+    with zero recent activity, so admin can hand a lead to *any* leader/member.
+    Ranked by 7-day process score (then name) so strong performers float up, but
+    the full roster is searchable on the client.
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+
+    users = (
+        await session.execute(
+            select(User).where(
+                User.role.in_(("leader", "team")),
+                User.registration_status == "approved",
+                User.removed_at.is_(None),
+                User.access_blocked.is_(False),
+            )
+        )
+    ).scalars().all()
+    if not users:
+        return []
+
+    user_ids = [u.id for u in users]
+    score_rows = (
+        await session.execute(
+            select(
+                XpEvent.user_id,
+                func.coalesce(func.sum(XpEvent.xp), 0).label("process_score"),
+            )
+            .where(
+                ~XpEvent.action.in_(list(_RESULT_ACTIONS)),
+                XpEvent.created_at >= cutoff,
+                XpEvent.user_id.in_(user_ids),
+            )
+            .group_by(XpEvent.user_id)
+        )
+    ).all()
+    score_map = {r.user_id: int(r.process_score) for r in score_rows}
+
+    result = []
+    for u in users:
+        level = _calculate_level(u.xp_total or 0)
+        result.append({
+            "user_id": u.id,
+            "name": u.name or u.username or u.fbo_id,
+            "fbo_id": u.fbo_id,
+            "role": u.role,
+            "level": level,
+            "level_label": level.title(),
+            "xp_total": u.xp_total or 0,
+            "process_score_7d": score_map.get(u.id, 0),
+        })
+    result.sort(key=lambda r: (-r["process_score_7d"], (r["name"] or "").lower()))
+    for rank, row in enumerate(result, start=1):
+        row["rank"] = rank
+    return result
+
+
 async def get_leaderboard(session: AsyncSession, limit: int = 10) -> list[dict]:
     """Top 10 by cumulative season XP — leaders + team both eligible."""
     rows = (
