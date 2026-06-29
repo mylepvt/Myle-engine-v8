@@ -711,6 +711,11 @@ async def evaluate_rule(
     rule: AutomationRule,
 ) -> list[AutomationActionLog]:
     """Evaluate a single rule and execute actions."""
+    # Zombie-lead WhatsApp alerts are disabled: skip evaluating any zombie_lead
+    # rule so no automated alert/task fires. Dashboard surfaces stay unaffected.
+    if rule.trigger_type == "zombie_lead":
+        return []
+
     evaluator = TRIGGER_EVAL.get(rule.trigger_type)
     if not evaluator:
         return []
