@@ -188,7 +188,12 @@ export const LeadsVirtualizedBody = memo(function LeadsVirtualizedBody(props: Le
     if (!el || typeof ResizeObserver === 'undefined') return
     const ro = new ResizeObserver((entries) => {
       const w = entries[0]?.contentRect.width ?? TABLE_MIN_WIDTH
-      setWidth(Math.max(320, Math.floor(w)))
+      // Never shrink the virtualized list below the table's min width: the
+      // ResizeObserver reports the *visible* (clipped) width of this
+      // scroll container, not the content width the header row uses. If the
+      // two disagree, rows fall out of horizontal sync with the header and
+      // the row list grows its own competing scrollbar.
+      setWidth(Math.max(TABLE_MIN_WIDTH, Math.floor(w)))
     })
     ro.observe(el)
     return () => ro.disconnect()
