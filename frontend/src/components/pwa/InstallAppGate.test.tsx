@@ -26,6 +26,16 @@ const DESKTOP_UA =
 const ANDROID_UA =
   'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36'
 
+function fireBeforeInstallPrompt(prompt: () => Promise<void>, outcome: 'accepted' | 'dismissed') {
+  fireEvent(
+    window,
+    Object.assign(new Event('beforeinstallprompt'), {
+      prompt,
+      userChoice: Promise.resolve({ outcome }),
+    }),
+  )
+}
+
 describe('InstallAppGate', () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
@@ -101,6 +111,58 @@ describe('InstallAppGate', () => {
 
     await waitFor(() => {
       expect(screen.getByText('dashboard content')).toBeInTheDocument()
+    })
+  })
+
+  it('opens the native dialog on the first tap anywhere on the overlay, firing prompt only once', async () => {
+    stubUserAgent(ANDROID_UA)
+    stubMatchMedia(false)
+    const promptMock = vi.fn().mockResolvedValue(undefined)
+
+    render(
+      <InstallAppGate>
+        <div>dashboard content</div>
+      </InstallAppGate>,
+    )
+
+    fireBeforeInstallPrompt(promptMock, 'accepted')
+    vi.advanceTimersByTime(1500)
+
+    await waitFor(() => {
+      expect(screen.getByText('Tap anywhere to install')).toBeInTheDocument()
+    })
+
+    // Tap the hint area (not the button) — the click bubbles to the overlay.
+    fireEvent.click(screen.getByText('Tap anywhere to install'))
+
+    await waitFor(() => {
+      expect(promptMock).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it('fires the native prompt exactly once when the install button itself is tapped', async () => {
+    stubUserAgent(ANDROID_UA)
+    stubMatchMedia(false)
+    const promptMock = vi.fn().mockResolvedValue(undefined)
+
+    render(
+      <InstallAppGate>
+        <div>dashboard content</div>
+      </InstallAppGate>,
+    )
+
+    fireBeforeInstallPrompt(promptMock, 'accepted')
+    vi.advanceTimersByTime(1500)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /install myle/i })).toBeInTheDocument()
+    })
+
+    // Button click bubbles to the overlay handler too; the guard must dedupe it.
+    fireEvent.click(screen.getByRole('button', { name: /install myle/i }))
+
+    await waitFor(() => {
+      expect(promptMock).toHaveBeenCalledTimes(1)
     })
   })
 
