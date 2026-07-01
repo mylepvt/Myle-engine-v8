@@ -30,6 +30,7 @@ function LoadingPulse() {
 export function PushNotificationGate({ children }: { children: ReactNode }) {
   const push = usePushNotifications()
   const [ready, setReady] = useState(false)
+  const [skipped, setSkipped] = useState(false)
 
   useEffect(() => {
     if (!push.isSupported || push.isSubscribed) {
@@ -48,6 +49,7 @@ export function PushNotificationGate({ children }: { children: ReactNode }) {
 
   if (!push.isSupported) return <>{children}</>
   if (push.isSubscribed) return <>{children}</>
+  if (skipped) return <>{children}</>
 
   return (
     <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-background p-4">
@@ -62,6 +64,15 @@ export function PushNotificationGate({ children }: { children: ReactNode }) {
           <EnableGate onSubscribe={() => void push.subscribe()} isLoading={push.isLoading} />
         )}
       </div>
+      {ready ? (
+        <button
+          type="button"
+          onClick={() => setSkipped(true)}
+          className="mt-5 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+        >
+          Skip for now
+        </button>
+      ) : null}
     </div>
   )
 }

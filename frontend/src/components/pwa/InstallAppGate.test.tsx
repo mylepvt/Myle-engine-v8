@@ -61,7 +61,7 @@ describe('InstallAppGate', () => {
     expect(screen.getByText('dashboard content')).toBeInTheDocument()
   })
 
-  it('blocks with an install screen when beforeinstallprompt is available, with no skip option', async () => {
+  it('blocks with an install screen when beforeinstallprompt is available', async () => {
     stubUserAgent(DESKTOP_UA)
     stubMatchMedia(false)
     const promptMock = vi.fn().mockResolvedValue(undefined)
@@ -87,7 +87,6 @@ describe('InstallAppGate', () => {
       expect(screen.getByText('Install Myle to continue')).toBeInTheDocument()
     })
     expect(screen.queryByText('dashboard content')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /skip|continue without|later/i })).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: /install myle/i }))
 
@@ -95,6 +94,56 @@ describe('InstallAppGate', () => {
       expect(screen.getByText('Install required')).toBeInTheDocument()
     })
     expect(screen.queryByText('dashboard content')).not.toBeInTheDocument()
+  })
+
+  it('lets a stuck user through via the secondary "Skip for now" link', async () => {
+    stubUserAgent(ANDROID_UA)
+    stubMatchMedia(false)
+
+    render(
+      <InstallAppGate>
+        <div>dashboard content</div>
+      </InstallAppGate>,
+    )
+
+    vi.advanceTimersByTime(1500)
+
+    await waitFor(() => {
+      expect(screen.getByText('Install Myle to continue')).toBeInTheDocument()
+    })
+    expect(screen.queryByText('dashboard content')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /skip for now/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText('dashboard content')).toBeInTheDocument()
+    })
+  })
+
+  it('skipping does not fire the native install prompt', async () => {
+    stubUserAgent(ANDROID_UA)
+    stubMatchMedia(false)
+    const promptMock = vi.fn().mockResolvedValue(undefined)
+
+    render(
+      <InstallAppGate>
+        <div>dashboard content</div>
+      </InstallAppGate>,
+    )
+
+    fireBeforeInstallPrompt(promptMock, 'accepted')
+    vi.advanceTimersByTime(1500)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /skip for now/i })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /skip for now/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText('dashboard content')).toBeInTheDocument()
+    })
+    expect(promptMock).not.toHaveBeenCalled()
   })
 
   it('lets desktop users through when the browser does not support install prompts at all', async () => {
@@ -183,6 +232,5 @@ describe('InstallAppGate', () => {
     })
     expect(screen.getByText(/Add to Home screen/i)).toBeInTheDocument()
     expect(screen.queryByText('dashboard content')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /skip|continue without|later/i })).toBeNull()
   })
 })
