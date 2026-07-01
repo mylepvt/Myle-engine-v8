@@ -426,6 +426,104 @@ function AttentionRow({ item, dateIso }: { item: TeamTrackingMemberSummary; date
   )
 }
 
+/**
+ * Mobile-first card for the "All members" table. The dense table needs a
+ * 78rem min-width for its 7 columns, so on phones we stack the same fields
+ * into a tappable card instead of forcing a horizontal-scroll table.
+ */
+function MemberRowCard({ item, dateIso }: { item: TeamTrackingMemberSummary; dateIso: string }) {
+  return (
+    <li className="surface-elevated rounded-lg border border-border/50 p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={cn('size-2.5 shrink-0 rounded-full', liveBadgeClass(item.presence_status))}
+              aria-label={item.presence_status}
+            />
+            <span className="min-w-0 truncate font-medium text-foreground">{item.member_name}</span>
+            <Badge variant={scoreVariant(item.consistency_band)}>{item.consistency_band}</Badge>
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <span className="font-mono">{item.member_fbo_id}</span>
+            <span className="min-w-0 truncate">{item.member_email}</span>
+          </div>
+        </div>
+        {item.compliance_title && item.compliance_level !== 'not_applicable' ? (
+          <Badge variant={complianceVariant(item.compliance_level)} className="shrink-0">
+            {item.compliance_title}
+          </Badge>
+        ) : null}
+      </div>
+
+      <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+        <div className="min-w-0">
+          <dt className="text-ds-label uppercase text-muted-foreground">Leader lane</dt>
+          <dd className="truncate text-foreground">{item.leader_name ?? 'No mapped leader'}</dd>
+        </div>
+        <div className="min-w-0">
+          <dt className="text-ds-label uppercase text-muted-foreground">Live state</dt>
+          <dd className="flex flex-wrap items-center gap-1 text-foreground">
+            <Badge variant={presenceVariant(item.presence_status)}>{item.presence_status}</Badge>
+            <span className="text-muted-foreground">{formatRelativeTime(item.last_seen_at)}</span>
+          </dd>
+        </div>
+        <div className="col-span-2">
+          <dt className="text-ds-label uppercase text-muted-foreground">Activity today</dt>
+          <dd className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground">
+            <span>
+              Logins <span className="text-foreground">{item.login_count}</span>
+            </span>
+            <span>
+              Calls <span className="text-foreground">{item.calls_count}</span>
+            </span>
+            <span>
+              Leads <span className="text-foreground">{item.leads_added_count}</span>
+            </span>
+            <span>
+              Follow-ups <span className="text-foreground">{item.followups_done_count}</span>
+            </span>
+          </dd>
+        </div>
+      </dl>
+
+      <div className="mt-3">
+        <div className="flex items-center justify-between text-sm">
+          <span className="font-semibold text-foreground">{item.consistency_score}</span>
+          <span className="text-xs text-muted-foreground">
+            Last activity {formatRelativeTime(item.last_activity_at)}
+          </span>
+        </div>
+        <div className="mt-1 h-2 rounded-full bg-[color-mix(in_srgb,var(--foreground)_8%,transparent)]">
+          <div
+            className={cn('h-2 rounded-full', scoreRailClass(item.consistency_band))}
+            style={{ width: `${Math.max(6, item.consistency_score)}%` }}
+          />
+        </div>
+      </div>
+
+      {item.insights.length > 0 ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {item.insights.slice(0, 2).map((insight) => (
+            <Badge key={insight} variant="secondary">
+              {insight}
+            </Badge>
+          ))}
+          {item.insights.length > 2 ? <Badge variant="secondary">+{item.insights.length - 2}</Badge> : null}
+        </div>
+      ) : null}
+
+      <div className="mt-3 flex justify-end">
+        <Button asChild size="sm" variant="outline" className="h-9 px-3 text-ds-label">
+          <Link to={`/dashboard/team/tracking/${item.user_id}?date=${encodeURIComponent(dateIso)}`}>
+            Open
+          </Link>
+        </Button>
+      </div>
+    </li>
+  )
+}
+
 export function TeamTrackingPage({ title }: Props) {
   const [params, setParams] = useSearchParams()
   const dateIso = params.get('date') || todayIsoLocal()
@@ -1085,7 +1183,15 @@ export function TeamTrackingPage({ title }: Props) {
                 No members match the current filters.
               </div>
             ) : (
-              <div className="max-h-[42rem] overflow-auto">
+              <>
+                {/* Mobile: stacked cards (no horizontal scroll on phones). */}
+                <ul className="space-y-2 p-4 md:hidden">
+                  {filteredItems.map((item) => (
+                    <MemberRowCard key={item.user_id} item={item} dateIso={data.date} />
+                  ))}
+                </ul>
+                {/* Desktop: dense table (owns its own horizontal + vertical scroll). */}
+                <div className="hidden max-h-[42rem] overflow-auto md:block">
                 <Table className="min-w-[78rem]">
                   <TableHeader className="sticky top-0 z-[1] bg-surface/90 backdrop-blur">
                     <TableRow>
@@ -1222,7 +1328,8 @@ export function TeamTrackingPage({ title }: Props) {
                     ))}
                   </TableBody>
                 </Table>
-              </div>
+                </div>
+              </>
             )}
           </section>
         </>

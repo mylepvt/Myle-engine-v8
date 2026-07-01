@@ -191,14 +191,14 @@ export function CreateTaskModal({ open, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+      className="keyboard-safe-modal fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 backdrop-blur-sm sm:items-center"
       onClick={(e) => { if (e.target === e.currentTarget) handleClose() }}
       onKeyDown={(e) => { if (e.key === 'Escape') handleClose() }}
       role="dialog"
       aria-modal="true"
       aria-label="Create Task"
     >
-      <div className="keyboard-safe-modal w-full max-w-lg overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+      <div className="keyboard-safe-sheet w-full max-w-lg overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
         <div className="flex items-center justify-between border-b border-border/60 px-6 py-4">
           <h2 className="text-lg font-semibold text-foreground">
             {step === 'done' ? 'Task assigned' : 'Create Task'}
