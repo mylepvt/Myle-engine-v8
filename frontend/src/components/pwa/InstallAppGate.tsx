@@ -37,9 +37,11 @@ function LoadingPulse() {
 function GateShell({
   children,
   onActivate,
+  onSkip,
 }: {
   children: ReactNode
   onActivate?: () => void
+  onSkip?: () => void
 }) {
   return (
     // The overlay tap is a progressive enhancement so the whole screen triggers
@@ -50,6 +52,19 @@ function GateShell({
       onClick={onActivate}
     >
       <div className="mx-auto w-full max-w-sm">{children}</div>
+      {onSkip ? (
+        <button
+          type="button"
+          // stopPropagation so skipping never counts as the overlay install tap.
+          onClick={(e) => {
+            e.stopPropagation()
+            onSkip()
+          }}
+          className="mt-5 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+        >
+          Skip for now
+        </button>
+      ) : null}
     </div>
   )
 }
@@ -182,9 +197,11 @@ export function InstallAppGate({ children }: { children: ReactNode }) {
   const { standalone, installed, canInstall, promptInstall } = usePwaInstall()
   const [ready, setReady] = useState(false)
   const [declined, setDeclined] = useState(false)
+  const [skipped, setSkipped] = useState(false)
   const isIos = useMemo(() => isIosFamily(), [])
   const isAndroid = useMemo(() => isAndroidFamily(), [])
   const promptingRef = useRef(false)
+  const skip = useCallback(() => setSkipped(true), [])
 
   // A single guarded entry point: taps on the button AND on the surrounding
   // overlay both route here, but Chrome's native dialog may only be opened once
@@ -207,7 +224,7 @@ export function InstallAppGate({ children }: { children: ReactNode }) {
     return () => clearTimeout(timer)
   }, [standalone, installed])
 
-  if (standalone || installed) return <>{children}</>
+  if (standalone || installed || skipped) return <>{children}</>
   if (!ready) {
     return (
       <GateShell>
@@ -220,7 +237,7 @@ export function InstallAppGate({ children }: { children: ReactNode }) {
   // overlay opens Chrome's install dialog immediately.
   if (canInstall) {
     return (
-      <GateShell onActivate={triggerInstall}>
+      <GateShell onActivate={triggerInstall} onSkip={skip}>
         <NativeInstallGate onInstall={triggerInstall} />
       </GateShell>
     )
@@ -229,14 +246,14 @@ export function InstallAppGate({ children }: { children: ReactNode }) {
   // No native prompt: mobile users are forced through manual install instructions.
   if (isIos) {
     return (
-      <GateShell>
+      <GateShell onSkip={skip}>
         <IosManualGate />
       </GateShell>
     )
   }
   if (isAndroid) {
     return (
-      <GateShell>
+      <GateShell onSkip={skip}>
         <AndroidManualGate />
       </GateShell>
     )
@@ -246,7 +263,7 @@ export function InstallAppGate({ children }: { children: ReactNode }) {
   // at all) fall through so nobody is permanently locked out of the web app.
   if (declined) {
     return (
-      <GateShell>
+      <GateShell onSkip={skip}>
         <DeclinedGate />
       </GateShell>
     )
