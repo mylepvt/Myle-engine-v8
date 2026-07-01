@@ -58,7 +58,13 @@ class SqlAlchemyLeadsRepository:
             # Archived view: most recently archived first, oldest last.
             stmt = stmt.order_by(Lead.archived_at.desc(), Lead.id.desc())
         else:
-            stmt = stmt.order_by(Lead.created_at.desc(), Lead.id.desc())
+            # Most recent activity first, oldest last. A reassignment counts as
+            # activity too, so a lead reassigned today outranks one merely
+            # created earlier — reassigned_at is always >= created_at once set.
+            stmt = stmt.order_by(
+                func.coalesce(Lead.reassigned_at, Lead.created_at).desc(),
+                Lead.id.desc(),
+            )
         return (await self._session.execute(stmt)).scalars().all()
 
     async def get_workboard_counts(self, *, condition: Any) -> dict[str, int]:

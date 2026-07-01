@@ -512,7 +512,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                     {classicLeadsQ.data.pages.flatMap((p) => p.items).length === 0 ? (
                       <p className="px-2 text-sm">{emptyListHint(surfaceRole ?? null, false)}</p>
                     ) : (
-                      <div className="-mx-1 max-w-full overflow-x-auto rounded-md border border-border">
+                      <div className="-mx-1 max-w-full overflow-hidden rounded-md border border-border">
                         <LeadsVirtualizedBody
                           items={classicLeadsQ.data.pages.flatMap((p) => p.items)}
                           archivedOnly={false}
