@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useMemo, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Download, MoreVertical, Smartphone } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -28,9 +28,27 @@ function LoadingPulse() {
   )
 }
 
-function GateShell({ children }: { children: ReactNode }) {
+/**
+ * Full-screen blocking overlay. When `onActivate` is supplied the whole overlay
+ * becomes a tap target, so the user's first tap anywhere fires the native install
+ * dialog — Chrome only opens it in response to a user gesture, and this makes that
+ * gesture as effortless as possible (closest we can get to an automatic popup).
+ */
+function GateShell({
+  children,
+  onActivate,
+}: {
+  children: ReactNode
+  onActivate?: () => void
+}) {
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-background p-4">
+    // The overlay tap is a progressive enhancement so the whole screen triggers
+    // install; keyboard and screen-reader users operate the real focusable button
+    // rendered inside.
+    <div
+      className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-background p-4"
+      onClick={onActivate}
+    >
       <div className="mx-auto w-full max-w-sm">{children}</div>
     </div>
   )
@@ -61,6 +79,7 @@ function NativeInstallGate({
         <Download className="size-4" aria-hidden />
         Install Myle
       </Button>
+      <p className="mt-4 text-xs text-muted-foreground">Tap anywhere to install</p>
     </div>
   )
 }
@@ -165,6 +184,19 @@ export function InstallAppGate({ children }: { children: ReactNode }) {
   const [declined, setDeclined] = useState(false)
   const isIos = useMemo(() => isIosFamily(), [])
   const isAndroid = useMemo(() => isAndroidFamily(), [])
+  const promptingRef = useRef(false)
+
+  // A single guarded entry point: taps on the button AND on the surrounding
+  // overlay both route here, but Chrome's native dialog may only be opened once
+  // per gesture, so the ref stops a bubbled tap from calling prompt() twice.
+  const triggerInstall = useCallback(() => {
+    if (promptingRef.current) return
+    promptingRef.current = true
+    void promptInstall().then((accepted) => {
+      promptingRef.current = false
+      if (!accepted) setDeclined(true)
+    })
+  }, [promptInstall])
 
   useEffect(() => {
     if (standalone || installed) {
@@ -184,17 +216,12 @@ export function InstallAppGate({ children }: { children: ReactNode }) {
     )
   }
 
-  // A native install sheet is available — always prefer the one-tap flow.
+  // A native install sheet is available — the user's first tap anywhere on the
+  // overlay opens Chrome's install dialog immediately.
   if (canInstall) {
     return (
-      <GateShell>
-        <NativeInstallGate
-          onInstall={() => {
-            void promptInstall().then((accepted) => {
-              if (!accepted) setDeclined(true)
-            })
-          }}
-        />
+      <GateShell onActivate={triggerInstall}>
+        <NativeInstallGate onInstall={triggerInstall} />
       </GateShell>
     )
   }
