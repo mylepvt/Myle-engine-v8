@@ -30,7 +30,6 @@ function LoadingPulse() {
 export function PushNotificationGate({ children }: { children: ReactNode }) {
   const push = usePushNotifications()
   const [ready, setReady] = useState(false)
-  const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
     if (!push.isSupported || push.isSubscribed) {
@@ -47,7 +46,6 @@ export function PushNotificationGate({ children }: { children: ReactNode }) {
     }
   }, [push.isSubscribed, push.isSupported])
 
-  if (dismissed) return <>{children}</>
   if (!push.isSupported) return <>{children}</>
   if (push.isSubscribed) return <>{children}</>
 
@@ -59,7 +57,7 @@ export function PushNotificationGate({ children }: { children: ReactNode }) {
         ) : push.requiresStandaloneInstall ? (
           <IosGate />
         ) : push.permission === 'denied' ? (
-          <DeniedGate onSkip={() => setDismissed(true)} />
+          <DeniedGate />
         ) : (
           <EnableGate onSubscribe={() => void push.subscribe()} isLoading={push.isLoading} />
         )}
@@ -134,7 +132,7 @@ function IosGate() {
   )
 }
 
-function DeniedGate({ onSkip }: { onSkip: () => void }) {
+function DeniedGate() {
   return (
     <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-2xl">
       <div className="mx-auto mb-6 flex size-16 items-center justify-center rounded-full bg-destructive/10">
@@ -142,7 +140,7 @@ function DeniedGate({ onSkip }: { onSkip: () => void }) {
       </div>
       <h2 className="mb-2 text-xl font-bold text-foreground">Notifications blocked</h2>
       <p className="mb-6 text-sm text-muted-foreground">
-        You blocked notifications for this device. To receive alerts:
+        Notifications are required to use Myle. To receive alerts:
       </p>
       <ul className="mb-8 space-y-2 text-left text-sm text-muted-foreground">
         <li className="flex items-start gap-2">
@@ -161,17 +159,16 @@ function DeniedGate({ onSkip }: { onSkip: () => void }) {
           <span className="mt-0.5 shrink-0 font-semibold text-foreground">3.</span>
           <span>
             Set <strong className="text-foreground">Notifications</strong> to{' '}
-            <strong className="text-foreground">Allow</strong>.
+            <strong className="text-foreground">Allow</strong>, then reload.
           </span>
         </li>
       </ul>
       <Button
-        variant="outline"
-        onClick={onSkip}
+        onClick={() => window.location.reload()}
         className="w-full"
         size="lg"
       >
-        Continue without notifications
+        Reload
       </Button>
     </div>
   )

@@ -16,6 +16,7 @@ import { useFlpMinBillingApprovalsPendingQuery } from '@/hooks/use-team-query'
 import { useOnline } from '@/hooks/use-online'
 import { useRealtimeInvalidation } from '@/hooks/use-realtime-invalidation'
 import { PushNotificationGate } from '@/components/notifications/PushNotificationGate'
+import { InstallAppGate } from '@/components/pwa/InstallAppGate'
 import { useSyncRoleFromMe } from '@/hooks/use-sync-role-from-me'
 import { cn } from '@/lib/utils'
 import { authLogout } from '@/lib/auth-api'
@@ -309,6 +310,7 @@ export function DashboardLayout() {
   }
 
   return (
+    <InstallAppGate>
     <PushNotificationGate>
     <div
       className="dashboard-shell flex min-h-0 w-full min-w-0 max-w-full flex-1 overflow-hidden bg-background"
@@ -471,5 +473,6 @@ export function DashboardLayout() {
       </div>
     </div>
     </PushNotificationGate>
+    </InstallAppGate>
   )
 }
