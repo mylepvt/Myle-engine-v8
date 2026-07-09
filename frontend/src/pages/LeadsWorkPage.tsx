@@ -398,7 +398,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                   <input
                     ref={importFileRef}
                     type="file"
-                    accept=".pdf,application/pdf"
+                    accept=".pdf,.xlsx,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     className="sr-only"
                     aria-hidden
                     tabIndex={-1}
@@ -406,7 +406,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                   />
                   <button
                     type="button"
-                    aria-label="Import leads from PDF"
+                    aria-label="Import leads from PDF or Excel"
                     disabled={importMut.isPending}
                     onClick={() => importFileRef.current?.click()}
                     className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-sm transition hover:bg-muted hover:text-foreground disabled:opacity-50"

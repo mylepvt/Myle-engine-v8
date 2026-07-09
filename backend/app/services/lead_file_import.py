@@ -1,6 +1,7 @@
-"""Parse PDF for team & leader personal lead imports (calling board).
+"""Parse PDF or Excel (.xlsx) for team & leader personal lead imports (calling board).
 
-Table / text extraction matches legacy ``myle_dashboard`` ``_extract_leads_from_pdf``.
+PDF table / text extraction matches legacy ``myle_dashboard`` ``_extract_leads_from_pdf``.
+Excel imports read a header row (Name / Phone / Email / City in any column order).
 """
 
 from __future__ import annotations
@@ -117,6 +118,102 @@ def extract_leads_from_pdf_bytes(content: bytes) -> tuple[list[dict[str, str | N
     return leads, None
 
 
+# Header keyword -> semantic field for spreadsheet (xlsx) imports. First keyword
+# that appears in a header cell wins for that column.
+_XLSX_FIELD_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("email", ("email", "mail")),
+    ("phone", ("phone", "mobile", "contact", "number", "calling")),
+    ("city", ("city", "location")),
+    ("name", ("name",)),
+)
+
+
+def _cell_text(val: object) -> str:
+    if val is None:
+        return ""
+    if isinstance(val, bool):
+        return ""
+    if isinstance(val, float) and val == int(val):
+        return str(int(val))
+    return str(val).strip()
+
+
+def extract_leads_from_xlsx_bytes(content: bytes) -> tuple[list[dict[str, str | None]], str | None]:
+    """Return (rows, error_message) from an .xlsx workbook.
+
+    Rows match the PDF extractor shape: name, phone, email, city, source=None, extra_notes=None.
+    Headers are matched by keyword so column order does not matter.
+    """
+    try:
+        from openpyxl import load_workbook
+    except ImportError:
+        return [], "Excel parsing is not available on this server (openpyxl not installed)."
+
+    leads: list[dict[str, str | None]] = []
+    try:
+        wb = load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+    except Exception as exc:
+        return [], f"Could not parse Excel file: {exc}"
+    try:
+        ws = wb.active
+        if ws is None:
+            return [], "The Excel file has no readable sheet."
+        rows_iter = ws.iter_rows(values_only=True)
+        header_row = next(rows_iter, None)
+        if not header_row:
+            return [], "The Excel file is empty."
+
+        colmap: dict[str, int] = {}
+        for col_i, cell in enumerate(header_row):
+            h = _cell_text(cell).lower()
+            if not h:
+                continue
+            for field, keywords in _XLSX_FIELD_KEYWORDS:
+                if field in colmap:
+                    continue
+                if any(k in h for k in keywords):
+                    colmap[field] = col_i
+                    break
+
+        if "name" not in colmap and "phone" not in colmap:
+            return [], (
+                "Could not find a Name or Phone column. Use a header row like: Name, Phone, Email, City."
+            )
+
+        for row in rows_iter:
+            if not row:
+                continue
+
+            def cell(field: str) -> str:
+                j = colmap.get(field)
+                if j is None or j >= len(row):
+                    return ""
+                return _cell_text(row[j])
+
+            name = cell("name")
+            phone = cell("phone")
+            email = cell("email") or None
+            city = cell("city") or None
+            m = _PHONE_RE.search(phone)
+            if m:
+                phone = m.group(1)
+            if name or phone:
+                leads.append(
+                    {
+                        "name": name,
+                        "phone": phone,
+                        "email": email,
+                        "city": city,
+                        "source": None,
+                        "extra_notes": None,
+                    }
+                )
+    finally:
+        wb.close()
+
+    return leads, None
+
+
 def _resolve_source(row_src: str | None, fallback_tag: str) -> str:
     s = (row_src or "").strip().lower()
     if s in _SOURCE_OK:
@@ -159,10 +256,13 @@ async def run_personal_lead_import(
     fname = (filename or "").lower()
     warnings: list[str] = []
 
-    if not fname.endswith(".pdf"):
-        return LeadImportResult(0, 0, ["Only .pdf files are allowed."])
+    if fname.endswith(".pdf"):
+        rows, err = extract_leads_from_pdf_bytes(file_bytes)
+    elif fname.endswith(".xlsx"):
+        rows, err = extract_leads_from_xlsx_bytes(file_bytes)
+    else:
+        return LeadImportResult(0, 0, ["Only .pdf and .xlsx files are allowed."])
 
-    rows, err = extract_leads_from_pdf_bytes(file_bytes)
     if err:
         return LeadImportResult(0, 0, [err])
 
