@@ -1,18 +1,65 @@
-"""Unit tests for lead PDF import helpers."""
+"""Unit tests for lead PDF / Excel import helpers."""
 
 import asyncio
+import io
 
 import conftest as test_conftest
+from openpyxl import Workbook
 from sqlalchemy import delete, select
 
 from app.models.lead import Lead
 from app.services import lead_file_import
-from app.services.lead_file_import import normalize_phone_digits
+from app.services.lead_file_import import (
+    extract_leads_from_xlsx_bytes,
+    normalize_phone_digits,
+)
 
 
 def test_normalize_phone_digits_last_ten():
     assert normalize_phone_digits("+91 98765 43210") == "9876543210"
     assert normalize_phone_digits("919876543210") == "9876543210"
+
+
+def _xlsx_bytes(headers, rows) -> bytes:
+    wb = Workbook()
+    ws = wb.active
+    ws.append(headers)
+    for r in rows:
+        ws.append(r)
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def test_extract_leads_from_xlsx_maps_headers_any_order():
+    content = _xlsx_bytes(
+        ["City", "Phone Number", "Full Name", "Email"],
+        [["Pune", 9812345678, "Amit", "a@x.com"]],
+    )
+    rows, err = extract_leads_from_xlsx_bytes(content)
+    assert err is None
+    assert rows == [
+        {
+            "name": "Amit",
+            "phone": "9812345678",
+            "email": "a@x.com",
+            "city": "Pune",
+            "source": None,
+            "extra_notes": None,
+        }
+    ]
+
+
+def test_extract_leads_from_xlsx_requires_name_or_phone_header():
+    rows, err = extract_leads_from_xlsx_bytes(_xlsx_bytes(["Foo", "Bar"], [["a", "b"]]))
+    assert rows == []
+    assert err and "Name or Phone" in err
+
+
+def test_extract_leads_from_xlsx_rejects_non_xlsx_bytes():
+    rows, err = extract_leads_from_xlsx_bytes(b"not a real workbook")
+    assert rows == []
+    assert err and "Could not parse Excel file" in err
 
 
 async def _clear_leads() -> None:

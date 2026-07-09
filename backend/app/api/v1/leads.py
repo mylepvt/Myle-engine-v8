@@ -367,7 +367,7 @@ async def import_leads_file(
     file: UploadFile = File(...),
     source_tag: str = Form("Import"),
 ) -> LeadFileImportResponse:
-    """Team / leader: bulk-create leads from a PDF (calling board; legacy table/text layout)."""
+    """Team / leader: bulk-create leads from a PDF or Excel (.xlsx) file (calling board)."""
     if user.role not in ("leader", "team"):
         raise HTTPException(
             status_code=http_status.HTTP_403_FORBIDDEN,
