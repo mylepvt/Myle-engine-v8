@@ -17,6 +17,13 @@ sys.path.insert(0, str(_BACKEND))
 
 # Disable APScheduler background jobs during tests — prevents DB connection hangs
 os.environ.setdefault("DISABLE_SCHEDULER", "1")
+# Discipline is time-relative. Seeded dev-users have no daily reports, so with a
+# rollout date weeks in the past they accrue a long missing-report streak and get
+# auto-removed (dev-login then 403s, cascading into many unrelated failures).
+# Pin the rollout to "today" so discipline stays active (grace/compliance tests
+# still work) but there are no past days to build a removal streak from.
+from datetime import date as _date  # noqa: E402
+os.environ.setdefault("DISCIPLINE_ROLLOUT_START_DATE", _date.today().isoformat())
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 

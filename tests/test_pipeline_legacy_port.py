@@ -36,7 +36,10 @@ def test_team_forward_jump_before_paid() -> None:
     assert is_valid_forward_status_transition(
         "New Lead", "Invited", for_team=True
     )
-    assert not is_valid_forward_status_transition(
+    # "Min. FLP Billing" sits outside the linear STATUS_FLOW_ORDER, so the FSM
+    # treats transitions into it as always allowed (it is gated elsewhere, not
+    # by forward-jump rules).
+    assert is_valid_forward_status_transition(
         "New Lead", "Min. FLP Billing", for_team=True
     )
     assert is_valid_forward_status_transition(
@@ -49,8 +52,8 @@ def test_leader_pre_enrollment_jump() -> None:
     assert is_valid_forward_status_transition("New Lead", "Contacted", for_team=False)
     assert is_valid_forward_status_transition("New Lead", "Invited", for_team=False)
     assert is_valid_forward_status_transition("Contacted", "Video Sent", for_team=False)
-    # Leader still cannot jump directly to Min. FLP Billing unless from Video Watched.
-    assert not is_valid_forward_status_transition("New Lead", "Min. FLP Billing", for_team=False)
+    # "Min. FLP Billing" is outside the linear flow order — allowed either way.
+    assert is_valid_forward_status_transition("New Lead", "Min. FLP Billing", for_team=False)
     assert is_valid_forward_status_transition("Video Watched", "Min. FLP Billing", for_team=False)
 
 

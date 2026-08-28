@@ -274,7 +274,7 @@ def test_admin_training_put_forbidden_for_team(monkeypatch: pytest.MonkeyPatch) 
 def test_enrollment_requests_empty_admin(monkeypatch: pytest.MonkeyPatch) -> None:
     c = _authed_client(monkeypatch)
     assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
-    res = c.get("/api/v1/team/enrollment-requests")
+    res = c.get("/api/v1/team/flp-min-billing-requests")
     assert res.status_code == 200
     assert res.json() == {"items": [], "total": 0, "limit": 50, "offset": 0}
 
@@ -282,7 +282,7 @@ def test_enrollment_requests_empty_admin(monkeypatch: pytest.MonkeyPatch) -> Non
 def test_enrollment_requests_empty_leader(monkeypatch: pytest.MonkeyPatch) -> None:
     c = _authed_client(monkeypatch)
     assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
-    res = c.get("/api/v1/team/enrollment-requests")
+    res = c.get("/api/v1/team/flp-min-billing-requests")
     assert res.status_code == 200
     assert res.json()["total"] == 0
 
@@ -290,7 +290,7 @@ def test_enrollment_requests_empty_leader(monkeypatch: pytest.MonkeyPatch) -> No
 def test_enrollment_requests_forbidden_for_team(monkeypatch: pytest.MonkeyPatch) -> None:
     c = _authed_client(monkeypatch)
     assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
-    assert c.get("/api/v1/team/enrollment-requests").status_code == 403
+    assert c.get("/api/v1/team/flp-min-billing-requests").status_code == 403
 
 
 def _create_member(c: TestClient, *, suffix: str, role: str) -> int:
