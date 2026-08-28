@@ -293,9 +293,11 @@ def _after_commit_hook(session: SASession) -> None:
     Observes Lead changes across ALL code paths — not just those that
     explicitly call emit_observation(). Uses session.identity_map to
     find tracked Lead objects (safe with expire_on_commit=False).
+
+    _broadcast_to_feed runs unconditionally so the SSE admin feed always
+    receives events. emit_observation (log/file) is gated behind
+    phase1_observation_enabled to avoid log volume when disabled.
     """
-    if not settings.phase1_observation_enabled:
-        return
     try:
         tracked = list(session.identity_map.values())
     except Exception:
@@ -322,9 +324,11 @@ def _after_commit_hook(session: SASession) -> None:
                 "fastapi_stage": getattr(lead, "status", "") or "",
                 "in_pool": bool(getattr(lead, "in_pool", False)),
             }
-            # Always push to SSE admin feed regardless of sample rate.
-            # Sampling only controls log/file volume, not realtime visibility.
+            # Always push to SSE admin feed regardless of observation flag or sample rate.
             _broadcast_to_feed(record)
+            # Log/file persistence only runs when phase1 observation is enabled.
+            if not settings.phase1_observation_enabled:
+                continue
             if not should_sample_observation(lead_id=lead_id, source=_LEAD_TXN_SOURCE):
                 continue
             emit_observation(record)

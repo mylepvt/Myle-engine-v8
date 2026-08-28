@@ -20,6 +20,7 @@ observation_logger.emit_observation()
 
 import asyncio
 import json
+import logging
 from collections import deque
 from datetime import datetime, timezone
 from typing import Any, AsyncIterator
@@ -28,6 +29,8 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.admin_activity_feed import AdminActivityFeed
+
+logger = logging.getLogger(__name__)
 
 
 def _get_event_loop() -> asyncio.AbstractEventLoop | None:
