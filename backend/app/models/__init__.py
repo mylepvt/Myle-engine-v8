@@ -14,6 +14,7 @@ from app.models.daily_member_stat import DailyMemberStat
 from app.models.enrollment_share_link import EnrollmentShareLink
 from app.models.flp_min_billing_share_link import FlpMinBillingShareLink
 from app.models.invoice import Invoice
+from app.models.media_blob import MediaBlob
 from app.models.lead import Lead
 from app.models.lead_capture_link import LeadCaptureLink
 from app.models.lead_sale import LeadSale
@@ -61,6 +62,7 @@ __all__ = [
     "DailyMemberStat",
     "FlpMinBillingShareLink",
     "Invoice",
+    "MediaBlob",
     "Lead",
     "LeadCaptureLink",
     "LeadSale",

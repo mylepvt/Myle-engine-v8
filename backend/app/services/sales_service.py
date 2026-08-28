@@ -186,7 +186,9 @@ class SalesService:
             return False, "Access denied", None, False
 
         data = await file.read()
-        ok_save, proof_url = await save_sale_invoice_bytes(data=data, lead_id=lead_id)
+        ok_save, proof_url = await save_sale_invoice_bytes(
+            session=self.session, data=data, lead_id=lead_id
+        )
         if not ok_save:
             return False, proof_url, None, False
 

@@ -91,7 +91,9 @@ async def upload_poster(
         link = await svc.get_owned_link(session, owner_user_id=user.user_id, link_id=link_id)
     except svc.CaptureError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message)
-    ok, result = await save_capture_poster_file(link_id=link.id, file=poster)
+    ok, result = await save_capture_poster_file(
+        session=session, link_id=link.id, file=poster
+    )
     if not ok:
         raise HTTPException(status_code=400, detail=result)
     link = await svc.set_poster_url(session, link=link, poster_url=result)
