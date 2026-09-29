@@ -95,10 +95,10 @@ export type FullUiSurface =
   | { kind: 'settings' }
   | { kind: 'leaderboard' }
   | { kind: 'live-session' }
-  /** Legacy Other → Training (`/training`) — leader/team; same catalog as system training. */
-  | { kind: 'community-training' }
-  /** Post-unlock Skills & Personal Development track (non-blocking). */
-  | { kind: 'skills-training' }
+  /** Single Training home: 7-day onboarding + Personal Development & Skills (collapsible). */
+  | { kind: 'training-hub' }
+  /** Old path kept alive for bookmarks / links — sends the user to `to`. */
+  | { kind: 'redirect'; to: string }
   | { kind: 'downloads' }
   | { kind: 'budget-export' }
   | { kind: 'settings-app' }
@@ -366,7 +366,7 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     label: 'Training',
     roles: routeRoles('system/training'),
     surface: 'full',
-    ui: { kind: 'system', surface: 'training' },
+    ui: { kind: 'training-hub' },
   },
   {
     path: 'system/training-progress',
@@ -461,18 +461,20 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
   {
     path: 'other/training',
     section: { id: 'other', label: 'Community' },
-    label: 'Community Training',
+    label: 'Training',
     roles: routeRoles('other/training'),
+    navHidden: true,
     surface: 'full',
-    ui: { kind: 'community-training' },
+    ui: { kind: 'redirect', to: '/dashboard/system/training' },
   },
   {
     path: 'other/skills-training',
     section: { id: 'other', label: 'Community' },
     label: 'Skills Training',
     roles: routeRoles('other/skills-training'),
+    navHidden: true,
     surface: 'full',
-    ui: { kind: 'skills-training' },
+    ui: { kind: 'redirect', to: '/dashboard/system/training' },
   },
   {
     path: 'other/live-session',

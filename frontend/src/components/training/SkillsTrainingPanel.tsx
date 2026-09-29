@@ -1,4 +1,4 @@
-import { CheckCircle2, Lock, PlayCircle, Sprout, Users } from 'lucide-react'
+import { CheckCircle2, Lock, PlayCircle, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
@@ -16,15 +16,13 @@ import {
 } from '@/hooks/use-skills-training-query'
 import { cn } from '@/lib/utils'
 
-type Props = { title: string }
-
 const TOTAL_SLOTS = 7
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, withYear = true): string {
   const d = new Date(`${iso.slice(0, 10)}T00:00:00`)
   return Number.isNaN(d.getTime())
     ? iso
-    : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+    : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', ...(withYear ? { year: 'numeric' } : {}) })
 }
 
 function DayCard({ day, open, onToggle }: { day: SkillTrainingDay; open: boolean; onToggle: () => void }) {
@@ -34,7 +32,7 @@ function DayCard({ day, open, onToggle }: { day: SkillTrainingDay; open: boolean
   let status: { label: string; variant: 'success' | 'primary' | 'secondary' }
   if (day.completed) status = { label: 'Done', variant: 'success' }
   else if (day.unlocked) status = { label: 'Open', variant: 'primary' }
-  else if (day.unlocks_on) status = { label: `Opens ${formatDate(day.unlocks_on)}`, variant: 'secondary' }
+  else if (day.unlocks_on) status = { label: `Opens ${formatDate(day.unlocks_on, false)}`, variant: 'secondary' }
   else status = { label: 'Locked', variant: 'secondary' }
 
   const done = async () => {
@@ -138,10 +136,10 @@ function ProgressTable({ enabled }: { enabled: boolean }) {
   const { data, isPending, isError, error } = useSkillsTrainingProgressQuery(enabled)
   if (!enabled) return null
   return (
-    <div className="surface-elevated p-5">
+    <div className="surface-inset px-4 py-4">
       <div className="mb-3 flex items-center gap-2">
         <Users className="size-4 text-primary" />
-        <h2 className="font-semibold text-foreground">Team progress</h2>
+        <h3 className="font-semibold text-foreground">Team progress</h3>
       </div>
       {isPending ? <LoadingState label="Loading progress..." /> : null}
       {isError ? <p className="text-sm text-destructive">{error instanceof Error ? error.message : 'Failed to load'}</p> : null}
@@ -185,7 +183,11 @@ function ProgressTable({ enabled }: { enabled: boolean }) {
   )
 }
 
-export function SkillsTrainingPage({ title }: Props) {
+/**
+ * Personal Development & Skills lessons — body of the Training hub's second section.
+ * `available` / progress come from the API; admins also get the lesson editor.
+ */
+export function SkillsTrainingPanel() {
   const { data: me } = useAuthMeQuery()
   const { data, isPending, isError, error, refetch } = useSkillsTrainingQuery()
   const [openDay, setOpenDay] = useState<number | null>(null)
@@ -198,43 +200,12 @@ export function SkillsTrainingPage({ title }: Props) {
     if (next) setOpenDay(next.day_number)
   }, [data, openDay])
 
-  const percent = data && data.total_days > 0 ? Math.round((data.completed_days / data.total_days) * 100) : 0
-
   return (
-    <div className="max-w-4xl space-y-5">
-      <div className="surface-elevated p-5 md:p-6">
-        <Badge variant="primary" className="w-fit gap-1.5 px-3 py-1">
-          <Sprout className="size-3.5" />
-          Skills
-        </Badge>
-        <h1 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Personal development and skills lessons to watch alongside your daily work. One new lesson opens each
-          day after you finish the previous one.
-        </p>
-        {data && data.available && data.total_days > 0 ? (
-          <div className="mt-4 space-y-2">
-            <div className="flex items-center justify-between text-ds-caption text-muted-foreground">
-              <span>
-                {data.completed_days} of {data.total_days} done
-              </span>
-              <span>{percent}%</span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)]">
-              <div className="h-full rounded-full bg-primary transition-[width] duration-300" style={{ width: `${percent}%` }} />
-            </div>
-          </div>
-        ) : null}
-      </div>
-
-      {isPending ? (
-        <div className="surface-elevated p-4">
-          <LoadingState label="Loading skills training..." />
-        </div>
-      ) : null}
+    <div className="space-y-4">
+      {isPending ? <LoadingState label="Loading lessons..." /> : null}
       {isError ? (
         <ErrorState
-          title="Could not load skills training"
+          title="Could not load lessons"
           message={error instanceof Error ? error.message : 'Please try again.'}
           onRetry={() => void refetch()}
         />
@@ -243,12 +214,12 @@ export function SkillsTrainingPage({ title }: Props) {
       {data && !data.available ? (
         <EmptyState
           title="Opens after onboarding"
-          description="Finish your 7-day onboarding training to unlock the app. Skills training starts right after that."
+          description="Finish the 7-day onboarding training above to unlock the app. These lessons start right after that."
         />
       ) : null}
 
       {data && data.available && data.days.length === 0 && !isAdmin ? (
-        <EmptyState title="Coming soon" description="Skills lessons have not been added yet." />
+        <EmptyState title="Coming soon" description="Lessons have not been added yet." />
       ) : null}
 
       {data && data.available && data.days.length > 0 ? (
@@ -265,8 +236,8 @@ export function SkillsTrainingPage({ title }: Props) {
       ) : null}
 
       {isAdmin && data ? (
-        <div className="surface-elevated p-5">
-          <h2 className="font-semibold text-foreground">Manage lessons</h2>
+        <div className="surface-inset px-4 py-4">
+          <h3 className="font-semibold text-foreground">Manage lessons</h3>
           <p className="mb-2 mt-1 text-sm text-muted-foreground">
             Add a title and an unlisted YouTube link for each day. Members only see days that have been saved.
           </p>
