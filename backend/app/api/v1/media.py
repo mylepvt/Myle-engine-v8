@@ -13,6 +13,7 @@ from app.services.avatar_storage import _ALLOWED_SUFFIX
 from app.services.capture_poster_storage import capture_poster_disk_path
 from app.services.payment_proof_storage import payment_proof_disk_path
 from app.services.sale_invoice_storage import sale_invoice_disk_path
+from app.services.training_certificate_storage import training_certificate_disk_path
 
 router = APIRouter()
 
@@ -84,6 +85,22 @@ async def get_sale_invoice(filename: str) -> FileResponse:
     if safe_name != filename:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Not found")
     path = sale_invoice_disk_path(safe_name)
+    if not path.is_file():
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Not found")
+    return FileResponse(
+        path=str(path),
+        media_type=_guess_media_type(path.suffix),
+        headers={"Cache-Control": "private, no-store"},
+    )
+
+
+@router.get("/training-certificates/{filename}", include_in_schema=True)
+async def get_training_certificate(filename: str) -> FileResponse:
+    """Serve uploaded training certificate images."""
+    safe_name = Path(filename).name
+    if safe_name != filename:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Not found")
+    path = training_certificate_disk_path(safe_name)
     if not path.is_file():
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Not found")
     return FileResponse(

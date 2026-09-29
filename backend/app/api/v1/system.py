@@ -5,7 +5,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Annotated
 
-import os
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import RedirectResponse
@@ -33,6 +32,7 @@ from app.schemas.training_test import (
 )
 from app.core.realtime_hub import notify_topics
 from app.services.shell_insights import build_decision_engine_snapshot
+from app.services.training_certificate_storage import save_training_certificate_bytes
 from app.services.training_surface import build_training_surface
 from app.services.training_uploads import save_training_notes_image
 
@@ -286,17 +286,11 @@ async def upload_training_certificate(
                 detail="Complete all 7 training days before uploading certificate",
             )
 
-    # Save file
-    upload_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads", "training_certificates")
-    os.makedirs(upload_dir, exist_ok=True)
-    ext = os.path.splitext(file.filename or "cert.jpg")[1] or ".jpg"
-    filename = f"user_{user.user_id}{ext}"
-    file_path = os.path.join(upload_dir, filename)
-    contents = await file.read()
-    with open(file_path, "wb") as f:
-        f.write(contents)
+    ok, result = await save_training_certificate_bytes(data=await file.read(), user_id=user.user_id)
+    if not ok:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=result)
 
-    cert_url = f"/uploads/training_certificates/{filename}"
+    cert_url = result
     urow.certificate_url = cert_url
     urow.training_status = "completed"
     urow.training_required = False
