@@ -13,6 +13,8 @@ from app.db.session import AsyncSessionLocal
 from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
 from app.schemas.leads import (
+    ClaimGateLead,
+    ClaimGateResponse,
     LeadListResponse,
     LeadPoolBatchPreviewResponse,
     LeadPoolClaimBatchRequest,
@@ -21,6 +23,7 @@ from app.schemas.leads import (
     LeadPoolDefaultsUpdateRequest,
     LeadPoolImportResponse,
 )
+from app.services.claim_gate import claim_blocked_message, uncovered_claimed_leads
 from app.services.crm_outbox import enqueue_lead_shadow_upsert
 from app.services.lead_pool_defaults import (
     APP_KEY_LEAD_POOL_DEFAULT_PRICE_CENTS,
@@ -96,6 +99,25 @@ async def list_lead_pool(
     rows = (await session.execute(list_q)).scalars().all()
     items = await build_lead_public_payloads(session, rows)
     return LeadListResponse(items=items, total=total, limit=limit, offset=offset)
+
+
+@router.get("/claim-gate", response_model=ClaimGateResponse)
+async def get_claim_gate(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ClaimGateResponse:
+    """Blocked when the member still has untouched fresh leads from a previous day."""
+    uncovered = await uncovered_claimed_leads(session, user.user_id)
+    if not uncovered:
+        return ClaimGateResponse(blocked=False)
+    return ClaimGateResponse(
+        blocked=True,
+        message=claim_blocked_message(len(uncovered)),
+        uncovered_leads=[
+            ClaimGateLead(id=lead.id, name=lead.name or f"Lead #{lead.id}", phone=lead.phone)
+            for lead in uncovered
+        ],
+    )
 
 
 @router.get("/batch-preview", response_model=LeadPoolBatchPreviewResponse)

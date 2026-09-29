@@ -133,3 +133,28 @@ export function useLeadPoolBatchClaimMutation() {
     },
   })
 }
+
+export type ClaimGateResponse = {
+  blocked: boolean
+  message: string | null
+  uncovered_leads: { id: number; name: string; phone: string | null }[]
+}
+
+async function fetchClaimGate(): Promise<ClaimGateResponse> {
+  const res = await apiFetch('/api/v1/lead-pool/claim-gate')
+  if (!res.ok) {
+    await parseError(res)
+  }
+  return res.json()
+}
+
+/** Pool claiming is blocked while earlier days' fresh leads are still untouched. */
+export function useClaimGateQuery(enabled = true) {
+  return useQuery({
+    // Under 'lead-pool' so lead updates / claims (which invalidate it) refresh the gate.
+    queryKey: ['lead-pool', 'claim-gate'],
+    queryFn: fetchClaimGate,
+    enabled,
+    staleTime: 15_000,
+  })
+}

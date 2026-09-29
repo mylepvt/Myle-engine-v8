@@ -193,7 +193,7 @@ async function parseError(res: Response): Promise<never> {
 
 export type LeadsListMode = 'active' | 'archived' | 'recycle'
 
-export type CtcsTab = 'all' | 'today' | 'followups' | 'hot' | 'converted' | 'reassigned' | 'pending'
+export type CtcsTab = 'all' | 'today' | 'retarget' | 'followups' | 'hot' | 'converted' | 'reassigned' | 'pending'
 
 export type CtcsAction = 'not_picked' | 'interested' | 'call_later' | 'not_interested' | 'paid'
 

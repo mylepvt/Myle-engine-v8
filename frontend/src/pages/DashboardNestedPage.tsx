@@ -31,7 +31,6 @@ import { PendingAsProcessPage } from '@/pages/PendingAsProcessPage'
 import { AnalyticsSurfacePage } from '@/pages/AnalyticsSurfacePage'
 import { TrainingHubPage } from '@/pages/TrainingHubPage'
 import { SystemSurfacePage } from '@/pages/SystemSurfacePage'
-import { RetargetWorkPage } from '@/pages/RetargetWorkPage'
 import { WorkboardPage } from '@/pages/WorkboardPage'
 import { ShellStubPage } from '@/pages/ShellStubPage'
 import { WalletPage } from '@/pages/WalletPage'
@@ -74,8 +73,6 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <WorkboardPage title={title} />
     case 'follow-ups':
       return <FollowUpsWorkPage title={title} />
-    case 'retarget':
-      return <RetargetWorkPage title={title} />
     case 'lead-flow':
       return <LeadFlowPage title={title} />
     case 'lead-gen':
@@ -186,6 +183,11 @@ export function DashboardNestedPage() {
   if (leadDetailMatch) {
     const leadId = parseInt(leadDetailMatch[1], 10)
     return <LeadDetailPage leadId={leadId} />
+  }
+
+  // Retarget moved into the Calling Board as a tab — keep old links working.
+  if (path === 'work/retarget') {
+    return <Navigate to="/dashboard/work/leads?tab=retarget" replace />
   }
 
   const ccBoardDetailMatch = /^team\/cc-board\/(\d+)$/.exec(path)
