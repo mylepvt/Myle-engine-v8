@@ -108,7 +108,7 @@ function ReportsPopoverContent({
           </div>
         )}
         {sendLog.length === 0 ? (
-          <p className="px-3 py-3 text-xs text-muted-foreground/50">Koi pending member nahi tha.</p>
+          <p className="px-3 py-3 text-xs text-muted-foreground/50">No pending members.</p>
         ) : (
           <div className="px-3 pb-2">
             {sendLog.map((r) => (

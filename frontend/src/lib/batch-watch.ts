@@ -99,7 +99,7 @@ export function buildBatchGreetingCopy({
       firstName,
       greetingLine: `Hi ${firstName}`,
       heroTitle: `Day 6 — 2CC Plan Live, ${timeLabel} session ready`,
-      heroSubtitle: `Tera final 2CC session ready h. Watch inside Myle, focus karo, aur close karo.`,
+      heroSubtitle: `Your final 2CC session is ready. Watch it inside Myle, stay focused, and close strong.`,
       reservedBadge: `Reserved for ${firstName}`,
       privateRoomBadge: `${timeLabel} live session`,
       focusLine: 'Final closing session — watch, confirm, and complete.',
@@ -117,7 +117,7 @@ export function buildBatchGreetingCopy({
     heroTitle: `Your Day ${dayNumber} ${slotLabel} Batch is ready`,
     heroSubtitle:
       dayNumber === 2
-        ? `${tone.energyLine} Watch this batch inside Myle and upload your notes, voice note, video, or message here. Final Day 2 batch ke baad business evaluation link alag se share hota hai.`
+        ? `${tone.energyLine} Watch this batch inside Myle and upload your notes, voice note, video, or message here. The business evaluation link is shared separately after the final Day 2 batch.`
         : `${tone.energyLine} Watch this batch inside Myle and stay in the same premium flow.`,
     reservedBadge: `Reserved for ${firstName}`,
     privateRoomBadge: `${slotLabel} private room`,
@@ -125,7 +125,7 @@ export function buildBatchGreetingCopy({
     trustLine: tone.trustLine,
     mentorLine:
       dayNumber === 2
-        ? `After each Day 2 batch, upload isi screen se jata hai. Final batch ke baad business evaluation link coordinator alag se share karta hai.`
+        ? `After each Day 2 batch, upload from this same screen. Your coordinator shares the business evaluation link after the final batch.`
         : `After this batch, your progress stays tracked inside the same Myle room.`,
     completionMessage: `Nice work ${firstName}, your ${tone.completionVerb}.`,
   }

@@ -35,6 +35,7 @@ import { LeaderReassignSheet } from '@/components/leads/LeaderReassignSheet'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { apiFetch, apiUrl } from '@/lib/api'
+import { sendEnrollmentLiveLink } from '@/lib/enrollment-send'
 import { callStatusSelectOptions } from '@/lib/call-status-options'
 import { formatCountdown, timerRemainingMs } from '@/lib/ctcs-timer'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
@@ -263,29 +264,11 @@ const LeadCard = memo(function LeadCard({
     }
   }
 
-  // Enrollment-Live send: create the single open token /watch/{token} link (detail-form
-  // gate + first-open timer + auto video_sent→video_watched on finish), then WhatsApp it.
-  // Enrollment-Live send — one tokenized /watch link, no time-slot picker.
+  // Enrollment video: one tokenized /watch link, shared on WhatsApp (see lib/enrollment-send).
   async function handleSendFlpMinBillingVideo() {
     setSendError(null)
     try {
-      const res = await apiFetch('/api/v1/flp-min-billing/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lead_id: lead.id }),
-      })
-      if (!res.ok) throw new Error(await readResponseError(res))
-      const data = (await res.json()) as { link?: { share_url?: string } }
-      const share = data.link?.share_url
-      const watchUrl = share ? `${window.location.origin}${share}` : null
-      if (watchUrl) {
-        const digits = whatsappDigits(lead.phone ?? '')
-        const msg =
-          `Hi ${lead.name || 'there'},\n\n` +
-          `Aapki enrollment video ready hai. Ye private link sirf aapke liye hai — apna naam aur registered number daal ke dekhiye:\n${watchUrl}`
-        const waUrl = digits ? `https://wa.me/${digits}?text=${encodeURIComponent(msg)}` : null
-        if (waUrl) openExternalShareUrl(waUrl)
-      }
+      await sendEnrollmentLiveLink(lead)
       await qc.refetchQueries({ queryKey: ['workboard'] })
     } catch (err) {
       setSendError(err instanceof Error ? err.message : 'Could not send enrollment video')
@@ -859,7 +842,7 @@ function Day3StagePayment({ lead, leadPatchBusy }: { lead: LeadPublic; leadPatch
 
   const upload = async () => {
     setErr(null)
-    if (!file) { setErr('Screenshot select karo.'); return }
+    if (!file) { setErr('Select a screenshot.'); return }
     const cents = Math.round(Number(amount) * 100)
     if (!Number.isFinite(cents) || cents <= 0) { setErr('Valid amount daalo.'); return }
     setBusy('upload')
