@@ -16,7 +16,6 @@ import {
 
 import { AuthCard } from '@/components/auth/AuthCard'
 import { IconInput } from '@/components/auth/IconInput'
-import { LocationConsentModal } from '@/components/auth/LocationConsentModal'
 import { TerminalBootOverlay } from '@/components/auth/TerminalBootOverlay'
 import { Button } from '@/components/ui/button'
 import { authDevLogin, authPasswordLogin } from '@/lib/auth-api'
@@ -82,7 +81,6 @@ export function LoginPage() {
   } | null>(null)
   const [bootFinished, setBootFinished] = useState(false)
   // null = still checking permission, true = show consent modal, false = skip modal
-  const [showConsent, setShowConsent] = useState<boolean | null>(null)
 
   useEffect(() => {
     try {
@@ -100,40 +98,13 @@ export function LoginPage() {
     }
   }, [meta?.auth_dev_login_enabled])
 
-  // After boot overlay finishes, decide whether to show location consent
+  // Boot overlay finished → straight to the dashboard.
   useEffect(() => {
-    if (!bootFinished || !bootUser) return
-    const role = bootUser.role
-    // Admins don't need field location tracking
-    if (role !== 'team' && role !== 'leader') {
-      setShowConsent(false)
-      return
-    }
-    if (navigator.webdriver) {
-      setShowConsent(false)
-      return
-    }
-    if (!('permissions' in navigator)) {
-      setShowConsent(true)
-      return
-    }
-    navigator.permissions
-      .query({ name: 'geolocation' as PermissionName })
-      .then((result) => {
-        // Only show consent when browser hasn't been asked yet
-        setShowConsent(result.state === 'prompt')
-      })
-      .catch(() => setShowConsent(true))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bootFinished])
-
-  // Navigate to dashboard when no consent screen is needed
-  useEffect(() => {
-    if (bootUser && bootFinished && showConsent === false) {
+    if (bootUser && bootFinished) {
       navigate(from, { replace: true })
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bootUser, bootFinished, showConsent])
+  }, [bootUser, bootFinished])
 
   async function handlePasswordLogin() {
     setError(null)
@@ -249,16 +220,7 @@ export function LoginPage() {
     )
   }
 
-  if (bootUser && bootFinished && showConsent === true) {
-    return (
-      <LocationConsentModal
-        onComplete={() => navigate(from, { replace: true })}
-      />
-    )
-  }
-
-  // showConsent === false → navigation handled by useEffect above
-  // showConsent === null → briefly checking permission state, render nothing
+  // Navigation handled by the effect above.
   if (bootUser && bootFinished) return null
 
   return (

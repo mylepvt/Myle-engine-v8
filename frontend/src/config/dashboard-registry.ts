@@ -62,7 +62,6 @@ export type FullUiSurface =
   | { kind: 'recycle-bin' }
   | { kind: 'team-members' }
   | { kind: 'team-tracking' }
-  | { kind: 'team-attendance' }
   | { kind: 'leader-os' }
   | { kind: 'my-team' }
   | { kind: 'team-approvals' }
@@ -269,14 +268,6 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('work/pending-as'),
     surface: 'full',
     ui: { kind: 'pending-as' },
-  },
-  {
-    path: 'team/attendance',
-    section: { id: 'team', label: 'Team' },
-    label: 'Attendance',
-    roles: routeRoles('team/attendance'),
-    surface: 'full',
-    ui: { kind: 'team-attendance' },
   },
   {
     path: 'team/tracking',
