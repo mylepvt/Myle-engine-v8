@@ -106,7 +106,7 @@ function Day1PipelineRow({
           {/* Previous stages auto-complete */}
           <div className="flex items-center gap-1">
             {D1_STAGES.map((s) => (
-              <span key={s} className="flex items-center gap-0.5 text-[0.7rem] text-emerald-600/80 dark:text-emerald-400/80">
+              <span key={s} className="flex items-center gap-0.5 text-ds-micro text-emerald-600/80 dark:text-emerald-400/80">
                 <CheckCircle2 className="size-3.5" />
               </span>
             ))}
@@ -127,7 +127,7 @@ function Day1PipelineRow({
                   disabled={patching}
                   onClick={() => onPatch(lead.id, { [slot]: !checked })}
                   className={cn(
-                    'flex items-center gap-1 rounded-full border px-2 py-0.5 text-[0.65rem] font-medium transition disabled:opacity-50',
+                    'flex items-center gap-1 rounded-full border px-2 py-0.5 text-ds-micro font-medium transition disabled:opacity-50',
                     checked
                       ? 'border-emerald-600/40 bg-emerald-600/12 text-emerald-600 dark:border-emerald-400/40 dark:bg-emerald-400/12 dark:text-emerald-400'
                       : 'border-border bg-muted/40 text-muted-foreground hover:border-primary/40 hover:text-foreground',
@@ -282,7 +282,7 @@ function WarRoomDashboard({
               return (
                 <div key={col.title} className="rounded-xl border border-border/40 bg-card p-4 transition-colors hover:border-border/60">
                   <div className="mb-3 flex items-center justify-between border-b border-border/30 pb-2.5" style={{ borderColor: `${col.color}30` }}>
-                    <span className="text-[11px] font-bold uppercase tracking-[0.08em]" style={{ color: col.color }}>
+                    <span className="text-ds-micro font-bold uppercase tracking-[0.08em]" style={{ color: col.color }}>
                       {col.title}
                     </span>
                     <span className="inline-flex items-center gap-1 text-lg font-extrabold tabular-nums" style={{ color: col.color }}>
@@ -305,7 +305,7 @@ function WarRoomDashboard({
                                 className="size-2 shrink-0 rounded-full"
                                 style={{ backgroundColor: stage.color, boxShadow: `0 0 0 1px ${stage.color}40` }}
                               />
-                              <span className="truncate text-[13px] font-medium text-muted-foreground">
+                              <span className="truncate text-ds-caption font-medium text-muted-foreground">
                                 {stage.label}
                               </span>
                             </div>
@@ -320,7 +320,7 @@ function WarRoomDashboard({
                                 style={{ width: `${pct}%`, backgroundColor: stage.color }}
                               />
                             </div>
-                            <span className="text-[10px] font-semibold text-muted-foreground/60 tabular-nums">
+                            <span className="text-ds-micro font-semibold text-muted-foreground/60 tabular-nums">
                               {sharePct}%
                             </span>
                           </div>
@@ -344,7 +344,7 @@ function WarRoomDashboard({
               Priority Matrix
             </h3>
             {totalCritical > 0 && (
-              <span className="rounded-md bg-red-500/15 px-2 py-0.5 text-[11px] font-bold text-red-500">{totalCritical} urgent</span>
+              <span className="rounded-md bg-red-500/15 px-2 py-0.5 text-ds-micro font-bold text-red-500">{totalCritical} urgent</span>
             )}
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -374,7 +374,7 @@ function WarRoomDashboard({
               Team Health
             </h3>
             {h && (
-              <span className={cn('rounded-md px-2 py-0.5 text-[11px] font-bold', h.leader_band === 'elite' ? 'bg-emerald-500/15 text-emerald-500' : h.leader_band === 'average' ? 'bg-amber-500/15 text-amber-500' : 'bg-red-500/15 text-red-500')}>
+              <span className={cn('rounded-md px-2 py-0.5 text-ds-micro font-bold', h.leader_band === 'elite' ? 'bg-emerald-500/15 text-emerald-500' : h.leader_band === 'average' ? 'bg-amber-500/15 text-amber-500' : 'bg-red-500/15 text-red-500')}>
                 Score: {h.leader_score}
               </span>
             )}
@@ -403,7 +403,7 @@ function WarRoomDashboard({
                   )
                 })}
                 {(f?.blockers_waiting ?? 0) > 0 && (
-                  <p className="pt-1 text-[11px] text-muted-foreground">{f?.blockers_waiting} blocker(s) currently unresolved.</p>
+                  <p className="pt-1 text-ds-micro text-muted-foreground">{f?.blockers_waiting} blocker(s) currently unresolved.</p>
                 )}
               </>
             ) : (
@@ -421,7 +421,7 @@ function WarRoomDashboard({
               <Users className="size-4 text-blue-500" />
               Team Members
             </h3>
-            <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">
+            <span className="rounded-md bg-muted px-2 py-0.5 text-ds-micro font-bold text-muted-foreground">
               {s.total_members} total
             </span>
           </div>
@@ -443,7 +443,7 @@ function WarRoomDashboard({
               Action Queue
             </h3>
             {actions.length > 0 && (
-              <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">{actions.length} items</span>
+              <span className="rounded-md bg-muted px-2 py-0.5 text-ds-micro font-bold text-muted-foreground">{actions.length} items</span>
             )}
           </div>
           {actions.length > 0 ? (

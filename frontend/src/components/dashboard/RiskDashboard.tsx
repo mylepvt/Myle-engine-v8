@@ -97,7 +97,7 @@ function LeaderCard({ leader }: { leader: LeaderRiskScore }) {
             <CardTitle className="text-sm font-semibold">{leader.name}</CardTitle>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="text-[10px]">{leader.team_size} members</Badge>
+            <Badge variant="secondary" className="text-ds-micro">{leader.team_size} members</Badge>
             <RiskBandBadge band={leader.band} />
           </div>
         </div>
@@ -175,7 +175,7 @@ export function RiskDashboard() {
           <h2 className="mb-3 flex items-center gap-2 text-ds-label font-bold">
             <Users className="size-4 text-primary" />
             Leader Risk
-            <Badge variant="secondary" className="ml-1 text-[10px]">{data.leader_risks.length}</Badge>
+            <Badge variant="secondary" className="ml-1 text-ds-micro">{data.leader_risks.length}</Badge>
           </h2>
           <div className="space-y-2">
             {data.leader_risks.map(lr => (
@@ -192,7 +192,7 @@ export function RiskDashboard() {
             <AlertTriangle className="size-4 text-amber-500" />
             Members at Risk
           </h2>
-          <Badge variant="secondary" className="ml-1 text-[10px]">{data.member_risks.length}</Badge>
+          <Badge variant="secondary" className="ml-1 text-ds-micro">{data.member_risks.length}</Badge>
           <div className="ml-auto flex items-center gap-2">
             <div className="relative">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />

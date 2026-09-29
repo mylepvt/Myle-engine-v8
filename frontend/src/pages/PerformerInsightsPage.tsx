@@ -310,7 +310,7 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium', riskStyle.cls)}>
+                        <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-ds-micro font-medium', riskStyle.cls)}>
                           {riskStyle.icon}
                           {m.risk_level.toUpperCase()}
                         </span>
@@ -381,12 +381,12 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className={cn(
-                        'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium',
+                        'inline-flex items-center rounded-full px-2 py-0.5 text-ds-micro font-medium',
                         trustColor.replace('bg-', 'bg-').replace('red-500', 'red-500/15 text-red-600').replace('orange-500', 'orange-500/15 text-orange-600').replace('amber-500', 'amber-500/15 text-amber-600'),
                       )}>
                         Trust: {m.trust_score}%
                       </span>
-                      <Badge variant="outline" className={cn('text-[10px]', TIER_STYLES[m.tier]?.cls)}>
+                      <Badge variant="outline" className={cn('text-ds-micro', TIER_STYLES[m.tier]?.cls)}>
                         {m.tier}
                       </Badge>
                     </div>
@@ -507,8 +507,8 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
                 .map((p) => (
                   <div key={p.user_id} className="rounded border border-dashed border-muted-300/50 p-2 text-center">
                     <p className="text-xs font-medium truncate">{p.name}</p>
-                    <p className="text-[10px] text-muted-foreground truncate">{p.fbo_id}</p>
-                    {p.phone && <p className="text-[10px] text-muted-foreground/60 font-mono">{p.phone}</p>}
+                    <p className="text-ds-micro text-muted-foreground truncate">{p.fbo_id}</p>
+                    {p.phone && <p className="text-ds-micro text-muted-foreground/60 font-mono">{p.phone}</p>}
                   </div>
                 ))}
               {data.tier_distribution.inactive > 24 && (
@@ -583,7 +583,7 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
                       <div className="flex items-center gap-2 shrink-0">
                         {p.trust_score < 70 && (
                           <span className={cn(
-                            'inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium',
+                            'inline-flex items-center rounded-full px-1.5 py-0.5 text-ds-micro font-medium',
                             p.trust_score < 30
                               ? 'bg-red-500/15 text-red-600'
                               : 'bg-amber-500/15 text-amber-600',
@@ -594,7 +594,7 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
                         )}
                         <span
                           className={cn(
-                            'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium',
+                            'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-ds-micro font-medium',
                             tierStyle.cls,
                           )}
                         >
@@ -635,7 +635,7 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
                       <span>{p.metrics.converted_leads} conv</span>
                       <Badge
                         variant="outline"
-                        className={cn('text-[10px] px-1.5 py-0', TREND_COLORS[p.trend] || '')}
+                        className={cn('text-ds-micro px-1.5 py-0', TREND_COLORS[p.trend] || '')}
                       >
                         {p.trend === 'inactive'
                           ? 'Inactive'

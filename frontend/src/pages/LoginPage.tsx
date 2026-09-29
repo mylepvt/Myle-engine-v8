@@ -374,7 +374,7 @@ export function LoginPage() {
                     placeholder="Your FBO ID"
                     icon={IdCard}
                   />
-                  <p className="mt-1.5 text-[0.7rem] leading-relaxed text-muted-foreground/90">
+                  <p className="mt-1.5 text-ds-micro leading-relaxed text-muted-foreground/90">
                     Password is required. If you used a username before, enter it in this field instead of FBO.
                   </p>
                 </div>
@@ -473,11 +473,11 @@ export function LoginPage() {
           </form>
         </AuthCard>
 
-        <p className="mt-5 flex items-center justify-center gap-2 text-center text-[0.7rem] leading-relaxed text-muted-foreground/85">
+        <p className="mt-5 flex items-center justify-center gap-2 text-center text-ds-micro leading-relaxed text-muted-foreground/85">
           <Shield className="size-3.5 shrink-0 opacity-80" aria-hidden />
           Secure internal access · Credentials sent over HTTPS only.
         </p>
-        <p className="mt-1 text-center text-[0.65rem] text-muted-foreground/60">
+        <p className="mt-1 text-center text-ds-micro text-muted-foreground/60">
           {t('appTitle')} — {t('appTagline')}
         </p>
       </div>

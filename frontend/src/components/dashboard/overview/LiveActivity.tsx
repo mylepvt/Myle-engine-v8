@@ -96,7 +96,7 @@ function Metric({ label, value, cls }: { label: string; value: number; cls: stri
   return (
     <div className="flex-1 rounded-xl bg-muted px-3 py-3 text-center">
       <p className={cn('text-xl font-bold tabular-nums', cls)}>{value}</p>
-      <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.03em] text-muted-foreground">{label}</p>
+      <p className="mt-0.5 text-ds-micro font-medium uppercase tracking-[0.03em] text-muted-foreground">{label}</p>
     </div>
   )
 }
@@ -119,7 +119,7 @@ function Row({ entry, kind }: { entry: AdminActivityEntry; kind: Kind }) {
           <span className="text-muted-foreground/70">{desc}</span>
         </p>
       </div>
-      <span className="shrink-0 pt-0.5 text-[11px] tabular-nums text-muted-foreground/40">{timeAgo(entry.timestamp)}</span>
+      <span className="shrink-0 pt-0.5 text-ds-micro tabular-nums text-muted-foreground/40">{timeAgo(entry.timestamp)}</span>
     </div>
   )
 }
@@ -127,7 +127,7 @@ function Row({ entry, kind }: { entry: AdminActivityEntry; kind: Kind }) {
 function SectionDivider({ label, cls }: { label: string; cls: string }) {
   return (
     <div className="px-5 pb-1 pt-3">
-      <span className={cn('text-[10px] font-semibold uppercase tracking-[0.06em]', cls)}>{label}</span>
+      <span className={cn('text-ds-micro font-semibold uppercase tracking-[0.06em]', cls)}>{label}</span>
     </div>
   )
 }
@@ -162,9 +162,9 @@ export function LiveActivity() {
         <div className="flex items-center justify-between border-b border-border/50 px-5 py-4">
           <div className="flex items-center gap-2">
             <Zap className="size-4 text-primary" aria-hidden />
-            <h2 className="text-[15px] font-semibold text-foreground tracking-[-0.01em]">Live Activity</h2>
+            <h2 className="text-ds-body font-semibold text-foreground tracking-[-0.01em]">Live Activity</h2>
           </div>
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-500">
+          <span className="inline-flex items-center gap-1.5 text-ds-micro font-semibold text-emerald-500">
             <span className="relative flex size-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
               <span className="relative inline-flex size-1.5 rounded-full bg-emerald-500" />
@@ -183,8 +183,8 @@ export function LiveActivity() {
 
         {/* Feed header */}
         <div className="flex items-center justify-between border-t border-border/50 px-5 pb-1 pt-2">
-          <span className="text-[11px] font-medium text-muted-foreground">Activity</span>
-          <span className="text-[11px] font-medium text-muted-foreground/50">{pulse.total} events · Last hour</span>
+          <span className="text-ds-micro font-medium text-muted-foreground">Activity</span>
+          <span className="text-ds-micro font-medium text-muted-foreground/50">{pulse.total} events · Last hour</span>
         </div>
 
         {/* Feed */}
@@ -210,16 +210,16 @@ export function LiveActivity() {
 
         {/* Footer */}
         <div className="flex items-center justify-between border-t border-border/50 px-5 py-2.5">
-          <span className="text-[11px] font-medium text-muted-foreground/50">Updated in real-time</span>
+          <span className="text-ds-micro font-medium text-muted-foreground/50">Updated in real-time</span>
           <div className="flex items-center gap-3">
             {feed.length > 0 && (
-              <span className="text-[11px] font-medium text-muted-foreground/40">{feed.length} events</span>
+              <span className="text-ds-micro font-medium text-muted-foreground/40">{feed.length} events</span>
             )}
             {meaningful.length > 30 && (
               <button
                 type="button"
                 onClick={() => setShowAll(!showAll)}
-                className="text-[11px] font-semibold text-primary hover:underline"
+                className="text-ds-micro font-semibold text-primary hover:underline"
               >
                 {showAll ? 'Show Less' : 'View All →'}
               </button>

@@ -582,9 +582,9 @@ export function SettingsAppPage({ title }: Props) {
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-foreground">WhatsApp (Meta Cloud API)</h2>
             {waStatusFetching ? (
-              <span className="text-[11px] text-muted-foreground">Checking…</span>
+              <span className="text-ds-micro text-muted-foreground">Checking…</span>
             ) : waStatus?.connected === true ? (
-              <span className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400">
+              <span className="flex items-center gap-1 text-ds-micro text-emerald-600 dark:text-emerald-400">
                 <span className="h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-400" />
                 Connected
                 {waStatus.display_phone_number ? (
@@ -592,12 +592,12 @@ export function SettingsAppPage({ title }: Props) {
                 ) : null}
               </span>
             ) : waStatus?.connected === false ? (
-              <span className="flex items-center gap-1 text-[11px] text-destructive">
+              <span className="flex items-center gap-1 text-ds-micro text-destructive">
                 <span className="h-2 w-2 rounded-full bg-destructive" />
                 Not connected
               </span>
             ) : waStatus?.configured === false ? (
-              <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              <span className="flex items-center gap-1 text-ds-micro text-muted-foreground">
                 <span className="h-2 w-2 rounded-full bg-muted-foreground/50" />
                 Not configured
               </span>
@@ -609,7 +609,7 @@ export function SettingsAppPage({ title }: Props) {
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             Webhook URL jo Meta Console mein dalna hai:{' '}
-            <code className="rounded bg-[color-mix(in_srgb,var(--foreground)_10%,transparent)] px-1 text-[10px]">
+            <code className="rounded bg-[color-mix(in_srgb,var(--foreground)_10%,transparent)] px-1 text-ds-micro">
               https://yourdomain.com/api/v1/webhooks/whatsapp/reply
             </code>
           </p>
@@ -650,7 +650,7 @@ export function SettingsAppPage({ title }: Props) {
                       </button>
                     )}
                   </div>
-                  <span className="mt-1 block text-[11px] text-muted-foreground/70">{field.help}</span>
+                  <span className="mt-1 block text-ds-micro text-muted-foreground/70">{field.help}</span>
                 </label>
               )
             })}
@@ -702,7 +702,7 @@ export function SettingsAppPage({ title }: Props) {
             </p>
           ) : null}
           {waTestSend.data ? (
-            <pre className="mt-2 max-h-64 overflow-auto rounded bg-black/40 p-3 text-[11px] text-emerald-500 dark:text-emerald-300 ring-1 ring-white/10">
+            <pre className="mt-2 max-h-64 overflow-auto rounded bg-black/40 p-3 text-ds-micro text-emerald-500 dark:text-emerald-300 ring-1 ring-white/10">
               {JSON.stringify(waTestSend.data, null, 2)}
             </pre>
           ) : null}
@@ -711,7 +711,7 @@ export function SettingsAppPage({ title }: Props) {
         {/* Report reminder resend panel */}
         <div className="mt-4 border-t border-border dark:border-white/10 pt-3">
           <p className="mb-1 text-xs font-medium text-foreground">Send report reminder manually</p>
-          <p className="mb-3 text-[11px] text-muted-foreground">
+          <p className="mb-3 text-ds-micro text-muted-foreground">
             Send WhatsApp reminders to members who haven't submitted today's report and haven't received a reminder yet.
             Members who already got a reminder today will be skipped.
           </p>
@@ -730,15 +730,15 @@ export function SettingsAppPage({ title }: Props) {
 
           {reminderSummary ? (
             <div className="mt-3 flex flex-wrap gap-3">
-              <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">✅ {reminderSummary.sent} sent</span>
+              <span className="text-ds-micro font-semibold text-emerald-600 dark:text-emerald-400">✅ {reminderSummary.sent} sent</span>
               {reminderSummary.failed > 0 && (
-                <span className="text-[11px] font-semibold text-red-600 dark:text-red-400">❌ {reminderSummary.failed} failed</span>
+                <span className="text-ds-micro font-semibold text-red-600 dark:text-red-400">❌ {reminderSummary.failed} failed</span>
               )}
               {reminderSummary.no_phone > 0 && (
-                <span className="text-[11px] font-semibold text-muted-foreground/60">📵 {reminderSummary.no_phone} no phone</span>
+                <span className="text-ds-micro font-semibold text-muted-foreground/60">📵 {reminderSummary.no_phone} no phone</span>
               )}
               {reminderSummary.sent === 0 && reminderSummary.failed === 0 && reminderSummary.no_phone === 0 && (
-                <span className="text-[11px] text-muted-foreground">No pending — everyone submitted or already reminded.</span>
+                <span className="text-ds-micro text-muted-foreground">No pending — everyone submitted or already reminded.</span>
               )}
             </div>
           ) : null}
@@ -752,11 +752,11 @@ export function SettingsAppPage({ title }: Props) {
                     : r.status === 'no_phone'
                     ? <Smartphone className="size-3 shrink-0 text-muted-foreground/40" />
                     : <XCircle className="size-3 shrink-0 text-red-600 dark:text-red-400" />}
-                  <span className="flex-1 truncate text-[11px] text-foreground">{r.name}</span>
-                  <span className="text-[10px] text-muted-foreground/50">
+                  <span className="flex-1 truncate text-ds-micro text-foreground">{r.name}</span>
+                  <span className="text-ds-micro text-muted-foreground/50">
                     {r.phone_tail !== '—' ? `…${r.phone_tail}` : '—'}
                   </span>
-                  <span className={`text-[10px] font-medium ${
+                  <span className={`text-ds-micro font-medium ${
                     r.status === 'sent' || r.status === 'stub' ? 'text-emerald-600 dark:text-emerald-400'
                     : r.status === 'no_phone' ? 'text-muted-foreground/40'
                     : 'text-red-600 dark:text-red-400'

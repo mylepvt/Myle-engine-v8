@@ -205,8 +205,8 @@ export function EnrollmentWatchPage() {
   return (
     <div className="relative flex min-h-screen select-none flex-col bg-[#04070f] text-[#eaf0ff]">
       <header className="flex items-center justify-between px-4 py-3 sm:px-6">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#8aa0cf]">Myle</span>
-        <span className="flex items-center gap-1.5 rounded-full bg-[#14233f] px-3 py-1 text-[11px] font-semibold text-[#bcd0ff]">
+        <span className="text-ds-micro font-semibold uppercase tracking-[0.34em] text-[#8aa0cf]">Myle</span>
+        <span className="flex items-center gap-1.5 rounded-full bg-[#14233f] px-3 py-1 text-ds-micro font-semibold text-[#bcd0ff]">
           <ShieldCheck className="size-3.5" /> Private &amp; protected
           {mmss ? <span className="ml-1 tabular-nums text-[#ffd9a0]">· {mmss}</span> : null}
         </span>
@@ -268,7 +268,7 @@ export function EnrollmentWatchPage() {
 
             {/* moving identity watermark */}
             <div
-              className="pointer-events-none absolute z-20 rounded bg-black/35 px-2 py-1 text-[11px] font-semibold tracking-wide text-white/80 backdrop-blur-[1px] transition-all duration-700"
+              className="pointer-events-none absolute z-20 rounded bg-black/35 px-2 py-1 text-ds-micro font-semibold tracking-wide text-white/80 backdrop-blur-[1px] transition-all duration-700"
               style={{ top: `${wmPos.top}%`, left: `${wmPos.left}%` }}
             >
               {data.watermark_label} · {clock}

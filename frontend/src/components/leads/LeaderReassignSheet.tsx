@@ -124,7 +124,7 @@ export function LeaderReassignSheet({
                           {entry.name}
                         </span>
                         {entry.role === 'leader' ? (
-                          <span className="shrink-0 rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-primary">
+                          <span className="shrink-0 rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-ds-micro font-semibold uppercase text-primary">
                             Leader
                           </span>
                         ) : null}

@@ -147,7 +147,7 @@ export function KanbanPipeline() {
                 type="button"
                 onClick={() => setMode(mode === '24h' ? 'month' : '24h')}
                 className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold transition-all',
+                  'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-ds-micro font-semibold transition-all',
                   mode === 'month'
                     ? 'bg-primary/15 text-primary'
                     : 'bg-muted text-muted-foreground hover:bg-muted/80',
@@ -189,7 +189,7 @@ export function KanbanPipeline() {
               type="button"
               onClick={() => setMode(mode === '24h' ? 'month' : '24h')}
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold transition-all',
+                'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-ds-micro font-semibold transition-all',
                 mode === 'month'
                   ? 'bg-primary/15 text-primary'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80',
@@ -213,7 +213,7 @@ export function KanbanPipeline() {
             return (
               <div key={col.title} className="rounded-xl border border-border/40 bg-card p-4 transition-colors hover:border-border/60">
                 <div className="mb-3 flex items-center justify-between border-b border-border/30 pb-2.5" style={{ borderColor: `${col.color}30` }}>
-                  <span className="text-[11px] font-bold uppercase tracking-[0.08em]" style={{ color: col.color }}>
+                  <span className="text-ds-micro font-bold uppercase tracking-[0.08em]" style={{ color: col.color }}>
                     {col.title}
                   </span>
                   <span className="inline-flex items-center gap-1 text-lg font-extrabold tabular-nums" style={{ color: col.color }}>
@@ -246,7 +246,7 @@ export function KanbanPipeline() {
                               className="size-2 shrink-0 rounded-full ring-1"
                               style={{ backgroundColor: stage.color, boxShadow: `0 0 0 1px ${stage.color}40` }}
                             />
-                            <span className="truncate text-[13px] font-medium text-foreground/70 group-hover:text-foreground/90">
+                            <span className="truncate text-ds-caption font-medium text-foreground/70 group-hover:text-foreground/90">
                               {stage.label}
                             </span>
                           </div>
@@ -262,7 +262,7 @@ export function KanbanPipeline() {
                               style={{ width: `${pct}%`, backgroundColor: stage.color }}
                             />
                           </div>
-                          <span className="text-[10px] font-semibold text-muted-foreground/60 tabular-nums">
+                          <span className="text-ds-micro font-semibold text-muted-foreground/60 tabular-nums">
                             {sharePct}%
                           </span>
                         </div>

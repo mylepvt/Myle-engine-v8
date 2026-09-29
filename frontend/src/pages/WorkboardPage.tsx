@@ -350,7 +350,7 @@ const LeadCard = memo(function LeadCard({
           </div>
         ) : null}
         {isReassigned ? (
-          <span className="flex w-fit items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+          <span className="flex w-fit items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-ds-micro font-semibold text-amber-700 dark:text-amber-300">
             <ArrowLeftRight className="size-3 shrink-0" aria-hidden />
             Reassigned
           </span>
@@ -786,9 +786,9 @@ function Day3StagePicker({ lead, pm, leadPatchBusy }: {
               )}
             >
               <span className="text-sm font-bold">{s.label}</span>
-              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{s.sub}</span>
+              <span className="text-ds-micro uppercase tracking-wide text-muted-foreground">{s.sub}</span>
               <span className="mt-1 text-xs font-semibold">{rupees(s.priceCents)}</span>
-              <span className="text-[10px] text-muted-foreground">seat {rupees(s.seatHoldCents)}</span>
+              <span className="text-ds-micro text-muted-foreground">seat {rupees(s.seatHoldCents)}</span>
             </button>
           )
         })}
@@ -801,11 +801,11 @@ function Day3StagePicker({ lead, pm, leadPatchBusy }: {
               Seat-hold {seatHoldCents != null ? rupees(seatHoldCents) : ''}
             </span>
             {seatHeld ? (
-              <span className="rounded-full border border-emerald-400/30 bg-emerald-400/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+              <span className="rounded-full border border-emerald-400/30 bg-emerald-400/15 px-2 py-0.5 text-ds-micro font-bold text-emerald-300">
                 Held · {countdown}
               </span>
             ) : seatExpired ? (
-              <span className="rounded-full border border-amber-400/30 bg-amber-400/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+              <span className="rounded-full border border-amber-400/30 bg-amber-400/15 px-2 py-0.5 text-ds-micro font-bold text-amber-300">
                 Expired
               </span>
             ) : null}
@@ -907,7 +907,7 @@ function Day3StagePayment({ lead, leadPatchBusy }: { lead: LeadPublic; leadPatch
     <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 p-3">
       <div className="flex items-center justify-between">
         <p className="text-ds-caption font-bold uppercase tracking-wider text-[color-mix(in_srgb,var(--foreground)_70%,transparent)]">Stage Payment</p>
-        <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-bold', badge[1])}>{badge[0]}</span>
+        <span className={cn('rounded-full border px-2 py-0.5 text-ds-micro font-bold', badge[1])}>{badge[0]}</span>
       </div>
       <p className="text-ds-caption text-muted-foreground">Prospect ka payment leader ke account me. Screenshot upload → admin approve.</p>
 
@@ -994,7 +994,7 @@ function Day2TestLinkRow({ lead, busy, onSend }: {
     <div className="border-t border-border/40 pt-1.5 space-y-1.5">
       <div className="flex items-center justify-between gap-2">
         <span className="text-ds-caption font-semibold text-muted-foreground">Day 2 Business Test</span>
-        <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-bold', badge[status])}>
+        <span className={cn('rounded-full border px-2 py-0.5 text-ds-micro font-bold', badge[status])}>
           {label[status]}
         </span>
       </div>
@@ -1244,7 +1244,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
             <span className="text-ds-caption font-medium text-muted-foreground">Batch progress</span>
             <span
               className={cn(
-                'rounded-full border px-2 py-0.5 text-[10px] font-semibold',
+                'rounded-full border px-2 py-0.5 text-ds-micro font-semibold',
                 doneCount === 3
                   ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
                   : doneCount > 0
@@ -1264,7 +1264,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
               style={{ width: `${Math.round((doneCount / 3) * 100)}%` }}
             />
           </div>
-          <p className="text-[11px] text-muted-foreground">{doneCount}/3 batches done</p>
+          <p className="text-ds-micro text-muted-foreground">{doneCount}/3 batches done</p>
           <div className="flex gap-2">
             {batchSlots.map((slotKey, i) => {
               const slot = slotTimeLabels[i]
@@ -1291,7 +1291,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
                   )}
                 >
                   {busy ? (
-                    <span className="text-[11px]">...</span>
+                    <span className="text-ds-micro">...</span>
                   ) : slotDone ? (
                     <CheckSquare className="h-4 w-4" />
                   ) : (

@@ -38,7 +38,7 @@ function Kpi({ value, label, accent }: { value: string; label: string; accent?: 
   return (
     <div className="rounded-lg border border-border/50 bg-background/40 px-3 py-2">
       <p className={cn('text-lg font-bold', accent ? 'text-emerald-600 dark:text-emerald-300' : 'text-foreground')}>{value}</p>
-      <p className="text-[11px] text-muted-foreground">{label}</p>
+      <p className="text-ds-micro text-muted-foreground">{label}</p>
     </div>
   )
 }
@@ -47,11 +47,11 @@ function Kpi({ value, label, accent }: { value: string; label: string; accent?: 
 function ChequeHero({ cents, subtitle }: { cents: number; subtitle: string }) {
   return (
     <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] px-4 py-3">
-      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Your cheque (approx)</p>
+      <p className="text-ds-micro uppercase tracking-wide text-muted-foreground">Your cheque (approx)</p>
       <p className="bg-gradient-to-r from-emerald-600 to-emerald-500 dark:from-emerald-300 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent">
         {inr2(cents)}
       </p>
-      <p className="text-[10px] text-muted-foreground">{subtitle}</p>
+      <p className="text-ds-micro text-muted-foreground">{subtitle}</p>
     </div>
   )
 }
@@ -66,7 +66,7 @@ function TopEarners({ rows }: { rows: SaleDashboardRow[] }) {
 
   return (
     <div className="space-y-1.5 border-t border-border/40 pt-2.5">
-      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Top earners</p>
+      <p className="text-ds-micro uppercase tracking-wide text-muted-foreground">Top earners</p>
       {sorted.slice(0, 8).map((r) => {
         const cc = Number(r.total_case_credits)
         const pct = Math.max((cc / maxCc) * 100, 2)
@@ -96,15 +96,15 @@ function TopEarners({ rows }: { rows: SaleDashboardRow[] }) {
               <div className="ml-0 sm:ml-[5.5rem] mb-1 grid grid-cols-3 gap-2 rounded-md border border-border/50 bg-background/50 px-3 py-2 text-xs">
                 <div>
                   <p className="font-semibold text-emerald-300">{cc.toFixed(3)}</p>
-                  <p className="text-[10px] text-muted-foreground">CC</p>
+                  <p className="text-ds-micro text-muted-foreground">CC</p>
                 </div>
                 <div>
                   <p className="font-semibold text-foreground">{inr(r.total_amount_cents)}</p>
-                  <p className="text-[10px] text-muted-foreground">Revenue</p>
+                  <p className="text-ds-micro text-muted-foreground">Revenue</p>
                 </div>
                 <div>
                   <p className="font-semibold text-foreground">{r.sale_count}</p>
-                  <p className="text-[10px] text-muted-foreground">Sales</p>
+                  <p className="text-ds-micro text-muted-foreground">Sales</p>
                 </div>
               </div>
             ) : null}
@@ -129,7 +129,7 @@ export function CcSummaryCard({ enabled = true, className }: Props) {
       <div className="flex items-center justify-between">
         <p className="text-ds-label uppercase text-muted-foreground">Case Credits &amp; Cheque</p>
         {data ? (
-          <span className="text-[11px] text-muted-foreground">
+          <span className="text-ds-micro text-muted-foreground">
             {SCOPE_LABEL[data.scope] ?? data.scope}
           </span>
         ) : null}
@@ -148,7 +148,7 @@ export function CcSummaryCard({ enabled = true, className }: Props) {
 
           {isTeamView ? (
             <div className="flex items-baseline justify-between rounded-lg border border-border/50 bg-background/40 px-3 py-2">
-              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              <span className="text-ds-micro uppercase tracking-wide text-muted-foreground">
                 {data.scope === 'all' ? 'All-teams cheque total' : 'Team cheque total'}
               </span>
               <span className="text-base font-bold text-emerald-300">{inr(teamChequeCents)}</span>

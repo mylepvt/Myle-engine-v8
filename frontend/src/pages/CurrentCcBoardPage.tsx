@@ -84,7 +84,7 @@ export function CurrentCcBoardPage({ title }: Props) {
         <div className="surface-elevated overflow-hidden p-0">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="text-left text-[11px] uppercase text-muted-foreground">
+              <tr className="text-left text-ds-micro uppercase text-muted-foreground">
                 <th className="px-4 py-2.5 font-normal">Member</th>
                 <th className="px-2 py-2.5 font-normal">Filled</th>
                 <th className="px-2 py-2.5 font-normal">CC vs target</th>
@@ -145,7 +145,7 @@ export function CurrentCcBoardPage({ title }: Props) {
         </div>
       ) : null}
 
-      <p className="text-[11px] text-muted-foreground">
+      <p className="text-ds-micro text-muted-foreground">
         Red = flagged (CCs claimed, no activity) · amber = not filled · tap a row for that member's charts.
       </p>
     </div>
@@ -161,7 +161,7 @@ function Kpi({ label, value, tone }: { label: string; value: string; tone: 'warn
         : 'text-foreground'
   return (
     <div className="rounded-lg border border-border/50 bg-background/40 px-4 py-3">
-      <p className="text-[11px] text-muted-foreground">{label}</p>
+      <p className="text-ds-micro text-muted-foreground">{label}</p>
       <p className={cn('text-2xl font-bold tabular-nums', color)}>{value}</p>
     </div>
   )

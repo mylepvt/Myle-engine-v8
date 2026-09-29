@@ -80,7 +80,7 @@ export function LiveFunnelColumn() {
             title={`View ${stage.label} leads`}
             className="flex min-h-[44px] items-center gap-2 px-3 py-2.5 no-underline transition-colors hover:bg-muted/30 dark:hover:bg-white/[0.04] active:bg-muted/50 dark:active:bg-white/[0.07] cursor-pointer sm:gap-3 sm:px-4"
           >
-            <span className="hidden w-5 shrink-0 text-[10px] tabular-nums text-muted-foreground/50 dark:text-white/25 sm:inline">
+            <span className="hidden w-5 shrink-0 text-ds-micro tabular-nums text-muted-foreground/50 dark:text-white/25 sm:inline">
               {String(i + 1).padStart(2, '0')}
             </span>
 
@@ -95,7 +95,7 @@ export function LiveFunnelColumn() {
               />
             </span>
 
-            <span className="w-20 shrink-0 truncate text-[12px] font-medium text-foreground/70 sm:w-24">
+            <span className="w-20 shrink-0 truncate text-xs font-medium text-foreground/70 sm:w-24">
               {stage.label}
             </span>
 
@@ -107,14 +107,14 @@ export function LiveFunnelColumn() {
             </div>
 
             <span
-              className="w-9 shrink-0 text-right text-[13px] font-bold tabular-nums sm:w-10"
+              className="w-9 shrink-0 text-right text-ds-caption font-bold tabular-nums sm:w-10"
               style={{ color: count > 0 ? stage.color : 'color-mix(in srgb, var(--foreground) 15%, transparent)' }}
             >
               {count > 0 ? count.toLocaleString() : '–'}
             </span>
 
             <span
-              className={`w-7 shrink-0 text-right text-[11px] font-semibold tabular-nums sm:w-8 ${
+              className={`w-7 shrink-0 text-right text-ds-micro font-semibold tabular-nums sm:w-8 ${
                 isUp ? 'text-emerald-600 dark:text-emerald-400' : movement < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground/30 dark:text-white/15'
               }`}
             >

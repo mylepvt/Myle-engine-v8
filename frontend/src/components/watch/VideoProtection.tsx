@@ -22,7 +22,7 @@ export function VideoWatermarkOverlay({ label, obscured }: { label: string; obsc
   return (
     <>
       <div
-        className="pointer-events-none absolute z-20 rounded bg-black/35 px-2 py-1 text-[11px] font-semibold tracking-wide text-white/80 backdrop-blur-[1px] transition-all duration-700"
+        className="pointer-events-none absolute z-20 rounded bg-black/35 px-2 py-1 text-ds-micro font-semibold tracking-wide text-white/80 backdrop-blur-[1px] transition-all duration-700"
         style={{ top: `${pos.top}%`, left: `${pos.left}%` }}
       >
         {label} · {clock}

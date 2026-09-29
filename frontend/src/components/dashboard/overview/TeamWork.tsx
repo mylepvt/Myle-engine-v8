@@ -57,7 +57,7 @@ export function TodayClaimCalling({
                 <p className="mt-1 text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">
                   {ls?.leads_claimed_today ?? 0}
                 </p>
-                <p className="text-[11px] text-muted-foreground">Claimed today</p>
+                <p className="text-ds-micro text-muted-foreground">Claimed today</p>
               </div>
               <div className="flex items-center text-muted-foreground">
                 <ArrowLeftRight className="size-5" aria-hidden />
@@ -67,14 +67,14 @@ export function TodayClaimCalling({
                 <p className="mt-1 text-2xl font-bold tabular-nums text-blue-600 dark:text-blue-400">
                   {ls?.calls_made_today ?? 0}
                 </p>
-                <p className="text-[11px] text-muted-foreground">Calls today</p>
+                <p className="text-ds-micro text-muted-foreground">Calls today</p>
               </div>
             </div>
 
             <div className="mt-4">
               <div className="mb-2 flex items-center justify-between">
                 <p className="text-ds-caption font-medium uppercase tracking-wide text-muted-foreground">Top callers today</p>
-                <span className="text-[11px] text-muted-foreground">{reporters}/{scope} reported</span>
+                <span className="text-ds-micro text-muted-foreground">{reporters}/{scope} reported</span>
               </div>
               {topCallers.length === 0 ? (
                 <p className="py-3 text-center text-ds-caption text-muted-foreground">No calls logged yet today.</p>
@@ -166,7 +166,7 @@ export function TeamWorkTrend() {
                 type="button"
                 onClick={() => setDays(r.days)}
                 className={cn(
-                  'rounded-md px-2 py-0.5 text-[11px] font-semibold transition',
+                  'rounded-md px-2 py-0.5 text-ds-micro font-semibold transition',
                   days === r.days ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
@@ -181,22 +181,22 @@ export function TeamWorkTrend() {
         ) : (
           <>
             <CallsAreaChart points={points} max={max} />
-            <div className="mt-1 flex items-center justify-between text-[10px] text-muted-foreground/70">
+            <div className="mt-1 flex items-center justify-between text-ds-micro text-muted-foreground/70">
               <span>{points[0]?.date.slice(5)}</span>
               <span>{points[points.length - 1]?.date.slice(5)}</span>
             </div>
             <div className="mt-3 grid grid-cols-3 gap-3 border-t border-border/40 pt-3 text-center">
               <div>
                 <p className="text-lg font-bold tabular-nums text-blue-600 dark:text-blue-400">{trend.data?.total_calls ?? 0}</p>
-                <p className="text-[11px] text-muted-foreground">Calls</p>
+                <p className="text-ds-micro text-muted-foreground">Calls</p>
               </div>
               <div>
                 <p className="text-lg font-bold tabular-nums text-violet-600 dark:text-violet-400">{trend.data?.total_day1 ?? 0}</p>
-                <p className="text-[11px] text-muted-foreground">Day 1</p>
+                <p className="text-ds-micro text-muted-foreground">Day 1</p>
               </div>
               <div>
                 <p className="text-lg font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{trend.data?.total_payments ?? 0}</p>
-                <p className="text-[11px] text-muted-foreground">Payments</p>
+                <p className="text-ds-micro text-muted-foreground">Payments</p>
               </div>
             </div>
           </>

@@ -35,14 +35,14 @@ function KpiCard({
   )
   const inner = (
     <>
-      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">
+      <div className="flex items-center gap-1.5 text-ds-micro font-semibold uppercase tracking-wider text-muted-foreground/50">
         <span className={urgent ? 'text-amber-600/70 dark:text-amber-400/70' : 'text-muted-foreground/40'}>{icon}</span>
         {label}
       </div>
-      <span className={cn('text-[1.625rem] font-bold leading-none tabular-nums', urgent ? 'text-amber-600 dark:text-amber-300' : 'text-foreground')}>
+      <span className={cn('text-ds-h1 font-bold leading-none tabular-nums', urgent ? 'text-amber-600 dark:text-amber-300' : 'text-foreground')}>
         {value}
       </span>
-      <p className="text-[10px] text-muted-foreground/40">{sub}</p>
+      <p className="text-ds-micro text-muted-foreground/40">{sub}</p>
     </>
   )
   if (onClick) {
@@ -98,12 +98,12 @@ function ReportsPopoverContent({
       <div className="max-h-80 overflow-y-auto">
         {sendSummary && (
           <div className="sticky top-0 flex items-center gap-3 border-b border-border/40 bg-card px-3 py-2">
-            <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">✅ {sendSummary.sent} sent</span>
+            <span className="text-ds-micro font-semibold text-emerald-600 dark:text-emerald-400">✅ {sendSummary.sent} sent</span>
             {sendSummary.failed > 0 && (
-              <span className="text-[10px] font-semibold text-red-600 dark:text-red-400">❌ {sendSummary.failed} failed</span>
+              <span className="text-ds-micro font-semibold text-red-600 dark:text-red-400">❌ {sendSummary.failed} failed</span>
             )}
             {sendSummary.no_phone > 0 && (
-              <span className="text-[10px] font-semibold text-muted-foreground/50">📵 {sendSummary.no_phone} no phone</span>
+              <span className="text-ds-micro font-semibold text-muted-foreground/50">📵 {sendSummary.no_phone} no phone</span>
             )}
           </div>
         )}
@@ -115,7 +115,7 @@ function ReportsPopoverContent({
               <div key={r.user_id} className="flex items-center gap-2 py-1.5">
                 {statusIcon(r.status)}
                 <span className="min-w-0 flex-1 truncate text-xs text-foreground">{r.name}</span>
-                <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/40">
+                <span className="shrink-0 text-ds-micro tabular-nums text-muted-foreground/40">
                   {r.phone_tail !== '—' ? `···${r.phone_tail}` : 'no ph'}
                 </span>
               </div>
@@ -125,7 +125,7 @@ function ReportsPopoverContent({
         <div className="border-t border-border/40 px-3 py-2">
           <button
             onClick={() => { setSendLog(null); setSendSummary(null) }}
-            className="text-[10px] text-muted-foreground/50 hover:text-foreground"
+            className="text-ds-micro text-muted-foreground/50 hover:text-foreground"
           >
             ← Back to list
           </button>
@@ -140,7 +140,7 @@ function ReportsPopoverContent({
       <div className="max-h-64 overflow-y-auto divide-y divide-border/40">
         {submitted.length > 0 && (
           <div className="pb-1">
-            <p className="sticky top-0 bg-card px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+            <p className="sticky top-0 bg-card px-3 pb-1 pt-2 text-ds-micro font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
               Submitted ({submitted.length})
             </p>
             <div className="px-3">
@@ -148,9 +148,9 @@ function ReportsPopoverContent({
                 <div key={r.user_id} className="flex items-center gap-2 py-1.5">
                   <span className="size-1.5 shrink-0 rounded-full bg-emerald-500 dark:bg-emerald-400" />
                   <span className="min-w-0 flex-1 truncate text-xs text-foreground">{r.name}</span>
-                  <span className="shrink-0 text-[10px] capitalize text-muted-foreground/50">{r.role}</span>
+                  <span className="shrink-0 text-ds-micro capitalize text-muted-foreground/50">{r.role}</span>
                   {r.calls_in_report > 0 && (
-                    <span className="shrink-0 text-[10px] text-emerald-600 dark:text-emerald-400">{r.calls_in_report}c</span>
+                    <span className="shrink-0 text-ds-micro text-emerald-600 dark:text-emerald-400">{r.calls_in_report}c</span>
                   )}
                 </div>
               ))}
@@ -159,7 +159,7 @@ function ReportsPopoverContent({
         )}
         {pending.length > 0 && (
           <div className="pb-1">
-            <p className="sticky top-0 bg-card px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+            <p className="sticky top-0 bg-card px-3 pb-1 pt-2 text-ds-micro font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
               Pending ({pending.length})
             </p>
             <div className="px-3">
@@ -167,9 +167,9 @@ function ReportsPopoverContent({
                 <div key={r.user_id} className="flex items-center gap-2 py-1.5">
                   <span className="size-1.5 shrink-0 rounded-full bg-amber-500 dark:bg-amber-400" />
                   <span className="min-w-0 flex-1 truncate text-xs text-foreground">{r.name}</span>
-                  <span className="shrink-0 text-[10px] capitalize text-muted-foreground/50">{r.role}</span>
+                  <span className="shrink-0 text-ds-micro capitalize text-muted-foreground/50">{r.role}</span>
                   {r.reminded && (
-                    <span className="shrink-0 rounded bg-emerald-500/10 px-1 py-px text-[9px] font-medium text-emerald-600 dark:text-emerald-400">
+                    <span className="shrink-0 rounded bg-emerald-500/10 px-1 py-px text-ds-micro font-medium text-emerald-600 dark:text-emerald-400">
                       WA ✓
                     </span>
                   )}
@@ -186,7 +186,7 @@ function ReportsPopoverContent({
           <button
             disabled={sending}
             onClick={sendReminders}
-            className="flex w-full items-center justify-center gap-1.5 rounded border border-emerald-500/20 bg-emerald-500/[0.07] px-3 py-1.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-300 transition-colors hover:bg-emerald-500/[0.14] disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-1.5 rounded border border-emerald-500/20 bg-emerald-500/[0.07] px-3 py-1.5 text-ds-micro font-semibold text-emerald-600 dark:text-emerald-300 transition-colors hover:bg-emerald-500/[0.14] disabled:opacity-50"
           >
             {sending ? (
               <>
@@ -206,7 +206,7 @@ function ReportsPopoverContent({
       {/* All pending already reminded */}
       {pending.length > 0 && unreminded.length === 0 && (
         <div className="border-t border-border/40 px-3 py-2">
-          <p className="text-[10px] text-emerald-600 dark:text-emerald-400">WhatsApp reminder sabko bhej diya gaya ✓</p>
+          <p className="text-ds-micro text-emerald-600 dark:text-emerald-400">WhatsApp reminder sabko bhej diya gaya ✓</p>
         </div>
       )}
     </div>
@@ -307,7 +307,7 @@ export function OpsKpiBar() {
       {/* Zero-activity — only when members are online with no work */}
       {zeroActivity.length > 0 && (
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40">
+          <span className="text-ds-micro font-semibold uppercase tracking-wider text-muted-foreground/40">
             No Activity
           </span>
           <ZeroActivityInline users={zeroActivity} />
@@ -335,7 +335,7 @@ function ZeroActivityInline({ users }: { users: ZeroActivityItem[] }) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 rounded border border-amber-500/20 bg-amber-500/[0.05] px-3 py-1.5 text-[11px] font-semibold text-amber-600 dark:text-amber-300 transition-colors hover:bg-amber-500/[0.1]"
+        className="flex items-center gap-1.5 rounded border border-amber-500/20 bg-amber-500/[0.05] px-3 py-1.5 text-ds-micro font-semibold text-amber-600 dark:text-amber-300 transition-colors hover:bg-amber-500/[0.1]"
       >
         <span className="relative flex size-1.5">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-500 dark:bg-amber-400 opacity-60" />
@@ -346,7 +346,7 @@ function ZeroActivityInline({ users }: { users: ZeroActivityItem[] }) {
       {open && (
         <div className="absolute left-0 top-full z-50 mt-1.5 w-64 rounded border border-border/60 bg-card shadow-xl">
           <div className="max-h-56 overflow-y-auto">
-            <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+            <p className="px-3 pb-1 pt-2 text-ds-micro font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
               Online · 0 activity today
             </p>
             <div className="px-3 pb-2">
@@ -354,7 +354,7 @@ function ZeroActivityInline({ users }: { users: ZeroActivityItem[] }) {
                 <div key={z.user_id} className="flex items-center gap-2 py-1.5">
                   <span className="size-1.5 shrink-0 rounded-full bg-amber-500 dark:bg-amber-400" />
                   <span className="min-w-0 flex-1 truncate text-xs text-foreground">{z.name}</span>
-                  <span className="shrink-0 text-[10px] capitalize text-muted-foreground/50">{z.role}</span>
+                  <span className="shrink-0 text-ds-micro capitalize text-muted-foreground/50">{z.role}</span>
                 </div>
               ))}
             </div>

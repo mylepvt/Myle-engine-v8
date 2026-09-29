@@ -207,8 +207,8 @@ function StatCard({
     <div title={hint} className="flex h-[68px] items-center gap-3 px-4">
       <div className={`h-7 w-[3px] shrink-0 rounded-full ${styles.accent}`} />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[0.62rem] font-medium tracking-[0.08em] text-muted-foreground/60" style={{ textTransform: 'none' }}>{label}</p>
-        <p className={`mt-0.5 font-heading text-[1.7rem] font-semibold leading-none tabular-nums ${styles.value}`}>{value}</p>
+        <p className="truncate text-ds-micro font-medium tracking-[0.08em] text-muted-foreground/60" style={{ textTransform: 'none' }}>{label}</p>
+        <p className={`mt-0.5 font-heading text-ds-display font-semibold leading-none tabular-nums ${styles.value}`}>{value}</p>
       </div>
     </div>
   )
@@ -245,7 +245,7 @@ function DeskShortcut({
         <div className="flex items-center gap-2">
           <p className="text-sm font-semibold text-foreground">{title}</p>
           {badge != null && Number(badge) > 0 ? (
-            <span className="rounded-full bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
+            <span className="rounded-full bg-amber-400/15 px-1.5 py-0.5 text-ds-micro font-bold text-amber-300">
               {badge}
             </span>
           ) : null}
@@ -310,7 +310,7 @@ function LeaderRingCard({ leader }: { leader: LeaderHealthItem }) {
       {/* Presence indicator */}
       <div className="absolute right-4 top-4 flex items-center gap-1.5">
         <span className={`size-2 rounded-full ${presenceDot}`} />
-        <span className="text-[10px] capitalize text-muted-foreground">{leader.presence_status}</span>
+        <span className="text-ds-micro capitalize text-muted-foreground">{leader.presence_status}</span>
       </div>
 
       {/* Progress ring */}
@@ -340,7 +340,7 @@ function LeaderRingCard({ leader }: { leader: LeaderHealthItem }) {
         </svg>
         <div className="absolute text-center">
           <p className="text-xl font-bold leading-none tabular-nums text-foreground">{score}</p>
-          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">score</p>
+          <p className="text-ds-micro uppercase tracking-wide text-muted-foreground">score</p>
         </div>
       </div>
 
@@ -352,42 +352,42 @@ function LeaderRingCard({ leader }: { leader: LeaderHealthItem }) {
 
       {/* Personal stats */}
       <div className="w-full space-y-1.5 rounded border border-border/40 bg-muted/20 p-3">
-        <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground">Personal Today</p>
+        <p className="text-ds-micro font-semibold uppercase tracking-widest text-muted-foreground">Personal Today</p>
         <div className="grid grid-cols-3 gap-2 text-center">
           <div>
             <p className="text-base font-bold tabular-nums text-foreground">{leader.personal_calls_today}</p>
-            <p className="text-[9px] text-muted-foreground">Calls</p>
+            <p className="text-ds-micro text-muted-foreground">Calls</p>
           </div>
           <div>
             <p className="text-base font-bold tabular-nums text-foreground">{leader.personal_leads_added}</p>
-            <p className="text-[9px] text-muted-foreground">Leads</p>
+            <p className="text-ds-micro text-muted-foreground">Leads</p>
           </div>
           <div>
             <p className="text-base font-bold tabular-nums text-foreground">{leader.personal_followups_done}</p>
-            <p className="text-[9px] text-muted-foreground">Followups</p>
+            <p className="text-ds-micro text-muted-foreground">Followups</p>
           </div>
         </div>
       </div>
 
       {/* Team stats */}
       <div className="w-full space-y-1.5 rounded border border-border/40 bg-muted/20 p-3">
-        <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground">Team</p>
+        <p className="text-ds-micro font-semibold uppercase tracking-widest text-muted-foreground">Team</p>
         <div className="grid grid-cols-2 gap-2 text-center">
           <div>
             <p className="text-base font-bold tabular-nums text-foreground">{leader.team_calls_today}</p>
-            <p className="text-[9px] text-muted-foreground">Calls Today</p>
+            <p className="text-ds-micro text-muted-foreground">Calls Today</p>
           </div>
           <div>
             <p className="text-base font-bold tabular-nums text-foreground">{leader.team_size}</p>
-            <p className="text-[9px] text-muted-foreground">Members</p>
+            <p className="text-ds-micro text-muted-foreground">Members</p>
           </div>
           <div>
             <p className="text-base font-bold tabular-nums text-foreground">{leader.team_online_count}</p>
-            <p className="text-[9px] text-muted-foreground">Online Now</p>
+            <p className="text-ds-micro text-muted-foreground">Online Now</p>
           </div>
           <div>
             <p className="text-base font-bold tabular-nums text-foreground">{leader.team_avg_score}</p>
-            <p className="text-[9px] text-muted-foreground">Avg Score</p>
+            <p className="text-ds-micro text-muted-foreground">Avg Score</p>
           </div>
         </div>
       </div>
@@ -407,7 +407,7 @@ function LeaderRingCard({ leader }: { leader: LeaderHealthItem }) {
         >
           {leader.day2_leads_count}
         </p>
-        <p className="text-[9px] text-muted-foreground">Day 2 Leads Active</p>
+        <p className="text-ds-micro text-muted-foreground">Day 2 Leads Active</p>
       </div>
     </div>
   )
@@ -453,11 +453,11 @@ function GraceRequestRow({ member }: { member: TeamMemberPublic }) {
           {member.username ?? member.fbo_id}
           <span className="ml-2 text-xs font-normal text-muted-foreground">{member.fbo_id}</span>
         </p>
-        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${riskCfg.cls}`}>
+        <span className={`rounded-full px-2 py-0.5 text-ds-micro font-semibold ${riskCfg.cls}`}>
           {riskCfg.label}
         </span>
         {count30d >= 2 && (
-          <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-semibold text-red-700 dark:text-red-400">
+          <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-ds-micro font-semibold text-red-700 dark:text-red-400">
             Over monthly limit
           </span>
         )}
@@ -472,7 +472,7 @@ function GraceRequestRow({ member }: { member: TeamMemberPublic }) {
           {member.grace_request_reason ? ` · ${member.grace_request_reason}` : ''}
         </p>
         {/* Grace intelligence context */}
-        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-ds-micro">
           <span className="text-muted-foreground">
             {count30d === 0 ? '1st grace this month' : `${count30d + 1}${count30d + 1 === 2 ? 'nd' : count30d + 1 === 3 ? 'rd' : 'th'} this month`}
           </span>
@@ -583,7 +583,7 @@ function DashboardViewSwitcher({
         <CurrentIcon className="size-4 text-primary" />
         <span>{current.label}</span>
         {totalAlerts > 0 && (
-          <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
+          <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-ds-micro font-bold text-amber-300">
             {totalAlerts}
           </span>
         )}
@@ -616,7 +616,7 @@ function DashboardViewSwitcher({
                 <Icon className={cn('size-4 shrink-0', isActive ? 'text-primary' : 'text-muted-foreground')} />
                 <span className="flex-1 text-left">{t.label}</span>
                 {badge > 0 && (
-                  <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
+                  <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-ds-micro font-bold text-amber-300">
                     {badge}
                   </span>
                 )}
@@ -775,7 +775,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                     <span className="text-xs text-muted-foreground">
                       {orgScore.data.total_members} members · {orgScore.data.total_leads} leads
                     </span>
-                    <Badge variant="secondary" className="text-[10px]">
+                    <Badge variant="secondary" className="text-ds-micro">
                       {new Date(orgScore.data.computed_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                     </Badge>
                   </div>
@@ -801,7 +801,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                       return (
                         <div key={c.key} className="rounded-lg border border-border/40 p-2.5">
                           <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-medium text-muted-foreground">{c.label}</span>
+                            <span className="text-ds-micro font-medium text-muted-foreground">{c.label}</span>
                             <span className="text-sm font-bold tabular-nums text-foreground">{c.value}</span>
                           </div>
                           <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -892,21 +892,21 @@ export function AdminCommandCenter({ firstName }: Props) {
               </CardHeader>
               <CardContent className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div className="surface-inset rounded-md p-4">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Claimed today</p>
-                  <p className="mt-2 text-[1.75rem] font-bold leading-none tabular-nums text-foreground">{liveDash.claimedToday || (liveSummary?.leads_claimed_today ?? 0)}</p>
+                  <p className="text-ds-micro font-semibold uppercase tracking-[0.14em] text-muted-foreground">Claimed today</p>
+                  <p className="mt-2 text-ds-display font-bold leading-none tabular-nums text-foreground">{liveDash.claimedToday || (liveSummary?.leads_claimed_today ?? 0)}</p>
                 </div>
                 <div className="surface-inset rounded-md p-4">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Approved today</p>
-                  <p className="mt-2 text-[1.75rem] font-bold leading-none tabular-nums text-foreground">
+                  <p className="text-ds-micro font-semibold uppercase tracking-[0.14em] text-muted-foreground">Approved today</p>
+                  <p className="mt-2 text-ds-display font-bold leading-none tabular-nums text-foreground">
                     {liveDash.approvedToday || (liveSummary?.payment_proofs_approved_today ?? 0)}
                   </p>
                 </div>
                 <div className="surface-inset rounded-md p-4">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Lead pool visible</p>
-                  <p className="mt-2 text-[1.75rem] font-bold leading-none tabular-nums text-foreground">{leadPool.data?.total ?? 0}</p>
+                  <p className="text-ds-micro font-semibold uppercase tracking-[0.14em] text-muted-foreground">Lead pool visible</p>
+                  <p className="mt-2 text-ds-display font-bold leading-none tabular-nums text-foreground">{leadPool.data?.total ?? 0}</p>
                 </div>
                 <div className="surface-inset rounded-md p-4">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Latest reassignment</p>
+                  <p className="text-ds-micro font-semibold uppercase tracking-[0.14em] text-muted-foreground">Latest reassignment</p>
                   <p className="mt-2 text-sm font-semibold text-foreground">
                     {leadControl.data?.history?.[0]?.lead_name ?? 'No movement yet'}
                   </p>
@@ -1025,7 +1025,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                         </div>
                         <div className="shrink-0 text-right">
                           <p className={`text-xs font-bold tabular-nums ${(lead.days_inactive ?? 0) >= 14 ? 'text-red-600' : 'text-amber-600'}`}>{lead.days_inactive}d</p>
-                          <p className="text-[10px] text-muted-foreground">inactive</p>
+                          <p className="text-ds-micro text-muted-foreground">inactive</p>
                         </div>
                       </div>
                     ))}
@@ -1054,7 +1054,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                         <div key={m.user_id} className="surface-inset rounded-md p-3">
                           <div className="flex items-center justify-between"><p className="text-sm font-medium">{m.name}</p><Badge variant="secondary">{m.total_dead}</Badge></div>
                           <div className="mt-1.5 flex flex-wrap gap-1">{Object.entries(m.reasons).map(([reason, count]) => (
-                            <span key={reason} className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${reason === 'known_zone_miss' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' : reason === 'no_budget' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' : 'bg-muted text-muted-foreground'}`}>{reason.replace(/_/g, ' ')}: {count}</span>
+                            <span key={reason} className={`inline-block rounded-full px-2 py-0.5 text-ds-micro font-medium ${reason === 'known_zone_miss' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' : reason === 'no_budget' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' : 'bg-muted text-muted-foreground'}`}>{reason.replace(/_/g, ' ')}: {count}</span>
                           ))}</div>
                         </div>
                       ))}
@@ -1094,7 +1094,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                     <div className="space-y-2 max-h-[300px] overflow-y-auto">
                       {(recycleLeads.data?.leads ?? []).slice(0, 15).map((lead) => (
                         <div key={lead.id} className="surface-inset flex items-center justify-between rounded-md p-3">
-                          <div><p className="text-sm font-medium">{lead.name}</p><p className="text-xs text-muted-foreground">{lead.assigned_to_name ?? 'Unassigned'}</p>{lead.recycle_reason && <p className="text-[10px] text-muted-foreground">Reason: {lead.recycle_reason.replace(/_/g, ' ')}</p>}</div>
+                          <div><p className="text-sm font-medium">{lead.name}</p><p className="text-xs text-muted-foreground">{lead.assigned_to_name ?? 'Unassigned'}</p>{lead.recycle_reason && <p className="text-ds-micro text-muted-foreground">Reason: {lead.recycle_reason.replace(/_/g, ' ')}</p>}</div>
                           <p className="text-xs text-muted-foreground">{lead.days_in_recycle ?? '?'}d ago</p>
                         </div>
                       ))}
@@ -1232,7 +1232,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                               const barColor = bar.value >= 80 ? 'bg-green-500' : bar.value >= 40 ? 'bg-amber-500' : 'bg-red-500'
                               return (
                                 <div key={bar.key} className={`rounded border p-2 ${bar.weak ? 'border-red-400/50 bg-red-50 dark:bg-red-950/20' : 'border-border/40'}`}>
-                                  <div className="flex items-center justify-between"><span className="text-[10px] font-medium text-muted-foreground">{bar.label} ({bar.pct}%)</span><span className={`text-xs font-bold tabular-nums ${bar.value >= 80 ? 'text-green-600' : bar.value >= 40 ? 'text-amber-600' : 'text-red-600'}`}>{bar.value}</span></div>
+                                  <div className="flex items-center justify-between"><span className="text-ds-micro font-medium text-muted-foreground">{bar.label} ({bar.pct}%)</span><span className={`text-xs font-bold tabular-nums ${bar.value >= 80 ? 'text-green-600' : bar.value >= 40 ? 'text-amber-600' : 'text-red-600'}`}>{bar.value}</span></div>
                                   <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full ${barColor}`} style={{ width: `${bar.value}%` }} /></div>
                                 </div>
                               )
@@ -1274,7 +1274,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                           <div className="h-full bg-primary/70 transition-all" style={{ width: `${(leader.personal_calls_today / maxTotal) * 100}%` }} />
                           <div className="h-full bg-primary/30 transition-all" style={{ width: `${(leader.team_calls_today / maxTotal) * 100}%` }} />
                         </div>
-                        <div className="mt-1.5 flex gap-4 text-[10px] text-muted-foreground">
+                        <div className="mt-1.5 flex gap-4 text-ds-micro text-muted-foreground">
                           <span className="flex items-center gap-1"><span className="inline-block size-2 rounded-sm bg-primary/70" /> Personal</span>
                           <span className="flex items-center gap-1"><span className="inline-block size-2 rounded-sm bg-primary/30" /> Team</span>
                           <span className="ml-auto">{leader.team_size} team member{leader.team_size !== 1 ? 's' : ''}</span>
@@ -1422,7 +1422,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                     <CardHeader className="pb-2">
                       <div className="flex items-start justify-between"><CardTitle className="text-sm font-semibold">{camp.name}</CardTitle><Badge variant="secondary">{camp.enrollment_count} enrolled</Badge></div>
                       {camp.description && <CardDescription className="line-clamp-2 text-xs">{camp.description}</CardDescription>}
-                      {camp.webinar_date && <p className="text-[10px] text-muted-foreground">Webinar: {new Date(camp.webinar_date).toLocaleDateString()}</p>}
+                      {camp.webinar_date && <p className="text-ds-micro text-muted-foreground">Webinar: {new Date(camp.webinar_date).toLocaleDateString()}</p>}
                     </CardHeader>
                     <CardContent className="flex-1"><CampaignMetricsMini campaignId={camp.id} /></CardContent>
                   </Card>

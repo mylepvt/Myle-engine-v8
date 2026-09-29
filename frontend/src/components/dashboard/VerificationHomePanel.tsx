@@ -57,7 +57,7 @@ function TaskCard({ task }: { task: TaskAssignmentPublic }) {
             <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{task.evidence_instructions}</p>
           )}
         </div>
-        <Badge className={cn('shrink-0 text-[10px]', badge.className)}>{badge.label}</Badge>
+        <Badge className={cn('shrink-0 text-ds-micro', badge.className)}>{badge.label}</Badge>
       </div>
 
       {task.blocker_reason && (

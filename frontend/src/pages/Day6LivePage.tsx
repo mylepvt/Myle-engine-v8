@@ -156,13 +156,13 @@ function JoinFeed({ entries }: { entries: JoinEntry[] }) {
   const visible = entries.slice(-5)
   return (
     <div className="w-full max-w-2xl overflow-hidden rounded-[1.6rem] border border-white/8 bg-white/[0.03] px-4 py-3 backdrop-blur-xl">
-      <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.25em] text-[#6b83a8]">Live activity</p>
+      <p className="mb-2 text-ds-micro font-semibold uppercase tracking-[0.25em] text-[#6b83a8]">Live activity</p>
       <div className="space-y-1.5">
         {visible.map((e, i) => (
           <div
             key={e.id}
             style={{ opacity: 0.35 + 0.65 * ((i + 1) / visible.length) }}
-            className="flex items-center gap-2 text-[13px]"
+            className="flex items-center gap-2 text-ds-caption"
           >
             <span className="size-1.5 shrink-0 rounded-full bg-emerald-400" />
             <span className="text-[#c9d9ff]">
@@ -345,7 +345,7 @@ function LiveSection({
                 <p className="text-base font-semibold text-white">You're in, {firstName}</p>
                 <p className="mt-0.5 text-sm text-[#b6c6e7]">Session is live right now — watch till the end</p>
               </div>
-              <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-white">
+              <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-ds-micro font-bold uppercase tracking-widest text-white">
                 <span className="relative flex size-2">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
                   <span className="relative inline-flex size-2 rounded-full bg-red-400" />
@@ -416,12 +416,12 @@ export function Day6LivePage() {
         <header className="rounded-[2rem] border border-white/10 bg-muted/40 px-5 py-4 backdrop-blur-2xl">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#9db0d6]">Myle</p>
+              <p className="text-ds-micro font-semibold uppercase tracking-[0.34em] text-[#9db0d6]">Myle</p>
               <h1 className="mt-1 text-ds-h2">Private Live Session</h1>
             </div>
             <div className="flex items-center gap-3">
               {(state === 'waiting' || state === 'live') && viewerCount > 0 && (
-                <span className="flex items-center gap-1.5 rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-[12px] font-semibold text-red-300 tabular-nums transition-all duration-700">
+                <span className="flex items-center gap-1.5 rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-300 tabular-nums transition-all duration-700">
                   <span className="relative flex size-1.5">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
                     <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
@@ -430,7 +430,7 @@ export function Day6LivePage() {
                 </span>
               )}
               {state === 'live' && (
-                <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-white shadow-[0_0_14px_rgba(220,38,38,0.55)]">
+                <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-ds-micro font-bold uppercase tracking-widest text-white shadow-[0_0_14px_rgba(220,38,38,0.55)]">
                   <span className="relative flex size-2">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
                     <span className="relative inline-flex size-2 rounded-full bg-red-400" />
@@ -439,7 +439,7 @@ export function Day6LivePage() {
                 </span>
               )}
               {data && (
-                <p className="hidden rounded-full border border-[#3f537d] bg-[#0b1120] px-4 py-2 text-[11px] font-semibold text-[#c9d9ff] sm:block">
+                <p className="hidden rounded-full border border-[#3f537d] bg-[#0b1120] px-4 py-2 text-ds-micro font-semibold text-[#c9d9ff] sm:block">
                   {formatDateIST(data.live_starts_at)}
                 </p>
               )}

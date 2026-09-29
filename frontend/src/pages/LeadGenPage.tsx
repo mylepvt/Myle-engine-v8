@@ -298,7 +298,7 @@ export function LeadGenPage({ title }: { title?: string }) {
                         onChange={(e) => setMsgDraft(e.target.value)}
                         placeholder={link.share_message}
                       />
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-ds-micro text-muted-foreground">
                         Tip: use {'{link}'} where your link should appear.
                       </p>
                       <div className="flex gap-2">
@@ -426,7 +426,7 @@ export function LeadGenPage({ title }: { title?: string }) {
                               onClick={() => shareTemplate(link, tpl)}
                             >
                               {tpl.name}
-                              <span className="mt-1 block text-[10px] opacity-80">
+                              <span className="mt-1 block text-ds-micro opacity-80">
                                 Tap to share
                               </span>
                             </button>
@@ -483,7 +483,7 @@ function LinkResponses({ linkId }: { linkId: number }) {
                 .join(' · ')}
             </p>
           </div>
-          <span className="whitespace-nowrap text-[11px] text-muted-foreground">
+          <span className="whitespace-nowrap text-ds-micro text-muted-foreground">
             {formatWhen(r.created_at)}
           </span>
         </div>

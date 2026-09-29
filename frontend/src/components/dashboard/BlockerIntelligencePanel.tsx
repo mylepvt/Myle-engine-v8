@@ -72,9 +72,9 @@ export function BlockerIntelligencePanel({ className }: { className?: string }) 
             Blocker Intelligence
           </CardTitle>
           <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="text-[10px]">{data.total_current} total</Badge>
+            <Badge variant="secondary" className="text-ds-micro">{data.total_current} total</Badge>
             {data.total_previous > 0 && (
-              <Badge variant={data.total_current > data.total_previous ? 'destructive' : 'secondary'} className="text-[10px]">
+              <Badge variant={data.total_current > data.total_previous ? 'destructive' : 'secondary'} className="text-ds-micro">
                 <TrendingUp className="mr-0.5 size-3" />
                 {data.total_current > data.total_previous ? '+' : ''}{data.total_current - data.total_previous} vs last 30d
               </Badge>
@@ -105,7 +105,7 @@ export function BlockerIntelligencePanel({ className }: { className?: string }) 
                 <p className="text-xs font-bold text-amber-800 dark:text-amber-300">
                   {data.biggest_blocker_label}
                 </p>
-                <p className="mt-1 text-[11px] text-amber-700/80 dark:text-amber-400/80 whitespace-pre-line">
+                <p className="mt-1 text-ds-micro text-amber-700/80 dark:text-amber-400/80 whitespace-pre-line">
                   {data.suggestion}
                 </p>
               </div>

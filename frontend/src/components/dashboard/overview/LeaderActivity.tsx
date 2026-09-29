@@ -38,7 +38,7 @@ function LeaderRow({ l, view, onOpen }: { l: LeaderHealthItem; view: View; onOpe
       <span className={cn('size-2 shrink-0 rounded-full', PRESENCE[l.presence_status] ?? PRESENCE.offline)} aria-label={l.presence_status} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-foreground">{l.leader_name}</p>
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-ds-micro text-muted-foreground">
           {view === 'team'
             ? `${l.team_size} members · ${l.team_online_count} online`
             : `${l.personal_leads_added} added · ${l.personal_followups_done} follow-ups`}
@@ -48,24 +48,24 @@ function LeaderRow({ l, view, onOpen }: { l: LeaderHealthItem; view: View; onOpe
         <div className="flex shrink-0 items-center gap-3 text-right">
           <div>
             <p className="text-sm font-semibold tabular-nums text-blue-600 dark:text-blue-400">{l.team_calls_today}</p>
-            <p className="text-[10px] text-muted-foreground">calls</p>
+            <p className="text-ds-micro text-muted-foreground">calls</p>
           </div>
           <div>
             <p className={cn('text-sm font-semibold tabular-nums', scoreColor(l.team_avg_score))}>{l.team_avg_score}</p>
-            <p className="text-[10px] text-muted-foreground">score</p>
+            <p className="text-ds-micro text-muted-foreground">score</p>
           </div>
         </div>
       ) : (
         <div className="flex shrink-0 items-center gap-3 text-right">
           <div>
             <p className="text-sm font-semibold tabular-nums text-blue-600 dark:text-blue-400">{l.personal_calls_today}</p>
-            <p className="text-[10px] text-muted-foreground">calls</p>
+            <p className="text-ds-micro text-muted-foreground">calls</p>
           </div>
           <div>
             <p className={cn('text-sm font-semibold tabular-nums', bandColor(l.personal_consistency_band))}>
               {l.personal_consistency_score}
             </p>
-            <p className="text-[10px] text-muted-foreground">consistency</p>
+            <p className="text-ds-micro text-muted-foreground">consistency</p>
           </div>
         </div>
       )}
@@ -97,7 +97,7 @@ export function LeaderActivity() {
                 type="button"
                 onClick={() => setView(v)}
                 className={cn(
-                  'rounded-md px-2.5 py-0.5 text-[11px] font-semibold transition',
+                  'rounded-md px-2.5 py-0.5 text-ds-micro font-semibold transition',
                   view === v ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
                 )}
               >

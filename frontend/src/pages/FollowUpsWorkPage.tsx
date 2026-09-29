@@ -37,7 +37,7 @@ export function FollowUpsWorkPage({ title }: Props) {
   const fuQ = useFollowUpsQuery(openOnly)
 
   const filteredFuItems = useMemo(() => {
-    if (!fuQ.data?.items) return [] as typeof fuQ.data.items
+    if (!fuQ.data?.items) return [] as NonNullable<typeof fuQ.data>['items']
     const q = fuSearch.trim().toLowerCase()
     if (!q) return fuQ.data.items
     return fuQ.data.items.filter(

@@ -82,10 +82,10 @@ export function TeamDashboardHomeModern({
         <div className="relative space-y-4 p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-blue-100/70">
+              <p className="text-ds-micro font-semibold uppercase tracking-[0.22em] text-blue-100/70">
                 {greeting}
               </p>
-              <h1 className="mt-2 font-heading text-[1.9rem] font-semibold leading-none tracking-[-0.04em] text-white">
+              <h1 className="mt-2 font-heading text-ds-display font-semibold leading-none tracking-[-0.04em] text-white">
                 {firstName}
               </h1>
               <p className="mt-2 max-w-[16rem] text-sm leading-6 text-blue-100/74">
@@ -101,7 +101,7 @@ export function TeamDashboardHomeModern({
               <p className="mt-1 text-2xl font-semibold leading-none text-white">
                 {today?.flp_min_billing_today ?? 0}
               </p>
-              <p className="mt-1 text-[0.72rem] text-blue-100/70">
+              <p className="mt-1 text-ds-micro text-blue-100/70">
                 {enrolledPct}% from claimed
               </p>
             </div>
@@ -165,7 +165,7 @@ export function TeamDashboardHomeModern({
                   />
                   <span>{action.label}</span>
                   {action.badgeCount != null ? (
-                    <span className="rounded-full bg-[color-mix(in_srgb,var(--foreground)_12%,transparent)] px-1.5 py-0.5 text-[0.65rem] text-blue-50">
+                    <span className="rounded-full bg-[color-mix(in_srgb,var(--foreground)_12%,transparent)] px-1.5 py-0.5 text-ds-micro text-blue-50">
                       {action.badgeCount}
                     </span>
                   ) : null}
@@ -227,10 +227,10 @@ export function TeamDashboardHomeModern({
                       {humanizeStatus(lead.status)}
                     </span>
                     {lead.phone ? (
-                      <span className="truncate text-[0.72rem] text-muted-foreground">{lead.phone}</span>
+                      <span className="truncate text-ds-micro text-muted-foreground">{lead.phone}</span>
                     ) : null}
                   </div>
-                  <span className="inline-flex shrink-0 items-center gap-1 text-[0.72rem] font-semibold text-primary">
+                  <span className="inline-flex shrink-0 items-center gap-1 text-ds-micro font-semibold text-primary">
                     Open
                     <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden />
                   </span>

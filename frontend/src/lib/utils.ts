@@ -1,5 +1,20 @@
 import { type ClassValue, clsx } from 'clsx'
-import { twMerge } from 'tailwind-merge'
+import { extendTailwindMerge } from 'tailwind-merge'
+
+/**
+ * tailwind-merge must know our design-system font sizes (tailwind.config.js
+ * `fontSize`). Without this it treats `text-ds-*` as a text *colour*, so
+ * `cn('text-ds-caption', 'text-muted-foreground')` silently dropped the size.
+ */
+const twMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      'font-size': [
+        { text: ['ds-display', 'ds-h1', 'ds-h2', 'ds-h3', 'ds-body', 'ds-caption', 'ds-label', 'ds-micro'] },
+      ],
+    },
+  },
+})
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))

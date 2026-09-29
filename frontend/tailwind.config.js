@@ -36,6 +36,8 @@ export default {
         ],
       },
       fontSize: {
+        /* 28px — big KPI / stat numbers only (dashboard tiles, scores). */
+        'ds-display': ['1.75rem', { lineHeight: '2rem', letterSpacing: '-0.03em' }],
         /* iOS large title feel on web (scaled for dashboard density) */
         'ds-h1': [
           '1.625rem',
@@ -63,6 +65,9 @@ export default {
           '0.6875rem',
           { lineHeight: '1rem', fontWeight: '600', letterSpacing: '0.07em' },
         ],
+        /* 11px — smallest text allowed anywhere (metadata, chips, chart ticks).
+           No weight/tracking so it composes with font-* / tracking-* utilities. */
+        'ds-micro': ['0.6875rem', { lineHeight: '1rem' }],
       },
       colors: {
         /* oklch tokens from CSS variables (shadcn / v0 export compatible) */

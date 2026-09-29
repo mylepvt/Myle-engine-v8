@@ -153,7 +153,7 @@ export function CtcsLeadCard({
               <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-border/60 bg-muted/70 px-2 py-0.5">
                 <div
                   className={cn(
-                    'flex size-5 items-center justify-center rounded-full text-[9px] font-medium text-primary-foreground',
+                    'flex size-5 items-center justify-center rounded-full text-ds-micro font-medium text-primary-foreground',
                     assigneeBg,
                   )}
                 >
@@ -173,7 +173,7 @@ export function CtcsLeadCard({
             </p>
           ) : null}
           {lead.is_reassigned ? (
-            <span className="mt-1 inline-flex items-center gap-1 rounded bg-orange-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-orange-500">
+            <span className="mt-1 inline-flex items-center gap-1 rounded bg-orange-500/15 px-1.5 py-0.5 text-ds-micro font-semibold uppercase tracking-wide text-orange-500">
               <UserRoundCog className="size-3" aria-hidden />
               Reassigned
             </span>
@@ -289,7 +289,7 @@ export function CtcsLeadCard({
               <p className={cn('text-ds-caption font-semibold tabular-nums leading-tight', timeColors.text)}>
                 {overdue ? formatCountdown(ms) : formatLeadSlaTime(remainingSec)}
               </p>
-              <p className="text-[10px] leading-tight text-muted-foreground">{overdue ? 'SLA over' : 'left'}</p>
+              <p className="text-ds-micro leading-tight text-muted-foreground">{overdue ? 'SLA over' : 'left'}</p>
             </div>
           </div>
 

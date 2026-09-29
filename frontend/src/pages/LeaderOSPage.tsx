@@ -95,7 +95,7 @@ function MemberRow({ m }: { m: LosMemberRow }) {
       <TableCell>
         <Badge
           variant={m.is_active ? 'default' : 'destructive'}
-          className="text-[0.65rem]"
+          className="text-ds-micro"
         >
           {m.is_active ? 'Active' : 'Inactive'}
         </Badge>

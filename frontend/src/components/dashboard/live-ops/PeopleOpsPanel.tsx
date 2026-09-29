@@ -37,7 +37,7 @@ function LeaderCard({ leader, rank }: { leader: LeaderHealthItem; rank: number }
     <Link to={`/dashboard/team/tracking/${leader.leader_id}`} className="flex min-w-[100px] flex-1 flex-col items-center gap-2 overflow-hidden rounded border border-border dark:border-white/[0.06] bg-muted/20 dark:bg-white/[0.03] p-3 text-center no-underline transition-all duration-150 hover:border-foreground/10 dark:hover:border-white/20 hover:bg-muted/40 dark:hover:bg-white/[0.07] active:bg-muted/60 dark:active:bg-white/[0.1] cursor-pointer">
       {/* Rank badge */}
       <div
-        className="flex size-5 items-center justify-center rounded-full text-[10px] font-bold text-white shadow"
+        className="flex size-5 items-center justify-center rounded-full text-ds-micro font-bold text-white shadow"
         style={{ backgroundColor: rankBg(rank) }}
       >
         {rank}
@@ -45,7 +45,7 @@ function LeaderCard({ leader, rank }: { leader: LeaderHealthItem; rank: number }
       {/* Avatar */}
       <div className="relative">
         <div
-          className="flex size-12 items-center justify-center rounded-full text-[15px] font-bold text-white shadow-lg"
+          className="flex size-12 items-center justify-center rounded-full text-ds-body font-bold text-white shadow-lg"
           style={{ backgroundColor: color }}
         >
           {initials(leader.leader_name)}
@@ -60,24 +60,24 @@ function LeaderCard({ leader, rank }: { leader: LeaderHealthItem; rank: number }
       </div>
       {/* Name */}
       <div className="w-full min-w-0">
-        <p className="truncate text-[11px] font-semibold leading-tight text-foreground">{leader.leader_name}</p>
-        <p className="truncate text-[10px] text-muted-foreground/70">
+        <p className="truncate text-ds-micro font-semibold leading-tight text-foreground">{leader.leader_name}</p>
+        <p className="truncate text-ds-micro text-muted-foreground/70">
           {leader.team_size} member team
         </p>
       </div>
       {/* Stats row */}
       <div className="flex w-full items-center justify-around gap-1 border-t border-border dark:border-white/[0.06] pt-2">
         <div className="text-center">
-          <p className="text-[13px] font-bold tabular-nums text-foreground">{leader.personal_leads_added}</p>
-          <p className="text-[9px] text-muted-foreground/70">Adds</p>
+          <p className="text-ds-caption font-bold tabular-nums text-foreground">{leader.personal_leads_added}</p>
+          <p className="text-ds-micro text-muted-foreground/70">Adds</p>
         </div>
         <div className="text-center">
-          <p className="text-[13px] font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{leader.personal_calls_today}</p>
-          <p className="text-[9px] text-muted-foreground/70">Calls</p>
+          <p className="text-ds-caption font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{leader.personal_calls_today}</p>
+          <p className="text-ds-micro text-muted-foreground/70">Calls</p>
         </div>
         <div className="text-center">
-          <p className="text-[13px] font-bold tabular-nums text-foreground">{leader.personal_consistency_score}</p>
-          <p className="text-[9px] text-muted-foreground/70">Score</p>
+          <p className="text-ds-caption font-bold tabular-nums text-foreground">{leader.personal_consistency_score}</p>
+          <p className="text-ds-micro text-muted-foreground/70">Score</p>
         </div>
       </div>
     </Link>
@@ -93,7 +93,7 @@ function TeamRow({ leader }: { leader: LeaderHealthItem }) {
       {/* Avatar + status */}
       <div className="relative shrink-0">
         <div
-          className="flex size-8 items-center justify-center rounded-full text-[11px] font-bold text-white"
+          className="flex size-8 items-center justify-center rounded-full text-ds-micro font-bold text-white"
           style={{ backgroundColor: color }}
         >
           {initials(leader.leader_name)}
@@ -107,9 +107,9 @@ function TeamRow({ leader }: { leader: LeaderHealthItem }) {
       </div>
       {/* Name + team */}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[12px] font-semibold text-foreground">{leader.leader_name}</p>
+        <p className="truncate text-xs font-semibold text-foreground">{leader.leader_name}</p>
         <div className="flex items-center gap-1.5">
-          <span className={cn('text-[10px] font-medium', isOnline ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground/60')}>
+          <span className={cn('text-ds-micro font-medium', isOnline ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground/60')}>
             {isOnline ? 'Live' : 'Offline'}
           </span>
         </div>
@@ -128,11 +128,11 @@ function TeamRow({ leader }: { leader: LeaderHealthItem }) {
 function ActivityChip({ label, value, icon }: { label: string; value: number; icon: string }) {
   return (
     <div className="flex min-w-[52px] flex-col items-center gap-0.5">
-      <div className="flex items-center gap-1 text-[10px] text-muted-foreground/70">
-        <span className="text-[10px]">{icon}</span>
+      <div className="flex items-center gap-1 text-ds-micro text-muted-foreground/70">
+        <span className="text-ds-micro">{icon}</span>
         <span>{label}</span>
       </div>
-      <span className="text-[13px] font-bold tabular-nums text-foreground">{value}</span>
+      <span className="text-ds-caption font-bold tabular-nums text-foreground">{value}</span>
     </div>
   )
 }
@@ -178,7 +178,7 @@ function LiveActivityFeed() {
 
   if (!visible.length) {
     return (
-      <div className="flex items-center justify-center py-6 text-[11px] text-muted-foreground/60">
+      <div className="flex items-center justify-center py-6 text-ds-micro text-muted-foreground/60">
         Waiting for activity…
       </div>
     )
@@ -197,24 +197,24 @@ function LiveActivityFeed() {
           >
             {/* Icon dot */}
             <div
-              className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-[11px]"
+              className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-ds-micro"
               style={{ backgroundColor: `${color}22`, color }}
             >
               {icon}
             </div>
             {/* Text */}
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[11.5px] font-medium leading-tight text-[color-mix(in_srgb,var(--foreground)_90%,transparent)]">
+              <p className="truncate text-xs font-medium leading-tight text-[color-mix(in_srgb,var(--foreground)_90%,transparent)]">
                 {entry.description}
               </p>
               {entry.actorName && entry.actorName !== 'Unknown' && (
-                <p className="mt-0.5 truncate text-[10px] text-muted-foreground/70">
+                <p className="mt-0.5 truncate text-ds-micro text-muted-foreground/70">
                   By {entry.actorName}
                 </p>
               )}
             </div>
             {/* Time */}
-            <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/60">
+            <span className="shrink-0 text-ds-micro tabular-nums text-muted-foreground/60">
               {timeAgo(entry.timestamp)}
             </span>
           </Link>
@@ -240,7 +240,7 @@ export function PeopleOpsPanel() {
     <div className="flex flex-col gap-0 overflow-hidden rounded border border-border dark:border-white/[0.06] bg-card">
       {/* Section header */}
       <div className="flex items-center justify-between border-b border-border dark:border-white/[0.06] px-4 py-3">
-        <h2 className="text-[12px] font-bold uppercase tracking-widest text-muted-foreground/60">
+        <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
           People Operations
         </h2>
       </div>
@@ -248,8 +248,8 @@ export function PeopleOpsPanel() {
       {/* Top Leaders */}
       <div className="border-b border-border dark:border-white/[0.06] px-4 py-3">
         <div className="mb-3 flex items-center justify-between">
-          <p className="text-[11px] font-semibold text-muted-foreground/70">Top Leaders (Today)</p>
-          <Link to="/dashboard/settings/all-members" className="text-[10px] font-medium text-primary/70 hover:text-primary">
+          <p className="text-ds-micro font-semibold text-muted-foreground/70">Top Leaders (Today)</p>
+          <Link to="/dashboard/settings/all-members" className="text-ds-micro font-medium text-primary/70 hover:text-primary">
             View all
           </Link>
         </div>
@@ -267,8 +267,8 @@ export function PeopleOpsPanel() {
       {/* Teams Live Overview */}
       <div className="border-b border-border dark:border-white/[0.06]">
         <div className="flex items-center justify-between px-4 py-3">
-          <p className="text-[11px] font-semibold text-muted-foreground/70">Teams Live Overview</p>
-          <Link to="/dashboard/settings/all-members" className="text-[10px] font-medium text-primary/70 hover:text-primary">
+          <p className="text-ds-micro font-semibold text-muted-foreground/70">Teams Live Overview</p>
+          <Link to="/dashboard/settings/all-members" className="text-ds-micro font-medium text-primary/70 hover:text-primary">
             View all
           </Link>
         </div>
@@ -291,9 +291,9 @@ export function PeopleOpsPanel() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 dark:bg-emerald-400 opacity-75" />
               <span className="relative inline-flex size-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
             </span>
-            <p className="text-[11px] font-semibold text-muted-foreground/70">Live Activity</p>
+            <p className="text-ds-micro font-semibold text-muted-foreground/70">Live Activity</p>
           </div>
-          <Link to="/dashboard/analytics/activity-log" className="text-[10px] font-medium text-primary/70 hover:text-primary">All Activity</Link>
+          <Link to="/dashboard/analytics/activity-log" className="text-ds-micro font-medium text-primary/70 hover:text-primary">All Activity</Link>
         </div>
         <LiveActivityFeed />
       </div>
