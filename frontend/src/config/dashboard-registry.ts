@@ -97,6 +97,8 @@ export type FullUiSurface =
   | { kind: 'live-session' }
   /** Legacy Other → Training (`/training`) — leader/team; same catalog as system training. */
   | { kind: 'community-training' }
+  /** Post-unlock Skills & Personal Development track (non-blocking). */
+  | { kind: 'skills-training' }
   | { kind: 'downloads' }
   | { kind: 'budget-export' }
   | { kind: 'settings-app' }
@@ -463,6 +465,14 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('other/training'),
     surface: 'full',
     ui: { kind: 'community-training' },
+  },
+  {
+    path: 'other/skills-training',
+    section: { id: 'other', label: 'Community' },
+    label: 'Skills Training',
+    roles: routeRoles('other/skills-training'),
+    surface: 'full',
+    ui: { kind: 'skills-training' },
   },
   {
     path: 'other/live-session',

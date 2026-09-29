@@ -29,6 +29,7 @@ import { FlpMinBillingApprovalsPage } from '@/pages/FlpMinBillingApprovalsPage'
 import { SalesApprovalsPage } from '@/pages/SalesApprovalsPage'
 import { PendingAsProcessPage } from '@/pages/PendingAsProcessPage'
 import { AnalyticsSurfacePage } from '@/pages/AnalyticsSurfacePage'
+import { SkillsTrainingPage } from '@/pages/SkillsTrainingPage'
 import { SystemSurfacePage } from '@/pages/SystemSurfacePage'
 import { RetargetWorkPage } from '@/pages/RetargetWorkPage'
 import { WorkboardPage } from '@/pages/WorkboardPage'
@@ -143,6 +144,8 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <LiveSessionPage title={title} />
     case 'community-training':
       return <CommunityTrainingPage title={title} />
+    case 'skills-training':
+      return <SkillsTrainingPage title={title} />
     case 'training-progress':
       return <TrainingProgressPage title={title} />
     case 'downloads':

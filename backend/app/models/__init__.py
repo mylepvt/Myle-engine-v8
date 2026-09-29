@@ -33,6 +33,7 @@ from app.models.training_question import TrainingQuestion
 from app.models.training_test_attempt import TrainingTestAttempt
 from app.models.lead_note import LeadNote
 from app.models.training_day_note import TrainingDayNote
+from app.models.skill_training import SkillTrainingProgress, SkillTrainingVideo
 from app.models.download import Download
 from app.models.user_presence_session import UserPresenceSession
 from app.models.verification_task import VerificationTask
@@ -80,6 +81,8 @@ __all__ = [
     "TrainingTestAttempt",
     "LeadNote",
     "TrainingDayNote",
+    "SkillTrainingVideo",
+    "SkillTrainingProgress",
     "Download",
     "UserPresenceSession",
     "VerificationTask",
