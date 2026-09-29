@@ -20,6 +20,7 @@ from app.models.lead import Lead
 from app.models.user import User
 from app.models.wallet_ledger import WalletLedgerEntry
 from app.schemas.system_surface import SystemStubResponse
+from app.services.exited_member_budget import ExitedMemberBudgetResponse, exited_member_budget
 from app.services.user_hierarchy import (
     load_user_hierarchy_entries,
     nearest_leader_entry,
@@ -418,6 +419,16 @@ async def finance_recharges_stub(
         total=len(items),
         note="Recent `wallet_ledger_entries` (newest first). Credits use POST /api/v1/wallet/adjustments with idempotency.",
     )
+
+
+@router.get("/budget-export/exited-members", response_model=ExitedMemberBudgetResponse)
+async def finance_exited_member_budget(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ExitedMemberBudgetResponse:
+    """Admin: unused wallet balance left with removed / blocked members."""
+    _require_admin(user)
+    return await exited_member_budget(session)
 
 
 @router.get("/budget-export", response_model=BudgetExportResponse)

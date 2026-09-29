@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { useQuery } from '@tanstack/react-query'
 
+import { ExitedMembersBudgetCard } from '@/components/finance/ExitedMembersBudgetCard'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -694,6 +695,8 @@ export function BudgetExportPage({ title }: Props) {
                 </CardContent>
               </Card>
             ) : null}
+
+            <ExitedMembersBudgetCard />
           </div>
 
           <Card>
