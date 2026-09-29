@@ -116,15 +116,6 @@ describe('AdminCommandCenter', () => {
           refetch: vi.fn(),
         }
       }
-      if (queryKey[0] === 'premiere') {
-        return {
-          data: [],
-          isPending: false,
-          isError: false,
-          error: null,
-          refetch: vi.fn(),
-        }
-      }
       if (queryKey[0] === 'training-campaigns') {
         return {
           data: [],

@@ -16,7 +16,6 @@ import { Day2TestPage } from '@/pages/Day2TestPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { WatchPage } from '@/pages/WatchPage'
 import { EnrollmentWatchPage } from '@/pages/EnrollmentWatchPage'
-import { LivePremierePage } from '@/pages/LivePremierePage'
 import { Day6LivePage } from '@/pages/Day6LivePage'
 import { CaptureFormPage } from '@/pages/CaptureFormPage'
 import { t } from '@/lib/i18n'
@@ -73,7 +72,6 @@ export function App() {
         <Route path="/watch/content" element={<ContentWatchPage />} />
         <Route path="/watch/:token" element={<WatchPage />} />
         <Route path="/enroll/:token" element={<EnrollmentWatchPage />} />
-        <Route path="/premiere" element={<LivePremierePage />} />
         <Route path="/watch/live/day6" element={<Day6LivePage />} />
         <Route path="/test/d2/:token" element={<Day2TestPage />} />
         <Route path="/c/:token" element={<CaptureFormPage />} />
