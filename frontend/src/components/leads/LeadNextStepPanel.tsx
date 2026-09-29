@@ -48,15 +48,15 @@ export function LeadNextStepPanel({ lead, className }: Props) {
       if (lead.paymentStatus === 'proof_uploaded') {
         return 'FLP invoice review me hai. Approvals se approve hote hi Paid unlock ho jayega.'
       }
-      return 'FLP invoice leader Workboard se upload karta hai. Approval ke baad hi Paid move sahi chalega.'
+      return 'The leader uploads the FLP invoice from the Workboard. Paid unlocks after approval.'
     }
     if (lead.paymentStatus === 'proof_uploaded') {
-      return 'FLP invoice review me hai. Admin approval ke baad Paid unlock ho jayega.'
+      return 'FLP invoice is under review. Paid unlocks after admin approval.'
     }
     if (lead.paymentStatus === 'rejected') {
-      return `FLP invoice reject ho gayi hai. Naya invoice ${workLeadsLabel} se upload karo.`
+      return `FLP invoice was rejected. Upload a new invoice from ${workLeadsLabel}.`
     }
-    return `FLP invoice pehle ${workLeadsLabel} se upload karo. Admin approval ke baad Paid unlock hoga.`
+    return `Upload the FLP invoice from ${workLeadsLabel} first. Paid unlocks after admin approval.`
   }
 
   async function runTransition(target: string) {

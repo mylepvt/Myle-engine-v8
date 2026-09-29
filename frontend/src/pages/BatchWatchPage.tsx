@@ -235,7 +235,7 @@ export function BatchWatchPage() {
 
     const text = notesText.trim()
     if (!text && !notesFile && !voiceFile && !videoFile) {
-      setSubmissionError('Notes, voice note, ya video me se kuch to upload kariye.')
+      setSubmissionError('Upload at least one: notes, a voice note, or a video.')
       return
     }
 
@@ -366,7 +366,7 @@ export function BatchWatchPage() {
             {/* Confirm watched */}
             {accessOpen ? (
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm text-white/55">Video play me issue ho to screen par play tap kariye.</p>
+                <p className="text-sm text-white/55">If the video doesn't start, tap play on the screen.</p>
                 <Button
                   type="button"
                   variant="secondary"
@@ -383,7 +383,7 @@ export function BatchWatchPage() {
             ) : watchComplete ? (
               <div className="flex items-start gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.08] px-4 py-3 text-sm text-emerald-100">
                 <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
-                <p>{greetingCopy?.completionMessage ?? 'Batch watched ho gaya. Apne coach ko ✅ reply karke confirm kar dijiye.'}</p>
+                <p>{greetingCopy?.completionMessage ?? 'Batch watched. Reply ✅ to your coach to confirm.'}</p>
               </div>
             ) : accessOpen ? (
               <p className="text-center text-sm text-white/60">Finished watching? Message your coach and reply ✅ to confirm.</p>
@@ -493,7 +493,7 @@ export function BatchWatchPage() {
                         icon={<Headphones className="size-4" />}
                         title="Voice note"
                         accept="audio/*,.m4a,.mp3,.ogg,.wav,.webm"
-                        hint="Short explanation ya reflection upload kijiye."
+                        hint="Upload a short explanation or reflection."
                         file={voiceFile}
                         onChange={setVoiceFile}
                       />
