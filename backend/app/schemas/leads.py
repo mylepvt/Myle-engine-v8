@@ -613,6 +613,20 @@ class LeadPoolBatchPreviewResponse(BaseModel):
     total_price_cents: int = Field(ge=0)
 
 
+class ClaimGateLead(BaseModel):
+    id: int
+    name: str
+    phone: Optional[str] = None
+
+
+class ClaimGateResponse(BaseModel):
+    """Whether the member may claim pool leads right now (fresh-lead coverage rule)."""
+
+    blocked: bool
+    message: Optional[str] = None
+    uncovered_leads: list[ClaimGateLead] = Field(default_factory=list)
+
+
 class LeadPoolClaimBatchResponse(BaseModel):
     leads: list[LeadPublic]
     total_price_cents: int = Field(ge=0)

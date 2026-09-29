@@ -29,8 +29,11 @@ function workboardTabPath(tab: string): string {
 }
 
 function sectionForStatus(status: string, role: Role | null): LeadSectionInfo {
-  if (status === 'retarget' || status === 'lost' || status === 'inactive') {
-    return { label: 'Retarget', path: '/dashboard/work/retarget' }
+  if (status === 'retarget') {
+    return { label: 'Calling Board -> Retarget', path: '/dashboard/work/leads?tab=retarget' }
+  }
+  if (status === 'lost' || status === 'inactive') {
+    return { label: 'Archived Leads', path: '/dashboard/work/archived' }
   }
   if (status === 'paid') {
     return { label: 'Workboard -> Day 1', path: workboardTabPath('day1') }

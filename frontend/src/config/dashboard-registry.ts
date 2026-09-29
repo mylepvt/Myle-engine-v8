@@ -57,7 +57,6 @@ export type FullUiSurface =
   | { kind: 'enroll-link' }
   | { kind: 'workboard' }
   | { kind: 'follow-ups' }
-  | { kind: 'retarget' }
   | { kind: 'lead-flow' }
   | { kind: 'lead-gen' }
   | { kind: 'lead-pool' }
@@ -179,14 +178,6 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('work/follow-ups'),
     surface: 'full',
     ui: { kind: 'follow-ups' },
-  },
-  {
-    path: 'work/retarget',
-    section: { id: 'work', label: '' },
-    label: 'Retarget',
-    roles: routeRoles('work/retarget'),
-    surface: 'full',
-    ui: { kind: 'retarget' },
   },
   {
     path: 'work/archived',

@@ -41,6 +41,7 @@ function nextLeadId(items: LeadPublic[], current: number | null): number | null 
 
 const TABS: { id: CtcsTab; label: string }[] = [
   { id: 'today', label: 'Today' },
+  { id: 'retarget', label: 'Retarget' },
   { id: 'followups', label: 'Follow-ups' },
   { id: 'hot', label: 'Hot' },
   { id: 'pending', label: 'Pending Work' },
@@ -52,6 +53,11 @@ const TABS: { id: CtcsTab; label: string }[] = [
 const TAB_STORAGE_KEY = 'ctcs-active-tab'
 
 function initialTab(): CtcsTab {
+  // Deep link (e.g. "Calling Board -> Retarget") wins over the remembered tab.
+  if (typeof window !== 'undefined') {
+    const fromUrl = new URLSearchParams(window.location.search).get('tab') as CtcsTab | null
+    if (fromUrl && TABS.some((t) => t.id === fromUrl)) return fromUrl
+  }
   if (typeof sessionStorage === 'undefined') return 'all'
   const saved = sessionStorage.getItem(TAB_STORAGE_KEY) as CtcsTab | null
   return saved && TABS.some((t) => t.id === saved) ? saved : 'all'
@@ -101,8 +107,13 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
       }
     }
     if (tab === 'today') {
-      // Today = leads claimed today via paid recharge, shown at ANY pipeline stage.
+      // Today = leads claimed via paid recharge (any day) still being worked
+      // (New Lead → Video Watched). No midnight reset.
       return { ctcsFilter: 'today' as const, ctcsPrioritySort: true as const }
+    }
+    if (tab === 'retarget') {
+      // Retarget = leads whose status was set to Retarget; they stay here until moved.
+      return { ctcsFilter: 'retarget' as const, ctcsPrioritySort: true as const }
     }
     if (tab === 'pending') {
       // Pending Work = zombie/untouched leads at ANY stage — no pre-enrollment limit.

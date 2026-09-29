@@ -52,6 +52,7 @@ from app.schemas.leads import (
 )
 from app.services.leads_contracts import LeadsRepositoryContract, TopicNotifierContract
 from app.services.auto_handoff import AutoHandoffService
+from app.services.claim_gate import TODAY_WORKING_STATUSES, ensure_claim_allowed, pool_claim_exists
 from app.services.crm_outbox import crm_shadow_stage_for_lead, enqueue_lead_shadow_delete, enqueue_lead_shadow_upsert
 from app.services.observation_logger import (
     correlation_id_for_lead,
@@ -135,19 +136,12 @@ def _ctcs_filter_clause(ctcs_filter: Optional[str]) -> Any:
     if key in ("", "all"):
         return None
     if key == "today":
-        # "Today" = leads claimed today (IST) via PAID recharge claim only.
-        # Paid claim is recorded as ActivityLog action "lead.claimed"
-        # (free-pool claims use "lead.claimed_free" and are excluded here).
-        # There is no claimed_at column, so we read it from ActivityLog.
-        return exists(
-            select(1).where(
-                ActivityLog.entity_type == "lead",
-                ActivityLog.entity_id == Lead.id,
-                ActivityLog.action == "lead.claimed",
-                ActivityLog.created_at >= day_start,
-                ActivityLog.created_at < day_end,
-            )
-        )
+        # "Today" = leads the member claimed from a pool (any day) that are still being
+        # worked (New Lead → Video Watched). They stay here — no daily reset — until the
+        # status moves to Retarget / Lost / Day 1+.
+        return and_(pool_claim_exists(), Lead.status.in_(TODAY_WORKING_STATUSES))
+    if key == "retarget":
+        return Lead.status == "retarget"
     if key in ("followups", "follow_ups"):
         return Lead.next_followup_at.is_not(None)
     if key == "hot":
@@ -180,7 +174,7 @@ def _ctcs_filter_clause(ctcs_filter: Optional[str]) -> Any:
         )
     raise HTTPException(
         status_code=http_status.HTTP_422_UNPROCESSABLE_CONTENT,
-        detail="Invalid ctcs_filter (use: all|today|followups|hot|converted|reassigned|pending)",
+        detail="Invalid ctcs_filter (use: all|today|retarget|followups|hot|converted|reassigned|pending)",
     )
 
 
@@ -511,6 +505,7 @@ class LeadsService:
     async def claim_lead(self, *, lead_id: int, user: AuthUser) -> Lead:
         if user.role not in _POOL_SINGLE_CLAIM_ROLES:
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        await ensure_claim_allowed(self._session, user.user_id)
         lead = await self._repository.get_lead_for_update(lead_id)
         if lead is None or lead.deleted_at is not None:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
@@ -600,6 +595,7 @@ class LeadsService:
     ) -> tuple[list[Lead], int]:
         if user.role not in _POOL_CLAIM_ROLES:
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        await ensure_claim_allowed(self._session, user.user_id)
 
         cap = max(1, min(int(count), 50))
         stmt = (
@@ -708,6 +704,7 @@ class LeadsService:
     ) -> list[Lead]:
         if user.role not in _POOL_CLAIM_ROLES:
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        await ensure_claim_allowed(self._session, user.user_id)
         cap = max(1, min(int(count), 50))
         stmt = (
             select(Lead)

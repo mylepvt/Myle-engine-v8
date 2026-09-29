@@ -1,9 +1,9 @@
-"""ctcs_filter=today shows only leads CLAIMED today (IST), via ActivityLog.
+"""ctcs_filter=today shows paid-claimed leads still being worked (any claim day), via ActivityLog.
 
 Covers:
 - Lead with a lead.claimed ActivityLog entry today → appears under ctcs_filter=today
 - Lead touched today (last_action_at=now) but never claimed → excluded
-- Lead claimed yesterday (claim ActivityLog dated yesterday) → excluded
+- Lead claimed yesterday and still being worked → still included (no daily reset)
 """
 from __future__ import annotations
 
@@ -140,8 +140,8 @@ async def test_today_excludes_free_claim(team_client: AsyncClient, engine):
 
 
 @pytest.mark.asyncio
-async def test_today_excludes_lead_claimed_yesterday(team_client: AsyncClient, engine):
-    """Claim ActivityLog dated just before today's IST start → must NOT appear."""
+async def test_today_keeps_lead_claimed_yesterday(team_client: AsyncClient, engine):
+    """Claimed yesterday, still New Lead → stays on Today (no midnight reset)."""
     async with AsyncSession(engine, expire_on_commit=False) as session:
         await _seed_user(session, 201)
         lead = await _seed_lead(session, owner_id=201, last_action_at=_now_utc())
@@ -153,4 +153,4 @@ async def test_today_excludes_lead_claimed_yesterday(team_client: AsyncClient, e
     resp = await team_client.get("/api/v1/leads?ctcs_filter=today")
     assert resp.status_code == 200
     ids = [item["id"] for item in resp.json()["items"]]
-    assert lead_id not in ids
+    assert lead_id in ids

@@ -12,6 +12,7 @@ import {
   usePatchLeadMutation,
 } from '@/hooks/use-leads-query'
 import {
+  useClaimGateQuery,
   useLeadPoolBatchClaimMutation,
   useLeadPoolBatchPreviewQuery,
   useLeadPoolDefaultsMutation,
@@ -23,6 +24,7 @@ import {
   useFreePoolBatchClaimMutation,
   useFreePoolBatchPreviewQuery,
 } from '@/hooks/use-free-lead-pool-query'
+import { ClaimGateBanner } from '@/components/leads/ClaimGateBanner'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { useWalletMeQuery } from '@/hooks/use-wallet-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
@@ -75,6 +77,8 @@ export function LeadPoolWorkPage({ title }: Props) {
   const poolDefaultsMut = useLeadPoolDefaultsMutation()
   const { data: walletData } = useWalletMeQuery(canClaimPool)
   const claimMut = useClaimLeadMutation()
+  const { data: claimGate } = useClaimGateQuery(canClaimPool)
+  const claimBlocked = claimGate?.blocked === true
   const batchClaimMut = useLeadPoolBatchClaimMutation()
   const patchMut = usePatchLeadMutation()
   const claimBusy = claimMut.isPending || batchClaimMut.isPending
@@ -431,6 +435,7 @@ export function LeadPoolWorkPage({ title }: Props) {
 
       {canClaimPool ? (
         <div className="surface-elevated p-4 text-sm text-muted-foreground">
+          {claimGate ? <ClaimGateBanner gate={claimGate} /> : null}
           <p className="mb-3 font-medium text-foreground">
             In pool: {batchPreview?.available_count ?? (canViewPoolList ? data?.total ?? 0 : 0)}
           </p>
@@ -470,7 +475,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                     <Button
                       type="button"
                       size="sm"
-                      disabled={claimBusy || !canAffordBatchEstimate || batchCountParsed < 1}
+                      disabled={claimBlocked || claimBusy || !canAffordBatchEstimate || batchCountParsed < 1}
                       onClick={() => void handleBatchClaim()}
                     >
                       {claimBusy ? 'Claiming…' : 'Confirm batch'}
@@ -502,7 +507,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                     type="button"
                     size="sm"
                     variant="outline"
-                    disabled={claimBusy || !canAffordBatchEstimate || batchCountParsed < 1}
+                    disabled={claimBlocked || claimBusy || !canAffordBatchEstimate || batchCountParsed < 1}
                     title={
                       !canAffordBatchEstimate
                         ? `Need ${formatRupees(batchFifoEstimateCents)}; wallet has ${formatRupees(walletBalance)}`
@@ -641,7 +646,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                           <Button
                             type="button"
                             size="sm"
-                            disabled={claimBusy || (!isFree && !canAfford)}
+                            disabled={claimBlocked || claimBusy || (!isFree && !canAfford)}
                             onClick={() => void handleClaim(l.id)}
                           >
                             {claimBusy ? 'Claiming…' : 'Confirm'}
@@ -660,7 +665,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                           type="button"
                           size="sm"
                           className="self-start"
-                          disabled={claimBusy || (!isFree && !canAfford)}
+                          disabled={claimBlocked || claimBusy || (!isFree && !canAfford)}
                           title={!isFree && !canAfford ? `Need ${formatRupees(price)}, wallet has ${formatRupees(walletBalance)}` : undefined}
                           onClick={() => setConfirmId(l.id)}
                         >
@@ -787,7 +792,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                       <Button
                         type="button"
                         size="sm"
-                        disabled={freeClaimMut.isPending || freePoolPreview.claim_count < 1}
+                        disabled={claimBlocked || freeClaimMut.isPending || freePoolPreview.claim_count < 1}
                         onClick={() => void handleFreePoolBatchClaim()}
                       >
                         {freeClaimMut.isPending ? 'Claiming…' : 'Confirm — Claim Free'}
@@ -825,7 +830,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                     <Button
                       type="button"
                       size="sm"
-                      disabled={freeClaimMut.isPending || freePoolPreview.claim_count < 1}
+                      disabled={claimBlocked || freeClaimMut.isPending || freePoolPreview.claim_count < 1}
                       onClick={() => setFreeBatchConfirmOpen(true)}
                     >
                       Claim Free Leads

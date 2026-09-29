@@ -100,6 +100,10 @@ _CLOSING_PIPELINE_STATUSES = frozenset({
 _GENERAL_PIPELINE_STATUSES = frozenset({
     "new_lead", "contacted", "invited", "whatsapp_sent", "mindset_lock", "day1", "paid"
 })
+# Team working stages never auto-archive on a timer — a member's claimed leads stay on
+# their Calling Board until the member moves them (retarget / lost / Day 1).
+_GENERAL_NO_AUTO_ARCHIVE_STATUSES = frozenset({"new_lead", "contacted", "invited"})
+_GENERAL_AUTO_ARCHIVE_STATUSES = _GENERAL_PIPELINE_STATUSES - _GENERAL_NO_AUTO_ARCHIVE_STATUSES
 # ₹1500 minimum FLP billing threshold in paise (rupees × 100).
 RUPEES_1500_CENTS = 1500 * 100
 RUPEES_196_CENTS = RUPEES_1500_CENTS  # policy: ₹196 replaced by Min. FLP Billing ₹1500
@@ -1555,7 +1559,7 @@ async def _get_archivable_general_pipeline_leads(
             Lead.in_pool.is_(False),
             Lead.deleted_at.is_(None),
             Lead.archived_at.is_(None),
-            Lead.status.in_(tuple(_GENERAL_PIPELINE_STATUSES)),
+            Lead.status.in_(tuple(_GENERAL_AUTO_ARCHIVE_STATUSES)),
             anchor <= cutoff,
         )
         .order_by(anchor.asc(), Lead.id.asc())
